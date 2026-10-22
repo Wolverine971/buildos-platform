@@ -75,7 +75,6 @@
 					</div>
 				</div>
 
-				<p class="micro-label mb-3 text-accent">Founder-led support</p>
 				<h1 class="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
 					Contact BuildOS
 				</h1>
@@ -167,7 +166,6 @@
 					decoding="async"
 				/>
 				<div class="min-w-0">
-					<p class="micro-label mb-2">A note from the founder</p>
 					<h2
 						id="founder-contact-heading"
 						class="text-xl font-bold text-foreground sm:text-2xl"
@@ -200,7 +198,6 @@
 	<section class="border-b border-border bg-background" aria-labelledby="follow-heading">
 		<div class="mx-auto max-w-7xl px-2 py-10 sm:px-4 sm:py-12 lg:px-6">
 			<div class="mx-auto max-w-4xl text-center">
-				<p class="micro-label mb-2">Building in public</p>
 				<h2 id="follow-heading" class="text-2xl font-bold text-foreground">
 					Follow the build
 				</h2>

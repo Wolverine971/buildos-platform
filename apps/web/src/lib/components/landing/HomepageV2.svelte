@@ -15,12 +15,8 @@
 	import { onMount } from 'svelte';
 	import {
 		FolderKanban,
-		Target,
 		Calendar,
-		ListChecks,
-		Flag,
 		FileText,
-		TriangleAlert,
 		ArrowRight,
 		ArrowDown,
 		CircleCheck,
@@ -99,25 +95,6 @@
 			requestAnimationFrame(() => requestAnimationFrame(alignTarget));
 		});
 	});
-
-	const dataModel = [
-		{
-			icon: FolderKanban,
-			name: 'Projects',
-			desc: "The work you're moving."
-		},
-		{ icon: Target, name: 'Goals', desc: "The outcome you're aiming for." },
-		{ icon: Calendar, name: 'Plans', desc: 'The path from here to done.' },
-		{ icon: ListChecks, name: 'Tasks', desc: 'The next concrete actions.' },
-		{ icon: Flag, name: 'Milestones', desc: 'Proof that the work is moving.' },
-		{ icon: FileText, name: 'Documents', desc: 'Notes, research, and drafts.' },
-		{ icon: TriangleAlert, name: 'Risks', desc: 'Blockers and open questions.' },
-		{
-			icon: FolderKanban,
-			name: 'Flexible structure',
-			desc: 'A shape that fits the project.'
-		}
-	] as const;
 </script>
 
 <div class="min-h-screen bg-background text-foreground">
@@ -125,10 +102,9 @@
 	<section class="border-b border-border">
 		<div class="mx-auto max-w-7xl px-2 py-12 sm:px-4 sm:py-16 lg:px-6 lg:py-20">
 			<div class="mx-auto max-w-4xl space-y-5 text-center sm:space-y-6">
-				<div class="inline-flex items-center gap-2 text-muted-foreground">
-					<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
-					<span class="micro-label">For creators with too much in their head</span>
-				</div>
+				<p class="text-sm font-medium text-muted-foreground sm:text-base">
+					For creators with too much in their head.
+				</p>
 
 				<h1
 					class="text-balance text-4xl font-semibold leading-[1.02] tracking-tight sm:text-5xl md:text-6xl"
@@ -149,13 +125,17 @@
 					>
 						{START_PROJECT_CTA}
 					</a>
-					<a
-						href="#walkthrough"
+					<button
+						type="button"
+						onclick={openExampleModal}
+						onpointerenter={preloadExampleModal}
+						onpointerdown={preloadExampleModal}
+						onfocus={preloadExampleModal}
 						class="inline-flex min-h-11 items-center gap-2 rounded-md px-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 					>
-						See how it works
-						<ArrowDown class="h-4 w-4 shrink-0" />
-					</a>
+						Open an example project
+						<ArrowRight class="h-4 w-4 shrink-0" />
+					</button>
 				</div>
 			</div>
 
@@ -170,8 +150,7 @@
 				class="mt-12 scroll-mt-4 overflow-hidden rounded-lg border border-border bg-card shadow-ink sm:mt-16"
 			>
 				<div class="border-b border-border px-4 py-6 text-center sm:px-6">
-					<p class="micro-label text-accent">Start a project</p>
-					<h2 class="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+					<h2 class="text-2xl font-semibold tracking-tight sm:text-3xl">
 						One message in. A working project out.
 					</h2>
 					<p
@@ -180,8 +159,8 @@
 						BuildOS creates the structure while you watch, then gives you a project you
 						can keep using.
 					</p>
-					<p class="micro-label mt-3 text-muted-foreground">
-						Real BuildOS screenshots · example book project
+					<p class="mt-3 text-xs text-muted-foreground">
+						Real screenshots from an example book project.
 					</p>
 				</div>
 
@@ -298,11 +277,6 @@
 									loading="lazy"
 								/>
 							</div>
-							<p
-								class="border-t border-border px-3 py-2 text-xs text-muted-foreground md:hidden"
-							>
-								Swipe the screenshot to follow each action →
-							</p>
 						</figure>
 					</article>
 
@@ -358,11 +332,6 @@
 									loading="lazy"
 								/>
 							</div>
-							<p
-								class="border-t border-border px-3 py-2 text-xs text-muted-foreground md:hidden"
-							>
-								Swipe to explore the project →
-							</p>
 						</figure>
 					</article>
 				</div>
@@ -383,30 +352,17 @@
 		>
 			<div class="space-y-8">
 				<div class="text-center">
-					<p class="micro-label text-muted-foreground">Real changes, made in chat</p>
-					<h2 class="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight">
+					<h2 class="text-2xl sm:text-3xl font-semibold tracking-tight">
 						Tell it what changed. See the project update.
 					</h2>
 					<p class="mt-2 text-sm text-muted-foreground max-w-xl mx-auto">
 						BuildOS finds the right item, makes the change, and shows you what moved.
 					</p>
-					<div
-						class="mt-4 inline-flex items-center gap-2 rounded-md border border-accent/50 px-3 py-1.5"
-					>
-						<span class="h-1.5 w-1.5 shrink-0 rounded-full bg-accent"></span>
-						<span class="micro-label text-accent"
-							>Real BuildOS screenshots · example book project</span
-						>
-						<span class="hidden h-3 w-px bg-accent/30 md:block"></span>
-						<span class="micro-label hidden text-muted-foreground md:block"
-							>Hover to zoom</span
-						>
-					</div>
 				</div>
 
 				<div class="mx-auto max-w-5xl space-y-6">
 					<!-- USE CASE: update a task by talking -->
-					<p class="micro-label text-muted-foreground">Update a task</p>
+					<h3 class="text-base font-semibold text-foreground">Update a task</h3>
 
 					<div
 						class="flex flex-col md:grid md:grid-cols-[1.15fr_auto_1fr] gap-3 md:gap-4 md:items-center"
@@ -474,9 +430,9 @@
 					</div>
 
 					<!-- USE CASE: reschedule by talking -->
-					<p class="micro-label border-t border-border pt-6 text-muted-foreground">
+					<h3 class="border-t border-border pt-6 text-base font-semibold text-foreground">
 						Move something on your calendar
-					</p>
+					</h3>
 
 					<div
 						class="flex flex-col md:grid md:grid-cols-[1.15fr_auto_1fr] gap-3 md:gap-4 md:items-center"
@@ -557,8 +513,7 @@
 	<!-- Return to the same project; sample prompts, not a customer outcome claim. -->
 	<section id="return" class="border-b border-border bg-card/30">
 		<div class="mx-auto max-w-4xl px-4 py-12 sm:py-16 lg:px-6">
-			<p class="micro-label text-accent">Come back to the same project</p>
-			<h2 class="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+			<h2 class="text-2xl font-semibold tracking-tight sm:text-3xl">
 				Pick up your project without piecing it back together.
 			</h2>
 			<p class="mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">
@@ -595,8 +550,7 @@
 	<section id="split" class="border-b border-border bg-card/30">
 		<div class="mx-auto max-w-7xl px-2 py-12 sm:px-4 sm:py-16 lg:px-6">
 			<div class="mx-auto mb-8 max-w-2xl text-center sm:mb-10">
-				<p class="micro-label text-muted-foreground">Built for both</p>
-				<h2 class="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+				<h2 class="text-2xl font-semibold tracking-tight sm:text-3xl">
 					Use it yourself. Bring agents when you're ready.
 				</h2>
 			</div>
@@ -641,32 +595,13 @@
 						archaeology. No hand-built handoffs.
 					</p>
 
-					<div class="mt-5 divide-y divide-border border-y border-border">
-						<div class="grid gap-1 py-3 sm:grid-cols-[7rem_1fr] sm:gap-3">
-							<p class="micro-label text-muted-foreground">You</p>
-							<p class="text-sm text-foreground">Set direction and make decisions.</p>
-						</div>
-						<div class="grid gap-1 py-3 sm:grid-cols-[7rem_1fr] sm:gap-3">
-							<p class="micro-label text-muted-foreground">Agents</p>
-							<p class="text-sm text-foreground">
-								Execute scoped work with real context.
-							</p>
-						</div>
-						<div class="grid gap-1 py-3 sm:grid-cols-[7rem_1fr] sm:gap-3">
-							<p class="micro-label text-muted-foreground">BuildOS</p>
-							<p class="text-sm text-foreground">
-								Keeps the shared project memory current.
-							</p>
-						</div>
-					</div>
-
 					<div class="mt-auto pt-6">
 						<a
-							href="#agents"
+							href="/integrations"
 							class="inline-flex min-h-11 items-center gap-2 rounded-md px-2 text-sm font-semibold text-foreground transition-colors hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 						>
-							See how agents use BuildOS
-							<ArrowDown class="h-4 w-4 shrink-0" />
+							Connect your agent
+							<ArrowRight class="h-4 w-4 shrink-0" />
 						</a>
 					</div>
 				</article>
@@ -681,8 +616,7 @@
 		>
 			<div class="space-y-6">
 				<div class="text-center">
-					<p class="micro-label text-muted-foreground">Shared project memory</p>
-					<h2 class="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight">
+					<h2 class="text-2xl sm:text-3xl font-semibold tracking-tight">
 						One project for you and your agents.
 					</h2>
 					<p class="mt-2 text-sm text-muted-foreground max-w-xl mx-auto">
@@ -842,40 +776,11 @@
 			</div>
 		</div>
 	</section>
-	<!-- ─── §05 what it holds (the data model) ──────────────────────── -->
-	<section class="home-deferred home-deferred-model border-b border-border">
-		<div class="mx-auto max-w-7xl space-y-6 px-2 py-10 sm:px-4 sm:py-12 lg:px-6">
-			<div class="text-center">
-				<p class="micro-label text-muted-foreground">Project structure</p>
-				<h2 class="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight">
-					Everything has a place.
-				</h2>
-				<p class="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
-					The pieces stay connected without forcing every project into the same template.
-				</p>
-			</div>
-
-			<div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-				{#each dataModel as item (item.name)}
-					{@const Icon = item.icon}
-					<div class="rounded-lg border border-border bg-card p-4">
-						<div class="flex items-center gap-2 mb-1.5">
-							<Icon class="h-4 w-4 shrink-0 text-muted-foreground" />
-							<span class="text-sm font-semibold text-foreground">{item.name}</span>
-						</div>
-						<p class="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
-					</div>
-				{/each}
-			</div>
-		</div>
-	</section>
-
 	<!-- ─── §07 optional Google integrations ────────────────────────── -->
 	<section id="google-integrations" class="home-deferred border-b border-border">
 		<div class="mx-auto max-w-7xl px-2 py-12 sm:px-4 sm:py-16 lg:px-6">
 			<div class="mx-auto max-w-3xl text-center">
-				<p class="micro-label text-muted-foreground">Optional Google integrations</p>
-				<h2 class="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+				<h2 class="text-2xl font-semibold tracking-tight sm:text-3xl">
 					Connect Google only if you choose.
 				</h2>
 				<p
@@ -936,8 +841,7 @@
 	<!-- ─── Final CTA ───────────────────────────────────────────────── -->
 	<section class="home-deferred home-deferred-cta border-t border-border py-14 sm:py-20">
 		<div class="mx-auto max-w-3xl px-4 text-center sm:px-6">
-			<div class="micro-label text-muted-foreground">Start with one project</div>
-			<h2 class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+			<h2 class="text-3xl font-semibold tracking-tight sm:text-4xl">
 				Start with the messy version.
 			</h2>
 			<p class="mx-auto mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
@@ -1001,6 +905,8 @@
 
 	@media (min-width: 768px) and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
 		.app-screenshot {
+			/* The cursor says "zoom" so the page doesn't need a "Hover to zoom" label. */
+			cursor: zoom-in;
 			will-change: transform;
 			transition:
 				transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
@@ -1035,15 +941,11 @@
 		}
 
 		.home-deferred-loop {
-			contain-intrinsic-size: auto 900px;
+			contain-intrinsic-size: auto 840px;
 		}
 
 		.home-deferred-agents {
 			contain-intrinsic-size: auto 835px;
-		}
-
-		.home-deferred-model {
-			contain-intrinsic-size: auto 420px;
 		}
 
 		.home-deferred-cta {
@@ -1054,15 +956,11 @@
 	@media (max-width: 767px) {
 		@supports (content-visibility: auto) {
 			.home-deferred-loop {
-				contain-intrinsic-size: auto 1862px;
+				contain-intrinsic-size: auto 1790px;
 			}
 
 			.home-deferred-agents {
 				contain-intrinsic-size: auto 1534px;
-			}
-
-			.home-deferred-model {
-				contain-intrinsic-size: auto 975px;
 			}
 
 			.home-deferred-cta {

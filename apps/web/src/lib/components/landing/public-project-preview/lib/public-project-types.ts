@@ -18,6 +18,8 @@ export interface PublicProjectSummary {
 	props: Record<string, unknown> | null;
 	start_at: string | null;
 	end_at: string | null;
+	/** Opens by default (props.featured_public_example, set by scripts/seed-demo-account.ts). */
+	featured?: boolean;
 }
 
 export interface PublicProjectInfo {
@@ -70,10 +72,11 @@ export const PROJECT_COMMANDERS: Record<string, string> = {
 };
 
 /**
- * Default project to show on first load. Project Hail Mary is the most
- * universally recognizable creator-facing example.
+ * Fallback when no public project is flagged as featured. The featured project is the
+ * "Fading Crown" demo, which matches the homepage screenshots. Apollo is a historical
+ * example rather than someone else's novel.
  */
-export const DEFAULT_PUBLIC_PROJECT_ID = '33333333-3333-3333-3333-333333333333';
+export const DEFAULT_PUBLIC_PROJECT_ID = '22222222-2222-2222-2222-222222222222';
 
 export function getCommander(
 	projectId: string | null,

@@ -432,7 +432,6 @@
 			<div
 				class="mx-auto max-w-4xl border border-border bg-card p-5 shadow-ink tx tx-frame tx-weak wt-card sm:p-7"
 			>
-				<p class="micro-label mb-2 text-accent">DELIBERATE BOUNDARIES</p>
 				<h2 id="boundaries-heading" class="text-2xl font-semibold sm:text-3xl">
 					What we are not promising.
 				</h2>
@@ -452,7 +451,6 @@
 	>
 		<div class="mx-auto max-w-7xl px-2 text-center sm:px-4 lg:px-6">
 			<div class="mx-auto max-w-3xl">
-				<p class="micro-label mb-2 text-accent">HELP SHAPE THE ROADMAP</p>
 				<h2 id="feedback-heading" class="text-2xl font-semibold sm:text-3xl">
 					Tell us where your work still breaks down.
 				</h2>

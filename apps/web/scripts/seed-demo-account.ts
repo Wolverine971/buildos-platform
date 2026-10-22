@@ -400,7 +400,28 @@ async function main() {
 	const { project_id } = await instantiateProject(admin, spec(), userId, {
 		activityLog: { changeSource: 'api' }
 	});
-	console.log(`Seeded "${PROJECT_NAME}" → project ${project_id}`);
+	// Publish it as the homepage's featured example so "Open an example project" shows the same
+	// project as the walkthrough screenshots. The public API only exposes allow-listed columns.
+	const { data: seeded, error: readError } = await admin
+		.from('onto_projects')
+		.select('props')
+		.eq('id', project_id)
+		.single();
+	if (readError) throw readError;
+	const existingProps =
+		seeded?.props && typeof seeded.props === 'object' && !Array.isArray(seeded.props)
+			? (seeded.props as Record<string, unknown>)
+			: {};
+	const { error: publishError } = await admin
+		.from('onto_projects')
+		.update({
+			is_public: true,
+			props: { ...existingProps, commander: DEMO_NAME, featured_public_example: true }
+		})
+		.eq('id', project_id);
+	if (publishError) throw publishError;
+
+	console.log(`Seeded "${PROJECT_NAME}" → project ${project_id} (public, featured example)`);
 	console.log(`Open: http://localhost:5173/projects/${project_id}`);
 }
 

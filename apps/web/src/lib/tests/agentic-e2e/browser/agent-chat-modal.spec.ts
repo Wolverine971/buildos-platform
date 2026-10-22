@@ -12,7 +12,7 @@ import { AGENTIC_CHAT_TURN_SOURCE_HEADER } from '../../../../routes/api/agent/v2
 
 const PROMPT = 'Reply with exactly "MODAL E2E OK" and do not use tools.';
 const CAPTURE_ANALYTICS = process.env.AGENTIC_E2E_CAPTURE_ANALYTICS === 'true';
-const TRACKING_CONSENT_BUTTON = CAPTURE_ANALYTICS ? 'Accept all' : 'Use necessary only';
+const TRACKING_CONSENT_BUTTON = CAPTURE_ANALYTICS ? 'Accept all' : 'Necessary only';
 const TRACKING_PREFERENCES_STORAGE_KEY = 'buildos_tracking_preferences_v1';
 const TRACKING_PREFERENCES_OPEN_EVENT = 'buildos:open-tracking-preferences';
 const POSTHOG_CAPTURE_RECEIPT_SLOT = '__buildosAgenticPostHogCaptureReceiptV1';

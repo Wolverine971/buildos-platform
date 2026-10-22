@@ -1080,7 +1080,6 @@
 								onclick={() => handleMenuItemClick('/onboarding')}
 								class="inline-flex items-center px-2 md:px-3 lg:px-3.5 xl:px-4 py-1.5 md:py-2 lg:py-2.5 text-xs md:text-sm lg:text-sm font-bold tracking-tight rounded-lg shadow-ink pressable transition-all duration-200 whitespace-nowrap tx tx-bloom tx-weak
 								bg-accent text-accent-foreground hover:bg-accent/90 border border-accent/20
-								{isOnOnboarding ? '' : 'animate-pulse-glow motion-reduce:animate-none'}
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 								{loadingLink === '/onboarding' ? loadingAccentClass : ''}"
 							>
@@ -1410,7 +1409,6 @@
 							onclick={() => handleMenuItemClick('/onboarding')}
 							class="flex items-center px-3 py-2.5 text-base font-bold tracking-tight rounded-lg shadow-ink pressable transition-all duration-200 tx tx-bloom tx-weak
 							bg-accent text-accent-foreground hover:bg-accent/90 border border-accent/20
-							{isOnOnboarding ? '' : 'animate-pulse-glow motion-reduce:animate-none'}
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 							{loadingLink === '/onboarding' ? loadingAccentClass : ''}"
 						>

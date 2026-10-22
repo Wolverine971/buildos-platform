@@ -2,7 +2,8 @@
  * Public Projects List API
  *
  * Returns a list of all public example projects (is_public = true).
- * Used by the homepage to randomly select an example project to display.
+ * Used by the homepage example picker. The project flagged with
+ * props.featured_public_example comes first and opens by default.
  *
  * GET /api/public/projects
  *
@@ -11,7 +12,7 @@
  *   success: true,
  *   data: {
  *     projects: [
- *       { id, name, description, props, start_at, end_at }
+ *       { id, name, description, props, start_at, end_at, featured }
  *     ]
  *   }
  * }
@@ -27,6 +28,11 @@ function pickPublicProjectProps(value: unknown): Record<string, unknown> | null 
 	const props: Record<string, unknown> = {};
 	if (typeof record.commander === 'string') props.commander = record.commander;
 	return Object.keys(props).length > 0 ? props : null;
+}
+
+function isFeaturedPublicProject(value: unknown): boolean {
+	if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+	return (value as Record<string, unknown>).featured_public_example === true;
 }
 
 export const GET: RequestHandler = async () => {
@@ -53,8 +59,11 @@ export const GET: RequestHandler = async () => {
 			description: project.description ?? null,
 			props: pickPublicProjectProps(project.props),
 			start_at: project.start_at ?? null,
-			end_at: project.end_at ?? null
+			end_at: project.end_at ?? null,
+			featured: isFeaturedPublicProject(project.props)
 		}));
+		// Featured example first; the rest keep their name order (sort is stable).
+		publicProjects.sort((a, b) => Number(b.featured) - Number(a.featured));
 
 		return ApiResponse.cached({ projects: publicProjects }, undefined, 3600, {
 			public: true,

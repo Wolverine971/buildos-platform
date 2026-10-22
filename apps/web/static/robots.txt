@@ -38,7 +38,6 @@ Allow: /docs
 Allow: /blogs
 Allow: /terms
 Allow: /privacy
-Allow: /beta
 Allow: /feedback
 Allow: /integrations
 Allow: /road-map

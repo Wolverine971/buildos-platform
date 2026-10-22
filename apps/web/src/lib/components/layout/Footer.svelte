@@ -21,8 +21,7 @@
 			links: [
 				{ href: '/about', label: 'About' },
 				{ href: '/pricing', label: 'Pricing' },
-				{ href: '/road-map', label: 'Roadmap' },
-				{ href: '/beta', label: 'Join beta' }
+				{ href: '/road-map', label: 'Roadmap' }
 			]
 		},
 		{

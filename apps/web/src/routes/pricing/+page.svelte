@@ -285,7 +285,7 @@
 						</h3>
 						<p class="text-muted-foreground">
 							After your trial ends, you'll have a 7-day grace period to subscribe.
-							During this time, your account will be in read-only mode — you can view
+							During this time, your account will be in read-only mode. You can view
 							all your data but cannot create or edit content. Subscribe anytime to
 							regain full access.
 						</p>

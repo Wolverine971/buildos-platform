@@ -77,6 +77,7 @@
 
 			if (!currentProjectId && availableProjects.length > 0) {
 				const preferred =
+					availableProjects.find((p) => p.featured) ??
 					availableProjects.find((p) => p.id === DEFAULT_PUBLIC_PROJECT_ID) ??
 					availableProjects[0];
 				currentProjectId = preferred?.id ?? null;
@@ -326,9 +327,9 @@
 								See what a real BuildOS project looks like.
 							</h2>
 							<p class="text-sm text-muted-foreground max-w-2xl">
-								Header, pulse, kanban, docs, graph — the same view a logged-in user
-								gets, rendered from a real public project. Switch between examples
-								or preview what it looks like on mobile.
+								Header, pulse, kanban, docs, and graph: the same view a logged-in
+								user gets, rendered from a real public project. Switch between
+								examples or preview what it looks like on mobile.
 							</p>
 						</div>
 

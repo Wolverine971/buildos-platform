@@ -521,10 +521,9 @@
 			<section aria-labelledby="gallery-search-results" class="mb-10">
 				<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 					<div>
-						<p class="micro-label text-accent">Search Across Gallery</p>
 						<h2
 							id="gallery-search-results"
-							class="mt-1 text-2xl font-semibold text-foreground"
+							class="text-2xl font-semibold text-foreground"
 						>
 							{totalSearchResults} result{totalSearchResults === 1 ? '' : 's'} for “{query.trim()}”
 						</h2>
@@ -671,11 +670,7 @@
 			<section aria-labelledby="featured-skills" class="mb-10">
 				<div class="mb-4 flex items-end justify-between gap-4">
 					<div>
-						<p class="micro-label text-accent">Start Here</p>
-						<h2
-							id="featured-skills"
-							class="mt-1 text-2xl font-semibold text-foreground"
-						>
+						<h2 id="featured-skills" class="text-2xl font-semibold text-foreground">
 							Featured skills
 						</h2>
 					</div>
@@ -740,10 +735,9 @@
 						class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"
 					>
 						<div>
-							<p class="micro-label text-accent">Next Phase</p>
 							<h2
 								id="runtime-previews"
-								class="mt-1 text-2xl font-semibold text-foreground"
+								class="text-2xl font-semibold text-foreground"
 							>
 								Reviewed runtime previews
 							</h2>

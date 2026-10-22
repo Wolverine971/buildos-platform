@@ -62,5 +62,42 @@ describe('GET /api/public/projects', () => {
 		expect(payload.data.projects).toHaveLength(1);
 		expect(payload.data.projects[0].id).toBe('project-1');
 		expect(payload.data.projects[0].props).toEqual({ commander: 'Public lead' });
+		expect(payload.data.projects[0].featured).toBe(false);
+	});
+
+	it('puts the featured example first and keeps the flag out of props', async () => {
+		const supabase = createSupabase([
+			{
+				id: 'a',
+				name: 'Apollo',
+				description: null,
+				props: null,
+				start_at: null,
+				end_at: null
+			},
+			{
+				id: 'f',
+				name: 'Fading Crown',
+				description: null,
+				props: { commander: 'Riley Hartwell', featured_public_example: true },
+				start_at: null,
+				end_at: null
+			},
+			{
+				id: 'm',
+				name: 'Manhattan',
+				description: null,
+				props: {},
+				start_at: null,
+				end_at: null
+			}
+		]);
+		createAdminSupabaseClientMock.mockReturnValue(supabase);
+
+		const payload = await (await GET({ locals: {} } as any)).json();
+
+		expect(payload.data.projects.map((p: { id: string }) => p.id)).toEqual(['f', 'a', 'm']);
+		expect(payload.data.projects[0].featured).toBe(true);
+		expect(payload.data.projects[0].props).toEqual({ commander: 'Riley Hartwell' });
 	});
 });

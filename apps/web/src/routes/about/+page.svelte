@@ -116,7 +116,6 @@
 					</div>
 				</div>
 
-				<p class="micro-label mb-3 text-accent">About BuildOS</p>
 				<h1
 					class="mx-auto max-w-4xl text-pretty text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl lg:text-5xl"
 				>
@@ -176,7 +175,6 @@
 				</aside>
 
 				<div>
-					<p class="micro-label mb-3 text-accent">Why BuildOS exists</p>
 					<h2
 						id="founder-heading"
 						class="text-pretty text-2xl font-bold text-foreground sm:text-3xl"
@@ -209,7 +207,6 @@
 	<section class="border-b border-border bg-muted" aria-labelledby="thesis-heading">
 		<div class="mx-auto max-w-7xl px-2 py-10 sm:px-4 sm:py-12 lg:px-6">
 			<header class="mx-auto mb-6 max-w-3xl text-center">
-				<p class="micro-label mb-3 text-accent">The product thesis</p>
 				<h2 id="thesis-heading" class="text-2xl font-bold text-foreground sm:text-3xl">
 					A conversation you can keep building on
 				</h2>
@@ -252,7 +249,6 @@
 	>
 		<div class="mx-auto max-w-7xl px-2 py-10 sm:px-4 sm:py-12 lg:px-6">
 			<header class="mx-auto mb-7 max-w-3xl text-center">
-				<p class="micro-label mb-3 text-accent">How it works</p>
 				<h2 id="how-heading" class="text-2xl font-bold text-foreground sm:text-3xl">
 					From rough thought to reusable context
 				</h2>
@@ -289,7 +285,6 @@
 				class="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]"
 			>
 				<div>
-					<p class="micro-label mb-3 text-accent">Operating proof</p>
 					<h2 id="proof-heading" class="text-2xl font-bold text-foreground sm:text-3xl">
 						BuildOS runs on BuildOS
 					</h2>

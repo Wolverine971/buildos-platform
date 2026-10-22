@@ -34,13 +34,13 @@
 			title: 'Generate a key in BuildOS',
 			description:
 				'Go to Profile > Agent Keys. Pick which projects the key can see and whether it can read or also write.',
-			detail: 'BuildOS shows a one-time token plus an env block you can paste directly into your tool. The full secret is shown once — BuildOS only stores a hash.',
+			detail: 'BuildOS shows a one-time token plus an env block you can paste directly into your tool. The full secret is shown once. BuildOS only stores a hash.',
 			icon: Lock
 		},
 		{
 			title: 'Paste the env block into your tool',
 			description:
-				'Drop the values into your tool’s config file or secret store — Claude Code config, Cursor settings, ChatGPT Custom GPT actions, your own script’s env.',
+				'Drop the values into your tool’s config file or secret store: Claude Code config, Cursor settings, ChatGPT Custom GPT actions, your own script’s env.',
 			detail: 'Never paste the token into chat input or have the agent read it from a chat message. It belongs in env, not memory.',
 			icon: Brain
 		},
@@ -54,7 +54,7 @@
 		{
 			title: 'Work off the same sheet of paper',
 			description:
-				'Your agent can list projects, read tasks and docs, and — if the key allows — write back to them. Same project state every session.',
+				'Your agent can list projects, read tasks and docs, and write back to them if the key allows. Same project state every session.',
 			detail: 'Surfaced tools: skill_load, tool_search, tool_schema, plus direct ops like list_onto_projects, list_onto_tasks, create_onto_task, and update_onto_task.',
 			icon: Target
 		}
@@ -354,8 +354,8 @@ Content-Type: application/json
 					class="mt-3 text-center text-xs text-muted-foreground max-w-xl mx-auto leading-relaxed"
 				>
 					Anthropic (Claude / Claude Code / Claude Desktop) and OpenAI (ChatGPT / Codex)
-					connect today with the same env block. The OpenClaw connector is in progress —
-					same key will work once it ships.
+					connect today with the same env block. The OpenClaw connector is in progress,
+					and the same key will work once it ships.
 				</p>
 			</div>
 
@@ -403,7 +403,7 @@ Content-Type: application/json
 						</h2>
 						<p class="mb-6 text-base text-muted-foreground sm:text-lg">
 							Your AI tools forget every session. BuildOS doesn’t. Your projects live
-							here. Your tools read off them — not from your last copy-paste.
+							here. Your tools read off them, not your last copy-paste.
 						</p>
 
 						<div class="space-y-4">
@@ -424,7 +424,7 @@ Content-Type: application/json
 							<h3 class="text-xl font-semibold">One key per tool</h3>
 							<p class="mt-2 text-sm text-muted-foreground">
 								Each tool installation gets its own BuildOS-issued key. The secret
-								is shown once on generate — BuildOS only stores a hash.
+								is shown once on generate. BuildOS only stores a hash.
 							</p>
 						</CardHeader>
 						<CardBody class="space-y-3">
@@ -455,7 +455,7 @@ Content-Type: application/json
 				<h2 class="mb-4 text-2xl font-bold sm:text-3xl lg:text-4xl">How it works</h2>
 				<p class="text-base text-muted-foreground sm:text-lg">
 					Four steps from cold install to your agent reading your projects. Same flow for
-					every tool — the only thing that changes is where you paste the env.
+					every tool. The only thing that changes is where you paste the env.
 				</p>
 			</div>
 
