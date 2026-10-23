@@ -153,7 +153,6 @@ The live source of truth is `queue.process(...)` registration in
 | `extract_onto_asset_ocr`         | Ontology asset flow               | Asset OCR worker         | Extract OCR from assets              |
 | `agent_run`                      | Chat/manual/scheduled Operatives  | Agent-run worker         | Run scheduled or manual Operatives   |
 | `build_project_context_snapshot` | Web project context service       | Ontology snapshot worker | Build project context snapshots      |
-| `generate_project_icon`          | Project icon/snapshot flow        | Project icon worker      | Generate project icons               |
 | `buildos_project_loop`           | Project Review services/scheduler | Project Review worker    | Generate Project Review suggestions  |
 | `sync_calendar`                  | Calendar projection services      | Calendar sync worker     | Sync calendar projection work        |
 

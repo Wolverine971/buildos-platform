@@ -402,6 +402,10 @@ export interface OntologyBriefData {
 	projects: ProjectBriefData[];
 	/** The person's Workspace: loose tasks and notes that sit outside any project. */
 	workspace?: WorkspaceBriefSection | null;
+	/** Builder profiles: lines from people the user follows, and the user's own drafts. */
+	builderFollows?: BuilderFollowsBriefSection | null;
+	/** "While you were away": what other people, their agents, and your agents changed. */
+	othersActivity?: OthersActivityBriefSection | null;
 	calendar: CalendarBriefSection;
 	// Strategic task splits per PROJECT_CONTEXT_ENRICHMENT_SPEC.md
 	recentlyUpdatedTasks: OntoTask[]; // Updated in last 7 days, ordered by updated_at desc, cap 10
@@ -416,6 +420,77 @@ export interface WorkspaceBriefSection {
 	/** Loose notes and docs saved in the last 7 days, newest first, capped. */
 	recentNotes: Array<{ id: string; title: string; created_at: string }>;
 	recentNoteCount: number;
+}
+
+/** One published line from someone the user follows (their Now line or a live project). */
+export interface BuilderFollowsBriefLine {
+	updateId: string;
+	authorUserId: string;
+	/** Their name, else @username. */
+	authorLabel: string;
+	/** Their handle; the page lives at /@username. */
+	username: string;
+	/** The project's name on their page; null for the Now line. */
+	projectLabel: string | null;
+	body: string;
+	publishedAt: string;
+}
+
+export interface BuilderFollowsBriefSection {
+	/** Lines published since the last brief, newest first, capped. */
+	lines: BuilderFollowsBriefLine[];
+	/** Every line that passed the visibility checks, before the cap. */
+	lineCount: number;
+	/** The user's own drafted lines waiting for Publish, Edit or Skip. */
+	draftedCount: number;
+}
+
+/** What happened to an item, most telling first. One verb per item per brief. */
+export type OthersActivityVerb = 'finished' | 'added' | 'updated' | 'moved' | 'removed';
+export type OthersActivityEntityKind = 'task' | 'document' | 'goal' | 'plan' | 'milestone' | 'risk';
+
+export interface OthersActivityItem {
+	kind: OthersActivityEntityKind;
+	id: string;
+	title: string;
+	verb: OthersActivityVerb;
+	changedAt: string;
+}
+
+/** One person or agent on one project. */
+export interface OthersActivityActor {
+	/** `person:<userId>` or `agent:<ownerUserId>:<label>` (same-named connections merge). */
+	key: string;
+	kind: 'person' | 'agent';
+	/** "Sam", "Sam's Codex", "Your Codex". */
+	label: string;
+	isYourAgent: boolean;
+	/** The person owns this (shared) project. Always false for agents. */
+	isProjectOwner: boolean;
+	/** Distinct items per verb and kind, e.g. { finished: { task: 1 }, added: { task: 3 } }. */
+	counts: Partial<Record<OthersActivityVerb, Partial<Record<OthersActivityEntityKind, number>>>>;
+	itemCount: number;
+	/** Most telling first (finished, added, updated, moved, removed), newest first within; capped. */
+	items: OthersActivityItem[];
+	lastChangedAt: string;
+}
+
+export interface OthersActivityProject {
+	projectId: string;
+	projectName: string;
+	isShared: boolean;
+	isWorkspace: boolean;
+	/** People first, then their agents, then your agents; busiest first within each. */
+	actors: OthersActivityActor[];
+	itemCount: number;
+}
+
+export interface OthersActivityBriefSection {
+	windowStart: string;
+	/** "since your last brief", "in the last 24 hours", or "in the last week". */
+	windowLabel: string;
+	/** Your projects first (busiest first), then projects shared with you. */
+	projects: OthersActivityProject[];
 }
 
 export interface ProjectBriefData {

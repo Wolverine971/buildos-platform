@@ -19,6 +19,8 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import TodayAgendaRow from '$lib/components/today/TodayAgendaRow.svelte';
+	import WorkspaceCapture from '$lib/components/workspace/WorkspaceCapture.svelte';
+	import type { CaptureSortResult } from '$lib/components/workspace/workspace-model';
 	import TodayTaskGroups from '$lib/components/today/TodayTaskGroups.svelte';
 	import WhatChangedSection from '$lib/components/today/WhatChangedSection.svelte';
 	import DashboardBriefWidget from '$lib/components/dashboard/DashboardBriefWidget.svelte';
@@ -838,41 +840,27 @@
 		});
 	}
 
-	async function submitCapture() {
-		const text = captureText.trim();
-		if (!(await prepareCapture(text, false))) return;
-		// 'general' (not 'global') skips the context selector and normalizes to
-		// workspace-wide scope, so the auto-send fires straight into the chat.
-		chatConfig = {
-			contextType: 'general',
-			draft: `Here's a quick update from my day. Figure out which projects and tasks this touches and apply the changes:\n\n${text}`,
-			autoSend: true
-		};
-		chatOpen = true;
-		trackLoopEvent('loop_capture_submitted', 'today', {
-			source_type: 'quick_capture',
-			capture_length: text.length
-		});
-		trackLoopEvent('loop_chat_opened', 'today', {
-			chat_source: 'quick_capture'
-		});
-	}
-
-	function handleCaptureKeydown(event: KeyboardEvent) {
+	// Today's capture box sorts in place; a jot that stays a note says where it went.
+	function handleTodayCaptureSorted(_documentId: string, result: CaptureSortResult) {
 		if (
-			!event.isComposing &&
-			event.target instanceof HTMLTextAreaElement &&
-			event.key === 'Enter' &&
-			!event.shiftKey
+			result.outcome === 'sorted' ||
+			result.outcome === 'moved' ||
+			result.outcome === 'partial'
 		) {
-			event.preventDefault();
-			void submitCapture();
+			void refresh();
+			return;
 		}
+		if (result.lines.length) return;
+		toastService.add({
+			type: 'success',
+			message: 'Saved to your Workspace.',
+			action: { label: 'Open', onClick: () => void goto('/projects') }
+		});
 	}
 
 	// Park the text in the Workspace as a note: no model call, no project to pick.
 	let workspaceSaving = $state(false);
-	async function saveCaptureToWorkspace(first: boolean) {
+	async function saveCaptureToWorkspace() {
 		const text = captureText.trim();
 		if (!text || workspaceSaving || captureVoiceBusy) return;
 		workspaceSaving = true;
@@ -900,7 +888,7 @@
 				action: { label: 'Open', onClick: () => void goto('/projects') }
 			});
 			trackLoopEvent('loop_capture_submitted', 'today', {
-				source_type: first ? 'first_run_workspace' : 'quick_capture_workspace',
+				source_type: 'first_run_workspace',
 				capture_length: text.length
 			});
 		} catch (cause) {
@@ -1268,7 +1256,7 @@
 									Structure my first project
 								</Button>
 								<Button
-									onclick={() => saveCaptureToWorkspace(true)}
+									onclick={saveCaptureToWorkspace}
 									variant="ghost"
 									size="sm"
 									icon={StickyNote}
@@ -1286,61 +1274,15 @@
 					</div>
 				</section>
 			{:else if hasProjects && !activationProject}
-				<section class="mt-3" aria-label="Quick capture">
-					<div
-						class="rounded-lg border border-border bg-card px-2 py-1 focus-within:border-accent/60"
-						onkeydown={handleCaptureKeydown}
-						role="presentation"
-					>
-						<h2 class="sr-only">Quick capture</h2>
-						<div class="flex items-end gap-2">
-							<div class="min-w-0 flex-1">
-								<TextareaWithVoice
-									bind:value={captureText}
-									bind:isRecording={captureVoiceRecording}
-									bind:isTranscribing={captureVoiceFinishing}
-									aria-label="Quick update for your projects"
-									placeholder="What changed today?"
-									onfocus={warmAgentChatModal}
-									rows={1}
-									maxRows={6}
-									autoResize={true}
-									showStatusRow={false}
-									textareaClass="border-0 bg-transparent px-1 py-1.5 text-base sm:text-sm shadow-none focus:ring-0 [@media(pointer:fine)]:min-h-8"
-								/>
-							</div>
-							<Button
-								onclick={() => saveCaptureToWorkspace(false)}
-								loading={workspaceSaving}
-								disabled={!captureText.trim() ||
-									captureVoiceBusy ||
-									captureLoading ||
-									workspaceSaving}
-								variant="ghost"
-								size="sm"
-								class="shrink-0 px-2 text-muted-foreground hover:text-foreground [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8 [@media(pointer:fine)]:py-1"
-								title="Just save it to your Workspace (no AI)"
-								aria-label="Save to your Workspace as a note"
-							>
-								<StickyNote class="h-4 w-4" />
-							</Button>
-							<Button
-								onclick={submitCapture}
-								loading={captureLoading}
-								disabled={!captureText.trim() ||
-									captureVoiceBusy ||
-									captureLoading ||
-									workspaceSaving}
-								variant="ghost"
-								size="sm"
-								class="shrink-0 px-2 text-accent [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8 [@media(pointer:fine)]:py-1"
-								title="Send update to BuildOS"
-								aria-label="Send update to BuildOS"
-							>
-								<Send class="h-4 w-4" />
-							</Button>
-						</div>
-					</div>
+				<!-- One capture box, same as the Workspace: it saves instantly and BuildOS sorts
+				     it (tasks, notes, or a done/rescheduled task in a project), with Undo. -->
+				<section class="mt-3" aria-label="Capture">
+					<h2 class="sr-only">Capture</h2>
+					<WorkspaceCapture
+						source="today"
+						onSorted={handleTodayCaptureSorted}
+						onUndone={() => void refresh()}
+					/>
 				</section>
 			{/if}
 		{/if}

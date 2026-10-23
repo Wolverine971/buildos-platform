@@ -1,5 +1,10 @@
 <!-- docs/architecture/decisions/2026-04-17-deprecate-brain-dump.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-09-24. Most of the files it cites no longer exist, so it describes a system that has since changed.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Deprecate the in-app Brain Dump modal in favor of the agentic chat modal
 
 **Date:** 2026-04-17

@@ -2,9 +2,22 @@
 
 # Project Review Manager Brief
 
-**Status:** WP-3 product contract; schema hosted, worker/web runtime local
+**Status:** Superseded for new review passes on 2026-09-29 by
+[`PROJECT_CLEANUP_CHANGE_SET.md`](PROJECT_CLEANUP_CHANGE_SET.md) (tasker 112). The by-exception
+principle, the copy contract and the evidence rules below still apply to the cleanup card.
+v2 briefs (`project_loop_runs.brief.version = 2`) stay readable. A new pass replaces an
+unresolved v2 brief card with the project's cleanup card.
 **Adopted:** 2026-08-14
 **Parent:** `tasker/52-ai-inbox-review-loop-remediation.md`
+
+> **What changed on 2026-09-29.**
+>
+> - "One manager brief per project" became "one Project cleanup card per project". It holds
+>   review findings, audit recommendations and the radar bundle, and each item can be applied
+>   or dismissed on its own.
+> - The brief's approve-one-recommendation and dismiss-all-candidates actions are gone.
+> - Findings carry forward as lineages instead of rotating out.
+> - Complete Project Audit no longer renders as its own packet card.
 
 The hosted schema receipt is `20260814020000_project_review_manager_brief_inbox.sql` (SHA-256
 `771cd0157d2bcc6c3b4140f3d249a74ee8c49e6d37b818a00f7907fbdab80638`). The linked ledger and an

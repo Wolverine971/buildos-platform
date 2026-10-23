@@ -1009,8 +1009,13 @@ describe('people and identity', () => {
 				toolName,
 				arguments: args
 			});
+		db.rpcs.builder_profile_target = () => ({ data: [], error: null });
+		db.rpcs.get_builder_profile = () => ({ data: { found: false }, error: null });
 		await run('find_buildos_person', { handle: '@dj', user_id: USER.eve });
+		await run('get_builder_profile', { handle: '@dj', user_id: USER.eve, p_viewer: USER.eve });
 		await run('request_buildos_access', { handle: '@dj', user_id: USER.eve });
+		const pageReads = db.rpcCalls.filter((entry) => entry.name === 'get_builder_profile');
+		expect(pageReads.map((entry) => entry.args.p_viewer)).toEqual([USER.sam]);
 		for (const rpc of db.rpcCalls.filter((entry) =>
 			['find_person_by_handle', 'create_people_request', 'list_people_requests'].includes(
 				entry.name

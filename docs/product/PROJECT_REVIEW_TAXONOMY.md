@@ -21,6 +21,8 @@ descriptions. It separates three ideas that earlier BuildOS documents sometimes 
 | **The Loop**               | A possible name for the human practice: capture context, structure it, act in the world, update BuildOS, and return.                                                                                                   | Brand or ritual language only, qualified on first use as a human workflow or practice.                                                       |
 | **Review item**            | An evidence-backed finding, proposal, or decision produced by a review pass or audit.                                                                                                                                  | Project Inbox and AI Inbox artifacts.                                                                                                        |
 | **Review check/family**    | One bounded evaluator inside a review pass, such as drift or outdated-document detection.                                                                                                                              | Describing the fixed assessments that the worker runs. It is not the name of the whole capability.                                           |
+| **Project cleanup**        | The one living change set per project: open review findings, audit recommendations and the freshness radar bundle, shown as one AI Inbox card with Ready to apply / Needs your call / Worth knowing (2026-09-29).      | The inbox card, the chat read (`get_project_cleanup`), and the change set as a whole. See `PROJECT_CLEANUP_CHANGE_SET.md`.                   |
+| **Finding lineage**        | One review finding carried across passes: confirmed in place, revised, merged, or closed with a recorded reason.                                                                                                       | Explaining why a finding persists or closed. Internal field: `project_suggestions.lineage_id`.                                               |
 
 ## The Implemented Review Pass
 
@@ -28,13 +30,18 @@ The lightweight Project Review path is a bounded pipeline, not an agent loop:
 
 ```text
 manual / schedule / activity trigger
-  -> load bounded project context
-  -> build project brief
+  -> load bounded project context (plus a compact line per live document and the open cleanup list)
   -> run four fixed review families
-     (document organization, outdated documents, drift, task conflicts)
-  -> suppress duplicates, stamp freshness, rotate stale findings, enforce attention budget
-  -> persist review items and stop
+     (document organization, outdated records, drift, task conflicts)
+  -> suppress what the user already decided, stamp freshness
+  -> roll up: carry open findings forward as lineages, close only with a recorded reason
+  -> one roll-up synthesis call judges and groups the whole cleanup list
+  -> sync the project's one Project cleanup card (attention budget applies) and stop
 ```
+
+Until 2026-09-29, each pass rotated out the previous pass's unconfirmed findings after 72 hours
+and wrote a separate manager brief. Tasker 112 replaced both with the roll-up. See
+[`PROJECT_CLEANUP_CHANGE_SET.md`](PROJECT_CLEANUP_CHANGE_SET.md).
 
 The system becomes cyclical only when later user decisions and feedback influence future
 reviews. That larger behavior is the **project review cycle**.
@@ -63,14 +70,12 @@ Dated brainstorms, audits, and handoffs may preserve "Project Loops" when quotin
 used at that time. New conclusions derived from those documents should use the canonical
 terms above.
 
-## Current Product Gap
+## Cross-Family Synthesis (closed 2026-09-29)
 
-The light review pass builds its brief before the four review families run, then combines
-their outputs using deterministic suppression and ranking. It does not yet perform a final
-semantic synthesis across the generated findings. Complete Project Audit does provide a
-holistic evidence-backed synthesis, but at a different depth, cadence, and artifact shape.
-
-The missing light-path layer is tracked in
-[`tasker/34-project-review-holistic-synthesis.md`](../../tasker/34-project-review-holistic-synthesis.md):
-a final, bounded, cross-family reconciliation that explains what matters now without
-turning Project Reviews into an open-ended agent loop or duplicating Complete Project Audit.
+The light review pass now ends with one bounded roll-up call. It reconciles every open finding
+across families and across passes: still true or resolved, merges, sections and groups, and the
+bottom line. That closes the gap tracked in
+[`tasker/34-project-review-holistic-synthesis.md`](../../tasker/34-project-review-holistic-synthesis.md)
+(absorbed by tasker 112). It is not an agent loop: one call per pass, with structured output that
+code validates. Complete Project Audit stays the deeper, slower report. Its recommendations are
+items in the same Project cleanup change set.

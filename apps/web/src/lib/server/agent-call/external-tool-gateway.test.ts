@@ -2675,6 +2675,7 @@ describe('external tool gateway', () => {
 			'get_buildos_permission_request',
 			'authorize_buildos_writes',
 			'find_buildos_person',
+			'get_builder_profile',
 			'request_buildos_access',
 			'list_buildos_people',
 			'request_project_access',

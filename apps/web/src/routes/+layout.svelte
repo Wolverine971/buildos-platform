@@ -256,14 +256,16 @@
 	// Auth screens bring their own focused chrome. Derived from the route (not set in an
 	// effect) so the server render already omits the app header/footer — no flash on load.
 	let isAuthRoute = $derived(($page.route?.id ?? '').startsWith('/auth'));
-	let showNavigation = $derived(!isAuthRoute);
-	let showFooter = $derived(!isAuthRoute && !isAdminRoute);
+	// Builder pages (/@handle) are link-in-bio pages with their own small header.
+	let isBuilderPageRoute = $derived($page.route?.id === '/(public)/[handle=at_handle]');
+	let showNavigation = $derived(!isAuthRoute && !isBuilderPageRoute);
+	let showFooter = $derived(!isAuthRoute && !isAdminRoute && !isBuilderPageRoute);
 	// App pages are a sheet (bg-background) lying on the bench; admin and auth bring their own.
-	let isSheetRoute = $derived(!isAdminRoute && !isAuthRoute);
+	let isSheetRoute = $derived(!isAdminRoute && !isAuthRoute && !isBuilderPageRoute);
 	let mainContentClasses = $derived(
 		isAdminRoute
 			? 'relative flex flex-1 w-full min-h-0'
-			: isAuthRoute
+			: isAuthRoute || isBuilderPageRoute
 				? 'relative flex flex-1 w-full flex-col'
 				: 'app-sheet relative mx-auto my-2 sm:my-4 flex-1 w-full sm:w-[calc(100%-2rem)] max-w-7xl bg-background sm:rounded-xl'
 	);
@@ -1099,7 +1101,7 @@
 		</aside>
 	{/if}
 
-	{#if !isAdminRoute && user && trialStatus && data.stripeEnabled}
+	{#if !isAdminRoute && !isBuilderPageRoute && user && trialStatus && data.stripeEnabled}
 		<TrialBannerStatic
 			user={{
 				trial_ends_at: user.trial_ends_at,
@@ -1108,7 +1110,7 @@
 		/>
 	{/if}
 
-	{#if !isAdminRoute && !billingLoading && paymentWarnings.length > 0 && PaymentWarning}
+	{#if !isAdminRoute && !isBuilderPageRoute && !billingLoading && paymentWarnings.length > 0 && PaymentWarning}
 		<div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 mt-3 sm:mt-4">
 			{#each paymentWarnings as warning (warning.id)}
 				<PaymentWarning notification={warning} ondismiss={handlePaymentWarningDismiss} />
@@ -1116,7 +1118,7 @@
 		</div>
 	{/if}
 
-	{#if !isAdminRoute && !billingLoading && isConsumptionFrozen}
+	{#if !isAdminRoute && !isBuilderPageRoute && !billingLoading && isConsumptionFrozen}
 		<div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 mt-3 sm:mt-4">
 			<section
 				class="rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 sm:px-5 sm:py-4 shadow-ink"

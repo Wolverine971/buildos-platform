@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/AGENTIC_CHAT_PIPELINE_AUDIT_2026-10-17.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-10-18; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Pipeline Audit — 2026-10-17
 
 Fresh, adversarial review of the whole chat path: browser → `POST /api/agent/v2/turns` →

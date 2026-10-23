@@ -1,7 +1,8 @@
 <!-- apps/web/src/lib/components/profile/PeopleAgentsTab.svelte -->
 <!--
 	Profile > People & agents: one place for who you share with and what agents
-	can reach. You (handle, findable, agent requests) · requests waiting on you ·
+	can reach. You (handle, findable, agent requests) · Your page (build-os.com/@handle) ·
+	requests waiting on you ·
 	People (everyone in your projects, list or grid; invites; shared with you) ·
 	Agents (your connections) · History (who got access, and when). Each
 	project's Share window changes the same settings.
@@ -16,6 +17,7 @@
 	import SettingsCard from './_shared/SettingsCard.svelte';
 	import AgentKeysTab from './AgentKeysTab.svelte';
 	import YouSection from '$lib/components/people/hub/YouSection.svelte';
+	import BuilderPageEditor from '$lib/components/builder-profile/editor/BuilderPageEditor.svelte';
 	import PeopleSection from '$lib/components/people/hub/PeopleSection.svelte';
 	import PeopleRequests from '$lib/components/people/PeopleRequests.svelte';
 	import AccessHistory from '$lib/components/people/AccessHistory.svelte';
@@ -38,6 +40,9 @@
 	let loading = $state(true);
 	let loadFailed = $state(false);
 	let historyKey = $state(0);
+	/** Bumped when the handle may have changed, so Your page picks up the new address. */
+	let handleRevision = $state(0);
+	let youRevision = $state(0);
 	let sharePicking = $state(false);
 	let shareProjectId = $state<string | null>(null);
 
@@ -102,6 +107,7 @@
 
 	<nav aria-label="People and agents sections" class="flex flex-wrap gap-2">
 		<a href="#you" class={chipClass}>You</a>
+		<a href="#your-page" class={chipClass}>Your page</a>
 		{#if incomingCount > 0}
 			<a href="#requests" class="{chipClass} border-accent/50 text-accent"
 				>Waiting on you · {incomingCount}</a
@@ -126,7 +132,20 @@
 	{/if}
 
 	<div id="you" class="scroll-mt-4">
-		<YouSection name={userName} onchanged={reload} />
+		{#key youRevision}
+			<YouSection
+				name={userName}
+				onchanged={() => {
+					handleRevision += 1;
+					void reload();
+				}}
+			/>
+		{/key}
+	</div>
+
+	<div id="your-page" class="scroll-mt-4">
+		<!-- Publishing turns on "find me by handle", so the You section re-reads it. -->
+		<BuilderPageEditor revision={handleRevision} onstatuschange={() => (youRevision += 1)} />
 	</div>
 
 	{#if hub && incomingCount > 0}

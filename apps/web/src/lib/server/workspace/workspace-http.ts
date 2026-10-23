@@ -29,6 +29,47 @@ export const graduateRequest = z
 
 export const graduateUndoRequest = z.object({ project_id: uuid, batch_id: uuid }).strict();
 
+export const captureSortRequest = z
+	.object({ document_id: uuid, source: z.string().max(40).optional() })
+	.strict();
+
+export const captureSortUndoRequest = z
+	.object({
+		receipt: z
+			.object({
+				document_id: uuid,
+				move_batch: uuid.nullable(),
+				created: z.array(itemRefSchema).max(20),
+				updates: z
+					.array(
+						z
+							.object({
+								task_id: uuid,
+								action: z.enum(['complete', 'reschedule']),
+								before: z
+									.object({
+										state_key: z.enum([
+											'todo',
+											'in_progress',
+											'blocked',
+											'done'
+										]),
+										due_at: z.string().max(40).nullable()
+									})
+									.strict()
+							})
+							.strict()
+					)
+					.max(10),
+				removed_note: z
+					.object({ text: z.string().min(1).max(CAPTURE_TEXT_MAX) })
+					.strict()
+					.nullable()
+			})
+			.strict()
+	})
+	.strict();
+
 export const suggestionActionRequest = z.object({ action: z.enum(['accept', 'dismiss']) }).strict();
 
 export function workspaceFailure(error: unknown) {

@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/SUPABASE_FITNESS_DECISION_2026-09-24.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-09-24; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Supabase fitness — decision brief
 
 **24 September 2026 · Tasker 104 · Owner: Codex · Read-only investigation**

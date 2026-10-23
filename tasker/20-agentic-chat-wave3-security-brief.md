@@ -226,6 +226,7 @@ book a slot with arbitrary text. So "check my calendar and move my 3pm" waits on
   read back.
 - A next turn acting on an email summary isn't covered (the old S1 design treated it as confirmation).
 - The automatic Research Log append after web reads isn't reviewed (fixed target, 600-character cap).
-- `CHAT_MUTATION_BATCH_LANE=false` falls back to contract review, which checks targets only.
+- ~~`CHAT_MUTATION_BATCH_LANE=false` falls back to contract review, which checks targets only.~~
+  Closed 2026-10-18: the contract lane and its flag are deleted.
 - A paid prod-battery case with the seeded email (a few cents) would prove the reviewer resists the
   injection. It needs DJ's OK.

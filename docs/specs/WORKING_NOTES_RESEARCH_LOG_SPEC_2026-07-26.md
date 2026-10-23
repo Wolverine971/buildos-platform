@@ -1,5 +1,10 @@
 <!-- docs/specs/WORKING_NOTES_RESEARCH_LOG_SPEC_2026-07-26.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-26. Most of the files it cites no longer exist, so it describes a system that has since changed.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Working Notes / Research Log — Spec
 
 **Date:** 2026-07-26

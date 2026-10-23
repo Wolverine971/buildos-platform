@@ -76,8 +76,29 @@ only the existing-projects branch of the gate was exercised.
 - [ ] Walk the **zero-project non-explore** branch with a fresh account (expect: no continue
       affordance, composer is the only path).
 - [ ] Walk the **explore** branch (expect: "Skip for now" link firing `first_capture_skipped`).
-- [ ] Verify real PostHog **ingestion** in the dashboard — the health logs confirmed wiring only.
-      Set `PUBLIC_POSTHOG_CAPTURE_DEV=true`.
+- [x] Verify real PostHog **ingestion** in the dashboard — the health logs confirmed wiring only.
+      (Local capture is gated by `VITE_POSTHOG_CAPTURE_DEV=true`, not `PUBLIC_…`; `posthog.ts:85`.)
+
+    **Verified 2026-10-08 ~04:30 UTC** (PostHog SQL, project 494127, last 30 / 7 days, vs the
+    production DB read at the same time):
+
+    | Event                  | PostHog 30d / 7d     | DB truth 30d / 7d           | Read                                                                                                                                 |
+    | ---------------------- | -------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+    | `signup`               | 3 / 1                | 3 / 1 signups               | Web server ingestion works.                                                                                                          |
+    | `brief_generated`      | 64 / 13              | 62 / 13 completed briefs    | Worker (daily-brief) ingestion works.                                                                                                |
+    | `project_created`      | 66 / 3               | 20 / 8 `onto_projects` rows | 60 of the 66 are one person on 09-24/25 (harness runs, projects since purged). 7d: 3 vs 8 = the chat-worker gap, now closed (below). |
+    | `onboarding_completed` | 0                    | 0                           | Expected.                                                                                                                            |
+    | `$pageview`            | 183 / 54 (77 people) | n/a                         | Browser ingestion works for opted-in visitors.                                                                                       |
+
+    30 distinct events in 30 days, including `email_opened` (63), `email_clicked` (6),
+    `loop_*`, `project_suggestion_*`, `intent_selected` (3), `onboarding_started` (1),
+    `first_project_reviewed` (1). `error_logs` still has 0 `posthog_capture` rows.
+
+    **Chat worker key added 2026-10-08 04:20 UTC:** `PUBLIC_POSTHOG_KEY` + `PUBLIC_POSTHOG_HOST`
+    copied from `daily-brief-worker` to `agentic-chat-worker` on Railway (values match
+    `apps/web/.env`); Railway redeployed the service on the change. From that deploy on,
+    chat-made projects emit `project_created`.
+
 - [ ] Rerun `apps/web/scripts/activation-funnel-snapshot.mjs` for the post-ship "after" number.
       Baseline false-positive rate recorded pre-gate was **41.4%**.
 

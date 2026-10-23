@@ -523,7 +523,8 @@
 						access and have no handle, they see your email so they know who is asking.
 						If you make an invite link for a project, anyone who has the link can see
 						the project's name and your name before joining, until it expires or you
-						turn it off.
+						turn it off. If you follow someone's builder page, they can see how many
+						people follow them, but not who.
 					</p>
 					<p class="text-muted-foreground mt-4">
 						We may also disclose information when the law requires it, to protect
@@ -543,6 +544,17 @@
 						If you publish a page, anyone can see, copy, and share it. To count views,
 						we store a one-way hash of the visitor's IP address and browser, plus the
 						referring page, for 90 days. A Do Not Track signal skips the record.
+					</p>
+					<p>
+						Your builder page at build-os.com/@handle stays private until you publish
+						it. Once published, anyone (and any agent) can see what you put on it: your
+						name, handle, photo, headline, location, bio, links, and the projects you
+						chose, each with only the details you chose. It also shows a grid of the
+						days you worked, as counts only, never task titles or times of day. Links
+						and projects marked "people I work with" show only to people who share a
+						project with you. Publishing also lets people find you by your handle. For
+						your page's own stats we count views and link taps per day, with no
+						information about who visited. Taking the page down hides it at once.
 					</p>
 					<p>
 						Our emails can include open and click measurement. Optional emails have an

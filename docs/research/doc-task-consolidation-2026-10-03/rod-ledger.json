@@ -1,0 +1,303 @@
+{
+	"cluster": "Rod Chamberlin / Magnum + Beyond Exit",
+	"sources": [
+		{
+			"id": "S1",
+			"title": "Rod (Bob/Rob) Chamberlin - Magnum Wealth Management Client Intake",
+			"project": "Wayne Strategies",
+			"date": "2026-01-11",
+			"chars": 186,
+			"flag": "hollow"
+		},
+		{
+			"id": "S2",
+			"title": "Rod meeting notes Jan 12",
+			"project": "Wayne Strategies",
+			"date": "2026-01-12",
+			"chars": 212,
+			"flag": "hollow"
+		},
+		{
+			"id": "S3",
+			"title": "Rod Website - Design & Branding Plan",
+			"project": "Wayne Strategies",
+			"date": "2026-01-13",
+			"chars": 346
+		},
+		{
+			"id": "S4",
+			"title": "Rod Website - Compliance & Content Plan",
+			"project": "Wayne Strategies",
+			"date": "2026-01-13",
+			"chars": 247
+		},
+		{
+			"id": "S5",
+			"title": "Rod Website - Deployment Plan",
+			"project": "Wayne Strategies",
+			"date": "2026-01-13",
+			"chars": 245
+		},
+		{
+			"id": "S6",
+			"title": "Rod Chamberlin Website Project - Unified Action Plan and Summary",
+			"project": "Wayne Strategies",
+			"date": "2026-01-30",
+			"chars": 698
+		},
+		{
+			"id": "S7",
+			"title": "Rod Chamberlin",
+			"project": "Wayne Strategies",
+			"date": "2026-01-30",
+			"chars": 178,
+			"flag": "folder note"
+		},
+		{
+			"id": "S8",
+			"title": "Rod Chamberlin Compliance Check-in Prep",
+			"project": "Wayne Strategies",
+			"date": "2026-02-06",
+			"chars": 593
+		},
+		{
+			"id": "S9",
+			"title": "Rod Chamberlin Project Recovery Plan",
+			"project": "Wayne Strategies",
+			"date": "2026-02-06",
+			"chars": 486
+		},
+		{
+			"id": "S10",
+			"title": "Rod Chamberlin Websites - Wireframe Requirements Brief",
+			"project": "Wayne Strategies",
+			"date": "2026-02-06",
+			"chars": 1163
+		},
+		{
+			"id": "S11",
+			"title": "Rod Chamberlin Meeting Prep - May 2026",
+			"project": "Wayne Strategies",
+			"date": "2026-05-12",
+			"chars": 2645
+		},
+		{
+			"id": "C1",
+			"title": "Project Brief — Beyond Exit Planning",
+			"project": "Beyond Exit Planning",
+			"date": "2026-09-27",
+			"chars": 4269
+		},
+		{
+			"id": "C2",
+			"title": "Compliance Workflow",
+			"project": "Beyond Exit Planning",
+			"date": "2026-09-27",
+			"chars": 2273
+		},
+		{
+			"id": "C3",
+			"title": "Rod Session 1 — meeting outcome and review packet",
+			"project": "Beyond Exit Planning",
+			"date": "2026-09-27",
+			"chars": 7241
+		}
+	],
+	"facts": [
+		{
+			"id": "f1",
+			"src": "S11",
+			"kind": "durable",
+			"text": "Rod is a referral from Phil Velayo.",
+			"fate": "keep",
+			"section": "Who Rod is"
+		},
+		{
+			"id": "f2",
+			"src": "S1",
+			"kind": "durable",
+			"text": "Intake referral source: Phil Velayo.",
+			"fate": "merged",
+			"into": "f1"
+		},
+		{
+			"id": "f3",
+			"src": "S3",
+			"kind": "durable",
+			"text": "Ideal client: business owner, $5M+ assets, family-oriented, philanthropic, conservative.",
+			"fate": "keep",
+			"section": "Audience"
+		},
+		{
+			"id": "f4",
+			"src": "S10",
+			"kind": "durable",
+			"text": "Target: conservative, family-oriented business owners $5M+.",
+			"fate": "merged",
+			"into": "f3"
+		},
+		{
+			"id": "f5",
+			"src": "S3",
+			"kind": "durable",
+			"text": "USP: compassionate firm, perfect 34-year record, 99% retention, deep relationships.",
+			"fate": "keep",
+			"section": "Who Rod is"
+		},
+		{
+			"id": "f6",
+			"src": "S5",
+			"kind": "reference",
+			"text": "Domains on Ionos: magnumwealthmanagement.com, beyondexitplanning.com.",
+			"fate": "keep",
+			"section": "Sites and systems"
+		},
+		{
+			"id": "f7",
+			"src": "S4",
+			"kind": "reference",
+			"text": "Email: Snappy Kraken + LPL/Outlook.",
+			"fate": "keep",
+			"section": "Sites and systems"
+		},
+		{
+			"id": "f8",
+			"src": "S10",
+			"kind": "durable",
+			"text": "LPL compliance: disclaimers on all pages, no performance claims.",
+			"fate": "keep",
+			"section": "Compliance rules"
+		},
+		{
+			"id": "f9",
+			"src": "C2",
+			"kind": "durable",
+			"text": "Hard rules: no promissory language, no investment guarantees.",
+			"fate": "keep",
+			"section": "Compliance rules"
+		},
+		{
+			"id": "f10",
+			"src": "S10",
+			"kind": "durable",
+			"text": "Magnum pages: Home, About/Team, Services, Resources (Snappy Kraken), Contact with LPL footer. Beyond Exit pages: Home, Process, Case Studies, Contact.",
+			"fate": "keep",
+			"section": "Sites and systems"
+		},
+		{
+			"id": "f11",
+			"src": "S5",
+			"kind": "plan",
+			"text": "Demo Jan 20, launch post-approval. Target Jan 20/25.",
+			"fate": "history",
+			"section": "Website project history (Jan–May)"
+		},
+		{
+			"id": "f12",
+			"src": "S3",
+			"kind": "plan",
+			"text": "Phase 1 design & branding, target Jan 15.",
+			"fate": "history",
+			"section": "Website project history (Jan–May)"
+		},
+		{
+			"id": "f13",
+			"src": "S6",
+			"kind": "status",
+			"asOf": "2026-01-30",
+			"text": "All website work ON HOLD pending Rod's compliance review; check-in Monday, February 2.",
+			"fate": "history",
+			"section": "Website project history (Jan–May)"
+		},
+		{
+			"id": "f14",
+			"src": "S6",
+			"kind": "status",
+			"asOf": "2026-01-28",
+			"text": "Description says the check-in is February 3.",
+			"fate": "conflict",
+			"with": "f13",
+			"note": "Feb 2 vs Feb 3 — moot now, keep the body's date"
+		},
+		{
+			"id": "f15",
+			"src": "S9",
+			"kind": "plan",
+			"text": "Recovery action items: confirm compliance, update wireframes, draft credibility content, build prototype, verify domains, prep Jan 20 demo.",
+			"fate": "superseded",
+			"by": "f17"
+		},
+		{
+			"id": "f16",
+			"src": "S11",
+			"kind": "status",
+			"asOf": "2026-05-12",
+			"text": "Last contact March 23: Rod asked for time to review the Beyond Exit demo (beyond-exit-planning.vercel.app). Stalled since late March.",
+			"fate": "history",
+			"section": "Website project history (Jan–May)"
+		},
+		{
+			"id": "f17",
+			"src": "C3",
+			"kind": "status",
+			"asOf": "2026-09-27",
+			"text": "DJ sent the shortened preview email Sept 25; Rod reviewed and asked DJ to lead timing and distribution.",
+			"fate": "keep",
+			"section": "Where things stand"
+		},
+		{
+			"id": "f18",
+			"src": "S11",
+			"kind": "question",
+			"text": "Are we doing both sites, or Beyond Exit first?",
+			"fate": "open",
+			"section": "Open questions"
+		},
+		{
+			"id": "f19",
+			"src": "S11",
+			"kind": "question",
+			"text": "Get a compliance contact name.",
+			"fate": "answered?",
+			"check": "C2 still lists 'Rod's compliance team contact' under To document → still open",
+			"section": "Open questions"
+		},
+		{
+			"id": "f20",
+			"src": "S1",
+			"kind": "missing",
+			"text": "Intake claims team bios, firm overview and a website audit — the body holds only this summary.",
+			"fate": "flag",
+			"note": "content lost before May 22; ask DJ or re-capture"
+		},
+		{
+			"id": "f21",
+			"src": "S2",
+			"kind": "missing",
+			"text": "Jan 12 kickoff notes — only a one-line summary survived.",
+			"fate": "flag"
+		},
+		{
+			"id": "f22",
+			"src": "S7",
+			"kind": "folder",
+			"text": "Folder note listing the other Rod docs.",
+			"fate": "drop",
+			"reason": "the master doc replaces it"
+		},
+		{
+			"id": "f23",
+			"src": "S8",
+			"kind": "plan",
+			"text": "Compliance check-in agenda (Feb).",
+			"fate": "superseded",
+			"by": "f17"
+		}
+	],
+	"result": {
+		"create": "Rod & Magnum — what we know (in Beyond Exit Planning)",
+		"archive": ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11"],
+		"link": "C1 Project Brief → new doc",
+		"task": "Move 'Initiate payment collection for Rod Chamberlin project' to Beyond Exit; ask whether it is still live (site never launched)"
+	}
+}

@@ -2,7 +2,7 @@
 
 # 127 — Project loops and audits survive deploys
 
-**Status:** DONE — awaiting Claude check · **Priority:** P1 · **Opened:** 2026-10-18 · **Size:** ~1 day  
+**Status:** CHECKED by Claude 2026-10-18 — passed · **Priority:** P1 · **Opened:** 2026-10-18 · **Size:** ~1 day  
 **Owner:** a Codex agent does the work and self-checks; Claude does a light check after · **Needs from DJ to start:** nothing
 
 Source: the 2026-10-18 code triage, `docs/technical/reviews/CODE_TRIAGE_2026-10-18.md` (the plan and every other tracker). Bugs below were re-checked against commit `9735aa719` on 2026-10-18.
@@ -83,13 +83,14 @@ Then in this file: tick each item, set **Status:** to `DONE — awaiting Claude 
 
 ## Blocked
 
-- Required `pnpm --filter web run typecheck:tests` is blocked by 5 errors in shared-checkout files outside this task's ownership: `apps/web/src/lib/utils/pwa-launch-sw.test.ts:119` (TS2345, 1 error), and `apps/web/src/routes/api/chat/sessions/[id]/server.audit.test.ts:71-72` (TS2339, 4 errors). Those files already had other agents' changes at the start and were left untouched. All four implementation items are complete; the full validation checklist is not green until these errors are resolved.
+- RESOLVED 2026-10-18 by Claude (type-only fixes in the two test files; `typecheck:tests` now 0 errors). Original note: required `pnpm --filter web run typecheck:tests` is blocked by 5 errors in shared-checkout files outside this task's ownership: `apps/web/src/lib/utils/pwa-launch-sw.test.ts:119` (TS2345, 1 error), and `apps/web/src/routes/api/chat/sessions/[id]/server.audit.test.ts:71-72` (TS2339, 4 errors). Those files already had other agents' changes at the start and were left untouched. All four implementation items are complete; the full validation checklist is not green until these errors are resolved.
 
 ## Log
 
 - 2026-10-18: created from the code triage (Claude).
 
 - 2026-10-18 (Codex): completed all four items and reviewed the entire owned diff. All 78 focused tests pass; worker production/test typechecks pass; web application check passes with 0 errors and 0 warnings. Web test typechecking reports 5 errors outside the owned files (see Blocked). No commit, paid/model calls, production writes, migrations, or deployment changes. Refreshed the active Vite server with the explicitly prescribed `touch apps/web/vite.config.ts` (mtime only; no content change).
+- 2026-10-18 (Claude light check, commit `ac26e2011`): diff reviewed — the claim fence (queued, or running on the same queue job past the worker timeout) is sound, the abort grace fits inside the 22 s shutdown budget, and dedup deletes only the losing unassigned run. 127 worker tests (71) and web tests (7) pass, and the full worker suite has no 127 failures. The 2 `agenticChatShutdownDrain` failures seen during the check came from tracker 128 (an `.abortSignal` mock gap), not 127.
 
 ### Completion report — 2026-10-18
 
@@ -113,17 +114,17 @@ Then in this file: tick each item, set **Status:** to `DONE — awaiting Claude 
 
 **Final checks:**
 
-| Command | Result |
-| --- | --- |
-| `pnpm --filter @buildos/worker exec vitest run tests/projectLoopDegradedRun.test.ts tests/projectLoopWorkerCompleteAuditClaim.test.ts tests/projectLoopEnqueueGate.test.ts tests/projectLoopStallReclaim.test.ts tests/projectLoopCancellation.test.ts` | PASS: 5 files, 52 tests, 0 failures |
-| `pnpm --filter web exec vitest run src/lib/server/project-loops.service.test.ts` | PASS: 1 file, 7 tests, 0 failures |
-| `pnpm --filter @buildos/worker run typecheck` | PASS: 0 errors |
-| `pnpm --filter @buildos/worker run typecheck:tests` | PASS: 0 errors, baseline 0 |
-| `pnpm --filter web run check` | PASS: 0 errors, 0 warnings; run once at the end |
-| `pnpm --filter web run typecheck:tests` | FAIL: 5 errors, baseline 0; all outside owned files (see Blocked) |
-| `pnpm --filter @buildos/worker exec vitest run tests/projectLoopGenerators.test.ts tests/projectLoopQueueAbortGrace.test.ts` | PASS: 2 files, 19 tests, 0 failures |
-| `git diff --check -- <owned tracked paths>` | PASS: no whitespace errors |
-| `git status --porcelain` and whole owned diff review | PASS: only owned content plus this tracker edited; shared changes left intact |
+| Command                                                                                                                                                                                                                                                 | Result                                                                        |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `pnpm --filter @buildos/worker exec vitest run tests/projectLoopDegradedRun.test.ts tests/projectLoopWorkerCompleteAuditClaim.test.ts tests/projectLoopEnqueueGate.test.ts tests/projectLoopStallReclaim.test.ts tests/projectLoopCancellation.test.ts` | PASS: 5 files, 52 tests, 0 failures                                           |
+| `pnpm --filter web exec vitest run src/lib/server/project-loops.service.test.ts`                                                                                                                                                                        | PASS: 1 file, 7 tests, 0 failures                                             |
+| `pnpm --filter @buildos/worker run typecheck`                                                                                                                                                                                                           | PASS: 0 errors                                                                |
+| `pnpm --filter @buildos/worker run typecheck:tests`                                                                                                                                                                                                     | PASS: 0 errors, baseline 0                                                    |
+| `pnpm --filter web run check`                                                                                                                                                                                                                           | PASS: 0 errors, 0 warnings; run once at the end                               |
+| `pnpm --filter web run typecheck:tests`                                                                                                                                                                                                                 | FAIL: 5 errors, baseline 0; all outside owned files (see Blocked)             |
+| `pnpm --filter @buildos/worker exec vitest run tests/projectLoopGenerators.test.ts tests/projectLoopQueueAbortGrace.test.ts`                                                                                                                            | PASS: 2 files, 19 tests, 0 failures                                           |
+| `git diff --check -- <owned tracked paths>`                                                                                                                                                                                                             | PASS: no whitespace errors                                                    |
+| `git status --porcelain` and whole owned diff review                                                                                                                                                                                                    | PASS: only owned content plus this tracker edited; shared changes left intact |
 
 **Regression-first evidence:** I saw the regressions fail against unfixed behavior and pass after the fixes. Additional guard tests intentionally cover behavior that was already correct.
 

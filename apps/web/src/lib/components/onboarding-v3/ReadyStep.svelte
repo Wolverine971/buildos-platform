@@ -201,6 +201,15 @@
 			change these in Profile.
 		</p>
 	{/if}
+	{#if projectId}
+		<p class="mb-6 text-center text-sm text-muted-foreground">
+			Want to show what you’re building? Your public page is waiting in
+			<a
+				href="/profile?tab=people#your-page"
+				class="font-semibold text-accent underline-offset-2 hover:underline">Profile → Your page</a
+			>. Nothing is public until you publish it.
+		</p>
+	{/if}
 	{#if isLoading}<p class="mb-4 text-center text-sm text-muted-foreground" role="status">
 			Checking your saved setup…
 		</p>{/if}

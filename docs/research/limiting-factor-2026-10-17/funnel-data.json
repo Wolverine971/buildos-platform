@@ -1,0 +1,3835 @@
+{
+	"meta": {
+		"queried_at_utc": "2026-10-17 20:45:18.149616+00",
+		"database": "build_os (iwifjtlebphefldmwbkh), linked Supabase project",
+		"method": "supabase db query --linked, SELECT only",
+		"exclusions": {
+			"dj_email": "djwayne35@gmail.com",
+			"dj_rows": 1,
+			"dj_is_admin": true,
+			"excluded_test_or_admin_non_dj": 2,
+			"excluded_breakdown": {
+				"email_contains_test": 0,
+				"email_contains_example": 1,
+				"email_contains_plus_qa": 0,
+				"is_admin_non_dj": 1
+			},
+			"real_users_after_exclusion": 124
+		},
+		"cohort_labels": {
+			"all": "all 127 users incl DJ + excluded",
+			"real": "124 users excl DJ + 2 test/admin",
+			"real_last_90d": "real users who signed up in last 90 days",
+			"real_2026": "real users who signed up on/after 2026-01-01"
+		}
+	},
+	"1_signups": {
+		"total_users_ever": {
+			"all": 127,
+			"real": 124
+		},
+		"signups_per_month": {
+			"2025-10": {
+				"all": 3,
+				"real": 3
+			},
+			"2025-11": {
+				"all": 5,
+				"real": 5
+			},
+			"2025-12": {
+				"all": 8,
+				"real": 8
+			},
+			"2026-01": {
+				"all": 3,
+				"real": 3
+			},
+			"2026-02": {
+				"all": 7,
+				"real": 7
+			},
+			"2026-03": {
+				"all": 8,
+				"real": 8
+			},
+			"2026-04": {
+				"all": 6,
+				"real": 6
+			},
+			"2026-05": {
+				"all": 2,
+				"real": 2
+			},
+			"2026-06": {
+				"all": 8,
+				"real": 8
+			},
+			"2026-07": {
+				"all": 6,
+				"real": 5
+			},
+			"2026-08": {
+				"all": 8,
+				"real": 8
+			},
+			"2026-09": {
+				"all": 3,
+				"real": 3
+			},
+			"2026-10": {
+				"all": 2,
+				"real": 2
+			}
+		},
+		"signups_last_30d": {
+			"all": 3,
+			"real": 3
+		},
+		"signups_last_60d": {
+			"all": 7,
+			"real": 7
+		},
+		"signups_last_90d": {
+			"all": 16,
+			"real": 16
+		},
+		"signups_2026_ytd": {
+			"all": 53,
+			"real": 52
+		},
+		"most_recent_signup": "2026-10-13 22:32:04.303134+00",
+		"first_real_signup": "2025-06-28 01:19:39.141+00",
+		"first_signup_any": "2025-05-23 18:54:57.684413+00"
+	},
+	"2_activation": {
+		"definitions": {
+			"onto_project": "onto_projects.created_by -> onto_actors.user_id, deleted_at null",
+			"legacy_project": "projects.user_id (pre-2025-12 product)",
+			"any_project_3tasks": "owns a project with >=3 non-deleted tasks (onto or legacy)",
+			"document": "onto_documents via actor; NOTE 142 of 606 docs are document.context.project auto-created with the project",
+			"chat_session": "chat_sessions.user_id",
+			"chat_user_message": "chat_messages role=user",
+			"chat_turn_run": "chat_turn_runs (table only exists since 2026-04-04)",
+			"calendar": "user_calendar_tokens or user_calendar_connections (not deleted)",
+			"onboarding_completed": "users.onboarding_completed_at not null",
+			"zero_activity": "no project, no chat, not a project member"
+		},
+		"cohorts": {
+			"all_including_dj_test": {
+				"any_chat": 33,
+				"any_project": 39,
+				"any_project_3tasks": 28,
+				"braindump": 1,
+				"calendar": 4,
+				"chat_session": 33,
+				"chat_turn_run": 21,
+				"chat_user_message": 32,
+				"cohort": "all_including_dj_test",
+				"document": 41,
+				"last_visit_set": 127,
+				"legacy_project": 22,
+				"onboarding_completed": 32,
+				"onboarding_project": 0,
+				"onboarding_step_ge3": 32,
+				"onto_project": 39,
+				"onto_project_3tasks": 26,
+				"onto_task": 29,
+				"project_member": 43,
+				"users": 127,
+				"zero_activity": 73
+			},
+			"dj_only": {
+				"any_chat": 1,
+				"any_project": 1,
+				"any_project_3tasks": 1,
+				"braindump": 1,
+				"calendar": 1,
+				"chat_session": 1,
+				"chat_turn_run": 1,
+				"chat_user_message": 1,
+				"cohort": "dj_only",
+				"document": 1,
+				"last_visit_set": 1,
+				"legacy_project": 1,
+				"onboarding_completed": 1,
+				"onboarding_project": 0,
+				"onboarding_step_ge3": 1,
+				"onto_project": 1,
+				"onto_project_3tasks": 1,
+				"onto_task": 1,
+				"project_member": 1,
+				"users": 1,
+				"zero_activity": 0
+			},
+			"real_2026_signups": {
+				"any_chat": 28,
+				"any_project": 17,
+				"any_project_3tasks": 10,
+				"braindump": 0,
+				"calendar": 1,
+				"chat_session": 28,
+				"chat_turn_run": 19,
+				"chat_user_message": 28,
+				"cohort": "real_2026_signups",
+				"document": 19,
+				"last_visit_set": 52,
+				"legacy_project": 0,
+				"onboarding_completed": 6,
+				"onboarding_project": 0,
+				"onboarding_step_ge3": 6,
+				"onto_project": 17,
+				"onto_project_3tasks": 10,
+				"onto_task": 11,
+				"project_member": 21,
+				"users": 52,
+				"zero_activity": 21
+			},
+			"real_excl_dj_test": {
+				"any_chat": 31,
+				"any_project": 38,
+				"any_project_3tasks": 27,
+				"braindump": 0,
+				"calendar": 2,
+				"chat_session": 31,
+				"chat_turn_run": 19,
+				"chat_user_message": 30,
+				"cohort": "real_excl_dj_test",
+				"document": 40,
+				"last_visit_set": 124,
+				"legacy_project": 21,
+				"onboarding_completed": 30,
+				"onboarding_project": 0,
+				"onboarding_step_ge3": 30,
+				"onto_project": 38,
+				"onto_project_3tasks": 25,
+				"onto_task": 28,
+				"project_member": 42,
+				"users": 124,
+				"zero_activity": 72
+			},
+			"real_last_90d": {
+				"any_chat": 8,
+				"any_project": 8,
+				"any_project_3tasks": 4,
+				"braindump": 0,
+				"calendar": 0,
+				"chat_session": 8,
+				"chat_turn_run": 8,
+				"chat_user_message": 8,
+				"cohort": "real_last_90d",
+				"document": 8,
+				"last_visit_set": 16,
+				"legacy_project": 0,
+				"onboarding_completed": 1,
+				"onboarding_project": 0,
+				"onboarding_step_ge3": 1,
+				"onto_project": 8,
+				"onto_project_3tasks": 4,
+				"onto_task": 4,
+				"project_member": 8,
+				"users": 16,
+				"zero_activity": 8
+			}
+		}
+	},
+	"3_retention": {
+		"activity_sources": [
+			{
+				"mn": "2025-07-11",
+				"mx": "2026-10-13",
+				"rows_real": 124,
+				"src": "last_visit",
+				"user_days_real": 124,
+				"users_real": 124
+			},
+			{
+				"mn": "2025-06-28",
+				"mx": "2026-10-13",
+				"rows_real": 124,
+				"src": "signup",
+				"user_days_real": 124,
+				"users_real": 124
+			},
+			{
+				"mn": "2025-12-10",
+				"mx": "2026-10-06",
+				"rows_real": 89,
+				"src": "chat_session",
+				"user_days_real": 53,
+				"users_real": 31
+			},
+			{
+				"mn": "2025-10-01",
+				"mx": "2026-10-06",
+				"rows_real": 399,
+				"src": "llm_chat",
+				"user_days_real": 45,
+				"users_real": 28
+			},
+			{
+				"mn": "2026-02-15",
+				"mx": "2026-10-06",
+				"rows_real": 91,
+				"src": "onto_doc_create",
+				"user_days_real": 44,
+				"users_real": 40
+			},
+			{
+				"mn": "2025-12-17",
+				"mx": "2026-10-06",
+				"rows_real": 69,
+				"src": "onto_project_create",
+				"user_days_real": 42,
+				"users_real": 38
+			},
+			{
+				"mn": "2026-01-12",
+				"mx": "2026-10-06",
+				"rows_real": 290,
+				"src": "project_log",
+				"user_days_real": 41,
+				"users_real": 24
+			},
+			{
+				"mn": "2025-12-10",
+				"mx": "2026-10-06",
+				"rows_real": 59,
+				"src": "chat_session_last_msg",
+				"user_days_real": 39,
+				"users_real": 30
+			},
+			{
+				"mn": "2025-12-10",
+				"mx": "2026-10-06",
+				"rows_real": 113,
+				"src": "chat_user_message",
+				"user_days_real": 39,
+				"users_real": 30
+			},
+			{
+				"mn": "2025-12-17",
+				"mx": "2026-08-29",
+				"rows_real": 342,
+				"src": "onto_task_create",
+				"user_days_real": 38,
+				"users_real": 28
+			},
+			{
+				"mn": "2025-07-11",
+				"mx": "2025-10-22",
+				"rows_real": 304,
+				"src": "legacy_task",
+				"user_days_real": 33,
+				"users_real": 17
+			},
+			{
+				"mn": "2025-07-09",
+				"mx": "2025-11-26",
+				"rows_real": 47,
+				"src": "legacy_project",
+				"user_days_real": 30,
+				"users_real": 21
+			},
+			{
+				"mn": "2026-04-07",
+				"mx": "2026-10-06",
+				"rows_real": 54,
+				"src": "chat_turn_run",
+				"user_days_real": 21,
+				"users_real": 19
+			}
+		],
+		"activity_definition": "distinct (user, UTC day) from: signup day, users.last_visit, chat_sessions created/last_message, chat_turn_runs, chat_messages(role=user), onto project/task/document created (via actor), onto_project_logs.changed_by, legacy projects/tasks, onto_braindumps, llm_usage_logs chat/brain-dump operation types -- EXCLUDING any (source, day) where >=6 distinct users 'created' projects/tasks/docs on the same UTC day (backfill signature; organic WAU never exceeds 5). Excluded: onto_project_create 2025-12-17 (21 real users); onto_task_create 2025-12-17 (17 real users); onto_doc_create 2026-06-24 (22 real users)",
+		"cohorts": {
+			"all_including_dj_test": {
+				"active_30plus_days_after_signup": 15,
+				"active_7plus_days_after_signup": 26,
+				"active_last_30d": 9,
+				"active_last_7d": 4,
+				"active_last_90d": 24,
+				"avg_active_days": "5.04",
+				"cohort": "all_including_dj_test",
+				"days_11plus": 5,
+				"days_2_3": 30,
+				"days_4_10": 5,
+				"exactly_1_day": 87,
+				"ge2_active_days": 40,
+				"ge3_days_ge2_weeks": 13,
+				"ge5_days_ge3_weeks": 8,
+				"max_active_days": 378,
+				"median_active_days": 1,
+				"returned_after_signup_day": 40,
+				"users": 127
+			},
+			"dj_only": {
+				"active_30plus_days_after_signup": 1,
+				"active_7plus_days_after_signup": 1,
+				"active_last_30d": 1,
+				"active_last_7d": 1,
+				"active_last_90d": 1,
+				"avg_active_days": "378.00",
+				"cohort": "dj_only",
+				"days_11plus": 1,
+				"days_2_3": 0,
+				"days_4_10": 0,
+				"exactly_1_day": 0,
+				"ge2_active_days": 1,
+				"ge3_days_ge2_weeks": 1,
+				"ge5_days_ge3_weeks": 1,
+				"max_active_days": 378,
+				"median_active_days": 378,
+				"returned_after_signup_day": 1,
+				"users": 1
+			},
+			"real_2026_signups": {
+				"active_30plus_days_after_signup": 4,
+				"active_7plus_days_after_signup": 5,
+				"active_last_30d": 6,
+				"active_last_7d": 2,
+				"active_last_90d": 18,
+				"avg_active_days": "1.56",
+				"cohort": "real_2026_signups",
+				"days_11plus": 0,
+				"days_2_3": 10,
+				"days_4_10": 3,
+				"exactly_1_day": 39,
+				"ge2_active_days": 13,
+				"ge3_days_ge2_weeks": 5,
+				"ge5_days_ge3_weeks": 2,
+				"max_active_days": 9,
+				"median_active_days": 1,
+				"returned_after_signup_day": 13,
+				"users": 52
+			},
+			"real_excl_dj_test": {
+				"active_30plus_days_after_signup": 13,
+				"active_7plus_days_after_signup": 24,
+				"active_last_30d": 7,
+				"active_last_7d": 2,
+				"active_last_90d": 22,
+				"avg_active_days": "1.81",
+				"cohort": "real_excl_dj_test",
+				"days_11plus": 3,
+				"days_2_3": 30,
+				"days_4_10": 5,
+				"exactly_1_day": 86,
+				"ge2_active_days": 38,
+				"ge3_days_ge2_weeks": 11,
+				"ge5_days_ge3_weeks": 6,
+				"max_active_days": 19,
+				"median_active_days": 1,
+				"returned_after_signup_day": 38,
+				"users": 124
+			},
+			"real_last_90d": {
+				"active_30plus_days_after_signup": 2,
+				"active_7plus_days_after_signup": 3,
+				"active_last_30d": 5,
+				"active_last_7d": 2,
+				"active_last_90d": 16,
+				"avg_active_days": "1.94",
+				"cohort": "real_last_90d",
+				"days_11plus": 0,
+				"days_2_3": 5,
+				"days_4_10": 1,
+				"exactly_1_day": 10,
+				"ge2_active_days": 6,
+				"ge3_days_ge2_weeks": 2,
+				"ge5_days_ge3_weeks": 1,
+				"max_active_days": 9,
+				"median_active_days": 1,
+				"returned_after_signup_day": 6,
+				"users": 16
+			}
+		},
+		"weekly_active_users_12w": [
+			{
+				"chat_wau_real": 0,
+				"new_signups_real": 1,
+				"returning_real": 0,
+				"wau_incl_dj_test": 3,
+				"wau_real": 1,
+				"week_start": "2026-07-27"
+			},
+			{
+				"chat_wau_real": 1,
+				"new_signups_real": 1,
+				"returning_real": 0,
+				"wau_incl_dj_test": 3,
+				"wau_real": 1,
+				"week_start": "2026-08-03"
+			},
+			{
+				"chat_wau_real": 1,
+				"new_signups_real": 4,
+				"returning_real": 1,
+				"wau_incl_dj_test": 7,
+				"wau_real": 5,
+				"week_start": "2026-08-10"
+			},
+			{
+				"chat_wau_real": 2,
+				"new_signups_real": 3,
+				"returning_real": 1,
+				"wau_incl_dj_test": 6,
+				"wau_real": 4,
+				"week_start": "2026-08-17"
+			},
+			{
+				"chat_wau_real": 1,
+				"new_signups_real": 0,
+				"returning_real": 1,
+				"wau_incl_dj_test": 3,
+				"wau_real": 1,
+				"week_start": "2026-08-24"
+			},
+			{
+				"chat_wau_real": 0,
+				"new_signups_real": 0,
+				"returning_real": 3,
+				"wau_incl_dj_test": 5,
+				"wau_real": 3,
+				"week_start": "2026-08-31"
+			},
+			{
+				"chat_wau_real": 1,
+				"new_signups_real": 2,
+				"returning_real": 1,
+				"wau_incl_dj_test": 5,
+				"wau_real": 3,
+				"week_start": "2026-09-07"
+			},
+			{
+				"chat_wau_real": 0,
+				"new_signups_real": 0,
+				"returning_real": 0,
+				"wau_incl_dj_test": 1,
+				"wau_real": 0,
+				"week_start": "2026-09-14"
+			},
+			{
+				"chat_wau_real": 1,
+				"new_signups_real": 1,
+				"returning_real": 0,
+				"wau_incl_dj_test": 3,
+				"wau_real": 1,
+				"week_start": "2026-09-21"
+			},
+			{
+				"chat_wau_real": 0,
+				"new_signups_real": 0,
+				"returning_real": 1,
+				"wau_incl_dj_test": 2,
+				"wau_real": 1,
+				"week_start": "2026-09-28"
+			},
+			{
+				"chat_wau_real": 1,
+				"new_signups_real": 1,
+				"returning_real": 3,
+				"wau_incl_dj_test": 5,
+				"wau_real": 4,
+				"week_start": "2026-10-05"
+			},
+			{
+				"chat_wau_real": 0,
+				"new_signups_real": 1,
+				"returning_real": 0,
+				"wau_incl_dj_test": 3,
+				"wau_real": 1,
+				"week_start": "2026-10-12"
+			}
+		],
+		"wau_note": "week_start = Monday (date_trunc week, UTC); last row is the partial current week; wau_real excludes DJ + test; returning_real = active that week and signed up before it",
+		"last_visit_check": {
+			"real_last_visit_after_signup_day": 33,
+			"real_last_visit_eq_signup_day": 91,
+			"real_last_visit_7d_plus": 22,
+			"real_last_visit_30d_plus": 13,
+			"real_last_visit_in_30d": 7,
+			"real_last_visit_in_7d": 2
+		},
+		"users_active_last_30d_profile_anonymized": [
+			{
+				"active_days": 1,
+				"active_weeks": 1,
+				"auth_provider": "google",
+				"ix": 1,
+				"last_active": "2026-10-13",
+				"member_of_others_project": false,
+				"onboarding_completed": false,
+				"projects": 0,
+				"signup_month": "2026-10",
+				"tasks": 0,
+				"used_agent_connector": false,
+				"user_msgs": 0,
+				"user_msgs_30d": 0
+			},
+			{
+				"active_days": 3,
+				"active_weeks": 2,
+				"auth_provider": "email",
+				"ix": 2,
+				"last_active": "2026-10-10",
+				"member_of_others_project": false,
+				"onboarding_completed": false,
+				"projects": 1,
+				"signup_month": "2026-08",
+				"tasks": 5,
+				"used_agent_connector": false,
+				"user_msgs": 1,
+				"user_msgs_30d": 0
+			},
+			{
+				"active_days": 3,
+				"active_weeks": 3,
+				"auth_provider": "email",
+				"ix": 3,
+				"last_active": "2026-10-07",
+				"member_of_others_project": true,
+				"onboarding_completed": false,
+				"projects": 0,
+				"signup_month": "2026-01",
+				"tasks": 0,
+				"used_agent_connector": false,
+				"user_msgs": 0,
+				"user_msgs_30d": 0
+			},
+			{
+				"active_days": 8,
+				"active_weeks": 7,
+				"auth_provider": "google",
+				"ix": 4,
+				"last_active": "2026-10-06",
+				"member_of_others_project": true,
+				"onboarding_completed": true,
+				"projects": 1,
+				"signup_month": "2025-07",
+				"tasks": 7,
+				"used_agent_connector": false,
+				"user_msgs": 0,
+				"user_msgs_30d": 0
+			},
+			{
+				"active_days": 1,
+				"active_weeks": 1,
+				"auth_provider": "email",
+				"ix": 5,
+				"last_active": "2026-10-06",
+				"member_of_others_project": false,
+				"onboarding_completed": false,
+				"projects": 1,
+				"signup_month": "2026-10",
+				"tasks": 0,
+				"used_agent_connector": true,
+				"user_msgs": 2,
+				"user_msgs_30d": 2
+			},
+			{
+				"active_days": 9,
+				"active_weeks": 5,
+				"auth_provider": "email",
+				"ix": 6,
+				"last_active": "2026-09-29",
+				"member_of_others_project": false,
+				"onboarding_completed": true,
+				"projects": 2,
+				"signup_month": "2026-08",
+				"tasks": 18,
+				"used_agent_connector": false,
+				"user_msgs": 12,
+				"user_msgs_30d": 0
+			},
+			{
+				"active_days": 1,
+				"active_weeks": 1,
+				"auth_provider": "google",
+				"ix": 7,
+				"last_active": "2026-09-24",
+				"member_of_others_project": false,
+				"onboarding_completed": false,
+				"projects": 1,
+				"signup_month": "2026-09",
+				"tasks": 0,
+				"used_agent_connector": true,
+				"user_msgs": 4,
+				"user_msgs_30d": 4
+			}
+		],
+		"raw_before_backfill_exclusion": {
+			"cohorts": {
+				"all_including_dj_test": {
+					"active_30plus_days_after_signup": 29,
+					"active_7plus_days_after_signup": 34,
+					"active_last_30d": 9,
+					"active_last_7d": 4,
+					"active_last_90d": 24,
+					"avg_active_days": "5.37",
+					"cohort": "all_including_dj_test",
+					"days_11plus": 5,
+					"days_2_3": 26,
+					"days_4_10": 15,
+					"exactly_1_day": 81,
+					"ge2_active_days": 46,
+					"ge3_days_ge2_weeks": 28,
+					"ge5_days_ge3_weeks": 10,
+					"max_active_days": 378,
+					"median_active_days": 1,
+					"returned_after_signup_day": 46,
+					"users": 127
+				},
+				"dj_only": {
+					"active_30plus_days_after_signup": 1,
+					"active_7plus_days_after_signup": 1,
+					"active_last_30d": 1,
+					"active_last_7d": 1,
+					"active_last_90d": 1,
+					"avg_active_days": "378.00",
+					"cohort": "dj_only",
+					"days_11plus": 1,
+					"days_2_3": 0,
+					"days_4_10": 0,
+					"exactly_1_day": 0,
+					"ge2_active_days": 1,
+					"ge3_days_ge2_weeks": 1,
+					"ge5_days_ge3_weeks": 1,
+					"max_active_days": 378,
+					"median_active_days": 378,
+					"returned_after_signup_day": 1,
+					"users": 1
+				},
+				"real_2026_signups": {
+					"active_30plus_days_after_signup": 4,
+					"active_7plus_days_after_signup": 5,
+					"active_last_30d": 6,
+					"active_last_7d": 2,
+					"active_last_90d": 18,
+					"avg_active_days": "1.56",
+					"cohort": "real_2026_signups",
+					"days_11plus": 0,
+					"days_2_3": 10,
+					"days_4_10": 3,
+					"exactly_1_day": 39,
+					"ge2_active_days": 13,
+					"ge3_days_ge2_weeks": 5,
+					"ge5_days_ge3_weeks": 2,
+					"max_active_days": 9,
+					"median_active_days": 1,
+					"returned_after_signup_day": 13,
+					"users": 52
+				},
+				"real_excl_dj_test": {
+					"active_30plus_days_after_signup": 27,
+					"active_7plus_days_after_signup": 32,
+					"active_last_30d": 7,
+					"active_last_7d": 2,
+					"active_last_90d": 22,
+					"avg_active_days": "2.15",
+					"cohort": "real_excl_dj_test",
+					"days_11plus": 3,
+					"days_2_3": 26,
+					"days_4_10": 15,
+					"exactly_1_day": 80,
+					"ge2_active_days": 44,
+					"ge3_days_ge2_weeks": 26,
+					"ge5_days_ge3_weeks": 8,
+					"max_active_days": 21,
+					"median_active_days": 1,
+					"returned_after_signup_day": 44,
+					"users": 124
+				},
+				"real_last_90d": {
+					"active_30plus_days_after_signup": 2,
+					"active_7plus_days_after_signup": 3,
+					"active_last_30d": 5,
+					"active_last_7d": 2,
+					"active_last_90d": 16,
+					"avg_active_days": "1.94",
+					"cohort": "real_last_90d",
+					"days_11plus": 0,
+					"days_2_3": 5,
+					"days_4_10": 1,
+					"exactly_1_day": 10,
+					"ge2_active_days": 6,
+					"ge3_days_ge2_weeks": 2,
+					"ge5_days_ge3_weeks": 1,
+					"max_active_days": 9,
+					"median_active_days": 1,
+					"returned_after_signup_day": 6,
+					"users": 16
+				}
+			},
+			"note": "superseded; included 2025-12-17 ontology-migration and 2026-06-24 document backfill days as 'activity'"
+		},
+		"excluded_backfill_days": [
+			{
+				"d": "2025-12-17",
+				"src": "onto_project_create",
+				"users_all": 22,
+				"users_real": 21
+			},
+			{
+				"d": "2025-12-17",
+				"src": "onto_task_create",
+				"users_all": 18,
+				"users_real": 17
+			},
+			{
+				"d": "2026-06-24",
+				"src": "onto_doc_create",
+				"users_all": 23,
+				"users_real": 22
+			}
+		]
+	},
+	"4_cohorts_by_signup_month": {
+		"real_users_only": true,
+		"rows": [
+			{
+				"active_30plus_days_after": 0,
+				"active_7plus_days_after": 0,
+				"active_last_30d": 0,
+				"created_project": 2,
+				"ge3_days_ge2_weeks": 0,
+				"median_active_days": 1,
+				"onboarding_completed": 0,
+				"returned_after_signup_day": 1,
+				"sent_chat": 0,
+				"signup_month": "2025-10",
+				"users": 3
+			},
+			{
+				"active_30plus_days_after": 0,
+				"active_7plus_days_after": 0,
+				"active_last_30d": 0,
+				"created_project": 1,
+				"ge3_days_ge2_weeks": 0,
+				"median_active_days": 1,
+				"onboarding_completed": 2,
+				"returned_after_signup_day": 0,
+				"sent_chat": 0,
+				"signup_month": "2025-11",
+				"users": 5
+			},
+			{
+				"active_30plus_days_after": 0,
+				"active_7plus_days_after": 0,
+				"active_last_30d": 0,
+				"created_project": 0,
+				"ge3_days_ge2_weeks": 0,
+				"median_active_days": 1,
+				"onboarding_completed": 0,
+				"returned_after_signup_day": 0,
+				"sent_chat": 0,
+				"signup_month": "2025-12",
+				"users": 8
+			},
+			{
+				"active_30plus_days_after": 1,
+				"active_7plus_days_after": 1,
+				"active_last_30d": 1,
+				"created_project": 0,
+				"ge3_days_ge2_weeks": 1,
+				"median_active_days": 2,
+				"onboarding_completed": 0,
+				"returned_after_signup_day": 2,
+				"sent_chat": 1,
+				"signup_month": "2026-01",
+				"users": 3
+			},
+			{
+				"active_30plus_days_after": 1,
+				"active_7plus_days_after": 1,
+				"active_last_30d": 0,
+				"created_project": 0,
+				"ge3_days_ge2_weeks": 1,
+				"median_active_days": 1,
+				"onboarding_completed": 1,
+				"returned_after_signup_day": 1,
+				"sent_chat": 4,
+				"signup_month": "2026-02",
+				"users": 7
+			},
+			{
+				"active_30plus_days_after": 0,
+				"active_7plus_days_after": 0,
+				"active_last_30d": 0,
+				"created_project": 2,
+				"ge3_days_ge2_weeks": 0,
+				"median_active_days": 1,
+				"onboarding_completed": 0,
+				"returned_after_signup_day": 0,
+				"sent_chat": 3,
+				"signup_month": "2026-03",
+				"users": 8
+			},
+			{
+				"active_30plus_days_after": 0,
+				"active_7plus_days_after": 0,
+				"active_last_30d": 0,
+				"created_project": 4,
+				"ge3_days_ge2_weeks": 0,
+				"median_active_days": 1,
+				"onboarding_completed": 1,
+				"returned_after_signup_day": 1,
+				"sent_chat": 4,
+				"signup_month": "2026-04",
+				"users": 6
+			},
+			{
+				"active_30plus_days_after": 0,
+				"active_7plus_days_after": 0,
+				"active_last_30d": 0,
+				"created_project": 0,
+				"ge3_days_ge2_weeks": 0,
+				"median_active_days": 1,
+				"onboarding_completed": 0,
+				"returned_after_signup_day": 0,
+				"sent_chat": 2,
+				"signup_month": "2026-05",
+				"users": 2
+			},
+			{
+				"active_30plus_days_after": 0,
+				"active_7plus_days_after": 0,
+				"active_last_30d": 0,
+				"created_project": 2,
+				"ge3_days_ge2_weeks": 0,
+				"median_active_days": 1,
+				"onboarding_completed": 2,
+				"returned_after_signup_day": 2,
+				"sent_chat": 4,
+				"signup_month": "2026-06",
+				"users": 8
+			},
+			{
+				"active_30plus_days_after": 0,
+				"active_7plus_days_after": 0,
+				"active_last_30d": 0,
+				"created_project": 2,
+				"ge3_days_ge2_weeks": 1,
+				"median_active_days": 1,
+				"onboarding_completed": 1,
+				"returned_after_signup_day": 2,
+				"sent_chat": 3,
+				"signup_month": "2026-07",
+				"users": 5
+			},
+			{
+				"active_30plus_days_after": 2,
+				"active_7plus_days_after": 3,
+				"active_last_30d": 2,
+				"created_project": 4,
+				"ge3_days_ge2_weeks": 2,
+				"median_active_days": 2,
+				"onboarding_completed": 1,
+				"returned_after_signup_day": 5,
+				"sent_chat": 4,
+				"signup_month": "2026-08",
+				"users": 8
+			},
+			{
+				"active_30plus_days_after": 0,
+				"active_7plus_days_after": 0,
+				"active_last_30d": 1,
+				"created_project": 2,
+				"ge3_days_ge2_weeks": 0,
+				"median_active_days": 1,
+				"onboarding_completed": 0,
+				"returned_after_signup_day": 0,
+				"sent_chat": 2,
+				"signup_month": "2026-09",
+				"users": 3
+			},
+			{
+				"active_30plus_days_after": 0,
+				"active_7plus_days_after": 0,
+				"active_last_30d": 2,
+				"created_project": 1,
+				"ge3_days_ge2_weeks": 0,
+				"median_active_days": 1,
+				"onboarding_completed": 0,
+				"returned_after_signup_day": 0,
+				"sent_chat": 1,
+				"signup_month": "2026-10",
+				"users": 2
+			}
+		],
+		"definitions": {
+			"returned_after_signup_day": "any activity on a UTC day later than signup day",
+			"active_7plus_days_after": "any activity on a day >= signup day + 7",
+			"active_30plus_days_after": "day >= signup + 30"
+		},
+		"raw_before_backfill_exclusion": [
+			{
+				"active_30plus_days_after": 2,
+				"active_7plus_days_after": 2,
+				"active_last_30d": 0,
+				"created_project": 2,
+				"ge3_days_ge2_weeks": 2,
+				"median_active_days": 3,
+				"onboarding_completed": 0,
+				"returned_after_signup_day": 3,
+				"sent_chat": 0,
+				"signup_month": "2025-10",
+				"users": 3
+			},
+			{
+				"active_30plus_days_after": 1,
+				"active_7plus_days_after": 1,
+				"active_last_30d": 0,
+				"created_project": 1,
+				"ge3_days_ge2_weeks": 1,
+				"median_active_days": 1,
+				"onboarding_completed": 2,
+				"returned_after_signup_day": 1,
+				"sent_chat": 0,
+				"signup_month": "2025-11",
+				"users": 5
+			},
+			{
+				"active_30plus_days_after": 0,
+				"active_7plus_days_after": 0,
+				"active_last_30d": 0,
+				"created_project": 0,
+				"ge3_days_ge2_weeks": 0,
+				"median_active_days": 1,
+				"onboarding_completed": 0,
+				"returned_after_signup_day": 0,
+				"sent_chat": 0,
+				"signup_month": "2025-12",
+				"users": 8
+			},
+			{
+				"active_30plus_days_after": 1,
+				"active_7plus_days_after": 1,
+				"active_last_30d": 1,
+				"created_project": 0,
+				"ge3_days_ge2_weeks": 1,
+				"median_active_days": 2,
+				"onboarding_completed": 0,
+				"returned_after_signup_day": 2,
+				"sent_chat": 1,
+				"signup_month": "2026-01",
+				"users": 3
+			},
+			{
+				"active_30plus_days_after": 1,
+				"active_7plus_days_after": 1,
+				"active_last_30d": 0,
+				"created_project": 0,
+				"ge3_days_ge2_weeks": 1,
+				"median_active_days": 1,
+				"onboarding_completed": 1,
+				"returned_after_signup_day": 1,
+				"sent_chat": 4,
+				"signup_month": "2026-02",
+				"users": 7
+			},
+			{
+				"active_30plus_days_after": 0,
+				"active_7plus_days_after": 0,
+				"active_last_30d": 0,
+				"created_project": 2,
+				"ge3_days_ge2_weeks": 0,
+				"median_active_days": 1,
+				"onboarding_completed": 0,
+				"returned_after_signup_day": 0,
+				"sent_chat": 3,
+				"signup_month": "2026-03",
+				"users": 8
+			},
+			{
+				"active_30plus_days_after": 0,
+				"active_7plus_days_after": 0,
+				"active_last_30d": 0,
+				"created_project": 4,
+				"ge3_days_ge2_weeks": 0,
+				"median_active_days": 1,
+				"onboarding_completed": 1,
+				"returned_after_signup_day": 1,
+				"sent_chat": 4,
+				"signup_month": "2026-04",
+				"users": 6
+			},
+			{
+				"active_30plus_days_after": 0,
+				"active_7plus_days_after": 0,
+				"active_last_30d": 0,
+				"created_project": 0,
+				"ge3_days_ge2_weeks": 0,
+				"median_active_days": 1,
+				"onboarding_completed": 0,
+				"returned_after_signup_day": 0,
+				"sent_chat": 2,
+				"signup_month": "2026-05",
+				"users": 2
+			},
+			{
+				"active_30plus_days_after": 0,
+				"active_7plus_days_after": 0,
+				"active_last_30d": 0,
+				"created_project": 2,
+				"ge3_days_ge2_weeks": 0,
+				"median_active_days": 1,
+				"onboarding_completed": 2,
+				"returned_after_signup_day": 2,
+				"sent_chat": 4,
+				"signup_month": "2026-06",
+				"users": 8
+			},
+			{
+				"active_30plus_days_after": 0,
+				"active_7plus_days_after": 0,
+				"active_last_30d": 0,
+				"created_project": 2,
+				"ge3_days_ge2_weeks": 1,
+				"median_active_days": 1,
+				"onboarding_completed": 1,
+				"returned_after_signup_day": 2,
+				"sent_chat": 3,
+				"signup_month": "2026-07",
+				"users": 5
+			},
+			{
+				"active_30plus_days_after": 2,
+				"active_7plus_days_after": 3,
+				"active_last_30d": 2,
+				"created_project": 4,
+				"ge3_days_ge2_weeks": 2,
+				"median_active_days": 2,
+				"onboarding_completed": 1,
+				"returned_after_signup_day": 5,
+				"sent_chat": 4,
+				"signup_month": "2026-08",
+				"users": 8
+			},
+			{
+				"active_30plus_days_after": 0,
+				"active_7plus_days_after": 0,
+				"active_last_30d": 1,
+				"created_project": 2,
+				"ge3_days_ge2_weeks": 0,
+				"median_active_days": 1,
+				"onboarding_completed": 0,
+				"returned_after_signup_day": 0,
+				"sent_chat": 2,
+				"signup_month": "2026-09",
+				"users": 3
+			},
+			{
+				"active_30plus_days_after": 0,
+				"active_7plus_days_after": 0,
+				"active_last_30d": 2,
+				"created_project": 1,
+				"ge3_days_ge2_weeks": 0,
+				"median_active_days": 1,
+				"onboarding_completed": 0,
+				"returned_after_signup_day": 0,
+				"sent_chat": 1,
+				"signup_month": "2026-10",
+				"users": 2
+			}
+		]
+	},
+	"5_monetization": {
+		"subscription_status_by_who": [
+			{
+				"beta_users": 0,
+				"max_trial_end": "2025-11-06",
+				"min_trial_end": "2025-11-06",
+				"n": 1,
+				"subscription_status": "active",
+				"trial_active": 0,
+				"trial_expired": 1,
+				"trial_null": 0,
+				"who": "real",
+				"with_plan_id": 0,
+				"with_stripe_customer": 1
+			},
+			{
+				"beta_users": 1,
+				"max_trial_end": "2025-08-18",
+				"min_trial_end": "2025-08-18",
+				"n": 1,
+				"subscription_status": "trialing",
+				"trial_active": 0,
+				"trial_expired": 1,
+				"trial_null": 0,
+				"who": "dj",
+				"with_plan_id": 0,
+				"with_stripe_customer": 0
+			},
+			{
+				"beta_users": 0,
+				"max_trial_end": "2026-07-26",
+				"min_trial_end": "2025-08-18",
+				"n": 2,
+				"subscription_status": "trialing",
+				"trial_active": 0,
+				"trial_expired": 2,
+				"trial_null": 0,
+				"who": "excluded",
+				"with_plan_id": 0,
+				"with_stripe_customer": 0
+			},
+			{
+				"beta_users": 8,
+				"max_trial_end": "2026-10-27",
+				"min_trial_end": "2025-08-10",
+				"n": 123,
+				"subscription_status": "trialing",
+				"trial_active": 2,
+				"trial_expired": 121,
+				"trial_null": 0,
+				"who": "real",
+				"with_plan_id": 0,
+				"with_stripe_customer": 0
+			}
+		],
+		"paying_users_ever": 0,
+		"paying_users_now": 0,
+		"tables": {
+			"customer_subscriptions": 0,
+			"invoices": 0,
+			"payment_methods": 0,
+			"failed_payments": 0,
+			"trial_reminders": 0,
+			"subscription_plans": [
+				{
+					"active": true,
+					"interval": "month",
+					"name": "Build OS Pro",
+					"price_cents": 2000
+				}
+			],
+			"beta_members": 85,
+			"beta_signups": 87
+		},
+		"users_with_stripe_customer_id": 1,
+		"note": "the single 'active' subscription_status user is a real (non-DJ) account with a stripe_customer_id but no customer_subscriptions/invoices rows; trial_ends_at 2025-11-06. All other users 'trialing'; 121 of 123 real trials expired, 2 still active (latest end 2026-10-27)."
+	},
+	"6_acquisition": {
+		"real_users_only": {
+			"auth_provider": {
+				"google": 75,
+				"email": 49
+			},
+			"beta_signup_became_user": {
+				"false": 68,
+				"true": 19
+			},
+			"beta_signups.referral_source": {
+				"Other": 52,
+				"Facebook": 13,
+				"Instagram": 8,
+				"<null>": 6,
+				"Twitter": 3,
+				"Blog/Article": 2,
+				"Friend/Colleague": 1,
+				"Google Search": 1,
+				"LinkedIn": 1
+			},
+			"beta_signups.status": {
+				"approved": 84,
+				"pending": 3
+			},
+			"onboarding_intent": {
+				"<null>": 106,
+				"organize": 11,
+				"plan": 4,
+				"explore": 2,
+				"unstuck": 1
+			},
+			"onboarding_stakes": {
+				"<null>": 106,
+				"medium": 8,
+				"high": 7,
+				"low": 3
+			},
+			"referrer": {
+				"<null>": 121,
+				"https://www.google.com/": 2,
+				"android-app://com.linkedin.android/": 1
+			},
+			"signup_event.method": {
+				"google": 8,
+				"email": 8
+			},
+			"signup_source": {
+				"<null>": 117,
+				"direct": 4,
+				"www.google.com": 2,
+				"com.linkedin.android": 1
+			},
+			"skipped_calendar": {
+				"false": 123,
+				"<null>": 1
+			},
+			"skipped_sms": {
+				"false": 123,
+				"<null>": 1
+			},
+			"timezone": {
+				"UTC": 110,
+				"America/New_York": 7,
+				"America/Chicago": 2,
+				"Europe/Paris": 1,
+				"Asia/Calcutta": 1,
+				"Europe/Berlin": 1,
+				"Europe/Vilnius": 1,
+				"America/Los_Angeles": 1
+			},
+			"usage_archetype": {
+				"<null>": 123,
+				"ai_task_manager": 1
+			},
+			"utm_any_set": {
+				"false": 124
+			},
+			"welcome_seq.signup_method": {
+				"google_oauth": 17,
+				"email": 10
+			},
+			"welcome_seq.status": {
+				"completed": 22,
+				"active": 5
+			}
+		},
+		"notes": "utm_* never populated; signup_source null for 117/124; referrer null for 121/124; onboarding_intent only set for 18/124 (onboarding v2 era); beta_signups.referral_source is the waitlist form (87 rows), 19 of which match a real user email; auth_provider from auth.users"
+	},
+	"7_usage_depth": {
+		"activated_real_users_ge1_onto_project": {
+			"activated_but_zero_chat": 19,
+			"activated_but_zero_tasks": 11,
+			"activated_users": 38,
+			"chat_only_no_project": 11,
+			"d_avg": "2.34",
+			"d_max": 18,
+			"d_med": 1,
+			"d_min": 1,
+			"d_sum": "89",
+			"m_avg": "2.26",
+			"m_max": 16,
+			"m_med": 0.5,
+			"m_min": 0,
+			"m_sum": "86",
+			"p_avg": "1.82",
+			"p_max": 10,
+			"p_med": 1,
+			"p_min": 1,
+			"p_sum": "69",
+			"r_max": 12,
+			"r_med": 0,
+			"r_min": 0,
+			"r_sum": "45",
+			"s_max": 19,
+			"s_med": 1,
+			"s_min": 0,
+			"s_sum": "71",
+			"t_avg": "8.76",
+			"t_max": 69,
+			"t_med": 4.5,
+			"t_min": 0,
+			"t_sum": "333",
+			"tc_max": 69,
+			"tc_med": 4.5,
+			"tc_min": 0,
+			"users_with_1_project": 29,
+			"users_with_2_4_projects": 5,
+			"users_with_5plus_projects": 4
+		},
+		"dj_for_comparison": {
+			"all_live_projects": 122,
+			"dj_docs": 342,
+			"dj_projects": 47,
+			"dj_tasks": 654,
+			"dj_turn_runs": 903,
+			"dj_user_messages": 2052,
+			"excluded_accounts_projects": 0,
+			"projects_with_no_user_actor": 6
+		},
+		"project_creation_source": {
+			"chat_sessions.context_type(real)": {
+				"project": 60,
+				"project_create": 24,
+				"global": 5
+			},
+			"legacy.source(real)": {
+				"buildos": 47
+			},
+			"onto.created_in_chat_session": {
+				"false": 69
+			},
+			"onto.is_onboarding_project": {
+				"false": 69
+			},
+			"onto.props_source": {
+				"<none>": 66,
+				"calendar_analysis": 3
+			},
+			"onto.state_key": {
+				"active": 49,
+				"planning": 16,
+				"completed": 4
+			},
+			"onto.type_key": {
+				"project.base": 47,
+				"project.creative.scrippl": 1,
+				"project.hardware.embedded": 1,
+				"project.infrastructure.ai.self_hosted": 1,
+				"project.personal.todo": 1,
+				"project.profile.instructor": 1,
+				"project.service.consulting_engagement": 1,
+				"project.software.crm": 1,
+				"project.software.game": 1,
+				"project.technical.app": 1,
+				"project.technical.product": 1,
+				"project.technical.software": 1,
+				"project.technical.software.healthtech": 1,
+				"project.technical.system": 1,
+				"project.technology.software": 1,
+				"project.work.automation": 1,
+				"project.business.company": 1,
+				"project.business.campaign": 1,
+				"project.business.general": 1,
+				"project.academic.legal": 1,
+				"project.business.marketing": 1,
+				"project.creative.book": 1,
+				"project.creative.lego_design": 1
+			}
+		},
+		"project_create_logs_all_users": {
+			"created_via_api": 45,
+			"created_via_api_users": 17,
+			"created_via_agent_call": 19,
+			"created_via_agent_call_users": 4,
+			"note": "onto_project_logs entity_type=project action=created, since 2026-01-04, includes DJ; change_source values seen: api, agent_call, chat, form"
+		},
+		"projects_created_by_agent_actors": [
+			{
+				"kind": "agent",
+				"n": 6
+			}
+		],
+		"real_member_only_no_own_project": 4,
+		"real_member_only_who_chatted": 1,
+		"real_users_without_actor_row": 42
+	},
+	"8_daily_brief_emails": {
+		"last_90d_by_source": {
+			"emails+recipients.daily_brief_90d": {
+				"clicked_non_dj": 1,
+				"distinct_non_dj_openers": 0,
+				"distinct_non_dj_recipients": 2,
+				"not_sent_rows": 1,
+				"open_events_non_dj": 0,
+				"opened_non_dj": 0,
+				"sent_dj": 82,
+				"sent_non_dj": 6,
+				"src": "emails+recipients.daily_brief_90d",
+				"unmatched_recipient_rows": 0
+			},
+			"email_logs.daily_brief_90d": {
+				"clicked_non_dj": null,
+				"distinct_non_dj_openers": null,
+				"distinct_non_dj_recipients": 2,
+				"not_sent_rows": 0,
+				"open_events_non_dj": null,
+				"opened_non_dj": null,
+				"sent_dj": 81,
+				"sent_non_dj": 5,
+				"src": "email_logs.daily_brief_90d",
+				"unmatched_recipient_rows": 0
+			},
+			"notification_deliveries.email.brief_90d": {
+				"clicked_non_dj": 1,
+				"distinct_non_dj_openers": 1,
+				"distinct_non_dj_recipients": 2,
+				"not_sent_rows": 0,
+				"open_events_non_dj": null,
+				"opened_non_dj": 1,
+				"sent_dj": 83,
+				"sent_non_dj": 6,
+				"src": "notification_deliveries.email.brief_90d",
+				"unmatched_recipient_rows": 0
+			}
+		},
+		"brief_prefs_and_generation_90d": {
+			"brief_prefs.active": {
+				"true": 20
+			},
+			"brief_prefs.frequency": {
+				"daily": 20
+			},
+			"notif_deliv.brief.channel.90d.real": {
+				"in_app": 30,
+				"email": 6
+			},
+			"notif_deliv.brief.status.90d.real": {
+				"sent": 5,
+				"clicked": 1
+			},
+			"ontology_daily_briefs.90d.dj": {
+				"briefs": 83
+			},
+			"ontology_daily_briefs.90d.real_users": {
+				"briefs": 54,
+				"distinct_users": 20
+			},
+			"ontology_daily_briefs.engagement_stage.90d.real": {
+				"standard": 31,
+				"dormant": 14,
+				"reengagement": 9,
+				"<null>": 2
+			}
+		},
+		"ever": {
+			"real_brief_emails_sent_ever_category_daily_brief": 10,
+			"real_users_ever_sent_brief_email": 2,
+			"real_brief_emails_opened_ever": 0,
+			"real_users_ever_got_ontology_brief_generated": 28
+		},
+		"stuck_pending_email_recipients_2025_10_13": 2793
+	},
+	"9_project_categories_2026_non_dj": {
+		"projects": 22,
+		"users": 19,
+		"window": "onto_projects.created_at >= 2026-01-01, creator is a real user",
+		"buckets": {
+			"software_or_technical_build": 8,
+			"business_ops_clients_small_business": 4,
+			"school_research_hackathon": 3,
+			"personal_life_social": 3,
+			"book_or_writing": 1,
+			"content_youtube": 0,
+			"other_test_or_empty": 3
+		},
+		"bucket_notes": {
+			"software_or_technical_build": "marketing-sim game, self-hosted AI stack, tech-writing automation, Roblox OS, media CRM, Pico keypad firmware+app, CAD assembly generator, photo-to-Lego",
+			"business_ops_clients_small_business": "1:1 English tutoring delivery, agency lead-gen system, DTC outdoor-gear brand, housing-renovation standard system",
+			"school_research_hackathon": "CAD/CAE coursework, hackathon healthtech app, legal due-process research",
+			"personal_life_social": "to-do for tomorrow, 2x recurring social group (calendar_analysis source, shared with DJ)",
+			"book_or_writing": "fantasy novel first draft",
+			"other_test_or_empty": "instructor profile, 'Test for AIG', one-line creative placeholder"
+		},
+		"projects_with_zero_tasks": 7,
+		"projects_from_calendar_analysis": 3,
+		"type_key_project_base_share": "47 of 69 real-user onto projects are project.base"
+	},
+	"table_row_counts": {
+		"users": {
+			"rows": 127,
+			"min_date": "2025-05-23",
+			"max_date": "2026-10-13"
+		},
+		"onto_actors": {
+			"rows": 86,
+			"min_date": "2025-11-03",
+			"max_date": "2026-10-13"
+		},
+		"onto_projects": {
+			"rows": 141,
+			"min_date": "2025-11-21",
+			"max_date": "2026-10-17"
+		},
+		"onto_tasks": {
+			"rows": 1374,
+			"min_date": "2025-11-21",
+			"max_date": "2026-10-17"
+		},
+		"onto_documents": {
+			"rows": 606,
+			"min_date": "2025-11-21",
+			"max_date": "2026-10-17"
+		},
+		"onto_braindumps": {
+			"rows": 7,
+			"min_date": "2025-12-09",
+			"max_date": "2026-04-17"
+		},
+		"chat_sessions": {
+			"rows": 2252,
+			"min_date": "2025-10-28",
+			"max_date": "2026-10-17"
+		},
+		"chat_turn_runs": {
+			"rows": 1541,
+			"min_date": "2026-04-04",
+			"max_date": "2026-10-17"
+		},
+		"chat_turn_events": {
+			"rows": 192,
+			"min_date": "2026-10-12",
+			"max_date": "2026-10-17"
+		},
+		"chat_messages": {
+			"rows": 6539,
+			"min_date": "2025-10-28",
+			"max_date": "2026-10-17"
+		},
+		"user_activity_logs": {
+			"rows": 180,
+			"min_date": "2026-05-04",
+			"max_date": "2026-09-03"
+		},
+		"llm_usage_logs": {
+			"rows": 27646,
+			"min_date": "2025-09-30",
+			"max_date": "2026-10-17"
+		},
+		"user_calendar_tokens": {
+			"rows": 3,
+			"min_date": "2026-04-07",
+			"max_date": "2026-09-24"
+		},
+		"user_calendar_connections": {
+			"rows": 2,
+			"min_date": "2026-08-12",
+			"max_date": "2026-08-12"
+		},
+		"customer_subscriptions": {
+			"rows": 0,
+			"min_date": null,
+			"max_date": null
+		},
+		"invoices": {
+			"rows": 0,
+			"min_date": null,
+			"max_date": null
+		},
+		"subscription_plans": {
+			"rows": 1,
+			"min_date": "2025-07-19",
+			"max_date": "2025-07-19"
+		},
+		"trial_reminders": {
+			"rows": 0,
+			"min_date": null,
+			"max_date": null
+		},
+		"email_logs": {
+			"rows": 524,
+			"min_date": "2025-09-07",
+			"max_date": "2026-10-17"
+		},
+		"emails": {
+			"rows": 3453,
+			"min_date": "2025-07-23",
+			"max_date": "2026-10-17"
+		},
+		"email_recipients": {
+			"rows": 3654,
+			"min_date": "2025-07-23",
+			"max_date": "2026-10-17"
+		},
+		"email_tracking_events": {
+			"rows": 309,
+			"min_date": "2025-09-15",
+			"max_date": "2026-10-17"
+		},
+		"notification_deliveries": {
+			"rows": 353,
+			"min_date": "2026-07-19",
+			"max_date": "2026-10-17"
+		},
+		"daily_briefs": {
+			"rows": 658,
+			"min_date": "2025-05-31",
+			"max_date": "2026-01-30"
+		},
+		"ontology_daily_briefs": {
+			"rows": 523,
+			"min_date": "2025-12-17",
+			"max_date": "2026-10-17"
+		},
+		"user_brief_preferences": {
+			"rows": 21,
+			"min_date": "2025-07-16",
+			"max_date": "2026-08-26"
+		},
+		"welcome_email_sequences": {
+			"rows": 27,
+			"min_date": "2026-03-18",
+			"max_date": "2026-10-13"
+		},
+		"email_sequence_enrollments": {
+			"rows": 23,
+			"min_date": "2026-05-13",
+			"max_date": "2026-10-13"
+		},
+		"beta_signups": {
+			"rows": 87,
+			"min_date": "2025-07-09",
+			"max_date": "2026-07-30"
+		},
+		"projects_legacy": {
+			"rows": 64,
+			"min_date": "2025-05-23",
+			"max_date": "2025-11-26"
+		},
+		"tasks_legacy": {
+			"rows": 650,
+			"min_date": "2025-05-27",
+			"max_date": "2025-10-30"
+		},
+		"onto_project_members": {
+			"rows": 148,
+			"min_date": "2026-01-10",
+			"max_date": "2026-10-17"
+		},
+		"visitors": {
+			"rows": 6422,
+			"min_date": "2025-07-01",
+			"max_date": "2026-10-17"
+		}
+	},
+	"notes": [
+		"All dates bucketed in UTC (Supabase session timezone). 110/124 real users have timezone='UTC', so local-day bucketing isn't possible anyway.",
+		"onto_projects/onto_tasks/onto_documents.created_by is an onto_actors id, not a user id; joined via onto_actors.user_id. 42 real users have no actor row at all (never touched the ontology product). 6 projects were created by actor kind='agent' (no user).",
+		"user_activity_logs is NOT a user activity source: 180 rows, all activity_type='admin_action'.",
+		"users.last_visit appears maintained: 33/124 real users have last_visit after signup day, 13 beyond 30 days. It only stores the latest visit, so it adds at most 1 extra active day per user.",
+		"chat_turn_runs only exists since 2026-04-04 and chat_turn_events since 2026-10-12; chat_sessions/chat_messages (since 2025-10-28) are the long-run chat source.",
+		"Document activation is inflated: document.context.project (142 rows, 40 creators) is auto-created with each project, so 'has document' ~= 'has project'.",
+		"Daily brief email counts agree across three paths (emails+email_recipients category=daily_brief: 6; email_logs subject: 5; notification_deliveries email+brief.completed: 6). Some older 'BuildOS Daily Brief - <Day>' emails sit under emails.category='notification', so the 'ever' figure (10) undercounts pre-2026-07 history.",
+		"2,793 email_recipients rows from one batch on 2025-10-13 ('Your Daily Brief is Ready!') are still status='pending' - a stuck/abandoned batch, never sent.",
+		"Monetization tables are empty: customer_subscriptions, invoices, payment_methods, failed_payments, trial_reminders all 0 rows. Nobody has ever paid. 121/123 real trials expired with no reminders ever sent.",
+		"Acquisition attribution is essentially absent: utm_* 0/127, signup_source 7/124, referrer 3/124. onboarding_project_id never set (0/127). users.preferences empty for all; productivity_challenges empty for 126/127.",
+		"Onboarding completion collapsed in 2026: 30/124 real users overall but only 6/52 of 2026 signups and 1/16 of last-90-day signups have onboarding_completed_at.",
+		"Project creation 'source' is not tracked on onto_projects (props.source only on 3 calendar_analysis projects). chat_sessions.context_type='project_create' sessions (24 from 14 real users) do not link to any created project via entity_id. onto_project_logs change_source (api/agent_call/chat/form) is the only creation-channel signal and only since 2026-01-04.",
+		"Legacy 'projects'/'tasks' tables (64/650 rows, 2025-05 to 2025-11) are the pre-ontology product; 21 real users only ever used that.",
+		"Project categorization (section 9) was done by reading titles/descriptions; counts only, no titles or identities retained in this file.",
+		"CORRECTION (ad-wave follow-up): two backfill days were counted as user activity in the first pass. 2025-12-17 (ontology migration created onto_projects/onto_tasks for 21 real users) and 2026-06-24 (document.context.project backfill for 22 real users). Sections 3 and 4 now exclude them; raw values kept under raw_before_backfill_exclusion. Real users with >=3 active days across >=2 weeks: 26 -> 11; >=2 active days: 44 -> 38; active 30+ days after signup: 27 -> 13."
+	],
+	"ad_wave": {
+		"context": "Founder reports the only real signup wave came from cheap Instagram/Facebook ads aimed at adults with ADHD. Data: real signups Jul-2025 25 + Aug-2025 20 = 45 (36% of all 124 real users ever). Waitlist burst 2025-07-15 to 2025-08-08.",
+		"1_real_signups_per_month_full_history": {
+			"2025-05": {
+				"all": 1,
+				"real": 0,
+				"real_on_waitlist": 0,
+				"real_fb_ig_waitlist": 0
+			},
+			"2025-06": {
+				"all": 2,
+				"real": 2,
+				"real_on_waitlist": 0,
+				"real_fb_ig_waitlist": 0
+			},
+			"2025-07": {
+				"all": 26,
+				"real": 25,
+				"real_on_waitlist": 12,
+				"real_fb_ig_waitlist": 1
+			},
+			"2025-08": {
+				"all": 20,
+				"real": 20,
+				"real_on_waitlist": 6,
+				"real_fb_ig_waitlist": 4
+			},
+			"2025-09": {
+				"all": 9,
+				"real": 9,
+				"real_on_waitlist": 1,
+				"real_fb_ig_waitlist": 0
+			},
+			"2025-10": {
+				"all": 3,
+				"real": 3,
+				"real_on_waitlist": 0,
+				"real_fb_ig_waitlist": 0
+			},
+			"2025-11": {
+				"all": 5,
+				"real": 5,
+				"real_on_waitlist": 0,
+				"real_fb_ig_waitlist": 0
+			},
+			"2025-12": {
+				"all": 8,
+				"real": 8,
+				"real_on_waitlist": 0,
+				"real_fb_ig_waitlist": 0
+			},
+			"2026-01": {
+				"all": 3,
+				"real": 3,
+				"real_on_waitlist": 0,
+				"real_fb_ig_waitlist": 0
+			},
+			"2026-02": {
+				"all": 7,
+				"real": 7,
+				"real_on_waitlist": 0,
+				"real_fb_ig_waitlist": 0
+			},
+			"2026-03": {
+				"all": 8,
+				"real": 8,
+				"real_on_waitlist": 0,
+				"real_fb_ig_waitlist": 0
+			},
+			"2026-04": {
+				"all": 6,
+				"real": 6,
+				"real_on_waitlist": 0,
+				"real_fb_ig_waitlist": 0
+			},
+			"2026-05": {
+				"all": 2,
+				"real": 2,
+				"real_on_waitlist": 0,
+				"real_fb_ig_waitlist": 0
+			},
+			"2026-06": {
+				"all": 8,
+				"real": 8,
+				"real_on_waitlist": 0,
+				"real_fb_ig_waitlist": 0
+			},
+			"2026-07": {
+				"all": 6,
+				"real": 5,
+				"real_on_waitlist": 0,
+				"real_fb_ig_waitlist": 0
+			},
+			"2026-08": {
+				"all": 8,
+				"real": 8,
+				"real_on_waitlist": 0,
+				"real_fb_ig_waitlist": 0
+			},
+			"2026-09": {
+				"all": 3,
+				"real": 3,
+				"real_on_waitlist": 0,
+				"real_fb_ig_waitlist": 0
+			},
+			"2026-10": {
+				"all": 2,
+				"real": 2,
+				"real_on_waitlist": 0,
+				"real_fb_ig_waitlist": 0
+			}
+		},
+		"2_waitlist_rows_by_month_and_referral": [
+			{
+				"became_any_user": 0,
+				"became_real_user": 0,
+				"first_row": "2025-07-19",
+				"last_row": "2025-07-19",
+				"mon": "2025-07",
+				"n": 2,
+				"referral_source": "Blog/Article"
+			},
+			{
+				"became_any_user": 1,
+				"became_real_user": 1,
+				"first_row": "2025-07-25",
+				"last_row": "2025-07-29",
+				"mon": "2025-07",
+				"n": 5,
+				"referral_source": "Facebook"
+			},
+			{
+				"became_any_user": 1,
+				"became_real_user": 1,
+				"first_row": "2025-07-19",
+				"last_row": "2025-07-19",
+				"mon": "2025-07",
+				"n": 1,
+				"referral_source": "Friend/Colleague"
+			},
+			{
+				"became_any_user": 0,
+				"became_real_user": 0,
+				"first_row": "2025-07-15",
+				"last_row": "2025-07-15",
+				"mon": "2025-07",
+				"n": 1,
+				"referral_source": "Google Search"
+			},
+			{
+				"became_any_user": 0,
+				"became_real_user": 0,
+				"first_row": "2025-07-24",
+				"last_row": "2025-07-29",
+				"mon": "2025-07",
+				"n": 4,
+				"referral_source": "Instagram"
+			},
+			{
+				"became_any_user": 0,
+				"became_real_user": 0,
+				"first_row": "2025-07-16",
+				"last_row": "2025-07-16",
+				"mon": "2025-07",
+				"n": 1,
+				"referral_source": "LinkedIn"
+			},
+			{
+				"became_any_user": 0,
+				"became_real_user": 0,
+				"first_row": "2025-07-15",
+				"last_row": "2025-07-27",
+				"mon": "2025-07",
+				"n": 3,
+				"referral_source": "<null>"
+			},
+			{
+				"became_any_user": 12,
+				"became_real_user": 12,
+				"first_row": "2025-07-09",
+				"last_row": "2025-07-26",
+				"mon": "2025-07",
+				"n": 48,
+				"referral_source": "Other"
+			},
+			{
+				"became_any_user": 1,
+				"became_real_user": 0,
+				"first_row": "2025-07-15",
+				"last_row": "2025-07-20",
+				"mon": "2025-07",
+				"n": 3,
+				"referral_source": "Twitter"
+			},
+			{
+				"became_any_user": 3,
+				"became_real_user": 3,
+				"first_row": "2025-08-02",
+				"last_row": "2025-08-06",
+				"mon": "2025-08",
+				"n": 8,
+				"referral_source": "Facebook"
+			},
+			{
+				"became_any_user": 1,
+				"became_real_user": 1,
+				"first_row": "2025-08-02",
+				"last_row": "2025-08-08",
+				"mon": "2025-08",
+				"n": 4,
+				"referral_source": "Instagram"
+			},
+			{
+				"became_any_user": 0,
+				"became_real_user": 0,
+				"first_row": "2025-08-07",
+				"last_row": "2025-08-07",
+				"mon": "2025-08",
+				"n": 1,
+				"referral_source": "<null>"
+			},
+			{
+				"became_any_user": 0,
+				"became_real_user": 0,
+				"first_row": "2025-08-06",
+				"last_row": "2025-08-06",
+				"mon": "2025-08",
+				"n": 1,
+				"referral_source": "Other"
+			},
+			{
+				"became_any_user": 1,
+				"became_real_user": 1,
+				"first_row": "2025-09-08",
+				"last_row": "2025-09-08",
+				"mon": "2025-09",
+				"n": 1,
+				"referral_source": "Other"
+			},
+			{
+				"became_any_user": 0,
+				"became_real_user": 0,
+				"first_row": "2025-10-22",
+				"last_row": "2025-10-22",
+				"mon": "2025-10",
+				"n": 1,
+				"referral_source": "Other"
+			},
+			{
+				"became_any_user": 0,
+				"became_real_user": 0,
+				"first_row": "2025-11-25",
+				"last_row": "2025-11-25",
+				"mon": "2025-11",
+				"n": 1,
+				"referral_source": "<null>"
+			},
+			{
+				"became_any_user": 0,
+				"became_real_user": 0,
+				"first_row": "2025-11-14",
+				"last_row": "2025-11-14",
+				"mon": "2025-11",
+				"n": 1,
+				"referral_source": "Other"
+			},
+			{
+				"became_any_user": 0,
+				"became_real_user": 0,
+				"first_row": "2026-07-30",
+				"last_row": "2026-07-30",
+				"mon": "2026-07",
+				"n": 1,
+				"referral_source": "<null>"
+			}
+		],
+		"2b_waitlist_wave_window_2025-07-09_to_2025-08-08": {
+			"rows": 81,
+			"excluded_team_test_row": 1,
+			"became_real_user": 17,
+			"by_referral_source": {
+				"Other": 48,
+				"Twitter": 3,
+				"Google Search": 1,
+				"<null>": 4,
+				"LinkedIn": 1,
+				"Blog/Article": 2,
+				"Friend/Colleague": 1,
+				"Instagram": 8,
+				"Facebook": 13
+			},
+			"became_user_by_referral_source": {
+				"Other": 11,
+				"Friend/Colleague": 1,
+				"Facebook": 4,
+				"Instagram": 1
+			},
+			"wants_community_access": 73,
+			"wants_weekly_calls": 69,
+			"signup_status": {
+				"approved": 81
+			},
+			"tools_mentioned": {
+				"Google Docs": 55,
+				"Notion": 34,
+				"Discord": 28,
+				"Apple Notes": 20,
+				"Slack": 20,
+				"OneNote": 19,
+				"Other": 18,
+				"Trello": 14,
+				"Obsidian": 13,
+				"Evernote": 8,
+				"Asana": 6,
+				"Todoist": 5,
+				"Monday.com": 4,
+				"TickTick": 4,
+				"Any.do": 2,
+				"Things": 1,
+				"Bear": 1,
+				"OmniFocus": 1,
+				"ClickUp": 1
+			},
+			"tools_per_row_distribution": {
+				"0": 2,
+				"1": 14,
+				"2": 17,
+				"3": 18,
+				"4": 13,
+				"5": 9,
+				"6": 4,
+				"7": 3,
+				"10": 1
+			},
+			"note": "referral_source understates the ads: 48 of 68 July rows chose 'Other'/blank, and several free-text answers reference 'the ad' or 'the Instagram post'. The whole Jul-9..Aug-8 burst should be read as the ad wave; FB/IG labels concentrate 07-24..08-08."
+		},
+		"3_cohort_comparison_backfill_excluded": {
+			"rows": {
+				"A_fb_ig_waitlist_match": {
+					"active_30plus_days_after_signup": 0,
+					"active_7plus_days_after_signup": 1,
+					"active_in_2026": 0,
+					"active_last_30d": 0,
+					"active_last_90d": 0,
+					"avg_active_days": "1.40",
+					"chatted": 0,
+					"email_auth": 4,
+					"ever_got_brief_generated": 0,
+					"ge1_project": 1,
+					"ge2_active_days": 2,
+					"ge3_active_days": 0,
+					"ge3_days_ge2_weeks": 0,
+					"google_auth": 1,
+					"grp": "A_fb_ig_waitlist_match",
+					"latest_activity_in_group": "2025-08-15",
+					"legacy_only_project": 0,
+					"max_active_days": 2,
+					"median_active_days": 1,
+					"onboarding_completed": 1,
+					"onto_project": 1,
+					"project_ge3_tasks": 1,
+					"users": 5
+				},
+				"B_any_waitlist_match_in_wave": {
+					"active_30plus_days_after_signup": 3,
+					"active_7plus_days_after_signup": 9,
+					"active_in_2026": 1,
+					"active_last_30d": 0,
+					"active_last_90d": 0,
+					"avg_active_days": "2.39",
+					"chatted": 0,
+					"email_auth": 13,
+					"ever_got_brief_generated": 4,
+					"ge1_project": 6,
+					"ge2_active_days": 11,
+					"ge3_active_days": 2,
+					"ge3_days_ge2_weeks": 2,
+					"google_auth": 5,
+					"grp": "B_any_waitlist_match_in_wave",
+					"latest_activity_in_group": "2026-03-25",
+					"legacy_only_project": 0,
+					"max_active_days": 15,
+					"median_active_days": 2,
+					"onboarding_completed": 8,
+					"onto_project": 6,
+					"project_ge3_tasks": 6,
+					"users": 18
+				},
+				"C1_month_2025_07": {
+					"active_30plus_days_after_signup": 5,
+					"active_7plus_days_after_signup": 11,
+					"active_in_2026": 2,
+					"active_last_30d": 1,
+					"active_last_90d": 1,
+					"avg_active_days": "2.36",
+					"chatted": 0,
+					"email_auth": 16,
+					"ever_got_brief_generated": 6,
+					"ge1_project": 8,
+					"ge2_active_days": 14,
+					"ge3_active_days": 4,
+					"ge3_days_ge2_weeks": 4,
+					"google_auth": 9,
+					"grp": "C1_month_2025_07",
+					"latest_activity_in_group": "2026-10-06",
+					"legacy_only_project": 0,
+					"max_active_days": 15,
+					"median_active_days": 2,
+					"onboarding_completed": 9,
+					"onto_project": 8,
+					"project_ge3_tasks": 8,
+					"users": 25
+				},
+				"C2_month_2025_08": {
+					"active_30plus_days_after_signup": 1,
+					"active_7plus_days_after_signup": 4,
+					"active_in_2026": 1,
+					"active_last_30d": 0,
+					"active_last_90d": 0,
+					"avg_active_days": "1.30",
+					"chatted": 0,
+					"email_auth": 10,
+					"ever_got_brief_generated": 3,
+					"ge1_project": 4,
+					"ge2_active_days": 6,
+					"ge3_active_days": 0,
+					"ge3_days_ge2_weeks": 0,
+					"google_auth": 10,
+					"grp": "C2_month_2025_08",
+					"latest_activity_in_group": "2026-03-25",
+					"legacy_only_project": 0,
+					"max_active_days": 2,
+					"median_active_days": 1,
+					"onboarding_completed": 7,
+					"onto_project": 4,
+					"project_ge3_tasks": 3,
+					"users": 20
+				},
+				"C3_month_2025_09": {
+					"active_30plus_days_after_signup": 1,
+					"active_7plus_days_after_signup": 2,
+					"active_in_2026": 1,
+					"active_last_30d": 0,
+					"active_last_90d": 1,
+					"avg_active_days": "1.22",
+					"chatted": 0,
+					"email_auth": 3,
+					"ever_got_brief_generated": 5,
+					"ge1_project": 4,
+					"ge2_active_days": 2,
+					"ge3_active_days": 0,
+					"ge3_days_ge2_weeks": 0,
+					"google_auth": 6,
+					"grp": "C3_month_2025_09",
+					"latest_activity_in_group": "2026-09-06",
+					"legacy_only_project": 0,
+					"max_active_days": 2,
+					"median_active_days": 1,
+					"onboarding_completed": 4,
+					"onto_project": 4,
+					"project_ge3_tasks": 4,
+					"users": 9
+				},
+				"C_wave_months_jul_aug_2025_all": {
+					"active_30plus_days_after_signup": 6,
+					"active_7plus_days_after_signup": 15,
+					"active_in_2026": 3,
+					"active_last_30d": 1,
+					"active_last_90d": 1,
+					"avg_active_days": "1.89",
+					"chatted": 0,
+					"email_auth": 26,
+					"ever_got_brief_generated": 9,
+					"ge1_project": 12,
+					"ge2_active_days": 20,
+					"ge3_active_days": 4,
+					"ge3_days_ge2_weeks": 4,
+					"google_auth": 19,
+					"grp": "C_wave_months_jul_aug_2025_all",
+					"latest_activity_in_group": "2026-10-06",
+					"legacy_only_project": 0,
+					"max_active_days": 15,
+					"median_active_days": 1,
+					"onboarding_completed": 16,
+					"onto_project": 12,
+					"project_ge3_tasks": 11,
+					"users": 45
+				},
+				"D1_other_pre_wave_2025_06": {
+					"active_30plus_days_after_signup": 2,
+					"active_7plus_days_after_signup": 2,
+					"active_in_2026": 2,
+					"active_last_30d": 0,
+					"active_last_90d": 2,
+					"avg_active_days": "15.50",
+					"chatted": 2,
+					"email_auth": 2,
+					"ever_got_brief_generated": 2,
+					"ge1_project": 2,
+					"ge2_active_days": 2,
+					"ge3_active_days": 2,
+					"ge3_days_ge2_weeks": 2,
+					"google_auth": 0,
+					"grp": "D1_other_pre_wave_2025_06",
+					"latest_activity_in_group": "2026-09-12",
+					"legacy_only_project": 0,
+					"max_active_days": 19,
+					"median_active_days": 15.5,
+					"onboarding_completed": 2,
+					"onto_project": 2,
+					"project_ge3_tasks": 2,
+					"users": 2
+				},
+				"D2_other_post_wave_2025_09_onward": {
+					"active_30plus_days_after_signup": 5,
+					"active_7plus_days_after_signup": 7,
+					"active_in_2026": 53,
+					"active_last_30d": 6,
+					"active_last_90d": 19,
+					"avg_active_days": "1.42",
+					"chatted": 28,
+					"email_auth": 21,
+					"ever_got_brief_generated": 18,
+					"ge1_project": 24,
+					"ge2_active_days": 16,
+					"ge3_active_days": 6,
+					"ge3_days_ge2_weeks": 5,
+					"google_auth": 56,
+					"grp": "D2_other_post_wave_2025_09_onward",
+					"latest_activity_in_group": "2026-10-13",
+					"legacy_only_project": 0,
+					"max_active_days": 9,
+					"median_active_days": 1,
+					"onboarding_completed": 12,
+					"onto_project": 24,
+					"project_ge3_tasks": 14,
+					"users": 77
+				},
+				"D_all_other_real_not_wave_months": {
+					"active_30plus_days_after_signup": 7,
+					"active_7plus_days_after_signup": 9,
+					"active_in_2026": 55,
+					"active_last_30d": 6,
+					"active_last_90d": 21,
+					"avg_active_days": "1.77",
+					"chatted": 30,
+					"email_auth": 23,
+					"ever_got_brief_generated": 20,
+					"ge1_project": 26,
+					"ge2_active_days": 18,
+					"ge3_active_days": 8,
+					"ge3_days_ge2_weeks": 7,
+					"google_auth": 56,
+					"grp": "D_all_other_real_not_wave_months",
+					"latest_activity_in_group": "2026-10-13",
+					"legacy_only_project": 0,
+					"max_active_days": 19,
+					"median_active_days": 1,
+					"onboarding_completed": 14,
+					"onto_project": 26,
+					"project_ge3_tasks": 16,
+					"users": 79
+				},
+				"E_all_real": {
+					"active_30plus_days_after_signup": 13,
+					"active_7plus_days_after_signup": 24,
+					"active_in_2026": 58,
+					"active_last_30d": 7,
+					"active_last_90d": 22,
+					"avg_active_days": "1.81",
+					"chatted": 30,
+					"email_auth": 49,
+					"ever_got_brief_generated": 29,
+					"ge1_project": 38,
+					"ge2_active_days": 38,
+					"ge3_active_days": 12,
+					"ge3_days_ge2_weeks": 11,
+					"google_auth": 75,
+					"grp": "E_all_real",
+					"latest_activity_in_group": "2026-10-13",
+					"legacy_only_project": 0,
+					"max_active_days": 19,
+					"median_active_days": 1,
+					"onboarding_completed": 30,
+					"onto_project": 38,
+					"project_ge3_tasks": 27,
+					"users": 124
+				}
+			},
+			"raw_before_backfill_exclusion": {
+				"A_fb_ig_waitlist_match": {
+					"active_30plus_days_after_signup": 1,
+					"active_7plus_days_after_signup": 2,
+					"active_in_2026": 1,
+					"active_last_30d": 0,
+					"active_last_90d": 0,
+					"avg_active_days": "1.80",
+					"chatted": 0,
+					"email_auth": 4,
+					"ever_got_brief_generated": 0,
+					"ge1_project": 1,
+					"ge2_active_days": 3,
+					"ge3_active_days": 1,
+					"ge3_days_ge2_weeks": 1,
+					"google_auth": 1,
+					"grp": "A_fb_ig_waitlist_match",
+					"latest_activity_in_group": "2026-06-24",
+					"legacy_only_project": 0,
+					"max_active_days": 3,
+					"median_active_days": 2,
+					"onboarding_completed": 1,
+					"onto_project": 1,
+					"project_ge3_tasks": 1,
+					"users": 5
+				},
+				"B_any_waitlist_match_in_wave": {
+					"active_30plus_days_after_signup": 6,
+					"active_7plus_days_after_signup": 10,
+					"active_in_2026": 6,
+					"active_last_30d": 0,
+					"active_last_90d": 0,
+					"avg_active_days": "3.06",
+					"chatted": 0,
+					"email_auth": 13,
+					"ever_got_brief_generated": 4,
+					"ge1_project": 6,
+					"ge2_active_days": 12,
+					"ge3_active_days": 6,
+					"ge3_days_ge2_weeks": 6,
+					"google_auth": 5,
+					"grp": "B_any_waitlist_match_in_wave",
+					"latest_activity_in_group": "2026-06-24",
+					"legacy_only_project": 0,
+					"max_active_days": 17,
+					"median_active_days": 2,
+					"onboarding_completed": 8,
+					"onto_project": 6,
+					"project_ge3_tasks": 6,
+					"users": 18
+				},
+				"C1_month_2025_07": {
+					"active_30plus_days_after_signup": 10,
+					"active_7plus_days_after_signup": 13,
+					"active_in_2026": 9,
+					"active_last_30d": 1,
+					"active_last_90d": 1,
+					"avg_active_days": "3.00",
+					"chatted": 0,
+					"email_auth": 16,
+					"ever_got_brief_generated": 6,
+					"ge1_project": 8,
+					"ge2_active_days": 14,
+					"ge3_active_days": 8,
+					"ge3_days_ge2_weeks": 8,
+					"google_auth": 9,
+					"grp": "C1_month_2025_07",
+					"latest_activity_in_group": "2026-10-06",
+					"legacy_only_project": 0,
+					"max_active_days": 17,
+					"median_active_days": 2,
+					"onboarding_completed": 9,
+					"onto_project": 8,
+					"project_ge3_tasks": 8,
+					"users": 25
+				},
+				"C2_month_2025_08": {
+					"active_30plus_days_after_signup": 4,
+					"active_7plus_days_after_signup": 5,
+					"active_in_2026": 4,
+					"active_last_30d": 0,
+					"active_last_90d": 0,
+					"avg_active_days": "1.70",
+					"chatted": 0,
+					"email_auth": 10,
+					"ever_got_brief_generated": 3,
+					"ge1_project": 4,
+					"ge2_active_days": 7,
+					"ge3_active_days": 4,
+					"ge3_days_ge2_weeks": 4,
+					"google_auth": 10,
+					"grp": "C2_month_2025_08",
+					"latest_activity_in_group": "2026-06-24",
+					"legacy_only_project": 0,
+					"max_active_days": 4,
+					"median_active_days": 1,
+					"onboarding_completed": 7,
+					"onto_project": 4,
+					"project_ge3_tasks": 3,
+					"users": 20
+				},
+				"C3_month_2025_09": {
+					"active_30plus_days_after_signup": 4,
+					"active_7plus_days_after_signup": 4,
+					"active_in_2026": 4,
+					"active_last_30d": 0,
+					"active_last_90d": 1,
+					"avg_active_days": "2.11",
+					"chatted": 0,
+					"email_auth": 3,
+					"ever_got_brief_generated": 5,
+					"ge1_project": 4,
+					"ge2_active_days": 4,
+					"ge3_active_days": 4,
+					"ge3_days_ge2_weeks": 4,
+					"google_auth": 6,
+					"grp": "C3_month_2025_09",
+					"latest_activity_in_group": "2026-09-06",
+					"legacy_only_project": 0,
+					"max_active_days": 4,
+					"median_active_days": 1,
+					"onboarding_completed": 4,
+					"onto_project": 4,
+					"project_ge3_tasks": 4,
+					"users": 9
+				},
+				"C_wave_months_jul_aug_2025_all": {
+					"active_30plus_days_after_signup": 14,
+					"active_7plus_days_after_signup": 18,
+					"active_in_2026": 13,
+					"active_last_30d": 1,
+					"active_last_90d": 1,
+					"avg_active_days": "2.42",
+					"chatted": 0,
+					"email_auth": 26,
+					"ever_got_brief_generated": 9,
+					"ge1_project": 12,
+					"ge2_active_days": 21,
+					"ge3_active_days": 12,
+					"ge3_days_ge2_weeks": 12,
+					"google_auth": 19,
+					"grp": "C_wave_months_jul_aug_2025_all",
+					"latest_activity_in_group": "2026-10-06",
+					"legacy_only_project": 0,
+					"max_active_days": 17,
+					"median_active_days": 1,
+					"onboarding_completed": 16,
+					"onto_project": 12,
+					"project_ge3_tasks": 11,
+					"users": 45
+				},
+				"D1_other_pre_wave_2025_06": {
+					"active_30plus_days_after_signup": 2,
+					"active_7plus_days_after_signup": 2,
+					"active_in_2026": 2,
+					"active_last_30d": 0,
+					"active_last_90d": 2,
+					"avg_active_days": "17.50",
+					"chatted": 2,
+					"email_auth": 2,
+					"ever_got_brief_generated": 2,
+					"ge1_project": 2,
+					"ge2_active_days": 2,
+					"ge3_active_days": 2,
+					"ge3_days_ge2_weeks": 2,
+					"google_auth": 0,
+					"grp": "D1_other_pre_wave_2025_06",
+					"latest_activity_in_group": "2026-09-12",
+					"legacy_only_project": 0,
+					"max_active_days": 21,
+					"median_active_days": 17.5,
+					"onboarding_completed": 2,
+					"onto_project": 2,
+					"project_ge3_tasks": 2,
+					"users": 2
+				},
+				"D2_other_post_wave_2025_09_onward": {
+					"active_30plus_days_after_signup": 11,
+					"active_7plus_days_after_signup": 12,
+					"active_in_2026": 59,
+					"active_last_30d": 6,
+					"active_last_90d": 19,
+					"avg_active_days": "1.60",
+					"chatted": 28,
+					"email_auth": 21,
+					"ever_got_brief_generated": 18,
+					"ge1_project": 24,
+					"ge2_active_days": 21,
+					"ge3_active_days": 13,
+					"ge3_days_ge2_weeks": 12,
+					"google_auth": 56,
+					"grp": "D2_other_post_wave_2025_09_onward",
+					"latest_activity_in_group": "2026-10-13",
+					"legacy_only_project": 0,
+					"max_active_days": 9,
+					"median_active_days": 1,
+					"onboarding_completed": 12,
+					"onto_project": 24,
+					"project_ge3_tasks": 14,
+					"users": 77
+				},
+				"D_all_other_real_not_wave_months": {
+					"active_30plus_days_after_signup": 13,
+					"active_7plus_days_after_signup": 14,
+					"active_in_2026": 61,
+					"active_last_30d": 6,
+					"active_last_90d": 21,
+					"avg_active_days": "2.00",
+					"chatted": 30,
+					"email_auth": 23,
+					"ever_got_brief_generated": 20,
+					"ge1_project": 26,
+					"ge2_active_days": 23,
+					"ge3_active_days": 15,
+					"ge3_days_ge2_weeks": 14,
+					"google_auth": 56,
+					"grp": "D_all_other_real_not_wave_months",
+					"latest_activity_in_group": "2026-10-13",
+					"legacy_only_project": 0,
+					"max_active_days": 21,
+					"median_active_days": 1,
+					"onboarding_completed": 14,
+					"onto_project": 26,
+					"project_ge3_tasks": 16,
+					"users": 79
+				},
+				"E_all_real": {
+					"active_30plus_days_after_signup": 27,
+					"active_7plus_days_after_signup": 32,
+					"active_in_2026": 74,
+					"active_last_30d": 7,
+					"active_last_90d": 22,
+					"avg_active_days": "2.15",
+					"chatted": 30,
+					"email_auth": 49,
+					"ever_got_brief_generated": 29,
+					"ge1_project": 38,
+					"ge2_active_days": 44,
+					"ge3_active_days": 27,
+					"ge3_days_ge2_weeks": 26,
+					"google_auth": 75,
+					"grp": "E_all_real",
+					"latest_activity_in_group": "2026-10-13",
+					"legacy_only_project": 0,
+					"max_active_days": 21,
+					"median_active_days": 1,
+					"onboarding_completed": 30,
+					"onto_project": 38,
+					"project_ge3_tasks": 27,
+					"users": 124
+				}
+			},
+			"definitions": {
+				"A": "real user whose email matches a waitlist row with referral Facebook/Instagram (5)",
+				"B": "real user whose email matches any waitlist row and signed up Jul-Aug 2025 (18)",
+				"C": "all real users who signed up Jul-Aug 2025 (45)",
+				"C1/C2/C3": "Jul / Aug / Sep 2025 months",
+				"D": "all other real users (79)",
+				"D1": "pre-wave Jun 2025 (2)",
+				"D2": "post-wave Sep 2025 onward (77)",
+				"E": "all real (124)",
+				"metrics": "ge1_project = onto or legacy project; ge3_active_days / ge3_days_ge2_weeks / max_active_days on cleaned distinct UTC active days; active_last_90d = any activity since 2026-07-19; chatted = sent a chat message (chat launched 2025-10-28, after the wave churned)"
+			},
+			"caveat": "At least 2 of the 45 wave-month signups are BuildOS team accounts (their onboarding text says they are building BuildOS); they are not flagged test/admin so they remain in C."
+		},
+		"4_what_ad_wave_people_said_they_wanted": {
+			"waitlist_free_text_81_rows": {
+				"biggest_challenge_buckets": {
+					"focus_follow_through_procrastination_task_initiation": 22,
+					"organization_tool_sprawl_findability": 16,
+					"prioritization_planning_what_next_time_mgmt": 16,
+					"too_many_ideas_overwhelm_losing_track": 11,
+					"business_execution_build_market_dev_speed_team": 7,
+					"capture_memory_context_loss_across_tools": 6,
+					"other_unclear": 3
+				},
+				"why_interested_buckets": {
+					"organize_ideas_second_brain_central_hub": 37,
+					"curious_about_ai_tools_early_adopter_or_ad_spoke_to_me": 17,
+					"build_or_launch_business_app_project": 16,
+					"adhd_executive_function_neurodivergence_cited": 8,
+					"writing_author_content": 2,
+					"other": 1
+				},
+				"explicit_adhd_audhd_exec_function_mention_either_field": 9,
+				"explicit_adhd_mentioners_who_became_users": 3,
+				"explicitly_cited_the_ad": 4,
+				"job_title_buckets": {
+					"founder_startup_entrepreneur_owner_solopreneur": 33,
+					"developer_engineer_technologist_pm": 11,
+					"designer_creative_artist_content_marketer": 8,
+					"other_titles": 10,
+					"blank": 19
+				}
+			},
+			"onboarding_v1_free_text_user_context_wave_users": {
+				"rows": 18,
+				"team_accounts_excluded": 2,
+				"external_rows": 16,
+				"rows_with_only_projects_answer": 2,
+				"what_they_are_working_on_buckets": {
+					"side_software_or_app_projects": 3,
+					"day_job_workflow_ops_sales_review": 3,
+					"side_business_or_brand_venture": 2,
+					"freelance_client_services": 1,
+					"established_company_operations": 1,
+					"day_job_plus_family_balance": 1,
+					"career_or_job_search": 1,
+					"content_author_personal_brand": 1,
+					"research_intellectual_frameworks": 1,
+					"personal_admin_benefits_claim": 1,
+					"unclear": 1
+				},
+				"challenges_buckets_14_with_text": {
+					"too_many_projects_context_switching": 4,
+					"focus_consistency_procrastination_exec_function": 4,
+					"scattered_info_overwhelm_no_central_hub": 3,
+					"shipping_finishing_abandon_at_80pct": 1,
+					"chaotic_time_commitments": 1,
+					"staffing_people_not_a_tool_problem": 1
+				},
+				"help_focus_buckets_14_with_text": {
+					"project_organization_break_goals_into_tasks_time_blocking_progress": 8,
+					"task_prioritization_scheduling_stay_on_track": 3,
+					"proactive_assistant_consistency_email": 2,
+					"build_company_management_platform": 1
+				},
+				"explicit_adhd_or_exec_function_mention": 2,
+				"populated_fields_wave_users": {
+					"user_context.active_projects": 3,
+					"user_context.blockers": 2,
+					"user_context.communication_style": 2,
+					"user_context.created_at": 18,
+					"user_context.focus_areas": 2,
+					"user_context.goals_overview": 3,
+					"user_context.habits": 2,
+					"user_context.help_priorities": 2,
+					"user_context.id": 18,
+					"user_context.input_challenges": 16,
+					"user_context.input_help_focus": 16,
+					"user_context.input_projects": 18,
+					"user_context.input_work_style": 16,
+					"user_context.last_parsed_input_challenges": 5,
+					"user_context.last_parsed_input_help_focus": 5,
+					"user_context.last_parsed_input_projects": 6,
+					"user_context.last_parsed_input_work_style": 5,
+					"user_context.onboarding_completed_at": 16,
+					"user_context.onboarding_version": 18,
+					"user_context.organization_method": 2,
+					"user_context.preferred_work_hours": 2,
+					"user_context.priorities": 3,
+					"user_context.productivity_challenges": 2,
+					"user_context.rows_all_users": 32,
+					"user_context.schedule_preferences": 2,
+					"user_context.skill_gaps": 1,
+					"user_context.tools": 2,
+					"user_context.updated_at": 18,
+					"user_context.user_id": 18,
+					"user_context.workflows": 2,
+					"user_context.work_style": 2,
+					"user_profiles.rows_all_users": 0,
+					"users.onboarding_intent.any_real": 18
+				}
+			},
+			"users_table": "productivity_challenges is empty for every wave user; onboarding_intent/onboarding_stakes are null for all wave users (v2 fields, only 18 real users ever set them, all 2026-era); utm/referrer/signup_source empty."
+		},
+		"notes": [
+			"Waitlist (beta_signups) 87 rows: 68 in Jul-2025, 14 in Aug-2025, 5 later. 17 of the 81 wave-window rows match a real user email (21%); 45 real signups happened in those months, so most wave signups bypassed the waitlist or used a different email.",
+			"FB/IG-labelled waitlist matches (5 users): 1 made a project, max 2 active days, last activity 2025-08-15, none active since.",
+			"Wave-month cohort (45) vs post-wave (77): week-1 return 15/45 (33%) vs 7/77 (9%); onboarding completed 16/45 (36%) vs 12/77 (16%); >=3 active days 4/45 (9%) vs 6/77 (8%); active in last 90d 1/45 vs 19/77 (recency). The wave retained better in week 1 but equally poorly beyond.",
+			"0 of 45 wave users ever used chat: agentic chat shipped 2025-10-28, after the wave had churned. They only ever saw the legacy projects/tasks product.",
+			"Backfill exclusion applied: 2025-12-17 (onto project/task migration, 21 real users) and 2026-06-24 (document.context.project backfill, 22 real users) no longer count as activity anywhere in this file.",
+			"Free-text bucketing was done by reading each row; counts only, no quotes or identities retained."
+		]
+	},
+	"community_wanters": {
+		"1_fields": {
+			"table": "beta_signups",
+			"columns": {
+				"wants_community_access": "boolean, DB DEFAULT true, nullable",
+				"wants_weekly_calls": "boolean, DB DEFAULT true, nullable"
+			},
+			"form": {
+				"file": "apps/web/src/routes/beta/+page.svelte",
+				"initial_state": "let wantsWeeklyCalls = true; let wantsCommunityAccess = true;  (both checkboxes pre-checked)",
+				"labels": {
+					"wants_weekly_calls": "Founder calls \u2014 I'm open to small-group calls and direct feedback sessions.",
+					"wants_community_access": "Beta community \u2014 Send me invites if you open a space for beta users to compare notes."
+				}
+			},
+			"api": {
+				"file": "apps/web/src/routes/api/beta/signup/+server.ts",
+				"default_when_missing": "wants_weekly_calls: data.wants_weekly_calls ?? true; wants_community_access: data.wants_community_access ?? true"
+			},
+			"value_distribution_all_87": {
+				"community": {
+					"true": 79,
+					"false": 8
+				},
+				"weekly_calls": {
+					"true": 75,
+					"false": 12
+				},
+				"community/calls_combo": {
+					"true/true": 74,
+					"false/false": 7,
+					"true/false": 5,
+					"false/true": 1
+				}
+			},
+			"blank_text_rows": {
+				"community_true_and_all_text_blank": 1,
+				"community_false_and_all_text_blank": 0
+			},
+			"verdict": "YES = default-checked opt-out box at every layer (form, API, DB). 74/87 rows carry the untouched true/true pair, including the single all-blank submission. The only deliberate signal is the 8 who unchecked community (12 unchecked calls, 7 unchecked both). 'Wanted community' should be read as 'did not opt out'.",
+			"beta_members_mirror": "beta_members (85 rows) copies the two flags and adds wants_feature_updates = true for 85/85; calls_attended, feedback_submitted and last_active_at are 0/never set for everyone."
+		},
+		"2_crosstab_waitlist_buckets": {
+			"wanted_community": {
+				"working_on": {
+					"business_clients": 33,
+					"software_saas": 19,
+					"unclear": 15,
+					"personal": 6,
+					"content_creator": 4,
+					"writing_book": 1
+				},
+				"why_interested": {
+					"organize_ideas_second_brain": 36,
+					"build_launch_business_app": 17,
+					"curious_ai_early_adopter_or_the_ad": 15,
+					"adhd_exec_function_cited": 7,
+					"other_blank": 2,
+					"writing_author_content": 1
+				},
+				"role": {
+					"founder_owner_entrepreneur": 33,
+					"blank": 18,
+					"developer_engineer_pm": 11,
+					"other_title": 10,
+					"designer_creative_marketer": 6
+				},
+				"biggest_challenge": {
+					"focus_follow_through": 19,
+					"organization_tool_sprawl": 16,
+					"prioritization_planning_time": 15,
+					"too_many_ideas_overwhelm": 11,
+					"business_execution": 6,
+					"capture_memory_context_loss": 6,
+					"other_unclear": 5
+				},
+				"n": 78,
+				"became_real_user": 17,
+				"referral": {
+					"Other": 45,
+					"Facebook": 11,
+					"Instagram": 8,
+					"<null>": 6,
+					"Twitter": 3,
+					"Blog/Article": 2,
+					"Google Search": 1,
+					"LinkedIn": 1,
+					"Friend/Colleague": 1
+				}
+			},
+			"did_not_want_community": {
+				"working_on": {
+					"unclear": 4,
+					"business_clients": 1,
+					"personal": 1,
+					"content_creator": 1,
+					"writing_book": 1
+				},
+				"why_interested": {
+					"curious_ai_early_adopter_or_the_ad": 3,
+					"organize_ideas_second_brain": 3,
+					"adhd_exec_function_cited": 1,
+					"writing_author_content": 1
+				},
+				"role": {
+					"blank": 4,
+					"designer_creative_marketer": 3,
+					"founder_owner_entrepreneur": 1
+				},
+				"biggest_challenge": {
+					"focus_follow_through": 4,
+					"prioritization_planning_time": 1,
+					"too_many_ideas_overwhelm": 1,
+					"business_execution": 1,
+					"organization_tool_sprawl": 1
+				},
+				"n": 8,
+				"became_real_user": 1,
+				"referral": {
+					"Other": 6,
+					"Facebook": 2
+				}
+			},
+			"wanted_weekly_calls": {
+				"working_on": {
+					"business_clients": 32,
+					"software_saas": 16,
+					"unclear": 15,
+					"personal": 6,
+					"content_creator": 4,
+					"writing_book": 1
+				},
+				"why_interested": {
+					"organize_ideas_second_brain": 34,
+					"build_launch_business_app": 17,
+					"curious_ai_early_adopter_or_the_ad": 13,
+					"adhd_exec_function_cited": 7,
+					"other_blank": 2,
+					"writing_author_content": 1
+				},
+				"role": {
+					"founder_owner_entrepreneur": 32,
+					"blank": 18,
+					"developer_engineer_pm": 9,
+					"other_title": 9,
+					"designer_creative_marketer": 6
+				},
+				"biggest_challenge": {
+					"focus_follow_through": 17,
+					"organization_tool_sprawl": 16,
+					"prioritization_planning_time": 13,
+					"too_many_ideas_overwhelm": 11,
+					"business_execution": 6,
+					"capture_memory_context_loss": 6,
+					"other_unclear": 5
+				},
+				"n": 74,
+				"became_real_user": 17,
+				"referral": {
+					"Other": 44,
+					"Facebook": 10,
+					"Instagram": 8,
+					"<null>": 4,
+					"Twitter": 3,
+					"Blog/Article": 2,
+					"Google Search": 1,
+					"LinkedIn": 1,
+					"Friend/Colleague": 1
+				}
+			},
+			"did_not_want_weekly_calls": {
+				"working_on": {
+					"unclear": 4,
+					"software_saas": 3,
+					"business_clients": 2,
+					"content_creator": 1,
+					"personal": 1,
+					"writing_book": 1
+				},
+				"why_interested": {
+					"curious_ai_early_adopter_or_the_ad": 5,
+					"organize_ideas_second_brain": 5,
+					"adhd_exec_function_cited": 1,
+					"writing_author_content": 1
+				},
+				"role": {
+					"blank": 4,
+					"designer_creative_marketer": 3,
+					"founder_owner_entrepreneur": 2,
+					"developer_engineer_pm": 2,
+					"other_title": 1
+				},
+				"biggest_challenge": {
+					"focus_follow_through": 6,
+					"prioritization_planning_time": 3,
+					"too_many_ideas_overwhelm": 1,
+					"business_execution": 1,
+					"organization_tool_sprawl": 1
+				},
+				"n": 12,
+				"became_real_user": 1,
+				"referral": {
+					"Other": 7,
+					"Facebook": 3,
+					"<null>": 2
+				}
+			},
+			"wanted_neither": {
+				"working_on": {
+					"unclear": 4,
+					"business_clients": 1,
+					"content_creator": 1,
+					"writing_book": 1
+				},
+				"why_interested": {
+					"curious_ai_early_adopter_or_the_ad": 3,
+					"organize_ideas_second_brain": 3,
+					"writing_author_content": 1
+				},
+				"role": {
+					"designer_creative_marketer": 3,
+					"blank": 3,
+					"founder_owner_entrepreneur": 1
+				},
+				"biggest_challenge": {
+					"focus_follow_through": 3,
+					"prioritization_planning_time": 1,
+					"too_many_ideas_overwhelm": 1,
+					"business_execution": 1,
+					"organization_tool_sprawl": 1
+				},
+				"n": 7,
+				"became_real_user": 1,
+				"referral": {
+					"Other": 5,
+					"Facebook": 2
+				}
+			},
+			"all_non_test": {
+				"working_on": {
+					"business_clients": 34,
+					"unclear": 19,
+					"software_saas": 19,
+					"personal": 7,
+					"content_creator": 5,
+					"writing_book": 2
+				},
+				"why_interested": {
+					"organize_ideas_second_brain": 39,
+					"curious_ai_early_adopter_or_the_ad": 18,
+					"build_launch_business_app": 17,
+					"adhd_exec_function_cited": 8,
+					"other_blank": 2,
+					"writing_author_content": 2
+				},
+				"role": {
+					"founder_owner_entrepreneur": 34,
+					"blank": 22,
+					"developer_engineer_pm": 11,
+					"other_title": 10,
+					"designer_creative_marketer": 9
+				},
+				"biggest_challenge": {
+					"focus_follow_through": 23,
+					"organization_tool_sprawl": 17,
+					"prioritization_planning_time": 16,
+					"too_many_ideas_overwhelm": 12,
+					"business_execution": 7,
+					"capture_memory_context_loss": 6,
+					"other_unclear": 5
+				},
+				"n": 86,
+				"became_real_user": 18,
+				"referral": {
+					"Other": 51,
+					"Facebook": 13,
+					"Instagram": 8,
+					"<null>": 6,
+					"Twitter": 3,
+					"Blog/Article": 2,
+					"Google Search": 1,
+					"LinkedIn": 1,
+					"Friend/Colleague": 1
+				}
+			}
+		},
+		"2b_per_row_buckets_anonymized": {
+			"1": {
+				"work": "unclear",
+				"why": "organize_ideas_second_brain",
+				"role": "blank",
+				"challenge": "too_many_ideas_overwhelm",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"2": {
+				"work": "business_clients",
+				"why": "organize_ideas_second_brain",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "focus_follow_through",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"3": {
+				"work": "unclear",
+				"why": "curious_ai_early_adopter_or_the_ad",
+				"role": "blank",
+				"challenge": "prioritization_planning_time",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"4": {
+				"work": "unclear",
+				"why": "curious_ai_early_adopter_or_the_ad",
+				"role": "blank",
+				"challenge": "too_many_ideas_overwhelm",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"5": {
+				"work": "business_clients",
+				"why": "build_launch_business_app",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "business_execution",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"6": {
+				"work": "software_saas",
+				"why": "organize_ideas_second_brain",
+				"role": "developer_engineer_pm",
+				"challenge": "too_many_ideas_overwhelm",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"7": {
+				"work": "business_clients",
+				"why": "organize_ideas_second_brain",
+				"role": "designer_creative_marketer",
+				"challenge": "focus_follow_through",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"8": {
+				"work": "software_saas",
+				"why": "build_launch_business_app",
+				"role": "other_title",
+				"challenge": "focus_follow_through",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"9": {
+				"work": "unclear",
+				"why": "organize_ideas_second_brain",
+				"role": "blank",
+				"challenge": "focus_follow_through",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"10": {
+				"work": "software_saas",
+				"why": "curious_ai_early_adopter_or_the_ad",
+				"role": "other_title",
+				"challenge": "focus_follow_through",
+				"community": true,
+				"calls": false,
+				"month": "2025-07"
+			},
+			"11": {
+				"work": "business_clients",
+				"why": "curious_ai_early_adopter_or_the_ad",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "focus_follow_through",
+				"community": false,
+				"calls": false,
+				"month": "2025-07"
+			},
+			"12": {
+				"work": "software_saas",
+				"why": "organize_ideas_second_brain",
+				"role": "developer_engineer_pm",
+				"challenge": "capture_memory_context_loss",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"13": {
+				"work": "business_clients",
+				"why": "organize_ideas_second_brain",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "focus_follow_through",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"14": {
+				"work": "business_clients",
+				"why": "organize_ideas_second_brain",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "organization_tool_sprawl",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"15": {
+				"work": "business_clients",
+				"why": "organize_ideas_second_brain",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "organization_tool_sprawl",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"16": {
+				"work": "business_clients",
+				"why": "curious_ai_early_adopter_or_the_ad",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "organization_tool_sprawl",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"17": {
+				"work": "business_clients",
+				"why": "build_launch_business_app",
+				"role": "other_title",
+				"challenge": "focus_follow_through",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"18": {
+				"work": "unclear",
+				"why": "organize_ideas_second_brain",
+				"role": "developer_engineer_pm",
+				"challenge": "too_many_ideas_overwhelm",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"19": {
+				"work": "unclear",
+				"why": "organize_ideas_second_brain",
+				"role": "designer_creative_marketer",
+				"challenge": "prioritization_planning_time",
+				"community": false,
+				"calls": false,
+				"month": "2025-07"
+			},
+			"20": {
+				"work": "unclear",
+				"why": "curious_ai_early_adopter_or_the_ad",
+				"role": "designer_creative_marketer",
+				"challenge": "too_many_ideas_overwhelm",
+				"community": false,
+				"calls": false,
+				"month": "2025-07"
+			},
+			"21": {
+				"work": "software_saas",
+				"why": "organize_ideas_second_brain",
+				"role": "developer_engineer_pm",
+				"challenge": "focus_follow_through",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"22": {
+				"work": "business_clients",
+				"why": "organize_ideas_second_brain",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "focus_follow_through",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"23": {
+				"work": "business_clients",
+				"why": "build_launch_business_app",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "prioritization_planning_time",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"24": {
+				"work": "software_saas",
+				"why": "build_launch_business_app",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "prioritization_planning_time",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"25": {
+				"work": "business_clients",
+				"why": "organize_ideas_second_brain",
+				"role": "blank",
+				"challenge": "prioritization_planning_time",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"26": {
+				"work": "unclear",
+				"why": "organize_ideas_second_brain",
+				"role": "blank",
+				"challenge": "focus_follow_through",
+				"community": false,
+				"calls": false,
+				"month": "2025-07"
+			},
+			"27": {
+				"work": "business_clients",
+				"why": "build_launch_business_app",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "business_execution",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"28": {
+				"work": "business_clients",
+				"why": "organize_ideas_second_brain",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "prioritization_planning_time",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"29": {
+				"work": "unclear",
+				"why": "curious_ai_early_adopter_or_the_ad",
+				"role": "other_title",
+				"challenge": "organization_tool_sprawl",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"30": {
+				"work": "personal",
+				"why": "organize_ideas_second_brain",
+				"role": "other_title",
+				"challenge": "organization_tool_sprawl",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"31": {
+				"work": "business_clients",
+				"why": "other_blank",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "focus_follow_through",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"32": {
+				"work": "business_clients",
+				"why": "adhd_exec_function_cited",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "prioritization_planning_time",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"33": {
+				"work": "software_saas",
+				"why": "curious_ai_early_adopter_or_the_ad",
+				"role": "blank",
+				"challenge": "capture_memory_context_loss",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"34": {
+				"work": "business_clients",
+				"why": "organize_ideas_second_brain",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "organization_tool_sprawl",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"35": {
+				"work": "unclear",
+				"why": "organize_ideas_second_brain",
+				"role": "other_title",
+				"challenge": "prioritization_planning_time",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"36": {
+				"work": "content_creator",
+				"why": "curious_ai_early_adopter_or_the_ad",
+				"role": "blank",
+				"challenge": "organization_tool_sprawl",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"37": {
+				"work": "personal",
+				"why": "organize_ideas_second_brain",
+				"role": "other_title",
+				"challenge": "organization_tool_sprawl",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"38": {
+				"work": "unclear",
+				"why": "build_launch_business_app",
+				"role": "developer_engineer_pm",
+				"challenge": "focus_follow_through",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"39": {
+				"work": "software_saas",
+				"why": "organize_ideas_second_brain",
+				"role": "developer_engineer_pm",
+				"challenge": "prioritization_planning_time",
+				"community": true,
+				"calls": false,
+				"month": "2025-07"
+			},
+			"40": {
+				"work": "unclear",
+				"why": "curious_ai_early_adopter_or_the_ad",
+				"role": "developer_engineer_pm",
+				"challenge": "capture_memory_context_loss",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"41": {
+				"work": "content_creator",
+				"why": "curious_ai_early_adopter_or_the_ad",
+				"role": "designer_creative_marketer",
+				"challenge": "other_unclear",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"42": {
+				"work": "business_clients",
+				"why": "organize_ideas_second_brain",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "focus_follow_through",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"43": {
+				"work": "business_clients",
+				"why": "organize_ideas_second_brain",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "focus_follow_through",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"44": {
+				"work": "business_clients",
+				"why": "build_launch_business_app",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "too_many_ideas_overwhelm",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"45": {
+				"work": "business_clients",
+				"why": "build_launch_business_app",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "prioritization_planning_time",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"46": {
+				"work": "unclear",
+				"why": "organize_ideas_second_brain",
+				"role": "other_title",
+				"challenge": "organization_tool_sprawl",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"47": {
+				"work": "business_clients",
+				"why": "organize_ideas_second_brain",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "organization_tool_sprawl",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"48": {
+				"work": "business_clients",
+				"why": "organize_ideas_second_brain",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "capture_memory_context_loss",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"49": {
+				"work": "business_clients",
+				"why": "curious_ai_early_adopter_or_the_ad",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "prioritization_planning_time",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"50": {
+				"work": "unclear",
+				"why": "organize_ideas_second_brain",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "too_many_ideas_overwhelm",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"51": {
+				"work": "unclear",
+				"why": "curious_ai_early_adopter_or_the_ad",
+				"role": "blank",
+				"challenge": "other_unclear",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"52": {
+				"work": "business_clients",
+				"why": "adhd_exec_function_cited",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "organization_tool_sprawl",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"53": {
+				"work": "software_saas",
+				"why": "organize_ideas_second_brain",
+				"role": "developer_engineer_pm",
+				"challenge": "prioritization_planning_time",
+				"community": true,
+				"calls": false,
+				"month": "2025-07"
+			},
+			"54": {
+				"work": "content_creator",
+				"why": "adhd_exec_function_cited",
+				"role": "designer_creative_marketer",
+				"challenge": "too_many_ideas_overwhelm",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"55": {
+				"work": "software_saas",
+				"why": "build_launch_business_app",
+				"role": "blank",
+				"challenge": "too_many_ideas_overwhelm",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"56": {
+				"work": "personal",
+				"why": "adhd_exec_function_cited",
+				"role": "blank",
+				"challenge": "focus_follow_through",
+				"community": false,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"57": {
+				"work": "content_creator",
+				"why": "curious_ai_early_adopter_or_the_ad",
+				"role": "designer_creative_marketer",
+				"challenge": "focus_follow_through",
+				"community": false,
+				"calls": false,
+				"month": "2025-07"
+			},
+			"58": {
+				"work": "content_creator",
+				"why": "organize_ideas_second_brain",
+				"role": "designer_creative_marketer",
+				"challenge": "organization_tool_sprawl",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"59": {
+				"work": "business_clients",
+				"why": "organize_ideas_second_brain",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "focus_follow_through",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"60": {
+				"work": "business_clients",
+				"why": "organize_ideas_second_brain",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "prioritization_planning_time",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"61": {
+				"work": "business_clients",
+				"why": "curious_ai_early_adopter_or_the_ad",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "focus_follow_through",
+				"community": true,
+				"calls": false,
+				"month": "2025-07"
+			},
+			"63": {
+				"work": "business_clients",
+				"why": "organize_ideas_second_brain",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "organization_tool_sprawl",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"64": {
+				"work": "personal",
+				"why": "adhd_exec_function_cited",
+				"role": "blank",
+				"challenge": "focus_follow_through",
+				"community": true,
+				"calls": false,
+				"month": "2025-07"
+			},
+			"65": {
+				"work": "software_saas",
+				"why": "build_launch_business_app",
+				"role": "blank",
+				"challenge": "business_execution",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"66": {
+				"work": "unclear",
+				"why": "curious_ai_early_adopter_or_the_ad",
+				"role": "other_title",
+				"challenge": "focus_follow_through",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"67": {
+				"work": "software_saas",
+				"why": "build_launch_business_app",
+				"role": "developer_engineer_pm",
+				"challenge": "business_execution",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"68": {
+				"work": "personal",
+				"why": "curious_ai_early_adopter_or_the_ad",
+				"role": "blank",
+				"challenge": "capture_memory_context_loss",
+				"community": true,
+				"calls": true,
+				"month": "2025-07"
+			},
+			"69": {
+				"work": "writing_book",
+				"why": "writing_author_content",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "capture_memory_context_loss",
+				"community": true,
+				"calls": true,
+				"month": "2025-08"
+			},
+			"70": {
+				"work": "software_saas",
+				"why": "build_launch_business_app",
+				"role": "blank",
+				"challenge": "business_execution",
+				"community": true,
+				"calls": true,
+				"month": "2025-08"
+			},
+			"71": {
+				"work": "personal",
+				"why": "adhd_exec_function_cited",
+				"role": "other_title",
+				"challenge": "focus_follow_through",
+				"community": true,
+				"calls": true,
+				"month": "2025-08"
+			},
+			"72": {
+				"work": "software_saas",
+				"why": "organize_ideas_second_brain",
+				"role": "developer_engineer_pm",
+				"challenge": "other_unclear",
+				"community": true,
+				"calls": true,
+				"month": "2025-08"
+			},
+			"73": {
+				"work": "software_saas",
+				"why": "build_launch_business_app",
+				"role": "blank",
+				"challenge": "too_many_ideas_overwhelm",
+				"community": true,
+				"calls": true,
+				"month": "2025-08"
+			},
+			"74": {
+				"work": "writing_book",
+				"why": "writing_author_content",
+				"role": "blank",
+				"challenge": "business_execution",
+				"community": false,
+				"calls": false,
+				"month": "2025-08"
+			},
+			"75": {
+				"work": "personal",
+				"why": "organize_ideas_second_brain",
+				"role": "designer_creative_marketer",
+				"challenge": "prioritization_planning_time",
+				"community": true,
+				"calls": true,
+				"month": "2025-08"
+			},
+			"76": {
+				"work": "software_saas",
+				"why": "adhd_exec_function_cited",
+				"role": "developer_engineer_pm",
+				"challenge": "organization_tool_sprawl",
+				"community": true,
+				"calls": true,
+				"month": "2025-08"
+			},
+			"77": {
+				"work": "business_clients",
+				"why": "organize_ideas_second_brain",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "prioritization_planning_time",
+				"community": true,
+				"calls": true,
+				"month": "2025-08"
+			},
+			"78": {
+				"work": "unclear",
+				"why": "organize_ideas_second_brain",
+				"role": "blank",
+				"challenge": "organization_tool_sprawl",
+				"community": false,
+				"calls": false,
+				"month": "2025-08"
+			},
+			"79": {
+				"work": "business_clients",
+				"why": "organize_ideas_second_brain",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "organization_tool_sprawl",
+				"community": true,
+				"calls": true,
+				"month": "2025-08"
+			},
+			"80": {
+				"work": "software_saas",
+				"why": "build_launch_business_app",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "business_execution",
+				"community": true,
+				"calls": true,
+				"month": "2025-08"
+			},
+			"81": {
+				"work": "business_clients",
+				"why": "adhd_exec_function_cited",
+				"role": "blank",
+				"challenge": "too_many_ideas_overwhelm",
+				"community": true,
+				"calls": true,
+				"month": "2025-08"
+			},
+			"82": {
+				"work": "software_saas",
+				"why": "build_launch_business_app",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "prioritization_planning_time",
+				"community": true,
+				"calls": true,
+				"month": "2025-08"
+			},
+			"83": {
+				"work": "software_saas",
+				"why": "build_launch_business_app",
+				"role": "blank",
+				"challenge": "organization_tool_sprawl",
+				"community": true,
+				"calls": true,
+				"month": "2025-09"
+			},
+			"84": {
+				"work": "unclear",
+				"why": "curious_ai_early_adopter_or_the_ad",
+				"role": "blank",
+				"challenge": "other_unclear",
+				"community": true,
+				"calls": true,
+				"month": "2025-10"
+			},
+			"85": {
+				"work": "business_clients",
+				"why": "organize_ideas_second_brain",
+				"role": "designer_creative_marketer",
+				"challenge": "too_many_ideas_overwhelm",
+				"community": true,
+				"calls": true,
+				"month": "2025-11"
+			},
+			"86": {
+				"work": "business_clients",
+				"why": "organize_ideas_second_brain",
+				"role": "founder_owner_entrepreneur",
+				"challenge": "focus_follow_through",
+				"community": true,
+				"calls": true,
+				"month": "2025-11"
+			},
+			"87": {
+				"work": "unclear",
+				"why": "other_blank",
+				"role": "blank",
+				"challenge": "other_unclear",
+				"community": true,
+				"calls": true,
+				"month": "2026-07"
+			}
+		},
+		"2c_bucket_notes": "working_on inferred from why_interested + job title (the waitlist has no 'what are you working on' field); founder/owner titles with no stated project are counted as business_clients. school_research and job_career had 0 waitlist rows. Team test row excluded (86 rows).",
+		"3_became_users": {
+			"community_wanters_matched_to_real_user_by_email": 18,
+			"of_which_wave_window_jul_aug_2025": 17,
+			"with_onboarding_user_context": 10,
+			"team_account_among_them": 1,
+			"working_on_buckets_external_9": {
+				"software_saas": 3,
+				"business_clients": 2,
+				"job_career_day_job_workflow": 2,
+				"school_research": 1,
+				"unclear": 1,
+				"writing_book": 0,
+				"content_creator": 0,
+				"personal": 0
+			},
+			"created_a_project": 7,
+			"onboarding_completed": 9,
+			"ever_chatted": 0,
+			"active_days_distribution": [15, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1],
+			"still_around_any_activity_last_180d": 1,
+			"active_last_90d": 1,
+			"last_activity_months": [
+				"2025-07",
+				"2025-07",
+				"2025-07",
+				"2025-07",
+				"2025-07",
+				"2025-08",
+				"2025-08",
+				"2025-08",
+				"2025-08",
+				"2025-08",
+				"2025-08",
+				"2025-08",
+				"2025-08",
+				"2025-08",
+				"2025-10",
+				"2025-10",
+				"2026-03",
+				"2026-09"
+			],
+			"non_wanter_who_became_user": {
+				"n": 1,
+				"working_on": "writing_book (book proposal + marketing tool)",
+				"active_days": [1]
+			}
+		},
+		"4_contactability": {
+			"community_wanters": 79,
+			"with_email": 79,
+			"distinct_emails": 79,
+			"email_suppressions_table_rows_total": 0,
+			"in_email_suppressions": 0,
+			"possible_bounce_failed_send_rows": 2,
+			"failed_email_log": 2,
+			"received_jul_2026_beta_reactivation_email": 72,
+			"opened_it_recorded": 0,
+			"any_tracked_click_ever": 1,
+			"sequence_unsubscribed_or_exited": 0,
+			"notification_pref_email_disabled": 0,
+			"beta_members_row": 76,
+			"beta_members_deactivated": 0,
+			"contactable_estimate": 77,
+			"caveat": "No unsubscribe/bounce store is populated (email_suppressions has 0 rows in the whole DB; emails carry unsubscribe links but nothing records a click-through), so 'not unsubscribed' is unproven. Open tracking shows 0 opens on the 72 reactivation sends, which contradicts the 1 recorded click; treat open counts as unreliable."
+		},
+		"5_themes": {
+			"method": "substring scan of waitlist biggest_challenge/why_interested (87 rows) and onboarding user_context fields (31 real users, team account excluded) for the requested terms, then each hit read in context; counts are distinct people",
+			"people_per_theme": {
+				"feedback_on_their_own_work": 4,
+				"feedback_mentioned_only_as_day_job_task": 1,
+				"accountability_personal": 2,
+				"accountability_for_a_team_they_manage": 1,
+				"someone_to_keep_me_accountable_literal": 1,
+				"wants_a_team_or_co_builders": 2,
+				"partners_mentioned_as_stakeholders": 3,
+				"co_founder": 0,
+				"dogfooding_their_own_tool": 1,
+				"offers_to_test_contribute_or_be_a_case_study": 6,
+				"solo_builder_bottleneck": 1,
+				"alone_or_lonely_as_a_problem": 0,
+				"motivation": 3,
+				"body_doubling_or_peers": 1,
+				"building_a_community_for_others": 5,
+				"asks_for_a_peer_community_explicitly": 0
+			},
+			"paraphrased_examples": [
+				"Solo builder: is the only designer, tester and PM on every project, so everything stops when they get pulled away; says they need external pressure or someone to keep them accountable, and asks for a weekly 'what you said vs what you shipped' report.",
+				"Remote clinician: cannot stay on task without body doubling and is already organizing body-doubling rooms with work peers to manage executive-function issues.",
+				"Waitlister with a dev background: short on time but offers to help test and guide the product to take it further.",
+				"Waitlister: would love to help build something that actually works, rather than just use it.",
+				"Self-described most disorganized person they know: if this works, they will be the case study.",
+				"Side-project developer: reaches 80-90% and drifts to the next thing, keeps adding features instead of shipping an MVP to get user feedback.",
+				"Waitlister: biggest challenge is not having a team and the skills a team would bring.",
+				"Person building a company around a full-time job: wants help staying motivated to work evenings and weekends."
+			],
+			"reading": "Nobody asked for a peer community in their own words. The community-adjacent asks are accountability, body doubling, feedback loops on shipped work, and offers to test/contribute (6 people). Five respondents are themselves building communities for others."
+		},
+		"notes": [
+			"Cross-tab compares 78 opt-in vs 8 opt-out rows; with the box pre-checked, differences mostly reflect who bothered to uncheck (opt-outs skew blank-title, designer/creative, focus-challenge, 'curious about AI').",
+			"Only 18 of 79 community-wanters ever became real users; 1 is still active (last activity 2026-09), 0 ever used chat, median 2 lifetime active days.",
+			"beta_members was populated for 85/87 waitlist rows with access_level 'full', tier 'founder', and never updated afterwards (0 calls attended, 0 feedback, last_active_at null)."
+		]
+	}
+}

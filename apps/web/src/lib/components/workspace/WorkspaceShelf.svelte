@@ -29,6 +29,7 @@
 		projectsById,
 		query = '',
 		freshIds,
+		sortingIds = new Set<string>(),
 		lifted = null,
 		busyIds,
 		refreshing = false,
@@ -46,6 +47,8 @@
 		/** The page's search box: loose items match on title and excerpt too. */
 		query?: string;
 		freshIds: ReadonlySet<string>;
+		/** Captures BuildOS is still sorting. */
+		sortingIds?: ReadonlySet<string>;
 		lifted?: string | null;
 		/** Items (or suggestions) with a request in flight. */
 		busyIds: ReadonlySet<string>;
@@ -269,6 +272,7 @@
 					{item}
 					workspaceId={home?.workspaceId ?? ''}
 					fresh={freshIds.has(item.id)}
+					sorting={sortingIds.has(item.id)}
 					lifted={lifted === itemRef(item)}
 					{selecting}
 					selected={selected.has(itemRef(item))}

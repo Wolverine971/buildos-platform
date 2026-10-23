@@ -1,0 +1,583 @@
+[
+	{
+		"key": "logan_offer",
+		"source": "2026-09-23 set: real 2026-09-21",
+		"expectScope": "projects",
+		"expectDig": true,
+		"message": "I talked to somebody named Logan about getting him set up with a pistol shooting website. He wants to start a pistol shooting website, and I need to send him an offer, but I don't remember if I saved this information. Can you check to see if I have information on this and what project this might refer to?",
+		"mustProjects": ["Redline Training Company Website"],
+		"helpfulProjects": ["Wayne Strategies"],
+		"must": [
+			[
+				"Redline Training Company Website",
+				"document",
+				"Logan / Redline Training Company — Discovery Notes"
+			],
+			["Redline Training Company Website", "task", "Send Logan the Redline website offer"]
+		],
+		"helpful": [
+			[
+				"Redline Training Company Website",
+				"document",
+				"Pistol Shooting Client Website Context Document"
+			],
+			["Wayne Strategies", "task", "Monday meeting with Logan"]
+		]
+	},
+	{
+		"key": "theo_von",
+		"source": "2026-09-23 set: real 2026-09-02",
+		"expectScope": "projects",
+		"expectDig": true,
+		"message": "ok what is going on with 9takes and my out reach to theo von?",
+		"mustProjects": ["9takes"],
+		"helpfulProjects": [],
+		"must": [
+			["9takes", "task", "Outreach: Theo Von — SEND"],
+			["9takes", "document", "Long-Form Network Outreach — 12 Emails"]
+		],
+		"helpful": []
+	},
+	{
+		"key": "theo_von_followup",
+		"source": "2026-09-23 set: real 2026-09-02 (turn 2)",
+		"expectScope": "projects",
+		"expectDig": true,
+		"message": "ok cool  so i want you to create the proper pitch for messaging Theo Von",
+		"recent": [
+			{
+				"role": "user",
+				"content": "ok what is going on with 9takes and my out reach to theo von?"
+			},
+			{
+				"role": "assistant",
+				"content": "Here's the full picture on 9takes and your Theo Von outreach. 9takes is active with 11 overdue tasks. The task \"Outreach: Theo Von — SEND\" was due August 16 and is still To Do. Your next step says: send Theo Von outreach, then post daily Instagram content. Want me to pull up the outreach document or draft you have prepped for Theo Von?"
+			}
+		],
+		"previousFocus": ["9takes"],
+		"mustProjects": ["9takes"],
+		"helpfulProjects": [],
+		"must": [
+			["9takes", "task", "Outreach: Theo Von — SEND"],
+			["9takes", "document", "Long-Form Network Outreach — 12 Emails"]
+		],
+		"helpful": []
+	},
+	{
+		"key": "brain_dump_routing",
+		"source": "2026-09-23 set: real 2026-08-21",
+		"expectScope": "projects",
+		"expectDig": null,
+		"message": "I need to talk to Rod Chamberlain and email him about Beyond Exit Planning. I need to email people for the Cody Shooting Complex, and they just sent out the proposals for Tacemus. I have a lot to do today. I don't know which project these fall under.",
+		"mustProjects": ["Beyond Exit Planning", "Wayne Strategies"],
+		"helpfulProjects": [
+			"Redline Training Company Website",
+			"The Cadre- DJ Internal",
+			"DJ Wayne Studio"
+		],
+		"must": [
+			["Wayne Strategies", "task", "Follow up with Rod Chamberlain on compliance resolution"],
+			["Beyond Exit Planning", "document", "Project Brief — Beyond Exit Planning"]
+		],
+		"helpful": [
+			["Wayne Strategies", "task", "Outreach to Rod Chamberlain - Monday check-in"],
+			["Wayne Strategies", "document", "Rod Chamberlin Meeting Prep - May 2026"]
+		]
+	},
+	{
+		"key": "phil_demo",
+		"source": "2026-09-23 set: real 2026-09-04",
+		"expectScope": "projects",
+		"expectDig": false,
+		"message": "I'm meeting Phil Valeyo tomorrow at 8 a.m. This is for my cadre project. I'm going to be demoing a bunch of things for him. Can you make sure we have that event on the calendar? It should be on the cadre calendar for wayne@thecadretraining.com.",
+		"mustProjects": ["The Cadre Content Operations"],
+		"helpfulProjects": ["The Cadre- DJ Internal", "Wayne Strategies"],
+		"must": [
+			[
+				"The Cadre Content Operations",
+				"document",
+				"Phil Velayo - Instructor Bio Questionnaire"
+			]
+		],
+		"helpful": [
+			["Wayne Strategies", "task", "Follow up with Phil Velayo on building his website"]
+		]
+	},
+	{
+		"key": "air_days",
+		"source": "2026-09-23 set: real 2026-07-27",
+		"expectScope": "projects",
+		"expectDig": true,
+		"message": "Today and tomorrow (Monday, July 27, and Tuesday, July 28) I need to have close-to-perfect days.\nToday:\n- At 10:00 a.m., I have a call.\n- At 10:30, I have a haircut.\n- I'm talking to Stephen Taplinski about my interview at Air.\nAfter that happens, I need to study for my interview at Air and get at least two coding reps in and a system design rep. That's what it's going to take for me to have a good day tomorrow.\nSome of this context is in the Operation Second Round project. On Tuesday, I have an in-person interview in Roslyn, Virginia, and I need to prep for that. That's what this prep is for.\nGet context on this, and let's start laying out what the perfect day for tomorrow and Tuesday is. L",
+		"mustProjects": ["Operation Second Round — Job Search Sprint"],
+		"helpfulProjects": [],
+		"must": [
+			[
+				"Operation Second Round — Job Search Sprint",
+				"document",
+				"Air Onsite Dossier (Jul 28)"
+			],
+			[
+				"Operation Second Round — Job Search Sprint",
+				"document",
+				"Meeting Debrief — Air / Govini with Brian Hicks"
+			]
+		],
+		"helpful": [
+			[
+				"Operation Second Round — Job Search Sprint",
+				"task",
+				"Prep for Air / Govini interview"
+			]
+		]
+	},
+	{
+		"key": "todo_dump",
+		"source": "2026-09-23 set: real 2026-07-13",
+		"expectScope": "projects",
+		"expectDig": null,
+		"message": "Okay, so I'm gonna tell you about some things I need to do. I need to update these things and different projects. So on the cadre project, I need to write a newsletter introducing Erica Obisido and doing a few other things. I also need to do two different take-home tests, one for air and one for another guy that I met on LinkedIn. And I also need to hit up a guy that I want, basically saying that, yes, I'd like to move to the next round. I didn't hit him up yet. He's waiting on me. There's a project where it talks about me getting a job, and I want you to add those tasks to that project.",
+		"mustProjects": ["Operation Second Round — Job Search Sprint"],
+		"helpfulProjects": ["The Cadre Content Operations", "The Cadre- DJ Internal"],
+		"must": [
+			[
+				"Operation Second Round — Job Search Sprint",
+				"task",
+				"Cadre newsletter: introduce Eric Avvisato"
+			],
+			[
+				"Operation Second Round — Job Search Sprint",
+				"task",
+				"Complete take-home test from LinkedIn contact"
+			],
+			[
+				"Operation Second Round — Job Search Sprint",
+				"task",
+				"Follow up: confirm you'd like to move to the next round"
+			]
+		],
+		"helpful": [
+			[
+				"Operation Second Round — Job Search Sprint",
+				"task",
+				"Check-in: AIR / Genesis AI take-home test progress"
+			]
+		]
+	},
+	{
+		"key": "portfolio",
+		"source": "2026-09-23 set: real (12 sessions)",
+		"expectScope": "portfolio",
+		"expectDig": null,
+		"message": "OK, what's going on with my projects?",
+		"mustProjects": [],
+		"helpfulProjects": [],
+		"must": [],
+		"helpful": []
+	},
+	{
+		"key": "ninetakes_status",
+		"source": "2026-09-23 set: real 2026-09-10",
+		"expectScope": "projects",
+		"expectDig": false,
+		"message": "ok what is going on with 9takes?",
+		"mustProjects": ["9takes"],
+		"helpfulProjects": [],
+		"must": [["9takes", "document", "START HERE - 9takes"]],
+		"helpful": []
+	},
+	{
+		"key": "samos_alias",
+		"source": "2026-09-23 set: synthetic",
+		"expectScope": "projects",
+		"expectDig": true,
+		"message": "Where am I at with the Samos Bid Desk offer? What's left before the chamber luncheon?",
+		"mustProjects": ["DJ Wayne Studio"],
+		"helpfulProjects": [],
+		"must": [
+			[
+				"DJ Wayne Studio",
+				"document",
+				"Offer sheets — The Diagnosis, Bid Desk, Quiet Quote Recovery"
+			],
+			["DJ Wayne Studio", "task", "Fill the contact line on the three offer sheets"]
+		],
+		"helpful": []
+	},
+	{
+		"key": "ian_minor",
+		"source": "2026-09-23 set: synthetic",
+		"expectScope": "projects",
+		"expectDig": true,
+		"message": "What's going on with Ian Minor? I feel like I owe him something.",
+		"mustProjects": ["Wayne Strategies", "The Cadre- DJ Internal"],
+		"helpfulProjects": ["The Cadre Content Operations", "UXM Training Website"],
+		"must": [
+			["Wayne Strategies", "task", "Follow up with Ian Minor about site and UXM training"],
+			["The Cadre- DJ Internal", "task", "Coordinate with Ian Minor on Email Communications"]
+		],
+		"helpful": [
+			["The Cadre Content Operations", "document", "Ian Minor - Instructor Bio Questionnaire"]
+		]
+	},
+	{
+		"key": "book_structure",
+		"source": "2026-09-23 set: synthetic",
+		"expectScope": "projects",
+		"expectDig": true,
+		"message": "What did I decide about how the book chapters should be structured?",
+		"mustProjects": ["100-Day Nonfiction Book Project"],
+		"helpfulProjects": [],
+		"must": [
+			[
+				"100-Day Nonfiction Book Project",
+				"document",
+				"Book Contract & Chapter Blueprint Template"
+			]
+		],
+		"helpful": [
+			["100-Day Nonfiction Book Project", "task", "Complete chapter and framework blueprint"]
+		]
+	},
+	{
+		"key": "naaccc_lunch",
+		"source": "2026-09-23 set: real 2026-09-23",
+		"expectScope": "none",
+		"expectDig": false,
+		"message": "Go to https://business.naaccc.com/event-calendar and find the date, time, and location of\n  ▎ the Networking Lunch at Italia's Corner.",
+		"mustProjects": [],
+		"helpfulProjects": ["DJ Wayne Studio"],
+		"must": [],
+		"helpful": [],
+		"control": true
+	},
+	{
+		"key": "calendar_control",
+		"source": "2026-09-23 set: real 2026-09-04",
+		"expectScope": "none",
+		"expectDig": false,
+		"message": "ok what calendars do you have access to?",
+		"mustProjects": [],
+		"helpfulProjects": [],
+		"must": [],
+		"helpful": [],
+		"control": true
+	},
+	{
+		"key": "quantum_negative",
+		"source": "2026-09-23 set: real 2026-08-30",
+		"expectScope": "projects",
+		"expectDig": null,
+		"message": "Search across all my BuildOS projects for quantum entanglement. If there are no relevant entities, say exactly that. Do not create or change anything.",
+		"mustProjects": [],
+		"helpfulProjects": [],
+		"must": [],
+		"helpful": [],
+		"control": true
+	},
+	{
+		"key": "thanks_control",
+		"source": "2026-09-23 set: synthetic",
+		"expectScope": "none",
+		"expectDig": false,
+		"message": "thanks, that's really helpful",
+		"recent": [
+			{
+				"role": "user",
+				"content": "ok what is going on with 9takes and my out reach to theo von?"
+			},
+			{
+				"role": "assistant",
+				"content": "Here's the full picture on 9takes and your Theo Von outreach. 9takes is active with 11 overdue tasks. The task \"Outreach: Theo Von — SEND\" was due August 16 and is still To Do. Your next step says: send Theo Von outreach, then post daily Instagram content. Want me to pull up the outreach document or draft you have prepped for Theo Von?"
+			}
+		],
+		"previousFocus": ["9takes"],
+		"mustProjects": [],
+		"helpfulProjects": [],
+		"must": [],
+		"helpful": [],
+		"control": true
+	},
+	{
+		"key": "wayne_offer_now",
+		"source": "2026-09-29 Wayne set: written from DJ's records, not a real message",
+		"expectScope": "projects",
+		"expectDig": true,
+		"message": "what's my main offer right now for local businesses? like what do I actually lead with when I talk to an owner?",
+		"mustProjects": ["DJ Wayne Studio", "Wayne Strategies"],
+		"helpfulProjects": [],
+		"must": [
+			[
+				"DJ Wayne Studio",
+				"document",
+				"Offer sheets — The Diagnosis, Bid Desk, Quiet Quote Recovery"
+			],
+			["Wayne Strategies", "document", "Wayne Strategies — Brand Direction & Rebrand History"]
+		],
+		"helpful": [
+			["Wayne Strategies", "document", "Wayne Strategies Context"],
+			["DJ Wayne Studio", "document", "Demo and pitch"],
+			["Wayne Strategies", "document", "Website inquiry and diagnosis pipeline"]
+		],
+		"stale": [
+			["Wayne Strategies", "document", "Tacemus Positioning document"],
+			["Wayne Strategies", "document", "Tacemus Vision 2.0"]
+		]
+	},
+	{
+		"key": "wayne_samos_same",
+		"source": "2026-09-29 Wayne set: written from DJ's records, not a real message",
+		"expectScope": "projects",
+		"expectDig": true,
+		"message": "wait, is samos the same thing as wayne strategies? what happened to that name?",
+		"mustProjects": ["DJ Wayne Studio", "Wayne Strategies"],
+		"helpfulProjects": [],
+		"must": [
+			["DJ Wayne Studio", "document", "Samos — project context"],
+			["Wayne Strategies", "document", "Wayne Strategies — Brand Direction & Rebrand History"]
+		],
+		"helpful": [["DJ Wayne Studio", "document", "Decisions and facts log"]],
+		"stale": []
+	},
+	{
+		"key": "wayne_cash_90",
+		"source": "2026-09-29 Wayne set: written from DJ's records, not a real message",
+		"expectScope": "projects",
+		"expectDig": true,
+		"message": "what's my plan to get to ten grand of new money in the next 90 days? who's closest to paying?",
+		"mustProjects": ["DJ Wayne Studio"],
+		"helpfulProjects": ["Redline Training Company Website", "Wayne Strategies"],
+		"must": [
+			["DJ Wayne Studio", "document", "Cash probe — 33 actions ranked"],
+			["DJ Wayne Studio", "task", "Propose the $2,500 inbound follow-up automation"]
+		],
+		"helpful": [
+			["Redline Training Company Website", "task", "Send Logan the Redline website offer"],
+			["DJ Wayne Studio", "document", "Warm Door Call List"],
+			["Wayne Strategies", "task", "Initiate payment collection for Rod Chamberlin project"]
+		],
+		"stale": []
+	},
+	{
+		"key": "wayne_creator_desks",
+		"source": "2026-09-29 Wayne set: written from DJ's records, not a real message",
+		"expectScope": "projects",
+		"expectDig": true,
+		"message": "which maryland creators did I build those proposal desks for, and did any of the outreach actually go out?",
+		"mustProjects": [
+			"Julian Dorey — Episode Research Desk Proposal",
+			"Hannibal Is Hungry — Receipts Desk Proposal",
+			"Nomtastic Kim — Maryland Food Map Proposal"
+		],
+		"helpfulProjects": ["Wayne Strategies"],
+		"must": [
+			[
+				"Julian Dorey — Episode Research Desk Proposal",
+				"task",
+				"Finalize and send JDP team outreach"
+			],
+			[
+				"Hannibal Is Hungry — Receipts Desk Proposal",
+				"task",
+				"Finalize and send Hannibal outreach"
+			],
+			[
+				"Nomtastic Kim — Maryland Food Map Proposal",
+				"task",
+				"Finalize and send Nomtastic Kim outreach"
+			],
+			[
+				"Julian Dorey — Episode Research Desk Proposal",
+				"document",
+				"Julian Dorey Episode Research Desk — Proposal Brief"
+			]
+		],
+		"helpful": [
+			[
+				"Hannibal Is Hungry — Receipts Desk Proposal",
+				"document",
+				"Hannibal Receipts Desk — Agent Tasker and Project Brief"
+			],
+			[
+				"Nomtastic Kim — Maryland Food Map Proposal",
+				"document",
+				"Nomtastic Kim Food Map — Agent Tasker and Project Brief"
+			],
+			["Wayne Strategies", "document", "Julian Pitch"]
+		],
+		"stale": []
+	},
+	{
+		"key": "wayne_julian_pitch",
+		"source": "2026-09-29 Wayne set: written from DJ's records, not a real message",
+		"expectScope": "projects",
+		"expectDig": true,
+		"message": "what did I pitch julian dorey, and where did that end up?",
+		"mustProjects": ["Julian Dorey — Episode Research Desk Proposal", "Wayne Strategies"],
+		"helpfulProjects": [],
+		"must": [
+			[
+				"Julian Dorey — Episode Research Desk Proposal",
+				"document",
+				"Julian Dorey Episode Research Desk — Proposal Brief"
+			],
+			["Wayne Strategies", "document", "Julian Pitch"]
+		],
+		"helpful": [
+			[
+				"Julian Dorey — Episode Research Desk Proposal",
+				"document",
+				"Implementation Status — Working Prototype"
+			],
+			[
+				"Julian Dorey — Episode Research Desk Proposal",
+				"task",
+				"Finalize and send JDP team outreach"
+			],
+			["Wayne Strategies", "document", "Julian Episode 390"]
+		],
+		"stale": []
+	},
+	{
+		"key": "wayne_mca_status",
+		"source": "2026-09-29 Wayne set: written from DJ's records, not a real message",
+		"expectScope": "projects",
+		"expectDig": true,
+		"message": "what happened with the maryland content authority thing? am I still doing that?",
+		"mustProjects": ["Wayne Strategies"],
+		"helpfulProjects": [],
+		"must": [
+			["Wayne Strategies", "document", "Wayne Strategies Context"],
+			["Wayne Strategies", "document", "Tacemus — START HERE"]
+		],
+		"helpful": [["Wayne Strategies", "document", "Tacemus Vision 2.0"]],
+		"stale": []
+	},
+	{
+		"key": "wayne_brand",
+		"source": "2026-09-29 Wayne set: written from DJ's records, not a real message",
+		"expectScope": "projects",
+		"expectDig": true,
+		"message": "what's the brand direction for wayne strategies? the old money / legacy thing",
+		"mustProjects": ["Wayne Strategies"],
+		"helpfulProjects": [],
+		"must": [
+			["Wayne Strategies", "document", "Wayne Strategies — Brand Direction & Rebrand History"]
+		],
+		"helpful": [
+			["Wayne Strategies", "document", "Wayne Strategies Context"],
+			["Wayne Strategies", "document", "Visual Brand Development Process"]
+		],
+		"stale": [
+			["Wayne Strategies", "document", "Tacemus Brand Imagery and Core Values"],
+			["Wayne Strategies", "document", "Tacemus Positioning document"]
+		]
+	},
+	{
+		"key": "wayne_site_leads",
+		"source": "2026-09-29 Wayne set: written from DJ's records, not a real message",
+		"expectScope": "projects",
+		"expectDig": true,
+		"message": "when someone fills out the form on waynestrategies.com, where does it go? is that working yet?",
+		"mustProjects": ["Wayne Strategies"],
+		"helpfulProjects": [],
+		"must": [
+			["Wayne Strategies", "document", "Website inquiry and diagnosis pipeline"],
+			[
+				"Wayne Strategies",
+				"task",
+				"Review and activate the website diagnosis intake pipeline"
+			]
+		],
+		"helpful": [["Wayne Strategies", "task", "Diagnose [INTERNAL LIVE SITE TEST]"]],
+		"stale": []
+	},
+	{
+		"key": "wayne_la_industrial",
+		"source": "2026-09-29 Wayne set: written from DJ's records, not a real message",
+		"expectScope": "projects",
+		"expectDig": true,
+		"message": "what do I still owe louis for the LA industrial shirts?",
+		"mustProjects": ["Wayne Strategies"],
+		"helpfulProjects": [],
+		"must": [
+			[
+				"Wayne Strategies",
+				"document",
+				"LA Industrial Services — Louis Arnette Meeting Notes"
+			],
+			["Wayne Strategies", "task", "LA Industrial — send apparel proofs"]
+		],
+		"helpful": [
+			["Wayne Strategies", "task", "LA Industrial — finalize print-ready logo"],
+			["Wayne Strategies", "task", "LA Industrial — create and publish QR-code"],
+			["Wayne Strategies", "task", "LA Industrial — develop “Road Life”"]
+		],
+		"stale": []
+	},
+	{
+		"key": "wayne_rod_status",
+		"source": "2026-09-29 Wayne set: written from DJ's records, not a real message",
+		"expectScope": "projects",
+		"expectDig": true,
+		"message": "where am I with rod? did he ever pay, and what's next with him?",
+		"mustProjects": ["Beyond Exit Planning", "Wayne Strategies"],
+		"helpfulProjects": [],
+		"must": [
+			["Wayne Strategies", "task", "Initiate payment collection for Rod Chamberlin project"],
+			[
+				"Beyond Exit Planning",
+				"document",
+				"Rod Session 1 — meeting outcome and review packet"
+			],
+			[
+				"Beyond Exit Planning",
+				"task",
+				"Arrange the next Rod conversation and recurring rhythm"
+			]
+		],
+		"helpful": [
+			["Beyond Exit Planning", "document", "Project Brief — Beyond Exit Planning"],
+			["Beyond Exit Planning", "document", "Original email draft to Rod"]
+		],
+		"stale": [
+			["Wayne Strategies", "document", "Rod Chamberlin Project Recovery Plan"],
+			["Wayne Strategies", "document", "Rod Chamberlin Website Project - Unified Action Plan"]
+		]
+	},
+	{
+		"key": "wayne_clients_rundown",
+		"source": "2026-09-29 Wayne set: written from DJ's records, not a real message",
+		"expectScope": "projects",
+		"expectDig": null,
+		"message": "give me a rundown of wayne strategies — the business itself and every client I'm working with right now",
+		"mustProjects": [
+			"Wayne Strategies",
+			"Redline Training Company Website",
+			"Beyond Exit Planning"
+		],
+		"helpfulProjects": [
+			"UXM Training Website",
+			"The Cadre Content Operations",
+			"The Cadre- DJ Internal"
+		],
+		"must": [
+			["Redline Training Company Website", "task", "Send Logan the Redline website offer"],
+			[
+				"Beyond Exit Planning",
+				"task",
+				"Prepare the first Conversations with Rod LinkedIn batch"
+			],
+			["Wayne Strategies", "task", "LA Industrial — send apparel proofs"]
+		],
+		"helpful": [
+			[
+				"UXM Training Website",
+				"task",
+				"Ian reviews and approves Hunt-Ready test email sequence"
+			],
+			["The Cadre Content Operations", "task", "Finalize YouTube Content Pipeline plan"]
+		],
+		"stale": []
+	}
+]

@@ -49,6 +49,21 @@ export const PATCH: RequestHandler = async ({ request, locals: { safeGetSession,
 		}
 	}
 
+	if (updates.discoverability === 'none') {
+		const { data: page } = await (supabase as any)
+			.from('builder_profiles')
+			.select('status')
+			.eq('user_id', user.id)
+			.maybeSingle();
+		if (page?.status === 'published') {
+			return ApiResponse.error(
+				'Your page is live, and people ask from it by your handle. Take your page down in Your page first.',
+				409,
+				'BUILDER_PAGE_LIVE'
+			);
+		}
+	}
+
 	const { data, error } = await (supabase as any)
 		.from('users')
 		.update(updates)

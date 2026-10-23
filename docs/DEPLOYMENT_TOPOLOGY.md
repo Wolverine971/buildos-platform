@@ -234,8 +234,7 @@ Calendar changes synced to database
 - **Queue Jobs:** Web enqueues asynchronous work either through worker API routes or shared
   Supabase queue helpers backed by `add_queue_job()` RPC
 - **Worker API:** Railway exposes authenticated Express routes such as `/queue/brief`,
-  `/queue/onboarding`, `/queue/chat/classify`, `/queue/braindump/process`, `/jobs/:jobId`,
-  and `/queue/stats`
+  `/queue/chat/classify`, `/jobs/:jobId`, and `/queue/stats`
 - **Worker Callbacks:** Worker-to-web callbacks use `PRIVATE_BUILDOS_WEBHOOK_SECRET` for
   notification email and calendar-sync webhooks
 - **Status Updates:** Worker updates job status in Supabase; web reads status from API routes,

@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/SUPABASE_FITNESS_AUDIT_2026-09-24.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-09-24; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Supabase fitness — evidence and implementation options
 
 **Owner: Codex · Tasker 104 · 2026-09-24 · Research delivered; busy-window validation pending**

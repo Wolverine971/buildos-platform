@@ -1,5 +1,10 @@
 <!-- docs/technical/implementation/AGENT_CHAT_ONTOLOGY_INTEGRATION_SPEC.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-01-12. Most of the files it cites no longer exist, so it describes a system that has since changed.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # BuildOS Agent Chat Enhancement - Implementation Specification
 
 ## Document Metadata

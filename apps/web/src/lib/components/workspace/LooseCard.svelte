@@ -20,6 +20,7 @@
 		filing = null,
 		filingName = null,
 		busy = false,
+		sorting = false,
 		onOpen,
 		onToggleSelect,
 		onMove,
@@ -38,6 +39,8 @@
 		filing?: WorkspaceSuggestion | null;
 		filingName?: string | null;
 		busy?: boolean;
+		/** Just captured and BuildOS is reading it (it may become tasks or move). */
+		sorting?: boolean;
 		onOpen: (item: LooseItem) => void;
 		onToggleSelect: (item: LooseItem) => void;
 		onMove: (item: LooseItem, anchor: HTMLElement) => void;
@@ -70,6 +73,8 @@
 	class:tx-weak={fresh}
 	class:lifted
 	class:selected
+	class:sorting
+	aria-busy={sorting || undefined}
 	data-drag-kind={selecting ? undefined : item.entity}
 	data-drag-id={selecting ? undefined : item.id}
 	data-drag-project={selecting ? undefined : workspaceId}
@@ -109,7 +114,9 @@
 
 	<div class="foot">
 		<span class="stamp text-muted-foreground">{stamp}</span>
-		{#if !selecting}
+		{#if sorting}
+			<span class="sorting-label micro-label" role="status">Sorting…</span>
+		{:else if !selecting}
 			{#if filing && filingName}
 				<span class="chip wt-ghost tx tx-bloom tx-weak" title={filing.reason}>
 					<button
@@ -165,6 +172,27 @@
 </div>
 
 <style>
+	.sorting-label {
+		color: hsl(var(--accent));
+		animation: sorting-pulse 1.4s ease-in-out infinite;
+	}
+	.card.sorting {
+		border-color: hsl(var(--accent) / 0.45);
+	}
+	@keyframes sorting-pulse {
+		0%,
+		100% {
+			opacity: 0.55;
+		}
+		50% {
+			opacity: 1;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.sorting-label {
+			animation: none;
+		}
+	}
 	.card {
 		position: relative;
 		display: grid;

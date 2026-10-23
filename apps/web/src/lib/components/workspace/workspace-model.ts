@@ -48,6 +48,20 @@ export type WorkspaceHome = {
 	totals: { notes: number; docs: number; tasks: number };
 };
 
+/** What sorting a fresh capture did (POST /api/workspace/capture/sort). The receipt is
+ * opaque to the page: it goes back as-is to undo. */
+export type CaptureSortResult = {
+	outcome: 'kept' | 'moved' | 'sorted' | 'partial' | 'skipped';
+	lines: string[];
+	/** New loose items now in the Workspace. */
+	added: LooseItem[];
+	/** Loose items that left the Workspace (the original note). */
+	removed_ids: string[];
+	receipt: unknown | null;
+};
+
+export type CaptureUndoResult = { restored: LooseItem | null; removed_ids: string[] };
+
 export const NOTE_TYPE_KEY = 'document.note';
 export const NOTE_TITLE_MAX = 80;
 export const CAPTURE_TEXT_MAX = 20_000;

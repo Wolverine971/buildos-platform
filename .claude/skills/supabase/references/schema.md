@@ -1,9 +1,9 @@
 # BuildOS Database Schema Reference
 
-Complete column listing for all 284 tables, grouped by domain.
+Complete column listing for all 287 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-10-23T20:00:06.609Z
+**Schema generated:** 2026-10-23T22:29:51.845Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -16,7 +16,7 @@ For enum values, constraints, and RLS, check migrations in `supabase/migrations/
 - [Users & Auth](#users--auth) (6 tables)
 - [People & Contacts](#people--contacts) (7 tables)
 - [Ontology System](#ontology-system) (47 tables)
-- [Projects & Tasks (Legacy)](#projects--tasks-legacy) (21 tables)
+- [Projects & Tasks (Legacy)](#projects--tasks-legacy) (23 tables)
 - [Chat & Agents](#chat--agents) (47 tables)
 - [Calendar](#calendar) (13 tables)
 - [Notifications](#notifications) (7 tables)
@@ -28,7 +28,7 @@ For enum values, constraints, and RLS, check migrations in `supabase/migrations/
 - [Daily Briefs](#daily-briefs) (5 tables)
 - [Monitoring & Analytics](#monitoring--analytics) (10 tables)
 - [Web & Webhooks](#web--webhooks) (4 tables)
-- [Other](#other) (59 tables)
+- [Other](#other) (60 tables)
 
 ---
 
@@ -64,7 +64,7 @@ created_at `string` · id `number` · ip_address `unknown` · updated_at `string
 
 ### people_requests
 
-agent_access_requested `string?` · created_at `string` · decided_at `string?` · decision `Json?` · expires_at `string` · from_user_id `string` · id `string` · kind `string` · note `string?` · project_hint `string?` · project_id `string?` · role_requested `string` · status `string` · to_user_id `string` · via `string` · via_agent_label `string?` · via_caller_id `string?` · via_invite_link_id `string?` · via_oauth_grant_id `string?`
+agent_access_requested `string?` · created_at `string` · decided_at `string?` · decision `Json?` · expires_at `string` · from_user_id `string` · id `string` · kind `string` · note `string?` · project_hint `string?` · project_id `string?` · requested_items `Json?` · role_requested `string` · status `string` · to_user_id `string` · via `string` · via_agent_label `string?` · via_caller_id `string?` · via_invite_link_id `string?` · via_oauth_grant_id `string?`
 
 ### user_contact_access_audit
 
@@ -232,7 +232,7 @@ change_type `string` · changed_at `string?` · changed_by `string?` · doc_stru
 
 ### onto_projects
 
-archived_at `string?` · created_at `string` · created_by `string` · deleted_at `string?` · description `string?` · doc_structure `Json?` · end_at `string?` · external_agent_access `string` · facet_context `string?` · facet_scale `string?` · facet_stage `string?` · icon_concept `string?` · icon_emoji `Json?` · icon_generated_at `string?` · icon_generation_prompt `string?` · icon_generation_source `string?` · icon_svg `string?` · id `string` · is_public `boolean?` · merged_into_project_id `string?` · name `string` · next_step_long `string?` · next_step_short `string?` · next_step_source `string?` · next_step_updated_at `string?` · org_id `string?` · parent_project_id `string?` · props `Json` · search_vector `unknown` · shared_folder_document_id `string?` · start_at `string?` · state_key `string` · type_key `string` · updated_at `string`
+archived_at `string?` · created_at `string` · created_by `string` · deleted_at `string?` · description `string?` · doc_structure `Json?` · end_at `string?` · external_agent_access `string` · facet_context `string?` · facet_scale `string?` · facet_stage `string?` · icon_concept `string?` · icon_emoji `Json?` · icon_generated_at `string?` · icon_generation_prompt `string?` · icon_generation_source `string?` · icon_svg `string?` · id `string` · is_public `boolean?` · kind `string` · merged_into_project_id `string?` · name `string` · next_step_long `string?` · next_step_short `string?` · next_step_source `string?` · next_step_updated_at `string?` · org_id `string?` · parent_project_id `string?` · props `Json` · search_vector `unknown` · shared_folder_document_id `string?` · start_at `string?` · state_key `string` · type_key `string` · updated_at `string`
 
 ### onto_public_page_review_attempts
 
@@ -293,6 +293,14 @@ assignment_reason `string?` · created_at `string` · id `string` · order `numb
 ### phases
 
 created_at `string` · description `string?` · end_date `string` · id `string` · name `string` · order `number` · project_id `string` · scheduling_method `string?` · start_date `string` · updated_at `string` · user_id `string`
+
+### project_access_events
+
+after `Json?` · before `Json?` · by_actor_id `string?` · created_at `string` · id `string` · invite_id `string?` · kind `string` · occurred_at `string` · project_id `string` · subject_actor_id `string?` · via `string?`
+
+### project_agent_settings
+
+editor_agents_write `boolean` · project_id `string` · updated_at `string`
 
 ### project_audit_suggestions
 
@@ -1064,7 +1072,7 @@ completed_at `string?` · created_at `string?` · deleted_at `string?` · depend
 
 ### external_agent_callers
 
-caller_key `string` · created_at `string` · id `string` · last_used_at `string?` · metadata `Json` · permission_requests_enabled `boolean` · policy `Json` · project_scope_mode `string` · provider `string` · status `string` · token_hash `string` · token_prefix `string` · updated_at `string` · user_id `string`
+caller_key `string` · created_at `string` · id `string` · include_shared_projects `boolean` · last_used_at `string?` · metadata `Json` · permission_requests_enabled `boolean` · policy `Json` · project_scope_mode `string` · provider `string` · status `string` · token_hash `string` · token_prefix `string` · updated_at `string` · user_id `string`
 
 ### external_agent_project_permissions
 
@@ -1229,3 +1237,7 @@ chat_session_id `string?` · created_at `string` · deleted_at `string?` · id `
 ### voice_notes
 
 created_at `string` · deleted_at `string?` · duration_seconds `number?` · file_size_bytes `number` · group_id `string?` · id `string` · linked_entity_id `string?` · linked_entity_type `string?` · metadata `Json` · mime_type `string` · recorded_at `string?` · segment_index `number?` · storage_bucket `string` · storage_path `string` · transcript `string?` · transcription_error `string?` · transcription_model `string?` · transcription_status `string` · updated_at `string` · user_id `string`
+
+### workspace_suggestions
+
+confidence `number?` · created_at `string` · decided_at `string?` · id `string` · item_key `string` · items `Json` · kind `string` · model `string?` · proposed_name `string?` · reason `string` · result `Json?` · run_id `string?` · status `string` · target_project_id `string?` · updated_at `string` · user_id `string` · workspace_project_id `string`

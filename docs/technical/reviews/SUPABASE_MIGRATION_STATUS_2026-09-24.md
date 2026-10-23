@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/SUPABASE_MIGRATION_STATUS_2026-09-24.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-09-24; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # All local migrations versus production — September 24, 2026
 
 > **Status update, 2026-09-24 evening:** three of the four "confirmed absent" migrations are now

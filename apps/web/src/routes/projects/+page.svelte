@@ -57,6 +57,8 @@
 	import WorkspaceShelf from '$lib/components/workspace/WorkspaceShelf.svelte';
 	import GraduateDialog from '$lib/components/workspace/GraduateDialog.svelte';
 	import type {
+		CaptureSortResult,
+		CaptureUndoResult,
 		LooseItem,
 		WorkspaceHome,
 		WorkspaceSuggestion
@@ -293,6 +295,7 @@
 	});
 
 	let freshIds = $state<Set<string>>(new Set());
+	let sortingIds = $state<Set<string>>(new Set());
 	let busyIds = $state<Set<string>>(new Set());
 	let refreshingSuggestions = $state(false);
 	let graduate = $state<{
@@ -344,18 +347,50 @@
 		};
 	}
 
-	function handleCaptured(item: LooseItem) {
-		if (workspaceHome) {
-			workspaceHome = { ...workspaceHome, items: [item, ...workspaceHome.items] };
-		} else {
+	function addLoose(items: LooseItem[]) {
+		if (!items.length) return;
+		if (!workspaceHome) {
 			void refreshWorkspace();
+			return;
 		}
-		freshIds = new Set([...freshIds, item.id]);
+		const ids = new Set(items.map((item) => item.id));
+		workspaceHome = {
+			...workspaceHome,
+			items: [...items, ...workspaceHome.items.filter((item) => !ids.has(item.id))]
+		};
+		freshIds = new Set([...freshIds, ...ids]);
 		setTimeout(() => {
 			const next = new Set(freshIds);
-			next.delete(item.id);
+			for (const id of ids) next.delete(id);
 			freshIds = next;
 		}, 6000);
+	}
+
+	function handleCaptured(item: LooseItem) {
+		addLoose([item]);
+		sortingIds = new Set([...sortingIds, item.id]);
+	}
+
+	// Sorting may turn the note into tasks, file it into a project or mark a project task
+	// done: swap the card for what it became and refresh project tiles when they changed.
+	function handleSorted(documentId: string, result: CaptureSortResult) {
+		const next = new Set(sortingIds);
+		next.delete(documentId);
+		sortingIds = next;
+		removeLoose(result.removed_ids);
+		addLoose(result.added);
+		if (
+			result.outcome === 'sorted' ||
+			result.outcome === 'moved' ||
+			result.outcome === 'partial'
+		)
+			void invalidate('ontology:projects');
+	}
+
+	function handleSortUndone(result: CaptureUndoResult) {
+		removeLoose(result.removed_ids);
+		if (result.restored) addLoose([result.restored]);
+		void invalidate('ontology:projects');
 	}
 
 	function looseTitle(item: DesktopItem): string | null {
@@ -1003,6 +1038,8 @@
 			<!-- Capture first: a thought lands in the Workspace instantly, no project to pick. -->
 			<WorkspaceCapture
 				onCaptured={handleCaptured}
+				onSorted={handleSorted}
+				onUndone={handleSortUndone}
 				autofocus={$page.url.searchParams.get('capture') === '1'}
 			/>
 		{/if}
@@ -1434,6 +1471,7 @@
 		{projectsById}
 		query={searchQuery}
 		{freshIds}
+		{sortingIds}
 		lifted={api.lifted}
 		{busyIds}
 		refreshing={refreshingSuggestions}

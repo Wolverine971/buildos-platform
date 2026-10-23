@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/SUPABASE_CONTAINMENT_IMPLEMENTATION_2026-09-24.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-09-24; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Supabase containment implementation — September 24, 2026
 
 **Prepared and locally validated; not applied to production or QA.** DJ authorized starting

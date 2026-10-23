@@ -45,10 +45,13 @@ buildos-platform/
 
 ### Prerequisites
 
-- Node.js **≥ 20.19** (Vercel runtime is `nodejs22.x`)
+- Node.js **22.23.4+ within 22.x** or **24.22.1+ within 24.x** (`.nvmrc` and CI use 22.23.4)
 - pnpm **>= 11** (the root package pins `pnpm@11.7.0`)
 - A Supabase project
 - OpenRouter API key (or OpenAI/Anthropic as fallback)
+
+The web package accepts both Node lines. Vercel selects the newest supported build
+major in that range (24.x); the SvelteKit adapter keeps server functions on `nodejs22.x`.
 
 ### Install & run
 

@@ -773,7 +773,9 @@ the actor was told to use in the current prompt — only the tool descriptions a
 
 **Config.** `CHAT_MUTATION_BATCH_LANE` defaults to `true`. Set it to `false` for one deploy to fall
 back to the contract lane if the battery finds a regression. The flag and the contract lane are
-deleted together.
+deleted together. (Done 2026-10-18: the flag, the contract lane's worker passes, and the
+`declare_turn_contract` / `cancel_turn_contract` mounts are gone; the contract outcome schema
+survives as the batch reviewer's `request_expectation`.)
 
 **Verification:** runtime 496 tests + typecheck + build clean; worker `tests/agenticChat` 1009
 passed / 19 skipped + typecheck clean; web 1165 passed, `pnpm --filter @buildos/web check` 0 errors.

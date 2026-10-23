@@ -592,24 +592,22 @@ export async function graduateItems(input: {
  * Undo a graduate: move the items back to the Workspace, then remove the project if
  * nothing else was added to it meanwhile (its START HERE doesn't count).
  */
-export async function undoGraduate(input: {
+/** Puts back everything one Organize batch moved. False when there is nothing left to
+ * undo or something now blocks it. */
+export async function undoMoveBatch(input: {
 	session: Client;
 	admin: Client;
 	userId: string;
-	projectId: string;
 	batchId: string;
-}): Promise<{ status: 'undone' | 'items_back_project_kept' | 'nothing' }> {
+}): Promise<boolean> {
 	const review = (await undoOrganize({
 		session: input.session,
 		admin: input.admin,
 		userId: input.userId,
 		sourceBatchId: input.batchId
 	})) as { status?: string; confirmation_token?: string; impact?: { blockers: string[] }[] };
-	if (review.status === 'nothing_to_undo' || !review.confirmation_token) {
-		return { status: 'nothing' };
-	}
-	if ((review.impact ?? []).some((impact) => impact.blockers?.length))
-		return { status: 'nothing' };
+	if (review.status === 'nothing_to_undo' || !review.confirmation_token) return false;
+	if ((review.impact ?? []).some((impact) => impact.blockers?.length)) return false;
 	await undoOrganize({
 		session: input.session,
 		admin: input.admin,
@@ -618,6 +616,17 @@ export async function undoGraduate(input: {
 		batchId: crypto.randomUUID(),
 		confirmationToken: review.confirmation_token
 	});
+	return true;
+}
+
+export async function undoGraduate(input: {
+	session: Client;
+	admin: Client;
+	userId: string;
+	projectId: string;
+	batchId: string;
+}): Promise<{ status: 'undone' | 'items_back_project_kept' | 'nothing' }> {
+	if (!(await undoMoveBatch(input))) return { status: 'nothing' };
 
 	const [docs, tasks] = await Promise.all([
 		input.session

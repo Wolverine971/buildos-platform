@@ -1,5 +1,10 @@
 <!-- docs/architecture/JEV_EMAIL_SCAN_2026-09-24.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-09-24; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Jev Email Scan + Gmail Search Provenance (2026-09-24)
 
 DJ's ask: in chat, "did I get any emails relevant to 9takes today?" should come back fast. Jev

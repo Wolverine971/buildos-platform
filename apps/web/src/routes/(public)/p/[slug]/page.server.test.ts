@@ -1,6 +1,12 @@
 // apps/web/src/routes/(public)/p/[slug]/page.server.test.ts
 import { describe, expect, it, vi } from 'vitest';
 
+const builderMocks = vi.hoisted(() => ({ handleForSlug: vi.fn(async () => null as string | null) }));
+vi.mock('$lib/supabase/admin', () => ({ createAdminSupabaseClient: () => ({}) }));
+vi.mock('$lib/server/builder-profile/builder-profile.service', () => ({
+	builderHandleForAuthorSlug: builderMocks.handleForSlug
+}));
+
 function makeLocals(user: { id: string; email: string | null } | null = null) {
 	return {
 		safeGetSession: vi.fn(async () => (user ? { user, session: {} } : {}))
@@ -144,5 +150,21 @@ describe('legacy public page route', () => {
 				fetch: fetchMock
 			} as any)
 		).rejects.toMatchObject({ status: 404 });
+	});
+
+	it('sends an author index to their published builder page', async () => {
+		builderMocks.handleForSlug.mockResolvedValueOnce('djwayne');
+		const { load } = await import('./+page.server');
+		await expect(
+			load({
+				params: { slug: 'dj-wayne' },
+				locals: makeLocals(),
+				fetch: async () =>
+					new Response(JSON.stringify({ success: false, error: 'Not found' }), {
+						status: 404,
+						headers: { 'Content-Type': 'application/json' }
+					})
+			} as any)
+		).rejects.toMatchObject({ status: 302, location: '/@djwayne' });
 	});
 });

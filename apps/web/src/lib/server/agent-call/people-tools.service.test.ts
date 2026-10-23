@@ -17,6 +17,7 @@ vi.mock('$lib/services/ontology/ontology-projects.service', () => ({
 }));
 
 import { executePeopleTool, PEOPLE_TOOL_NAMES, PEOPLE_TOOLS } from './people-tools.service';
+import { toAgentJson } from '$lib/builder-profile/agent-json';
 
 type RpcHandler = (
 	name: string,
@@ -58,9 +59,10 @@ describe('people tools', () => {
 		mocks.fetchProjectSummaries.mockResolvedValue([]);
 	});
 
-	it('exposes five tools, none of which approve or share', () => {
+	it('exposes six tools, none of which approve or share', () => {
 		expect(PEOPLE_TOOLS.map((tool) => tool.name)).toEqual([
 			'find_buildos_person',
+			'get_builder_profile',
 			'request_buildos_access',
 			'list_buildos_people',
 			'request_project_access',
@@ -264,6 +266,210 @@ describe('people tools', () => {
 			}
 		]);
 		expect(result.result.shared_but_not_given_to_this_connection).toBe(1);
+	});
+
+	describe('builder pages', () => {
+		const publishedView = {
+			found: true,
+			status: 'published',
+			viewer: {
+				signed_in: true,
+				is_owner: false,
+				works_with: true,
+				follows: false,
+				ask_pending: false
+			},
+			profile: {
+				handle: 'djwayne',
+				name: 'DJ Wayne',
+				headline: 'Building BuildOS',
+				now_text: 'Shipping builder pages'
+			},
+			settings: {
+				show_build_log: true,
+				show_agent_split: true,
+				show_writing: true,
+				show_builds_with: true
+			},
+			links: [{ id: 'l1', kind: 'link', url: 'https://9takes.com', audience: 'anyone' }],
+			projects: [
+				{
+					id: 'p1',
+					level: 'live',
+					name: 'BuildOS',
+					pitch: 'A thinking environment',
+					stage: 'execution',
+					audience: 'collaborators',
+					looking_for: 'A designer who likes print'
+				}
+			],
+			writing: [],
+			builds_with: []
+		};
+
+		it('reads a page as the connected person and returns the agent JSON', async () => {
+			const { admin, calls } = fakeAdmin((name) =>
+				name === 'get_builder_profile'
+					? { data: publishedView, error: null }
+					: { data: null, error: null }
+			);
+			const result = (await executePeopleTool({
+				admin,
+				userId: 'user-sam',
+				scope,
+				toolName: 'get_builder_profile',
+				arguments: { handle: 'https://build-os.com/@DJWayne?ref=card' },
+				connectorOrigin: 'https://build-os.com'
+			})) as any;
+			// The viewer is the connection's person, so collaborator-only cards follow
+			// the same rules as in their browser.
+			expect(calls).toEqual([
+				{ name: 'get_builder_profile', args: { p_handle: 'djwayne', p_viewer: 'user-sam' } }
+			]);
+			expect(result).toEqual({
+				ok: true,
+				result: { found: true, ...toAgentJson(publishedView as any, 'https://build-os.com') }
+			});
+			expect(result.result).toMatchObject({
+				handle: 'djwayne',
+				url: 'https://build-os.com/@djwayne',
+				projects: [
+					{
+						name: 'BuildOS',
+						looking_for: 'A designer who likes print',
+						you_can: ['follow', 'ask_to_join']
+					}
+				]
+			});
+			expect(result.result.how_to_ask).toContain('request_buildos_access');
+		});
+
+		it('links to the public site when there is no connector origin', async () => {
+			const { admin } = fakeAdmin(() => ({ data: publishedView, error: null }));
+			const result = (await executePeopleTool({
+				admin,
+				userId: 'user-sam',
+				scope,
+				toolName: 'get_builder_profile',
+				arguments: { handle: '@djwayne' }
+			})) as any;
+			expect(result.result.url).toBe('https://build-os.com/@djwayne');
+		});
+
+		it('gives one neutral answer for unknown, unpublished, and draft pages', async () => {
+			for (const data of [{ found: false }, null, { ...publishedView, status: 'draft' }]) {
+				const { admin } = fakeAdmin(() => ({ data, error: null }));
+				const result = await executePeopleTool({
+					admin,
+					userId: 'user-sam',
+					scope,
+					toolName: 'get_builder_profile',
+					arguments: { handle: '@Ghost' }
+				});
+				expect(result).toEqual({
+					ok: true,
+					result: { found: false, handle: 'ghost', message: 'No public page for @ghost.' }
+				});
+			}
+		});
+
+		it('asks for a handle when none is given', async () => {
+			const { admin, calls } = fakeAdmin(() => ({ data: null, error: null }));
+			const result = await executePeopleTool({
+				admin,
+				userId: 'user-sam',
+				scope,
+				toolName: 'get_builder_profile',
+				arguments: { handle: ' @ ' }
+			});
+			expect(result).toMatchObject({ ok: false, error: { code: 'INVALID_ARGUMENTS' } });
+			expect(calls).toEqual([]);
+		});
+
+		it('find_buildos_person links a published page and never a draft', async () => {
+			for (const [status, linked] of [
+				['published', true],
+				['draft', false]
+			] as const) {
+				const { admin, calls } = fakeAdmin((name) =>
+					name === 'builder_profile_target'
+						? {
+								data: [
+									{
+										user_id: 'user-dj',
+										username: 'djwayne',
+										status,
+										activity_refreshed_at: null
+									}
+								],
+								error: null
+							}
+						: {
+								data: { found: true, is_self: false, handle: 'djwayne', name: 'DJ Wayne' },
+								error: null
+							}
+				);
+				const result = (await executePeopleTool({
+					admin,
+					userId: 'user-sam',
+					scope,
+					toolName: 'find_buildos_person',
+					arguments: { handle: '@djwayne' },
+					connectorOrigin: 'https://build-os.com'
+				})) as any;
+				expect(calls.map((call) => call.name)).toEqual([
+					'find_person_by_handle',
+					'builder_profile_target'
+				]);
+				expect(calls[1]?.args).toEqual({ p_handle: 'djwayne' });
+				expect(result.result.found).toBe(true);
+				expect(result.result.next_step).toContain('request_buildos_access');
+				if (linked) {
+					expect(result.result.profile_url).toBe('https://build-os.com/@djwayne');
+					expect(result.result.next_step).toContain('get_builder_profile');
+				} else {
+					expect(result.result).not.toHaveProperty('profile_url');
+					expect(result.result.next_step).not.toContain('get_builder_profile');
+				}
+			}
+		});
+
+		it('find_buildos_person still answers when the page check fails, and never links someone it cannot find', async () => {
+			const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+			const failing = fakeAdmin((name) =>
+				name === 'builder_profile_target'
+					? { data: null, error: { message: 'boom' } }
+					: { data: { found: true, is_self: false, handle: 'djwayne' }, error: null }
+			);
+			const found = (await executePeopleTool({
+				admin: failing.admin,
+				userId: 'user-sam',
+				scope,
+				toolName: 'find_buildos_person',
+				arguments: { handle: 'djwayne' }
+			})) as any;
+			expect(found).toMatchObject({ ok: true, result: { found: true, handle: 'djwayne' } });
+			expect(found.result).not.toHaveProperty('profile_url');
+			warn.mockRestore();
+
+			const hidden = fakeAdmin((name) =>
+				name === 'builder_profile_target'
+					? {
+							data: [{ user_id: 'user-dj', username: 'djwayne', status: 'published' }],
+							error: null
+						}
+					: { data: { found: false }, error: null }
+			);
+			const notFound = (await executePeopleTool({
+				admin: hidden.admin,
+				userId: 'user-sam',
+				scope,
+				toolName: 'find_buildos_person',
+				arguments: { handle: 'djwayne' }
+			})) as any;
+			expect(notFound.result).toMatchObject({ found: false });
+			expect(notFound.result).not.toHaveProperty('profile_url');
+		});
 	});
 
 	describe('asking a project owner for more (tasker 140)', () => {

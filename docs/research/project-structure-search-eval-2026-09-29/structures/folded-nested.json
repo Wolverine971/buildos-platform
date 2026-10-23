@@ -1,0 +1,26 @@
+{
+	"name": "folded + nested",
+	"fold": [
+		{
+			"into": "Wayne Strategies",
+			"from": [
+				"DJ Wayne Studio",
+				"Julian Dorey — Episode Research Desk Proposal",
+				"Hannibal Is Hungry — Receipts Desk Proposal",
+				"Nomtastic Kim — Maryland Food Map Proposal"
+			]
+		}
+	],
+	"nest": [
+		{
+			"parent": "Wayne Strategies",
+			"children": [
+				"UXM Training Website",
+				"Beyond Exit Planning",
+				"Redline Training Company Website",
+				"The Cadre Content Operations",
+				"The Cadre- DJ Internal"
+			]
+		}
+	]
+}

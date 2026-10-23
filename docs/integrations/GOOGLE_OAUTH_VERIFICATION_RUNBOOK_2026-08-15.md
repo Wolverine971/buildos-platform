@@ -2,9 +2,29 @@
 
 # BuildOS Google OAuth Verification Runbook
 
-Status: OAuth branding configured; verification not submitted  
-Last updated: 2026-08-15  
+Status: Branding verified and published; data-access verification not submitted
+
+Last updated: 2026-10-04
+
 Google Cloud project: `buildos-gmail-read`
+
+## Current checkpoint
+
+The live Google Console was inspected on October 4, 2026. The project is **External / In
+production**, with **3 users / 100 unverified-user cap**. Its branding was verified and published
+during this readiness pass; Google confirms it is being shown to users. Calendar and Gmail scopes
+remain unverified. The scope justifications, Gmail feature category, and demo video were blank.
+
+Production Settings shows two connected Calendar accounts and three Gmail accounts with reading
+enabled. This confirms deployed connection surfaces, not a newly completed consent or write test.
+The public homepage, Privacy Policy, Terms, and login page returned HTTP 200 without cookies. The
+deployed privacy policy is version `2026-09-24` and includes optional integrations, Limited Use,
+AI processing, retention, and disconnect disclosures.
+
+Use the [October 4 submission packet](GOOGLE_OAUTH_SUBMISSION_PACKET_2026-10-04.md) for the scope
+audit, remaining client cleanup, draft form answers, recording script, local configuration gaps,
+and repeatable readiness command. The older Testing-mode notes in implementation documents are
+historical; they do not describe this project's current publishing status.
 
 ## Objective
 
@@ -35,6 +55,14 @@ pre-submission gate is complete and the requested scopes have been frozen.
     - Callback: `https://www.build-os.com/auth/google/calendar-callback`
 2. `BuildOS Gmail Read Production`
     - Callback: `https://build-os.com/auth/google/gmail-read/callback`
+3. `BuildOS Agentic Gate QA`
+    - Callback: `http://localhost:5174/auth/google/calendar-callback`
+    - Still present on October 4 despite retirement of the isolated QA workflow. Confirm consumers
+      before removing it or moving development into a separate project. No client was deleted.
+
+Google sign-in is separate: local configuration identifies project number `924402611458`, while
+the integration project uses `941207291119`. Its live Console settings and production client
+mapping still need confirmation. Do not substitute either integration client into Supabase Auth.
 
 ### Scopes currently shown in Google Auth Platform
 
@@ -64,33 +92,37 @@ supports the shipped feature. Freeze the result before recording the demo.
 
 ### 1. Public product and legal pages
 
-- [ ] Deploy the homepage disclosure and visible links to the Privacy Policy and Terms of Service.
-- [ ] Deploy the expanded Google API Data section in the Privacy Policy.
-- [ ] Confirm all three public URLs return HTTP 200 while signed out:
+- [x] Deploy the homepage disclosure and visible links to the Privacy Policy and Terms of Service.
+- [x] Deploy the expanded Google API Data section in the Privacy Policy.
+- [x] Confirm all three public URLs return HTTP 200 while signed out (October 4, 2026):
     - `https://build-os.com/`
     - `https://build-os.com/privacy`
     - `https://build-os.com/terms`
-- [ ] Confirm the homepage accurately demonstrates or describes Calendar and read-only Gmail use.
+- [x] Confirm the homepage describes Calendar and read-only Gmail use.
 
 ### 2. OAuth branding
 
-The Google Auth Platform Branding page was saved on 2026-08-15 with:
+The Google Auth Platform Branding page was checked and updated on 2026-10-04:
 
 - [x] App name: `BuildOS`
-- [x] User support email: `djwayne35@gmail.com` (or a monitored `@build-os.com` address if Google
-      permits it and that address will be maintained)
-- [x] App logo: `apps/web/static/dither-logo/brain-bolt-dither-color 120 x 120.png`
+- [ ] Change user support email from `djwayne35@gmail.com` to the user-confirmed
+      `dj@build-os.com`. The Workspace account is signed in but has no access to this project.
+      An explicit approval request is pending for the project-level `roles/oauthconfig.editor`
+      grant, which includes OAuth client-secret access. No IAM grant has been made.
+- [x] Replace the older dithered logo with the clean app icon:
+      `apps/web/static/AppImages/android/android-launchericon-512-512.png`.
 - [x] Application home page: `https://build-os.com/`
 - [x] Privacy Policy: `https://build-os.com/privacy`
 - [x] Terms of Service: `https://build-os.com/terms`
 - [x] Authorized domain: `build-os.com`
 - [x] Developer contact: `djwayne35@gmail.com`
 
-The Branding page now enables **Verify branding**, but the Verification Center still reports that
-branding must be verified and published before **Prepare for verification** becomes available. Do
-not click **Verify branding** until the disclosure changes are deployed and the public URLs are
-checked. Do not submit the final data-access verification request until the rest of this runbook is
-complete.
+- [x] Verify branding after checking the deployed disclosures (October 4, 2026).
+- [x] Publish verified branding. Google confirms: “Your branding has been verified and is being
+      shown to users.”
+
+Branding approval does not approve Calendar or Gmail access. Complete the remaining scope, client,
+video, and security-assessment work before the final data-access submission.
 
 ### 3. Data-access form
 
@@ -145,7 +177,7 @@ original recording available in case Google asks for a revised demonstration.
 ### 5. Internal evidence packet
 
 - [ ] Screenshot the final Branding, Audience, Data Access, Clients, and Verification Center pages.
-- [ ] Save the deployed Privacy Policy version/date.
+- [x] Save the deployed Privacy Policy version/date: `2026-09-24`, checked October 4.
 - [ ] Record the final scope list and the code paths that use each scope.
 - [ ] Record the production callback URLs and verify there are no unused OAuth clients in the
       project.

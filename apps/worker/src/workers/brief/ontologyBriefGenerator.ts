@@ -20,6 +20,8 @@ import { getHoliday } from '../../lib/utils/holiday-finder.js';
 import { SmartLLMService } from '../../lib/services/smart-llm-service.js';
 import { OntologyBriefDataLoader, getWorkMode } from './ontologyBriefDataLoader.js';
 import { formatWorkspaceLooseEnds, isWorkspaceProjectRow } from './workspaceBriefSection.js';
+import { formatBuilderFollowsSection } from './builderFollowsBriefSection.js';
+import { formatOthersActivitySection } from './othersActivityBriefSection.js';
 import {
 	OntologyAnalysisPrompt,
 	OntologyExecutiveSummaryPrompt,
@@ -1017,87 +1019,27 @@ function generateMainBriefMarkdown(
 
 	// Recent Wins - Momentum Section (completed tasks)
 	const completedTasks = briefData.recentUpdates.tasks.filter((t) => t.state_key === 'done');
-	const activityEntries = briefData.projects.flatMap((project) => project.activityLogs);
-	const completedActivityEntries = activityEntries.filter((e) => e.action === 'completed');
 
-	if (completedTasks.length > 0 || completedActivityEntries.length > 0) {
+	if (completedTasks.length > 0) {
 		mainBrief += `## ✅ Recent Wins\n\n`;
-
-		if (completedTasks.length > 0) {
-			mainBrief += `**${completedTasks.length} task${completedTasks.length > 1 ? 's' : ''} completed** in the last 24h:\n`;
-			for (const task of completedTasks.slice(0, 5)) {
-				const projectName = projectNameMap.get(task.project_id) || 'Unknown';
-				mainBrief += `- ✅ [${task.title}](/projects/${task.project_id}/tasks/${task.id}) — [${projectName}](${projectHref(task.project_id)})\n`;
-			}
-			if (completedTasks.length > 5) {
-				mainBrief += `- ... and ${completedTasks.length - 5} more\n`;
-			}
-			mainBrief += '\n';
+		mainBrief += `**${completedTasks.length} task${completedTasks.length > 1 ? 's' : ''} completed** in the last 24h:\n`;
+		for (const task of completedTasks.slice(0, 5)) {
+			const projectName = projectNameMap.get(task.project_id) || 'Unknown';
+			mainBrief += `- ✅ [${task.title}](/projects/${task.project_id}/tasks/${task.id}) — [${projectName}](${projectHref(task.project_id)})\n`;
 		}
+		if (completedTasks.length > 5) {
+			mainBrief += `- ... and ${completedTasks.length - 5} more\n`;
+		}
+		mainBrief += '\n';
 	}
 
-	// Other Activity (non-completion updates)
-	const totalUpdates =
-		briefData.recentUpdates.tasks.length +
-		briefData.recentUpdates.goals.length +
-		briefData.recentUpdates.documents.length +
-		(briefData.recentUpdates.plans?.length ?? 0);
-
-	const hasSharedProjects = briefData.projects.some((project) => project.isShared);
-	const nonCompletionEntries = activityEntries.filter((e) => e.action !== 'completed');
-
-	if (nonCompletionEntries.length > 0 && totalUpdates > 3) {
-		mainBrief += `## Recent Activity\n\n`;
-
-		const appendActivityEntries = (entries: ProjectActivityEntry[], headingPrefix: string) => {
-			if (entries.length === 0) return;
-
-			const sorted = [...entries].sort(
-				(a, b) => parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime()
-			);
-			const grouped = new Map<string, ProjectActivityEntry[]>();
-			for (const entry of sorted) {
-				const list = grouped.get(entry.projectId) ?? [];
-				if (list.length >= 2) continue;
-				list.push(entry);
-				grouped.set(entry.projectId, list);
-			}
-
-			const groupedEntries = Array.from(grouped.values())
-				.sort(
-					(a, b) =>
-						parseISO(b[0].createdAt).getTime() - parseISO(a[0].createdAt).getTime()
-				)
-				.slice(0, 3);
-
-			for (const entriesForProject of groupedEntries) {
-				const { projectId, projectName } = entriesForProject[0];
-				mainBrief += `${headingPrefix} [${projectName}](/projects/${projectId})\n`;
-				for (const entry of entriesForProject) {
-					mainBrief += `- ${formatActivityEntry(entry)}\n`;
-				}
-				mainBrief += '\n';
-			}
-		};
-
-		const sharedEntries = nonCompletionEntries.filter((entry) => entry.isShared);
-		const ownedEntries = nonCompletionEntries.filter((entry) => !entry.isShared);
-
-		if (hasSharedProjects && sharedEntries.length > 0) {
-			if (ownedEntries.length > 0) {
-				appendActivityEntries(ownedEntries, '###');
-			}
-			mainBrief += `### Shared Projects\n\n`;
-			appendActivityEntries(sharedEntries, '####');
-		} else {
-			appendActivityEntries(
-				ownedEntries.length > 0 ? ownedEntries : nonCompletionEntries,
-				'###'
-			);
-		}
-	}
+	// What other people, their agents, and your agents changed. Replaces the old
+	// "Recent Activity" list, which mixed in your own edits and never named agents.
+	mainBrief += formatOthersActivitySection(briefData.othersActivity);
 
 	mainBrief += formatWorkspaceLooseEnds(workspace, briefData.timezone);
+	// Above Project Details on purpose: the email cuts the brief off at that heading.
+	mainBrief += formatBuilderFollowsSection(briefData.builderFollows);
 
 	// Detailed Project Briefs
 	if (projectBriefContents.length > 0) {
@@ -1249,21 +1191,27 @@ export async function generateOntologyDailyBrief(
 		// Step 2: Prepare brief data
 		await updateProgress(dailyBrief.id, { step: 'preparing_brief_data', progress: 25 }, jobId);
 
-		const calendar = await dataLoader.loadCalendarBriefData(
-			userId,
-			actorId,
-			projectsData,
-			briefDateInUserTz,
-			userTimezone
-		);
+		const [calendar, builderFollows, othersActivity] = await Promise.all([
+			dataLoader.loadCalendarBriefData(
+				userId,
+				actorId,
+				projectsData,
+				briefDateInUserTz,
+				userTimezone
+			),
+			dataLoader.loadBuilderFollowsBriefSection(userId),
+			dataLoader.loadOthersActivityBriefSection(userId, projectsData, briefDateInUserTz)
+		]);
 
 		const briefData = dataLoader.prepareBriefData(
 			projectsData,
 			briefDateInUserTz,
 			userTimezone,
 			calendar,
-			recentlyPausedProjects
+			recentlyPausedProjects,
+			builderFollows
 		);
+		briefData.othersActivity = othersActivity;
 		const yesterdayPlan = await loadYesterdayPlanContinuity(
 			userId,
 			briefDateInUserTz,

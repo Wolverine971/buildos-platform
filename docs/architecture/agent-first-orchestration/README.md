@@ -2,8 +2,11 @@
 
 # Agent-First Orchestration System
 
-**Status:** Proposed — **Phase A closed 2026-07-26**
+**Status:** Proposed — **Phase A closed 2026-07-26**; code deleted 2026-10-18
 **Date:** 2026-07-24 (Phase A closed 2026-07-26)
+**Code:** `packages/agent-orchestrator` and the phase-a/open-brief suites were deleted in the
+2026-10-18 code triage (test-only, no runtime importers). Last present at commit `e16b39a3a`;
+restore with `git checkout e16b39a3a -- packages/agent-orchestrator`.
 **Owner:** BuildOS
 **Implementation state:** Phase A is **closed**; the recorded decision is in
 [PHASE_A_RESULTS.md](./PHASE_A_RESULTS.md). The routing gate was recorded as

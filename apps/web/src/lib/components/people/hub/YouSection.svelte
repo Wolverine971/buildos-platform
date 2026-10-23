@@ -166,8 +166,8 @@
 			<FormField
 				label="Handle"
 				labelFor="hub-handle"
-				hint="People add you to projects with it. It's also your public URL: build-os.com/p/{usernameValue ||
-					derivedFallback}/…"
+				hint="People add you to projects with it. Your page lives at build-os.com/@{usernameValue ||
+					derivedFallback}."
 			>
 				<div class="flex flex-col gap-2 sm:flex-row">
 					<div

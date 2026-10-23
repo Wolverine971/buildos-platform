@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/SUPABASE_WORK_ORDER_AND_QUEUE_WAKE_2026-09-24.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-09-24; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Supabase work order and queue-wake investigation
 
 **Implementation update:** DJ removed the mandatory per-change-set gate requirement after this

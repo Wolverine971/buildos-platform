@@ -26,6 +26,8 @@ vi.mock('../src/workers/brief/ontologyBriefDataLoader.js', () => ({
 		loadUserOntologyData = async () => [{ tasks: [] }];
 		loadRecentlyPausedProjects = async () => [];
 		loadCalendarBriefData = async () => undefined;
+		loadBuilderFollowsBriefSection = async () => null;
+		loadOthersActivityBriefSection = async () => null;
 		prepareBriefData = mocks.prepareBriefData;
 		calculateMetadata = () => ({});
 	}

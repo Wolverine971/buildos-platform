@@ -19,6 +19,8 @@ A PostHog workflow has **two halves**. Most people only build the first.
 
 ## Status log
 
+- **2026-10-20 — Speed Insights removed.** The paid add-on was canceled, and its browser loader and package dependency were removed. Vercel Web Analytics remains in `apps/web/src/lib/services/browser-analytics.ts`.
+
 - **2026-07-01 — Half A code shipped & deploying.** All 8 funnel events + UTM first-touch instrumented (see checklist below); key live-verified with a test event. DJ deploying to prod today. **Follow-up scheduled: week of 2026-07-08 → 2026-07-15 — re-check this exact runbook:** are events flowing in prod (signup, brain_dump_created, project_created, brief_generated)? Did the migration get applied + `gen:types` run? Are Vercel/Railway env vars set? Then: build the 4 insights and start Half B (MCP).
 - **2026-07-02 — Dashboard created.** DJ reports PostHog env vars, the attribution migration, and generated types are likely complete; not re-confirmed in this thread. Added a dated verification log: [`posthog-analytics-health-log-2026-07-02.md`](./posthog-analytics-health-log-2026-07-02.md). Capture wrappers now emit searchable `[posthog-health]` runtime logs for the eight funnel events, and web/worker capture failures persist to `error_logs` with `operation_type = 'posthog_capture'`. Created the PostHog dashboard **BuildOS Activation** with the four initial insights. One-time check-back scheduled for **2026-07-09** to review one week of data quality.
 

@@ -29,6 +29,10 @@
 		{
 			"path": "/api/cron/security-events-retention",
 			"schedule": "30 4 * * *"
+		},
+		{
+			"path": "/api/cron/builder-profiles",
+			"schedule": "0 11 * * *"
 		}
 	]
 }

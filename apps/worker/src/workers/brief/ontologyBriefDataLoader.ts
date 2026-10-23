@@ -32,6 +32,7 @@ export const ENTITY_CAPS = {
 } as const;
 
 import type {
+	BuilderFollowsBriefSection,
 	CalendarBriefCounts,
 	CalendarBriefItem,
 	CalendarBriefItemKind,
@@ -54,6 +55,7 @@ import type {
 	OntoTask,
 	OntologyBriefData,
 	OntologyBriefMetadata,
+	OthersActivityBriefSection,
 	ProjectActivityEntry,
 	ProjectBriefData,
 	ProjectPauseNotice,
@@ -63,6 +65,16 @@ import type {
 	UnblockingTask
 } from './ontologyBriefTypes.js';
 import { buildWorkspaceBriefSection, isWorkspaceProjectRow } from './workspaceBriefSection.js';
+import {
+	type BuilderFollowsBriefClient,
+	fetchBuilderFollowsBriefSection
+} from './builderFollowsBriefSection.js';
+import {
+	type OthersActivityCaller,
+	classifyLogChange,
+	fetchOthersActivityBriefSection,
+	formatAgentLabel
+} from './othersActivityBriefSection.js';
 
 export const CALENDAR_BRIEF_CAPS = {
 	TODAY: 8,
@@ -1691,7 +1703,7 @@ export class OntologyBriefDataLoader {
 		const { data: activityLogs, error: activityError } = await this.supabase
 			.from('onto_project_logs')
 			.select(
-				'id, project_id, entity_type, entity_id, action, before_data, after_data, created_at, changed_by_actor_id, changed_by'
+				'id, project_id, entity_type, entity_id, action, before_data, after_data, created_at, changed_by_actor_id, changed_by, external_agent_caller_id'
 			)
 			.in('project_id', projectIds)
 			.in('action', MEANINGFUL_ACTIONS)
@@ -1716,6 +1728,7 @@ export class OntologyBriefDataLoader {
 			created_at: string;
 			changed_by_actor_id: string | null;
 			changed_by: string;
+			external_agent_caller_id: string | null;
 		}>;
 
 		const actorIds = Array.from(
@@ -1795,6 +1808,29 @@ export class OntologyBriefDataLoader {
 			}
 		}
 
+		// Agent edits are signed with the caller; name them "Your Codex" instead of crediting the owner.
+		const agentCallerIds = Array.from(
+			new Set(
+				activityLogRows
+					.map((log) => log.external_agent_caller_id)
+					.filter((id): id is string => Boolean(id))
+			)
+		);
+		const agentCallersById = new Map<string, OthersActivityCaller>();
+		if (agentCallerIds.length > 0) {
+			const { data: callerRows, error: callerError } = await this.supabase
+				.from('external_agent_callers')
+				.select('id, user_id, provider, metadata')
+				.in('id', agentCallerIds);
+			if (callerError) {
+				console.warn(
+					'[OntologyBriefDataLoader] Error loading activity agent callers:',
+					callerError
+				);
+			}
+			for (const caller of callerRows ?? []) agentCallersById.set(caller.id, caller);
+		}
+
 		const activityByProject = new Map<string, ProjectActivityEntry[]>();
 		for (const log of activityLogRows) {
 			const project = projectsById.get(log.project_id);
@@ -1804,14 +1840,25 @@ export class OntologyBriefDataLoader {
 				(log.changed_by_actor_id && actorsById.get(log.changed_by_actor_id)) ||
 				actorByUserId.get(log.changed_by) ||
 				null;
+			const agentCaller = log.external_agent_caller_id
+				? agentCallersById.get(log.external_agent_caller_id)
+				: undefined;
+			const agentOwnerUserId = agentCaller?.user_id ?? log.changed_by;
 
 			const entry: ProjectActivityEntry = {
 				projectId: log.project_id,
 				projectName: project.name || 'Untitled Project',
 				isShared: project.created_by ? project.created_by !== actorId : false,
 				actorId: log.changed_by_actor_id,
-				actorName: resolveActorDisplayName(actor, 'Someone'),
-				action: log.action,
+				actorName: log.external_agent_caller_id
+					? formatAgentLabel({
+							caller: agentCaller ?? { provider: null, metadata: null },
+							isYours: agentOwnerUserId === userId,
+							ownerName: actorByUserId.get(agentOwnerUserId)?.name ?? null
+						})
+					: resolveActorDisplayName(actor, 'Someone'),
+				// The log has no 'completed' action; finishing is an update whose state moved to done.
+				action: classifyLogChange(log) === 'finished' ? 'completed' : log.action,
 				entityType: log.entity_type,
 				entityId: log.entity_id,
 				entityLabel: resolveActivityEntityLabel(log),
@@ -2154,6 +2201,30 @@ export class OntologyBriefDataLoader {
 	}
 
 	/**
+	 * Builder profiles: lines that people the user follows published in the activity window,
+	 * plus the user's own drafted lines. Never throws; null when there is nothing to show.
+	 */
+	loadBuilderFollowsBriefSection(userId: string): Promise<BuilderFollowsBriefSection | null> {
+		return fetchBuilderFollowsBriefSection(
+			this.supabase as unknown as BuilderFollowsBriefClient,
+			userId,
+			subHours(new Date(), ACTIVITY_WINDOW_HOURS)
+		);
+	}
+
+	/**
+	 * "While you were away": what other people, their agents, and the user's own agents
+	 * changed since the last brief. Never throws; null when nothing changed.
+	 */
+	loadOthersActivityBriefSection(
+		userId: string,
+		projectsData: OntoProjectWithRelations[],
+		briefDate: string
+	): Promise<OthersActivityBriefSection | null> {
+		return fetchOthersActivityBriefSection(this.supabase, { userId, projectsData, briefDate });
+	}
+
+	/**
 	 * Load compact calendar data for the daily brief.
 	 *
 	 * This intentionally loads a narrow, user-scoped 8-day window and returns capped
@@ -2442,7 +2513,8 @@ export class OntologyBriefDataLoader {
 		briefDate: string,
 		timezone: string,
 		calendar: CalendarBriefSection = createEmptyCalendarBriefSection(),
-		recentlyPausedProjects: ProjectPauseNotice[] = []
+		recentlyPausedProjects: ProjectPauseNotice[] = [],
+		builderFollows: BuilderFollowsBriefSection | null = null
 	): OntologyBriefData {
 		// Aggregate data across all projects
 		const allTasks = projectsData.flatMap((p) => p.tasks);
@@ -2700,6 +2772,7 @@ export class OntologyBriefDataLoader {
 			tasksByWorkMode,
 			projects,
 			workspace: workspaceData ? buildWorkspaceBriefSection(workspaceData) : null,
+			builderFollows,
 			calendar,
 			// Strategic task splits per PROJECT_CONTEXT_ENRICHMENT_SPEC.md
 			recentlyUpdatedTasks,

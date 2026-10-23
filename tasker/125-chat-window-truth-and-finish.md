@@ -2,7 +2,7 @@
 
 # 125 — Chat window tells the truth and always finishes
 
-**Status:** DONE — awaiting Claude check (static recheck pending; test typecheck blocked outside owned files) · **Priority:** P1 · **Opened:** 2026-10-18 · **Size:** ~1 day  
+**Status:** CHECKED by Claude 2026-10-18 — code passes; 2-minute browser check still pending (needs DJ OK: one real send) · **Priority:** P1 · **Opened:** 2026-10-18 · **Size:** ~1 day  
 **Owner:** a Codex agent does the work and self-checks; Claude does a light check after · **Needs from DJ to start:** nothing
 
 Source: the 2026-10-18 code triage, `docs/technical/reviews/CODE_TRIAGE_2026-10-18.md` (the plan and every other tracker). Bugs below were re-checked against commit `9735aa719` on 2026-10-18.
@@ -107,6 +107,7 @@ Then in this file: tick each item, set **Status:** to `DONE — awaiting Claude 
 - 2026-10-18: created from the code triage (Claude).
 - 2026-10-18: Codex completed all seven items after reproducing all six bugs in tests. Required suite: 795 tests passed; web check: 0 errors/warnings. Final test typecheck has 5 errors outside owned files. Awaiting those owners' fixes and Claude's browser/light check; no commit or production changes.
 - 2026-10-18: At DJ's request, Codex reviewed again and fixed stale-send races, admission-body timeout/cancellation, and close/unmount admission cleanup. Ten additional regression assertions were observed failing before fixes; all pass afterward. The 806-test sweep passed 804 assertions and exposed the two new teardown failures, then the final 18-test targeted/integration rerun passed after the teardown fix. Static revalidation remains pending because the laptop was under heavy memory pressure; no paid calls, commits, or production changes.
+- 2026-10-18 (Claude light check, commit `ac26e2011`): diff reviewed (error copy, run-id guards, adoption reconcile, 2 s sessionless replay, body read inside the deadline, legacy text path gone). Web `check` 0 errors; `typecheck:tests` 0 after Claude fixed the 5 type-only errors in the two other-agent test files (uncommitted); the 125 focused suite (807 tests) passes. Still pending: the browser check (doc chat close/reopen/send, switch chats mid-load, focus with no turn). It needs one real send, which is a paid model call plus a production write.
 
 ## Implementation report — 2026-10-18
 

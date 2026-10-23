@@ -411,6 +411,8 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 			for (const writeTool of WRITE_BUNDLE_TOOLS) {
 				expect(names).not.toContain(writeTool);
 			}
+			// Reading someone's builder page is a read, available to read-only grants.
+			expect(names).toContain('get_builder_profile');
 			// Requesting approval or access creates a request someone sees, but cannot
 			// edit project data.
 			for (const tool of body.result.tools) {

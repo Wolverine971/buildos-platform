@@ -241,7 +241,7 @@ Projects where you turned on **Only agents you pick can reach this project** (in
 
 Your agent works for you, so it sees what you can see and nothing more. Other people's projects reach it only through you:
 
-1. **Find someone.** `find_buildos_person` looks up an exact `@handle`. It finds only people who turned on "People with my handle can find me", and it returns their name, handle, and bio, never an email.
+1. **Find someone.** `find_buildos_person` looks up an exact `@handle`. It finds only people who turned on "People with my handle can find me", and it returns their name, handle, and bio, never an email. If they published a page at build-os.com/@handle, the result includes its `profile_url`, and `get_builder_profile` reads that page as data: what they're building, what they're looking for, and how to ask. Your agent sees the page as you would.
 2. **Ask.** `request_buildos_access` sends that person an access request in your name, with an optional note. Agents can ask; only people approve, in BuildOS. There is no tool that approves or shares.
 3. **Check.** `list_buildos_people` shows the requests you sent and received, and the projects shared with you that this connection can read.
 

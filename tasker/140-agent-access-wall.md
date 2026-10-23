@@ -2,7 +2,7 @@
 
 # 140 — When an agent hits a wall, it gets through in one step
 
-**Status:** BUILT, UNCOMMITTED (ambitious); migration APPLIED; live two-account check pending · **Priority:** P1 · **Opened:** 2026-10-23 · **Size:** ambitious ~4 days  
+**Status:** BUILT + REVIEW FIXES, UNCOMMITTED (ambitious); 2 migrations APPLIED; live two-account check pending · **Priority:** P1 · **Opened:** 2026-10-23 · **Size:** ambitious ~4 days  
 **Owner:** Claude · **DJ picked (2026-10-23):** ambitious; shared-projects toggle B, off by default
 
 ## What users get
@@ -90,11 +90,24 @@ All six pieces are in the working tree, not committed.
 - Tests, all free: shared gateway 233 pass; web agent-call + people + `/people` + Share window 606 pass (27 files); svelte-check 0 errors.
 - Real dead end fixed on the way: an edit in a shared project without base write went to the permission-request path and answered "Permission requests are not enabled for this BuildOS deployment". It now falls through to the wall with `access_needed`.
 
+Review fixes (2026-10-23, second pass). An outside review found five problems; all fixed:
+
+1. **"Allow reading" could grant editing (P1).** A request can grow after the owner opens it (a second ask merges in; the stronger need wins), and Allow sent project ids only. Allow now sends every item as shown (`items: [{ project_id, need, allow }]`); if the request changed, the RPC refuses (`PT409` → 409) and the card reloads with "X changed this request. Look again."
+2. **Merged requests could connect the wrong agent (P1).** Each requested project now keeps the connections that asked for it (`requested_items[].caller_ids`); approval connects each project only to those.
+3. **"Allow changes" with no project was a dead end (P2).** The grant page now handles `?need=write` without a project: one tap for a key, reconnect steps for OAuth.
+4. **Wall 6 missing for goals, plans, the project (P2).** Writes agents never make in someone else's project now get `outside_guest_lane` with "I can add this as a task instead", even for viewers (asking to be an editor wouldn't help).
+5. **"Ask the owner" on the grant page forgot the connection (P2).** It now names the connection (`p_for_caller_id`), so approval also connects it.
+
+Migration `20261024003000_agent_access_wall_fixes.sql`: rehearsed with `supabase/tests/20261024003000_agent_access_wall_fixes.check.sql` (reproduces 1, 2, 5), dry-run with ROLLBACK in prod, applied, recorded; `decide_people_request` body md5 matches the rehearsal. Prod had no people requests, so no backfill. Tests: shared gateway 233 pass, web 631 pass; the wall-6 test fails without the fix.
+
+The `/people` cards moved to `apps/web/src/lib/components/people/PeopleRequests.svelte` (tasker 141 session); the approve fix lives there.
+
 Not done:
 
 - Browser check of the grant page and `/people` upgrade card (machine swap was full; no BuildOS dev server running).
 - Live two-account run (Exit below). Free.
 - `op-execution-gateway.entity-access.test.ts` fails 1 test from the workspace session's `toProjectKind` change (its mock lacks the export). Not this work.
+- `people-emails.test.ts` fails 2 tests and svelte-check shows 9 errors, all from the tasker 141 hub session's in-progress files (told that session). Not this work.
 
 Known gaps (small, left for later):
 

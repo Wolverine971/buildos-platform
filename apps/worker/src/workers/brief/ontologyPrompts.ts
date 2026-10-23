@@ -19,6 +19,7 @@ import type {
 import { differenceInDays, format, parseISO } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import { getWorkMode } from './ontologyBriefDataLoader.js';
+import { formatOthersActivityForPrompt } from './othersActivityBriefSection.js';
 
 interface TaskPromptContext {
 	briefDate: string;
@@ -608,6 +609,13 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 				prompt += `- ${item.action} [${item.status}${task}${project}]\n`;
 			}
 			prompt += '\n';
+		}
+
+		const othersActivity = formatOthersActivityForPrompt(briefData.othersActivity);
+		if (othersActivity) {
+			prompt += `## Changes by Other People and Agents (${briefData.othersActivity?.windowLabel})\n`;
+			prompt += `The brief lists these in full under "While you were away". Mention one only when it changes what the user should do today: a teammate finished or added something the user depends on, or an agent made changes worth reviewing. One short mention at most; do not list them.\n`;
+			prompt += `${othersActivity}\n\n`;
 		}
 
 		// Add project context with strategic task splits

@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/BUILDOS_MCP_PERMISSION_IMPLEMENTATION_2026-09-30.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-09-30; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # BuildOS MCP permission requests — implementation record
 
 **Schema applied and code deployed; feature disabled.** No paid test ran. The remaining release gates are actual task-mover compatibility and live client acceptance.

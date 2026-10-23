@@ -1,0 +1,26 @@
+{
+	"verification": [
+		{
+			"verified_at": "2026-10-21 15:12:05.410227+00",
+			"total_rows": 2618,
+			"open": 6,
+			"critical_open": 0,
+			"resolved_by_audit": 2116
+		}
+	],
+	"additional_resolved_ids": [
+		"45e70d08-1043-46cc-ba12-cd82f8fe9278",
+		"0b413052-a87d-4d49-a971-aeb6f5a45e85"
+	],
+	"additional_prior_state": {
+		"resolved": false,
+		"resolved_at": null,
+		"resolved_by": null,
+		"resolution_notes": null
+	},
+	"public_article_check": {
+		"url": "https://build-os.com/blogs/source-analyses/kallaway-irresistible-hooks",
+		"http_status": 200,
+		"contains_obsolete_portrait_path": false
+	}
+}

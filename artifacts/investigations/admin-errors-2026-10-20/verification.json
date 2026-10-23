@@ -1,0 +1,69 @@
+[
+	{
+		"verification": {
+			"open": 8,
+			"remaining": [
+				{
+					"id": "45e70d08-1043-46cc-ba12-cd82f8fe9278",
+					"created_at": "2026-10-21T13:44:10.17883+00:00",
+					"error_message": "Not found: /images/skill-people/kane-kallaway.jpg",
+					"operation_type": "hooks.handle_error",
+					"resolution_notes": null
+				},
+				{
+					"id": "0b413052-a87d-4d49-a971-aeb6f5a45e85",
+					"created_at": "2026-10-21T13:44:05.784116+00:00",
+					"error_message": "Not found: /images/skill-people/kane-kallaway.jpg",
+					"operation_type": "hooks.handle_error",
+					"resolution_notes": null
+				},
+				{
+					"id": "d481b5ee-c1df-460c-9f6d-f11eb2816c5e",
+					"created_at": "2026-10-20T08:15:50.353849+00:00",
+					"error_message": "Not found: /apple-touch-icon-precomposed.png",
+					"operation_type": "hooks.handle_error",
+					"resolution_notes": "2026-10-20 audit (America/New_York; admin-errors-2026-10-20): OPEN — confirmed production 404 for /apple-touch-icon-precomposed.png. Read-only HTTP check at 2026-10-21 03:38 UTC reproduced it; /apple-touch-icon.png, /favicon.ico and /AppImages/ios/120.png return 200. Redirect exists only in repository-root vercel.json; apps/web/vercel.json lacks it. Verify deployed config/root and add the alias to the active configuration. Audit-generated duplicate 5c8980d5-b6b2-49e0-8d2a-24569105e8d1 is resolved into this representative."
+				},
+				{
+					"id": "a0fe4b8b-5763-4d9e-a967-eaed4d2903a6",
+					"created_at": "2026-10-20T04:02:06.824852+00:00",
+					"error_message": "OpenRouter JSON request failed (timeout)",
+					"operation_type": "getJSONResponse",
+					"resolution_notes": "2026-10-20 audit (America/New_York; admin-errors-2026-10-20): OPEN — recurring production project-review timeout. LLM usage 2725063e-95f7-47fe-93b4-e3a92c2fba45 identifies project_loop_task_conflicts / deepseek/deepseek-v4-flash / 120003 ms. Wayne Strategies loop a2e57382-884b-4b76-966b-5390b588d4c2 completed but explicitly says task conflicts did not finish. Same project had this omission on October 7. Investigate bounded input, provider/model policy and selective retry; completed loop status does not prove complete coverage. No paid retest or production fix performed."
+				},
+				{
+					"id": "25079aa4-a3d4-4a44-9b9a-510c1d5cb811",
+					"created_at": "2026-10-18T21:44:47.145014+00:00",
+					"error_message": "insert or update on table \"chat_capture_checkpoints\" violates foreign key constraint \"chat_capture_checkpoints_project_id_fkey\"",
+					"operation_type": "queue_job_terminal_failure",
+					"resolution_notes": "2026-10-20 audit (America/New_York; admin-errors-2026-10-20): OPEN — confirmed missing-project checkpoint defect. All three occurrences are the E2E harness account. Surviving session 36a6dd67-a22f-4de1-ab21-82712129e9d7 references absent project f24e9504-917c-46df-b7f4-2a42f6ccaa88. checkpointCapture.ts calls finishCheckpoint(record) when loadProject returns null, retaining record.projectId; supabaseCheckpointPorts.ts inserts that deleted ID and violates the FK. Skip capture or clear the missing project reference before persisting; cover deleted-project/no-user-message paths. Failed receipts also stringify DB errors as [object Object]. No code/deployment change performed."
+				},
+				{
+					"id": "5137e589-fa6e-4444-bca9-847bfbb1d45a",
+					"created_at": "2026-10-17T22:40:01.429401+00:00",
+					"error_message": "Failed to fetch dynamically imported module: https://build-os.com/_app/immutable/nodes/0.DkpZjP0F.js",
+					"operation_type": "client_runtime",
+					"resolution_notes": "2026-10-20 audit (America/New_York; admin-errors-2026-10-20): OPEN — recurring production route-module load failures. Recent events on October 13–17 report recovery=in_progress; that marker proves a recovery attempt, not success. Existing hooks.client.ts implements one reload and module refresh. Check deployment asset retention/cache consistency and record successful recovery before closing this family. Older import failures consolidated here; root cause remains unproven."
+				},
+				{
+					"id": "b1cc2519-2579-4516-a235-d5d5e828b203",
+					"created_at": "2026-10-17T04:41:40.734454+00:00",
+					"error_message": "OpenRouter JSON request failed (timeout)",
+					"operation_type": "getJSONResponse",
+					"resolution_notes": "2026-10-20 audit (America/New_York; admin-errors-2026-10-20): OPEN — recurring daily_brief_project_brief timeout. LLM usage 52558801-9e1a-4db7-8f27-af0542d0515b ties this event to a 120002 ms deepseek/deepseek-v4-flash call. 14 timeouts in this operation for the owner in the last 30 days; later jobs succeed but coverage can be partial. Retain as representative; old duplicates closed without claiming the timeout policy is fixed."
+				},
+				{
+					"id": "3ab57f3a-14ca-4b23-9760-652b47daf9df",
+					"created_at": "2026-10-15T15:01:02.679321+00:00",
+					"error_message": "OpenRouter text generation failed (timeout)",
+					"operation_type": "generateText",
+					"resolution_notes": "2026-10-20 audit (America/New_York; admin-errors-2026-10-20): OPEN — daily_brief_analysis timeout, openai/gpt-6-luna, 120002 ms, usage 47a34037-789c-4d19-897b-2bcf29c42bcd. Subsequent brief jobs completed, but this is a distinct model/operation from the recurring project-brief timeout. Review fallback/completeness behavior. No paid retest performed."
+				}
+			],
+			"total_rows": 2618,
+			"verified_at": "2026-10-21T15:11:17.042821+00:00",
+			"critical_open": 0,
+			"resolved_by_audit": 2114
+		}
+	}
+]

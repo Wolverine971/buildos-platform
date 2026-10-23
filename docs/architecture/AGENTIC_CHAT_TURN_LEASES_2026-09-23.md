@@ -1,5 +1,10 @@
 <!-- docs/architecture/AGENTIC_CHAT_TURN_LEASES_2026-09-23.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-09-23; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat turn leases: dead-worker recovery in ~90 s, Stop without a worker
 
 Status (2026-09-23): **built on main, uncommitted, not deployed.** Migration

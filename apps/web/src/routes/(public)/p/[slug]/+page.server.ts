@@ -1,6 +1,8 @@
 // apps/web/src/routes/(public)/p/[slug]/+page.server.ts
 import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { builderHandleForAuthorSlug } from '$lib/server/builder-profile/builder-profile.service';
 
 export const load: PageServerLoad = async ({ params, fetch, locals }) => {
 	const slug = params.slug?.trim().toLowerCase();
@@ -20,6 +22,15 @@ export const load: PageServerLoad = async ({ params, fetch, locals }) => {
 		if (typeof redirectSlug === 'string' && redirectSlug.trim()) {
 			throw redirect(301, `/p/${redirectSlug}`);
 		}
+
+		// A published builder page replaces the author index.
+		let builderHandle: string | null = null;
+		try {
+			builderHandle = await builderHandleForAuthorSlug(createAdminSupabaseClient() as any, slug);
+		} catch {
+			builderHandle = null;
+		}
+		if (builderHandle) throw redirect(302, `/@${builderHandle}`);
 
 		// Fall through to the author index. The slug may be a username-only
 		// URL (e.g. /p/david) pointing at an author's public-pages collection.

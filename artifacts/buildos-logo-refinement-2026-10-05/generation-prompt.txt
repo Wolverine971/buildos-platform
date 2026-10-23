@@ -1,0 +1,13 @@
+Generated with the built-in image_gen tool.
+Source: plugins/buildos/assets/buildos-logo.png
+Output: buildos-brain-refined.png
+Status: approved on 2026-10-05 and adopted as apps/web/brand-source/brain-bolt-refined.png.
+
+Use case: precise-object-edit
+Asset type: refined BuildOS brain-and-lightning logo, transparent PNG.
+Input image 1 is the EDIT TARGET: the current purple/blue neon brain logo. Make a conservative polish pass. It must still be recognizably the SAME logo, with approximately 90–95% visual identity preserved.
+Primary request: make the existing mark subtly more uniform and professionally drawn. Preserve the upright front-facing two-hemisphere brain silhouette, original relative width/height, existing number and approximate positions of outer lobes, prominent narrow angular lightning bolt through the center, dark violet interior, purple/magenta upper contours and cyan/blue lower contours.
+Refine only: (1) pair the outer left and right lobes into balanced, near mirror-symmetric curves with smooth tangent transitions; (2) standardize the contour thickness, highlight thickness, and glow width across both halves; (3) tidy the inner curved folds into a consistent, balanced rhythm while keeping their existing visual character; (4) clean up the lightning bolt's straight edges and optical centering, keeping its distinctive narrow zigzag silhouette and near-white lavender center; (5) reduce muddy extra halos and stray edge artifacts a little for a sharper small-size read.
+Keep a restrained version of the original neon glow, the deep-purple dimensional fill, and the original colors. Do not convert it to a generic flat line icon. Do not add folds, electrical sparks, circuit traces, rings, badges, shadows, text, or new objects.
+Composition: one centered complete logo on a square canvas, around 10% transparent clear space surrounding it; preserve a tall brain silhouette. All pixels outside the logo and its very tight glow must be genuinely transparent, never a black/white rectangle or baked checkerboard.
+Output only the finished refined logo, no labels, no before-and-after board, no mockup.

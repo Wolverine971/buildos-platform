@@ -162,7 +162,7 @@ afterwards):**
 - Real mouse drags:
     - nest on the desktop;
     - drag from the dock into an open card to nest;
-    - drag a sub-project out to Desktop in the dock;
+    - drag a sub-project out to Projects (top level) in the dock;
     - drag a doc to the dock, with the server preview before Move enables, then Undo ("Moved
       back.").
 - Refusals:
@@ -267,3 +267,107 @@ If the reads fail, `signals` is null and the tiles go neutral. Moves patch the c
 - By activity headings.
 
 **Not verified:** light mode and phone width, by eye.
+
+## Open from the card (2026-10-02)
+
+DJ asked for the card to be useful for reading, not only for moving, so most visits never need
+the full project page.
+
+- **Click to open.** A doc, task or goal title in the card opens the same modal the project page
+  uses (`DocumentModal`, `TaskEditModal`, `GoalEditModal`), loaded lazily. The rest of the row
+  is still the drag handle, so a click opens and a drag (or a long press on a phone) moves.
+- **Brain bolt.** The card header has the brain-bolt button the entity modals have. It opens
+  `AgentChatModal` focused on the whole project (`project-wide`).
+- **One refresh, on close.** Saves inside a modal (doc autosave included) only mark the card as
+  changed. When the modal or chat closes with a change, the card refetches once and the page
+  reloads `ontology:projects`, so tile bars and counts catch up. If nothing changed, nothing
+  reloads.
+- **"Nested projects".** The tab formerly labelled Inside is now "Nested projects". It leads when
+  the project holds some and trails when it holds none. Folder tiles read "N nested". The
+  internal tab key is still `inside`.
+
+**Verified live** (local dev against prod, read-only, 9takes): a doc, a task and a goal each
+opened and closed back to the card; the brain bolt opened a 9takes project-wide chat (nothing
+sent); no console errors. **Not verified:** phone width, light mode.
+
+## The reader (2026-10-03)
+
+DJ approved the prototype (https://claude.ai/artifact/MbS6Hz2tMAvzcXF5otkGKc) with its three
+picks: a sheet on phones, editing in place, and chat taking the list's place. This replaces
+yesterday's open-in-a-modal.
+
+**Three depths, the same on every screen.**
+
+- **Peek.** Clicking a doc, task or goal opens it in the card's reader.
+    - Desktop (1180px and up): the reader sits beside the list (340px list, reader fills the rest).
+    - Narrower desktops: Peek reads like Focus.
+    - Phones: a sheet rises to a third of the way down, over the list.
+- **Focus.** The expand button or `F`.
+    - Desktop: the reader takes the whole card.
+    - Phones: the sheet goes full height. You can also tap or pull up its handle. Pulling down steps
+      back one depth, and pulling down again (or far) closes it.
+- **Page.** The arrow button goes to `/projects/[id]/documents/[document_id]` or
+  `/projects/[id]/tasks/[task_id]`. Goals have no page yet, so they go to the project page.
+
+**Behaviour.**
+
+- **Peek or Focus is remembered per browser** (`projects-reader-layout`).
+- **History.**
+    - The open item lives in shallow history (`page.state.desktopPeek`).
+    - Opening it pushes one entry; Prev/Next replace it. So Back (or the phone's back swipe) closes
+      the reader in one step, then the card.
+    - Opening another project clears the reader, and Collapse returns past both.
+- **Docs edit in place.** The editor is `RichMarkdownEditor`, autosaved after 1.5 s through
+  `PATCH /api/onto/documents/[id]`. It sends `expected_updated_at` and `expected_editor_revision`.
+    - If the save conflicts, the reader says so and offers "Load the latest" or "Keep mine". It
+      never overwrites silently.
+    - Moving to another item, closing, or leaving for the page saves first.
+- **Tasks** change state in one tap: To do, In progress, Blocked, Done, plus Mark done. "Edit
+  details" opens the task modal. **Goals** show their facts and description; "Edit goal" opens the
+  goal modal.
+- **Chat.**
+    - The brain bolt in the reader chats about that item. The one in the card header chats about the
+      whole project. One switch flips between the two scopes.
+    - On desktop, chat takes the list's place. The list toggle brings the list back as a third
+      column.
+    - On phones, chat slides up under the reader, and the doc stays readable above it.
+    - It is the agent chat in its embedded, conversation-only form. When the chat closes it
+      announces its changes (`projectDataMutations`), and the desktop then reloads the card, the open
+      item and the tiles.
+- **Keys** (desktop): `J`/`K` (and `↑`/`↓` outside the reader) walk the list; `F` toggles focus;
+  `E` edits a doc; `Esc` backs out one step at a time (editing, then chat, then reader, then card).
+- **Load cost.** The reader (markdown rendering) loads when a card opens, not with `/projects`. The
+  chat loads when it is first opened.
+
+Code: `reader-model.ts` (pure rules, tested), `DesktopReader.svelte`, `DesktopChatPane.svelte`,
+and the pane grid and phone sheets in `DesktopProjectCard.svelte`.
+
+**Verified live (2026-10-03, local dev against prod):**
+
+- **Desktop:**
+    - Peek beside the list, Focus, and `J`/`F` work.
+    - Chat opens beside the reader with a scope switch.
+    - A task reader shows its state buttons and Edit details.
+    - `Esc` backs out one step at a time, and an open modal keeps its own `Esc`.
+    - Back closes the reader in one step.
+- **Phone width (487px popup):**
+    - The sheet opens at 34%; dragging the handle up goes full height and dragging down returns to Peek.
+    - The chat sheet sits at 46% with the doc above it.
+    - Tapping the backdrop closes the chat, then the reader.
+    - Nothing scrolls sideways.
+- **Edit in place** (synthetic "Specialist Pilot Smoke" doc, then restored to its original text):
+    - autosave;
+    - the conflict note after an outside change;
+    - Keep mine;
+    - Load the latest.
+    - Cost: each save queued one `embed_onto_entity` job; no project loop was queued.
+- **Not run live:** a task state change. It queues a project-loop review, which is paid. The PATCH is the
+  same one the task modal sends, and the unit test covers it.
+
+**Tweaks from the check:**
+
+1. The chat lays out at its final width while its column slides open. Before, the composer measured
+   itself at 0px and grew to 1146px tall.
+2. The pane uses the full chat (Steps, Tools, Changes, and the "New chat" card with suggestions) instead
+   of the conversation-only form, which was written for docs ("update this document").
+3. The scope switch keeps "This doc" whole and shortens the project name.

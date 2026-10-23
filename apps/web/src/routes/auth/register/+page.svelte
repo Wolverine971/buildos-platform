@@ -32,7 +32,10 @@
 	let confirmPassword = $state('');
 	let name = $state('');
 	// Optional. Held in this tab and claimed on the onboarding People step once the account exists.
-	let handle = $state('');
+	// Prefilled when someone claims a handle from a builder page (/auth/register?handle=…).
+	let handle = $state(
+		normalizeHandleInput($page.url.searchParams.get('handle') ?? '').slice(0, 24)
+	);
 	let handleTouched = $state(false);
 	const handleError = $derived(
 		handleTouched && handle.trim() && !isValidHandle(normalizeHandleInput(handle))

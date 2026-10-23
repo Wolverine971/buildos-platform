@@ -1,0 +1,307 @@
+<!-- docs/specs/fixtures/buildos-permissions-preview.html -->
+<!doctype html>
+<html lang="en">
+	<meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+	<title>BuildOS · Permission request preview</title>
+	<style>
+		:root {
+			font-family: ui-sans-serif, system-ui, sans-serif;
+			color: #262821;
+			background: #f6f5f0;
+			font-size: 15px;
+		}
+		* {
+			box-sizing: border-box;
+		}
+		body {
+			margin: 0;
+		}
+		header {
+			background: #24271f;
+			color: #f6f5f0;
+			padding: 22px 5vw;
+			display: flex;
+			justify-content: space-between;
+			gap: 20px;
+		}
+		header strong {
+			letter-spacing: -0.8px;
+			font-size: 22px;
+		}
+		header span {
+			font-size: 13px;
+			color: #ced0c5;
+		}
+		main {
+			max-width: 1140px;
+			margin: 46px auto;
+			padding: 0 24px;
+		}
+		.eyebrow {
+			color: #677052;
+			font-size: 12px;
+			letter-spacing: 1.4px;
+			text-transform: uppercase;
+		}
+		h1 {
+			font-size: 34px;
+			letter-spacing: -1.2px;
+			margin: 10px 0;
+		}
+		h2 {
+			font-size: 18px;
+			margin-top: 0;
+		}
+		p {
+			line-height: 1.6;
+		}
+		.intro {
+			color: #6a6d61;
+			max-width: 680px;
+		}
+		.grid {
+			display: grid;
+			grid-template-columns: 280px 1fr;
+			gap: 24px;
+			margin-top: 30px;
+		}
+		.card {
+			background: #fff;
+			border: 1px solid #dedfd6;
+			border-radius: 14px;
+			padding: 24px;
+			box-shadow: 0 2px 2px #2221;
+		}
+		.notification {
+			border-left: 3px solid #778653;
+			align-self: start;
+		}
+		.label {
+			display: inline-block;
+			border-radius: 20px;
+			background: #eef1e6;
+			color: #455735;
+			padding: 5px 11px;
+			font-size: 12px;
+		}
+		.muted {
+			font-size: 13px;
+			color: #6a6d61;
+		}
+		.diff {
+			border: 1px solid #e3e4dc;
+			border-radius: 8px;
+			overflow: hidden;
+			margin: 22px 0;
+		}
+		.diff strong {
+			display: block;
+			padding: 10px 14px;
+			background: #f8f8f4;
+			font-size: 12px;
+		}
+		pre {
+			font:
+				14px/1.6 ui-monospace,
+				monospace;
+			white-space: pre-wrap;
+			margin: 0;
+			padding: 12px 14px;
+		}
+		.removed {
+			background: #fff0ec;
+			color: #8b3828;
+		}
+		.added {
+			background: #edf5e5;
+			color: #35582e;
+		}
+		.scope {
+			padding: 18px;
+			background: #f5f6ef;
+			border-radius: 8px;
+		}
+		.scope p {
+			margin: 8px 0;
+		}
+		.actions {
+			display: flex;
+			gap: 10px;
+			flex-wrap: wrap;
+			margin-top: 22px;
+		}
+		button,
+		select {
+			font: inherit;
+			cursor: pointer;
+			border: 1px solid #c8ccbc;
+			border-radius: 7px;
+			padding: 11px 15px;
+			background: #fff;
+			color: #303a28;
+		}
+		button.primary {
+			background: #435832;
+			color: white;
+			border-color: #435832;
+		}
+		button:disabled {
+			opacity: 0.45;
+			cursor: default;
+		}
+		button:hover:not(:disabled) {
+			filter: brightness(0.95);
+		}
+		.receipt {
+			margin-top: 20px;
+			padding: 16px;
+			border: 1px solid #a7bd8f;
+			border-radius: 8px;
+			background: #f0f7e8;
+		}
+		.controls {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			flex-wrap: wrap;
+			margin-top: 28px;
+		}
+		footer {
+			font-size: 12px;
+			color: #6a6d61;
+			margin-top: 30px;
+		}
+		.hidden {
+			display: none;
+		}
+		@media (max-width: 760px) {
+			.grid {
+				grid-template-columns: 1fr;
+			}
+			header {
+				flex-direction: column;
+				gap: 4px;
+			}
+			main {
+				margin-top: 25px;
+			}
+			h1 {
+				font-size: 28px;
+			}
+		}
+	</style>
+	<header>
+		<strong>BuildOS</strong
+		><span>Offline interaction preview · Sample data · No permissions are granted</span>
+	</header>
+	<main>
+		<div class="eyebrow">Connected agents</div>
+		<h1>You decide what your agent can change.</h1>
+		<p class="intro">
+			An agent with read access proposes an exact edit. Review it here, then allow this one
+			change or ongoing edits of this kind in this project.
+		</p>
+		<div class="grid">
+			<aside class="card notification">
+				<span class="label" id="notice-state">Needs your review</span>
+				<h2 style="margin-top: 18px">Your Codex connection requests an edit</h2>
+				<p class="muted">Review the proposed change in BuildOS.</p>
+				<button onclick="document.getElementById('review').focus()">
+					Review request →
+				</button>
+				<p class="muted">In-app notification<br />Sample request · just now</p>
+			</aside>
+			<section class="card" id="review" tabindex="-1">
+				<div class="eyebrow">Permission request · <span id="status">pending</span></div>
+				<h2 style="margin-top: 12px">Review an edit in Product launch</h2>
+				<p class="muted">
+					<b>Codex · Personal workspace</b> requests this change. Connection names are
+					supplied at registration. Chats sharing this connection share ongoing
+					permissions.
+				</p>
+				<p>
+					<b>Reason provided by the agent</b><br />Update the launch brief with the
+					decision we just made.
+				</p>
+				<div class="diff">
+					<strong>Launch brief · Document body</strong>
+					<pre class="removed">− Invite the first 20 customers to the beta.</pre>
+					<pre class="added">+ Invite the first 40 customers to the beta.</pre>
+				</div>
+				<div class="scope">
+					<b>Ongoing access you can grant</b>
+					<p>
+						Edit document titles, descriptions and body text in <b>Product launch</b>,
+						including future eligible records.
+					</p>
+					<p class="muted">
+						No archive, delete, moves, publishing, messages, calendar changes or model
+						calls. You can remove this permission in connection settings.
+					</p>
+				</div>
+				<p class="muted" id="help">
+					Expires in 24 hours. If the record changes, this proposal must be reviewed
+					again.
+				</p>
+				<div class="actions" id="actions">
+					<button class="primary" data-choice="once">Allow once</button
+					><button data-choice="always">Always allow document edits here</button
+					><button data-choice="deny">Deny</button>
+				</div>
+				<div class="receipt hidden" id="receipt" role="status" aria-live="polite"></div>
+			</section>
+		</div>
+		<div class="controls">
+			<label for="scenario">Preview a state</label
+			><select id="scenario">
+				<option value="pending">Pending</option>
+				<option value="stale">Record changed</option>
+				<option value="expired">Expired</option>
+				<option value="canceled">Connection disabled</option></select
+			><button id="reset">Reset preview</button>
+		</div>
+		<footer>
+			This fixture demonstrates the implemented review contract. It is not connected to
+			BuildOS. Real approval uses an authenticated owner session, a stored diff and an atomic
+			database transaction.
+		</footer>
+	</main>
+	<script>
+		const $ = (id) => document.getElementById(id);
+		const buttons = [...document.querySelectorAll('[data-choice]')];
+		function state(value) {
+			$('status').textContent = value;
+			$('notice-state').textContent = value === 'pending' ? 'Needs your review' : value;
+			buttons.forEach((b) => (b.disabled = value !== 'pending'));
+			$('receipt').classList.add('hidden');
+			$('help').textContent =
+				{
+					pending:
+						'Expires in 24 hours. If the record changes, this proposal must be reviewed again.',
+					stale: 'The document changed. The agent must submit a new proposal for review.',
+					expired: 'This request expired. No change was applied.',
+					canceled:
+						'This request was canceled. Re-enabling the connection will not restore it.'
+				}[value] || '';
+		}
+		buttons.forEach(
+			(b) =>
+				(b.onclick = () => {
+					const choice = b.dataset.choice;
+					state(choice === 'deny' ? 'denied' : 'applied');
+					$('receipt').classList.remove('hidden');
+					$('receipt').textContent =
+						choice === 'deny'
+							? 'Preview: request denied. No change was applied.'
+							: choice === 'once'
+								? 'Preview: this exact edit was applied once. The agent receives a durable receipt. Its ongoing permissions stay the same.'
+								: 'Preview: this edit was applied, and document editing was approved for this connection in Product launch. An OAuth connection with a read-only token must reconnect before future direct edits.';
+				})
+		);
+		$('scenario').onchange = (e) => state(e.target.value);
+		$('reset').onclick = () => {
+			$('scenario').value = 'pending';
+			state('pending');
+		};
+	</script>
+</html>
