@@ -1,4 +1,5 @@
-// apps/web/src/routes/people/page.test.ts
+// apps/web/src/lib/components/people/PeopleRequests.test.ts
+// (Moved from the old /people page; the request cards now live in Profile > People & agents.)
 // @vitest-environment jsdom
 import { afterEach, assert, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
@@ -11,7 +12,7 @@ vi.mock('$lib/stores/toast.store', () => ({
 	toastService: { success: toastSuccessMock, error: vi.fn(), warning: toastWarningMock }
 }));
 
-import PeoplePage from './+page.svelte';
+import PeopleRequests from './PeopleRequests.svelte';
 import { readPeopleRequests } from '$lib/components/people/people-types';
 
 const rejoin = {
@@ -31,17 +32,8 @@ const rejoin = {
 
 function page(incoming: unknown[] = [rejoin]) {
 	return {
-		data: {
-			requests: readPeopleRequests({ incoming, outgoing: [] }),
-			profile: {
-				username: 'djwayne',
-				discoverability: 'handle',
-				accepts_agent_requests: true
-			},
-			ownedProjects: [{ id: 'project-1', name: '9takes' }],
-			sharedWithYou: [],
-			loadError: null
-		}
+		requests: readPeopleRequests({ incoming, outgoing: [] }),
+		ownedProjects: [{ id: 'project-1', name: '9takes' }]
 	} as any;
 }
 
@@ -52,7 +44,7 @@ afterEach(() => {
 	toastWarningMock.mockReset();
 });
 
-describe('/people rejoin requests', () => {
+describe('PeopleRequests: rejoin requests', () => {
 	it('reads a rejoin request with its project', () => {
 		const [request] = readPeopleRequests({ incoming: [rejoin], outgoing: [] }).incoming;
 		expect(request).toMatchObject({
@@ -68,7 +60,7 @@ describe('/people rejoin requests', () => {
 			json: async () => ({ success: true, data: { status: 'approved' } })
 		});
 		vi.stubGlobal('fetch', fetchMock);
-		render(PeoplePage, { props: page() });
+		render(PeopleRequests, { props: page() });
 
 		expect(screen.getByText(/Wants to rejoin/)).toBeInTheDocument();
 		expect(screen.queryByRole('button', { name: 'Choose what to share' })).toBeNull();
@@ -94,7 +86,7 @@ describe('/people rejoin requests', () => {
 			json: async () => ({ success: true, data: { status: 'declined' } })
 		});
 		vi.stubGlobal('fetch', fetchMock);
-		render(PeoplePage, { props: page() });
+		render(PeopleRequests, { props: page() });
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Deny' }));
 		expect(screen.getByText(/can’t ask to rejoin 9takes again/)).toBeInTheDocument();
@@ -173,10 +165,10 @@ const sentBody = (fetchMock: ReturnType<typeof vi.fn>) => {
 	return JSON.parse(call[1].body);
 };
 
-describe('/people upgrade requests', () => {
+describe('PeopleRequests: upgrade requests', () => {
 	it('shows what the member asks for, what they have now, and who sent it', () => {
 		decideFetch({});
-		render(PeoplePage, { props: page([upgrade]) });
+		render(PeopleRequests, { props: page([upgrade]) });
 
 		expect(screen.getByText(/Wants their agents to make changes in/)).toBeInTheDocument();
 		expect(screen.getByText('Now: Editor · agents Read')).toBeInTheDocument();
@@ -213,7 +205,7 @@ describe('/people upgrade requests', () => {
 			agent_grant: 'granted',
 			standing_approval: 'none'
 		});
-		render(PeoplePage, { props: page([upgrade]) });
+		render(PeopleRequests, { props: page([upgrade]) });
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Allow' }));
 
@@ -222,7 +214,10 @@ describe('/people upgrade requests', () => {
 			'/api/people/requests/req-2/decide',
 			expect.any(Object)
 		);
-		expect(sentBody(fetchMock)).toEqual({ decision: 'approve', project_ids: ['project-1'] });
+		expect(sentBody(fetchMock)).toEqual({
+			decision: 'approve',
+			items: [{ project_id: 'project-1', need: 'agents_write', allow: true }]
+		});
 		await waitFor(() =>
 			expect(toastSuccessMock).toHaveBeenCalledWith(
 				'Sam Rivera’s agents can now make changes in 9takes'
@@ -240,7 +235,7 @@ describe('/people upgrade requests', () => {
 			agent_grant: 'failed',
 			standing_approval: 'failed'
 		});
-		render(PeoplePage, { props: page([upgrade]) });
+		render(PeopleRequests, { props: page([upgrade]) });
 
 		await fireEvent.click(
 			screen.getByRole('checkbox', {
@@ -252,12 +247,12 @@ describe('/people upgrade requests', () => {
 		await waitFor(() => expect(fetchMock).toHaveBeenCalled());
 		expect(sentBody(fetchMock)).toEqual({
 			decision: 'approve',
-			project_ids: ['project-1'],
+			items: [{ project_id: 'project-1', need: 'agents_write', allow: true }],
 			editor_agents_write_project_ids: ['project-1']
 		});
 		await waitFor(() =>
 			expect(toastWarningMock).toHaveBeenCalledWith(
-				'Allowed, but the editors setting didn’t save. Try it in Share.'
+				'Allowed, but the editors setting didn’t save. Try it in the project’s Share window.'
 			)
 		);
 		expect(toastWarningMock).toHaveBeenCalledWith(
@@ -273,7 +268,7 @@ describe('/people upgrade requests', () => {
 			agent_grant: 'granted',
 			standing_approval: 'saved'
 		});
-		render(PeoplePage, { props: page([batchUpgrade]) });
+		render(PeopleRequests, { props: page([batchUpgrade]) });
 
 		const garden = screen.getByRole('checkbox', {
 			name: 'Wants to edit Garden with their agents'
@@ -297,10 +292,15 @@ describe('/people upgrade requests', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Allow' }));
 
 		await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-		// Garden was unchecked, so the standing approval only reaches 9takes.
+		// Every item goes back as shown; Garden was unchecked, so the standing approval
+		// only reaches 9takes.
 		expect(sentBody(fetchMock)).toEqual({
 			decision: 'approve',
-			project_ids: ['project-1', 'project-3'],
+			items: [
+				{ project_id: 'project-1', need: 'agents_write', allow: true },
+				{ project_id: 'project-2', need: 'edit', allow: false },
+				{ project_id: 'project-3', need: 'agents_read', allow: true }
+			],
 			editor_agents_write_project_ids: ['project-1']
 		});
 		await waitFor(() =>
@@ -312,7 +312,7 @@ describe('/people upgrade requests', () => {
 
 	it('turns Allow off when nothing is checked', async () => {
 		decideFetch({});
-		render(PeoplePage, { props: page([batchUpgrade]) });
+		render(PeopleRequests, { props: page([batchUpgrade]) });
 
 		for (const name of [
 			'Wants their agents to make changes in 9takes',
@@ -331,7 +331,7 @@ describe('/people upgrade requests', () => {
 
 	it('says not now without a confirm step, and that they can ask again in a week', async () => {
 		const fetchMock = decideFetch({ status: 'declined' });
-		render(PeoplePage, { props: page([upgrade]) });
+		render(PeopleRequests, { props: page([upgrade]) });
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
 
@@ -344,6 +344,37 @@ describe('/people upgrade requests', () => {
 		);
 	});
 
+	it('reloads the card instead of approving when the request changed meanwhile', async () => {
+		const changed = {
+			...upgrade,
+			items: [upgradeItem({ need: 'edit', role: 'viewer', agent_access: 'off' })]
+		};
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce({
+				ok: false,
+				status: 409,
+				json: async () => ({ success: false, error: 'This request changed.' })
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				status: 200,
+				json: async () => ({ success: true, data: { incoming: [changed], outgoing: [] } })
+			});
+		vi.stubGlobal('fetch', fetchMock);
+		render(PeopleRequests, { props: page([upgrade]) });
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Allow' }));
+
+		expect(await screen.findByRole('alert')).toHaveTextContent(
+			'Sam Rivera changed this request. Look again before you allow it.'
+		);
+		expect(fetchMock).toHaveBeenCalledWith('/api/people/requests', expect.any(Object));
+		expect(await screen.findByText(/Wants to edit/)).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Allow' })).toBeEnabled();
+		expect(toastSuccessMock).not.toHaveBeenCalled();
+	});
+
 	it('keeps the card and shows the error when the decision fails', async () => {
 		vi.stubGlobal(
 			'fetch',
@@ -352,7 +383,7 @@ describe('/people upgrade requests', () => {
 				json: async () => ({ success: false, error: 'This request was already answered' })
 			})
 		);
-		render(PeoplePage, { props: page([upgrade]) });
+		render(PeopleRequests, { props: page([upgrade]) });
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Allow' }));
 

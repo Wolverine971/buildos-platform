@@ -1444,6 +1444,9 @@ describe('guest lane in DJ’s writable project W', () => {
 		it(`refuses: ${entry.name}`, async () => {
 			const result = await call(entry.op, entry.args);
 			expect(failed(result), JSON.stringify(result).slice(0, 400)).toBe(true);
+			// Never a wall someone could clear: none of these is ever allowed here.
+			const wall = accessNeeded(result);
+			if (wall) expect(wall.wall).toBe('outside_guest_lane');
 			expectNoWritesTo(['W', ...READ_ONLY_OR_HIDDEN]);
 		});
 	}
@@ -1647,6 +1650,31 @@ describe('access walls (tasker 140)', () => {
 			archived: true
 		});
 		expect(accessNeeded(archive).say_to_user).toMatch(/can't archive or restore/);
+		expectNoWritesTo(['W', ...READ_ONLY_OR_HIDDEN]);
+	});
+
+	it('wall 6: goals, plans and the project stay with the owner, and say so', async () => {
+		for (const [op, args] of [
+			['onto.goal.create', { project_id: PROJECT.W.id, name: 'g' }],
+			['onto.plan.create', { project_id: PROJECT.W.id, name: 'p' }],
+			['onto.risk.create', { project_id: PROJECT.W.id, title: 'r', impact: 'medium' }],
+			['onto.project.update', { project_id: PROJECT.W.id, name: 'p' }]
+		] as const) {
+			const result = await call(op, args);
+			expect(failed(result), op).toBe(true);
+			const wall = accessNeeded(result);
+			expect(wall, `${op}: ${JSON.stringify(result).slice(0, 300)}`).toMatchObject({
+				wall: 'outside_guest_lane',
+				who_can_fix: 'nobody',
+				project_name: 'DJ Writable',
+				next: null
+			});
+			expect(wall.say_to_user).toMatch(/add this as a task instead/);
+		}
+
+		// A viewer is told the same: asking to be an editor wouldn't help.
+		const viewer = await call('onto.goal.create', { project_id: PROJECT.S.id, name: 'g' });
+		expect(accessNeeded(viewer)).toMatchObject({ wall: 'outside_guest_lane' });
 		expectNoWritesTo(['W', ...READ_ONLY_OR_HIDDEN]);
 	});
 

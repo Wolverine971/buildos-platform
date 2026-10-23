@@ -1224,21 +1224,23 @@
 									</a>
 
 									<a
-										href="/people"
-										onclick={() => handleMenuItemClick('/people')}
+										href="/profile?tab=people"
+										onclick={() => handleMenuItemClick('/profile?tab=people')}
 										class="flex items-center w-full px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors
 										{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 									>
 										<Users class="w-4 h-4 mr-3" />
-										People
+										People &amp; agents
 									</a>
 
 									{#if showAgentConnectionCta}
 										<div class="px-2 py-1">
 											<a
-												href="/profile?tab=agent-keys"
+												href="/profile?tab=people#agents"
 												onclick={() =>
-													handleMenuItemClick('/profile?tab=agent-keys')}
+													handleMenuItemClick(
+														'/profile?tab=people#agents'
+													)}
 												class="flex items-center gap-2 rounded-md border border-accent/30 bg-accent/10 px-2.5 py-2 text-sm font-bold text-accent shadow-ink transition-colors hover:bg-accent/15 hover:text-accent
 												{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 											>
@@ -1522,13 +1524,13 @@
 						</a>
 
 						<a
-							href="/people"
-							onclick={() => handleMenuItemClick('/people')}
+							href="/profile?tab=people"
+							onclick={() => handleMenuItemClick('/profile?tab=people')}
 							class="flex items-center px-3 py-1.5 text-base font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 						>
 							<Users class="w-5 h-5 mr-3" />
-							People
+							People &amp; agents
 						</a>
 
 						<button
@@ -1560,8 +1562,8 @@
 
 						{#if showAgentConnectionCta}
 							<a
-								href="/profile?tab=agent-keys"
-								onclick={() => handleMenuItemClick('/profile?tab=agent-keys')}
+								href="/profile?tab=people#agents"
+								onclick={() => handleMenuItemClick('/profile?tab=people#agents')}
 								class="flex items-center gap-3 rounded-md border border-accent/30 bg-accent/10 px-3 py-2 text-base font-bold text-accent shadow-ink transition-colors hover:bg-accent/15
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 							>

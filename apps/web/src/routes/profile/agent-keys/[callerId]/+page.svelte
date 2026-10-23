@@ -228,7 +228,7 @@
 				variant="ghost"
 				size="sm"
 				icon={ArrowLeft}
-				onclick={() => goto('/profile?tab=agent-keys')}
+				onclick={() => goto('/profile?tab=people#agents')}
 				class="self-start"
 			>
 				Agents

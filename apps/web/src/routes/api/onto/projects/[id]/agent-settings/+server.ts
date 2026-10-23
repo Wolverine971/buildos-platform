@@ -1,7 +1,8 @@
 // apps/web/src/routes/api/onto/projects/[id]/agent-settings/+server.ts
 //
 // The owner's standing approval for members' agents (tasker 140):
-//   GET   { editor_agents_write }  any member can read it
+//   GET   { editor_agents_write, external_agent_access }  any member can read it
+//         (external_agent_access is the project's Restricted setting, shown in Share)
 //   PATCH { editor_agents_write: boolean }  the owner turns it on or off
 // While it is on, every editor's agents can make changes unless the owner turned that
 // person's agents Off. The RPC checks the owner itself; this route only shapes input.
@@ -20,13 +21,31 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	if (!user) return ApiResponse.unauthorized('Authentication required');
 	if (!params.id || !isValidUUID(params.id)) return ApiResponse.badRequest('Invalid project ID');
 
-	const { data, error } = await (locals.supabase as any)
-		.from('project_agent_settings')
-		.select('editor_agents_write')
-		.eq('project_id', params.id)
-		.maybeSingle();
-	if (error) return ApiResponse.internalError(error, 'Could not load agent settings');
-	return ApiResponse.success({ editor_agents_write: data?.editor_agents_write === true });
+	const [settings, project] = await Promise.all([
+		(locals.supabase as any)
+			.from('project_agent_settings')
+			.select('editor_agents_write')
+			.eq('project_id', params.id)
+			.maybeSingle(),
+		locals.supabase
+			.from('onto_projects')
+			.select('external_agent_access')
+			.eq('id', params.id)
+			.maybeSingle()
+	]);
+	if (settings.error) {
+		return ApiResponse.internalError(settings.error, 'Could not load agent settings');
+	}
+	return ApiResponse.success({
+		editor_agents_write: settings.data?.editor_agents_write === true,
+		// 'restricted': only connections the owner picks reach this project (null if unreadable).
+		external_agent_access:
+			project.data?.external_agent_access === 'restricted'
+				? 'restricted'
+				: project.data
+					? 'standard'
+					: null
+	});
 };
 
 export const PATCH: RequestHandler = async ({ params, locals, request, url, platform }) => {

@@ -605,7 +605,7 @@
 								</span>
 							</span>
 						</span>
-						<a href="/profile?tab=agent-keys" class={manageLinkClass}>Manage</a>
+						<a href="/profile?tab=people#agents" class={manageLinkClass}>Manage</a>
 					</li>
 				{:else}
 					<li class="flex items-center justify-between gap-3 py-1.5">
@@ -616,7 +616,7 @@
 							/>
 							<span class="text-muted-foreground">No agents connected</span>
 						</span>
-						<a href="/profile?tab=agent-keys" class={manageLinkClass}>Manage</a>
+						<a href="/profile?tab=people#agents" class={manageLinkClass}>Manage</a>
 					</li>
 				{/each}
 			</ul>

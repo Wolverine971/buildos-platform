@@ -1,6 +1,11 @@
 // apps/web/src/lib/components/profile/profile-tabs.test.ts
 import { describe, expect, it } from 'vitest';
-import { getProfileTabHref, getVisibleProfileTabIds, resolveProfileTab } from './profile-tabs';
+import {
+	getProfileTabHref,
+	getVisibleProfileTabIds,
+	profileTabAliasSection,
+	resolveProfileTab
+} from './profile-tabs';
 
 describe('profile tab routing', () => {
 	const hiddenOptionalTabs = {
@@ -41,6 +46,14 @@ describe('profile tab routing', () => {
 		expect(getVisibleProfileTabIds(hiddenOptionalTabs)).toContain('data');
 		expect(resolveProfileTab('data', hiddenOptionalTabs)).toBe('data');
 		expect(getProfileTabHref('data')).toBe('/profile?tab=data');
+	});
+
+	it('sends old Agents links to the Agents section of People & agents', () => {
+		expect(resolveProfileTab('agent-keys', hiddenOptionalTabs)).toBe('people');
+		expect(profileTabAliasSection('agent-keys')).toBe('agents');
+		expect(resolveProfileTab('people', hiddenOptionalTabs)).toBe('people');
+		expect(profileTabAliasSection('people')).toBeNull();
+		expect(getProfileTabHref('people')).toBe('/profile?tab=people');
 	});
 
 	it('keeps Account at the query-free profile URL', () => {

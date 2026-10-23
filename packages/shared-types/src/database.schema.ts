@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-10-23T21:32:00.358Z
+// Generated on: 2026-10-23T22:29:51.845Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -3549,6 +3549,19 @@ export type DatabaseSchema = {
 		suggested_chapter_id: string | null;
 		suggested_chapter_title: string | null;
 	};
+	project_access_events: {
+		after: Json | null;
+		before: Json | null;
+		by_actor_id: string | null;
+		created_at: string;
+		id: string;
+		invite_id: string | null;
+		kind: string;
+		occurred_at: string;
+		project_id: string;
+		subject_actor_id: string | null;
+		via: string | null;
+	};
 	project_agent_settings: {
 		editor_agents_write: boolean;
 		project_id: string;
@@ -5198,6 +5211,7 @@ export const tableNames = [
 	'profile_document_versions',
 	'profile_documents',
 	'profile_fragments',
+	'project_access_events',
 	'project_agent_settings',
 	'project_audit_suggestions',
 	'project_audit_trigger_evaluations',

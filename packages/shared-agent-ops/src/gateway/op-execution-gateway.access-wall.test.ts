@@ -97,6 +97,16 @@ describe('buildAccessNeeded', () => {
 			archive: true
 		});
 		expect(archive.say_to_user).toContain("can't archive or restore");
+		const ownerItems = buildAccessNeeded({
+			wall: ACCESS_WALL.outsideGuestLane,
+			projectId: PROJECT,
+			projectName: '9takes',
+			ownerName: 'Sam',
+			ownerItems: true
+		});
+		expect(ownerItems).toMatchObject({ who_can_fix: 'nobody', next: null });
+		expect(ownerItems.say_to_user).toContain('Goals, plans, and the rest stay with Sam');
+		expect(ownerItems.say_to_user).not.toContain('assign it to you');
 		const cap = buildAccessNeeded({ wall: ACCESS_WALL.dailyLimit, projectId: PROJECT });
 		expect(cap.say_to_user).toMatch(/paused until tomorrow\. The owner was told/);
 	});

@@ -128,7 +128,9 @@ describe('sendPeopleRequestReceivedEmail', () => {
 		expect(sent.body).toContain('Sam Lee (@sam) asked to see your projects as a viewer.');
 		expect(sent.body).toContain('Their AI agent sent the request for them.');
 		expect(sent.body).toContain('They added a note.');
-		expect(sent.body).toContain('Review request: https://build-os.com/people');
+		expect(sent.body).toContain(
+			'Review request: https://build-os.com/profile?tab=people#requests'
+		);
 		expect(sent.html).toContain('>Review request</a>');
 		expect(sent.body + sent.html).not.toContain('evil.example');
 		expect(sent.body + sent.html).not.toContain(EM_DASH);
@@ -161,7 +163,9 @@ describe('sendPeopleRequestReceivedEmail', () => {
 		expect(sent.subject).toBe('Sam Lee wants to rejoin 9takes');
 		expect(sent.body).toContain('left 9takes or was removed, then opened your invite link');
 		expect(sent.body).toContain('they can’t ask to rejoin this project again');
-		expect(sent.body).toContain('Review request: https://build-os.com/people');
+		expect(sent.body).toContain(
+			'Review request: https://build-os.com/profile?tab=people#requests'
+		);
 		expect(sent.body + sent.html).not.toContain(EM_DASH);
 	});
 
@@ -308,7 +312,7 @@ describe('upgrade emails (tasker 140)', () => {
 			need: 'agents_write',
 			agentLabel: 'Claude',
 			hasNote: true,
-			reviewUrl: 'https://build-os.com/people',
+			reviewUrl: 'https://build-os.com/profile?tab=people#requests',
 			expiresAt: null
 		});
 		expect(email.subject).toBe('DJ wants their agents to make changes in 9takes');
@@ -323,7 +327,7 @@ describe('upgrade emails (tasker 140)', () => {
 			need: 'edit',
 			agentLabel: null,
 			hasNote: false,
-			reviewUrl: 'https://build-os.com/people',
+			reviewUrl: 'https://build-os.com/profile?tab=people#requests',
 			expiresAt: null
 		});
 		expect(several.subject).toBe(

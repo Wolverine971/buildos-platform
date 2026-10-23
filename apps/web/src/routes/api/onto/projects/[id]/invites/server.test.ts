@@ -39,7 +39,19 @@ import { GET, POST } from './+server';
 /** A query builder whose every filter returns itself and that resolves to `result`. */
 function query(result: unknown) {
 	const builder: Record<string, any> = {};
-	for (const method of ['select', 'eq', 'is', 'ilike', 'limit', 'in', 'order', 'insert']) {
+	for (const method of [
+		'select',
+		'eq',
+		'neq',
+		'is',
+		'ilike',
+		'limit',
+		'in',
+		'lt',
+		'order',
+		'insert',
+		'update'
+	]) {
 		builder[method] = vi.fn(() => builder);
 	}
 	builder.maybeSingle = vi.fn().mockResolvedValue(result);
@@ -89,7 +101,7 @@ beforeEach(() => {
 });
 
 describe('/api/onto/projects/[id]/invites access checks', () => {
-	it('GET returns forbidden when write access is missing', async () => {
+	it('GET is owner-only: editors get forbidden', async () => {
 		const event = createEvent();
 		const supabase = event.locals.supabase as any;
 
@@ -99,7 +111,7 @@ describe('/api/onto/projects/[id]/invites access checks', () => {
 		expect(response.status).toBe(403);
 		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
 			p_project_id: 'project-1',
-			p_required_access: 'write'
+			p_required_access: 'admin'
 		});
 	});
 
@@ -159,6 +171,164 @@ describe('GET /api/onto/projects/[id]/invites', () => {
 			}
 		]);
 		expect(JSON.stringify(payload)).not.toContain('sam@example.com');
+	});
+
+	it('marks pending invites past their date as expired (the row still says pending)', async () => {
+		const event = createEvent();
+		const supabase = event.locals.supabase as any;
+		supabase.rpc.mockResolvedValue({ data: true, error: null });
+		const dayMs = 24 * 60 * 60 * 1000;
+		supabase.from.mockReturnValue(
+			query({
+				data: [
+					{
+						id: 'old',
+						invitee_email: 'beau@example.com',
+						invitee_handle: null,
+						status: 'pending',
+						expires_at: new Date(Date.now() - dayMs).toISOString()
+					},
+					{
+						id: 'fresh',
+						invitee_email: 'lee@example.com',
+						invitee_handle: null,
+						status: 'pending',
+						expires_at: new Date(Date.now() + dayMs).toISOString()
+					}
+				],
+				error: null
+			})
+		);
+
+		const payload = await (await GET(event)).json();
+
+		expect(
+			payload.data.invites.map(
+				(invite: { id: string; status: string; effective_status: string }) => [
+					invite.id,
+					invite.status,
+					invite.effective_status
+				]
+			)
+		).toEqual([
+			['old', 'pending', 'expired'],
+			['fresh', 'pending', 'pending']
+		]);
+	});
+});
+
+const IAN_ACTOR_ID = '22222222-2222-4222-8222-222222222222';
+
+/**
+ * Person invites: the caller owns another project (p-other) that Ian is in.
+ * onto_project_members answers in call order: the caller's owned projects, then Ian's.
+ */
+function wirePersonInvite(
+	supabase: any,
+	{
+		owned = [{ project_id: 'p-other' }],
+		shared = [{ project_id: 'p-other' }]
+	}: { owned?: unknown[]; shared?: unknown[] } = {}
+) {
+	const tables = wireInviteTables(supabase);
+	const memberQueries = [
+		query({ data: owned, error: null }),
+		query({ data: shared, error: null }),
+		query({ data: null, error: null })
+	];
+	const base = supabase.from.getMockImplementation();
+	supabase.from.mockImplementation((table: string) =>
+		table === 'onto_project_members'
+			? (memberQueries.shift() ?? query({ data: null, error: null }))
+			: base(table)
+	);
+	const adminActors = query({
+		data: {
+			id: IAN_ACTOR_ID,
+			user_id: 'user-ian',
+			name: 'Ian Miner',
+			email: 'old@example.com'
+		},
+		error: null
+	});
+	const adminUsers = query({
+		data: { email: 'Ian@Example.com', deletion_status: null },
+		error: null
+	});
+	createAdminSupabaseClientMock.mockReturnValue({
+		from: vi.fn((table: string) => (table === 'users' ? adminUsers : adminActors))
+	});
+	return { tables, adminActors, adminUsers };
+}
+
+describe('POST /api/onto/projects/[id]/invites by person (invitee_actor_id)', () => {
+	it('invites someone from another project you own; their email never comes back', async () => {
+		const event = createEvent({ invitee_actor_id: IAN_ACTOR_ID, role_key: 'editor' });
+		const { tables } = wirePersonInvite(event.locals.supabase);
+
+		const response = await POST(event);
+		const payload = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(tables.onto_project_invites.insert).toHaveBeenCalledWith(
+			expect.objectContaining({
+				invitee_email: 'ian@example.com',
+				invitee_user_id: 'user-ian',
+				invitee_handle: null,
+				role_key: 'editor'
+			})
+		);
+		expect(sendEmailMock).toHaveBeenCalledWith(
+			expect.objectContaining({ to: 'ian@example.com' })
+		);
+		expect(payload.data).toMatchObject({
+			invitee_email: null,
+			invitee_actor_id: IAN_ACTOR_ID,
+			email_sent: true
+		});
+		expect(JSON.stringify(payload).toLowerCase()).not.toContain('ian@example.com');
+		const logged = tables.onto_project_logs.insert.mock.calls[0]?.[0]?.after_data;
+		expect(logged).toMatchObject({ event: 'invite_created', invitee_actor_id: IAN_ACTOR_ID });
+		expect(JSON.stringify(logged).toLowerCase()).not.toContain('ian@example.com');
+	});
+
+	it('refuses when you own no other project', async () => {
+		const event = createEvent({ invitee_actor_id: IAN_ACTOR_ID, role_key: 'viewer' });
+		const { tables } = wirePersonInvite(event.locals.supabase, { owned: [] });
+
+		const response = await POST(event);
+
+		expect(response.status).toBe(403);
+		expect((await response.json()).error).toContain('already in another project you own');
+		expect(tables.onto_project_invites.insert).not.toHaveBeenCalled();
+		expect(sendEmailMock).not.toHaveBeenCalled();
+	});
+
+	it('refuses someone who is not in any of your other projects', async () => {
+		const event = createEvent({ invitee_actor_id: IAN_ACTOR_ID, role_key: 'viewer' });
+		const { tables } = wirePersonInvite(event.locals.supabase, { shared: [] });
+
+		const response = await POST(event);
+
+		expect(response.status).toBe(403);
+		expect(tables.onto_project_invites.insert).not.toHaveBeenCalled();
+		expect(createAdminSupabaseClientMock).not.toHaveBeenCalled();
+	});
+
+	it('rejects a malformed id, mixing it with a handle, and inviting yourself', async () => {
+		expect((await POST(createEvent({ invitee_actor_id: 'actor-1' }))).status).toBe(400);
+		expect(
+			(await POST(createEvent({ invitee_actor_id: IAN_ACTOR_ID, invitee_handle: 'sam' })))
+				.status
+		).toBe(400);
+
+		const self = createEvent({ invitee_actor_id: '11111111-1111-4111-8111-111111111111' });
+		const { ensureActorId } = await import('$lib/services/ontology/ontology-projects.service');
+		vi.mocked(ensureActorId).mockResolvedValueOnce('11111111-1111-4111-8111-111111111111');
+		wirePersonInvite(self.locals.supabase);
+		const response = await POST(self);
+		expect(response.status).toBe(400);
+		expect((await response.json()).error).toBe('You cannot invite yourself');
 	});
 });
 

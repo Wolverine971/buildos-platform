@@ -207,7 +207,7 @@ describe('ProjectCollaborationModal request coordination', () => {
 			projectName: 'Project B'
 		});
 		await waitFor(() => expect(requests).toHaveLength(6));
-		expect(screen.getByText('Loading members...')).toBeInTheDocument();
+		expect(screen.getByText('Loading people…')).toBeInTheDocument();
 
 		for (const request of projectARequests) {
 			request.response.resolve(
@@ -218,7 +218,7 @@ describe('ProjectCollaborationModal request coordination', () => {
 		}
 		await settleRequests(projectARequests);
 
-		expect(screen.getByText('Loading members...')).toBeInTheDocument();
+		expect(screen.getByText('Loading people…')).toBeInTheDocument();
 		expect(logOntologyClientErrorMock).not.toHaveBeenCalled();
 
 		const projectBRequests = requests.slice(3);
@@ -244,12 +244,12 @@ describe('ProjectCollaborationModal request coordination', () => {
 			request.response.resolve(responseFor(request.url, PROJECT_A_ID, 'Project A Member'));
 		}
 		await settleRequests(projectARequests);
-		await fireEvent.click(screen.getByRole('tab', { name: /My role/ }));
 
-		const notificationToggle = await screen.findByRole('checkbox', {
-			name: /Notify me about project activity/i
+		// Your own row opens by default for members: notifications live there now.
+		const notificationToggle = await screen.findByRole('switch', {
+			name: /Notify me when people change things here/i
 		});
-		expect(notificationToggle).toBeChecked();
+		expect(notificationToggle).toHaveAttribute('aria-checked', 'true');
 		await fireEvent.click(notificationToggle);
 		await waitFor(() => expect(requests).toHaveLength(4));
 		const projectAUpdate = requests[3];
@@ -270,10 +270,9 @@ describe('ProjectCollaborationModal request coordination', () => {
 		}
 		await settleRequests(projectBRequests);
 		await waitFor(() => expect(screen.getByText('Project B Member')).toBeInTheDocument());
-		await fireEvent.click(screen.getByRole('tab', { name: /My role/ }));
 		expect(
-			screen.getByRole('checkbox', { name: /Notify me about project activity/i })
-		).toBeChecked();
+			screen.getByRole('switch', { name: /Notify me when people change things here/i })
+		).toHaveAttribute('aria-checked', 'true');
 
 		requireTestValue(projectAUpdate).response.resolve(
 			jsonResponse({
@@ -297,8 +296,8 @@ describe('ProjectCollaborationModal request coordination', () => {
 
 		expect(requests).toHaveLength(7);
 		expect(
-			screen.getByRole('checkbox', { name: /Notify me about project activity/i })
-		).toBeChecked();
+			screen.getByRole('switch', { name: /Notify me when people change things here/i })
+		).toHaveAttribute('aria-checked', 'true');
 	});
 });
 
@@ -393,10 +392,13 @@ describe('ProjectCollaborationModal ownership handoff', () => {
 			}
 		});
 
-		// Owners land on Invite; members live under People.
-		await fireEvent.click(await screen.findByRole('tab', { name: /People/ }));
-		await fireEvent.click(await screen.findByRole('button', { name: 'Make owner' }));
-		expect(screen.getByText('Make Sam the owner of Garden plan?')).toBeInTheDocument();
+		// "Make owner…" lives in each person's role menu and opens a confirm under their row.
+		await fireEvent.change(await screen.findByLabelText('Role for Sam'), {
+			target: { value: 'make-owner' }
+		});
+		expect(await screen.findByText('Make Sam the owner of Garden plan?')).toBeInTheDocument();
+		// The menu snaps back to their real role.
+		expect(screen.getByLabelText('Role for Sam')).toHaveValue('editor');
 		expect(screen.getByText(/You’ll stay on as an editor\./)).toBeInTheDocument();
 
 		await fireEvent.click(
@@ -509,7 +511,7 @@ describe('ProjectCollaborationModal owner sharing', () => {
 		vi.unstubAllGlobals();
 	});
 
-	it('opens on Invite for owners, with the email form and the invite link', async () => {
+	it('shows owners one view: add people, everyone with access, and the invite link', async () => {
 		render(ProjectCollaborationModal, {
 			props: {
 				isOpen: true,
@@ -519,10 +521,13 @@ describe('ProjectCollaborationModal owner sharing', () => {
 			}
 		});
 
-		expect(
-			await screen.findByRole('tab', { name: /Invite/, selected: true })
-		).toBeInTheDocument();
+		expect(screen.queryByRole('tab')).toBeNull();
+		expect(await screen.findByRole('heading', { name: 'Add people' })).toBeInTheDocument();
 		expect(screen.getByLabelText('Email or @handle')).toBeInTheDocument();
+		expect(await screen.findByText(/People with access · 2/)).toBeInTheDocument();
+		// You first, then everyone else; the owner sees emails.
+		expect(screen.getByText('(you)')).toBeInTheDocument();
+		expect(screen.getByText(/sam@example\.com/)).toBeInTheDocument();
 		expect(
 			await screen.findByRole('button', { name: /Create invite link/ })
 		).toBeInTheDocument();
@@ -541,7 +546,7 @@ describe('ProjectCollaborationModal owner sharing', () => {
 		await fireEvent.input(await screen.findByLabelText('Email or @handle'), {
 			target: { value: 'lee@example.com' }
 		});
-		await fireEvent.click(screen.getByRole('button', { name: /Send invite/ }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Invite' }));
 
 		expect(await screen.findByText('Invite sent to lee@example.com.')).toBeInTheDocument();
 		await fireEvent.click(screen.getByRole('button', { name: /Copy invite link/ }));
@@ -558,12 +563,16 @@ describe('ProjectCollaborationModal owner sharing', () => {
 			}
 		});
 
-		await fireEvent.click(await screen.findByRole('tab', { name: /People/ }));
 		expect(await screen.findByText(/Joined with the invite link/)).toBeInTheDocument();
 		expect(screen.getByLabelText('Role for Sam')).toHaveValue('viewer');
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
-		expect(screen.getByText(/you get a request and decide whether they/)).toBeInTheDocument();
+		await fireEvent.change(screen.getByLabelText('Role for Sam'), {
+			target: { value: 'remove' }
+		});
+		expect(
+			await screen.findByText(/you get a request and decide whether they/)
+		).toBeInTheDocument();
+		expect(screen.getByLabelText('Role for Sam')).toHaveValue('viewer');
 		const group = screen.getByRole('group', { name: 'Remove Sam' });
 		await fireEvent.click(within(group).getByRole('button', { name: 'Remove' }));
 
@@ -625,7 +634,10 @@ describe('ProjectCollaborationModal editors’ agents setting', () => {
 					return patchResponse.promise;
 				}
 				if (url.endsWith('/agent-settings')) {
-					return jsonResponse({ success: true, data: { editor_agents_write: false } });
+					return jsonResponse({
+						success: true,
+						data: { editor_agents_write: false, external_agent_access: 'standard' }
+					});
 				}
 				if (url.endsWith('/invite-link')) {
 					return jsonResponse({ success: true, data: { link: null } });
@@ -672,7 +684,7 @@ describe('ProjectCollaborationModal editors’ agents setting', () => {
 		vi.unstubAllGlobals();
 	});
 
-	async function openPeopleTab() {
+	async function openAsOwner() {
 		render(ProjectCollaborationModal, {
 			props: {
 				isOpen: true,
@@ -681,12 +693,11 @@ describe('ProjectCollaborationModal editors’ agents setting', () => {
 				canManageMembers: true
 			}
 		});
-		await fireEvent.click(await screen.findByRole('tab', { name: /People/ }));
 		return screen.findByRole('switch', { name: SWITCH_NAME });
 	}
 
 	it('loads the setting for the owner and saves a change', async () => {
-		const toggle = await openPeopleTab();
+		const toggle = await openAsOwner();
 		expect(
 			calls.some(
 				(call) =>
@@ -695,7 +706,7 @@ describe('ProjectCollaborationModal editors’ agents setting', () => {
 			)
 		).toBe(true);
 		expect(toggle).toHaveAttribute('aria-checked', 'false');
-		expect(toggle).toHaveAccessibleDescription(/People whose agents you turned off stay off/);
+		expect(toggle).toHaveAccessibleDescription(/unless you turned that person’s agents off/);
 		expect(screen.queryByText(LIFTED_NOTE)).toBeNull();
 
 		await fireEvent.click(toggle);
@@ -725,7 +736,7 @@ describe('ProjectCollaborationModal editors’ agents setting', () => {
 	});
 
 	it('puts the switch back and says why when the save fails', async () => {
-		const toggle = await openPeopleTab();
+		const toggle = await openAsOwner();
 
 		await fireEvent.click(toggle);
 		expect(toggle).toHaveAttribute('aria-checked', 'true');
@@ -743,13 +754,175 @@ describe('ProjectCollaborationModal editors’ agents setting', () => {
 		);
 	});
 
-	it('neither loads nor shows the setting for people who aren’t the owner', async () => {
+	it('moves Restricted here: the owner turns it on with one switch', async () => {
+		await openAsOwner();
+		const restricted = await screen.findByRole('switch', {
+			name: 'Only agents you pick can reach this project'
+		});
+		expect(restricted).toHaveAttribute('aria-checked', 'false');
+
+		await fireEvent.click(restricted);
+
+		expect(restricted).toHaveAttribute('aria-checked', 'true');
+		await waitFor(() =>
+			expect(calls.find((call) => call.url.endsWith('/external-agent-access'))).toEqual({
+				url: `/api/onto/projects/${PROJECT_A_ID}/external-agent-access`,
+				method: 'PATCH',
+				body: { external_agent_access: 'restricted' }
+			})
+		);
+	});
+
+	it('shows a member their own agents, names only, and none of the owner controls', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+				const url = String(input);
+				calls.push({ url, method: init?.method ?? 'GET', body: null });
+				if (url.endsWith('/agent-settings')) {
+					return jsonResponse({ success: true, data: { editor_agents_write: false } });
+				}
+				if (url.endsWith('/members')) {
+					return jsonResponse({
+						data: {
+							actorId: 'actor-sam',
+							members: [
+								{
+									id: 'member-dana',
+									actor_id: 'actor-dana',
+									role_key: 'owner',
+									access: 'admin',
+									handle: 'dana',
+									actor: { id: 'actor-dana', name: 'Dana', email: null }
+								},
+								{
+									id: 'member-sam',
+									actor_id: 'actor-sam',
+									role_key: 'editor',
+									access: 'write',
+									agent_access: 'read',
+									actor: {
+										id: 'actor-sam',
+										name: 'Sam',
+										email: 'sam@example.com'
+									}
+								}
+							]
+						}
+					});
+				}
+				return responseFor(url, PROJECT_A_ID, 'Unused');
+			})
+		);
 		render(ProjectCollaborationModal, {
 			props: { isOpen: true, projectId: PROJECT_A_ID, projectName: '9takes' }
 		});
 
-		expect(await screen.findByText('Sam')).toBeInTheDocument();
-		expect(screen.queryByRole('switch')).toBeNull();
-		expect(calls.some((call) => call.url.endsWith('/agent-settings'))).toBe(false);
+		expect(await screen.findByText('Your agents here: Read')).toBeInTheDocument();
+		expect(screen.getByText(/Dana set this\./)).toBeInTheDocument();
+		expect(screen.getByText('Only Dana can add people to this project.')).toBeInTheDocument();
+		expect(screen.getByText('@dana')).toBeInTheDocument();
+		expect(screen.queryByRole('switch', { name: SWITCH_NAME })).toBeNull();
+		expect(
+			screen.queryByRole('switch', { name: 'Only agents you pick can reach this project' })
+		).toBeNull();
+		expect(screen.queryByLabelText('Email or @handle')).toBeNull();
+		expect(screen.queryByLabelText(/Role for/)).toBeNull();
+		expect(calls.some((call) => call.url.endsWith('/invites'))).toBe(false);
+	});
+});
+
+describe('ProjectCollaborationModal unanswered invites', () => {
+	let calls: Array<{ url: string; method: string }>;
+
+	beforeEach(() => {
+		calls = [];
+		toastSuccessMock.mockReset();
+		Object.defineProperty(window, 'scrollTo', {
+			configurable: true,
+			writable: true,
+			value: vi.fn()
+		});
+		Object.defineProperty(Element.prototype, 'animate', {
+			configurable: true,
+			writable: true,
+			value: vi.fn(() => ({
+				cancel: vi.fn(),
+				commitStyles: vi.fn(),
+				finished: Promise.resolve(),
+				play: vi.fn()
+			}))
+		});
+		let cleared = false;
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+				const url = String(input);
+				const method = init?.method ?? 'GET';
+				calls.push({ url, method });
+				if (url.endsWith('/invites/clear-expired')) {
+					cleared = true;
+					return jsonResponse({ success: true, data: { cleared: 1 } });
+				}
+				if (url.endsWith('/invites')) {
+					return jsonResponse({
+						data: {
+							invites: cleared
+								? []
+								: [
+										{
+											id: 'invite-beau',
+											invitee_email: 'beau@example.com',
+											role_key: 'editor',
+											access: 'write',
+											agent_access: 'read',
+											status: 'pending',
+											effective_status: 'expired',
+											created_at: '2026-03-02T00:00:00.000Z',
+											expires_at: '2026-03-09T00:00:00.000Z'
+										}
+									]
+						}
+					});
+				}
+				if (url.endsWith('/invite-link')) {
+					return jsonResponse({ success: true, data: { link: null } });
+				}
+				return responseFor(url, PROJECT_A_ID, 'Dana');
+			})
+		);
+	});
+
+	afterEach(() => {
+		cleanup();
+		vi.unstubAllGlobals();
+	});
+
+	it('labels expired invites and clears them in one step', async () => {
+		render(ProjectCollaborationModal, {
+			props: {
+				isOpen: true,
+				projectId: PROJECT_A_ID,
+				projectName: 'Cadre',
+				canManageMembers: true
+			}
+		});
+
+		expect(await screen.findByText('Invited, no answer · 1')).toBeInTheDocument();
+		expect(screen.getByText(/Expired/)).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Clear expired (1)' }));
+
+		await waitFor(() =>
+			expect(toastSuccessMock).toHaveBeenCalledWith('Cleared 1 expired invite')
+		);
+		expect(
+			calls.some(
+				(call) =>
+					call.method === 'POST' &&
+					call.url === `/api/onto/projects/${PROJECT_A_ID}/invites/clear-expired`
+			)
+		).toBe(true);
+		await waitFor(() => expect(screen.queryByText(/Invited, no answer/)).toBeNull());
 	});
 });

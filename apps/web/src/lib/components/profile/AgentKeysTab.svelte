@@ -44,7 +44,6 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import SettingsCard from './_shared/SettingsCard.svelte';
-	import TabHeader from './_shared/TabHeader.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import {
 		AGENT_CLIENT_PROFILES,
@@ -229,6 +228,26 @@
 	let latestProvisioned = $state<BuildosAgentCallerProvisionResponse | null>(null);
 	let pendingRevokeCaller = $state<BuildosAgentCallerSummary | null>(null);
 	let revokingCallerId = $state<string | null>(null);
+	let pendingBulkRevoke = $state<BuildosAgentCallerSummary[] | null>(null);
+	let bulkRevoking = $state(false);
+	let sharedProjectsSavingId = $state<string | null>(null);
+
+	/** Unused for 3 months, or never used two weeks after it was made. */
+	const IDLE_AFTER_MS = 90 * 86_400_000;
+	const NEVER_USED_GRACE_MS = 14 * 86_400_000;
+	function isIdleCaller(caller: BuildosAgentCallerSummary, now = Date.now()): boolean {
+		const lastUsed = caller.last_used_at ? Date.parse(caller.last_used_at) : Number.NaN;
+		if (Number.isFinite(lastUsed)) return now - lastUsed > IDLE_AFTER_MS;
+		const created = Date.parse(caller.created_at);
+		return Number.isFinite(created) && now - created > NEVER_USED_GRACE_MS;
+	}
+	const revokedCallers = $derived(callers.filter((caller) => caller.status === 'revoked'));
+	const idleCallers = $derived(
+		callers.filter((caller) => caller.status !== 'revoked' && isIdleCaller(caller))
+	);
+	const activeCallers = $derived(
+		callers.filter((caller) => caller.status !== 'revoked' && !isIdleCaller(caller))
+	);
 	let rotatingCallerId = $state<string | null>(null);
 	let editingCaller = $state<BuildosAgentCallerSummary | null>(null);
 
@@ -1155,6 +1174,68 @@
 		}
 	}
 
+	async function revokeIdleCallers() {
+		const targets = pendingBulkRevoke ?? [];
+		if (targets.length === 0 || bulkRevoking) return;
+		bulkRevoking = true;
+		let failed = 0;
+		for (const caller of targets) {
+			try {
+				const response = await fetch('/api/agent-call/callers', {
+					method: 'DELETE',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ caller_id: caller.id })
+				});
+				await parseResponse(response);
+			} catch {
+				failed += 1;
+			}
+		}
+		bulkRevoking = false;
+		pendingBulkRevoke = null;
+		const done = targets.length - failed;
+		if (done > 0) {
+			const message = `Disconnected ${done} unused ${done === 1 ? 'connection' : 'connections'}.`;
+			toastService.success(message);
+			onsuccess?.({ message });
+		}
+		if (failed > 0) {
+			const message = `${failed} couldn't be disconnected. Try again.`;
+			toastService.error(message);
+			onerror?.({ message });
+		}
+		await loadCallers();
+		await refreshAgentConnectionStatus();
+	}
+
+	async function toggleSharedProjects(caller: BuildosAgentCallerSummary) {
+		if (sharedProjectsSavingId) return;
+		const enabled = caller.include_shared_projects !== true;
+		sharedProjectsSavingId = caller.id;
+		try {
+			const response = await fetch('/api/agent-call/callers/shared-projects', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ caller_id: caller.id, enabled })
+			});
+			await parseResponse(response);
+			callers = callers.map((row) =>
+				row.id === caller.id ? { ...row, include_shared_projects: enabled } : row
+			);
+			toastService.success(
+				enabled
+					? `${installationDisplayName(caller)} can now reach projects shared with you`
+					: `${installationDisplayName(caller)} no longer reaches projects shared with you`
+			);
+		} catch (error) {
+			toastService.error(
+				error instanceof Error ? error.message : 'Could not update this connection'
+			);
+		} finally {
+			sharedProjectsSavingId = null;
+		}
+	}
+
 	function statusVariant(status: string): 'success' | 'warning' | 'error' {
 		if (status === 'trusted') return 'success';
 		if (status === 'pending') return 'warning';
@@ -1232,12 +1313,18 @@
 </script>
 
 <div class="space-y-4 sm:space-y-5">
-	<TabHeader
-		icon={Key}
-		title="Agents"
-		description="Connect Claude Code, Codex, ChatGPT, OpenClaw, or any AI tool to your BuildOS projects. One key per tool. Rotate or revoke any time."
-	>
-		{#snippet actions()}
+	<div class="flex flex-wrap items-start gap-3">
+		<div class="min-w-0 flex-1">
+			<h3 class="flex items-center gap-2 text-sm font-semibold text-foreground sm:text-base">
+				<Key class="h-4 w-4 text-accent" aria-hidden="true" />
+				Agents
+			</h3>
+			<p class="mt-0.5 text-xs text-muted-foreground">
+				Your connections, what each one reaches, and what it can do there. One key per tool;
+				rotate or revoke any time.
+			</p>
+		</div>
+		<div class="flex flex-wrap items-center gap-2">
 			<Button
 				variant="outline"
 				size="sm"
@@ -1248,193 +1335,214 @@
 				Refresh
 			</Button>
 			<Button variant="primary" size="sm" icon={Plus} onclick={openGenerateModal}>
-				Generate
+				Connect an agent
 			</Button>
-		{/snippet}
-	</TabHeader>
-
-	<div class="overflow-hidden rounded-lg border border-border bg-card shadow-ink">
-		<div
-			class="flex flex-col gap-3 border-b border-border px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5"
-		>
-			<div class="space-y-1">
-				<h3 class="text-sm font-semibold text-foreground">Connect an agent to BuildOS</h3>
-				<p class="max-w-3xl text-xs leading-relaxed text-muted-foreground sm:text-sm">
-					Generate a BuildOS Agent Key, store it in the client config, then authenticate
-					with
-					<code class="rounded-md bg-muted px-1 py-0.5 text-xs text-foreground"
-						>Authorization: Bearer &lt;BUILDOS_AGENT_TOKEN&gt;</code
-					>. Use one key per tool so you can rotate or revoke access without touching
-					other agents.
-				</p>
-			</div>
-			<a
-				href="/docs/connect-agents"
-				class="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-accent rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-			>
-				Full setup docs
-				<ExternalLink class="h-3.5 w-3.5" />
-			</a>
-		</div>
-
-		<div
-			class="grid divide-y divide-border text-xs text-muted-foreground lg:grid-cols-3 lg:divide-x lg:divide-y-0"
-		>
-			<div class="space-y-2 px-4 py-4 sm:px-5">
-				<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
-					Claude Code
-				</div>
-				<p class="leading-relaxed">
-					Add BuildOS as an HTTP MCP server. After generating a key, the confirmation
-					modal can copy this command with the key filled in.
-				</p>
-				<pre
-					class="overflow-x-auto rounded-md border border-border bg-muted/30 p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
-						>{claudeCodeAuthSnippet()}</code
-					></pre>
-				<div class="flex justify-end">
-					<Button
-						variant="ghost"
-						size="sm"
-						icon={copiedId === 'setup-claude-code' ? CircleCheck : Copy}
-						onclick={() =>
-							copyToClipboard(
-								'setup-claude-code',
-								claudeCodeAuthSnippet(),
-								'Claude Code command copied'
-							)}
-					>
-						{copiedId === 'setup-claude-code' ? 'Copied' : 'Copy'}
-					</Button>
-				</div>
-			</div>
-
-			<div class="space-y-2 px-4 py-4 sm:px-5">
-				<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
-					OpenClaw
-				</div>
-				<p class="leading-relaxed">
-					Store the BuildOS values in OpenClaw env, SecretRef, or plugin config. The
-					connector uses the token against the MCP endpoint or JSON-RPC gateway.
-				</p>
-				<pre
-					class="overflow-x-auto rounded-md border border-border bg-muted/30 p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
-						>{openClawAuthSnippet()}</code
-					></pre>
-				<div class="flex justify-end">
-					<Button
-						variant="ghost"
-						size="sm"
-						icon={copiedId === 'setup-openclaw' ? CircleCheck : Copy}
-						onclick={() =>
-							copyToClipboard(
-								'setup-openclaw',
-								openClawAuthSnippet(),
-								'OpenClaw env block copied'
-							)}
-					>
-						{copiedId === 'setup-openclaw' ? 'Copied' : 'Copy'}
-					</Button>
-				</div>
-			</div>
-
-			<div class="space-y-2 px-4 py-4 sm:px-5">
-				<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
-					Browser or remote clients
-				</div>
-				<p class="leading-relaxed">
-					Use OAuth for Claude.ai, ChatGPT MCP, or other cloud-hosted clients. Add the
-					remote connector URL and approve BuildOS in the browser instead of pasting a
-					bearer token into chat.
-				</p>
-				<pre
-					class="overflow-x-auto rounded-md border border-border bg-muted/30 p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
-						>{mcpEndpointUrl()}</code
-					></pre>
-				<div class="flex justify-end">
-					<Button
-						variant="ghost"
-						size="sm"
-						icon={copiedId === 'setup-remote-mcp' ? CircleCheck : Copy}
-						onclick={() =>
-							copyToClipboard(
-								'setup-remote-mcp',
-								mcpEndpointUrl(),
-								'Remote MCP URL copied'
-							)}
-					>
-						{copiedId === 'setup-remote-mcp' ? 'Copied' : 'Copy'}
-					</Button>
-				</div>
-			</div>
-		</div>
-
-		<div class="border-t border-border px-4 py-3 text-xs text-muted-foreground sm:px-5">
-			<span class="font-medium text-foreground">Connection check:</span>
-			Ask the agent to connect to BuildOS, list your projects, and call
-			<code class="rounded-md bg-muted px-1 py-0.5 text-xs text-foreground"
-				>get_onto_project_status</code
-			>
-			before changing an existing project.
 		</div>
 	</div>
 
-	<!-- What is this? -->
-	<details
-		class="group tx tx-bloom tx-weak overflow-hidden rounded-lg border border-border bg-card shadow-ink"
-	>
-		<summary
-			class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 sm:px-5 py-3 text-sm font-semibold text-foreground hover:bg-muted/30"
-		>
-			<span class="flex items-center gap-2">
-				<Key class="w-4 h-4 text-accent" />
-				What is this?
-			</span>
-			<ChevronDown
-				class="h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none group-open:rotate-180"
-			/>
-		</summary>
-		<div
-			class="grid gap-3 border-t border-border px-4 sm:px-5 py-4 sm:grid-cols-2 text-xs sm:text-sm text-muted-foreground"
-		>
-			<div>
-				<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
-					What
+	{#snippet setupGuide()}
+		<div class="overflow-hidden rounded-lg border border-border bg-card shadow-ink">
+			<div
+				class="flex flex-col gap-3 border-b border-border px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5"
+			>
+				<div class="space-y-1">
+					<h3 class="text-sm font-semibold text-foreground">
+						Connect an agent to BuildOS
+					</h3>
+					<p class="max-w-3xl text-xs leading-relaxed text-muted-foreground sm:text-sm">
+						Generate a BuildOS Agent Key, store it in the client config, then
+						authenticate with
+						<code class="rounded-md bg-muted px-1 py-0.5 text-xs text-foreground"
+							>Authorization: Bearer &lt;BUILDOS_AGENT_TOKEN&gt;</code
+						>. Use one key per tool so you can rotate or revoke access without touching
+						other agents.
+					</p>
 				</div>
-				<p class="mt-1 leading-relaxed">
-					A scoped read/write connection between BuildOS and any AI tool that can call
-					HTTP.
-				</p>
+				<a
+					href="/docs/connect-agents"
+					class="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-accent rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+				>
+					Full setup docs
+					<ExternalLink class="h-3.5 w-3.5" />
+				</a>
 			</div>
-			<div>
-				<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
-					Why
+
+			<div
+				class="grid divide-y divide-border text-xs text-muted-foreground lg:grid-cols-3 lg:divide-x lg:divide-y-0"
+			>
+				<div class="space-y-2 px-4 py-4 sm:px-5">
+					<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
+						Claude Code
+					</div>
+					<p class="leading-relaxed">
+						Add BuildOS as an HTTP MCP server. After generating a key, the confirmation
+						modal can copy this command with the key filled in.
+					</p>
+					<pre
+						class="overflow-x-auto rounded-md border border-border bg-muted/30 p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+							>{claudeCodeAuthSnippet()}</code
+						></pre>
+					<div class="flex justify-end">
+						<Button
+							variant="ghost"
+							size="sm"
+							icon={copiedId === 'setup-claude-code' ? CircleCheck : Copy}
+							onclick={() =>
+								copyToClipboard(
+									'setup-claude-code',
+									claudeCodeAuthSnippet(),
+									'Claude Code command copied'
+								)}
+						>
+							{copiedId === 'setup-claude-code' ? 'Copied' : 'Copy'}
+						</Button>
+					</div>
 				</div>
-				<p class="mt-1 leading-relaxed">
-					Your projects live in BuildOS. Your AI tools should read off the same sheet of
-					paper instead of starting from zero each session.
-				</p>
+
+				<div class="space-y-2 px-4 py-4 sm:px-5">
+					<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
+						OpenClaw
+					</div>
+					<p class="leading-relaxed">
+						Store the BuildOS values in OpenClaw env, SecretRef, or plugin config. The
+						connector uses the token against the MCP endpoint or JSON-RPC gateway.
+					</p>
+					<pre
+						class="overflow-x-auto rounded-md border border-border bg-muted/30 p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+							>{openClawAuthSnippet()}</code
+						></pre>
+					<div class="flex justify-end">
+						<Button
+							variant="ghost"
+							size="sm"
+							icon={copiedId === 'setup-openclaw' ? CircleCheck : Copy}
+							onclick={() =>
+								copyToClipboard(
+									'setup-openclaw',
+									openClawAuthSnippet(),
+									'OpenClaw env block copied'
+								)}
+						>
+							{copiedId === 'setup-openclaw' ? 'Copied' : 'Copy'}
+						</Button>
+					</div>
+				</div>
+
+				<div class="space-y-2 px-4 py-4 sm:px-5">
+					<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
+						Browser or remote clients
+					</div>
+					<p class="leading-relaxed">
+						Use OAuth for Claude.ai, ChatGPT MCP, or other cloud-hosted clients. Add the
+						remote connector URL and approve BuildOS in the browser instead of pasting a
+						bearer token into chat.
+					</p>
+					<pre
+						class="overflow-x-auto rounded-md border border-border bg-muted/30 p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+							>{mcpEndpointUrl()}</code
+						></pre>
+					<div class="flex justify-end">
+						<Button
+							variant="ghost"
+							size="sm"
+							icon={copiedId === 'setup-remote-mcp' ? CircleCheck : Copy}
+							onclick={() =>
+								copyToClipboard(
+									'setup-remote-mcp',
+									mcpEndpointUrl(),
+									'Remote MCP URL copied'
+								)}
+						>
+							{copiedId === 'setup-remote-mcp' ? 'Copied' : 'Copy'}
+						</Button>
+					</div>
+				</div>
 			</div>
-			<div>
-				<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
-					How
-				</div>
-				<p class="mt-1 leading-relaxed">
-					Generate a key, paste it into your tool's config, then tell the agent "connect
-					to BuildOS, list my projects."
-				</p>
-			</div>
-			<div>
-				<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
-					Safety
-				</div>
-				<p class="mt-1 leading-relaxed">
-					Per-project scope. Per-op write whitelist. Audit log. Rotate or revoke any time.
-					BuildOS stores only a hash; the full key is shown once on generate.
-				</p>
+
+			<div class="border-t border-border px-4 py-3 text-xs text-muted-foreground sm:px-5">
+				<span class="font-medium text-foreground">Connection check:</span>
+				Ask the agent to connect to BuildOS, list your projects, and call
+				<code class="rounded-md bg-muted px-1 py-0.5 text-xs text-foreground"
+					>get_onto_project_status</code
+				>
+				before changing an existing project.
 			</div>
 		</div>
-	</details>
+
+		<!-- What is this? -->
+		<details
+			class="group tx tx-bloom tx-weak overflow-hidden rounded-lg border border-border bg-card shadow-ink"
+		>
+			<summary
+				class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 sm:px-5 py-3 text-sm font-semibold text-foreground hover:bg-muted/30"
+			>
+				<span class="flex items-center gap-2">
+					<Key class="w-4 h-4 text-accent" />
+					What is this?
+				</span>
+				<ChevronDown
+					class="h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none group-open:rotate-180"
+				/>
+			</summary>
+			<div
+				class="grid gap-3 border-t border-border px-4 sm:px-5 py-4 sm:grid-cols-2 text-xs sm:text-sm text-muted-foreground"
+			>
+				<div>
+					<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
+						What
+					</div>
+					<p class="mt-1 leading-relaxed">
+						A scoped read/write connection between BuildOS and any AI tool that can call
+						HTTP.
+					</p>
+				</div>
+				<div>
+					<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
+						Why
+					</div>
+					<p class="mt-1 leading-relaxed">
+						Your projects live in BuildOS. Your AI tools should read off the same sheet
+						of paper instead of starting from zero each session.
+					</p>
+				</div>
+				<div>
+					<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
+						How
+					</div>
+					<p class="mt-1 leading-relaxed">
+						Generate a key, paste it into your tool's config, then tell the agent
+						"connect to BuildOS, list my projects."
+					</p>
+				</div>
+				<div>
+					<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
+						Safety
+					</div>
+					<p class="mt-1 leading-relaxed">
+						Per-project scope. Per-op write whitelist. Audit log. Rotate or revoke any
+						time. BuildOS stores only a hash; the full key is shown once on generate.
+					</p>
+				</div>
+			</div>
+		</details>
+	{/snippet}
+	{#if callers.length > 0}
+		<details class="group rounded-lg border border-border bg-card shadow-ink">
+			<summary
+				class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-foreground hover:bg-muted/30 sm:px-5"
+			>
+				How to connect another agent
+				<ChevronDown
+					class="h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none group-open:rotate-180"
+				/>
+			</summary>
+			<div class="space-y-4 border-t border-border p-3 sm:p-4">
+				{@render setupGuide()}
+			</div>
+		</details>
+	{:else}
+		{@render setupGuide()}
+	{/if}
 
 	<!-- Agent Handle -->
 	{#if buildosAgent}
@@ -1516,375 +1624,466 @@
 				</div>
 			</div>
 		{:else}
-			<div class="space-y-2">
-				{#each callers as caller (caller.id)}
-					<details
-						class="group min-w-0 overflow-hidden rounded-lg border border-border bg-muted/30"
-					>
-						<summary class="list-none cursor-pointer p-3 sm:p-4">
-							<div
-								class="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
-							>
-								<div class="flex min-w-0 items-start gap-2.5">
-									<ChevronDown
-										class="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none group-open:rotate-180"
-									/>
-									<div class="min-w-0 space-y-1.5">
-										<div class="flex flex-wrap items-center gap-2">
-											<h4
-												class="min-w-0 max-w-full break-words text-sm font-semibold text-foreground"
-											>
-												{installationDisplayName(caller)}
-											</h4>
-											<Badge variant={statusVariant(caller.status)}>
-												{caller.status}
-											</Badge>
-											<Badge variant="default">
-												{displayProvider(caller.provider)}
-											</Badge>
-										</div>
-										<div
-											class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground"
+			{#snippet callerRow(caller: BuildosAgentCallerSummary)}
+				<details
+					class="group min-w-0 overflow-hidden rounded-lg border border-border bg-muted/30"
+				>
+					<summary class="list-none cursor-pointer p-3 sm:p-4">
+						<div
+							class="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+						>
+							<div class="flex min-w-0 items-start gap-2.5">
+								<ChevronDown
+									class="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none group-open:rotate-180"
+								/>
+								<div class="min-w-0 space-y-1.5">
+									<div class="flex flex-wrap items-center gap-2">
+										<h4
+											class="min-w-0 max-w-full break-words text-sm font-semibold text-foreground"
 										>
-											<span>{accessModeLabel(caller)}</span>
-											<span>{scopeLabel(caller)}</span>
-											<span>
-												Last used {formatRelativeTimestamp(
-													caller.last_used_at
-												)}
-											</span>
-										</div>
+											{installationDisplayName(caller)}
+										</h4>
+										<Badge variant={statusVariant(caller.status)}>
+											{caller.status}
+										</Badge>
+										<Badge variant="default">
+											{displayProvider(caller.provider)}
+										</Badge>
 									</div>
-								</div>
-								<div
-									class="flex min-w-0 flex-wrap gap-1.5 sm:max-w-[48%] sm:justify-end"
-								>
-									<Badge variant="default" size="sm">
-										{recentSessionCount(caller, 'week')} sessions / 7d
-									</Badge>
-									<Badge variant="default" size="sm">
-										{recentWriteCount(caller, 'week')} writes / 7d
-									</Badge>
-									<Badge variant="default" size="sm">
-										{caller.usage?.project_count ?? 0} projects touched
-									</Badge>
+									<div
+										class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground"
+									>
+										<span>{accessModeLabel(caller)}</span>
+										<span>{scopeLabel(caller)}</span>
+										{#if caller.include_shared_projects}
+											<span>+ projects shared with you</span>
+										{/if}
+										<span>
+											Last used {formatRelativeTimestamp(caller.last_used_at)}
+										</span>
+									</div>
 								</div>
 							</div>
-						</summary>
+							<div
+								class="flex min-w-0 flex-wrap gap-1.5 sm:max-w-[48%] sm:justify-end"
+							>
+								<Badge variant="default" size="sm">
+									{recentSessionCount(caller, 'week')} sessions / 7d
+								</Badge>
+								<Badge variant="default" size="sm">
+									{recentWriteCount(caller, 'week')} writes / 7d
+								</Badge>
+								<Badge variant="default" size="sm">
+									{caller.usage?.project_count ?? 0} projects touched
+								</Badge>
+							</div>
+						</div>
+					</summary>
 
-						<div class="border-t border-border p-3 sm:p-4 space-y-4">
-							{#if caller.status === 'trusted'}
-								<div
-									class="rounded-lg border border-accent/40 bg-accent/5 p-3 space-y-2"
-								>
-									<div
-										class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+					<div class="border-t border-border p-3 sm:p-4 space-y-4">
+						{#if caller.status === 'trusted'}
+							<div
+								class="flex items-start justify-between gap-4 rounded-lg border border-border bg-card p-3"
+							>
+								<div class="min-w-0 space-y-0.5">
+									<p
+										id="shared-projects-label-{caller.id}"
+										class="text-sm font-medium text-foreground"
 									>
-										<div>
-											<div
-												class="text-xs font-semibold uppercase tracking-wider text-foreground"
-											>
-												{mcpQuickConnectForCaller(caller).label}
-											</div>
-											<p class="mt-1 text-xs text-muted-foreground">
-												{mcpQuickConnectForCaller(caller).note}
-											</p>
-										</div>
-										<Button
-											variant="primary"
-											size="sm"
-											icon={copiedId === `mcp-cmd-${caller.id}`
-												? CircleCheck
-												: Copy}
-											title="Replace <BUILDOS_AGENT_TOKEN> with the key you saved when you generated it. Browser/OAuth connectors don't need a key."
-											onclick={() =>
-												copyToClipboard(
-													`mcp-cmd-${caller.id}`,
-													mcpQuickConnectForCaller(caller).value,
-													'Command copied'
-												)}
-										>
-											{copiedId === `mcp-cmd-${caller.id}`
-												? 'Copied'
-												: 'Copy'}
-										</Button>
-									</div>
-									<pre
-										class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
-											>{mcpQuickConnectForCaller(caller).value}</code
-										></pre>
+										Projects shared with me
+									</p>
+									<p
+										id="shared-projects-hint-{caller.id}"
+										class="text-xs text-muted-foreground"
+									>
+										Let this agent into projects other people share with you.
+										Each owner still decides what your agents can do there.
+									</p>
 								</div>
-							{/if}
-
-							<div class="flex flex-wrap gap-2">
-								{#if caller.status === 'trusted'}
-									{#if !isOAuthConnectorCaller(caller)}
-										<Button
-											variant="outline"
-											size="sm"
-											icon={copiedId === `agent-prompt-${caller.id}`
-												? CircleCheck
-												: Copy}
-											title="Token redacted — paste your stored env value where `<BUILDOS_AGENT_TOKEN>` appears."
-											onclick={() =>
-												copyToClipboard(
-													`agent-prompt-${caller.id}`,
-													agentConnectionPromptForCaller(caller),
-													'Agent prompt copied'
-												)}
-										>
-											{copiedId === `agent-prompt-${caller.id}`
-												? 'Copied'
-												: 'Copy Prompt'}
-										</Button>
-									{/if}
-								{/if}
-								<Button
-									variant="outline"
-									size="sm"
-									icon={BarChart3}
-									onclick={() => openUsageDetail(caller)}
+								<button
+									type="button"
+									role="switch"
+									aria-checked={caller.include_shared_projects === true}
+									aria-labelledby="shared-projects-label-{caller.id}"
+									aria-describedby="shared-projects-hint-{caller.id}"
+									disabled={sharedProjectsSavingId !== null}
+									onclick={() => toggleSharedProjects(caller)}
+									class="relative mt-0.5 h-7 w-12 shrink-0 rounded-full border transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 {caller.include_shared_projects
+										? 'border-accent bg-accent'
+										: 'border-border-strong bg-muted'}"
 								>
-									Usage
-								</Button>
+									<span
+										class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-background shadow-ink transition-transform motion-reduce:transition-none {caller.include_shared_projects
+											? 'translate-x-5'
+											: 'translate-x-0'}"
+									></span>
+								</button>
+							</div>
+							<div
+								class="rounded-lg border border-accent/40 bg-accent/5 p-3 space-y-2"
+							>
+								<div
+									class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+								>
+									<div>
+										<div
+											class="text-xs font-semibold uppercase tracking-wider text-foreground"
+										>
+											{mcpQuickConnectForCaller(caller).label}
+										</div>
+										<p class="mt-1 text-xs text-muted-foreground">
+											{mcpQuickConnectForCaller(caller).note}
+										</p>
+									</div>
+									<Button
+										variant="primary"
+										size="sm"
+										icon={copiedId === `mcp-cmd-${caller.id}`
+											? CircleCheck
+											: Copy}
+										title="Replace <BUILDOS_AGENT_TOKEN> with the key you saved when you generated it. Browser/OAuth connectors don't need a key."
+										onclick={() =>
+											copyToClipboard(
+												`mcp-cmd-${caller.id}`,
+												mcpQuickConnectForCaller(caller).value,
+												'Command copied'
+											)}
+									>
+										{copiedId === `mcp-cmd-${caller.id}` ? 'Copied' : 'Copy'}
+									</Button>
+								</div>
+								<pre
+									class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+										>{mcpQuickConnectForCaller(caller).value}</code
+									></pre>
+							</div>
+						{/if}
+
+						<div class="flex flex-wrap gap-2">
+							{#if caller.status === 'trusted'}
 								{#if !isOAuthConnectorCaller(caller)}
 									<Button
 										variant="outline"
 										size="sm"
-										icon={Copy}
-										loading={rotatingCallerId === caller.id}
-										disabled={saving ||
-											(rotatingCallerId !== null &&
-												rotatingCallerId !== caller.id)}
-										onclick={() => rotateAndShowKey(caller)}
+										icon={copiedId === `agent-prompt-${caller.id}`
+											? CircleCheck
+											: Copy}
+										title="Token redacted — paste your stored env value where `<BUILDOS_AGENT_TOKEN>` appears."
+										onclick={() =>
+											copyToClipboard(
+												`agent-prompt-${caller.id}`,
+												agentConnectionPromptForCaller(caller),
+												'Agent prompt copied'
+											)}
 									>
-										{caller.status === 'revoked'
-											? 'Reissue + Copy'
-											: 'Rotate + Copy'}
-									</Button>
-									<Button
-										variant="outline"
-										size="sm"
-										icon={RefreshCw}
-										loading={saving && editingCaller?.id === caller.id}
-										disabled={saving || rotatingCallerId !== null}
-										onclick={() => openEditModal(caller)}
-									>
-										{caller.status === 'revoked' ? 'Reissue Key' : 'Edit'}
+										{copiedId === `agent-prompt-${caller.id}`
+											? 'Copied'
+											: 'Copy Prompt'}
 									</Button>
 								{/if}
-								{#if isOAuthConnectorCaller(caller) && caller.status === 'trusted'}
-									<Button
-										variant="outline"
-										size="sm"
-										icon={RefreshCw}
-										disabled={saving || rotatingCallerId !== null}
-										onclick={() => openEditModal(caller)}
-									>
-										Edit access
-									</Button>
-								{/if}
-								{#if caller.status !== 'revoked'}
-									<Button
-										variant="danger"
-										size="sm"
-										icon={Trash2}
-										class="ml-0 sm:ml-auto"
-										disabled={revokingCallerId === caller.id}
-										onclick={() => (pendingRevokeCaller = caller)}
-									>
-										Revoke
-									</Button>
-								{/if}
-							</div>
-
-							<div
-								class="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+							{/if}
+							<Button
+								variant="outline"
+								size="sm"
+								icon={BarChart3}
+								onclick={() => openUsageDetail(caller)}
 							>
-								<div class="min-w-0 space-y-2 text-xs text-muted-foreground">
-									<div
-										class="text-xs uppercase tracking-wider text-muted-foreground"
-									>
-										{isOAuthConnectorCaller(caller)
-											? 'Connector Details'
-											: 'Key Details'}
-									</div>
-									<p class="min-w-0">
-										<span class="font-medium text-foreground"
-											>{isOAuthConnectorCaller(caller)
-												? 'Grant key:'
-												: 'Caller key:'}</span
-										>
-										<code class="break-all">{caller.caller_key}</code>
-									</p>
-									{#if isOAuthConnectorCaller(caller)}
-										<p>
-											<span class="font-medium text-foreground"
-												>Credential:</span
-											>
-											OAuth connector grant
-										</p>
-									{:else}
-										<p class="min-w-0">
-											<span class="font-medium text-foreground">Prefix:</span>
-											<code class="break-all">{caller.token_prefix}</code>
-											<span class="ml-1 text-muted-foreground">
-												secret shown only on generate or rotate
-											</span>
-										</p>
-									{/if}
-									<p>
-										<span class="font-medium text-foreground">Access:</span>
-										{accessModeLabel(caller)}
-									</p>
-									<p>
-										<span class="font-medium text-foreground">Last used:</span>
-										{formatTimestamp(caller.last_used_at)}
-									</p>
-								</div>
-
-								<div class="min-w-0 space-y-2">
-									<div
-										class="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground"
-									>
-										<Activity class="h-3.5 w-3.5" />
-										Usage
-									</div>
-									<div class="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
-										{#each USAGE_PERIODS as period (period)}
-											{@const trend = usageTrend(caller, period)}
-											<div
-												class="min-w-0 rounded-md border border-border bg-card/70 p-2"
-											>
-												<div class="text-xs font-semibold text-foreground">
-													{periodLabel(period)}
-												</div>
-												<div class="mt-1 text-2xs text-muted-foreground">
-													{trend?.session_count ?? 0} sessions
-												</div>
-												<div class="text-2xs text-muted-foreground">
-													{trend?.write_count ?? 0} writes
-												</div>
-											</div>
-										{/each}
-									</div>
-									<p class="text-xs text-muted-foreground">
-										{caller.usage?.total_write_count ?? 0} total tracked writes,
-										{caller.usage?.successful_write_count ?? 0} succeeded,
-										{caller.usage?.failed_write_count ?? 0} failed.
-									</p>
-								</div>
-							</div>
-
-							<div class="space-y-2">
-								<div class="text-xs uppercase tracking-wider text-muted-foreground">
-									Recent Activity
-								</div>
-								{#if caller.usage?.recent_activity?.length}
-									<div class="min-w-0 space-y-2">
-										{#each caller.usage.recent_activity as event (event.id)}
-											<div
-												class="min-w-0 rounded-md border border-border bg-card/70 px-3 py-2"
-											>
-												<div
-													class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
-												>
-													<div class="min-w-0">
-														<p
-															class="truncate text-sm font-medium text-foreground"
-														>
-															{event.summary}
-														</p>
-														<p
-															class="break-words text-xs text-muted-foreground"
-														>
-															{eventMetaLabel(event)}
-														</p>
-													</div>
-													<Badge
-														variant={activityStatusVariant(
-															event.status
-														)}
-														size="sm"
-													>
-														{event.status}
-													</Badge>
-												</div>
-											</div>
-										{/each}
-									</div>
-								{:else}
-									<div
-										class="rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground"
-									>
-										No tracked write activity yet. Reads and connection pings
-										are reflected in usage counts as agents start sessions.
-									</div>
-								{/if}
-							</div>
-
-							<details class="border-t border-border pt-3">
-								<summary
-									class="flex cursor-pointer list-none items-center justify-between gap-3 text-xs uppercase tracking-wider text-muted-foreground min-h-[44px] py-2"
+								Usage
+							</Button>
+							{#if !isOAuthConnectorCaller(caller)}
+								<Button
+									variant="outline"
+									size="sm"
+									icon={Copy}
+									loading={rotatingCallerId === caller.id}
+									disabled={saving ||
+										(rotatingCallerId !== null &&
+											rotatingCallerId !== caller.id)}
+									onclick={() => rotateAndShowKey(caller)}
 								>
-									<span>Project Scope</span>
-									<span class="text-2xs normal-case tracking-normal">
-										{scopeLabel(caller)}
-									</span>
-								</summary>
-								{#if (caller.allowed_project_ids && caller.allowed_project_ids.length > 0) || unavailableProjectCount(caller) > 0}
-									<div class="mt-2 flex flex-wrap gap-1.5">
-										{#if caller.allowed_project_ids && caller.allowed_project_ids.length > 0}
-											{#each caller.allowed_project_ids as projectId (projectId)}
-												<Badge variant="accent">
-													{projectName(projectId)}
-												</Badge>
-											{/each}
-										{/if}
-										{#if unavailableProjectCount(caller) > 0}
-											<Badge variant="warning">
-												{projectCountLabel(unavailableProjectCount(caller))}
-												unavailable
-											</Badge>
-										{/if}
-									</div>
-								{:else}
-									<p class="mt-2 text-xs text-muted-foreground">
-										This key can access all visible BuildOS projects.
-									</p>
-								{/if}
-							</details>
-
-							<details class="border-t border-border pt-3">
-								<summary
-									class="flex cursor-pointer list-none items-center justify-between gap-3 text-xs uppercase tracking-wider text-muted-foreground min-h-[44px] py-2"
+									{caller.status === 'revoked'
+										? 'Reissue + Copy'
+										: 'Rotate + Copy'}
+								</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									icon={RefreshCw}
+									loading={saving && editingCaller?.id === caller.id}
+									disabled={saving || rotatingCallerId !== null}
+									onclick={() => openEditModal(caller)}
 								>
-									<span>Write Permissions</span>
-									<span class="text-2xs normal-case tracking-normal">
-										{writePermissionLabels(caller).length} write op{writePermissionLabels(
-											caller
-										).length === 1
-											? ''
-											: 's'}
-									</span>
-								</summary>
-								{#if writePermissionLabels(caller).length > 0}
-									<div class="mt-2 flex flex-wrap gap-1.5">
-										{#each writePermissionLabels(caller) as label (label)}
-											<Badge variant="accent">{label}</Badge>
-										{/each}
-									</div>
-								{:else}
-									<p class="mt-2 text-xs text-muted-foreground">
-										This key is read-only and cannot create, update, or delete
-										BuildOS records.
-									</p>
-								{/if}
-							</details>
+									{caller.status === 'revoked' ? 'Reissue Key' : 'Edit'}
+								</Button>
+							{/if}
+							{#if isOAuthConnectorCaller(caller) && caller.status === 'trusted'}
+								<Button
+									variant="outline"
+									size="sm"
+									icon={RefreshCw}
+									disabled={saving || rotatingCallerId !== null}
+									onclick={() => openEditModal(caller)}
+								>
+									Edit access
+								</Button>
+							{/if}
+							{#if caller.status !== 'revoked'}
+								<Button
+									variant="danger"
+									size="sm"
+									icon={Trash2}
+									class="ml-0 sm:ml-auto"
+									disabled={revokingCallerId === caller.id}
+									onclick={() => (pendingRevokeCaller = caller)}
+								>
+									Revoke
+								</Button>
+							{/if}
 						</div>
-					</details>
+
+						<div class="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+							<div class="min-w-0 space-y-2 text-xs text-muted-foreground">
+								<div class="text-xs uppercase tracking-wider text-muted-foreground">
+									{isOAuthConnectorCaller(caller)
+										? 'Connector Details'
+										: 'Key Details'}
+								</div>
+								<p class="min-w-0">
+									<span class="font-medium text-foreground"
+										>{isOAuthConnectorCaller(caller)
+											? 'Grant key:'
+											: 'Caller key:'}</span
+									>
+									<code class="break-all">{caller.caller_key}</code>
+								</p>
+								{#if isOAuthConnectorCaller(caller)}
+									<p>
+										<span class="font-medium text-foreground">Credential:</span>
+										OAuth connector grant
+									</p>
+								{:else}
+									<p class="min-w-0">
+										<span class="font-medium text-foreground">Prefix:</span>
+										<code class="break-all">{caller.token_prefix}</code>
+										<span class="ml-1 text-muted-foreground">
+											secret shown only on generate or rotate
+										</span>
+									</p>
+								{/if}
+								<p>
+									<span class="font-medium text-foreground">Access:</span>
+									{accessModeLabel(caller)}
+								</p>
+								<p>
+									<span class="font-medium text-foreground">Last used:</span>
+									{formatTimestamp(caller.last_used_at)}
+								</p>
+							</div>
+
+							<div class="min-w-0 space-y-2">
+								<div
+									class="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground"
+								>
+									<Activity class="h-3.5 w-3.5" />
+									Usage
+								</div>
+								<div class="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
+									{#each USAGE_PERIODS as period (period)}
+										{@const trend = usageTrend(caller, period)}
+										<div
+											class="min-w-0 rounded-md border border-border bg-card/70 p-2"
+										>
+											<div class="text-xs font-semibold text-foreground">
+												{periodLabel(period)}
+											</div>
+											<div class="mt-1 text-2xs text-muted-foreground">
+												{trend?.session_count ?? 0} sessions
+											</div>
+											<div class="text-2xs text-muted-foreground">
+												{trend?.write_count ?? 0} writes
+											</div>
+										</div>
+									{/each}
+								</div>
+								<p class="text-xs text-muted-foreground">
+									{caller.usage?.total_write_count ?? 0} total tracked writes,
+									{caller.usage?.successful_write_count ?? 0} succeeded,
+									{caller.usage?.failed_write_count ?? 0} failed.
+								</p>
+							</div>
+						</div>
+
+						<div class="space-y-2">
+							<div class="text-xs uppercase tracking-wider text-muted-foreground">
+								Recent Activity
+							</div>
+							{#if caller.usage?.recent_activity?.length}
+								<div class="min-w-0 space-y-2">
+									{#each caller.usage.recent_activity as event (event.id)}
+										<div
+											class="min-w-0 rounded-md border border-border bg-card/70 px-3 py-2"
+										>
+											<div
+												class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
+											>
+												<div class="min-w-0">
+													<p
+														class="truncate text-sm font-medium text-foreground"
+													>
+														{event.summary}
+													</p>
+													<p
+														class="break-words text-xs text-muted-foreground"
+													>
+														{eventMetaLabel(event)}
+													</p>
+												</div>
+												<Badge
+													variant={activityStatusVariant(event.status)}
+													size="sm"
+												>
+													{event.status}
+												</Badge>
+											</div>
+										</div>
+									{/each}
+								</div>
+							{:else}
+								<div
+									class="rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground"
+								>
+									No tracked write activity yet. Reads and connection pings are
+									reflected in usage counts as agents start sessions.
+								</div>
+							{/if}
+						</div>
+
+						<details class="border-t border-border pt-3">
+							<summary
+								class="flex cursor-pointer list-none items-center justify-between gap-3 text-xs uppercase tracking-wider text-muted-foreground min-h-[44px] py-2"
+							>
+								<span>Project Scope</span>
+								<span class="text-2xs normal-case tracking-normal">
+									{scopeLabel(caller)}
+								</span>
+							</summary>
+							{#if (caller.allowed_project_ids && caller.allowed_project_ids.length > 0) || unavailableProjectCount(caller) > 0}
+								<div class="mt-2 flex flex-wrap gap-1.5">
+									{#if caller.allowed_project_ids && caller.allowed_project_ids.length > 0}
+										{#each caller.allowed_project_ids as projectId (projectId)}
+											<Badge variant="accent">
+												{projectName(projectId)}
+											</Badge>
+										{/each}
+									{/if}
+									{#if unavailableProjectCount(caller) > 0}
+										<Badge variant="warning">
+											{projectCountLabel(unavailableProjectCount(caller))}
+											unavailable
+										</Badge>
+									{/if}
+								</div>
+							{:else}
+								<p class="mt-2 text-xs text-muted-foreground">
+									This key can access all visible BuildOS projects.
+								</p>
+							{/if}
+						</details>
+
+						<details class="border-t border-border pt-3">
+							<summary
+								class="flex cursor-pointer list-none items-center justify-between gap-3 text-xs uppercase tracking-wider text-muted-foreground min-h-[44px] py-2"
+							>
+								<span>Write Permissions</span>
+								<span class="text-2xs normal-case tracking-normal">
+									{writePermissionLabels(caller).length} write op{writePermissionLabels(
+										caller
+									).length === 1
+										? ''
+										: 's'}
+								</span>
+							</summary>
+							{#if writePermissionLabels(caller).length > 0}
+								<div class="mt-2 flex flex-wrap gap-1.5">
+									{#each writePermissionLabels(caller) as label (label)}
+										<Badge variant="accent">{label}</Badge>
+									{/each}
+								</div>
+							{:else}
+								<p class="mt-2 text-xs text-muted-foreground">
+									This key is read-only and cannot create, update, or delete
+									BuildOS records.
+								</p>
+							{/if}
+						</details>
+					</div>
+				</details>
+			{/snippet}
+			<div class="space-y-2">
+				{#each activeCallers as caller (caller.id)}
+					{@render callerRow(caller)}
 				{/each}
+				{#if activeCallers.length === 0}
+					<p
+						class="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground"
+					>
+						None of your connections were used in the last 3 months.
+					</p>
+				{/if}
 			</div>
+			{#if idleCallers.length > 0}
+				<details class="group rounded-lg border border-border bg-muted/20">
+					<summary class="flex cursor-pointer list-none items-start gap-2.5 p-3 sm:p-4">
+						<ChevronDown
+							class="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none group-open:rotate-180"
+						/>
+						<span class="min-w-0">
+							<span class="block text-sm font-semibold text-foreground">
+								{idleCallers.length}
+								{idleCallers.length === 1 ? 'connection' : 'connections'} unused for
+								3 months or more
+							</span>
+							<span class="block text-xs text-muted-foreground">
+								Each one can still reach what it was given. Disconnect the ones you
+								don't use.
+							</span>
+						</span>
+					</summary>
+					<div class="space-y-2 border-t border-border p-3 sm:p-4">
+						<div class="flex justify-end">
+							<Button
+								variant="danger"
+								size="sm"
+								icon={Trash2}
+								disabled={bulkRevoking}
+								onclick={() => (pendingBulkRevoke = idleCallers)}
+							>
+								Disconnect all {idleCallers.length}
+							</Button>
+						</div>
+						{#each idleCallers as caller (caller.id)}
+							{@render callerRow(caller)}
+						{/each}
+					</div>
+				</details>
+			{/if}
+			{#if revokedCallers.length > 0}
+				<details class="group rounded-lg border border-border bg-muted/10">
+					<summary
+						class="flex cursor-pointer list-none items-center gap-2.5 p-3 text-sm text-muted-foreground sm:p-4"
+					>
+						<ChevronDown
+							class="h-4 w-4 flex-shrink-0 transition-transform motion-reduce:transition-none group-open:rotate-180"
+						/>
+						{revokedCallers.length} revoked
+					</summary>
+					<div class="space-y-2 border-t border-border p-3 sm:p-4">
+						{#each revokedCallers as caller (caller.id)}
+							{@render callerRow(caller)}
+						{/each}
+					</div>
+				</details>
+			{/if}
 		{/if}
 
 		<div class="pt-2 border-t border-border">
@@ -2551,6 +2750,27 @@
 		</div>
 	{/snippet}
 </Modal>
+
+<!-- Disconnect unused connections -->
+<ConfirmationModal
+	isOpen={pendingBulkRevoke !== null}
+	title="Disconnect unused agents?"
+	confirmText="Disconnect {pendingBulkRevoke?.length ?? 0}"
+	cancelText="Keep them"
+	confirmVariant="danger"
+	loading={bulkRevoking}
+	loadingText="Disconnecting..."
+	icon="danger"
+	onconfirm={revokeIdleCallers}
+	oncancel={() => (pendingBulkRevoke = null)}
+>
+	{#snippet content()}
+		<p class="text-sm text-muted-foreground">
+			These {pendingBulkRevoke?.length ?? 0} connections haven't been used in 3 months or more.
+			Each one stops working right away; you can connect a tool again any time.
+		</p>
+	{/snippet}
+</ConfirmationModal>
 
 <!-- Revoke Confirmation -->
 <ConfirmationModal

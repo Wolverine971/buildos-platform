@@ -1,8 +1,9 @@
-<!-- apps/web/src/routes/people/+page.svelte -->
+<!-- apps/web/src/lib/components/people/PeopleRequests.svelte -->
 <!--
-	People: find someone by their exact @handle and ask for access, answer the
-	people asking you (you pick the projects, their role, and what their agents may
-	do), and see what you asked for and what's been shared with you.
+	Requests, inside Profile > People & agents (moved from the old /people page):
+	answer the people asking you (you pick the projects, their role, and what their
+	agents may do), find someone by their exact @handle and ask for access, and see
+	what you asked for.
 -->
 <script lang="ts">
 	import { tick } from 'svelte';
@@ -44,19 +45,25 @@
 		type IncomingPeopleRequest,
 		type UpgradeRequestItem
 	} from '$lib/components/people/people-types';
-	import type { PageData } from './$types';
+	import type {
+		OwnedProjectOption,
+		PeopleRequests as PeopleRequestsData
+	} from '$lib/components/people/people-types';
 
-	let { data }: { data: PageData } = $props();
+	let {
+		requests,
+		ownedProjects,
+		onchanged
+	}: {
+		requests: PeopleRequestsData;
+		ownedProjects: OwnedProjectOption[];
+		/** Called after a decision changes who has access, so the hub can reload people. */
+		onchanged?: () => void;
+	} = $props();
 
-	// Seeded by the server; the page edits these in place after each action and a
-	// fresh load (navigation, refresh) replaces them.
-	let incoming = $derived(data.requests.incoming);
-	let outgoing = $derived(data.requests.outgoing);
-
-	const profile = $derived(data.profile);
-	const ownedProjects = $derived(data.ownedProjects);
-	const sharedWithYou = $derived(data.sharedWithYou);
-	const findable = $derived(Boolean(profile.username) && profile.discoverability === 'handle');
+	// Seeded by the hub; edited in place after each action, replaced on the next load.
+	let incoming = $derived(requests.incoming);
+	let outgoing = $derived(requests.outgoing);
 
 	// ---- Find someone ------------------------------------------------------
 	let handleQuery = $state('');
@@ -301,6 +308,7 @@
 			openSheetId = null;
 			confirming = null;
 			selections = {};
+			if (decision === 'approve') onchanged?.();
 
 			if (decision === 'approve' && request.kind === 'rejoin') {
 				toastService.success(
@@ -395,11 +403,16 @@
 					.map((item) => item.project_id)
 					.filter((projectId) => allowedIds.has(projectId))
 			: [];
+		// Send every item as shown, so a request that changed meanwhile isn't approved blind.
 		const body =
 			decision === 'approve'
 				? {
 						decision,
-						project_ids: allowed.map((item) => item.project_id),
+						items: request.items.map((item) => ({
+							project_id: item.project_id,
+							need: item.need,
+							allow: allowedIds.has(item.project_id)
+						})),
 						...(standingIds.length > 0
 							? { editor_agents_write_project_ids: standingIds }
 							: {})
@@ -418,6 +431,17 @@
 				body: JSON.stringify(body)
 			});
 			const payload = await res.json().catch(() => null);
+			if (res.status === 409) {
+				// They asked for more since this loaded. Show the new ask; nothing changed.
+				await refreshRequests();
+				delete upgradeUnchecked[request.id];
+				delete upgradeStanding[request.id];
+				decideError = {
+					requestId: request.id,
+					message: `${name} changed this request. Look again before you allow it.`
+				};
+				return;
+			}
 			if (!res.ok) {
 				decideError = {
 					requestId: request.id,
@@ -445,6 +469,7 @@
 			const applied = allowed.filter((item) => appliedIds.has(item.project_id));
 			const done = applied.length > 0 ? applied : allowed;
 			toastService.success(upgradeAllowedMessage(name, done));
+			onchanged?.();
 			if (payload?.data?.agent_grant === 'failed') {
 				const them = done.length === 1 ? 'it' : 'them';
 				toastService.warning(
@@ -453,7 +478,7 @@
 			}
 			if (payload?.data?.standing_approval === 'failed') {
 				toastService.warning(
-					'Allowed, but the editors setting didn’t save. Try it in Share.'
+					'Allowed, but the editors setting didn’t save. Try it in the project’s Share window.'
 				);
 			}
 		} catch {
@@ -480,11 +505,6 @@
 		'rounded-sm font-medium text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 	const cardClass = 'rounded-xl border border-border bg-card p-4 shadow-ink sm:p-5';
 </script>
-
-<svelte:head>
-	<title>People - BuildOS</title>
-	<meta name="robots" content="noindex, nofollow" />
-</svelte:head>
 
 {#snippet upgradeAsk(item: UpgradeRequestItem)}
 	{#if item.need === 'agents_read'}
@@ -1213,69 +1233,12 @@
 	</section>
 {/snippet}
 
-<div class="min-h-screen bg-background">
-	<div class="mx-auto w-full max-w-3xl space-y-4 px-4 py-6 sm:space-y-5 sm:px-6 sm:py-8">
-		<header class="flex items-center gap-3">
-			<div
-				class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent"
-			>
-				<Users class="h-5 w-5" aria-hidden="true" />
-			</div>
-			<div class="min-w-0">
-				<h1 class="text-xl font-semibold tracking-tight text-foreground">People</h1>
-				<p class="text-sm text-muted-foreground">
-					Ask people for access to their projects, and choose what you share.
-				</p>
-			</div>
-		</header>
-
-		{#if data.loadError}
-			<div
-				class="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-foreground"
-				role="alert"
-			>
-				<AlertCircle class="h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
-				<span>{data.loadError}</span>
-			</div>
-		{/if}
-
-		{#if !findable}
-			<div
-				class="rounded-lg border border-info/30 bg-info/10 px-4 py-3 text-sm text-foreground"
-			>
-				{#if !profile.username}
-					<p class="font-medium">People can’t find you yet.</p>
-					<p class="mt-0.5 text-muted-foreground">
-						Claim a username, then turn on “People with my handle can find me” so others
-						can ask you for access. You can still find and ask others now.
-					</p>
-				{:else}
-					<p class="font-medium">People can’t find you as @{profile.username} yet.</p>
-					<p class="mt-0.5 text-muted-foreground">
-						Turn on “People with my handle can find me” so others can ask you for
-						access.
-					</p>
-				{/if}
-				<a href="/profile#finding-you" class="mt-2 inline-block text-sm {linkClass}"
-					>Open account settings</a
-				>
-			</div>
-		{:else}
-			<p class="text-xs text-muted-foreground">
-				People can find you as <span class="stamp text-foreground">@{profile.username}</span
-				>.
-				<a href="/profile#finding-you" class={linkClass}>Change</a>
-			</p>
-		{/if}
-
-		{#if incoming.length > 0}
-			{@render incomingSection()}
-			{@render findSection()}
-		{:else}
-			{@render findSection()}
-			{@render incomingSection()}
-		{/if}
-
+<div class="space-y-4 sm:space-y-5">
+	{#if incoming.length > 0}
+		{@render incomingSection()}
+	{/if}
+	{@render findSection()}
+	{#if outgoing.length > 0}
 		<section class={cardClass} aria-labelledby="outgoing-heading">
 			<div class="flex items-center gap-2">
 				<Send class="h-4 w-4 text-muted-foreground" aria-hidden="true" />
@@ -1328,47 +1291,5 @@
 				</ul>
 			{/if}
 		</section>
-
-		<section class={cardClass} aria-labelledby="shared-heading">
-			<div class="flex items-center gap-2">
-				<FolderOpen class="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-				<h2 id="shared-heading" class="text-base font-semibold text-foreground">
-					Shared with you
-				</h2>
-			</div>
-			{#if sharedWithYou.length === 0}
-				<p class="mt-2 text-sm text-muted-foreground">
-					Projects people share with you show up here.
-				</p>
-			{:else}
-				<ul class="mt-3 divide-y divide-border">
-					{#each sharedWithYou as project (project.id)}
-						<li>
-							<a
-								href="/projects/{project.id}"
-								class="group flex items-center justify-between gap-3 rounded-md py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							>
-								<span class="min-w-0">
-									<span
-										class="block truncate text-sm font-medium text-foreground group-hover:text-accent"
-										>{project.name}</span
-									>
-									<span class="block truncate text-xs text-muted-foreground">
-										{project.owner_name
-											? `Shared by ${project.owner_name}`
-											: 'Shared with you'}
-									</span>
-								</span>
-								<span
-									class="shrink-0 rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
-								>
-									{roleLabel(project.role)}
-								</span>
-							</a>
-						</li>
-					{/each}
-				</ul>
-			{/if}
-		</section>
-	</div>
+	{/if}
 </div>

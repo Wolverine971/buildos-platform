@@ -2,17 +2,20 @@
 //
 // POST { decision: 'approve' | 'decline' | 'block', grants?: [{ project_id, role, agent_access }] }
 // An upgrade request (a member asked for more in projects they're in, tasker 140) is
-// approved with { decision: 'approve', project_ids?: [...] } (none = everything asked)
-// and optionally editor_agents_write_project_ids: the owner's standing approval
-// ("editors' agents can write here") for those projects.
+// approved with { decision: 'approve', items: [{ project_id, need, allow }] }: every item
+// the owner saw, unchecked ones with allow: false. If the request changed since the page
+// loaded, the RPC refuses (409) and the owner looks again. Optionally
+// editor_agents_write_project_ids: the owner's standing approval ("editors' agents can
+// write here") for those projects.
 //
 // Only the person who was asked can decide, from their signed-in session: the RPC
 // runs on the user-scoped client and checks auth.uid() itself, plus owner-only
 // projects and "agents never write where their person can't edit".
 //
 // After an approval (all best effort, never undoing the share):
-//  - a request sent by an agent: that agent's connection gets the shared projects
-//    whose agent setting isn't Off, so it can open them on its next call;
+//  - the connections that asked get the shared projects whose agent setting isn't Off,
+//    so they can open them on their next call: per project for upgrades (only the
+//    connections that asked for that project), the sending agent for access requests;
 //  - the requester is subscribed to project activity, like an accepted invite;
 //  - the requester gets an email saying what was shared, with a link to open it.
 
@@ -34,6 +37,10 @@ import {
 
 const DECISIONS = new Set(['approve', 'decline', 'block']);
 const MAX_GRANTS = 50;
+const MAX_UPGRADE_ITEMS = 10;
+const UPGRADE_NEEDS = new Set(['agents_read', 'agents_write', 'edit']);
+
+type SeenUpgradeItem = { project_id: string; need: string; allow: boolean };
 
 type Grant = { project_id: string; role: PersonRole; agent_access: AgentAccess };
 type AgentGrantOutcome = 'granted' | 'failed' | 'none';
@@ -89,14 +96,17 @@ export const POST: RequestHandler = async ({ params, request, locals, url, platf
 		return ApiResponse.badRequest('Decision must be approve, decline, or block');
 	}
 
-	let grants: Array<Grant | { project_id: string }> = [];
-	const upgradeProjectIds = readProjectIds(body.project_ids);
-	if (upgradeProjectIds === 'invalid') return ApiResponse.badRequest('Unknown project');
+	let grants: Array<Grant | SeenUpgradeItem> = [];
+	const seenItems = readSeenUpgradeItems(body.items);
+	if (seenItems === 'invalid') return ApiResponse.badRequest('Unknown project');
 	const standingProjectIds = readProjectIds(body.editor_agents_write_project_ids);
 	if (standingProjectIds === 'invalid') return ApiResponse.badRequest('Unknown project');
-	if (decision === 'approve' && upgradeProjectIds) {
-		// Upgrade: the RPC gives exactly what was asked in the projects kept checked.
-		grants = upgradeProjectIds.map((projectId) => ({ project_id: projectId }));
+	if (decision === 'approve' && seenItems) {
+		// Upgrade: exactly what the owner saw; the RPC refuses if the request changed.
+		grants = seenItems;
+	} else if (decision === 'approve' && body.project_ids !== undefined) {
+		// An upgrade card from a page loaded before this change.
+		return ApiResponse.error('This page is out of date. Reload and try again.', 409, 'CHANGED');
 	} else if (decision === 'approve') {
 		const parsed = parseGrants(body.grants);
 		if (!parsed.ok) return ApiResponse.badRequest(parsed.message);
@@ -116,28 +126,51 @@ export const POST: RequestHandler = async ({ params, request, locals, url, platf
 		return ApiResponse.success({ status });
 	}
 
+	const kind = typeof result.kind === 'string' ? result.kind : null;
 	const applied = (Array.isArray(result.projects) ? result.projects : []).map(asRecord);
 	const requesterUserId =
 		typeof result.requester_user_id === 'string' ? result.requester_user_id : null;
 	const viaCallerId = typeof result.via_caller_id === 'string' ? result.via_caller_id : null;
-	const agentProjectIds = applied
-		.filter((grant) => grant.agent_access !== 'off' && typeof grant.project_id === 'string')
-		.map((grant) => String(grant.project_id));
+
+	// Which of the requester's connections get which projects. An upgrade names them per
+	// project; an access request names the one agent that sent it.
+	const connectionProjects = new Map<string, string[]>();
+	for (const grant of applied) {
+		if (grant.agent_access === 'off' || typeof grant.project_id !== 'string') continue;
+		const callerIds =
+			kind === 'upgrade'
+				? (Array.isArray(grant.caller_ids) ? grant.caller_ids : []).filter(
+						(id): id is string => typeof id === 'string' && isValidUUID(id)
+					)
+				: viaCallerId
+					? [viaCallerId]
+					: [];
+		for (const callerId of new Set(callerIds)) {
+			connectionProjects.set(callerId, [
+				...(connectionProjects.get(callerId) ?? []),
+				grant.project_id
+			]);
+		}
+	}
 
 	let agentGrant: AgentGrantOutcome = 'none';
-	if (requesterUserId && viaCallerId && agentProjectIds.length > 0) {
-		try {
-			await new CallerProvisioningService(
-				undefined,
-				getSecurityEventLogOptions(platform)
-			).grantProjectsForUser(requesterUserId, viaCallerId, agentProjectIds);
-			agentGrant = 'granted';
-		} catch (grantError) {
-			agentGrant = 'failed';
-			console.error('[People API] Approved, but the requester agent grant failed:', {
-				requestId,
-				error: grantError instanceof Error ? grantError.message : grantError
-			});
+	if (requesterUserId && connectionProjects.size > 0) {
+		const provisioning = new CallerProvisioningService(
+			undefined,
+			getSecurityEventLogOptions(platform)
+		);
+		agentGrant = 'granted';
+		for (const [callerId, projectIds] of connectionProjects) {
+			try {
+				await provisioning.grantProjectsForUser(requesterUserId, callerId, projectIds);
+			} catch (grantError) {
+				agentGrant = 'failed';
+				console.error('[People API] Approved, but the requester agent grant failed:', {
+					requestId,
+					callerId,
+					error: grantError instanceof Error ? grantError.message : grantError
+				});
+			}
 		}
 	}
 
@@ -171,7 +204,7 @@ export const POST: RequestHandler = async ({ params, request, locals, url, platf
 
 	// Standing approval, chosen on the same card. The RPC checks the owner itself.
 	let standing: 'none' | 'saved' | 'failed' = 'none';
-	if (result.kind === 'upgrade' && standingProjectIds && standingProjectIds.length > 0) {
+	if (kind === 'upgrade' && standingProjectIds && standingProjectIds.length > 0) {
 		standing = 'saved';
 		for (const projectId of standingProjectIds) {
 			const { error: standingError } = await locals.supabase.rpc(
@@ -193,13 +226,30 @@ export const POST: RequestHandler = async ({ params, request, locals, url, platf
 
 	return ApiResponse.success({
 		status,
-		kind: typeof result.kind === 'string' ? result.kind : null,
-		projects: applied,
+		kind,
+		projects: applied.map(({ caller_ids: _callerIds, ...project }) => project),
 		agent_grant: agentGrant,
 		standing_approval: standing,
 		email
 	});
 };
+
+/** Every upgrade item the owner saw (max 10): null when absent, 'invalid' when malformed. */
+function readSeenUpgradeItems(value: unknown): SeenUpgradeItem[] | null | 'invalid' {
+	if (value === undefined || value === null) return null;
+	if (!Array.isArray(value) || value.length === 0 || value.length > MAX_UPGRADE_ITEMS) {
+		return 'invalid';
+	}
+	const items: SeenUpgradeItem[] = [];
+	for (const raw of value) {
+		const item = asRecord(raw);
+		if (typeof item.project_id !== 'string' || !isValidUUID(item.project_id)) return 'invalid';
+		if (typeof item.need !== 'string' || !UPGRADE_NEEDS.has(item.need)) return 'invalid';
+		if (item.allow !== undefined && typeof item.allow !== 'boolean') return 'invalid';
+		items.push({ project_id: item.project_id, need: item.need, allow: item.allow !== false });
+	}
+	return items;
+}
 
 /** Optional list of project UUIDs (max 50): null when absent, 'invalid' when malformed. */
 function readProjectIds(value: unknown): string[] | null | 'invalid' {

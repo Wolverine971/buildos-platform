@@ -420,7 +420,7 @@ export async function sendPeopleRequestReceivedEmail(
 				agentLabel:
 					request.via === 'agent' ? (request.via_agent_label ?? 'Their agent') : null,
 				hasNote: Boolean(request.note?.trim()),
-				reviewUrl: `${baseUrl}/people`,
+				reviewUrl: `${baseUrl}/profile?tab=people#requests`,
 				expiresAt: request.expires_at
 			});
 			return await send(deps.mailer ?? new EmailService(admin as any), to, parts, {
@@ -445,7 +445,7 @@ export async function sendPeopleRequestReceivedEmail(
 					requester,
 					projectName: rejoinProjectName,
 					roleRequested: request.role_requested,
-					reviewUrl: `${baseUrl}/people`,
+					reviewUrl: `${baseUrl}/profile?tab=people#requests`,
 					expiresAt: request.expires_at
 				})
 			: buildRequestReceivedEmail({
@@ -453,7 +453,7 @@ export async function sendPeopleRequestReceivedEmail(
 					roleRequested: request.role_requested,
 					viaAgent: request.via === 'agent',
 					hasNote: Boolean(request.note?.trim()),
-					reviewUrl: `${baseUrl}/people`,
+					reviewUrl: `${baseUrl}/profile?tab=people#requests`,
 					expiresAt: request.expires_at
 				});
 		return await send(deps.mailer ?? new EmailService(admin as any), to, parts, {

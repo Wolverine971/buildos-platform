@@ -325,7 +325,7 @@
 				class="menu-item"
 			>
 				<Users class="h-4 w-4 text-muted-foreground" />
-				Collaboration settings
+				{canAdmin ? 'Share…' : 'People'}
 			</button>
 		{/if}
 		{#if canEdit}
@@ -438,7 +438,6 @@
 			{project}
 			{contextDocument}
 			{canDeleteProject}
-			canManageExternalAgentAccess={canAdmin}
 			onClose={() => (showProjectEditModal = false)}
 			onSaved={async () => {
 				await onProjectSaved();

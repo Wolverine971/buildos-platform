@@ -269,6 +269,8 @@ export interface BuildosAgentCallerSummary {
 	project_scope_mode: BuildosAgentProjectScopeMode;
 	unavailable_project_count?: number;
 	metadata: Record<string, unknown>;
+	/** "Projects shared with me": this connection also reaches projects others share with you. */
+	include_shared_projects?: boolean;
 	last_used_at: string | null;
 	created_at: string;
 	updated_at: string;

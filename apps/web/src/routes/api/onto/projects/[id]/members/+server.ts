@@ -4,16 +4,32 @@
  * - GET: list active members (read access), each with what their agents may do
  *   here (agent_access: off | read | write) and, for people who joined with the
  *   project's invite link, joined_via_invite_link_id.
+ *
+ * Privacy: only the project owner (admin access) sees members' emails. Everyone
+ * else gets names and @handles; their own row keeps their own email.
  */
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../../shared/error-logging';
 import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 type MemberWithRole = {
 	role_key: string | null;
 	created_at: string | null;
+};
+
+type MemberRow = MemberWithRole & {
+	actor_id: string;
+	access: string | null;
+	actor?: {
+		id: string;
+		user_id: string | null;
+		name: string | null;
+		email: string | null;
+	} | null;
+	[key: string]: unknown;
 };
 
 function sortMembersByRoleAndCreatedAt<T extends MemberWithRole>(rows: T[]): T[] {
@@ -26,6 +42,45 @@ function sortMembersByRoleAndCreatedAt<T extends MemberWithRole>(rows: T[]): T[]
 		const bTime = b.created_at ? Date.parse(b.created_at) : Number.POSITIVE_INFINITY;
 		return aTime - bTime;
 	});
+}
+
+/** Emails stay with the owner; everyone else sees their own email only. */
+function hideMemberEmails<T extends MemberRow>(
+	rows: T[],
+	viewerActorId: string,
+	viewerIsOwner: boolean
+): T[] {
+	if (viewerIsOwner) return rows;
+	return rows.map((row) =>
+		row.actor && row.actor_id !== viewerActorId
+			? { ...row, actor: { ...row.actor, email: null } }
+			: row
+	);
+}
+
+/**
+ * Each member's @handle (users.username), when they have one. Read with the admin
+ * client because users rows are private to their owner; only the username leaves here.
+ */
+async function loadHandles(userIds: string[]): Promise<Map<string, string>> {
+	const handles = new Map<string, string>();
+	if (userIds.length === 0) return handles;
+	try {
+		const { data, error } = await createAdminSupabaseClient()
+			.from('users')
+			.select('id, username')
+			.in('id', userIds);
+		if (error) throw error;
+		for (const row of (data ?? []) as Array<{ id: string; username: string | null }>) {
+			if (typeof row.username === 'string' && row.username.trim()) {
+				handles.set(row.id, row.username.trim());
+			}
+		}
+	} catch (error) {
+		// Handles are a nicety: the list still works without them.
+		console.warn('[Project Members API] Failed to load handles:', error);
+	}
+	return handles;
 }
 
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -66,9 +121,25 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.databaseError(error);
 		}
 
-		const sortedMembers = sortMembersByRoleAndCreatedAt((members ?? []) as MemberWithRole[]);
+		const rows = (members ?? []) as unknown as MemberRow[];
+		const viewerIsOwner = rows.some(
+			(row) => row.actor_id === access.actorId && row.access === 'admin'
+		);
+		const handles = await loadHandles([
+			...new Set(rows.map((row) => row.actor?.user_id).filter((id): id is string => !!id))
+		]);
+		const withHandles = hideMemberEmails(rows, access.actorId, viewerIsOwner).map((row) => ({
+			...row,
+			handle: (row.actor?.user_id && handles.get(row.actor.user_id)) || null
+		}));
 
-		return ApiResponse.success({ members: sortedMembers, actorId: access.actorId });
+		const sortedMembers = sortMembersByRoleAndCreatedAt(withHandles);
+
+		return ApiResponse.success({
+			members: sortedMembers,
+			actorId: access.actorId,
+			viewer_is_owner: viewerIsOwner
+		});
 	} catch (error) {
 		console.error('[Project Members API] Failed to load members:', error);
 		return ApiResponse.internalError(error, 'Failed to load members');

@@ -232,10 +232,16 @@ describe('POST /api/people/requests/[requestId]/decide', () => {
 	});
 
 	describe('upgrade requests (tasker 140)', () => {
-		it('approves the kept projects, connects the asking agent, and saves standing approval', async () => {
+		const CALLER_A = '55555555-5555-4555-8555-555555555555';
+		const CALLER_B = '66666666-6666-4666-8666-666666666666';
+
+		it('sends what the owner saw, connects only the agents that asked, saves standing approval', async () => {
 			const event = createEvent({
 				decision: 'approve',
-				project_ids: [PROJECT_A],
+				items: [
+					{ project_id: PROJECT_A, need: 'agents_write', allow: true },
+					{ project_id: PROJECT_B, need: 'agents_read', allow: true }
+				],
 				editor_agents_write_project_ids: [PROJECT_A]
 			});
 			rpcOf(event).mockImplementation(async (name: string) =>
@@ -249,17 +255,24 @@ describe('POST /api/people/requests/[requestId]/decide', () => {
 										project_id: PROJECT_A,
 										role: 'editor',
 										agent_access: 'write',
-										need: 'agents_write'
+										need: 'agents_write',
+										caller_ids: [CALLER_A, CALLER_B]
+									},
+									{
+										project_id: PROJECT_B,
+										role: 'viewer',
+										agent_access: 'read',
+										need: 'agents_read',
+										caller_ids: [CALLER_B]
 									}
 								],
-								requester_user_id: 'member-1',
-								via_caller_id: 'caller-1'
+								requester_user_id: 'member-1'
 							},
 							error: null
 						}
 					: { data: { editor_agents_write: true }, error: null }
 			);
-			grantProjectsForUserMock.mockResolvedValue({ granted_project_ids: [PROJECT_A] });
+			grantProjectsForUserMock.mockResolvedValue({ granted_project_ids: [] });
 
 			const response = await POST(event);
 			expect(response.status).toBe(200);
@@ -270,31 +283,99 @@ describe('POST /api/people/requests/[requestId]/decide', () => {
 				agent_grant: 'granted',
 				standing_approval: 'saved'
 			});
+			// The requester's connection ids never reach the owner.
+			expect(JSON.stringify(payload)).not.toContain(CALLER_A);
 			expect(rpcOf(event)).toHaveBeenCalledWith('decide_people_request', {
 				p_request_id: REQUEST_ID,
 				p_decision: 'approve',
-				p_grants: [{ project_id: PROJECT_A }]
+				p_grants: [
+					{ project_id: PROJECT_A, need: 'agents_write', allow: true },
+					{ project_id: PROJECT_B, need: 'agents_read', allow: true }
+				]
 			});
 			expect(rpcOf(event)).toHaveBeenCalledWith('set_project_editor_agents_write', {
 				p_project_id: PROJECT_A,
 				p_enabled: true
 			});
-			expect(grantProjectsForUserMock).toHaveBeenCalledWith('member-1', 'caller-1', [
+			expect(grantProjectsForUserMock).toHaveBeenCalledTimes(2);
+			expect(grantProjectsForUserMock).toHaveBeenCalledWith('member-1', CALLER_A, [
 				PROJECT_A
+			]);
+			expect(grantProjectsForUserMock).toHaveBeenCalledWith('member-1', CALLER_B, [
+				PROJECT_A,
+				PROJECT_B
 			]);
 		});
 
-		it('rejects malformed project lists before calling the RPC', async () => {
+		it('connects no agent for projects asked from the web without one', async () => {
+			const event = createEvent({
+				decision: 'approve',
+				items: [{ project_id: PROJECT_A, need: 'edit' }]
+			});
+			rpcOf(event).mockResolvedValue({
+				data: {
+					status: 'approved',
+					kind: 'upgrade',
+					projects: [
+						{
+							project_id: PROJECT_A,
+							role: 'editor',
+							agent_access: 'write',
+							caller_ids: []
+						}
+					],
+					requester_user_id: 'member-1'
+				},
+				error: null
+			});
+
+			const response = await POST(event);
+			expect((await response.json()).data.agent_grant).toBe('none');
+			expect(grantProjectsForUserMock).not.toHaveBeenCalled();
+		});
+
+		it('returns 409 when the request changed after the owner opened it', async () => {
+			const event = createEvent({
+				decision: 'approve',
+				items: [{ project_id: PROJECT_A, need: 'agents_read', allow: true }]
+			});
+			rpcOf(event).mockResolvedValue({
+				data: null,
+				error: {
+					code: 'PT409',
+					message:
+						'This request changed after you opened it. Look again before you allow it.'
+				}
+			});
+
+			const response = await POST(event);
+			expect(response.status).toBe(409);
+			expect(grantProjectsForUserMock).not.toHaveBeenCalled();
+		});
+
+		it('turns away an approval from a page loaded before items were sent', async () => {
+			const event = createEvent({ decision: 'approve', project_ids: [PROJECT_A] });
+			expect((await POST(event)).status).toBe(409);
+			expect(rpcOf(event)).not.toHaveBeenCalled();
+		});
+
+		it('rejects malformed items before calling the RPC', async () => {
 			for (const body of [
-				{ decision: 'approve', project_ids: ['nope'] },
+				{ decision: 'approve', items: [{ project_id: 'nope', need: 'edit' }] },
+				{ decision: 'approve', items: [{ project_id: PROJECT_A, need: 'owner' }] },
 				{
 					decision: 'approve',
-					project_ids: [PROJECT_A],
+					items: [{ project_id: PROJECT_A, need: 'edit', allow: 'yes' }]
+				},
+				{ decision: 'approve', items: [] },
+				{
+					decision: 'approve',
+					items: [{ project_id: PROJECT_A, need: 'edit' }],
 					editor_agents_write_project_ids: 'x'
 				}
 			]) {
 				const event = createEvent(body);
-				expect((await POST(event)).status).toBe(400);
+				expect((await POST(event)).status, JSON.stringify(body)).toBe(400);
 				expect(rpcOf(event)).not.toHaveBeenCalled();
 			}
 		});

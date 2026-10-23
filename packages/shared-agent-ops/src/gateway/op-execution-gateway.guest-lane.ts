@@ -48,6 +48,17 @@ type LaneTarget =
 	  };
 
 const CREATE_OPS = new Set(['onto.task.create', 'onto.document.create']);
+const LANE_OPS = new Set([
+	...CREATE_OPS,
+	'onto.task.update',
+	'onto.task.docs.create_or_attach',
+	'onto.document.update'
+]);
+
+/** Whether an agent may ever make this write in a project someone else owns. */
+export function isGuestLaneOp(op: string): boolean {
+	return LANE_OPS.has(op);
+}
 
 function asId(value: unknown): string | null {
 	return typeof value === 'string' && value.trim() ? value.trim() : null;

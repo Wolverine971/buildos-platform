@@ -139,7 +139,7 @@
 			if (findable && !(await saveFindable(true))) {
 				findable = false;
 				claimError =
-					'Your handle is saved, but finding you by it is still off. You can turn it on in your profile.';
+					'Your handle is saved, but finding you by it is still off. You can turn it on in Profile → People & agents.';
 			}
 			captureEvent('onboarding_handle_claimed', { findable, source });
 		} catch {

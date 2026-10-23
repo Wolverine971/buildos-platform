@@ -148,7 +148,7 @@
 <div class="min-h-screen overflow-x-hidden bg-background text-foreground">
 	<div class="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-10">
 		<a
-			href="/profile?tab=agent-keys"
+			href="/profile?tab=people#agents"
 			class="mb-5 inline-flex min-h-[44px] items-center gap-1.5 rounded-md text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 		>
 			<ArrowLeft class="h-4 w-4" />
@@ -257,8 +257,9 @@
 					</div>
 				</div>
 			</section>
-		{:else if grant.project && grant.write && data.need === 'write'}
-			<!-- Wall 2 (or an owner wall reached from a write link). -->
+		{:else if grant.write && data.need === 'write'}
+			<!-- Wall 2 (or an owner wall reached from a write link). No project in the link
+			     means the whole connection is read-only. -->
 			<section
 				class="tx tx-frame tx-weak rounded-lg border border-border bg-card p-5 shadow-ink"
 			>
@@ -267,7 +268,9 @@
 						<CheckCircle2 class="mt-0.5 h-5 w-5 shrink-0 text-success" />
 						<div class="min-w-0">
 							<h2 class="text-lg font-semibold text-foreground">
-								{connectorName} can already make changes in {grant.project.name}
+								{connectorName} can already make changes{grant.project
+									? ` in ${grant.project.name}`
+									: ''}
 							</h2>
 							<p class="mt-1 text-sm text-muted-foreground">
 								Tell your agent to try again. If it's still blocked, start a new
@@ -277,17 +280,21 @@
 					</div>
 				{:else if grant.write.status === 'allow_here'}
 					<h2 class="text-lg font-semibold text-foreground">
-						Let {connectorName} make changes in
-						<span class="break-words">{grant.project.name}</span>?
+						{#if grant.project}
+							Let {connectorName} make changes in
+							<span class="break-words">{grant.project.name}</span>?
+						{:else}
+							Let {connectorName} make changes?
+						{/if}
 					</h2>
 					<p class="mt-1 text-sm text-muted-foreground">
-						Your agent tried to change something there, and this connection can only
-						read.
+						Your agent tried to change something{grant.project ? ' there' : ''}, and
+						this connection can only read.
 						{#if !canEdit}
 							Allowing changes lets it add and edit tasks and documents in the
 							projects it can see. It never deletes.
 						{/if}
-						{#if grant.project.shared_by}
+						{#if grant.project?.shared_by}
 							In {grant.project.shared_by}'s project it stays in its lane: it adds
 							tasks and documents and changes only what you created or are assigned
 							to.
@@ -299,12 +306,14 @@
 						use:enhance={trackSubmit('allowWrites')}
 						class="mt-5"
 					>
-						<input type="hidden" name="project_id" value={grant.project.id} />
-						<input
-							type="hidden"
-							name="also_grant"
-							value={grant.project_already_granted ? 'false' : 'true'}
-						/>
+						{#if grant.project}
+							<input type="hidden" name="project_id" value={grant.project.id} />
+							<input
+								type="hidden"
+								name="also_grant"
+								value={grant.project_already_granted ? 'false' : 'true'}
+							/>
+						{/if}
 						<Button
 							type="submit"
 							variant="primary"
@@ -332,7 +341,7 @@
 							</p>
 						</div>
 					</div>
-				{:else}
+				{:else if grant.project}
 					<div class="flex items-start gap-3">
 						<Users class="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
 						<div class="min-w-0">

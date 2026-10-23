@@ -555,6 +555,53 @@ describe('connector one-click project grants', () => {
 			expect(live.map((row) => row.access_mode)).toEqual(['read_write']);
 		});
 
+		it('a link with no project (a read-only connection) still offers the one step', async () => {
+			const readOnlyKey = baseTables(
+				selectedStaticCaller({
+					policy: {
+						scope_mode: 'read_only',
+						project_scope_mode: 'selected',
+						allowed_project_ids: [OLD_PROJECT],
+						allowed_ops: ['onto.project.get']
+					}
+				})
+			);
+			mocks.fetchProjectSummaries.mockResolvedValue([summary(OLD_PROJECT, 'Old project')]);
+			const { CallerProvisioningService } = await import('./caller-provisioning.service');
+			const keyContext = await new CallerProvisioningService(
+				fakeAdmin(readOnlyKey)
+			).getProjectGrantContextForUser(USER_ID, CALLER_ID, null, { need: 'write' });
+			expect(keyContext.project).toBeNull();
+			expect(keyContext.write).toEqual({ status: 'allow_here' });
+
+			const oauth = baseTables(
+				selectedStaticCaller({
+					caller_key: 'oauth:client-1',
+					metadata: { auth_scheme: 'oauth' }
+				})
+			);
+			oauth.agent_oauth_grants = [
+				{
+					id: 'grant-1',
+					user_id: USER_ID,
+					external_agent_caller_id: CALLER_ID,
+					status: 'active',
+					scope_mode: 'read_only',
+					project_scope_mode: 'selected',
+					allowed_project_ids: [OLD_PROJECT]
+				}
+			];
+			const oauthContext = await new CallerProvisioningService(
+				fakeAdmin(oauth)
+			).getProjectGrantContextForUser(USER_ID, CALLER_ID, null, { need: 'write' });
+			expect(oauthContext.write).toEqual({ status: 'reconnect' });
+
+			const writable = await new CallerProvisioningService(
+				fakeAdmin(baseTables())
+			).getProjectGrantContextForUser(USER_ID, CALLER_ID, null, { need: 'write' });
+			expect(writable.write).toEqual({ status: 'allowed' });
+		});
+
 		it('an OAuth connection approved read-only must reconnect instead', async () => {
 			const tables = baseTables(
 				selectedStaticCaller({

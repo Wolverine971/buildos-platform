@@ -256,7 +256,7 @@ Content-Type: application/json
 
 				<div class="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
 					<a
-						href="/profile?tab=agent-keys"
+						href="/profile?tab=people#agents"
 						class="inline-flex min-h-[48px] min-w-[220px] items-center justify-center gap-2 rounded-lg border border-accent bg-accent px-6 py-3 font-semibold text-accent-foreground shadow-ink transition-colors hover:bg-accent/90"
 					>
 						Generate a key
@@ -388,7 +388,7 @@ Content-Type: application/json
 						included by default, write ops appear only when explicitly granted. Manage
 						keys in
 						<a
-							href="/profile?tab=agent-keys"
+							href="/profile?tab=people#agents"
 							class="ml-1 font-medium text-accent hover:underline"
 						>
 							Profile &gt; Agent Keys
@@ -436,10 +436,10 @@ Content-Type: application/json
 							<div class="rounded-lg border border-border bg-muted/30 p-3 text-sm">
 								<div class="font-medium text-foreground">Manage keys here</div>
 								<a
-									href="/profile?tab=agent-keys"
+									href="/profile?tab=people#agents"
 									class="mt-1 inline-block text-accent hover:underline"
 								>
-									/profile?tab=agent-keys
+									/profile?tab=people#agents
 								</a>
 							</div>
 						</CardBody>
@@ -683,7 +683,7 @@ Content-Type: application/json
 
 					<div class="mb-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
 						<a
-							href="/profile?tab=agent-keys"
+							href="/profile?tab=people#agents"
 							class="inline-flex min-h-[48px] min-w-[220px] items-center justify-center gap-2 rounded-lg border border-accent bg-accent px-6 py-3 font-semibold text-accent-foreground shadow-ink transition-colors hover:bg-accent/90"
 						>
 							Generate your first key
@@ -701,10 +701,10 @@ Content-Type: application/json
 					<p class="text-sm text-muted-foreground">
 						Signed in already? Go straight to
 						<a
-							href="/profile?tab=agent-keys"
+							href="/profile?tab=people#agents"
 							class="ml-1 font-medium text-accent hover:underline"
 						>
-							/profile?tab=agent-keys
+							/profile?tab=people#agents
 						</a>.
 					</p>
 				</CardBody>

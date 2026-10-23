@@ -18,7 +18,6 @@
 	let {
 		project,
 		contextDocument,
-		canAdmin,
 		goals,
 		tasks,
 		tasksComplete,
@@ -31,7 +30,6 @@
 	}: {
 		project: Project;
 		contextDocument: Document | null;
-		canAdmin: boolean;
 		goals: Goal[];
 		tasks: Task[];
 		tasksComplete: boolean;
@@ -147,7 +145,6 @@
 			{project}
 			{contextDocument}
 			canDeleteProject={false}
-			canManageExternalAgentAccess={canAdmin}
 			onClose={onCloseEdit}
 			onSaved={() => onMutated()}
 		/>

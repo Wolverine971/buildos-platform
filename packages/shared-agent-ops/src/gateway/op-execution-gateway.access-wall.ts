@@ -31,7 +31,8 @@ import {
 } from './op-execution-gateway.access';
 import {
 	GUEST_AGENT_DAILY_WRITE_LIMIT,
-	GUEST_LANE_REASON
+	GUEST_LANE_REASON,
+	isGuestLaneOp
 } from './op-execution-gateway.guest-lane';
 import {
 	loadMemberAgentAccess,
@@ -123,6 +124,8 @@ export function buildAccessNeeded(input: {
 	viaOAuth?: boolean;
 	/** outside_guest_lane: the refusal was an archive or restore. */
 	archive?: boolean;
+	/** outside_guest_lane: the write is one agents never make there (a goal, plan, the project). */
+	ownerItems?: boolean;
 }): AccessNeeded {
 	const project = quoted(input.projectName);
 	const projectOrThat = project ?? 'that project';
@@ -160,7 +163,9 @@ export function buildAccessNeeded(input: {
 		case 'outside_guest_lane':
 			sayToUser = input.archive
 				? `${project ?? 'That project'} belongs to ${owner}, so I can't archive or restore items there. You can do that yourself in BuildOS.`
-				: `${project ?? 'That project'} belongs to ${owner}. There I can add tasks and documents and change the ones you created or are assigned to, but not this one. You can change it yourself in BuildOS, or ask ${owner} to assign it to you.`;
+				: input.ownerItems
+					? `${project ?? 'That project'} belongs to ${owner}. There I can add tasks and documents and change the ones you created or are assigned to. Goals, plans, and the rest stay with ${owner}. I can add this as a task instead, or you can make the change yourself in BuildOS if you can edit there.`
+					: `${project ?? 'That project'} belongs to ${owner}. There I can add tasks and documents and change the ones you created or are assigned to, but not this one. You can change it yourself in BuildOS, or ask ${owner} to assign it to you.`;
 			break;
 		case 'daily_limit':
 			sayToUser = `I've made ${GUEST_AGENT_DAILY_WRITE_LIMIT} changes in ${projectOrThat} today, so my changes there are paused until tomorrow. ${Owner} was told. I can still read it.`;
@@ -217,6 +222,9 @@ export async function diagnoseProjectAccess(params: {
 	scope: AgentCallScope;
 	projectId: string;
 	intent: ProjectAccessIntent;
+	/** The write that was refused, when known. Writes agents never make in someone
+	 *  else's project get the rule (wall 6) instead of a wall that couldn't help. */
+	op?: string;
 	/** Already loaded by the caller (saves two reads). */
 	actorId?: string;
 	projects?: OntologyProjectSummary[];
@@ -261,6 +269,18 @@ export async function diagnoseProjectAccess(params: {
 		}
 		return blocked(
 			buildAccessNeeded({ wall: ACCESS_WALL.projectNotGranted, projectId: project.id })
+		);
+	}
+
+	if (params.intent === 'write' && project.is_shared && params.op && !isGuestLaneOp(params.op)) {
+		return blocked(
+			buildAccessNeeded({
+				wall: ACCESS_WALL.outsideGuestLane,
+				projectId: project.id,
+				projectName: project.name,
+				ownerName,
+				ownerItems: true
+			})
 		);
 	}
 
@@ -348,6 +368,7 @@ export async function explainAccessWall(
 			const diagnosis = await diagnoseProjectAccess({
 				...context,
 				projectId,
+				op,
 				intent:
 					reason === PROJECT_NOT_GRANTED_TO_CONNECTOR || reason === AGENTS_OFF_BY_OWNER
 						? isWriteOp(op)

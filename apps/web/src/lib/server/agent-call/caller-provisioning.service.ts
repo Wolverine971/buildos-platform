@@ -228,6 +228,8 @@ function mapCallerSummary(
 			? { unavailable_project_count: unavailableProjectCount }
 			: {}),
 		metadata: record.metadata ?? {},
+		include_shared_projects:
+			(record as { include_shared_projects?: unknown }).include_shared_projects === true,
 		last_used_at: record.last_used_at,
 		created_at: record.created_at,
 		updated_at: record.updated_at,
@@ -860,7 +862,10 @@ export type ConnectorProjectGrantContext = {
 	project_already_granted: boolean;
 	/** The owner turned the person's agents off in the linked project. */
 	project_blocked: { owner_name: string | null } | null;
-	/** Only for `?need=write` on a visible, unblocked project. */
+	/**
+	 * Only for `?need=write`: on a visible, unblocked project, or for the whole connection
+	 * when the link names no project (a read-only connection calling a write tool).
+	 */
 	write: ConnectorWriteAccess | null;
 	/** User-visible projects this connector cannot use yet (never owner-blocked ones). */
 	ungranted_projects: ConnectorGrantProject[];
@@ -1429,6 +1434,14 @@ export class CallerProvisioningService {
 			} else {
 				write = { status: 'allow_here' };
 			}
+		} else if (!projectId && options.need === 'write') {
+			// Connection-wide: only the connection's own setting can be in the way.
+			write =
+				scopeMode === 'read_write'
+					? { status: 'allowed' }
+					: isOAuth
+						? { status: 'reconnect' }
+						: { status: 'allow_here' };
 		}
 
 		return {

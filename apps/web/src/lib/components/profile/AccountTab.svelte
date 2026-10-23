@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/profile/AccountTab.svelte -->
 <script lang="ts">
-	import { onMount, tick, untrack } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import { User, Lock, Trash2, TriangleAlert, CircleCheck, Eye, EyeOff } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
@@ -100,151 +100,10 @@
 	let errors = $state<string[]>([]);
 	let successMessage = $state('');
 
-	// Public URL / username editor state
-	let usernameValue = $state<string | null>(null);
-	let usernameDraft = $state('');
-	let derivedFallback = $state('user');
-	let usernameLoading = $state(false);
-	let usernameError = $state<string | null>(null);
-
-	// Finding you (people layer): handle discoverability + agent-sent requests.
-	let discoverability = $state<'none' | 'handle'>('none');
-	let acceptsAgentRequests = $state(true);
-	let findingSaving = $state<'discoverability' | 'agents' | null>(null);
-	let findingError = $state<string | null>(null);
-
 	function reportOperationError(message: string, toastMessage = message) {
 		errors = [message];
 		toastService.error(toastMessage);
 		onerror?.({ message: toastMessage });
-	}
-
-	onMount(() => {
-		void loadUsername();
-	});
-
-	async function loadUsername() {
-		try {
-			const res = await fetch('/api/profile/me/username');
-			const payload = await res.json().catch(() => null);
-			if (!res.ok) return;
-			usernameValue =
-				typeof payload?.data?.username === 'string' ? payload.data.username : null;
-			derivedFallback =
-				typeof payload?.data?.derived_fallback === 'string'
-					? payload.data.derived_fallback
-					: 'user';
-			usernameDraft = usernameValue ?? '';
-			discoverability = payload?.data?.discoverability === 'handle' ? 'handle' : 'none';
-			acceptsAgentRequests = payload?.data?.accepts_agent_requests !== false;
-		} catch {
-			// Best-effort; leave defaults.
-		}
-	}
-
-	async function saveUsername() {
-		const trimmed = usernameDraft.trim().toLowerCase();
-		if (!trimmed || trimmed === (usernameValue ?? '')) return;
-		usernameLoading = true;
-		usernameError = null;
-		try {
-			const res = await fetch('/api/profile/me/username', {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ username: trimmed })
-			});
-			const payload = await res.json().catch(() => null);
-			if (!res.ok) {
-				usernameError =
-					payload?.error || 'Could not update username. Please try a different one.';
-				return;
-			}
-			usernameValue = payload?.data?.username ?? trimmed;
-			usernameDraft = usernameValue ?? '';
-			toastService.success('Username updated');
-		} catch (e) {
-			usernameError = e instanceof Error ? e.message : 'Failed to update username.';
-		} finally {
-			usernameLoading = false;
-		}
-	}
-
-	async function clearUsername() {
-		if (!usernameValue) return;
-		usernameLoading = true;
-		usernameError = null;
-		try {
-			const res = await fetch('/api/profile/me/username', {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ username: null })
-			});
-			const payload = await res.json().catch(() => null);
-			if (!res.ok) {
-				usernameError = payload?.error || 'Failed to clear username.';
-				return;
-			}
-			usernameValue = null;
-			usernameDraft = '';
-			// The server turns finding-by-handle off with the handle.
-			discoverability = 'none';
-			toastService.success('Username cleared. Public URLs now use your derived name.');
-		} catch (e) {
-			usernameError = e instanceof Error ? e.message : 'Failed to clear username.';
-		} finally {
-			usernameLoading = false;
-		}
-	}
-
-	async function saveFindingSetting(
-		setting: 'discoverability' | 'agents',
-		update: { discoverability?: 'none' | 'handle'; accepts_agent_requests?: boolean }
-	) {
-		if (findingSaving) return;
-		findingSaving = setting;
-		findingError = null;
-		try {
-			const res = await fetch('/api/profile/me/discoverability', {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(update)
-			});
-			const payload = await res.json().catch(() => null);
-			if (!res.ok) {
-				findingError = payload?.error || 'Could not save that setting. Try again.';
-				return;
-			}
-			discoverability = payload?.data?.discoverability === 'handle' ? 'handle' : 'none';
-			acceptsAgentRequests = payload?.data?.accepts_agent_requests !== false;
-			if (setting === 'discoverability') {
-				toastService.success(
-					discoverability === 'handle'
-						? 'People with your handle can now find you'
-						: 'People can no longer find you by handle'
-				);
-			} else {
-				toastService.success(
-					acceptsAgentRequests
-						? 'Requests sent by agents will reach you'
-						: 'Requests sent by agents are turned off'
-				);
-			}
-		} catch {
-			findingError = 'Could not save that setting. Try again.';
-		} finally {
-			findingSaving = null;
-		}
-	}
-
-	function toggleDiscoverability() {
-		if (!usernameValue) return;
-		void saveFindingSetting('discoverability', {
-			discoverability: discoverability === 'handle' ? 'none' : 'handle'
-		});
-	}
-
-	function toggleAgentRequests() {
-		void saveFindingSetting('agents', { accepts_agent_requests: !acceptsAgentRequests });
 	}
 
 	async function updateProfile() {
@@ -660,175 +519,19 @@
 		</SettingsCard>
 
 		<SettingsCard
-			title="Your public URL"
-			description="The first segment of every published project doc."
-			labelledById="public-url-heading"
+			title="Your handle"
+			description="Your @handle is also your public URL for published docs."
+			labelledById="handle-pointer-heading"
 		>
-			<div class="space-y-4">
-				<p class="text-xs text-muted-foreground leading-relaxed">
-					Currently published at
-					<span class="font-mono text-foreground break-all"
-						>build-os.com/p/{usernameValue || derivedFallback}/…</span
-					>
-				</p>
-
-				<FormField
-					label="Username"
-					labelFor="username"
-					hint="Lowercase letters, numbers, hyphens. 3–24 characters."
-				>
-					<div
-						class="flex items-stretch rounded-md border border-border bg-background overflow-hidden focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
-					>
-						<span
-							class="inline-flex items-center px-3 text-xs font-mono text-muted-foreground bg-muted/40 border-r border-border whitespace-nowrap"
-						>
-							build-os.com/p/
-						</span>
-						<input
-							id="username"
-							type="text"
-							bind:value={usernameDraft}
-							placeholder={derivedFallback}
-							minlength="3"
-							maxlength="24"
-							pattern="^[a-z0-9]+(-[a-z0-9]+)*$"
-							class="flex-1 min-w-0 bg-transparent px-3 py-2 text-base font-mono focus:outline-none disabled:opacity-50 min-h-[44px]"
-							disabled={usernameLoading}
-							aria-label="Public username"
-						/>
-					</div>
-				</FormField>
-
-				{#if usernameError}
-					<p class="text-xs text-destructive">{usernameError}</p>
-				{/if}
-
-				<div class="flex flex-wrap items-center justify-end gap-3">
-					{#if usernameValue}
-						<button
-							type="button"
-							onclick={clearUsername}
-							disabled={usernameLoading}
-							class="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 disabled:opacity-50 mr-auto rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-						>
-							Clear (revert to derived)
-						</button>
-					{/if}
-					<Button
-						type="button"
-						onclick={saveUsername}
-						disabled={usernameLoading ||
-							!usernameDraft.trim() ||
-							usernameDraft.trim() === (usernameValue ?? '')}
-						variant="primary"
-						size="sm"
-						loading={usernameLoading}
-						class="shadow-ink pressable"
-					>
-						{usernameValue ? 'Update username' : 'Claim username'}
-					</Button>
-				</div>
-			</div>
+			<p class="text-sm text-muted-foreground">
+				Your handle, who can find you, and who you share with now live in
+				<a
+					href="/profile?tab=people#you"
+					class="font-medium text-accent underline-offset-2 hover:underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					>People &amp; agents</a
+				>.
+			</p>
 		</SettingsCard>
-
-		<div id="finding-you" class="scroll-mt-4">
-			<SettingsCard
-				title="Finding you"
-				description="Let people ask you for access to your projects. You always choose what to share."
-				labelledById="finding-you-heading"
-			>
-				<div class="space-y-4">
-					<div class="flex items-start justify-between gap-4">
-						<div class="min-w-0 space-y-0.5">
-							<p
-								id="finding-discoverability-label"
-								class="text-sm font-medium text-foreground"
-							>
-								People with my handle can find me
-							</p>
-							<p
-								id="finding-discoverability-hint"
-								class="text-xs text-muted-foreground"
-							>
-								{#if usernameValue}
-									Anyone who types @{usernameValue} sees your name, handle, and bio,
-									and can ask for access. Never your email.
-								{:else}
-									Claim a username above first. People find you by it.
-								{/if}
-							</p>
-						</div>
-						<button
-							type="button"
-							role="switch"
-							aria-checked={discoverability === 'handle'}
-							aria-labelledby="finding-discoverability-label"
-							aria-describedby="finding-discoverability-hint"
-							disabled={!usernameValue || findingSaving !== null}
-							onclick={toggleDiscoverability}
-							class="relative mt-0.5 h-7 w-12 shrink-0 rounded-full border transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 {discoverability ===
-							'handle'
-								? 'border-accent bg-accent'
-								: 'border-border-strong bg-muted'}"
-						>
-							<span
-								class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-background shadow-ink transition-transform motion-reduce:transition-none {discoverability ===
-								'handle'
-									? 'translate-x-5'
-									: 'translate-x-0'}"
-							></span>
-						</button>
-					</div>
-
-					<div class="flex items-start justify-between gap-4 border-t border-border pt-4">
-						<div class="min-w-0 space-y-0.5">
-							<p
-								id="finding-agents-label"
-								class="text-sm font-medium text-foreground"
-							>
-								Accept requests sent by agents
-							</p>
-							<p id="finding-agents-hint" class="text-xs text-muted-foreground">
-								Someone’s AI agent can ask you for access on their behalf. You still
-								choose what to share.
-							</p>
-						</div>
-						<button
-							type="button"
-							role="switch"
-							aria-checked={acceptsAgentRequests}
-							aria-labelledby="finding-agents-label"
-							aria-describedby="finding-agents-hint"
-							disabled={findingSaving !== null}
-							onclick={toggleAgentRequests}
-							class="relative mt-0.5 h-7 w-12 shrink-0 rounded-full border transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 {acceptsAgentRequests
-								? 'border-accent bg-accent'
-								: 'border-border-strong bg-muted'}"
-						>
-							<span
-								class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-background shadow-ink transition-transform motion-reduce:transition-none {acceptsAgentRequests
-									? 'translate-x-5'
-									: 'translate-x-0'}"
-							></span>
-						</button>
-					</div>
-
-					{#if findingError}
-						<p class="text-xs text-destructive" role="alert">{findingError}</p>
-					{/if}
-
-					<p class="text-xs text-muted-foreground">
-						Requests and projects shared with you are on your
-						<a
-							href="/people"
-							class="font-medium text-accent underline-offset-2 hover:underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							>People page</a
-						>.
-					</p>
-				</div>
-			</SettingsCard>
-		</div>
 	{/if}
 
 	<!-- Password Section -->

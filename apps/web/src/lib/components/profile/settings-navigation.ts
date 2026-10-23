@@ -2,11 +2,11 @@
 import type { Icon } from '$lib/icons/lucide';
 import {
 	Bell,
+	BookUser,
 	Calendar,
 	Coffee,
 	CreditCard,
 	Database,
-	Key,
 	Mail,
 	Repeat,
 	Sparkles,
@@ -43,11 +43,11 @@ const SETTINGS_DESTINATIONS: readonly SettingsDestination[] = [
 	},
 	{ id: 'briefs', label: 'Brief Settings', icon: Coffee, group: 'your-buildos' },
 	{ id: 'notifications', label: 'Notifications', icon: Bell, group: 'your-buildos' },
+	{ id: 'people', label: 'People & agents', icon: Users, group: 'connections' },
 	{ id: 'calendar', label: 'Calendar', icon: Calendar, group: 'connections' },
 	{ id: 'email', label: 'Email', icon: Mail, group: 'connections' },
-	{ id: 'agent-keys', label: 'Agents', icon: Key, group: 'connections' },
 	{ id: 'data', label: 'Your data', icon: Database, group: 'data-plan' },
-	{ id: 'contacts', label: 'Contacts', icon: Users, group: 'data-plan' },
+	{ id: 'contacts', label: 'Contacts', icon: BookUser, group: 'data-plan' },
 	{
 		id: 'billing',
 		label: 'Billing',

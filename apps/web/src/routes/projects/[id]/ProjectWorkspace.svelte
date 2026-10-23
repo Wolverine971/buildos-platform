@@ -1161,8 +1161,31 @@
 		};
 	}
 
+	// ?share=1 opens the Share window once the project's access has loaded.
+	let pendingShareOpen = $state(false);
+	$effect(() => {
+		if (!pendingShareOpen || !optionsMenu || !access.canViewLogs) return;
+		pendingShareOpen = false;
+		optionsMenu.openCollaboration();
+	});
+
 	onMount(() => {
-		syncWorkspaceFromUrl(new URL(window.location.href));
+		const startUrl = new URL(window.location.href);
+		// ?share=1 (from Profile > People & agents) opens this project's Share window once.
+		const openShare = startUrl.searchParams.get('share') === '1';
+		startUrl.searchParams.delete('share');
+		syncWorkspaceFromUrl(startUrl);
+		if (openShare) {
+			pendingShareOpen = true;
+			void tick().then(() =>
+				replaceState(
+					resolve(
+						`${startUrl.pathname}${startUrl.search}${startUrl.hash}` as `/projects/${string}`
+					),
+					{ ...page.state }
+				)
+			);
+		}
 		hydrationPromise = hydrateProject();
 		void freshness.refresh();
 		// Ignore the store's initial value; only react to new completed mutations.
@@ -2274,7 +2297,6 @@
 <ProjectWorkspaceEntityModals
 	{project}
 	{contextDocument}
-	canAdmin={access.canAdmin}
 	{goals}
 	{tasks}
 	tasksComplete={tasksCoverage.complete}

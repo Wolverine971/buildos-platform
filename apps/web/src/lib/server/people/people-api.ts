@@ -34,6 +34,13 @@ export function peopleRpcErrorResponse(error: RpcError, fallback: string): Respo
 			return ApiResponse.forbidden(message || 'You can’t do that');
 		case 'P0002':
 			return ApiResponse.error(message || 'Not found', 404, 'NOT_FOUND');
+		// The request changed after the page loaded (an upgrade grew). Reload, look again.
+		case 'PT409':
+			return ApiResponse.error(
+				message || 'This changed. Reload and try again.',
+				409,
+				'CHANGED'
+			);
 		default:
 			return ApiResponse.databaseError(error ?? { message: fallback });
 	}

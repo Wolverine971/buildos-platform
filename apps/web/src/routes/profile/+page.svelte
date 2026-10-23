@@ -26,13 +26,14 @@
 	import ContactsTab from '$lib/components/profile/ContactsTab.svelte';
 	import NotificationsTab from '$lib/components/profile/NotificationsTab.svelte';
 	import PreferencesTab from '$lib/components/profile/PreferencesTab.svelte';
-	import AgentKeysTab from '$lib/components/profile/AgentKeysTab.svelte';
+	import PeopleAgentsTab from '$lib/components/profile/PeopleAgentsTab.svelte';
 	import BillingTab from '$lib/components/profile/BillingTab.svelte';
 	import CyclesTab from '$lib/components/profile/CyclesTab.svelte';
 	import DataTab from '$lib/components/profile/DataTab.svelte';
 	import SettingsNavigation from '$lib/components/profile/SettingsNavigation.svelte';
 	import { getSettingsDestinations } from '$lib/components/profile/settings-navigation';
 	import {
+		profileTabAliasSection,
 		resolveProfileTab,
 		type ProfileTabId,
 		type ProfileTabVisibility
@@ -363,8 +364,10 @@
 					<EmailTab onsuccess={handleComponentSuccess} onerror={handleComponentError} />
 				{:else if activeTab === 'notifications'}
 					<NotificationsTab userId={data.user.id} />
-				{:else if activeTab === 'agent-keys'}
-					<AgentKeysTab
+				{:else if activeTab === 'people'}
+					<PeopleAgentsTab
+						userName={data.user?.name || data.user?.email || 'You'}
+						initialSection={profileTabAliasSection($page.url.searchParams.get('tab'))}
 						onsuccess={handleComponentSuccess}
 						onerror={handleComponentError}
 					/>

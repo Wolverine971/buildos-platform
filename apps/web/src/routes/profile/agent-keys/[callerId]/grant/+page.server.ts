@@ -124,7 +124,8 @@ export const actions: Actions = {
 	},
 
 	// The owner's setting is in the way: ask them from here, as the person (not the agent).
-	askOwner: async ({ locals: { safeGetSession, supabase }, request, url }) => {
+	// The request names this connection, so approval also lets it into the project.
+	askOwner: async ({ locals: { safeGetSession, supabase }, params, request, url }) => {
 		const { user } = await safeGetSession();
 		if (!user) loginRedirect(url);
 
@@ -134,9 +135,13 @@ export const actions: Actions = {
 		if (typeof projectId !== 'string' || !isValidUUID(projectId)) {
 			return fail(400, { error: 'Unknown project', reconnect: false });
 		}
+		if (!isValidUUID(params.callerId)) {
+			return fail(404, { error: 'Unknown connection', reconnect: false });
+		}
 		const { data, error } = await (supabase as any).rpc('create_project_upgrade_request', {
 			p_project_ids: [projectId],
-			p_need: need === 'agents_write' || need === 'edit' ? need : 'agents_read'
+			p_need: need === 'agents_write' || need === 'edit' ? need : 'agents_read',
+			p_for_caller_id: params.callerId
 		});
 		if (error) {
 			console.error('Failed to ask the project owner:', error);

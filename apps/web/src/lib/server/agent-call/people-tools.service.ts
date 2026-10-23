@@ -196,7 +196,7 @@ const REQUEST_MESSAGES: Record<string, string> = {
 		'No one on BuildOS can be found with that handle. People only appear once they choose to be findable.',
 	self: 'That is your own handle.',
 	agent_requests_off:
-		"This person doesn't accept requests sent by agents. Your person can send it from BuildOS instead (the People page).",
+		"This person doesn't accept requests sent by agents. Your person can send it from BuildOS instead (Profile → People & agents).",
 	declined_recently:
 		'This person declined a recent request. Your person can ask again 30 days after that answer.',
 	too_many_pending:

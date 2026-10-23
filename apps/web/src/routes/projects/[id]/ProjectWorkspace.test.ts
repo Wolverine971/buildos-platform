@@ -806,9 +806,7 @@ describe('ProjectWorkspace edge states', () => {
 		expect(document.querySelector('[data-project-options-dismiss-layer]')?.parentElement).toBe(
 			document.body
 		);
-		expect(
-			screen.getByRole('menuitem', { name: 'Collaboration settings' })
-		).toBeInTheDocument();
+		expect(screen.getByRole('menuitem', { name: 'Share…' })).toBeInTheDocument();
 		expect(screen.getByRole('menuitem', { name: 'Edit project' })).toBeInTheDocument();
 		expect(screen.getByRole('menuitem', { name: 'Calendar settings' })).toBeInTheDocument();
 		expect(screen.getByRole('menuitem', { name: 'Delete project' })).toBeInTheDocument();

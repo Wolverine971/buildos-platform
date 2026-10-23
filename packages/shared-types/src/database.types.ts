@@ -18582,6 +18582,77 @@ export type Database = {
           },
         ]
       }
+      project_access_events: {
+        Row: {
+          after: Json | null
+          before: Json | null
+          by_actor_id: string | null
+          created_at: string
+          id: string
+          invite_id: string | null
+          kind: string
+          occurred_at: string
+          project_id: string
+          subject_actor_id: string | null
+          via: string | null
+        }
+        Insert: {
+          after?: Json | null
+          before?: Json | null
+          by_actor_id?: string | null
+          created_at?: string
+          id?: string
+          invite_id?: string | null
+          kind: string
+          occurred_at?: string
+          project_id: string
+          subject_actor_id?: string | null
+          via?: string | null
+        }
+        Update: {
+          after?: Json | null
+          before?: Json | null
+          by_actor_id?: string | null
+          created_at?: string
+          id?: string
+          invite_id?: string | null
+          kind?: string
+          occurred_at?: string
+          project_id?: string
+          subject_actor_id?: string | null
+          via?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_access_events_by_actor_id_fkey"
+            columns: ["by_actor_id"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_access_events_invite_id_fkey"
+            columns: ["invite_id"]
+            isOneToOne: false
+            referencedRelation: "onto_project_invites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_access_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_access_events_subject_actor_id_fkey"
+            columns: ["subject_actor_id"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_agent_settings: {
         Row: {
           editor_agents_write: boolean
@@ -26363,6 +26434,7 @@ export type Database = {
         Args: {
           p_agent_label?: string
           p_caller_id?: string
+          p_for_caller_id?: string
           p_need: string
           p_note?: string
           p_oauth_grant_id?: string
@@ -27780,6 +27852,16 @@ export type Database = {
         Returns: {
           object_name: string
         }[]
+      }
+      list_project_access_events: {
+        Args: {
+          p_before?: string
+          p_before_id?: string
+          p_limit?: number
+          p_project_id?: string
+          p_user_id: string
+        }
+        Returns: Json
       }
       load_agentic_chat_project_review_evidence_v2: {
         Args: { p_project_id: string; p_question: string; p_user_id: string }

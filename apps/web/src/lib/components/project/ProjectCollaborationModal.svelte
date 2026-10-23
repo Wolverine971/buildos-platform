@@ -2,8 +2,6 @@
 <script lang="ts">
 	import { tick, untrack } from 'svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
-	import TabNav from '$lib/components/ui/TabNav.svelte';
-	import type { Tab } from '$lib/components/ui/TabNav.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
@@ -12,17 +10,7 @@
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import { copyTextToClipboard } from '$lib/utils/public-page-url';
 	import ProjectInviteLinkPanel from './ProjectInviteLinkPanel.svelte';
-	import {
-		AtSign,
-		Bell,
-		Check,
-		Copy,
-		Link2,
-		Mail,
-		UserCog,
-		UserPlus,
-		Users
-	} from '$lib/icons/lucide';
+	import { AtSign, Bot, Check, ChevronDown, Copy, Link2, Mail, Users } from '$lib/icons/lucide';
 	import {
 		agentAccessAllowed,
 		agentAccessDescription,
@@ -48,11 +36,16 @@
 		joined_via_invite_link_id?: string | null;
 		role_name?: string | null;
 		role_description?: string | null;
+		/** Their @handle, when they have one. */
+		handle?: string | null;
 		actor?: {
 			id: string;
+			user_id?: string | null;
 			name: string | null;
+			/** Only the owner gets other people's emails; everyone gets their own. */
 			email: string | null;
 		};
+		created_at?: string | null;
 	}
 
 	interface InviteRow {
@@ -64,6 +57,8 @@
 		access: string;
 		agent_access?: AgentAccess | null;
 		status: string;
+		/** 'expired' once a pending invite is past its date (the row still says pending). */
+		effective_status?: string;
 		created_at: string;
 		expires_at: string | null;
 	}
@@ -158,8 +153,14 @@
 	let handoffError = $state<string | null>(null);
 	let handoffPanel = $state<HTMLFormElement | null>(null);
 	let handoffTrigger: HTMLElement | null = null;
-	type TabId = 'invite' | 'people' | 'my-role';
-	let activeTab = $state<TabId>('people');
+	/** Your own row: your role here, notifications, leave. Open by default for members. */
+	let selfExpanded = $state(false);
+	/** Bumped to snap a member's role menu back after "Make owner…" or "Remove…". */
+	let roleMenuResetKey = $state(0);
+	/** The project's Restricted setting ('restricted': only connections you pick reach it). */
+	let externalAgentAccess = $state<'standard' | 'restricted' | null>(null);
+	let restrictedSaving = $state(false);
+	let clearingExpired = $state(false);
 	/** The invite just sent from this window: who, its one-time link, whether the email went out. */
 	let lastSentInvite = $state<{
 		label: string;
@@ -182,25 +183,6 @@
 		projectId: string;
 		epoch: number;
 	};
-
-	// Owners get an Invite tab; everyone sees People and their own role.
-	const tabs = $derived<Tab[]>([
-		...(canManageMembers ? [{ id: 'invite', label: 'Invite', icon: UserPlus }] : []),
-		{
-			id: 'people',
-			label: 'People',
-			icon: Users,
-			count: members.length + invites.length || undefined
-		},
-		{ id: 'my-role', label: 'My role', icon: UserCog }
-	]);
-	const currentTab = $derived<TabId>(
-		tabs.some((tab) => tab.id === activeTab) ? activeTab : 'people'
-	);
-
-	function handleTabChange(tabId: string) {
-		activeTab = tabId as TabId;
-	}
 
 	async function copyInviteUrl(url: string) {
 		const ok = await copyTextToClipboard(url);
@@ -266,7 +248,11 @@
 		handoffSaving = false;
 		handoffError = null;
 		handoffTrigger = null;
-		activeTab = untrack(() => canManageMembers) ? 'invite' : 'people';
+		selfExpanded = !untrack(() => canManageMembers);
+		roleMenuResetKey = 0;
+		externalAgentAccess = null;
+		restrictedSaving = false;
+		clearingExpired = false;
 		lastSentInvite = null;
 		inviteUrls = {};
 		copiedUrl = null;
@@ -331,8 +317,9 @@
 		let membersStatus: number | null = null;
 		let invitesStatus: number | null = null;
 		let settingsStatus: number | null = null;
-		// Only the owner sees (and can change) the editors' agents setting.
-		const loadAgentSettings = untrack(() => canManageMembers);
+		// Only the owner manages invites. Everyone reads the agent settings: members see
+		// what their own agents can do here, which the editors' setting can lift.
+		const loadInvites = untrack(() => canManageMembers);
 
 		try {
 			const [membersRes, invitesRes, settingsRes, agentSettingsRes] = await Promise.all([
@@ -341,37 +328,39 @@
 					credentials: 'same-origin',
 					signal: abortController.signal
 				}),
-				fetch(`/api/onto/projects/${requestedProjectId}/invites`, {
-					method: 'GET',
-					credentials: 'same-origin',
-					signal: abortController.signal
-				}),
+				loadInvites
+					? fetch(`/api/onto/projects/${requestedProjectId}/invites`, {
+							method: 'GET',
+							credentials: 'same-origin',
+							signal: abortController.signal
+						})
+					: Promise.resolve(null),
 				fetch(`/api/onto/projects/${requestedProjectId}/notification-settings`, {
 					method: 'GET',
 					credentials: 'same-origin',
 					signal: abortController.signal
 				}),
 				// Best effort: a failure here never blocks the rest of the window.
-				loadAgentSettings
-					? fetch(`/api/onto/projects/${requestedProjectId}/agent-settings`, {
-							method: 'GET',
-							credentials: 'same-origin',
-							signal: abortController.signal
-						}).catch(() => null)
-					: Promise.resolve(null)
+				fetch(`/api/onto/projects/${requestedProjectId}/agent-settings`, {
+					method: 'GET',
+					credentials: 'same-origin',
+					signal: abortController.signal
+				}).catch(() => null)
 			]);
 
 			membersStatus = membersRes.status;
-			invitesStatus = invitesRes.status;
+			invitesStatus = invitesRes?.status ?? null;
 			settingsStatus = settingsRes.status;
 
 			const [membersPayload, invitesPayload, settingsPayload] = await Promise.all([
 				membersRes.ok ? membersRes.json() : membersRes.json().catch(() => null),
-				invitesRes.ok
-					? invitesRes.json()
-					: invitesRes.status === 403
-						? Promise.resolve(null)
-						: invitesRes.json().catch(() => null),
+				!invitesRes
+					? Promise.resolve(null)
+					: invitesRes.ok
+						? invitesRes.json()
+						: invitesRes.status === 403
+							? Promise.resolve(null)
+							: invitesRes.json().catch(() => null),
 				settingsRes.json().catch(() => null)
 			]);
 			const agentSettingsPayload = agentSettingsRes?.ok
@@ -380,14 +369,16 @@
 
 			if (!isCurrentRequest()) return;
 
-			if (loadAgentSettings) {
-				const loaded = agentSettingsPayload?.data?.editor_agents_write;
-				if (typeof loaded === 'boolean') {
-					editorAgentsWrite = loaded;
-					agentSettingsLoadFailed = false;
-				} else if (editorAgentsWrite === null) {
-					agentSettingsLoadFailed = true;
-				}
+			const loaded = agentSettingsPayload?.data?.editor_agents_write;
+			if (typeof loaded === 'boolean') {
+				editorAgentsWrite = loaded;
+				agentSettingsLoadFailed = false;
+			} else if (editorAgentsWrite === null) {
+				agentSettingsLoadFailed = true;
+			}
+			const loadedAccess = agentSettingsPayload?.data?.external_agent_access;
+			if (loadedAccess === 'standard' || loadedAccess === 'restricted') {
+				externalAgentAccess = loadedAccess;
 			}
 
 			if (membersRes.ok) {
@@ -410,7 +401,7 @@
 				);
 			}
 
-			if (invitesRes.status === 403) {
+			if (!invitesRes || invitesRes.status === 403) {
 				canManageInvites = false;
 			} else if (invitesRes.ok) {
 				invites = invitesPayload?.data?.invites ?? [];
@@ -479,11 +470,6 @@
 			? (members.find((member) => member.actor_id === currentActorId) ?? null)
 			: null
 	);
-	const editingMemberRoleProfile = $derived(
-		editingMemberRoleProfileId
-			? (members.find((member) => member.id === editingMemberRoleProfileId) ?? null)
-			: null
-	);
 	const canLeaveProject = $derived(Boolean(currentMember && currentMember.role_key !== 'owner'));
 	const isProjectOwner = $derived(currentMember?.role_key === 'owner');
 	const handoffTargetIsMember = $derived(
@@ -494,9 +480,53 @@
 	);
 	// Sharing is owner-only: editors can work in the project but not re-share it.
 	const canInvite = $derived(canManageInvites && canManageMembers);
+	const ownerMember = $derived(members.find((member) => member.role_key === 'owner') ?? null);
+	const ownerName = $derived(ownerMember ? getMemberLabel(ownerMember) : 'The owner');
+	/** You first, then everyone else in role order. */
+	const otherMembers = $derived(members.filter((member) => member.actor_id !== currentActorId));
+	const expiredInvites = $derived(invites.filter((invite) => isInviteExpired(invite)));
+	/** What your own agents can do here, counting the owner's editors' setting. */
+	const ownAgentAccess = $derived<AgentAccess | null>(
+		currentMember && currentMember.role_key !== 'owner'
+			? liftedByEditorsSetting(currentMember)
+				? 'write'
+				: memberAgentAccess(currentMember)
+			: null
+	);
 
 	function getMemberLabel(member: MemberRow): string {
-		return member.actor?.name || member.actor?.email || member.actor_id;
+		return (
+			member.actor?.name ||
+			(member.handle ? `@${member.handle}` : null) ||
+			member.actor?.email ||
+			'Someone'
+		);
+	}
+
+	function getMemberInitials(member: MemberRow): string {
+		const source = member.actor?.name || member.handle || member.actor?.email || '?';
+		const words = source.replace(/@.*$/, '').trim().split(/\s+/).filter(Boolean);
+		const first = words[0] ?? '?';
+		const last = words.length > 1 ? (words[words.length - 1] ?? '') : '';
+		const letters = last ? `${first.charAt(0)}${last.charAt(0)}` : first.slice(0, 2);
+		return letters.toUpperCase();
+	}
+
+	/** The small line under a name: handle, email (owner only), how they joined, role title. */
+	function getMemberDetail(member: MemberRow, isSelf: boolean): string {
+		const parts: string[] = [];
+		if (member.handle) parts.push(`@${member.handle}`);
+		if (member.actor?.email && (canManageMembers || isSelf) && member.actor?.name) {
+			parts.push(member.actor.email);
+		}
+		if (member.joined_via_invite_link_id) parts.push('Joined with the invite link');
+		if (member.role_name) parts.push(member.role_name);
+		return parts.join(' · ');
+	}
+
+	function isInviteExpired(invite: InviteRow): boolean {
+		if (invite.effective_status) return invite.effective_status === 'expired';
+		return Boolean(invite.expires_at && Date.parse(invite.expires_at) < Date.now());
 	}
 
 	/** Handle invites show the handle; the email behind it is never sent to the browser. */
@@ -1451,9 +1481,9 @@
 		}
 	}
 
-	async function handleStartHandoff(member: MemberRow, event: MouseEvent) {
+	async function handleStartHandoff(member: MemberRow, trigger: HTMLElement | null) {
 		if (!isProjectOwner || memberActionsBusy || member.role_key === 'owner') return;
-		handoffTrigger = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+		handoffTrigger = trigger;
 		handoffTarget = member;
 		handoffLeave = false;
 		handoffError = null;
@@ -1463,12 +1493,17 @@
 
 	function handleCancelHandoff() {
 		if (handoffSaving) return;
+		const targetId = handoffTarget?.id ?? null;
 		handoffTarget = null;
 		handoffLeave = false;
 		handoffError = null;
 		const trigger = handoffTrigger;
 		handoffTrigger = null;
-		if (trigger?.isConnected) trigger.focus();
+		if (trigger?.isConnected) {
+			trigger.focus();
+		} else if (targetId) {
+			document.getElementById(`role-menu-${targetId}`)?.focus();
+		}
 	}
 
 	async function handleConfirmHandoff(event: Event) {
@@ -1555,6 +1590,123 @@
 		}
 	}
 
+	/** The role menu also holds "Make owner…" and "Remove…", which open a confirm. */
+	function handleRoleMenu(member: MemberRow, value: string) {
+		if (value === 'make-owner' || value === 'remove') {
+			// Snap the menu back to their real role; the confirm below does the work.
+			roleMenuResetKey += 1;
+			if (value === 'make-owner') {
+				confirmRemoveMemberId = null;
+				// The menu re-renders, so Cancel finds it again by id to return focus.
+				void handleStartHandoff(member, null);
+			} else {
+				handoffTarget = null;
+				confirmRemoveMemberId = member.id;
+			}
+			return;
+		}
+		void handleMemberRoleChange(member, value as MemberRole);
+	}
+
+	function toggleMemberRoleEditor(member: MemberRow) {
+		if (editingMemberRoleProfileId === member.id) {
+			handleCancelMemberRoleProfileEdit();
+		} else {
+			handleStartMemberRoleProfileEdit(member);
+		}
+	}
+
+	async function handleClearExpiredInvites() {
+		if (!canInvite || clearingExpired || inviteActionId) return;
+		const session = captureProjectSession();
+		clearingExpired = true;
+		let responseStatus: number | null = null;
+
+		try {
+			const response = await fetch(
+				`/api/onto/projects/${session.projectId}/invites/clear-expired`,
+				{ method: 'POST', credentials: 'same-origin' }
+			);
+			responseStatus = response.status;
+			const payload = await response.json().catch(() => null);
+			if (!isCurrentProjectSession(session)) return;
+			if (!response.ok) {
+				throw new Error(payload?.error || 'Couldn’t clear expired invites');
+			}
+			const cleared = Number(payload?.data?.cleared ?? 0);
+			toastService.success(
+				cleared === 1 ? 'Cleared 1 expired invite' : `Cleared ${cleared} expired invites`
+			);
+			await loadShareData(session.projectId);
+		} catch (err) {
+			if (!isCurrentProjectSession(session)) return;
+			console.error('[ProjectCollaborationModal] Failed to clear expired invites:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/projects/${session.projectId}/invites/clear-expired`,
+				method: 'POST',
+				projectId: session.projectId,
+				entityType: 'project_invite',
+				operation: 'project_invites_clear_expired',
+				metadata: { source: 'project_collaboration_modal', status: responseStatus }
+			});
+			toastService.error(
+				err instanceof Error ? err.message : 'Couldn’t clear expired invites'
+			);
+		} finally {
+			if (isCurrentProjectSession(session)) clearingExpired = false;
+		}
+	}
+
+	async function handleRestrictedToggle() {
+		if (!canManageMembers || restrictedSaving || externalAgentAccess === null) return;
+		const session = captureProjectSession();
+		const previous = externalAgentAccess;
+		const next = previous === 'restricted' ? 'standard' : 'restricted';
+
+		// Optimistic: flip now, put it back if the save fails.
+		externalAgentAccess = next;
+		restrictedSaving = true;
+		let responseStatus: number | null = null;
+
+		try {
+			const response = await fetch(
+				`/api/onto/projects/${session.projectId}/external-agent-access`,
+				{
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'same-origin',
+					body: JSON.stringify({ external_agent_access: next })
+				}
+			);
+			responseStatus = response.status;
+			const payload = await response.json().catch(() => null);
+			if (!isCurrentProjectSession(session)) return;
+			if (!response.ok) {
+				throw new Error(payload?.error || 'Couldn’t save this setting.');
+			}
+			toastService.success(
+				next === 'restricted'
+					? 'Only agent connections you pick can reach this project now'
+					: 'Your agent connections set to all projects reach this one again'
+			);
+		} catch (err) {
+			if (!isCurrentProjectSession(session)) return;
+			externalAgentAccess = previous;
+			console.error('[ProjectCollaborationModal] Failed to update restricted access:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/projects/${session.projectId}/external-agent-access`,
+				method: 'PATCH',
+				projectId: session.projectId,
+				entityType: 'project',
+				operation: 'project_external_agent_access_update',
+				metadata: { source: 'project_collaboration_modal', status: responseStatus }
+			});
+			toastService.error(err instanceof Error ? err.message : 'Couldn’t save this setting.');
+		} finally {
+			if (isCurrentProjectSession(session)) restrictedSaving = false;
+		}
+	}
+
 	function formatRole(roleKey: string) {
 		switch (roleKey) {
 			case 'viewer':
@@ -1569,67 +1721,77 @@
 	}
 </script>
 
+{#snippet toggleSwitch(
+	checked: boolean,
+	labelledBy: string,
+	describedBy: string,
+	disabled: boolean,
+	onToggle: () => void
+)}
+	<button
+		type="button"
+		role="switch"
+		aria-checked={checked}
+		aria-labelledby={labelledBy}
+		aria-describedby={describedBy}
+		{disabled}
+		onclick={onToggle}
+		class="relative mt-0.5 h-7 w-12 shrink-0 rounded-full border transition-colors motion-reduce:transition-none before:absolute before:-inset-2 before:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 {checked
+			? 'border-accent bg-accent'
+			: 'border-border-strong bg-muted'}"
+	>
+		<span
+			class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-background shadow-ink transition-transform motion-reduce:transition-none {checked
+				? 'translate-x-5'
+				: 'translate-x-0'}"
+		></span>
+	</button>
+{/snippet}
+
+{#snippet avatar(member: MemberRow)}
+	<span
+		class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-xs font-semibold text-foreground"
+		aria-hidden="true">{getMemberInitials(member)}</span
+	>
+{/snippet}
+
 <Modal
 	{isOpen}
 	onClose={handleClose}
-	title={canManageMembers ? `Share ${projectName || 'project'}` : 'People on this project'}
+	title={canManageMembers
+		? `Share ${projectName || 'project'}`
+		: `People on ${projectName || 'this project'}`}
 	size="md"
 >
-	<!-- Tab Navigation -->
-	<div class="px-3 sm:px-4 pt-2 border-b border-border">
-		<TabNav
-			{tabs}
-			activeTab={currentTab}
-			onchange={handleTabChange}
-			ariaLabel="Sharing sections"
-		/>
-	</div>
-
-	<!-- Tab Content -->
-	<div class="p-3 sm:p-4 space-y-4">
-		{#if currentTab === 'invite' && canManageMembers}
-			<!-- Invite by email or @handle -->
-			<section aria-labelledby="invite-person-heading" class="space-y-2.5">
-				<div>
-					<h3 id="invite-person-heading" class="text-sm font-semibold text-foreground">
-						Invite someone
-					</h3>
-					<p class="mt-0.5 text-xs text-muted-foreground">
-						We email them an invite to
-						<span class="font-medium">{projectName || 'this project'}</span>. Only they
-						can accept it.
-					</p>
-				</div>
-
-				<form class="space-y-2.5" onsubmit={handleInvite}>
-					<div class="space-y-1">
-						<label for="invite-email" class="text-xs font-medium text-muted-foreground"
-							>Email or @handle</label
-						>
-						<TextInput
-							id="invite-email"
-							bind:value={invitee}
-							type="text"
-							inputmode="email"
-							autocomplete="off"
-							placeholder="name@example.com or @sam"
-							icon={AtSign}
-							disabled={!canInvite}
-						/>
-					</div>
-
-					<div class="grid gap-2.5 sm:grid-cols-2">
-						<div class="space-y-1">
-							<label
-								for="invite-role"
-								class="text-xs font-medium text-muted-foreground"
-								>They join as</label
-							>
+	<div class="divide-y divide-border">
+		{#if canManageMembers}
+			<!-- Add people: email or @handle -->
+			<section aria-labelledby="invite-person-heading" class="space-y-2 p-3 sm:p-4">
+				<h3 id="invite-person-heading" class="text-sm font-semibold text-foreground">
+					Add people
+				</h3>
+				<form class="space-y-2" onsubmit={handleInvite}>
+					<div class="flex flex-col gap-2 sm:flex-row sm:items-start">
+						<div class="min-w-0 flex-1">
+							<label for="invite-email" class="sr-only">Email or @handle</label>
+							<TextInput
+								id="invite-email"
+								bind:value={invitee}
+								type="text"
+								inputmode="email"
+								autocomplete="off"
+								placeholder="Email or @handle"
+								icon={AtSign}
+								disabled={!canInvite}
+							/>
+						</div>
+						<div class="grid grid-cols-2 gap-2 sm:flex">
 							<Select
 								id="invite-role"
 								bind:value={role}
 								size="md"
 								placeholder=""
+								aria-label="They join as"
 								disabled={!canInvite}
 								onchange={(value) =>
 									(inviteAgentAccess = fitAgentAccessToRole(
@@ -1637,51 +1799,44 @@
 										inviteAgentAccess
 									))}
 							>
-								<option value="editor">Editor (can edit)</option>
-								<option value="viewer">Viewer (can see)</option>
+								<option value="editor">Editor</option>
+								<option value="viewer">Viewer</option>
 							</Select>
-						</div>
-
-						<div class="space-y-1">
-							<label
-								for="invite-agent-access"
-								class="text-xs font-medium text-muted-foreground"
-								>Their agents</label
-							>
 							<Select
 								id="invite-agent-access"
 								bind:value={inviteAgentAccess}
 								size="md"
 								placeholder=""
+								aria-label="Their agents"
 								aria-describedby="invite-agent-access-hint"
 								disabled={!canInvite}
 							>
-								<option value="off">Off</option>
-								<option value="read">Read</option>
+								<option value="read">Agents: Read</option>
 								<option value="write" disabled={role !== 'editor'}
-									>Write{role !== 'editor' ? ' (Editors only)' : ''}</option
+									>Agents: Write{role !== 'editor'
+										? ' (Editors only)'
+										: ''}</option
 								>
+								<option value="off">Agents: Off</option>
 							</Select>
 						</div>
+						<Button
+							type="submit"
+							variant="primary"
+							size="md"
+							icon={Mail}
+							loading={isSending}
+							disabled={isSending || !canInvite}
+						>
+							{isSending ? 'Sending…' : 'Invite'}
+						</Button>
 					</div>
 					<p id="invite-agent-access-hint" class="text-xs text-muted-foreground">
 						{agentAccessDescription(inviteAgentAccess)}
 					</p>
-
 					{#if error}
 						<p class="text-xs text-destructive" role="alert">{error}</p>
 					{/if}
-
-					<Button
-						type="submit"
-						variant="primary"
-						size="sm"
-						icon={Mail}
-						loading={isSending}
-						disabled={isSending || !canInvite}
-					>
-						{isSending ? 'Sending…' : 'Send invite'}
-					</Button>
 				</form>
 
 				{#if lastSentInvite}
@@ -1721,125 +1876,435 @@
 					</div>
 				{/if}
 			</section>
-
-			<div class="border-t border-border pt-4">
-				<ProjectInviteLinkPanel {projectId} {projectName} />
-			</div>
+		{:else if ownerMember}
+			<p class="px-3 py-2.5 text-sm text-muted-foreground sm:px-4">
+				Only {ownerName} can add people to this project.
+			</p>
 		{/if}
 
-		{#if currentTab === 'people'}
-			<!-- Members -->
-			<section aria-labelledby="members-heading" class="space-y-2">
-				<div class="flex items-center justify-between gap-2">
-					<h3 id="members-heading" class="text-sm font-semibold text-foreground">
-						Members
-					</h3>
-					{#if canManageMembers && members.length > 0}
-						<Button
-							variant="ghost"
-							size="sm"
-							icon={UserPlus}
-							onclick={() => (activeTab = 'invite')}
-						>
-							Invite
-						</Button>
-					{/if}
-				</div>
+		<!-- People with access: you first, then everyone else -->
+		<section aria-labelledby="members-heading" class="p-3 sm:p-4">
+			<p id="members-heading" class="micro-label text-muted-foreground">
+				{canManageMembers ? 'People with access' : 'People'}{members.length
+					? ` · ${members.length}`
+					: ''}
+			</p>
 
-				{#if !canManageMembers}
-					<p class="text-xs text-muted-foreground">
-						Only the project owner can invite people or change who sees this project.
-					</p>
-				{/if}
+			{#if isLoading && members.length === 0}
+				<p class="mt-2 text-xs text-muted-foreground">Loading people…</p>
+			{:else if members.length === 0}
+				<p class="mt-2 text-xs text-muted-foreground">No one here yet.</p>
+			{:else}
+				<ul class="mt-1 divide-y divide-border">
+					{#if currentMember}
+						{@const selfDetail = getMemberDetail(currentMember, true)}
+						<li class="py-2.5">
+							<button
+								type="button"
+								class="flex w-full items-center gap-2.5 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								aria-expanded={selfExpanded}
+								aria-controls="self-panel"
+								onclick={() => (selfExpanded = !selfExpanded)}
+							>
+								{@render avatar(currentMember)}
+								<span class="min-w-0 flex-1">
+									<span
+										class="block truncate text-sm font-medium text-foreground"
+									>
+										{getMemberLabel(currentMember)}
+										<span class="font-normal text-muted-foreground">(you)</span>
+									</span>
+									<span class="block truncate text-xs text-muted-foreground">
+										{selfDetail || 'Your role here and notifications'}
+									</span>
+								</span>
+								<span class="shrink-0 text-xs font-medium text-muted-foreground">
+									{formatRole(currentMember.role_key)}
+								</span>
+								<ChevronDown
+									class="h-4 w-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none {selfExpanded
+										? 'rotate-180'
+										: ''}"
+								/>
+							</button>
 
-				{#if isLoading}
-					<p class="text-xs text-muted-foreground">Loading members...</p>
-				{:else if members.length === 0}
-					<p class="text-xs text-muted-foreground">No members yet.</p>
-				{:else}
-					<ul class="divide-y divide-border">
-						{#each members as member (member.id)}
-							{@const memberLabel = getMemberLabel(member)}
-							{@const isSelf = member.actor_id === currentActorId}
-							{@const manageable = canManageMembers && member.role_key !== 'owner'}
-							<li class="py-2.5">
-								<div class="flex items-start justify-between gap-2">
-									<div class="min-w-0 flex-1">
-										<p class="text-sm font-medium text-foreground truncate">
-											{memberLabel}{#if isSelf}<span
-													class="font-normal text-muted-foreground"
-												>
-													(you)</span
-												>{/if}
-										</p>
-										{#if (member.actor?.email && member.actor?.name) || member.joined_via_invite_link_id}
-											<p class="text-xs text-muted-foreground truncate">
-												{member.actor?.email && member.actor?.name
-													? member.actor.email
-													: ''}{member.actor?.email &&
-												member.actor?.name &&
-												member.joined_via_invite_link_id
-													? ' · '
-													: ''}{member.joined_via_invite_link_id
-													? 'Joined with the invite link'
-													: ''}
+							{#if selfExpanded}
+								<div
+									id="self-panel"
+									class="mt-2.5 space-y-3 rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner sm:ml-10"
+								>
+									{#if ownAgentAccess}
+										<div class="flex items-start gap-2.5">
+											<Bot
+												class="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
+											/>
+											<div class="min-w-0 space-y-0.5">
+												<p class="text-sm font-medium text-foreground">
+													Your agents here: {agentAccessLabel(
+														ownAgentAccess
+													)}
+												</p>
+												<p class="text-xs text-muted-foreground">
+													{ownerName} set this{currentMember &&
+													liftedByEditorsSetting(currentMember)
+														? ' with the editors’ setting'
+														: ''}. {agentAccessDescription(
+														ownAgentAccess
+													)}
+												</p>
+												<p class="text-xs text-muted-foreground">
+													To let one of your agent connections in, turn on
+													“Projects shared with me” for it in
+													<a
+														href="/profile?tab=people#agents"
+														class="font-medium text-accent underline-offset-2 hover:underline"
+														>People &amp; agents</a
+													>.
+												</p>
+											</div>
+										</div>
+									{/if}
+
+									<!-- Your role here -->
+									<div class="space-y-2">
+										<div class="flex items-center justify-between gap-2">
+											<p class="text-sm font-medium text-foreground">
+												Your role here
 											</p>
+											<Button
+												variant="ghost"
+												size="sm"
+												disabled={roleProfileActionType !== null}
+												onclick={isEditingRoleProfile
+													? handleCancelRoleProfileEdit
+													: handleStartRoleProfileEdit}
+											>
+												{isEditingRoleProfile ? 'Cancel' : 'Edit'}
+											</Button>
+										</div>
+
+										{#if isEditingRoleProfile}
+											<form
+												class="space-y-2"
+												onsubmit={handleSaveRoleProfile}
+											>
+												<div class="space-y-1">
+													<label
+														for="role-title-input"
+														class="text-xs font-medium text-muted-foreground"
+														>Role title</label
+													>
+													<TextInput
+														id="role-title-input"
+														bind:value={roleNameInput}
+														placeholder="Content Lead"
+														maxlength={ROLE_NAME_MAX}
+														disabled={roleProfileActionType !== null}
+													/>
+												</div>
+												<div class="space-y-1">
+													<label
+														for="role-description-input"
+														class="text-xs font-medium text-muted-foreground"
+														>What you do here</label
+													>
+													<Textarea
+														id="role-description-input"
+														bind:value={roleDescriptionInput}
+														rows={3}
+														autoResize
+														maxRows={8}
+														placeholder="What outcomes and responsibilities do you own?"
+														maxlength={ROLE_DESCRIPTION_MAX}
+														disabled={roleProfileActionType !== null}
+													/>
+												</div>
+												{#if roleProfileError}
+													<p class="text-xs text-destructive">
+														{roleProfileError}
+													</p>
+												{/if}
+												<Button
+													type="submit"
+													variant="secondary"
+													size="sm"
+													disabled={roleProfileActionType !== null}
+												>
+													{roleProfileActionType === 'save'
+														? 'Saving…'
+														: 'Save'}
+												</Button>
+											</form>
+										{:else}
+											{#if currentMember.role_name || currentMember.role_description}
+												<div class="space-y-0.5">
+													<p class="text-sm text-foreground">
+														{currentMember.role_name ||
+															formatRole(currentMember.role_key)}
+													</p>
+													{#if currentMember.role_description}
+														<p class="text-xs text-muted-foreground">
+															{currentMember.role_description}
+														</p>
+													{/if}
+												</div>
+											{/if}
+											<form
+												class="space-y-2"
+												onsubmit={handleGenerateRoleProfile}
+											>
+												<label for="role-context-input" class="sr-only"
+													>Describe your role in a sentence or two</label
+												>
+												<Textarea
+													id="role-context-input"
+													bind:value={roleContextInput}
+													rows={2}
+													autoResize
+													maxRows={6}
+													placeholder="In a sentence or two: what you do on this project. BuildOS writes the title and summary."
+												/>
+												{#if roleProfileError}
+													<p class="text-xs text-destructive">
+														{roleProfileError}
+													</p>
+												{/if}
+												<div class="flex flex-wrap items-center gap-2">
+													<Button
+														type="submit"
+														variant="secondary"
+														size="sm"
+														disabled={roleProfileActionType !== null ||
+															roleContextInput.trim().length === 0}
+													>
+														{roleProfileActionType === 'generate'
+															? 'Writing…'
+															: 'Write it for me'}
+													</Button>
+													<Button
+														type="button"
+														variant="ghost"
+														size="sm"
+														disabled={roleProfileActionType !== null ||
+															roleContextInput.trim().length === 0}
+														onclick={handleGenerateRoleProfileAlternatives}
+													>
+														{roleProfileActionType === 'alternatives'
+															? 'Writing…'
+															: 'Show options'}
+													</Button>
+												</div>
+											</form>
+											{#if roleProfileAlternatives.length > 0}
+												<ul class="space-y-2">
+													{#each roleProfileAlternatives as alternative, index (`${alternative.role_name}-${index}`)}
+														<li
+															class="flex items-start justify-between gap-2 rounded border border-border bg-background p-2 shadow-ink"
+														>
+															<div class="min-w-0">
+																<p
+																	class="truncate text-sm text-foreground"
+																>
+																	{alternative.role_name}
+																</p>
+																<p
+																	class="text-xs text-muted-foreground"
+																>
+																	{alternative.role_description}
+																</p>
+															</div>
+															<Button
+																variant="ghost"
+																size="sm"
+																disabled={roleProfileActionType !==
+																	null}
+																onclick={() =>
+																	handleUseRoleProfileAlternative(
+																		alternative
+																	)}
+															>
+																Use this
+															</Button>
+														</li>
+													{/each}
+												</ul>
+											{/if}
 										{/if}
-										{#if member.role_name || member.role_description}
-											<p class="text-xs text-muted-foreground truncate">
-												{member.role_name || formatRole(member.role_key)}
-												{member.role_description
-													? ` - ${member.role_description}`
-													: ''}
+									</div>
+
+									<!-- Notifications -->
+									{#if notificationSettings}
+										<div class="flex items-start justify-between gap-4">
+											<div class="min-w-0 space-y-0.5">
+												<p
+													id="member-notify-label"
+													class="text-sm font-medium text-foreground"
+												>
+													Notify me when people change things here
+												</p>
+												<p
+													id="member-notify-hint"
+													class="text-xs text-muted-foreground"
+												>
+													In-app updates. Push follows your global push
+													setting.
+												</p>
+											</div>
+											{@render toggleSwitch(
+												notificationSettings.member_enabled,
+												'member-notify-label',
+												'member-notify-hint',
+												settingsActionType !== null,
+												() =>
+													handleMemberNotificationsToggle(
+														!notificationSettings?.member_enabled
+													)
+											)}
+										</div>
+										{#if notificationSettings.can_manage_default}
+											<div class="flex items-start justify-between gap-4">
+												<div class="min-w-0 space-y-0.5">
+													<p
+														id="default-notify-label"
+														class="text-sm font-medium text-foreground"
+													>
+														New people get notifications by default
+													</p>
+													<p
+														id="default-notify-hint"
+														class="text-xs text-muted-foreground"
+													>
+														{notificationSettings.is_shared_project
+															? 'Each person can still turn their own off.'
+															: 'Turns on by itself when a second person joins.'}
+													</p>
+												</div>
+												{@render toggleSwitch(
+													notificationSettings.project_default_enabled,
+													'default-notify-label',
+													'default-notify-hint',
+													settingsActionType !== null,
+													() =>
+														handleProjectDefaultNotificationsToggle(
+															!notificationSettings?.project_default_enabled
+														)
+												)}
+											</div>
+										{/if}
+									{:else if isLoading}
+										<p class="text-xs text-muted-foreground">
+											Loading notification settings…
+										</p>
+									{:else}
+										<p class="text-xs text-muted-foreground">
+											Notification settings are unavailable right now.
+										</p>
+									{/if}
+									{#if settingsError}
+										<p class="text-xs text-destructive">{settingsError}</p>
+									{/if}
+
+									<!-- Leave -->
+									{#if canLeaveProject}
+										{#if confirmLeave}
+											<div
+												class="rounded-md border border-border bg-background p-3 space-y-2"
+												role="group"
+												aria-label="Leave {projectName || 'this project'}"
+											>
+												<p class="text-sm text-foreground">
+													Leave {projectName || 'this project'}? To come
+													back,
+													{ownerName} has to say yes.
+												</p>
+												<div class="flex flex-wrap gap-2">
+													<Button
+														variant="ghost"
+														size="sm"
+														onclick={() => (confirmLeave = false)}
+													>
+														Stay
+													</Button>
+													<Button
+														variant="danger"
+														size="sm"
+														loading={isLeavingProject}
+														disabled={isLeavingProject ||
+															memberActionsBusy}
+														onclick={handleLeaveProject}
+													>
+														Leave project
+													</Button>
+												</div>
+											</div>
+										{:else}
+											<Button
+												variant="ghost"
+												size="sm"
+												class="text-destructive hover:bg-destructive/10"
+												disabled={isLeavingProject || memberActionsBusy}
+												onclick={() => (confirmLeave = true)}
+											>
+												Leave project
+											</Button>
+										{/if}
+									{:else if isProjectOwner && members.length > 1}
+										<p class="text-xs text-muted-foreground">
+											Want to leave? Make someone else the owner from their
+											row, then choose to leave.
+										</p>
+									{/if}
+								</div>
+							{/if}
+						</li>
+					{/if}
+
+					{#each otherMembers as member (member.id)}
+						{@const memberLabel = getMemberLabel(member)}
+						{@const memberDetail = getMemberDetail(member, false)}
+						{@const manageable = canManageMembers && member.role_key !== 'owner'}
+						<li class="py-2.5">
+							<div class="flex flex-wrap items-center gap-x-2.5 gap-y-2">
+								<div class="flex min-w-0 flex-1 basis-48 items-center gap-2.5">
+									{@render avatar(member)}
+									<div class="min-w-0">
+										<p class="truncate text-sm font-medium text-foreground">
+											{memberLabel}
+										</p>
+										{#if memberDetail}
+											<p class="truncate text-xs text-muted-foreground">
+												{memberDetail}
 											</p>
 										{/if}
 									</div>
-									{#if !manageable}
-										<div class="flex shrink-0 flex-wrap justify-end gap-1">
-											<span
-												class="text-xs font-medium text-muted-foreground px-2 py-0.5 bg-muted rounded"
-											>
-												{formatRole(member.role_key)}
-											</span>
-											{#if member.role_key !== 'owner'}
-												<span
-													class="text-xs font-medium text-muted-foreground px-2 py-0.5 bg-muted rounded"
-													title={agentAccessDescription(
-														memberAgentAccess(member)
-													)}
-												>
-													Agents: {liftedByEditorsSetting(member)
-														? 'Write (editors’ setting)'
-														: agentAccessLabel(
-																memberAgentAccess(member)
-															)}
-												</span>
-											{/if}
-										</div>
-									{/if}
 								</div>
 
 								{#if manageable}
-									<div
-										class="mt-2 grid grid-cols-2 gap-2 sm:flex sm:items-center"
-									>
-										<Select
-											value={member.role_key}
-											size="sm"
-											class="sm:min-w-[110px]"
-											placeholder=""
-											aria-label="Role for {memberLabel}"
-											disabled={memberActionsBusy}
-											onchange={(value) =>
-												handleMemberRoleChange(member, value as MemberRole)}
-										>
-											<option value="editor">Editor</option>
-											<option value="viewer">Viewer</option>
-										</Select>
+									<div class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
+										{#key `${member.id}:${member.role_key}:${roleMenuResetKey}`}
+											<Select
+												value={member.role_key}
+												size="sm"
+												class="sm:min-w-[118px]"
+												placeholder=""
+												aria-label="Role for {memberLabel}"
+												disabled={memberActionsBusy}
+												onchange={(value) =>
+													handleRoleMenu(member, String(value))}
+												id="role-menu-{member.id}"
+											>
+												<option value="editor">Editor</option>
+												<option value="viewer">Viewer</option>
+												{#if isProjectOwner}
+													<option value="make-owner">Make owner…</option>
+												{/if}
+												<option value="remove">Remove…</option>
+											</Select>
+										{/key}
 										<Select
 											value={memberAgentAccess(member)}
 											size="sm"
-											class="sm:min-w-[124px]"
+											class="sm:min-w-[132px]"
 											placeholder=""
 											aria-label="What {memberLabel}’s agents can do"
 											aria-describedby={liftedByEditorsSetting(member)
@@ -1863,681 +2328,405 @@
 												>Agents: Write</option
 											>
 										</Select>
-										<div
-											class="col-span-2 flex flex-wrap items-center gap-1 sm:ml-auto"
+									</div>
+								{:else}
+									<span
+										class="shrink-0 text-xs font-medium text-muted-foreground"
+									>
+										{formatRole(member.role_key)}
+									</span>
+								{/if}
+							</div>
+
+							{#if manageable}
+								<div
+									class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 sm:pl-10"
+								>
+									{#if liftedByEditorsSetting(member)}
+										<p
+											id="agents-lifted-{member.id}"
+											class="text-xs text-muted-foreground"
 										>
-											{#if !isSelf}
-												<Button
-													variant="ghost"
-													size="sm"
-													disabled={memberActionsBusy}
-													onclick={() =>
-														handleStartMemberRoleProfileEdit(member)}
-												>
-													{editingMemberRoleProfileId === member.id
-														? 'Editing...'
-														: 'Edit profile'}
-												</Button>
-											{/if}
-											{#if isProjectOwner && !isSelf}
-												<Button
-													variant="ghost"
-													size="sm"
-													aria-expanded={handoffTarget?.id === member.id}
-													disabled={memberActionsBusy}
-													onclick={(event) =>
-														handleStartHandoff(member, event)}
-												>
-													Make owner
-												</Button>
-											{/if}
+											Their agents can make changes through the editors’
+											setting.
+										</p>
+									{/if}
+									<button
+										type="button"
+										class="text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+										aria-expanded={editingMemberRoleProfileId === member.id}
+										disabled={memberActionsBusy}
+										onclick={() => toggleMemberRoleEditor(member)}
+									>
+										{member.role_description
+											? 'Edit their role here'
+											: 'Describe their role here'}
+									</button>
+								</div>
+
+								{#if editingMemberRoleProfileId === member.id}
+									<form
+										class="mt-2 space-y-2 rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner sm:ml-10"
+										onsubmit={handleSaveMemberRoleProfile}
+									>
+										<div class="space-y-1">
+											<label
+												for="member-role-title-input"
+												class="text-xs font-medium text-muted-foreground"
+												>Role title</label
+											>
+											<TextInput
+												id="member-role-title-input"
+												bind:value={editingMemberRoleNameInput}
+												placeholder="Execution Lead"
+												maxlength={ROLE_NAME_MAX}
+												disabled={memberRoleProfileSaving}
+											/>
+										</div>
+										<div class="space-y-1">
+											<label
+												for="member-role-description-input"
+												class="text-xs font-medium text-muted-foreground"
+												>What they do here</label
+											>
+											<Textarea
+												id="member-role-description-input"
+												bind:value={editingMemberRoleDescriptionInput}
+												rows={3}
+												autoResize
+												maxRows={8}
+												placeholder="What outcomes and responsibilities do they own?"
+												maxlength={ROLE_DESCRIPTION_MAX}
+												disabled={memberRoleProfileSaving}
+											/>
+										</div>
+										{#if memberRoleProfileError}
+											<p class="text-xs text-destructive">
+												{memberRoleProfileError}
+											</p>
+										{/if}
+										<div class="flex items-center gap-2">
+											<Button
+												type="button"
+												variant="ghost"
+												size="sm"
+												disabled={memberRoleProfileSaving}
+												onclick={handleCancelMemberRoleProfileEdit}
+											>
+												Cancel
+											</Button>
+											<Button
+												type="submit"
+												variant="secondary"
+												size="sm"
+												disabled={memberRoleProfileSaving}
+											>
+												{memberRoleProfileSaving ? 'Saving…' : 'Save'}
+											</Button>
+										</div>
+									</form>
+								{/if}
+
+								{#if confirmRemoveMemberId === member.id}
+									<div
+										class="mt-2 rounded-md border border-border bg-background p-3 space-y-2 sm:ml-10"
+										role="group"
+										aria-label="Remove {memberLabel}"
+									>
+										<p class="text-sm text-foreground">
+											Remove {memberLabel} from {projectName ||
+												'this project'}?
+										</p>
+										<p class="text-xs text-muted-foreground">
+											They lose access right away. If they open the invite
+											link again, you get a request and decide whether they
+											come back.
+										</p>
+										<div class="flex flex-wrap gap-2">
 											<Button
 												variant="ghost"
 												size="sm"
-												class="text-destructive hover:bg-destructive/10"
+												onclick={() => (confirmRemoveMemberId = null)}
+											>
+												Cancel
+											</Button>
+											<Button
+												variant="danger"
+												size="sm"
 												loading={memberActionId === member.id &&
 													memberActionType === 'remove'}
 												disabled={memberActionsBusy}
-												aria-expanded={confirmRemoveMemberId === member.id}
-												onclick={() => (confirmRemoveMemberId = member.id)}
+												onclick={() => handleMemberRemove(member)}
 											>
 												Remove
 											</Button>
 										</div>
 									</div>
+								{/if}
 
-									{#if liftedByEditorsSetting(member)}
-										<p
-											id="agents-lifted-{member.id}"
-											class="mt-1.5 text-xs text-muted-foreground"
-										>
-											Their agents can make changes through the editors’
-											setting below.
-										</p>
-									{/if}
-
-									{#if confirmRemoveMemberId === member.id}
-										<div
-											class="mt-2 rounded-md border border-border bg-background p-3 space-y-2"
-											role="group"
-											aria-label="Remove {memberLabel}"
-										>
-											<p class="text-sm text-foreground">
-												Remove {memberLabel} from {projectName ||
+								{#if handoffTarget?.id === member.id}
+									<form
+										bind:this={handoffPanel}
+										tabindex="-1"
+										aria-labelledby="handoff-heading"
+										class="mt-2 space-y-2.5 rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:ml-10"
+										onsubmit={handleConfirmHandoff}
+									>
+										<div class="space-y-1">
+											<p
+												id="handoff-heading"
+												class="text-sm font-medium text-foreground"
+											>
+												Make {memberLabel} the owner of {projectName ||
 													'this project'}?
 											</p>
 											<p class="text-xs text-muted-foreground">
-												They lose access right away. If they open the invite
-												link again, you get a request and decide whether
-												they come back. You can also invite them again
-												yourself.
+												They get full control, including deleting it.
+												{handoffLeave
+													? 'You’ll leave the project and lose access.'
+													: 'You’ll stay on as an editor.'}
 											</p>
-											<div class="flex flex-wrap gap-2">
-												<Button
-													variant="ghost"
-													size="sm"
-													onclick={() => (confirmRemoveMemberId = null)}
-												>
-													Cancel
-												</Button>
-												<Button
-													variant="danger"
-													size="sm"
-													disabled={memberActionsBusy}
-													onclick={() => handleMemberRemove(member)}
-												>
-													Remove
-												</Button>
-											</div>
 										</div>
-									{/if}
+										<label class="flex cursor-pointer items-start gap-2.5">
+											<input
+												type="checkbox"
+												class="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent"
+												bind:checked={handoffLeave}
+												disabled={handoffSaving}
+											/>
+											<span class="text-sm text-foreground">
+												Leave the project after handing it off
+											</span>
+										</label>
+										{#if handoffError}
+											<p class="text-xs text-destructive" role="alert">
+												{handoffError}
+											</p>
+										{/if}
+										<div class="flex flex-wrap items-center gap-2">
+											<Button
+												type="button"
+												variant="ghost"
+												size="sm"
+												disabled={handoffSaving}
+												onclick={handleCancelHandoff}
+											>
+												Cancel
+											</Button>
+											<Button
+												type="submit"
+												variant="primary"
+												size="sm"
+												loading={handoffSaving}
+												disabled={handoffSaving || !handoffTargetIsMember}
+											>
+												{handoffLeave ? 'Hand off and leave' : 'Make owner'}
+											</Button>
+										</div>
+									</form>
 								{/if}
-							</li>
-						{/each}
-					</ul>
-
-					{#if members.some((member) => member.role_key !== 'owner')}
-						<p class="text-xs text-muted-foreground">
-							Agents: what each person’s own AI agents can do here. Off pauses them.
-							Read lets them read the project. Write also lets them add tasks and docs
-							and change only what that person created or is assigned to.
-						</p>
-					{/if}
-
-					{#if canManageMembers && (editorAgentsWrite !== null || agentSettingsLoadFailed)}
-						<div
-							class="flex items-start justify-between gap-4 rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner"
-						>
-							<div class="min-w-0 space-y-0.5">
-								<p
-									id="editor-agents-write-label"
-									class="text-sm font-medium text-foreground"
-								>
-									Editors’ agents can make changes
-								</p>
-								<p
-									id="editor-agents-write-hint"
-									class="text-xs text-muted-foreground"
-								>
-									{editorAgentsWrite === null
-										? 'This setting didn’t load. Close and reopen this window to try again.'
-										: 'Every editor’s agents can add tasks and documents and change their own work here. People whose agents you turned off stay off.'}
-								</p>
-							</div>
-							{#if editorAgentsWrite !== null}
-								<button
-									type="button"
-									role="switch"
-									aria-checked={editorAgentsWrite}
-									aria-labelledby="editor-agents-write-label"
-									aria-describedby="editor-agents-write-hint"
-									disabled={agentSettingsSaving}
-									onclick={handleEditorAgentsWriteToggle}
-									class="relative mt-0.5 h-7 w-12 shrink-0 rounded-full border transition-colors motion-reduce:transition-none before:absolute before:-inset-2 before:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 {editorAgentsWrite
-										? 'border-accent bg-accent'
-										: 'border-border-strong bg-muted'}"
-								>
-									<span
-										class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-background shadow-ink transition-transform motion-reduce:transition-none {editorAgentsWrite
-											? 'translate-x-5'
-											: 'translate-x-0'}"
-									></span>
-								</button>
 							{/if}
-						</div>
-					{/if}
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</section>
 
-					{#if handoffTarget}
-						{@const handoffLabel = getMemberLabel(handoffTarget)}
-						<form
-							bind:this={handoffPanel}
-							tabindex="-1"
-							aria-labelledby="handoff-heading"
-							class="mt-3 rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner space-y-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							onsubmit={handleConfirmHandoff}
+		{#if canInvite && invites.length > 0}
+			<!-- Invited, no answer -->
+			<section aria-labelledby="pending-invites-heading" class="p-3 sm:p-4">
+				<div class="flex flex-wrap items-center justify-between gap-2">
+					<p id="pending-invites-heading" class="micro-label text-muted-foreground">
+						Invited, no answer · {invites.length}
+					</p>
+					{#if expiredInvites.length > 0}
+						<Button
+							variant="ghost"
+							size="sm"
+							loading={clearingExpired}
+							disabled={clearingExpired || inviteActionId !== null}
+							onclick={handleClearExpiredInvites}
 						>
-							<div class="space-y-1">
-								<p id="handoff-heading" class="text-sm font-medium text-foreground">
-									Make {handoffLabel} the owner of {projectName ||
-										'this project'}?
-								</p>
-								<p class="text-xs text-muted-foreground">
-									They get full control, including deleting it.
-									{handoffLeave
-										? 'You’ll leave the project and lose access.'
-										: 'You’ll stay on as an editor.'}
-								</p>
-							</div>
-
-							<label class="flex items-start gap-2.5 cursor-pointer">
-								<input
-									type="checkbox"
-									class="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent"
-									bind:checked={handoffLeave}
-									disabled={handoffSaving}
-								/>
-								<span class="text-sm text-foreground">
-									Leave the project after handing it off
-								</span>
-							</label>
-
-							{#if handoffError}
-								<p class="text-xs text-destructive" role="alert">{handoffError}</p>
-							{/if}
-
-							<div class="flex flex-wrap items-center gap-2">
-								<Button
-									type="button"
-									variant="ghost"
-									size="sm"
-									disabled={handoffSaving}
-									onclick={handleCancelHandoff}
-								>
-									Cancel
-								</Button>
-								<Button
-									type="submit"
-									variant="primary"
-									size="sm"
-									loading={handoffSaving}
-									disabled={handoffSaving || !handoffTargetIsMember}
-								>
-									{handoffLeave ? 'Hand off and leave' : 'Make owner'}
-								</Button>
-							</div>
-						</form>
+							Clear expired ({expiredInvites.length})
+						</Button>
 					{/if}
-
-					{#if editingMemberRoleProfile}
-						<div
-							class="mt-3 rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner space-y-2"
-						>
-							<p class="micro-label text-muted-foreground">
-								Edit role profile: {getMemberLabel(editingMemberRoleProfile)}
-							</p>
-
-							<form class="space-y-2" onsubmit={handleSaveMemberRoleProfile}>
-								<div class="space-y-1">
-									<label
-										for="member-role-title-input"
-										class="text-xs font-medium text-muted-foreground"
-										>Role title</label
-									>
-									<TextInput
-										id="member-role-title-input"
-										bind:value={editingMemberRoleNameInput}
-										placeholder="Execution Lead"
-										maxlength={ROLE_NAME_MAX}
-										disabled={memberRoleProfileSaving}
-									/>
-								</div>
-
-								<div class="space-y-1">
-									<label
-										for="member-role-description-input"
-										class="text-xs font-medium text-muted-foreground"
-									>
-										Role description
-									</label>
-									<Textarea
-										id="member-role-description-input"
-										bind:value={editingMemberRoleDescriptionInput}
-										rows={3}
-										autoResize
-										maxRows={8}
-										placeholder="What outcomes and responsibilities do they own?"
-										maxlength={ROLE_DESCRIPTION_MAX}
-										disabled={memberRoleProfileSaving}
-									/>
-								</div>
-
-								{#if memberRoleProfileError}
-									<p class="text-xs text-destructive">{memberRoleProfileError}</p>
-								{/if}
-
-								<div class="flex items-center gap-2">
-									<Button
-										type="button"
-										variant="ghost"
-										size="sm"
-										disabled={memberRoleProfileSaving}
-										onclick={handleCancelMemberRoleProfileEdit}
-									>
-										Cancel
-									</Button>
-									<Button
-										type="submit"
-										variant="secondary"
-										size="sm"
-										disabled={memberRoleProfileSaving}
-									>
-										{memberRoleProfileSaving ? 'Saving...' : 'Save Profile'}
-									</Button>
-								</div>
-							</form>
-						</div>
-					{/if}
-				{/if}
-			</section>
-
-			<!-- Waiting to join -->
-			{#if invites.length > 0}
-				<section
-					aria-labelledby="pending-invites-heading"
-					class="border-t border-border pt-4 space-y-2"
-				>
-					<h3 id="pending-invites-heading" class="text-sm font-semibold text-foreground">
-						Waiting to join
-					</h3>
-					<ul class="divide-y divide-border">
-						{#each invites as invite (invite.id)}
-							{@const inviteLabel = getInviteLabel(invite)}
-							{@const knownUrl = inviteUrls[invite.id] ?? null}
-							<li class="py-2.5">
-								<div class="min-w-0">
-									<p class="text-sm text-foreground truncate">{inviteLabel}</p>
+				</div>
+				<ul class="mt-1 divide-y divide-border">
+					{#each invites as invite (invite.id)}
+						{@const inviteLabel = getInviteLabel(invite)}
+						{@const knownUrl = inviteUrls[invite.id] ?? null}
+						{@const expired = isInviteExpired(invite)}
+						<li class="py-2">
+							<div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+								<div class="min-w-0 flex-1 basis-48">
+									<p class="truncate text-sm text-foreground">{inviteLabel}</p>
 									<p class="text-xs text-muted-foreground">
 										{formatRole(invite.role_key)} · Agents: {agentAccessLabel(
 											invite.agent_access
-										)}{invite.expires_at
-											? ` · until ${shortDate(invite.expires_at)}`
-											: ''}
+										)}{#if invite.expires_at}
+											·
+											<span
+												class={expired ? 'font-medium text-foreground' : ''}
+												>{expired ? 'Expired' : 'Until'}
+												{shortDate(invite.expires_at)}</span
+											>{/if}
 									</p>
 								</div>
-								{#if canInvite}
-									<div class="mt-1.5 flex flex-wrap items-center gap-1">
-										{#if knownUrl}
-											<Button
-												variant="ghost"
-												size="sm"
-												icon={copiedUrl === knownUrl ? Check : Link2}
-												onclick={() => copyInviteUrl(knownUrl)}
-											>
-												{copiedUrl === knownUrl
-													? 'Copied'
-													: 'Copy their link'}
-											</Button>
-										{/if}
+								<div class="flex flex-wrap items-center gap-1">
+									{#if knownUrl && !expired}
 										<Button
 											variant="ghost"
 											size="sm"
-											loading={inviteActionId === invite.id &&
-												inviteActionType === 'resend'}
-											disabled={inviteActionId !== null}
-											onclick={() => handleInviteResend(invite)}
+											icon={copiedUrl === knownUrl ? Check : Link2}
+											onclick={() => copyInviteUrl(knownUrl)}
 										>
-											Resend
+											{copiedUrl === knownUrl ? 'Copied' : 'Copy link'}
 										</Button>
-										<Button
-											variant="ghost"
-											size="sm"
-											class="text-destructive hover:bg-destructive/10"
-											loading={inviteActionId === invite.id &&
-												inviteActionType === 'revoke'}
-											disabled={inviteActionId !== null}
-											aria-expanded={confirmRevokeInviteId === invite.id}
-											onclick={() => (confirmRevokeInviteId = invite.id)}
-										>
-											Cancel invite
-										</Button>
-									</div>
-									{#if confirmRevokeInviteId === invite.id}
-										<div
-											class="mt-2 rounded-md border border-border bg-background p-3 space-y-2"
-											role="group"
-											aria-label="Cancel the invite for {inviteLabel}"
-										>
-											<p class="text-sm text-foreground">
-												Cancel the invite for {inviteLabel}? Its link stops
-												working.
-											</p>
-											<div class="flex flex-wrap gap-2">
-												<Button
-													variant="ghost"
-													size="sm"
-													onclick={() => (confirmRevokeInviteId = null)}
-												>
-													Keep it
-												</Button>
-												<Button
-													variant="danger"
-													size="sm"
-													disabled={inviteActionId !== null}
-													onclick={() => handleInviteRevoke(invite)}
-												>
-													Cancel invite
-												</Button>
-											</div>
-										</div>
 									{/if}
-								{/if}
-							</li>
-						{/each}
-					</ul>
-				</section>
-			{/if}
-
-			{#if canLeaveProject}
-				<div class="border-t border-border pt-4 space-y-2">
-					{#if confirmLeave}
-						<div
-							class="rounded-md border border-border bg-background p-3 space-y-2"
-							role="group"
-							aria-label="Leave {projectName || 'this project'}"
-						>
-							<p class="text-sm text-foreground">
-								Leave {projectName || 'this project'}? You lose access until someone
-								invites you again.
-							</p>
-							<div class="flex flex-wrap gap-2">
-								<Button
-									variant="ghost"
-									size="sm"
-									onclick={() => (confirmLeave = false)}
-								>
-									Stay
-								</Button>
-								<Button
-									variant="danger"
-									size="sm"
-									loading={isLeavingProject}
-									disabled={isLeavingProject || memberActionsBusy}
-									onclick={handleLeaveProject}
-								>
-									Leave project
-								</Button>
+									<Button
+										variant="ghost"
+										size="sm"
+										loading={inviteActionId === invite.id &&
+											inviteActionType === 'resend'}
+										disabled={inviteActionId !== null || clearingExpired}
+										onclick={() => handleInviteResend(invite)}
+									>
+										Resend
+									</Button>
+									<Button
+										variant="ghost"
+										size="sm"
+										class="text-destructive hover:bg-destructive/10"
+										loading={inviteActionId === invite.id &&
+											inviteActionType === 'revoke'}
+										disabled={inviteActionId !== null || clearingExpired}
+										aria-expanded={confirmRevokeInviteId === invite.id}
+										onclick={() => (confirmRevokeInviteId = invite.id)}
+									>
+										Remove
+									</Button>
+								</div>
 							</div>
-						</div>
-					{:else}
-						<Button
-							variant="ghost"
-							size="sm"
-							class="text-destructive hover:bg-destructive/10"
-							disabled={isLeavingProject || memberActionsBusy}
-							onclick={() => (confirmLeave = true)}
-						>
-							Leave project
-						</Button>
-						<p class="text-xs text-muted-foreground">
-							To come back later, you’ll need the owner to say yes.
-						</p>
-					{/if}
-				</div>
-			{:else if isProjectOwner && members.length > 1}
-				<p class="border-t border-border pt-4 text-xs text-muted-foreground">
-					Want to leave? Make someone else the owner, then choose to leave.
-				</p>
-			{/if}
-		{/if}
-		{#if currentTab === 'my-role'}
-			<!-- Role Profile Section -->
-			<div class="space-y-2">
-				<div>
-					<h3 class="text-sm font-semibold text-foreground">Describe your role</h3>
-					<p class="text-xs text-muted-foreground mt-0.5">
-						Share what you do in this project and AI will generate a role title and
-						description for team context.
-					</p>
-				</div>
-
-				{#if currentMember}
-					<div
-						class="rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner space-y-1"
-					>
-						<div class="flex items-center justify-between gap-2">
-							<p class="micro-label text-muted-foreground">Current role profile</p>
-							<Button
-								variant="ghost"
-								size="sm"
-								disabled={roleProfileActionType !== null}
-								onclick={isEditingRoleProfile
-									? handleCancelRoleProfileEdit
-									: handleStartRoleProfileEdit}
-							>
-								{isEditingRoleProfile ? 'Cancel' : 'Edit manually'}
-							</Button>
-						</div>
-						<p class="text-sm text-foreground">
-							{currentMember.role_name || formatRole(currentMember.role_key)}
-						</p>
-						{#if currentMember.role_description}
-							<p class="text-xs text-muted-foreground">
-								{currentMember.role_description}
-							</p>
-						{/if}
-					</div>
-				{/if}
-
-				{#if isEditingRoleProfile}
-					<form class="space-y-2" onsubmit={handleSaveRoleProfile}>
-						<div class="space-y-1">
-							<label
-								for="role-title-input"
-								class="text-xs font-medium text-muted-foreground">Role title</label
-							>
-							<TextInput
-								id="role-title-input"
-								bind:value={roleNameInput}
-								placeholder="Content Lead"
-								maxlength={ROLE_NAME_MAX}
-								disabled={roleProfileActionType !== null}
-							/>
-						</div>
-
-						<div class="space-y-1">
-							<label
-								for="role-description-input"
-								class="text-xs font-medium text-muted-foreground"
-							>
-								Role description
-							</label>
-							<Textarea
-								id="role-description-input"
-								bind:value={roleDescriptionInput}
-								rows={3}
-								autoResize
-								maxRows={8}
-								placeholder="What outcomes and responsibilities do you own?"
-								maxlength={ROLE_DESCRIPTION_MAX}
-								disabled={roleProfileActionType !== null}
-							/>
-						</div>
-
-						{#if roleProfileError}
-							<p class="text-xs text-destructive">{roleProfileError}</p>
-						{/if}
-
-						<Button
-							type="submit"
-							variant="secondary"
-							size="sm"
-							disabled={roleProfileActionType !== null}
-						>
-							{roleProfileActionType === 'save' ? 'Saving...' : 'Save Role Profile'}
-						</Button>
-					</form>
-				{/if}
-
-				<form class="space-y-2" onsubmit={handleGenerateRoleProfile}>
-					<Textarea
-						bind:value={roleContextInput}
-						rows={3}
-						autoResize
-						maxRows={8}
-						placeholder="Example: I run content strategy, define weekly priorities, and coordinate publishing across channels."
-					/>
-
-					{#if roleProfileError}
-						<p class="text-xs text-destructive">{roleProfileError}</p>
-					{/if}
-
-					<div class="flex items-center gap-2">
-						<Button
-							type="submit"
-							variant="secondary"
-							size="sm"
-							disabled={roleProfileActionType !== null ||
-								isEditingRoleProfile ||
-								roleContextInput.trim().length === 0}
-						>
-							{roleProfileActionType === 'generate'
-								? 'Generating...'
-								: 'Generate & Save'}
-						</Button>
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							disabled={roleProfileActionType !== null ||
-								isEditingRoleProfile ||
-								roleContextInput.trim().length === 0}
-							onclick={handleGenerateRoleProfileAlternatives}
-						>
-							{roleProfileActionType === 'alternatives'
-								? 'Generating...'
-								: 'Generate Alternatives'}
-						</Button>
-					</div>
-				</form>
-
-				{#if roleProfileAlternatives.length > 0}
-					<div
-						class="rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner space-y-2"
-					>
-						<p class="micro-label text-muted-foreground">Alternative role profiles</p>
-						<div class="space-y-2">
-							{#each roleProfileAlternatives as alternative, index (`${alternative.role_name}-${index}`)}
+							{#if confirmRevokeInviteId === invite.id}
 								<div
-									class="rounded border border-border bg-background p-2 shadow-ink space-y-1"
+									class="mt-2 rounded-md border border-border bg-background p-3 space-y-2"
+									role="group"
+									aria-label="Remove the invite for {inviteLabel}"
 								>
-									<div class="flex items-start justify-between gap-2">
-										<div class="min-w-0">
-											<p class="text-sm text-foreground truncate">
-												{alternative.role_name}
-											</p>
-											<p class="text-xs text-muted-foreground">
-												{alternative.role_description}
-											</p>
-										</div>
+									<p class="text-sm text-foreground">
+										Remove the invite for {inviteLabel}? Its link stops working.
+									</p>
+									<div class="flex flex-wrap gap-2">
 										<Button
 											variant="ghost"
 											size="sm"
-											disabled={roleProfileActionType !== null}
-											onclick={() =>
-												handleUseRoleProfileAlternative(alternative)}
+											onclick={() => (confirmRevokeInviteId = null)}
 										>
-											Use This
+											Keep it
+										</Button>
+										<Button
+											variant="danger"
+											size="sm"
+											disabled={inviteActionId !== null}
+											onclick={() => handleInviteRevoke(invite)}
+										>
+											Remove invite
 										</Button>
 									</div>
 								</div>
-							{/each}
-						</div>
-					</div>
-				{/if}
-			</div>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/if}
 
-			<!-- Notification Settings Section -->
-			<div class="border-t border-border pt-3 space-y-2">
-				<div class="flex items-center gap-2 text-foreground">
-					<Bell class="h-4 w-4 text-muted-foreground" />
-					<h3 class="text-sm font-semibold">Notification preferences</h3>
-				</div>
+		{#if canManageMembers}
+			<!-- Agents in this project -->
+			<section aria-labelledby="project-agents-heading" class="space-y-3 p-3 sm:p-4">
+				<p id="project-agents-heading" class="micro-label text-muted-foreground">
+					Agents in this project
+				</p>
 
-				{#if isLoading && !notificationSettings}
-					<p class="text-xs text-muted-foreground">Loading notification settings...</p>
-				{:else if notificationSettings}
-					<div
-						class="rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner space-y-3"
-					>
-						<label class="flex items-start gap-2.5 cursor-pointer">
-							<input
-								type="checkbox"
-								class="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent"
-								checked={notificationSettings.member_enabled}
-								disabled={settingsActionType !== null}
-								onchange={(event) =>
-									handleMemberNotificationsToggle(
-										(event.currentTarget as HTMLInputElement).checked
-									)}
-							/>
-							<span class="space-y-0.5">
-								<span class="block text-sm font-medium text-foreground">
-									Notify me about project activity
-								</span>
-								<span class="block text-xs text-muted-foreground">
-									In-app shared project updates are on by default. Push still uses
-									your global push preference.
-								</span>
-							</span>
-						</label>
-
-						{#if notificationSettings.can_manage_default}
-							<div class="border-t border-border pt-3">
-								<label class="flex items-start gap-2.5 cursor-pointer">
-									<input
-										type="checkbox"
-										class="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent"
-										checked={notificationSettings.project_default_enabled}
-										disabled={settingsActionType !== null}
-										onchange={(event) =>
-											handleProjectDefaultNotificationsToggle(
-												(event.currentTarget as HTMLInputElement).checked
-											)}
-									/>
-									<span class="space-y-0.5">
-										<span class="block text-sm font-medium text-foreground">
-											Default notifications for collaborators
-										</span>
-										<span class="block text-xs text-muted-foreground">
-											New and existing members inherit this unless they set
-											their own preference.
-										</span>
-									</span>
-								</label>
-							</div>
-						{:else}
-							<p class="text-xs text-muted-foreground">
-								Project defaults can only be changed by project admins.
-							</p>
-						{/if}
-
-						{#if !notificationSettings.is_shared_project}
-							<p class="text-xs text-muted-foreground">
-								This project is currently solo. Default notifications automatically
-								turn on when a second member joins.
-							</p>
-						{/if}
-					</div>
-				{:else}
+				{#if members.some((member) => member.role_key !== 'owner')}
 					<p class="text-xs text-muted-foreground">
-						Notification settings are unavailable right now.
+						Each person’s agents dial: Off pauses them. Read lets them read the project.
+						Write also lets them add tasks and docs and change only what that person
+						created or is assigned to.
 					</p>
 				{/if}
 
-				{#if settingsError}
-					<p class="text-xs text-destructive">{settingsError}</p>
-				{/if}
-			</div>
+				<div class="flex items-start justify-between gap-4">
+					<div class="min-w-0 space-y-0.5">
+						<p
+							id="editor-agents-write-label"
+							class="text-sm font-medium text-foreground"
+						>
+							Editors’ agents can make changes
+						</p>
+						<p id="editor-agents-write-hint" class="text-xs text-muted-foreground">
+							{editorAgentsWrite === null
+								? agentSettingsLoadFailed
+									? 'This setting didn’t load. Close and reopen this window to try again.'
+									: 'Loading…'
+								: 'Every editor’s agents can write here unless you turned that person’s agents off.'}
+						</p>
+					</div>
+					{#if editorAgentsWrite !== null}
+						{@render toggleSwitch(
+							editorAgentsWrite,
+							'editor-agents-write-label',
+							'editor-agents-write-hint',
+							agentSettingsSaving,
+							handleEditorAgentsWriteToggle
+						)}
+					{/if}
+				</div>
+
+				<div class="flex items-start justify-between gap-4">
+					<div class="min-w-0 space-y-0.5">
+						<p id="restricted-label" class="text-sm font-medium text-foreground">
+							Only agents you pick can reach this project
+						</p>
+						<p id="restricted-hint" class="text-xs text-muted-foreground">
+							{externalAgentAccess === null
+								? agentSettingsLoadFailed
+									? 'This setting didn’t load. Close and reopen this window to try again.'
+									: 'Loading…'
+								: 'Off: any of your agent connections set to all projects reaches it. On: only connections you pick.'}
+						</p>
+					</div>
+					{#if externalAgentAccess !== null}
+						{@render toggleSwitch(
+							externalAgentAccess === 'restricted',
+							'restricted-label',
+							'restricted-hint',
+							restrictedSaving,
+							handleRestrictedToggle
+						)}
+					{/if}
+				</div>
+			</section>
+
+			<!-- Invite link -->
+			<section class="p-3 sm:p-4">
+				<ProjectInviteLinkPanel {projectId} {projectName} />
+			</section>
 		{/if}
 	</div>
+
+	{#snippet footer()}
+		<div
+			class="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-muted/30 px-3 py-3 sm:px-4"
+		>
+			<a
+				href="/profile?tab=people"
+				class="inline-flex items-center gap-1.5 text-sm font-medium text-accent underline-offset-2 hover:underline"
+			>
+				<Users class="h-4 w-4" />
+				{canManageMembers ? 'Everyone across your projects' : 'Your sharing settings'}
+			</a>
+			<Button variant="primary" size="sm" onclick={handleClose}>Done</Button>
+		</div>
+	{/snippet}
 </Modal>

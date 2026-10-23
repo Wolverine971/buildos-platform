@@ -55,7 +55,7 @@ The MCP endpoint supports three profiles:
 
 ## Generate an agent key
 
-1. Go to [`/profile`](/profile) and open the **Agent Keys** tab.
+1. Go to [Profile → People & agents](/profile?tab=people#agents) and choose **Connect an agent**.
 2. Click **Generate**.
 3. Choose the **Client Profile** for the place this key will be installed.
 4. Pick a **scope**:
@@ -89,7 +89,7 @@ The plugin connects over remote MCP with OAuth, so no key is pasted anywhere. Co
 
 ## Setting it up in Claude Code
 
-Choose the **Claude Code** client profile when generating the key, then add BuildOS as an MCP server. The Agent Keys tab shows this exact command (with your key filled in):
+Choose the **Claude Code** client profile when generating the key, then add BuildOS as an MCP server. The Agents section shows this exact command (with your key filled in):
 
 ```bash
 claude mcp add --transport http buildos https://build-os.com/mcp/buildos --header "Authorization: Bearer boca_your_one_time_secret"
@@ -233,9 +233,9 @@ If a key is limited to selected projects and your agent reaches for one outside 
 
 The agent retries and keeps working. The key isn't rotated and nothing reconnects. Every grant is logged. You can also open `/profile/agent-keys/<key id>/grant` directly to see and share everything a key can't reach yet.
 
-Saving a key from the Agent Keys editor re-issues a static key's secret, so update the client's config afterward. The grant page never rotates the key. OAuth connectors are always edited in place.
+Saving a key from the Agents editor re-issues a static key's secret, so update the client's config afterward. The grant page never rotates the key. OAuth connectors are always edited in place.
 
-Projects marked **restricted** are never included automatically. Projects someone else shared with you are left out too, unless you turn on **Let this agent into projects shared with me** for that key or connector (on the same page). It's off by default, and each owner's setting for your agents still applies.
+Projects where you turned on **Only agents you pick can reach this project** (in the project's Share window) are never included automatically. Projects someone else shared with you are left out too, unless you turn on **Projects shared with me** for that key or connector (open it under Profile → People & agents → Agents, or on its grant page). It's off by default, and each owner's setting for your agents still applies.
 
 ## Other people's projects
 
@@ -247,9 +247,9 @@ Your agent works for you, so it sees what you can see and nothing more. Other pe
 
 Once someone shares a project with you, your agent still needs two more yeses: the owner's setting for your agents (Off, Read, or Write; Read by default), and your own grant of that project to this key or connector. Shared projects carry `shared_with_you` and `owner_name` in project results.
 
-When an owner allows your agents to write, they stay in a lane: they can add tasks and documents, and edit only what you created or are assigned to. They can't archive, delete, invite, or change the project's START HERE. Each agent can make 50 changes per project per day before it pauses and the owner hears about it once.
+When an owner allows your agents to write, they stay in a lane: they can add tasks and documents, and edit only what you created or are assigned to. Goals, plans, milestones, risks, tables, and the project itself stay with the owner. They can't archive, delete, invite, or change the project's START HERE. Each agent can make 50 changes per project per day before it pauses and the owner hears about it once.
 
-Owners can also turn on **Editors' agents can make changes** for a project (in Share). While it's on, every editor's agents can write there without asking, except people whose agents the owner turned off.
+Owners can also turn on **Editors' agents can make changes** for a project (in the project's Share window, under Agents in this project). While it's on, every editor's agents can write there without asking, except people whose agents the owner turned off.
 
 ## When an agent hits a wall
 
@@ -262,18 +262,18 @@ Every refusal in a project you can see says what is in the way, who can clear it
 | `owner_turned_agents_off` | The owner       | Asks you, then sends `request_project_access`                               |
 | `owner_allows_read_only`  | The owner       | Asks you, then sends `request_project_access` for changes                   |
 | `viewer_only`             | The owner       | Asks you, then asks the owner to make you an editor                         |
-| `outside_guest_lane`      | Nobody (a rule) | Explains; you can make the change in BuildOS or ask to be assigned          |
+| `outside_guest_lane`      | Nobody (a rule) | Explains; offers to add it as a task, or you make the change in BuildOS     |
 | `daily_limit`             | Nobody (a rule) | Says it paused until tomorrow; the owner was told once                      |
 
 Each one carries `say_to_user`, a sentence the agent can show you as is. Projects the connection can't read are never named in it.
 
 - **Your walls** come with a link to your own page for that connection. Clients on the 2026-07-28 MCP protocol that support URL elicitation open it inline, then retry the call; others show the link.
-- **Owner walls** never ping the owner on the agent's own say. The agent asks you first; on your yes, `request_project_access` sends one request in your name, labeled as sent by your agent. The owner gets a notification and an email and answers with one tap on their People page. Asking again while a request waits adds to it, so the owner answers once. Limits: 5 agent requests per connection per day, 10 waiting per person, and "Not now" holds for a week per project.
+- **Owner walls** never ping the owner on the agent's own say. The agent asks you first; on your yes, `request_project_access` sends one request in your name, labeled as sent by your agent. The owner gets a notification and an email and answers with one tap in Profile → People & agents. Asking again while a request waits adds to it, so the owner answers once. Limits: 5 agent requests per connection per day, 10 waiting per person, and "Not now" holds for a week per project.
 - **Picking back up.** `check_project_access` tells the agent where it stands without trying a change: `ready`, `needs_you`, `needs_owner`, `waiting_on_owner`, `owner_said_no`, or `not_found`. When the owner says yes, the request's projects are added to the connection that asked, so the agent can retry right away.
 
 ## Permission bundles
 
-The Agent Keys UI leads with preset bundles. Pick one and you're done — the per-op matrix sits behind an **Advanced permissions** disclosure if you need finer control.
+The Agents setup leads with preset bundles. Pick one and you're done — the per-op matrix sits behind an **Advanced permissions** disclosure if you need finer control.
 
 | Bundle                                        | What it grants                                                          |
 | --------------------------------------------- | ----------------------------------------------------------------------- |

@@ -81,7 +81,7 @@
 		class: className = ''
 	}: Props = $props();
 
-	const AGENT_CONNECTION_HREF = '/profile?tab=agent-keys';
+	const AGENT_CONNECTION_HREF = '/profile?tab=people#agents';
 	const performance = createDashboardPerformanceTracker({ enabled: browser });
 
 	let pendingNavigationHref = $state<string | null>(null);
