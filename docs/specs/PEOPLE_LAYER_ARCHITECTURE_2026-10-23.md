@@ -352,3 +352,22 @@ People step embeds the same link panel. Defaults: links Viewer + agents Read + 7
 **Validation:** svelte-check 0 errors (9,709 files); web 114 files / 990 tests; shared-agent-ops
 97 files / 1,006 tests + tsc clean; lint + prettier clean; read-only browser check (join page,
 share window on 9takes, onboarding step and signup via a deleted preview route).
+
+## Rejoin + Share button, 10-23 (DJ direction, built, staged)
+
+- **Rejoin asks the owner.** Anyone who left or was removed and opens the invite link sees "Ask to
+  rejoin". That creates a `people_requests` row with `kind = 'rejoin'` and the `project_id`, pings
+  the owner in BuildOS and by email, and lands in `/people` with **Let back in** / **Deny**. A deny
+  is final for that project (`people_rejoin_state` → `denied`). The owner can still invite them
+  directly. Migration `20261023200000_people_rejoin_requests.sql` APPLIED + recorded.
+- **Share button** next to Brief and Graph on the project page (owners: "Share", members:
+  "People"); opens the same share window as ··· → Collaboration settings.
+
+## DJ calls on the open items, 10-23 (late)
+
+- Guest agents linking their tasks to the owner's goals and plans: fine as is.
+- Email invites defaulting to Editor: fine (links stay Viewer).
+- Agents-off message: must say the owner turned agents off and the person has to ask the owner again → [tasker 140](../../tasker/140-agent-access-wall.md).
+- Guest tasks on calendars: map it first → [tasker 144](../../tasker/144-shared-project-calendar-sync.md).
+- People tab and scattered settings: rethink → [tasker 141](../../tasker/141-one-home-for-sharing-settings.md).
+- Next pieces are tracked in tasker 140–145 (README section "People layer").

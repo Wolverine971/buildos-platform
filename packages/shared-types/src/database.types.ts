@@ -18043,57 +18043,83 @@ export type Database = {
       }
       people_requests: {
         Row: {
+          agent_access_requested: string | null
           created_at: string
           decided_at: string | null
           decision: Json | null
           expires_at: string
           from_user_id: string
           id: string
+          kind: string
           note: string | null
           project_hint: string | null
+          project_id: string | null
           role_requested: string
           status: string
           to_user_id: string
           via: string
           via_agent_label: string | null
           via_caller_id: string | null
+          via_invite_link_id: string | null
           via_oauth_grant_id: string | null
         }
         Insert: {
+          agent_access_requested?: string | null
           created_at?: string
           decided_at?: string | null
           decision?: Json | null
           expires_at?: string
           from_user_id: string
           id?: string
+          kind?: string
           note?: string | null
           project_hint?: string | null
+          project_id?: string | null
           role_requested?: string
           status?: string
           to_user_id: string
           via?: string
           via_agent_label?: string | null
           via_caller_id?: string | null
+          via_invite_link_id?: string | null
           via_oauth_grant_id?: string | null
         }
         Update: {
+          agent_access_requested?: string | null
           created_at?: string
           decided_at?: string | null
           decision?: Json | null
           expires_at?: string
           from_user_id?: string
           id?: string
+          kind?: string
           note?: string | null
           project_hint?: string | null
+          project_id?: string | null
           role_requested?: string
           status?: string
           to_user_id?: string
           via?: string
           via_agent_label?: string | null
           via_caller_id?: string | null
+          via_invite_link_id?: string | null
           via_oauth_grant_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "people_requests_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_requests_via_invite_link_id_fkey"
+            columns: ["via_invite_link_id"]
+            isOneToOne: false
+            referencedRelation: "onto_project_invite_links"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "people_requests_via_caller_id_fkey"
             columns: ["via_caller_id"]
@@ -28133,6 +28159,10 @@ export type Database = {
       }
       people_layer_viewer: {
         Args: { p_user_id: string }
+        Returns: string
+      }
+      people_rejoin_state: {
+        Args: { p_project_id: string; p_user_id: string }
         Returns: string
       }
       persist_agentic_chat_counted_tool_validation_failure: {

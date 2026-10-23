@@ -3427,20 +3427,24 @@ export type DatabaseSchema = {
 		user_id: string;
 	};
 	people_requests: {
+		agent_access_requested: string | null;
 		created_at: string;
 		decided_at: string | null;
 		decision: Json | null;
 		expires_at: string;
 		from_user_id: string;
 		id: string;
+		kind: string;
 		note: string | null;
 		project_hint: string | null;
+		project_id: string | null;
 		role_requested: string;
 		status: string;
 		to_user_id: string;
 		via: string;
 		via_agent_label: string | null;
 		via_caller_id: string | null;
+		via_invite_link_id: string | null;
 		via_oauth_grant_id: string | null;
 	};
 	phase_tasks: {

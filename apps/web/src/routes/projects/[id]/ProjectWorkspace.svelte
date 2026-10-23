@@ -113,6 +113,8 @@
 		Pencil,
 		Plus,
 		Target,
+		UserPlus,
+		Users,
 		Workflow
 	} from '$lib/icons/lucide';
 	import type { PageData } from './$types';
@@ -286,6 +288,7 @@
 	let createEntityKind = $state<WorkspaceCreateKind | null>(null);
 	let editingEntity = $state<WorkspaceEditTarget | null>(null);
 	let showGraphModal = $state(false);
+	let optionsMenu = $state<ReturnType<typeof ProjectWorkspaceOptionsMenu> | null>(null);
 	let showProjectBriefModal = $state(false);
 	let showMemoryUpdateChatModal = $state(false);
 	let selectedRecentChatSessionId = $state<string | null>(null);
@@ -1250,7 +1253,30 @@
 						<span class="hidden lg:inline">Graph</span>
 						<span class="sr-only lg:hidden">Open project graph</span>
 					</Button>
+					{#if access.canViewLogs}
+						<!-- Owners invite from here; other members see who is in the project. -->
+						<Button
+							variant="outline"
+							size="sm"
+							icon={access.canAdmin ? UserPlus : Users}
+							class="rounded-md shadow-none"
+							title={access.canAdmin
+								? 'Share this project'
+								: 'People in this project'}
+							onclick={() => optionsMenu?.openCollaboration()}
+						>
+							<span class="hidden sm:inline"
+								>{access.canAdmin ? 'Share' : 'People'}</span
+							>
+							<span class="sr-only sm:hidden"
+								>{access.canAdmin
+									? 'Share this project'
+									: 'People in this project'}</span
+							>
+						</Button>
+					{/if}
 					<ProjectWorkspaceOptionsMenu
+						bind:this={optionsMenu}
 						{project}
 						{contextDocument}
 						{canEdit}

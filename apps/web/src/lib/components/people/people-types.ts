@@ -4,12 +4,17 @@
 // them (dropping anything malformed instead of trusting it). Used by the page
 // load, the page itself after a refresh, and tests.
 
-import { isPersonRole, type PersonRole } from './people-copy';
+import { isAgentAccess, isPersonRole, type AgentAccess, type PersonRole } from './people-copy';
 
 export type IncomingPeopleRequest = {
 	id: string;
 	created_at: string;
 	expires_at: string | null;
+	/** access = wants to see your projects; rejoin = a former member used the project's link. */
+	kind: 'access' | 'rejoin';
+	/** The project a rejoin is about. */
+	project: { id: string; name: string } | null;
+	agent_access_requested: AgentAccess | null;
 	role_requested: PersonRole;
 	project_hint: string | null;
 	note: string | null;
@@ -76,10 +81,18 @@ function readIncoming(value: unknown): IncomingPeopleRequest | null {
 	const createdAt = text(row?.created_at);
 	if (!row || !id || !createdAt) return null;
 	const from = record(row.from) ?? {};
+	const project = record(row.project);
+	const projectId = text(project?.id);
+	const kind = row.kind === 'rejoin' && projectId ? 'rejoin' : 'access';
 	return {
 		id,
 		created_at: createdAt,
 		expires_at: text(row.expires_at),
+		kind,
+		project: projectId ? { id: projectId, name: text(project?.name) ?? 'your project' } : null,
+		agent_access_requested: isAgentAccess(row.agent_access_requested)
+			? row.agent_access_requested
+			: null,
 		role_requested: isPersonRole(row.role_requested) ? row.role_requested : 'viewer',
 		project_hint: text(row.project_hint),
 		note: text(row.note),

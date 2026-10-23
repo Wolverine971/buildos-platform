@@ -30,6 +30,7 @@
 		outgoingStatusLabel,
 		requestOutcomeMessage,
 		roleLabel,
+		roleWithArticle,
 		type AgentAccess,
 		type PersonRole,
 		type RequestOutcome
@@ -247,12 +248,32 @@
 		};
 	}
 
+	/** A rejoin goes back to the one project, with the role and agents the link gave. */
+	function rejoinGrants(request: IncomingPeopleRequest) {
+		if (!request.project) return [];
+		return [
+			{
+				project_id: request.project.id,
+				role: request.role_requested,
+				agent_access: fitAgentAccessToRole(
+					request.role_requested,
+					request.agent_access_requested ?? DEFAULT_AGENT_ACCESS
+				)
+			}
+		];
+	}
+
 	async function decide(
 		request: IncomingPeopleRequest,
 		decision: 'approve' | 'decline' | 'block'
 	) {
 		if (decidingId) return;
-		const grants = decision === 'approve' ? checkedGrants : [];
+		const grants =
+			decision !== 'approve'
+				? []
+				: request.kind === 'rejoin'
+					? rejoinGrants(request)
+					: checkedGrants;
 		if (decision === 'approve' && grants.length === 0) return;
 
 		decidingId = request.id;
@@ -279,7 +300,13 @@
 			confirming = null;
 			selections = {};
 
-			if (decision === 'approve') {
+			if (decision === 'approve' && request.kind === 'rejoin') {
+				toastService.success(
+					`${name} is back in ${request.project?.name ?? 'the project'}`
+				);
+			} else if (decision === 'decline' && request.kind === 'rejoin') {
+				toastService.success(`Denied. ${name} can’t ask to rejoin again.`);
+			} else if (decision === 'approve') {
 				const sharedNames = grants
 					.map((grant) => ownedProjects.find((p) => p.id === grant.project_id)?.name)
 					.filter(Boolean);
@@ -568,14 +595,25 @@
 							</p>
 						</div>
 
-						<p class="mt-2 text-sm text-foreground">
-							Wants to {request.role_requested === 'editor' ? 'edit' : 'view'}
-							{#if request.project_hint}
-								<span class="font-medium">“{request.project_hint}”</span>
-							{:else}
-								your projects
-							{/if}
-						</p>
+						{#if request.kind === 'rejoin'}
+							<p class="mt-2 text-sm text-foreground">
+								Wants to rejoin
+								<span class="font-medium">{request.project?.name}</span>
+								as {roleWithArticle(request.role_requested)}
+							</p>
+							<p class="mt-1 text-xs text-muted-foreground">
+								They left or were removed, then opened your invite link.
+							</p>
+						{:else}
+							<p class="mt-2 text-sm text-foreground">
+								Wants to {request.role_requested === 'editor' ? 'edit' : 'view'}
+								{#if request.project_hint}
+									<span class="font-medium">“{request.project_hint}”</span>
+								{:else}
+									your projects
+								{/if}
+							</p>
+						{/if}
 
 						{#if request.note}
 							<blockquote
@@ -786,12 +824,16 @@
 								>
 									{pendingConfirm.decision === 'block'
 										? `Block ${name}?`
-										: `Decline ${name}’s request?`}
+										: request.kind === 'rejoin'
+											? `Deny ${name}’s rejoin?`
+											: `Decline ${name}’s request?`}
 								</p>
 								<p class="text-xs text-muted-foreground">
 									{pendingConfirm.decision === 'block'
 										? 'Their requests stop reaching you. They won’t be told.'
-										: 'They’ll see it was declined, and can ask again after 30 days.'}
+										: request.kind === 'rejoin'
+											? `They can’t ask to rejoin ${request.project?.name ?? 'this project'} again. You can still invite them yourself later.`
+											: 'They’ll see it was declined, and can ask again after 30 days.'}
 								</p>
 								<div class="flex flex-wrap items-center gap-2">
 									<Button
@@ -811,9 +853,39 @@
 										disabled={busy}
 										onclick={() => decide(request, pendingConfirm.decision)}
 									>
-										{pendingConfirm.decision === 'block' ? 'Block' : 'Decline'}
+										{pendingConfirm.decision === 'block'
+											? 'Block'
+											: request.kind === 'rejoin'
+												? 'Deny'
+												: 'Decline'}
 									</Button>
 								</div>
+							</div>
+						{:else if request.kind === 'rejoin'}
+							<div class="mt-3 flex flex-wrap items-center gap-2">
+								<Button
+									type="button"
+									variant="primary"
+									size="sm"
+									loading={busy}
+									disabled={decidingId !== null}
+									onclick={() => decide(request, 'approve')}
+								>
+									Let back in
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									disabled={decidingId !== null}
+									onclick={() =>
+										(confirming = {
+											requestId: request.id,
+											decision: 'decline'
+										})}
+								>
+									Deny
+								</Button>
 							</div>
 						{:else}
 							<div class="mt-3 flex flex-wrap items-center gap-2">

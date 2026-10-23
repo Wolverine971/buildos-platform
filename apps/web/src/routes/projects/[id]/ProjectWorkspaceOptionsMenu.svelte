@@ -233,6 +233,13 @@
 		}
 	}
 
+	/** Opens the share window; the project header's Share button calls this. */
+	export function openCollaboration() {
+		if (!canOpenCollaboration) return;
+		closeMenu(false);
+		showCollaborationModal = true;
+	}
+
 	/** "Hand it off instead": leave the delete flow for collaboration settings. */
 	function openHandOff() {
 		showDeleteProjectModal = false;

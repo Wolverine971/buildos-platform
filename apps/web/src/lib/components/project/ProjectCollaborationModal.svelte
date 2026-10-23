@@ -1809,9 +1809,10 @@
 													'this project'}?
 											</p>
 											<p class="text-xs text-muted-foreground">
-												They lose access right away{member.joined_via_invite_link_id
-													? ', and the invite link won’t add them back'
-													: ''}. You can invite them again later.
+												They lose access right away. If they open the invite
+												link again, you get a request and decide whether
+												they come back. You can also invite them again
+												yourself.
 											</p>
 											<div class="flex flex-wrap gap-2">
 												<Button
@@ -2117,7 +2118,7 @@
 							Leave project
 						</Button>
 						<p class="text-xs text-muted-foreground">
-							You can rejoin only if someone invites you again.
+							To come back later, you’ll need the owner to say yes.
 						</p>
 					{/if}
 				</div>

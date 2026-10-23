@@ -23,10 +23,14 @@ export async function isNotificationSmsSendingEnabled(
 ): Promise<boolean> {
 	if (!SMS_SENDING_ENABLED) return false;
 	// Local RPC boundary until generated database types include the new migration.
-	const readSetting = client.rpc.bind(client) as unknown as (
-		name: 'get_notification_sms_sending_enabled'
-	) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
-	const { data, error } = await readSetting('get_notification_sms_sending_enabled');
+	// Narrow before accessing rpc to avoid instantiating its full generic signature;
+	// call it as a method so Supabase retains the client as its `this` context.
+	const settingsClient = client as unknown as {
+		rpc(
+			name: 'get_notification_sms_sending_enabled'
+		): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+	};
+	const { data, error } = await settingsClient.rpc('get_notification_sms_sending_enabled');
 	if (error) throw new Error(`Failed to read notification SMS switch: ${error.message}`);
 	return data === true;
 }

@@ -21,8 +21,10 @@ describe('notification SMS sending switch', () => {
 			vi.stubEnv('PRIVATE_SMS_SENDING_ENABLED', 'true');
 			const { isNotificationSmsSendingEnabled } = await import('../src/config/sms');
 			const rpc = vi.fn(async () => ({ data: value, error: null }));
-			expect(await isNotificationSmsSendingEnabled({ rpc } as any)).toBe(value === true);
+			const client = { rpc };
+			expect(await isNotificationSmsSendingEnabled(client as any)).toBe(value === true);
 			expect(rpc).toHaveBeenCalledWith('get_notification_sms_sending_enabled');
+			expect(rpc.mock.contexts[0]).toBe(client);
 		}
 	);
 

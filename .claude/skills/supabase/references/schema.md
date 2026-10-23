@@ -3,7 +3,7 @@
 Complete column listing for all 284 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-10-23T19:14:59.844Z
+**Schema generated:** 2026-10-23T20:00:06.609Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -64,7 +64,7 @@ created_at `string` · id `number` · ip_address `unknown` · updated_at `string
 
 ### people_requests
 
-created_at `string` · decided_at `string?` · decision `Json?` · expires_at `string` · from_user_id `string` · id `string` · note `string?` · project_hint `string?` · role_requested `string` · status `string` · to_user_id `string` · via `string` · via_agent_label `string?` · via_caller_id `string?` · via_oauth_grant_id `string?`
+agent_access_requested `string?` · created_at `string` · decided_at `string?` · decision `Json?` · expires_at `string` · from_user_id `string` · id `string` · kind `string` · note `string?` · project_hint `string?` · project_id `string?` · role_requested `string` · status `string` · to_user_id `string` · via `string` · via_agent_label `string?` · via_caller_id `string?` · via_invite_link_id `string?` · via_oauth_grant_id `string?`
 
 ### user_contact_access_audit
 

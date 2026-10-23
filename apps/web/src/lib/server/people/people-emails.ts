@@ -235,18 +235,48 @@ type RequestRow = {
 	status: string;
 	decision: unknown;
 	expires_at: string | null;
+	kind?: string | null;
+	project_id?: string | null;
 };
 
 async function loadRequest(admin: AdminClient, requestId: string): Promise<RequestRow | null> {
 	const { data, error } = await (admin as any)
 		.from('people_requests')
 		.select(
-			'id, from_user_id, to_user_id, role_requested, note, via, status, decision, expires_at'
+			'id, from_user_id, to_user_id, role_requested, note, via, status, decision, expires_at, kind, project_id'
 		)
 		.eq('id', requestId)
 		.maybeSingle();
 	if (error) throw error;
 	return (data as RequestRow | null) ?? null;
+}
+
+/** A former member asked to come back to one project (they used its invite link). */
+export function buildRejoinRequestEmail(input: {
+	requester: Pick<PersonRow, 'name' | 'username'>;
+	projectName: string;
+	roleRequested: string | null;
+	reviewUrl: string;
+	expiresAt: string | null;
+}): EmailParts {
+	const name = displayName(input.requester);
+	const subject = `${name} wants to rejoin ${input.projectName}`;
+	const asked = `${withHandle(input.requester)} left ${input.projectName} or was removed, then opened your invite link. They’d come back as ${roleWithArticle(input.roleRequested)}.`;
+	const choice =
+		'They stay out until you decide. If you deny it, they can’t ask to rejoin this project again.';
+	const until = longDate(input.expiresAt);
+	const footer = `${until ? `The request expires on ${until} if you don’t answer. ` : ''}You get this email because you shared an invite link for ${input.projectName}.`;
+
+	const html = render(subject, [
+		heading(subject),
+		paragraph(asked),
+		paragraph(choice, { muted: true, size: 14 }),
+		button('Review request', input.reviewUrl),
+		fallbackLink(input.reviewUrl),
+		paragraph(footer, { muted: true, size: 12 })
+	]);
+	const text = [asked, choice, `Review request: ${input.reviewUrl}`, footer].join('\n\n');
+	return { subject, html, text };
 }
 
 export function buildRequestReceivedEmail(input: {
@@ -303,14 +333,32 @@ export async function sendPeopleRequestReceivedEmail(
 		if (!requester || !owner || !to) return 'skipped';
 
 		const baseUrl = deps.baseUrl ?? appBaseUrl();
-		const parts = buildRequestReceivedEmail({
-			requester,
-			roleRequested: request.role_requested,
-			viaAgent: request.via === 'agent',
-			hasNote: Boolean(request.note?.trim()),
-			reviewUrl: `${baseUrl}/people`,
-			expiresAt: request.expires_at
-		});
+		let rejoinProjectName: string | null = null;
+		if (request.kind === 'rejoin' && request.project_id) {
+			const { data: project, error: projectError } = await (admin as any)
+				.from('onto_projects')
+				.select('name')
+				.eq('id', request.project_id)
+				.maybeSingle();
+			if (projectError) throw projectError;
+			rejoinProjectName = project?.name?.trim() || 'your project';
+		}
+		const parts = rejoinProjectName
+			? buildRejoinRequestEmail({
+					requester,
+					projectName: rejoinProjectName,
+					roleRequested: request.role_requested,
+					reviewUrl: `${baseUrl}/people`,
+					expiresAt: request.expires_at
+				})
+			: buildRequestReceivedEmail({
+					requester,
+					roleRequested: request.role_requested,
+					viaAgent: request.via === 'agent',
+					hasNote: Boolean(request.note?.trim()),
+					reviewUrl: `${baseUrl}/people`,
+					expiresAt: request.expires_at
+				});
 		return await send(deps.mailer ?? new EmailService(admin as any), to, parts, {
 			recipientUserId: owner.id,
 			createdBy: requester.id,

@@ -562,7 +562,7 @@ describe('ProjectCollaborationModal owner sharing', () => {
 		expect(screen.getByLabelText('Role for Sam')).toHaveValue('viewer');
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
-		expect(screen.getByText(/the invite link won’t add them back/)).toBeInTheDocument();
+		expect(screen.getByText(/you get a request and decide whether they/)).toBeInTheDocument();
 		const group = screen.getByRole('group', { name: 'Remove Sam' });
 		await fireEvent.click(within(group).getByRole('button', { name: 'Remove' }));
 

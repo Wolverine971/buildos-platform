@@ -135,7 +135,9 @@ export type InviteLinkVisitorStatus =
 	| 'reset'
 	| 'turned_off'
 	| 'not_found'
-	| 'removed';
+	| 'removed'
+	| 'rejoin_denied'
+	| 'rate_limited';
 
 /** What to tell someone whose invite link can't add them. */
 export function inviteLinkProblem(
@@ -162,6 +164,16 @@ export function inviteLinkProblem(
 			return {
 				title: `You were removed from ${projectName?.trim() || 'this project'}`,
 				message: 'This link can’t add you back. Ask the owner to invite you directly.'
+			};
+		case 'rejoin_denied':
+			return {
+				title: `You can’t rejoin ${projectName?.trim() || 'this project'}`,
+				message: 'The owner decided not to let you back in, so this link can’t add you.'
+			};
+		case 'rate_limited':
+			return {
+				title: 'You have too many requests waiting',
+				message: 'Wait until some of them are answered, then try this link again.'
 			};
 		default:
 			return {

@@ -113,6 +113,55 @@ describe('/join/[token] page', () => {
 		expect(gotoMock).not.toHaveBeenCalled();
 	});
 
+	it('a former member asks to rejoin instead of joining', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			status: 200,
+			json: async () => ({
+				success: true,
+				data: { status: 'rejoin_requested', project_id: null, project_name: '9takes' }
+			})
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		render(JoinPage, {
+			props: page({
+				viewer: { email: 'sam@example.com', name: 'Sam' },
+				preview: { ...ACTIVE, rejoin: 'ask' }
+			})
+		});
+
+		expect(screen.getByText('You were in 9takes before')).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: /Join 9takes/ })).not.toBeInTheDocument();
+		await fireEvent.click(screen.getByRole('button', { name: 'Ask to rejoin' }));
+
+		expect(await screen.findByText('Request sent')).toBeInTheDocument();
+		expect(screen.getByText(/DJ decides whether you come back to 9takes/)).toBeInTheDocument();
+		expect(gotoMock).not.toHaveBeenCalled();
+	});
+
+	it('shows a waiting rejoin request and a final deny', () => {
+		render(JoinPage, {
+			props: page({
+				viewer: { email: 'sam@example.com', name: 'Sam' },
+				preview: { ...ACTIVE, rejoin: 'pending' }
+			})
+		});
+		expect(screen.getByText('Your request is waiting')).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Ask to rejoin' })).not.toBeInTheDocument();
+		cleanup();
+
+		render(JoinPage, {
+			props: page({
+				viewer: { email: 'sam@example.com', name: 'Sam' },
+				preview: { ...ACTIVE, rejoin: 'denied' }
+			})
+		});
+		expect(
+			screen.getByRole('heading', { name: 'You can’t rejoin 9takes' })
+		).toBeInTheDocument();
+		expect(screen.queryByRole('button')).not.toBeInTheDocument();
+	});
+
 	it('tells a member they are already in', () => {
 		render(JoinPage, {
 			props: page({

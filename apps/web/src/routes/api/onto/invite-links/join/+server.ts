@@ -3,7 +3,11 @@
  * POST { token } → join a project with its invite link, as the signed-in user.
  *
  * Every expected outcome is a 200 with a `status` the join page turns into plain words:
- * joined | already_member | removed | expired | reset | turned_off | not_found.
+ * joined | already_member | rejoin_requested | rejoin_pending | rejoin_denied |
+ * rate_limited | expired | reset | turned_off | not_found.
+ *
+ * Someone who left or was removed doesn't rejoin by link: the owner gets a rejoin
+ * request (in BuildOS, plus an email here) and lets them back in or denies it.
  *
  * After a join (best effort, never undoing it): the new member follows project
  * activity when the project has that on, and the owner gets an in-app notice.
@@ -15,11 +19,15 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { asRecord, peopleRpcErrorResponse } from '$lib/server/people/people-api';
 import { hashInviteToken, INVITE_LINK_TOKEN_SHAPE } from '$lib/server/people/invite-links';
 import { roleWithArticle } from '$lib/components/people/people-copy';
+import { sendPeopleRequestReceivedEmail } from '$lib/server/people/people-emails';
 
 const STATUSES = new Set([
 	'joined',
 	'already_member',
-	'removed',
+	'rejoin_requested',
+	'rejoin_pending',
+	'rejoin_denied',
+	'rate_limited',
 	'expired',
 	'reset',
 	'turned_off',
@@ -55,6 +63,11 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
 			: 'not_found';
 	const projectId = text(result.project_id);
 	const projectName = text(result.project_name);
+
+	const requestId = text(result.request_id);
+	if (status === 'rejoin_requested' && requestId) {
+		await sendPeopleRequestReceivedEmail(requestId);
+	}
 
 	if (status === 'joined' && projectId) {
 		await afterJoin({

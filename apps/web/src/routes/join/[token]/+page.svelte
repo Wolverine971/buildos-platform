@@ -20,6 +20,8 @@
 	let actionError = $state<string | null>(null);
 	/** A status the join call came back with (the link changed after the page loaded). */
 	let joinProblem = $state<{ status: string; projectName: string | null } | null>(null);
+	/** Former members ask the owner instead of joining; set after they ask. */
+	let rejoinSent = $state<'sent' | 'waiting' | null>(null);
 
 	const preview = $derived(data.preview);
 	const active = $derived(preview.status === 'active' ? preview : null);
@@ -27,17 +29,22 @@
 	const projectName = $derived(active?.project_name?.trim() || 'this project');
 	const inviter = $derived(active?.inviter_name ?? null);
 	const until = $derived(shortDate(active?.expires_at));
+	const rejoin = $derived(
+		rejoinSent ? 'pending' : active?.already_member ? null : (active?.rejoin ?? null)
+	);
 	const problem = $derived(
 		joinProblem
 			? inviteLinkProblem(joinProblem.status, joinProblem.projectName)
-			: active
-				? null
-				: data.loadError
-					? {
-							title: 'We couldn’t open this invite link',
-							message: 'Refresh the page to try again.'
-						}
-					: inviteLinkProblem(preview.status)
+			: rejoin === 'denied'
+				? inviteLinkProblem('rejoin_denied', projectName)
+				: active
+					? null
+					: data.loadError
+						? {
+								title: 'We couldn’t open this invite link',
+								message: 'Refresh the page to try again.'
+							}
+						: inviteLinkProblem(preview.status)
 	);
 
 	const redirectTo = $derived(data.redirectTo || '/');
@@ -89,6 +96,10 @@
 					result.status === 'joined' ? `You joined ${name}` : `You’re already in ${name}`
 				);
 				await goto(`/projects/${result.project_id}`, { invalidateAll: true });
+				return;
+			}
+			if (result.status === 'rejoin_requested' || result.status === 'rejoin_pending') {
+				rejoinSent = result.status === 'rejoin_requested' ? 'sent' : 'waiting';
 				return;
 			}
 			joinProblem = { status: String(result.status ?? 'not_found'), projectName: name };
@@ -194,7 +205,49 @@
 					<p class="mt-3 text-sm text-destructive" role="alert">{actionError}</p>
 				{/if}
 
-				{#if active.already_member && active.project_id}
+				{#if rejoin === 'ask' || rejoin === 'pending'}
+					<div
+						class="mt-4 rounded-lg border border-border bg-muted/40 px-3.5 py-3"
+						role={rejoin === 'pending' ? 'status' : undefined}
+					>
+						{#if rejoin === 'pending'}
+							<p class="text-sm font-semibold text-foreground">
+								{rejoinSent === 'sent' ? 'Request sent' : 'Your request is waiting'}
+							</p>
+							<p class="mt-1 text-sm text-muted-foreground">
+								{inviter ?? 'The owner'} decides whether you come back to {projectName}.
+								You’ll get a notification when they answer.
+							</p>
+						{:else}
+							<p class="text-sm font-semibold text-foreground">
+								You were in {projectName} before
+							</p>
+							<p class="mt-1 text-sm text-muted-foreground">
+								Since you left, {inviter ?? 'the owner'} decides whether you come back.
+								Asking sends them a request in BuildOS and by email.
+							</p>
+						{/if}
+					</div>
+					{#if rejoin === 'ask'}
+						<button
+							type="button"
+							onclick={join}
+							disabled={joining}
+							class="mt-4 inline-flex w-full min-h-[44px] items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground shadow-ink pressable transition-colors hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+						>
+							{joining ? 'Asking…' : 'Ask to rejoin'}
+							{#if !joining}<ArrowRight class="w-4 h-4" />{/if}
+						</button>
+					{:else}
+						<a
+							href="/projects"
+							class="mt-4 inline-flex w-full min-h-[44px] items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground shadow-ink pressable transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						>
+							Go to your projects
+							<ArrowRight class="w-4 h-4" />
+						</a>
+					{/if}
+				{:else if active.already_member && active.project_id}
 					<p class="mt-4 text-sm text-foreground">You’re already in {projectName}.</p>
 					<a
 						href={`/projects/${active.project_id}`}

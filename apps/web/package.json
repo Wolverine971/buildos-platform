@@ -125,8 +125,8 @@
 		"yaml": "^2.3.4"
 	},
 	"engines": {
-		"node": "22.x",
-		"pnpm": ">=9.0.0"
+		"node": ">=22.23.4 <23 || >=24.22.1 <25",
+		"pnpm": ">=11.0.0"
 	},
 	"dependencies": {
 		"@ambientcss/css": "3.0.1",

@@ -2,9 +2,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RequestEvent } from './$types';
 
-const { adminRpcMock, adminFromMock } = vi.hoisted(() => ({
+const { adminRpcMock, adminFromMock, sendRequestEmailMock } = vi.hoisted(() => ({
 	adminRpcMock: vi.fn(),
-	adminFromMock: vi.fn()
+	adminFromMock: vi.fn(),
+	sendRequestEmailMock: vi.fn(async () => 'sent')
+}));
+
+vi.mock('$lib/server/people/people-emails', () => ({
+	sendPeopleRequestReceivedEmail: sendRequestEmailMock
 }));
 
 vi.mock('$lib/supabase/admin', () => ({
@@ -154,17 +159,38 @@ describe('POST /api/onto/invite-links/join', () => {
 		expect(payload.data.status).toBe('joined');
 	});
 
-	it.each(['already_member', 'removed', 'expired', 'reset', 'turned_off', 'not_found'])(
-		'passes %s through without follow-ups',
-		async (status) => {
-			const event = createEvent({ token: TOKEN });
-			event.locals.supabase.rpc.mockResolvedValue({
-				data: { status, project_id: status === 'already_member' ? 'project-1' : undefined },
-				error: null
-			});
-			const payload = await (await POST(event)).json();
-			expect(payload.data.status).toBe(status);
-			expect(adminRpcMock).not.toHaveBeenCalled();
-		}
-	);
+	it('asks the owner when a former member uses the link, and emails them once', async () => {
+		sendRequestEmailMock.mockClear();
+		const event = createEvent({ token: TOKEN });
+		event.locals.supabase.rpc.mockResolvedValue({
+			data: { status: 'rejoin_requested', request_id: 'req-1', project_name: '9takes' },
+			error: null
+		});
+		const payload = await (await POST(event)).json();
+		expect(payload.data).toMatchObject({ status: 'rejoin_requested', project_name: '9takes' });
+		expect(sendRequestEmailMock).toHaveBeenCalledWith('req-1');
+		expect(adminRpcMock).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		'already_member',
+		'rejoin_pending',
+		'rejoin_denied',
+		'rate_limited',
+		'expired',
+		'reset',
+		'turned_off',
+		'not_found'
+	])('passes %s through without follow-ups', async (status) => {
+		sendRequestEmailMock.mockClear();
+		const event = createEvent({ token: TOKEN });
+		event.locals.supabase.rpc.mockResolvedValue({
+			data: { status, project_id: status === 'already_member' ? 'project-1' : undefined },
+			error: null
+		});
+		const payload = await (await POST(event)).json();
+		expect(payload.data.status).toBe(status);
+		expect(adminRpcMock).not.toHaveBeenCalled();
+		expect(sendRequestEmailMock).not.toHaveBeenCalled();
+	});
 });

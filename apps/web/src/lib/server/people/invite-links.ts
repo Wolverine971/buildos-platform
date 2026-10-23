@@ -110,6 +110,8 @@ export function readInviteLinkDays(value: unknown): number | null {
 	return days >= 1 && days <= INVITE_LINK_MAX_DAYS ? days : null;
 }
 
+export type RejoinState = 'ask' | 'pending' | 'denied';
+
 export type InviteLinkPreview =
 	| {
 			status: 'active';
@@ -120,6 +122,8 @@ export type InviteLinkPreview =
 			expires_at: string | null;
 			already_member: boolean;
 			project_id: string | null;
+			/** Set for a signed-in former member: the link asks the owner instead of adding them. */
+			rejoin: RejoinState | null;
 	  }
 	| { status: 'expired' | 'reset' | 'turned_off' | 'not_found' };
 
@@ -144,6 +148,10 @@ export function readInviteLinkPreview(value: unknown): InviteLinkPreview {
 		agent_access: isAgentAccess(row.agent_access) ? row.agent_access : 'read',
 		expires_at: typeof row.expires_at === 'string' ? row.expires_at : null,
 		already_member: row.already_member === true,
-		project_id: typeof row.project_id === 'string' ? row.project_id : null
+		project_id: typeof row.project_id === 'string' ? row.project_id : null,
+		rejoin:
+			row.rejoin === 'ask' || row.rejoin === 'pending' || row.rejoin === 'denied'
+				? row.rejoin
+				: null
 	};
 }

@@ -131,6 +131,34 @@ describe('sendPeopleRequestReceivedEmail', () => {
 		expect(sent.metadata).toEqual({ type: 'people_request_received', request_id: 'req-1' });
 	});
 
+	it('a rejoin request names the project and says a deny is final', async () => {
+		const sendEmail = vi.fn().mockResolvedValue({ success: true });
+		const outcome = await sendPeopleRequestReceivedEmail('req-1', {
+			admin: fakeAdmin({
+				people_requests: {
+					...request,
+					via: 'web',
+					note: null,
+					kind: 'rejoin',
+					project_id: 'project-1'
+				},
+				onto_projects: { name: '9takes' },
+				users: [OWNER, SAM],
+				email_suppressions: null
+			}),
+			mailer: { sendEmail },
+			baseUrl: 'https://build-os.com'
+		});
+
+		expect(outcome).toBe('sent');
+		const sent = sendEmail.mock.calls[0][0];
+		expect(sent.subject).toBe('Sam Lee wants to rejoin 9takes');
+		expect(sent.body).toContain('left 9takes or was removed, then opened your invite link');
+		expect(sent.body).toContain('they can’t ask to rejoin this project again');
+		expect(sent.body).toContain('Review request: https://build-os.com/people');
+		expect(sent.body + sent.html).not.toContain(EM_DASH);
+	});
+
 	it('skips answered requests, hard bounces, and closed accounts', async () => {
 		const sendEmail = vi.fn().mockResolvedValue({ success: true });
 		const answered = await sendPeopleRequestReceivedEmail('req-1', {
