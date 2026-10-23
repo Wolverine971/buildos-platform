@@ -43,6 +43,7 @@ function project(id: string, overrides: Partial<ProjectListSummary> = {}): Proje
 		next_step_updated_at: null,
 		has_collaborators: false,
 		parent_project_id: null,
+		kind: 'project',
 		...overrides
 	};
 }
@@ -175,6 +176,55 @@ describe('drop rules', () => {
 		expect(
 			dropVerdict({ kind: 'document', id: 'd', projectId: 'uxm' }, { kind: 'desktop' }, index)
 		).toEqual({ ok: false, reason: 'Docs and tasks belong to a project.' });
+	});
+
+	it('sends docs and tasks dropped on the desktop to the Workspace, never projects', () => {
+		const workspace = project('ws', { name: 'Workspace', kind: 'workspace' });
+		const withWorkspace = indexProjects([hub, redline, uxm, shared, editor, workspace]);
+		expect(
+			dropVerdict(
+				{ kind: 'document', id: 'd', projectId: 'uxm' },
+				{ kind: 'desktop' },
+				withWorkspace,
+				'ws'
+			)
+		).toEqual({ ok: true, action: 'move', targetId: 'ws' });
+		expect(
+			dropVerdict(
+				{ kind: 'task', id: 't', projectId: 'ws' },
+				{ kind: 'desktop' },
+				withWorkspace,
+				'ws'
+			)
+		).toBeNull();
+		expect(
+			dropVerdict(
+				{ kind: 'task', id: 't', projectId: 'ws' },
+				{ kind: 'project', id: 'editor' },
+				withWorkspace,
+				'ws'
+			)
+		).toEqual({ ok: true, action: 'move', targetId: 'editor' });
+		expect(
+			dropVerdict(
+				{ kind: 'project', id: 'uxm' },
+				{ kind: 'project', id: 'ws' },
+				withWorkspace
+			)
+		).toEqual({
+			ok: false,
+			reason: 'Projects stay out of the Workspace. Drop their docs and tasks here instead.'
+		});
+		expect(
+			confirmCopy({ kind: 'task', id: 't', projectId: 'uxm' }, 'move', withWorkspace, {
+				title: 'Renew passport',
+				targetId: 'ws'
+			})
+		).toEqual({
+			title: 'Send “Renew passport” to your Workspace?',
+			body: 'It leaves UXM Training Website and waits with your loose items. Links keep working.',
+			cta: 'Send'
+		});
 	});
 
 	it('writes the confirm in plain words', () => {

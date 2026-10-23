@@ -1,6 +1,10 @@
 // apps/web/src/lib/server/agent-call/external-tool-gateway.ts
 import type { AgentCredentialReference } from '@buildos/shared-types';
-import { PERMISSION_CONTROL_TOOLS, PermissionRequestService } from './permission-requests.service';
+import {
+	PERMISSION_CONTROL_TOOLS,
+	PermissionRequestError,
+	PermissionRequestService
+} from './permission-requests.service';
 import { executePeopleTool, PEOPLE_TOOL_NAMES, PEOPLE_TOOLS } from './people-tools.service';
 // apps/web/src/lib/server/agent-call/external-tool-gateway.ts
 //
@@ -36,6 +40,10 @@ import {
 	type TaskSyncPort
 } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
+import { buildAccessNeeded } from '@buildos/shared-agent-ops/gateway/access-wall';
+import { buildConnectorGrantUrl, linkAccessNeeded } from './connector-grant-links';
+
+export { buildConnectorGrantUrl, linkAccessNeeded };
 import { TaskEventSyncService } from '$lib/services/ontology/task-event-sync.service';
 import { GATEWAY_TOOL_DEFINITIONS, getToolRegistry } from '@buildos/agentic-chat-runtime/catalog';
 import {
@@ -425,34 +433,42 @@ function buildExternalOpHelp(
 
 const PROJECT_NOT_GRANTED_TO_CONNECTOR = 'project_not_granted_to_connector';
 
-/** Owner-facing page where one click grants a project (or everything) to this connector. */
-export function buildConnectorGrantUrl(params: {
-	origin: string;
-	callerId: string;
-	projectId?: string;
-}): string {
-	const url = new URL(
-		`/profile/agent-keys/${encodeURIComponent(params.callerId)}/grant`,
-		params.origin
-	);
-	if (params.projectId) url.searchParams.set('project', params.projectId);
-	return url.toString();
-}
-
 /**
  * The shared gateway cannot know the public origin or the grant route, so it
- * reports `project_not_granted_to_connector`; this adds the link the agent can
- * hand to the user.
+ * reports `project_not_granted_to_connector` (and `access_needed.link` for any wall
+ * the person can clear); this adds the links the agent can hand to the user.
  */
 export function attachConnectorGrantLinks(
 	result: Record<string, unknown>,
 	params: { origin?: string; callerId?: string }
 ): Record<string, unknown> {
 	const { origin, callerId } = params;
-	if (!origin || !callerId) return result;
 
 	const error = isRecord(result.error) ? result.error : null;
 	const errorDetails = error && isRecord(error.details) ? error.details : null;
+	if (errorDetails && isRecord(errorDetails.access_needed)) {
+		const projectId =
+			typeof errorDetails.project_id === 'string' ? errorDetails.project_id : undefined;
+		return {
+			...result,
+			error: {
+				...error,
+				details: {
+					...errorDetails,
+					...(origin &&
+					callerId &&
+					errorDetails.reason === PROJECT_NOT_GRANTED_TO_CONNECTOR
+						? { grant_url: buildConnectorGrantUrl({ origin, callerId, projectId }) }
+						: {}),
+					access_needed: linkAccessNeeded(errorDetails.access_needed, {
+						origin,
+						callerId
+					})
+				}
+			}
+		};
+	}
+	if (!origin || !callerId) return result;
 	if (errorDetails?.reason === PROJECT_NOT_GRANTED_TO_CONNECTOR) {
 		const projectId =
 			typeof errorDetails.project_id === 'string' ? errorDetails.project_id : undefined;
@@ -487,6 +503,38 @@ export function attachConnectorGrantLinks(
 	return result;
 }
 
+/**
+ * A read-only connection calling a write tool: the person can allow changes in one
+ * tap (static keys) or by reconnecting (OAuth). Nothing for any other refusal.
+ */
+function readOnlyConnectionWall(
+	params: {
+		scope: AgentCallScope;
+		oauthGrantId?: string;
+		arguments?: Record<string, unknown>;
+	},
+	op: string
+): Record<string, unknown> {
+	if (params.scope.mode === 'read_write' || requiredScopeModeForOp(op) !== 'read_write') {
+		return {};
+	}
+	const projectId =
+		typeof params.arguments?.project_id === 'string' &&
+		Array.isArray(params.scope.project_ids) &&
+		params.scope.project_ids.includes(params.arguments.project_id)
+			? params.arguments.project_id
+			: null;
+	return {
+		reason: 'connection_read_only',
+		access_needed: buildAccessNeeded({
+			wall: 'connection_read_only',
+			projectId,
+			connectionReadOnly: true,
+			viaOAuth: Boolean(params.oauthGrantId)
+		})
+	};
+}
+
 export async function executeBuildosAgentGatewayTool(params: {
 	credential?: AgentCredentialReference;
 	admin: any;
@@ -510,7 +558,8 @@ export async function executeBuildosAgentGatewayTool(params: {
 			oauthGrantId: params.oauthGrantId,
 			scope: params.scope,
 			toolName: params.toolName,
-			arguments: params.arguments
+			arguments: params.arguments,
+			connectorOrigin: params.connectorOrigin
 		});
 	}
 	if (params.credential) {
@@ -518,7 +567,8 @@ export async function executeBuildosAgentGatewayTool(params: {
 			params.admin,
 			params.credential,
 			params.scope,
-			params.connectorOrigin
+			params.connectorOrigin,
+			{ userId: params.userId, projectScopeMode: params.projectScopeMode }
 		);
 		try {
 			if (PERMISSION_CONTROL_TOOLS.some((t) => t.name === params.toolName))
@@ -570,7 +620,18 @@ export async function executeBuildosAgentGatewayTool(params: {
 								message: 'Use request_buildos_permission to review a proposed edit.'
 							}
 						};
-					return { ok: true, ...(await permissions.apply(proposal, key)) };
+					try {
+						return { ok: true, ...(await permissions.apply(proposal, key)) };
+					} catch (applyError) {
+						// No scoped grant covers this edit: the gateway refuses it below and
+						// says what is in the way (tasker 140) instead of a dead end.
+						if (
+							!(applyError instanceof PermissionRequestError) ||
+							!applyError.noScopedGrant
+						) {
+							throw applyError;
+						}
+					}
 				}
 			}
 		} catch (error) {
@@ -689,35 +750,33 @@ export async function executeBuildosAgentGatewayTool(params: {
 		});
 	}
 
+	const outsideScope = (op: string) =>
+		attachConnectorGrantLinks(
+			buildExecError(
+				op,
+				'FORBIDDEN',
+				`Tool ${params.toolName} is outside the granted BuildOS call scope`,
+				op,
+				{
+					granted_scope_mode: params.scope.mode,
+					required_scope_mode: requiredScopeModeForOp(op),
+					allowed_ops:
+						params.scope.allowed_ops ?? defaultAllowedOpsForMode(params.scope.mode),
+					...readOnlyConnectionWall(params, op)
+				}
+			),
+			{ origin: params.connectorOrigin, callerId: params.callerId }
+		);
+
 	const customEntry = findKnownExternalCustomTool(params.toolName);
 	if (customEntry && isSupportedOp(customEntry.op)) {
-		return buildExecError(
-			customEntry.op,
-			'FORBIDDEN',
-			`Tool ${params.toolName} is outside the granted BuildOS call scope`,
-			customEntry.op,
-			{
-				granted_scope_mode: params.scope.mode,
-				required_scope_mode: requiredScopeModeForOp(customEntry.op),
-				allowed_ops: params.scope.allowed_ops ?? defaultAllowedOpsForMode(params.scope.mode)
-			}
-		);
+		return outsideScope(customEntry.op);
 	}
 
 	const registryEntry = getToolRegistry().byToolName[params.toolName];
 	const canonicalOp = registryEntry ? normalizeGatewayOpName(registryEntry.op) : '';
 	if (canonicalOp && isSupportedOp(canonicalOp)) {
-		return buildExecError(
-			canonicalOp,
-			'FORBIDDEN',
-			`Tool ${params.toolName} is outside the granted BuildOS call scope`,
-			canonicalOp,
-			{
-				granted_scope_mode: params.scope.mode,
-				required_scope_mode: requiredScopeModeForOp(canonicalOp),
-				allowed_ops: params.scope.allowed_ops ?? defaultAllowedOpsForMode(params.scope.mode)
-			}
-		);
+		return outsideScope(canonicalOp);
 	}
 
 	return buildExecError(

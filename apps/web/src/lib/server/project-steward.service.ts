@@ -21,6 +21,7 @@ import {
 	normalizeStewardCharterText,
 	readStewardProfileState
 } from '@buildos/agentic-chat-runtime/context';
+import { isWorkspaceProjectId } from '$lib/server/workspace-guard';
 
 type Client = SupabaseClient<Database>;
 
@@ -70,6 +71,16 @@ type CharterDocument = {
 	content: string | null;
 	updated_at: string | null;
 };
+
+/** The Workspace (loose items) isn't a project, so it never gets a steward. */
+async function refuseWorkspace(supabase: Client, projectId: string): Promise<void> {
+	if (await isWorkspaceProjectId(supabase, projectId)) {
+		throw new ProjectStewardError(
+			'The Workspace holds loose notes and tasks; it has no steward. Move them into a project first.',
+			400
+		);
+	}
+}
 
 async function readProfile(
 	supabase: Client,
@@ -190,7 +201,10 @@ export async function approveProjectStewardCharter(params: {
 	expectedSha256: string;
 	nowIso?: string;
 }): Promise<ProjectStewardStatus> {
-	const profile = await readProfile(params.supabase, params.userId, params.projectId);
+	const [, profile] = await Promise.all([
+		refuseWorkspace(params.supabase, params.projectId),
+		readProfile(params.supabase, params.userId, params.projectId)
+	]);
 	const state = profile ? readStewardProfileState(profile.dimensions) : null;
 	const document = await findCharterDocument(
 		params.supabase,
@@ -245,7 +259,11 @@ export async function setProjectStewardActive(params: {
 	projectId: string;
 	active: boolean;
 }): Promise<ProjectStewardStatus> {
-	const profile = await readProfile(params.supabase, params.userId, params.projectId);
+	const [, profile] = await Promise.all([
+		// Switching off stays allowed; switching on is refused for the Workspace.
+		params.active ? refuseWorkspace(params.supabase, params.projectId) : undefined,
+		readProfile(params.supabase, params.userId, params.projectId)
+	]);
 	const state = profile ? readStewardProfileState(profile.dimensions) : null;
 	if (!state || !normalizeStewardCharterText(profile?.agent_instructions ?? '')) {
 		throw new ProjectStewardError(

@@ -6,7 +6,12 @@ const mocks = vi.hoisted(() => ({
 	createAdminSupabaseClient: vi.fn(),
 	queueProjectLoop: vi.fn(),
 	queueProjectAudit: vi.fn(),
-	addQueueJobWithPublicId: vi.fn()
+	addQueueJobWithPublicId: vi.fn(),
+	isWorkspaceProjectId: vi.fn()
+}));
+
+vi.mock('$lib/server/workspace-guard', () => ({
+	isWorkspaceProjectId: mocks.isWorkspaceProjectId
 }));
 
 vi.mock('$lib/supabase/admin', () => ({
@@ -218,6 +223,7 @@ function findOperation(
 describe('project loop burst scoring', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.isWorkspaceProjectId.mockResolvedValue(false);
 		mocks.queueProjectLoop.mockResolvedValue({
 			queued: true,
 			runId: 'loop-run-1',
@@ -252,6 +258,23 @@ describe('project loop burst scoring', () => {
 			recentScore: 0,
 			totalScore: 1
 		});
+		expect(mocks.queueProjectLoop).not.toHaveBeenCalled();
+		expect(mocks.queueProjectAudit).not.toHaveBeenCalled();
+	});
+
+	it('never queues a review or audit for a loose capture in the Workspace', async () => {
+		const { supabase } = createActivitySupabaseMock();
+		mocks.createAdminSupabaseClient.mockReturnValue(supabase);
+		mocks.isWorkspaceProjectId.mockResolvedValue(true);
+
+		const result = await queueProjectLoopBurst({
+			projectId: 'workspace-1',
+			userId: 'user-1',
+			source: 'doc_tree_move'
+		});
+
+		expect(result).toMatchObject({ queued: false, reason: 'workspace' });
+		expect(mocks.isWorkspaceProjectId).toHaveBeenCalledWith(supabase, 'workspace-1');
 		expect(mocks.queueProjectLoop).not.toHaveBeenCalled();
 		expect(mocks.queueProjectAudit).not.toHaveBeenCalled();
 	});
@@ -426,10 +449,30 @@ describe('project loop burst scoring', () => {
 describe('queueProjectLoopReviewSignal', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.isWorkspaceProjectId.mockResolvedValue(false);
 		mocks.addQueueJobWithPublicId.mockResolvedValue({
 			queueRecordId: 'queue-record-1',
 			queueJobId: 'queue-public-1'
 		});
+	});
+
+	it('records no signal for a loose capture in the Workspace', async () => {
+		const { supabase, signals } = createReviewSignalSupabaseMock();
+		mocks.createAdminSupabaseClient.mockReturnValue(supabase);
+		mocks.isWorkspaceProjectId.mockResolvedValue(true);
+
+		const result = await queueProjectLoopReviewSignal({
+			projectId: 'workspace-1',
+			userId: 'user-1',
+			source: 'task_update',
+			entityType: 'task',
+			entityId: 'task-1',
+			action: 'updated'
+		});
+
+		expect(result).toEqual({ queued: false, reason: 'workspace' });
+		expect(signals).toHaveLength(0);
+		expect(mocks.addQueueJobWithPublicId).not.toHaveBeenCalled();
 	});
 
 	it('records a pending signal and schedules one debounced wakeup', async () => {

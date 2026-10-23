@@ -316,6 +316,10 @@ describe('actor-facing commission guidance', () => {
 		// each stage ("at most 8 mutations per pass, fewer for large document bodies")
 		// and says to reuse prior reads, so a big cleanup stops overrunning the
 		// output budget; measured 3,156 / 4,019.
-		expect(message!.length).toBeLessThan(3_200);
+		// 2026-10-23 (Workspace): +~90 chars on purpose. A new note, doc, or task
+		// that fits no project goes to the user's Workspace, a valid direct target
+		// (write-routing treats it like the focused project); measured ~3,250.
+		expect(message).toContain("goes to the user's Workspace (not a project)");
+		expect(message!.length).toBeLessThan(3_300);
 	});
 });

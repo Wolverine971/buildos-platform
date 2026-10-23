@@ -217,6 +217,11 @@
 			"import": "./dist/gateway/op-execution-gateway.mjs",
 			"require": "./dist/gateway/op-execution-gateway.js"
 		},
+		"./gateway/access-wall": {
+			"types": "./dist/gateway/op-execution-gateway.access-wall.d.ts",
+			"import": "./dist/gateway/op-execution-gateway.access-wall.mjs",
+			"require": "./dist/gateway/op-execution-gateway.access-wall.js"
+		},
 		"./calendar/agent-run-calendar-port": {
 			"types": "./dist/calendar/agent-run-calendar-port.d.ts",
 			"import": "./dist/calendar/agent-run-calendar-port.mjs",

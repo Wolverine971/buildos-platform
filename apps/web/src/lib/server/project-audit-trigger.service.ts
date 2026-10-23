@@ -3,6 +3,7 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { addQueueJobWithPublicId } from '$lib/server/queue-job-id';
 import { captureServerEvent } from '$lib/server/posthog';
 import { createLogger } from '$lib/utils/logger';
+import { isWorkspaceProjectId } from '$lib/server/workspace-guard';
 import { projectAuditDedupKey, readProjectLoopQueueMetadata } from '@buildos/shared-agent-ops';
 import type {
 	Json,
@@ -60,7 +61,8 @@ export type QueueProjectAuditResult = {
 	evaluationId?: string;
 	decision: ProjectAuditTriggerDecision;
 	reason: string;
-	evaluation: ProjectAuditTriggerEvaluationDraft;
+	/** Absent only when the target is the Workspace, which is never evaluated. */
+	evaluation?: ProjectAuditTriggerEvaluationDraft;
 };
 
 async function createAuditChatSession(params: {
@@ -170,6 +172,14 @@ export async function queueProjectAudit(params: {
 }): Promise<QueueProjectAuditResult> {
 	const supabase = createAdminSupabaseClient();
 	const auditDepth = params.auditDepth ?? 'standard';
+	// The Workspace (loose items) isn't a project: no complete audits.
+	if (await isWorkspaceProjectId(supabase, params.projectId)) {
+		return {
+			queued: false,
+			decision: 'skipped_ineligible',
+			reason: 'The Workspace holds loose notes and tasks; it has no project audit.'
+		};
+	}
 	const evaluated = await evaluateProjectAuditTrigger({
 		supabase,
 		projectId: params.projectId,

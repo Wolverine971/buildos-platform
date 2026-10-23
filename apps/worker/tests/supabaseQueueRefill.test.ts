@@ -473,9 +473,9 @@ describe('SupabaseQueue per-slot refill', () => {
 		await Promise.all([start, stop]);
 		expect(stopped).toBe(true);
 
-		const claimCalls = vi
-			.mocked(supabase.rpc)
-			.mock.calls.filter(([functionName]) => functionName === 'claim_pending_jobs');
+		const claimCalls = rpcMock.mock.calls.filter(
+			([functionName]) => functionName === 'claim_pending_jobs'
+		);
 		expect(claimCalls).toHaveLength(1);
 	});
 
@@ -513,11 +513,9 @@ describe('SupabaseQueue per-slot refill', () => {
 		expect(received.job?.queueRowId).toBe(chatJob.id);
 		expect(received.job?.priority).toBe(chatJob.priority);
 		expect(
-			vi
-				.mocked(supabase.rpc)
-				.mock.calls.some(
-					([name]) => name === 'complete_queue_job' || name === 'fail_queue_job'
-				)
+			rpcMock.mock.calls.some(
+				([name]) => name === 'complete_queue_job' || name === 'fail_queue_job'
+			)
 		).toBe(false);
 		await queue.stop();
 	});
@@ -560,11 +558,9 @@ describe('SupabaseQueue per-slot refill', () => {
 		await queue.start();
 		await vi.waitFor(() => expect(aborted).toBe(true));
 		expect(
-			vi
-				.mocked(supabase.rpc)
-				.mock.calls.some(
-					([name]) => name === 'complete_queue_job' || name === 'fail_queue_job'
-				)
+			rpcMock.mock.calls.some(
+				([name]) => name === 'complete_queue_job' || name === 'fail_queue_job'
+			)
 		).toBe(false);
 		await queue.stop();
 	});

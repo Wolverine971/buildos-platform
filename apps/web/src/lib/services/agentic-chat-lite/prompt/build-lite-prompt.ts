@@ -169,10 +169,14 @@ const SAVED_NEXT_STEP_LABEL = 'Saved next step (may predate recent work)';
 
 // S7 cut (2026-09-04): "answer from loaded context when it already has a
 // summary" was Operating Strategy's first bullet said a second time.
+// Workspace rule (2026-10-23, docs/specs/WORKSPACE_ARCHITECTURE_2026-10-23.md):
+// the model's project_id argument is the decision; nothing reads the message.
+// "Workspace" here is the user's kind='workspace' project, never "all projects".
 const OVERVIEW_GUIDANCE_LITE = [
-	'Workflow hints for workspace-level chat:',
-	'- For routine status questions, call get_workspace_overview (workspace-wide) or get_project_overview (one named project) before generic ontology discovery.',
-	'- A request to start a new project is handled here with create_onto_project; do not send the user somewhere else to create it.'
+	'Workflow hints for global chat:',
+	'- For routine status questions, call get_workspace_overview (all projects) or get_project_overview (one named project) before generic ontology discovery.',
+	'- When the user wants a note, doc, or task saved and no project clearly fits, save it to their Workspace (its project_id is on the Workspace line; it holds loose notes and tasks and is not a project) and say so, instead of asking for a project or creating one. A quick note is create_onto_document with type_key document.note.',
+	'- A request to start a new project is handled here with create_onto_project; do not send the user somewhere else to create it. Never create a project to hold one note or task, or out of Workspace items the user did not ask to make a project.'
 ].join('\n');
 
 const PROJECT_ANALYSIS_SKILL_GUIDANCE_LITE = [
@@ -1234,11 +1238,30 @@ function buildLocationLoadedContextSection(
 			// One fetch rule for the section (was one here and a near-identical one
 			// in Loaded Data and Retrieval Boundaries).
 			'- The lines below are for orientation and exact IDs only; fetch an entity directly when the user asks about something they do not carry, and before non-obvious writes.',
+			...projectChatWorkspaceLines(focus, data),
 			...activityBlock,
 			...loadedWorkBlock,
 			...(index ? ['', index] : [])
 		].join('\n')
 	});
+}
+
+/**
+ * Project chats (2026-10-23): the user's Workspace id, so an item the user says
+ * is not for this project has a home other than a new project. Global chat
+ * lists the Workspace with the projects instead.
+ */
+function projectChatWorkspaceLines(
+	focus: LitePromptFocus,
+	data: LitePromptInput['data']
+): string[] {
+	if (focus.contextType !== 'project' && focus.contextType !== 'ontology') return [];
+	const id = isRecord(data) ? stringValue(data.workspace_project_id) : null;
+	return id
+		? [
+				`- The user's Workspace (project_id: ${id}) holds loose notes and tasks outside any project; save there only what the user says is not for this project.`
+			]
+		: [];
 }
 
 /**
@@ -1558,7 +1581,7 @@ function resolveTimelineRenderMode(
 }
 
 export const PROJECT_STRUCTURE_CAPABILITY_LINE =
-	"- Project structure: a project can sit under one parent project, one level deep (its ⋯ → Move under…). Nesting moves nothing and changes no one's access. Docs and tasks move between projects via Organize. Global chat can propose nesting (propose_project_parent) or combining a whole project into another (propose_project_combine); the user's click on the card runs it. Without a tool for something, say chat can't do it yet, never that the product can't.";
+	"- Project structure: a project can sit under one parent project, one level deep (its ⋯ → Move under…). Nesting moves nothing and changes no one's access. Docs and tasks move between projects, and in or out of the Workspace, via Organize. Global chat can propose nesting (propose_project_parent) or combining a whole project into another (propose_project_combine); the user's click on the card runs it. Without a tool for something, say chat can't do it yet, never that the product can't.";
 
 function buildOperatingStrategySection(
 	scaffold: Required<LitePromptScaffoldOptions>,
@@ -2337,19 +2360,22 @@ function buildTimelineSummary(
 	const projectIntelligence = extractProjectIntelligence(data);
 	const bundleViews = collectGlobalBundleViews(data);
 	const projectIndex = collectGlobalProjectIndex(data);
+	const workspace = collectGlobalWorkspace(data, projectIndex);
 	const contextMeta = data && isRecord(data.context_meta) ? data.context_meta : null;
 	const projectIntelligencePrompt = projectIntelligence
 		? buildProjectIntelligencePromptSections(projectIntelligence, {
 				clock,
 				projectBundles: bundleViews,
 				projectIndex,
+				workspace,
 				projectCount: numberValue(contextMeta?.project_count),
 				activeProjectCount: numberValue(contextMeta?.active_project_count)
 			})
 		: null;
 	const bundleStatusLines =
-		!projectIntelligencePrompt && (bundleViews.length > 0 || projectIndex.length > 0)
-			? buildGlobalProjectLines(bundleViews, projectIndex, null)
+		!projectIntelligencePrompt &&
+		(bundleViews.length > 0 || projectIndex.length > 0 || workspace)
+			? buildGlobalProjectLines(bundleViews, projectIndex, null, workspace)
 			: [];
 
 	if (dataSummary.contextMeta?.generated_at) {
@@ -2843,12 +2869,21 @@ type GlobalProjectIndexView = {
 	rollup: GlobalTaskRollupView | null;
 	/** Tasker 122: the parent, set by the loader only when the viewer can open it. */
 	parentId: string | null;
+	/** The user's Workspace (kind 'workspace'): rendered on its own line, never as a project. */
+	workspace: boolean;
+};
+
+/** The user's Workspace as the prompt shows it: its id and open tasks. */
+type GlobalWorkspaceView = {
+	id: string;
+	rollup: GlobalTaskRollupView | null;
 };
 
 type ProjectIntelligencePromptOptions = {
 	clock?: PromptClock;
 	projectBundles?: GlobalBundleView[];
 	projectIndex?: GlobalProjectIndexView[];
+	workspace?: GlobalWorkspaceView | null;
 	projectCount?: number | null;
 	activeProjectCount?: number | null;
 };
@@ -2871,13 +2906,14 @@ function readTaskRollup(value: unknown): GlobalTaskRollupView | null {
 // (turn-executor audit Finding 13 / F-02).
 function collectGlobalBundleViews(data: Record<string, unknown> | null): GlobalBundleView[] {
 	if (!data || !Array.isArray(data.projects)) return [];
+	const workspaceId = stringValue(data.workspace_project_id);
 	const views: GlobalBundleView[] = [];
 	for (const bundle of data.projects) {
 		if (!isRecord(bundle) || !isRecord(bundle.project)) continue;
 		const project = bundle.project;
 		const id = stringValue(project.id);
 		const name = stringValue(project.name);
-		if (!id || !name) continue;
+		if (!id || !name || id === workspaceId) continue;
 		const goals = Array.isArray(bundle.goals) ? bundle.goals.filter(isRecord) : [];
 		const topGoal = selectPrimaryGoal(goals);
 		views.push({
@@ -2899,22 +2935,46 @@ function collectGlobalBundleViews(data: Record<string, unknown> | null): GlobalB
 // only the eight bundled projects rendered.
 function collectGlobalProjectIndex(data: Record<string, unknown> | null): GlobalProjectIndexView[] {
 	if (!data || !Array.isArray(data.project_index)) return [];
+	const workspaceId = stringValue(data.workspace_project_id);
 	const views: GlobalProjectIndexView[] = [];
 	for (const entry of data.project_index) {
 		if (!isRecord(entry)) continue;
 		const id = stringValue(entry.id);
 		const name = stringValue(entry.name);
 		if (!id || !name) continue;
+		const workspace = entry.kind === 'workspace' || id === workspaceId;
 		views.push({
 			id,
 			name,
 			state: stringValue(entry.state_key),
 			nextStep: truncateText(stringValue(entry.next_step_short), 120),
 			rollup: readTaskRollup(entry.task_rollup),
-			parentId: stringValue(entry.parent_project_id)
+			parentId: workspace ? null : stringValue(entry.parent_project_id),
+			workspace
 		});
 	}
 	return views;
+}
+
+/**
+ * The user's Workspace (2026-10-23): from its index entry when the loader
+ * marked one, else from `workspace_project_id` alone (a Workspace created by
+ * this very load is not in the summaries yet).
+ */
+function collectGlobalWorkspace(
+	data: Record<string, unknown> | null,
+	projectIndex: GlobalProjectIndexView[]
+): GlobalWorkspaceView | null {
+	const entry = projectIndex.find((view) => view.workspace);
+	if (entry) return { id: entry.id, rollup: entry.rollup };
+	const id = data ? stringValue(data.workspace_project_id) : null;
+	return id ? { id, rollup: null } : null;
+}
+
+/** Rendered first and outside the project line cap; the Workspace is not a project. */
+function formatWorkspaceLine(workspace: GlobalWorkspaceView): string {
+	const tasks = workspace.rollup ? `; ${formatTaskRollupText(workspace.rollup)}` : '';
+	return `Workspace (project_id: ${workspace.id}) · the user's loose notes and tasks, not a project; save here when no project fits${tasks}.`;
 }
 
 const HIERARCHY_PARENT_NAME_MAX_CHARS = 60;
@@ -3026,12 +3086,14 @@ function formatSignalSummaryStatusLine(summary: FastChatProjectSignalSummary): s
  */
 function buildGlobalProjectLines(
 	bundles: GlobalBundleView[],
-	projectIndex: GlobalProjectIndexView[],
-	intelligence: FastChatProjectIntelligence | null
+	allIndexViews: GlobalProjectIndexView[],
+	intelligence: FastChatProjectIntelligence | null,
+	workspace: GlobalWorkspaceView | null = null
 ): string[] {
 	const summariesById = new Map(
 		(intelligence?.project_summaries ?? []).map((summary) => [summary.project_id, summary])
 	);
+	const projectIndex = allIndexViews.filter((view) => !view.workspace);
 	const hierarchyLabels = buildProjectHierarchyLabels(projectIndex);
 	const lines = bundles.map((view) =>
 		formatBundleStatusLine(
@@ -3041,6 +3103,7 @@ function buildGlobalProjectLines(
 		)
 	);
 	const rendered = new Set(bundles.map((view) => view.id));
+	if (workspace) rendered.add(workspace.id);
 	let omitted = 0;
 	for (const view of projectIndex) {
 		if (rendered.has(view.id)) continue;
@@ -3070,7 +3133,7 @@ function buildGlobalProjectLines(
 			`… and ${omitted} more accessible project(s) not listed; use get_workspace_overview or search_onto_projects for them.`
 		);
 	}
-	return lines;
+	return workspace ? [formatWorkspaceLine(workspace), ...lines] : lines;
 }
 
 function formatWorkspaceScopeLine(
@@ -3090,9 +3153,9 @@ function formatWorkspaceScopeLine(
 	if (typeof active === 'number' && active !== accessible) {
 		// The overview tools filter paused projects; naming both numbers keeps
 		// "44 accessible" and "33 in the overview" from reading as a contradiction.
-		return `Workspace scope: ${accessible} accessible projects (${active} non-paused; get_workspace_overview counts only non-paused projects).`;
+		return `All projects: ${accessible} accessible (${active} non-paused; get_workspace_overview counts only non-paused projects).`;
 	}
-	return `Workspace scope: ${accessible} accessible projects considered.`;
+	return `All projects: ${accessible} accessible projects considered.`;
 }
 
 function buildProjectIntelligenceStatusLines(
@@ -3106,10 +3169,13 @@ function buildProjectIntelligenceStatusLines(
 
 	const bundles = options.projectBundles ?? [];
 	const projectIndex = options.projectIndex ?? [];
+	const workspace = options.workspace ?? null;
 	if (bundles.length > 0 || projectIndex.length > 0) {
-		lines.push(...buildGlobalProjectLines(bundles, projectIndex, intelligence));
+		lines.push(...buildGlobalProjectLines(bundles, projectIndex, intelligence, workspace));
 	} else {
+		if (workspace) lines.push(formatWorkspaceLine(workspace));
 		for (const summary of intelligence.project_summaries.slice(0, 6)) {
+			if (summary.project_id === workspace?.id) continue;
 			lines.push(formatSignalSummaryStatusLine(summary));
 		}
 	}
@@ -3118,8 +3184,10 @@ function buildProjectIntelligenceStatusLines(
 	// survives only for payloads that carry no index.
 	const renderedProjectCount =
 		projectIndex.length > 0
-			? new Set([...bundles.map((view) => view.id), ...projectIndex.map((view) => view.id)])
-					.size
+			? new Set([
+					...bundles.map((view) => view.id),
+					...projectIndex.filter((view) => !view.workspace).map((view) => view.id)
+				]).size
 			: Math.max(bundles.length, Math.min(intelligence.project_summaries.length, 6));
 	const totalProjects = options.projectCount ?? intelligence.counts.accessible_projects ?? null;
 	if (

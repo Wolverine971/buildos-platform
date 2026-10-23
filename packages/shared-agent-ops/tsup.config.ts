@@ -81,6 +81,8 @@ export default defineConfig({
 		'src/gateway/agent-call-project-activity.service.ts',
 		'src/gateway/write-audit.service.ts',
 		'src/gateway/op-execution-gateway.ts',
+		// Access walls (tasker 140): web resolves scope and explains refusals with these.
+		'src/gateway/op-execution-gateway.access-wall.ts',
 		'src/utils/project-props-sanitizer.ts',
 		'src/utils/markdown-normalization.ts',
 		'src/utils/search-filter.ts',

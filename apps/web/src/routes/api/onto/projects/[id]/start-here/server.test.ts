@@ -41,12 +41,13 @@ const START_HERE_DOCUMENT = {
 	updated_at: '2026-08-27T12:00:00.000Z'
 };
 
-function projectClient(stateKey = 'active') {
+function projectClient(stateKey = 'active', kind = 'project') {
 	const maybeSingle = vi.fn().mockResolvedValue({
 		data: {
 			name: 'Project',
 			description: 'Project description',
 			state_key: stateKey,
+			kind,
 			deleted_at: null,
 			archived_at: null
 		},
@@ -159,6 +160,16 @@ describe('POST /api/onto/projects/[id]/start-here', () => {
 		const response = await POST(event(projectClient('completed')));
 
 		expect(response.status).toBe(409);
+		expect(mocks.ensureProjectStartHereDocument).not.toHaveBeenCalled();
+		expect(mocks.queueProjectContextSnapshot).not.toHaveBeenCalled();
+	});
+
+	it('never seeds START HERE in the Workspace (loose items)', async () => {
+		const { POST } = await import('./+server');
+		const response = await POST(event(projectClient('active', 'workspace')));
+
+		expect(response.status).toBe(409);
+		expect((await response.json()).error).toContain('Workspace');
 		expect(mocks.ensureProjectStartHereDocument).not.toHaveBeenCalled();
 		expect(mocks.queueProjectContextSnapshot).not.toHaveBeenCalled();
 	});

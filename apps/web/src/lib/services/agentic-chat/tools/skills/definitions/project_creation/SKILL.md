@@ -37,6 +37,7 @@ Turn a user idea into one new BuildOS project — an inferred name, type_key, de
 - The user wants to start a new project from scratch
 - You need to infer a project name and type_key, plus the few goals or tasks the user described, from a rough idea
 - If the chat is already inside a project and the user asks to create/start another project, ask: "You're already in this project. Are you sure you want to create a new project?" Do not call `create_onto_project` until they confirm.
+- Not for saving one note, document, or task: when no project fits a single item, it goes to the user's Workspace (loose notes and tasks, not a project), not into a new project.
 
 ## Judgment
 
@@ -73,6 +74,7 @@ Stop conditions before replying: `name` and `type_key` are not blank when infera
 - Do not leave project.name or project.type_key blank when they can be inferred from the user message.
 - Do not add goals, plans, milestones, risks, or documents the user did not mention.
 - Do not silently create a second project from inside an existing project chat; ask the confirmation warning first.
+- Do not create a project to hold a single note or task, or out of Workspace items on your own initiative; turning loose items into a project is the user's call.
 
 ## Knowledge
 

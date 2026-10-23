@@ -6,14 +6,35 @@
 
 import { isAgentAccess, isPersonRole, type AgentAccess, type PersonRole } from './people-copy';
 
+/** What a member asked for in a project they're already in (tasker 140). */
+export type UpgradeNeed = 'agents_read' | 'agents_write' | 'edit';
+
+/** One project in an upgrade request, with what the member has there now. */
+export type UpgradeRequestItem = {
+	project_id: string;
+	project_name: string;
+	need: UpgradeNeed;
+	/** Their role there now (viewer/editor), when known. */
+	role: string | null;
+	/** What their agents may do there now, when known. */
+	agent_access: AgentAccess | null;
+	/** The project's standing approval ("editors' agents can make changes") is already on. */
+	editor_agents_write: boolean;
+};
+
 export type IncomingPeopleRequest = {
 	id: string;
 	created_at: string;
 	expires_at: string | null;
-	/** access = wants to see your projects; rejoin = a former member used the project's link. */
-	kind: 'access' | 'rejoin';
-	/** The project a rejoin is about. */
+	/**
+	 * access = wants to see your projects; rejoin = a former member used the project's
+	 * link; upgrade = a member (or their agent) wants more in projects they're already in.
+	 */
+	kind: 'access' | 'rejoin' | 'upgrade';
+	/** The project a rejoin is about; for an upgrade, the first project asked about. */
 	project: { id: string; name: string } | null;
+	/** Upgrade only: each project asked about (1 to 10, all yours). Empty otherwise. */
+	items: UpgradeRequestItem[];
 	agent_access_requested: AgentAccess | null;
 	role_requested: PersonRole;
 	project_hint: string | null;
@@ -75,6 +96,32 @@ function text(value: unknown): string | null {
 
 const OUTGOING_STATUSES = new Set(['pending', 'approved', 'declined', 'expired', 'canceled']);
 
+function isUpgradeNeed(value: unknown): value is UpgradeNeed {
+	return value === 'agents_read' || value === 'agents_write' || value === 'edit';
+}
+
+/** Upgrade items, dropping malformed ones and repeats of a project. */
+function readUpgradeItems(value: unknown): UpgradeRequestItem[] {
+	if (!Array.isArray(value)) return [];
+	const items: UpgradeRequestItem[] = [];
+	const seen = new Set<string>();
+	for (const entry of value) {
+		const item = record(entry);
+		const projectId = text(item?.project_id);
+		if (!item || !projectId || !isUpgradeNeed(item.need) || seen.has(projectId)) continue;
+		seen.add(projectId);
+		items.push({
+			project_id: projectId,
+			project_name: text(item.project_name) ?? 'your project',
+			need: item.need,
+			role: text(item.role),
+			agent_access: isAgentAccess(item.agent_access) ? item.agent_access : null,
+			editor_agents_write: item.editor_agents_write === true
+		});
+	}
+	return items;
+}
+
 function readIncoming(value: unknown): IncomingPeopleRequest | null {
 	const row = record(value);
 	const id = text(row?.id);
@@ -83,13 +130,27 @@ function readIncoming(value: unknown): IncomingPeopleRequest | null {
 	const from = record(row.from) ?? {};
 	const project = record(row.project);
 	const projectId = text(project?.id);
-	const kind = row.kind === 'rejoin' && projectId ? 'rejoin' : 'access';
+	// An upgrade with nothing readable to approve isn't shown at all.
+	const items = row.kind === 'upgrade' ? readUpgradeItems(row.items) : [];
+	if (row.kind === 'upgrade' && items.length === 0) return null;
+	const kind =
+		row.kind === 'upgrade'
+			? 'upgrade'
+			: row.kind === 'rejoin' && projectId
+				? 'rejoin'
+				: 'access';
+	const firstItem = items[0];
 	return {
 		id,
 		created_at: createdAt,
 		expires_at: text(row.expires_at),
 		kind,
-		project: projectId ? { id: projectId, name: text(project?.name) ?? 'your project' } : null,
+		project: projectId
+			? { id: projectId, name: text(project?.name) ?? 'your project' }
+			: firstItem
+				? { id: firstItem.project_id, name: firstItem.project_name }
+				: null,
+		items,
 		agent_access_requested: isAgentAccess(row.agent_access_requested)
 			? row.agent_access_requested
 			: null,

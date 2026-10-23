@@ -202,6 +202,38 @@ describe('workspace cards', () => {
 		const labeled = buildWorkspaceFinderRequest({ cards, message: 'hi' });
 		expect(labeled.state.policy.join(' ')).toContain('part_of');
 	});
+
+	it("gives the user's Workspace a fixed card and adds its rule only when it is present", () => {
+		const plain = buildWorkspaceFinderRequest({
+			cards: buildWorkspaceCards([project(1)]),
+			message: 'hi'
+		});
+		expect(plain.state.policy.join(' ')).not.toContain('kind workspace');
+
+		const loose = project(2);
+		const cards = buildWorkspaceCards([
+			project(1),
+			{
+				...loose,
+				project: {
+					...loose.project,
+					name: 'Workspace',
+					description: 'Boilerplate row text',
+					kind: 'workspace'
+				}
+			}
+		]);
+		expect(cards[1]!.packet).toMatchObject({
+			name: 'Workspace',
+			kind: 'workspace',
+			description: 'Loose notes and tasks, not a project'
+		});
+		expect(cards[1]!.packet).not.toHaveProperty('next_step');
+		expect(cards[1]!.packet).toHaveProperty('open_tasks');
+		expect(cards[0]!.packet).not.toHaveProperty('kind');
+		const request = buildWorkspaceFinderRequest({ cards, message: 'hi' });
+		expect(request.state.policy.join(' ')).toContain('kind workspace');
+	});
 });
 
 describe('selectWorkspaceProjects', () => {
@@ -554,6 +586,22 @@ describe('loadWorkspaceFinderProjects', () => {
 		expect(hierarchy[0]!.ops).toContainEqual(['in', 'id', ['p2', 'p1']]);
 		// No parent rows: no labels.
 		expect(projects.every((p) => !p.project.part_of && !p.project.includes)).toBe(true);
+	});
+
+	it("marks the user's Workspace from the summaries RPC kind", async () => {
+		const { client } = fakeClient({ onto_actors: [{ id: 'actor-1' }] }, [
+			{ id: 'ws', name: 'Workspace', kind: 'workspace', updated_at: '2026-10-23T00:00:00Z' },
+			{ id: 'p1', name: 'Launch', kind: 'project', updated_at: '2026-10-22T00:00:00Z' }
+		]);
+		const projects = await loadWorkspaceFinderProjects(
+			client as never,
+			'user-1',
+			new AbortController().signal
+		);
+		expect(projects.map((p) => [p.project.id, p.project.kind])).toEqual([
+			['ws', 'workspace'],
+			['p1', undefined]
+		]);
 	});
 
 	// Project hierarchy phase 1: cards carry the tested "part of" labels, naming only

@@ -15,6 +15,8 @@ async function main() {
 		const { data, error } = await supabase
 			.from('onto_projects')
 			.select('id, name, description, created_by')
+			// The Workspace (loose items) isn't a project: it has no START HERE.
+			.eq('kind', 'project')
 			.in('state_key', ['planning', 'active'])
 			.is('deleted_at', null)
 			.is('archived_at', null)

@@ -1,5 +1,8 @@
+// apps/web/src/lib/server/onboarding-progress.ts
 import { onboardingStep } from '$lib/utils/onboarding-state';
 import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
+import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
+import { isWorkspaceProjectId, workspaceHasLiveItems } from '$lib/server/workspace-guard';
 
 /** Saves a milestone monotonically; an older tab cannot roll progress back. */
 export async function saveOnboardingProgress(
@@ -21,7 +24,13 @@ export async function saveOnboardingProgress(
 	if (!user.onboarding_intent || !user.onboarding_stakes)
 		throw new Error('Choose your intent and stakes before continuing.');
 
-	const selectedProject = projectId === undefined ? user.onboarding_project_id : projectId;
+	let selectedProject = projectId === undefined ? user.onboarding_project_id : projectId;
+	let projectToSave = projectId;
+	// The Workspace (loose items) isn't a project: never keep it as the first project.
+	if (selectedProject && (await isWorkspaceProjectId(supabase, selectedProject))) {
+		selectedProject = null;
+		projectToSave = null;
+	}
 	if (selectedProject) {
 		const access = await requireProjectMemberAccess({
 			locals,
@@ -33,14 +42,17 @@ export async function saveOnboardingProgress(
 				'This project is no longer available. Choose another project to continue.'
 			);
 	} else if (step >= 2 && user.onboarding_intent !== 'explore') {
-		throw new Error('Review your first project before continuing.');
+		// Loose notes or tasks dumped into the Workspace also count as a start.
+		const actorId = await ensureActorId(supabase, userId);
+		if (!(await workspaceHasLiveItems(supabase, actorId)))
+			throw new Error('Review your first project before continuing.');
 	}
 
 	const { error: saveError } = await supabase
 		.from('users')
 		.update({
 			onboarding_step: Math.max(step, onboardingStep(user.onboarding_step)),
-			...(projectId !== undefined ? { onboarding_project_id: projectId } : {})
+			...(projectToSave !== undefined ? { onboarding_project_id: projectToSave } : {})
 		})
 		.eq('id', userId)
 		.lte('onboarding_step', Math.max(step, user.onboarding_step))

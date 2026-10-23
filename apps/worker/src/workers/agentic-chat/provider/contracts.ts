@@ -316,6 +316,12 @@ export type AgenticChatTurnProviderRequestV1 = AgenticChatTurnProviderClientRequ
 	 */
 	focusedTableId?: string;
 	/**
+	 * The user's own Workspace project id, from the admitted context the server
+	 * loaded (`data.workspace_project_id`), never from message text. A new task or
+	 * document there routes directly, like one in the focused project.
+	 */
+	workspaceProjectId?: string;
+	/**
 	 * Mutation tools the schema selector (Jev) scored at or above
 	 * JEV_WRITE_COMMISSION_THRESHOLD for the current message: a structured,
 	 * model-judged signal that the message asks for a durable change. Set only

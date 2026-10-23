@@ -7,9 +7,13 @@
 	(Move buttons, right-click, the M key) opens the same rules as a list.
 	The open card lives in shallow history, so Back closes it; a doc, task or goal
 	open in the card's reader gets one more entry, so Back closes the reader first.
+	The Workspace (the person's loose notes, docs and tasks) is no tile: its items sit
+	on the desktop above the projects (the `loose` snippet), drag onto tiles like any
+	doc or task, and dropping a project's doc or task on the dock's Workspace slot
+	sends it back there.
 -->
 <script lang="ts">
-	import { onMount, tick, untrack } from 'svelte';
+	import { onMount, tick, untrack, type Snippet } from 'svelte';
 	import { pushState, replaceState } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
@@ -59,6 +63,18 @@
 	import { PULSE_META, buildLooks, shiftTask } from './desktop-signals';
 
 	export type ProjectPatch = { id: string; patch: Partial<ProjectListSummary> };
+	/** What the loose shelf can ask of the desktop. */
+	export type LooseApi = {
+		open: (item: { kind: 'document' | 'task'; id: string }) => void;
+		move: (item: { kind: 'document' | 'task'; id: string }, anchor: HTMLElement) => void;
+		lifted: string | null;
+	};
+	export type ContentMoved = {
+		item: { kind: 'document' | 'task'; id: string };
+		from: string;
+		to: string;
+		undone: boolean;
+	};
 
 	let {
 		projects,
@@ -67,7 +83,12 @@
 		searching,
 		onPatch,
 		onOpenFull,
-		onDataChanged
+		onDataChanged,
+		workspaceId = null,
+		loose,
+		emptyTiles,
+		titleFor,
+		onContentMoved
 	}: {
 		/** Everything the viewer can see; the rules and folders need the whole family. */
 		projects: readonly ProjectListSummary[];
@@ -81,7 +102,21 @@
 		onOpenFull: (project: ProjectListSummary) => void;
 		/** A modal or chat opened from a card changed something; reload the tiles. */
 		onDataChanged?: () => void;
+		/** The viewer's Workspace project (kind = 'workspace'); it is in `projects`, never a tile. */
+		workspaceId?: string | null;
+		/** The loose shelf, drawn above the tiles inside the desktop so its cards drag. */
+		loose?: Snippet<[LooseApi]>;
+		/** Shown in place of the tiles when no project passes the filters. */
+		emptyTiles?: Snippet;
+		/** Titles for items the open card doesn't hold (loose cards). */
+		titleFor?: (item: DesktopItem) => string | null;
+		/** A doc or task moved (or moved back on Undo). */
+		onContentMoved?: (event: ContentMoved) => void;
 	} = $props();
+
+	const isWorkspace = (project: ProjectListSummary) => project.kind === 'workspace';
+	const verdictOf = (item: DesktopItem, target: DropTarget) =>
+		dropVerdict(item, target, index, workspaceId);
 
 	const HOVER_MS = 320;
 	const SPRING_MS = 650;
@@ -158,10 +193,11 @@
 	// A folder stays on the desktop when it or anything inside it passes the
 	// filters. A search lays matches out flat, sub-projects included.
 	const tiles = $derived.by(() => {
-		if (searching) return [...visible];
+		if (searching) return visible.filter((project) => !isWorkspace(project));
 		const shown = new Set(visible.map((project) => project.id));
 		return projects.filter(
 			(project) =>
+				!isWorkspace(project) &&
 				isOnDesktop(project, index) &&
 				(shown.has(project.id) ||
 					childrenOf(project.id).some((child) => shown.has(child.id)))
@@ -174,7 +210,10 @@
 		if (searching) return [];
 		const placed = new Set(tiles.map((project) => project.id));
 		return sortRecent(
-			completed.filter((project) => isOnDesktop(project, index) && !placed.has(project.id)),
+			completed.filter(
+				(project) =>
+					!isWorkspace(project) && isOnDesktop(project, index) && !placed.has(project.id)
+			),
 			index
 		);
 	});
@@ -208,7 +247,10 @@
 	const openProject = $derived(openId ? (index.byId.get(openId) ?? null) : null);
 	const openParent = $derived(openProject ? parentOf(openProject) : null);
 	const openInside = $derived(openProject ? childrenOf(openProject.id) : []);
-	const canHold = $derived(Boolean(openProject) && !openParent);
+	// The Workspace holds loose items, never projects.
+	const canHold = $derived(
+		Boolean(openProject) && !openParent && openProject?.kind !== 'workspace'
+	);
 
 	let tabChoice = $state<{ id: string; tab: CardTab } | null>(null);
 	const tab = $derived.by<CardTab>(() => {
@@ -341,7 +383,10 @@
 
 	const dockItems = $derived.by(() => {
 		const top = sortRecent(
-			projects.filter((project) => isOnDesktop(project, index) && project.id !== openId),
+			projects.filter(
+				(project) =>
+					!isWorkspace(project) && isOnDesktop(project, index) && project.id !== openId
+			),
 			index
 		);
 		const current = (project: ProjectListSummary) =>
@@ -402,7 +447,7 @@
 	let announcement = $state('');
 
 	const drag = createDesktopDrag({
-		verdict: (item, target) => dropVerdict(item, target, index),
+		verdict: verdictOf,
 		onStart: (item) => {
 			hover = null;
 			clearHoverTimer();
@@ -451,6 +496,8 @@
 
 	function itemTitle(item: DesktopItem): string {
 		if (item.kind === 'project') return index.byId.get(item.id)?.name ?? 'This project';
+		const named = titleFor?.(item);
+		if (named) return named;
 		const data = card?.id === item.projectId ? card.data : null;
 		if (item.kind === 'document')
 			return data?.project.documents.find((doc) => doc.id === item.id)?.title || 'this doc';
@@ -592,14 +639,16 @@
 		clearHoverTimer();
 		const options: PickerOption[] = [];
 		const consider = (target: DropTarget, option: Omit<PickerOption, 'reason'>) => {
-			const verdict = dropVerdict(item, target, index);
+			const verdict = verdictOf(item, target);
 			if (verdict)
 				options.push({ ...option, reason: verdict.ok ? undefined : verdict.reason });
 		};
 		if (item.kind === 'project' && index.byId.get(item.id)?.parent_project_id)
-			consider({ kind: 'desktop' }, { key: 'desktop', label: 'Projects (top level)' });
+			consider({ kind: 'desktop' }, { key: 'desktop', label: 'Workspace (top level)' });
+		if (item.kind !== 'project')
+			consider({ kind: 'desktop' }, { key: 'desktop', label: 'Workspace (loose items)' });
 		const top = sortRecent(
-			projects.filter((project) => isOnDesktop(project, index)),
+			projects.filter((project) => !isWorkspace(project) && isOnDesktop(project, index)),
 			index
 		);
 		for (const project of top) {
@@ -630,7 +679,7 @@
 		const { item, anchor } = pending;
 		const target: DropTarget =
 			key === 'desktop' ? { kind: 'desktop' } : { kind: 'project', id: key };
-		const verdict = dropVerdict(item, target, index);
+		const verdict = verdictOf(item, target);
 		if (!verdict?.ok) return;
 		const landing = root?.querySelector<HTMLElement>(
 			key === 'desktop'
@@ -646,6 +695,25 @@
 			onScreen && landing?.closest('[data-dock]') ? 'left' : 'below'
 		);
 	}
+
+	// ---------- Loose items (the Workspace shelf) ----------
+
+	async function openLoose(item: { kind: 'document' | 'task'; id: string }) {
+		if (!workspaceId) return;
+		openCard(workspaceId);
+		await tick();
+		openItem({ kind: item.kind, id: item.id });
+	}
+
+	const looseApi: LooseApi = {
+		open: (item) => void openLoose(item),
+		move: (item, anchor) => {
+			if (workspaceId) openPicker({ ...item, projectId: workspaceId }, anchor);
+		},
+		get lifted() {
+			return drag.lifted;
+		}
+	};
 
 	// ---------- Writes ----------
 
@@ -741,7 +809,11 @@
 		const count = item.kind === 'document' ? 1 + prepared.nestedCount : 1;
 		shiftCounts(item, item.projectId, targetId, count, task);
 		refreshCards(item.projectId, targetId);
-		const message = `Moved “${shortName(title, 48)}” to ${shortName(index.byId.get(targetId)?.name ?? '')}.`;
+		onContentMoved?.({ item, from: item.projectId, to: targetId, undone: false });
+		const message =
+			targetId === workspaceId
+				? `Sent “${shortName(title, 48)}” to your Workspace.`
+				: `Moved “${shortName(title, 48)}” to ${shortName(index.byId.get(targetId)?.name ?? '')}.`;
 		announcement = message;
 		const toastId: string = toastService.add({
 			type: 'success',
@@ -775,6 +847,7 @@
 			}
 			shiftCounts(item, targetId, item.projectId, count, task);
 			refreshCards(item.projectId, targetId);
+			onContentMoved?.({ item, from: targetId, to: item.projectId, undone: true });
 			toastService.success('Moved back.');
 		} catch (cause) {
 			toastService.error(errorMessage(cause));
@@ -937,73 +1010,91 @@
 			/>
 		</div>
 	{:else}
-		{#if searching}
-			<p class="text-xs text-muted-foreground">
-				{tiles.length}
-				{tiles.length === 1 ? 'match' : 'matches'} across all states
-			</p>
+		{#if loose}
+			{@render loose(looseApi)}
 		{/if}
-		<div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-			<DesktopKey />
-			<div
-				class="inline-flex rounded-md bg-muted p-0.5 text-xs font-semibold"
-				role="group"
-				aria-label="Arrange projects"
-			>
-				{#each SORTS as { value, label } (value)}
-					<button
-						type="button"
-						class="min-h-9 rounded-md px-3 pressable [@media(pointer:fine)]:min-h-7 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {sort ===
-						value
-							? 'bg-card text-foreground shadow-sm'
-							: 'text-muted-foreground hover:text-foreground'}"
-						aria-pressed={sort === value}
-						onclick={() => setSort(value)}
-					>
-						{label}
-					</button>
-				{/each}
-			</div>
-		</div>
-
-		{#each groups as group (group.key)}
-			<section class="grid gap-2" aria-label={sort === 'activity' ? group.label : 'Projects'}>
-				{#if sort === 'activity'}
-					<h2 class="micro-label text-muted-foreground">
-						{group.label.toUpperCase()} · {group.projects.length}
+		{#if emptyTiles && !tiles.length && !completedTiles.length}
+			{#if loose}
+				<h2 class="micro-label -mb-3 text-muted-foreground">PROJECTS</h2>
+			{/if}
+			{@render emptyTiles()}
+		{:else}
+			{#if searching}
+				<p class="text-xs text-muted-foreground">
+					{tiles.length}
+					{tiles.length === 1 ? 'match' : 'matches'} across all states
+				</p>
+			{/if}
+			<div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+				{#if loose}
+					<h2 class="micro-label self-center text-muted-foreground">
+						PROJECTS · {tiles.length}
 					</h2>
 				{/if}
-				<div class="grid-tiles">
-					{#each group.projects as project (project.id)}
-						{@render tile(project)}
+				<DesktopKey />
+				<div
+					class="inline-flex rounded-md bg-muted p-0.5 text-xs font-semibold"
+					role="group"
+					aria-label="Arrange projects"
+				>
+					{#each SORTS as { value, label } (value)}
+						<button
+							type="button"
+							class="min-h-9 rounded-md px-3 pressable [@media(pointer:fine)]:min-h-7 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {sort ===
+							value
+								? 'bg-card text-foreground shadow-sm'
+								: 'text-muted-foreground hover:text-foreground'}"
+							aria-pressed={sort === value}
+							onclick={() => setSort(value)}
+						>
+							{label}
+						</button>
 					{/each}
 				</div>
-			</section>
-		{/each}
+			</div>
 
-		{#if completedTiles.length}
-			<section class="grid gap-2">
-				<button
-					type="button"
-					class="flex min-h-9 items-center gap-1.5 self-start rounded-md px-1 text-left micro-label text-muted-foreground hover:text-foreground"
-					aria-expanded={completedOpen}
-					onclick={() => (completedOpen = !completedOpen)}
+			{#each groups as group (group.key)}
+				<section
+					class="grid gap-2"
+					aria-label={sort === 'activity' ? group.label : 'Projects'}
 				>
-					<ChevronRight
-						class="h-3.5 w-3.5 transition-transform motion-reduce:transition-none {completedOpen
-							? 'rotate-90'
-							: ''}"
-					/>
-					COMPLETED · {completedTiles.length}
-				</button>
-				{#if completedOpen}
+					{#if sort === 'activity'}
+						<h2 class="micro-label text-muted-foreground">
+							{group.label.toUpperCase()} · {group.projects.length}
+						</h2>
+					{/if}
 					<div class="grid-tiles">
-						{#each completedTiles as project (project.id)}
+						{#each group.projects as project (project.id)}
 							{@render tile(project)}
 						{/each}
 					</div>
-				{/if}
-			</section>
+				</section>
+			{/each}
+
+			{#if completedTiles.length}
+				<section class="grid gap-2">
+					<button
+						type="button"
+						class="flex min-h-9 items-center gap-1.5 self-start rounded-md px-1 text-left micro-label text-muted-foreground hover:text-foreground"
+						aria-expanded={completedOpen}
+						onclick={() => (completedOpen = !completedOpen)}
+					>
+						<ChevronRight
+							class="h-3.5 w-3.5 transition-transform motion-reduce:transition-none {completedOpen
+								? 'rotate-90'
+								: ''}"
+						/>
+						COMPLETED · {completedTiles.length}
+					</button>
+					{#if completedOpen}
+						<div class="grid-tiles">
+							{#each completedTiles as project (project.id)}
+								{@render tile(project)}
+							{/each}
+						</div>
+					{/if}
+				</section>
+			{/if}
 		{/if}
 	{/if}
 </div>

@@ -1502,10 +1502,10 @@ describe('buildLitePromptEnvelope', () => {
 		});
 
 		const focus = envelope.sections.find((section) => section.id === 'focus_purpose');
-		expect(focus?.content).toContain('Workflow hints for workspace-level chat:');
+		expect(focus?.content).toContain('Workflow hints for global chat:');
 		// WP-6 (2026-07-10): call-shape mechanics live in the tool descriptions;
 		// the workflow hint keeps only the routing policy.
-		expect(focus?.content).toContain('get_workspace_overview (workspace-wide)');
+		expect(focus?.content).toContain('get_workspace_overview (all projects)');
 		expect(focus?.content).toContain('get_project_overview (one named project)');
 		// create_onto_project is mounted on the global surface, so a "start a new
 		// project" request is answerable here; without the hint the model routed the
@@ -1575,7 +1575,7 @@ describe('buildLitePromptEnvelope', () => {
 		});
 
 		const focus = envelope.sections.find((section) => section.id === 'focus_purpose');
-		expect(focus?.content).toContain('Workflow hints for workspace-level chat:');
+		expect(focus?.content).toContain('Workflow hints for global chat:');
 		expect(focus?.content).toContain('Workflow hints when daily-brief context is loaded:');
 		expect(focus?.slots).toMatchObject({
 			workflowBlockId: 'global',
@@ -2126,7 +2126,7 @@ describe('audit 2026-09-02 context rendering', () => {
 			'Paused Thing (project_id: project-2): paused (excluded from get_workspace_overview counts); tasks: not loaded.'
 		);
 		expect(timeline?.content).toContain(
-			'Workspace scope: 3 accessible projects (2 non-paused; get_workspace_overview counts only non-paused projects).'
+			'All projects: 3 accessible (2 non-paused; get_workspace_overview counts only non-paused projects).'
 		);
 		// Intelligence summaries outside the bundles still render, compactly, when
 		// the payload carries no project index.
@@ -2237,6 +2237,120 @@ describe('audit 2026-09-02 context rendering', () => {
 		expect(section?.content.match(/project_id: project-1/g)).toHaveLength(1);
 		expect(section?.content).not.toContain('More projects exist than fit in the seed snapshot');
 		expect(section?.content).not.toContain('Actionable loaded context index');
+	});
+
+	// Workspace (2026-10-23): the user's kind='workspace' project renders once, on
+	// its own line, as the home for saves that fit no project, never as a project.
+	describe('Workspace line', () => {
+		const rollup = { open: 2, overdue: 0, in_progress: 0, blocked: 0, truncated: false };
+		const meta = {
+			generated_at: '2026-04-15T12:00:00Z',
+			source: 'rpc',
+			project_count: 1,
+			active_project_count: 1,
+			projects_returned: 1,
+			project_limit: 8,
+			includes_doc_structure: false,
+			entity_limits_per_project: { goals: 2, milestones: 2, plans: 2 }
+		};
+
+		function globalSection(data: Record<string, unknown>) {
+			const envelope = buildLitePromptEnvelope({
+				contextType: 'global',
+				entityId: null,
+				projectId: null,
+				now: '2026-04-15T12:00:00Z',
+				data: { project_intelligence: GLOBAL_PI, context_meta: meta, ...data }
+			});
+			return {
+				location: envelope.sections.find((item) => item.id === 'location_loaded_context')
+					?.content,
+				focus: envelope.sections.find((item) => item.id === 'focus_purpose')?.content
+			};
+		}
+
+		it('lists the Workspace first with its open tasks and keeps it out of project lines', () => {
+			const { location } = globalSection({
+				workspace_project_id: 'ws-1',
+				projects: [
+					{
+						project: { id: 'project-1', name: 'Launch Alpha', state_key: 'active' },
+						goals: [],
+						milestones: [],
+						plans: [],
+						task_rollup: rollup
+					}
+				],
+				project_index: [
+					{
+						id: 'ws-1',
+						name: 'Workspace',
+						kind: 'workspace',
+						state_key: 'active',
+						task_rollup: rollup
+					},
+					{
+						id: 'project-1',
+						name: 'Launch Alpha',
+						state_key: 'active',
+						task_rollup: rollup
+					}
+				]
+			});
+			expect(location).toContain(
+				"Workspace (project_id: ws-1) · the user's loose notes and tasks, not a project; save here when no project fits; tasks: 2 open."
+			);
+			expect(location?.match(/project_id: ws-1/g)).toHaveLength(1);
+			expect(location).not.toContain('Workspace (project_id: ws-1): active');
+			expect(location?.indexOf('Workspace (project_id: ws-1)')).toBeLessThan(
+				location?.indexOf('Launch Alpha (project_id: project-1)') ?? -1
+			);
+		});
+
+		it('renders a Workspace created by this load from its id alone', () => {
+			const { location } = globalSection({
+				workspace_project_id: 'ws-new',
+				projects: [],
+				project_index: []
+			});
+			expect(location).toContain(
+				"Workspace (project_id: ws-new) · the user's loose notes and tasks, not a project; save here when no project fits."
+			);
+		});
+
+		it('states the save-to-Workspace rule in the global workflow hints', () => {
+			const { focus } = globalSection({ projects: [] });
+			expect(focus).toContain(
+				'When the user wants a note, doc, or task saved and no project clearly fits, save it to their Workspace'
+			);
+			expect(focus).toContain('Never create a project to hold one note or task');
+		});
+
+		it('names the Workspace in a project chat only when the context carries its id', () => {
+			const projectData = {
+				project: {
+					id: 'project-1',
+					name: 'Launch Alpha',
+					state_key: 'active',
+					updated_at: '2026-04-14T12:00:00Z'
+				},
+				tasks: [],
+				documents: [],
+				members: []
+			};
+			const location = (data: Record<string, unknown>) =>
+				buildLitePromptEnvelope({
+					contextType: 'project',
+					entityId: 'project-1',
+					projectId: 'project-1',
+					projectName: 'Launch Alpha',
+					data
+				}).sections.find((item) => item.id === 'location_loaded_context')?.content;
+			expect(location({ ...projectData, workspace_project_id: 'ws-1' })).toContain(
+				"- The user's Workspace (project_id: ws-1) holds loose notes and tasks outside any project; save there only what the user says is not for this project."
+			);
+			expect(location(projectData)).not.toContain("The user's Workspace");
+		});
 	});
 
 	// Tasker 122 (2026-10-17): global chat told the owner twice that projects

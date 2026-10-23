@@ -653,6 +653,8 @@ export async function enqueueScheduledProjectAudits(): Promise<ScheduledAuditEnq
 			let query = supabase
 				.from('onto_projects')
 				.select('id, created_by')
+				// The Workspace (loose items) isn't a project: no scheduled audits.
+				.eq('kind', 'project')
 				.in('state_key', ['active', 'planning'])
 				.is('deleted_at', null)
 				.is('archived_at', null)

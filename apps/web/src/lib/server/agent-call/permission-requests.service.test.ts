@@ -98,3 +98,91 @@ describe('permission retries', () => {
 		expect(rpc).not.toHaveBeenCalled();
 	});
 });
+
+// Workspace (2026-10-23): get_buildos_permissions tells a connector where loose
+// items go, even while edit requests are switched off.
+describe('get_buildos_permissions workspace', () => {
+	const WS = '20000000-0000-4000-8000-000000000001';
+	const USER = '30000000-0000-4000-8000-000000000001';
+	function admin(options: { externalAgentAccess?: string } = {}) {
+		const rpc = vi.fn(async (fn: string) =>
+			fn === 'ensure_workspace_project_for_user'
+				? { data: WS, error: null }
+				: { data: null, error: { message: `unexpected ${fn}` } }
+		);
+		const from = vi.fn((table: string) => {
+			const b: any = {
+				select: () => b,
+				eq: () => b,
+				is: () => b,
+				maybeSingle: async () =>
+					table === 'onto_projects'
+						? {
+								data: {
+									external_agent_access: options.externalAgentAccess ?? 'standard'
+								},
+								error: null
+							}
+						: { data: { enabled: false, epoch: 1 }, error: null }
+			};
+			return b;
+		});
+		return { rpc, from };
+	}
+	const status = async (
+		scope: ConstructorParameters<typeof PermissionRequestService>[2],
+		projectScopeMode: 'all_unrestricted' | 'selected',
+		client = admin()
+	) =>
+		(await new PermissionRequestService(client, ref, scope, 'https://build-os.com', {
+			userId: USER,
+			projectScopeMode
+		}).control('get_buildos_permissions', {})) as Record<string, unknown>;
+
+	it('returns the Workspace id when this connection can write to it', async () => {
+		const result = await status(
+			{ mode: 'read_write', project_ids: [WS], write_project_ids: [WS] },
+			'all_unrestricted'
+		);
+		expect(result.workspace).toMatchObject({ project_id: WS, name: 'Workspace' });
+		expect(String((result.workspace as { use: string }).use)).toContain(
+			'Never create a project to hold a single item'
+		);
+		// Edit requests are off: the status still answers, with no capabilities.
+		expect(result.scoped_grants).toEqual([]);
+		expect(result.capabilities).toEqual([]);
+	});
+
+	it('counts a Workspace created by this call as reachable on an all-projects connection', async () => {
+		const result = await status(
+			{ mode: 'read_write', project_ids: [], write_project_ids: [] },
+			'all_unrestricted'
+		);
+		expect(result.workspace).toMatchObject({ project_id: WS });
+	});
+
+	it('withholds the id and points at the grant page on a selected-projects connection', async () => {
+		const result = await status(
+			{ mode: 'read_write', project_ids: [id], write_project_ids: [id] },
+			'selected'
+		);
+		expect(result.workspace).toMatchObject({
+			project_id: null,
+			grant_url: `https://build-os.com/profile/agent-keys/${id}/grant?project=${WS}`
+		});
+	});
+
+	it('respects an owner who restricted agents on the Workspace', async () => {
+		const result = await status(
+			{ mode: 'read_write', project_ids: [], write_project_ids: [] },
+			'all_unrestricted',
+			admin({ externalAgentAccess: 'restricted' })
+		);
+		expect(result.workspace).toMatchObject({ project_id: null });
+	});
+
+	it('says nothing about the Workspace to a read-only connection', async () => {
+		const result = await status({ mode: 'read_only', project_ids: [WS] }, 'all_unrestricted');
+		expect(result).not.toHaveProperty('workspace');
+	});
+});

@@ -191,7 +191,7 @@ export function buildWorkerSemanticMutationOrdering(
 	return [
 		'Worker write routing: the large complex-write contract route is deferred in this opening pass.',
 		'For a clear commissioned durable change, propose the complete concrete mutation batch with the available mutation tools. The worker deterministically executes only an eligible simple batch; it withholds any complex batch before execution and opens the independently reviewed contract route in the next pass.',
-		'Resolve project references from project records; a Context Document is not a candidate project. A direct call is fine when the target id is the focused entity, was given by the user, or is the only entity of its kind a read returned this turn.',
+		"Resolve project references from project records; a Context Document is not a candidate project. A direct call is fine when the target id is the focused entity, was given by the user, or is the only entity of its kind a read returned this turn. A new note, doc, or task that fits no project goes to the user's Workspace (not a project).",
 		'Do not split, shrink, or serialize a complex request merely to fit the simple lane. Include the complete commissioned batch that can be expressed with the available tools.',
 		'Call request_turn_clarification instead when a required target or value has multiple plausible choices. Never guess among loaded candidates. Include every known candidate with its stable ID when available; the candidates are shown to the user as a list beneath your question.',
 		'For an answer-only turn, do not call a disposition control; answer after any necessary reads.',

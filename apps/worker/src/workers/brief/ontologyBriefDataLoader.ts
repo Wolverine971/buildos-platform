@@ -62,6 +62,7 @@ import type {
 	RecentUpdates,
 	UnblockingTask
 } from './ontologyBriefTypes.js';
+import { buildWorkspaceBriefSection, isWorkspaceProjectRow } from './workspaceBriefSection.js';
 
 export const CALENDAR_BRIEF_CAPS = {
 	TODAY: 8,
@@ -1626,7 +1627,7 @@ export class OntologyBriefDataLoader {
 		const { data: projectsData, error: projectsError } = await this.supabase
 			.from('onto_projects')
 			.select(
-				'id, name, state_key, type_key, description, next_step_short, next_step_long, created_at, updated_at, created_by'
+				'id, name, kind, state_key, type_key, description, next_step_short, next_step_long, created_at, updated_at, created_by'
 			)
 			.or(projectAccessFilter)
 			.in('state_key', ['planning', 'active'])
@@ -2591,86 +2592,96 @@ export class OntologyBriefDataLoader {
 			})
 			.slice(0, ENTITY_CAPS.GOALS);
 
-		// Build project brief data
-		const projects: ProjectBriefData[] = projectsData.map((data) => {
-			const projectGoals = data.goals
-				.map((g) => data.goalProgress.get(g.id))
-				.filter((g): g is GoalProgress => g !== undefined);
-			const unblockingTasks = findUnblockingTasks(data.tasks, data.edges);
-			const projectRequirements = [...data.requirements].sort(
-				(a, b) => parseISO(b.created_at).getTime() - parseISO(a.created_at).getTime()
-			);
+		// Build project brief data. The Workspace is not a project: its tasks still count
+		// in the day's task lists above, but it gets its own "Loose ends" section instead
+		// of a project write-up.
+		const workspaceData =
+			projectsData.find((data) => isWorkspaceProjectRow(data.project)) ?? null;
+		const projects: ProjectBriefData[] = projectsData
+			.filter((data) => !isWorkspaceProjectRow(data.project))
+			.map((data) => {
+				const projectGoals = data.goals
+					.map((g) => data.goalProgress.get(g.id))
+					.filter((g): g is GoalProgress => g !== undefined);
+				const unblockingTasks = findUnblockingTasks(data.tasks, data.edges);
+				const projectRequirements = [...data.requirements].sort(
+					(a, b) => parseISO(b.created_at).getTime() - parseISO(a.created_at).getTime()
+				);
 
-			// Get active plan
-			const activePlan = data.plans.find((p) => p.state_key === 'active') || null;
+				// Get active plan
+				const activePlan = data.plans.find((p) => p.state_key === 'active') || null;
 
-			// Get next steps from project
-			const nextSteps: string[] = [];
-			if (data.project.next_step_short) {
-				nextSteps.push(data.project.next_step_short);
-			}
-			if (data.project.next_step_long) {
-				nextSteps.push(data.project.next_step_long);
-			}
+				// Get next steps from project
+				const nextSteps: string[] = [];
+				if (data.project.next_step_short) {
+					nextSteps.push(data.project.next_step_short);
+				}
+				if (data.project.next_step_long) {
+					nextSteps.push(data.project.next_step_long);
+				}
 
-			// Get next milestone (already pre-filtered to exclude completed/missed at DB level)
-			const nextMilestone = data.milestones
-				.filter((m) => m.due_at !== null)
-				.sort((a, b) => parseISO(a.due_at!).getTime() - parseISO(b.due_at!).getTime())[0];
-
-			const projectTodaysTasks = todaysTasksByProject.get(data.project.id) ?? [];
-			const projectOverdueTasks = overdueTasksByProject.get(data.project.id) ?? [];
-			const projectUpcomingAll = upcomingTasksByProject.get(data.project.id) ?? [];
-			const projectBlockedTasks = blockedTasksByProject.get(data.project.id) ?? [];
-			const projectRecentlyUpdatedAll = recentlyUpdatedByProject.get(data.project.id) ?? [];
-			const projectCalendarToday = calendarTodayByProject.get(data.project.id) ?? [];
-			const projectCalendarUpcoming = calendarUpcomingByProject.get(data.project.id) ?? [];
-
-			// Project-level strategic task splits with deduplication
-			const projectRecentlyUpdated = projectRecentlyUpdatedAll.slice(
-				0,
-				ENTITY_CAPS.TASKS_RECENT
-			);
-			const projectRecentIds = new Set(projectRecentlyUpdated.map((t) => t.id));
-			const projectUpcoming = projectUpcomingAll
-				.filter((t) => !projectRecentIds.has(t.id))
-				.slice(0, ENTITY_CAPS.TASKS_UPCOMING);
-			const recentChanges = buildProjectRecentChanges({
-				project: data,
-				recentTasks: projectRecentlyUpdated
-			});
-
-			return {
-				project: data.project,
-				isShared: data.isShared,
-				activityLogs: data.activityLogs,
-				startHere: data.startHere,
-				recentChanges,
-				goals: projectGoals.slice(0, ENTITY_CAPS.GOALS),
-				plans: data.plans.slice(0, ENTITY_CAPS.PLANS),
-				requirements: projectRequirements.slice(0, ENTITY_CAPS.REQUIREMENTS),
-				documents: [...data.documents]
+				// Get next milestone (already pre-filtered to exclude completed/missed at DB level)
+				const nextMilestone = data.milestones
+					.filter((m) => m.due_at !== null)
 					.sort(
-						(a, b) =>
-							parseISO(b.updated_at).getTime() - parseISO(a.updated_at).getTime()
-					)
-					.slice(0, ENTITY_CAPS.DOCUMENTS),
-				nextSteps,
-				nextMilestone: nextMilestone
-					? formatMilestoneForBrief(nextMilestone, briefDate, timezone)
-					: null,
-				activePlan,
-				calendarToday: projectCalendarToday,
-				calendarUpcoming: projectCalendarUpcoming,
-				todaysTasks: projectTodaysTasks,
-				overdueTasks: projectOverdueTasks,
-				thisWeekTasks: [...projectTodaysTasks, ...projectUpcomingAll],
-				blockedTasks: projectBlockedTasks,
-				unblockingTasks: unblockingTasks.map((u) => u.task),
-				recentlyUpdatedTasks: projectRecentlyUpdated,
-				upcomingTasks: projectUpcoming
-			};
-		});
+						(a, b) => parseISO(a.due_at!).getTime() - parseISO(b.due_at!).getTime()
+					)[0];
+
+				const projectTodaysTasks = todaysTasksByProject.get(data.project.id) ?? [];
+				const projectOverdueTasks = overdueTasksByProject.get(data.project.id) ?? [];
+				const projectUpcomingAll = upcomingTasksByProject.get(data.project.id) ?? [];
+				const projectBlockedTasks = blockedTasksByProject.get(data.project.id) ?? [];
+				const projectRecentlyUpdatedAll =
+					recentlyUpdatedByProject.get(data.project.id) ?? [];
+				const projectCalendarToday = calendarTodayByProject.get(data.project.id) ?? [];
+				const projectCalendarUpcoming =
+					calendarUpcomingByProject.get(data.project.id) ?? [];
+
+				// Project-level strategic task splits with deduplication
+				const projectRecentlyUpdated = projectRecentlyUpdatedAll.slice(
+					0,
+					ENTITY_CAPS.TASKS_RECENT
+				);
+				const projectRecentIds = new Set(projectRecentlyUpdated.map((t) => t.id));
+				const projectUpcoming = projectUpcomingAll
+					.filter((t) => !projectRecentIds.has(t.id))
+					.slice(0, ENTITY_CAPS.TASKS_UPCOMING);
+				const recentChanges = buildProjectRecentChanges({
+					project: data,
+					recentTasks: projectRecentlyUpdated
+				});
+
+				return {
+					project: data.project,
+					isShared: data.isShared,
+					activityLogs: data.activityLogs,
+					startHere: data.startHere,
+					recentChanges,
+					goals: projectGoals.slice(0, ENTITY_CAPS.GOALS),
+					plans: data.plans.slice(0, ENTITY_CAPS.PLANS),
+					requirements: projectRequirements.slice(0, ENTITY_CAPS.REQUIREMENTS),
+					documents: [...data.documents]
+						.sort(
+							(a, b) =>
+								parseISO(b.updated_at).getTime() - parseISO(a.updated_at).getTime()
+						)
+						.slice(0, ENTITY_CAPS.DOCUMENTS),
+					nextSteps,
+					nextMilestone: nextMilestone
+						? formatMilestoneForBrief(nextMilestone, briefDate, timezone)
+						: null,
+					activePlan,
+					calendarToday: projectCalendarToday,
+					calendarUpcoming: projectCalendarUpcoming,
+					todaysTasks: projectTodaysTasks,
+					overdueTasks: projectOverdueTasks,
+					thisWeekTasks: [...projectTodaysTasks, ...projectUpcomingAll],
+					blockedTasks: projectBlockedTasks,
+					unblockingTasks: unblockingTasks.map((u) => u.task),
+					recentlyUpdatedTasks: projectRecentlyUpdated,
+					upcomingTasks: projectUpcoming
+				};
+			});
 
 		return {
 			briefDate,
@@ -2688,6 +2699,7 @@ export class OntologyBriefDataLoader {
 			recentlyPausedProjects,
 			tasksByWorkMode,
 			projects,
+			workspace: workspaceData ? buildWorkspaceBriefSection(workspaceData) : null,
 			calendar,
 			// Strategic task splits per PROJECT_CONTEXT_ENRICHMENT_SPEC.md
 			recentlyUpdatedTasks,
@@ -2743,7 +2755,7 @@ export class OntologyBriefDataLoader {
 			(briefData.recentUpdates.plans?.length ?? 0);
 
 		return {
-			totalProjects: projectsData.length,
+			totalProjects: projectsData.filter((p) => !isWorkspaceProjectRow(p.project)).length,
 			totalTasks: allTasks.length,
 			totalGoals: allGoals.length,
 			totalMilestones: allMilestones.length,

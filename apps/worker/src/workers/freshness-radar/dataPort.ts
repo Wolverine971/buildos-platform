@@ -309,12 +309,14 @@ export class SupabaseFreshnessDataPort implements FreshnessDataPort {
 	async loadProject(projectId: string): Promise<FreshnessProjectRow | null> {
 		const result = await this.db
 			.from('onto_projects')
-			.select('id, name, description, deleted_at, archived_at')
+			.select('id, name, description, kind, deleted_at, archived_at')
 			.eq('id', projectId)
 			.maybeSingle();
 		if (result.error)
 			throw new Error(`freshness radar read failed (onto_projects): ${result.error.message}`);
-		return (result.data ?? null) as FreshnessProjectRow | null;
+		const project = result.data as (FreshnessProjectRow & { kind?: string | null }) | null;
+		// The Workspace (loose items) isn't a project: no paid freshness scans.
+		return project && project.kind !== 'workspace' ? project : null;
 	}
 
 	async loadLastScanCursor(projectId: string, userId: string): Promise<string | null> {

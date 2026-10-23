@@ -100,6 +100,11 @@ const GLOBAL_DIRECT_TOOL_NAMES = [
 	'get_document_outline',
 	'read_document_section',
 	'get_onto_document_details',
+	// Document create (2026-10-23, Workspace): a save that fits no project lands
+	// in the user's Workspace, so global chat must be able to create a document.
+	// The project_id argument is the target; write routing treats the Workspace
+	// like a focused project.
+	'create_onto_document',
 	// Task reads and writes. list_onto_tasks takes an OPTIONAL project_id, so it
 	// scans every visible project on a global turn; get_onto_task_details and
 	// move_onto_task complete the scan→read→act chain across projects.
@@ -193,7 +198,6 @@ const PROJECT_DIRECT_TOOL_NAMES = [
 	'search_project',
 	'list_onto_documents',
 	'get_document_tree',
-	'create_onto_document',
 	'update_onto_document',
 	'move_document_in_tree',
 	'link_onto_entities',

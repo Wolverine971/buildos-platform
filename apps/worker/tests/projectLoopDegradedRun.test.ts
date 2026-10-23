@@ -17,7 +17,8 @@ const mocks = vi.hoisted(() => {
 		updates: [] as QueryRecord[],
 		inserts: [] as QueryRecord[],
 		run: {} as Record<string, any>,
-		driftPassesSinceConfirmed: 0
+		driftPassesSinceConfirmed: 0,
+		projectKind: 'project'
 	};
 
 	const claimedRun = {
@@ -46,6 +47,7 @@ const mocks = vi.hoisted(() => {
 					id: 'project-1',
 					name: 'Launch',
 					description: 'Ship v1',
+					kind: state.projectKind,
 					doc_structure: [],
 					deleted_at: null,
 					archived_at: null
@@ -344,6 +346,7 @@ describe('processProjectLoopJob detector degradation', () => {
 		mocks.state.updates.length = 0;
 		mocks.state.inserts.length = 0;
 		mocks.state.driftPassesSinceConfirmed = 0;
+		mocks.state.projectKind = 'project';
 		mocks.state.run = { ...mocks.claimedRun, status: 'queued', queue_job_id: 'queue-1' };
 		mocks.generateDrift.mockResolvedValue([]);
 		mocks.loadUnchangedLensInputs.mockResolvedValue({ documents: false, tasks: false });
@@ -409,6 +412,21 @@ describe('processProjectLoopJob detector degradation', () => {
 			);
 		}
 	);
+
+	it('never reviews the Workspace (loose items), whatever queued the run', async () => {
+		mocks.state.projectKind = 'workspace';
+		await expect(processProjectLoopJob(createJob())).resolves.toMatchObject({
+			success: true,
+			suggestionCount: 0
+		});
+		expect(mocks.rpc).not.toHaveBeenCalledWith('load_project_graph_context', expect.anything());
+		expect(mocks.generateDocOrganization).not.toHaveBeenCalled();
+		expect(mocks.generateOutdatedDocs).not.toHaveBeenCalled();
+		expect(mocks.generateDrift).not.toHaveBeenCalled();
+		expect(mocks.generateTaskConflicts).not.toHaveBeenCalled();
+		expect(mocks.generateProjectCleanupSynthesis).not.toHaveBeenCalled();
+		expect(mocks.state.run).toMatchObject({ status: 'completed', suggestion_count: 0 });
+	});
 
 	it('still loads drift evidence and runs drift on a manual review', async () => {
 		await expect(processProjectLoopJob(createJob())).resolves.toMatchObject({ success: true });

@@ -420,12 +420,14 @@ async function loadDecidedSuggestionKeys(
 async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
 	const { data: projectRow, error: projectError } = await supabase
 		.from('onto_projects')
-		.select('id, name, description, type_key, doc_structure, deleted_at, archived_at')
+		.select('id, name, description, type_key, kind, doc_structure, deleted_at, archived_at')
 		.eq('id', projectId)
 		.maybeSingle();
 
 	if (projectError) throw new Error(`Failed to load project: ${projectError.message}`);
 	if (!projectRow || projectRow.deleted_at || projectRow.archived_at) return null;
+	// The Workspace (loose items) isn't a project: no paid reviews or audits, whatever queued them.
+	if (projectRow.kind === 'workspace') return null;
 
 	const { data: graphData, error: graphError } = await supabase.rpc(
 		'load_project_graph_context',

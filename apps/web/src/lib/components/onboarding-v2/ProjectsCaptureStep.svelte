@@ -14,7 +14,8 @@
 		ListChecks,
 		LoaderCircle,
 		MessageCircle,
-		Sparkles
+		Sparkles,
+		StickyNote
 	} from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ActivationReceipt from '$lib/components/onboarding-v3/ActivationReceipt.svelte';
@@ -231,6 +232,57 @@
 			autoSend: true
 		};
 		showChatModal = true;
+	}
+
+	// "Not a project yet": park the dump in the Workspace as a note and move on. The
+	// server accepts loose Workspace items in place of a first project.
+	let workspaceSaving = $state(false);
+	async function saveToWorkspace() {
+		const text = draftText.trim();
+		if (
+			!text ||
+			creationSessionId ||
+			isVoiceBusy ||
+			isLoadingChat ||
+			showChatModal ||
+			busy ||
+			workspaceSaving
+		)
+			return;
+		workspaceSaving = true;
+		try {
+			const response = await fetch('/api/workspace/capture', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', 'X-Change-Source': 'workspace' },
+				body: JSON.stringify({
+					kind: 'note',
+					text,
+					source: 'onboarding',
+					idempotency_key: crypto.randomUUID()
+				})
+			});
+			const payload = await response.json().catch(() => null);
+			if (!response.ok || !payload?.data?.item) {
+				throw new Error(
+					payload?.error?.message ?? payload?.error ?? 'Could not save that.'
+				);
+			}
+			track('first_capture_skipped', {
+				reason: 'saved_to_workspace',
+				capture_length: text.length
+			});
+			draftText = '';
+			createdProjectIds = [];
+			sourceText = '';
+			await onProjectsCreated([]);
+			await onNext();
+		} catch (cause) {
+			toastService.error(
+				cause instanceof Error && cause.message ? cause.message : 'Could not save that.'
+			);
+		} finally {
+			workspaceSaving = false;
+		}
 	}
 
 	async function resumeCreation() {
@@ -621,7 +673,8 @@
 					!draftText.trim() ||
 					isVoiceBusy ||
 					isLoadingChat ||
-					busy}
+					busy ||
+					workspaceSaving}
 				loading={isLoadingChat}
 				class="mt-4 w-full shadow-ink"
 			>
@@ -632,6 +685,24 @@
 				BuildOS reads your dump and builds a structured project — you'll see exactly what it
 				understood before you continue.
 			</p>
+			<div class="mt-3 flex justify-center">
+				<Button
+					variant="ghost"
+					size="sm"
+					icon={StickyNote}
+					onclick={saveToWorkspace}
+					loading={workspaceSaving}
+					disabled={Boolean(creationSessionId) ||
+						!draftText.trim() ||
+						isVoiceBusy ||
+						isLoadingChat ||
+						busy ||
+						workspaceSaving}
+					title="Keep it as a note in your Workspace. Turn it into a project whenever you're ready."
+				>
+					Not a project yet? Save it to my Workspace
+				</Button>
+			</div>
 		</div>
 
 		<!-- Existing projects (returning users): the first win already happened -->

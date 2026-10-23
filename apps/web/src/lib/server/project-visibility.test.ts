@@ -9,6 +9,7 @@ import { needsOnboarding, preflightProjectVisibility } from './project-visibilit
 type CountResult = { count: number | null; error: unknown };
 
 function fakeSupabase(counts: { members: CountResult; owned: CountResult }) {
+	const chains: Record<string, any> = {};
 	const from = vi.fn((table: string) => {
 		const result = table === 'onto_project_members' ? counts.members : counts.owned;
 		const chain = {
@@ -16,9 +17,10 @@ function fakeSupabase(counts: { members: CountResult; owned: CountResult }) {
 			eq: vi.fn(() => chain),
 			is: vi.fn(() => Promise.resolve(result))
 		};
+		chains[table] = chain;
 		return chain;
 	});
-	return { from } as any;
+	return { from, chains } as any;
 }
 
 describe('project visibility preflight', () => {
@@ -40,6 +42,20 @@ describe('project visibility preflight', () => {
 		});
 		expect(supabase.from).toHaveBeenCalledWith('onto_project_members');
 		expect(supabase.from).toHaveBeenCalledWith('onto_projects');
+	});
+
+	it('never counts the Workspace (loose items) as a project', async () => {
+		const supabase = fakeSupabase({
+			members: { count: 0, error: null },
+			owned: { count: 0, error: null }
+		});
+
+		await preflightProjectVisibility(supabase, 'user-1');
+		expect(supabase.chains.onto_project_members.eq).toHaveBeenCalledWith(
+			'onto_projects.kind',
+			'project'
+		);
+		expect(supabase.chains.onto_projects.eq).toHaveBeenCalledWith('kind', 'project');
 	});
 
 	it('skips the project check entirely for a completed user', async () => {

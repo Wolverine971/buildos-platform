@@ -190,6 +190,45 @@ describe('table row create_onto_task', () => {
 		expect(runGateway).not.toHaveBeenCalled();
 	});
 
+	// Workspace (2026-10-23): a project chat may send a new task to the user's
+	// own Workspace. The id comes from the admitted context the server loaded,
+	// never from the model; any other project stays outside the fence.
+	it("lets a project chat create a task in the user's own Workspace", async () => {
+		const WORKSPACE_ID = '88888888-8888-4888-8888-888888888888';
+		const withWorkspace = (args: Record<string, unknown>) => {
+			const value = input({ args }) as unknown as {
+				executionInput: { artifact: { prepared: Record<string, unknown> } };
+			};
+			value.executionInput.artifact.prepared.contextPayload = {
+				data: { workspace_project_id: WORKSPACE_ID }
+			};
+			return value as never;
+		};
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
+			ok: true,
+			data: { task: { ...taskReceipt(), project_id: WORKSPACE_ID } }
+		}));
+		await adapter({ runGateway, taskSync: { syncTaskEvents: vi.fn() } }).execute(
+			withWorkspace({ project_id: WORKSPACE_ID, title: 'Call the dentist' })
+		);
+		expect(runGateway).toHaveBeenCalledWith(
+			expect.objectContaining({
+				scope: expect.objectContaining({
+					project_ids: [WORKSPACE_ID],
+					write_project_ids: [WORKSPACE_ID]
+				})
+			})
+		);
+
+		const refused = vi.fn();
+		await expect(
+			adapter({ runGateway: refused }).execute(
+				withWorkspace({ project_id: OTHER_PROJECT_ID, title: 'Outside scope' })
+			)
+		).rejects.toMatchObject({ failureCode: 'mutation_project_scope_mismatch' });
+		expect(refused).not.toHaveBeenCalled();
+	});
+
 	it('rejects unsupported arguments and absent signed admission', async () => {
 		const port = adapter({ runGateway: vi.fn() });
 		await expect(

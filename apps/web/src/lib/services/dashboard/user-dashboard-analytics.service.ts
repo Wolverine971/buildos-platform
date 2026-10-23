@@ -10,6 +10,7 @@ import type { ServerTiming } from '$lib/server/server-timing';
 import {
 	ensureActorId,
 	fetchProjectSummaries,
+	isWorkspaceProject,
 	type OntologyProjectSummary
 } from '$lib/services/ontology/ontology-projects.service';
 import type {
@@ -641,8 +642,11 @@ export async function getUserDashboardAnalytics(
 		const projectIds = projectSummaries.map((project) => project.id);
 		const nowMs = Date.now();
 
-		payload.snapshot.totalProjects = projectSummaries.length;
-		payload.snapshot.activeProjects = projectSummaries.filter((project) =>
+		// The Workspace (loose items) isn't a project: its tasks and docs count in the totals
+		// and activity below, but not in project counts, staleness, or recent projects.
+		const realProjects = projectSummaries.filter((project) => !isWorkspaceProject(project));
+		payload.snapshot.totalProjects = realProjects.length;
+		payload.snapshot.activeProjects = realProjects.filter((project) =>
 			isActiveProjectState(project.state_key)
 		).length;
 		payload.snapshot.totalTasks = projectSummaries.reduce(
@@ -658,16 +662,16 @@ export async function getUserDashboardAnalytics(
 			0
 		);
 
-		payload.attention.staleProjects7d = projectSummaries.filter((project) => {
+		payload.attention.staleProjects7d = realProjects.filter((project) => {
 			const updatedAtMs = safeTimeMs(project.updated_at);
 			return updatedAtMs > 0 && nowMs - updatedAtMs >= 7 * DAY_MS;
 		}).length;
-		payload.attention.staleProjects30d = projectSummaries.filter((project) => {
+		payload.attention.staleProjects30d = realProjects.filter((project) => {
 			const updatedAtMs = safeTimeMs(project.updated_at);
 			return updatedAtMs > 0 && nowMs - updatedAtMs >= 30 * DAY_MS;
 		}).length;
 
-		payload.recent.projects = [...projectSummaries]
+		payload.recent.projects = [...realProjects]
 			.sort((a, b) => safeTimeMs(b.updated_at) - safeTimeMs(a.updated_at))
 			.slice(0, RECENT_LIST_LIMIT)
 			.map((project) => ({

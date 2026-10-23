@@ -51,11 +51,16 @@ export const OPERATIONAL_SKILL_BY_ENTITY: Readonly<
  * A skill is only eligible when at least one of its write tools is mounted on
  * the surface the model will actually see. Task, calendar, and plan-layer
  * writes (plans, goals, milestones, risks since 2026-09-18) are on the global
- * and project surfaces; document writes are on the project surface only.
+ * and project surfaces. create_onto_document joined global on 2026-10-23 (a
+ * save that fits no project goes to the user's Workspace), but the document
+ * playbook walks the project's document tree (search_project, get_document_tree,
+ * update_onto_document, move_document_in_tree), so it keys on the project-only
+ * document writes and stays a project-surface playbook; global chat's save rule
+ * lives in its always-on workflow hints.
  */
 const OPERATIONAL_SKILL_TOOL_REQUIREMENTS: Record<OperationalEntityKind, readonly string[]> = {
 	task: ['create_onto_task', 'update_onto_task'],
-	document: ['create_onto_document', 'update_onto_document', 'move_document_in_tree'],
+	document: ['update_onto_document', 'move_document_in_tree'],
 	plan: ['create_onto_plan', 'update_onto_plan'],
 	calendar: ['create_calendar_event', 'update_calendar_event']
 };

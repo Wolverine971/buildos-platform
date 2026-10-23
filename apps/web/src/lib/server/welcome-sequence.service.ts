@@ -1546,6 +1546,8 @@ export class WelcomeSequenceService {
 				.from('onto_projects')
 				.select('id, updated_at')
 				.eq('created_by', ownerId)
+				// The Workspace (loose items) isn't a project.
+				.eq('kind', 'project')
 				.is('deleted_at', null)
 				.order('updated_at', { ascending: false });
 

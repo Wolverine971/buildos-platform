@@ -107,6 +107,11 @@ const sharedAgentOpsTestAliases = [
 	find: `@buildos/shared-agent-ops/${sub}`,
 	replacement: sharedAgentOpsSrc(`${sub}.ts`)
 }));
+// Subpaths whose file name differs from the subpath.
+sharedAgentOpsTestAliases.push({
+	find: '@buildos/shared-agent-ops/gateway/access-wall',
+	replacement: sharedAgentOpsSrc('gateway/op-execution-gateway.access-wall.ts')
+});
 
 export default defineConfig({
 	plugins: [sveltekit()],

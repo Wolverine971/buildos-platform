@@ -31,6 +31,8 @@ function fakeAdmin(rpc: RpcHandler, tables: Record<string, unknown> = {}) {
 			eq: () => builder,
 			is: () => builder,
 			in: () => builder,
+			order: () => builder,
+			limit: () => builder,
 			maybeSingle: async () => ({ data: tables[table] ?? null, error: null }),
 			then: (resolve: (value: unknown) => void) =>
 				resolve({ data: Array.isArray(tables[table]) ? tables[table] : [], error: null })
@@ -56,11 +58,13 @@ describe('people tools', () => {
 		mocks.fetchProjectSummaries.mockResolvedValue([]);
 	});
 
-	it('exposes three tools, none of which approve or share', () => {
+	it('exposes five tools, none of which approve or share', () => {
 		expect(PEOPLE_TOOLS.map((tool) => tool.name)).toEqual([
 			'find_buildos_person',
 			'request_buildos_access',
-			'list_buildos_people'
+			'list_buildos_people',
+			'request_project_access',
+			'check_project_access'
 		]);
 		expect(PEOPLE_TOOL_NAMES.has('decide_people_request')).toBe(false);
 	});
@@ -260,5 +264,202 @@ describe('people tools', () => {
 			}
 		]);
 		expect(result.result.shared_but_not_given_to_this_connection).toBe(1);
+	});
+
+	describe('asking a project owner for more (tasker 140)', () => {
+		const PROJECT = '11111111-1111-4111-8111-111111111111';
+		const sharedSummary = {
+			id: PROJECT,
+			name: '9takes',
+			is_shared: true,
+			access_level: 'write',
+			access_role: 'editor',
+			owner_actor_id: 'actor-owner'
+		};
+		const writeScope = {
+			mode: 'read_write' as const,
+			project_ids: [PROJECT],
+			write_project_ids: []
+		};
+
+		beforeEach(() => {
+			mocks.sendPeopleRequestReceivedEmail.mockClear();
+			mocks.fetchProjectSummaries.mockResolvedValue([sharedSummary]);
+		});
+
+		it('sends one request as the agent and emails the owner once', async () => {
+			const { admin, calls } = fakeAdmin(
+				(name) =>
+					name === 'create_project_upgrade_request'
+						? { data: { status: 'pending', request_id: 'r1' }, error: null }
+						: { data: null, error: null },
+				{ users: { name: 'Sam' }, onto_actors: { name: 'Sam', user_id: 'user-owner' } }
+			);
+			const result = await executePeopleTool({
+				admin,
+				userId: 'user-me',
+				callerId: 'caller-1',
+				scope: writeScope,
+				toolName: 'request_project_access',
+				arguments: {
+					project_id: PROJECT,
+					need: 'agents_write',
+					note: 'For the launch task'
+				}
+			});
+			expect(result).toMatchObject({
+				ok: true,
+				result: { status: 'sent', owner_name: 'Sam' }
+			});
+			expect((result.result as Record<string, unknown>).say_to_user).toBe(
+				"I asked Sam. Nothing changes until they answer in BuildOS; I'll pick this up once they do."
+			);
+			expect(calls[0]).toMatchObject({
+				name: 'create_project_upgrade_request',
+				args: {
+					p_project_ids: [PROJECT],
+					p_need: 'agents_write',
+					p_note: 'For the launch task',
+					p_caller_id: 'caller-1',
+					p_user_id: 'user-me'
+				}
+			});
+			expect(mocks.sendPeopleRequestReceivedEmail).toHaveBeenCalledTimes(1);
+		});
+
+		it('joins a waiting request without emailing again', async () => {
+			const { admin } = fakeAdmin(() => ({
+				data: { status: 'pending', request_id: 'r1', already_pending: true, merged: true },
+				error: null
+			}));
+			const result = await executePeopleTool({
+				admin,
+				userId: 'user-me',
+				callerId: 'caller-1',
+				scope: writeScope,
+				toolName: 'request_project_access',
+				arguments: { project_id: PROJECT, need: 'agents_write' }
+			});
+			expect(result.result).toMatchObject({ status: 'already_waiting' });
+			expect(mocks.sendPeopleRequestReceivedEmail).not.toHaveBeenCalled();
+		});
+
+		it('explains refusals in plain words and rejects bad input', async () => {
+			for (const [status, text] of [
+				['declined_recently', /not now to this in the last 7 days/],
+				['mixed_owners', /one request per owner/],
+				['waiting_other', /different request waiting/]
+			] as const) {
+				const { admin } = fakeAdmin(() => ({ data: { status }, error: null }));
+				const result = await executePeopleTool({
+					admin,
+					userId: 'user-me',
+					callerId: 'caller-1',
+					scope: writeScope,
+					toolName: 'request_project_access',
+					arguments: { project_id: PROJECT, need: 'agents_write' }
+				});
+				expect(String((result.result as Record<string, unknown>).message)).toMatch(text);
+			}
+			const { admin } = fakeAdmin(() => ({ data: null, error: null }));
+			for (const args of [
+				{ project_id: 'nope', need: 'agents_write' },
+				{ project_id: PROJECT, need: 'admin' },
+				{
+					project_ids: Array.from(
+						{ length: 11 },
+						(_, n) => `11111111-1111-4111-8111-${String(n).padStart(12, '0')}`
+					),
+					need: 'edit'
+				}
+			]) {
+				const result = await executePeopleTool({
+					admin,
+					userId: 'user-me',
+					callerId: 'caller-1',
+					scope: writeScope,
+					toolName: 'request_project_access',
+					arguments: args
+				});
+				expect(result.ok).toBe(false);
+			}
+			const noCaller = await executePeopleTool({
+				admin,
+				userId: 'user-me',
+				scope: writeScope,
+				toolName: 'request_project_access',
+				arguments: { project_id: PROJECT, need: 'agents_write' }
+			});
+			expect(noCaller.ok).toBe(false);
+		});
+
+		it('check_project_access says waiting, then not now, from the latest request', async () => {
+			const member = [
+				{ project_id: PROJECT, role_key: 'editor', access: 'write', agent_access: 'read' }
+			];
+			const pending = fakeAdmin(() => ({ data: null, error: null }), {
+				onto_project_members: member,
+				people_requests: [
+					{
+						id: 'r1',
+						status: 'pending',
+						created_at: '2026-10-23T00:00:00.000Z',
+						expires_at: '2999-01-01T00:00:00.000Z',
+						requested_items: [{ project_id: PROJECT, need: 'agents_write' }]
+					}
+				]
+			});
+			const waiting = await executePeopleTool({
+				admin: pending.admin,
+				userId: 'user-me',
+				callerId: 'caller-1',
+				scope: writeScope,
+				toolName: 'check_project_access',
+				arguments: { project_id: PROJECT }
+			});
+			expect(waiting.result).toMatchObject({ status: 'waiting_on_owner' });
+
+			const declined = fakeAdmin(() => ({ data: null, error: null }), {
+				onto_project_members: member,
+				people_requests: [
+					{
+						id: 'r1',
+						status: 'declined',
+						created_at: new Date().toISOString(),
+						decided_at: new Date().toISOString(),
+						requested_items: [{ project_id: PROJECT, need: 'agents_write' }]
+					}
+				]
+			});
+			const said = await executePeopleTool({
+				admin: declined.admin,
+				userId: 'user-me',
+				callerId: 'caller-1',
+				scope: writeScope,
+				toolName: 'check_project_access',
+				arguments: { project_id: PROJECT }
+			});
+			expect(said.result).toMatchObject({ status: 'owner_said_no' });
+
+			const fresh = fakeAdmin(() => ({ data: null, error: null }), {
+				onto_project_members: member
+			});
+			const needs = await executePeopleTool({
+				admin: fresh.admin,
+				userId: 'user-me',
+				callerId: 'caller-1',
+				scope: writeScope,
+				toolName: 'check_project_access',
+				arguments: { project_id: PROJECT },
+				connectorOrigin: 'https://build-os.com'
+			});
+			expect(needs.result).toMatchObject({
+				status: 'needs_owner',
+				access_needed: {
+					wall: 'owner_allows_read_only',
+					next: { tool: 'request_project_access', args: { project_id: PROJECT } }
+				}
+			});
+		});
 	});
 });

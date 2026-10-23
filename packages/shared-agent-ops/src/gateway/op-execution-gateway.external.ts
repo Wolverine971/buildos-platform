@@ -47,6 +47,7 @@ import {
 	normalizeGatewayError
 } from './op-execution-gateway.responses';
 import { applyGuestAgentLane } from './op-execution-gateway.guest-lane';
+import { explainAccessWall } from './op-execution-gateway.access-wall';
 import {
 	assertProjectWriteAccess,
 	explainMergedProjectRefusal,
@@ -204,12 +205,23 @@ export function buildRegistryVersion(registryVersion: string, opNames: string[])
 	return `${registryVersion}/external/${opNames.join(',')}`;
 }
 
+/**
+ * Workspace rule for connector agents (2026-10-23): a save that fits no project
+ * goes to the user's Workspace (kind 'workspace'), never a new project.
+ */
+const EXTERNAL_WORKSPACE_CREATE_NOTICE =
+	"When no project clearly fits, use the user's Workspace project_id (get_buildos_permissions returns workspace.project_id): their loose notes and tasks, not a project.";
+
 export function buildExternalToolDescription(entry: RegistryOp): string {
 	const scopeNotice =
 		'Only projects in the caller-approved BuildOS scope are visible; public project visibility does not grant connector access.';
 
 	if (entry.op === 'onto.project.create') {
-		return `${entry.description} Project creation requires read_write access with onto.project.create whitelisted. A project-scoped key may create projects; each project it creates is automatically added to the key's scope. ${scopeNotice}`;
+		return `${entry.description} Not for a single note, doc, or task: those go to the user's Workspace. Project creation requires read_write access with onto.project.create whitelisted. A project-scoped key may create projects; each project it creates is automatically added to the key's scope. ${scopeNotice}`;
+	}
+
+	if (entry.op === 'onto.task.create' || entry.op === 'onto.document.create') {
+		return `${entry.description} ${EXTERNAL_WORKSPACE_CREATE_NOTICE} ${scopeNotice}`;
 	}
 
 	if (entry.group !== 'cal') {
@@ -609,10 +621,21 @@ export async function executeGatewayOp(params: {
 
 		return response;
 	} catch (error) {
-		// A call aimed at a combined project says where it went (tasker 122).
-		const normalized = await explainMergedProjectRefusal(
-			{ admin: params.admin, userId: params.userId, scope: params.scope },
-			normalizeGatewayError(error)
+		// A call aimed at a combined project says where it went (tasker 122); any other
+		// refusal in a project the person can see says what's in the way and who can
+		// clear it (tasker 140).
+		const normalized = await explainAccessWall(
+			{
+				admin: params.admin,
+				userId: params.userId,
+				oauthGrantId: params.oauthGrantId,
+				scope: params.scope
+			},
+			canonicalOp,
+			await explainMergedProjectRefusal(
+				{ admin: params.admin, userId: params.userId, scope: params.scope },
+				normalizeGatewayError(error)
+			)
 		);
 		if (normalized.code === 'FORBIDDEN') {
 			await logSecurityEvent(

@@ -1311,7 +1311,8 @@ export class ProviderTurnState implements ToolRoundStreamState {
 			externalContentSources: this.externalContentSources,
 			...(value.focusedTableId
 				? { focusedEntityIds: new Set([normalizeId(value.focusedTableId)]) }
-				: {})
+				: {}),
+			...(value.workspaceProjectId ? { workspaceProjectId: value.workspaceProjectId } : {})
 		};
 	}
 }

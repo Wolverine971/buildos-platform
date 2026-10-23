@@ -981,7 +981,10 @@ export const GET: RequestHandler = async ({ params, request, locals: { safeGetSe
 		);
 
 		const activityStats = {
-			total_projects: processedProjects.length,
+			// The Workspace (loose items) stays in the list (named "Workspace", with its
+			// `kind`) so its docs and tasks are visible, but it isn't counted as a project.
+			total_projects: processedProjects.filter((project) => project.kind !== 'workspace')
+				.length,
 			total_tasks: totalTasks,
 			open_tasks: totalTasks - completedTasks,
 			completed_tasks: completedTasks,

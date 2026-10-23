@@ -203,6 +203,8 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) =
 						.from('onto_projects')
 						.select('created_by')
 						.in('created_by', actorIds)
+						// The Workspace (loose items) isn't a project.
+						.eq('kind', 'project')
 						.is('deleted_at', null)
 				: Promise.resolve({ data: [], error: null }),
 			adminSupabase.from('user_calendar_tokens').select('user_id').in('user_id', userIds),

@@ -2,15 +2,24 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type { RequestEvent } from './$types';
 
-const { saveIntentAndStakesMock, completeOnboardingV3Mock, ensureActorIdMock, saveProgressMock } =
-	vi.hoisted(() => ({
-		saveIntentAndStakesMock: vi.fn(),
-		completeOnboardingV3Mock: vi.fn(),
-		ensureActorIdMock: vi.fn(),
-		saveProgressMock: vi.fn()
-	}));
+const {
+	saveIntentAndStakesMock,
+	completeOnboardingV3Mock,
+	ensureActorIdMock,
+	saveProgressMock,
+	workspaceHasLiveItemsMock
+} = vi.hoisted(() => ({
+	saveIntentAndStakesMock: vi.fn(),
+	completeOnboardingV3Mock: vi.fn(),
+	ensureActorIdMock: vi.fn(),
+	saveProgressMock: vi.fn(),
+	workspaceHasLiveItemsMock: vi.fn()
+}));
 
 vi.mock('$lib/server/onboarding-progress', () => ({ saveOnboardingProgress: saveProgressMock }));
+vi.mock('$lib/server/workspace-guard', () => ({
+	workspaceHasLiveItems: workspaceHasLiveItemsMock
+}));
 
 vi.mock('$lib/server/onboarding.service', () => ({
 	OnboardingServerService: vi.fn().mockImplementation(function () {
@@ -31,16 +40,16 @@ vi.mock('$lib/services/ontology/ontology-projects.service', () => ({
 
 import { POST } from './+server';
 
-// The complete_v3 gate head-counts onto_project_members for the user's actor.
-const createSupabaseMock = (workspaceProjectCount: number) => ({
-	from: vi.fn(() => ({
-		select: vi.fn(() => ({
-			eq: vi.fn(() => ({
-				is: vi.fn(() => Promise.resolve({ count: workspaceProjectCount, error: null }))
-			}))
-		}))
-	}))
-});
+// The complete_v3 gate head-counts onto_project_members (real projects only) for the
+// user's actor.
+const createSupabaseMock = (workspaceProjectCount: number) => {
+	const chain: any = {
+		select: vi.fn(() => chain),
+		eq: vi.fn(() => chain),
+		is: vi.fn(() => Promise.resolve({ count: workspaceProjectCount, error: null }))
+	};
+	return { from: vi.fn(() => chain), chain };
+};
 
 const createEvent = (
 	body: Record<string, unknown>,
@@ -81,6 +90,8 @@ describe('POST /api/onboarding', () => {
 		ensureActorIdMock.mockReset();
 		ensureActorIdMock.mockResolvedValue('actor-1');
 		saveProgressMock.mockReset();
+		workspaceHasLiveItemsMock.mockReset();
+		workspaceHasLiveItemsMock.mockResolvedValue(false);
 	});
 
 	it('rejects unauthenticated requests', async () => {
@@ -184,6 +195,31 @@ describe('POST /api/onboarding', () => {
 		);
 
 		expect(response.status).toBe(200);
+		expect(completeOnboardingV3Mock).toHaveBeenCalled();
+	});
+
+	it('counts only real projects, never the Workspace', async () => {
+		const event = createEvent(completeV3Body(), { workspaceProjectCount: 1 });
+		await POST(event);
+		const { chain } = event.locals.supabase as any;
+		expect(chain.select).toHaveBeenCalledWith('id, onto_projects!inner(kind)', {
+			count: 'exact',
+			head: true
+		});
+		expect(chain.eq).toHaveBeenCalledWith('onto_projects.kind', 'project');
+		expect(workspaceHasLiveItemsMock).not.toHaveBeenCalled();
+	});
+
+	it('lets a non-explorer finish with loose items in the Workspace instead of a project', async () => {
+		workspaceHasLiveItemsMock.mockResolvedValue(true);
+		const event = createEvent(
+			completeV3Body({ projectsCreated: 0, tasksCreated: 0, goalsCreated: 0 }),
+			{ workspaceProjectCount: 0 }
+		);
+		const response = await POST(event);
+
+		expect(response.status).toBe(200);
+		expect(workspaceHasLiveItemsMock).toHaveBeenCalledWith(event.locals.supabase, 'actor-1');
 		expect(completeOnboardingV3Mock).toHaveBeenCalled();
 	});
 });

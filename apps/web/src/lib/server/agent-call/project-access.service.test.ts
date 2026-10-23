@@ -151,4 +151,58 @@ describe('external agent project access policy', () => {
 			expect(scope.write_project_ids).toEqual(['mine']);
 		});
 	});
+
+	describe('"let this agent into projects shared with me" (tasker 140)', () => {
+		const shared = [
+			...projects,
+			{
+				id: 'shared-off',
+				is_shared: true,
+				access_level: 'write' as const,
+				external_agent_access: 'standard' as const,
+				agent_access: 'off' as const
+			},
+			{
+				id: 'shared-restricted',
+				is_shared: true,
+				access_level: 'write' as const,
+				external_agent_access: 'restricted' as const,
+				agent_access: 'write' as const
+			}
+		];
+
+		it('is off by default: shared projects still need their own grant', () => {
+			const scope = computeEffectiveAgentProjectScope({
+				scope: { mode: 'read_write' },
+				projectScopeMode: 'all_unrestricted',
+				projects: shared,
+				permissions: []
+			});
+			expect(scope.project_ids).toEqual(['owned-standard']);
+		});
+
+		it('on: lets shared projects in as far as each owner allows; never restricted or off', () => {
+			const scope = computeEffectiveAgentProjectScope({
+				scope: { mode: 'read_write' },
+				projectScopeMode: 'selected',
+				projects: shared,
+				permissions: [],
+				includeSharedProjects: true
+			});
+			expect(scope.project_ids).toEqual(['shared-standard', 'shared-readonly']);
+			expect(scope.write_project_ids).toEqual(['shared-standard']);
+		});
+
+		it('lists projects whose owner turned agents off so refusals can say so', () => {
+			const scope = computeEffectiveAgentProjectScope({
+				scope: { mode: 'read_write' },
+				projectScopeMode: 'selected',
+				projects: shared,
+				permissions: [{ project_id: 'shared-off', access_mode: 'read_write' }],
+				includeSharedProjects: true
+			});
+			expect(scope.owner_blocked_project_ids).toEqual(['shared-off']);
+			expect(scope.project_ids).not.toContain('shared-off');
+		});
+	});
 });

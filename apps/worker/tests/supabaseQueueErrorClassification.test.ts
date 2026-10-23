@@ -7,7 +7,6 @@ import {
 } from '../src/lib/queueErrors';
 import { logWorkerError } from '../src/lib/errorLogger';
 import { SupabaseQueue } from '../src/lib/supabaseQueue';
-import { supabase } from '../src/lib/supabase';
 import { validateBriefJobData, validateSMSJobData } from '../src/workers/shared/queueUtils';
 
 const { rpcMock } = vi.hoisted(() => ({
@@ -82,12 +81,10 @@ async function captureFailArgs(error: unknown, attempts = 0, maxAttempts = 3) {
 	await queue.start();
 
 	await vi.waitFor(() => {
-		expect(supabase.rpc).toHaveBeenCalledWith('fail_queue_job', expect.any(Object));
+		expect(rpcMock).toHaveBeenCalledWith('fail_queue_job', expect.any(Object));
 	});
 
-	const failCall = vi
-		.mocked(supabase.rpc)
-		.mock.calls.find(([functionName]) => functionName === 'fail_queue_job');
+	const failCall = rpcMock.mock.calls.find(([functionName]) => functionName === 'fail_queue_job');
 	await queue.stop();
 	return failCall?.[1] as { p_error_message: string; p_retry: boolean };
 }

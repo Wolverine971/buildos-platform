@@ -230,4 +230,73 @@ describe('POST /api/people/requests/[requestId]/decide', () => {
 		expect(response.status).toBe(403);
 		expect((await response.json()).error).toBe('You can only share projects you own');
 	});
+
+	describe('upgrade requests (tasker 140)', () => {
+		it('approves the kept projects, connects the asking agent, and saves standing approval', async () => {
+			const event = createEvent({
+				decision: 'approve',
+				project_ids: [PROJECT_A],
+				editor_agents_write_project_ids: [PROJECT_A]
+			});
+			rpcOf(event).mockImplementation(async (name: string) =>
+				name === 'decide_people_request'
+					? {
+							data: {
+								status: 'approved',
+								kind: 'upgrade',
+								projects: [
+									{
+										project_id: PROJECT_A,
+										role: 'editor',
+										agent_access: 'write',
+										need: 'agents_write'
+									}
+								],
+								requester_user_id: 'member-1',
+								via_caller_id: 'caller-1'
+							},
+							error: null
+						}
+					: { data: { editor_agents_write: true }, error: null }
+			);
+			grantProjectsForUserMock.mockResolvedValue({ granted_project_ids: [PROJECT_A] });
+
+			const response = await POST(event);
+			expect(response.status).toBe(200);
+			const payload = await response.json();
+			expect(payload.data).toMatchObject({
+				status: 'approved',
+				kind: 'upgrade',
+				agent_grant: 'granted',
+				standing_approval: 'saved'
+			});
+			expect(rpcOf(event)).toHaveBeenCalledWith('decide_people_request', {
+				p_request_id: REQUEST_ID,
+				p_decision: 'approve',
+				p_grants: [{ project_id: PROJECT_A }]
+			});
+			expect(rpcOf(event)).toHaveBeenCalledWith('set_project_editor_agents_write', {
+				p_project_id: PROJECT_A,
+				p_enabled: true
+			});
+			expect(grantProjectsForUserMock).toHaveBeenCalledWith('member-1', 'caller-1', [
+				PROJECT_A
+			]);
+		});
+
+		it('rejects malformed project lists before calling the RPC', async () => {
+			for (const body of [
+				{ decision: 'approve', project_ids: ['nope'] },
+				{
+					decision: 'approve',
+					project_ids: [PROJECT_A],
+					editor_agents_write_project_ids: 'x'
+				}
+			]) {
+				const event = createEvent(body);
+				expect((await POST(event)).status).toBe(400);
+				expect(rpcOf(event)).not.toHaveBeenCalled();
+			}
+		});
+	});
 });

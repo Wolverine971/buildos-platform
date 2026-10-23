@@ -61,7 +61,7 @@ Task workflow playbook: decide when work becomes a tracked task, then create, up
 
 1. Decide first whether this should be a tracked task or work you can just do now in the conversation.
 2. For an update, reuse the exact task_id from the focused context, the user's message, or a read this turn; otherwise call list_onto_tasks (with project_id when known) or get_onto_task_details before writing. If several tasks fit, ask one clarification instead of guessing.
-3. For a create, call create_onto_task with project_id and a concrete title; add description, due_at, priority, assignee_handles, or plan_id / goal_id / supporting_milestone_id only when the user gave enough to fill them.
+3. For a create, call create_onto_task with project_id and a concrete title; add description, due_at, priority, assignee_handles, or plan_id / goal_id / supporting_milestone_id only when the user gave enough to fill them. When no project clearly fits, use the user's Workspace project_id (loose notes and tasks, not a project) and say the task went there.
 4. When the user reports real progress (started, in progress, blocked, finished), include state_key in update_onto_task alongside any other field change. Valid states are todo, in_progress, blocked, and done.
 5. description is a full replacement on update_onto_task: to keep existing detail, read the task first and write the composed value.
 6. Use move_onto_task only to move a task to another project; changing its goal or milestone is update_onto_task.
@@ -84,6 +84,7 @@ After a task write, report in user-facing terms:
 - Do not invent assignee IDs, handles, or project membership; prefer assignee_handles over actor IDs.
 - Do not use invalid task states such as open.
 - If the request is really a goal, milestone, or plan, do not flatten it into a task because task creation is easy.
+- Do not create a project to hold a single task; a task with no fitting project goes to the user's Workspace.
 
 ## Related Tools
 

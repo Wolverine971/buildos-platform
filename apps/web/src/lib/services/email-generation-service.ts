@@ -333,11 +333,12 @@ export class EmailGenerationService {
 			// Beta signup info (using user email)
 			this.supabase.from('beta_signups').select('*').eq('email', user.email).single(),
 
-			// Recent projects (ontology)
+			// Recent projects (ontology). The Workspace (loose items) isn't a project.
 			this.supabase
 				.from('onto_projects')
 				.select('id, name, updated_at')
 				.eq('created_by', actorId)
+				.eq('kind', 'project')
 				.is('deleted_at', null)
 				.order('updated_at', { ascending: false })
 				.limit(EMAIL_CONFIG.defaults.includeProjectLimit),
@@ -347,6 +348,7 @@ export class EmailGenerationService {
 				.from('onto_projects')
 				.select('id', { count: 'exact', head: true })
 				.eq('created_by', actorId)
+				.eq('kind', 'project')
 				.is('deleted_at', null),
 
 			// Task metrics (ontology)

@@ -1023,10 +1023,12 @@ describe('people and identity', () => {
 		expect(text).not.toMatch(/@example\.com/);
 		expect(text).not.toMatch(/SECRET/);
 		expect(text).toContain('DJ Readable');
-		// O is shared with Sam but DJ turned his agents off: counted, never named.
+		// O is shared with Sam but DJ turned his agents off: counted apart from projects
+		// Sam could still grant (a grant can't help there), and never named.
 		expect(
 			(listed.result as Record<string, unknown>).shared_but_not_given_to_this_connection
-		).toBe(1);
+		).toBeUndefined();
+		expect((listed.result as Record<string, unknown>).owners_turned_agents_off).toBe(1);
 		// DJ's actor is named after his email; the tool says "Someone" instead.
 		expect(text).toContain('Someone');
 	});
@@ -1469,5 +1471,299 @@ describe('permission requests never reach into someone else’s project', () => 
 		expect(failed(result), JSON.stringify(result)).toBe(true);
 		expect(JSON.stringify(result)).toMatch(/projects your person owns/);
 		expect(db.rpcCalls.map((rpc) => rpc.name)).not.toContain('create_agent_permission_request');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Tasker 140: every wall says what's in the way, who can clear it, and the one step
+// ---------------------------------------------------------------------------
+
+function accessNeeded(result: Record<string, unknown>): Record<string, any> {
+	const error = (result.error ?? {}) as Record<string, any>;
+	return (error.details?.access_needed ?? null) as Record<string, any>;
+}
+
+async function rescope(mode: 'read_only' | 'read_write' = 'read_write') {
+	scope = (await resolveEffectiveAgentProjectScope({
+		admin: db,
+		userId: USER.sam,
+		callerId: CALLER,
+		projectScopeMode: 'selected',
+		scope: { mode }
+	})) as typeof scope;
+	db.writes.length = 0;
+	db.rpcCalls.length = 0;
+}
+
+function samMembership(project: ProjectKey): FakeRow {
+	const row = db
+		.table('onto_project_members')
+		.find((entry) => entry.project_id === PROJECT[project].id && entry.actor_id === ACTOR.sam);
+	if (!row) throw new Error(`no membership in ${project}`);
+	return row;
+}
+
+const GRANT_PAGE = `https://build-os.com/profile/agent-keys/${CALLER}/grant`;
+
+describe('access walls (tasker 140)', () => {
+	it('wall 1: a project this connection was never given links to a one-tap grant, unnamed', async () => {
+		const args = { project_id: PROJECT.U.id };
+		const result = await call('onto.project.get', args);
+		const wall = accessNeeded(result);
+		expect(wall).toMatchObject({
+			wall: 'project_not_granted',
+			who_can_fix: 'you',
+			project_id: PROJECT.U.id,
+			next: { open_url: `${GRANT_PAGE}?project=${PROJECT.U.id}` }
+		});
+		expect(wall).not.toHaveProperty('project_name');
+		expect(wall).not.toHaveProperty('link');
+		expect(wall.say_to_user).toMatch(/Tap the link/);
+		expectNoLeak(result, args);
+	});
+
+	it('wall 3: agents turned off by the owner says so, offers to ask, and never a grant link', async () => {
+		const readArgs = { project_id: PROJECT.O.id };
+		const read = await call('onto.project.get', readArgs);
+		const wall = accessNeeded(read);
+		expect(wall).toMatchObject({
+			wall: 'owner_turned_agents_off',
+			who_can_fix: 'owner',
+			project_id: PROJECT.O.id,
+			need: 'agents_read',
+			next: {
+				tool: 'request_project_access',
+				args: { project_id: PROJECT.O.id, need: 'agents_read' },
+				ask_your_person_first: true
+			}
+		});
+		expect(wall).not.toHaveProperty('project_name');
+		// DJ's only name is his email, so he is "the owner" here.
+		expect(wall).not.toHaveProperty('owner_name');
+		expect(wall.say_to_user).toMatch(/^The owner turned off agents for you/);
+		expect((read.error as Record<string, any>).details.grant_url).toBeUndefined();
+		expectNoLeak(read, readArgs);
+
+		const writeArgs = { project_id: PROJECT.O.id, title: 'x' };
+		const write = await call('onto.task.create', writeArgs);
+		expect(accessNeeded(write)).toMatchObject({
+			wall: 'owner_turned_agents_off',
+			need: 'agents_write'
+		});
+		expectNoLeak(write, writeArgs);
+		expectNoWritesTo(READ_ONLY_OR_HIDDEN);
+	});
+
+	it('wall 5: a viewer’s agent is told to ask the owner to make them an editor', async () => {
+		const result = await call('onto.task.create', { project_id: PROJECT.S.id, title: 'x' });
+		expect(accessNeeded(result)).toMatchObject({
+			wall: 'viewer_only',
+			who_can_fix: 'owner',
+			project_name: 'DJ Readable',
+			need: 'edit',
+			next: {
+				tool: 'request_project_access',
+				args: { project_id: PROJECT.S.id, need: 'edit' }
+			}
+		});
+		expectNoWritesTo(READ_ONLY_OR_HIDDEN);
+	});
+
+	it('wall 5 also catches an edit routed past the permission-request path', async () => {
+		const result = await call('onto.task.update', { task_id: uid('S', 'task', 1), title: 'x' });
+		expect(failed(result)).toBe(true);
+		expect(accessNeeded(result)).toMatchObject({ wall: 'viewer_only', need: 'edit' });
+		expect(JSON.stringify(result)).not.toMatch(/not enabled for this BuildOS deployment/);
+		expectNoWritesTo(READ_ONLY_OR_HIDDEN);
+	});
+
+	it('wall 4: agents on Read asks for changes; standing approval clears it, Off still wins', async () => {
+		samMembership('W').agent_access = 'read';
+		await rescope();
+		const refused = await call('onto.task.create', { project_id: PROJECT.W.id, title: 'x' });
+		expect(accessNeeded(refused)).toMatchObject({
+			wall: 'owner_allows_read_only',
+			who_can_fix: 'owner',
+			project_name: 'DJ Writable',
+			need: 'agents_write'
+		});
+
+		db.table('project_agent_settings').push({
+			project_id: PROJECT.W.id,
+			editor_agents_write: true,
+			updated_at: NOW
+		});
+		await rescope();
+		const allowed = await call('onto.task.create', { project_id: PROJECT.W.id, title: 'x' });
+		expect(failed(allowed), JSON.stringify(allowed).slice(0, 400)).toBe(false);
+
+		samMembership('W').agent_access = 'off';
+		await rescope();
+		const off = await call('onto.task.create', { project_id: PROJECT.W.id, title: 'x' });
+		expect(accessNeeded(off)).toMatchObject({ wall: 'owner_turned_agents_off' });
+	});
+
+	it('wall 2: a read-only grant on a read+write connection links to "allow changes"', async () => {
+		const grant = db
+			.table('external_agent_project_permissions')
+			.find((row) => row.project_id === PROJECT.A.id);
+		grant!.access_mode = 'read_only';
+		await rescope();
+		const result = await call('onto.task.create', { project_id: PROJECT.A.id, title: 'x' });
+		expect(accessNeeded(result)).toMatchObject({
+			wall: 'connection_read_only',
+			who_can_fix: 'you',
+			project_name: 'Sam Alpha',
+			next: { open_url: `${GRANT_PAGE}?project=${PROJECT.A.id}&need=write` }
+		});
+	});
+
+	it('wall 2: a read-only connection calling a write tool gets the same link', async () => {
+		await rescope('read_only');
+		const result = await call('onto.task.create', { project_id: PROJECT.A.id, title: 'x' });
+		expect(accessNeeded(result)).toMatchObject({
+			wall: 'connection_read_only',
+			who_can_fix: 'you',
+			project_id: PROJECT.A.id,
+			next: { open_url: `${GRANT_PAGE}?project=${PROJECT.A.id}&need=write` }
+		});
+		expect(accessNeeded(result).say_to_user).toMatch(/can only read/);
+		expectNoWritesTo(['A', ...READ_ONLY_OR_HIDDEN]);
+	});
+
+	it('wall 6: outside the guest lane explains itself and asks nobody', async () => {
+		const result = await call('onto.task.update', { task_id: uid('W', 'task', 1), title: 'x' });
+		const wall = accessNeeded(result);
+		expect(wall).toMatchObject({
+			wall: 'outside_guest_lane',
+			who_can_fix: 'nobody',
+			project_name: 'DJ Writable',
+			next: null
+		});
+		expect(wall.say_to_user).toMatch(/assign it to you/);
+
+		const archive = await call('onto.task.update', {
+			task_id: uid('W', 'task', 2),
+			archived: true
+		});
+		expect(accessNeeded(archive).say_to_user).toMatch(/can't archive or restore/);
+		expectNoWritesTo(['W', ...READ_ONLY_OR_HIDDEN]);
+	});
+
+	it('wall 7: the daily cap pauses and says the owner was told', async () => {
+		const recent = new Date().toISOString();
+		for (let n = 0; n < 50; n += 1) {
+			db.table('onto_project_logs').push({
+				id: `fb000000-0000-4000-8000-${String(n).padStart(12, '0')}`,
+				project_id: PROJECT.W.id,
+				external_agent_caller_id: CALLER,
+				created_at: recent
+			});
+		}
+		const result = await call('onto.task.create', { project_id: PROJECT.W.id, title: 'x' });
+		expect(accessNeeded(result)).toMatchObject({
+			wall: 'daily_limit',
+			who_can_fix: 'nobody',
+			next: null
+		});
+		expect(accessNeeded(result).say_to_user).toMatch(/paused until tomorrow/);
+	});
+
+	it('the shared-projects toggle lets shared projects in without a grant; agents-off stays out', async () => {
+		db.tables.external_agent_project_permissions = db
+			.table('external_agent_project_permissions')
+			.filter((row) => row.project_id !== PROJECT.S.id && row.project_id !== PROJECT.W.id);
+		await rescope();
+		expect(scope.project_ids).not.toContain(PROJECT.S.id);
+
+		db.table('external_agent_callers')[0]!.include_shared_projects = true;
+		await rescope();
+		expect(scope.project_ids).toEqual(expect.arrayContaining([PROJECT.S.id, PROJECT.W.id]));
+		expect(scope.write_project_ids).toContain(PROJECT.W.id);
+		expect(scope.write_project_ids).not.toContain(PROJECT.S.id);
+		expect(scope.project_ids).not.toContain(PROJECT.O.id);
+		expect(scope.owner_blocked_project_ids).toEqual([PROJECT.O.id]);
+	});
+});
+
+describe('asking the owner and checking back (tasker 140)', () => {
+	const people = (toolName: string, args: Record<string, unknown>) =>
+		executeBuildosAgentGatewayTool({
+			credential: { kind: 'key', caller_id: CALLER, token_hash: 'hash' },
+			admin: db,
+			userId: USER.sam,
+			callerId: CALLER,
+			scope,
+			toolName,
+			arguments: args,
+			connectorOrigin: 'https://build-os.com'
+		});
+
+	it('check_project_access names the wall and its one step, and hides what it must', async () => {
+		const blocked = await people('check_project_access', { project_id: PROJECT.O.id });
+		expect(blocked.result).toMatchObject({
+			status: 'needs_owner',
+			access_needed: { wall: 'owner_turned_agents_off', need: 'agents_write' }
+		});
+		const mine = await people('check_project_access', { project_id: PROJECT.U.id });
+		expect(mine.result).toMatchObject({
+			status: 'needs_you',
+			access_needed: { next: { open_url: `${GRANT_PAGE}?project=${PROJECT.U.id}` } }
+		});
+		const ready = await people('check_project_access', { project_id: PROJECT.W.id });
+		expect(ready.result).toMatchObject({ status: 'ready', can_write: true });
+		const stranger = await people('check_project_access', { project_id: PROJECT.X.id });
+		expect(stranger.result).toMatchObject({ status: 'not_found' });
+		for (const result of [blocked, mine, stranger]) {
+			expect(JSON.stringify(result)).not.toMatch(/SECRET|@example\.com/);
+		}
+	});
+
+	it('request_project_access asks as this person and connection; check then says waiting', async () => {
+		db.rpcs.create_project_upgrade_request = (args) => {
+			db.table('people_requests').push({
+				id: 'fr000000-0000-4000-8000-000000000001',
+				from_user_id: args.p_user_id,
+				to_user_id: USER.dj,
+				kind: 'upgrade',
+				status: 'pending',
+				created_at: NOW,
+				expires_at: '2999-01-01T00:00:00.000Z',
+				requested_items: [{ project_id: PROJECT.O.id, need: 'agents_write' }]
+			});
+			return {
+				data: { status: 'pending', request_id: 'fr000000-0000-4000-8000-000000000001' },
+				error: null
+			};
+		};
+		const sent = await people('request_project_access', {
+			project_id: PROJECT.O.id,
+			need: 'agents_write',
+			note: 'Need to update the launch task'
+		});
+		expect(sent.result).toMatchObject({ status: 'sent' });
+		const rpc = db.rpcCalls.find((entry) => entry.name === 'create_project_upgrade_request');
+		expect(rpc?.args).toMatchObject({
+			p_project_ids: [PROJECT.O.id],
+			p_need: 'agents_write',
+			p_user_id: USER.sam,
+			p_caller_id: CALLER
+		});
+		expect(JSON.stringify(sent)).not.toMatch(/SECRET|@example\.com/);
+
+		const waiting = await people('check_project_access', { project_id: PROJECT.O.id });
+		expect(waiting.result).toMatchObject({ status: 'waiting_on_owner' });
+	});
+
+	it('request_project_access never takes another person or a non-UUID project', async () => {
+		const bad = await people('request_project_access', {
+			project_id: 'not-a-uuid',
+			need: 'agents_write'
+		});
+		expect(failed(bad)).toBe(true);
+		const tool = getBuildosAgentGatewayTools(scope).find(
+			(entry) => entry.name === 'request_project_access'
+		);
+		expect(Object.keys(tool?.inputSchema?.properties ?? {})).not.toContain('user_id');
 	});
 });

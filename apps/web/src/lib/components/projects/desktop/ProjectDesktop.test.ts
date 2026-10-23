@@ -56,6 +56,7 @@ function project(
 	return {
 		id,
 		name,
+		kind: 'project',
 		description: null,
 		icon_svg: null,
 		icon_concept: null,
@@ -416,11 +417,11 @@ describe('ProjectDesktop', () => {
 		await screen.findByText('Pricing notes');
 		// START HERE never leaves its project.
 		expect(screen.getByTitle('START HERE stays in this project.')).toBeTruthy();
-		// Dated tasks are locked while calendar moves are off.
+		// Calendar moves are on in production, so dated tasks move like any other.
 		await fireEvent.click(screen.getByRole('tab', { name: /Tasks/ }));
 		expect(
-			screen.getByTitle("Dated tasks can't move yet: calendar moves are off.")
-		).toBeTruthy();
+			screen.queryByTitle("Dated tasks can't move yet: calendar moves are off.")
+		).toBeNull();
 		await fireEvent.click(screen.getByRole('tab', { name: /Docs/ }));
 
 		const row = screen.getByText('Pricing notes').closest('[data-drag-kind]') as HTMLElement;

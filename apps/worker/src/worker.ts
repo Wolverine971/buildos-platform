@@ -9,7 +9,8 @@ import type {
 	ProjectContextSnapshotJobMetadata,
 	ProjectLoopJobMetadata,
 	QueueJobType,
-	VoiceNoteTranscriptionJobMetadata
+	VoiceNoteTranscriptionJobMetadata,
+	WorkspaceSuggestJobMetadata
 } from '@buildos/shared-types';
 import type { ProcessingJob } from './lib/supabaseQueue';
 import { processBriefJob } from './workers/brief/briefWorker';
@@ -31,6 +32,7 @@ import { processEmbedOntoEntity } from './workers/embeddings/embedEntityWorker';
 import { processAgentRunJob } from './workers/agent-run/agentRunWorker';
 import { processProjectContextSnapshotJob } from './workers/ontology/projectContextSnapshotWorker';
 import { processPickProjectEmojiJob } from './workers/project-emoji/projectEmojiWorker';
+import { processWorkspaceSuggestJob } from './workers/workspace-suggest/workspaceSuggestWorker';
 import { processProjectLoopJob } from './workers/project-loop/projectLoopWorker';
 import { processFreshnessRadarScanJob } from './workers/freshness-radar/signalJob';
 import { processCaptureChatCheckpointJob } from './workers/chat/checkpoint/checkpointJob';
@@ -332,6 +334,23 @@ async function processPickProjectEmoji(job: ProcessingJob<PickProjectEmojiJobMet
 }
 
 /**
+ * Workspace suggestions (workspace_suggest, queued a few minutes after a loose capture):
+ * groupings and filings the person accepts or dismisses; nothing moves on its own.
+ */
+async function processWorkspaceSuggest(job: ProcessingJob<WorkspaceSuggestJobMetadata>) {
+	try {
+		const result = await processWorkspaceSuggestJob(job);
+		await job.log(
+			`Workspace suggestions: ${result.outcome}${result.reason ? ` (${result.reason})` : ''}`
+		);
+		return result;
+	} catch (error) {
+		await job.log(`Workspace suggestions job failed: ${getErrorMessage(error)}`);
+		throw error;
+	}
+}
+
+/**
  * Project loop (reconciliation suggestions) processor
  */
 async function processProjectLoop(job: ProcessingJob<ProjectLoopJobMetadata>) {
@@ -440,6 +459,9 @@ export async function startWorker({ scheduledWork }: { scheduledWork: boolean })
 
 	// Register project tile emoji processor
 	queue.process('pick_project_emoji', processPickProjectEmoji);
+
+	// Register Workspace suggestions (groupings and filings for loose items; suggest-only)
+	queue.process('workspace_suggest', processWorkspaceSuggest);
 
 	// Register project loop (reconciliation suggestions) processor
 	queue.process('buildos_project_loop', processProjectLoop);

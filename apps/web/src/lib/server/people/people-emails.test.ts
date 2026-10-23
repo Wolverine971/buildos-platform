@@ -1,5 +1,5 @@
 // apps/web/src/lib/server/people/people-emails.test.ts
-import { describe, expect, it, vi } from 'vitest';
+import { assert, describe, expect, it, vi } from 'vitest';
 
 vi.mock('$lib/services/email-service', () => ({
 	EmailService: vi.fn().mockImplementation(function () {
@@ -14,7 +14,9 @@ vi.mock('$app/environment', () => ({ dev: false }));
 import {
 	buildProjectInviteEmail,
 	sendPeopleRequestApprovedEmail,
-	sendPeopleRequestReceivedEmail
+	sendPeopleRequestReceivedEmail,
+	buildUpgradeApprovedEmail,
+	buildUpgradeRequestEmail
 } from './people-emails';
 
 const EM_DASH = '—';
@@ -118,7 +120,9 @@ describe('sendPeopleRequestReceivedEmail', () => {
 		});
 
 		expect(outcome).toBe('sent');
-		const sent = sendEmail.mock.calls[0][0];
+		const call = sendEmail.mock.calls[0];
+		assert.isDefined(call, 'Expected an email to be sent');
+		const [sent] = call;
 		expect(sent.to).toBe('dj@example.com');
 		expect(sent.subject).toBe('Sam Lee wants to see your projects');
 		expect(sent.body).toContain('Sam Lee (@sam) asked to see your projects as a viewer.');
@@ -151,7 +155,9 @@ describe('sendPeopleRequestReceivedEmail', () => {
 		});
 
 		expect(outcome).toBe('sent');
-		const sent = sendEmail.mock.calls[0][0];
+		const call = sendEmail.mock.calls[0];
+		assert.isDefined(call, 'Expected an email to be sent');
+		const [sent] = call;
 		expect(sent.subject).toBe('Sam Lee wants to rejoin 9takes');
 		expect(sent.body).toContain('left 9takes or was removed, then opened your invite link');
 		expect(sent.body).toContain('they can’t ask to rejoin this project again');
@@ -241,7 +247,9 @@ describe('sendPeopleRequestApprovedEmail', () => {
 		});
 
 		expect(outcome).toBe('sent');
-		const sent = sendEmail.mock.calls[0][0];
+		const call = sendEmail.mock.calls[0];
+		assert.isDefined(call, 'Expected an email to be sent');
+		const [sent] = call;
 		expect(sent.to).toBe('sam@example.com');
 		expect(sent.subject).toBe('DJ shared 9takes with you');
 		expect(sent.body).toContain('You’re a viewer.');
@@ -270,7 +278,9 @@ describe('sendPeopleRequestApprovedEmail', () => {
 			mailer: { sendEmail },
 			baseUrl: 'https://build-os.com'
 		});
-		const sent = sendEmail.mock.calls[0][0];
+		const call = sendEmail.mock.calls[0];
+		assert.isDefined(call, 'Expected an email to be sent');
+		const [sent] = call;
 		expect(sent.subject).toBe('DJ shared 2 projects with you');
 		expect(sent.body).toContain('9takes: you can view it.');
 		expect(sent.body).toContain('Cadre: you can edit it.');
@@ -285,5 +295,58 @@ describe('sendPeopleRequestApprovedEmail', () => {
 		});
 		expect(outcome).toBe('skipped');
 		expect(sendEmail).not.toHaveBeenCalled();
+	});
+});
+
+describe('upgrade emails (tasker 140)', () => {
+	const requester = { name: 'DJ', username: 'djwayne' };
+
+	it('tells the owner what the member’s agent asked for, and that nothing changes yet', () => {
+		const email = buildUpgradeRequestEmail({
+			requester,
+			projectNames: ['9takes'],
+			need: 'agents_write',
+			agentLabel: 'Claude',
+			hasNote: true,
+			reviewUrl: 'https://build-os.com/people',
+			expiresAt: null
+		});
+		expect(email.subject).toBe('DJ wants their agents to make changes in 9takes');
+		expect(email.text).toContain('Claude asked for them');
+		expect(email.text).toContain('Nothing changes until you choose');
+		expect(email.text).toContain('change what DJ created or is assigned to');
+		expect(email.html).not.toContain('@example.com');
+
+		const several = buildUpgradeRequestEmail({
+			requester,
+			projectNames: ['9takes', 'Cadre'],
+			need: 'edit',
+			agentLabel: null,
+			hasNote: false,
+			reviewUrl: 'https://build-os.com/people',
+			expiresAt: null
+		});
+		expect(several.subject).toBe(
+			'DJ wants to edit 2 of your projects, with their agents able to make changes'
+		);
+	});
+
+	it('tells the member their agent can pick up where it left off', () => {
+		const email = buildUpgradeApprovedEmail({
+			owner: { name: 'Sam', username: null },
+			projects: [
+				{
+					id: 'p1',
+					name: '9takes',
+					role: 'editor',
+					agent_access: 'write',
+					need: 'agents_write'
+				}
+			],
+			baseUrl: 'https://build-os.com'
+		});
+		expect(email.subject).toBe('Sam let your agents make changes in 9takes');
+		expect(email.text).toContain('pick up where it left off');
+		expect(email.text).toContain('https://build-os.com/projects/p1');
 	});
 });

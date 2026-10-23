@@ -4,6 +4,8 @@
 // "Move to…" list both ask here, so they always agree. These mirror the server
 // (one level of nesting, admin on both projects to nest, admin on either side
 // to take out, edit access to move docs and tasks); the server stays the authority.
+// The Workspace (the person's loose items, kind = 'workspace') is a drop target for docs
+// and tasks only: dropping one on the desktop sends it back there. Projects never go in.
 import type { ProjectListSummary } from '../project-list';
 import { shortName, type DesktopIndex } from './desktop-model';
 
@@ -25,14 +27,22 @@ const isAdmin = (project: ProjectListSummary | undefined) => project?.access_lev
 const canWrite = (project: ProjectListSummary | undefined) =>
 	project?.access_level === 'admin' || project?.access_level === 'write';
 
+const isWorkspace = (project: ProjectListSummary | undefined) => project?.kind === 'workspace';
+
 export function dropVerdict(
 	item: DesktopItem,
 	target: DropTarget,
-	index: DesktopIndex
+	index: DesktopIndex,
+	workspaceId: string | null = null
 ): DropVerdict {
 	if (item.kind === 'project') return projectVerdict(item.id, target, index);
-	if (target.kind === 'desktop')
-		return { ok: false, reason: 'Docs and tasks belong to a project.' };
+	if (target.kind === 'desktop') {
+		// The desktop is the Workspace's home: a doc or task dropped there becomes loose.
+		if (!workspaceId || !index.byId.has(workspaceId))
+			return { ok: false, reason: 'Docs and tasks belong to a project.' };
+		if (item.projectId === workspaceId) return null;
+		return { ok: true, action: 'move', targetId: workspaceId };
+	}
 	if (target.id === item.projectId) return null;
 	const destination = index.byId.get(target.id);
 	if (!destination) return null;
@@ -64,6 +74,11 @@ function projectVerdict(id: string, target: DropTarget, index: DesktopIndex): Dr
 
 	const destination = index.byId.get(target.id);
 	if (!destination || destination.id === project.id || destination.id === parent?.id) return null;
+	if (isWorkspace(destination))
+		return {
+			ok: false,
+			reason: 'Projects stay out of the Workspace. Drop their docs and tasks here instead.'
+		};
 	const destinationName = shortName(destination.name);
 	const destinationParent = destination.parent_project_id
 		? index.byId.get(destination.parent_project_id)
@@ -115,6 +130,18 @@ export function confirmCopy(
 			title: `Put ${name} inside ${targetName}?`,
 			body: `It shows under ${targetName} and can read ${targetName}'s shared docs. People invited only to ${name} still can't see ${targetName}.`,
 			cta: 'Move inside'
+		};
+	}
+	if (isWorkspace(target)) {
+		const from = 'projectId' in item ? index.byId.get(item.projectId) : undefined;
+		return {
+			title: `Send “${details.title ?? 'this item'}” to your Workspace?`,
+			body: `It leaves ${from ? shortName(from.name) : 'the project'} and waits with your loose items. ${
+				item.kind === 'document' && details.nestedCount
+					? `Its ${details.nestedCount} nested ${details.nestedCount === 1 ? 'doc moves' : 'docs move'} with it. `
+					: ''
+			}Links keep working.`,
+			cta: 'Send'
 		};
 	}
 	const title = `Move “${details.title ?? 'this item'}” to ${targetName}?`;

@@ -205,7 +205,10 @@
 	}
 </script>
 
-<div class="mx-auto max-w-6xl px-4 pt-4">
+<div class="mx-auto flex max-w-6xl flex-wrap gap-x-4 gap-y-1 px-4 pt-4">
+	<a class="text-sm underline" href={`/profile/agent-keys/${caller.id}/grant`}
+		>Project access and shared projects</a
+	>
 	<a class="text-sm underline" href={`/profile/agent-keys/${caller.id}/requests`}
 		>Requests and ongoing permissions</a
 	>

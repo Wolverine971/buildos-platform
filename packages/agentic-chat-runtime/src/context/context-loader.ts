@@ -48,6 +48,7 @@ import type { MasterPromptContext } from './prompt-context';
 import { isValidIanaTimezone } from '@buildos/shared-agent-ops/dates/civil-date';
 import {
 	ensureActorId,
+	ensureWorkspaceProjectId,
 	fetchProjectSummaries
 } from '@buildos/shared-agent-ops/ontology/ontology-projects.service';
 import { resolveEffectiveProjectId, resolveRpcContextType } from './scope';
@@ -172,6 +173,13 @@ export type LoadContextParams = {
 	contextType: ChatContextType;
 	entityId?: string | null;
 	projectFocus?: ProjectFocus | null;
+	/**
+	 * Also resolve the user's Workspace id for a project context, so a project
+	 * chat can send an item the user says is not for this project to the
+	 * Workspace. Needs the user-scoped client (the web loaders pass one); global
+	 * contexts always resolve it.
+	 */
+	includeWorkspace?: boolean;
 	onError?: (event: {
 		stage: string;
 		error: unknown;
@@ -1349,6 +1357,45 @@ function withGlobalProjectParents(
 	});
 }
 
+/** The Workspace's id from `id, kind` rows, for when the ensure call failed. */
+function workspaceIdFromKindRows(rows: unknown): string | null {
+	if (!Array.isArray(rows)) return null;
+	for (const row of rows) {
+		if (
+			row &&
+			typeof row === 'object' &&
+			(row as { kind?: unknown }).kind === 'workspace' &&
+			typeof (row as { id?: unknown }).id === 'string'
+		) {
+			return (row as { id: string }).id;
+		}
+	}
+	return null;
+}
+
+/**
+ * The user's Workspace (onto_projects.kind 'workspace') keeps its index entry,
+ * so its open tasks still show, marked so the prompt renders it as the home
+ * for loose notes and tasks rather than as a project. The builders already
+ * keep it out of the bundles and the counts. It never nests.
+ */
+function markGlobalWorkspace(
+	data: GlobalContextData,
+	workspaceId: string | null
+): GlobalContextData {
+	return {
+		...data,
+		workspace_project_id: workspaceId,
+		project_index: workspaceId
+			? data.project_index.map((entry) => {
+					if (entry.id !== workspaceId) return entry;
+					const { parent_project_id: _parent, ...rest } = entry;
+					return { ...rest, kind: 'workspace' as const };
+				})
+			: data.project_index
+	};
+}
+
 type ProjectIntelligenceProject = Pick<
 	LightProject,
 	'id' | 'name' | 'state_key' | 'next_step_short' | 'updated_at' | 'start_at' | 'end_at'
@@ -2027,7 +2074,25 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 	}
 
 	/**
-	 * `id, parent_project_id` for the global index (tasker 122). Organization
+	 * The user's Workspace id, created on first use (ensure_workspace_project
+	 * resolves auth.uid(), so this needs the user-scoped client the web loader
+	 * passes). Runs beside the global loads; a failure leaves the id null and
+	 * the rest of the context unchanged.
+	 */
+	async function loadGlobalWorkspaceProjectId(
+		supabase: SupabaseClient<Database>,
+		onError?: LoadContextParams['onError']
+	): Promise<string | null> {
+		try {
+			return await ensureWorkspaceProjectId(supabase as any);
+		} catch (error) {
+			reportContextLoadError(onError, 'rpc.ensure_workspace_project', error);
+			return null;
+		}
+	}
+
+	/**
+	 * `id, parent_project_id, kind` for the global index (tasker 122). Organization
 	 * only: any failure means an unlabeled index, never a failed load.
 	 */
 	async function loadGlobalProjectHierarchyRows(
@@ -2039,7 +2104,7 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 		try {
 			const { data, error } = await supabase
 				.from('onto_projects')
-				.select('id, parent_project_id')
+				.select('id, parent_project_id, kind')
 				.in('id', projectIds)
 				.is('deleted_at', null);
 			if (error) {
@@ -2123,7 +2188,10 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 		return result;
 	}
 
-	function buildGlobalContextFromRpc(payload: FastChatContextRpcResponse): GlobalContextData {
+	function buildGlobalContextFromRpc(
+		payload: FastChatContextRpcResponse,
+		workspaceId: string | null = null
+	): GlobalContextData {
 		const allProjects = asArray<ProjectSelectRow>(payload.projects)
 			.map((row) =>
 				mapProject(row, {
@@ -2131,7 +2199,11 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 				})
 			)
 			.sort((a, b) => toTimestamp(b.updated_at) - toTimestamp(a.updated_at));
-		const lightProjects = allProjects.slice(0, GLOBAL_CONTEXT_PROJECT_LIMIT);
+		// The Workspace keeps an index entry but is not a project: no bundle, no count.
+		const realProjects = workspaceId
+			? allProjects.filter((project) => project.id !== workspaceId)
+			: allProjects;
+		const lightProjects = realProjects.slice(0, GLOBAL_CONTEXT_PROJECT_LIMIT);
 		const allProjectIds = allProjects.map((project) => project.id);
 
 		if (allProjects.length === 0) {
@@ -2226,8 +2298,8 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 				}),
 			context_meta: buildGlobalContextMeta({
 				source: 'rpc',
-				projectCount: allProjects.length,
-				activeProjectCount: countNonPausedProjects(allProjects),
+				projectCount: realProjects.length,
+				activeProjectCount: countNonPausedProjects(realProjects),
 				projectsReturned: lightProjects.length
 			})
 		};
@@ -2689,10 +2761,12 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 	async function loadGlobalContextData(
 		supabase: SupabaseClient<Database>,
 		userId: string,
-		onError?: LoadContextParams['onError']
+		onError?: LoadContextParams['onError'],
+		ensuredWorkspaceId: string | null = null
 	): Promise<GlobalContextData> {
 		let projectSummaries: Array<{
 			id: string;
+			kind?: string | null;
 			name: string;
 			state_key: LightProject['state_key'];
 			description: string | null;
@@ -2708,26 +2782,29 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 		} catch (error) {
 			logger.warn('Failed to load global project summaries', { error });
 			reportContextLoadError(onError, 'query.global.projects', error, { userId });
-			return {
-				projects: [],
-				project_index: [],
-				project_intelligence: buildProjectIntelligenceSnapshot({
-					scope: 'global',
-					source: 'fallback',
+			return markGlobalWorkspace(
+				{
 					projects: [],
-					goals: [],
-					milestones: [],
-					tasks: [],
-					events: [],
-					logs: []
-				}),
-				context_meta: buildGlobalContextMeta({
-					source: 'fallback',
-					projectCount: 0,
-					activeProjectCount: 0,
-					projectsReturned: 0
-				})
-			};
+					project_index: [],
+					project_intelligence: buildProjectIntelligenceSnapshot({
+						scope: 'global',
+						source: 'fallback',
+						projects: [],
+						goals: [],
+						milestones: [],
+						tasks: [],
+						events: [],
+						logs: []
+					}),
+					context_meta: buildGlobalContextMeta({
+						source: 'fallback',
+						projectCount: 0,
+						activeProjectCount: 0,
+						projectsReturned: 0
+					})
+				},
+				ensuredWorkspaceId
+			);
 		}
 
 		const sortedProjectSummaries = [...(projectSummaries ?? [])].sort((a, b) => {
@@ -2735,6 +2812,10 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 			const bTs = b.updated_at ? Date.parse(b.updated_at) : Number.NEGATIVE_INFINITY;
 			return bTs - aTs;
 		});
+		const workspaceId =
+			ensuredWorkspaceId ??
+			sortedProjectSummaries.find((project) => project.kind === 'workspace')?.id ??
+			null;
 		const summaryProjectIds = sortedProjectSummaries.map((project) => project.id);
 		const projectDatesById = new Map<
 			string,
@@ -2777,32 +2858,39 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 				updated_at: row.updated_at
 			};
 		});
-		const lightProjects = allProjects.slice(0, GLOBAL_CONTEXT_PROJECT_LIMIT);
+		// The Workspace keeps an index entry but is not a project: no bundle, no count.
+		const realProjects = workspaceId
+			? allProjects.filter((project) => project.id !== workspaceId)
+			: allProjects;
+		const lightProjects = realProjects.slice(0, GLOBAL_CONTEXT_PROJECT_LIMIT);
 		const projectIds = lightProjects.map((project) => project.id);
 		const allProjectIds = allProjects.map((project) => project.id);
 		const nowMs = Date.now();
 
 		if (allProjectIds.length === 0) {
-			return {
-				projects: [],
-				project_index: [],
-				project_intelligence: buildProjectIntelligenceSnapshot({
-					scope: 'global',
-					source: 'fallback',
+			return markGlobalWorkspace(
+				{
 					projects: [],
-					goals: [],
-					milestones: [],
-					tasks: [],
-					events: [],
-					logs: []
-				}),
-				context_meta: buildGlobalContextMeta({
-					source: 'fallback',
-					projectCount: allProjects.length,
-					activeProjectCount: countNonPausedProjects(allProjects),
-					projectsReturned: 0
-				})
-			};
+					project_index: [],
+					project_intelligence: buildProjectIntelligenceSnapshot({
+						scope: 'global',
+						source: 'fallback',
+						projects: [],
+						goals: [],
+						milestones: [],
+						tasks: [],
+						events: [],
+						logs: []
+					}),
+					context_meta: buildGlobalContextMeta({
+						source: 'fallback',
+						projectCount: realProjects.length,
+						activeProjectCount: countNonPausedProjects(realProjects),
+						projectsReturned: 0
+					})
+				},
+				workspaceId
+			);
 		}
 
 		const upcomingCutoffIso = new Date(
@@ -2924,31 +3012,34 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 			limitRows: (rows) => limitGlobalPlansForContext(rows),
 			mapper: mapPlan
 		});
-		return {
-			projects: buildGlobalProjectBundles({
-				projects: lightProjects,
-				goalsByProject,
-				milestonesByProject,
-				plansByProject
-			}),
-			project_index: buildGlobalProjectIndex(allProjects, hierarchyRows),
-			project_intelligence: buildProjectIntelligenceSnapshot({
-				scope: 'global',
-				source: 'fallback',
-				projects: allProjects,
-				goals: goalRows,
-				milestones: milestoneRows,
-				tasks: taskRows,
-				events: eventRows,
-				logs: []
-			}),
-			context_meta: buildGlobalContextMeta({
-				source: 'fallback',
-				projectCount: allProjects.length,
-				activeProjectCount: countNonPausedProjects(allProjects),
-				projectsReturned: lightProjects.length
-			})
-		};
+		return markGlobalWorkspace(
+			{
+				projects: buildGlobalProjectBundles({
+					projects: lightProjects,
+					goalsByProject,
+					milestonesByProject,
+					plansByProject
+				}),
+				project_index: buildGlobalProjectIndex(allProjects, hierarchyRows),
+				project_intelligence: buildProjectIntelligenceSnapshot({
+					scope: 'global',
+					source: 'fallback',
+					projects: allProjects,
+					goals: goalRows,
+					milestones: milestoneRows,
+					tasks: taskRows,
+					events: eventRows,
+					logs: []
+				}),
+				context_meta: buildGlobalContextMeta({
+					source: 'fallback',
+					projectCount: realProjects.length,
+					activeProjectCount: countNonPausedProjects(realProjects),
+					projectsReturned: lightProjects.length
+				})
+			},
+			workspaceId
+		);
 	}
 
 	async function loadDailyBriefContextData(params: {
@@ -3240,8 +3331,20 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 		let fallbackContextLoadSource: FastChatContextLoadSource = rpcContextType
 			? 'rpc_null_fallback'
 			: 'fallback';
+		// The Workspace id is resolved (and the Workspace created on first use)
+		// beside the context RPC, so it adds no round trip.
+		const resolveWorkspace =
+			rpcContextType === 'global' ||
+			contextType === 'global' ||
+			(rpcContextType === 'project' && params.includeWorkspace === true);
+		const workspaceIdPromise: Promise<string | null> = resolveWorkspace
+			? loadGlobalWorkspaceProjectId(supabase, params.onError)
+			: Promise.resolve(null);
 		if (rpcContextType) {
-			const rpcResult = await loadFastChatContextViaRpc(params);
+			const [rpcResult, workspaceId] = await Promise.all([
+				loadFastChatContextViaRpc(params),
+				workspaceIdPromise
+			]);
 			const rpcPayload = rpcResult.payload;
 			if (rpcResult.fallbackSource) {
 				fallbackContextLoadSource = rpcResult.fallbackSource;
@@ -3249,9 +3352,9 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 			if (rpcPayload) {
 				if (rpcContextType === 'global') {
 					if (normalizeProjectIntelligenceFromPayload(rpcPayload.project_intelligence)) {
-						const base = buildGlobalContextFromRpc(rpcPayload);
-						// The RPC's project rows carry no parent column, so it is read here,
-						// beside the rollups (no added round trip).
+						const base = buildGlobalContextFromRpc(rpcPayload, workspaceId);
+						// The RPC's project rows carry no parent or kind column, so they are
+						// read here, beside the rollups (no added round trip).
 						const [withRollups, hierarchyRows] = await Promise.all([
 							attachGlobalTaskRollups(supabase, base, params.onError),
 							loadGlobalProjectHierarchyRows(
@@ -3260,7 +3363,7 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 								params.onError
 							)
 						]);
-						const data =
+						const withParents =
 							hierarchyRows === null
 								? withRollups
 								: {
@@ -3270,6 +3373,10 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 											hierarchyRows
 										)
 									};
+						const data = markGlobalWorkspace(
+							withParents,
+							workspaceId ?? workspaceIdFromKindRows(hierarchyRows)
+						);
 						return { ...baseContext, contextLoadSource: 'rpc', data };
 					}
 					reportContextLoadError(
@@ -3282,7 +3389,14 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 					);
 					fallbackContextLoadSource = 'rpc_null_fallback';
 				} else {
-					const projectContext = buildProjectContextFromRpc(rpcPayload, eventWindow);
+					const builtProjectContext = buildProjectContextFromRpc(rpcPayload, eventWindow);
+					// The Workspace beside this project (never when the chat is on the
+					// Workspace itself): where an item the user says is not for this
+					// project goes.
+					const projectContext =
+						builtProjectContext && workspaceId && workspaceId !== projectId
+							? { ...builtProjectContext, workspace_project_id: workspaceId }
+							: builtProjectContext;
 					if (projectContext) {
 						const [projectContextWithStartHere, focusedTable] = await Promise.all([
 							attachProjectStartHere(
@@ -3360,7 +3474,12 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 		if (contextType === 'global') {
 			const data = await attachGlobalTaskRollups(
 				supabase,
-				await loadGlobalContextData(supabase, userId, params.onError),
+				await loadGlobalContextData(
+					supabase,
+					userId,
+					params.onError,
+					await workspaceIdPromise
+				),
 				params.onError
 			);
 			return { ...baseContext, contextLoadSource: fallbackContextLoadSource, data };

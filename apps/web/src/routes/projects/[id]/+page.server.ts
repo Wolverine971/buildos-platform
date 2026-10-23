@@ -91,6 +91,8 @@ interface ProjectAccessPayload {
 interface ProjectSkeletonWithAccessResponse {
 	id: string;
 	name: string;
+	/** onto_projects.kind: 'workspace' is the viewer's loose items, not a project page. */
+	kind?: string | null;
 	description: string | null;
 	icon_svg: string | null;
 	icon_concept: string | null;
@@ -319,6 +321,9 @@ export const load: PageServerLoad = async ({ params, locals, url, fetch, request
 	if (bundle.route_access_state === 'not_found') {
 		throw error(404, 'Project not found');
 	}
+	// The Workspace (the viewer's loose items) has no project page: its home is
+	// /projects, where loose items open in the reader. Links to it land there.
+	if (bundle.kind === 'workspace') throw redirect(307, '/projects');
 
 	return {
 		skeleton: true,

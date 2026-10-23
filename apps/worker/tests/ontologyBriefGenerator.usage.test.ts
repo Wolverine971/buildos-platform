@@ -38,6 +38,7 @@ function createBriefData(): OntologyBriefData {
 		project: {
 			id: 'project-1',
 			name: 'Project 1',
+			kind: 'project',
 			state_key: 'active',
 			type_key: 'project.test',
 			description: null,

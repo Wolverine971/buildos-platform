@@ -22,6 +22,8 @@ export interface TodayTask {
 export interface TodayProject {
 	id: string;
 	name: string;
+	/** 'workspace' for the person's loose items (shown as "Workspace", never as a project). */
+	kind?: 'project' | 'workspace';
 	state_key: string;
 	/** AI/user "next move" for the project — powers the "what's waiting" empty-agenda state */
 	next_step_short: string | null;

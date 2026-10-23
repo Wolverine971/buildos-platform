@@ -1566,6 +1566,8 @@ async function resolveTrustedPromptContext(params: {
 				contextType: params.contextType,
 				entityId: params.entityId ?? undefined,
 				projectFocus: params.projectFocus ?? undefined,
+				// The user's Workspace id rides project contexts too (user client).
+				includeWorkspace: true,
 				// A failed stage degrades the context rather than failing the turn;
 				// log it so a steward's "not loaded" facts are traceable.
 				onError: ({ stage, error, metadata }) =>

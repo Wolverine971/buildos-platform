@@ -237,13 +237,15 @@ type RequestRow = {
 	expires_at: string | null;
 	kind?: string | null;
 	project_id?: string | null;
+	requested_items?: unknown;
+	via_agent_label?: string | null;
 };
 
 async function loadRequest(admin: AdminClient, requestId: string): Promise<RequestRow | null> {
 	const { data, error } = await (admin as any)
 		.from('people_requests')
 		.select(
-			'id, from_user_id, to_user_id, role_requested, note, via, status, decision, expires_at, kind, project_id'
+			'id, from_user_id, to_user_id, role_requested, note, via, status, decision, expires_at, kind, project_id, requested_items, via_agent_label'
 		)
 		.eq('id', requestId)
 		.maybeSingle();
@@ -276,6 +278,62 @@ export function buildRejoinRequestEmail(input: {
 		paragraph(footer, { muted: true, size: 12 })
 	]);
 	const text = [asked, choice, `Review request: ${input.reviewUrl}`, footer].join('\n\n');
+	return { subject, html, text };
+}
+
+export type UpgradeNeed = 'agents_read' | 'agents_write' | 'edit';
+
+function upgradeAsk(need: string | null | undefined, project: string): string {
+	return need === 'edit'
+		? `wants to edit ${project}, with their agents able to make changes`
+		: need === 'agents_write'
+			? `wants their agents to make changes in ${project}`
+			: `wants their agents to see ${project}`;
+}
+
+/** A member asked the owner for more in projects they're already in (tasker 140). */
+export function buildUpgradeRequestEmail(input: {
+	requester: Pick<PersonRow, 'name' | 'username'>;
+	projectNames: string[];
+	need: string | null;
+	agentLabel: string | null;
+	hasNote: boolean;
+	reviewUrl: string;
+	expiresAt: string | null;
+}): EmailParts {
+	const name = displayName(input.requester);
+	const what =
+		input.projectNames.length === 1
+			? (input.projectNames[0] ?? 'your project')
+			: `${input.projectNames.length} of your projects`;
+	const subject = `${name} ${upgradeAsk(input.need, what)}`;
+	const asked = `${withHandle(input.requester)} ${upgradeAsk(input.need, what)}.${
+		input.projectNames.length > 1 ? ` (${input.projectNames.join(', ')})` : ''
+	}`;
+	const viaAgent = input.agentLabel
+		? `${input.agentLabel} asked for them while working in your project, after they said yes.`
+		: null;
+	const note = input.hasNote ? 'They added a note. You can read it with the request.' : null;
+	const choice =
+		input.need === 'agents_read'
+			? 'Nothing changes until you choose.'
+			: `Nothing changes until you choose. Even then, their agents only add tasks and documents and change what ${name} created or is assigned to.`;
+	const until = longDate(input.expiresAt);
+	const footer = `${until ? `The request expires on ${until} if you don’t answer. ` : ''}You get this email because you shared ${what} with them.`;
+
+	const html = render(subject, [
+		heading(subject),
+		paragraph(asked),
+		viaAgent ? paragraph(viaAgent) : '',
+		note ? paragraph(note) : '',
+		paragraph(choice, { muted: true, size: 14 }),
+		button('Review request', input.reviewUrl),
+		fallbackLink(input.reviewUrl),
+		paragraph(footer, { muted: true, size: 12 })
+	]);
+	const text = [asked, viaAgent, note, choice, `Review request: ${input.reviewUrl}`, footer]
+		.filter(Boolean)
+		.join('\n\n');
 	return { subject, html, text };
 }
 
@@ -333,6 +391,45 @@ export async function sendPeopleRequestReceivedEmail(
 		if (!requester || !owner || !to) return 'skipped';
 
 		const baseUrl = deps.baseUrl ?? appBaseUrl();
+		if (request.kind === 'upgrade') {
+			const items = (Array.isArray(request.requested_items) ? request.requested_items : [])
+				.map((item) =>
+					item && typeof item === 'object' ? (item as Record<string, unknown>) : {}
+				)
+				.filter((item) => typeof item.project_id === 'string');
+			const { data: projectRows, error: projectError } = await (admin as any)
+				.from('onto_projects')
+				.select('id, name')
+				.in(
+					'id',
+					items.map((item) => String(item.project_id))
+				);
+			if (projectError) throw projectError;
+			const names = new Map(
+				((projectRows ?? []) as Array<{ id: string; name: string | null }>).map((row) => [
+					row.id,
+					row.name?.trim() || 'your project'
+				])
+			);
+			const parts = buildUpgradeRequestEmail({
+				requester,
+				projectNames: items.map(
+					(item) => names.get(String(item.project_id)) ?? 'your project'
+				),
+				need: typeof items[0]?.need === 'string' ? items[0].need : null,
+				agentLabel:
+					request.via === 'agent' ? (request.via_agent_label ?? 'Their agent') : null,
+				hasNote: Boolean(request.note?.trim()),
+				reviewUrl: `${baseUrl}/people`,
+				expiresAt: request.expires_at
+			});
+			return await send(deps.mailer ?? new EmailService(admin as any), to, parts, {
+				recipientUserId: owner.id,
+				createdBy: requester.id,
+				type: 'people_request_received',
+				requestId
+			});
+		}
 		let rejoinProjectName: string | null = null;
 		if (request.kind === 'rejoin' && request.project_id) {
 			const { data: project, error: projectError } = await (admin as any)
@@ -372,6 +469,42 @@ export async function sendPeopleRequestReceivedEmail(
 }
 
 type SharedProject = { id: string; name: string; role: string; agent_access: string };
+
+/** The owner said yes to an upgrade: what changed, and that the agent can carry on. */
+export function buildUpgradeApprovedEmail(input: {
+	owner: Pick<PersonRow, 'name' | 'username'>;
+	projects: Array<SharedProject & { need?: string | null }>;
+	baseUrl: string;
+}): EmailParts {
+	const owner = displayName(input.owner);
+	const single = input.projects.length === 1 ? input.projects[0] : null;
+	const what = single ? single.name : `${input.projects.length} projects`;
+	const need = input.projects[0]?.need ?? null;
+	const subject =
+		need === 'edit'
+			? `${owner} made you an editor of ${what}`
+			: need === 'agents_write'
+				? `${owner} let your agents make changes in ${what}`
+				: `${owner} let your agents see ${what}`;
+	const lines = [
+		need === 'agents_read'
+			? 'Your connected agents can open it now.'
+			: 'Your connected agents can now add tasks and documents there, and change the ones you created or are assigned to.',
+		'If your agent was waiting on this, tell it to pick up where it left off.'
+	];
+	const url = single ? `${input.baseUrl}/projects/${single.id}` : `${input.baseUrl}/projects`;
+	const label = single ? `Open ${single.name}` : 'Open your projects';
+	const html = render(subject, [
+		heading(subject),
+		...lines.map((line, index) =>
+			paragraph(line, index === lines.length - 1 ? { muted: true, size: 14 } : {})
+		),
+		button(label, url),
+		fallbackLink(url)
+	]);
+	const text = [`${subject}.`, ...lines, `${label}: ${url}`].join('\n\n');
+	return { subject, html, text };
+}
 
 export function buildRequestApprovedEmail(input: {
 	owner: Pick<PersonRow, 'name' | 'username'>;
@@ -433,7 +566,8 @@ export async function sendPeopleRequestApprovedEmail(
 				agent_access:
 					grant.agent_access === 'off' || grant.agent_access === 'write'
 						? String(grant.agent_access)
-						: 'read'
+						: 'read',
+				need: typeof grant.need === 'string' ? grant.need : null
 			}));
 		if (grants.length === 0) return 'skipped';
 
@@ -458,7 +592,8 @@ export async function sendPeopleRequestApprovedEmail(
 				id: grant.project_id,
 				name: names.get(grant.project_id) ?? 'Untitled project',
 				role: grant.role,
-				agent_access: grant.agent_access
+				agent_access: grant.agent_access,
+				need: grant.need
 			}));
 		if (projects.length === 0) return 'skipped';
 
@@ -468,11 +603,18 @@ export async function sendPeopleRequestApprovedEmail(
 		const to = await emailableAddress(admin, requester);
 		if (!requester || !owner || !to) return 'skipped';
 
-		const parts = buildRequestApprovedEmail({
-			owner,
-			projects,
-			baseUrl: deps.baseUrl ?? appBaseUrl()
-		});
+		const parts =
+			request.kind === 'upgrade'
+				? buildUpgradeApprovedEmail({
+						owner,
+						projects,
+						baseUrl: deps.baseUrl ?? appBaseUrl()
+					})
+				: buildRequestApprovedEmail({
+						owner,
+						projects,
+						baseUrl: deps.baseUrl ?? appBaseUrl()
+					});
 		return await send(deps.mailer ?? new EmailService(admin as any), to, parts, {
 			recipientUserId: requester.id,
 			createdBy: owner.id,

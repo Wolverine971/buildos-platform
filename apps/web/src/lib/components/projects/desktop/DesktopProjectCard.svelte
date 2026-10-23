@@ -114,6 +114,9 @@
 	let openDocs = $state<Set<string>>(new Set());
 	let showDone = $state(false);
 
+	// The Workspace's own card: its loose notes, docs and tasks, without project chrome
+	// (no status, next step, goals or full page).
+	const workspace = $derived(project.kind === 'workspace');
 	const projectState = $derived(normalizeProjectState(project.state_key));
 	const nextStep = $derived(formatProjectResumeCue(project.next_step_short));
 	const description = $derived(formatProjectResumeCue(project.description));
@@ -166,11 +169,19 @@
 		const list: { key: CardTab; label: string; count: number | string | null }[] = [
 			{
 				key: 'docs',
-				label: 'Docs',
+				label: workspace ? 'Notes & docs' : 'Docs',
 				count: data ? data.project.documents.length : project.document_count
 			},
 			{ key: 'tasks', label: 'Tasks', count: data ? openTasks.length : project.task_count },
-			{ key: 'goals', label: 'Goals', count: data ? data.goals.length : project.goal_count },
+			...(workspace
+				? []
+				: [
+						{
+							key: 'goals' as const,
+							label: 'Goals',
+							count: data ? data.goals.length : project.goal_count
+						}
+					]),
 			{
 				key: 'chats',
 				label: 'Chats',
@@ -350,7 +361,7 @@
 			class="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"
 			aria-label="Where this project lives"
 		>
-			<button type="button" class="crumb" onclick={onCollapse}>Projects</button>
+			<button type="button" class="crumb" onclick={onCollapse}>Workspace</button>
 			<span aria-hidden="true">/</span>
 			{#if parent}
 				<button type="button" class="crumb" onclick={() => onOpenProject(parent.id)}>
@@ -358,7 +369,7 @@
 				</button>
 				<span aria-hidden="true">/</span>
 			{/if}
-			<span class="truncate">{shortName(project.name)}</span>
+			<span class="truncate">{workspace ? 'Loose items' : shortName(project.name)}</span>
 		</nav>
 		<div class="flex items-start gap-3.5">
 			<DesktopTile {project} inside={canHold ? inside : []} size="md" />
@@ -367,10 +378,15 @@
 					tabindex="-1"
 					class="text-xl font-semibold outline-none leading-tight tracking-tight text-foreground text-balance"
 				>
-					{project.name}
+					{workspace ? 'Loose items' : project.name}
 				</h2>
 				<div class="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-					{#if look?.pulse}
+					{#if workspace}
+						<span
+							>Notes, docs and tasks that aren't in a project yet. Drag one onto a
+							project in the dock to file it.</span
+						>
+					{:else if look?.pulse}
 						<span class="pulse pulse-{look.pulse}" title={look.reason}>
 							{PULSE_META[look.pulse].label}
 						</span>
@@ -378,7 +394,9 @@
 					{:else}
 						<span>Updated {relativeDay(new Date(updatedAt).toISOString())}</span>
 					{/if}
-					<span>· Status {PROJECT_STATE_META[projectState].label.toLowerCase()}</span>
+					{#if !workspace}
+						<span>· Status {PROJECT_STATE_META[projectState].label.toLowerCase()}</span>
+					{/if}
 					{#if parent}<span>· Part of {shortName(parent.name)}</span>{/if}
 				</div>
 			</div>
@@ -397,34 +415,43 @@
 					class="action bolt"
 					onclick={() => panes?.openChat('project')}
 					aria-pressed={chatOpen && chatScope === 'project' && !chatSession}
-					title="Chat about this project"
-					aria-label="Chat about {project.name}"
+					title={workspace ? 'Chat about your loose items' : 'Chat about this project'}
+					aria-label="Chat about {workspace ? 'your loose items' : project.name}"
 				>
 					<img src="/brain-bolt.webp" alt="" class="h-6 w-6 rounded object-cover" />
 				</button>
-				<a {href} class="action" onclick={onOpenFull} data-sveltekit-preload-data="hover">
-					<ArrowUpRight class="h-4 w-4" />
-					<span class="hidden sm:inline">Open project</span>
-					<span class="sr-only sm:hidden">Open project</span>
-				</a>
+				{#if !workspace}
+					<a
+						{href}
+						class="action"
+						onclick={onOpenFull}
+						data-sveltekit-preload-data="hover"
+					>
+						<ArrowUpRight class="h-4 w-4" />
+						<span class="hidden sm:inline">Open project</span>
+						<span class="sr-only sm:hidden">Open project</span>
+					</a>
+				{/if}
 				<button
 					type="button"
 					class="action quiet"
 					onclick={onCollapse}
-					aria-label="Collapse and go back to all projects"
+					aria-label="Collapse and go back to your Workspace"
 				>
 					<Minimize2 class="h-4 w-4" />
 					<span class="hidden sm:inline">Collapse</span>
 				</button>
 			</div>
 		</div>
-		<div class="grid gap-0.5">
-			<span class="micro-label text-accent">NEXT STEP</span>
-			<p class="next max-w-[72ch] text-sm text-foreground">
-				{nextStep || 'No next step yet.'}
-			</p>
-		</div>
-		{#if description}
+		{#if !workspace}
+			<div class="grid gap-0.5">
+				<span class="micro-label text-accent">NEXT STEP</span>
+				<p class="next max-w-[72ch] text-sm text-foreground">
+					{nextStep || 'No next step yet.'}
+				</p>
+			</div>
+		{/if}
+		{#if description && !workspace}
 			<p class="line-clamp-3 max-w-[72ch] text-sm text-muted-foreground">
 				{description}
 			</p>

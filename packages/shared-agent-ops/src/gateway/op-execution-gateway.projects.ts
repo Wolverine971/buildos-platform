@@ -119,7 +119,15 @@ function serializeProjectSummary(
 		document_count: project.document_count,
 		access_role: project.access_role,
 		access_level: project.access_level,
-		...sharedProjectFields(project, owners)
+		...sharedProjectFields(project, owners),
+		// The user's Workspace (2026-10-23) lists beside the projects, marked so a
+		// connector saves loose items there instead of making a project for them.
+		...(project.kind === 'workspace'
+			? {
+					kind: 'workspace',
+					note: "The user's Workspace: loose notes and tasks, not a project. Save items that fit no project here."
+				}
+			: {})
 	};
 }
 
@@ -162,13 +170,27 @@ async function loadConnectorProjectHierarchy(
  * with it. Only a count is exposed — never names of ungranted projects.
  */
 function connectorScopeNote(visible: VisibleProjectContext) {
-	if (visible.ungrantedProjectCount <= 0) return {};
 	const count = visible.ungrantedProjectCount;
+	const blocked = visible.ownerBlockedProjectCount ?? 0;
+	if (count <= 0 && blocked <= 0) return {};
+	const notes: string[] = [];
+	if (count > 0) {
+		notes.push(
+			`${count} more project${count === 1 ? ' is' : 's are'} in the user's workspace but not shared with this connector. If the project you need is missing, ask the user to grant access (connector_scope.grant_url when present), then retry.`
+		);
+	}
+	if (blocked > 0) {
+		notes.push(
+			`${blocked} project${blocked === 1 ? ' is' : 's are'} shared with the user by owners who turned off agents for them; only those owners can turn agents back on (request_project_access asks them).`
+		);
+	}
 	return {
 		connector_scope: {
-			reason: PROJECT_NOT_GRANTED_TO_CONNECTOR,
-			ungranted_project_count: count,
-			note: `${count} more project${count === 1 ? ' is' : 's are'} in the user's workspace but not shared with this connector. If the project you need is missing, ask the user to grant access (connector_scope.grant_url when present), then retry.`
+			...(count > 0
+				? { reason: PROJECT_NOT_GRANTED_TO_CONNECTOR, ungranted_project_count: count }
+				: {}),
+			...(blocked > 0 ? { owner_blocked_project_count: blocked } : {}),
+			note: notes.join(' ')
 		}
 	};
 }

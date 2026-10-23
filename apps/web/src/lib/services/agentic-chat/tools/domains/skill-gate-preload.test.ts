@@ -406,6 +406,18 @@ describe('resolveOperationalPlaybookCandidates', () => {
 		expect(block).toContain('- Organize unlinked project documents');
 	});
 
+	// 2026-10-23: create_onto_document joined global for Workspace saves, but the
+	// document playbook walks the project tree with tools global does not mount.
+	it('keeps document_workspace off the global surface', () => {
+		expect(workerSurfaceToolNames('global')).toContain('create_onto_document');
+		expect(candidateSkillIds(workerSurfaceToolNames('global'))).not.toContain(
+			'document_workspace'
+		);
+		expect(candidateSkillIds(workerSurfaceToolNames('project'))).toContain(
+			'document_workspace'
+		);
+	});
+
 	it('ships calendar_management when the calendar write tools are mounted', () => {
 		expect(candidateSkillIds(['create_calendar_event', 'update_calendar_event'])).toEqual([
 			'calendar_management'

@@ -26,7 +26,7 @@ export const ONTOLOGY_WRITE_TOOLS = [
 				properties: {
 					project_id: {
 						type: 'string',
-						description: 'Project UUID'
+						description: "Project UUID or the user's Workspace id"
 					},
 					title: {
 						type: 'string',
@@ -287,7 +287,7 @@ Families: timebox, pipeline, campaign, roadmap, process, phase. Default: plan.ph
 		function: {
 			name: 'create_onto_document',
 			description:
-				'Create a project document such as a brief, spec, context note, research artifact, or creative reference. Use parent_id for tree placement.',
+				"Create a document in a project or the user's Workspace: a brief, spec, note, research artifact, or creative reference. Use parent_id for tree placement.",
 			parameters: {
 				type: 'object',
 				properties: {

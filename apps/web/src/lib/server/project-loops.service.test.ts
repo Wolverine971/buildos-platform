@@ -3,11 +3,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
 	createAdminSupabaseClient: vi.fn(),
-	addQueueJobWithPublicId: vi.fn()
+	addQueueJobWithPublicId: vi.fn(),
+	isWorkspaceProjectId: vi.fn()
 }));
 
 vi.mock('$lib/supabase/admin', () => ({
 	createAdminSupabaseClient: mocks.createAdminSupabaseClient
+}));
+
+vi.mock('$lib/server/workspace-guard', () => ({
+	isWorkspaceProjectId: mocks.isWorkspaceProjectId
 }));
 
 vi.mock('$lib/server/queue-job-id', () => ({
@@ -18,7 +23,7 @@ vi.mock('$lib/config/project-loops', () => ({
 	PROJECT_LOOPS_ENABLED: true
 }));
 
-import { queueProjectLoop } from './project-loops.service';
+import { queueProjectLoop, WORKSPACE_NOT_REVIEWABLE } from './project-loops.service';
 
 type Operation = {
 	table: string;
@@ -179,10 +184,28 @@ function findOperation(
 describe('queueProjectLoop', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.isWorkspaceProjectId.mockResolvedValue(false);
 		mocks.addQueueJobWithPublicId.mockResolvedValue({
 			queueJobId: 'queue-job-1',
 			metadata: { runId: 'loop-run-1' }
 		});
+	});
+
+	it('refuses the Workspace (loose items) without creating a run', async () => {
+		const { supabase, operations } = createSupabaseMock();
+		mocks.createAdminSupabaseClient.mockReturnValue(supabase);
+		mocks.isWorkspaceProjectId.mockResolvedValue(true);
+
+		await expect(
+			queueProjectLoop({
+				projectId: 'workspace-1',
+				userId: 'user-1',
+				triggerReason: 'manual'
+			})
+		).resolves.toEqual({ queued: false, reason: WORKSPACE_NOT_REVIEWABLE });
+		expect(mocks.isWorkspaceProjectId).toHaveBeenCalledWith(supabase, 'workspace-1');
+		expect(operations.some((operation) => operation.action === 'insert')).toBe(false);
+		expect(mocks.addQueueJobWithPublicId).not.toHaveBeenCalled();
 	});
 
 	it.each(['manual', 'burst'] as const)(

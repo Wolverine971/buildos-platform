@@ -24,6 +24,7 @@ import {
 	fetchProjectSummaries,
 	type OntologyProjectSummary
 } from '../ontology/ontology-projects.service';
+import { loadMemberAgentAccess } from './op-execution-gateway.member-agent-access';
 import { ExternalToolGatewayError } from './op-execution-gateway.responses';
 
 /** Changes one connector may make in one project someone else owns, per rolling 24 hours. */
@@ -127,20 +128,20 @@ async function isAssignedToTask(admin: any, taskId: string, actorId: string): Pr
 	return !error && Array.isArray(data) && data.length > 0;
 }
 
-async function loadMemberAgentAccess(
+/** The member's agent setting with the owner's standing approval applied; null on failure. */
+async function loadEffectiveAgentAccess(
 	admin: any,
 	projectId: string,
 	actorId: string
 ): Promise<string | null> {
-	const { data, error } = await admin
-		.from('onto_project_members')
-		.select('agent_access')
-		.eq('project_id', projectId)
-		.eq('actor_id', actorId)
-		.is('removed_at', null)
-		.maybeSingle();
-	if (error || !data) return null;
-	return typeof data.agent_access === 'string' ? data.agent_access : null;
+	try {
+		return (
+			(await loadMemberAgentAccess(admin, actorId, [projectId])).get(projectId)?.effective ??
+			null
+		);
+	} catch {
+		return null;
+	}
 }
 
 async function countRecentConnectorChanges(
@@ -261,7 +262,7 @@ export async function applyGuestAgentLane(params: {
 	const project = shared.get(target.projectId);
 	if (!project || !baseWrite.includes(target.projectId)) return laneScope;
 
-	const agentAccess = await loadMemberAgentAccess(params.admin, project.id, actorId);
+	const agentAccess = await loadEffectiveAgentAccess(params.admin, project.id, actorId);
 	if (agentAccess !== 'write') {
 		throw new ExternalToolGatewayError(
 			'FORBIDDEN',
@@ -283,7 +284,7 @@ export async function applyGuestAgentLane(params: {
 		throw new ExternalToolGatewayError(
 			'FORBIDDEN',
 			`"${project.name}" belongs to someone else. Your agent can't archive or restore items there; your person can do that in BuildOS.`,
-			{ reason: GUEST_LANE_REASON.outsideLane, project_id: project.id }
+			{ reason: GUEST_LANE_REASON.outsideLane, project_id: project.id, action: 'archive' }
 		);
 	}
 

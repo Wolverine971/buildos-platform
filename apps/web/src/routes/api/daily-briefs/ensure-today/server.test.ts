@@ -28,6 +28,7 @@ function createQuery(response: QueryResponse) {
 		eq: vi.fn(() => query),
 		in: vi.fn(() => query),
 		is: vi.fn(() => query),
+		neq: vi.fn(() => query),
 		or: vi.fn(() => query),
 		contains: vi.fn(() => query),
 		order: vi.fn(() => query),
@@ -172,7 +173,8 @@ describe('POST /api/daily-briefs/ensure-today', () => {
 			noRows(),
 			{ data: { id: 'actor-1' }, error: null },
 			{ data: [], error: null }, // memberships
-			{ data: null, error: null, count: 0 } // planning|active project count
+			{ data: null, error: null, count: 0 }, // planning|active project count
+			{ data: null, error: null, count: 0 } // open Workspace tasks
 		]);
 
 		const response = await POST(createEvent(supabase));
@@ -185,6 +187,42 @@ describe('POST /api/daily-briefs/ensure-today', () => {
 			queued: false
 		});
 		expect(fetch).not.toHaveBeenCalled();
+	});
+
+	it('counts the Workspace only while it holds an open task', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					success: true,
+					jobId: 'queue-1',
+					scheduledFor: '2026-07-06T14:00:00.000Z'
+				}),
+				{ status: 200, headers: { 'content-type': 'application/json' } }
+			)
+		);
+		vi.stubGlobal('fetch', fetchMock);
+
+		const supabase = createSupabase([
+			{ data: { timezone: 'America/New_York' }, error: null },
+			noRows(),
+			noRows(),
+			{ data: { id: 'actor-1' }, error: null },
+			{ data: [{ project_id: 'workspace-1' }], error: null }, // memberships
+			{ data: null, error: null, count: 0 }, // real projects (kind = 'project')
+			{ data: null, error: null, count: 2 } // open Workspace tasks
+		]);
+
+		const response = await POST(createEvent(supabase));
+		const payload = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(payload.data).toMatchObject({ state: 'queued', queued: true });
+		const projectCount = supabase.from.mock.results[5]!.value;
+		expect(projectCount.eq).toHaveBeenCalledWith('kind', 'project');
+		const workspaceTasks = supabase.from.mock.results[6]!.value;
+		expect(supabase.from).toHaveBeenNthCalledWith(7, 'onto_tasks');
+		expect(workspaceTasks.eq).toHaveBeenCalledWith('onto_projects.kind', 'workspace');
+		expect(workspaceTasks.neq).toHaveBeenCalledWith('state_key', 'done');
 	});
 
 	it('queues a non-forced immediate ontology brief when preflight passes', async () => {

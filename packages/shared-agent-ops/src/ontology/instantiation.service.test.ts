@@ -80,9 +80,16 @@ function createMockClient(options: { failOn?: FailRule } = {}) {
 					}
 				};
 			},
-			select: () => ({
-				eq: async () => ({ count: insertsByTable.get('onto_edges')?.length ?? 0 })
-			}),
+			select: () => {
+				const chain: any = {
+					eq: () => chain,
+					is: () => chain,
+					then(resolve: (value: unknown) => void) {
+						resolve({ count: insertsByTable.get('onto_edges')?.length ?? 0 });
+					}
+				};
+				return chain;
+			},
 			delete: () => ({
 				in: async (column: string, value: unknown) => {
 					deletes.push({ table, method: 'in', column, value });

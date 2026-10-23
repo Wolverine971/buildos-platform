@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
 	createAdminSupabaseClient: vi.fn(),
+	isWorkspaceProjectId: vi.fn(),
 	addQueueJobWithPublicId: vi.fn(),
 	captureServerEvent: vi.fn(),
 	evaluateProjectAuditTrigger: vi.fn(),
@@ -13,6 +14,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('$lib/supabase/admin', () => ({
 	createAdminSupabaseClient: mocks.createAdminSupabaseClient
+}));
+
+vi.mock('$lib/server/workspace-guard', () => ({
+	isWorkspaceProjectId: mocks.isWorkspaceProjectId
 }));
 
 vi.mock('$lib/server/queue-job-id', () => ({
@@ -139,6 +144,7 @@ function createSupabaseMock() {
 describe('queueProjectAudit', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.isWorkspaceProjectId.mockResolvedValue(false);
 		mocks.evaluateProjectAuditTrigger.mockResolvedValue({
 			evaluation: {
 				decision: 'queued',
@@ -157,6 +163,26 @@ describe('queueProjectAudit', () => {
 				projectId: 'project-1'
 			}
 		});
+	});
+
+	it('never audits the Workspace (loose items)', async () => {
+		const { supabase, operations } = createSupabaseMock();
+		mocks.createAdminSupabaseClient.mockReturnValue(supabase);
+		mocks.isWorkspaceProjectId.mockResolvedValue(true);
+
+		const result = await queueProjectAudit({
+			projectId: 'workspace-1',
+			userId: 'user-1',
+			triggerReason: 'manual'
+		});
+
+		expect(result).toMatchObject({ queued: false, decision: 'skipped_ineligible' });
+		expect(result.reason).toContain('Workspace');
+		expect(mocks.isWorkspaceProjectId).toHaveBeenCalledWith(supabase, 'workspace-1');
+		expect(mocks.evaluateProjectAuditTrigger).not.toHaveBeenCalled();
+		expect(mocks.recordProjectAuditTriggerEvaluation).not.toHaveBeenCalled();
+		expect(mocks.addQueueJobWithPublicId).not.toHaveBeenCalled();
+		expect(operations).toHaveLength(0);
 	});
 
 	it('fails freshly-created audit rows when queue dedup returns an existing audit job', async () => {

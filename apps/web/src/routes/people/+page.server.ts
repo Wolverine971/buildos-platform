@@ -62,9 +62,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		accepts_agent_requests: profileRow?.accepts_agent_requests !== false
 	};
 
-	// Only projects you own can be shared (decide_people_request enforces it too).
+	// Only projects you own can be shared (decide_people_request enforces it too). The
+	// Workspace (loose items) is private and never shareable.
 	const ownedProjects: OwnedProjectOption[] = (projects ?? [])
-		.filter((project) => !project.is_shared)
+		.filter((project) => !project.is_shared && project.kind !== 'workspace')
 		.map((project) => ({ id: project.id, name: project.name?.trim() || 'Untitled project' }));
 
 	const shared = (projects ?? []).filter((project) => project.is_shared);

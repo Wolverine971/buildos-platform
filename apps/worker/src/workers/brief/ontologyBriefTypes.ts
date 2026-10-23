@@ -398,11 +398,24 @@ export interface OntologyBriefData {
 	recentUpdates: RecentUpdates;
 	recentlyPausedProjects: ProjectPauseNotice[];
 	tasksByWorkMode: Record<string, OntoTask[]>;
+	/** Real projects only. The Workspace (loose items) lives in `workspace`. */
 	projects: ProjectBriefData[];
+	/** The person's Workspace: loose tasks and notes that sit outside any project. */
+	workspace?: WorkspaceBriefSection | null;
 	calendar: CalendarBriefSection;
 	// Strategic task splits per PROJECT_CONTEXT_ENRICHMENT_SPEC.md
 	recentlyUpdatedTasks: OntoTask[]; // Updated in last 7 days, ordered by updated_at desc, cap 10
 	upcomingTasks: OntoTask[]; // Due/start in next 7 days (deduplicated from recent), cap 5
+}
+
+export interface WorkspaceBriefSection {
+	projectId: string;
+	/** Open loose tasks, soonest due first, capped. */
+	openTasks: OntoTask[];
+	openTaskCount: number;
+	/** Loose notes and docs saved in the last 7 days, newest first, capped. */
+	recentNotes: Array<{ id: string; title: string; created_at: string }>;
+	recentNoteCount: number;
 }
 
 export interface ProjectBriefData {

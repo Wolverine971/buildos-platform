@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-10-23T19:14:59.844Z
+// Generated on: 2026-10-23T21:32:00.358Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -2148,6 +2148,7 @@ export type DatabaseSchema = {
 		caller_key: string;
 		created_at: string;
 		id: string;
+		include_shared_projects: boolean;
 		last_used_at: string | null;
 		metadata: Json;
 		permission_requests_enabled: boolean;
@@ -3171,6 +3172,7 @@ export type DatabaseSchema = {
 		icon_svg: string | null;
 		id: string;
 		is_public: boolean | null;
+		kind: string;
 		merged_into_project_id: string | null;
 		name: string;
 		next_step_long: string | null;
@@ -3438,6 +3440,7 @@ export type DatabaseSchema = {
 		note: string | null;
 		project_hint: string | null;
 		project_id: string | null;
+		requested_items: Json | null;
 		role_requested: string;
 		status: string;
 		to_user_id: string;
@@ -3545,6 +3548,11 @@ export type DatabaseSchema = {
 		status: string;
 		suggested_chapter_id: string | null;
 		suggested_chapter_title: string | null;
+	};
+	project_agent_settings: {
+		editor_agents_write: boolean;
+		project_id: string;
+		updated_at: string;
 	};
 	project_audit_suggestions: {
 		audit_id: string;
@@ -4959,6 +4967,25 @@ export type DatabaseSchema = {
 		updated_at: string;
 		user_id: string;
 	};
+	workspace_suggestions: {
+		confidence: number | null;
+		created_at: string;
+		decided_at: string | null;
+		id: string;
+		item_key: string;
+		items: Json;
+		kind: string;
+		model: string | null;
+		proposed_name: string | null;
+		reason: string;
+		result: Json | null;
+		run_id: string | null;
+		status: string;
+		target_project_id: string | null;
+		updated_at: string;
+		user_id: string;
+		workspace_project_id: string;
+	};
 };
 
 export const tableNames = [
@@ -5171,6 +5198,7 @@ export const tableNames = [
 	'profile_document_versions',
 	'profile_documents',
 	'profile_fragments',
+	'project_agent_settings',
 	'project_audit_suggestions',
 	'project_audit_trigger_evaluations',
 	'project_audits',
@@ -5245,5 +5273,6 @@ export const tableNames = [
 	'web_page_versions',
 	'web_page_visits',
 	'webhook_events',
-	'welcome_email_sequences'
+	'welcome_email_sequences',
+	'workspace_suggestions'
 ] as const;

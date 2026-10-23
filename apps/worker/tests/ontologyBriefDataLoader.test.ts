@@ -931,6 +931,48 @@ describe('prepareBriefData', () => {
 		expect(result.staleInProgressTasks.map((task) => task.id)).toEqual(['task-in-progress']);
 		expect(result.projects[0].nextMilestone).toBe('Launch — due Dec 24 (7d)');
 	});
+
+	it('keeps the Workspace out of projects but keeps its tasks in the day', () => {
+		const relations = (project: OntoProject, tasks: OntoTask[]): OntoProjectWithRelations => ({
+			project,
+			isShared: false,
+			activityLogs: [],
+			startHere: null,
+			tasks,
+			goals: [],
+			plans: [],
+			milestones: [],
+			risks: [],
+			documents: [],
+			requirements: [],
+			edges: [],
+			taskDependencies: new Map(),
+			goalProgress: new Map(),
+			recentUpdates: { tasks: [], goals: [], documents: [] }
+		});
+		const loader = new OntologyBriefDataLoader({} as never);
+
+		const result = loader.prepareBriefData(
+			[
+				relations(createMockProject({ id: 'project-1', name: 'Launch Plan' }), []),
+				relations(createMockProject({ id: 'ws-1', name: 'Workspace', kind: 'workspace' }), [
+					createMockTask({
+						id: 'loose-today',
+						project_id: 'ws-1',
+						title: 'Renew passport',
+						due_at: '2025-12-17T15:00:00Z'
+					})
+				])
+			],
+			'2025-12-17',
+			'UTC',
+			createEmptyCalendarBriefSection()
+		);
+
+		expect(result.projects.map((project) => project.project.id)).toEqual(['project-1']);
+		expect(result.todaysTasks.map((task) => task.id)).toEqual(['loose-today']);
+		expect(result.workspace).toMatchObject({ projectId: 'ws-1', openTaskCount: 1 });
+	});
 });
 
 // ============================================================================

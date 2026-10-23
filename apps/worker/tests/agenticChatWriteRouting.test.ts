@@ -11,6 +11,7 @@ import {
 	collectSingleHitEntityIds,
 	summarizeReadResultEntityRefs
 } from '../src/workers/agentic-chat/provider/write-routing';
+import { workspaceProjectIdFromContextPayload } from '../src/workers/agentic-chat/shared/workspace-context';
 
 let callIndex = 0;
 
@@ -279,6 +280,82 @@ function focusedProject(overrides: Partial<DirectWriteRouteContext> = {}): Direc
 		...overrides
 	};
 }
+
+// Workspace (2026-10-23): a save that fits no project lands in the user's
+// Workspace. Its id comes from the admitted context the server loaded, so a new
+// task or document there routes like one in the focused project. Nothing reads
+// the message text; the model's project_id argument is the decision.
+describe('user Workspace on the direct lane', () => {
+	const WS = '50000000-0000-4000-8000-000000000005';
+	const OTHER = '51000000-0000-4000-8000-000000000005';
+	const global: DirectWriteRouteContext = {
+		contextType: 'global',
+		entityId: null,
+		projectId: null,
+		workspaceProjectId: WS
+	};
+
+	it('creates a task or document in the Workspace from global chat without review', () => {
+		for (const name of ['create_onto_task', 'create_onto_document']) {
+			expect(
+				assessDirectWriteBatch(
+					[call(name, { project_id: WS.toUpperCase(), title: 'Loose note' })],
+					global
+				),
+				name
+			).toEqual({ kind: 'simple', mutationCount: 1 });
+		}
+	});
+
+	it('still reviews a create aimed at any other project, or without a known Workspace', () => {
+		expect(
+			assessDirectWriteBatch(
+				[call('create_onto_task', { project_id: OTHER, title: 'x' })],
+				global
+			)
+		).toMatchObject({ kind: 'contract_required', reason: 'target_resolution_requires_review' });
+		expect(
+			assessDirectWriteBatch([call('create_onto_task', { project_id: WS, title: 'x' })], {
+				...global,
+				workspaceProjectId: null
+			})
+		).toMatchObject({ kind: 'contract_required', reason: 'target_resolution_requires_review' });
+	});
+
+	it('reviews planning records aimed at the Workspace', () => {
+		expect(
+			assessDirectWriteBatch(
+				[call('create_onto_goal', { project_id: WS, name: 'x' })],
+				global
+			)
+		).toMatchObject({ kind: 'contract_required', reason: 'target_resolution_requires_review' });
+	});
+
+	it('reads the Workspace id only from the admitted context payload', () => {
+		expect(workspaceProjectIdFromContextPayload({ data: { workspace_project_id: WS } })).toBe(
+			WS
+		);
+		expect(
+			workspaceProjectIdFromContextPayload({ data: { workspace_project_id: 'Workspace' } })
+		).toBeNull();
+		expect(workspaceProjectIdFromContextPayload({ data: {} })).toBeNull();
+		expect(workspaceProjectIdFromContextPayload(null)).toBeNull();
+	});
+
+	it('lets a project chat send a new task to the Workspace directly', () => {
+		expect(
+			assessDirectWriteBatch(
+				[call('create_onto_task', { project_id: WS, title: 'Dentist' })],
+				{
+					contextType: 'project',
+					entityId: OTHER,
+					projectId: OTHER,
+					workspaceProjectId: WS
+				}
+			)
+		).toEqual({ kind: 'simple', mutationCount: 1 });
+	});
+});
 
 // "This is our company logo, please save it." The image the user attached to
 // this message is a structured selection (requestPayload.attachments), so

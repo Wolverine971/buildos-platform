@@ -24,10 +24,15 @@ import type {
 	BuildosAgentProjectScopeMode,
 	ExternalAgentCallerRecord
 } from '@buildos/shared-types';
+import { BUILDOS_AGENT_READ_OPS, OPENCLAW_DEFAULT_WRITE_OPS } from '@buildos/shared-types';
 import {
 	ensureActorId,
 	fetchProjectSummaries
 } from '$lib/services/ontology/ontology-projects.service';
+import {
+	loadMemberAgentAccess,
+	loadProjectOwnerName
+} from '@buildos/shared-agent-ops/gateway/access-wall';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import {
 	buildCallerPolicy,
@@ -820,6 +825,22 @@ export type ConnectorGrantProject = {
 	id: string;
 	name: string;
 	description: string | null;
+	/** Someone else's project shared with the person: the owner's display name. */
+	shared_by?: string | null;
+};
+
+/**
+ * What stands between this connection and making changes in the linked project
+ * (`?need=write`, tasker 140 wall 2):
+ *   allowed    it can already make changes
+ *   allow_here one tap here (a read-only key switches in place; a read-only grant upgrades)
+ *   reconnect  an OAuth connection approved without changes; reconnect to widen it
+ *   owner      the owner's setting is in the way (the person is a viewer, or agents read-only)
+ */
+export type ConnectorWriteAccess = {
+	status: 'allowed' | 'allow_here' | 'reconnect' | 'owner';
+	owner_reason?: 'viewer' | 'agents_read';
+	owner_name?: string | null;
 };
 
 export type ConnectorProjectGrantContext = {
@@ -831,13 +852,24 @@ export type ConnectorProjectGrantContext = {
 		scope_mode: 'read_only' | 'read_write';
 		project_scope_mode: BuildosAgentProjectScopeMode;
 		is_oauth: boolean;
+		/** "Let this agent into projects shared with me" (off by default). */
+		include_shared_projects: boolean;
 	};
 	/** The project named in the grant link, when it is visible to the user. */
 	project: ConnectorGrantProject | null;
 	project_already_granted: boolean;
-	/** User-visible projects this connector cannot use yet. */
+	/** The owner turned the person's agents off in the linked project. */
+	project_blocked: { owner_name: string | null } | null;
+	/** Only for `?need=write` on a visible, unblocked project. */
+	write: ConnectorWriteAccess | null;
+	/** User-visible projects this connector cannot use yet (never owner-blocked ones). */
 	ungranted_projects: ConnectorGrantProject[];
+	/** Projects others share with the person, and how many owners turned agents off. */
+	shared_projects: { count: number; owner_blocked: number };
 };
+
+/** The bundle a read-only key gets when its person allows changes from a wall. */
+const ALLOW_CHANGES_OPS = [...BUILDOS_AGENT_READ_OPS, ...OPENCLAW_DEFAULT_WRITE_OPS];
 
 const MAX_PROJECTS_PER_GRANT = 100;
 
@@ -1284,22 +1316,25 @@ export class CallerProvisioningService {
 
 	/**
 	 * Everything the one-click grant page needs: who the connector is, the
-	 * project named in the agent's grant link, and what it still cannot see.
+	 * project named in the agent's grant link, what it still cannot see, and (for
+	 * `need=write`) what stands between it and making changes.
 	 */
 	async getProjectGrantContextForUser(
 		userId: string,
 		callerId: string,
-		projectId?: string | null
+		projectId?: string | null,
+		options: { need?: 'write' | null } = {}
 	): Promise<ConnectorProjectGrantContext> {
 		const caller = await this.loadGrantableCaller(userId, callerId);
 		const isOAuth = isOAuthCallerRecord(caller);
 		const oauthGrants = isOAuth ? await this.loadActiveOAuthGrants(userId, callerId) : [];
-		const visibleProjects = await this.loadVisibleProjects(userId);
+		const actorId = await ensureActorId(this.admin, userId);
+		const visibleProjects = await fetchProjectSummaries(this.admin, actorId);
 
-		const grantedSets = isOAuth
+		const scopes = isOAuth
 			? await Promise.all(
 					oauthGrants.map(async (grant) =>
-						this.resolveGrantedProjectIds({
+						this.resolveGrantedScope({
 							userId,
 							callerId,
 							oauthGrantId: grant.id,
@@ -1310,7 +1345,7 @@ export class CallerProvisioningService {
 					)
 				)
 			: [
-					await this.resolveGrantedProjectIds({
+					await this.resolveGrantedScope({
 						userId,
 						callerId,
 						projectScopeMode: normalizeProjectScopeMode(
@@ -1321,16 +1356,35 @@ export class CallerProvisioningService {
 					})
 				];
 		// A project counts as granted only when every live authorization has it.
-		const isGranted = (id: string) => grantedSets.every((granted) => granted.has(id));
+		const isGranted = (id: string) => scopes.every((scope) => scope.project_ids.has(id));
+		const isWritable = (id: string) => scopes.every((scope) => scope.write_project_ids.has(id));
+
+		const shared = visibleProjects.filter((project) => project.is_shared);
+		const memberAccess = await loadMemberAgentAccess(
+			this.admin,
+			actorId,
+			shared.map((project) => project.id)
+		);
+		const isOwnerBlocked = (project: { id: string; is_shared: boolean }) =>
+			project.is_shared && (memberAccess.get(project.id)?.effective ?? 'off') === 'off';
+		const ownerNames = new Map<string, string | null>();
+		for (const ownerActorId of new Set(shared.map((project) => project.owner_actor_id))) {
+			ownerNames.set(ownerActorId, await loadProjectOwnerName(this.admin, ownerActorId));
+		}
 
 		const toGrantProject = (project: {
 			id: string;
 			name: string;
 			description?: string | null;
+			is_shared: boolean;
+			owner_actor_id: string;
 		}): ConnectorGrantProject => ({
 			id: project.id,
 			name: project.name,
-			description: project.description ?? null
+			description: project.description ?? null,
+			...(project.is_shared
+				? { shared_by: ownerNames.get(project.owner_actor_id) ?? null }
+				: {})
 		});
 		const requested =
 			projectId && isValidUUID(projectId)
@@ -1354,6 +1408,29 @@ export class CallerProvisioningService {
 					extractProjectScopeModeFromPolicy(caller.policy)
 				);
 
+		const requestedBlocked = requested ? isOwnerBlocked(requested) : false;
+		let write: ConnectorWriteAccess | null = null;
+		if (requested && !requestedBlocked && options.need === 'write') {
+			const personCanEdit =
+				requested.access_level === 'write' || requested.access_level === 'admin';
+			const agentsWrite = !requested.is_shared
+				? true
+				: memberAccess.get(requested.id)?.effective === 'write';
+			if (isWritable(requested.id)) {
+				write = { status: 'allowed' };
+			} else if (requested.is_shared && (!personCanEdit || !agentsWrite)) {
+				write = {
+					status: 'owner',
+					owner_reason: personCanEdit ? 'agents_read' : 'viewer',
+					owner_name: ownerNames.get(requested.owner_actor_id) ?? null
+				};
+			} else if (isOAuth && scopeMode !== 'read_write') {
+				write = { status: 'reconnect' };
+			} else {
+				write = { status: 'allow_here' };
+			}
+		}
+
 		return {
 			caller: {
 				id: caller.id,
@@ -1362,14 +1439,148 @@ export class CallerProvisioningService {
 				metadata: caller.metadata ?? {},
 				scope_mode: scopeMode,
 				project_scope_mode: projectScopeMode,
-				is_oauth: isOAuth
+				is_oauth: isOAuth,
+				include_shared_projects: caller.include_shared_projects === true
 			},
 			project: requested ? toGrantProject(requested) : null,
 			project_already_granted: requested ? isGranted(requested.id) : false,
+			project_blocked:
+				requested && requestedBlocked
+					? { owner_name: ownerNames.get(requested.owner_actor_id) ?? null }
+					: null,
+			write,
 			ungranted_projects: visibleProjects
-				.filter((project) => !isGranted(project.id))
-				.map(toGrantProject)
+				.filter((project) => !isGranted(project.id) && !isOwnerBlocked(project))
+				.map(toGrantProject),
+			shared_projects: {
+				count: shared.length,
+				owner_blocked: shared.filter((project) => isOwnerBlocked(project)).length
+			}
 		};
+	}
+
+	/**
+	 * Lets this connection make changes, from a wall link (tasker 140 wall 2), without
+	 * rotating anything. A read-only key switches to "Author docs + tasks"; read-only
+	 * project grants on a read+write connection are upgraded. An OAuth connection that
+	 * was approved read-only must reconnect: its tokens never widen in place.
+	 */
+	async allowWritesForUser(
+		userId: string,
+		callerId: string,
+		projectId?: string | null
+	): Promise<{ status: 'allowed' }> {
+		const caller = await this.loadGrantableCaller(userId, callerId);
+		const isOAuth = isOAuthCallerRecord(caller);
+		const targetProjectId = projectId && isValidUUID(projectId) ? projectId : null;
+		if (targetProjectId) {
+			await this.resolveAllowedProjectIds(userId, [targetProjectId]);
+		}
+
+		if (isOAuth) {
+			const oauthGrants = await this.loadActiveOAuthGrants(userId, callerId);
+			if (oauthGrants.some((grant) => grant.scope_mode !== 'read_write')) {
+				throw new CallerProvisioningError(
+					'This connection was approved to read only. Reconnect BuildOS in your AI app and allow changes.',
+					409,
+					{ reason: 'reconnect_to_allow_changes' }
+				);
+			}
+			for (const grant of oauthGrants) {
+				await this.upgradeProjectGrants({
+					callerId,
+					oauthGrantId: grant.id,
+					projectId: targetProjectId
+				});
+			}
+		} else if (extractScopeModeFromPolicy(caller.policy) !== 'read_write') {
+			const projectScopeMode = normalizeProjectScopeMode(
+				caller.project_scope_mode,
+				extractProjectScopeModeFromPolicy(caller.policy)
+			);
+			const visibleIds = new Set(
+				(await this.loadVisibleProjects(userId)).map((project) => project.id)
+			);
+			await this.updatePermissionsForUser(userId, callerId, {
+				scope_mode: 'read_write',
+				allowed_ops: ALLOW_CHANGES_OPS,
+				project_scope_mode: projectScopeMode,
+				allowed_project_ids: stringArray(caller.policy?.allowed_project_ids).filter((id) =>
+					visibleIds.has(id)
+				)
+			});
+		} else {
+			await this.upgradeProjectGrants({ callerId, projectId: targetProjectId });
+		}
+
+		await logSecurityEvent(
+			{
+				eventType: 'agent.caller.write_access_allowed',
+				category: 'agent',
+				outcome: 'success',
+				severity: 'medium',
+				actorType: 'user',
+				actorUserId: userId,
+				externalAgentCallerId: callerId,
+				targetType: 'external_agent_caller',
+				targetId: callerId,
+				metadata: { provider: caller.provider, projectId: targetProjectId, isOAuth }
+			},
+			{ ...this.securityEventOptions, supabase: this.admin }
+		);
+		return { status: 'allowed' };
+	}
+
+	/** "Let this agent into projects shared with me" for one connection. Never rotates. */
+	async setIncludeSharedProjectsForUser(
+		userId: string,
+		callerId: string,
+		enabled: boolean
+	): Promise<{ include_shared_projects: boolean }> {
+		const caller = await this.loadGrantableCaller(userId, callerId);
+		const { error } = await this.admin
+			.from('external_agent_callers')
+			.update({ include_shared_projects: enabled })
+			.eq('id', callerId)
+			.eq('user_id', userId);
+		if (error) throw new CallerProvisioningError('Failed to update connector access', 500);
+
+		await logSecurityEvent(
+			{
+				eventType: 'agent.caller.shared_projects_updated',
+				category: 'agent',
+				outcome: 'success',
+				severity: enabled ? 'medium' : 'low',
+				actorType: 'user',
+				actorUserId: userId,
+				externalAgentCallerId: callerId,
+				targetType: 'external_agent_caller',
+				targetId: callerId,
+				metadata: { provider: caller.provider, includeSharedProjects: enabled }
+			},
+			{ ...this.securityEventOptions, supabase: this.admin }
+		);
+		return { include_shared_projects: enabled };
+	}
+
+	/** Read-only project grants in one authorization become read+write. */
+	private async upgradeProjectGrants(params: {
+		callerId: string;
+		oauthGrantId?: string;
+		projectId: string | null;
+	}): Promise<void> {
+		let query = this.admin
+			.from('external_agent_project_permissions')
+			.update({ access_mode: 'read_write' })
+			.eq('external_agent_caller_id', params.callerId)
+			.eq('access_mode', 'read_only')
+			.is('revoked_at', null);
+		query = params.oauthGrantId
+			? query.eq('agent_oauth_grant_id', params.oauthGrantId)
+			: query.is('agent_oauth_grant_id', null);
+		if (params.projectId) query = query.eq('project_id', params.projectId);
+		const { error } = await query;
+		if (error) throw new CallerProvisioningError('Failed to update project permissions', 500);
 	}
 
 	/**
@@ -1403,7 +1614,7 @@ export class CallerProvisioningService {
 		}): Promise<string[]> => {
 			let existingQuery = this.admin
 				.from('external_agent_project_permissions')
-				.select('project_id')
+				.select('project_id, access_mode')
 				.eq('external_agent_caller_id', callerId)
 				.is('revoked_at', null);
 			existingQuery = params.oauthGrantId
@@ -1413,11 +1624,39 @@ export class CallerProvisioningService {
 			if (existingError) {
 				throw new CallerProvisioningError('Failed to load project permissions', 500);
 			}
-			const existing = new Set(
-				((existingRows ?? []) as Array<{ project_id?: unknown }>).map((row) =>
-					String(row.project_id)
-				)
-			);
+			const rows = (existingRows ?? []) as Array<{
+				project_id?: unknown;
+				access_mode?: unknown;
+			}>;
+			const existing = new Set(rows.map((row) => String(row.project_id)));
+			// Access follows the connector: a grant made while it was read-only catches up.
+			if (params.accessMode === 'read_write') {
+				const grantSet = new Set(grantIds);
+				const stale = rows
+					.filter(
+						(row) =>
+							row.access_mode === 'read_only' && grantSet.has(String(row.project_id))
+					)
+					.map((row) => String(row.project_id));
+				if (stale.length > 0) {
+					let upgrade = this.admin
+						.from('external_agent_project_permissions')
+						.update({ access_mode: 'read_write' })
+						.eq('external_agent_caller_id', callerId)
+						.is('revoked_at', null)
+						.in('project_id', stale);
+					upgrade = params.oauthGrantId
+						? upgrade.eq('agent_oauth_grant_id', params.oauthGrantId)
+						: upgrade.is('agent_oauth_grant_id', null);
+					const { error: upgradeError } = await upgrade;
+					if (upgradeError) {
+						throw new CallerProvisioningError(
+							'Failed to update project permissions',
+							500
+						);
+					}
+				}
+			}
 			const missing = grantIds.filter((projectId) => !existing.has(projectId));
 			if (missing.length === 0) return [];
 
@@ -2016,13 +2255,13 @@ export class CallerProvisioningService {
 		return grants;
 	}
 
-	private async resolveGrantedProjectIds(params: {
+	private async resolveGrantedScope(params: {
 		userId: string;
 		callerId: string;
 		oauthGrantId?: string;
 		projectScopeMode: BuildosAgentProjectScopeMode;
 		scopeMode: 'read_only' | 'read_write';
-	}): Promise<Set<string>> {
+	}): Promise<{ project_ids: Set<string>; write_project_ids: Set<string> }> {
 		const scope = await resolveEffectiveAgentProjectScope({
 			admin: this.admin,
 			userId: params.userId,
@@ -2031,7 +2270,10 @@ export class CallerProvisioningService {
 			projectScopeMode: params.projectScopeMode,
 			scope: { mode: params.scopeMode }
 		});
-		return new Set(scope.project_ids);
+		return {
+			project_ids: new Set(scope.project_ids),
+			write_project_ids: new Set(scope.write_project_ids)
+		};
 	}
 
 	/** Drops ids that "all standard projects" already includes. */

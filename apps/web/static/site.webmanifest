@@ -74,10 +74,10 @@
 	],
 	"shortcuts": [
 		{
-			"name": "Brain Dump",
-			"short_name": "Dump",
-			"description": "Capture thoughts quickly",
-			"url": "/?action=braindump",
+			"name": "Capture",
+			"short_name": "Capture",
+			"description": "Jot a note or task into your Workspace",
+			"url": "/projects?capture=1",
 			"icons": [
 				{
 					"src": "/AppImages/android/android-launchericon-96-96.png?v=20261005",
@@ -87,9 +87,9 @@
 			]
 		},
 		{
-			"name": "Projects",
-			"short_name": "Projects",
-			"description": "View all projects",
+			"name": "Workspace",
+			"short_name": "Workspace",
+			"description": "Your projects and loose notes",
 			"url": "/projects",
 			"icons": [
 				{

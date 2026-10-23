@@ -104,4 +104,28 @@ describe('GET /api/onto/projects', () => {
 			access_level: 'admin'
 		});
 	});
+
+	it('never offers the Workspace (loose items) as a parent', async () => {
+		fetchProjectSelectorSummariesMock.mockResolvedValue([
+			{ id: 'project-1', name: 'Apollo', kind: 'project' },
+			{ id: 'workspace-1', name: 'Workspace', kind: 'workspace' }
+		]);
+		loadParentCandidateFactsMock.mockResolvedValue(new Map());
+		const response = await GET({
+			url: new URL('http://localhost/api/onto/projects?include=hierarchy'),
+			locals: {
+				supabase: {},
+				serverTiming: undefined,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			}
+		} as any);
+		const payload = await response.json();
+
+		expect(payload.data.projects.map((project: { id: string }) => project.id)).toEqual([
+			'project-1'
+		]);
+		expect(loadParentCandidateFactsMock).toHaveBeenCalledWith({}, 'actor-1', [
+			expect.objectContaining({ id: 'project-1' })
+		]);
+	});
 });

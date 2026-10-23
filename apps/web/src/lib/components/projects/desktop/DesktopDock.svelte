@@ -1,9 +1,10 @@
 <!-- apps/web/src/lib/components/projects/desktop/DesktopDock.svelte -->
 <!--
 	Where the rest of the desktop goes while a card is open: a slim column on the
-	right (a bottom strip on phones). Every item is a drop target. Desktop comes
-	first, for taking a project out. Folders spring open, after a held drag or
-	from the chevron, so things can go straight into a sub-project.
+	right (a bottom strip on phones). Every item is a drop target. The Workspace
+	comes first: drop a project's doc or task there to make it loose again, or a
+	sub-project to take it out to the top level. Folders spring open, after a held
+	drag or from the chevron, so things can go straight into a sub-project.
 -->
 <script lang="ts">
 	import { ChevronRight, LayoutGrid } from '$lib/icons/lucide';
@@ -43,11 +44,11 @@
 		type="button"
 		class="dock-item slot {dropClass('desktop')}"
 		data-drop-kind="desktop"
-		title="Projects: drop a sub-project here to take it out to the top level"
+		title="Workspace: drop a doc or task here to make it loose, or a sub-project to take it out to the top level"
 		onclick={onDesktop}
 	>
 		<span class="slot-tile"><LayoutGrid class="h-[18px] w-[18px]" /></span>
-		<span class="d-label">Projects</span>
+		<span class="d-label">Workspace</span>
 	</button>
 	<span class="sep" aria-hidden="true"></span>
 	{#each items as { project, inside } (project.id)}

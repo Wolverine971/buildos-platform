@@ -118,6 +118,7 @@ async function hasBriefableProjects(
 	const { count, error } = await supabase
 		.from('onto_projects')
 		.select('id', { count: 'exact', head: true })
+		.eq('kind', 'project')
 		.in('state_key', BRIEFABLE_PROJECT_STATES)
 		.is('deleted_at', null)
 		.is('archived_at', null)
@@ -129,8 +130,27 @@ async function hasBriefableProjects(
 		// works); queueing a job the generator will fail max_attempts times is not.
 		return false;
 	}
+	if ((count ?? 0) > 0) return true;
 
-	return (count ?? 0) > 0;
+	// The Workspace (loose items) counts only while it holds an open task, matching
+	// get_daily_brief_eligible_user_ids, so a Workspace alone never makes empty briefs.
+	const { count: openWorkspaceTasks, error: workspaceError } = await supabase
+		.from('onto_tasks')
+		.select('id, onto_projects!inner(id)', { count: 'exact', head: true })
+		.eq('onto_projects.kind', 'workspace')
+		.eq('onto_projects.created_by', actorId)
+		.is('onto_projects.deleted_at', null)
+		.is('deleted_at', null)
+		.is('archived_at', null)
+		.neq('state_key', 'done');
+	if (workspaceError) {
+		console.warn(
+			'[daily-briefs/ensure-today] Failed to count open Workspace tasks:',
+			workspaceError
+		);
+		return false;
+	}
+	return (openWorkspaceTasks ?? 0) > 0;
 }
 
 async function findActiveBriefJob(supabase: any, userId: string, briefDate: string) {

@@ -15,6 +15,7 @@ import {
 	parseToolArguments
 } from '@buildos/agentic-chat-runtime/loop';
 import { sha256Hex } from '../shared/identity-hash';
+import { workspaceProjectIdFromContextPayload } from '../shared/workspace-context';
 import { collectLoadedEntityIds } from './review/grounded-ids';
 import type { AgenticChatWorkerExecutionInputV1 } from '../turn/execution-input';
 import type { AgenticChatProviderMutationCapabilitiesV1 } from '../mutations/tool-catalog';
@@ -344,6 +345,9 @@ export function buildBaseProviderRequest(
 	}
 	messages.push({ role: 'user', content: userMessage });
 	const focusedTableId = focusedTableIdFromContextPayload(input.artifact.prepared.contextPayload);
+	const workspaceProjectId = workspaceProjectIdFromContextPayload(
+		input.artifact.prepared.contextPayload
+	);
 	const toolSelectionPins = [
 		// A project image attached to this message may need naming or filing;
 		// keep that schema through relevance selection (structured, not text).
@@ -387,6 +391,7 @@ export function buildBaseProviderRequest(
 			...(budget ? { budget } : {}),
 			...(toolSelectionPins.length > 0 ? { toolSelectionPins } : {}),
 			...(focusedTableId ? { focusedTableId } : {}),
+			...(workspaceProjectId ? { workspaceProjectId } : {}),
 			...(liveVisionEnabled && currentTurn?.liveVision?.requested
 				? {
 						liveVisionRequest: {

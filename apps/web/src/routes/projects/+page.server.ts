@@ -13,6 +13,7 @@ import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import {
 	ensureActorId,
+	ensureWorkspaceProjectId,
 	fetchProjectSummaries
 } from '$lib/services/ontology/ontology-projects.service';
 import { addProjectCollaborationFlags } from '$lib/components/projects/project-list';
@@ -21,6 +22,7 @@ import { loadProjectSignals } from '$lib/server/projects/desktop-signals';
 import { loadProjectEmojis } from '$lib/server/projects/project-emoji';
 import { getUserDashboardAnalytics } from '$lib/services/dashboard/user-dashboard-analytics.service';
 import { createEmptyUserDashboardAnalytics } from '$lib/types/dashboard-analytics';
+import { loadWorkspaceHome } from '$lib/server/workspace/workspace.service';
 
 export const load: PageServerLoad = async ({ locals, depends }) => {
 	const { user } = await locals.safeGetSession();
@@ -30,22 +32,35 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 
 	depends('ontology:projects');
 	depends('dashboard:analytics');
+	depends('workspace:home');
 
 	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
 		locals.serverTiming ? locals.serverTiming.measure(name, fn) : fn();
 
-	const actorId = await measure('db.ensure_actor', () => ensureActorId(locals.supabase, user.id));
+	// The Workspace is resolved (created on first visit) alongside the actor, so the
+	// project list below already includes it: loose items drag and drop from the first paint.
+	const [actorId, workspaceId] = await Promise.all([
+		measure('db.ensure_actor', () => ensureActorId(locals.supabase, user.id)),
+		measure('db.ensure_workspace', () =>
+			ensureWorkspaceProjectId(locals.supabase as never).catch((err) => {
+				console.error('[Projects] Could not open the Workspace:', err);
+				return null;
+			})
+		)
+	]);
 
 	// FAST: Get project count immediately (~20-50ms)
-	// Prefer membership count so shared projects are included.
+	// Prefer membership count so shared projects are included. The Workspace is the
+	// viewer's own loose items, not a tile, so it isn't counted.
 	const { count: memberCount, error: memberCountError } = await measure(
 		'db.project_members.count',
 		() =>
 			locals.supabase
 				.from('onto_project_members')
-				.select('id', { count: 'estimated', head: true })
+				.select('id, onto_projects!inner(kind)', { count: 'estimated', head: true })
 				.eq('actor_id', actorId)
 				.is('removed_at', null)
+				.eq('onto_projects.kind', 'project')
 	);
 
 	let projectCount = memberCount ?? 0;
@@ -58,6 +73,7 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 					.from('onto_projects')
 					.select('*', { count: 'estimated', head: true })
 					.eq('created_by', actorId)
+					.eq('kind', 'project')
 					.is('deleted_at', null)
 		);
 		if (countError) {
@@ -141,10 +157,23 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 		return createEmptyUserDashboardAnalytics();
 	});
 
+	// STREAMED: the Workspace's loose items and the agent's suggestions (created on first
+	// visit). Never blocks the tiles; the shelf shows a light skeleton until it lands.
+	const workspace = Promise.resolve(
+		workspaceId
+			? measure('workspace.home', () => loadWorkspaceHome(locals.supabase, workspaceId))
+			: null
+	).catch((err) => {
+		console.error('[Projects] Failed to load the Workspace:', err);
+		return null;
+	});
+
 	return {
 		actorId,
 		projects,
 		projectCount,
+		workspaceId,
+		workspace,
 		dashboard,
 		userTimezone: user.timezone ?? null
 	};

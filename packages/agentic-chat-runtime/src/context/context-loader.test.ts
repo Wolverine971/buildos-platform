@@ -4,7 +4,7 @@ import type { Database } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 // These are the context/loader and context entries, with no web host or aliases.
 import { createFastChatContextLoader } from './context-loader';
-import type { ProjectContextData } from './index';
+import type { GlobalContextData, ProjectContextData } from './index';
 
 const USER_ID = '00000000-0000-4000-8000-000000000001';
 const PROJECT_ID = '00000000-0000-4000-8000-000000000002';
@@ -347,12 +347,20 @@ describe('global project index hierarchy', () => {
 	function globalClient(options: {
 		rpcPayload: unknown;
 		projectsReply?: { data: unknown; error: unknown };
+		/** What ensure_workspace_project returns; absent means the RPC fails. */
+		workspaceId?: string;
+		summaries?: unknown[];
 	}) {
 		const selects: Record<string, string[]> = {};
 		const rpc = vi.fn(async (fn: string) => {
 			if (fn === 'load_fastchat_context') return { data: options.rpcPayload, error: null };
 			if (fn === 'ensure_actor_for_user') return { data: 'actor-1', error: null };
-			if (fn === 'get_onto_project_summaries_v1') return { data: projects, error: null };
+			if (fn === 'get_onto_project_summaries_v1')
+				return { data: options.summaries ?? projects, error: null };
+			if (fn === 'ensure_workspace_project')
+				return options.workspaceId
+					? { data: options.workspaceId, error: null }
+					: { data: null, error: { message: 'no session' } };
 			throw new Error(`Unexpected rpc: ${fn}`);
 		});
 		const from = vi.fn((table: string) => {
@@ -400,7 +408,7 @@ describe('global project index hierarchy', () => {
 			}
 		});
 		const data = await loadGlobal(client);
-		expect(selects.onto_projects).toEqual(['id, parent_project_id']);
+		expect(selects.onto_projects).toEqual(['id, parent_project_id, kind']);
 		// The orphan's parent is not in the index (the viewer can't open it): not recorded.
 		expect(parentsOf(data)).toEqual({ [HUB]: undefined, [CHILD]: HUB, [ORPHAN]: undefined });
 	});
@@ -423,5 +431,173 @@ describe('global project index hierarchy', () => {
 		const data = await loadGlobal(client);
 		expect(data.project_index).toHaveLength(3);
 		expect(Object.values(parentsOf(data)).every((value) => value === undefined)).toBe(true);
+	});
+});
+
+// Workspace (2026-10-23): the user's kind='workspace' project keeps an index
+// entry, marked, but is never a bundle and never counted as a project. Its id
+// rides the context so a save that fits no project has a home.
+describe('global context Workspace', () => {
+	const WS = '00000000-0000-4000-8000-0000000000c1';
+	const P1 = '00000000-0000-4000-8000-0000000000c2';
+	const P2 = '00000000-0000-4000-8000-0000000000c3';
+	const projects = [
+		{ id: WS, name: 'Workspace', state_key: 'active', updated_at: '2026-10-23T00:00:00Z' },
+		{ id: P1, name: 'Launch', state_key: 'active', updated_at: '2026-10-22T00:00:00Z' },
+		{ id: P2, name: 'Book', state_key: 'paused', updated_at: '2026-10-21T00:00:00Z' }
+	];
+
+	function client(options: {
+		rpcPayload: unknown;
+		workspaceId?: string;
+		summaries?: unknown[];
+		kindRows?: unknown[];
+	}) {
+		const rpc = vi.fn(async (fn: string) => {
+			if (fn === 'load_fastchat_context') return { data: options.rpcPayload, error: null };
+			if (fn === 'ensure_actor_for_user') return { data: 'actor-1', error: null };
+			if (fn === 'get_onto_project_summaries_v1')
+				return { data: options.summaries ?? projects, error: null };
+			if (fn === 'ensure_workspace_project')
+				return options.workspaceId
+					? { data: options.workspaceId, error: null }
+					: { data: null, error: { message: 'no session' } };
+			throw new Error(`Unexpected rpc: ${fn}`);
+		});
+		const from = vi.fn((table: string) => {
+			const reply =
+				table === 'onto_projects'
+					? { data: options.kindRows ?? [], error: null }
+					: { data: [], error: null };
+			const chain: Record<string, any> = {};
+			for (const method of [
+				'select',
+				'in',
+				'is',
+				'eq',
+				'or',
+				'gte',
+				'lte',
+				'order',
+				'limit'
+			]) {
+				chain[method] = () => chain;
+			}
+			chain.maybeSingle = async () => ({
+				data: { timezone: 'UTC', name: null },
+				error: null
+			});
+			chain.then = (resolve: (value: unknown) => unknown) =>
+				Promise.resolve(reply).then(resolve);
+			return chain;
+		});
+		return { rpc, from } as unknown as SupabaseClient<Database>;
+	}
+
+	async function loadGlobal(supabase: SupabaseClient<Database>) {
+		const loader = createFastChatContextLoader({ logger: { warn: vi.fn() } });
+		const context = await loader.loadFastChatPromptContext({
+			supabase,
+			userId: USER_ID,
+			contextType: 'global'
+		});
+		return context.data as GlobalContextData;
+	}
+
+	const rpcPayload = {
+		projects,
+		project_intelligence: { generated_at: '2026-10-23T00:00:00Z', scope: 'global' }
+	};
+
+	it('marks the Workspace in the RPC index and keeps it out of bundles and counts', async () => {
+		const data = await loadGlobal(client({ rpcPayload, workspaceId: WS }));
+		expect(data.workspace_project_id).toBe(WS);
+		expect(data.project_index.find((entry) => entry.id === WS)?.kind).toBe('workspace');
+		expect(data.project_index.find((entry) => entry.id === P1)?.kind).toBeUndefined();
+		expect(data.projects.map((bundle) => bundle.project.id)).toEqual([P1, P2]);
+		expect(data.context_meta).toMatchObject({
+			project_count: 2,
+			active_project_count: 1,
+			projects_returned: 2
+		});
+	});
+
+	it('falls back to the kind column when the ensure call fails', async () => {
+		const data = await loadGlobal(
+			client({
+				rpcPayload,
+				kindRows: [{ id: WS, parent_project_id: null, kind: 'workspace' }]
+			})
+		);
+		expect(data.workspace_project_id).toBe(WS);
+		expect(data.project_index.find((entry) => entry.id === WS)?.kind).toBe('workspace');
+	});
+
+	it('carries a Workspace created by this load even before it is in the summaries', async () => {
+		const NEW_WS = '00000000-0000-4000-8000-0000000000c9';
+		const data = await loadGlobal(client({ rpcPayload, workspaceId: NEW_WS }));
+		expect(data.workspace_project_id).toBe(NEW_WS);
+		expect(data.project_index.some((entry) => entry.kind === 'workspace')).toBe(false);
+		expect(data.context_meta?.project_count).toBe(3);
+	});
+
+	it('finds the Workspace from summary kind on the fallback path', async () => {
+		const data = await loadGlobal(
+			client({
+				rpcPayload: null,
+				summaries: projects.map((project) =>
+					project.id === WS ? { ...project, kind: 'workspace' } : project
+				)
+			})
+		);
+		expect(data.workspace_project_id).toBe(WS);
+		expect(data.project_index.find((entry) => entry.id === WS)?.kind).toBe('workspace');
+		expect(data.projects.map((bundle) => bundle.project.id)).not.toContain(WS);
+		expect(data.context_meta?.project_count).toBe(2);
+	});
+
+	it('adds the Workspace id to a project context only on request', async () => {
+		const loader = createFastChatContextLoader({ logger: { warn: vi.fn() } });
+		const rpc = vi.fn(async (fn: string) =>
+			fn === 'ensure_workspace_project'
+				? { data: WS, error: null }
+				: { data: null, error: null }
+		);
+		const from = vi.fn(() => {
+			const chain: Record<string, any> = {};
+			for (const method of [
+				'select',
+				'in',
+				'is',
+				'eq',
+				'or',
+				'gte',
+				'lte',
+				'order',
+				'limit'
+			]) {
+				chain[method] = () => chain;
+			}
+			chain.maybeSingle = async () => ({ data: null, error: null });
+			chain.then = (resolve: (value: unknown) => unknown) =>
+				Promise.resolve({ data: [], error: null }).then(resolve);
+			return chain;
+		});
+		const supabase = { rpc, from } as unknown as SupabaseClient<Database>;
+		await loader.loadFastChatPromptContext({
+			supabase,
+			userId: USER_ID,
+			contextType: 'project',
+			entityId: P1
+		});
+		expect(rpc).not.toHaveBeenCalledWith('ensure_workspace_project');
+		await loader.loadFastChatPromptContext({
+			supabase,
+			userId: USER_ID,
+			contextType: 'project',
+			entityId: P1,
+			includeWorkspace: true
+		});
+		expect(rpc).toHaveBeenCalledWith('ensure_workspace_project');
 	});
 });

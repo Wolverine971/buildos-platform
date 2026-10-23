@@ -65,11 +65,13 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		}
 
 		if (url.searchParams.get('include') === 'hierarchy') {
+			// "Move under…" never offers the Workspace (loose items): it can't be a parent.
+			const candidates = projects.filter((project) => project.kind !== 'workspace');
 			const facts = await measure('db.projects.selector_hierarchy', () =>
-				loadParentCandidateFacts(supabase, actorId, projects)
+				loadParentCandidateFacts(supabase, actorId, candidates)
 			);
 			return ApiResponse.success({
-				projects: projects.map((project) => ({
+				projects: candidates.map((project) => ({
 					...project,
 					...(facts.get(project.id) ?? {
 						parent_project_id: null,

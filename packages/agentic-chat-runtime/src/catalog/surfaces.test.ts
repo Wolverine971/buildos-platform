@@ -83,6 +83,8 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 			'get_document_outline',
 			'read_document_section',
 			'get_onto_document_details',
+			// 2026-10-23 Workspace: a save that fits no project lands in the Workspace.
+			'create_onto_document',
 			'list_onto_tasks',
 			'get_onto_task_details',
 			'create_onto_task',
@@ -170,7 +172,6 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 			'search_project',
 			'list_onto_documents',
 			'get_document_tree',
-			'create_onto_document',
 			'update_onto_document',
 			'move_document_in_tree',
 			'link_onto_entities',

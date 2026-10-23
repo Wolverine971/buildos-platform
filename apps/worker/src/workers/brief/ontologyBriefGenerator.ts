@@ -19,6 +19,7 @@ import { toZonedTime } from 'date-fns-tz';
 import { getHoliday } from '../../lib/utils/holiday-finder.js';
 import { SmartLLMService } from '../../lib/services/smart-llm-service.js';
 import { OntologyBriefDataLoader, getWorkMode } from './ontologyBriefDataLoader.js';
+import { formatWorkspaceLooseEnds, isWorkspaceProjectRow } from './workspaceBriefSection.js';
 import {
 	OntologyAnalysisPrompt,
 	OntologyExecutiveSummaryPrompt,
@@ -820,12 +821,17 @@ function generateMainBriefMarkdown(
 	for (const project of briefData.projects) {
 		projectNameMap.set(project.project.id, project.project.name);
 	}
+	const workspace = briefData.workspace ?? null;
+	if (workspace) projectNameMap.set(workspace.projectId, 'Workspace');
+	// The Workspace has no project page of its own; it lives at /projects.
+	const projectHref = (projectId: string) =>
+		workspace && projectId === workspace.projectId ? '/projects' : `/projects/${projectId}`;
 
 	// Helper to format task with project link
 	const formatTaskWithProject = (task: OntoTask): string => {
 		const projectName = projectNameMap.get(task.project_id) || 'Unknown Project';
 		const priorityLabel = task.priority !== null ? `P${task.priority}` : null;
-		const projectLink = `[${escapeMarkdownLinkLabel(projectName)}](/projects/${task.project_id})`;
+		const projectLink = `[${escapeMarkdownLinkLabel(projectName)}](${projectHref(task.project_id)})`;
 		const metadata = [priorityLabel, projectLink].filter(Boolean).join(' / ');
 		const taskLink = `[${escapeMarkdownLinkLabel(task.title)}](/projects/${task.project_id}/tasks/${task.id})`;
 		return `- **${taskLink}**\n  - ${metadata}`;
@@ -1021,7 +1027,7 @@ function generateMainBriefMarkdown(
 			mainBrief += `**${completedTasks.length} task${completedTasks.length > 1 ? 's' : ''} completed** in the last 24h:\n`;
 			for (const task of completedTasks.slice(0, 5)) {
 				const projectName = projectNameMap.get(task.project_id) || 'Unknown';
-				mainBrief += `- ✅ [${task.title}](/projects/${task.project_id}/tasks/${task.id}) — [${projectName}](/projects/${task.project_id})\n`;
+				mainBrief += `- ✅ [${task.title}](/projects/${task.project_id}/tasks/${task.id}) — [${projectName}](${projectHref(task.project_id)})\n`;
 			}
 			if (completedTasks.length > 5) {
 				mainBrief += `- ... and ${completedTasks.length - 5} more\n`;
@@ -1090,6 +1096,8 @@ function generateMainBriefMarkdown(
 			);
 		}
 	}
+
+	mainBrief += formatWorkspaceLooseEnds(workspace, briefData.timezone);
 
 	// Detailed Project Briefs
 	if (projectBriefContents.length > 0) {
@@ -1186,7 +1194,14 @@ export async function generateOntologyDailyBrief(
 	);
 	const recentlyPausedProjects = await dataLoader.loadRecentlyPausedProjects(userId, actorId);
 
-	if (projectsData.length === 0 && recentlyPausedProjects.length === 0) {
+	// A Workspace alone earns a brief only while it holds an open task (the same rule
+	// as daily_brief eligibility); loose notes by themselves don't.
+	const hasBriefWork = projectsData.some(
+		(data) =>
+			!isWorkspaceProjectRow(data.project) ||
+			data.tasks.some((task) => task.state_key !== 'done')
+	);
+	if (!hasBriefWork && recentlyPausedProjects.length === 0) {
 		console.log(`[OntologyBrief] No eligible ontology projects for user ${userId}; skipping`);
 		return {
 			status: 'skipped_no_projects',

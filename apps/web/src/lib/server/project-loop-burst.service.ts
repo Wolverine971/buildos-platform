@@ -6,6 +6,7 @@ import { queueProjectLoop } from '$lib/server/project-loops.service';
 import { queueProjectAudit } from '$lib/server/project-audit-trigger.service';
 import { addQueueJobWithPublicId } from '$lib/server/queue-job-id';
 import { runAfterResponse } from '$lib/server/background';
+import { isWorkspaceProjectId } from '$lib/server/workspace-guard';
 import {
 	buildProjectReviewSignalDueAt,
 	mergeProjectReviewSignalMetadata,
@@ -48,7 +49,8 @@ export type ProjectLoopBurstResult = {
 		| 'queued'
 		| 'active_run'
 		| 'recent_run'
-		| 'queue_skipped';
+		| 'queue_skipped'
+		| 'workspace';
 	sourceScore: number;
 	recentScore: number;
 	totalScore: number;
@@ -61,7 +63,13 @@ export type ProjectLoopBurstResult = {
 
 export type ProjectLoopReviewSignalResult = {
 	queued: boolean;
-	reason: 'disabled' | 'missing_context' | 'queued' | 'queue_failed' | 'record_failed';
+	reason:
+		| 'disabled'
+		| 'missing_context'
+		| 'queued'
+		| 'queue_failed'
+		| 'record_failed'
+		| 'workspace';
 	signalId?: string;
 	queueJobId?: string;
 	dueAt?: string;
@@ -259,14 +267,19 @@ export async function queueProjectLoopReviewSignal(params: {
 	const operationEntityCount = params.reviewContext?.entityCount ?? null;
 	const signalEntityCount = Math.max(operationEntityCount ?? 0, params.entityId ? 1 : 0);
 
-	const { data: existing, error: existingError } = await (admin as any)
-		.from('project_review_signals')
-		.select('*')
-		.eq('project_id', params.projectId)
-		.eq('status', 'pending')
-		.order('created_at', { ascending: false })
-		.limit(1)
-		.maybeSingle();
+	const [isWorkspace, { data: existing, error: existingError }] = await Promise.all([
+		isWorkspaceProjectId(admin, params.projectId),
+		(admin as any)
+			.from('project_review_signals')
+			.select('*')
+			.eq('project_id', params.projectId)
+			.eq('status', 'pending')
+			.order('created_at', { ascending: false })
+			.limit(1)
+			.maybeSingle()
+	]);
+	// Loose captures in the Workspace never trigger a paid project review.
+	if (isWorkspace) return { queued: false, reason: 'workspace' };
 	if (existingError) {
 		logger.warn('Failed to load pending project review signal', {
 			projectId: params.projectId,
@@ -431,10 +444,13 @@ export async function queueProjectLoopBurst(
 		return { ...baseResult, queued: false, reason: 'missing_context' };
 	}
 
-	const recentRows = omitCurrentActivityLog(
-		await loadRecentProjectActivity(params.projectId),
-		params
-	);
+	const [isWorkspace, recentActivity] = await Promise.all([
+		isWorkspaceProjectId(createAdminSupabaseClient(), params.projectId),
+		loadRecentProjectActivity(params.projectId)
+	]);
+	// Loose captures in the Workspace never trigger a paid project review or audit.
+	if (isWorkspace) return { ...baseResult, queued: false, reason: 'workspace' };
+	const recentRows = omitCurrentActivityLog(recentActivity, params);
 	const recentScore = scoreProjectLoopRecentActivity(recentRows);
 	const totalScore = sourceScore + recentScore;
 	const threshold = PROJECT_LOOP_BURST_SCORE_THRESHOLD;

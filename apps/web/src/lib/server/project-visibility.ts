@@ -11,7 +11,8 @@ export type ProjectVisibilityPreflight = {
 /**
  * Does this user have any project (as a member or creator)? Head-count queries only, no rows.
  * Some existing users have projects while `onboarding_completed_at` is still null, so that flag
- * alone can't say whether someone is new.
+ * alone can't say whether someone is new. The Workspace (loose items) isn't a project, so a new
+ * user who only has a Workspace still counts as having none.
  */
 export async function preflightProjectVisibility(
 	supabase: Supabase,
@@ -23,13 +24,15 @@ export async function preflightProjectVisibility(
 		const [memberResult, ownedResult] = await Promise.all([
 			supabase
 				.from('onto_project_members')
-				.select('id', { count: 'exact', head: true })
+				.select('id, onto_projects!inner(kind)', { count: 'exact', head: true })
 				.eq('actor_id', actorId)
+				.eq('onto_projects.kind', 'project')
 				.is('removed_at', null),
 			supabase
 				.from('onto_projects')
 				.select('id', { count: 'exact', head: true })
 				.eq('created_by', actorId)
+				.eq('kind', 'project')
 				.is('deleted_at', null)
 		]);
 

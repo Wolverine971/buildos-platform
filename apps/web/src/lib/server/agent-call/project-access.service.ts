@@ -10,13 +10,17 @@ import {
 	fetchProjectSummaries,
 	type OntologyProjectSummary
 } from '$lib/services/ontology/ontology-projects.service';
+import { loadMemberAgentAccess } from '@buildos/shared-agent-ops/gateway/access-wall';
 
 /** What the project owner lets this member's agents do (onto_project_members.agent_access). */
 export type MemberAgentAccess = 'off' | 'read' | 'write';
 
 type ProjectAccessRecord = Pick<OntologyProjectSummary, 'id' | 'is_shared' | 'access_level'> & {
 	external_agent_access: BuildosProjectExternalAgentAccess;
-	/** Only meaningful on shared projects. Missing means off (fail closed). */
+	/**
+	 * Only meaningful on shared projects: the owner's setting for this member's agents,
+	 * with the owner's standing approval applied. Missing means off (fail closed).
+	 */
 	agent_access?: MemberAgentAccess | null;
 };
 
@@ -28,6 +32,7 @@ type ExplicitProjectPermission = {
 export type EffectiveAgentProjectScope = AgentCallScope & {
 	project_ids: string[];
 	write_project_ids: string[];
+	owner_blocked_project_ids: string[];
 };
 
 function uniqueStrings(values: string[] | undefined): string[] {
@@ -41,14 +46,19 @@ function uniqueStrings(values: string[] | undefined): string[] {
  *
  * A project someone else owns needs two keys: the owner's setting for this
  * member's agents (`agent_access`: off hides it, read never writes) and the
- * member's own explicit grant to this connector. Writes the owner allows are
- * further limited to the guest-agent lane in the gateway.
+ * member's own yes for this connector (an explicit grant, or the connection's
+ * "let this agent into projects shared with me" toggle). Writes the owner allows
+ * are further limited to the guest-agent lane in the gateway. Projects the owner
+ * turned agents off in are listed in `owner_blocked_project_ids`, so a refusal can
+ * say so instead of offering a grant link that can't help.
  */
 export function computeEffectiveAgentProjectScope(params: {
 	scope: AgentCallScope;
 	projectScopeMode: BuildosAgentProjectScopeMode;
 	projects: ProjectAccessRecord[];
 	permissions: ExplicitProjectPermission[];
+	/** The connection's "let this agent into projects shared with me" toggle. */
+	includeSharedProjects?: boolean;
 }): EffectiveAgentProjectScope {
 	const permissionByProject = new Map<string, BuildosAgentProjectAccessMode>();
 	for (const permission of params.permissions) {
@@ -57,16 +67,22 @@ export function computeEffectiveAgentProjectScope(params: {
 
 	const projectIds: string[] = [];
 	const writeProjectIds: string[] = [];
+	const ownerBlockedProjectIds: string[] = [];
 	for (const project of params.projects) {
 		const ownerAgentAccess: MemberAgentAccess = project.is_shared
 			? (project.agent_access ?? 'off')
 			: 'write';
-		if (ownerAgentAccess === 'off') continue;
+		if (ownerAgentAccess === 'off') {
+			if (project.is_shared) ownerBlockedProjectIds.push(project.id);
+			continue;
+		}
 		const explicitAccess = permissionByProject.get(project.id);
+		// Restricted projects always need their own grant, shared or not.
 		const inherited =
-			params.projectScopeMode === 'all_unrestricted' &&
-			!project.is_shared &&
-			project.external_agent_access === 'standard';
+			project.external_agent_access === 'standard' &&
+			(project.is_shared
+				? params.includeSharedProjects === true
+				: params.projectScopeMode === 'all_unrestricted');
 		if (!explicitAccess && !inherited) continue;
 
 		projectIds.push(project.id);
@@ -88,7 +104,8 @@ export function computeEffectiveAgentProjectScope(params: {
 	return {
 		...params.scope,
 		project_ids: projectIds,
-		write_project_ids: writeProjectIds
+		write_project_ids: writeProjectIds,
+		owner_blocked_project_ids: ownerBlockedProjectIds
 	};
 }
 
@@ -103,7 +120,12 @@ export async function resolveEffectiveAgentProjectScope(params: {
 	const actorId = await ensureActorId(params.admin, params.userId);
 	const visibleProjects = await fetchProjectSummaries(params.admin, actorId);
 	if (visibleProjects.length === 0) {
-		return { ...params.scope, project_ids: [], write_project_ids: [] };
+		return {
+			...params.scope,
+			project_ids: [],
+			write_project_ids: [],
+			owner_blocked_project_ids: []
+		};
 	}
 
 	const projectIds = visibleProjects.map((project) => project.id);
@@ -119,43 +141,36 @@ export async function resolveEffectiveAgentProjectScope(params: {
 	const sharedProjectIds = visibleProjects
 		.filter((project) => project.is_shared)
 		.map((project) => project.id);
-	const memberAgentQuery =
-		sharedProjectIds.length > 0
-			? params.admin
-					.from('onto_project_members')
-					.select('project_id, agent_access')
-					.eq('actor_id', actorId)
-					.is('removed_at', null)
-					.in('project_id', sharedProjectIds)
-			: Promise.resolve({ data: [], error: null });
+	const hasShared = sharedProjectIds.length > 0;
 
-	const [projectAccessResult, permissionResult, memberAgentResult] = await Promise.all([
+	const [projectAccessResult, permissionResult, memberAccess, callerResult] = await Promise.all([
 		params.admin.from('onto_projects').select('id, external_agent_access').in('id', projectIds),
 		permissionQuery,
-		memberAgentQuery
+		hasShared
+			? loadMemberAgentAccess(params.admin, actorId, sharedProjectIds)
+			: Promise.resolve(new Map()),
+		hasShared
+			? params.admin
+					.from('external_agent_callers')
+					.select('include_shared_projects')
+					.eq('id', params.callerId)
+					.maybeSingle()
+			: Promise.resolve({ data: null, error: null })
 	]);
-	if (projectAccessResult.error || permissionResult.error || memberAgentResult.error) {
+	if (projectAccessResult.error || permissionResult.error) {
 		throw new Error(
 			projectAccessResult.error?.message ||
 				permissionResult.error?.message ||
-				memberAgentResult.error?.message ||
 				'Failed to resolve connector project access'
 		);
 	}
+	// A failed toggle read leaves shared projects to their explicit grants (narrower).
+	const includeSharedProjects =
+		!callerResult.error && callerResult.data?.include_shared_projects === true;
 
 	const agentAccessByProject = new Map<string, MemberAgentAccess>();
-	for (const row of (memberAgentResult.data ?? []) as Array<{
-		project_id?: unknown;
-		agent_access?: unknown;
-	}>) {
-		if (
-			typeof row.project_id === 'string' &&
-			(row.agent_access === 'off' ||
-				row.agent_access === 'read' ||
-				row.agent_access === 'write')
-		) {
-			agentAccessByProject.set(row.project_id, row.agent_access);
-		}
+	for (const [projectId, row] of memberAccess) {
+		agentAccessByProject.set(projectId, row.effective);
 	}
 
 	const accessByProject = new Map<string, BuildosProjectExternalAgentAccess>();
@@ -171,6 +186,7 @@ export async function resolveEffectiveAgentProjectScope(params: {
 	return computeEffectiveAgentProjectScope({
 		scope: params.scope,
 		projectScopeMode: params.projectScopeMode,
+		includeSharedProjects,
 		projects: visibleProjects.map((project) => ({
 			id: project.id,
 			is_shared: project.is_shared,

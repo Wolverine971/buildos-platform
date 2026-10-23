@@ -421,4 +421,195 @@ describe('connector one-click project grants', () => {
 			project_scope_mode: 'all_unrestricted'
 		});
 	});
+
+	describe('access walls the person clears here (tasker 140)', () => {
+		const SHARED = '55555555-5555-4555-8555-555555555555';
+		const SHARED_OFF = '66666666-6666-4666-8666-666666666666';
+
+		function sharedSummary(id: string, name: string, accessLevel = 'write') {
+			return {
+				...summary(id, name, true),
+				access_level: accessLevel,
+				access_role: accessLevel === 'write' ? 'editor' : 'viewer',
+				owner_actor_id: 'actor-owner'
+			};
+		}
+
+		function sharedTables(caller?: Row, agentAccess = 'read'): Tables {
+			const tables = baseTables(caller);
+			tables.onto_projects!.push(
+				{ id: SHARED, external_agent_access: 'standard' },
+				{ id: SHARED_OFF, external_agent_access: 'standard' }
+			);
+			tables.onto_project_members = [
+				{
+					project_id: SHARED,
+					actor_id: 'actor-1',
+					role_key: 'editor',
+					access: 'write',
+					agent_access: agentAccess,
+					removed_at: null
+				},
+				{
+					project_id: SHARED_OFF,
+					actor_id: 'actor-1',
+					role_key: 'editor',
+					access: 'write',
+					agent_access: 'off',
+					removed_at: null
+				}
+			];
+			tables.onto_actors = [
+				{ id: 'actor-owner', name: 'Sam', email: 'sam@x.co', user_id: 'u-sam' }
+			];
+			tables.users = [{ id: 'u-sam', name: 'Sam', username: 'sam' }];
+			return tables;
+		}
+
+		beforeEach(() => {
+			mocks.fetchProjectSummaries.mockResolvedValue([
+				summary(OLD_PROJECT, 'Old project'),
+				sharedSummary(SHARED, '9takes'),
+				sharedSummary(SHARED_OFF, 'Cadre')
+			]);
+		});
+
+		it('never offers a project the owner turned agents off in, and says who did', async () => {
+			const tables = sharedTables();
+			const { CallerProvisioningService } = await import('./caller-provisioning.service');
+			const service = new CallerProvisioningService(fakeAdmin(tables));
+
+			const list = await service.getProjectGrantContextForUser(USER_ID, CALLER_ID);
+			expect(list.ungranted_projects.map((project) => project.id)).toEqual([SHARED]);
+			expect(list.ungranted_projects[0]).toMatchObject({ shared_by: 'Sam' });
+			expect(list.shared_projects).toEqual({ count: 2, owner_blocked: 1 });
+			expect(list.caller.include_shared_projects).toBe(false);
+
+			const blocked = await service.getProjectGrantContextForUser(
+				USER_ID,
+				CALLER_ID,
+				SHARED_OFF
+			);
+			expect(blocked.project_blocked).toEqual({ owner_name: 'Sam' });
+		});
+
+		it('says the owner is in the way when their agent setting is Read', async () => {
+			const tables = sharedTables();
+			tables.external_agent_project_permissions!.push({
+				id: 'perm-shared',
+				user_id: USER_ID,
+				external_agent_caller_id: CALLER_ID,
+				agent_oauth_grant_id: null,
+				project_id: SHARED,
+				access_mode: 'read_write',
+				revoked_at: null
+			});
+			const { CallerProvisioningService } = await import('./caller-provisioning.service');
+			const context = await new CallerProvisioningService(
+				fakeAdmin(tables)
+			).getProjectGrantContextForUser(USER_ID, CALLER_ID, SHARED, { need: 'write' });
+			expect(context.write).toEqual({
+				status: 'owner',
+				owner_reason: 'agents_read',
+				owner_name: 'Sam'
+			});
+		});
+
+		it('a read-only key allows changes in place, without rotating its secret', async () => {
+			const tables = baseTables(
+				selectedStaticCaller({
+					token_hash: 'hash-before',
+					policy: {
+						scope_mode: 'read_only',
+						project_scope_mode: 'selected',
+						allowed_project_ids: [OLD_PROJECT],
+						allowed_ops: ['onto.project.get']
+					}
+				})
+			);
+			tables.external_agent_project_permissions![0]!.access_mode = 'read_only';
+			mocks.fetchProjectSummaries.mockResolvedValue([summary(OLD_PROJECT, 'Old project')]);
+			const { CallerProvisioningService } = await import('./caller-provisioning.service');
+			const service = new CallerProvisioningService(fakeAdmin(tables));
+
+			const before = await service.getProjectGrantContextForUser(
+				USER_ID,
+				CALLER_ID,
+				OLD_PROJECT,
+				{ need: 'write' }
+			);
+			expect(before.write).toEqual({ status: 'allow_here' });
+
+			await service.allowWritesForUser(USER_ID, CALLER_ID, OLD_PROJECT);
+			await flushAsyncWrites();
+			const caller = tables.external_agent_callers![0]!;
+			expect(caller.token_hash).toBe('hash-before');
+			expect((caller.policy as Row).scope_mode).toBe('read_write');
+			expect((caller.policy as Row).allowed_ops).toEqual(
+				expect.arrayContaining(['onto.task.create', 'onto.document.update'])
+			);
+			expect((caller.policy as Row).allowed_ops).not.toContain('onto.task.delete');
+			const live = tables.external_agent_project_permissions!.filter(
+				(row) => row.project_id === OLD_PROJECT && row.revoked_at === null
+			);
+			expect(live.map((row) => row.access_mode)).toEqual(['read_write']);
+		});
+
+		it('an OAuth connection approved read-only must reconnect instead', async () => {
+			const tables = baseTables(
+				selectedStaticCaller({
+					caller_key: 'oauth:client-1',
+					metadata: { auth_scheme: 'oauth' }
+				})
+			);
+			tables.agent_oauth_grants = [
+				{
+					id: 'grant-1',
+					user_id: USER_ID,
+					external_agent_caller_id: CALLER_ID,
+					status: 'active',
+					scope_mode: 'read_only',
+					project_scope_mode: 'selected',
+					allowed_project_ids: [OLD_PROJECT]
+				}
+			];
+			const { CallerProvisioningService } = await import('./caller-provisioning.service');
+			await expect(
+				new CallerProvisioningService(fakeAdmin(tables)).allowWritesForUser(
+					USER_ID,
+					CALLER_ID,
+					OLD_PROJECT
+				)
+			).rejects.toMatchObject({
+				status: 409,
+				data: { reason: 'reconnect_to_allow_changes' }
+			});
+			expect(tables.agent_oauth_grants[0]!.scope_mode).toBe('read_only');
+		});
+
+		it('granting a project upgrades a stale read-only grant on a read+write key', async () => {
+			const tables = baseTables();
+			tables.external_agent_project_permissions![0]!.access_mode = 'read_only';
+			const { CallerProvisioningService } = await import('./caller-provisioning.service');
+			await new CallerProvisioningService(fakeAdmin(tables)).grantProjectsForUser(
+				USER_ID,
+				CALLER_ID,
+				[OLD_PROJECT]
+			);
+			expect(tables.external_agent_project_permissions![0]!.access_mode).toBe('read_write');
+		});
+
+		it('the shared-projects toggle lets shared projects in without a grant', async () => {
+			const tables = sharedTables(undefined, 'write');
+			const { CallerProvisioningService } = await import('./caller-provisioning.service');
+			expect(await effectiveProjectIds(tables)).toEqual([OLD_PROJECT]);
+			await new CallerProvisioningService(fakeAdmin(tables)).setIncludeSharedProjectsForUser(
+				USER_ID,
+				CALLER_ID,
+				true
+			);
+			expect(tables.external_agent_callers![0]!.include_shared_projects).toBe(true);
+			expect(await effectiveProjectIds(tables)).toEqual([OLD_PROJECT, SHARED].sort());
+		});
+	});
 });

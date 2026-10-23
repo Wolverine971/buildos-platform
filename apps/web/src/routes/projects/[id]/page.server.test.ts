@@ -422,6 +422,20 @@ describe('projects/[id] +page.server load', () => {
 		expect(operations).toEqual(['rpc:get_project_skeleton_with_access_v2']);
 	});
 
+	it('sends a Workspace link home to /projects without loading project data', async () => {
+		const { event, operations } = createHarness({
+			bundleData: {
+				id: PROJECT_ID,
+				name: 'Workspace',
+				kind: 'workspace',
+				route_access_state: 'allowed'
+			}
+		});
+
+		await expect(load(event)).rejects.toMatchObject({ status: 307, location: '/projects' });
+		expect(operations).toEqual(['rpc:get_project_skeleton_with_access_v2']);
+	});
+
 	it('returns a forbidden error when the route bundle identifies a signed-in nonmember', async () => {
 		const { event, operations } = createHarness({
 			bundleData: { route_access_state: 'forbidden' }

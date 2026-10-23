@@ -9,7 +9,6 @@ import {
 	SupabaseQueue,
 	type ProcessingJob
 } from '../src/lib/supabaseQueue';
-import { supabase } from '../src/lib/supabase';
 
 const { rpcMock } = vi.hoisted(() => ({
 	rpcMock:
@@ -155,11 +154,9 @@ describe('SupabaseQueue.stop() drain', () => {
 			draining: true
 		});
 		expect(
-			vi
-				.mocked(supabase.rpc)
-				.mock.calls.some(
-					([name]) => name === 'complete_queue_job' || name === 'fail_queue_job'
-				)
+			rpcMock.mock.calls.some(
+				([name]) => name === 'complete_queue_job' || name === 'fail_queue_job'
+			)
 		).toBe(false);
 		expect(claimCount).toBe(1);
 

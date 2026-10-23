@@ -35,6 +35,7 @@ vi.mock('./project-access.service', () => ({
 }));
 
 import {
+	accessConsentInputRequired,
 	handleBuildosMcpGet,
 	handleBuildosMcpPost,
 	isAllowedMcpOrigin
@@ -414,7 +415,11 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 			// edit project data.
 			for (const tool of body.result.tools) {
 				expect(tool.annotations.readOnlyHint).toBe(
-					!['request_buildos_permission', 'request_buildos_access'].includes(tool.name)
+					![
+						'request_buildos_permission',
+						'request_buildos_access',
+						'request_project_access'
+					].includes(tool.name)
 				);
 			}
 		});
@@ -1127,4 +1132,123 @@ describe('permission credential step-up adapters', () => {
 			);
 		}
 	);
+});
+
+describe('inline consent for walls the person can clear (tasker 140)', () => {
+	const refusal = (accessNeeded: Record<string, unknown>) => ({
+		content: [{ type: 'text' as const, text: '{}' }],
+		isError: true,
+		structuredContent: {
+			ok: false,
+			error: { code: 'FORBIDDEN', message: 'No', details: { access_needed: accessNeeded } }
+		}
+	});
+	const youWall = {
+		who_can_fix: 'you',
+		say_to_user: "That project isn't connected to me yet.",
+		next: { open_url: 'https://build-os.com/profile/agent-keys/c1/grant?project=p1' }
+	};
+	const urlCapable = {
+		envelope: { 'io.modelcontextprotocol/clientCapabilities': { elicitation: { url: {} } } }
+	};
+
+	it('asks the client to open the consent page when it declared URL elicitation', () => {
+		const result = accessConsentInputRequired(refusal(youWall) as never, urlCapable);
+		expect(JSON.stringify(result)).toContain(youWall.next.open_url);
+		expect(JSON.stringify(result)).toContain('buildos_access');
+	});
+
+	it('keeps the plain refusal for clients without it, owner walls, and retries', () => {
+		expect(accessConsentInputRequired(refusal(youWall) as never, {})).toBeNull();
+		expect(
+			accessConsentInputRequired(refusal(youWall) as never, {
+				envelope: {
+					'io.modelcontextprotocol/clientCapabilities': { elicitation: { form: {} } }
+				}
+			})
+		).toBeNull();
+		expect(
+			accessConsentInputRequired(
+				refusal({
+					...youWall,
+					who_can_fix: 'owner',
+					next: { tool: 'request_project_access' }
+				}) as never,
+				urlCapable
+			)
+		).toBeNull();
+		expect(
+			accessConsentInputRequired(refusal(youWall) as never, {
+				...urlCapable,
+				inputResponses: { buildos_access: { action: 'accept' } }
+			})
+		).toBeNull();
+	});
+});
+
+describe('inline consent over the wire (tasker 140)', () => {
+	const openUrl = 'https://build-os.com/profile/agent-keys/c1/grant?project=p1';
+	const refusal = {
+		ok: false,
+		error: {
+			code: 'FORBIDDEN',
+			message: 'Not granted',
+			details: {
+				access_needed: {
+					wall: 'project_not_granted',
+					who_can_fix: 'you',
+					say_to_user: "That project isn't connected to me yet.",
+					next: { open_url: openUrl }
+				}
+			}
+		}
+	};
+
+	beforeEach(() => {
+		gatewayMocks.executeBuildosAgentGatewayTool.mockResolvedValue(refusal);
+	});
+
+	it('a 2026-07-28 client that declared URL elicitation gets the consent page', async () => {
+		const response = await mcpPost(
+			staticKeyAdmin({ scope_mode: 'read_only' }),
+			{
+				jsonrpc: '2.0',
+				id: 140,
+				method: 'tools/call',
+				params: {
+					name: 'get_onto_project_details',
+					arguments: { project_id: 'p1' },
+					_meta: {
+						...MODERN_MCP_META,
+						'io.modelcontextprotocol/clientCapabilities': { elicitation: { url: {} } }
+					}
+				}
+			},
+			{
+				...STATIC_KEY_HEADER,
+				'MCP-Protocol-Version': MODERN_MCP_PROTOCOL_VERSION,
+				'Mcp-Method': 'tools/call',
+				'Mcp-Name': 'get_onto_project_details'
+			}
+		);
+		expect(response.status).toBe(200);
+		const payload = await response.json();
+		expect(payload.error).toBeUndefined();
+		expect(JSON.stringify(payload.result)).toContain(openUrl);
+		expect(payload.result.isError).toBeUndefined();
+	});
+
+	it('a client without it gets the ordinary refusal with the link', async () => {
+		const response = await modernMcpPost(
+			staticKeyAdmin({ scope_mode: 'read_only' }),
+			'tools/call',
+			{ name: 'get_onto_project_details', arguments: { project_id: 'p1' } },
+			{ 'Mcp-Name': 'get_onto_project_details' }
+		);
+		const payload = await response.json();
+		expect(payload.result.isError).toBe(true);
+		expect(payload.result.structuredContent.error.details.access_needed.next.open_url).toBe(
+			openUrl
+		);
+	});
 });

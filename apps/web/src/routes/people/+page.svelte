@@ -24,6 +24,7 @@
 	import { formatRelativeTime } from '$lib/utils/date-utils';
 	import {
 		agentAccessDescription,
+		agentAccessLabel,
 		DEFAULT_AGENT_ACCESS,
 		fitAgentAccessToRole,
 		matchProjectHint,
@@ -40,7 +41,8 @@
 		readFoundPerson,
 		readPeopleRequests,
 		type FoundPerson,
-		type IncomingPeopleRequest
+		type IncomingPeopleRequest,
+		type UpgradeRequestItem
 	} from '$lib/components/people/people-types';
 	import type { PageData } from './$types';
 
@@ -333,6 +335,138 @@
 		}
 	}
 
+	// ---- Upgrades: a member (or their agent) wants more in projects they're in ----
+	// Every project asked about starts checked; the owner unchecks what they won't allow.
+	let upgradeUnchecked = $state<Record<string, string[]>>({});
+	/** The owner ticked "let every editor's agents make changes" on this card. */
+	let upgradeStanding = $state<Record<string, boolean>>({});
+	let upgradeDecision = $state<'approve' | 'decline' | null>(null);
+
+	function upgradeChecked(request: IncomingPeopleRequest): UpgradeRequestItem[] {
+		const unchecked = upgradeUnchecked[request.id] ?? [];
+		return request.items.filter((item) => !unchecked.includes(item.project_id));
+	}
+
+	function setUpgradeChecked(requestId: string, projectId: string, checked: boolean) {
+		const others = (upgradeUnchecked[requestId] ?? []).filter((id) => id !== projectId);
+		upgradeUnchecked[requestId] = checked ? others : [...others, projectId];
+	}
+
+	/** Projects the standing approval could cover: change asks where it isn't on yet. */
+	function standingCandidates(request: IncomingPeopleRequest): UpgradeRequestItem[] {
+		return request.items.filter(
+			(item) => item.need !== 'agents_read' && !item.editor_agents_write
+		);
+	}
+
+	/** "Now: Viewer · agents Off", from what the member has in the project today. */
+	function upgradeNow(item: UpgradeRequestItem): string | null {
+		const parts = [
+			item.role ? roleLabel(item.role) : null,
+			item.agent_access ? `agents ${agentAccessLabel(item.agent_access)}` : null
+		].filter(Boolean);
+		return parts.length > 0 ? `Now: ${parts.join(' · ')}` : null;
+	}
+
+	function upgradeAllowedMessage(name: string, items: UpgradeRequestItem[]): string {
+		const where =
+			items.length === 1
+				? (items[0]?.project_name ?? 'the project')
+				: `${items.length} projects`;
+		const needs = new Set(items.map((item) => item.need));
+		if (needs.size > 1) return `Allowed. ${name} has what they asked for in ${where}`;
+		if (needs.has('agents_read')) return `${name}’s agents can now see ${where}`;
+		if (needs.has('agents_write')) return `${name}’s agents can now make changes in ${where}`;
+		return `${name} and their agents can now edit ${where}`;
+	}
+
+	/**
+	 * Allow sends the checked projects (the RPC grants exactly what was asked there) and
+	 * the standing approval for the checked ones the owner ticked it for. "Not now" isn't
+	 * final: the same projects can be asked about again after 7 days, so no confirm step.
+	 */
+	async function decideUpgrade(request: IncomingPeopleRequest, decision: 'approve' | 'decline') {
+		if (decidingId) return;
+		const allowed = decision === 'approve' ? upgradeChecked(request) : [];
+		if (decision === 'approve' && allowed.length === 0) return;
+		const allowedIds = new Set(allowed.map((item) => item.project_id));
+		const standingIds = upgradeStanding[request.id]
+			? standingCandidates(request)
+					.map((item) => item.project_id)
+					.filter((projectId) => allowedIds.has(projectId))
+			: [];
+		const body =
+			decision === 'approve'
+				? {
+						decision,
+						project_ids: allowed.map((item) => item.project_id),
+						...(standingIds.length > 0
+							? { editor_agents_write_project_ids: standingIds }
+							: {})
+					}
+				: { decision };
+
+		decidingId = request.id;
+		upgradeDecision = decision;
+		decideError = null;
+		const name = personName(request.from);
+		try {
+			const res = await fetch(`/api/people/requests/${request.id}/decide`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'same-origin',
+				body: JSON.stringify(body)
+			});
+			const payload = await res.json().catch(() => null);
+			if (!res.ok) {
+				decideError = {
+					requestId: request.id,
+					message: payload?.error || 'Could not save your decision. Try again.'
+				};
+				return;
+			}
+
+			incoming = incoming.filter((row) => row.id !== request.id);
+			delete upgradeUnchecked[request.id];
+			delete upgradeStanding[request.id];
+
+			if (decision === 'decline') {
+				toastService.success(`Not now. ${name} can ask again in a week.`);
+				return;
+			}
+
+			// Name what was actually applied when the response says; else what was sent.
+			const appliedIds = new Set<string>();
+			for (const project of Array.isArray(payload?.data?.projects)
+				? payload.data.projects
+				: []) {
+				if (typeof project?.project_id === 'string') appliedIds.add(project.project_id);
+			}
+			const applied = allowed.filter((item) => appliedIds.has(item.project_id));
+			const done = applied.length > 0 ? applied : allowed;
+			toastService.success(upgradeAllowedMessage(name, done));
+			if (payload?.data?.agent_grant === 'failed') {
+				const them = done.length === 1 ? 'it' : 'them';
+				toastService.warning(
+					`${name}’s agent couldn’t be connected to ${them} yet. ${name} can add ${them} from their agent settings.`
+				);
+			}
+			if (payload?.data?.standing_approval === 'failed') {
+				toastService.warning(
+					'Allowed, but the editors setting didn’t save. Try it in Share.'
+				);
+			}
+		} catch {
+			decideError = {
+				requestId: request.id,
+				message: 'Could not save your decision. Try again.'
+			};
+		} finally {
+			decidingId = null;
+			upgradeDecision = null;
+		}
+	}
+
 	function expiresLabel(expiresAt: string | null): string | null {
 		if (!expiresAt) return null;
 		const ms = Date.parse(expiresAt) - Date.now();
@@ -351,6 +485,16 @@
 	<title>People - BuildOS</title>
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
+
+{#snippet upgradeAsk(item: UpgradeRequestItem)}
+	{#if item.need === 'agents_read'}
+		Wants their agents to see <span class="font-medium">{item.project_name}</span>
+	{:else if item.need === 'agents_write'}
+		Wants their agents to make changes in <span class="font-medium">{item.project_name}</span>
+	{:else}
+		Wants to edit <span class="font-medium">{item.project_name}</span> with their agents
+	{/if}
+{/snippet}
 
 {#snippet findSection()}
 	<section class={cardClass} aria-labelledby="find-heading">
@@ -604,6 +748,78 @@
 							<p class="mt-1 text-xs text-muted-foreground">
 								They left or were removed, then opened your invite link.
 							</p>
+						{:else if request.kind === 'upgrade'}
+							{#if request.items.length === 1 && request.items[0]}
+								{@const item = request.items[0]}
+								{@const now = upgradeNow(item)}
+								<p class="mt-2 text-sm text-foreground [overflow-wrap:anywhere]">
+									{@render upgradeAsk(item)}
+								</p>
+								{#if now}
+									<p class="mt-0.5 text-xs text-muted-foreground">{now}</p>
+								{/if}
+							{:else}
+								{@const checkedIds = upgradeChecked(request).map(
+									(item) => item.project_id
+								)}
+								<fieldset class="m-0 mt-2 min-w-0 border-0 p-0">
+									<legend
+										class="mb-1.5 p-0 text-xs font-medium text-muted-foreground"
+									>
+										Wants more in {request.items.length} of your projects. Uncheck
+										any you won’t allow.
+									</legend>
+									<ul
+										class="divide-y divide-border rounded-md border border-border"
+									>
+										{#each request.items as item (item.project_id)}
+											{@const now = upgradeNow(item)}
+											<li class="px-2.5 py-1.5 sm:py-2">
+												<label
+													class="flex min-h-11 cursor-pointer items-center gap-2.5 sm:min-h-0"
+												>
+													<input
+														type="checkbox"
+														checked={checkedIds.includes(
+															item.project_id
+														)}
+														disabled={decidingId !== null}
+														aria-describedby={now
+															? `upgrade-now-${request.id}-${item.project_id}`
+															: undefined}
+														onchange={(event) =>
+															setUpgradeChecked(
+																request.id,
+																item.project_id,
+																event.currentTarget.checked
+															)}
+														class="h-4 w-4 shrink-0 rounded border-border-strong text-accent focus:ring-accent"
+													/>
+													<span
+														class="min-w-0 flex-1 text-sm text-foreground [overflow-wrap:anywhere]"
+													>
+														{@render upgradeAsk(item)}
+													</span>
+												</label>
+												{#if now}
+													<p
+														id="upgrade-now-{request.id}-{item.project_id}"
+														class="pl-7 text-xs text-muted-foreground"
+													>
+														{now}
+													</p>
+												{/if}
+											</li>
+										{/each}
+									</ul>
+								</fieldset>
+							{/if}
+							{#if request.items.some((item) => item.need !== 'agents_read')}
+								<p class="mt-2 text-xs text-muted-foreground">
+									Their agents only add tasks and documents, and change what {name}
+									created or is assigned to.
+								</p>
+							{/if}
 						{:else}
 							<p class="mt-2 text-sm text-foreground">
 								Wants to {request.role_requested === 'editor' ? 'edit' : 'view'}
@@ -886,6 +1102,71 @@
 								>
 									Deny
 								</Button>
+							</div>
+						{:else if request.kind === 'upgrade'}
+							{@const allowed = upgradeChecked(request)}
+							{@const candidates = standingCandidates(request)}
+							{@const standingReach = candidates.filter((item) =>
+								allowed.some((checked) => checked.project_id === item.project_id)
+							)}
+							<div class="mt-3 space-y-3">
+								{#if candidates.length > 0}
+									<div>
+										<label
+											class="flex min-h-11 cursor-pointer items-center gap-2.5 sm:min-h-0"
+										>
+											<input
+												type="checkbox"
+												checked={upgradeStanding[request.id] ?? false}
+												disabled={decidingId !== null ||
+													standingReach.length === 0}
+												aria-describedby="standing-hint-{request.id}"
+												onchange={(event) =>
+													(upgradeStanding[request.id] =
+														event.currentTarget.checked)}
+												class="h-4 w-4 shrink-0 rounded border-border-strong text-accent focus:ring-accent"
+											/>
+											<span
+												class="min-w-0 flex-1 text-sm text-foreground [overflow-wrap:anywhere]"
+											>
+												Let every editor’s agents make changes in {candidates.length ===
+												1
+													? (candidates[0]?.project_name ??
+														'this project')
+													: 'these projects'}
+											</span>
+										</label>
+										<p
+											id="standing-hint-{request.id}"
+											class="pl-7 text-xs text-muted-foreground"
+										>
+											Editors won’t need to ask. You can turn this off in
+											Share.
+										</p>
+									</div>
+								{/if}
+								<div class="flex flex-wrap items-center gap-2">
+									<Button
+										type="button"
+										variant="primary"
+										size="sm"
+										loading={busy && upgradeDecision === 'approve'}
+										disabled={decidingId !== null || allowed.length === 0}
+										onclick={() => decideUpgrade(request, 'approve')}
+									>
+										Allow
+									</Button>
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										loading={busy && upgradeDecision === 'decline'}
+										disabled={decidingId !== null}
+										onclick={() => decideUpgrade(request, 'decline')}
+									>
+										Not now
+									</Button>
+								</div>
 							</div>
 						{:else}
 							<div class="mt-3 flex flex-wrap items-center gap-2">

@@ -56,6 +56,7 @@ vi.mock('./project-access.service', () => ({
 	resolveEffectiveAgentProjectScope: vi.fn(async ({ scope }) => ({
 		...scope,
 		project_ids: scope.project_ids ?? ['44444444-4444-4444-4444-444444444444'],
+		owner_blocked_project_ids: [],
 		write_project_ids:
 			scope.mode === 'read_write'
 				? (scope.project_ids ?? ['44444444-4444-4444-4444-444444444444'])
@@ -601,6 +602,7 @@ describe('BuildosAgentCallService', () => {
 				mode: 'read_only',
 				project_ids: ['44444444-4444-4444-4444-444444444444'],
 				write_project_ids: [],
+				owner_blocked_project_ids: [],
 				allowed_ops: [...BUILDOS_AGENT_READ_OPS]
 			},
 			toolName: 'list_onto_projects',
@@ -622,7 +624,8 @@ describe('BuildosAgentCallService', () => {
 				'44444444-4444-4444-4444-444444444444',
 				'55555555-5555-4555-8555-555555555555'
 			],
-			write_project_ids: []
+			write_project_ids: [],
+			owner_blocked_project_ids: []
 		});
 		const state: SessionState = {
 			sessions: {
@@ -656,7 +659,8 @@ describe('BuildosAgentCallService', () => {
 			mode: 'read_only',
 			allowed_ops: [...BUILDOS_AGENT_READ_OPS],
 			project_ids: ['44444444-4444-4444-4444-444444444444'],
-			write_project_ids: []
+			write_project_ids: [],
+			owner_blocked_project_ids: []
 		});
 		const state: SessionState = {
 			sessions: {
@@ -686,7 +690,8 @@ describe('BuildosAgentCallService', () => {
 				'44444444-4444-4444-4444-444444444444',
 				'55555555-5555-4555-8555-555555555555'
 			],
-			write_project_ids: []
+			write_project_ids: [],
+			owner_blocked_project_ids: []
 		});
 		const state: SessionState = {
 			sessions: {

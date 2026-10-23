@@ -44,7 +44,7 @@ Project document hierarchy playbook: create, update, place, and reorganize proje
 
 1. For an update, reuse the exact document_id from the focused context, the user's message, or a read this turn; otherwise find it with search_project, list_onto_documents, or get_document_tree before writing. If several documents fit, ask one clarification instead of guessing.
 2. To change part of an existing body, use edits, never a resent body: find the exact text this turn with get_document_outline (pass find with a word from the target) or read_document_section, then send `edits: [{ old_text, new_text }]` with old_text copied exactly from that result, never from memory or an earlier turn, and kept to the smallest unique span, usually one line, one edit per changed line, never a whole block (empty new_text deletes), or section_edits for a whole section by its anchor exactly as the outline lists it. content is only for a whole-body rewrite (update_strategy "replace", the default) or adding at the end ("append", non-empty content). A title-only or description-only update needs no content at all.
-3. For a create, call create_onto_document with project_id, title, and description; pass content when the user gave it, and parent_id (plus optional position) only when a read already returned that parent.
+3. For a create, call create_onto_document with project_id, title, and description; pass content when the user gave it, and parent_id (plus optional position) only when a read already returned that parent. When no project clearly fits, use the user's Workspace project_id (loose notes and docs, not a project; a quick note takes type_key document.note) and say it went there.
 4. The hierarchy lives in the document tree, not in entity edges. Use move_document_in_tree to place, nest, or rehome an existing document: prefer new_parent_title for grouping, and pass new_parent_id only for a parent UUID a read returned.
 5. For reorganization or unlinked docs, call get_document_tree once with include_documents true, plan every move from that result, then issue the moves; read the tree again only if a move fails.
 6. Claim "nested under X" or "placed in" only after the create returned without a tree placement error or the move returned success.
@@ -68,6 +68,7 @@ After a document write, report:
 - Do not rebuild a long document from section reads to change a few lines; an edit that fails (ANCHOR_NOT_FOUND) returns the closest real lines, so copy one of them exactly and retry.
 - Do not edit inside a START HERE document's status or map region: it rebuilds itself and an edit there fails (MANAGED_REGION_BOUNDARY). Edit the authored text outside it.
 - Do not invent a parent UUID; use new_parent_title, or a UUID a read returned.
+- Do not create a project to hold a single document; a document with no fitting project goes to the user's Workspace.
 - Task workspace documents are a separate surface that is not reachable here; say so instead of filing a task document in the project tree.
 
 ## Related Tools

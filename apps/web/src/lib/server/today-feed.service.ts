@@ -213,6 +213,7 @@ export async function getTodayFeed({
 	const projectList: TodayProject[] = projects.map((project) => ({
 		id: project.id,
 		name: project.name,
+		kind: project.kind,
 		state_key: project.state_key,
 		next_step_short: project.next_step_short ?? null,
 		next_step_long: project.next_step_long ?? null,

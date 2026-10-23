@@ -4,6 +4,7 @@ import {
 	reviewedAgenticChatMutationSpecV1
 } from '../mutations/tool-catalog';
 import type { CompletedProviderToolCall } from './stream-tool-calls';
+import { WORKSPACE_CREATE_TOOL_NAMES } from '../shared/workspace-context';
 
 export const MAX_DIRECT_SIMPLE_MUTATIONS_PER_TURN = 3;
 
@@ -47,6 +48,14 @@ export type DirectWriteRouteContext = {
 	 * way the focused project is.
 	 */
 	focusedEntityIds?: ReadonlySet<string>;
+	/**
+	 * The user's own Workspace project id (onto_projects.kind 'workspace'), from
+	 * the admitted context the server loaded for this user, never from model
+	 * arguments or message text. A new task or document there is resolved the way
+	 * a new entity in the focused project is: the Workspace is where a save that
+	 * fits no project belongs (docs/specs/WORKSPACE_ARCHITECTURE_2026-10-23.md).
+	 */
+	workspaceProjectId?: string | null;
 };
 
 /**
@@ -199,7 +208,8 @@ export function assessDirectWriteBatch(
 			if (
 				Object.hasOwn(call.arguments, 'project_id') &&
 				(typeof call.arguments.project_id !== 'string' ||
-					call.arguments.project_id !== focusedProjectId)
+					(call.arguments.project_id !== focusedProjectId &&
+						!isWorkspaceTarget(call, call.arguments.project_id, context)))
 			) {
 				return true;
 			}
@@ -222,6 +232,24 @@ export function assessDirectWriteBatch(
 		};
 	}
 	return { kind: 'simple', mutationCount: mutationCalls.length };
+}
+
+/**
+ * A new task or document aimed at the user's own Workspace (server-resolved
+ * id, never model text). Other kinds aimed there still go to review.
+ */
+function isWorkspaceTarget(
+	call: CompletedProviderToolCall,
+	projectId: unknown,
+	context: DirectWriteRouteContext | undefined
+): boolean {
+	const workspaceId = context?.workspaceProjectId;
+	return (
+		typeof projectId === 'string' &&
+		Boolean(workspaceId) &&
+		WORKSPACE_CREATE_TOOL_NAMES.has(call.name) &&
+		normalizeId(projectId) === normalizeId(workspaceId ?? null)
+	);
 }
 
 /**

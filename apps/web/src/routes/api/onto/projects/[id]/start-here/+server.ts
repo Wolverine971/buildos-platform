@@ -56,12 +56,17 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 
 	const { data: project, error: projectError } = await locals.supabase
 		.from('onto_projects')
-		.select('name, description, state_key, deleted_at, archived_at')
+		.select('name, description, state_key, kind, deleted_at, archived_at')
 		.eq('id', projectId)
 		.maybeSingle();
 	if (projectError) return ApiResponse.databaseError(projectError);
 	if (!project || project.deleted_at || project.archived_at) {
 		return ApiResponse.notFound('Project');
+	}
+	if (project.kind === 'workspace') {
+		return ApiResponse.conflict(
+			'The Workspace holds loose notes and tasks; it has no START HERE document'
+		);
 	}
 	if (!isProjectOperationalState(project.state_key)) {
 		return ApiResponse.conflict(

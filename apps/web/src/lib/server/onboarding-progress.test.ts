@@ -1,6 +1,17 @@
+// apps/web/src/lib/server/onboarding-progress.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-const { access } = vi.hoisted(() => ({ access: vi.fn() }));
+const { access, isWorkspace, workspaceHasItems, ensureActorId } = vi.hoisted(() => ({
+	access: vi.fn(),
+	isWorkspace: vi.fn(),
+	workspaceHasItems: vi.fn(),
+	ensureActorId: vi.fn()
+}));
 vi.mock('$lib/server/ontology-project-access', () => ({ requireProjectMemberAccess: access }));
+vi.mock('$lib/server/workspace-guard', () => ({
+	isWorkspaceProjectId: isWorkspace,
+	workspaceHasLiveItems: workspaceHasItems
+}));
+vi.mock('$lib/services/ontology/ontology-projects.service', () => ({ ensureActorId }));
 import { saveOnboardingProgress } from './onboarding-progress';
 
 function fixture(overrides = {}, saveError: unknown = null) {
@@ -33,6 +44,12 @@ describe('saved onboarding milestones', () => {
 	beforeEach(() => {
 		access.mockReset();
 		access.mockResolvedValue({ ok: true });
+		isWorkspace.mockReset();
+		isWorkspace.mockResolvedValue(false);
+		workspaceHasItems.mockReset();
+		workspaceHasItems.mockResolvedValue(false);
+		ensureActorId.mockReset();
+		ensureActorId.mockResolvedValue('actor-1');
 	});
 	it('checks membership and saves the project before an OAuth round-trip', async () => {
 		const { locals, query } = fixture();
@@ -72,6 +89,32 @@ describe('saved onboarding milestones', () => {
 		await expect(saveOnboardingProgress(fixture().locals, 'user-1', 2)).rejects.toThrow(
 			'first project'
 		);
+	});
+	it('never saves the Workspace as the first project', async () => {
+		isWorkspace.mockResolvedValue(true);
+		workspaceHasItems.mockResolvedValue(true);
+		const { locals, query } = fixture();
+		await saveOnboardingProgress(locals, 'user-1', 2, 'workspace-1');
+		expect(access).not.toHaveBeenCalled();
+		expect(query.update).toHaveBeenCalledWith({
+			onboarding_step: 2,
+			onboarding_project_id: null
+		});
+	});
+	it('lets a non-explorer continue with loose items in the Workspace', async () => {
+		workspaceHasItems.mockResolvedValue(true);
+		const { locals, query } = fixture();
+		await saveOnboardingProgress(locals, 'user-1', 2);
+		expect(workspaceHasItems).toHaveBeenCalledWith(locals.supabase, 'actor-1');
+		expect(query.update).toHaveBeenCalledWith({ onboarding_step: 2 });
+	});
+	it('still asks for a first project when the Workspace is the only pick and it is empty', async () => {
+		isWorkspace.mockResolvedValue(true);
+		const { locals, query } = fixture();
+		await expect(saveOnboardingProgress(locals, 'user-1', 2, 'workspace-1')).rejects.toThrow(
+			'first project'
+		);
+		expect(query.update).not.toHaveBeenCalled();
 	});
 	it('allows an explorer to keep an empty workspace', async () => {
 		const { locals, query } = fixture({ onboarding_intent: 'explore' });

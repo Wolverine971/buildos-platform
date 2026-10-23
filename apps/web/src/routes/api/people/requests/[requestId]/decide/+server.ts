@@ -1,6 +1,10 @@
 // apps/web/src/routes/api/people/requests/[requestId]/decide/+server.ts
 //
 // POST { decision: 'approve' | 'decline' | 'block', grants?: [{ project_id, role, agent_access }] }
+// An upgrade request (a member asked for more in projects they're in, tasker 140) is
+// approved with { decision: 'approve', project_ids?: [...] } (none = everything asked)
+// and optionally editor_agents_write_project_ids: the owner's standing approval
+// ("editors' agents can write here") for those projects.
 //
 // Only the person who was asked can decide, from their signed-in session: the RPC
 // runs on the user-scoped client and checks auth.uid() itself, plus owner-only
@@ -85,8 +89,15 @@ export const POST: RequestHandler = async ({ params, request, locals, url, platf
 		return ApiResponse.badRequest('Decision must be approve, decline, or block');
 	}
 
-	let grants: Grant[] = [];
-	if (decision === 'approve') {
+	let grants: Array<Grant | { project_id: string }> = [];
+	const upgradeProjectIds = readProjectIds(body.project_ids);
+	if (upgradeProjectIds === 'invalid') return ApiResponse.badRequest('Unknown project');
+	const standingProjectIds = readProjectIds(body.editor_agents_write_project_ids);
+	if (standingProjectIds === 'invalid') return ApiResponse.badRequest('Unknown project');
+	if (decision === 'approve' && upgradeProjectIds) {
+		// Upgrade: the RPC gives exactly what was asked in the projects kept checked.
+		grants = upgradeProjectIds.map((projectId) => ({ project_id: projectId }));
+	} else if (decision === 'approve') {
 		const parsed = parseGrants(body.grants);
 		if (!parsed.ok) return ApiResponse.badRequest(parsed.message);
 		grants = parsed.grants;
@@ -158,12 +169,44 @@ export const POST: RequestHandler = async ({ params, request, locals, url, platf
 		}
 	}
 
+	// Standing approval, chosen on the same card. The RPC checks the owner itself.
+	let standing: 'none' | 'saved' | 'failed' = 'none';
+	if (result.kind === 'upgrade' && standingProjectIds && standingProjectIds.length > 0) {
+		standing = 'saved';
+		for (const projectId of standingProjectIds) {
+			const { error: standingError } = await locals.supabase.rpc(
+				'set_project_editor_agents_write',
+				{ p_project_id: projectId, p_enabled: true }
+			);
+			if (standingError) {
+				standing = 'failed';
+				console.warn('[People API] Approved, but the standing approval failed:', {
+					requestId,
+					projectId,
+					error: standingError.message
+				});
+			}
+		}
+	}
+
 	const email = await sendPeopleRequestApprovedEmail(requestId);
 
 	return ApiResponse.success({
 		status,
+		kind: typeof result.kind === 'string' ? result.kind : null,
 		projects: applied,
 		agent_grant: agentGrant,
+		standing_approval: standing,
 		email
 	});
 };
+
+/** Optional list of project UUIDs (max 50): null when absent, 'invalid' when malformed. */
+function readProjectIds(value: unknown): string[] | null | 'invalid' {
+	if (value === undefined || value === null) return null;
+	if (!Array.isArray(value) || value.length > MAX_GRANTS) return 'invalid';
+	const ids = [...new Set(value)];
+	return ids.every((id) => typeof id === 'string' && isValidUUID(id))
+		? (ids as string[])
+		: 'invalid';
+}

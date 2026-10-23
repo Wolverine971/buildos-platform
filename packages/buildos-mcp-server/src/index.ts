@@ -45,7 +45,7 @@ function createBridgeServer(client: BuildosRemoteMcpClient): Server {
 			supportedProtocolVersions: SUPPORTED_PROTOCOL_VERSIONS,
 			capabilities: { tools: {}, resources: {} },
 			instructions:
-				"Use BuildOS to search, inspect, and update the authenticated user's projects and tasks.",
+				"Use BuildOS to search, inspect, and update the authenticated user's projects and tasks. To save a note, doc, or task that no project clearly fits, put it in the user's Workspace (loose notes and tasks, not a project; get_buildos_permissions returns workspace.project_id) and say so. Never create a project to hold a single item.",
 			// Keep identity/schema calls cheap while live resource data remains fresh.
 			cacheHints: {
 				'tools/list': { ttlMs: 60_000, cacheScope: 'private' },

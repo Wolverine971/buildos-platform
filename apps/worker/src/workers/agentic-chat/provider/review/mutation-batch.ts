@@ -74,7 +74,8 @@ export const MUTATION_BATCH_REVIEW_SYSTEM_PROMPT = [
 	],
 	[
 		'Enumerate before judging',
-		'For every descriptive reference in the current user message that points at an existing entity, list every loaded entity of the requested kind whose title or content plausibly fits those words in reference_candidates — not only the entity the batch chose. A reference like "the email one" fits every loaded task about email. A project Context Document is a document, not a second candidate project. Judge uniqueness only from that list.'
+		'For every descriptive reference in the current user message that points at an existing entity, list every loaded entity of the requested kind whose title or content plausibly fits those words in reference_candidates — not only the entity the batch chose. A reference like "the email one" fits every loaded task about email. A project Context Document is a document, not a second candidate project. Judge uniqueness only from that list.',
+		"The user's Workspace (shown as Workspace: their loose notes and tasks, not a project) is the correct home for a new note, doc, or task the user asked to save when no project clearly fits; choosing it is not a guess. A new project created only to hold one such item is uncommissioned."
 	],
 	[
 		'Decide: approve, read-only, revise, or clarify',

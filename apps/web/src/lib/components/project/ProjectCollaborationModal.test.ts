@@ -14,15 +14,16 @@ vi.mock('$lib/utils/ontology-client-logger', () => ({
 	logOntologyClientError: logOntologyClientErrorMock
 }));
 
-const { toastSuccessMock, copyTextMock } = vi.hoisted(() => ({
+const { toastSuccessMock, toastErrorMock, copyTextMock } = vi.hoisted(() => ({
 	toastSuccessMock: vi.fn(),
+	toastErrorMock: vi.fn(),
 	copyTextMock: vi.fn()
 }));
 
 vi.mock('$lib/utils/public-page-url', () => ({ copyTextToClipboard: copyTextMock }));
 
 vi.mock('$lib/stores/toast.store', () => ({
-	toastService: { success: toastSuccessMock, error: vi.fn(), info: vi.fn() }
+	toastService: { success: toastSuccessMock, error: toastErrorMock, info: vi.fn() }
 }));
 
 const PROJECT_A_ID = '11111111-1111-4111-8111-111111111111';
@@ -574,5 +575,181 @@ describe('ProjectCollaborationModal owner sharing', () => {
 			).toBe(true)
 		);
 		expect(window.confirm).not.toHaveBeenCalled();
+	});
+});
+
+describe('ProjectCollaborationModal editors’ agents setting', () => {
+	let calls: Array<{ url: string; method: string; body: unknown }>;
+	let patchResponse: Deferred<Response> | null;
+
+	const SWITCH_NAME = 'Editors’ agents can make changes';
+	const LIFTED_NOTE = /Their agents can make changes through the editors’ setting/;
+
+	function failedResponse(status: number, payload: unknown): Response {
+		return { ok: false, status, json: async () => payload } as Response;
+	}
+
+	beforeEach(() => {
+		calls = [];
+		patchResponse = null;
+		toastSuccessMock.mockReset();
+		toastErrorMock.mockReset();
+		logOntologyClientErrorMock.mockReset();
+		Object.defineProperty(window, 'scrollTo', {
+			configurable: true,
+			writable: true,
+			value: vi.fn()
+		});
+		Object.defineProperty(Element.prototype, 'animate', {
+			configurable: true,
+			writable: true,
+			value: vi.fn(() => ({
+				cancel: vi.fn(),
+				commitStyles: vi.fn(),
+				finished: Promise.resolve(),
+				play: vi.fn()
+			}))
+		});
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+				const url = String(input);
+				const method = init?.method ?? 'GET';
+				calls.push({
+					url,
+					method,
+					body: init?.body ? JSON.parse(String(init.body)) : null
+				});
+				if (url.endsWith('/agent-settings') && method === 'PATCH') {
+					patchResponse = deferred<Response>();
+					return patchResponse.promise;
+				}
+				if (url.endsWith('/agent-settings')) {
+					return jsonResponse({ success: true, data: { editor_agents_write: false } });
+				}
+				if (url.endsWith('/invite-link')) {
+					return jsonResponse({ success: true, data: { link: null } });
+				}
+				if (url.endsWith('/members')) {
+					return jsonResponse({
+						data: {
+							actorId: 'actor-dana',
+							members: [
+								{
+									id: 'member-dana',
+									actor_id: 'actor-dana',
+									role_key: 'owner',
+									access: 'admin',
+									actor: {
+										id: 'actor-dana',
+										name: 'Dana',
+										email: 'dana@example.com'
+									}
+								},
+								{
+									id: 'member-sam',
+									actor_id: 'actor-sam',
+									role_key: 'editor',
+									access: 'write',
+									agent_access: 'read',
+									actor: {
+										id: 'actor-sam',
+										name: 'Sam',
+										email: 'sam@example.com'
+									}
+								}
+							]
+						}
+					});
+				}
+				return responseFor(url, PROJECT_A_ID, 'Unused');
+			})
+		);
+	});
+
+	afterEach(() => {
+		cleanup();
+		vi.unstubAllGlobals();
+	});
+
+	async function openPeopleTab() {
+		render(ProjectCollaborationModal, {
+			props: {
+				isOpen: true,
+				projectId: PROJECT_A_ID,
+				projectName: '9takes',
+				canManageMembers: true
+			}
+		});
+		await fireEvent.click(await screen.findByRole('tab', { name: /People/ }));
+		return screen.findByRole('switch', { name: SWITCH_NAME });
+	}
+
+	it('loads the setting for the owner and saves a change', async () => {
+		const toggle = await openPeopleTab();
+		expect(
+			calls.some(
+				(call) =>
+					call.method === 'GET' &&
+					call.url === `/api/onto/projects/${PROJECT_A_ID}/agent-settings`
+			)
+		).toBe(true);
+		expect(toggle).toHaveAttribute('aria-checked', 'false');
+		expect(toggle).toHaveAccessibleDescription(/People whose agents you turned off stay off/);
+		expect(screen.queryByText(LIFTED_NOTE)).toBeNull();
+
+		await fireEvent.click(toggle);
+		// Optimistic: on before the save answers.
+		expect(toggle).toHaveAttribute('aria-checked', 'true');
+		expect(toggle).toBeDisabled();
+		const patch = calls.find((call) => call.method === 'PATCH');
+		expect(patch).toEqual({
+			url: `/api/onto/projects/${PROJECT_A_ID}/agent-settings`,
+			method: 'PATCH',
+			body: { editor_agents_write: true }
+		});
+
+		requireTestValue(patchResponse).resolve(
+			jsonResponse({ success: true, data: { editor_agents_write: true } })
+		);
+		await waitFor(() =>
+			expect(toastSuccessMock).toHaveBeenCalledWith(
+				'Editors’ agents can now make changes here'
+			)
+		);
+		expect(toggle).toHaveAttribute('aria-checked', 'true');
+		expect(toggle).toBeEnabled();
+		// Sam's own setting stays Read; the row says the editors' setting lifts it.
+		expect(screen.getByLabelText('What Sam’s agents can do')).toHaveValue('read');
+		expect(screen.getByText(LIFTED_NOTE)).toBeInTheDocument();
+	});
+
+	it('puts the switch back and says why when the save fails', async () => {
+		const toggle = await openPeopleTab();
+
+		await fireEvent.click(toggle);
+		expect(toggle).toHaveAttribute('aria-checked', 'true');
+
+		requireTestValue(patchResponse).resolve(
+			failedResponse(403, { success: false, error: 'Only the owner can change this' })
+		);
+		await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'false'));
+		expect(toastErrorMock).toHaveBeenCalledWith('Only the owner can change this');
+		expect(toastSuccessMock).not.toHaveBeenCalled();
+		expect(screen.queryByText(LIFTED_NOTE)).toBeNull();
+		expect(logOntologyClientErrorMock).toHaveBeenCalledWith(
+			expect.any(Error),
+			expect.objectContaining({ operation: 'project_agent_settings_update' })
+		);
+	});
+
+	it('neither loads nor shows the setting for people who aren’t the owner', async () => {
+		render(ProjectCollaborationModal, {
+			props: { isOpen: true, projectId: PROJECT_A_ID, projectName: '9takes' }
+		});
+
+		expect(await screen.findByText('Sam')).toBeInTheDocument();
+		expect(screen.queryByRole('switch')).toBeNull();
+		expect(calls.some((call) => call.url.endsWith('/agent-settings'))).toBe(false);
 	});
 });

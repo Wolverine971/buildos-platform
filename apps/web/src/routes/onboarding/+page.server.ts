@@ -63,6 +63,8 @@ export const load: PageServerLoad = async ({
 		const summaries = await fetchProjectSummaries(supabase, actorId);
 		existingProjects = summaries
 			.filter((p) => {
+				// The Workspace (loose items) is not a project to review here.
+				if (p.kind === 'workspace') return false;
 				const status = toLegacyStatus(p.state_key);
 				return status === 'active';
 			})

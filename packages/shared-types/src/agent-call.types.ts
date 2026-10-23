@@ -136,6 +136,12 @@ export interface AgentCallScope {
 	project_ids?: string[];
 	/** Projects where writes remain permitted after per-project policy is applied. */
 	write_project_ids?: string[];
+	/**
+	 * Projects shared with the person whose owner turned this person's agents Off. They
+	 * are outside `project_ids`; the gateway uses this to say "the owner turned agents
+	 * off" instead of offering a grant link that can't help.
+	 */
+	owner_blocked_project_ids?: string[];
 	allowed_ops?: BuildosAgentAllowedOp[];
 }
 
@@ -552,6 +558,8 @@ export interface ExternalAgentCallerRecord {
 	project_scope_mode: BuildosAgentProjectScopeMode;
 	policy: Record<string, unknown>;
 	metadata: Record<string, unknown>;
+	/** "Let this agent into projects shared with me" (tasker 140). Off by default. */
+	include_shared_projects?: boolean;
 	last_used_at: string | null;
 	created_at: string;
 	updated_at: string;

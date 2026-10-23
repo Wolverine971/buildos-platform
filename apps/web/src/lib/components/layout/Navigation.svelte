@@ -234,7 +234,7 @@
 	const chatLabel = $derived.by((): string => {
 		if (projectTaskMatch) return 'Task chat';
 		if (projectDetailMatch) return 'Project chat';
-		if (currentPath === '/projects') return 'Projects chat';
+		if (currentPath === '/projects') return 'Workspace chat';
 		if (currentPath.startsWith('/briefs')) return 'Brief chat';
 		if (currentPath.startsWith('/dashboard/calendar')) return 'Calendar chat';
 		return 'BuildOS chat';
@@ -242,7 +242,8 @@
 
 	const baseNavItems = [
 		{ href: '/today', label: 'Today', icon: Sun },
-		{ href: '/projects', label: 'Projects', icon: FolderOpen },
+		// The Workspace: loose notes and tasks beside every project (/projects is its home).
+		{ href: '/projects', label: 'Workspace', icon: FolderOpen },
 		// { href: '/time-blocks', label: 'Time Blocks', icon: Clock },
 		{ href: '/history', label: 'History', icon: StickyNote }
 	];

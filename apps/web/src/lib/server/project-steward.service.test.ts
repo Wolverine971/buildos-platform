@@ -277,6 +277,31 @@ describe('project steward service', () => {
 		).rejects.toMatchObject({ status: 409 });
 	});
 
+	it('never gives the Workspace (loose items) a steward', async () => {
+		const user = fakeClient({
+			onto_projects: [{ id: 'workspace-1', kind: 'workspace' }],
+			user_project_behavioral_profiles: [await approvedProfile()],
+			onto_documents: [charterDoc(CHARTER)]
+		});
+		const admin = fakeClient({});
+		const common = {
+			supabase: user.client,
+			admin: admin.client,
+			userId: 'u1',
+			projectId: 'workspace-1'
+		};
+		await expect(
+			approveProjectStewardCharter({
+				...common,
+				expectedSha256: await hashStewardCharterText(CHARTER)
+			})
+		).rejects.toMatchObject({ status: 400, message: expect.stringContaining('Workspace') });
+		await expect(setProjectStewardActive({ ...common, active: true })).rejects.toMatchObject({
+			status: 400
+		});
+		expect(admin.writes).toEqual([]);
+	});
+
 	it('switches off, keeping the approval, and logs nothing', async () => {
 		const profile = await approvedProfile();
 		const user = fakeClient({

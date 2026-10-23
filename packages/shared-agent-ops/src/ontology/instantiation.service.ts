@@ -1087,6 +1087,9 @@ export async function instantiateProject(
 				.from('onto_projects')
 				.select('id', { count: 'exact', head: true })
 				.eq('created_by', actorId)
+				// The Workspace (loose items) isn't a project.
+				.eq('kind', 'project')
+				.is('deleted_at', null)
 		]);
 		// AHA-moment funnel event — this is the single point every project
 		// creation path (API, agentic chat, braindump, calendar analysis)

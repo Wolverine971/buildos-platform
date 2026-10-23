@@ -67,6 +67,14 @@ describe('/people load', () => {
 	it('splits projects you own (shareable) from projects shared with you', async () => {
 		fetchProjectSummariesMock.mockResolvedValue([
 			{ id: 'p-own', name: '9takes', is_shared: false, owner_actor_id: 'actor-me' },
+			// The private Workspace (loose items) is never offered for sharing.
+			{
+				id: 'p-workspace',
+				name: 'Workspace',
+				kind: 'workspace',
+				is_shared: false,
+				owner_actor_id: 'actor-me'
+			},
 			{
 				id: 'p-shared',
 				name: 'Cadre',

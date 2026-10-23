@@ -2,7 +2,6 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AGENTIC_CHAT_TURN_LEASE_POLICY_V1 } from '@buildos/shared-types';
-import { supabase } from '../src/lib/supabase';
 import { SupabaseQueue, type ProcessingJob } from '../src/lib/supabaseQueue';
 import {
 	DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG,
@@ -155,11 +154,9 @@ describe('Agentic Chat queue consumer', () => {
 			userId: job.user_id
 		});
 		expect(
-			vi
-				.mocked(supabase.rpc)
-				.mock.calls.some(
-					([name]) => name === 'complete_queue_job' || name === 'fail_queue_job'
-				)
+			rpcMock.mock.calls.some(
+				([name]) => name === 'complete_queue_job' || name === 'fail_queue_job'
+			)
 		).toBe(false);
 		await consumer.queue.stop();
 	});
@@ -223,11 +220,9 @@ describe('Agentic Chat queue consumer', () => {
 			expect.objectContaining({ userId: job.user_id, queueRowId: job.id })
 		);
 		expect(
-			vi
-				.mocked(supabase.rpc)
-				.mock.calls.some(
-					([name]) => name === 'complete_queue_job' || name === 'fail_queue_job'
-				)
+			rpcMock.mock.calls.some(
+				([name]) => name === 'complete_queue_job' || name === 'fail_queue_job'
+			)
 		).toBe(false);
 		await consumer.queue.stop();
 	});
@@ -678,9 +673,9 @@ describe('Agentic Chat consumer lifecycle', () => {
 		release();
 		await Promise.all([general.stop(), chat.queue.stop()]);
 		// The chat pool is processor-managed: only the general queue completes rows.
-		expect(
-			vi.mocked(supabase.rpc).mock.calls.filter(([name]) => name === 'complete_queue_job')
-		).toHaveLength(20);
+		expect(rpcMock.mock.calls.filter(([name]) => name === 'complete_queue_job')).toHaveLength(
+			20
+		);
 		// Turn leases belong to the chat executor, never to the shared queue:
 		// general jobs keep their existing heartbeat and generic recovery.
 		expect(

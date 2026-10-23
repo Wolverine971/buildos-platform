@@ -1376,15 +1376,18 @@ export async function getComprehensiveAnalytics(
 			.select('id, session_id, user_id, created_at')
 			.gte('created_at', startDate.toISOString())
 			.lte('created_at', endDate.toISOString()),
+		// The Workspace (loose items) isn't a project.
 		client
 			.from('onto_projects')
 			.select('id, created_at, updated_at, created_by, deleted_at')
+			.eq('kind', 'project')
 			.gte('created_at', startDate.toISOString())
 			.lte('created_at', endDate.toISOString())
 			.is('deleted_at', null),
 		client
 			.from('onto_projects')
 			.select('id, created_at, updated_at, deleted_at')
+			.eq('kind', 'project')
 			.gte('updated_at', startDate.toISOString())
 			.lte('updated_at', endDate.toISOString())
 			.is('deleted_at', null),

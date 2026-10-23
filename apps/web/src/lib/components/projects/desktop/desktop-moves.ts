@@ -75,9 +75,11 @@ export function fetchCard(projectId: string): Promise<DesktopCard> {
 	return organizeFetch(`/api/onto/projects/${encodeURIComponent(projectId)}/card`, cardSchema);
 }
 
-/** Dated tasks carry calendar events; the server refuses moving them until
- * calendar sync ships (`calendar_sync_not_deployed`). The lock shows up front. */
-export const SCHEDULED_TASK_MOVES_ENABLED = false;
+/** Dated tasks carry calendar events, which Organize rebuilds in the destination.
+ * The server refused them (`calendar_sync_not_deployed`) until calendar sync shipped;
+ * private.organize_rollout.calendar_sync_ready is on in production (checked 2026-10-23),
+ * so dated tasks move like any other. The server stays the authority. */
+export const SCHEDULED_TASK_MOVES_ENABLED = true;
 
 export function isDatedTask(task: { start_at: string | null; due_at: string | null }): boolean {
 	return Boolean(task.start_at || task.due_at);

@@ -496,6 +496,8 @@ const handlePrewarmRequest: RequestHandler = async ({
 				contextType,
 				entityId,
 				projectFocus,
+				// Same as turn preparation: the Workspace id rides project contexts too.
+				includeWorkspace: true,
 				onError: ({ stage, error, metadata }) =>
 					logger.warn('Chat context load stage failed', {
 						stage,

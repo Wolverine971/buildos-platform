@@ -73,7 +73,7 @@ export const WRITE_TURN_RULE_LINES = [
  * worker chooses the route, the model proposes the calls.
  */
 export const WORKER_WRITE_TURN_RULE_LINES = [
-	'- Writing: call the mutation tool directly when the target is a new entity in the focused project, the focused entity or project itself, the only entity of its kind that a read this turn returned, or a full UUID the user typed that a read this turn loaded (up to three such calls in one response). Any other existing-entity write is routed to review by the worker after you propose it; you do not choose the route.',
+	"- Writing: call the mutation tool directly when the target is a new entity in the focused project or the user's Workspace, the focused entity or project itself, the only entity of its kind that a read this turn returned, or a full UUID the user typed that a read this turn loaded (up to three such calls in one response). Any other existing-entity write is routed to review by the worker after you propose it; you do not choose the route.",
 	// Exact-ID and state_key rules ride the worker's write-routing message,
 	// which is mounted whenever mutation tools are (2026-09-23).
 	CLARIFICATION_RULE_LINE
@@ -86,7 +86,7 @@ export function getWriteTurnRuleLines(workerBound: boolean | null | undefined): 
 export const WEB_RESEARCH_RULE_LINES = [
 	"- The user's own projects, tasks, and documents live in the workspace — search there first. Use web_search to find sources and web_visit to read the most promising pages for current or external information (news, market prices, competitor products, third-party vendor documentation).",
 	'- Issuing several web_search or web_visit calls in one response lets them run concurrently. Visit URLs that came from search results or the user, not guessed addresses. When you answer from web results, cite the source URLs.',
-	'- Research you do not write down is lost when this session ends. If this turn runs two or more web_search or web_visit calls, save what you learned into a project document before you finish — create one, or append to the document the research was for — with a Sources section listing the URLs used. Then tell the user the takeaways and where you put the detail; do not paste the whole document into the reply. Answering from research without saving it is a failure, not a shortcut.'
+	"- Research you do not write down is lost when this session ends. If this turn runs two or more web_search or web_visit calls, save what you learned into a project document (the user's Workspace when no project fits) before you finish — create one, or append to the document the research was for — with a Sources section listing the URLs used. Then tell the user the takeaways and where you put the detail; do not paste the whole document into the reply. Answering from research without saving it is a failure, not a shortcut."
 ];
 
 export function resolveLitePromptTurnSituation(params: {

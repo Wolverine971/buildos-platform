@@ -1,5 +1,5 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.entity-access.ts
-import { type OntologyProjectSummary } from '../ontology/ontology-projects.service';
+import { type OntologyProjectSummary, toProjectKind } from '../ontology/ontology-projects.service';
 import {
 	ARCHIVABLE_ENTITY_KINDS,
 	LINK_ENTITY_SELECTS,
@@ -84,6 +84,7 @@ async function resolveArchivedProjectAccessContext(
 
 	return {
 		id: String(entity.id),
+		kind: toProjectKind(entity.kind),
 		name: typeof entity.name === 'string' ? entity.name : 'Archived project',
 		description: typeof entity.description === 'string' ? entity.description : null,
 		icon_svg: null,

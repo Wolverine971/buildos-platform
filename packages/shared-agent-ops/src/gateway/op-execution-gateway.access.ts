@@ -16,10 +16,19 @@ export type VisibleProjectContext = {
 	projectMap: Map<string, OntologyProjectSummary>;
 	/** User-visible projects this connector has not been granted (0 when unscoped). */
 	ungrantedProjectCount: number;
+	/** Shared projects whose owner turned this person's agents Off (never grantable here). */
+	ownerBlockedProjectCount: number;
 };
 
 /** Error reason for a project the user can see but this connector was not granted. */
 export const PROJECT_NOT_GRANTED_TO_CONNECTOR = 'project_not_granted_to_connector';
+
+/** Error reason for a shared project whose owner turned this person's agents Off. */
+export const AGENTS_OFF_BY_OWNER = 'agents_off_by_owner';
+
+/** Error reasons for a write the connection may not make in a project it can read. */
+export const WRITE_NOT_GRANTED = 'write_not_granted';
+export const VIEWER_CANNOT_WRITE = 'viewer_cannot_write';
 
 /** Error reason for a call aimed at a project that was combined into another (tasker 122). */
 export const PROJECT_MERGED_INTO_ANOTHER = 'project_merged';
@@ -41,18 +50,22 @@ export class ProjectOutsideScopeError extends ExternalToolGatewayError {
 
 /**
  * The connector's allowed projects, plus the ids the user can see that fall
- * outside the connector scope. The extra set lets a denial say "ask the user
- * to grant this" instead of a dead-end FORBIDDEN, without widening access.
+ * outside the connector scope. The extra sets let a denial say what is in the
+ * way (the person hasn't granted it, or the owner turned agents off) instead of
+ * a dead-end FORBIDDEN, without widening access.
  */
 export class ScopedProjectMap extends Map<string, OntologyProjectSummary> {
 	readonly ungrantedProjectIds: ReadonlySet<string>;
+	readonly ownerBlockedProjectIds: ReadonlySet<string>;
 
 	constructor(
 		entries: Iterable<readonly [string, OntologyProjectSummary]>,
-		ungrantedProjectIds: Iterable<string> = []
+		ungrantedProjectIds: Iterable<string> = [],
+		ownerBlockedProjectIds: Iterable<string> = []
 	) {
 		super(entries);
 		this.ungrantedProjectIds = new Set(ungrantedProjectIds);
+		this.ownerBlockedProjectIds = new Set(ownerBlockedProjectIds);
 	}
 }
 
@@ -64,15 +77,19 @@ export function buildAllowedProjectSet(
 	if (!requestedIds) {
 		return new ScopedProjectMap(projects.map((project) => [project.id, project]));
 	}
+	const blockedIds = new Set(scope.owner_blocked_project_ids ?? []);
 	const allowed: OntologyProjectSummary[] = [];
 	const ungranted: string[] = [];
+	const blocked: string[] = [];
 	for (const project of projects) {
 		if (requestedIds.has(project.id)) allowed.push(project);
+		else if (blockedIds.has(project.id)) blocked.push(project.id);
 		else ungranted.push(project.id);
 	}
 	return new ScopedProjectMap(
 		allowed.map((project) => [project.id, project]),
-		ungranted
+		ungranted,
+		blocked
 	);
 }
 
@@ -83,11 +100,29 @@ function isUngrantedProject(
 	return projectMap instanceof ScopedProjectMap && projectMap.ungrantedProjectIds.has(projectId);
 }
 
+function isOwnerBlockedProject(
+	projectMap: Map<string, OntologyProjectSummary>,
+	projectId: string
+): boolean {
+	return (
+		projectMap instanceof ScopedProjectMap && projectMap.ownerBlockedProjectIds.has(projectId)
+	);
+}
+
 function projectNotGrantedError(subject: string, projectId: string): ExternalToolGatewayError {
 	return new ExternalToolGatewayError(
 		'FORBIDDEN',
-		`${subject} is in the user's BuildOS workspace, but this connector has not been granted access to that project. Ask the user to approve access (details.grant_url when present, otherwise BuildOS → Profile → Agent keys), then retry.`,
+		`${subject} is in the user's BuildOS workspace, but this connector has not been granted access to that project. Show the user details.access_needed.say_to_user with its link (details.grant_url), then retry once they allow it.`,
 		{ reason: PROJECT_NOT_GRANTED_TO_CONNECTOR, project_id: projectId }
+	);
+}
+
+/** No name: the owner kept this person's agents out, so the agent learns only the id it sent. */
+function agentsOffByOwnerError(subject: string, projectId: string): ExternalToolGatewayError {
+	return new ExternalToolGatewayError(
+		'FORBIDDEN',
+		`${subject} is shared with the user, but the project's owner turned off agents for them. Granting it to this connector won't help; only the owner can turn agents back on. Show the user details.access_needed.say_to_user and ask before sending the request in details.access_needed.next.`,
+		{ reason: AGENTS_OFF_BY_OWNER, project_id: projectId }
 	);
 }
 
@@ -101,6 +136,9 @@ export function assertAccessibleProject(
 
 	const project = projectMap.get(projectId);
 	if (!project) {
+		if (isOwnerBlockedProject(projectMap, projectId)) {
+			throw agentsOffByOwnerError('This project', projectId);
+		}
 		if (isUngrantedProject(projectMap, projectId)) {
 			throw projectNotGrantedError('This project', projectId);
 		}
@@ -120,6 +158,9 @@ export function assertVisibleEntityProject(
 
 	const project = projectMap.get(projectId);
 	if (!project) {
+		if (isOwnerBlockedProject(projectMap, projectId)) {
+			throw agentsOffByOwnerError('This item', projectId);
+		}
 		if (isUngrantedProject(projectMap, projectId)) {
 			throw projectNotGrantedError('This entity', projectId);
 		}
@@ -173,7 +214,8 @@ export async function loadVisibleProjects(
 	return {
 		projects: visibleProjects,
 		projectMap,
-		ungrantedProjectCount: projectMap.ungrantedProjectIds.size
+		ungrantedProjectCount: projectMap.ungrantedProjectIds.size,
+		ownerBlockedProjectCount: projectMap.ownerBlockedProjectIds.size
 	};
 }
 
@@ -239,15 +281,16 @@ export function assertProjectWriteAccess(
 	if (Array.isArray(scope?.write_project_ids) && !scope.write_project_ids.includes(project.id)) {
 		throw new ExternalToolGatewayError(
 			'FORBIDDEN',
-			'Write access is not granted to this project for the connected agent',
-			{ project_id: project.id, project_name: project.name }
+			'Write access is not granted to this project for the connected agent. Show the user details.access_needed.say_to_user; it says who can allow it and how.',
+			{ reason: WRITE_NOT_GRANTED, project_id: project.id, project_name: project.name }
 		);
 	}
 	if (project.access_level !== 'write' && project.access_level !== 'admin') {
 		throw new ExternalToolGatewayError(
 			'FORBIDDEN',
-			'Write access is not available for this project',
+			'Write access is not available for this project. Show the user details.access_needed.say_to_user; it says who can allow it and how.',
 			{
+				reason: VIEWER_CANNOT_WRITE,
 				project_id: project.id,
 				project_name: project.name,
 				project_access_level: project.access_level

@@ -74,6 +74,10 @@ import {
 } from './tool-catalog';
 import { gatewayMemoForTurn } from './gateway-turn-memo';
 import {
+	WORKSPACE_CREATE_TOOL_NAMES,
+	workspaceProjectIdFromContextPayload
+} from '../shared/workspace-context';
+import {
 	type SharedDocumentPreviewRunner,
 	isSharedDocumentEditCard,
 	loadSharedDocumentTarget,
@@ -446,6 +450,18 @@ function resolveProjectFence(
 		argumentProjectId !== null &&
 		contextProjectId !== argumentProjectId
 	) {
+		// A project chat may send a new task or document to the user's own
+		// Workspace. The id comes from the admitted context the server loaded for
+		// this user, never from the model; the gateway still checks write access.
+		if (
+			WORKSPACE_CREATE_TOOL_NAMES.has(input.toolName) &&
+			argumentProjectId.toLowerCase() ===
+				workspaceProjectIdFromContextPayload(
+					input.executionInput.artifact?.prepared?.contextPayload
+				)
+		) {
+			return argumentProjectId;
+		}
 		throw knownFailure(
 			'mutation_project_scope_mismatch',
 			`${input.toolName} ${scope.argument} is outside the admitted turn context`

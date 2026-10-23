@@ -188,6 +188,102 @@ describe('people readers', () => {
 		);
 		expect(personName({})).toBe('Someone');
 	});
+
+	it('reads upgrade requests with their projects, dropping malformed items', () => {
+		const base = {
+			created_at: '2026-10-23T00:00:00Z',
+			expires_at: '2026-10-30T00:00:00Z',
+			kind: 'upgrade',
+			role_requested: 'editor',
+			agent_access_requested: 'write',
+			project_hint: null,
+			note: null,
+			via: 'agent',
+			via_agent_label: 'Claude',
+			from: { name: 'Sam', handle: 'sam', email: null }
+		};
+		const result = readPeopleRequests({
+			incoming: [
+				{
+					...base,
+					id: 'u1',
+					project: { id: 'p1', name: '9takes' },
+					items: [
+						{
+							project_id: 'p1',
+							project_name: '9takes',
+							need: 'agents_write',
+							role: 'editor',
+							agent_access: 'read',
+							editor_agents_write: false
+						},
+						{ project_id: 'p2', project_name: 'Garden', need: 'fly' },
+						{ project_name: 'No id', need: 'edit' },
+						'nonsense',
+						{ project_id: 'p1', project_name: '9takes again', need: 'edit' },
+						{
+							project_id: 'p3',
+							project_name: null,
+							need: 'edit',
+							role: 'viewer',
+							agent_access: 'sometimes',
+							editor_agents_write: 'yes'
+						}
+					]
+				},
+				// An upgrade with nothing readable to approve is not shown.
+				{ ...base, id: 'u2', items: [{ project_id: 'p9', need: 'bogus' }] },
+				{ ...base, id: 'u3' }
+			],
+			outgoing: []
+		});
+
+		expect(result.incoming).toHaveLength(1);
+		expect(result.incoming[0]).toMatchObject({
+			id: 'u1',
+			kind: 'upgrade',
+			project: { id: 'p1', name: '9takes' },
+			via_agent_label: 'Claude'
+		});
+		expect(result.incoming[0]?.items).toEqual([
+			{
+				project_id: 'p1',
+				project_name: '9takes',
+				need: 'agents_write',
+				role: 'editor',
+				agent_access: 'read',
+				editor_agents_write: false
+			},
+			{
+				project_id: 'p3',
+				project_name: 'your project',
+				need: 'edit',
+				role: 'viewer',
+				agent_access: null,
+				editor_agents_write: false
+			}
+		]);
+	});
+
+	it('keeps access and rejoin requests as they were, with no items', () => {
+		const [access, rejoin] = readPeopleRequests({
+			incoming: [
+				{ id: 'a1', created_at: '2026-10-23T00:00:00Z', kind: 'access', items: [{}] },
+				{
+					id: 'r1',
+					created_at: '2026-10-23T00:00:00Z',
+					kind: 'rejoin',
+					project: { id: 'p1', name: '9takes' }
+				}
+			]
+		}).incoming;
+		expect(access).toMatchObject({ kind: 'access', project: null, items: [] });
+		expect(rejoin).toMatchObject({
+			kind: 'rejoin',
+			project: { id: 'p1', name: '9takes' },
+			items: []
+		});
+	});
 });
 
 describe('invite wording', () => {

@@ -3,6 +3,7 @@ import type {
 	AgentCallScope,
 	AgentCredentialReference,
 	AgentPermissionRequest,
+	BuildosAgentProjectScopeMode,
 	BuildosAgentToolDefinition
 } from '@buildos/shared-types';
 import {
@@ -11,6 +12,17 @@ import {
 } from '@buildos/shared-agent-ops/permissions/proposal';
 import { z } from 'zod';
 import { defaultAllowedOpsForMode } from './agent-call-policy';
+import { ensureWorkspaceProjectId } from '$lib/services/ontology/ontology-projects.service';
+
+/**
+ * Workspace guidance for connector agents (2026-10-23,
+ * docs/specs/WORKSPACE_ARCHITECTURE_2026-10-23.md). The agent's project_id is
+ * the decision; nothing classifies the user's words.
+ */
+const WORKSPACE_USE =
+	"The user's Workspace: loose notes, docs and tasks, not a project. When the user wants something saved and no project clearly fits, create it here (create_onto_task / create_onto_document with this project_id) and tell the user it went to their Workspace. Never create a project to hold a single item, or out of Workspace items on your own; turning loose items into a project is the user's call in BuildOS.";
+const WORKSPACE_NOT_SHARED =
+	"This connection can't write to the user's Workspace (their home for loose notes and tasks). When no project fits, ask the user to share their Workspace with this connection (grant_url) or to name a project. Don't create a project to hold a single item.";
 
 const emptySchema = { type: 'object' as const, properties: {}, additionalProperties: false };
 const proposalProperties = {
@@ -25,7 +37,8 @@ const proposalProperties = {
 export const PERMISSION_CONTROL_TOOLS: BuildosAgentToolDefinition[] = [
 	{
 		name: 'get_buildos_permissions',
-		description: 'Get current connection permission status and request capabilities.',
+		description:
+			"Get current connection permission status and request capabilities, and the user's Workspace (workspace.project_id): where a note, doc, or task goes when no project fits.",
 		inputSchema: emptySchema
 	},
 	{
@@ -145,17 +158,29 @@ export function scopedPermissionTools(
 export class PermissionRequestError extends Error {
 	constructor(
 		message: string,
-		public code = 'PERMISSION_DENIED'
+		public code = 'PERMISSION_DENIED',
+		/**
+		 * No scoped grant could cover this edit (the feature is off, the target is outside
+		 * the connection, or it's someone else's project). A direct update then falls back
+		 * to the gateway, whose refusal says what is in the way and who can clear it.
+		 */
+		public noScopedGrant = false
 	) {
 		super(message);
 	}
 }
+export type PermissionRequestCaller = {
+	/** The connection's person; resolves their Workspace for get_buildos_permissions. */
+	userId?: string;
+	projectScopeMode?: BuildosAgentProjectScopeMode;
+};
 export class PermissionRequestService {
 	constructor(
 		private admin: any,
 		private ref: AgentCredentialReference,
 		private scope: AgentCallScope,
-		private origin = ''
+		private origin = '',
+		private caller: PermissionRequestCaller = {}
 	) {}
 	private async rpc(name: string, args: Record<string, unknown>): Promise<any> {
 		const { data, error } = await this.admin.rpc(name, args);
@@ -182,7 +207,8 @@ export class PermissionRequestService {
 		if (error || !data?.enabled)
 			throw new PermissionRequestError(
 				'Permission requests are not enabled for this BuildOS deployment.',
-				'FEATURE_DISABLED'
+				'FEATURE_DISABLED',
+				true
 			);
 		return data as { enabled: boolean; epoch: number };
 	}
@@ -236,7 +262,8 @@ export class PermissionRequestService {
 	private async assertOwnProject(projectId: string) {
 		const refusal = new PermissionRequestError(
 			'Edit requests work only in projects your person owns. In a project someone else shared, your person can make the change in BuildOS.',
-			'PERMISSION_DENIED'
+			'PERMISSION_DENIED',
+			true
 		);
 		const { data: caller } = await this.admin
 			.from('external_agent_callers')
@@ -292,7 +319,11 @@ export class PermissionRequestService {
 			.eq('id', proposal.target_id)
 			.maybeSingle();
 		if (error || !target || !this.scope.project_ids?.includes(target.project_id))
-			throw new PermissionRequestError('Target is outside connector access');
+			throw new PermissionRequestError(
+				'Target is outside connector access',
+				'PERMISSION_DENIED',
+				true
+			);
 		await this.assertOwnProject(target.project_id);
 		const before = await this.rpc('agent_edit_snapshot', {
 			p_kind: `${proposal.kind}.edit.v1`,
@@ -387,6 +418,7 @@ export class PermissionRequestService {
 			return this.status(args.request_id);
 		}
 		z.object({}).strict().parse(args);
+		if (name === 'get_buildos_permissions') return this.permissionStatus();
 		const grants = await this.grants();
 		if (name === 'authorize_buildos_writes' && grants.length && this.ref.kind === 'oauth') {
 			await this.rpc('agent_permission_credential', { p_ref: this.ref, p_write: true });
@@ -399,6 +431,79 @@ export class PermissionRequestService {
 				? 'Use the scoped update tools with a stable idempotency_key.'
 				: 'Submit a specific edit with request_buildos_permission.',
 			identity_boundary: 'Ongoing access is shared by chats using this connection.'
+		};
+	}
+	/**
+	 * Permission status plus the Workspace. Answers even when edit requests are
+	 * switched off, so a connector can always learn where loose items go.
+	 */
+	private async permissionStatus() {
+		const [grants, workspace] = await Promise.all([
+			this.grants().catch((error: unknown) => {
+				if (error instanceof PermissionRequestError && error.code === 'FEATURE_DISABLED')
+					return null;
+				throw error;
+			}),
+			this.workspace()
+		]);
+		return {
+			legacy_scope: this.scope,
+			scoped_grants: grants ?? [],
+			capabilities: grants ? ['document.edit.v1', 'task.edit.v1'] : [],
+			next_step: !grants
+				? 'Edit requests are not enabled for this BuildOS deployment.'
+				: grants.length
+					? 'Use the scoped update tools with a stable idempotency_key.'
+					: 'Submit a specific edit with request_buildos_permission.',
+			identity_boundary: 'Ongoing access is shared by chats using this connection.',
+			...(workspace ? { workspace } : {})
+		};
+	}
+	/**
+	 * The person's own Workspace (created on first use), and whether this
+	 * connection may write to it. An all-projects connection reaches it like any
+	 * unrestricted project; a selected-projects connection only after the person
+	 * shares it, since sharing it also exposes every loose note to the agent.
+	 */
+	private async workspace(): Promise<Record<string, unknown> | null> {
+		const userId = this.caller.userId;
+		if (!userId) return null;
+		let id: string;
+		try {
+			id = await ensureWorkspaceProjectId(this.admin, userId);
+		} catch {
+			return null;
+		}
+		const covers = (ids: string[] | undefined) => !Array.isArray(ids) || ids.includes(id);
+		let writable =
+			this.scope.mode === 'read_write' &&
+			covers(this.scope.project_ids) &&
+			covers(this.scope.write_project_ids);
+		if (
+			!writable &&
+			this.scope.mode === 'read_write' &&
+			this.caller.projectScopeMode === 'all_unrestricted' &&
+			!covers(this.scope.project_ids)
+		) {
+			// Created by this call, after this call's scope was resolved: the next
+			// call's all-projects scope includes it unless the owner restricted it.
+			const { data } = await this.admin
+				.from('onto_projects')
+				.select('external_agent_access')
+				.eq('id', id)
+				.maybeSingle();
+			writable = data?.external_agent_access === 'standard';
+		}
+		if (writable) return { project_id: id, name: 'Workspace', use: WORKSPACE_USE };
+		if (this.scope.mode !== 'read_write') return null;
+		return {
+			project_id: null,
+			note: WORKSPACE_NOT_SHARED,
+			...(this.origin
+				? {
+						grant_url: `${this.origin}/profile/agent-keys/${encodeURIComponent(this.ref.caller_id)}/grant?project=${encodeURIComponent(id)}`
+					}
+				: {})
 		};
 	}
 }

@@ -300,6 +300,26 @@ export interface EmbedOntoEntityJobMetadata {
 }
 
 /** Pick a new project's tile emoji (onto_projects.icon_emoji); queued by an insert trigger. */
+/** workspace_suggest: queued a few minutes after a loose item lands in a Workspace. */
+export interface WorkspaceSuggestJobMetadata {
+	userId: string;
+	workspaceProjectId: string;
+	/** Set when the person asked for a fresh look from the Workspace page. */
+	reason?: 'capture' | 'requested';
+}
+
+export interface WorkspaceSuggestResult {
+	success: boolean;
+	userId: string;
+	outcome: 'suggested' | 'nothing_new' | 'skipped' | 'failed';
+	reason?: string;
+	created?: number;
+	staled?: number;
+	runId?: string;
+	/** What the model read; the next run is skipped when it hasn't changed. */
+	inputHash?: string;
+}
+
 export interface PickProjectEmojiJobMetadata {
 	projectId: string;
 	userId: string;
@@ -350,6 +370,7 @@ export interface JobMetadataMap {
 	extract_onto_asset_ocr: AssetOcrJobMetadata;
 	embed_onto_entity: EmbedOntoEntityJobMetadata;
 	pick_project_emoji: PickProjectEmojiJobMetadata;
+	workspace_suggest: WorkspaceSuggestJobMetadata;
 	admin_question_tree: AdminQuestionTreeJobMetadata;
 	run_cycle: CycleQueueJobMetadata;
 	freshness_radar_scan: FreshnessScanJobMetadata;
@@ -467,6 +488,7 @@ export interface JobResultMap {
 	extract_onto_asset_ocr: AssetOcrResult;
 	embed_onto_entity: EmbedOntoEntityResult;
 	pick_project_emoji: PickProjectEmojiResult;
+	workspace_suggest: WorkspaceSuggestResult;
 	run_cycle: CycleQueueJobResult;
 	other: unknown;
 }

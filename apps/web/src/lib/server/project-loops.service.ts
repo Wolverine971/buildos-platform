@@ -3,6 +3,7 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { addQueueJobWithPublicId } from '$lib/server/queue-job-id';
 import { createLogger } from '$lib/utils/logger';
 import { PROJECT_LOOPS_ENABLED } from '$lib/config/project-loops';
+import { isWorkspaceProjectId } from '$lib/server/workspace-guard';
 import { projectLoopDedupKey, readProjectLoopQueueMetadata } from '@buildos/shared-agent-ops';
 import type { ProjectLoopTriggerReason } from '@buildos/shared-types';
 
@@ -14,6 +15,9 @@ const AUTO_TRIGGER_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
 // Match the worker enqueue/reclaim windows; queued jobs may wait in a nightly backlog.
 const STALE_RUNNING_RUN_MS = 60 * 60 * 1000;
 const STALE_QUEUED_RUN_MS = 6 * 60 * 60 * 1000;
+/** Why a loop never runs on the Workspace (a person's loose notes and tasks). */
+export const WORKSPACE_NOT_REVIEWABLE =
+	'The Workspace holds loose notes and tasks; it has no project review.';
 
 export interface QueueProjectLoopResult {
 	queued: boolean;
@@ -94,13 +98,17 @@ export async function queueProjectLoop(params: {
 
 	let reclaimedRunId: string | null = null;
 	// Avoid stacking runs: if one is already queued/running, return it.
-	const { data: active } = await supabase
-		.from('project_loop_runs')
-		.select('id, status, started_at, created_at')
-		.eq('project_id', params.projectId)
-		.in('status', ['queued', 'running'])
-		.limit(1)
-		.maybeSingle();
+	const [isWorkspace, { data: active }] = await Promise.all([
+		isWorkspaceProjectId(supabase, params.projectId),
+		supabase
+			.from('project_loop_runs')
+			.select('id, status, started_at, created_at')
+			.eq('project_id', params.projectId)
+			.in('status', ['queued', 'running'])
+			.limit(1)
+			.maybeSingle()
+	]);
+	if (isWorkspace) return { queued: false, reason: WORKSPACE_NOT_REVIEWABLE };
 	if (active?.id) {
 		const referenceIso =
 			active.status === 'running'

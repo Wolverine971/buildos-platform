@@ -1,6 +1,7 @@
 <!-- apps/web/src/routes/today/+page.svelte -->
 <script lang="ts">
 	import { onMount, tick, untrack } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { MediaQuery } from 'svelte/reactivity';
 	import { getSupabaseContext } from '$lib/supabase/context';
 	import ActivationReceipt from '$lib/components/onboarding-v3/ActivationReceipt.svelte';
@@ -44,7 +45,8 @@
 		MessageCircle,
 		RefreshCcw,
 		Send,
-		Sparkles
+		Sparkles,
+		StickyNote
 	} from '$lib/icons/lucide';
 	import { requireApiData } from '$lib/utils/api-client-helpers';
 	import { aiInboxPerformance } from '$lib/utils/ai-inbox-performance';
@@ -435,10 +437,18 @@
 	// list. The project list is already on the feed, so this costs no extra query.
 	// isActiveFacing() is the canonical planning/active vs completed/cancelled/paused
 	// classifier (case-normalized), so "what's waiting" never surfaces a finished project.
-	const hasProjects = $derived((feed?.projects?.length ?? 0) > 0);
+	// The Workspace (loose items) rides in the project list for task names; it isn't a project.
+	const hasProjects = $derived(
+		(feed?.projects ?? []).some((project) => project.kind !== 'workspace')
+	);
 	const waitingProjects = $derived(
 		(feed?.projects ?? [])
-			.filter((project) => isActiveFacing(project.state_key) && !!project.next_step_short)
+			.filter(
+				(project) =>
+					project.kind !== 'workspace' &&
+					isActiveFacing(project.state_key) &&
+					!!project.next_step_short
+			)
 			.slice(0, 6)
 	);
 
@@ -860,6 +870,48 @@
 		}
 	}
 
+	// Park the text in the Workspace as a note: no model call, no project to pick.
+	let workspaceSaving = $state(false);
+	async function saveCaptureToWorkspace(first: boolean) {
+		const text = captureText.trim();
+		if (!text || workspaceSaving || captureVoiceBusy) return;
+		workspaceSaving = true;
+		try {
+			const response = await fetch('/api/workspace/capture', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', 'X-Change-Source': 'workspace' },
+				body: JSON.stringify({
+					kind: 'note',
+					text,
+					source: 'today',
+					idempotency_key: crypto.randomUUID()
+				})
+			});
+			const payload = await response.json().catch(() => null);
+			if (!response.ok || !payload?.data?.item) {
+				throw new Error(
+					payload?.error?.message ?? payload?.error ?? 'Could not save that.'
+				);
+			}
+			captureText = '';
+			toastService.add({
+				type: 'success',
+				message: 'Saved to your Workspace.',
+				action: { label: 'Open', onClick: () => void goto('/projects') }
+			});
+			trackLoopEvent('loop_capture_submitted', 'today', {
+				source_type: first ? 'first_run_workspace' : 'quick_capture_workspace',
+				capture_length: text.length
+			});
+		} catch (cause) {
+			toastService.error(
+				cause instanceof Error && cause.message ? cause.message : 'Could not save that.'
+			);
+		} finally {
+			workspaceSaving = false;
+		}
+	}
+
 	// Zero-project first-run: same capture pipeline as submitCapture, but framed as
 	// "structure my first project" so the agent creates a project rather than routing an
 	// update to existing ones.
@@ -1071,10 +1123,10 @@
 				<a
 					href="/projects"
 					class="ml-auto inline-flex min-h-11 min-w-11 [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					title="Open projects"
-					aria-label="Open projects"
+					title="Open your Workspace"
+					aria-label="Open your Workspace"
 				>
-					<span class="hidden sm:inline">Projects</span>
+					<span class="hidden sm:inline">Workspace</span>
 					<ArrowUpRight class="h-4 w-4 shrink-0" />
 				</a>
 				<Button
@@ -1201,7 +1253,7 @@
 									textareaClass="border-0 bg-transparent px-1 py-1 text-base sm:text-sm shadow-none focus:ring-0"
 								/>
 							</div>
-							<div class="mt-3 flex justify-center">
+							<div class="mt-3 flex flex-wrap items-center justify-center gap-2">
 								<Button
 									onclick={submitFirstProject}
 									variant="primary"
@@ -1210,9 +1262,24 @@
 									loading={captureLoading}
 									disabled={!captureText.trim() ||
 										captureVoiceBusy ||
-										captureLoading}
+										captureLoading ||
+										workspaceSaving}
 								>
 									Structure my first project
+								</Button>
+								<Button
+									onclick={() => saveCaptureToWorkspace(true)}
+									variant="ghost"
+									size="sm"
+									icon={StickyNote}
+									loading={workspaceSaving}
+									disabled={!captureText.trim() ||
+										captureVoiceBusy ||
+										captureLoading ||
+										workspaceSaving}
+									title="Keep it as a note in your Workspace. Turn it into a project later."
+								>
+									Just save it for now
 								</Button>
 							</div>
 						</div>
@@ -1243,9 +1310,27 @@
 								/>
 							</div>
 							<Button
+								onclick={() => saveCaptureToWorkspace(false)}
+								loading={workspaceSaving}
+								disabled={!captureText.trim() ||
+									captureVoiceBusy ||
+									captureLoading ||
+									workspaceSaving}
+								variant="ghost"
+								size="sm"
+								class="shrink-0 px-2 text-muted-foreground hover:text-foreground [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8 [@media(pointer:fine)]:py-1"
+								title="Just save it to your Workspace (no AI)"
+								aria-label="Save to your Workspace as a note"
+							>
+								<StickyNote class="h-4 w-4" />
+							</Button>
+							<Button
 								onclick={submitCapture}
 								loading={captureLoading}
-								disabled={!captureText.trim() || captureVoiceBusy || captureLoading}
+								disabled={!captureText.trim() ||
+									captureVoiceBusy ||
+									captureLoading ||
+									workspaceSaving}
 								variant="ghost"
 								size="sm"
 								class="shrink-0 px-2 text-accent [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8 [@media(pointer:fine)]:py-1"

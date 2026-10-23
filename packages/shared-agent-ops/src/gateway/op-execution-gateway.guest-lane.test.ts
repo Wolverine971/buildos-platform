@@ -39,6 +39,8 @@ type Rows = {
 	documents?: Record<string, { id: string; project_id: string; created_by: string }>;
 	assignees?: Array<{ task_id: string; assignee_actor_id: string }>;
 	agentAccess?: string | null;
+	/** The owner's standing approval: every editor's agents can write. */
+	editorAgentsWrite?: boolean;
 	recentLogs?: number;
 };
 
@@ -90,6 +92,28 @@ function fakeAdmin(rows: Rows) {
 				}
 				if (table === 'onto_project_logs')
 					return resolve({ count: rows.recentLogs ?? 0, error: null });
+				if (table === 'onto_project_members')
+					return resolve({
+						data:
+							rows.agentAccess === null
+								? []
+								: [
+										{
+											project_id: THEIRS,
+											role_key: 'editor',
+											access: 'write',
+											agent_access: rows.agentAccess ?? 'read'
+										}
+									],
+						error: null
+					});
+				if (table === 'project_agent_settings')
+					return resolve({
+						data: rows.editorAgentsWrite
+							? [{ project_id: THEIRS, editor_agents_write: true }]
+							: [],
+						error: null
+					});
 				if (table === 'user_notifications') return resolve({ data: [], error: null });
 				return resolve({ data: [], error: null });
 			}
@@ -161,6 +185,42 @@ describe('guest-agent lane', () => {
 		expect(
 			await refusal('onto.task.create', { project_id: THEIRS }, { agentAccess: 'read' })
 		).toBe(GUEST_LANE_REASON.agentWriteOff);
+	});
+
+	it("lets editors' agents write when the owner's standing approval is on", async () => {
+		const { result } = await run(
+			'onto.task.create',
+			{ project_id: THEIRS },
+			{ agentAccess: 'read', editorAgentsWrite: true }
+		);
+		expect(result.write_project_ids).toContain(THEIRS);
+		// The owner turning this person's agents off still wins.
+		expect(
+			await refusal(
+				'onto.task.create',
+				{ project_id: THEIRS },
+				{ agentAccess: 'off', editorAgentsWrite: true }
+			)
+		).toBe(GUEST_LANE_REASON.agentWriteOff);
+	});
+
+	it('marks archive refusals so the agent can say so', async () => {
+		const { admin } = fakeAdmin({
+			agentAccess: 'write',
+			tasks: { t1: { id: 't1', project_id: THEIRS, created_by: ACTOR } }
+		});
+		await expect(
+			applyGuestAgentLane({
+				admin,
+				userId: 'user-sam',
+				callerId: CALLER,
+				op: 'onto.task.update',
+				args: { task_id: 't1', archived: true },
+				scope: baseScope
+			})
+		).rejects.toMatchObject({
+			details: { reason: GUEST_LANE_REASON.outsideLane, action: 'archive' }
+		});
 	});
 
 	it('lets the agent change a task the person created', async () => {

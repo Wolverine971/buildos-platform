@@ -4,12 +4,15 @@ import { PermissionRequestService, scopedPermissionTools } from './permission-re
 // apps/web/src/lib/server/agent-call/mcp-connector.service.ts
 import { json } from '@sveltejs/kit';
 import {
+	CLIENT_CAPABILITIES_META_KEY,
 	createMcpHandler,
+	inputRequired,
 	isLegacyRequest,
 	ProtocolError,
 	ResourceNotFoundError,
 	Server,
 	type CallToolResult,
+	type InputRequiredResult,
 	type ListResourcesResult,
 	type ListResourceTemplatesResult,
 	type ListToolsResult,
@@ -79,8 +82,9 @@ const MCP_SERVER_INFO = {
 	title: BUILDOS_MCP_SERVER_NAME,
 	version: '2026-08-10'
 } as const;
+// Workspace rule (2026-10-23): the agent's project_id is the decision.
 const MCP_SERVER_INSTRUCTIONS =
-	'Use BuildOS tools to read scoped project context. Write tools are available only when the user approved write access.';
+	"Use BuildOS tools to read scoped project context. Write tools are available only when the user approved write access. To save a note, doc, or task that no project clearly fits, put it in the user's Workspace (loose notes and tasks, not a project; get_buildos_permissions returns workspace.project_id) and say so. Never create a project to hold a single item. When a call is refused with details.access_needed, show the user its say_to_user. If next.open_url is set, give them that link and retry after they tap it. If next.tool is request_project_access, ask the user first and call it only on their yes; then pause and use check_project_access to pick the task back up once the owner answers.";
 
 /**
  * Legacy MCP-Protocol-Version values accepted by the hand-rolled compatibility
@@ -312,7 +316,9 @@ function toMcpTool(tool: ReturnType<typeof getPublicBuildosAgentTools>[number]) 
 	// Asking for something (an edit, or access to someone's projects) needs only read scope,
 	// but it isn't read-only: it creates a request someone else sees.
 	const asks =
-		tool.name === 'request_buildos_permission' || tool.name === 'request_buildos_access';
+		tool.name === 'request_buildos_permission' ||
+		tool.name === 'request_buildos_access' ||
+		tool.name === 'request_project_access';
 	const write = asks || requiredScopeMode === 'read_write' || isWriteOp(op);
 	const title = titleFromToolName(tool.name);
 
@@ -1144,6 +1150,48 @@ async function dispatchModernMcpMethod(params: {
 	}
 }
 
+/** Key of the consent page in a tools/call input request (and its retry's response). */
+const ACCESS_CONSENT_INPUT_KEY = 'buildos_access';
+
+/**
+ * A refusal the person can clear in one tap (tasker 140, "you" walls) becomes an
+ * inline consent page for clients that declared URL elicitation on this request
+ * (protocol 2026-07-28): the client opens the page, then retries the same call, which
+ * re-reads access and succeeds. One ask per call: if the retry still hits a wall (or
+ * the person declined), the ordinary refusal with the link comes back.
+ */
+export function accessConsentInputRequired(
+	result: CallToolResult,
+	mcpReq: { envelope?: Record<string, unknown>; inputResponses?: Record<string, unknown> }
+): InputRequiredResult | null {
+	if (mcpReq.inputResponses && ACCESS_CONSENT_INPUT_KEY in mcpReq.inputResponses) return null;
+	const capabilities = mcpReq.envelope?.[CLIENT_CAPABILITIES_META_KEY];
+	const elicitation =
+		isRecord(capabilities) && isRecord(capabilities.elicitation)
+			? capabilities.elicitation
+			: null;
+	if (!elicitation || !isRecord(elicitation.url)) return null;
+
+	const structured = isRecord(result.structuredContent) ? result.structuredContent : null;
+	const error = structured && isRecord(structured.error) ? structured.error : null;
+	const details = error && isRecord(error.details) ? error.details : null;
+	const accessNeeded = details && isRecord(details.access_needed) ? details.access_needed : null;
+	const next = accessNeeded && isRecord(accessNeeded.next) ? accessNeeded.next : null;
+	if (accessNeeded?.who_can_fix !== 'you' || typeof next?.open_url !== 'string') return null;
+
+	return inputRequired({
+		inputRequests: {
+			[ACCESS_CONSENT_INPUT_KEY]: inputRequired.elicitUrl({
+				message:
+					typeof accessNeeded.say_to_user === 'string'
+						? accessNeeded.say_to_user
+						: 'Allow this in BuildOS, then the agent will try again.',
+				url: next.open_url
+			})
+		}
+	});
+}
+
 function createAuthenticatedModernMcpServer(params: {
 	admin: any;
 	request: Request;
@@ -1182,8 +1230,16 @@ function createAuthenticatedModernMcpServer(params: {
 		async (request) => (await dispatch('tools/list', request.params)) as ListToolsResult
 	);
 
-	server.setRequestHandler('tools/call', async (request) => {
+	server.setRequestHandler('tools/call', async (request, ctx) => {
 		const result = (await dispatch('tools/call', request.params)) as CallToolResult;
+		const consent = accessConsentInputRequired(
+			result,
+			ctx.mcpReq as {
+				envelope?: Record<string, unknown>;
+				inputResponses?: Record<string, unknown>;
+			}
+		);
+		if (consent) return consent;
 		return server.projectCallToolResult(result, { type: 'object' });
 	});
 

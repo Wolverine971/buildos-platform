@@ -205,7 +205,13 @@ describe('tool surface size report', () => {
 		// get_onto_document_details (-103) and get_document_outline (-108)
 		// descriptions now point at the one-call path. Measured 56 tools, 61,498 →
 		// 61,408 chars (-90). Cap at measured + ~0.2%.
-		expect(global?.totalChars).toBeLessThanOrEqual(61_530);
+		// RE-BASELINED 2026-10-23 (Workspace): create_onto_document joined global so a
+		// save that fits no project can land in the user's Workspace (global chat
+		// could not create a document at all), and the two create descriptions name
+		// the Workspace. Measured 56 → 57 tools, 63,223 chars (the definition itself
+		// is ~1.8k). Jev still mounts it only on document turns. Cap at measured +
+		// ~0.3%.
+		expect(global?.totalChars).toBeLessThanOrEqual(63_400);
 		// Reviewed 2026-09-05 against the previous signed snapshot: +838 for
 		// contract reference/null handling, +321 for typed task estimates, +396
 		// for get_onto_document_details, +1,190 for link_onto_entities. These

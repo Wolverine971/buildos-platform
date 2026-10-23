@@ -274,6 +274,11 @@ export type GlobalProjectIndexEntry = {
 	 * the children that point at them.
 	 */
 	parent_project_id?: string | null;
+	/**
+	 * 'workspace' marks the user's Workspace (onto_projects.kind): their loose
+	 * notes, docs and tasks, not a project. Absent means an ordinary project.
+	 */
+	kind?: 'workspace';
 };
 
 export type LinkedEdge = {
@@ -287,15 +292,23 @@ export type LinkedEdge = {
 export type GlobalContextData = {
 	projects: GlobalContextProjectBundle[];
 	project_index: GlobalProjectIndexEntry[];
+	/**
+	 * The user's Workspace project id (kind 'workspace'), created on first load
+	 * when missing, so a save that fits no project always has a home. Null only
+	 * when the ensure call failed. Never a bundle and never in the counts below.
+	 */
+	workspace_project_id?: string | null;
 	project_intelligence?: FastChatProjectIntelligence;
 	context_meta?: {
 		generated_at: string;
 		source: 'rpc' | 'fallback';
 		cache_age_seconds?: number;
+		/** Accessible projects, not counting the Workspace. */
 		project_count: number;
 		/**
 		 * Accessible projects whose state is not `paused` — the same predicate
 		 * get_workspace_overview applies, so the prompt can label both numbers.
+		 * Not counting the Workspace.
 		 */
 		active_project_count: number;
 		projects_returned: number;
@@ -349,6 +362,11 @@ export type ProjectContextData = {
 	project_family?: ProjectFamilyV1 | null;
 	/** Table documents in the project; present only when it has at least one. */
 	project_tables?: ProjectTableContext[];
+	/**
+	 * The user's Workspace project id (kind 'workspace'), when the loader was
+	 * asked for it and the chat is not on the Workspace itself.
+	 */
+	workspace_project_id?: string | null;
 };
 
 export type EntityContextData = ProjectContextData & {

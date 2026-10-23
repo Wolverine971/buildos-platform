@@ -180,6 +180,8 @@ class SupabaseProjectEmailProfilePublicationStore implements ProjectEmailProfile
 				.select(
 					'id, name, description, next_step_short, next_step_long, props, updated_at, created_by'
 				)
+				// The Workspace (loose items) isn't a project: no email profile.
+				.eq('kind', 'project')
 				.is('deleted_at', null)
 				.lte('updated_at', input.source_snapshot_at)
 				.order('updated_at', { ascending: false })

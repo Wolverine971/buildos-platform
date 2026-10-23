@@ -190,9 +190,16 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		// one-call path instead of outline-then-section. Measured global 54 tools /
 		// 54,993 B (-92), project 70 tools / 72,383 B (-186). Caps at measured +
 		// ~0.1%; the space given back is not banked for later additions.
-		expect(global.openingBytes).toBeLessThanOrEqual(55_050);
-		expect(project.openingBytes).toBeLessThanOrEqual(72_460);
-		expect(project.admittedBytes).toBeLessThanOrEqual(72_460);
+		// RE-BASELINED 2026-10-23 (Workspace): create_onto_document joined the global
+		// surface so a save that fits no project lands in the user's Workspace
+		// (global chat could not create a document at all), and create_onto_document
+		// / create_onto_task name the Workspace (+40 B on both surfaces). Measured
+		// global 55 tools / 56,764 B; project 70 tools / 72,481 B (+21 B over the old
+		// cap, which other description work since 10-17 had already used ~58 B of).
+		// Caps at measured + ~0.1%.
+		expect(global.openingBytes).toBeLessThanOrEqual(56_830);
+		expect(project.openingBytes).toBeLessThanOrEqual(72_560);
+		expect(project.admittedBytes).toBeLessThanOrEqual(72_560);
 		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(8_470);
 	});
 

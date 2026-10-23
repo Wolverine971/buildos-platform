@@ -219,6 +219,7 @@ export async function loadWorkspaceFinderProjects(
 					state_key: (row.state_key as string | null) ?? null,
 					next_step_short: (row.next_step_short as string | null) ?? null,
 					updated_at: (row.updated_at as string | null) ?? null,
+					...(row.kind === 'workspace' ? { kind: 'workspace' as const } : {}),
 					...family.get(String(row.id))
 				},
 				documents: [],

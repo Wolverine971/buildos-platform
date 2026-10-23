@@ -436,6 +436,8 @@ async function generateNextSteps(
 		.from('onto_projects')
 		.select('name, description, type_key, state_key, next_step_short, next_step_long')
 		.eq('id', projectId)
+		// The Workspace (loose items) has no next step to write; skip the model call.
+		.eq('kind', 'project')
 		.in('state_key', ACTIVE_PROJECT_STATES)
 		.is('deleted_at', null)
 		.is('archived_at', null)

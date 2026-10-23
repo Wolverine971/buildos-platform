@@ -12647,6 +12647,7 @@ export type Database = {
           caller_key: string
           created_at: string
           id: string
+          include_shared_projects: boolean
           last_used_at: string | null
           metadata: Json
           permission_requests_enabled: boolean
@@ -12663,6 +12664,7 @@ export type Database = {
           caller_key: string
           created_at?: string
           id?: string
+          include_shared_projects?: boolean
           last_used_at?: string | null
           metadata?: Json
           permission_requests_enabled?: boolean
@@ -12679,6 +12681,7 @@ export type Database = {
           caller_key?: string
           created_at?: string
           id?: string
+          include_shared_projects?: boolean
           last_used_at?: string | null
           metadata?: Json
           permission_requests_enabled?: boolean
@@ -16910,6 +16913,7 @@ export type Database = {
           icon_svg: string | null
           id: string
           is_public: boolean | null
+          kind: string
           merged_into_project_id: string | null
           name: string
           next_step_long: string | null
@@ -16946,6 +16950,7 @@ export type Database = {
           icon_svg?: string | null
           id?: string
           is_public?: boolean | null
+          kind?: string
           merged_into_project_id?: string | null
           name: string
           next_step_long?: string | null
@@ -16982,6 +16987,7 @@ export type Database = {
           icon_svg?: string | null
           id?: string
           is_public?: boolean | null
+          kind?: string
           merged_into_project_id?: string | null
           name?: string
           next_step_long?: string | null
@@ -18054,6 +18060,7 @@ export type Database = {
           note: string | null
           project_hint: string | null
           project_id: string | null
+          requested_items: Json | null
           role_requested: string
           status: string
           to_user_id: string
@@ -18075,6 +18082,7 @@ export type Database = {
           note?: string | null
           project_hint?: string | null
           project_id?: string | null
+          requested_items?: Json | null
           role_requested?: string
           status?: string
           to_user_id: string
@@ -18096,6 +18104,7 @@ export type Database = {
           note?: string | null
           project_hint?: string | null
           project_id?: string | null
+          requested_items?: Json | null
           role_requested?: string
           status?: string
           to_user_id?: string
@@ -18569,6 +18578,32 @@ export type Database = {
             columns: ["suggested_chapter_id"]
             isOneToOne: false
             referencedRelation: "profile_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_agent_settings: {
+        Row: {
+          editor_agents_write: boolean
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          editor_agents_write?: boolean
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          editor_agents_write?: boolean
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_agent_settings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "onto_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -24270,6 +24305,88 @@ export type Database = {
           },
         ]
       }
+      workspace_suggestions: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          decided_at: string | null
+          id: string
+          item_key: string
+          items: Json
+          kind: string
+          model: string | null
+          proposed_name: string | null
+          reason: string
+          result: Json | null
+          run_id: string | null
+          status: string
+          target_project_id: string | null
+          updated_at: string
+          user_id: string
+          workspace_project_id: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          item_key: string
+          items?: Json
+          kind: string
+          model?: string | null
+          proposed_name?: string | null
+          reason?: string
+          result?: Json | null
+          run_id?: string | null
+          status?: string
+          target_project_id?: string | null
+          updated_at?: string
+          user_id: string
+          workspace_project_id: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          item_key?: string
+          items?: Json
+          kind?: string
+          model?: string | null
+          proposed_name?: string | null
+          reason?: string
+          result?: Json | null
+          run_id?: string | null
+          status?: string
+          target_project_id?: string | null
+          updated_at?: string
+          user_id?: string
+          workspace_project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_suggestions_target_project_id_fkey"
+            columns: ["target_project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workspace_suggestions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workspace_suggestions_workspace_project_id_fkey"
+            columns: ["workspace_project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       admin_llm_cost_analytics: {
@@ -26242,6 +26359,18 @@ export type Database = {
         }
         Returns: Json
       }
+      create_project_upgrade_request: {
+        Args: {
+          p_agent_label?: string
+          p_caller_id?: string
+          p_need: string
+          p_note?: string
+          p_oauth_grant_id?: string
+          p_project_ids: string[]
+          p_user_id?: string
+        }
+        Returns: Json
+      }
       create_question_tree_run_with_job: {
         Args: {
           p_config?: Json
@@ -26524,6 +26653,11 @@ export type Database = {
         }
       }
       ensure_actor_for_user: { Args: { p_user_id: string }; Returns: string }
+      ensure_workspace_project: { Args: never; Returns: string }
+      ensure_workspace_project_for_user: {
+        Args: { p_user_id: string }
+        Returns: string
+      }
       evaluate_user_consumption_gate: {
         Args: {
           p_credit_limit?: number
@@ -27126,6 +27260,7 @@ export type Database = {
           next_step_long: string
           next_step_short: string
           next_step_source: string
+          kind: string
           next_step_updated_at: string
           owner_actor_id: string
           plan_count: number
@@ -28138,6 +28273,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      people_layer_display_name: {
+        Args: { p_user_id: string }
+        Returns: string
+      }
+      people_layer_effective_agent_access: {
+        Args: { p_actor_id: string; p_project_id: string }
+        Returns: string
       }
       people_layer_findable_user: {
         Args: { p_handle: string }
@@ -29324,6 +29467,10 @@ export type Database = {
         Args: { p_calendar_source_id: string; p_user_id: string }
         Returns: string
       }
+      set_project_editor_agents_write: {
+        Args: { p_enabled: boolean; p_project_id: string }
+        Returns: Json
+      }
       set_project_member_agent_access: {
         Args: {
           p_agent_access: string
@@ -30002,6 +30149,7 @@ export type Database = {
         | "consolidation_run"
         | "table_ai_fill"
         | "extract_task_entities"
+        | "workspace_suggest"
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -30279,6 +30427,7 @@ export const Constants = {
         "consolidation_run",
         "table_ai_fill",
         "extract_task_entities",
+        "workspace_suggest",
       ],
       recurrence_end_reason: [
         "indefinite",

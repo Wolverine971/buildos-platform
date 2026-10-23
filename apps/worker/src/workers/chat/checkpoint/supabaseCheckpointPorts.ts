@@ -335,6 +335,8 @@ export function createSupabaseCheckpointPorts(options?: {
 				.from('onto_projects')
 				.select('id, name, description, created_at')
 				.eq('id', session.projectId)
+				// The Workspace holds loose items and has no START HERE: never capture into it.
+				.eq('kind', 'project')
 				.is('deleted_at', null)
 				.maybeSingle();
 			if (error) throw error;

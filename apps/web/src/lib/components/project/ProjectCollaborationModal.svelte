@@ -143,6 +143,13 @@
 	let settingsError = $state<string | null>(null);
 	let settingsActionType = $state<'member' | 'project' | null>(null);
 	let isLeavingProject = $state(false);
+	/**
+	 * The owner's standing approval (tasker 140): while on, every editor's agents can
+	 * make changes unless their own agents are Off. Null until loaded (owners only).
+	 */
+	let editorAgentsWrite = $state<boolean | null>(null);
+	let agentSettingsLoadFailed = $state(false);
+	let agentSettingsSaving = $state(false);
 	// Ownership handoff: the member being offered the project (a snapshot, so the
 	// confirm panel and its error survive a members reload), and whether the owner leaves.
 	let handoffTarget = $state<MemberRow | null>(null);
@@ -250,6 +257,9 @@
 		notificationSettings = null;
 		settingsError = null;
 		settingsActionType = null;
+		editorAgentsWrite = null;
+		agentSettingsLoadFailed = false;
+		agentSettingsSaving = false;
 		isLeavingProject = false;
 		handoffTarget = null;
 		handoffLeave = false;
@@ -321,9 +331,11 @@
 		let membersStatus: number | null = null;
 		let invitesStatus: number | null = null;
 		let settingsStatus: number | null = null;
+		// Only the owner sees (and can change) the editors' agents setting.
+		const loadAgentSettings = untrack(() => canManageMembers);
 
 		try {
-			const [membersRes, invitesRes, settingsRes] = await Promise.all([
+			const [membersRes, invitesRes, settingsRes, agentSettingsRes] = await Promise.all([
 				fetch(`/api/onto/projects/${requestedProjectId}/members`, {
 					method: 'GET',
 					credentials: 'same-origin',
@@ -338,7 +350,15 @@
 					method: 'GET',
 					credentials: 'same-origin',
 					signal: abortController.signal
-				})
+				}),
+				// Best effort: a failure here never blocks the rest of the window.
+				loadAgentSettings
+					? fetch(`/api/onto/projects/${requestedProjectId}/agent-settings`, {
+							method: 'GET',
+							credentials: 'same-origin',
+							signal: abortController.signal
+						}).catch(() => null)
+					: Promise.resolve(null)
 			]);
 
 			membersStatus = membersRes.status;
@@ -354,8 +374,21 @@
 						: invitesRes.json().catch(() => null),
 				settingsRes.json().catch(() => null)
 			]);
+			const agentSettingsPayload = agentSettingsRes?.ok
+				? await agentSettingsRes.json().catch(() => null)
+				: null;
 
 			if (!isCurrentRequest()) return;
+
+			if (loadAgentSettings) {
+				const loaded = agentSettingsPayload?.data?.editor_agents_write;
+				if (typeof loaded === 'boolean') {
+					editorAgentsWrite = loaded;
+					agentSettingsLoadFailed = false;
+				} else if (editorAgentsWrite === null) {
+					agentSettingsLoadFailed = true;
+				}
+			}
 
 			if (membersRes.ok) {
 				members = membersPayload?.data?.members ?? [];
@@ -1138,6 +1171,76 @@
 		}
 	}
 
+	/**
+	 * An editor whose own setting is Read gets Write while the editors' setting is on.
+	 * Display only: the member's dropdown still saves their own setting.
+	 */
+	function liftedByEditorsSetting(member: MemberRow): boolean {
+		return (
+			editorAgentsWrite === true &&
+			member.role_key === 'editor' &&
+			memberAgentAccess(member) === 'read'
+		);
+	}
+
+	async function handleEditorAgentsWriteToggle() {
+		if (!canManageMembers || agentSettingsSaving || editorAgentsWrite === null) return;
+		const session = captureProjectSession();
+		const previous = editorAgentsWrite;
+		const next = !previous;
+
+		// Optimistic: flip now, put it back if the save fails.
+		editorAgentsWrite = next;
+		agentSettingsSaving = true;
+		let responseStatus: number | null = null;
+
+		try {
+			const response = await fetch(`/api/onto/projects/${session.projectId}/agent-settings`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'same-origin',
+				body: JSON.stringify({ editor_agents_write: next })
+			});
+			responseStatus = response.status;
+			const payload = await response.json().catch(() => null);
+			if (!isCurrentProjectSession(session)) return;
+
+			const saved = payload?.data?.editor_agents_write;
+			if (!response.ok || typeof saved !== 'boolean') {
+				throw new Error(payload?.error || 'Couldn’t save the editors’ agents setting.');
+			}
+
+			editorAgentsWrite = saved;
+			toastService.success(
+				saved
+					? 'Editors’ agents can now make changes here'
+					: 'Editors’ agents follow each person’s own setting again'
+			);
+		} catch (err) {
+			if (!isCurrentProjectSession(session)) return;
+
+			editorAgentsWrite = previous;
+			console.error('[ProjectCollaborationModal] Failed to update editors’ agents:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/projects/${session.projectId}/agent-settings`,
+				method: 'PATCH',
+				projectId: session.projectId,
+				entityType: 'project',
+				operation: 'project_agent_settings_update',
+				metadata: { source: 'project_collaboration_modal', status: responseStatus }
+			});
+			toastService.error(
+				err instanceof Error && err.message
+					? err.message
+					: 'Couldn’t save the editors’ agents setting.'
+			);
+		} finally {
+			if (isCurrentProjectSession(session)) {
+				agentSettingsSaving = false;
+			}
+		}
+	}
+
 	async function handleMemberRemove(member: MemberRow) {
 		if (!canManageMembers || memberActionId || memberRoleProfileSaving) {
 			return;
@@ -1705,9 +1808,11 @@
 														memberAgentAccess(member)
 													)}
 												>
-													Agents: {agentAccessLabel(
-														memberAgentAccess(member)
-													)}
+													Agents: {liftedByEditorsSetting(member)
+														? 'Write (editors’ setting)'
+														: agentAccessLabel(
+																memberAgentAccess(member)
+															)}
 												</span>
 											{/if}
 										</div>
@@ -1737,6 +1842,9 @@
 											class="sm:min-w-[124px]"
 											placeholder=""
 											aria-label="What {memberLabel}’s agents can do"
+											aria-describedby={liftedByEditorsSetting(member)
+												? `agents-lifted-${member.id}`
+												: undefined}
 											title={agentAccessDescription(
 												memberAgentAccess(member)
 											)}
@@ -1798,6 +1906,16 @@
 										</div>
 									</div>
 
+									{#if liftedByEditorsSetting(member)}
+										<p
+											id="agents-lifted-{member.id}"
+											class="mt-1.5 text-xs text-muted-foreground"
+										>
+											Their agents can make changes through the editors’
+											setting below.
+										</p>
+									{/if}
+
 									{#if confirmRemoveMemberId === member.id}
 										<div
 											class="mt-2 rounded-md border border-border bg-background p-3 space-y-2"
@@ -1844,6 +1962,49 @@
 							Read lets them read the project. Write also lets them add tasks and docs
 							and change only what that person created or is assigned to.
 						</p>
+					{/if}
+
+					{#if canManageMembers && (editorAgentsWrite !== null || agentSettingsLoadFailed)}
+						<div
+							class="flex items-start justify-between gap-4 rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner"
+						>
+							<div class="min-w-0 space-y-0.5">
+								<p
+									id="editor-agents-write-label"
+									class="text-sm font-medium text-foreground"
+								>
+									Editors’ agents can make changes
+								</p>
+								<p
+									id="editor-agents-write-hint"
+									class="text-xs text-muted-foreground"
+								>
+									{editorAgentsWrite === null
+										? 'This setting didn’t load. Close and reopen this window to try again.'
+										: 'Every editor’s agents can add tasks and documents and change their own work here. People whose agents you turned off stay off.'}
+								</p>
+							</div>
+							{#if editorAgentsWrite !== null}
+								<button
+									type="button"
+									role="switch"
+									aria-checked={editorAgentsWrite}
+									aria-labelledby="editor-agents-write-label"
+									aria-describedby="editor-agents-write-hint"
+									disabled={agentSettingsSaving}
+									onclick={handleEditorAgentsWriteToggle}
+									class="relative mt-0.5 h-7 w-12 shrink-0 rounded-full border transition-colors motion-reduce:transition-none before:absolute before:-inset-2 before:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 {editorAgentsWrite
+										? 'border-accent bg-accent'
+										: 'border-border-strong bg-muted'}"
+								>
+									<span
+										class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-background shadow-ink transition-transform motion-reduce:transition-none {editorAgentsWrite
+											? 'translate-x-5'
+											: 'translate-x-0'}"
+									></span>
+								</button>
+							{/if}
+						</div>
 					{/if}
 
 					{#if handoffTarget}

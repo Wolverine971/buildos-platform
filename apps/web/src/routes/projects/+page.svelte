@@ -6,9 +6,9 @@
   - Zero layout shift - exact number of cards rendered from start
 -->
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import { get } from 'svelte/store';
-	import { goto, invalidate, invalidateAll, preloadData } from '$app/navigation';
+	import { goto, invalidate, invalidateAll, preloadData, pushState } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
@@ -47,8 +47,20 @@
 	import { prefetchDashboardCalendar } from '$lib/services/dashboard-calendar-cache';
 	import type { UserDashboardAnalytics } from '$lib/types/dashboard-analytics';
 	import ProjectDesktop, {
+		type ContentMoved,
+		type LooseApi,
 		type ProjectPatch
 	} from '$lib/components/projects/desktop/ProjectDesktop.svelte';
+	import type { DesktopItem } from '$lib/components/projects/desktop/desktop-rules';
+	import { undoContentMove } from '$lib/components/projects/desktop/desktop-moves';
+	import WorkspaceCapture from '$lib/components/workspace/WorkspaceCapture.svelte';
+	import WorkspaceShelf from '$lib/components/workspace/WorkspaceShelf.svelte';
+	import GraduateDialog from '$lib/components/workspace/GraduateDialog.svelte';
+	import type {
+		LooseItem,
+		WorkspaceHome,
+		WorkspaceSuggestion
+	} from '$lib/components/workspace/workspace-model';
 	import {
 		normalizeProjectState,
 		isPrimaryTier,
@@ -91,7 +103,7 @@
 	function handleChatClose(summary?: DataMutationSummary) {
 		showChatModal = false;
 		if (summary?.hasChanges && summary.affectedProjectIds.length > 0) {
-			toastService.success('Project created! Head to Projects to explore it.', {
+			toastService.success('Project created! It’s on your Workspace.', {
 				duration: TOAST_DURATION.LONG
 			});
 			invalidateAll();
@@ -253,6 +265,317 @@
 	});
 
 	const projects = $derived(projectSummaries);
+	// The Workspace rides in the summaries (kind = 'workspace') so the desktop's drop rules
+	// know it; it is never a tile, a count or a filter result.
+	const realProjects = $derived(projects.filter((project) => project.kind !== 'workspace'));
+	const workspaceId = $derived<string | null>(
+		projects.find((project) => project.kind === 'workspace')?.id ?? data.workspaceId ?? null
+	);
+	const projectsById = $derived(new Map(realProjects.map((project) => [project.id, project])));
+
+	// ---------- Workspace (loose items, suggestions) ----------
+
+	let workspaceHome = $state<WorkspaceHome | null>(null);
+	let workspaceLoading = $state(true);
+	let workspaceStreamVersion = 0;
+	$effect(() => {
+		const incoming = data.workspace;
+		const currentVersion = ++workspaceStreamVersion;
+		void Promise.resolve(incoming)
+			.then((result) => {
+				if (currentVersion !== workspaceStreamVersion) return;
+				if (result) workspaceHome = result;
+				workspaceLoading = false;
+			})
+			.catch(() => {
+				if (currentVersion === workspaceStreamVersion) workspaceLoading = false;
+			});
+	});
+
+	let freshIds = $state<Set<string>>(new Set());
+	let busyIds = $state<Set<string>>(new Set());
+	let refreshingSuggestions = $state(false);
+	let graduate = $state<{
+		open: boolean;
+		suggestion: WorkspaceSuggestion | null;
+		items: LooseItem[];
+		busy: boolean;
+		error: string;
+	}>({ open: false, suggestion: null, items: [], busy: false, error: '' });
+
+	function markBusy(id: string, on: boolean) {
+		const next = new Set(busyIds);
+		if (on) next.add(id);
+		else next.delete(id);
+		busyIds = next;
+	}
+
+	async function workspaceRequest<T = unknown>(url: string, body?: unknown): Promise<T> {
+		const response = await fetch(url, {
+			method: body === undefined ? 'GET' : 'POST',
+			headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+			body: body === undefined ? undefined : JSON.stringify(body)
+		});
+		const payload = await response.json().catch(() => null);
+		if (!response.ok) {
+			const message =
+				(typeof payload?.error === 'string' && payload.error) ||
+				payload?.message ||
+				'Something went wrong. Please try again.';
+			throw new Error(message);
+		}
+		return (payload?.data ?? payload) as T;
+	}
+
+	async function refreshWorkspace() {
+		try {
+			workspaceHome = await workspaceRequest<WorkspaceHome>('/api/workspace');
+		} catch (err) {
+			console.error('[Workspace] refresh failed', err);
+		}
+	}
+
+	function removeLoose(ids: Iterable<string>) {
+		if (!workspaceHome) return;
+		const gone = new Set(ids);
+		workspaceHome = {
+			...workspaceHome,
+			items: workspaceHome.items.filter((item) => !gone.has(item.id))
+		};
+	}
+
+	function handleCaptured(item: LooseItem) {
+		if (workspaceHome) {
+			workspaceHome = { ...workspaceHome, items: [item, ...workspaceHome.items] };
+		} else {
+			void refreshWorkspace();
+		}
+		freshIds = new Set([...freshIds, item.id]);
+		setTimeout(() => {
+			const next = new Set(freshIds);
+			next.delete(item.id);
+			freshIds = next;
+		}, 6000);
+	}
+
+	function looseTitle(item: DesktopItem): string | null {
+		if (item.kind === 'project') return null;
+		return workspaceHome?.items.find((loose) => loose.id === item.id)?.title ?? null;
+	}
+
+	function handleContentMoved(event: ContentMoved) {
+		if (event.from === workspaceId && !event.undone) removeLoose([event.item.id]);
+		if (event.from === workspaceId || event.to === workspaceId) void refreshWorkspace();
+	}
+
+	async function fileSuggestion(suggestion: WorkspaceSuggestion) {
+		const target = suggestion.target_project_id
+			? projectsById.get(suggestion.target_project_id)
+			: null;
+		markBusy(suggestion.id, true);
+		try {
+			const receipt = await workspaceRequest<{ batch_id: string; moved: number }>(
+				`/api/workspace/suggestions/${suggestion.id}`,
+				{ action: 'accept' }
+			);
+			removeLoose(suggestion.items.map((ref) => ref.id));
+			void invalidate('ontology:projects');
+			const label = receipt.moved === 1 ? '1 item' : `${receipt.moved} items`;
+			const toastId: string = toastService.add({
+				type: 'success',
+				message: `Moved ${label} to ${target?.name ?? 'the project'}.`,
+				duration: TOAST_DURATION.LONG,
+				action: {
+					label: 'Undo',
+					onClick: () => {
+						toastService.remove(toastId);
+						void undoFiling(receipt.batch_id);
+					}
+				}
+			});
+			void refreshWorkspace();
+		} catch (err) {
+			toastService.error(err instanceof Error ? err.message : 'Could not move those items.');
+		} finally {
+			markBusy(suggestion.id, false);
+		}
+	}
+
+	async function undoFiling(batchId: string) {
+		try {
+			const result = await undoContentMove(batchId);
+			toastService.add({
+				type: result === 'undone' ? 'success' : 'info',
+				message:
+					result === 'undone'
+						? 'Moved back to your Workspace.'
+						: 'Nothing to undo: it changed since the move.'
+			});
+		} catch (err) {
+			toastService.error(err instanceof Error ? err.message : 'Could not undo that.');
+		} finally {
+			void invalidate('ontology:projects');
+			void refreshWorkspace();
+		}
+	}
+
+	async function dismissSuggestion(suggestion: WorkspaceSuggestion) {
+		if (workspaceHome) {
+			workspaceHome = {
+				...workspaceHome,
+				suggestions: workspaceHome.suggestions.filter((item) => item.id !== suggestion.id)
+			};
+		}
+		try {
+			await workspaceRequest(`/api/workspace/suggestions/${suggestion.id}`, {
+				action: 'dismiss'
+			});
+		} catch (err) {
+			toastService.error(err instanceof Error ? err.message : 'Could not save that.');
+			void refreshWorkspace();
+		}
+	}
+
+	function openGraduate(input: { suggestion: WorkspaceSuggestion | null; items: LooseItem[] }) {
+		graduate = {
+			open: true,
+			suggestion: input.suggestion,
+			items: input.items,
+			busy: false,
+			error: ''
+		};
+	}
+
+	async function confirmGraduate(input: { name: string; items: LooseItem[] }) {
+		graduate = { ...graduate, busy: true, error: '' };
+		try {
+			const receipt = await workspaceRequest<{
+				project_id: string;
+				project_name: string;
+				batch_id: string;
+				moved: number;
+			}>('/api/workspace/graduate', {
+				name: input.name,
+				items: input.items.map((item) => ({ entity: item.entity, id: item.id })),
+				suggestion_id: graduate.suggestion?.id ?? null
+			});
+			graduate = { ...graduate, open: false, busy: false };
+			removeLoose(input.items.map((item) => item.id));
+			const moved = receipt.moved === 1 ? '1 item' : `${receipt.moved} items`;
+			const toastId: string = toastService.add({
+				type: 'success',
+				message: `Started “${receipt.project_name}” with ${moved}.`,
+				duration: TOAST_DURATION.EXTENDED,
+				action: {
+					label: 'Undo',
+					onClick: () => {
+						toastService.remove(toastId);
+						void undoGraduate(receipt.project_id, receipt.batch_id);
+					}
+				}
+			});
+			await invalidate('ontology:projects');
+			void refreshWorkspace();
+			// Open the new project's card on the desktop.
+			pushState('', {
+				...$page.state,
+				desktopCard: receipt.project_id,
+				desktopDepth: ($page.state.desktopDepth ?? 0) + 1,
+				desktopPeek: undefined,
+				desktopPeekPushed: undefined
+			});
+		} catch (err) {
+			graduate = {
+				...graduate,
+				busy: false,
+				error: err instanceof Error ? err.message : 'Could not start that project.'
+			};
+		}
+	}
+
+	async function undoGraduate(projectId: string, batchId: string) {
+		try {
+			const result = await workspaceRequest<{ status: string }>(
+				'/api/workspace/graduate/undo',
+				{ project_id: projectId, batch_id: batchId }
+			);
+			toastService.add({
+				type: result.status === 'nothing' ? 'info' : 'success',
+				message:
+					result.status === 'undone'
+						? 'Undone: the items are back in your Workspace.'
+						: result.status === 'items_back_project_kept'
+							? 'The items are back in your Workspace. The project stays, since something else was added to it.'
+							: 'Nothing to undo: those items changed since.'
+			});
+			if ($page.state.desktopCard === projectId) history.back();
+		} catch (err) {
+			toastService.error(err instanceof Error ? err.message : 'Could not undo that.');
+		} finally {
+			await invalidate('ontology:projects');
+			void refreshWorkspace();
+		}
+	}
+
+	async function setTaskState(id: string, state: string) {
+		const response = await fetch(`/api/onto/tasks/${id}`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ state_key: state })
+		});
+		if (!response.ok) throw new Error('Could not update that task.');
+	}
+
+	async function completeLooseTask(item: LooseItem) {
+		markBusy(item.id, true);
+		try {
+			await setTaskState(item.id, 'done');
+			removeLoose([item.id]);
+			const toastId: string = toastService.add({
+				type: 'success',
+				message: `Done: “${item.title}”.`,
+				duration: TOAST_DURATION.LONG,
+				action: {
+					label: 'Undo',
+					onClick: () => {
+						toastService.remove(toastId);
+						void setTaskState(item.id, item.state_key ?? 'todo')
+							.catch(() => toastService.error('Could not undo that.'))
+							.finally(() => void refreshWorkspace());
+					}
+				}
+			});
+		} catch (err) {
+			toastService.error(err instanceof Error ? err.message : 'Could not mark that done.');
+		} finally {
+			markBusy(item.id, false);
+		}
+	}
+
+	let refreshTimers: ReturnType<typeof setTimeout>[] = [];
+	async function askForSuggestions() {
+		if (refreshingSuggestions) return;
+		refreshingSuggestions = true;
+		try {
+			await workspaceRequest('/api/workspace/suggestions/refresh', {});
+			toastService.add({
+				type: 'info',
+				message:
+					'Looking over your loose items. Suggestions show up here in a minute or two.'
+			});
+			refreshTimers.forEach(clearTimeout);
+			refreshTimers = [45_000, 100_000].map((delay, index, all) =>
+				setTimeout(() => {
+					void refreshWorkspace();
+					if (index === all.length - 1) refreshingSuggestions = false;
+				}, delay)
+			);
+		} catch (err) {
+			refreshingSuggestions = false;
+			toastService.error(err instanceof Error ? err.message : 'Could not ask right now.');
+		}
+	}
+	onDestroy(() => refreshTimers.forEach(clearTimeout));
 
 	// Streamed analytics for the Today row and the activity panels. Null until the first
 	// payload lands; later refreshes keep the last payload until the new one arrives.
@@ -271,7 +594,7 @@
 	const availableContexts = $derived(
 		Array.from(
 			new Set(
-				(projects ?? [])
+				realProjects
 					.map((project) => project.facet_context)
 					.filter((context): context is string => Boolean(context))
 			)
@@ -280,7 +603,7 @@
 	const availableScales = $derived(
 		Array.from(
 			new Set(
-				(projects ?? [])
+				realProjects
 					.map((project) => project.facet_scale)
 					.filter((scale): scale is string => Boolean(scale))
 			)
@@ -289,7 +612,7 @@
 	const availableStages = $derived(
 		Array.from(
 			new Set(
-				(projects ?? [])
+				realProjects
 					.map((project) => project.facet_stage)
 					.filter((stage): stage is string => Boolean(stage))
 			)
@@ -337,7 +660,7 @@
 	// useful counts without becoming a second navigation bar.
 	const projectsMatchingNonStateFilters = $derived.by(() => {
 		const query = searchQuery.trim().toLowerCase();
-		return (projects ?? []).filter((project) => {
+		return realProjects.filter((project) => {
 			if (query) {
 				const matchesQuery =
 					project.name.toLowerCase().includes(query) ||
@@ -562,7 +885,7 @@
 </script>
 
 <svelte:head>
-	<title>Projects | BuildOS</title>
+	<title>Workspace | BuildOS</title>
 </svelte:head>
 
 {#snippet tileSkeleton(count: number)}
@@ -597,7 +920,7 @@
 			<div class="min-w-0 space-y-1">
 				<div class="flex items-center gap-2.5">
 					<h1 class="text-2xl font-semibold tracking-tight text-foreground">
-						{activeTab === 'overview' ? 'Projects' : 'Ontology graph'}
+						{activeTab === 'overview' ? 'Workspace' : 'Ontology graph'}
 					</h1>
 					{#if activeTab === 'overview' && projectsLoading}
 						<LoaderCircle
@@ -671,10 +994,18 @@
 					onclick={() => setActiveTab('overview')}
 					class="shrink-0 whitespace-nowrap"
 				>
-					Back to projects
+					Back to Workspace
 				</Button>
 			{/if}
 		</header>
+
+		{#if activeTab === 'overview' && !desktopCardOpen}
+			<!-- Capture first: a thought lands in the Workspace instantly, no project to pick. -->
+			<WorkspaceCapture
+				onCaptured={handleCaptured}
+				autofocus={$page.url.searchParams.get('capture') === '1'}
+			/>
+		{/if}
 
 		{#if activeTab === 'overview'}
 			<section class="space-y-4">
@@ -710,7 +1041,7 @@
 									type="search"
 									aria-label="Search projects"
 									class="min-h-11 w-full rounded-lg border border-border bg-card py-2 pl-9 pr-10 text-base text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring sm:text-sm [&::-webkit-search-cancel-button]:appearance-none [@media(pointer:fine)]:min-h-9 [@media(pointer:fine)]:py-1.5"
-									placeholder="Search projects..."
+									placeholder="Search your Workspace…"
 									bind:value={searchQuery}
 								/>
 								{#if searchQuery}
@@ -943,61 +1274,29 @@
 			<!-- SKELETON LOADING: Show exact number of skeleton cards while loading -->
 			{#if showSkeletons}
 				{@render tileSkeleton(projectCount)}
-			{:else if projects.length === 0 && !projectsLoading}
-				<div
-					class="wt-paper border-dashed px-4 py-12 text-center tx tx-thread tx-weak sm:px-6 sm:py-16"
-				>
-					<div
-						class="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent sm:h-14 sm:w-14"
-					>
-						<Folder class="h-6 w-6" />
-					</div>
-					<h2 class="text-xl font-bold text-foreground">No projects yet</h2>
-					<p class="mx-auto mt-2 max-w-md text-sm text-muted-foreground sm:text-base">
-						Create your first project and BuildOS will help you shape goals and tasks,
-						and save the context behind them.
-					</p>
-					<div class="mt-6 flex justify-center">
-						<Button variant="primary" size="sm" onclick={handleCreateProject}>
-							Create first project
-						</Button>
-					</div>
-				</div>
-			{:else if filteredProjects.length === 0 && completedProjects.length === 0 && !desktopCardOpen}
-				<div class="wt-paper border-dashed px-4 py-8 text-center tx tx-thread tx-weak">
-					<p class="text-sm font-semibold text-foreground">
-						{selectedScope === 'current' && !searchQuery.trim()
-							? 'No current projects'
-							: 'No matching projects'}
-					</p>
-					<p class="mt-1 text-xs text-muted-foreground">
-						{selectedScope === 'current' && !searchQuery.trim()
-							? 'Planning and active projects will appear here.'
-							: 'Adjust your search or clear filters to explore more.'}
-					</p>
-					{#if hasFilters}
-						<div class="mt-4 flex justify-center">
-							<Button variant="outline" size="sm" onclick={clearFilters}>
-								Clear filters
-							</Button>
-						</div>
-					{/if}
-				</div>
-			{:else}
+			{:else if !projectsLoading || projects.length > 0}
 				<ProjectDesktop
 					{projects}
 					visible={filteredProjects}
 					completed={showCompletedDisclosure ? completedProjects : []}
 					searching={isSearching}
+					{workspaceId}
+					loose={looseShelf}
+					emptyTiles={tilesEmpty}
+					titleFor={looseTitle}
+					onContentMoved={handleContentMoved}
 					onPatch={applyProjectPatches}
 					onOpenFull={handleProjectClick}
-					onDataChanged={() => void invalidate('ontology:projects')}
+					onDataChanged={() => {
+						void invalidate('ontology:projects');
+						void refreshWorkspace();
+					}}
 				/>
 			{/if}
 
 			<!-- What moved lately across every project, and the latest chats. Hidden while a
 			     card has the page and for an empty account (nothing to show yet). -->
-			{#if !desktopCardOpen && !(projects.length === 0 && !projectsLoading)}
+			{#if !desktopCardOpen && !(realProjects.length === 0 && !projectsLoading)}
 				<div class="border-t border-border pt-4">
 					<RecentActivityPanels recent={dashboard?.recent ?? null} />
 				</div>
@@ -1127,6 +1426,79 @@
 		{/if}
 	</div>
 </PullToRefresh>
+
+{#snippet looseShelf(api: LooseApi)}
+	<WorkspaceShelf
+		home={workspaceHome}
+		loading={workspaceLoading}
+		{projectsById}
+		query={searchQuery}
+		{freshIds}
+		lifted={api.lifted}
+		{busyIds}
+		refreshing={refreshingSuggestions}
+		onOpen={(item) => api.open({ kind: item.entity, id: item.id })}
+		onMove={(item, anchor) => api.move({ kind: item.entity, id: item.id }, anchor)}
+		onFile={fileSuggestion}
+		onDismiss={dismissSuggestion}
+		onStartProject={openGraduate}
+		onComplete={completeLooseTask}
+		onRefreshSuggestions={askForSuggestions}
+	/>
+{/snippet}
+
+{#snippet tilesEmpty()}
+	{#if realProjects.length === 0}
+		<div class="wt-paper border-dashed px-4 py-8 text-center tx tx-thread tx-weak sm:px-6">
+			<div
+				class="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent"
+			>
+				<Folder class="h-5 w-5" />
+			</div>
+			<h2 class="text-base font-bold text-foreground">No projects yet</h2>
+			<p class="mx-auto mt-1.5 max-w-md text-sm text-muted-foreground">
+				Jot anything above and it waits here. When a few notes add up to a real effort,
+				start a project from them, or start one now.
+			</p>
+			<div class="mt-5 flex justify-center">
+				<Button variant="primary" size="sm" onclick={handleCreateProject}>
+					Start a project
+				</Button>
+			</div>
+		</div>
+	{:else}
+		<div class="wt-paper border-dashed px-4 py-8 text-center tx tx-thread tx-weak">
+			<p class="text-sm font-semibold text-foreground">
+				{selectedScope === 'current' && !searchQuery.trim()
+					? 'No current projects'
+					: 'No matching projects'}
+			</p>
+			<p class="mt-1 text-xs text-muted-foreground">
+				{selectedScope === 'current' && !searchQuery.trim()
+					? 'Planning and active projects will appear here.'
+					: 'Adjust your search or clear filters to explore more.'}
+			</p>
+			{#if hasFilters}
+				<div class="mt-4 flex justify-center">
+					<Button variant="outline" size="sm" onclick={clearFilters}>Clear filters</Button
+					>
+				</div>
+			{/if}
+		</div>
+	{/if}
+{/snippet}
+
+<GraduateDialog
+	open={graduate.open}
+	suggestion={graduate.suggestion}
+	items={graduate.items}
+	busy={graduate.busy}
+	error={graduate.error}
+	onConfirm={confirmGraduate}
+	onClose={() => {
+		if (!graduate.busy) graduate = { ...graduate, open: false };
+	}}
+/>
 
 <!-- Agent Chat Modal for Project Creation -->
 {#if AgentChatModal && showChatModal}

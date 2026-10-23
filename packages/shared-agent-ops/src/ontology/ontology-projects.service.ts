@@ -12,8 +12,48 @@ import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import { sanitizeProjectPropsForClient } from '../utils/project-props-sanitizer';
 import { buildSearchFilter } from '../utils/search-filter';
 
+/**
+ * project: a focused effort. workspace: the owner's private holding ground for loose notes,
+ * docs and tasks (one per person, never shared; docs/specs/WORKSPACE_ARCHITECTURE_2026-10-23.md).
+ */
+export type ProjectKind = 'project' | 'workspace';
+
+/** The Workspace's display name, and the type_key its row carries. */
+export const WORKSPACE_NAME = 'Workspace';
+export const WORKSPACE_TYPE_KEY = 'project.workspace';
+/** A quick note captured into the Workspace (an ordinary onto_documents row). */
+export const NOTE_TYPE_KEY = 'document.note';
+
+export function toProjectKind(value: unknown): ProjectKind {
+	return value === 'workspace' ? 'workspace' : 'project';
+}
+
+export function isWorkspaceProject(project: { kind?: string | null } | null | undefined): boolean {
+	return project?.kind === 'workspace';
+}
+
+/**
+ * The signed-in user's Workspace project id, created on first use. Works with a user-scoped
+ * client (ensure_workspace_project resolves auth.uid()); server code acting for a user
+ * passes `forUserId` with the admin client.
+ */
+export async function ensureWorkspaceProjectId(
+	client: TypedSupabaseClient,
+	forUserId?: string
+): Promise<string> {
+	const { data, error } = forUserId
+		? await client.rpc('ensure_workspace_project_for_user', { p_user_id: forUserId })
+		: await client.rpc('ensure_workspace_project');
+	if (error || typeof data !== 'string' || !data) {
+		throw new Error(error?.message || 'Could not open your Workspace');
+	}
+	return data;
+}
+
 export interface OntologyProjectSummary {
 	id: string;
+	/** 'workspace' for the owner's Workspace; filter it out of project-only places. */
+	kind: ProjectKind;
 	name: string;
 	description: string | null;
 	icon_svg: string | null;
@@ -56,6 +96,7 @@ export interface OntologyProjectSelectorSummary {
 	created_at: string;
 	updated_at: string;
 	task_count: number;
+	kind: ProjectKind;
 }
 
 type ProjectSummaryRpcRow = {
@@ -87,6 +128,7 @@ type ProjectSummaryRpcRow = {
 	next_step_long: string | null;
 	next_step_source: 'ai' | 'user' | null;
 	next_step_updated_at: string | null;
+	kind?: string | null;
 };
 
 type ProjectSelectorRow = Pick<
@@ -101,6 +143,7 @@ type ProjectSelectorRow = Pick<
 	| 'facet_stage'
 	| 'created_at'
 	| 'updated_at'
+	| 'kind'
 > & {
 	onto_tasks?: Array<{ count: number | string | null }> | null;
 };
@@ -140,7 +183,8 @@ function mapProjectSelectorRow(row: ProjectSelectorRow): OntologyProjectSelector
 		facet_stage: row.facet_stage ?? null,
 		created_at: row.created_at,
 		updated_at: row.updated_at,
-		task_count: toInteger(row.onto_tasks?.[0]?.count ?? 0)
+		task_count: toInteger(row.onto_tasks?.[0]?.count ?? 0),
+		kind: toProjectKind(row.kind)
 	};
 }
 
@@ -191,6 +235,7 @@ export async function fetchProjectSummaries(
 	if (!rpcError && Array.isArray(rpcRows)) {
 		return (rpcRows as ProjectSummaryRpcRow[]).map((row) => ({
 			id: row.id,
+			kind: toProjectKind(row.kind),
 			name: row.name,
 			description: row.description ?? null,
 			icon_svg: row.icon_svg ?? null,
@@ -317,6 +362,7 @@ export async function fetchProjectSummaries(
 			next_step_long,
 			next_step_source,
 			next_step_updated_at,
+			kind,
 			onto_tasks(count),
 			onto_goals(count),
 			onto_plans(count),
@@ -417,6 +463,7 @@ export async function fetchProjectSummaries(
 
 	return (data ?? []).map((project: any) => ({
 		id: project.id,
+		kind: toProjectKind(project.kind),
 		name: project.name,
 		description: project.description ?? null,
 		icon_svg: project.icon_svg ?? null,
@@ -526,6 +573,7 @@ export async function fetchProjectSelectorSummaries(
 				facet_stage,
 				created_at,
 				updated_at,
+				kind,
 				onto_tasks(count)
 			`
 			)

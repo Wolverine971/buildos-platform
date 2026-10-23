@@ -66,7 +66,8 @@ capture — an unnecessary note is cheap and visible; a lost finding is neither.
    (`search_onto_documents` / `list_onto_documents`). Appending to the right document beats creating a
    near-duplicate.
 3. **Write the record before you finalize.** Append to the existing document, or create one when
-   nothing fits. The document carries the findings, the reasoning, and a `## Sources` section listing
+   nothing fits; when no project fits either, create it in the user's Workspace (loose notes and
+   docs, not a project) rather than creating a project for it. The document carries the findings, the reasoning, and a `## Sources` section listing
    every URL used. **Maximum 2 new documents per turn** — more than that is bloat, not thoroughness.
 4. **For something the user stated,** pick the smallest record that survives: a task if it is work, an
    event if it has a time, an update to the relevant document or the project START HERE if it is

@@ -1,6 +1,6 @@
 // apps/web/src/routes/join/[token]/page.test.ts
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, assert, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 
 const { gotoMock, toastSuccessMock } = vi.hoisted(() => ({
@@ -91,7 +91,9 @@ describe('/join/[token] page', () => {
 		await waitFor(() =>
 			expect(gotoMock).toHaveBeenCalledWith('/projects/project-1', { invalidateAll: true })
 		);
-		expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ token: TOKEN });
+		const call = fetchMock.mock.calls[0];
+		assert.isDefined(call, 'Expected the join request to be sent');
+		expect(JSON.parse(call[1].body)).toEqual({ token: TOKEN });
 		expect(toastSuccessMock).toHaveBeenCalledWith('You joined 9takes');
 	});
 
