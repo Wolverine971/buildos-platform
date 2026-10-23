@@ -137,6 +137,8 @@ describe('GET /api/onto/projects/[id]/members', () => {
 			role_name: 'Project Owner',
 			role_description: 'Owns decisions.'
 		});
+		// Each member carries what their agents may do here (owner-editable in the share modal).
+		expect(select.mock.calls[0]?.[0]).toContain('agent_access');
 		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
 			p_project_id: PROJECT_ID,
 			p_required_access: 'read'

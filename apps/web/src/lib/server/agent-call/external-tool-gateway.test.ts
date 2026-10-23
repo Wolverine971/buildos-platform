@@ -1973,7 +1973,6 @@ describe('external tool gateway', () => {
 						expect.objectContaining({
 							actor_id: 'actor-1',
 							display_name: 'Dana Owner',
-							email: 'dana@example.com',
 							role_key: 'owner',
 							role_name: 'Project Owner',
 							access: 'admin',
@@ -1982,7 +1981,6 @@ describe('external tool gateway', () => {
 						expect.objectContaining({
 							actor_id: 'actor-collab-1',
 							display_name: 'Lee Collaborator',
-							email: 'lee@example.com',
 							role_key: 'editor',
 							role_name: 'Launch Lead',
 							access: 'write',
@@ -2028,6 +2026,9 @@ describe('external tool gateway', () => {
 		expect(JSON.stringify(result.result)).not.toContain('Hidden change');
 		expect(JSON.stringify(result.result)).not.toContain('Hidden Member');
 		expect(JSON.stringify(result.result)).not.toContain('Removed Member');
+		// Agents never get people's email addresses (people layer, 2026-10-23).
+		expect(JSON.stringify(result.result)).not.toContain('dana@example.com');
+		expect(JSON.stringify(result.result)).not.toContain('lee@example.com');
 		expect(JSON.stringify(result.result)).not.toContain('Completed task should not appear');
 		expect(JSON.stringify(result.result)).not.toContain('Future out of window');
 		expect(state.toolExecutions[0]).toMatchObject({
@@ -2672,7 +2673,10 @@ describe('external tool gateway', () => {
 			'get_buildos_permissions',
 			'request_buildos_permission',
 			'get_buildos_permission_request',
-			'authorize_buildos_writes'
+			'authorize_buildos_writes',
+			'find_buildos_person',
+			'request_buildos_access',
+			'list_buildos_people'
 		]);
 	});
 

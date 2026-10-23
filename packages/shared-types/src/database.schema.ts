@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-10-22T17:05:19.080Z
+// Generated on: 2026-10-23T19:14:59.844Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -3077,16 +3077,35 @@ export type DatabaseSchema = {
 		trigger_source: string;
 		updated_at: string;
 	};
+	onto_project_invite_links: {
+		access: string;
+		agent_access: string;
+		created_at: string;
+		created_by_actor_id: string | null;
+		expires_at: string;
+		id: string;
+		join_count: number;
+		last_joined_at: string | null;
+		project_id: string;
+		revoked_at: string | null;
+		revoked_reason: string | null;
+		role_key: string;
+		token_hash: string;
+		updated_at: string;
+	};
 	onto_project_invites: {
 		accepted_at: string | null;
 		accepted_by_actor_id: string | null;
 		access: string;
+		agent_access: string;
 		created_at: string;
 		declined_at: string | null;
 		expires_at: string;
 		id: string;
 		invited_by_actor_id: string | null;
 		invitee_email: string;
+		invitee_handle: string | null;
+		invitee_user_id: string | null;
 		project_id: string;
 		role_key: string;
 		status: string;
@@ -3112,8 +3131,10 @@ export type DatabaseSchema = {
 		access: string;
 		actor_id: string;
 		added_by_actor_id: string | null;
+		agent_access: string;
 		created_at: string;
 		id: string;
+		joined_via_invite_link_id: string | null;
 		project_id: string;
 		removed_at: string | null;
 		removed_by_actor_id: string | null;
@@ -3404,6 +3425,23 @@ export type DatabaseSchema = {
 		type: string;
 		updated_at: string | null;
 		user_id: string;
+	};
+	people_requests: {
+		created_at: string;
+		decided_at: string | null;
+		decision: Json | null;
+		expires_at: string;
+		from_user_id: string;
+		id: string;
+		note: string | null;
+		project_hint: string | null;
+		role_requested: string;
+		status: string;
+		to_user_id: string;
+		via: string;
+		via_agent_label: string | null;
+		via_caller_id: string | null;
+		via_oauth_grant_id: string | null;
 	};
 	phase_tasks: {
 		assignment_reason: string | null;
@@ -4733,6 +4771,7 @@ export type DatabaseSchema = {
 		user_id: string;
 	};
 	users: {
+		accepts_agent_requests: boolean;
 		access_restricted: boolean | null;
 		access_restricted_at: string | null;
 		bio: string | null;
@@ -4740,6 +4779,7 @@ export type DatabaseSchema = {
 		deletion_requested_at: string | null;
 		deletion_scheduled_for: string | null;
 		deletion_status: string | null;
+		discoverability: string;
 		email: string;
 		id: string;
 		is_admin: boolean;
@@ -5095,6 +5135,7 @@ export const tableNames = [
 	'onto_project_fold_manifests',
 	'onto_project_icon_candidates',
 	'onto_project_icon_generations',
+	'onto_project_invite_links',
 	'onto_project_invites',
 	'onto_project_logs',
 	'onto_project_members',
@@ -5116,6 +5157,7 @@ export const tableNames = [
 	'ontology_daily_briefs',
 	'ontology_project_briefs',
 	'payment_methods',
+	'people_requests',
 	'phase_tasks',
 	'phases',
 	'privacy_purge_failures',

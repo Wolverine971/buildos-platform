@@ -30,7 +30,7 @@ const createEvent = (): RequestEvent => {
 };
 
 describe('POST /api/onto/projects/[id]/invites/[inviteId]/revoke', () => {
-	it('returns forbidden when write access is missing', async () => {
+	it('returns forbidden unless the caller owns the project', async () => {
 		const event = createEvent();
 		const supabase = event.locals.supabase as any;
 
@@ -40,7 +40,7 @@ describe('POST /api/onto/projects/[id]/invites/[inviteId]/revoke', () => {
 		expect(response.status).toBe(403);
 		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
 			p_project_id: 'project-1',
-			p_required_access: 'write'
+			p_required_access: 'admin'
 		});
 	});
 
@@ -95,6 +95,53 @@ describe('POST /api/onto/projects/[id]/invites/[inviteId]/revoke', () => {
 		expect(response.status).toBe(200);
 		expect(payload.success).toBe(true);
 		expect(update).toHaveBeenCalledWith({ status: 'revoked' });
+	});
+
+	it('logs a handle invite by its handle, not the email behind it', async () => {
+		const event = createEvent();
+		const supabase = event.locals.supabase as any;
+
+		supabase.rpc.mockResolvedValue({ data: true, error: null });
+
+		const select = vi.fn().mockReturnValue({
+			eq: vi.fn().mockReturnValue({
+				eq: vi.fn().mockReturnValue({
+					maybeSingle: vi.fn().mockResolvedValue({
+						data: {
+							id: 'invite-1',
+							invitee_email: 'sam@example.com',
+							invitee_handle: 'sam',
+							status: 'pending'
+						},
+						error: null
+					})
+				})
+			})
+		});
+		const update = vi.fn().mockReturnValue({
+			eq: vi.fn().mockReturnValue({
+				eq: vi.fn().mockReturnValue({
+					select: vi.fn().mockReturnValue({
+						maybeSingle: vi.fn().mockResolvedValue({
+							data: { id: 'invite-1', status: 'revoked' },
+							error: null
+						})
+					})
+				})
+			})
+		});
+		const insert = vi.fn().mockResolvedValue({ error: null });
+		supabase.from.mockImplementation((table: string) => {
+			if (table === 'onto_project_invites') return { select, update };
+			if (table === 'onto_project_logs') return { insert };
+			return {};
+		});
+
+		const response = await POST(event);
+		expect(response.status).toBe(200);
+		const logged = insert.mock.calls[0]?.[0]?.after_data;
+		expect(logged).toEqual({ event: 'invite_revoked', invitee_handle: 'sam' });
+		expect(JSON.stringify(logged)).not.toContain('sam@example.com');
 	});
 
 	it('returns accepted when invite is accepted during concurrent revoke', async () => {

@@ -158,7 +158,8 @@
 	// Icon position classes
 	let iconClasses = $derived(
 		twMerge(
-			'absolute top-1/2 -translate-y-1/2 pointer-events-none',
+			// z-20: the input is `relative z-10 bg-card`, so without this the icon sits under it.
+			'absolute top-1/2 -translate-y-1/2 pointer-events-none z-20',
 			'text-muted-foreground',
 			iconPosition === 'left' ? 'left-3' : 'right-3',
 			iconSizes[size]

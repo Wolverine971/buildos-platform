@@ -89,7 +89,7 @@ describe('POST /api/onboarding', () => {
 		);
 		expect(response.status).toBe(401);
 	});
-	it.each([0, 4, 1.5, '2'])('rejects invalid saved milestone %s', async (step) => {
+	it.each([0, 5, 1.5, '2'])('rejects invalid saved milestone %s', async (step) => {
 		const response = await POST(createEvent({ action: 'save_progress', step }));
 		expect(response.status).toBe(400);
 		expect(saveProgressMock).not.toHaveBeenCalled();

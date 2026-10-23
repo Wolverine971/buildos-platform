@@ -7,6 +7,7 @@ import { captureServerEvent } from '$lib/server/posthog';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import { saveOnboardingProgress } from '$lib/server/onboarding-progress';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
+import { ONBOARDING_STEPS } from '$lib/utils/onboarding-state';
 
 const VALID_INTENTS = new Set(['organize', 'plan', 'unstuck', 'explore']);
 const VALID_STAKES = new Set(['high', 'medium', 'low']);
@@ -37,7 +38,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				if (
 					!Number.isInteger(step) ||
 					step < 1 ||
-					step > 3 ||
+					step > ONBOARDING_STEPS.length - 1 ||
 					(projectId != null &&
 						(typeof projectId !== 'string' || !isValidUUID(projectId)))
 				) {

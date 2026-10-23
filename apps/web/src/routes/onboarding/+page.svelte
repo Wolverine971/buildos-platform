@@ -5,10 +5,11 @@
 	import { captureEvent } from '$lib/services/posthog';
 	import type { PageData } from './$types';
 	import type { OnboardingIntent, OnboardingStakes } from '$lib/config/onboarding.config';
-	import type { ActivationPacket } from '$lib/utils/onboarding-state';
+	import { ONBOARDING_STEPS, type ActivationPacket } from '$lib/utils/onboarding-state';
 	import IntentStakesStep from '$lib/components/onboarding-v3/IntentStakesStep.svelte';
 	import ProjectsCaptureStep from '$lib/components/onboarding-v2/ProjectsCaptureStep.svelte';
 	import NotificationsStepV3 from '$lib/components/onboarding-v3/NotificationsStepV3.svelte';
+	import PeopleStep from '$lib/components/onboarding-v3/PeopleStep.svelte';
 	import ReadyStep from '$lib/components/onboarding-v3/ReadyStep.svelte';
 	import ProgressIndicatorV3 from '$lib/components/onboarding-v3/ProgressIndicatorV3.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -21,6 +22,11 @@
 	const maxStepReached = $derived(Math.max(committedStep, data.savedStep));
 	let projectId = $state<string | null>(initial.savedProjectId);
 	let packet = $state<ActivationPacket | null>(null);
+	const projectName = $derived(
+		packet?.project.name ??
+			data.existingProjects?.find((project) => project.id === projectId)?.name ??
+			null
+	);
 	let progressError = $state<string | null>(null);
 	let isSaving = $state(false);
 	let completed = $state(false);
@@ -133,7 +139,7 @@
 	<div class="sticky top-0 z-20 border-b border-border/60 bg-background px-4 py-4">
 		<ProgressIndicatorV3
 			{currentStep}
-			totalSteps={4}
+			totalSteps={ONBOARDING_STEPS.length}
 			{maxStepReached}
 			{completed}
 			onStepClick={goToStep}
@@ -192,6 +198,13 @@
 				onNext={() => persistProgress(3)}
 				onSMSEnabled={(enabled) => (v3Data.smsEnabled = enabled)}
 				onEmailEnabled={(enabled) => (v3Data.emailEnabled = enabled)}
+			/>
+		{:else if currentStep === 3}
+			<PeopleStep
+				{projectId}
+				{projectName}
+				busy={isSaving}
+				onNext={() => persistProgress(4)}
 			/>
 		{:else}
 			<ReadyStep

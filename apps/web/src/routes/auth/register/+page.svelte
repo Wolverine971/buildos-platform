@@ -18,6 +18,12 @@
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import { getFirstTouchAttribution } from '$lib/services/posthog';
 	import { CURRENT_POLICY_VERSIONS } from '$lib/legal/policy-versions';
+	import { AtSign } from '$lib/icons/lucide';
+	import {
+		isValidHandle,
+		normalizeHandleInput,
+		saveSignupHandle
+	} from '$lib/utils/onboarding-state';
 
 	let loading = $state(false);
 	let googleLoading = $state(false);
@@ -25,6 +31,14 @@
 	let password = $state('');
 	let confirmPassword = $state('');
 	let name = $state('');
+	// Optional. Held in this tab and claimed on the onboarding People step once the account exists.
+	let handle = $state('');
+	let handleTouched = $state(false);
+	const handleError = $derived(
+		handleTouched && handle.trim() && !isValidHandle(normalizeHandleInput(handle))
+			? 'Use 3 to 24 lowercase letters, numbers, or hyphens.'
+			: ''
+	);
 	let legalAccepted = $state(false);
 	let error = $state('');
 	let showExistingAccountHint = $state(false);
@@ -196,6 +210,7 @@
 			});
 
 			persistOAuthState(state);
+			saveSignupHandle(handle);
 			window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 		} catch (intentError) {
 			error =
@@ -273,6 +288,7 @@
 
 		try {
 			const legalAcceptanceToken = await createAcceptanceIntent('email_signup');
+			saveSignupHandle(handle);
 			const response = await fetch('/api/auth/register', {
 				method: 'POST',
 				headers: {
@@ -429,6 +445,32 @@
 	<div
 		class="mt-6 rounded-lg border border-border bg-card p-5 shadow-ink sm:p-6 tx tx-grain tx-weak"
 	>
+		<div class="mb-5">
+			<FormField
+				label="Pick your handle"
+				labelFor="signup-handle"
+				required={false}
+				showOptional={true}
+				error={handleError}
+				hint="It's how people find you, invite you into their projects, and join yours."
+			>
+				<TextInput
+					id="signup-handle"
+					bind:value={handle}
+					icon={AtSign}
+					autocomplete="nickname"
+					autocapitalize="none"
+					spellcheck={false}
+					enterkeyhint="next"
+					disabled={loading || googleLoading || success}
+					placeholder="yourname"
+					size="lg"
+					error={Boolean(handleError)}
+					onblur={() => (handleTouched = true)}
+				/>
+			</FormField>
+		</div>
+
 		<label
 			class="mb-6 flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-background/60 p-3 text-sm text-muted-foreground"
 		>

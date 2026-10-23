@@ -1,6 +1,7 @@
 // apps/web/src/lib/server/agent-call/external-tool-gateway.ts
 import type { AgentCredentialReference } from '@buildos/shared-types';
 import { PERMISSION_CONTROL_TOOLS, PermissionRequestService } from './permission-requests.service';
+import { executePeopleTool, PEOPLE_TOOL_NAMES, PEOPLE_TOOLS } from './people-tools.service';
 // apps/web/src/lib/server/agent-call/external-tool-gateway.ts
 //
 // Web-side adapter + discovery surface for the BuildOS agent-call gateway.
@@ -182,7 +183,7 @@ export function getBuildosAgentGatewayTools(scope: AgentCallScope): BuildosAgent
 		inputSchema: buildExternalDirectToolSchema(entry)
 	}));
 
-	return [...discoveryTools, ...directTools, ...PERMISSION_CONTROL_TOOLS];
+	return [...discoveryTools, ...directTools, ...PERMISSION_CONTROL_TOOLS, ...PEOPLE_TOOLS];
 }
 
 function buildExternalDirectToolSchema(entry: ExternalGatewayRegistryEntry): ToolJsonObjectSchema {
@@ -501,6 +502,17 @@ export async function executeBuildosAgentGatewayTool(params: {
 	/** Public origin used to build owner-facing grant links in scope denials. */
 	connectorOrigin?: string;
 }): Promise<Record<string, unknown>> {
+	if (PEOPLE_TOOL_NAMES.has(params.toolName)) {
+		return executePeopleTool({
+			admin: params.admin,
+			userId: params.userId,
+			callerId: params.callerId,
+			oauthGrantId: params.oauthGrantId,
+			scope: params.scope,
+			toolName: params.toolName,
+			arguments: params.arguments
+		});
+	}
 	if (params.credential) {
 		const permissions = new PermissionRequestService(
 			params.admin,

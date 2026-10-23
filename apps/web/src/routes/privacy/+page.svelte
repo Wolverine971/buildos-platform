@@ -383,6 +383,18 @@
 							already received.
 						</li>
 					</ul>
+					<p>
+						When you share a project with someone, you also choose what their agents can
+						do there: nothing, read it (the default), or add to it. Their agents never
+						get more than that person has. When they can add, they can create tasks and
+						documents and change only the ones that person created or is assigned to.
+						Anything their agents can read can leave BuildOS through those agents, the
+						same as anything you share with a person.
+					</p>
+					<p>
+						An agent can ask someone for access on its person's behalf. Only the person
+						asked can approve it, and only in BuildOS.
+					</p>
 				</div>
 			</section>
 
@@ -503,6 +515,16 @@
 							push notifications if you turn them on.
 						</li>
 					</ul>
+					<p class="text-muted-foreground mt-4">
+						Other BuildOS users see your information only when you choose. If you turn
+						on "People with my handle can find me," anyone signed in to BuildOS who
+						knows your handle can see your name, handle, and bio, never your email.
+						People you share a project with can see that project. If you ask someone for
+						access and have no handle, they see your email so they know who is asking.
+						If you make an invite link for a project, anyone who has the link can see
+						the project's name and your name before joining, until it expires or you
+						turn it off.
+					</p>
 					<p class="text-muted-foreground mt-4">
 						We may also disclose information when the law requires it, to protect
 						people's rights and safety, to investigate abuse, or as part of a merger or
@@ -723,7 +745,7 @@
 			<div class="border-t border-border pt-6 flex items-center gap-2">
 				<Clock class="w-4 h-4 text-muted-foreground" />
 				<p class="text-sm text-muted-foreground">
-					Effective and last updated: October 5, 2026 (version 2026-10-05)
+					Effective and last updated: October 23, 2026 (version 2026-10-23)
 				</p>
 			</div>
 		</div>

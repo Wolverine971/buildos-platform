@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/onto/projects/[id]/invites/[inviteId]/revoke/+server.ts
 /**
- * Revoke a pending project invite (collaborators with write access).
+ * Revoke a pending project invite (project owner only).
  */
 
 import type { RequestHandler } from './$types';
@@ -30,7 +30,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			'current_actor_has_project_member_access',
 			{
 				p_project_id: projectId,
-				p_required_access: 'write'
+				p_required_access: 'admin'
 			}
 		);
 
@@ -49,12 +49,12 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		}
 
 		if (!hasAccess) {
-			return ApiResponse.forbidden('Access denied');
+			return ApiResponse.forbidden('Only the project owner can revoke invites');
 		}
 
 		const { data: invite, error: inviteError } = await supabase
 			.from('onto_project_invites')
-			.select('id, invitee_email, status')
+			.select('id, invitee_email, invitee_handle, status')
 			.eq('id', inviteId)
 			.eq('project_id', projectId)
 			.maybeSingle();
@@ -142,7 +142,9 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			change_source: 'api',
 			after_data: {
 				event: 'invite_revoked',
-				invitee_email: invite.invitee_email
+				...(invite.invitee_handle
+					? { invitee_handle: invite.invitee_handle }
+					: { invitee_email: invite.invitee_email })
 			}
 		});
 		if (logError) {

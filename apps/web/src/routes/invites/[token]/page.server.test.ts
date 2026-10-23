@@ -76,7 +76,68 @@ describe('/invites/[token] +page.server', () => {
 			status: 'ready',
 			redirectTo: '/invites/invite-token',
 			userEmail: 'invitee@example.com',
-			emailMatches: false
+			emailMatches: false,
+			// Someone else's address is only hinted at, never sent to the page.
+			inviteeEmailHint: 'o•••@e•••.com',
+			invite: { invitee_email: null }
 		});
+		expect(JSON.stringify(result)).not.toContain('other@example.com');
+	});
+
+	it('turns raw database errors into plain words', async () => {
+		const { load } = await import('./+page.server');
+		const rpc = vi
+			.fn()
+			.mockResolvedValue({ data: null, error: { message: 'Invite not found' } });
+
+		const result = await load({
+			params: { token: 'replaced-token' },
+			locals: {
+				supabase: { rpc },
+				safeGetSession: vi.fn().mockResolvedValue({ user: null })
+			},
+			url: new URL('http://localhost/invites/replaced-token')
+		} as any);
+
+		expect(result).toMatchObject({
+			status: 'error',
+			title: 'This invite link doesn’t work'
+		});
+		expect((result as any).message).toContain('newer invite');
+	});
+
+	it('notices when the signed-in person is already in the project', async () => {
+		const { load } = await import('./+page.server');
+		const rpc = vi.fn(async (name: string) =>
+			name === 'current_actor_has_project_member_access'
+				? { data: true, error: null }
+				: {
+						data: {
+							invite_id: 'invite-1',
+							project_id: 'project-1',
+							project_name: 'Project Alpha',
+							role_key: 'viewer',
+							invitee_email: 'invitee@example.com'
+						},
+						error: null
+					}
+		);
+
+		const result = await load({
+			params: { token: 'invite-token' },
+			locals: {
+				supabase: { rpc },
+				safeGetSession: vi.fn().mockResolvedValue({
+					user: { id: 'user-1', email: 'invitee@example.com' }
+				})
+			},
+			url: new URL('http://localhost/invites/invite-token')
+		} as any);
+
+		expect(rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
+			p_project_id: 'project-1',
+			p_required_access: 'read'
+		});
+		expect(result).toMatchObject({ status: 'ready', alreadyMember: true, emailMatches: true });
 	});
 });

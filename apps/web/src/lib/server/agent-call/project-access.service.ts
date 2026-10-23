@@ -11,8 +11,13 @@ import {
 	type OntologyProjectSummary
 } from '$lib/services/ontology/ontology-projects.service';
 
+/** What the project owner lets this member's agents do (onto_project_members.agent_access). */
+export type MemberAgentAccess = 'off' | 'read' | 'write';
+
 type ProjectAccessRecord = Pick<OntologyProjectSummary, 'id' | 'is_shared' | 'access_level'> & {
 	external_agent_access: BuildosProjectExternalAgentAccess;
+	/** Only meaningful on shared projects. Missing means off (fail closed). */
+	agent_access?: MemberAgentAccess | null;
 };
 
 type ExplicitProjectPermission = {
@@ -33,6 +38,11 @@ function uniqueStrings(values: string[] | undefined): string[] {
  * Pure policy calculation used by the DB-backed resolver and unit tests.
  * Membership has already been resolved in `projects`; public visibility alone
  * can therefore never add a project here.
+ *
+ * A project someone else owns needs two keys: the owner's setting for this
+ * member's agents (`agent_access`: off hides it, read never writes) and the
+ * member's own explicit grant to this connector. Writes the owner allows are
+ * further limited to the guest-agent lane in the gateway.
  */
 export function computeEffectiveAgentProjectScope(params: {
 	scope: AgentCallScope;
@@ -48,6 +58,10 @@ export function computeEffectiveAgentProjectScope(params: {
 	const projectIds: string[] = [];
 	const writeProjectIds: string[] = [];
 	for (const project of params.projects) {
+		const ownerAgentAccess: MemberAgentAccess = project.is_shared
+			? (project.agent_access ?? 'off')
+			: 'write';
+		if (ownerAgentAccess === 'off') continue;
 		const explicitAccess = permissionByProject.get(project.id);
 		const inherited =
 			params.projectScopeMode === 'all_unrestricted' &&
@@ -64,7 +78,8 @@ export function computeEffectiveAgentProjectScope(params: {
 		if (
 			params.scope.mode === 'read_write' &&
 			membershipAllowsWrite &&
-			projectPolicyAllowsWrite
+			projectPolicyAllowsWrite &&
+			ownerAgentAccess === 'write'
 		) {
 			writeProjectIds.push(project.id);
 		}
@@ -101,16 +116,46 @@ export async function resolveEffectiveAgentProjectScope(params: {
 		? permissionQuery.eq('agent_oauth_grant_id', params.oauthGrantId)
 		: permissionQuery.is('agent_oauth_grant_id', null);
 
-	const [projectAccessResult, permissionResult] = await Promise.all([
+	const sharedProjectIds = visibleProjects
+		.filter((project) => project.is_shared)
+		.map((project) => project.id);
+	const memberAgentQuery =
+		sharedProjectIds.length > 0
+			? params.admin
+					.from('onto_project_members')
+					.select('project_id, agent_access')
+					.eq('actor_id', actorId)
+					.is('removed_at', null)
+					.in('project_id', sharedProjectIds)
+			: Promise.resolve({ data: [], error: null });
+
+	const [projectAccessResult, permissionResult, memberAgentResult] = await Promise.all([
 		params.admin.from('onto_projects').select('id, external_agent_access').in('id', projectIds),
-		permissionQuery
+		permissionQuery,
+		memberAgentQuery
 	]);
-	if (projectAccessResult.error || permissionResult.error) {
+	if (projectAccessResult.error || permissionResult.error || memberAgentResult.error) {
 		throw new Error(
 			projectAccessResult.error?.message ||
 				permissionResult.error?.message ||
+				memberAgentResult.error?.message ||
 				'Failed to resolve connector project access'
 		);
+	}
+
+	const agentAccessByProject = new Map<string, MemberAgentAccess>();
+	for (const row of (memberAgentResult.data ?? []) as Array<{
+		project_id?: unknown;
+		agent_access?: unknown;
+	}>) {
+		if (
+			typeof row.project_id === 'string' &&
+			(row.agent_access === 'off' ||
+				row.agent_access === 'read' ||
+				row.agent_access === 'write')
+		) {
+			agentAccessByProject.set(row.project_id, row.agent_access);
+		}
 	}
 
 	const accessByProject = new Map<string, BuildosProjectExternalAgentAccess>();
@@ -130,7 +175,8 @@ export async function resolveEffectiveAgentProjectScope(params: {
 			id: project.id,
 			is_shared: project.is_shared,
 			access_level: project.access_level,
-			external_agent_access: accessByProject.get(project.id) ?? 'restricted'
+			external_agent_access: accessByProject.get(project.id) ?? 'restricted',
+			agent_access: project.is_shared ? (agentAccessByProject.get(project.id) ?? 'off') : null
 		})),
 		permissions: (permissionResult.data ?? []).flatMap(
 			(row: { project_id?: unknown; access_mode?: unknown }) =>

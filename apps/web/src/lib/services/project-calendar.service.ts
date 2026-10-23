@@ -55,6 +55,7 @@ export interface ProjectCalendarCollaborationMember {
 }
 
 export interface ProjectCalendarPendingInvite {
+	/** The invitee's email, or "@handle" for invites sent to a handle (that email stays private). */
 	invitee_email: string;
 	role_key: string;
 	access: string;
@@ -257,7 +258,7 @@ export class ProjectCalendarService extends SharedProjectCalendarService {
 					.eq('project_id', projectId),
 				this.supabase
 					.from('onto_project_invites')
-					.select('invitee_email, role_key, access, expires_at')
+					.select('invitee_email, invitee_handle, role_key, access, expires_at')
 					.eq('project_id', projectId)
 					.eq('status', 'pending')
 					.gte('expires_at', new Date().toISOString())
@@ -367,7 +368,10 @@ export class ProjectCalendarService extends SharedProjectCalendarService {
 			).length;
 
 			const pendingInvitesRaw = (inviteResponse.data ?? []) as Array<
-				Pick<ProjectInvite, 'invitee_email' | 'role_key' | 'access' | 'expires_at'>
+				Pick<
+					ProjectInvite,
+					'invitee_email' | 'invitee_handle' | 'role_key' | 'access' | 'expires_at'
+				>
 			>;
 			const seenInviteEmails = new Set<string>();
 			const pendingInvites: ProjectCalendarPendingInvite[] = [];
@@ -376,7 +380,10 @@ export class ProjectCalendarService extends SharedProjectCalendarService {
 				if (!normalizedEmail || seenInviteEmails.has(normalizedEmail)) continue;
 				seenInviteEmails.add(normalizedEmail);
 				pendingInvites.push({
-					invitee_email: invite.invitee_email,
+					// Invites sent to a handle show the handle, never the email behind it.
+					invitee_email: invite.invitee_handle
+						? `@${invite.invitee_handle}`
+						: invite.invitee_email,
 					role_key: invite.role_key,
 					access: invite.access,
 					expires_at: invite.expires_at

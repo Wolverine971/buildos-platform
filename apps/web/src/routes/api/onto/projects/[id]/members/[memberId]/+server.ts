@@ -68,7 +68,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		const { data: member, error: memberError } = await supabase
 			.from('onto_project_members')
-			.select('id, actor_id, role_key, access, removed_at')
+			.select('id, actor_id, role_key, access, agent_access, removed_at')
 			.eq('id', memberId)
 			.eq('project_id', projectId)
 			.maybeSingle();
@@ -168,6 +168,26 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				access
 			}
 		});
+
+		// Agents never go past their person: a viewer's agents can read at most.
+		if (roleKey === 'viewer' && member.agent_access === 'write') {
+			const { error: agentAccessError } = await supabase.rpc(
+				'set_project_member_agent_access',
+				{ p_project_id: projectId, p_member_id: memberId, p_agent_access: 'read' }
+			);
+			if (agentAccessError) {
+				void logOntologyApiError({
+					supabase,
+					error: agentAccessError,
+					endpoint: `/api/onto/projects/${projectId}/members/${memberId}`,
+					method: 'PATCH',
+					userId: user.id,
+					projectId,
+					entityType: 'project',
+					operation: 'project_members_agent_access_clamp'
+				});
+			}
+		}
 
 		return ApiResponse.success({ memberId, role_key: roleKey, access });
 	} catch (error) {

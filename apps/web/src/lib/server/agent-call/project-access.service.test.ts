@@ -19,13 +19,15 @@ const projects = [
 		id: 'shared-standard',
 		is_shared: true,
 		access_level: 'write' as const,
-		external_agent_access: 'standard' as const
+		external_agent_access: 'standard' as const,
+		agent_access: 'write' as const
 	},
 	{
 		id: 'shared-readonly',
 		is_shared: true,
 		access_level: 'read' as const,
-		external_agent_access: 'standard' as const
+		external_agent_access: 'standard' as const,
+		agent_access: 'read' as const
 	}
 ];
 
@@ -73,5 +75,80 @@ describe('external agent project access policy', () => {
 
 		expect(scope.project_ids).toEqual(['shared-standard']);
 		expect(scope.write_project_ids).toEqual([]);
+	});
+
+	describe("the owner's setting for a member's agents", () => {
+		const shared = (agent_access: 'off' | 'read' | 'write' | null | undefined) => [
+			{
+				id: 'theirs',
+				is_shared: true,
+				access_level: 'write' as const,
+				external_agent_access: 'standard' as const,
+				agent_access
+			}
+		];
+		const grant = [{ project_id: 'theirs', access_mode: 'read_write' as const }];
+
+		it("off hides the project even with the member's own grant", () => {
+			const scope = computeEffectiveAgentProjectScope({
+				scope: { mode: 'read_write' },
+				projectScopeMode: 'all_unrestricted',
+				projects: shared('off'),
+				permissions: grant
+			});
+			expect(scope.project_ids).toEqual([]);
+			expect(scope.write_project_ids).toEqual([]);
+		});
+
+		it('a missing setting counts as off', () => {
+			for (const value of [null, undefined]) {
+				const scope = computeEffectiveAgentProjectScope({
+					scope: { mode: 'read_write' },
+					projectScopeMode: 'all_unrestricted',
+					projects: shared(value),
+					permissions: grant
+				});
+				expect(scope.project_ids).toEqual([]);
+			}
+		});
+
+		it('read lets the agent read but never write, even for an editor', () => {
+			const scope = computeEffectiveAgentProjectScope({
+				scope: { mode: 'read_write' },
+				projectScopeMode: 'all_unrestricted',
+				projects: shared('read'),
+				permissions: grant
+			});
+			expect(scope.project_ids).toEqual(['theirs']);
+			expect(scope.write_project_ids).toEqual([]);
+		});
+
+		it("write still needs the member's own grant to this connector", () => {
+			const scope = computeEffectiveAgentProjectScope({
+				scope: { mode: 'read_write' },
+				projectScopeMode: 'all_unrestricted',
+				projects: shared('write'),
+				permissions: []
+			});
+			expect(scope.project_ids).toEqual([]);
+		});
+
+		it('ignores the setting on projects the user owns', () => {
+			const scope = computeEffectiveAgentProjectScope({
+				scope: { mode: 'read_write' },
+				projectScopeMode: 'all_unrestricted',
+				projects: [
+					{
+						id: 'mine',
+						is_shared: false,
+						access_level: 'admin' as const,
+						external_agent_access: 'standard' as const,
+						agent_access: 'off' as const
+					}
+				],
+				permissions: []
+			});
+			expect(scope.write_project_ids).toEqual(['mine']);
+		});
 	});
 });

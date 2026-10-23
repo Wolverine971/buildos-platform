@@ -309,10 +309,11 @@ function isDestructiveOp(op: string): boolean {
 function toMcpTool(tool: ReturnType<typeof getPublicBuildosAgentTools>[number]) {
 	const op = inferToolOp(tool.name);
 	const requiredScopeMode = requiredScopeModeForOp(op);
-	const write =
-		tool.name === 'request_buildos_permission' ||
-		requiredScopeMode === 'read_write' ||
-		isWriteOp(op);
+	// Asking for something (an edit, or access to someone's projects) needs only read scope,
+	// but it isn't read-only: it creates a request someone else sees.
+	const asks =
+		tool.name === 'request_buildos_permission' || tool.name === 'request_buildos_access';
+	const write = asks || requiredScopeMode === 'read_write' || isWriteOp(op);
 	const title = titleFromToolName(tool.name);
 
 	return {
@@ -323,12 +324,7 @@ function toMcpTool(tool: ReturnType<typeof getPublicBuildosAgentTools>[number]) 
 		securitySchemes: [
 			{
 				type: 'oauth2',
-				scopes: [
-					'buildos.read',
-					...(write && tool.name !== 'request_buildos_permission'
-						? ['buildos.write']
-						: [])
-				]
+				scopes: ['buildos.read', ...(write && !asks ? ['buildos.write'] : [])]
 			}
 		],
 		// Every tool returns a JSON object as structuredContent (success or error

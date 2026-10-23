@@ -1,7 +1,7 @@
 // apps/web/src/lib/components/project/ProjectCollaborationModal.test.ts
 // @vitest-environment jsdom
 import { requireTestValue } from '$lib/test-helpers/require-test-value';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ProjectCollaborationModal from './ProjectCollaborationModal.svelte';
@@ -14,7 +14,12 @@ vi.mock('$lib/utils/ontology-client-logger', () => ({
 	logOntologyClientError: logOntologyClientErrorMock
 }));
 
-const { toastSuccessMock } = vi.hoisted(() => ({ toastSuccessMock: vi.fn() }));
+const { toastSuccessMock, copyTextMock } = vi.hoisted(() => ({
+	toastSuccessMock: vi.fn(),
+	copyTextMock: vi.fn()
+}));
+
+vi.mock('$lib/utils/public-page-url', () => ({ copyTextToClipboard: copyTextMock }));
 
 vi.mock('$lib/stores/toast.store', () => ({
 	toastService: { success: toastSuccessMock, error: vi.fn(), info: vi.fn() }
@@ -238,7 +243,7 @@ describe('ProjectCollaborationModal request coordination', () => {
 			request.response.resolve(responseFor(request.url, PROJECT_A_ID, 'Project A Member'));
 		}
 		await settleRequests(projectARequests);
-		await fireEvent.click(screen.getByRole('tab', { name: 'My Role' }));
+		await fireEvent.click(screen.getByRole('tab', { name: /My role/ }));
 
 		const notificationToggle = await screen.findByRole('checkbox', {
 			name: /Notify me about project activity/i
@@ -264,7 +269,7 @@ describe('ProjectCollaborationModal request coordination', () => {
 		}
 		await settleRequests(projectBRequests);
 		await waitFor(() => expect(screen.getByText('Project B Member')).toBeInTheDocument());
-		await fireEvent.click(screen.getByRole('tab', { name: 'My Role' }));
+		await fireEvent.click(screen.getByRole('tab', { name: /My role/ }));
 		expect(
 			screen.getByRole('checkbox', { name: /Notify me about project activity/i })
 		).toBeChecked();
@@ -387,6 +392,8 @@ describe('ProjectCollaborationModal ownership handoff', () => {
 			}
 		});
 
+		// Owners land on Invite; members live under People.
+		await fireEvent.click(await screen.findByRole('tab', { name: /People/ }));
 		await fireEvent.click(await screen.findByRole('button', { name: 'Make owner' }));
 		expect(screen.getByText('Make Sam the owner of Garden plan?')).toBeInTheDocument();
 		expect(screen.getByText(/You’ll stay on as an editor\./)).toBeInTheDocument();
@@ -404,5 +411,168 @@ describe('ProjectCollaborationModal ownership handoff', () => {
 		);
 		// Leaving navigates away, so the page's permissions are not reloaded.
 		expect(onOwnershipChanged).not.toHaveBeenCalled();
+	});
+});
+
+describe('ProjectCollaborationModal owner sharing', () => {
+	let calls: Array<{ url: string; method: string; body: unknown }>;
+
+	beforeEach(() => {
+		calls = [];
+		toastSuccessMock.mockReset();
+		copyTextMock.mockReset();
+		copyTextMock.mockResolvedValue(true);
+		Object.defineProperty(window, 'scrollTo', {
+			configurable: true,
+			writable: true,
+			value: vi.fn()
+		});
+		Object.defineProperty(Element.prototype, 'animate', {
+			configurable: true,
+			writable: true,
+			value: vi.fn(() => ({
+				cancel: vi.fn(),
+				commitStyles: vi.fn(),
+				finished: Promise.resolve(),
+				play: vi.fn()
+			}))
+		});
+		const confirmSpy = vi.fn(() => true);
+		vi.stubGlobal('confirm', confirmSpy);
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+				const url = String(input);
+				const method = init?.method ?? 'GET';
+				calls.push({
+					url,
+					method,
+					body: init?.body ? JSON.parse(String(init.body)) : null
+				});
+				if (url.endsWith('/invites') && method === 'POST') {
+					return jsonResponse({
+						success: true,
+						data: {
+							inviteId: 'invite-9',
+							email_sent: true,
+							invite_url: 'https://build-os.com/invites/abc123'
+						}
+					});
+				}
+				if (url.endsWith('/invite-link')) {
+					return jsonResponse({ success: true, data: { link: null } });
+				}
+				if (url.includes('/members/member-sam') && method === 'DELETE') {
+					return jsonResponse({ success: true, data: {} });
+				}
+				if (url.endsWith('/members')) {
+					return jsonResponse({
+						data: {
+							actorId: 'actor-dana',
+							members: [
+								{
+									id: 'member-dana',
+									actor_id: 'actor-dana',
+									role_key: 'owner',
+									access: 'admin',
+									actor: {
+										id: 'actor-dana',
+										name: 'Dana',
+										email: 'dana@example.com'
+									}
+								},
+								{
+									id: 'member-sam',
+									actor_id: 'actor-sam',
+									role_key: 'viewer',
+									access: 'read',
+									agent_access: 'read',
+									joined_via_invite_link_id: 'link-1',
+									actor: {
+										id: 'actor-sam',
+										name: 'Sam',
+										email: 'sam@example.com'
+									}
+								}
+							]
+						}
+					});
+				}
+				return responseFor(url, PROJECT_A_ID, 'Unused');
+			})
+		);
+	});
+
+	afterEach(() => {
+		cleanup();
+		vi.unstubAllGlobals();
+	});
+
+	it('opens on Invite for owners, with the email form and the invite link', async () => {
+		render(ProjectCollaborationModal, {
+			props: {
+				isOpen: true,
+				projectId: PROJECT_A_ID,
+				projectName: '9takes',
+				canManageMembers: true
+			}
+		});
+
+		expect(
+			await screen.findByRole('tab', { name: /Invite/, selected: true })
+		).toBeInTheDocument();
+		expect(screen.getByLabelText('Email or @handle')).toBeInTheDocument();
+		expect(
+			await screen.findByRole('button', { name: /Create invite link/ })
+		).toBeInTheDocument();
+	});
+
+	it('offers the sent invite’s link to copy', async () => {
+		render(ProjectCollaborationModal, {
+			props: {
+				isOpen: true,
+				projectId: PROJECT_A_ID,
+				projectName: '9takes',
+				canManageMembers: true
+			}
+		});
+
+		await fireEvent.input(await screen.findByLabelText('Email or @handle'), {
+			target: { value: 'lee@example.com' }
+		});
+		await fireEvent.click(screen.getByRole('button', { name: /Send invite/ }));
+
+		expect(await screen.findByText('Invite sent to lee@example.com.')).toBeInTheDocument();
+		await fireEvent.click(screen.getByRole('button', { name: /Copy invite link/ }));
+		expect(copyTextMock).toHaveBeenCalledWith('https://build-os.com/invites/abc123');
+	});
+
+	it('marks people who joined by link and removes with an inline confirmation', async () => {
+		render(ProjectCollaborationModal, {
+			props: {
+				isOpen: true,
+				projectId: PROJECT_A_ID,
+				projectName: '9takes',
+				canManageMembers: true
+			}
+		});
+
+		await fireEvent.click(await screen.findByRole('tab', { name: /People/ }));
+		expect(await screen.findByText(/Joined with the invite link/)).toBeInTheDocument();
+		expect(screen.getByLabelText('Role for Sam')).toHaveValue('viewer');
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+		expect(screen.getByText(/the invite link won’t add them back/)).toBeInTheDocument();
+		const group = screen.getByRole('group', { name: 'Remove Sam' });
+		await fireEvent.click(within(group).getByRole('button', { name: 'Remove' }));
+
+		await waitFor(() =>
+			expect(
+				calls.some(
+					(call) => call.method === 'DELETE' && call.url.endsWith('/members/member-sam')
+				)
+			).toBe(true)
+		);
+		expect(window.confirm).not.toHaveBeenCalled();
 	});
 });

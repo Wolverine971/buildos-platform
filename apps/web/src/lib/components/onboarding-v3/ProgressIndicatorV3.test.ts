@@ -13,7 +13,7 @@ describe('ProgressIndicatorV3', () => {
 		const { container } = render(ProgressIndicatorV3, {
 			props: {
 				currentStep: 1,
-				totalSteps: 4,
+				totalSteps: 5,
 				maxStepReached: 1
 			}
 		});
@@ -21,7 +21,7 @@ describe('ProgressIndicatorV3', () => {
 		expect(screen.getByText('Capture')).toBeInTheDocument();
 		expect(screen.queryByText('Project Capture')).not.toBeInTheDocument();
 		expect(container.querySelector('.relative.min-w-0')).toBeInTheDocument();
-		expect(container.querySelector('.grid.grid-cols-4')).toBeInTheDocument();
+		expect(container.querySelector('.grid.grid-cols-5')).toBeInTheDocument();
 		expect(container.querySelector('.w-16, .w-20')).not.toBeInTheDocument();
 	});
 
@@ -30,7 +30,7 @@ describe('ProgressIndicatorV3', () => {
 		render(ProgressIndicatorV3, {
 			props: {
 				currentStep: 2,
-				totalSteps: 4,
+				totalSteps: 5,
 				maxStepReached: 2,
 				onStepClick
 			}
@@ -43,17 +43,15 @@ describe('ProgressIndicatorV3', () => {
 
 	it('reports saved progress on Ready and preserves it while revisiting earlier steps', async () => {
 		const { rerender } = render(ProgressIndicatorV3, {
-			currentStep: 3,
-			totalSteps: 4,
-			maxStepReached: 3
+			currentStep: 4,
+			totalSteps: 5,
+			maxStepReached: 4
 		});
-		expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '75');
-		await rerender({ currentStep: 1, totalSteps: 4, maxStepReached: 3 });
-		expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '75');
-		expect(
-			screen.getByRole('button', { name: 'Go to Notifications (completed)' })
-		).toBeEnabled();
-		await rerender({ currentStep: 3, totalSteps: 4, maxStepReached: 3, completed: true });
+		expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '80');
+		await rerender({ currentStep: 1, totalSteps: 5, maxStepReached: 4 });
+		expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '80');
+		expect(screen.getByRole('button', { name: 'Go to People (completed)' })).toBeEnabled();
+		await rerender({ currentStep: 4, totalSteps: 5, maxStepReached: 4, completed: true });
 		expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100');
 	});
 });

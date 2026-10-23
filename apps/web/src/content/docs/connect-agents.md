@@ -8,7 +8,7 @@ seoDescription: Connect Claude Code, ChatGPT, Codex, OpenClaw, and custom MCP or
 seoKeywords: BuildOS agents, MCP connector, Claude Code MCP, ChatGPT Actions, ChatGPT remote MCP, Codex MCP, OpenClaw, agent keys, OAuth remote MCP
 icon: Plug
 order: 9
-lastUpdated: 2026-09-22
+lastUpdated: 2026-10-23
 path: apps/web/src/content/docs/connect-agents.md
 ---
 
@@ -237,6 +237,18 @@ Saving a key from the Agent Keys editor re-issues a static key's secret, so upda
 
 Projects marked **restricted**, and projects someone else shared with you, are never included automatically. Grant them one by one.
 
+## Other people's projects
+
+Your agent works for you, so it sees what you can see and nothing more. Other people's projects reach it only through you:
+
+1. **Find someone.** `find_buildos_person` looks up an exact `@handle`. It finds only people who turned on "People with my handle can find me", and it returns their name, handle, and bio, never an email.
+2. **Ask.** `request_buildos_access` sends that person an access request in your name, with an optional note. Agents can ask; only people approve, in BuildOS. There is no tool that approves or shares.
+3. **Check.** `list_buildos_people` shows the requests you sent and received, and the projects shared with you that this connection can read.
+
+Once someone shares a project with you, your agent still needs two more yeses: the owner's setting for your agents (Off, Read, or Write; Read by default), and your own grant of that project to this key or connector. Shared projects carry `shared_with_you` and `owner_name` in project results.
+
+When an owner allows your agents to write, they stay in a lane: they can add tasks and documents, and edit only what you created or are assigned to. They can't archive, delete, invite, or change the project's START HERE. Each agent can make 50 changes per project per day before it pauses and the owner hears about it once.
+
 ## Permission bundles
 
 The Agent Keys UI leads with preset bundles. Pick one and you're done — the per-op matrix sits behind an **Advanced permissions** disclosure if you need finer control.
@@ -300,7 +312,7 @@ The project status op is `onto.project.status.get`, exposed by `tools/list` as `
 Use it when an agent first attaches to a known project, before it starts searching individual tasks or documents. It returns:
 
 - `overview`: short description, task/document/plan/goal/collaborator counts, count summary, and next step when available
-- `collaborators`: active project members with actor ID, display name, email when available, role/access, role profile, and whether the member is the connected user
+- `collaborators`: active project members with actor ID, display name (never an email address), role/access, role profile, and whether the member is the connected user
 - `recent_changes`: most recent project log entries with entity type, action, title, timestamp, and source
 - `upcoming`: overdue tasks, due-soon tasks, upcoming project events, and the time windows used
 

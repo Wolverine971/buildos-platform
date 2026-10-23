@@ -176,6 +176,28 @@ function requestedDocumentTypeKey(args: Record<string, unknown>, existing: unkno
 		: existing;
 }
 
+/**
+ * Only BuildOS itself mints the Start Here type (see the create guard above), so an
+ * update may never turn another document into one. Otherwise any agent with write
+ * access to a document it made, including a guest agent in someone else's project,
+ * could retype it and win the "newest explicit Start Here" pick: the owner's project
+ * page, their BuildOS chat, and every connector would then load that text as the
+ * project's orientation.
+ */
+function assertDocumentUpdateKeepsStartHereType(
+	existingTypeKey: unknown,
+	args: Record<string, unknown>
+): void {
+	if (args.type_key === undefined) return;
+	if (existingTypeKey === START_HERE_DOCUMENT_TYPE_KEY) return;
+	if (resolveDocumentTypeKey(args.type_key) !== START_HERE_DOCUMENT_TYPE_KEY) return;
+	throw new ExternalToolGatewayError(
+		'VALIDATION_ERROR',
+		`type_key "${START_HERE_DOCUMENT_TYPE_KEY}" is reserved for the project's Start Here document, and an existing document can't be changed into it. Keep this document's type, or update the Start Here document itself.`,
+		{ reserved_type_key: START_HERE_DOCUMENT_TYPE_KEY }
+	);
+}
+
 function normalizeDocumentPosition(value: unknown, fieldName: string): number | undefined {
 	if (value === undefined) return undefined;
 	if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
@@ -606,6 +628,7 @@ export async function previewDocumentUpdate(
 		args,
 		requestedDocumentTypeKey(args, existingDocument.type_key)
 	);
+	assertDocumentUpdateKeepsStartHereType(existingDocument.type_key, args);
 	const baseDocument =
 		typeof options.base_content === 'string'
 			? {
@@ -739,6 +762,7 @@ export async function updateDocument(
 		args,
 		requestedDocumentTypeKey(args, existingDocument.type_key)
 	);
+	assertDocumentUpdateKeepsStartHereType(existingDocument.type_key, args);
 	const actorId = await contextActorId(context);
 
 	const updateData: Record<string, unknown> = {

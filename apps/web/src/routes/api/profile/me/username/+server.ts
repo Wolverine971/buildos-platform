@@ -56,7 +56,7 @@ export const GET: RequestHandler = async ({ locals: { safeGetSession, supabase }
 
 	const { data, error } = await (supabase as any)
 		.from('users')
-		.select('username, name, email')
+		.select('username, name, email, bio, discoverability, accepts_agent_requests')
 		.eq('id', user.id)
 		.maybeSingle();
 	if (error) {
@@ -64,6 +64,12 @@ export const GET: RequestHandler = async ({ locals: { safeGetSession, supabase }
 	}
 	return ApiResponse.success({
 		username: typeof data?.username === 'string' ? data.username : null,
+		// People layer: who can find me by handle, and whether agent-sent requests reach me.
+		discoverability: data?.discoverability === 'handle' ? 'handle' : 'none',
+		accepts_agent_requests: data?.accepts_agent_requests !== false,
+		// What a person sees when they look this account up by handle (never the email).
+		name: typeof data?.name === 'string' && data.name.trim() ? data.name.trim() : null,
+		bio: typeof data?.bio === 'string' && data.bio.trim() ? data.bio.trim() : null,
 		derived_fallback:
 			typeof data?.name === 'string' && data.name.trim()
 				? data.name
@@ -82,14 +88,16 @@ export const PATCH: RequestHandler = async ({ request, locals: { safeGetSession,
 	const payload = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 	const rawUsername = payload?.username;
 
-	// null / empty string clears the custom username, reverts to derived.
+	// null / empty string clears the custom username, reverts to derived. Without a
+	// handle nobody can find you, so finding-by-handle switches off too (a new
+	// username later doesn't quietly make you findable again).
 	if (rawUsername === null || rawUsername === '') {
 		const { error } = await (supabase as any)
 			.from('users')
-			.update({ username: null })
+			.update({ username: null, discoverability: 'none' })
 			.eq('id', user.id);
 		if (error) return ApiResponse.databaseError(error);
-		return ApiResponse.success({ username: null });
+		return ApiResponse.success({ username: null, discoverability: 'none' });
 	}
 
 	if (typeof rawUsername !== 'string') {

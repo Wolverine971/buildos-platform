@@ -6,7 +6,20 @@
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import { SITE_URL } from '$lib/constants/seo';
-	import { AlertCircle, ArrowRight, Bell, CheckCircle2, Mail, UserPlus } from 'lucide-svelte';
+	import {
+		AlertCircle,
+		ArrowRight,
+		Bell,
+		CheckCircle2,
+		LogIn,
+		Mail,
+		UserPlus
+	} from '$lib/icons/lucide';
+	import {
+		inviteeRoleSentence,
+		roleWithArticle,
+		shortDate
+	} from '$lib/components/people/people-copy';
 
 	let { data } = $props();
 
@@ -27,10 +40,26 @@
 			(localStatus === 'declined' &&
 				(invite?.can_accept === true || Boolean(localRecoverableUntil)))
 	);
-	let inviterName = $derived(invite?.invited_by_name || invite?.invited_by_email || 'A teammate');
-	let expiresLabel = $derived(
-		invite?.expires_at ? new Date(invite.expires_at).toLocaleDateString() : null
-	);
+	let inviterName = $derived(invite?.invited_by_name || invite?.invited_by_email || 'Someone');
+	let expiresLabel = $derived(shortDate(invite?.expires_at) || null);
+	let projectLabel = $derived(invite?.project_name?.trim() || 'this project');
+	let alreadyMember = $derived(data?.status === 'ready' && data?.alreadyMember === true);
+	let projectHref = $derived(invite?.project_id ? `/projects/${invite.project_id}` : '/projects');
+	/** Why this invite can't be accepted, in the invitee's terms. */
+	let closedMessage = $derived.by(() => {
+		switch (localStatus) {
+			case 'accepted':
+				return 'You already accepted this invite.';
+			case 'expired':
+				return `This invite expired${expiresLabel ? ` on ${expiresLabel}` : ''}. Ask ${inviterName} to send a new one.`;
+			case 'revoked':
+				return `${inviterName} canceled this invite. Ask them if you think that’s a mistake.`;
+			case 'declined':
+				return 'You declined this invite, and it can’t be accepted anymore. Ask for a new one if you changed your mind.';
+			default:
+				return 'This invite can’t be accepted anymore.';
+		}
+	});
 	let recoverableLabel = $derived.by(() => {
 		const value = localRecoverableUntil ?? invite?.recoverable_until ?? null;
 		if (!value) return null;
@@ -54,8 +83,8 @@
 	);
 	let inviteDescription = $derived(
 		inviteProjectName
-			? `You've been invited to collaborate on ${inviteProjectName} in BuildOS.`
-			: "You've been invited to collaborate on a project in BuildOS."
+			? `${inviterName} invited you to ${inviteProjectName} on BuildOS.`
+			: 'You’ve been invited to a project on BuildOS.'
 	);
 	let inviteCanonical = $derived(`${SITE_URL}${authRedirect}`);
 
@@ -280,10 +309,10 @@
 						<AlertCircle class="w-5 h-5 text-destructive" />
 					</div>
 					<div class="min-w-0 flex-1">
-						<p class="text-2xs uppercase tracking-[0.15em] text-muted-foreground mb-1">
-							Invite Error
-						</p>
-						<h1 class="text-base font-semibold text-foreground">Invite unavailable</h1>
+						<p class="micro-label text-muted-foreground">Project invite</p>
+						<h1 class="mt-1 text-lg font-semibold text-foreground">
+							{data.title ?? 'This invite isn’t available'}
+						</h1>
 						<p class="mt-1.5 text-sm text-muted-foreground">{data.message}</p>
 					</div>
 				</div>
@@ -306,32 +335,26 @@
 						<UserPlus class="w-5 h-5 text-accent" />
 					</div>
 					<div class="min-w-0 flex-1">
-						<p class="text-2xs uppercase tracking-[0.15em] text-muted-foreground mb-1">
-							Project Invite
-						</p>
-						<h1 class="text-base font-semibold text-foreground">
-							{invite?.project_name || 'BuildOS project'}
+						<p class="micro-label text-accent">Project invite</p>
+						<h1 class="mt-1 text-xl font-semibold text-foreground">
+							{inviterName} invited you to {projectLabel}
 						</h1>
-						<p class="mt-1.5 text-sm text-muted-foreground">
-							Invited by {inviterName}
-						</p>
 					</div>
 				</div>
 
-				<div class="mt-4 rounded-lg border border-border bg-background/60 px-3 py-2.5">
-					<div class="flex items-center justify-between text-xs text-muted-foreground">
-						<span class="uppercase tracking-[0.1em]">Role</span>
-						<span class="font-semibold text-foreground">
-							{invite?.role_key === 'editor' ? 'Editor' : 'Viewer'}
-						</span>
-					</div>
-					{#if expiresLabel}
-						<div
-							class="mt-2 flex items-center justify-between text-xs text-muted-foreground"
+				<div
+					class="mt-4 rounded-lg border border-border bg-background px-3.5 py-3 shadow-ink-inner space-y-2"
+				>
+					<p class="text-sm text-foreground">
+						<span class="font-semibold"
+							>You’ll join as {roleWithArticle(invite?.role_key)}.</span
 						>
-							<span class="uppercase tracking-[0.1em]">Expires</span>
-							<span>{expiresLabel}</span>
-						</div>
+						{inviteeRoleSentence(invite?.role_key)}
+					</p>
+					{#if expiresLabel && isPending && !alreadyMember}
+						<p class="text-xs text-muted-foreground">
+							This invite works until {expiresLabel}.
+						</p>
 					{/if}
 				</div>
 
@@ -342,47 +365,64 @@
 				{#if data?.status === 'unauthenticated'}
 					<div class="mt-4 space-y-2">
 						<a
-							href={loginUrl}
-							class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-3.5 py-2 text-sm font-semibold text-accent-foreground shadow-ink pressable transition-colors hover:bg-accent/90"
+							href={registerUrl}
+							class="inline-flex w-full min-h-[44px] items-center justify-center gap-2 rounded-lg bg-accent px-3.5 py-2 text-sm font-semibold text-accent-foreground shadow-ink pressable transition-colors hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
-							Sign in to accept
-							<ArrowRight class="w-4 h-4" />
+							<UserPlus class="w-4 h-4" />
+							Create account to accept
 						</a>
 						<a
-							href={registerUrl}
-							class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-semibold text-foreground shadow-ink pressable transition-colors hover:bg-muted"
+							href={loginUrl}
+							class="inline-flex w-full min-h-[44px] items-center justify-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-semibold text-foreground shadow-ink pressable transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
-							Create account
-							<UserPlus class="w-4 h-4" />
+							<LogIn class="w-4 h-4" />
+							Sign in to accept
 						</a>
+						<p class="pt-1 text-xs text-muted-foreground">
+							Use the email this invite was sent to. After you sign in, you come right
+							back here.
+						</p>
 					</div>
 				{:else if data?.status === 'ready'}
-					{#if !canAcceptInvite}
+					{#if alreadyMember && !showNotificationPrompt}
+						<p class="mt-4 text-sm text-foreground">
+							You’re already in {projectLabel}.
+						</p>
+						<div class="mt-3">
+							<a
+								href={projectHref}
+								class="inline-flex w-full min-h-[44px] items-center justify-center gap-2 rounded-lg bg-accent px-3.5 py-2 text-sm font-semibold text-accent-foreground shadow-ink pressable transition-colors hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							>
+								Open {projectLabel}
+								<ArrowRight class="w-4 h-4" />
+							</a>
+						</div>
+					{:else if !canAcceptInvite}
 						<div
 							class="mt-4 rounded-lg border border-border bg-muted px-3 py-2 text-sm text-muted-foreground"
+							role="status"
 						>
-							{#if localStatus === 'accepted'}Invite already accepted.{/if}
-							{#if localStatus === 'expired'}This invite has expired.{/if}
-							{#if localStatus === 'revoked'}This invite has been revoked.{/if}
-							{#if localStatus === 'declined'}This declined invite is no longer
-								recoverable.{/if}
+							{closedMessage}
 						</div>
 						<div class="mt-4">
 							<a
 								href="/projects"
-								class="inline-flex items-center gap-2 rounded-lg bg-accent px-3.5 py-2 text-sm font-semibold text-accent-foreground shadow-ink pressable transition-colors hover:bg-accent/90"
+								class="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-semibold text-foreground shadow-ink pressable transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							>
-								Go to projects
+								Go to your projects
 								<ArrowRight class="w-4 h-4" />
 							</a>
 						</div>
 					{:else if !data?.emailMatches}
 						<div
 							class="mt-4 rounded-lg border border-border bg-muted px-3 py-2 text-sm text-muted-foreground"
+							role="status"
 						>
-							This invite is for <strong>{invite?.invitee_email}</strong>. You're
-							signed in as
-							<strong>{data?.userEmail}</strong>.
+							This invite was sent to <strong class="text-foreground"
+								>{data?.inviteeEmailHint ?? 'a different email'}</strong
+							>, and you’re signed in as
+							<strong class="text-foreground">{data?.userEmail}</strong>. Switch to
+							the invited account to accept it.
 						</div>
 						<div class="mt-4">
 							<a

@@ -36,7 +36,8 @@
 		Mail,
 		Bot,
 		CreditCard,
-		Workflow
+		Workflow,
+		Users
 	} from '$lib/icons/lucide';
 	import { toggleMode } from 'mode-watcher';
 	import BriefStatusIndicator from './BriefStatusIndicator.svelte';
@@ -1221,6 +1222,16 @@
 										Activity
 									</a>
 
+									<a
+										href="/people"
+										onclick={() => handleMenuItemClick('/people')}
+										class="flex items-center w-full px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors
+										{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
+									>
+										<Users class="w-4 h-4 mr-3" />
+										People
+									</a>
+
 									{#if showAgentConnectionCta}
 										<div class="px-2 py-1">
 											<a
@@ -1507,6 +1518,16 @@
 						>
 							<Activity class="w-5 h-5 mr-3" />
 							Activity
+						</a>
+
+						<a
+							href="/people"
+							onclick={() => handleMenuItemClick('/people')}
+							class="flex items-center px-3 py-1.5 text-base font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors
+							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
+						>
+							<Users class="w-5 h-5 mr-3" />
+							People
 						</a>
 
 						<button

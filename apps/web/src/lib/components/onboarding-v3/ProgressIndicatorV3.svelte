@@ -67,7 +67,7 @@
 			</div>
 
 			<!-- Step dots and labels -->
-			<div class="mt-2.5 grid grid-cols-4">
+			<div class="mt-2.5 grid grid-cols-5">
 				{#each stepLabels as label, i (label)}
 					{@const isCompleted = completed || i < maxStepReached}
 					{@const isCurrent = i === currentStep}

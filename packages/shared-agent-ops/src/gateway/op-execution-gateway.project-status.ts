@@ -110,16 +110,18 @@ function extractProjectStatusActor(value: unknown): Record<string, unknown> | nu
 function serializeProjectStatusCollaborator(row: Record<string, unknown>, currentActorId: string) {
 	const actor = extractProjectStatusActor(row.actor);
 	const actorId = typeof row.actor_id === 'string' ? row.actor_id : null;
-	const name = typeof actor?.name === 'string' && actor.name.trim() ? actor.name.trim() : null;
+	// Agents never get people's email addresses (people layer): a member with no name
+	// shows as "Project member", never as their email.
 	const email =
 		typeof actor?.email === 'string' && actor.email.trim() ? actor.email.trim() : null;
-	const displayName = name ?? email ?? (actorId === currentActorId ? 'You' : 'Project member');
+	const rawName = typeof actor?.name === 'string' && actor.name.trim() ? actor.name.trim() : null;
+	const name = rawName && rawName.toLowerCase() !== email?.toLowerCase() ? rawName : null;
+	const displayName = name ?? (actorId === currentActorId ? 'You' : 'Project member');
 
 	return {
 		id: typeof row.id === 'string' ? row.id : null,
 		actor_id: actorId,
 		display_name: displayName,
-		email,
 		role_key: typeof row.role_key === 'string' ? row.role_key : null,
 		role_name:
 			typeof row.role_name === 'string' && row.role_name.trim() ? row.role_name.trim() : null,

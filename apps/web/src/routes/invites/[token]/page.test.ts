@@ -115,4 +115,89 @@ describe('/invites/[token] page', () => {
 		expect(screen.getByRole('button', { name: /accept anyway/i })).toBeInTheDocument();
 		expect(screen.queryByRole('button', { name: /decline invite/i })).not.toBeInTheDocument();
 	});
+
+	it('says who invited them and their role in plain words', () => {
+		render(InviteTokenPage, {
+			props: {
+				data: {
+					status: 'unauthenticated',
+					redirectTo: '/invites/invite-token',
+					invite: {
+						invite_id: 'invite-1',
+						project_name: 'Project Alpha',
+						role_key: 'viewer',
+						status: 'pending',
+						invited_by_name: 'Owner',
+						expires_at: '2026-04-30T12:00:00.000Z'
+					}
+				}
+			}
+		});
+
+		expect(
+			screen.getByRole('heading', { name: 'Owner invited you to Project Alpha' })
+		).toBeInTheDocument();
+		expect(screen.getByText('You’ll join as a viewer.')).toBeInTheDocument();
+		expect(screen.getByText(/This invite works until Apr 30/)).toBeInTheDocument();
+	});
+
+	it('tells someone already in the project and links to it', () => {
+		render(InviteTokenPage, {
+			props: {
+				data: {
+					status: 'ready',
+					redirectTo: '/invites/invite-token',
+					userEmail: 'invitee@example.com',
+					emailMatches: true,
+					alreadyMember: true,
+					invite: {
+						invite_id: 'invite-1',
+						project_id: 'project-1',
+						project_name: 'Project Alpha',
+						role_key: 'editor',
+						status: 'pending',
+						invitee_email: 'invitee@example.com',
+						invited_by_name: 'Owner'
+					}
+				}
+			}
+		});
+
+		expect(screen.getByText('You’re already in Project Alpha.')).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: /Open Project Alpha/ })).toHaveAttribute(
+			'href',
+			'/projects/project-1'
+		);
+		expect(screen.queryByRole('button', { name: /accept invite/i })).not.toBeInTheDocument();
+	});
+
+	it('explains the wrong account and an expired or canceled invite', () => {
+		const base = {
+			status: 'ready',
+			redirectTo: '/invites/invite-token',
+			userEmail: 'other@example.com',
+			emailMatches: false,
+			invite: {
+				invite_id: 'invite-1',
+				project_name: 'Project Alpha',
+				role_key: 'viewer',
+				status: 'pending',
+				invitee_email: 'invitee@example.com',
+				invited_by_name: 'Owner',
+				expires_at: '2026-04-30T12:00:00.000Z'
+			}
+		};
+		const view = render(InviteTokenPage, {
+			props: { data: { ...base, inviteeEmailHint: 'i•••@e•••.com' } }
+		});
+		expect(screen.getByText(/Switch to the invited account to accept it/)).toBeInTheDocument();
+		expect(screen.getByText('i•••@e•••.com')).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: /Switch account/ })).toBeInTheDocument();
+		view.unmount();
+
+		render(InviteTokenPage, {
+			props: { data: { ...base, invite: { ...base.invite, status: 'revoked' } } }
+		});
+		expect(screen.getByText(/Owner canceled this invite/)).toBeInTheDocument();
+	});
 });

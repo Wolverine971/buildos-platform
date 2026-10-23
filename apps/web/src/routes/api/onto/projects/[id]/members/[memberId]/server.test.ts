@@ -109,6 +109,59 @@ describe('PATCH /api/onto/projects/[id]/members/[memberId]', () => {
 		});
 	});
 
+	it('drops agent Write to Read when an editor becomes a viewer', async () => {
+		const event = createEvent({ role_key: 'viewer' });
+		const supabase = event.locals.supabase as any;
+
+		supabase.rpc.mockImplementation(async (name: string) => ({
+			data:
+				name === 'current_actor_has_project_member_access'
+					? true
+					: name === 'set_project_member_agent_access'
+						? { member_id: 'member-1', agent_access: 'read' }
+						: {
+								id: 'member-1',
+								actor_id: 'actor-2',
+								role_key: 'viewer',
+								access: 'read'
+							},
+			error: null
+		}));
+
+		const select = vi.fn().mockReturnValue({
+			eq: vi.fn().mockReturnValue({
+				eq: vi.fn().mockReturnValue({
+					maybeSingle: vi.fn().mockResolvedValue({
+						data: {
+							id: 'member-1',
+							actor_id: 'actor-2',
+							role_key: 'editor',
+							access: 'write',
+							agent_access: 'write',
+							removed_at: null
+						},
+						error: null
+					})
+				})
+			})
+		});
+		const insert = vi.fn().mockResolvedValue({ error: null });
+		supabase.from.mockImplementation((table: string) => {
+			if (table === 'onto_project_members') return { select };
+			if (table === 'onto_project_logs') return { insert };
+			return {};
+		});
+
+		const response = await PATCH(event);
+
+		expect(response.status).toBe(200);
+		expect(supabase.rpc).toHaveBeenCalledWith('set_project_member_agent_access', {
+			p_project_id: 'project-1',
+			p_member_id: 'member-1',
+			p_agent_access: 'read'
+		});
+	});
+
 	it('rejects invalid role updates', async () => {
 		const event = createEvent({ role_key: 'owner' });
 		const response = await PATCH(event);

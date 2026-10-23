@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/onto/projects/[id]/invites/[inviteId]/resend/+server.ts
 /**
- * Resend a project invite (collaborators with write access).
+ * Resend a project invite (project owner only). Invites sent to an @handle are
+ * logged and reported by handle; the email behind it stays on the server.
  */
 
 import type { RequestHandler } from './$types';
@@ -8,19 +9,9 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import { logOntologyApiError } from '../../../../../shared/error-logging';
 import { EmailService } from '$lib/services/email-service';
-import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate';
-import { PUBLIC_APP_URL } from '$env/static/public';
-import { dev } from '$app/environment';
+import { appBaseUrl } from '$lib/server/people/invite-links';
+import { buildProjectInviteEmail } from '$lib/server/people/people-emails';
 import { createHash, randomBytes } from 'crypto';
-
-function escapeHtml(value: string): string {
-	return value
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;')
-		.replace(/'/g, '&#39;');
-}
 
 const INVITE_EXPIRY_DAYS = 7;
 
@@ -46,7 +37,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			'current_actor_has_project_member_access',
 			{
 				p_project_id: projectId,
-				p_required_access: 'write'
+				p_required_access: 'admin'
 			}
 		);
 
@@ -65,12 +56,12 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		}
 
 		if (!hasAccess) {
-			return ApiResponse.forbidden('Access denied');
+			return ApiResponse.forbidden('Only the project owner can resend invites');
 		}
 
 		const { data: invite, error: inviteError } = await supabase
 			.from('onto_project_invites')
-			.select('id, invitee_email, role_key, access, status')
+			.select('id, invitee_email, invitee_handle, role_key, access, agent_access, status')
 			.eq('id', inviteId)
 			.eq('project_id', projectId)
 			.maybeSingle();
@@ -183,90 +174,25 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.error('Project not found', 404);
 		}
 
-		const baseUrl = PUBLIC_APP_URL || (dev ? 'http://localhost:5173' : 'https://build-os.com');
 		const inviterName = user.name || user.email || 'A teammate';
-		const safeInviterName = escapeHtml(inviterName);
-		const invitePath = `/invites/${token}`;
-		const inviteUrl = `${baseUrl}${invitePath}`;
-		const registerUrl = `${baseUrl}/auth/register?redirect=${encodeURIComponent(invitePath)}`;
-		const loginUrl = `${baseUrl}/auth/login?redirect=${encodeURIComponent(invitePath)}`;
-		const projectDescription = project.description?.trim() || '';
-		const safeProjectName = escapeHtml(project.name);
-		const safeProjectDescription = escapeHtml(projectDescription);
-		const descriptionHtml = projectDescription
-			? `
-	<div style="background-color: #FFFFFF; border-left: 3px solid #D96C1E; padding: 12px 16px; margin: 16px 0; border-radius: 0 4px 4px 0;">
-		<p style="margin: 0 0 4px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #9A9A9A; font-weight: 600;">About this project</p>
-		<p style="margin: 0; font-size: 14px; color: #4A4A4A; line-height: 1.5;">${safeProjectDescription}</p>
-	</div>`
-			: '';
-		const descriptionText = projectDescription
-			? `\n\nAbout this project:\n${projectDescription}\n`
-			: '';
-		const subject = `Reminder: ${inviterName} invited you to "${project.name}"`;
-		const htmlSubject = escapeHtml(subject);
-		const roleLabel = invite.role_key === 'editor' ? 'Editor' : 'Viewer';
-		const roleDescription =
-			invite.role_key === 'editor'
-				? 'You can view, edit, and manage project content.'
-				: 'You can view project content and progress.';
-
-		const content = `
-<div style="text-align: center; margin-bottom: 28px;">
-	<img src="https://build-os.com/s-brain-bolt.png" alt="BuildOS" width="56" height="56" style="display: inline-block; margin-bottom: 20px;" />
-	<h1 style="margin: 0 0 8px 0; font-size: 26px; color: #1A1A1D; font-weight: 700;">Still waiting for you!</h1>
-	<p style="margin: 0; font-size: 15px; color: #6F6E75;">A friendly reminder to join a project on BuildOS</p>
-</div>
-
-<div style="background-color: #FAF9F7; border: 1px solid #DCD9D1; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-	<div style="margin-bottom: 20px;">
-		<p style="margin: 0 0 4px 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #9A9A9A; font-weight: 600;">Invited by</p>
-		<p style="margin: 0; font-size: 18px; font-weight: 600; color: #1A1A1D;">${safeInviterName}</p>
-	</div>
-
-	<div style="border-top: 1px solid #DCD9D1; padding-top: 20px;">
-		<p style="margin: 0 0 4px 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #9A9A9A; font-weight: 600;">Project</p>
-		<p style="margin: 0; font-size: 22px; font-weight: 700; color: #1A1A1D; line-height: 1.3;">
-			${safeProjectName}
-		</p>
-	</div>
-	${descriptionHtml}
-	<div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #DCD9D1;">
-		<div style="display: inline-block; background-color: #EDEBE6; border-radius: 6px; padding: 8px 14px;">
-			<span style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #6F6E75; font-weight: 600;">Your role:</span>
-			<span style="font-size: 14px; font-weight: 700; color: #1A1A1D; margin-left: 6px;">${roleLabel}</span>
-		</div>
-		<p style="margin: 10px 0 0 0; font-size: 13px; color: #6F6E75; line-height: 1.4;">
-			${roleDescription}
-		</p>
-	</div>
-</div>
-
-<div style="text-align: center; margin-bottom: 28px;">
-	<a href="${inviteUrl}" style="display: inline-block; background: linear-gradient(135deg, #D96C1E 0%, #E8943A 100%); color: #FAF9F7; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 36px; border-radius: 8px; box-shadow: 0 4px 12px rgba(217, 108, 30, 0.35);">
-		Accept Invitation
-	</a>
-</div>
-
-<p style="text-align: center; font-size: 13px; color: #6F6E75; margin: 0 0 16px 0; line-height: 1.6;">
-	New to BuildOS? <a href="${registerUrl}" style="color: #D96C1E; font-weight: 600; text-decoration: none;">Create an account</a> to accept.<br />
-	Already have an account? <a href="${loginUrl}" style="color: #D96C1E; font-weight: 600; text-decoration: none;">Sign in</a>.
-</p>
-
-<p style="text-align: center; font-size: 12px; color: #9A9A9A; margin: 0;">
-	This invitation expires in ${INVITE_EXPIRY_DAYS} days. If you didn't expect this email, you can safely ignore it.
-</p>
-		`.trim();
-
-		const html = generateMinimalEmailHTML({ subject: htmlSubject, content });
-		const textBody = `Reminder: ${inviterName} is waiting for you to collaborate on "${project.name}".${descriptionText}Your role: ${roleLabel} - ${roleDescription}\n\nAccept the invite: ${inviteUrl}\n\nNew to BuildOS? Create an account: ${registerUrl}\nAlready have an account? Sign in: ${loginUrl}\n\nThis invite expires in ${INVITE_EXPIRY_DAYS} days.`;
+		const inviteUrl = `${appBaseUrl()}/invites/${token}`;
+		const inviteEmail = buildProjectInviteEmail({
+			inviterName,
+			projectName: project.name,
+			projectDescription: project.description,
+			roleKey: invite.role_key,
+			agentAccess: invite.agent_access ?? 'read',
+			inviteUrl,
+			expiresAt,
+			reminder: true
+		});
 
 		const emailService = new EmailService(supabase);
 		const emailResult = await emailService.sendEmail({
 			to: invite.invitee_email,
-			subject,
-			body: textBody,
-			html,
+			subject: inviteEmail.subject,
+			body: inviteEmail.text,
+			html: inviteEmail.html,
 			userId: user.id,
 			createdBy: user.id,
 			metadata: {
@@ -309,7 +235,9 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			change_source: 'api',
 			after_data: {
 				event: 'invite_resent',
-				invitee_email: invite.invitee_email,
+				...(invite.invitee_handle
+					? { invitee_handle: invite.invitee_handle }
+					: { invitee_email: invite.invitee_email }),
 				role_key: invite.role_key,
 				access: invite.access
 			}
@@ -328,7 +256,8 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			});
 		}
 
-		return ApiResponse.success({ inviteId, expires_at: expiresAt });
+		// The new link exists only in this response (only its hash is stored).
+		return ApiResponse.success({ inviteId, expires_at: expiresAt, invite_url: inviteUrl });
 	} catch (error) {
 		console.error('[Project Invites API] Failed to resend invite:', error);
 		await logOntologyApiError({

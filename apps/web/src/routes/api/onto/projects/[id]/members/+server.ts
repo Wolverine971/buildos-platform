@@ -1,7 +1,9 @@
 // apps/web/src/routes/api/onto/projects/[id]/members/+server.ts
 /**
  * Project members endpoint
- * - GET: list active members (read access)
+ * - GET: list active members (read access), each with what their agents may do
+ *   here (agent_access: off | read | write) and, for people who joined with the
+ *   project's invite link, joined_via_invite_link_id.
  */
 
 import type { RequestHandler } from './$types';
@@ -43,7 +45,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		const { data: members, error } = await supabase
 			.from('onto_project_members')
 			.select(
-				'id, project_id, actor_id, role_key, access, role_name, role_description, created_at, added_by_actor_id, removed_at, actor:onto_actors!onto_project_members_actor_id_fkey(id, user_id, name, email)'
+				'id, project_id, actor_id, role_key, access, agent_access, joined_via_invite_link_id, role_name, role_description, created_at, added_by_actor_id, removed_at, actor:onto_actors!onto_project_members_actor_id_fkey(id, user_id, name, email)'
 			)
 			.eq('project_id', projectId)
 			.is('removed_at', null)

@@ -1,3 +1,4 @@
+// packages/shared-agent-ops/src/gateway/op-execution-gateway.task-assignment.ts
 import { isValidUUID } from '@buildos/shared-types';
 import { ExternalToolGatewayError } from './op-execution-gateway.responses';
 
@@ -16,11 +17,11 @@ type IndexedProjectMember = {
 	keys: Set<string>;
 };
 
+/** Never carries an email: task results reach external agents (people layer). */
 export type GatewayTaskAssignee = {
 	actor_id: string;
 	user_id: string | null;
 	name: string | null;
-	email: string | null;
 	assigned_at: string;
 };
 
@@ -58,12 +59,12 @@ function buildMemberHandleKeys(actor: ProjectMemberActor | null): Set<string> {
 	return keys;
 }
 
+/** Shown to agents in ambiguity errors: a name or an actor id, never email text. */
 function formatMemberLabel(member: IndexedProjectMember): string {
 	const name = member.actor?.name?.trim();
-	if (name) return name;
 	const email = member.actor?.email?.trim().toLowerCase();
-	if (email) return email.split('@')[0] ?? email;
-	return member.actorId.slice(0, 8);
+	if (name && name.toLowerCase() !== email) return name;
+	return `member ${member.actorId}`;
 }
 
 function resolveHandle(handle: string, members: IndexedProjectMember[]): IndexedProjectMember {
@@ -232,11 +233,13 @@ export async function fetchGatewayTaskAssignees(params: {
 		if (!rawActor || typeof rawActor !== 'object') continue;
 		const actor = rawActor as ProjectMemberActor;
 		if (typeof actor.id !== 'string' || typeof row.created_at !== 'string') continue;
+		const email = actor.email?.trim().toLowerCase() ?? null;
+		const name = actor.name?.trim() || null;
 		assignees.push({
 			actor_id: actor.id,
 			user_id: actor.user_id ?? null,
-			name: actor.name ?? null,
-			email: actor.email ?? null,
+			// An actor created without a name was named after its email.
+			name: name && name.toLowerCase() !== email ? name : null,
 			assigned_at: row.created_at
 		});
 	}

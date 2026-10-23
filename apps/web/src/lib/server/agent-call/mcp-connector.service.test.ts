@@ -410,10 +410,11 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 			for (const writeTool of WRITE_BUNDLE_TOOLS) {
 				expect(names).not.toContain(writeTool);
 			}
-			// Requesting approval changes approval state but cannot edit project data.
+			// Requesting approval or access creates a request someone sees, but cannot
+			// edit project data.
 			for (const tool of body.result.tools) {
 				expect(tool.annotations.readOnlyHint).toBe(
-					tool.name !== 'request_buildos_permission'
+					!['request_buildos_permission', 'request_buildos_access'].includes(tool.name)
 				);
 			}
 		});

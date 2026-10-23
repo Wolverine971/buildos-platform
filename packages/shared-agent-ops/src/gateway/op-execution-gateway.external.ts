@@ -46,6 +46,7 @@ import {
 	extractWriteEntityMeta,
 	normalizeGatewayError
 } from './op-execution-gateway.responses';
+import { applyGuestAgentLane } from './op-execution-gateway.guest-lane';
 import {
 	assertProjectWriteAccess,
 	explainMergedProjectRefusal,
@@ -525,6 +526,17 @@ export async function executeGatewayOp(params: {
 	const executionStartedAt = new Date().toISOString();
 
 	try {
+		// Writes into projects someone else owns stay inside the guest-agent lane.
+		const callScope = isWriteOp(canonicalOp)
+			? await applyGuestAgentLane({
+					admin: params.admin,
+					userId: params.userId,
+					callerId: params.callerId,
+					op: canonicalOp,
+					args: opArgs,
+					scope: params.scope
+				})
+			: params.scope;
 		const result = await entry.handler(
 			{
 				admin: params.admin,
@@ -533,7 +545,7 @@ export async function executeGatewayOp(params: {
 				oauthGrantId: params.oauthGrantId,
 				projectScopeMode: params.projectScopeMode,
 				callSessionId: params.callSessionId,
-				scope: params.scope,
+				scope: callScope,
 				calendar: params.calendar,
 				taskSync: params.taskSync,
 				downstreamIdempotencyKey

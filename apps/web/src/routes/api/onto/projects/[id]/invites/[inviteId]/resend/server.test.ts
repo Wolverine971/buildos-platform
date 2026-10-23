@@ -1,5 +1,6 @@
 // apps/web/src/routes/api/onto/projects/[id]/invites/[inviteId]/resend/server.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createHash } from 'crypto';
 import type { RequestEvent } from './$types';
 
 const sendEmailMock = vi.fn();
@@ -89,8 +90,23 @@ describe('POST /api/onto/projects/[id]/invites/[inviteId]/resend', () => {
 		expect(sendEmailMock).not.toHaveBeenCalled();
 		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
 			p_project_id: 'project-1',
-			p_required_access: 'write'
+			p_required_access: 'admin'
 		});
+	});
+
+	it('returns forbidden unless the caller owns the project', async () => {
+		const event = createEvent();
+		const supabase = event.locals.supabase as any;
+
+		supabase.rpc.mockResolvedValue({ data: false, error: null });
+
+		const response = await POST(event);
+		const payload = await response.json();
+
+		expect(response.status).toBe(403);
+		expect(payload.error).toBe('Only the project owner can resend invites');
+		expect(supabase.from).not.toHaveBeenCalled();
+		expect(sendEmailMock).not.toHaveBeenCalled();
 	});
 
 	it('resends invite and emails the recipient', async () => {
@@ -165,7 +181,19 @@ describe('POST /api/onto/projects/[id]/invites/[inviteId]/resend', () => {
 		expect(sendEmailMock).toHaveBeenCalled();
 
 		expect(sendEmailMock.mock.calls.at(0)?.at(0)).toEqual(
-			expect.objectContaining({ to: 'invitee@example.com' })
+			expect.objectContaining({
+				to: 'invitee@example.com',
+				subject: 'Reminder: Owner invited you to Project Alpha on BuildOS'
+			})
+		);
+		// The fresh link comes back once so the owner can copy it; only its hash is stored.
+		const url: string = payload.data.invite_url;
+		expect(url).toMatch(/^http:\/\/localhost:5173\/invites\/[0-9a-f]{64}$/);
+		const storedHash = updateInvites.mock.calls[0]?.[0]?.token_hash;
+		expect(storedHash).toBe(
+			createHash('sha256')
+				.update(url.split('/').pop() ?? '')
+				.digest('hex')
 		);
 	});
 

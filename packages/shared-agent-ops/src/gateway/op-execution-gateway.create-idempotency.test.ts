@@ -25,7 +25,8 @@ vi.mock('./op-execution-gateway.entity-access', async (importOriginal) => ({
 	...(await importOriginal<object>()),
 	loadCoreEntityForAccess: vi.fn(async () => ({
 		entity: { id: '22222222-2222-4222-8222-222222222222', title: 'Task' },
-		project
+		project,
+		projectId: project.id
 	}))
 }));
 vi.mock('./op-execution-gateway.edges', async (importOriginal) => ({

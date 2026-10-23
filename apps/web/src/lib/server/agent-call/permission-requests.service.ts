@@ -227,6 +227,34 @@ export class PermissionRequestService {
 				: {})
 		};
 	}
+	/**
+	 * The approver of a request is the connection's own person, so in a project someone
+	 * else owns an approval (and "always allow") would let that person's agent edit the
+	 * owner's items past the owner's agent setting and the guest-agent lane. Until
+	 * requests route to the project owner, they only work in the person's own projects.
+	 */
+	private async assertOwnProject(projectId: string) {
+		const refusal = new PermissionRequestError(
+			'Edit requests work only in projects your person owns. In a project someone else shared, your person can make the change in BuildOS.',
+			'PERMISSION_DENIED'
+		);
+		const { data: caller } = await this.admin
+			.from('external_agent_callers')
+			.select('user_id')
+			.eq('id', this.ref.caller_id)
+			.maybeSingle();
+		if (typeof caller?.user_id !== 'string') throw refusal;
+		const [{ data: actor }, { data: project }] = await Promise.all([
+			this.admin
+				.from('onto_actors')
+				.select('id')
+				.eq('user_id', caller.user_id)
+				.eq('kind', 'human')
+				.maybeSingle(),
+			this.admin.from('onto_projects').select('created_by').eq('id', projectId).maybeSingle()
+		]);
+		if (typeof actor?.id !== 'string' || project?.created_by !== actor.id) throw refusal;
+	}
 	async replay(input: unknown, key: unknown) {
 		// Legacy updates accept a broader schema. Parse the bounded proposal only
 		// after finding a key owned by this exact connection boundary.
@@ -265,6 +293,7 @@ export class PermissionRequestService {
 			.maybeSingle();
 		if (error || !target || !this.scope.project_ids?.includes(target.project_id))
 			throw new PermissionRequestError('Target is outside connector access');
+		await this.assertOwnProject(target.project_id);
 		const before = await this.rpc('agent_edit_snapshot', {
 			p_kind: `${proposal.kind}.edit.v1`,
 			p_id: proposal.target_id

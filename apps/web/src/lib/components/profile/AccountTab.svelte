@@ -107,6 +107,12 @@
 	let usernameLoading = $state(false);
 	let usernameError = $state<string | null>(null);
 
+	// Finding you (people layer): handle discoverability + agent-sent requests.
+	let discoverability = $state<'none' | 'handle'>('none');
+	let acceptsAgentRequests = $state(true);
+	let findingSaving = $state<'discoverability' | 'agents' | null>(null);
+	let findingError = $state<string | null>(null);
+
 	function reportOperationError(message: string, toastMessage = message) {
 		errors = [message];
 		toastService.error(toastMessage);
@@ -129,6 +135,8 @@
 					? payload.data.derived_fallback
 					: 'user';
 			usernameDraft = usernameValue ?? '';
+			discoverability = payload?.data?.discoverability === 'handle' ? 'handle' : 'none';
+			acceptsAgentRequests = payload?.data?.accepts_agent_requests !== false;
 		} catch {
 			// Best-effort; leave defaults.
 		}
@@ -178,12 +186,65 @@
 			}
 			usernameValue = null;
 			usernameDraft = '';
+			// The server turns finding-by-handle off with the handle.
+			discoverability = 'none';
 			toastService.success('Username cleared. Public URLs now use your derived name.');
 		} catch (e) {
 			usernameError = e instanceof Error ? e.message : 'Failed to clear username.';
 		} finally {
 			usernameLoading = false;
 		}
+	}
+
+	async function saveFindingSetting(
+		setting: 'discoverability' | 'agents',
+		update: { discoverability?: 'none' | 'handle'; accepts_agent_requests?: boolean }
+	) {
+		if (findingSaving) return;
+		findingSaving = setting;
+		findingError = null;
+		try {
+			const res = await fetch('/api/profile/me/discoverability', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(update)
+			});
+			const payload = await res.json().catch(() => null);
+			if (!res.ok) {
+				findingError = payload?.error || 'Could not save that setting. Try again.';
+				return;
+			}
+			discoverability = payload?.data?.discoverability === 'handle' ? 'handle' : 'none';
+			acceptsAgentRequests = payload?.data?.accepts_agent_requests !== false;
+			if (setting === 'discoverability') {
+				toastService.success(
+					discoverability === 'handle'
+						? 'People with your handle can now find you'
+						: 'People can no longer find you by handle'
+				);
+			} else {
+				toastService.success(
+					acceptsAgentRequests
+						? 'Requests sent by agents will reach you'
+						: 'Requests sent by agents are turned off'
+				);
+			}
+		} catch {
+			findingError = 'Could not save that setting. Try again.';
+		} finally {
+			findingSaving = null;
+		}
+	}
+
+	function toggleDiscoverability() {
+		if (!usernameValue) return;
+		void saveFindingSetting('discoverability', {
+			discoverability: discoverability === 'handle' ? 'none' : 'handle'
+		});
+	}
+
+	function toggleAgentRequests() {
+		void saveFindingSetting('agents', { accepts_agent_requests: !acceptsAgentRequests });
 	}
 
 	async function updateProfile() {
@@ -506,7 +567,7 @@
 	<TabHeader
 		icon={User}
 		title="Account"
-		description="Manage your profile, password, and public URL."
+		description="Manage your profile, password, public URL, and who can find you."
 	/>
 
 	<!-- Success Message -->
@@ -670,6 +731,104 @@
 				</div>
 			</div>
 		</SettingsCard>
+
+		<div id="finding-you" class="scroll-mt-4">
+			<SettingsCard
+				title="Finding you"
+				description="Let people ask you for access to your projects. You always choose what to share."
+				labelledById="finding-you-heading"
+			>
+				<div class="space-y-4">
+					<div class="flex items-start justify-between gap-4">
+						<div class="min-w-0 space-y-0.5">
+							<p
+								id="finding-discoverability-label"
+								class="text-sm font-medium text-foreground"
+							>
+								People with my handle can find me
+							</p>
+							<p
+								id="finding-discoverability-hint"
+								class="text-xs text-muted-foreground"
+							>
+								{#if usernameValue}
+									Anyone who types @{usernameValue} sees your name, handle, and bio,
+									and can ask for access. Never your email.
+								{:else}
+									Claim a username above first. People find you by it.
+								{/if}
+							</p>
+						</div>
+						<button
+							type="button"
+							role="switch"
+							aria-checked={discoverability === 'handle'}
+							aria-labelledby="finding-discoverability-label"
+							aria-describedby="finding-discoverability-hint"
+							disabled={!usernameValue || findingSaving !== null}
+							onclick={toggleDiscoverability}
+							class="relative mt-0.5 h-7 w-12 shrink-0 rounded-full border transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 {discoverability ===
+							'handle'
+								? 'border-accent bg-accent'
+								: 'border-border-strong bg-muted'}"
+						>
+							<span
+								class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-background shadow-ink transition-transform motion-reduce:transition-none {discoverability ===
+								'handle'
+									? 'translate-x-5'
+									: 'translate-x-0'}"
+							></span>
+						</button>
+					</div>
+
+					<div class="flex items-start justify-between gap-4 border-t border-border pt-4">
+						<div class="min-w-0 space-y-0.5">
+							<p
+								id="finding-agents-label"
+								class="text-sm font-medium text-foreground"
+							>
+								Accept requests sent by agents
+							</p>
+							<p id="finding-agents-hint" class="text-xs text-muted-foreground">
+								Someone’s AI agent can ask you for access on their behalf. You still
+								choose what to share.
+							</p>
+						</div>
+						<button
+							type="button"
+							role="switch"
+							aria-checked={acceptsAgentRequests}
+							aria-labelledby="finding-agents-label"
+							aria-describedby="finding-agents-hint"
+							disabled={findingSaving !== null}
+							onclick={toggleAgentRequests}
+							class="relative mt-0.5 h-7 w-12 shrink-0 rounded-full border transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 {acceptsAgentRequests
+								? 'border-accent bg-accent'
+								: 'border-border-strong bg-muted'}"
+						>
+							<span
+								class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-background shadow-ink transition-transform motion-reduce:transition-none {acceptsAgentRequests
+									? 'translate-x-5'
+									: 'translate-x-0'}"
+							></span>
+						</button>
+					</div>
+
+					{#if findingError}
+						<p class="text-xs text-destructive" role="alert">{findingError}</p>
+					{/if}
+
+					<p class="text-xs text-muted-foreground">
+						Requests and projects shared with you are on your
+						<a
+							href="/people"
+							class="font-medium text-accent underline-offset-2 hover:underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							>People page</a
+						>.
+					</p>
+				</div>
+			</SettingsCard>
+		</div>
 	{/if}
 
 	<!-- Password Section -->

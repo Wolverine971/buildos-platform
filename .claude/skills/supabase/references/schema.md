@@ -1,9 +1,9 @@
 # BuildOS Database Schema Reference
 
-Complete column listing for all 282 tables, grouped by domain.
+Complete column listing for all 284 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-10-19T20:42:29.335Z
+**Schema generated:** 2026-10-23T19:14:59.844Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -14,8 +14,8 @@ For enum values, constraints, and RLS, check migrations in `supabase/migrations/
 ## Table of Contents
 
 - [Users & Auth](#users--auth) (6 tables)
-- [People & Contacts](#people--contacts) (6 tables)
-- [Ontology System](#ontology-system) (46 tables)
+- [People & Contacts](#people--contacts) (7 tables)
+- [Ontology System](#ontology-system) (47 tables)
 - [Projects & Tasks (Legacy)](#projects--tasks-legacy) (21 tables)
 - [Chat & Agents](#chat--agents) (47 tables)
 - [Calendar](#calendar) (13 tables)
@@ -52,7 +52,7 @@ actor_id `string?` · created_at `string` · doc_structure `Json` · extraction_
 
 ### users
 
-access_restricted `boolean?` · access_restricted_at `string?` · bio `string?` · created_at `string` · deletion_requested_at `string?` · deletion_scheduled_for `string?` · deletion_status `string?` · email `string` · id `string` · is_admin `boolean` · is_beta_user `boolean?` · last_visit `string?` · name `string?` · onboarding_completed_at `string?` · onboarding_intent `string?` · onboarding_project_id `string?` · onboarding_stakes `string?` · onboarding_step `number` · onboarding_v2_skipped_calendar `boolean?` · onboarding_v2_skipped_sms `boolean?` · preferences `Json?` · productivity_challenges `Json?` · referrer `string?` · signup_source `string?` · stripe_customer_id `string?` · subscription_plan_id `string?` · subscription_status `string?` · timezone `string` · trial_ends_at `string?` · updated_at `string` · usage_archetype `string?` · username `string?` · utm_campaign `string?` · utm_medium `string?` · utm_source `string?` · voice_narration_enabled `boolean`
+accepts_agent_requests `boolean` · access_restricted `boolean?` · access_restricted_at `string?` · bio `string?` · created_at `string` · deletion_requested_at `string?` · deletion_scheduled_for `string?` · deletion_status `string?` · discoverability `string` · email `string` · id `string` · is_admin `boolean` · is_beta_user `boolean?` · last_visit `string?` · name `string?` · onboarding_completed_at `string?` · onboarding_intent `string?` · onboarding_project_id `string?` · onboarding_stakes `string?` · onboarding_step `number` · onboarding_v2_skipped_calendar `boolean?` · onboarding_v2_skipped_sms `boolean?` · preferences `Json?` · productivity_challenges `Json?` · referrer `string?` · signup_source `string?` · stripe_customer_id `string?` · subscription_plan_id `string?` · subscription_status `string?` · timezone `string` · trial_ends_at `string?` · updated_at `string` · usage_archetype `string?` · username `string?` · utm_campaign `string?` · utm_medium `string?` · utm_source `string?` · voice_narration_enabled `boolean`
 
 ### visitors
 
@@ -61,6 +61,10 @@ created_at `string` · id `number` · ip_address `unknown` · updated_at `string
 ---
 
 ## People & Contacts
+
+### people_requests
+
+created_at `string` · decided_at `string?` · decision `Json?` · expires_at `string` · from_user_id `string` · id `string` · note `string?` · project_hint `string?` · role_requested `string` · status `string` · to_user_id `string` · via `string` · via_agent_label `string?` · via_caller_id `string?` · via_oauth_grant_id `string?`
 
 ### user_contact_access_audit
 
@@ -206,9 +210,13 @@ candidate_index `number` · concept `string` · created_at `string` · generatio
 
 candidate_count `number` · completed_at `string?` · created_at `string` · error_message `string?` · id `string` · project_id `string` · requested_by `string` · selected_candidate_id `string?` · status `string` · steering_prompt `string?` · trigger_source `string` · updated_at `string`
 
+### onto_project_invite_links
+
+access `string` · agent_access `string` · created_at `string` · created_by_actor_id `string?` · expires_at `string` · id `string` · join_count `number` · last_joined_at `string?` · project_id `string` · revoked_at `string?` · revoked_reason `string?` · role_key `string` · token_hash `string` · updated_at `string`
+
 ### onto_project_invites
 
-accepted_at `string?` · accepted_by_actor_id `string?` · access `string` · created_at `string` · declined_at `string?` · expires_at `string` · id `string` · invited_by_actor_id `string?` · invitee_email `string` · project_id `string` · role_key `string` · status `string` · token_hash `string`
+accepted_at `string?` · accepted_by_actor_id `string?` · access `string` · agent_access `string` · created_at `string` · declined_at `string?` · expires_at `string` · id `string` · invited_by_actor_id `string?` · invitee_email `string` · invitee_handle `string?` · invitee_user_id `string?` · project_id `string` · role_key `string` · status `string` · token_hash `string`
 
 ### onto_project_logs
 
@@ -216,7 +224,7 @@ action `string` · after_data `Json?` · agent_call_session_id `string?` · befo
 
 ### onto_project_members
 
-access `string` · actor_id `string` · added_by_actor_id `string?` · created_at `string` · id `string` · project_id `string` · removed_at `string?` · removed_by_actor_id `string?` · role_description `string?` · role_key `string` · role_name `string?`
+access `string` · actor_id `string` · added_by_actor_id `string?` · agent_access `string` · created_at `string` · id `string` · joined_via_invite_link_id `string?` · project_id `string` · removed_at `string?` · removed_by_actor_id `string?` · role_description `string?` · role_key `string` · role_name `string?`
 
 ### onto_project_structure_history
 

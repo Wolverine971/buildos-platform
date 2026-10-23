@@ -1,5 +1,7 @@
+// apps/web/src/lib/utils/onboarding-state.ts
 /** Shared milestone math and account-scoped browser drafts. No authorization decisions here. */
-export const ONBOARDING_STEPS = ['Intent', 'Capture', 'Notifications', 'Ready'] as const;
+export const ONBOARDING_STEPS = ['Intent', 'Capture', 'Notifications', 'People', 'Ready'] as const;
+const LAST_STEP = ONBOARDING_STEPS.length - 1;
 
 export function onboardingStep(
 	step: unknown,
@@ -7,12 +9,14 @@ export function onboardingStep(
 	stakes?: string | null
 ): number {
 	const saved =
-		typeof step === 'number' && Number.isInteger(step) ? Math.max(0, Math.min(3, step)) : 0;
+		typeof step === 'number' && Number.isInteger(step)
+			? Math.max(0, Math.min(LAST_STEP, step))
+			: 0;
 	return Math.max(saved, intent && stakes ? 1 : 0);
 }
 
 export function onboardingProgress(step: number, completed = false): number {
-	return completed ? 100 : onboardingStep(step) * 25;
+	return completed ? 100 : Math.round((onboardingStep(step) * 100) / ONBOARDING_STEPS.length);
 }
 
 const PREFIX = 'buildos:onboarding:';
@@ -76,6 +80,43 @@ export function clearOnboardingDrafts(userId?: string): void {
 		} catch {
 			/* Storage can be unavailable in private browsing. */
 		}
+	}
+}
+
+// A handle typed on the signup page, held in this tab until onboarding can claim it for the
+// new account. sessionStorage survives the Google round trip but not a new tab, and the
+// onboarding prefix means sign-out clears it, so it never lands on someone else's account.
+const SIGNUP_HANDLE_KEY = `${PREFIX}signup-handle`;
+const HANDLE_SHAPE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+export function normalizeHandleInput(value: string): string {
+	return value.trim().replace(/^@+/, '').toLowerCase();
+}
+
+export function isValidHandle(value: string): boolean {
+	return value.length >= 3 && value.length <= 24 && HANDLE_SHAPE.test(value);
+}
+
+export function saveSignupHandle(value: string): void {
+	if (typeof sessionStorage === 'undefined') return;
+	const handle = normalizeHandleInput(value);
+	try {
+		if (isValidHandle(handle)) sessionStorage.setItem(SIGNUP_HANDLE_KEY, handle);
+		else sessionStorage.removeItem(SIGNUP_HANDLE_KEY);
+	} catch {
+		/* Storage can be unavailable in private browsing. */
+	}
+}
+
+/** Reads and forgets the signup handle, so it is claimed at most once. */
+export function takeSignupHandle(): string | null {
+	if (typeof sessionStorage === 'undefined') return null;
+	try {
+		const handle = sessionStorage.getItem(SIGNUP_HANDLE_KEY);
+		sessionStorage.removeItem(SIGNUP_HANDLE_KEY);
+		return handle && isValidHandle(handle) ? handle : null;
+	} catch {
+		return null;
 	}
 }
 

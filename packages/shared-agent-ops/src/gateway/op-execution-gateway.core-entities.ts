@@ -339,6 +339,27 @@ export async function updateGoal(context: ToolExecutionContext, args: Record<str
 	);
 }
 
+/**
+ * Check a new entity's parents before inserting it, so a parent the call may not
+ * use (another project, or one this connector can't write) never leaves an orphan
+ * row behind a refused call. createEdge repeats these checks when it links.
+ */
+async function assertParentsWritableInProject(
+	context: ToolExecutionContext,
+	projectId: string,
+	parents: Array<{ kind: 'goal' | 'milestone'; id: string }>
+): Promise<void> {
+	for (const parent of parents) {
+		const access = await loadCoreEntityForAccess(context, parent.kind, parent.id, 'write');
+		if (access.projectId !== projectId) {
+			throw new ExternalToolGatewayError(
+				'VALIDATION_ERROR',
+				'Cross-project edges are not allowed'
+			);
+		}
+	}
+}
+
 export async function createPlan(context: ToolExecutionContext, args: Record<string, unknown>) {
 	const visible = await loadVisibleProjects(context);
 	const project = assertAccessibleProject(visible.projectMap, args.project_id);
@@ -353,6 +374,12 @@ export async function createPlan(context: ToolExecutionContext, args: Record<str
 	const startDate =
 		normalizeOptionalText(args.start_date, 'start_date', { allowNull: true }) || null;
 	const endDate = normalizeOptionalText(args.end_date, 'end_date', { allowNull: true }) || null;
+	await assertParentsWritableInProject(context, project.id, [
+		...(typeof args.goal_id === 'string' ? [{ kind: 'goal' as const, id: args.goal_id }] : []),
+		...(typeof args.milestone_id === 'string'
+			? [{ kind: 'milestone' as const, id: args.milestone_id }]
+			: [])
+	]);
 	const insertPayload: Record<string, unknown> = {
 		project_id: project.id,
 		name,
@@ -480,7 +507,7 @@ export async function createMilestone(
 			'goal_id is required for milestones'
 		);
 	}
-	await loadCoreEntityForAccess(context, 'goal', goalId, 'write');
+	await assertParentsWritableInProject(context, project.id, [{ kind: 'goal', id: goalId }]);
 	const actorId = await contextActorId(context);
 	const title = requireTrimmedString(args.title, 'title');
 	const stateKey = normalizeStateValue(args.state_key, 'state_key', MILESTONE_STATES, 'pending');

@@ -16521,17 +16521,86 @@ export type Database = {
           },
         ]
       }
+      onto_project_invite_links: {
+        Row: {
+          access: string
+          agent_access: string
+          created_at: string
+          created_by_actor_id: string | null
+          expires_at: string
+          id: string
+          join_count: number
+          last_joined_at: string | null
+          project_id: string
+          revoked_at: string | null
+          revoked_reason: string | null
+          role_key: string
+          token_hash: string
+          updated_at: string
+        }
+        Insert: {
+          access?: string
+          agent_access?: string
+          created_at?: string
+          created_by_actor_id?: string | null
+          expires_at: string
+          id?: string
+          join_count?: number
+          last_joined_at?: string | null
+          project_id: string
+          revoked_at?: string | null
+          revoked_reason?: string | null
+          role_key?: string
+          token_hash: string
+          updated_at?: string
+        }
+        Update: {
+          access?: string
+          agent_access?: string
+          created_at?: string
+          created_by_actor_id?: string | null
+          expires_at?: string
+          id?: string
+          join_count?: number
+          last_joined_at?: string | null
+          project_id?: string
+          revoked_at?: string | null
+          revoked_reason?: string | null
+          role_key?: string
+          token_hash?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_project_invite_links_created_by_actor_id_fkey"
+            columns: ["created_by_actor_id"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_project_invite_links_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onto_project_invites: {
         Row: {
           accepted_at: string | null
           accepted_by_actor_id: string | null
           access: string
+          agent_access: string
           created_at: string
           declined_at: string | null
           expires_at: string
           id: string
           invited_by_actor_id: string | null
           invitee_email: string
+          invitee_handle: string | null
+          invitee_user_id: string | null
           project_id: string
           role_key: string
           status: string
@@ -16541,12 +16610,15 @@ export type Database = {
           accepted_at?: string | null
           accepted_by_actor_id?: string | null
           access: string
+          agent_access?: string
           created_at?: string
           declined_at?: string | null
           expires_at: string
           id?: string
           invited_by_actor_id?: string | null
           invitee_email: string
+          invitee_handle?: string | null
+          invitee_user_id?: string | null
           project_id: string
           role_key: string
           status?: string
@@ -16556,12 +16628,15 @@ export type Database = {
           accepted_at?: string | null
           accepted_by_actor_id?: string | null
           access?: string
+          agent_access?: string
           created_at?: string
           declined_at?: string | null
           expires_at?: string
           id?: string
           invited_by_actor_id?: string | null
           invitee_email?: string
+          invitee_handle?: string | null
+          invitee_user_id?: string | null
           project_id?: string
           role_key?: string
           status?: string
@@ -16690,8 +16765,10 @@ export type Database = {
           access: string
           actor_id: string
           added_by_actor_id: string | null
+          agent_access: string
           created_at: string
           id: string
+          joined_via_invite_link_id: string | null
           project_id: string
           removed_at: string | null
           removed_by_actor_id: string | null
@@ -16703,8 +16780,10 @@ export type Database = {
           access: string
           actor_id: string
           added_by_actor_id?: string | null
+          agent_access?: string
           created_at?: string
           id?: string
+          joined_via_invite_link_id?: string | null
           project_id: string
           removed_at?: string | null
           removed_by_actor_id?: string | null
@@ -16716,8 +16795,10 @@ export type Database = {
           access?: string
           actor_id?: string
           added_by_actor_id?: string | null
+          agent_access?: string
           created_at?: string
           id?: string
+          joined_via_invite_link_id?: string | null
           project_id?: string
           removed_at?: string | null
           removed_by_actor_id?: string | null
@@ -16738,6 +16819,13 @@ export type Database = {
             columns: ["added_by_actor_id"]
             isOneToOne: false
             referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_project_members_joined_via_invite_link_id_fkey"
+            columns: ["joined_via_invite_link_id"]
+            isOneToOne: false
+            referencedRelation: "onto_project_invite_links"
             referencedColumns: ["id"]
           },
           {
@@ -17949,6 +18037,75 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      people_requests: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decision: Json | null
+          expires_at: string
+          from_user_id: string
+          id: string
+          note: string | null
+          project_hint: string | null
+          role_requested: string
+          status: string
+          to_user_id: string
+          via: string
+          via_agent_label: string | null
+          via_caller_id: string | null
+          via_oauth_grant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decision?: Json | null
+          expires_at?: string
+          from_user_id: string
+          id?: string
+          note?: string | null
+          project_hint?: string | null
+          role_requested?: string
+          status?: string
+          to_user_id: string
+          via?: string
+          via_agent_label?: string | null
+          via_caller_id?: string | null
+          via_oauth_grant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decision?: Json | null
+          expires_at?: string
+          from_user_id?: string
+          id?: string
+          note?: string | null
+          project_hint?: string | null
+          role_requested?: string
+          status?: string
+          to_user_id?: string
+          via?: string
+          via_agent_label?: string | null
+          via_caller_id?: string | null
+          via_oauth_grant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_requests_via_caller_id_fkey"
+            columns: ["via_caller_id"]
+            isOneToOne: false
+            referencedRelation: "external_agent_callers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_requests_via_oauth_grant_id_fkey"
+            columns: ["via_oauth_grant_id"]
+            isOneToOne: false
+            referencedRelation: "agent_oauth_grants"
             referencedColumns: ["id"]
           },
         ]
@@ -23416,6 +23573,7 @@ export type Database = {
       }
       users: {
         Row: {
+          accepts_agent_requests: boolean
           access_restricted: boolean | null
           access_restricted_at: string | null
           bio: string | null
@@ -23423,6 +23581,7 @@ export type Database = {
           deletion_requested_at: string | null
           deletion_scheduled_for: string | null
           deletion_status: string | null
+          discoverability: string
           email: string
           id: string
           is_admin: boolean
@@ -23454,6 +23613,7 @@ export type Database = {
           voice_narration_enabled: boolean
         }
         Insert: {
+          accepts_agent_requests?: boolean
           access_restricted?: boolean | null
           access_restricted_at?: string | null
           bio?: string | null
@@ -23461,6 +23621,7 @@ export type Database = {
           deletion_requested_at?: string | null
           deletion_scheduled_for?: string | null
           deletion_status?: string | null
+          discoverability?: string
           email: string
           id: string
           is_admin?: boolean
@@ -23492,6 +23653,7 @@ export type Database = {
           voice_narration_enabled?: boolean
         }
         Update: {
+          accepts_agent_requests?: boolean
           access_restricted?: boolean | null
           access_restricted_at?: string | null
           bio?: string | null
@@ -23499,6 +23661,7 @@ export type Database = {
           deletion_requested_at?: string | null
           deletion_scheduled_for?: string | null
           deletion_status?: string | null
+          discoverability?: string
           email?: string
           id?: string
           is_admin?: boolean
@@ -24501,6 +24664,10 @@ export type Database = {
           project_id: string
           role_key: string
         }[]
+      }
+      accept_project_invite_link: {
+        Args: { p_token_hash: string }
+        Returns: Json
       }
       account_deletion_purged_project_ids: {
         Args: { p_user_id: string }
@@ -26025,6 +26192,30 @@ export type Database = {
           run_id: string
         }[]
       }
+      create_people_request: {
+        Args: {
+          p_agent_label?: string
+          p_caller_id?: string
+          p_handle: string
+          p_note?: string
+          p_oauth_grant_id?: string
+          p_project_hint?: string
+          p_role?: string
+          p_user_id?: string
+        }
+        Returns: Json
+      }
+      create_project_invite_link: {
+        Args: {
+          p_agent_access?: string
+          p_expires_in_days?: number
+          p_link_id: string
+          p_project_id: string
+          p_role_key?: string
+          p_token_hash: string
+        }
+        Returns: Json
+      }
       create_question_tree_run_with_job: {
         Args: {
           p_config?: Json
@@ -26070,6 +26261,10 @@ export type Database = {
       }
       decide_agent_permission_request: {
         Args: { p_decision: string; p_digest: string; p_id: string }
+        Returns: Json
+      }
+      decide_people_request: {
+        Args: { p_decision: string; p_grants?: Json; p_request_id: string }
         Returns: Json
       }
       decline_project_invite: {
@@ -26496,6 +26691,10 @@ export type Database = {
       finalize_draft_project: {
         Args: { p_draft_id: string; p_user_id: string }
         Returns: string
+      }
+      find_person_by_handle: {
+        Args: { p_handle: string; p_user_id?: string }
+        Returns: Json
       }
       finish_agentic_chat_specialist_shadow_v1: {
         Args: {
@@ -26954,6 +27153,14 @@ export type Database = {
         Args: { p_actor_id: string; p_project_id: string }
         Returns: Json
       }
+      get_project_invite_link: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
+      get_project_invite_link_preview: {
+        Args: { p_token_hash: string }
+        Returns: Json
+      }
       get_project_invite_preview: {
         Args: { p_token_hash: string }
         Returns: {
@@ -27384,6 +27591,10 @@ export type Database = {
           role_key: string
           status: string
         }[]
+      }
+      list_people_requests: {
+        Args: { p_user_id?: string }
+        Returns: Json
       }
       list_privacy_chat_temp_orphans: {
         Args: { p_limit?: number }
@@ -27902,6 +28113,28 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      people_layer_findable_user: {
+        Args: { p_handle: string }
+        Returns: {
+          accepts_agent_requests: boolean
+          bio: string
+          id: string
+          name: string
+          username: string
+        }[]
+      }
+      people_layer_jwt_role: {
+        Args: never
+        Returns: string
+      }
+      people_layer_normalize_handle: {
+        Args: { p_handle: string }
+        Returns: string
+      }
+      people_layer_viewer: {
+        Args: { p_user_id: string }
+        Returns: string
+      }
       persist_agentic_chat_counted_tool_validation_failure: {
         Args: {
           p_arguments: Json
@@ -28184,6 +28417,22 @@ export type Database = {
           p_response_version: string
         }
         Returns: boolean
+      }
+      project_invite_link_check_settings: {
+        Args: {
+          p_agent_access: string
+          p_expires_in_days: number
+          p_role_key: string
+        }
+        Returns: undefined
+      }
+      project_invite_link_owner_actor: {
+        Args: { p_project_id: string }
+        Returns: string
+      }
+      project_invite_link_settings: {
+        Args: { p_link_id: string }
+        Returns: Json
       }
       project_loop_activity: {
         Args: { p_project_ids?: string[]; p_since: string }
@@ -29045,6 +29294,14 @@ export type Database = {
         Args: { p_calendar_source_id: string; p_user_id: string }
         Returns: string
       }
+      set_project_member_agent_access: {
+        Args: {
+          p_agent_access: string
+          p_member_id: string
+          p_project_id: string
+        }
+        Returns: Json
+      }
       set_project_notification_settings: {
         Args: {
           p_member_enabled?: boolean
@@ -29279,6 +29536,10 @@ export type Database = {
         Returns: Json
       }
       unaccent: { Args: { "": string }; Returns: string }
+      turn_off_project_invite_link: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
       update_cycle: {
         Args: {
           p_cycle_id: string
@@ -29354,6 +29615,15 @@ export type Database = {
       update_llm_usage_summary: {
         Args: { p_date: string; p_user_id: string }
         Returns: undefined
+      }
+      update_project_invite_link: {
+        Args: {
+          p_agent_access: string
+          p_expires_in_days?: number
+          p_project_id: string
+          p_role_key: string
+        }
+        Returns: Json
       }
       update_project_membership_guarded: {
         Args: {

@@ -16,6 +16,7 @@ import {
 	type EntityAccessResult
 } from './op-execution-gateway.entity-access';
 import { serializeExternalEntity } from './op-execution-gateway.serializers';
+import { loadVisibleProjects } from './op-execution-gateway.access';
 
 function normalizeRelationshipDirection(value: unknown): 'outgoing' | 'incoming' | 'both' {
 	if (value === undefined || value === null || value === '') {
@@ -181,12 +182,25 @@ export async function getLinkedEntities(
 		linkedByKind[ref.kind]!.push(ref);
 	}
 
+	// An edge row belongs to the source's project, but nothing in the database stops
+	// its other end from sitting in another project (legacy rows, moves, folds). The
+	// linked rows are read with the service client, so scope them here: entities to
+	// the source's own project, linked projects to the ones this connector can see.
+	const visibleProjectIds = linkedByKind.project
+		? new Set((await loadVisibleProjects(context)).projectMap.keys())
+		: null;
 	const linkedEntities: Record<string, Array<Record<string, unknown>>> = {};
 	for (const [kind, refs] of Object.entries(linkedByKind)) {
 		const table = LINK_ENTITY_TABLES[kind as ExternalLinkEntityKind];
 		const selectColumns = LINK_ENTITY_SELECTS[kind as ExternalLinkEntityKind];
-		const ids = refs.map((ref) => ref.id);
-		const { data, error } = await context.admin.from(table).select(selectColumns).in('id', ids);
+		const ids =
+			kind === 'project'
+				? refs.map((ref) => ref.id).filter((id) => visibleProjectIds?.has(id))
+				: refs.map((ref) => ref.id);
+		if (ids.length === 0) continue;
+		let query = context.admin.from(table).select(selectColumns).in('id', ids);
+		if (kind !== 'project') query = query.eq('project_id', source.projectId);
+		const { data, error } = await query;
 		if (error) {
 			throw new ExternalToolGatewayError(
 				'INTERNAL',
