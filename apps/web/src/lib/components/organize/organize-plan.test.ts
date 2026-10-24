@@ -1,11 +1,6 @@
 // apps/web/src/lib/components/organize/organize-plan.test.ts
 import { describe, expect, it } from 'vitest';
-import {
-	pinnedDocumentReason,
-	previewOrganizePlan,
-	visibleDocumentTree,
-	type OrganizeMove
-} from './organize-plan';
+import { previewOrganizePlan, visibleDocumentTree, type OrganizeMove } from './organize-plan';
 import { organizeFixtures } from './organize-fixtures';
 
 const move: OrganizeMove = {
@@ -116,16 +111,6 @@ describe('Organize planner', () => {
 		projects[0]!.documents.find((doc) => doc.id === 'start')!.type_key =
 			'document.context.thinking_log';
 		expect(() => previewOrganizePlan(projects, [move])).toThrow('thinking log');
-	});
-
-	it('keeps the About you note in the Workspace', () => {
-		const projects = organizeFixtures();
-		const brief = projects[0]!.documents.find((doc) => doc.id === 'brief')!;
-		brief.type_key = 'document.context.about_you';
-		expect(pinnedDocumentReason(projects[0]!, 'brief')).toBe(
-			'About you stays in your Workspace.'
-		);
-		expect(() => previewOrganizePlan(projects, [move])).toThrow('About you stays');
 	});
 
 	it.each([0, 1])('requires write access on project %s', (index) => {

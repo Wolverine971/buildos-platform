@@ -41,7 +41,7 @@ const NESTED = id(32);
 const TASK = id(33);
 const DONE_ELSEWHERE = id(34);
 const DELETED = id(35);
-const ABOUT_YOU = id(36);
+const THINKING_LOG = id(36);
 const SUGGEST_FILE = id(40);
 const SUGGEST_START = id(41);
 const SUGGEST_GONE = id(42);
@@ -115,7 +115,7 @@ const DOCUMENTS: Row[] = [
 	doc(DOC, { title: 'Reading list' }),
 	doc(NESTED, { title: 'Week one' }),
 	doc(DELETED, { title: 'Gone', deleted_at: '2026-10-22T00:00:00Z' }),
-	doc(ABOUT_YOU, { title: 'About you', type_key: 'document.context.about_you' })
+	doc(THINKING_LOG, { title: 'Thinking log', type_key: 'document.context.thinking_log' })
 ];
 
 const TASKS: Row[] = [
@@ -266,7 +266,7 @@ describe('loadWorkspaceItemsV1', () => {
 				{ entity: 'task', id: TASK },
 				{ entity: 'document', id: DOC },
 				{ entity: 'document', id: DELETED },
-				{ entity: 'document', id: ABOUT_YOU },
+				{ entity: 'document', id: THINKING_LOG },
 				{ entity: 'task', id: DONE_ELSEWHERE }
 			]
 		});
@@ -274,8 +274,8 @@ describe('loadWorkspaceItemsV1', () => {
 			{ entity: 'task', id: TASK, kind: 'task', title: 'Email Cadre' },
 			{ entity: 'document', id: DOC, kind: 'doc', title: 'Reading list' }
 		]);
-		// Deleted, pinned (About you) and items in another project are not loose.
-		expect(view.missing.map((item) => item.id)).toEqual([DELETED, ABOUT_YOU, DONE_ELSEWHERE]);
+		// Deleted, pinned (the thinking log) and items in another project are not loose.
+		expect(view.missing.map((item) => item.id)).toEqual([DELETED, THINKING_LOG, DONE_ELSEWHERE]);
 		expect(view.nested_documents).toBe(1);
 	});
 
@@ -409,7 +409,7 @@ describe('propose_workspace_filing', () => {
 		],
 		[
 			'a pinned doc',
-			{ items: [{ entity: 'document', id: ABOUT_YOU }] },
+			{ items: [{ entity: 'document', id: THINKING_LOG }] },
 			{},
 			'items_not_in_workspace'
 		],

@@ -66,7 +66,6 @@ import {
 } from '../effects/prompt-snapshot';
 import type { AgenticChatToolSelectorPort } from '../provider/jev-tool-selector';
 import type { AgenticChatContextFinderPort } from '../provider/chat-context-finder';
-import type { AgenticChatAboutYouPort } from '../provider/chat-about-you';
 import { createGatewayDocumentEditPreviewPort } from '../provider/document-edit-preview';
 import { createGatewayTableEditPreviewPort } from '../provider/table-edit-preview';
 import { AgenticChatTurnProviderAdapter } from '../provider/turn-provider';
@@ -228,8 +227,6 @@ export function createAgenticChatCompositionRoot(options: {
 	/** Optional opening-pass schema narrowing (Jev); absent means the full admitted surface. */
 	toolSelector?: AgenticChatToolSelectorPort;
 	contextFinder?: AgenticChatContextFinderPort;
-	/** About you (tasker/146): settings + Jev-gated note sections after the user message. */
-	aboutYou?: AgenticChatAboutYouPort;
 	maxToolCalls?: number;
 	maxToolConcurrency?: number;
 	concurrentReadsEnabled?: boolean;
@@ -392,7 +389,6 @@ export function createAgenticChatCompositionRoot(options: {
 			executionObservations: observedExecutionObservations,
 			...(options.toolSelector ? { toolSelector: options.toolSelector } : {}),
 			...(options.contextFinder ? { contextFinder: options.contextFinder } : {}),
-			...(options.aboutYou ? { aboutYou: options.aboutYou } : {}),
 			...(mutationCapabilities.updateOntoDocument
 				? {
 						documentEditPreview: createGatewayDocumentEditPreviewPort(options.client),

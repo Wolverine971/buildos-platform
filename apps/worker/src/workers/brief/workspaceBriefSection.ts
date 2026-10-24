@@ -3,7 +3,6 @@
 // not a project: no project write-up, no project count, just a short "Loose ends" list.
 import { parseISO, subDays } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
-import { ABOUT_YOU_TYPE_KEY } from '@buildos/shared-agent-ops/ontology/about-you';
 import type {
 	OntoProject,
 	OntoProjectWithRelations,
@@ -35,8 +34,6 @@ export function buildWorkspaceBriefSection(
 		);
 	const noteCutoff = subDays(now, WORKSPACE_BRIEF_NOTE_DAYS).getTime();
 	const recentNotes = data.documents
-		// The About you note lives in the Workspace but isn't a loose end.
-		.filter((doc) => doc.type_key !== ABOUT_YOU_TYPE_KEY)
 		.filter((doc) => parseISO(doc.created_at).getTime() >= noteCutoff)
 		.sort((a, b) => parseISO(b.created_at).getTime() - parseISO(a.created_at).getTime());
 	return {

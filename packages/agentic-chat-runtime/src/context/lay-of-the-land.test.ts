@@ -80,7 +80,7 @@ function fakeSupabase(answers: Record<string, { data: unknown; count?: number; e
 }
 
 describe('loadGlobalLayOfTheLand', () => {
-	it('reads recent chats and the Workspace shelf, leaving the About you note out', async () => {
+	it('reads recent chats and the Workspace shelf', async () => {
 		const { client, calls } = fakeSupabase({
 			chat_sessions: {
 				data: [
@@ -163,8 +163,6 @@ describe('loadGlobalLayOfTheLand', () => {
 				}
 			]
 		});
-		const docs = calls.find((call) => call.table === 'onto_documents')!;
-		expect(docs.filters).toContainEqual(['neq', 'type_key', 'document.context.about_you']);
 		const sessions = calls.find((call) => call.table === 'chat_sessions')!;
 		expect(sessions.filters).toContainEqual(['eq', 'user_id', 'u1']);
 		expect(sessions.filters).toContainEqual(['eq', 'chat_messages.role', 'user']);

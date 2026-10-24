@@ -539,12 +539,6 @@ describe('loadWorkspaceFinderProjects', () => {
 					},
 					{ id: 'd2', project_id: 'p2', title: 'Notes', type_key: 'document.knowledge' },
 					{
-						id: 'about',
-						project_id: 'p2',
-						title: 'About you',
-						type_key: 'document.context.about_you'
-					},
-					{
 						id: 'dx',
 						project_id: 'other',
 						title: 'Not mine',
@@ -580,8 +574,6 @@ describe('loadWorkspaceFinderProjects', () => {
 		expect(older.documents[0]).toMatchObject({ id: 'd1', content: '## Current state\nLive.' });
 		// Rows of projects outside the RPC's answer are dropped.
 		expect(projects.flatMap((p) => p.documents.map((d) => d.id))).not.toContain('dx');
-		// The About you note is never a card title (tasker 146; it has its own gate).
-		expect(projects.flatMap((p) => p.documents.map((d) => d.id))).not.toContain('about');
 		// Every family query is scoped to the accessible ids.
 		for (const call of calls.filter(
 			(c) =>

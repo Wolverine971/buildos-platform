@@ -12,7 +12,6 @@
 // person gets at most DAILY_RUN_CAP runs a day.
 import type { WorkspaceSuggestJobMetadata, WorkspaceSuggestResult } from '@buildos/shared-types';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
-import { ABOUT_YOU_TYPE_KEY } from '@buildos/shared-agent-ops/ontology/about-you';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { supabase as defaultSupabase } from '../../lib/supabase';
 import {
@@ -114,8 +113,6 @@ export async function processWorkspaceSuggestJob(
 			.from('onto_documents')
 			.select('id, title, type_key, content, description, created_at')
 			.eq('project_id', workspaceId)
-			// The About you note stays in the Workspace; it is never a loose item to file.
-			.neq('type_key', ABOUT_YOU_TYPE_KEY)
 			.is('deleted_at', null)
 			.is('archived_at', null)
 			.neq('state_key', 'archived')

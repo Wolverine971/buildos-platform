@@ -10,4 +10,3 @@ export * from './load';
 export * from './edit';
 export * from './workspace';
 export * from './snapshot';
-export * from './about-you';

@@ -36,7 +36,6 @@ import { canonicalError, canonicalFinishedReason, normalizeUsage, providerError 
 import { throwIfAborted } from '../shared/abortable-deadline';
 import { combineAbortSignals } from '../turn/executor-helpers';
 import type { AgenticChatContextFinderPort } from './chat-context-finder';
-import type { AgenticChatAboutYouPort } from './chat-about-you';
 import {
 	type AgenticChatDocumentEditPreviewPort,
 	previewDocumentEditCalls
@@ -140,12 +139,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			 * with tool selection, and publishes "Working from" chips. Fail-open.
 			 */
 			contextFinder?: AgenticChatContextFinderPort;
-			/**
-			 * About you (tasker/146): the person's own settings and the sections of
-			 * their inferred note that Jev says change this answer, appended after the
-			 * user message. Runs beside the context finder. Fail-open.
-			 */
-			aboutYou?: AgenticChatAboutYouPort;
 			/**
 			 * Dry-runs body-changing document updates before review: a failing edit
 			 * returns to the actor without a review round, a passing one reaches the
@@ -426,8 +419,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				const finding = this.ports.contextFinder?.find(request) ?? null;
 				// If an earlier step throws, the finding is abandoned; never leave it unhandled.
 				finding?.catch(() => undefined);
-				const aboutYouLoad = this.ports.aboutYou?.load(request) ?? null;
-				aboutYouLoad?.catch(() => undefined);
 				request = await this.resolveLiveVision(request);
 				if (this.ports.toolSelector)
 					request = await this.ports.toolSelector.select(request);
@@ -442,9 +433,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				request = appendWebResearchRules(request);
 				const found = finding ? await finding : null;
 				if (found?.injection) request = appendSystemInstruction(request, found.injection);
-				const aboutYou = aboutYouLoad ? await aboutYouLoad : null;
-				if (aboutYou?.injection)
-					request = appendSystemInstruction(request, aboutYou.injection);
 				state.setCurrentRequest(request);
 				if (found) {
 					// The opening request goes out while the executor persists the

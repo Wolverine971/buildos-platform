@@ -2,7 +2,7 @@
 
 # 144 — What shared projects put on your Google Calendar
 
-**Status:** DONE — implemented and tested locally; rollout pending · **Priority:** P3 · **Opened:** 2026-10-23 · **Size:** ~half a day to map, then DJ decides
+**Status:** DONE — production migration applied; application rollout pending · **Priority:** P3 · **Opened:** 2026-10-23 · **Size:** ~half a day to map, then DJ decides
 
 **Owner:** Codex · **Needs from DJ:** nothing
 
@@ -45,13 +45,13 @@ A Google connection alone does not subscribe a person to every shared project. F
 
 These are separate per-user Google copies, not invitations automatically sent to everyone. A mapped Google calendar could itself be shared outside BuildOS; BuildOS's target count does not measure who can view it in Google.
 
-| Task dates, when calendar sync runs | Calendar entry |
-| --- | --- |
-| No dates | None |
-| Start only | 30-minute “Start: …” entry |
-| Due only | 30-minute “Due: …” entry ending at the due time |
-| Start and due, positive span up to 10 hours | One entry covering that span |
-| Start and due, span over 10 hours | Separate 30-minute start and due entries |
+| Task dates, when calendar sync runs         | Calendar entry                                  |
+| ------------------------------------------- | ----------------------------------------------- |
+| No dates                                    | None                                            |
+| Start only                                  | 30-minute “Start: …” entry                      |
+| Due only                                    | 30-minute “Due: …” entry ending at the due time |
+| Start and due, positive span up to 10 hours | One entry covering that span                    |
+| Start and due, span over 10 hours           | Separate 30-minute start and due entries        |
 
 Task-derived entries are timed, not all-day. Explicit project events can be all-day. Undated tasks do not become calendar entries just because their project is shared.
 
@@ -127,4 +127,10 @@ Explicit `calendar_sync: none` / `sync_to_calendar: false` still suppresses prov
 - `test-gate run pnpm --filter @buildos/shared-agent-ops exec tsc --noEmit` passed; `git diff --check` passed. No Svelte component changes.
 - [Migration](../supabase/migrations/20261024022550_guest_task_calendar_projection.sql) rehearsed successfully against the cached production schema with [custom checks](../supabase/tests/guest_task_calendar_projection.check.sql) and `--role-probe`. Actual authenticated-role writes, the definer-RPC JWT boundary, pin inheritance, spoof prevention, property replacement, and archive preservation passed. All four standing checks passed; no new security or role-probe failures (the anonymous role had one pre-existing failure both before and after).
 - Reproduce the database check with `pnpm db:rehearse supabase/migrations/20261024022550_guest_task_calendar_projection.sql --check supabase/tests/guest_task_calendar_projection.check.sql --role-probe`.
-- **Not deployed or applied to production.** Apply this migration using the repository's one-file/repair procedure before deploying the web/worker changes; it supplies the metadata protection and event inheritance. No hosted database changes, Google mutations, paid tests, or live model calls were made for this task. Calendar behavior is verified with local mocks and the disposable database, not live Google accounts.
+- Initial implementation validation used local mocks and the disposable database, not live Google accounts. No Google mutations, paid tests, or live model calls were made.
+
+### Production migration — 2026-10-24
+
+DJ authorized applying the migration. Refreshed production's schema and reran the custom check, role probe, and all four standing checks successfully. Applied only `20261024022550_guest_task_calendar_projection.sql` with `supabase db query --linked -f`, then recorded version `20261024022550` with `supabase migration repair --status applied --linked`.
+
+Verified production at **12:20 p.m. EDT**: the migration ledger contains `guest_task_calendar_projection`; both task/event guards are enabled; the function uses `SECURITY INVOKER` with its fixed search path; authenticated/service-role execution is granted and anonymous execution is denied. No historical-task backfill was run. Web/worker application deployment was not performed in this step.

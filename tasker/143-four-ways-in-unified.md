@@ -2,7 +2,7 @@
 
 # 143 — The four ways into a project behave the same
 
-**Status:** IMPLEMENTED LOCALLY — focused validation passed; full web check blocked by unrelated work; external explainer update awaiting authorization · **Priority:** P1 · **Opened:** 2026-10-23 · **Size:** ~1–2 days
+**Status:** IMPLEMENTED LOCALLY — focused validation passed; full web check blocked by unrelated work; explainer updated, live preview verification blocked · **Priority:** P1 · **Opened:** 2026-10-23 · **Size:** ~1–2 days
 
 **Owner:** Claude · **Policy decisions needed from DJ:** none; all three recommendations accepted on 2026-10-23
 
@@ -53,17 +53,17 @@ targeted diff whitespace check passed.
 
 ### Implemented matrix (local evidence)
 
-| Rule | Result across the four entrances | Evidence |
-| --- | --- | --- |
-| Default agents Read, Write needs Editor, explicit Off/standing approval preserved | Pass | SQL cases, task 140 regression, shared-copy/UI tests |
-| Immediate project arrival; asynchronous approvals link to one project or a choice | Pass | Arrival/page tests, notification URL SQL assertion, approval email tests |
-| One owner notice for actual direct/link transitions; none for owner approvals | Pass | SQL notification/delivery assertions and four two-session races |
-| Follow eligible activity without overriding project/member/global preferences | Pass | SQL join and batch-producer assertions |
-| Shared role and agent-consent wording | Pass | Preview/list SQL assertions and copy/UI tests |
-| Consistent emails with per-project permissions, including mixed upgrades | Pass | 14 email tests |
-| Competing invites retired; only matching satisfied requests settled | Pass | SQL stale-invite, rejoin, broad-request and partial-upgrade cases |
-| Former members ask through links; owner invites/approvals can restore them | Pass | Existing rejoin regression and new SQL cases |
-| No new connection consent from joining elsewhere | Pass | Shared helper contains no connection writes; requesting-connection-only approval route and task 140 regression tests |
+| Rule                                                                              | Result across the four entrances | Evidence                                                                                                             |
+| --------------------------------------------------------------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Default agents Read, Write needs Editor, explicit Off/standing approval preserved | Pass                             | SQL cases, task 140 regression, shared-copy/UI tests                                                                 |
+| Immediate project arrival; asynchronous approvals link to one project or a choice | Pass                             | Arrival/page tests, notification URL SQL assertion, approval email tests                                             |
+| One owner notice for actual direct/link transitions; none for owner approvals     | Pass                             | SQL notification/delivery assertions and four two-session races                                                      |
+| Follow eligible activity without overriding project/member/global preferences     | Pass                             | SQL join and batch-producer assertions                                                                               |
+| Shared role and agent-consent wording                                             | Pass                             | Preview/list SQL assertions and copy/UI tests                                                                        |
+| Consistent emails with per-project permissions, including mixed upgrades          | Pass                             | 14 email tests                                                                                                       |
+| Competing invites retired; only matching satisfied requests settled               | Pass                             | SQL stale-invite, rejoin, broad-request and partial-upgrade cases                                                    |
+| Former members ask through links; owner invites/approvals can restore them        | Pass                             | Existing rejoin regression and new SQL cases                                                                         |
+| No new connection consent from joining elsewhere                                  | Pass                             | Shared helper contains no connection writes; requesting-connection-only approval route and task 140 regression tests |
 
 These are local implementation/test results, not claims of production deployment or delivery.
 
@@ -81,7 +81,7 @@ Deploy task 140's `20261024003000_agent_access_wall_fixes.sql` before this migra
 the web changes. The expanded RPC results are consumed by the new UI. This work has not applied
 either migration to production or exercised real email/push delivery.
 
-### Prepared explainer corrections
+### Explainer corrections (sent and saved 2026-10-24)
 
 Update the existing [How BuildOS Sharing Works](https://claude.ai/artifact/JEk3EN2pfLzhc52kpD2kRG)
 artifact in place, preserving its layout, unrelated sections, and historical production numbers.
@@ -115,10 +115,20 @@ Mark task 143 behavior **implemented and tested locally, awaiting deployment**:
   remove the stale proposal to make both Viewer. Mark the agents-Off refusal wording fixed in
   task 140's repository code, without claiming deployed/live verification.
 
-The artifact's UI exposes “Chat with Claude” rather than a direct source editor. The corrections
-above are the exact reviewable instructions for that update; the external artifact is unchanged.
-Sending those instructions to its existing Claude chat is awaiting DJ's authorization. This
-external update and a clean full web check remain open exit items; deployment is a separate step.
+DJ authorized sending these corrections to the artifact's existing Claude chat on 2026-10-24.
+They were sent and Claude confirmed an in-place update at the same private URL, now version 4.
+The artifact UI confirms a new saved timestamp. Claude reports that the stored page includes
+the corrections above, preserves the historical numbers, and renders all four flow tabs and
+the simulator without script errors in its headless browser. Its interpretation that approval
+does not redirect Sam's unrelated open BuildOS session was also confirmed.
+
+Independent live-preview verification remains blocked: the Claude artifact viewer and chat
+preview stay on “Still loading” after reload, the artifact's Refresh action, and republishing
+the identical corrected content with the `index.html` entrypoint. No warning/error logs were
+returned by the browser tool. Claude's stored-page render report is not a successful check of
+the live viewer. Resolving that preview and obtaining a clean full web check remain open exit
+items; deployment is a separate step. No application tests or migrations were rerun for this
+documentation-only follow-up.
 
 **Earlier research (Codex, 2026-10-23):** DJ initially requested research and a plan only. The audit below is
 against the current repository and the latest checked-in RPC definitions, including task 140's
@@ -187,17 +197,17 @@ The original file references are now partly stale:
 “Pass” means the inspected code implements the rule, not that production was exercised.
 “Gap” and “Partial” identify work; intentional differences are called out explicitly.
 
-| Requirement | Ask → approve | Email / @handle invite | Invite link | Rejoin → approve |
-| --- | --- | --- | --- | --- |
-| 1. Agents default Read; Write requires Editor | **Pass:** approve defaults Read; validates role | **Pass:** invite defaults Read; trigger applies/clamps it | **Pass:** link defaults Viewer + Read; validates Write | **Pass:** carries the link's chosen setting, defaults Read |
-| 2. Project arrival + named toast | **Gap:** in-app approval goes to `/people`; email opens project(s), without a shared arrival message | **Gap:** generic “Invite accepted”; token page pauses for notification setup, list page goes directly | **Pass:** named toast + direct navigation | **Gap:** same approval delivery as ordinary requests |
-| 3. One owner join notification, none for their own approval | **Pass:** no redundant owner join notice | **Partial:** deduplicates recipient ids, but owner subscription writes use the joiner's RLS client; no membership-transition result | **Partial:** admin-backed owner notice on `joined`, no notice on `already_member`; cross-path races unproven | **Pass:** approval itself does not notify owner again; initial rejoin request intentionally does |
-| 4. Follow enabled activity consistently | **Partial:** preserves existing global subscription, but seeds it without checking project/member settings | **Gap:** conditional seed followed by an unconditional bulk seed; overwrites opt-outs and attempts other users' writes | **Partial:** checks effective settings, but overwrites an existing opt-out | **Partial:** same as ordinary approval |
-| 5. Shared role + agent sentences | **Partial:** single-project approval email uses both; outgoing request card lacks granted-project details | **Gap:** token page uses role copy only; preview/list RPCs omit `agent_access` | **Pass:** uses both shared sentences | **Partial:** same as approval; rejoin card carries link settings |
-| 6. Email tone and layout | **Pass:** shared email renderer | **Pass:** create/resend use shared email builder | **N/A:** successful link join has no email requirement | **Pass:** rejoin-received and approval use shared renderer |
-| 7. Settle competing invitations and requests | **Gap:** source request approved, competing invitations untouched | **Partial:** already revokes other pending/declined invites for the same project/email; requests untouched | **Partial:** already revokes matching invites by user id/email; requests untouched | **Gap:** source request approved, competing invitations untouched |
-| 8. Former-member rules | **Pass:** owner can restore membership | **Pass:** owner's direct invite can restore membership | **Pass:** removed/left → request, not direct join | **Pass:** owner approval restores membership |
-| 9. Agent connection consent | **Pass by design:** requesting connection receives allowed projects | **Pass by task 140 policy:** explicit grant or opted-in connection required | **Pass by task 140 policy:** same rule | **Pass by task 140 policy:** same rule; web rejoin has no asking connection |
+| Requirement                                                 | Ask → approve                                                                                              | Email / @handle invite                                                                                                              | Invite link                                                                                                  | Rejoin → approve                                                                                 |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| 1. Agents default Read; Write requires Editor               | **Pass:** approve defaults Read; validates role                                                            | **Pass:** invite defaults Read; trigger applies/clamps it                                                                           | **Pass:** link defaults Viewer + Read; validates Write                                                       | **Pass:** carries the link's chosen setting, defaults Read                                       |
+| 2. Project arrival + named toast                            | **Gap:** in-app approval goes to `/people`; email opens project(s), without a shared arrival message       | **Gap:** generic “Invite accepted”; token page pauses for notification setup, list page goes directly                               | **Pass:** named toast + direct navigation                                                                    | **Gap:** same approval delivery as ordinary requests                                             |
+| 3. One owner join notification, none for their own approval | **Pass:** no redundant owner join notice                                                                   | **Partial:** deduplicates recipient ids, but owner subscription writes use the joiner's RLS client; no membership-transition result | **Partial:** admin-backed owner notice on `joined`, no notice on `already_member`; cross-path races unproven | **Pass:** approval itself does not notify owner again; initial rejoin request intentionally does |
+| 4. Follow enabled activity consistently                     | **Partial:** preserves existing global subscription, but seeds it without checking project/member settings | **Gap:** conditional seed followed by an unconditional bulk seed; overwrites opt-outs and attempts other users' writes              | **Partial:** checks effective settings, but overwrites an existing opt-out                                   | **Partial:** same as ordinary approval                                                           |
+| 5. Shared role + agent sentences                            | **Partial:** single-project approval email uses both; outgoing request card lacks granted-project details  | **Gap:** token page uses role copy only; preview/list RPCs omit `agent_access`                                                      | **Pass:** uses both shared sentences                                                                         | **Partial:** same as approval; rejoin card carries link settings                                 |
+| 6. Email tone and layout                                    | **Pass:** shared email renderer                                                                            | **Pass:** create/resend use shared email builder                                                                                    | **N/A:** successful link join has no email requirement                                                       | **Pass:** rejoin-received and approval use shared renderer                                       |
+| 7. Settle competing invitations and requests                | **Gap:** source request approved, competing invitations untouched                                          | **Partial:** already revokes other pending/declined invites for the same project/email; requests untouched                          | **Partial:** already revokes matching invites by user id/email; requests untouched                           | **Gap:** source request approved, competing invitations untouched                                |
+| 8. Former-member rules                                      | **Pass:** owner can restore membership                                                                     | **Pass:** owner's direct invite can restore membership                                                                              | **Pass:** removed/left → request, not direct join                                                            | **Pass:** owner approval restores membership                                                     |
+| 9. Agent connection consent                                 | **Pass by design:** requesting connection receives allowed projects                                        | **Pass by task 140 policy:** explicit grant or opted-in connection required                                                         | **Pass by task 140 policy:** same rule                                                                       | **Pass by task 140 policy:** same rule; web rejoin has no asking connection                      |
 
 Row 1 describes the stored default. Task 140's explicit “Editors' agents can write here”
 standing approval can make an editor's effective agent access Write while the stored setting
@@ -241,11 +251,11 @@ is Read. Preserve that rule, the explicit Off override, and the guest write limi
 
 DJ accepted all three recommendations before authorizing the implementation recorded above.
 
-| Decision | Approved rule | Consequence |
-| --- | --- | --- |
-| Which requests does another join settle? | Automatically settle exact-project rejoin requests and only satisfied upgrade items. For broad access requests, require an explicit request association/owner action; leave unmatched requests open. | Row 7 applies only to matching, satisfied requests. Invitations issued in response to a request should retain a structured association. Never infer identity from prose. |
-| What does an inactive activity subscription mean? | Preserve a deliberate global opt-out; create missing subscriptions only when the joiner's project activity is enabled. Make the batch producer follow the same rule. | Requires a small SQL change beyond extracting the route helper. |
-| Where does notification setup happen? | Land directly in the project on every synchronous join; move the direct-invite notification prompt to an optional project-side affordance. | Keep push opt-in available without making only one entrance stop for it. |
+| Decision                                          | Approved rule                                                                                                                                                                                        | Consequence                                                                                                                                                              |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Which requests does another join settle?          | Automatically settle exact-project rejoin requests and only satisfied upgrade items. For broad access requests, require an explicit request association/owner action; leave unmatched requests open. | Row 7 applies only to matching, satisfied requests. Invitations issued in response to a request should retain a structured association. Never infer identity from prose. |
+| What does an inactive activity subscription mean? | Preserve a deliberate global opt-out; create missing subscriptions only when the joiner's project activity is enabled. Make the batch producer follow the same rule.                                 | Requires a small SQL change beyond extracting the route helper.                                                                                                          |
+| Where does notification setup happen?             | Land directly in the project on every synchronous join; move the direct-invite notification prompt to an optional project-side affordance.                                                           | Keep push opt-in available without making only one entrance stop for it.                                                                                                 |
 
 Task 140 already answers the agent-connection decision: keep `include_shared_projects` off by
 default, honor it when the person opted in, and keep explicit grants for restricted projects.
@@ -342,7 +352,7 @@ checks remain a later validation step; paid model tests still require separate a
 - Email builders: [`people-emails.ts`](../apps/web/src/lib/server/people/people-emails.ts).
 - Connection consent: [`project-access.service.ts`](../apps/web/src/lib/server/agent-call/project-access.service.ts) and [task 140](140-agent-access-wall.md).
 
-### Explainer follow-up
+### Historical explainer audit (superseded by the update above)
 
 **Checked on 2026-10-23 after DJ explicitly authorized opening it.** Task 145 links to
 [How BuildOS Sharing Works](https://claude.ai/artifact/JEk3EN2pfLzhc52kpD2kRG). Read the full page

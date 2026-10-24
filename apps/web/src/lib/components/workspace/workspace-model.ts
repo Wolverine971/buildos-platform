@@ -40,16 +40,9 @@ export type WorkspaceSuggestion = {
 	created_at: string;
 };
 
-/** The About you note (tasker 146): BuildOS keeps it in the Workspace from the person's
- * own chats, and they can edit anything in it. It sits above the shelf, never among the
- * loose items, and it can't be filed out of the Workspace. */
-export type WorkspaceAboutYou = { id: string; updated_at: string };
-
 export type WorkspaceHome = {
 	workspaceId: string;
 	items: LooseItem[];
-	/** Null until BuildOS has written the note. */
-	aboutYou: WorkspaceAboutYou | null;
 	suggestions: WorkspaceSuggestion[];
 	/** Open loose tasks beyond what the shelf loaded, for the label. */
 	totals: { notes: number; docs: number; tasks: number };

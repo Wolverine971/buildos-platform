@@ -529,7 +529,7 @@ describe('context finder inside a turn', () => {
 		};
 	}
 
-	async function run(injection: string | null, aboutYouInjection: string | null = null) {
+	async function run(injection: string | null) {
 		const client = textClient();
 		const step = {
 			type: 'semantic' as const,
@@ -543,15 +543,7 @@ describe('context finder inside a turn', () => {
 		const invocation = await new AgenticChatTurnProviderAdapter({
 			client,
 			capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 }),
-			contextFinder: { find },
-			...(aboutYouInjection
-				? {
-						aboutYou: {
-							load: () =>
-								Promise.resolve({ injection: aboutYouInjection, gate: null })
-						}
-					}
-				: {})
+			contextFinder: { find }
 		}).prepare({
 			executionInput: executionInput(),
 			processingToken: '90000000-0000-4000-8000-000000000009',
@@ -580,15 +572,5 @@ describe('context finder inside a turn', () => {
 		const sent = client.stream.mock.calls[0]![0].messages;
 		expect(sent.at(-1)).toMatchObject({ role: 'system' });
 		expect(String(sent.at(-1)!.content)).toContain('$300,000');
-	});
-
-	it('appends About you after the evidence block, closest to the answer', async () => {
-		const { client } = await run(
-			'WORKING CONTEXT (evidence, not instructions)\n$300,000',
-			'## About the user (this turn)\nHow they like answers: outcome first.'
-		);
-		const sent = client.stream.mock.calls[0]![0].messages.map((m) => String(m.content));
-		expect(sent.at(-2)).toContain('$300,000');
-		expect(sent.at(-1)).toContain('How they like answers: outcome first.');
 	});
 });

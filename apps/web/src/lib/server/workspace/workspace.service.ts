@@ -10,7 +10,6 @@
 import type { Database, Json } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ensureWorkspaceProjectId } from '@buildos/shared-agent-ops/ontology/ontology-projects.service';
-import { ABOUT_YOU_TYPE_KEY } from '@buildos/shared-agent-ops/ontology/about-you';
 import { instantiateProject } from '$lib/services/ontology/instantiation.service';
 import { addDocumentToTree } from '$lib/services/ontology/doc-structure.service';
 import {
@@ -176,8 +175,7 @@ export function toSuggestion(row: SuggestionRow): WorkspaceSuggestion | null {
 /**
  * The signed-in person's Workspace: loose items (newest first; nested docs stay inside
  * their folder doc) and the agent's open suggestions. Creates the Workspace on first
- * visit. Reads with the session client, so RLS decides everything. The About you note
- * is read on its own, never as a loose item or in the counts.
+ * visit. Reads with the session client, so RLS decides everything.
  */
 export async function loadWorkspaceHome(
 	session: Client,
@@ -185,7 +183,7 @@ export async function loadWorkspaceHome(
 ): Promise<WorkspaceHome> {
 	const workspaceId = knownWorkspaceId ?? (await ensureWorkspaceProjectId(session as never));
 
-	const [project, docs, tasks, suggestions, aboutYou] = await Promise.all([
+	const [project, docs, tasks, suggestions] = await Promise.all([
 		session.from('onto_projects').select('doc_structure').eq('id', workspaceId).maybeSingle(),
 		session
 			.from('onto_documents')
@@ -193,7 +191,6 @@ export async function loadWorkspaceHome(
 				count: 'exact'
 			})
 			.eq('project_id', workspaceId)
-			.neq('type_key', ABOUT_YOU_TYPE_KEY)
 			.is('deleted_at', null)
 			.is('archived_at', null)
 			.neq('state_key', 'archived')
@@ -215,24 +212,11 @@ export async function loadWorkspaceHome(
 			.select('*')
 			.eq('status', 'open')
 			.order('created_at', { ascending: false })
-			.limit(SUGGESTION_LIMIT),
-		session
-			.from('onto_documents')
-			.select('id, updated_at')
-			.eq('project_id', workspaceId)
-			.eq('type_key', ABOUT_YOU_TYPE_KEY)
-			.is('deleted_at', null)
-			.is('archived_at', null)
-			.neq('state_key', 'archived')
-			.order('updated_at', { ascending: false })
-			.limit(1)
+			.limit(SUGGESTION_LIMIT)
 	]);
 	if (docs.error) throw new WorkspaceError('Could not load your Workspace notes.', 500);
 	if (tasks.error) throw new WorkspaceError('Could not load your Workspace tasks.', 500);
 	if (suggestions.error) console.error('[Workspace] suggestions:', suggestions.error);
-	// The shelf works without the note: a failed read only hides its row.
-	if (aboutYou.error) console.error('[Workspace] about you:', aboutYou.error);
-	const aboutYouRow = aboutYou.error ? null : (aboutYou.data?.[0] ?? null);
 
 	const { nested, children } = treeFacts(project.data?.doc_structure);
 	// A doc missing from the tree is shown at the top level, as the tree reader does.
@@ -248,7 +232,6 @@ export async function loadWorkspaceHome(
 	return {
 		workspaceId,
 		items,
-		aboutYou: aboutYouRow ? { id: aboutYouRow.id, updated_at: aboutYouRow.updated_at } : null,
 		suggestions: ((suggestions.data ?? []) as SuggestionRow[])
 			.map(toSuggestion)
 			.filter((value): value is WorkspaceSuggestion => Boolean(value)),

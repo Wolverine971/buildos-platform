@@ -6,7 +6,6 @@ import type { ContextFinderProjectV1 } from './packets';
 import { START_HERE_TYPE_KEY } from './finder';
 import type { WorkspaceProjectInputV1 } from './workspace';
 import { isArchivedOrDeletedRecord } from '../tools/record-scope';
-import { ABOUT_YOU_TYPE_KEY } from '@buildos/shared-agent-ops/ontology/about-you';
 
 type Query = {
 	select(columns: string): Query;
@@ -107,15 +106,9 @@ export async function loadContextFinderProject(
 }
 
 // A document archived from the tree keeps archived_at NULL and says so in state_key.
-// The About you note (tasker/146) is about the person, not a record of the Workspace:
-// it reaches a turn only through its own gate, never as a card title or ranked record.
 function currentRows(key: string, rows: Record<string, unknown>[]): Record<string, unknown>[] {
 	return key === 'documents'
-		? rows.filter(
-				(row) =>
-					!isArchivedOrDeletedRecord(row, 'document') &&
-					row.type_key !== ABOUT_YOU_TYPE_KEY
-			)
+		? rows.filter((row) => !isArchivedOrDeletedRecord(row, 'document'))
 		: rows;
 }
 

@@ -13,7 +13,6 @@
 // round trip, and any failure leaves that piece out rather than failing the load.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
-import { ABOUT_YOU_TYPE_KEY } from '@buildos/shared-agent-ops/ontology/about-you';
 import type {
 	GlobalLayOfTheLand,
 	GlobalRecentConversation,
@@ -141,7 +140,6 @@ async function loadWorkspaceShelf(
 			.from('onto_documents')
 			.select('id, title, type_key, created_at', { count: 'exact' })
 			.eq('project_id', workspaceId)
-			.neq('type_key', ABOUT_YOU_TYPE_KEY)
 			.is('deleted_at', null)
 			.is('archived_at', null)
 			.order('created_at', { ascending: false })

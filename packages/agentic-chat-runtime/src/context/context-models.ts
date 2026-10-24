@@ -305,7 +305,7 @@ export type GlobalRecentConversation = {
 
 /** The Workspace's newest loose items and open suggestions (tasker/146). */
 export type GlobalWorkspaceShelf = {
-	/** Loose docs plus open loose tasks (the About you note is not loose). */
+	/** Loose docs plus open loose tasks. */
 	loose_total: number;
 	items: Array<{
 		entity: 'document' | 'task';

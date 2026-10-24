@@ -8,7 +8,6 @@ import {
 } from '$lib/services/ontology/doc-structure.service';
 import type { DocStructure, DocTreeNode } from '$lib/types/onto-api';
 import { effectiveDropPosition } from '$lib/components/ontology/doc-tree/drop-geometry';
-import { ABOUT_YOU_TYPE_KEY } from '@buildos/shared-agent-ops/ontology/about-you';
 
 export const MAX_ORGANIZE_OPERATIONS = 200;
 
@@ -81,7 +80,6 @@ export function pinnedDocumentReason(project: OrganizeProject, id: string): stri
 	if (doc?.type_key === 'document.context.project') return 'START HERE stays in this project.';
 	if (doc?.type_key === 'document.context.thinking_log')
 		return 'The thinking log stays in this project.';
-	if (doc?.type_key === ABOUT_YOU_TYPE_KEY) return 'About you stays in your Workspace.';
 	return null;
 }
 

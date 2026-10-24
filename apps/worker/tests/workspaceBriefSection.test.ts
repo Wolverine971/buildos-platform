@@ -49,25 +49,6 @@ describe('buildWorkspaceBriefSection', () => {
 		]);
 		expect(section.recentNoteCount).toBe(2);
 	});
-
-	it('leaves the About you note out of the loose ends', () => {
-		const section = buildWorkspaceBriefSection(
-			{
-				project: workspace,
-				tasks: [],
-				documents: [
-					{
-						...doc('about', 'About you', '2026-10-22T00:00:00Z'),
-						type_key: 'document.context.about_you'
-					} as OntoDocument,
-					doc('n1', 'Taste Buds pricing', '2026-10-21T00:00:00Z')
-				]
-			},
-			now
-		);
-		expect(section.recentNotes.map((note) => note.id)).toEqual(['n1']);
-		expect(section.recentNoteCount).toBe(1);
-	});
 });
 
 describe('formatWorkspaceLooseEnds', () => {

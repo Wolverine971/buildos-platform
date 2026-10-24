@@ -51,7 +51,7 @@ import type { AgenticChatProposalCardContextV1, ProposalToolResultV1 } from './p
 // The card contract's UUID shape (card-fields.ts): arguments must match it exactly,
 // or the web resolver's argument check could not match the payload.
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-/** Pinned docs (START HERE, the thinking log, About you) never leave their project. */
+/** Pinned docs (START HERE, the thinking log) never leave their project. */
 const PINNED_DOCUMENT_TYPE_PREFIX = 'document.context.';
 const SUGGESTION_LIST_LIMIT = 20;
 /** Rows read before dropping the ones whose items left the Workspace. */

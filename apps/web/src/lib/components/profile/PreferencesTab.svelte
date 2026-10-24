@@ -8,10 +8,7 @@
 	- Response length
 	- Working context (role, domain)
 
-	Chat reads these (users.preferences) on every turn, as part of "How you like
-	answers" (tasker 146). BuildOS also learns how you like answers from your own chat
-	messages and keeps it in the About you note in your Workspace; these settings sit
-	beside that note. Daily briefs don't read them.
+	These preferences are injected into all AI conversations.
 
 	@see /apps/web/docs/features/preferences/README.md - Full preferences system documentation
 -->
@@ -224,21 +221,11 @@
 {/snippet}
 
 <div class="space-y-4 sm:space-y-5">
-	<div>
-		<TabHeader
-			icon={Sparkles}
-			title="AI Preferences"
-			description="Control how BuildOS communicates and plans with you."
-		/>
-		<p class="mt-2 text-xs text-muted-foreground">
-			BuildOS also learns this from your chats and keeps it in
-			<a
-				href="/projects"
-				class="font-medium text-foreground underline underline-offset-2 hover:text-accent"
-				>About you</a
-			>, in your Workspace.
-		</p>
-	</div>
+	<TabHeader
+		icon={Sparkles}
+		title="AI Preferences"
+		description="Control how BuildOS communicates and plans with you."
+	/>
 
 	{#if isLoading}
 		<div class="bg-card border border-border rounded-lg shadow-ink p-6 text-center">
@@ -247,7 +234,7 @@
 	{:else}
 		<SettingsCard
 			title="Communication style"
-			description="Set the tone for chat responses."
+			description="Set the tone for chat responses, brief summaries, and planning guidance."
 			icon={MessageCircle}
 			labelledById="comm-style-heading"
 			bodyClass="grid grid-cols-1 md:grid-cols-3 gap-3"
