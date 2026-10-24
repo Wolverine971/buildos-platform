@@ -457,3 +457,98 @@ describe('Agent Run personal event sync', () => {
 		);
 	});
 });
+
+describe('Agent Run guest task calendar sync', () => {
+	it('links a new guest task event before queueing, without resolving the editing owner’s calendar', async () => {
+		const taskId = '44444444-4444-4444-8444-444444444444';
+		const event = {
+			...ontoEvent(1),
+			project_id: PROJECT_ID,
+			props: { guest_agent_calendar_user_id: 'guest-user' }
+		};
+		const query: any = {
+			insert: () => query,
+			select: () => query,
+			eq: () => query,
+			neq: () => query,
+			single: async () => ({ data: event, error: null }),
+			then: (resolve: any) => resolve({ data: [], error: null })
+		};
+		const rpc = vi.fn(async () => ({ error: null }));
+		const port = createAgentRunCalendarPort({
+			admin: { from: () => query, rpc },
+			userId: USER_ID
+		}) as any;
+		port.getActorId = vi.fn(async () => 'actor');
+		port.resolveInputTimezone = vi.fn(async () => 'UTC');
+		port.resolveTaskMetadata = vi.fn(async () => ({
+			taskId,
+			projectId: PROJECT_ID,
+			taskTitle: 'Guest task',
+			calendarSyncUserId: 'guest-user'
+		}));
+		port.ensureTaskEventEdge = vi.fn(async () => undefined);
+		port.resolveCalendarSyncTarget = vi.fn();
+		port.googleCalendar = vi.fn();
+		const result = await port.createCalendarEvent({
+			task_id: taskId,
+			title: 'Work',
+			start_at: '2026-10-23T12:00:00Z'
+		});
+		expect(port.ensureTaskEventEdge).toHaveBeenCalledWith({
+			projectId: PROJECT_ID,
+			taskId,
+			eventId: event.id
+		});
+		expect(port.ensureTaskEventEdge.mock.invocationCallOrder[0]).toBeLessThan(
+			rpc.mock.invocationCallOrder[0]
+		);
+		expect(rpc).toHaveBeenCalledWith(
+			'add_queue_job',
+			expect.objectContaining({ p_user_id: 'guest-user' })
+		);
+		expect(result.sync.status).toBe('pending');
+		expect(port.resolveCalendarSyncTarget).not.toHaveBeenCalled();
+		expect(port.googleCalendar).not.toHaveBeenCalled();
+	});
+
+	it.each(['update', 'delete'])(
+		'queues %s to the guest instead of using the editing owner’s Google credentials',
+		async (action) => {
+			let row: any = {
+				...ontoEvent(1),
+				project_id: PROJECT_ID,
+				props: { guest_agent_calendar_user_id: 'guest-user' }
+			};
+			const query: any = {
+				select: () => query,
+				eq: () => query,
+				neq: () => query,
+				then: (resolve: any) => resolve({ data: [], error: null })
+			};
+			const rpc = vi.fn(async () => ({ error: null }));
+			const port = createAgentRunCalendarPort({
+				admin: { from: () => query, rpc },
+				userId: USER_ID
+			}) as any;
+			port.getOntologyEvent = vi.fn(async () => row);
+			port.resolveInputTimezone = vi.fn(async () => 'UTC');
+			port.patchEvent = vi.fn(async (_id, patch) => (row = { ...row, ...patch }));
+			port.googleCalendar = vi.fn();
+			if (action === 'update')
+				await port.updateCalendarEvent({ onto_event_id: row.id, title: 'Changed' });
+			else await port.deleteCalendarEvent({ onto_event_id: row.id });
+			expect(rpc).toHaveBeenCalledWith(
+				'add_queue_job',
+				expect.objectContaining({
+					p_user_id: 'guest-user',
+					p_metadata: expect.objectContaining({
+						action: action === 'update' ? 'upsert' : 'delete'
+					})
+				})
+			);
+			expect(port.googleCalendar).not.toHaveBeenCalled();
+			expect(row.sync_status).toBe('pending');
+		}
+	);
+});

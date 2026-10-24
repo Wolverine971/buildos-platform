@@ -1573,6 +1573,8 @@ function compactWorkspaceOverviewPayload(payload: unknown): unknown {
 				activityLimit
 			)
 		})),
+		// Tasker 146: the Workspace (loose items) is listed apart, never as a project.
+		workspace: record.workspace ?? undefined,
 		message: record.message
 	});
 

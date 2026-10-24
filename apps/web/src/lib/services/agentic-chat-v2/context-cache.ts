@@ -17,7 +17,10 @@ export const FASTCHAT_CONTEXT_CACHE_TTL_MS = 2 * 60 * 1000;
 // 7 (2026-09-30, project hierarchy phase 1): project snapshots can carry a
 // `project_family` (parent, shared-docs shelf, sub-projects). A snapshot from
 // code that predates it would hide the hierarchy until it expired.
-export const FASTCHAT_CONTEXT_CACHE_VERSION = 7;
+// 8 (2026-10-23, tasker 146): global snapshots carry `lay_of_the_land` (recent
+// conversations and the Workspace shelf). An older snapshot would open Workspace
+// chat without them until it expired.
+export const FASTCHAT_CONTEXT_CACHE_VERSION = 8;
 
 export type FastChatPromptContextSnapshot = {
 	contextType: ChatContextType;

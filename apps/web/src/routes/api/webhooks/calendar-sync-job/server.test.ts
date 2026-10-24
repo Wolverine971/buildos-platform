@@ -35,6 +35,12 @@ beforeEach(() => {
 	processJob.mockResolvedValue({ outcome: 'deleted' });
 });
 describe('calendar deletion snapshot webhook', () => {
+	it('preserves the restriction on guest-write jobs', async () => {
+		expect((await post({ ...payload, restrictToTargetUser: true })).status).toBe(200);
+		expect(processJob).toHaveBeenCalledWith(
+			expect.objectContaining({ restrictToTargetUser: true })
+		);
+	});
 	it('passes durable deletion identity through to the shared service', async () => {
 		expect((await post(payload)).status).toBe(200);
 		expect(processJob).toHaveBeenCalledWith(

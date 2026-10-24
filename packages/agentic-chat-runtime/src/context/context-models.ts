@@ -289,6 +289,48 @@ export type LinkedEdge = {
 	rel: string;
 };
 
+/** One recent chat, as a topic line for Workspace chat's opening view (tasker/146). */
+export type GlobalRecentConversation = {
+	session_id: string;
+	context_type: string;
+	/** The project id for a project chat; rendered as its name from the index. */
+	entity_id: string | null;
+	last_at: string;
+	/** A real title (placeholders like "New Chat" are dropped). */
+	title: string | null;
+	/** The summary's first sentence, else the user's own opening message. */
+	topic: string | null;
+	topic_source: 'summary' | 'first_message' | null;
+};
+
+/** The Workspace's newest loose items and open suggestions (tasker/146). */
+export type GlobalWorkspaceShelf = {
+	/** Loose docs plus open loose tasks (the About you note is not loose). */
+	loose_total: number;
+	items: Array<{
+		entity: 'document' | 'task';
+		kind: 'note' | 'doc' | 'task';
+		id: string;
+		title: string;
+		created_at: string;
+		due_at?: string | null;
+	}>;
+	open_suggestions: Array<{
+		id: string;
+		kind: 'file' | 'graduate' | 'fold';
+		proposed_name: string | null;
+		target_project_id: string | null;
+		item_count: number;
+		reason: string | null;
+	}>;
+};
+
+/** Workspace chat's opening view beyond projects and pressing work (tasker/146). */
+export type GlobalLayOfTheLand = {
+	recent_conversations: GlobalRecentConversation[];
+	workspace_shelf: GlobalWorkspaceShelf | null;
+};
+
 export type GlobalContextData = {
 	projects: GlobalContextProjectBundle[];
 	project_index: GlobalProjectIndexEntry[];
@@ -298,6 +340,8 @@ export type GlobalContextData = {
 	 * when the ensure call failed. Never a bundle and never in the counts below.
 	 */
 	workspace_project_id?: string | null;
+	/** Recent conversations and the Workspace shelf; absent on older snapshots. */
+	lay_of_the_land?: GlobalLayOfTheLand;
 	project_intelligence?: FastChatProjectIntelligence;
 	context_meta?: {
 		generated_at: string;

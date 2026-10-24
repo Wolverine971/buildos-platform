@@ -421,6 +421,70 @@ describe('proposal tools around the turn', () => {
 	});
 });
 
+// Tasker 146: the Workspace read and its two cards ride the same rail.
+describe('Workspace tools around the turn', () => {
+	const WORKSPACE_CARDS = ['propose_workspace_filing', 'propose_workspace_project'];
+
+	it('never memo-replays a Workspace card, but may replay the suggestion list', () => {
+		for (const name of WORKSPACE_CARDS) {
+			expect(READ_MEMO_ELIGIBLE_TOOL_NAMES.has(name), name).toBe(false);
+		}
+		expect(READ_MEMO_ELIGIBLE_TOOL_NAMES.has('list_workspace_suggestions')).toBe(true);
+	});
+
+	it('classifies the Workspace ops as reads no MCP connector can reach', () => {
+		const catalog = getAgenticChatLoopToolCatalog();
+		expect(catalog.byToolName.list_workspace_suggestions).toMatchObject({
+			op: 'onto.workspace.suggestions.list',
+			kind: 'read'
+		});
+		expect(catalog.byToolName.propose_workspace_filing).toMatchObject({
+			op: 'onto.workspace.file.propose',
+			kind: 'read'
+		});
+		expect(catalog.byToolName.propose_workspace_project).toMatchObject({
+			op: 'onto.workspace.project.propose',
+			kind: 'read'
+		});
+		const handlers = EXTERNAL_OP_HANDLERS as Record<string, unknown>;
+		for (const name of ['list_workspace_suggestions', ...WORKSPACE_CARDS]) {
+			expect(isLikelyWriteToolName(name), name).toBe(false);
+			expect(isPureReadToolName(name), name).toBe(true);
+			expect(handlers[catalog.byToolName[name]!.op], name).toBeUndefined();
+		}
+	});
+
+	it('mounts the lookups a card needs, and never a card for reading suggestions', () => {
+		const tools = extractTools([
+			'list_workspace_suggestions',
+			...WORKSPACE_CARDS,
+			'list_onto_tasks',
+			'search_onto_documents',
+			'list_onto_projects',
+			'search_onto_projects',
+			'search_all_projects',
+			'create_onto_task'
+		]);
+		const filing = selectJevToolDefinitions(tools as never, {
+			propose_workspace_filing: 0.9
+		}).map((tool) => tool.function.name);
+		expect(filing).toEqual(
+			expect.arrayContaining([
+				'propose_workspace_filing',
+				'list_workspace_suggestions',
+				'list_onto_tasks',
+				'search_onto_documents',
+				'search_onto_projects'
+			])
+		);
+		expect(filing).not.toContain('create_onto_task');
+		const listing = selectJevToolDefinitions(tools as never, {
+			list_workspace_suggestions: 0.9
+		}).map((tool) => tool.function.name);
+		for (const name of WORKSPACE_CARDS) expect(listing, name).not.toContain(name);
+	});
+});
+
 // ---------------------------------------------------------------------------
 // Turn state: the card is the disposition.
 

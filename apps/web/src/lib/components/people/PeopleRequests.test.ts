@@ -44,6 +44,125 @@ afterEach(() => {
 	toastWarningMock.mockReset();
 });
 
+describe('PeopleRequests: request outcomes', () => {
+	it.each([
+		{ kind: 'upgrade', status: 'approved', projectStatus: undefined, settled: false },
+		{ kind: 'access', status: 'approved', projectStatus: 'already_member', settled: false },
+		{ kind: 'rejoin', status: 'canceled', projectStatus: 'rejoined', settled: true }
+	])(
+		'opens existing membership without claiming a new join ($kind/$status)',
+		({ kind, status, projectStatus, settled }) => {
+			render(PeopleRequests, {
+				props: {
+					...page([]),
+					requests: readPeopleRequests({
+						outgoing: [
+							{
+								id: 'existing',
+								created_at: '2026-10-23T12:00:00Z',
+								kind,
+								status,
+								settled_elsewhere: settled,
+								to: { name: 'DJ' },
+								projects: [
+									{
+										project_id: 'project-1',
+										project_name: '9takes',
+										role: 'editor',
+										agent_access: 'read',
+										status: projectStatus
+									}
+								]
+							}
+						]
+					})
+				}
+			});
+			expect(screen.getByRole('link', { name: 'Open 9takes' })).toHaveAttribute(
+				'href',
+				'/projects/project-1'
+			);
+		}
+	);
+	it('offers each approved project with its own role and agent permission', () => {
+		render(PeopleRequests, {
+			props: {
+				...page([]),
+				requests: readPeopleRequests({
+					outgoing: [
+						{
+							id: 'approved',
+							created_at: '2026-10-23T12:00:00Z',
+							status: 'approved',
+							to: { name: 'DJ' },
+							role_requested: 'editor',
+							projects: [
+								{
+									project_id: 'project-1',
+									project_name: '9takes',
+									role: 'editor',
+									agent_access: 'off'
+								},
+								{
+									project_id: 'project-2',
+									project_name: 'Garden',
+									role: 'viewer',
+									agent_access: 'read'
+								}
+							]
+						}
+					]
+				})
+			}
+		});
+		expect(screen.getByRole('link', { name: 'Open 9takes' })).toHaveAttribute(
+			'href',
+			'/projects/project-1?joined=1'
+		);
+		expect(screen.getByRole('link', { name: 'Open Garden' })).toHaveAttribute(
+			'href',
+			'/projects/project-2?joined=1'
+		);
+		expect(screen.getByText(/Editor · You’ll be able to add and change/)).toBeInTheDocument();
+		expect(screen.getByText(/Viewer · You’ll be able to see everything/)).toBeInTheDocument();
+		expect(
+			screen.getByText(/AI agents you connect to BuildOS won’t be able to open/)
+		).toBeInTheDocument();
+		expect(
+			screen.getByText(/Once you allow this project on an AI connection/)
+		).toBeInTheDocument();
+	});
+
+	it('distinguishes a request settled by another entrance from cancellation', () => {
+		render(PeopleRequests, {
+			props: {
+				...page([]),
+				requests: readPeopleRequests({
+					outgoing: [
+						{
+							id: 'settled',
+							created_at: '2026-10-23T12:00:00Z',
+							status: 'canceled',
+							settled_elsewhere: true,
+							to: { name: 'DJ' }
+						},
+						{
+							id: 'canceled',
+							created_at: '2026-10-23T12:00:00Z',
+							status: 'canceled',
+							settled_elsewhere: false,
+							to: { name: 'Sam' }
+						}
+					]
+				})
+			}
+		});
+		expect(screen.getByText('Joined another way')).toBeInTheDocument();
+		expect(screen.getByText('Canceled')).toBeInTheDocument();
+		expect(screen.queryByText('Shared with you')).not.toBeInTheDocument();
+	});
+});
+
 describe('PeopleRequests: rejoin requests', () => {
 	it('reads a rejoin request with its project', () => {
 		const [request] = readPeopleRequests({ incoming: [rejoin], outgoing: [] }).incoming;

@@ -4,7 +4,13 @@
 	import { goto, invalidate } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
-	import { AlertCircle, ArrowRight, CheckCircle2, UserPlus, XCircle } from 'lucide-svelte';
+	import { AlertCircle, ArrowRight, CheckCircle2, UserPlus, XCircle } from '$lib/icons/lucide';
+
+	import { inviteeAgentSentence, inviteeRoleSentence } from '$lib/components/people/people-copy';
+	import {
+		projectArrivalHref,
+		projectArrivalMessage
+	} from '$lib/components/people/project-arrival';
 
 	let { data } = $props();
 
@@ -13,6 +19,7 @@
 		project_id?: string | null;
 		project_name: string;
 		role_key?: string | null;
+		agent_access?: string | null;
 		status?: string | null;
 		expires_at?: string | null;
 		created_at?: string | null;
@@ -65,16 +72,17 @@
 				throw new Error(payload?.error || 'Failed to accept invite');
 			}
 
-			toastService.success('Invite accepted');
-			await invalidate('app:invites');
-
-			const resolvedProjectId =
-				payload?.data?.projectId ?? payload?.data?.project_id ?? projectId;
-			const redirectPath = resolvedProjectId
-				? `/projects/${resolvedProjectId}?message=${encodeURIComponent('Invite accepted')}`
-				: `/projects?message=${encodeURIComponent('Invite accepted')}`;
-
-			await goto(redirectPath);
+			const result = payload.data;
+			const resolvedProjectId = result?.projectId ?? result?.project_id ?? projectId;
+			if (!resolvedProjectId)
+				throw new Error('The project could not be opened. Refresh to try again.');
+			if (result?.status === 'already_member') {
+				toastService.success(projectArrivalMessage(result.project_name, 'already_member'));
+			}
+			void invalidate('app:invites');
+			await goto(projectArrivalHref(resolvedProjectId, result?.status), {
+				invalidateAll: true
+			});
 		} catch (err) {
 			void logOntologyClientError(err, {
 				endpoint: `/api/onto/invites/${inviteId}/accept`,
@@ -233,6 +241,10 @@
 							>
 								{invite.role_key === 'editor' ? 'Editor' : 'Viewer'}
 							</div>
+						</div>
+						<div class="mt-3 space-y-1 text-sm text-muted-foreground">
+							<p>{inviteeRoleSentence(invite.role_key)}</p>
+							<p>{inviteeAgentSentence(invite.agent_access)}</p>
 						</div>
 						{#if invite.status === 'declined'}
 							<div

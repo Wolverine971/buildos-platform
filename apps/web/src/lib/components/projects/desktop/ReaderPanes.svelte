@@ -49,6 +49,7 @@
 		onChanged,
 		showProject = false,
 		onTaskState,
+		workspace = false,
 		chatOpen = $bindable(false),
 		chatScope = $bindable<ChatScope>('project'),
 		chatSession = $bindable<ResumedChat | null>(null)
@@ -85,6 +86,8 @@
 		showProject?: boolean;
 		/** The host tracks task state itself; state changes skip onChanged. */
 		onTaskState?: (id: string, state: string, previous: string) => void;
+		/** The project is the viewer's Workspace: its whole-scope chat is Workspace chat. */
+		workspace?: boolean;
 		chatOpen?: boolean;
 		chatScope?: ChatScope;
 		/** An earlier chat showing in the chat pane, in place of a new one. */
@@ -441,6 +444,7 @@
 		itemTitle={readerTitle}
 		scope={reader ? chatScope : 'project'}
 		session={chatSession}
+		{workspace}
 		{phone}
 		onScope={(scope) => (chatScope = scope)}
 		onNewChat={() => (chatSession = null)}

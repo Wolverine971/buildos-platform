@@ -67,6 +67,9 @@ export const AGENTIC_CHAT_TOOL_STORAGE_CLASSES_V1: Readonly<
 	// Proposal cards: the stored result IS the card the web renders and resolves.
 	propose_project_parent: 'workspace',
 	propose_project_combine: 'workspace',
+	propose_workspace_filing: 'workspace',
+	propose_workspace_project: 'workspace',
+	list_workspace_suggestions: 'workspace',
 	get_entity_relationships: 'workspace',
 	get_linked_entities: 'workspace',
 	get_user_profile_overview: 'workspace',

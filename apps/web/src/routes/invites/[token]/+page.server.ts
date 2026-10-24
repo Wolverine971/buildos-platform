@@ -8,6 +8,7 @@ type InvitePreviewResult = {
 	project_id: string | null;
 	project_name: string | null;
 	role_key: string | null;
+	agent_access?: string | null;
 	access: string | null;
 	invitee_email: string | null;
 	invited_by_actor_id: string | null;

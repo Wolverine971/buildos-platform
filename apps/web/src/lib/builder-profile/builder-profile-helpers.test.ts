@@ -77,9 +77,9 @@ describe('format', () => {
 		expect(grid.weeks.length).toBe(53);
 		expect(grid.weeks.every((w) => w.length === 7)).toBe(true);
 		const last = grid.weeks[grid.weeks.length - 1];
-		const today = last.find((c) => c.date === '2026-10-23');
+		const today = last?.find((c) => c.date === '2026-10-23');
 		expect(today).toMatchObject({ changes: 10, byAgents: 5, agentPercent: 50, future: false });
-		expect(last.find((c) => c.date === '2026-10-24')?.future).toBe(true);
+		expect(last?.find((c) => c.date === '2026-10-24')?.future).toBe(true);
 		expect(grid.activeDays).toBe(2);
 		expect(grid.changes).toBe(54);
 		expect(grid.agentPercent).toBe(63);
@@ -104,9 +104,25 @@ describe('agent json', () => {
 	const view: BuilderProfileView = {
 		found: true,
 		status: 'published',
-		viewer: { signed_in: false, is_owner: false, works_with: false, follows: false, ask_pending: false },
-		profile: { handle: 'djwayne', name: 'DJ Wayne', headline: 'Founder, BuildOS', now_text: 'Building.' },
-		settings: { show_build_log: true, show_agent_split: true, show_writing: true, show_builds_with: true },
+		viewer: {
+			signed_in: false,
+			is_owner: false,
+			works_with: false,
+			follows: false,
+			ask_pending: false
+		},
+		profile: {
+			handle: 'djwayne',
+			name: 'DJ Wayne',
+			headline: 'Founder, BuildOS',
+			now_text: 'Building.'
+		},
+		settings: {
+			show_build_log: true,
+			show_agent_split: true,
+			show_writing: true,
+			show_builds_with: true
+		},
 		links: [{ id: 'l1', kind: 'social', url: 'https://x.com/djwayne3', audience: 'anyone' }],
 		projects: [
 			{
@@ -145,8 +161,12 @@ describe('agent json', () => {
 			you_can: ['follow', 'ask_to_join']
 		});
 		expect(json.projects[1]).not.toHaveProperty('you_can');
-		expect(json.activity_last_year).toEqual({ active_days: 2, changes: 50, with_agents_pct: 20 });
-		expect(json.writing[0].url).toBe('https://build-os.com/p/dj-wayne/julian-pod-390');
+		expect(json.activity_last_year).toEqual({
+			active_days: 2,
+			changes: 50,
+			with_agents_pct: 20
+		});
+		expect(json.writing[0]?.url).toBe('https://build-os.com/p/dj-wayne/julian-pod-390');
 		expect(json.how_to_ask).toContain('request_buildos_access');
 	});
 });

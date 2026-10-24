@@ -46,6 +46,11 @@ import { getFieldInfo, getProjectOverview, getWorkspaceOverview } from './overvi
 import { getProjectCleanup } from './project-cleanup-reads';
 import { proposeProjectCombine, proposeProjectParent } from './proposal-reads';
 import { getOntoTableDetails, readTableRows } from './table-reads';
+import {
+	listWorkspaceSuggestions,
+	proposeWorkspaceFiling,
+	proposeWorkspaceProject
+} from './workspace-reads';
 import { projectReadResultInstantsToTimezone } from './read-result-timezone';
 
 type SharedReadToolRunnerV1 = (
@@ -109,6 +114,12 @@ const AGENTIC_CHAT_SHARED_READ_TOOL_REGISTRY_V1 = Object.freeze({
 	// throw without it.
 	propose_project_parent: proposeProjectParent,
 	propose_project_combine: proposeProjectCombine,
+	// Workspace (tasker 146): the open suggestions for the user's loose items, and the
+	// filing / start-a-project cards. The cards need `context.proposal` like the two
+	// above; only the user's click on the web moves or creates anything.
+	list_workspace_suggestions: listWorkspaceSuggestions,
+	propose_workspace_filing: proposeWorkspaceFiling,
+	propose_workspace_project: proposeWorkspaceProject,
 	// Calendar READS only. The calendar writes execute on the worker through
 	// the reviewed mutation catalog, not through this dispatch table.
 	list_calendar_events: listCalendarEvents,

@@ -1,10 +1,13 @@
 // apps/web/src/routes/invites/[token]/page.test.ts
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
+import { goto, invalidate } from '$app/navigation';
+import { toastService } from '$lib/stores/toast.store';
 
 vi.mock('$app/navigation', () => ({
-	goto: vi.fn()
+	goto: vi.fn(),
+	invalidate: vi.fn()
 }));
 
 vi.mock('$lib/services/browser-push.service', () => ({
@@ -28,6 +31,12 @@ vi.mock('$lib/utils/ontology-client-logger', () => ({
 }));
 
 import InviteTokenPage from './+page.svelte';
+
+afterEach(() => {
+	cleanup();
+	vi.unstubAllGlobals();
+	vi.clearAllMocks();
+});
 
 describe('/invites/[token] page', () => {
 	it('renders project-specific social metadata without allowing invite indexing', () => {
@@ -199,5 +208,75 @@ describe('/invites/[token] page', () => {
 			props: { data: { ...base, invite: { ...base.invite, status: 'revoked' } } }
 		});
 		expect(screen.getByText(/Owner canceled this invite/)).toBeInTheDocument();
+	});
+});
+
+describe('accepting a direct invite', () => {
+	const data = {
+		status: 'ready',
+		emailMatches: true,
+		userEmail: 'sam@example.com',
+		invite: {
+			invite_id: 'invite-1',
+			project_id: 'project-1',
+			project_name: '9takes',
+			role_key: 'editor',
+			agent_access: 'off',
+			status: 'pending'
+		}
+	};
+
+	it.each(['joined', 'rejoined'])(
+		'opens a %s project immediately, with no notification preference writes',
+		async (status) => {
+			const fetchMock = vi.fn().mockResolvedValue({
+				ok: true,
+				json: async () => ({
+					success: true,
+					data: { projectId: 'project-1', project_name: '9takes', status }
+				})
+			});
+			vi.stubGlobal('fetch', fetchMock);
+			render(InviteTokenPage, { props: { data } });
+			expect(
+				screen.getByText(/AI agents you connect to BuildOS won’t be able to open/)
+			).toBeInTheDocument();
+			await fireEvent.click(screen.getByRole('button', { name: 'Accept invite' }));
+			await waitFor(() =>
+				expect(goto).toHaveBeenCalledWith('/projects/project-1?joined=1', {
+					invalidateAll: true
+				})
+			);
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+			expect(fetchMock).toHaveBeenCalledWith('/api/onto/invites/invite-1/accept', {
+				method: 'POST'
+			});
+			expect(invalidate).toHaveBeenCalledWith('app:invites');
+			expect(screen.queryByRole('button', { name: /Enable push/ })).not.toBeInTheDocument();
+			expect(toastService.success).not.toHaveBeenCalled();
+		}
+	);
+
+	it('handles a stale page without claiming a new join or offering the old permissions', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockResolvedValue({
+				ok: true,
+				json: async () => ({
+					success: true,
+					data: {
+						projectId: 'project-1',
+						project_name: '9takes',
+						status: 'already_member'
+					}
+				})
+			})
+		);
+		render(InviteTokenPage, { props: { data } });
+		await fireEvent.click(screen.getByRole('button', { name: 'Accept invite' }));
+		await waitFor(() =>
+			expect(goto).toHaveBeenCalledWith('/projects/project-1', { invalidateAll: true })
+		);
+		expect(toastService.success).toHaveBeenCalledExactlyOnceWith('You’re already in 9takes');
 	});
 });

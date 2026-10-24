@@ -2,7 +2,9 @@
 //
 // The card's Chats tab: earlier chats about one project, newest first. Nothing
 // is read with the card; the first read waits until the tab is pointed at or
-// opened, so a card that never shows its chats never asks for them.
+// opened, so a card that never shows its chats never asks for them. The
+// Workspace's card also lists Workspace chats (the global context), since its
+// chat button opens one.
 import {
 	fetchProjectRecentChats,
 	type ProjectRecentChatSummary
@@ -16,7 +18,7 @@ function errorMessage(cause: unknown): string {
 	return cause instanceof Error ? cause.message : 'Chats could not load.';
 }
 
-export function createCardChats(projectId: () => string) {
+export function createCardChats(projectId: () => string, workspace: () => boolean = () => false) {
 	let rows = $state.raw<CardChat[]>([]);
 	let hasMore = $state(false);
 	let status = $state<'idle' | 'loading' | 'ready' | 'error'>('idle');
@@ -35,7 +37,8 @@ export function createCardChats(projectId: () => string) {
 			const page = await fetchProjectRecentChats({
 				projectId: projectId(),
 				limit: PAGE_SIZE,
-				offset: 0
+				offset: 0,
+				includeWorkspaceChats: workspace()
 			});
 			if (request !== latest) return;
 			// A quiet re-read keeps the older pages already on screen.
@@ -86,7 +89,8 @@ export function createCardChats(projectId: () => string) {
 				const page = await fetchProjectRecentChats({
 					projectId: projectId(),
 					limit: PAGE_SIZE,
-					offset: rows.length
+					offset: rows.length,
+					includeWorkspaceChats: workspace()
 				});
 				if (request !== latest) return;
 				const seen = new Set(rows.map((chat) => chat.id));

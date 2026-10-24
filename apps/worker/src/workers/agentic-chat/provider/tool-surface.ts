@@ -336,6 +336,10 @@ function workerReadOpForToolName(toolName: string): string {
 		// Proposal cards: reads that return a card; never a `.set`/`.move` op.
 		propose_project_parent: 'onto.project.parent.propose',
 		propose_project_combine: 'onto.project.combine.propose',
+		// Workspace (tasker 146): one read and two cards; never a write op.
+		list_workspace_suggestions: 'onto.workspace.suggestions.list',
+		propose_workspace_filing: 'onto.workspace.file.propose',
+		propose_workspace_project: 'onto.workspace.project.propose',
 		get_field_info: 'util.schema.field_info',
 		get_workspace_overview: 'util.workspace.overview',
 		get_project_overview: 'util.project.overview',

@@ -62,6 +62,11 @@
 			"import": "./dist/ontology/thinking-log.mjs",
 			"require": "./dist/ontology/thinking-log.js"
 		},
+		"./ontology/about-you": {
+			"types": "./dist/ontology/about-you.d.ts",
+			"import": "./dist/ontology/about-you.mjs",
+			"require": "./dist/ontology/about-you.js"
+		},
 		"./ontology/start-here.service": {
 			"types": "./dist/ontology/start-here.service.d.ts",
 			"import": "./dist/ontology/start-here.service.mjs",

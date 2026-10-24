@@ -5,6 +5,8 @@
 	or goal, or on the whole project. Switching scope starts a chat with the new
 	focus; earlier chats stay in history. An earlier chat picked from the card's
 	Chats tab opens here with its messages, ready to continue.
+	On the Workspace, the whole-project scope is Workspace chat (the global
+	context, no project focus), not a project chat about the Workspace row.
 -->
 <script lang="ts">
 	import { LoaderCircle, Plus, X } from '$lib/icons/lucide';
@@ -21,6 +23,7 @@
 		itemTitle,
 		scope,
 		session = null,
+		workspace = false,
 		phone,
 		onScope,
 		onNewChat,
@@ -34,6 +37,8 @@
 		scope: ChatScope;
 		/** An earlier chat to continue; null starts one about the scope. */
 		session?: ResumedChat | null;
+		/** The project is the viewer's Workspace: its whole scope opens Workspace chat. */
+		workspace?: boolean;
 		phone: boolean;
 		onScope: (scope: ChatScope) => void;
 		/** Leave the earlier chat for a new one about the scope. */
@@ -54,6 +59,8 @@
 	});
 
 	const aboutItem = $derived(scope === 'item' && item !== null);
+	// The Workspace's whole scope is Workspace chat: the selector-free global context.
+	const workspaceChat = $derived(workspace && !aboutItem && !session);
 	const focus = $derived<ProjectFocus>(
 		aboutItem && item
 			? {
@@ -72,7 +79,18 @@
 				}
 	);
 	const focusKey = $derived(
-		session ? `session:${session.id}` : `${focus.focusType}:${focus.focusEntityId ?? projectId}`
+		session
+			? `session:${session.id}`
+			: workspaceChat
+				? 'workspace-chat'
+				: `${focus.focusType}:${focus.focusEntityId ?? projectId}`
+	);
+	const placeholder = $derived(
+		session
+			? 'Pick up where you left off…'
+			: workspaceChat
+				? undefined
+				: `Ask about ${aboutItem ? itemTitle : projectName}…`
 	);
 </script>
 
@@ -100,10 +118,10 @@
 				<button
 					type="button"
 					aria-pressed={!aboutItem}
-					title={projectName}
+					title={workspace ? undefined : projectName}
 					onclick={() => onScope('project')}
 				>
-					All of {shortName(projectName, 28)}
+					{workspace ? 'Workspace chat' : `All of ${shortName(projectName, 28)}`}
 				</button>
 			</div>
 		{/if}
@@ -117,11 +135,10 @@
 				<Chat
 					isOpen={true}
 					embedded={true}
+					contextType={workspaceChat ? 'general' : undefined}
 					initialChatSessionId={session?.id ?? null}
-					initialProjectFocus={session ? null : focus}
-					composerPlaceholder={session
-						? 'Pick up where you left off…'
-						: `Ask about ${aboutItem ? itemTitle : projectName}…`}
+					initialProjectFocus={session || workspaceChat ? null : focus}
+					composerPlaceholder={placeholder}
 					onDocumentMutation={onDocumentChanged}
 					{onClose}
 				/>

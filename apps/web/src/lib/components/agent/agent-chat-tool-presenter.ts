@@ -336,8 +336,16 @@ const PROPOSAL_PROJECT_KEYS = [
 	'to_parent',
 	'from_parent',
 	'source',
-	'destination'
+	'destination',
+	// Workspace filing card: the project the items go to.
+	'target'
 ] as const;
+
+const PROPOSAL_CARD_KINDS_WITH_PROJECTS = new Set([
+	'project_parent',
+	'project_combine',
+	'workspace_file'
+]);
 
 // create_onto_* tool name → the entity kind it produces.
 const CREATE_TOOL_KINDS: Record<string, OntologyEntityKind> = {
@@ -366,7 +374,10 @@ const TOOL_ACTION_PAST_TENSE: Record<string, string> = {
 	// already in place) only checked, so it must not read "Nested"/"Combined".
 	Nesting: 'Checked nesting',
 	Detaching: 'Checked detaching',
-	Combining: 'Checked combining'
+	Combining: 'Checked combining',
+	// The Workspace cards (tasker 146) likewise only check and propose.
+	Sorting: 'Checked sorting',
+	Starting: 'Checked starting'
 };
 
 const TOOL_ACTION_BASE_FORM: Record<string, string> = {
@@ -1122,7 +1133,7 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		// parent, the merge destination) in `model_view`.
 		const modelView = payload.model_view;
 		if (
-			(payload.kind === 'project_parent' || payload.kind === 'project_combine') &&
+			PROPOSAL_CARD_KINDS_WITH_PROJECTS.has(payload.kind) &&
 			modelView &&
 			typeof modelView === 'object'
 		) {
@@ -1468,6 +1479,25 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 					source && destination ? `${source} → ${destination}` : (source ?? destination)
 			};
 		},
+		// Workspace cards (tasker 146): "Needs your choice to sort workspace items into a
+		// project", never "Moved".
+		list_workspace_suggestions: () => ({ action: 'Checking Workspace suggestions' }),
+		propose_workspace_filing: (args) => {
+			const count = arrayCount(args?.items);
+			const target = resolveEntityName('project', args?.target_project_id);
+			return {
+				action: 'Sorting Workspace items into a project',
+				target: target
+					? count > 0
+						? `${plural(count, 'item')} → ${target}`
+						: target
+					: undefined
+			};
+		},
+		propose_workspace_project: (args) => ({
+			action: 'Starting a project from Workspace items',
+			target: normalizeEntityLabel(args?.name)
+		}),
 		delete_onto_task: (args) => ({
 			action: 'Deleting task',
 			target: resolveEntityName('task', args?.task_id)

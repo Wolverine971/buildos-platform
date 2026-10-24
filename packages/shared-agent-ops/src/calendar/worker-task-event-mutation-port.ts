@@ -1,5 +1,7 @@
+// packages/shared-agent-ops/src/calendar/worker-task-event-mutation-port.ts
 import type { Database, Json, OntoProjectEventSyncJobMetadata } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { guestTaskCalendarUserId, enqueueGuestTaskCalendarSync } from './guest-task-calendar';
 import { logCreateAsync, logDeleteAsync, logUpdateAsync } from '../ops/async-activity-logger';
 import {
 	TaskEventSyncCoordinator,
@@ -62,7 +64,7 @@ export class WorkerTaskEventMutationPort implements TaskEventMutationPort {
 			request.activityLog.chatSessionId,
 			request.activityLog.actorContext
 		);
-		await this.enqueueProjectEventSyncJobs(userId, data, 'upsert');
+		await this.enqueueProjectEventSyncJobs(userId, data, 'upsert', request.calendarSyncUserId);
 		return { event: data };
 	}
 
@@ -97,7 +99,12 @@ export class WorkerTaskEventMutationPort implements TaskEventMutationPort {
 				request.activityLog.chatSessionId,
 				request.activityLog.actorContext
 			);
-			await this.enqueueProjectEventSyncJobs(userId, data, 'upsert');
+			await this.enqueueProjectEventSyncJobs(
+				userId,
+				data,
+				'upsert',
+				request.calendarSyncUserId
+			);
 		}
 		return data;
 	}
@@ -127,7 +134,12 @@ export class WorkerTaskEventMutationPort implements TaskEventMutationPort {
 				request.activityLog.chatSessionId,
 				request.activityLog.actorContext
 			);
-			await this.enqueueProjectEventSyncJobs(userId, data, 'delete');
+			await this.enqueueProjectEventSyncJobs(
+				userId,
+				data,
+				'delete',
+				request.calendarSyncUserId
+			);
 		}
 		return data;
 	}
@@ -147,13 +159,18 @@ export class WorkerTaskEventMutationPort implements TaskEventMutationPort {
 	private async enqueueProjectEventSyncJobs(
 		triggeredByUserId: string,
 		event: TaskEventRow,
-		action: ProjectEventSyncAction
+		action: ProjectEventSyncAction,
+		calendarSyncUserId?: string
 	): Promise<void> {
 		if (!event.project_id) return;
-		const targetUserIds = await this.resolveProjectSyncTargets(
-			event.project_id,
-			triggeredByUserId
-		);
+		if (guestTaskCalendarUserId(event)) {
+			await enqueueGuestTaskCalendarSync(this.admin, event, action, triggeredByUserId);
+			return;
+		}
+		const restrictedUserId = guestTaskCalendarUserId(event) ?? calendarSyncUserId;
+		const targetUserIds = restrictedUserId
+			? [restrictedUserId]
+			: await this.resolveProjectSyncTargets(event.project_id, triggeredByUserId);
 		const eventVersion = event.updated_at ?? event.created_at ?? new Date().toISOString();
 		let enqueued = 0;
 
@@ -165,6 +182,7 @@ export class WorkerTaskEventMutationPort implements TaskEventMutationPort {
 				projectId: event.project_id,
 				targetUserId,
 				triggeredByUserId,
+				...(restrictedUserId ? { restrictToTargetUser: true } : {}),
 				createCalendarIfMissing: targetUserId === triggeredByUserId,
 				eventUpdatedAt: eventVersion
 			};

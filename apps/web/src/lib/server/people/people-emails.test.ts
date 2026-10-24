@@ -16,6 +16,7 @@ import {
 	sendPeopleRequestApprovedEmail,
 	sendPeopleRequestReceivedEmail,
 	buildUpgradeApprovedEmail,
+	buildRequestApprovedEmail,
 	buildUpgradeRequestEmail
 } from './people-emails';
 
@@ -258,11 +259,11 @@ describe('sendPeopleRequestApprovedEmail', () => {
 		expect(sent.subject).toBe('DJ shared 9takes with you');
 		expect(sent.body).toContain('You’re a viewer.');
 		expect(sent.body).toContain('it can read this project for you');
-		expect(sent.body).toContain('Open 9takes: https://build-os.com/projects/p-1');
+		expect(sent.body).toContain('Open 9takes: https://build-os.com/projects/p-1?joined=1');
 		expect(sent.body + sent.html).not.toContain(EM_DASH);
 	});
 
-	it('lists several projects and links to the projects page', async () => {
+	it('lists each project’s permissions and links to the approved project choices', async () => {
 		const sendEmail = vi.fn().mockResolvedValue({ success: true });
 		await sendPeopleRequestApprovedEmail('req-1', {
 			admin: fakeAdmin({
@@ -286,9 +287,32 @@ describe('sendPeopleRequestApprovedEmail', () => {
 		assert.isDefined(call, 'Expected an email to be sent');
 		const [sent] = call;
 		expect(sent.subject).toBe('DJ shared 2 projects with you');
-		expect(sent.body).toContain('9takes: you can view it.');
-		expect(sent.body).toContain('Cadre: you can edit it.');
-		expect(sent.body).toContain('Open your projects: https://build-os.com/projects');
+		expect(sent.body).toContain('9takes: You’re a viewer.');
+		expect(sent.body).toContain('it can read this project for you');
+		expect(sent.body).toContain('Cadre: You’re an editor.');
+		expect(sent.body).toContain('update what you created or are assigned to');
+		expect(sent.body).toContain(
+			'Choose a project: https://build-os.com/profile?tab=people#requests'
+		);
+	});
+
+	it('opens an existing membership without claiming the person just joined', () => {
+		const email = buildRequestApprovedEmail({
+			owner: OWNER,
+			projects: [
+				{
+					id: 'p-1',
+					name: '9takes',
+					role: 'editor',
+					agent_access: 'off',
+					status: 'already_member'
+				}
+			],
+			baseUrl: 'https://build-os.com'
+		});
+		expect(email.text).toContain('Open 9takes: https://build-os.com/projects/p-1');
+		expect(email.text + email.html).not.toContain('joined=1');
+		expect(email.text).toContain('won’t be able to open this project');
 	});
 
 	it('skips a request that was not approved', async () => {
@@ -303,6 +327,28 @@ describe('sendPeopleRequestApprovedEmail', () => {
 });
 
 describe('upgrade emails (tasker 140)', () => {
+	it('lists mixed upgrades accurately and opens the approved project choices', () => {
+		const email = buildUpgradeApprovedEmail({
+			owner: OWNER,
+			projects: [
+				{ id: 'p1', name: '9takes', role: 'editor', agent_access: 'write', need: 'edit' },
+				{
+					id: 'p2',
+					name: 'Cadre',
+					role: 'viewer',
+					agent_access: 'read',
+					need: 'agents_read'
+				}
+			],
+			baseUrl: 'https://build-os.com'
+		});
+		expect(email.subject).toBe('DJ updated your access to 2 projects');
+		expect(email.text).toContain('9takes: You’re an editor.');
+		expect(email.text).toContain('Cadre: You’re a viewer.');
+		expect(email.text).toContain('/profile?tab=people#requests');
+		expect(email.text + email.html).not.toContain('joined=1');
+	});
+
 	const requester = { name: 'DJ', username: 'djwayne' };
 
 	it('tells the owner what the member’s agent asked for, and that nothing changes yet', () => {

@@ -94,6 +94,37 @@ type OverviewProjectSummary = Parameters<typeof mapProjectSummaryToOverviewRow>[
 // DATA LOADERS
 // ============================================
 
+/**
+ * The user's Workspace (loose notes, docs and tasks; onto_projects.kind 'workspace')
+ * is not a project: overviews list it apart and never count it (tasker 146).
+ */
+function isWorkspaceSummary(summary: AgenticChatToolProjectSummaryV1): boolean {
+	return summary.kind === 'workspace';
+}
+
+/** The one line an overview carries about the Workspace (counts from its summary row). */
+export type OverviewWorkspaceLineV1 = {
+	project_id: string;
+	task_count: number;
+	document_count: number;
+	note: string;
+};
+
+function workspaceLine(
+	summaries: readonly AgenticChatToolProjectSummaryV1[]
+): OverviewWorkspaceLineV1 | null {
+	const workspace = summaries.find(isWorkspaceSummary);
+	if (!workspace) return null;
+	const counted = (value: unknown) =>
+		typeof value === 'number' && Number.isFinite(value) ? Math.max(0, value) : 0;
+	return {
+		project_id: String(workspace.id),
+		task_count: counted(workspace.task_count),
+		document_count: counted(workspace.document_count),
+		note: 'Loose notes, docs and tasks. Not a project; not counted above.'
+	};
+}
+
 async function loadOverviewProjectRows(
 	context: AgenticChatSharedReadContextV1,
 	params: {
@@ -107,13 +138,18 @@ async function loadOverviewProjectRows(
 	totalProjects: number;
 	/** Every project the viewer can open (unfiltered): the hierarchy's visibility set. */
 	accessible: AgenticChatToolProjectSummaryV1[];
+	workspace: OverviewWorkspaceLineV1 | null;
 }> {
 	const projectSummaries = await context.access.resolveProjectSummaries();
+	const workspace = workspaceLine(projectSummaries);
 	// Direct project_id lookups bypass the paused filter (legacy behavior);
-	// list/query flows use the single shared paused-project predicate.
+	// list/query flows use the single shared paused-project predicate and leave
+	// the Workspace out (it is not a project and never counts as one).
 	const visibleSummaries = (params.projectId
 		? projectSummaries
-		: filterReadableProjectSummaries(projectSummaries)) as unknown as OverviewProjectSummary[];
+		: filterReadableProjectSummaries(projectSummaries).filter(
+				(summary) => !isWorkspaceSummary(summary)
+			)) as unknown as OverviewProjectSummary[];
 	const sortedProjects = [...visibleSummaries]
 		.sort((a, b) => {
 			const aTs = a.updated_at ? Date.parse(a.updated_at) : Number.NEGATIVE_INFINITY;
@@ -128,7 +164,8 @@ async function loadOverviewProjectRows(
 			projects: project ? [project] : [],
 			maybeMore: false,
 			totalProjects: project ? 1 : 0,
-			accessible: projectSummaries
+			accessible: projectSummaries,
+			workspace
 		};
 	}
 
@@ -144,7 +181,8 @@ async function loadOverviewProjectRows(
 		projects: rows.slice(0, params.projectLimit),
 		maybeMore: rows.length > params.projectLimit,
 		totalProjects: rows.length,
-		accessible: projectSummaries
+		accessible: projectSummaries,
+		workspace
 	};
 }
 
@@ -414,24 +452,26 @@ export async function getWorkspaceOverview(
 	args: SharedGetWorkspaceOverviewArgs = {}
 ): Promise<Record<string, any>> {
 	const projectLimit = Math.max(1, Math.min(20, Math.floor(args.project_limit ?? 8)));
-	const { projects, maybeMore, totalProjects, accessible } = await loadOverviewProjectRows(
-		context,
-		{ projectLimit }
-	);
+	const { projects, maybeMore, totalProjects, accessible, workspace } =
+		await loadOverviewProjectRows(context, { projectLimit });
+	const withWorkspace = (payload: Record<string, any>) =>
+		workspace ? { ...payload, workspace } : payload;
 	if (projects.length === 0) {
-		return buildWorkspaceOverviewPayload({
-			projects: [],
-			tasks: [],
-			milestones: [],
-			plans: [],
-			risks: [],
-			events: [],
-			projectLogs: [],
-			members: [],
-			maybeMore: false,
-			totalProjects,
-			projectLimit
-		});
+		return withWorkspace(
+			buildWorkspaceOverviewPayload({
+				projects: [],
+				tasks: [],
+				milestones: [],
+				plans: [],
+				risks: [],
+				events: [],
+				projectLogs: [],
+				members: [],
+				maybeMore: false,
+				totalProjects,
+				projectLimit
+			})
+		);
 	}
 
 	const projectIds = projects.map((project) => String(project.id));
@@ -457,7 +497,7 @@ export async function getWorkspaceOverview(
 		totalProjects,
 		projectLimit
 	});
-	return withTaskTruncation(payload, related);
+	return withWorkspace(withTaskTruncation(payload, related));
 }
 
 export async function getProjectOverview(

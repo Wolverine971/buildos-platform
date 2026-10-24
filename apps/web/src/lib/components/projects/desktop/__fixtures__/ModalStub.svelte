@@ -6,13 +6,15 @@
 	const label = $derived(
 		props.initialChatSessionId
 			? `earlier chat ${props.initialChatSessionId}`
-			: props.documentId
-				? `document ${props.documentId} in ${props.projectId}`
-				: props.taskId
-					? `task ${props.taskId} in ${props.projectId}`
-					: props.goalId
-						? `goal ${props.goalId} in ${props.projectId}`
-						: `chat ${props.initialProjectFocus?.focusType} in ${props.initialProjectFocus?.projectId}`
+			: props.contextType === 'general'
+				? `Workspace chat${props.initialProjectFocus ? ' with a focus' : ''}`
+				: props.documentId
+					? `document ${props.documentId} in ${props.projectId}`
+					: props.taskId
+						? `task ${props.taskId} in ${props.projectId}`
+						: props.goalId
+							? `goal ${props.goalId} in ${props.projectId}`
+							: `chat ${props.initialProjectFocus?.focusType} in ${props.initialProjectFocus?.projectId}`
 	);
 </script>
 

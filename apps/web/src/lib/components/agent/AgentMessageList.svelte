@@ -676,11 +676,14 @@
 		const focusName = resolvedProjectFocus?.focusEntityName ?? null;
 
 		switch (selectedContextType) {
+			// Workspace chat (and its selector-free alias): it knows recent chats,
+			// what's pressing, the projects and the Workspace's loose items.
 			case 'global':
+			case 'general':
 				return [
-					'What should I work on today?',
-					'Summarize what is in flight across my projects',
-					'Help me plan this week'
+					"What's pressing right now?",
+					'Where am I at with things?',
+					'Pick up where we left off'
 				];
 			case 'project_create':
 				return [

@@ -222,3 +222,63 @@ describe('overview working-set filters', () => {
 		expect(payload.tasks_truncated).toBeUndefined();
 	});
 });
+
+describe('the Workspace in overviews (tasker 146)', () => {
+	const WORKSPACE_SUMMARY = {
+		...PROJECT_SUMMARY,
+		id: 'workspace-1',
+		name: 'Workspace',
+		kind: 'workspace',
+		task_count: 4,
+		document_count: 6,
+		// Newest first would otherwise put it at the top of the list.
+		updated_at: '2026-10-23T15:00:00.000Z'
+	};
+
+	function withWorkspace(rows: TableRows) {
+		const context = makeContext(rows);
+		return {
+			...context,
+			access: {
+				...context.access,
+				resolveProjectSummaries: async () => [
+					{ ...PROJECT_SUMMARY, kind: 'project' },
+					WORKSPACE_SUMMARY
+				]
+			}
+		} as AgenticChatSharedReadContextV1;
+	}
+
+	it('never counts the Workspace as a project and lists it apart', async () => {
+		const payload = await getWorkspaceOverview(withWorkspace(PROJECT_ROWS));
+		expect(payload.projects.map((project: { name: string }) => project.name)).toEqual([
+			'Cedar House'
+		]);
+		expect(payload.snapshot.total_accessible_projects).toBe(1);
+		expect(payload.entity_totals.projects).toBe(1);
+		expect(payload.workspace).toEqual({
+			project_id: 'workspace-1',
+			task_count: 4,
+			document_count: 6,
+			note: 'Loose notes, docs and tasks. Not a project; not counted above.'
+		});
+	});
+
+	it('keeps the Workspace line when there are no projects', async () => {
+		const context = makeContext({});
+		const payload = await getWorkspaceOverview({
+			...context,
+			access: { ...context.access, resolveProjectSummaries: async () => [WORKSPACE_SUMMARY] }
+		} as AgenticChatSharedReadContextV1);
+		expect(payload.projects).toEqual([]);
+		expect(payload.snapshot.total_accessible_projects).toBe(0);
+		expect(payload.workspace).toMatchObject({ project_id: 'workspace-1' });
+	});
+
+	it('does not match the Workspace by name in a project query', async () => {
+		const payload = await getProjectOverview(withWorkspace(PROJECT_ROWS), {
+			query: 'workspace'
+		});
+		expect(payload.match.status).toBe('not_found');
+	});
+});

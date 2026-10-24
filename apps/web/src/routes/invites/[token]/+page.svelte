@@ -1,7 +1,6 @@
 <!-- apps/web/src/routes/invites/[token]/+page.svelte -->
 <script lang="ts">
 	import { goto, invalidate } from '$app/navigation';
-	import { browserPushService } from '$lib/services/browser-push.service';
 	import { toastService } from '$lib/stores/toast.store';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import SEOHead from '$lib/components/SEOHead.svelte';
@@ -9,26 +8,28 @@
 	import {
 		AlertCircle,
 		ArrowRight,
-		Bell,
 		CheckCircle2,
 		LogIn,
 		Mail,
 		UserPlus
 	} from '$lib/icons/lucide';
 	import {
+		inviteeAgentSentence,
 		inviteeRoleSentence,
 		roleWithArticle,
 		shortDate
 	} from '$lib/components/people/people-copy';
 
+	import {
+		projectArrivalHref,
+		projectArrivalMessage
+	} from '$lib/components/people/project-arrival';
+
 	let { data } = $props();
 
 	let accepting = $state(false);
 	let declining = $state(false);
-	let configuringNotifications = $state(false);
 	let actionError = $state('');
-	let acceptedRedirectPath = $state<string | null>(null);
-	let showNotificationPrompt = $state(false);
 	let localRecoverableUntil = $state<string | null>(null);
 
 	let invite = $derived(data?.invite ?? null);
@@ -88,122 +89,6 @@
 	);
 	let inviteCanonical = $derived(`${SITE_URL}${authRedirect}`);
 
-	async function updateNotificationPreferences(
-		updates: Record<string, unknown>,
-		context: string
-	): Promise<void> {
-		const response = await fetch('/api/notification-preferences', {
-			method: 'PUT',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify(updates)
-		});
-
-		if (!response.ok) {
-			let errorMessage = `Failed to update notification preferences (${context})`;
-			try {
-				const payload = await response.json();
-				errorMessage = payload?.error || payload?.message || errorMessage;
-			} catch {
-				// Keep default message if response is not JSON.
-			}
-			throw new Error(errorMessage);
-		}
-	}
-
-	async function continueToAcceptedProject() {
-		if (!acceptedRedirectPath) return;
-		await goto(acceptedRedirectPath);
-	}
-
-	async function enableNotificationsAndContinue() {
-		if (!acceptedRedirectPath || configuringNotifications) return;
-		configuringNotifications = true;
-		actionError = '';
-
-		try {
-			// Ensure collaboration notifications remain visible in-app.
-			await updateNotificationPreferences({ in_app_enabled: true }, 'in-app');
-
-			if (!browserPushService.isSupported()) {
-				toastService.warning(
-					'Push is not supported in this browser. In-app notifications enabled.'
-				);
-				await continueToAcceptedProject();
-				return;
-			}
-
-			const granted = await browserPushService.requestPermission();
-			if (!granted) {
-				toastService.warning(
-					'Push permission not granted. In-app notifications are enabled for project updates.'
-				);
-				await continueToAcceptedProject();
-				return;
-			}
-
-			await browserPushService.subscribe();
-			await updateNotificationPreferences(
-				{
-					in_app_enabled: true,
-					push_enabled: true
-				},
-				'push'
-			);
-
-			toastService.success('Push notifications enabled for this device.');
-			await continueToAcceptedProject();
-		} catch (err) {
-			void logOntologyClientError(err, {
-				endpoint: '/api/notification-preferences',
-				method: 'PUT',
-				projectId: invite?.project_id ?? undefined,
-				entityType: 'project_invite',
-				entityId: invite?.invite_id ?? undefined,
-				operation: 'project_invite_notification_opt_in',
-				metadata: {
-					source: 'invite_token_page'
-				}
-			});
-
-			actionError =
-				err instanceof Error
-					? err.message
-					: 'Failed to configure notifications. You can update later.';
-		} finally {
-			configuringNotifications = false;
-		}
-	}
-
-	async function skipNotificationPrompt() {
-		if (!acceptedRedirectPath || configuringNotifications) return;
-		configuringNotifications = true;
-		actionError = '';
-
-		try {
-			// Default to in-app for shared project activity visibility.
-			await updateNotificationPreferences({ in_app_enabled: true }, 'in-app');
-		} catch (err) {
-			void logOntologyClientError(err, {
-				endpoint: '/api/notification-preferences',
-				method: 'PUT',
-				projectId: invite?.project_id ?? undefined,
-				entityType: 'project_invite',
-				entityId: invite?.invite_id ?? undefined,
-				operation: 'project_invite_notification_in_app_default',
-				metadata: {
-					source: 'invite_token_page'
-				}
-			});
-			// Continue even if preference update fails; user can adjust in settings.
-		} finally {
-			configuringNotifications = false;
-		}
-
-		await continueToAcceptedProject();
-	}
-
 	async function handleAccept() {
 		if (!invite?.invite_id || accepting || declining) return;
 		actionError = '';
@@ -221,14 +106,17 @@
 				throw new Error(payload?.error || 'Failed to accept invite');
 			}
 
-			toastService.success('Invite accepted');
+			const result = payload.data;
+			const projectId = result?.projectId ?? result?.project_id ?? invite.project_id;
+			if (!projectId)
+				throw new Error('The project could not be opened. Refresh to try again.');
+			if (result?.status === 'already_member') {
+				toastService.success(
+					projectArrivalMessage(result.project_name || projectLabel, 'already_member')
+				);
+			}
 			void invalidate('app:invites');
-
-			const projectId = payload?.data?.projectId ?? payload?.data?.project_id;
-			acceptedRedirectPath = projectId
-				? `/projects/${projectId}?message=${encodeURIComponent('Invite accepted')}`
-				: `/projects?message=${encodeURIComponent('Invite accepted')}`;
-			showNotificationPrompt = true;
+			await goto(projectArrivalHref(projectId, result?.status), { invalidateAll: true });
 		} catch (err) {
 			void logOntologyClientError(err, {
 				endpoint: `/api/onto/invites/${invite.invite_id}/accept`,
@@ -342,21 +230,26 @@
 					</div>
 				</div>
 
-				<div
-					class="mt-4 rounded-lg border border-border bg-background px-3.5 py-3 shadow-ink-inner space-y-2"
-				>
-					<p class="text-sm text-foreground">
-						<span class="font-semibold"
-							>You’ll join as {roleWithArticle(invite?.role_key)}.</span
-						>
-						{inviteeRoleSentence(invite?.role_key)}
-					</p>
-					{#if expiresLabel && isPending && !alreadyMember}
-						<p class="text-xs text-muted-foreground">
-							This invite works until {expiresLabel}.
+				{#if !alreadyMember}
+					<div
+						class="mt-4 rounded-lg border border-border bg-background px-3.5 py-3 shadow-ink-inner space-y-2"
+					>
+						<p class="text-sm text-foreground">
+							<span class="font-semibold"
+								>You’ll join as {roleWithArticle(invite?.role_key)}.</span
+							>
+							{inviteeRoleSentence(invite?.role_key)}
 						</p>
-					{/if}
-				</div>
+						<p class="text-sm text-muted-foreground">
+							{inviteeAgentSentence(invite?.agent_access)}
+						</p>
+						{#if expiresLabel && isPending && !alreadyMember}
+							<p class="text-xs text-muted-foreground">
+								This invite works until {expiresLabel}.
+							</p>
+						{/if}
+					</div>
+				{/if}
 
 				{#if actionError}
 					<p class="mt-3 text-sm text-destructive">{actionError}</p>
@@ -384,7 +277,7 @@
 						</p>
 					</div>
 				{:else if data?.status === 'ready'}
-					{#if alreadyMember && !showNotificationPrompt}
+					{#if alreadyMember}
 						<p class="mt-4 text-sm text-foreground">
 							You’re already in {projectLabel}.
 						</p>
@@ -435,84 +328,39 @@
 						</div>
 					{:else}
 						<div class="mt-4 space-y-2">
-							{#if showNotificationPrompt && acceptedRedirectPath}
-								<div class="rounded-lg border border-border bg-background/70 p-3">
-									<div class="flex items-start gap-2">
-										<div
-											class="shrink-0 flex items-center justify-center w-8 h-8 rounded-md bg-accent/10"
-										>
-											<Bell class="w-4 h-4 text-accent" />
-										</div>
-										<div class="min-w-0">
-											<p class="text-sm font-semibold text-foreground">
-												Stay updated?
-											</p>
-											<p class="mt-1 text-xs text-muted-foreground">
-												Enable notifications for activity in
-												<strong
-													>{invite?.project_name ||
-														'this project'}</strong
-												>.
-											</p>
-										</div>
-									</div>
-								</div>
-								<button
-									onclick={enableNotificationsAndContinue}
-									disabled={configuringNotifications}
-									class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-3.5 py-2 text-sm font-semibold text-accent-foreground shadow-ink pressable transition-colors hover:bg-accent/90 disabled:opacity-60"
+							{#if localStatus === 'declined'}
+								<div
+									class="rounded-lg border border-accent/20 bg-accent/10 px-3 py-2 text-sm text-accent"
 								>
-									{#if configuringNotifications}
-										Enabling...
-									{:else}
-										Enable push notifications
-									{/if}
-									<Bell class="w-4 h-4" />
-								</button>
+									Declined · recoverable{recoverableLabel
+										? ` until ${recoverableLabel}`
+										: ' for 48 hours'}
+								</div>
+							{/if}
+							<button
+								onclick={handleAccept}
+								disabled={accepting || declining}
+								class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-3.5 py-2 text-sm font-semibold text-accent-foreground shadow-ink pressable transition-colors hover:bg-accent/90 disabled:opacity-60"
+							>
+								{#if accepting}
+									Accepting...
+								{:else}
+									{localStatus === 'declined' ? 'Accept anyway' : 'Accept invite'}
+								{/if}
+								<CheckCircle2 class="w-4 h-4" />
+							</button>
+							{#if isPending}
 								<button
-									onclick={skipNotificationPrompt}
-									disabled={configuringNotifications}
+									onclick={handleDecline}
+									disabled={accepting || declining}
 									class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-semibold text-foreground shadow-ink pressable transition-colors hover:bg-muted disabled:opacity-60"
 								>
-									Continue without push
-								</button>
-							{:else}
-								{#if localStatus === 'declined'}
-									<div
-										class="rounded-lg border border-accent/20 bg-accent/10 px-3 py-2 text-sm text-accent"
-									>
-										Declined · recoverable{recoverableLabel
-											? ` until ${recoverableLabel}`
-											: ' for 48 hours'}
-									</div>
-								{/if}
-								<button
-									onclick={handleAccept}
-									disabled={accepting || declining}
-									class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-3.5 py-2 text-sm font-semibold text-accent-foreground shadow-ink pressable transition-colors hover:bg-accent/90 disabled:opacity-60"
-								>
-									{#if accepting}
-										Accepting...
+									{#if declining}
+										Declining...
 									{:else}
-										{localStatus === 'declined'
-											? 'Accept anyway'
-											: 'Accept invite'}
+										Decline invite
 									{/if}
-									<CheckCircle2 class="w-4 h-4" />
 								</button>
-								{#if isPending}
-									<button
-										onclick={handleDecline}
-										disabled={accepting || declining}
-										class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-semibold text-foreground shadow-ink pressable transition-colors hover:bg-muted disabled:opacity-60"
-									>
-										{#if declining}
-											Declining...
-										{:else}
-											Decline invite
-										{/if}
-									</button>
-								{/if}
 							{/if}
 						</div>
 					{/if}

@@ -40,7 +40,14 @@ describe('Agentic Chat worker tool policy', () => {
 	// 2026-10-17 tasker 122: the proposal tools run on the worker's read lane
 	// (they return a card; the user's click writes), never as mutations.
 	it('executes the proposal-card tools as reads, not mutations', () => {
-		for (const name of ['propose_project_parent', 'propose_project_combine']) {
+		for (const name of [
+			'propose_project_parent',
+			'propose_project_combine',
+			// 2026-10-23 tasker 146: the Workspace read and its two cards.
+			'list_workspace_suggestions',
+			'propose_workspace_filing',
+			'propose_workspace_project'
+		]) {
 			expect(AGENTIC_CHAT_WORKER_EXECUTABLE_TOOL_NAMES_V1, name).toContain(name);
 			expect(AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1, name).not.toContain(
 				name as never
@@ -52,7 +59,10 @@ describe('Agentic Chat worker tool policy', () => {
 		expect(
 			findAgenticChatWorkerUnavailableToolNamesV1([
 				'propose_project_parent',
-				'propose_project_combine'
+				'propose_project_combine',
+				'list_workspace_suggestions',
+				'propose_workspace_filing',
+				'propose_workspace_project'
 			])
 		).toEqual([]);
 	});

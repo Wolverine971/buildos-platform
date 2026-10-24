@@ -77,7 +77,7 @@ export const UTILITY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		function: {
 			name: 'get_workspace_overview',
 			description:
-				'Preferred high-level workspace status read. Summarizes accessible projects, entity/collaborator counts, active and blocked work, upcoming events, and recent activity.',
+				'Preferred status read across all projects: entity/collaborator counts, active and blocked work, upcoming events, recent activity. The Workspace is listed apart.',
 			parameters: {
 				type: 'object',
 				properties: {

@@ -922,12 +922,15 @@ describe('loadFastChatPromptContext global', () => {
 			'ensure_workspace_project',
 			'load_fastchat_context'
 		]);
-		// The RPC path reads three tables: users.timezone (alongside every context
-		// load), the one onto_tasks rollup query for every accessible project, and
-		// (tasker 122, 2026-10-17) onto_projects `id, parent_project_id` for the
-		// index's "part of" / "includes" labels, in parallel with the rollups.
+		// The RPC path reads: users.timezone (alongside every context load),
+		// chat_sessions for Workspace chat's recent conversations (tasker 146,
+		// beside the RPC), the one onto_tasks rollup query for every accessible
+		// project, and (tasker 122, 2026-10-17) onto_projects `id, parent_project_id`
+		// for the index's "part of" / "includes" labels, in parallel with the rollups.
+		// The Workspace shelf reads wait for a Workspace id, which this mock lacks.
 		expect(supabase.from.mock.calls.map(([table]: [string]) => table)).toEqual([
 			'users',
+			'chat_sessions',
 			'onto_tasks',
 			'onto_projects'
 		]);

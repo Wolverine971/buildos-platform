@@ -58,6 +58,8 @@ export interface TaskSyncPort {
 		actorId: string,
 		task: any,
 		options?: {
+			/** Trusted guest-write override, never read from tool arguments. */
+			calendarSyncUserId?: string;
 			activityLog?: {
 				changeSource?: string;
 				actorContext?: ActivityLogActorContext | undefined;

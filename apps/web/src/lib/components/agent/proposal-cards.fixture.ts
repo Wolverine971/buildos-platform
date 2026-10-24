@@ -135,7 +135,7 @@ export const UPCOMING_BLOCKED_IMPACT = {
 };
 
 export function card<P>(
-	kind: 'project_parent' | 'project_combine',
+	kind: ProposalCardEnvelopeV1['kind'],
 	payload: P,
 	extra: Partial<ProposalCardEnvelopeV1> = {}
 ): ProposalCardEnvelopeV1 {

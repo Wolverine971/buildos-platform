@@ -48,6 +48,16 @@ import {
 	readProjectFoldManifest
 } from '$lib/server/project-fold/project-fold.service';
 import { removeProjectMember } from '$lib/server/project-members/remove-member';
+import { ensureWorkspaceProjectId } from '@buildos/shared-agent-ops/ontology/ontology-projects.service';
+import { loadWorkspaceItemsV1 } from '@buildos/agentic-chat-runtime/tools';
+import {
+	graduateItems,
+	loadOwnSuggestion,
+	markSuggestion,
+	moveItems,
+	undoGraduate,
+	undoMoveBatch
+} from '$lib/server/workspace/workspace.service';
 import {
 	claimChoice,
 	insertClaim,
@@ -85,6 +95,14 @@ const DEFAULT_DEPS: ProposalCardDeps = {
 	previewProjectUnfold,
 	applyProjectUnfold,
 	removeProjectMember,
+	ensureWorkspaceProjectId: (client) => ensureWorkspaceProjectId(client as never),
+	loadWorkspaceItems: loadWorkspaceItemsV1,
+	moveWorkspaceItems: moveItems,
+	undoWorkspaceMove: undoMoveBatch,
+	graduateWorkspaceItems: graduateItems,
+	undoWorkspaceGraduate: undoGraduate,
+	loadWorkspaceSuggestion: loadOwnSuggestion,
+	markWorkspaceSuggestion: markSuggestion,
 	sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 	now: () => new Date()
 };

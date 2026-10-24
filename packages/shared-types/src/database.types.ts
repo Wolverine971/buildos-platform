@@ -18049,6 +18049,7 @@ export type Database = {
       }
       people_requests: {
         Row: {
+          settled_elsewhere: boolean
           agent_access_requested: string | null
           created_at: string
           decided_at: string | null
@@ -18071,6 +18072,7 @@ export type Database = {
           via_oauth_grant_id: string | null
         }
         Insert: {
+          settled_elsewhere?: boolean
           agent_access_requested?: string | null
           created_at?: string
           decided_at?: string | null
@@ -18093,6 +18095,7 @@ export type Database = {
           via_oauth_grant_id?: string | null
         }
         Update: {
+          settled_elsewhere?: boolean
           agent_access_requested?: string | null
           created_at?: string
           decided_at?: string | null
@@ -24874,6 +24877,9 @@ export type Database = {
       accept_project_invite_by_id: {
         Args: { p_invite_id: string }
         Returns: {
+          agent_access: string
+          project_name: string
+          status: string
           access: string
           project_id: string
           role_key: string
@@ -27397,6 +27403,7 @@ export type Database = {
       get_project_invite_preview: {
         Args: { p_token_hash: string }
         Returns: {
+          agent_access: string
           access: string
           can_accept: boolean
           created_at: string
@@ -27809,6 +27816,7 @@ export type Database = {
       list_pending_project_invites: {
         Args: never
         Returns: {
+          agent_access: string
           access: string
           can_accept: boolean
           created_at: string
@@ -30232,6 +30240,7 @@ export type Database = {
         | "table_ai_fill"
         | "extract_task_entities"
         | "workspace_suggest"
+        | "about_you_refresh"
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -30510,6 +30519,7 @@ export const Constants = {
         "table_ai_fill",
         "extract_task_entities",
         "workspace_suggest",
+        "about_you_refresh",
       ],
       recurrence_end_reason: [
         "indefinite",

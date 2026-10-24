@@ -93,7 +93,9 @@ const freshNote = {
 	deleted_at: null
 };
 
-function makeSession(doc = freshNote) {
+function makeSession(
+	doc: Omit<typeof freshNote, 'props'> & { props: Record<string, unknown> } = freshNote
+) {
 	const updates: unknown[] = [];
 	const session = {
 		from: vi.fn((table: string) => {

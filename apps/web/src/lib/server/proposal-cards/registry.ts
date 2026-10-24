@@ -8,9 +8,12 @@
 import type { ProposalCardKind } from '@buildos/shared-agent-ops/chat-cards/proposal-card';
 import { projectCombineHandler } from './project-combine.handler';
 import { projectParentHandler } from './project-parent.handler';
+import { workspaceFileHandler, workspaceProjectHandler } from './workspace-cards.handler';
 import type { ProposalCardHandler } from './types';
 
 export const PROPOSAL_CARD_HANDLERS: Record<ProposalCardKind, ProposalCardHandler<any>> = {
 	project_parent: projectParentHandler,
-	project_combine: projectCombineHandler
+	project_combine: projectCombineHandler,
+	workspace_file: workspaceFileHandler,
+	workspace_project: workspaceProjectHandler
 };

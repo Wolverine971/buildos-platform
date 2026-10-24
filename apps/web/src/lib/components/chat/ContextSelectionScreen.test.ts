@@ -123,6 +123,72 @@ describe('ContextSelectionScreen', () => {
 		expect(screen.queryByText(/what do you want to work on/i)).toBeNull();
 	});
 
+	it('never lists or counts the Workspace as a project', async () => {
+		global.fetch = vi.fn(() =>
+			okJson({
+				success: true,
+				data: {
+					projects: [
+						{
+							id: 'workspace-1',
+							name: 'Workspace',
+							kind: 'workspace',
+							state_key: 'active',
+							type_key: 'project.workspace',
+							task_count: 3
+						},
+						{
+							id: 'project-1',
+							name: 'Apollo',
+							kind: 'project',
+							state_key: 'active',
+							type_key: 'project.product',
+							task_count: 4
+						}
+					]
+				}
+			})
+		) as typeof fetch;
+		const onSelect = vi.fn();
+
+		render(ContextSelectionScreen, { props: { onSelect } });
+
+		const projectCard = await screen.findByRole('button', { name: /project chat/i });
+		expect(projectCard).toHaveTextContent('Pick from 1 active project and get focused help.');
+
+		await fireEvent.click(screen.getByRole('button', { name: /workspace chat/i }));
+		expect(onSelect).toHaveBeenCalledWith({ contextType: 'global', label: 'Workspace chat' });
+
+		await fireEvent.click(projectCard);
+		await screen.findByText('Apollo');
+		expect(screen.queryByText('Workspace')).toBeNull();
+	});
+
+	it('treats a user whose only row is the Workspace as new', async () => {
+		global.fetch = vi.fn(() =>
+			okJson({
+				success: true,
+				data: {
+					projects: [
+						{
+							id: 'workspace-1',
+							name: 'Workspace',
+							kind: 'workspace',
+							state_key: 'active',
+							type_key: 'project.workspace',
+							task_count: 0
+						}
+					]
+				}
+			})
+		) as typeof fetch;
+
+		render(ContextSelectionScreen);
+
+		await screen.findByText(/start with your first project/i);
+		expect(screen.queryByRole('button', { name: /project chat/i })).toBeNull();
+	});
+
 	it('reuses the cached default project list across remounts', async () => {
 		const first = render(ContextSelectionScreen);
 

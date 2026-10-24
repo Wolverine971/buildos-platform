@@ -831,7 +831,9 @@
 
 	async function openDayChat() {
 		await ensureChatModal();
-		chatConfig = { contextType: 'global', draft: buildDayDraft() };
+		// Straight into Workspace chat ('general' skips the selector), so the draft
+		// is ready to send there.
+		chatConfig = { contextType: 'general', draft: buildDayDraft() };
 		chatOpen = true;
 		trackLoopEvent('loop_chat_opened', 'today', {
 			chat_source: 'day',
@@ -1335,6 +1337,7 @@
 						projectNameFor(readerProjectId) ??
 						'Project'}
 					canWrite={readerProject?.can_write ?? true}
+					workspace={readerProject?.kind === 'workspace'}
 					reader={readerItem}
 					order={readerOrder}
 					titleOf={readerTitle}

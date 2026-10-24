@@ -80,12 +80,16 @@ const FROZEN_TOOL_OPERATION_ROWS_2026_09_04: readonly string[] = Object.freeze([
 	'list_onto_tasks onto.task.list read',
 	'list_task_documents onto.task.docs.list read',
 	'list_user_contact_candidates util.contact.candidates.list read',
+	// Added 2026-10-23 (tasker 146): the Workspace suggestions read and cards.
+	'list_workspace_suggestions onto.workspace.suggestions.list read',
 	'move_document_in_tree onto.document.tree.move write',
 	'move_onto_task onto.task.move write',
 	// Added 2026-10-17 (tasker 122): proposal cards. Reads that return a card the
 	// user clicks; chat only, with no external op handler. Never `.set`/`.move`.
 	'propose_project_combine onto.project.combine.propose read',
 	'propose_project_parent onto.project.parent.propose read',
+	'propose_workspace_filing onto.workspace.file.propose read',
+	'propose_workspace_project onto.workspace.project.propose read',
 	'read_document_section x.misc.read_document_section read',
 	'read_table_rows onto.table.rows.query read',
 	'reorganize_onto_project_graph onto.project.graph.reorganize write',

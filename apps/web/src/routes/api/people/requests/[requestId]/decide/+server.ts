@@ -16,13 +16,11 @@
 //  - the connections that asked get the shared projects whose agent setting isn't Off,
 //    so they can open them on their next call: per project for upgrades (only the
 //    connections that asked for that project), the sending agent for access requests;
-//  - the requester is subscribed to project activity, like an accepted invite;
 //  - the requester gets an email saying what was shared, with a link to open it.
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
-import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { CallerProvisioningService } from '$lib/server/agent-call/caller-provisioning.service';
 import { getSecurityEventLogOptions } from '$lib/server/security-event-logger';
 import { asRecord, peopleRpcErrorResponse } from '$lib/server/people/people-api';
@@ -171,34 +169,6 @@ export const POST: RequestHandler = async ({ params, request, locals, url, platf
 					error: grantError instanceof Error ? grantError.message : grantError
 				});
 			}
-		}
-	}
-
-	if (requesterUserId) {
-		try {
-			// Existing subscriptions (including a deliberate opt-out) are left as they are.
-			const { error: subscriptionError } = await (createAdminSupabaseClient() as any)
-				.from('notification_subscriptions')
-				.upsert(
-					{
-						user_id: requesterUserId,
-						event_type: 'project.activity.batched',
-						is_active: true,
-						admin_only: false,
-						created_by: user.id,
-						updated_at: new Date().toISOString()
-					},
-					{ onConflict: 'user_id,event_type', ignoreDuplicates: true }
-				);
-			if (subscriptionError) throw subscriptionError;
-		} catch (subscriptionError) {
-			console.warn('[People API] Could not subscribe requester to project activity:', {
-				requestId,
-				error:
-					subscriptionError instanceof Error
-						? subscriptionError.message
-						: subscriptionError
-			});
 		}
 	}
 

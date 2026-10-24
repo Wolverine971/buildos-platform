@@ -170,7 +170,14 @@ const GLOBAL_DIRECT_TOOL_NAMES = [
 	// the change. Global only: project chats cannot look up the other project
 	// (no cross-project list or search there).
 	'propose_project_parent',
-	'propose_project_combine'
+	'propose_project_combine',
+	// Workspace (2026-10-23, tasker 146): the open suggestions for the user's loose
+	// items, and the two cards that act on them (file into a project, start a
+	// project). The cards are reads; only the user's click moves or creates.
+	// Global only, like the other cards: the target is another project.
+	'list_workspace_suggestions',
+	'propose_workspace_filing',
+	'propose_workspace_project'
 ] as const;
 
 /** Global-only members the project surface drops (see the comment above each). */
@@ -182,7 +189,10 @@ const GLOBAL_ONLY_TOOL_NAMES: ReadonlySet<string> = new Set([
 	// project is a workspace-level move that belongs to the global surface.
 	'create_onto_project',
 	'propose_project_parent',
-	'propose_project_combine'
+	'propose_project_combine',
+	'list_workspace_suggestions',
+	'propose_workspace_filing',
+	'propose_workspace_project'
 ]);
 
 /**

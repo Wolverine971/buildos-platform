@@ -677,7 +677,9 @@ async function prepareWorkerAdmission(
 		const promptContext = {
 			...trustedPromptContext,
 			conversationSummary,
-			entityResolutionHint: buildEntityResolutionHint(lastTurnContext)
+			entityResolutionHint: buildEntityResolutionHint(lastTurnContext),
+			// Workspace chat leaves this chat out of its "recent conversations" (tasker/146).
+			currentSessionId: sessionIntent.session?.id ?? null
 		};
 		envelopeForOverlay = buildLitePromptEnvelope({
 			...promptContext,

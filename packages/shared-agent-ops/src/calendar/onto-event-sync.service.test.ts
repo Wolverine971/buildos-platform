@@ -99,6 +99,180 @@ function createSupabaseMock(fixtures: {
 
 const APP_URL = 'https://build-os.com';
 
+describe('guest task calendar isolation', () => {
+	const event = {
+		id: 'guest-event',
+		project_id: 'project-1',
+		props: { guest_agent_calendar_user_id: 'guest-user' }
+	} as any;
+
+	it('overrides member fan-out with the persisted guest recipient', async () => {
+		const { service } = createLegacyService();
+		vi.spyOn(service as any, 'getProjectCalendarSyncMode').mockResolvedValue('member_fanout');
+		expect(
+			await (service as any).resolveProjectSyncTargets('project-1', 'owner-user', event)
+		).toEqual({
+			mode: 'actor_projection',
+			targetUserIds: ['guest-user']
+		});
+	});
+
+	it('rejects an old fan-out or manual retry aimed at the owner', async () => {
+		const { service, legacyCalendar } = createLegacyService();
+		vi.spyOn(service, 'getEvent').mockResolvedValue(event);
+		const mapping = vi.spyOn(service as any, 'resolveExternalMapping').mockResolvedValue(null);
+		expect(
+			await service.processProjectEventSyncJob({
+				action: 'upsert',
+				eventId: event.id,
+				projectId: event.project_id,
+				targetUserId: 'owner-user'
+			})
+		).toEqual({
+			outcome: 'skipped',
+			reason: 'guest_task_calendar_target_mismatch'
+		});
+		expect(mapping).not.toHaveBeenCalled();
+		expect(legacyCalendar.createStandaloneEvent).not.toHaveBeenCalled();
+	});
+
+	it('never recovers a guest task mapping from another person’s shared Google IDs', async () => {
+		const { service } = createLegacyService();
+		expect(
+			await (service as any).resolveExternalMapping(
+				'guest-user',
+				{
+					...event,
+					props: {
+						...event.props,
+						external_event_id: 'owner-event',
+						external_calendar_id: 'owner-calendar'
+					}
+				},
+				[]
+			)
+		).toBeNull();
+	});
+
+	it.each(['success', 'missing', 'disconnected', 'retryable'])(
+		'keeps %s cleanup of an old owner copy separate from the guest event',
+		async (outcome) => {
+			const update = vi.fn();
+			const query: any = {
+				update: (patch: unknown) => {
+					update(patch);
+					return query;
+				},
+				eq: () => query,
+				then: (resolve: any) => resolve({ error: null })
+			};
+			const from = vi.fn(() => query);
+			const { service, legacyCalendar } = createLegacyService({ from });
+			if (outcome === 'missing')
+				legacyCalendar.deleteCalendarEvent.mockRejectedValue({ response: { status: 404 } });
+			if (outcome === 'disconnected')
+				legacyCalendar.deleteCalendarEvent.mockRejectedValue(
+					new GoogleOAuthConnectionError('Reconnect', true)
+				);
+			if (outcome === 'retryable')
+				legacyCalendar.deleteCalendarEvent.mockRejectedValue(
+					new Error('Provider unavailable')
+				);
+			vi.spyOn(service as any, 'logGoogleDeleteFailure').mockResolvedValue(undefined);
+			vi.spyOn(service, 'getEvent').mockResolvedValue({
+				...event,
+				updated_at: '2026-10-23T12:00:00Z',
+				onto_event_sync: [
+					{
+						id: 'owner-map',
+						user_id: 'owner-user',
+						calendar_source_id: 'source-owner',
+						external_calendar_id: 'owner-calendar',
+						external_event_id: 'owner-event'
+					}
+				]
+			} as any);
+			const processing = service.processProjectEventSyncJob({
+				action: 'delete',
+				eventId: event.id,
+				projectId: event.project_id,
+				targetUserId: 'owner-user',
+				expectedEventUpdatedAt: '2026-10-22T12:00:00Z'
+			});
+			if (outcome === 'retryable')
+				await expect(processing).rejects.toThrow('Provider unavailable');
+			else await processing;
+			expect(legacyCalendar.deleteCalendarEvent).toHaveBeenCalledWith(
+				'owner-user',
+				expect.objectContaining({ event_id: 'owner-event', calendar_id: 'owner-calendar' })
+			);
+			expect(from).toHaveBeenCalledWith('onto_event_sync');
+			expect(from).not.toHaveBeenCalledWith('onto_events');
+			expect(update).toHaveBeenCalledWith(
+				expect.objectContaining({
+					sync_status:
+						outcome === 'success' || outcome === 'missing' ? 'cancelled' : 'failed'
+				})
+			);
+		}
+	);
+
+	it('keeps the guest-write restriction when replacing a stale job', async () => {
+		const rpc = vi.fn(async () => ({ error: null }));
+		const { service } = createLegacyService({ rpc });
+		vi.spyOn(service, 'getEvent').mockResolvedValue({
+			...event,
+			props: {},
+			updated_at: '2026-10-23T12:00:00Z'
+		});
+		await service.processProjectEventSyncJob({
+			action: 'upsert',
+			eventId: event.id,
+			projectId: event.project_id,
+			targetUserId: 'guest-user',
+			expectedEventUpdatedAt: '2026-10-22T12:00:00Z',
+			restrictToTargetUser: true
+		});
+		expect(rpc).toHaveBeenCalledWith(
+			'add_queue_job',
+			expect.objectContaining({
+				p_metadata: expect.objectContaining({ restrictToTargetUser: true })
+			})
+		);
+	});
+
+	it.each([true, false])(
+		'queues restricted inline-host updates with stored pin=%s',
+		async (storedPin) => {
+			const query: any = {
+				select: () => query,
+				eq: () => query,
+				neq: () => query,
+				then: (resolve: any) => resolve({ data: [], error: null })
+			};
+			const rpc = vi.fn(async () => ({ error: null }));
+			const { service, legacyCalendar } = createLegacyService({ from: () => query, rpc });
+			const row = { ...event, props: storedPin ? event.props : {} };
+			vi.spyOn(service, 'getEvent').mockResolvedValue(row);
+			vi.spyOn(OntoEventService, 'updateEvent').mockResolvedValue(row);
+			await service.updateEvent('owner-user', {
+				eventId: event.id,
+				title: 'Changed',
+				syncTaskFromEvent: false,
+				...(!storedPin ? { calendarSyncUserId: 'guest-user' } : {})
+			});
+			expect(rpc).toHaveBeenCalledWith(
+				'add_queue_job',
+				expect.objectContaining({
+					p_user_id: 'guest-user',
+					p_metadata: expect.objectContaining({ restrictToTargetUser: true })
+				})
+			);
+			expect(legacyCalendar.updateCalendarEvent).not.toHaveBeenCalled();
+		}
+	);
+});
+
 describe('OntoEventSyncService calendar descriptions', () => {
 	it('includes BuildOS task + project links and task description', async () => {
 		const supabase = createSupabaseMock({

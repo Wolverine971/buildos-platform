@@ -17,6 +17,8 @@ function isValidPayload(body: unknown): body is OntoProjectEventSyncJobMetadata 
 		typeof payload.projectId === 'string' &&
 		typeof payload.targetUserId === 'string' &&
 		(payload.eventUpdatedAt === undefined || typeof payload.eventUpdatedAt === 'string') &&
+		(payload.restrictToTargetUser === undefined ||
+			typeof payload.restrictToTargetUser === 'boolean') &&
 		(payload.deletionSnapshot === undefined ||
 			(payload.action === 'delete' &&
 				isProjectCalendarDeletionSnapshot(payload.deletionSnapshot)))
@@ -50,6 +52,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			projectId: body.projectId,
 			targetUserId: body.targetUserId,
 			createCalendarIfMissing: body.createCalendarIfMissing,
+			restrictToTargetUser: body.restrictToTargetUser,
 			expectedEventUpdatedAt: body.eventUpdatedAt,
 			deletionSnapshot: body.deletionSnapshot
 		});

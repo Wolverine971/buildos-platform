@@ -4,8 +4,9 @@
 	the user's click is the only consent. One frame and state machine for every
 	card kind: pending → working → applied / cancelled / stale / unknown /
 	expired, then Undo (confirmed, once, for 7 days). The body is per kind (nest,
-	combine). Resolves in place and stays resolved after reload: the server
-	mirrors the outcome onto the card's tool result.
+	combine, and the Workspace's file / start-a-project cards). Resolves in place
+	and stays resolved after reload: the server mirrors the outcome onto the
+	card's tool result.
 	INKPRINT: Frame texture (a decision), card weight.
 -->
 <script lang="ts">
@@ -13,6 +14,8 @@
 		Ban,
 		Check,
 		ExternalLink,
+		FolderInput,
+		FolderPlus,
 		FolderTree,
 		GitMerge,
 		LoaderCircle,
@@ -28,7 +31,9 @@
 		proposalCardVisibleDigest,
 		type ProposalCardEnvelopeV1,
 		type ProposalCardResolutionV1,
-		type ProposalCardUndoV1
+		type ProposalCardUndoV1,
+		type WorkspaceFileProposalPayloadV1,
+		type WorkspaceProjectProposalPayloadV1
 	} from '@buildos/shared-agent-ops/chat-cards/proposal-card';
 	import type { ProjectParentProposalPayloadV1 } from '@buildos/shared-agent-ops/chat-cards/project-parent-card';
 	import type {
@@ -38,6 +43,7 @@
 	} from '@buildos/shared-agent-ops/chat-cards/project-combine-card';
 	import ProjectParentProposalBody from './ProjectParentProposalBody.svelte';
 	import ProjectCombineProposalBody from './ProjectCombineProposalBody.svelte';
+	import WorkspaceProposalBody from './WorkspaceProposalBody.svelte';
 	import DuplicateCheckStrip from './DuplicateCheckStrip.svelte';
 	import {
 		PROPOSAL_CARD_CLOSED_CODES,
@@ -95,6 +101,12 @@
 	);
 	const combine = $derived(
 		card.kind === 'project_combine' ? (payload as ProjectCombineProposalPayloadV1) : null
+	);
+	const fileCard = $derived(
+		card.kind === 'workspace_file' ? (payload as WorkspaceFileProposalPayloadV1) : null
+	);
+	const startCard = $derived(
+		card.kind === 'workspace_project' ? (payload as WorkspaceProjectProposalPayloadV1) : null
 	);
 
 	type Busy = 'apply' | 'cancel' | 'check' | 'undo_preview' | 'undo';
@@ -172,13 +184,19 @@
 	// The main button: what it sends and what it says.
 	const combineBlocked = $derived(combine ? combineBlockedReason(combine, memberChoice) : null);
 	const mainChoice = $derived<ProposalCardChoice | null>(
-		nest ? 'apply' : combine ? combineChoiceFor(combine, memberChoice) : null
+		nest || fileCard || startCard
+			? 'apply'
+			: combine
+				? combineChoiceFor(combine, memberChoice)
+				: null
 	);
 	const mainLabel = $derived.by(() => {
 		if (nest)
 			return nest.action === 'attach'
 				? `Move under ${nest.to_parent?.name ?? 'parent'}`
 				: 'Take it out';
+		if (fileCard) return fileCard.items.length === 1 ? 'File it' : 'File them';
+		if (startCard) return 'Start the project';
 		if (!combine) return 'Apply';
 		const count = combine.members_missing_total;
 		if (count > 0 && memberChoice === 'remove') return `Remove ${count} and combine`;
@@ -186,7 +204,15 @@
 		return 'Combine projects';
 	});
 	const mainBusyLabel = $derived(
-		nest ? (nest.action === 'attach' ? 'Moving…' : 'Taking it out…') : 'Combining…'
+		nest
+			? nest.action === 'attach'
+				? 'Moving…'
+				: 'Taking it out…'
+			: fileCard
+				? 'Filing…'
+				: startCard
+					? 'Starting…'
+					: 'Combining…'
 	);
 	const locked = $derived(busy !== null || turnActive);
 	const hint = $derived.by(() => {
@@ -387,6 +413,10 @@
 	<header class="flex items-start gap-2.5 px-3 pt-3">
 		{#if card.kind === 'project_combine'}
 			<GitMerge class="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+		{:else if card.kind === 'workspace_file'}
+			<FolderInput class="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+		{:else if card.kind === 'workspace_project'}
+			<FolderPlus class="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
 		{:else}
 			<FolderTree class="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
 		{/if}
@@ -414,6 +444,23 @@
 			payload={combine}
 			bind:memberChoice
 			disabled={displayState !== 'pending' || locked}
+			{uid}
+		/>
+	{:else if fileCard}
+		<WorkspaceProposalBody
+			items={fileCard.items}
+			nestedDocuments={fileCard.nested_documents}
+			destination={fileCard.target.name}
+			note={fileCard.reason}
+			{uid}
+		/>
+	{:else if startCard}
+		<WorkspaceProposalBody
+			items={startCard.items}
+			nestedDocuments={startCard.nested_documents}
+			destination={startCard.name}
+			note={startCard.description}
+			startsProject
 			{uid}
 		/>
 	{/if}
@@ -472,6 +519,19 @@
 								This needs admin access to both projects.
 							</p>
 						{/if}
+					{:else if fileCard}
+						<p id="{uid}-undo-title" class="font-semibold [overflow-wrap:anywhere]">
+							Move {fileCard.items.length === 1 ? 'it' : 'these items'} back to your Workspace?
+						</p>
+						<p class="mt-0.5 text-muted-foreground">You can only undo once.</p>
+					{:else if startCard}
+						<p id="{uid}-undo-title" class="font-semibold [overflow-wrap:anywhere]">
+							Move the items back to your Workspace?
+						</p>
+						<p class="mt-0.5 text-muted-foreground [overflow-wrap:anywhere]">
+							{startCard.name} is removed unless something else was added to it. You can
+							only undo once.
+						</p>
 					{:else if combine && undoConfirm.view}
 						{@const view = undoConfirm.view}
 						<p id="{uid}-undo-title" class="font-semibold [overflow-wrap:anywhere]">

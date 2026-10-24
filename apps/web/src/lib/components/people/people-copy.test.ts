@@ -92,6 +92,9 @@ describe('requestOutcomeMessage', () => {
 		expect(outgoingStatusLabel('pending')).toBe('Waiting for an answer');
 		expect(outgoingStatusLabel('approved')).toBe('Shared with you');
 		expect(outgoingStatusLabel('expired')).toBe('Expired');
+		expect(outgoingStatusLabel('canceled', true)).toBe('Joined another way');
+		expect(outgoingStatusLabel('canceled')).toBe('Canceled');
+		expect(outgoingStatusLabel('pending', true)).toBe('Waiting for an answer');
 	});
 });
 
@@ -119,6 +122,57 @@ describe('matchProjectHint', () => {
 });
 
 describe('people readers', () => {
+	it('reads only structured granted projects and explicit settlement metadata', () => {
+		const [request] = readPeopleRequests({
+			outgoing: [
+				{
+					id: 'approved',
+					created_at: '2026-10-23T12:00:00Z',
+					status: 'approved',
+					project_hint: 'Unrelated project',
+					settled_elsewhere: true,
+					projects: [
+						{
+							project_id: 'p1',
+							project_name: '9takes',
+							role: 'editor',
+							agent_access: 'off'
+						},
+						{
+							project_id: 'p2',
+							project_name: 'Garden',
+							role: 'viewer',
+							agent_access: 'read'
+						},
+						{
+							project_id: 'p1',
+							project_name: 'Duplicate',
+							role: 'viewer',
+							agent_access: 'read'
+						},
+						{
+							project_id: 'p3',
+							project_name: 'Unknown role',
+							role: 'admin',
+							agent_access: 'write'
+						},
+						{
+							project_id: 'p4',
+							project_name: 'Unknown agents',
+							role: 'viewer',
+							agent_access: 'unknown'
+						},
+						{ project_name: 'No ID' }
+					]
+				}
+			]
+		}).outgoing;
+		expect(request?.settled_elsewhere).toBe(true);
+		expect(request?.projects).toEqual([
+			{ project_id: 'p1', project_name: '9takes', role: 'editor', agent_access: 'off' },
+			{ project_id: 'p2', project_name: 'Garden', role: 'viewer', agent_access: 'read' }
+		]);
+	});
 	it('reads list_people_requests output and drops malformed rows', () => {
 		const result = readPeopleRequests({
 			incoming: [
@@ -317,6 +371,15 @@ describe('invite wording', () => {
 			'Anyone with this link can join as a viewer until Oct 30. Their agents can read it.'
 		);
 		expect(copy.roleWithArticle('editor')).toBe('an editor');
+		for (const access of ['read', 'write']) {
+			expect(copy.inviteeAgentSentence(access)).toContain(
+				'Once you allow this project on an AI connection'
+			);
+			expect(copy.inviteeAgentSentence(access)).toContain('shared-projects setting');
+			expect(copy.inviteeAgentSentence(access)).toContain(
+				'restricted projects need an individual grant'
+			);
+		}
 		expect(copy.inviteLinkProblem('removed', '9takes').title).toBe(
 			'You were removed from 9takes'
 		);

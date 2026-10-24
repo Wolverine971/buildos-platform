@@ -84,7 +84,10 @@ export const TOOL_CATEGORIES = {
 			'get_onto_table_details',
 			'read_table_rows',
 			'propose_project_parent',
-			'propose_project_combine'
+			'propose_project_combine',
+			'list_workspace_suggestions',
+			'propose_workspace_filing',
+			'propose_workspace_project'
 		],
 		averageTokens: 350,
 		costTier: 'medium'

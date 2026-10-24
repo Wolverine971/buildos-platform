@@ -58,6 +58,7 @@ import {
 } from '@buildos/shared-agent-ops/ontology/start-here';
 import { pickStartHereDocument } from '../tools/start-here-selector';
 import { loadProjectStewardPacket } from './steward-packet';
+import { loadGlobalLayOfTheLand } from './lay-of-the-land';
 
 const GLOBAL_CONTEXT_PROJECT_LIMIT = 8;
 const GLOBAL_CONTEXT_GOAL_LIMIT = 2;
@@ -3313,12 +3314,21 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 				return { ...baseContext, data: null };
 			}
 
-			const data = await loadDailyBriefContextData({
-				supabase,
-				userId,
-				briefId: entityId,
-				onError: params.onError
-			});
+			// Brief chats can save notes and tasks too, so they carry the Workspace id
+			// (tasker 146 F8), read beside the brief.
+			const [briefData, workspaceId] = await Promise.all([
+				loadDailyBriefContextData({
+					supabase,
+					userId,
+					briefId: entityId,
+					onError: params.onError
+				}),
+				loadGlobalWorkspaceProjectId(supabase, params.onError)
+			]);
+			const data =
+				briefData && workspaceId
+					? { ...briefData, workspace_project_id: workspaceId }
+					: briefData;
 			return {
 				...baseContext,
 				entityId,
@@ -3336,10 +3346,24 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 		const resolveWorkspace =
 			rpcContextType === 'global' ||
 			contextType === 'global' ||
+			contextType === 'calendar' ||
 			(rpcContextType === 'project' && params.includeWorkspace === true);
 		const workspaceIdPromise: Promise<string | null> = resolveWorkspace
 			? loadGlobalWorkspaceProjectId(supabase, params.onError)
 			: Promise.resolve(null);
+		// Workspace chat's opening view (tasker/146): recent conversations and the
+		// Workspace shelf, read beside the RPC. Never throws.
+		const layOfTheLandPromise =
+			rpcContextType === 'global' || contextType === 'global'
+				? loadGlobalLayOfTheLand({
+						supabase,
+						userId,
+						workspaceId: workspaceIdPromise,
+						onError: (source, error) =>
+							reportContextLoadError(params.onError, source, error, { userId })
+					})
+				: null;
+		layOfTheLandPromise?.catch(() => undefined);
 		if (rpcContextType) {
 			const [rpcResult, workspaceId] = await Promise.all([
 				loadFastChatContextViaRpc(params),
@@ -3373,10 +3397,14 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 											hierarchyRows
 										)
 									};
-						const data = markGlobalWorkspace(
+						const marked = markGlobalWorkspace(
 							withParents,
 							workspaceId ?? workspaceIdFromKindRows(hierarchyRows)
 						);
+						const layOfTheLand = layOfTheLandPromise ? await layOfTheLandPromise : null;
+						const data = layOfTheLand
+							? { ...marked, lay_of_the_land: layOfTheLand }
+							: marked;
 						return { ...baseContext, contextLoadSource: 'rpc', data };
 					}
 					reportContextLoadError(
@@ -3472,7 +3500,7 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 		}
 
 		if (contextType === 'global') {
-			const data = await attachGlobalTaskRollups(
+			const withRollups = await attachGlobalTaskRollups(
 				supabase,
 				await loadGlobalContextData(
 					supabase,
@@ -3482,7 +3510,21 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 				),
 				params.onError
 			);
+			const layOfTheLand = layOfTheLandPromise ? await layOfTheLandPromise : null;
+			const data = layOfTheLand
+				? { ...withRollups, lay_of_the_land: layOfTheLand }
+				: withRollups;
 			return { ...baseContext, contextLoadSource: fallbackContextLoadSource, data };
+		}
+
+		// Calendar chats load no project data, but a note or task saved from one still
+		// needs a home: the Workspace (tasker 146 F8).
+		if (contextType === 'calendar') {
+			const workspaceId = await workspaceIdPromise;
+			return {
+				...baseContext,
+				data: workspaceId ? { workspace_project_id: workspaceId } : null
+			};
 		}
 
 		return { ...baseContext, data: null };

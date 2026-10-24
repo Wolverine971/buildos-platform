@@ -296,4 +296,41 @@ describe('calendar side-effect switch and receipt', () => {
 		expect(syncTaskEvents).not.toHaveBeenCalled();
 		expect(receipt).toEqual({ calendar_sync: 'unchanged' });
 	});
+
+	it('reconciles calendar cleanup on an archive-only update', async () => {
+		const syncTaskEvents = vi.fn(async () => ({ events: [], removed_event_count: 1 }));
+		await syncUpdatedTaskSideEffects(
+			baseParams({
+				context: { taskSync: { syncTaskEvents } },
+				existingTask: { id: 'task-1', state_key: 'todo' },
+				updatedTask: {
+					id: 'task-1',
+					state_key: 'todo',
+					archived_at: '2026-10-23T12:00:00Z'
+				},
+				changedArgs: { archived: true }
+			}) as never
+		);
+		expect(syncTaskEvents).toHaveBeenCalledOnce();
+	});
+
+	it('passes a trusted recipient override for guest connector writes', async () => {
+		const syncTaskEvents = vi.fn(async () => ({ events: [], removed_event_count: 0 }));
+		const params = baseParams({
+			context: {
+				userId: 'guest-user',
+				callerId: 'guest-connector',
+				taskSync: { syncTaskEvents }
+			},
+			actorId: 'guest-actor',
+			task: { id: 'task-1', state_key: 'todo' }
+		});
+		await syncCreatedTaskSideEffects(params as never);
+		expect(syncTaskEvents).toHaveBeenCalledWith(
+			expect.anything(),
+			'guest-actor',
+			expect.anything(),
+			expect.objectContaining({ calendarSyncUserId: params.context.userId })
+		);
+	});
 });

@@ -123,6 +123,69 @@ describe('GET /api/onto/projects/[id]/recent-chats', () => {
 		}
 	});
 
+	it('lists Workspace chats only when the Workspace card asks', async () => {
+		// Each chat_sessions read answers by its own filters: the Workspace read
+		// (context_type in global/general) gets global rows, the rest get none.
+		const workspaceReads: unknown[][] = [];
+		const from = vi.fn((table: string) => {
+			let workspaceRead = false;
+			const query: Record<string, unknown> = {};
+			for (const name of ['select', 'eq', 'neq', 'or', 'filter', 'order', 'limit']) {
+				query[name] = () => query;
+			}
+			query.in = (...args: unknown[]) => {
+				if (args[0] === 'context_type') {
+					workspaceRead = true;
+					workspaceReads.push(args);
+				}
+				return query;
+			};
+			query.then = (resolve: (value: unknown) => unknown) =>
+				resolve({
+					data:
+						table === 'chat_sessions' && workspaceRead
+							? [
+									session('workspace-chat', {
+										title: 'Where am I at',
+										context_type: 'global',
+										entity_id: null,
+										focus: null
+									}),
+									session('task-page-chat', {
+										title: 'About one task',
+										context_type: 'global',
+										entity_id: null,
+										focus: { focusType: 'task', projectId: 'other-project' }
+									})
+								]
+							: [],
+					error: null
+				});
+			return query;
+		});
+		const supabase = { from };
+
+		const plain = await (await request(supabase)).json();
+		expect(plain.data.chats).toEqual([]);
+		expect(workspaceReads).toEqual([]);
+
+		const response = await GET({
+			params: { id: PROJECT_ID },
+			url: new URL(
+				`http://localhost/api/onto/projects/${PROJECT_ID}/recent-chats?limit=20&include=workspace_chats`
+			),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			}
+		} as any);
+		const body = await response.json();
+
+		expect(workspaceReads).toEqual([['context_type', ['global', 'general']]]);
+		// A global chat focused on another project belongs to that project.
+		expect(body.data.chats.map((chat: { id: string }) => chat.id)).toEqual(['workspace-chat']);
+	});
+
 	it('returns nothing when the access check fails', async () => {
 		verifyProjectAccessMock.mockResolvedValue({
 			authorized: false,

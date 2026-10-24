@@ -140,6 +140,63 @@ function mutationPort(): TaskEventMutationPort & {
 }
 
 describe('task event scheduling parity', () => {
+	it('preserves the guest recipient when an owner schedules an initially undated task', async () => {
+		const { client } = coordinatorClient([], []);
+		const mutations = mutationPort();
+		await new TaskEventSyncCoordinator(client as any, mutations).syncTaskEvents(
+			'owner',
+			'owner-actor',
+			{
+				id: 'task-1',
+				project_id: 'project-1',
+				title: 'Guest task',
+				state_key: 'todo',
+				start_at: '2026-10-23T12:00:00Z',
+				due_at: null,
+				props: { guest_agent_calendar_user_id: 'guest' }
+			} as any
+		);
+		expect(mutations.createEvent).toHaveBeenCalledWith(
+			'owner',
+			expect.objectContaining({
+				calendarSyncUserId: 'guest',
+				props: expect.objectContaining({ guest_agent_calendar_user_id: 'guest' })
+			})
+		);
+	});
+
+	it('removes past and future guest events on archive, even when the task was done', async () => {
+		const events = [
+			event('past', { start_at: '2000-01-01T12:00:00Z' }),
+			event('future', { start_at: '2099-01-01T12:00:00Z' })
+		];
+		const { client, edgeDeletes } = coordinatorClient(
+			events.map((row) => row.id),
+			events
+		);
+		const mutations = mutationPort();
+		const result = await new TaskEventSyncCoordinator(client as any, mutations).syncTaskEvents(
+			'owner',
+			'owner-actor',
+			{
+				id: 'task-1',
+				project_id: 'project-1',
+				title: 'Guest task',
+				state_key: 'done',
+				archived_at: '2026-10-23T12:00:00Z',
+				props: { guest_agent_calendar_user_id: 'guest' }
+			} as any
+		);
+		expect(result.removed_event_count).toBe(2);
+		expect(edgeDeletes).toEqual(['past', 'future']);
+		for (const row of events)
+			expect(mutations.deleteEvent).toHaveBeenCalledWith(
+				'owner',
+				expect.objectContaining({ eventId: row.id, calendarSyncUserId: 'guest' })
+			);
+		expect(mutations.createEvent).not.toHaveBeenCalled();
+	});
+
 	it('builds the legacy start, due, short-range, and long-range shapes', () => {
 		expect(
 			buildTaskEventSpecs({ title: 'Ship', start_at: '2026-08-10T09:00:00Z', due_at: null })

@@ -161,6 +161,22 @@ const SUPPORTING_TOOLS: Readonly<Record<string, readonly string[]>> = {
 		'search_all_projects',
 		'get_project_overview'
 	],
+	// Workspace cards (tasker 146) take loose items and, for filing, a target project:
+	// find both. The suggestion list never pulls the cards in: a card is the user's
+	// call to ask for, not something chat volunteers because it read a suggestion.
+	propose_workspace_filing: [
+		'list_workspace_suggestions',
+		'list_onto_tasks',
+		'search_onto_documents',
+		'list_onto_projects',
+		'search_onto_projects',
+		'search_all_projects'
+	],
+	propose_workspace_project: [
+		'list_workspace_suggestions',
+		'list_onto_tasks',
+		'search_onto_documents'
+	],
 	// A search's results are start points to read or click through.
 	web_search: ['web_visit', 'web_navigate'],
 	web_visit: ['web_navigate'],

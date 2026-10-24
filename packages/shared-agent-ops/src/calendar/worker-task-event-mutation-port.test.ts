@@ -112,6 +112,9 @@ function supabaseState(
 		or() {
 			return this;
 		}
+		neq() {
+			return this;
+		}
 
 		async maybeSingle() {
 			return this.execute(true);
@@ -336,6 +339,73 @@ describe('worker task-event synchronization', () => {
 		await sync.syncTaskEvents('user-1', 'actor-1', task());
 
 		expect(state.rpcCalls.map((call) => call.args.p_user_id)).toEqual(['user-1', 'user-2']);
+	});
+
+	it.each(['user-1', 'owner-user'])(
+		'keeps a guest-created task on its person when %s edits it',
+		async (editor) => {
+			const state = supabaseState({
+				projectProps: { calendar_sync_mode: 'member_fanout' },
+				calendarUsers: ['owner-user', 'user-1', 'other-member']
+			});
+			await createWorkerTaskSyncPort(state.client as any).syncTaskEvents(
+				editor,
+				'actor-1',
+				task({
+					props: { guest_agent_calendar_user_id: 'user-1' }
+				})
+			);
+			expect(
+				state.rpcCalls
+					.filter((call) => call.name === 'add_queue_job')
+					.map((call) => call.args.p_user_id)
+			).toEqual(['user-1']);
+		}
+	);
+
+	it('does not broadcast a guest edit of an existing unpinned task', async () => {
+		const state = supabaseState({
+			projectProps: { calendar_sync_mode: 'member_fanout' },
+			calendarUsers: ['owner-user', 'user-1']
+		});
+		await createWorkerTaskSyncPort(state.client as any).syncTaskEvents(
+			'user-1',
+			'actor-1',
+			task(),
+			{
+				calendarSyncUserId: 'user-1'
+			} as any
+		);
+		expect(
+			state.rpcCalls
+				.filter((call) => call.name === 'add_queue_job')
+				.map((call) => call.args.p_user_id)
+		).toEqual(['user-1']);
+	});
+
+	it('removes a guest task calendar copy when its owner archives the task', async () => {
+		const pin = { guest_agent_calendar_user_id: 'user-1' };
+		const state = supabaseState({
+			events: [event('event-1', { props: { ...pin, task_event_kind: 'start' } })],
+			edges: [{ src_id: 'task-1', dst_id: 'event-1' }]
+		});
+		await createWorkerTaskSyncPort(state.client as any).syncTaskEvents(
+			'owner-user',
+			'owner-actor',
+			task({
+				props: pin,
+				archived_at: '2026-10-23T12:00:00Z',
+				deleted_at: '2026-10-23T12:00:00Z'
+			})
+		);
+		expect(
+			state.rpcCalls.filter((call) => call.name === 'add_queue_job').map((call) => call.args)
+		).toEqual([
+			expect.objectContaining({
+				p_user_id: 'user-1',
+				p_metadata: expect.objectContaining({ action: 'delete' })
+			})
+		]);
 	});
 
 	it('marks the event failed without failing the task sync when job enqueue is rejected', async () => {

@@ -14,6 +14,7 @@ import { ONTOLOGY_WRITE_TOOLS } from './ontology-write';
 import { PROPOSAL_TOOL_DEFINITIONS } from './proposals';
 import { TABLE_TOOL_DEFINITIONS } from './tables';
 import { UTILITY_TOOL_DEFINITIONS } from './utility';
+import { WORKSPACE_TOOL_DEFINITIONS } from './workspace';
 
 export * from './calendar';
 export * from './controls';
@@ -24,6 +25,7 @@ export * from './ontology-write';
 export * from './proposals';
 export * from './tables';
 export * from './utility';
+export * from './workspace';
 
 /**
  * Canonical direct tools, preserving the legacy provider order exactly.
@@ -39,7 +41,9 @@ export const CHAT_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 	// their order.
 	...TABLE_TOOL_DEFINITIONS,
 	// Proposal cards (2026-10-17, tasker 122): nest and combine. Appended too.
-	...PROPOSAL_TOOL_DEFINITIONS
+	...PROPOSAL_TOOL_DEFINITIONS,
+	// Workspace (2026-10-23, tasker 146): suggestions, filing and graduate cards.
+	...WORKSPACE_TOOL_DEFINITIONS
 ];
 
 export const AGENTIC_CHAT_TOOL_DEFINITIONS = CHAT_TOOL_DEFINITIONS;

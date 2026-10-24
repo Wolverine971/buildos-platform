@@ -342,6 +342,41 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['global'],
 		category: 'read'
 	},
+	// Tasker 146 (2026-10-23): the Workspace (loose notes, docs and tasks). The agent
+	// suggests and never files; the propose_* cards are reads and only the user's
+	// click moves or creates anything. Jev picks tools from these summaries.
+	list_workspace_suggestions: {
+		summary:
+			"Open suggestions for the user's Workspace: loose items that belong in a project, or groups that look like a new project.",
+		capabilities: [
+			'For asks like what should I do with my loose notes, or anything here that should be a project',
+			'Items resolved to titles; items no longer in the Workspace are left out'
+		],
+		contexts: ['global'],
+		category: 'read'
+	},
+	propose_workspace_filing: {
+		summary:
+			'Propose filing loose Workspace notes, docs or tasks into a project; the user clicks the card to move them.',
+		capabilities: [
+			'For asks to file, move, or put loose Workspace items into a project',
+			'Checks the items are still loose and the project can take them',
+			'Can answer an open Workspace suggestion'
+		],
+		contexts: ['global'],
+		category: 'read'
+	},
+	propose_workspace_project: {
+		summary:
+			'Propose starting a new project from loose Workspace items; the user clicks the card to create it.',
+		capabilities: [
+			'For asks to turn or group loose Workspace items into a project',
+			'Checks the items are still loose',
+			'Can answer an open Workspace suggestion'
+		],
+		contexts: ['global'],
+		category: 'read'
+	},
 
 	// ============================================
 	// CALENDAR TOOLS
@@ -739,12 +774,13 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		category: 'read'
 	},
 	get_workspace_overview: {
-		summary: 'Return a BuildOS-native workspace status summary across accessible projects.',
+		summary: 'Return a BuildOS-native status summary across all accessible projects.',
 		capabilities: [
-			'Includes workspace-level and per-project task, document, plan, goal, and collaborator counts',
+			'Includes overall and per-project task, document, plan, goal, and collaborator counts',
+			'Lists the Workspace (loose notes, docs and tasks) apart; it never counts as a project',
 			'Highlights active, blocked, overdue, and due-soon work across projects',
 			'Includes next milestones, upcoming events, and recent changes per project',
-			'Preferred first step for broad workspace status questions'
+			'Preferred first step for broad status questions across projects'
 		],
 		contexts: ['base', 'global', 'project'],
 		category: 'read'

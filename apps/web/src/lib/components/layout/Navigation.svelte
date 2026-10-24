@@ -230,14 +230,14 @@
 		return id && id.trim() ? id : null;
 	});
 
-	// Context-aware label for the chat launcher button
+	// Context-aware label for the chat launcher button. The global context is
+	// "Workspace chat" for users (tasker 146: relabel, the internal type stays global).
 	const chatLabel = $derived.by((): string => {
 		if (projectTaskMatch) return 'Task chat';
 		if (projectDetailMatch) return 'Project chat';
-		if (currentPath === '/projects') return 'Workspace chat';
 		if (currentPath.startsWith('/briefs')) return 'Brief chat';
 		if (currentPath.startsWith('/dashboard/calendar')) return 'Calendar chat';
-		return 'BuildOS chat';
+		return 'Workspace chat';
 	});
 
 	const baseNavItems = [

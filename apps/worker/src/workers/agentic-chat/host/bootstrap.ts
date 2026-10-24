@@ -43,6 +43,7 @@ import {
 	ChatContextFinder
 } from '../provider/chat-context-finder';
 import { ChatWorkspaceFinder, composeContextFinders } from '../provider/chat-workspace-finder';
+import { type AboutYouReadClient, ChatAboutYou } from '../provider/chat-about-you';
 import { JevToolSelector } from '../provider/jev-tool-selector';
 import {
 	WEB_NAVIGATE_DECISION_TIMEOUT_MS,
@@ -683,6 +684,14 @@ function createDefaultComposition(
 						})
 			)
 		: undefined;
+	// About you (tasker/146): every user gets their own settings and the note's
+	// "How you like answers" section; the finder's cohort also gets the Jev gate that
+	// loads other note sections only when they change the answer.
+	const aboutYou = new ChatAboutYou({
+		client: input.client as unknown as AboutYouReadClient,
+		decider: contextFinderJev,
+		gateUserIds: contextFinderUserIds
+	});
 	// web_navigate: Jev picks links, code fetches politely, Tavily renders pages a
 	// plain fetch cannot read. Same OpenRouter credential as the acting route.
 	const webNavigator = createWorkerWebNavigatePort({
@@ -736,6 +745,7 @@ function createDefaultComposition(
 		semanticReviewerClient,
 		...(toolSelector ? { toolSelector } : {}),
 		...(contextFinder ? { contextFinder } : {}),
+		aboutYou,
 		webNavigator,
 		usage: usageLogger,
 		emailRelevanceDecider: emailJev,

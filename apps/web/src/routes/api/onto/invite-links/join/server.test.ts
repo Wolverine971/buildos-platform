@@ -86,7 +86,7 @@ describe('POST /api/onto/invite-links/join', () => {
 		expect(event.locals.supabase.rpc).not.toHaveBeenCalled();
 	});
 
-	it('joins with the hash of the token, follows activity, and tells the owner', async () => {
+	it('joins with the token hash and leaves transactional completion to the RPC', async () => {
 		const event = createEvent({ token: TOKEN });
 		event.locals.supabase.rpc.mockImplementation(async (name: string) => {
 			if (name === 'accept_project_invite_link') {
@@ -125,38 +125,10 @@ describe('POST /api/onto/invite-links/join', () => {
 		// The owner's actor id stays on the server.
 		expect(JSON.stringify(payload)).not.toContain('owner-actor-1');
 
-		expect(adminRpcMock).toHaveBeenCalledWith(
-			'emit_notification_event',
-			expect.objectContaining({
-				p_event_type: 'project.invite.accepted',
-				p_target_user_id: 'owner-1',
-				p_payload: expect.objectContaining({
-					title: 'Sam joined 9takes',
-					body: 'Sam joined with your invite link as a viewer.'
-				})
-			})
-		);
-		expect(adminUpsert).toHaveBeenCalledWith(
-			expect.objectContaining({ user_id: 'owner-1', event_type: 'project.invite.accepted' }),
-			{ onConflict: 'user_id,event_type', ignoreDuplicates: true }
-		);
-	});
-
-	it('still reports the join when the follow-ups fail', async () => {
-		const event = createEvent({ token: TOKEN });
-		event.locals.supabase.rpc.mockImplementation(async (name: string) => {
-			if (name === 'accept_project_invite_link') {
-				return {
-					data: { status: 'joined', project_id: 'project-1', owner_actor_id: 'a' },
-					error: null
-				};
-			}
-			throw new Error('settings down');
-		});
-		adminRpcMock.mockResolvedValue({ error: { message: 'emit failed' } });
-
-		const payload = await (await POST(event)).json();
-		expect(payload.data.status).toBe('joined');
+		expect(event.locals.supabase.rpc).toHaveBeenCalledTimes(1);
+		expect(event.locals.supabase.from).not.toHaveBeenCalled();
+		expect(adminRpcMock).not.toHaveBeenCalled();
+		expect(adminUpsert).not.toHaveBeenCalled();
 	});
 
 	it('asks the owner when a former member uses the link, and emails them once', async () => {

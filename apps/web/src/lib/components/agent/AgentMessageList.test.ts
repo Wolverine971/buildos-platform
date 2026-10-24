@@ -181,6 +181,27 @@ describe('AgentMessageList', () => {
 		expect(screen.getByRole('button', { name: 'Update shared doc' })).not.toBeDisabled();
 	});
 
+	it.each(['global', 'general'] as const)(
+		'offers the Workspace chat starters in an empty %s chat',
+		(selectedContextType) => {
+			render(AgentMessageList, {
+				...baseProps([]),
+				displayContextLabel: 'Workspace chat',
+				selectedContextType,
+				onSelectSuggestion: vi.fn()
+			});
+			expect(
+				screen
+					.getAllByRole('button')
+					.map((button) => button.textContent?.replace('▸', '').trim())
+			).toEqual([
+				"What's pressing right now?",
+				'Where am I at with things?',
+				'Pick up where we left off'
+			]);
+		}
+	);
+
 	it('exposes scrollToLatest for the modal', () => {
 		const { component } = render(
 			AgentMessageList,

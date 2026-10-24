@@ -10,7 +10,8 @@ import type {
 	ProjectLoopJobMetadata,
 	QueueJobType,
 	VoiceNoteTranscriptionJobMetadata,
-	WorkspaceSuggestJobMetadata
+	WorkspaceSuggestJobMetadata,
+	AboutYouRefreshJobMetadata
 } from '@buildos/shared-types';
 import type { ProcessingJob } from './lib/supabaseQueue';
 import { processBriefJob } from './workers/brief/briefWorker';
@@ -33,6 +34,7 @@ import { processAgentRunJob } from './workers/agent-run/agentRunWorker';
 import { processProjectContextSnapshotJob } from './workers/ontology/projectContextSnapshotWorker';
 import { processPickProjectEmojiJob } from './workers/project-emoji/projectEmojiWorker';
 import { processWorkspaceSuggestJob } from './workers/workspace-suggest/workspaceSuggestWorker';
+import { processAboutYouRefreshJob } from './workers/about-you/aboutYouRefreshWorker';
 import { processProjectLoopJob } from './workers/project-loop/projectLoopWorker';
 import { processFreshnessRadarScanJob } from './workers/freshness-radar/signalJob';
 import { processCaptureChatCheckpointJob } from './workers/chat/checkpoint/checkpointJob';
@@ -334,6 +336,21 @@ async function processPickProjectEmoji(job: ProcessingJob<PickProjectEmojiJobMet
 }
 
 /**
+ * About you (about_you_refresh, queued by the scheduler sweep for the cohort): keeps the
+ * inferred About you note in the person's Workspace (tasker/146).
+ */
+async function processAboutYouRefresh(job: ProcessingJob<AboutYouRefreshJobMetadata>) {
+	try {
+		const result = await processAboutYouRefreshJob(job);
+		await job.log(`About you: ${result.outcome}${result.reason ? ` (${result.reason})` : ''}`);
+		return result;
+	} catch (error) {
+		await job.log(`About you job failed: ${getErrorMessage(error)}`);
+		throw error;
+	}
+}
+
+/**
  * Workspace suggestions (workspace_suggest, queued a few minutes after a loose capture):
  * groupings and filings the person accepts or dismisses; nothing moves on its own.
  */
@@ -462,6 +479,9 @@ export async function startWorker({ scheduledWork }: { scheduledWork: boolean })
 
 	// Register Workspace suggestions (groupings and filings for loose items; suggest-only)
 	queue.process('workspace_suggest', processWorkspaceSuggest);
+
+	// Register About you refresh (inferred note in the Workspace; cohort-gated)
+	queue.process('about_you_refresh', processAboutYouRefresh);
 
 	// Register project loop (reconciliation suggestions) processor
 	queue.process('buildos_project_loop', processProjectLoop);

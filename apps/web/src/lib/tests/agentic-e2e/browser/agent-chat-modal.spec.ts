@@ -746,7 +746,7 @@ test('@prewarm project selection materializes a project-scoped prepared prompt',
 
 		await page.goto('/dashboard');
 		await chooseTrackingConsent(page);
-		await page.getByRole('button', { name: 'Open BuildOS chat' }).click();
+		await page.getByRole('button', { name: 'Open Workspace chat' }).click();
 		const dialog = page.getByRole('dialog', { name: 'BuildOS chat assistant dialog' });
 		await expect(dialog).toBeVisible();
 		await dialog.getByRole('button', { name: /Chat inside a project/ }).click();

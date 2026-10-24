@@ -1,5 +1,10 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.tasks.ts
 import { reconcileLegacyTaskEstimate } from './task-estimate';
+import {
+	guestCalendarWriteUser,
+	guestTaskCalendarUserId,
+	withGuestTaskCalendarUser
+} from '../calendar/guest-task-calendar';
 import { isValidUUID, type Json } from '@buildos/shared-types';
 import {
 	AutoOrganizeError,
@@ -511,20 +516,23 @@ export async function createTask(context: ToolExecutionContext, args: Record<str
 		created_by: actorId,
 		start_at: startAt ?? null,
 		due_at: dueAt ?? null,
-		props: {
-			...(props ?? {}),
-			...(goalId ? { goal_id: goalId } : {}),
-			...(milestoneId ? { supporting_milestone_id: milestoneId } : {}),
-			...(tableRowAnchor
-				? {
-						table_row: {
-							document_id: tableRowAnchor.documentId,
-							row_id: tableRowAnchor.rowId,
-							row_number: tableRowAnchor.rowNumber
+		props: withGuestTaskCalendarUser(
+			{
+				...(props ?? {}),
+				...(goalId ? { goal_id: goalId } : {}),
+				...(milestoneId ? { supporting_milestone_id: milestoneId } : {}),
+				...(tableRowAnchor
+					? {
+							table_row: {
+								document_id: tableRowAnchor.documentId,
+								row_id: tableRowAnchor.rowId,
+								row_number: tableRowAnchor.rowNumber
+							}
 						}
-					}
-				: {})
-		}
+					: {})
+			},
+			guestCalendarWriteUser({ context, project, actorId })
+		)
 	};
 
 	if (stateKey === 'done') {
@@ -648,7 +656,7 @@ async function updateTaskAttempt(
 	let existingTaskQuery = context.admin
 		.from('onto_tasks')
 		.select(
-			'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_at, updated_at, archived_at, deleted_at'
+			'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_by, created_at, updated_at, archived_at, deleted_at'
 		)
 		.eq('id', taskId)
 		.in(
@@ -771,6 +779,17 @@ async function updateTaskAttempt(
 		if (hasGoalInput) nextProps.goal_id = goalId ?? null;
 		if (hasMilestoneInput) nextProps.supporting_milestone_id = milestoneId ?? null;
 		updateData.props = nextProps;
+	}
+	const calendarUser =
+		guestTaskCalendarUserId(existingTask) ??
+		(existingTask.created_by === actorId
+			? guestCalendarWriteUser({ context, project, actorId })
+			: null);
+	if (updateData.props !== undefined || calendarUser) {
+		updateData.props = withGuestTaskCalendarUser(
+			updateData.props ?? existingTask.props,
+			calendarUser
+		);
 	}
 	if (args.props !== undefined) {
 		changedFieldCount += 1;

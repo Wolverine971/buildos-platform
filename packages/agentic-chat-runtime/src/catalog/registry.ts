@@ -92,6 +92,11 @@ export const TOOL_OPERATIONS: Readonly<Record<string, ToolOperation>> = Object.f
 	// only; no external op handler exists for them.
 	propose_project_parent: { op: 'onto.project.parent.propose', kind: 'read' },
 	propose_project_combine: { op: 'onto.project.combine.propose', kind: 'read' },
+	// Workspace (tasker 146): suggestions and the filing/graduate cards. Reads;
+	// the user's click writes on the web. No external op handler.
+	list_workspace_suggestions: { op: 'onto.workspace.suggestions.list', kind: 'read' },
+	propose_workspace_filing: { op: 'onto.workspace.file.propose', kind: 'read' },
+	propose_workspace_project: { op: 'onto.workspace.project.propose', kind: 'read' },
 	// --- Ontology writes ---
 	create_onto_task: { op: 'onto.task.create', kind: 'write' },
 	create_onto_goal: { op: 'onto.goal.create', kind: 'write' },

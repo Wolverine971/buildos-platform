@@ -28,6 +28,8 @@ import {
 	projectCombinePayloadFromImpact,
 	PROJECT_COMBINE_TOOL_NAME,
 	PROJECT_PARENT_TOOL_NAME,
+	WORKSPACE_FILE_TOOL_NAME,
+	WORKSPACE_PROJECT_TOOL_NAME,
 	type FoldImpactV1,
 	type ProjectCombineProposalPayloadV1,
 	type ProjectParentEffectCode,
@@ -44,7 +46,10 @@ import type { AgenticChatSharedReadContextV1 } from './ontology-reads';
 /** The proposal tools, for hosts that must treat them apart from ordinary reads (memo, gates). */
 export const AGENTIC_CHAT_PROPOSAL_TOOL_NAMES_V1 = Object.freeze([
 	PROJECT_PARENT_TOOL_NAME,
-	PROJECT_COMBINE_TOOL_NAME
+	PROJECT_COMBINE_TOOL_NAME,
+	// Tasker 146: the Workspace cards (workspace-reads.ts).
+	WORKSPACE_FILE_TOOL_NAME,
+	WORKSPACE_PROJECT_TOOL_NAME
 ] as const);
 
 export function isAgenticChatProposalToolNameV1(value: unknown): boolean {

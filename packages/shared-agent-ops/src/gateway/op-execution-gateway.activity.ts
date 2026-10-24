@@ -6,6 +6,7 @@ import {
 	logUpdateAsync,
 	type ActivityLogActorContext
 } from '../ops/async-activity-logger';
+import { guestCalendarWriteUser } from '../calendar/guest-task-calendar';
 import {
 	notifyEntityMentionsAdded,
 	resolveEntityMentionUserIds
@@ -125,6 +126,9 @@ export async function syncCreatedTaskSideEffects(params: {
 				params.actorId,
 				params.task as any,
 				{
+					...(guestCalendarWriteUser(params)
+						? { calendarSyncUserId: params.context.userId }
+						: {}),
 					activityLog: {
 						changeSource: 'agent_call',
 						actorContext: getExternalAgentActivityContext(params.context)
@@ -183,7 +187,10 @@ export async function syncUpdatedTaskSideEffects(params: {
 		params.changedArgs.start_at !== undefined || params.changedArgs.due_at !== undefined;
 	const shouldSyncFromTitleEdit =
 		params.changedArgs.title !== undefined && !isTransitioningFromDone;
-	const shouldSyncEvents = shouldSyncFromTitleEdit || hasSchedulingEdit || isTransitioningToDone;
+	const isArchiving =
+		params.changedArgs.archived === true && Boolean(params.updatedTask.archived_at);
+	const shouldSyncEvents =
+		shouldSyncFromTitleEdit || hasSchedulingEdit || isTransitioningToDone || isArchiving;
 
 	let calendarReceipt: GatewayCalendarSyncReceipt =
 		params.calendarSync === 'none'
@@ -197,6 +204,9 @@ export async function syncUpdatedTaskSideEffects(params: {
 				params.actorId,
 				params.updatedTask as any,
 				{
+					...(guestCalendarWriteUser(params)
+						? { calendarSyncUserId: params.context.userId }
+						: {}),
 					activityLog: {
 						changeSource: 'agent_call',
 						actorContext: getExternalAgentActivityContext(params.context)

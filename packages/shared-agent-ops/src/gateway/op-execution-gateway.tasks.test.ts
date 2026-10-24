@@ -100,6 +100,42 @@ describe('detectNoEffectTaskUpdate', () => {
 });
 
 describe('createTask atomic idempotent surface', () => {
+	it.each([true, false])(
+		'stamps the trusted guest recipient on undated tasks (guest=%s)',
+		async (guest) => {
+			let payload: any;
+			const actorId = guest ? ASSIGNEE_ACTOR_ID : OWNER_ACTOR_ID;
+			const rpc = vi.fn(async (name: string, args?: any) => {
+				if (name === 'ensure_actor_for_user') return { data: actorId, error: null };
+				if (name === 'get_onto_project_summaries_v1')
+					return { data: [{ ...projectSummary(), is_shared: guest }], error: null };
+				if (name === 'onto_task_create_with_relationships_atomic') {
+					payload = args.p_task;
+					return { data: { task: payload, idempotent_replay: false }, error: null };
+				}
+				throw new Error(`unexpected rpc ${name}`);
+			});
+			await createTask(
+				{
+					admin: { rpc },
+					callerId: 'connector',
+					userId: USER_ID,
+					scope: { mode: 'read_write' }
+				} as any,
+				{
+					project_id: PROJECT_ID,
+					title: 'Undated task',
+					calendar_sync: 'none',
+					props: { guest_agent_calendar_user_id: 'spoofed-user', retained: true }
+				}
+			);
+			expect(payload.props).toEqual(
+				guest
+					? { retained: true, guest_agent_calendar_user_id: USER_ID }
+					: { retained: true }
+			);
+		}
+	);
 	it('commits the task, assignees, and relationships with the stable downstream key', async () => {
 		syncCreatedTaskSideEffectsMock.mockClear();
 		let createdTaskId = '';
@@ -868,6 +904,21 @@ describe('updateTask archive matches the board', () => {
 		expect(updates[0]!.deleted_at).toBe(updates[0]!.archived_at);
 		expect(updates[0]).not.toHaveProperty('state_key');
 		expect(updates[0]).not.toHaveProperty('completed_at');
+	});
+
+	it('preserves the guest recipient when the owner replaces task properties', async () => {
+		const { context, updates } = archiveHarness({
+			...liveTask,
+			props: { guest_agent_calendar_user_id: 'guest-user' }
+		});
+		await updateTask(context, {
+			task_id: TASK_ID,
+			props: { guest_agent_calendar_user_id: USER_ID, label: 'updated' }
+		});
+		expect(updates[0]?.props).toEqual({
+			guest_agent_calendar_user_id: 'guest-user',
+			label: 'updated'
+		});
 	});
 
 	it('restore clears both columns', async () => {

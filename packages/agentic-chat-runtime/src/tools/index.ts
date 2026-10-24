@@ -26,6 +26,7 @@ export * from './overview-helper';
 export * from './overview-reads';
 export * from './project-cleanup-reads';
 export * from './proposal-reads';
+export * from './workspace-reads';
 export * from './read-result-timezone';
 export * from './shared-read-dispatch';
 export * from './start-here-selector';

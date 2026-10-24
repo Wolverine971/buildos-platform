@@ -157,7 +157,11 @@
 	});
 
 	// Read when the Chats tab is first pointed at or opened, never with the card.
-	const chats = createCardChats(() => project.id);
+	// The Workspace's chat is Workspace chat, so its tab lists those chats too.
+	const chats = createCardChats(
+		() => project.id,
+		() => workspace
+	);
 	$effect(() => {
 		if (tab === 'chats') untrack(() => chats.load());
 	});
@@ -415,8 +419,8 @@
 					class="action bolt"
 					onclick={() => panes?.openChat('project')}
 					aria-pressed={chatOpen && chatScope === 'project' && !chatSession}
-					title={workspace ? 'Chat about your loose items' : 'Chat about this project'}
-					aria-label="Chat about {workspace ? 'your loose items' : project.name}"
+					title={workspace ? 'Workspace chat' : 'Chat about this project'}
+					aria-label={workspace ? 'Open Workspace chat' : `Chat about ${project.name}`}
 				>
 					<img src="/brain-bolt.webp" alt="" class="h-6 w-6 rounded object-cover" />
 				</button>
@@ -507,6 +511,7 @@
 		{onOpenItem}
 		{onCloseItem}
 		{onChanged}
+		{workspace}
 	>
 		{#snippet list()}
 			<div class="body">
@@ -598,7 +603,11 @@
 						{/if}
 					{:else}
 						<div class="empty-drop grid justify-items-center gap-2">
-							<span>No chats about {shortName(project.name)} yet.</span>
+							<span
+								>{workspace
+									? 'No Workspace chats yet.'
+									: `No chats about ${shortName(project.name)} yet.`}</span
+							>
 							<button
 								type="button"
 								class="action"

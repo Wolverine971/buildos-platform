@@ -421,8 +421,8 @@ function toContextLabel(
 	}
 
 	const contextLabels: Record<string, string> = {
-		global: 'Chat session in global context',
-		general: 'Chat session in assistant context',
+		global: 'Workspace chat',
+		general: 'Workspace chat',
 		calendar: 'Chat session about calendar',
 		ontology: 'Chat session about ontology',
 		daily_brief_update: 'Chat session about daily brief updates'

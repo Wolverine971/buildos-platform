@@ -158,6 +158,17 @@ export function toSummary(session: ChatSessionRow, openingLine: string | null) {
 	};
 }
 
+/**
+ * A Workspace chat for the Workspace card's Chats tab: the global context (or its
+ * `general` alias) with no project focus elsewhere. Global chats opened on a task
+ * page carry that task's project as their focus; those belong to that project.
+ */
+export function isWorkspaceChatRow(session: ChatSessionRow, workspaceId: string): boolean {
+	if (session.context_type !== 'global' && session.context_type !== 'general') return false;
+	const focusProjectId = readProjectFocus(session.focus)?.projectId ?? null;
+	return !focusProjectId || focusProjectId === workspaceId;
+}
+
 export function mergeSessions(sessionGroups: ChatSessionRow[][]): ChatSessionRow[] {
 	const byId = new Map<string, ChatSessionRow>();
 	for (const group of sessionGroups) {

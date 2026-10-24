@@ -84,9 +84,9 @@ export function inviteeAgentSentence(access: string | null | undefined): string 
 		case 'off':
 			return 'AI agents you connect to BuildOS won’t be able to open this project.';
 		case 'write':
-			return 'If you connect an AI agent (like Claude or ChatGPT) to BuildOS, it can read this project, add tasks and docs, and update what you created or are assigned to.';
+			return 'Once you allow this project on an AI connection, it can read this project, add tasks and docs, and update what you created or are assigned to. Standard shared projects can be included through the connection’s shared-projects setting; restricted projects need an individual grant.';
 		default:
-			return 'If you connect an AI agent (like Claude or ChatGPT) to BuildOS, it can read this project for you.';
+			return 'Once you allow this project on an AI connection, it can read this project for you. Standard shared projects can be included through the connection’s shared-projects setting; restricted projects need an individual grant.';
 	}
 }
 
@@ -252,7 +252,10 @@ export function requestOutcomeMessage(
 }
 
 /** Status of a request you sent, as you'd say it. */
-export function outgoingStatusLabel(status: string | null | undefined): string {
+export function outgoingStatusLabel(
+	status: string | null | undefined,
+	settledElsewhere = false
+): string {
 	switch (status) {
 		case 'approved':
 			return 'Shared with you';
@@ -261,7 +264,7 @@ export function outgoingStatusLabel(status: string | null | undefined): string {
 		case 'expired':
 			return 'Expired';
 		case 'canceled':
-			return 'Canceled';
+			return settledElsewhere ? 'Joined another way' : 'Canceled';
 		default:
 			return 'Waiting for an answer';
 	}

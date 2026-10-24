@@ -13,6 +13,8 @@ export interface ProjectSelectionSummary {
 	createdAt: string;
 	updatedAt: string;
 	taskCount: number;
+	/** onto_projects.kind: 'workspace' is the viewer's Workspace (loose items), not a project. */
+	kind: string | null;
 }
 
 type ProjectSelectionCacheEntry = {
@@ -51,8 +53,18 @@ function normalizeProjectSelectionPayload(payload: any): ProjectSelectionSummary
 		facetStage: project.facet_stage ?? project.facetStage ?? null,
 		createdAt: project.created_at ?? project.createdAt ?? '',
 		updatedAt: project.updated_at ?? project.updatedAt ?? '',
-		taskCount: project.task_count ?? project.taskCount ?? 0
+		taskCount: project.task_count ?? project.taskCount ?? 0,
+		kind: project.kind ?? null
 	}));
+}
+
+/**
+ * Chat's project picker lists real projects only: the Workspace has its own chat
+ * (Workspace chat), so it is never a "project chat" choice or a project count.
+ * Organize's picker keeps it, since the Workspace is a valid place to move items.
+ */
+export function withoutWorkspace(projects: ProjectSelectionSummary[]): ProjectSelectionSummary[] {
+	return projects.filter((project) => project.kind !== 'workspace');
 }
 
 export function normalizeProjectSelectionSearch(value?: string | null): string {

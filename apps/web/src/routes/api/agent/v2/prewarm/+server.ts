@@ -268,9 +268,11 @@ async function buildPreparedPrompt(params: {
 		}
 	});
 
-	const preparedContextPayload = compactPreparedPromptContextPayload(
-		params.prewarmedContext.context
-	);
+	const preparedContextPayload = {
+		...compactPreparedPromptContextPayload(params.prewarmedContext.context),
+		// Workspace chat leaves this chat out of its "recent conversations" (tasker/146).
+		currentSessionId: params.session?.id ?? null
+	};
 	const promptContext = {
 		...preparedContextPayload,
 		conversationSummary

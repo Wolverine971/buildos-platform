@@ -7,6 +7,7 @@ export type {
 	LoadContextParams
 } from './context-loader';
 export * from './context-models';
+export * from './lay-of-the-land';
 export * from './focused-document-context';
 export * from './prompt-context';
 export * from './scope';

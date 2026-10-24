@@ -19,6 +19,15 @@ import type {
 	readProjectFoldManifest
 } from '$lib/server/project-fold/project-fold.service';
 import type { removeProjectMember } from '$lib/server/project-members/remove-member';
+import type {
+	graduateItems,
+	loadOwnSuggestion,
+	markSuggestion,
+	moveItems,
+	undoGraduate,
+	undoMoveBatch
+} from '$lib/server/workspace/workspace.service';
+import type { loadWorkspaceItemsV1 } from '@buildos/agentic-chat-runtime/tools';
 
 export type Client = SupabaseClient<Database>;
 
@@ -36,6 +45,7 @@ export type ProposalCardFailureCode =
 	| 'MEMBER_CHOICE_REQUIRED'
 	| 'MEMBER_NOT_REMOVABLE'
 	| 'MEMBER_REMOVAL_FAILED'
+	| 'MOVE_BLOCKED'
 	| 'NOT_UNDOABLE'
 	| 'ALREADY_RESOLVED'
 	| 'NO_PREVIEW'
@@ -78,6 +88,15 @@ export type ProposalCardDeps = {
 	previewProjectUnfold: typeof previewProjectUnfold;
 	applyProjectUnfold: typeof applyProjectUnfold;
 	removeProjectMember: typeof removeProjectMember;
+	// Workspace cards (tasker 146): the Workspace's own mover, run as the user.
+	ensureWorkspaceProjectId: (client: Client) => Promise<string>;
+	loadWorkspaceItems: typeof loadWorkspaceItemsV1;
+	moveWorkspaceItems: typeof moveItems;
+	undoWorkspaceMove: typeof undoMoveBatch;
+	graduateWorkspaceItems: typeof graduateItems;
+	undoWorkspaceGraduate: typeof undoGraduate;
+	loadWorkspaceSuggestion: typeof loadOwnSuggestion;
+	markWorkspaceSuggestion: typeof markSuggestion;
 	sleep: (ms: number) => Promise<void>;
 	now: () => Date;
 };

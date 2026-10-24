@@ -27,6 +27,7 @@
 		formatRelativeProjectUpdate,
 		groupProjectsByRecency,
 		normalizeProjectSelectionSearch,
+		withoutWorkspace,
 		type ProjectSelectionSummary
 	} from './project-selector-browser';
 
@@ -115,7 +116,9 @@
 				return;
 			}
 
-			projects = fetchedProjects;
+			// The Workspace isn't a project here: it has Workspace chat, so it never
+			// counts toward "new user", the project count or the project list.
+			projects = withoutWorkspace(fetchedProjects);
 			projectsError = null;
 			hasLoadedProjects = true;
 			lastProjectQuery = search;
@@ -186,7 +189,7 @@
 
 	// Primary actions - Svelte 5 callback pattern
 	function selectGlobal() {
-		onSelect?.({ contextType: 'global', label: 'General chat' });
+		onSelect?.({ contextType: 'global', label: 'Workspace chat' });
 	}
 
 	function selectProjectCreate() {
@@ -257,7 +260,7 @@
 	const optionCardBaseClasses =
 		'group flex flex-col rounded-lg border border-border bg-card p-3 text-left shadow-ink pressable transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:p-4';
 	// Canonical texture mapping (see INKPRINT design system §3.4):
-	//   General chat   → Frame  (canonical / primary surface)
+	//   Workspace chat → Frame  (canonical / primary surface)
 	//   Project chat   → Grain  (active execution)
 	//   Project setup  → Bloom  (new / creation)
 	const primaryChatCardClasses = `${optionCardBaseClasses} tx tx-frame tx-weak hover:border-accent/40`;
@@ -291,8 +294,8 @@
 					Start with your first project
 				</h2>
 				<p class="mt-0.5 text-xs text-muted-foreground sm:text-sm">
-					Set up the project once, then return here for project chat and workspace-wide
-					help.
+					Set up the project once, then come back here to chat about one project or
+					everything at once.
 				</p>
 			{:else}
 				<h2 class="text-base font-semibold text-foreground sm:text-lg">
@@ -382,9 +385,9 @@
 									class="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/70"
 								/>
 								<div>
-									<dt class="font-semibold text-foreground">General chat</dt>
+									<dt class="font-semibold text-foreground">Workspace chat</dt>
 									<dd class="text-2xs leading-snug">
-										Ask workspace-wide questions.
+										Everything at once: projects, loose notes, what's coming up.
 									</dd>
 								</div>
 							</div>
@@ -421,17 +424,17 @@
 										<MessagesSquare class="h-4 w-4 sm:h-5 sm:w-5" />
 									</div>
 									<div class="min-w-0 flex-1">
-										<p class="micro-label mb-1">GENERAL CHAT</p>
+										<p class="micro-label mb-1">WORKSPACE CHAT</p>
 										<h3
 											class="text-sm font-semibold text-foreground sm:text-base"
 										>
-											Open-ended chat
+											Chat about everything
 										</h3>
 										<p
 											class="mt-1 text-xs leading-snug text-muted-foreground sm:text-sm"
 										>
-											Workspace-wide questions, planning, or cross-project
-											context.
+											Your projects, loose notes and what's coming up, all at
+											once.
 										</p>
 									</div>
 									<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />

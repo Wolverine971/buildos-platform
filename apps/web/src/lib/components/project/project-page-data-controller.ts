@@ -536,12 +536,15 @@ export async function fetchProjectRecentChats(options: {
 	projectId: string;
 	limit: number;
 	offset: number;
+	/** The project is the viewer's Workspace: also list their Workspace chats. */
+	includeWorkspaceChats?: boolean;
 }): Promise<ProjectRecentChatsPage> {
-	const { projectId, limit, offset } = options;
+	const { projectId, limit, offset, includeWorkspaceChats = false } = options;
 	const params = new URLSearchParams({
 		limit: String(limit),
 		offset: String(offset)
 	});
+	if (includeWorkspaceChats) params.set('include', 'workspace_chats');
 	const data = await requestApiDataRecord(
 		`/api/onto/projects/${projectId}/recent-chats?${params.toString()}`,
 		'Failed to fetch recent chats'

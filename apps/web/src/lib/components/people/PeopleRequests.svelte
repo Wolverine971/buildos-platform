@@ -28,6 +28,8 @@
 		agentAccessLabel,
 		DEFAULT_AGENT_ACCESS,
 		fitAgentAccessToRole,
+		inviteeAgentSentence,
+		inviteeRoleSentence,
 		matchProjectHint,
 		outgoingStatusLabel,
 		requestOutcomeMessage,
@@ -37,6 +39,7 @@
 		type PersonRole,
 		type RequestOutcome
 	} from '$lib/components/people/people-copy';
+	import { projectArrivalHref } from '$lib/components/people/project-arrival';
 	import {
 		personName,
 		readFoundPerson,
@@ -1284,8 +1287,41 @@
 										? 'border-border-strong bg-muted text-muted-foreground'
 										: 'border-border bg-muted/50 text-muted-foreground'}"
 							>
-								{outgoingStatusLabel(request.status)}
+								{outgoingStatusLabel(request.status, request.settled_elsewhere)}
 							</span>
+							{#if (request.status === 'approved' || request.settled_elsewhere) && request.projects.length > 0}
+								<ul
+									class="mt-2 w-full space-y-3 rounded-lg border border-border bg-background p-3"
+								>
+									{#each request.projects as project (project.project_id)}
+										<li class="space-y-1">
+											<a
+												href={projectArrivalHref(
+													project.project_id,
+													request.kind === 'upgrade' ||
+														request.status === 'canceled'
+														? 'already_member'
+														: project.status
+												)}
+												class="inline-flex min-h-[44px] items-center gap-2 text-sm font-semibold text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											>
+												<FolderOpen
+													class="h-4 w-4"
+													aria-hidden="true"
+												/>Open {project.project_name}
+											</a>
+											<p class="text-sm text-foreground">
+												{roleLabel(project.role)} · {inviteeRoleSentence(
+													project.role
+												)}
+											</p>
+											<p class="text-xs text-muted-foreground">
+												{inviteeAgentSentence(project.agent_access)}
+											</p>
+										</li>
+									{/each}
+								</ul>
+							{/if}
 						</li>
 					{/each}
 				</ul>

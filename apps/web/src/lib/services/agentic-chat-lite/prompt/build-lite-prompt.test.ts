@@ -2351,6 +2351,151 @@ describe('audit 2026-09-02 context rendering', () => {
 			);
 			expect(location(projectData)).not.toContain("The user's Workspace");
 		});
+
+		// Tasker 146 (2026-10-23): Workspace chat opens knowing recent conversations
+		// and the Workspace shelf, as background the user steers.
+		describe('lay of the land', () => {
+			const lay = {
+				recent_conversations: [
+					{
+						session_id: 'current',
+						context_type: 'global',
+						entity_id: null,
+						last_at: '2026-04-15T11:00:00Z',
+						title: null,
+						topic: 'this very chat',
+						topic_source: 'first_message'
+					},
+					{
+						session_id: 's1',
+						context_type: 'project',
+						entity_id: 'project-1',
+						last_at: '2026-04-14T09:00:00Z',
+						title: 'Launch status',
+						topic: 'The user asked what is left before launch.',
+						topic_source: 'summary'
+					},
+					{
+						session_id: 's2',
+						context_type: 'global',
+						entity_id: null,
+						last_at: '2026-04-12T09:00:00Z',
+						title: null,
+						topic: 'what all is overdue?',
+						topic_source: 'first_message'
+					}
+				],
+				workspace_shelf: {
+					loose_total: 3,
+					items: [
+						{
+							entity: 'task',
+							kind: 'task',
+							id: 'task-9',
+							title: 'Call back about the gun action',
+							created_at: '2026-04-14T12:00:00Z',
+							due_at: '2026-04-17T12:00:00Z'
+						},
+						{
+							entity: 'document',
+							kind: 'note',
+							id: 'doc-9',
+							title: 'AI Taste Buds pricing',
+							created_at: '2026-04-13T12:00:00Z'
+						}
+					],
+					open_suggestions: [
+						{
+							id: 'sg-1',
+							kind: 'file',
+							proposed_name: null,
+							target_project_id: 'project-1',
+							item_count: 1,
+							reason: 'A launch note'
+						}
+					]
+				}
+			};
+			const index = [
+				{ id: 'ws-1', name: 'Workspace', kind: 'workspace', state_key: 'active' },
+				{ id: 'project-1', name: 'Launch Alpha', state_key: 'active' }
+			];
+
+			it('lists recent conversations without the current chat, then the shelf', () => {
+				const envelope = buildLitePromptEnvelope({
+					contextType: 'global',
+					entityId: null,
+					projectId: null,
+					now: '2026-04-15T12:00:00Z',
+					currentSessionId: 'current',
+					data: {
+						project_intelligence: GLOBAL_PI,
+						context_meta: meta,
+						workspace_project_id: 'ws-1',
+						projects: [],
+						project_index: index,
+						lay_of_the_land: lay
+					}
+				});
+				const location =
+					envelope.sections.find((item) => item.id === 'location_loaded_context')
+						?.content ?? '';
+				expect(location).toContain(
+					'Recent conversations (newest first; topics only, for picking up a thread):'
+				);
+				expect(location).toContain(
+					'- yesterday · Launch Alpha · Launch status: The user asked what is left before launch.'
+				);
+				expect(location).toContain(
+					'- 3 days ago · Workspace chat · they asked "what all is overdue?"'
+				);
+				expect(location).not.toContain('this very chat');
+				expect(location).toContain('Workspace shelf (3 loose, newest first):');
+				expect(location).toContain(
+					'- task "Call back about the gun action" · added yesterday · due 2026-04-17 [id: task-9]'
+				);
+				expect(location).toContain('- …and 1 more (search the Workspace for the rest)');
+				expect(location).toContain(
+					'- 1 loose item looks like they belong in Launch Alpha (A launch note) [suggestion: sg-1]'
+				);
+				const focus =
+					envelope.sections.find((item) => item.id === 'focus_purpose')?.content ?? '';
+				expect(focus).toContain('The user steers: never open with a recap');
+			});
+
+			it('gives calendar and brief chats the Workspace as the home for saves', () => {
+				for (const contextType of ['calendar', 'daily_brief'] as const) {
+					const location = buildLitePromptEnvelope({
+						contextType,
+						entityId: contextType === 'daily_brief' ? 'brief-1' : null,
+						projectId: null,
+						now: '2026-04-15T12:00:00Z',
+						data: { workspace_project_id: 'ws-1' }
+					}).sections.find((item) => item.id === 'location_loaded_context')?.content;
+					expect(location, contextType).toContain(
+						"- The user's Workspace (project_id: ws-1) holds loose notes and tasks outside any project; save a note or task there when no project clearly fits, and say so."
+					);
+					expect(location?.match(/ws-1/g), contextType).toHaveLength(1);
+				}
+			});
+
+			it('stays out of project chats', () => {
+				const location = buildLitePromptEnvelope({
+					contextType: 'project',
+					entityId: 'project-1',
+					projectId: 'project-1',
+					projectName: 'Launch Alpha',
+					data: {
+						project: { id: 'project-1', name: 'Launch Alpha', state_key: 'active' },
+						tasks: [],
+						documents: [],
+						members: [],
+						lay_of_the_land: lay
+					}
+				}).sections.find((item) => item.id === 'location_loaded_context')?.content;
+				expect(location).not.toContain('Recent conversations');
+			});
+		});
 	});
 
 	// Tasker 122 (2026-10-17): global chat told the owner twice that projects

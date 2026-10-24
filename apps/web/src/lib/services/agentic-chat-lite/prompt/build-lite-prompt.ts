@@ -176,7 +176,11 @@ const OVERVIEW_GUIDANCE_LITE = [
 	'Workflow hints for global chat:',
 	'- For routine status questions, call get_workspace_overview (all projects) or get_project_overview (one named project) before generic ontology discovery.',
 	'- When the user wants a note, doc, or task saved and no project clearly fits, save it to their Workspace (its project_id is on the Workspace line; it holds loose notes and tasks and is not a project) and say so, instead of asking for a project or creating one. A quick note is create_onto_document with type_key document.note.',
-	'- A request to start a new project is handled here with create_onto_project; do not send the user somewhere else to create it. Never create a project to hold one note or task, or out of Workspace items the user did not ask to make a project.'
+	'- A request to start a new project is handled here with create_onto_project; do not send the user somewhere else to create it. Never create a project to hold one note or task, or out of Workspace items the user did not ask to make a project.',
+	// Tasker 146 (DJ, 2026-10-23): "It should bring up stuff that's relevant, but the
+	// user should be guiding the direction of the chat."
+	'- Loose Workspace items: when the user asks to file them into a project or group them into a new one, or says yes to a suggestion (list_workspace_suggestions), call propose_workspace_filing or propose_workspace_project, with suggestion_id when it answers one. The card is the only way loose items move: never use move_onto_task or create_onto_project for it, and never say they are filed until the card shows it. Raise a suggestion only when it fits what the user is asking.',
+	'- Recent conversations, pressing work and the Workspace shelf in Loaded Context are background. Use them to pick up a thread, or to raise something pressing when it bears on what the user asked or when they ask broadly ("where am I at?", "what should I do?"). The user steers: never open with a recap or change the subject to them.'
 ].join('\n');
 
 const PROJECT_ANALYSIS_SKILL_GUIDANCE_LITE = [
@@ -406,7 +410,13 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 						timeline,
 						projectDigest,
 						loadedWork,
-						omitActivity: Boolean(steward)
+						omitActivity: Boolean(steward),
+						layOfTheLand: buildLayOfTheLandLines(
+							focus,
+							input.data ?? null,
+							clock,
+							input.currentSessionId ?? null
+						)
 					}),
 					...(knowledgeMapSection ? [knowledgeMapSection] : []),
 					...(projectFamilySection ? [projectFamilySection] : []),
@@ -1132,6 +1142,8 @@ function buildLocationLoadedContextSection(
 		 * went stale in the 9takes review (2026-09-27). Skip the block.
 		 */
 		omitActivity?: boolean;
+		/** Workspace chat's recent conversations and shelf (tasker/146). */
+		layOfTheLand?: string[];
 	} | null = null
 ): LitePromptSection {
 	if (focus.contextType === 'project_create') {
@@ -1240,10 +1252,119 @@ function buildLocationLoadedContextSection(
 			'- The lines below are for orientation and exact IDs only; fetch an entity directly when the user asks about something they do not carry, and before non-obvious writes.',
 			...projectChatWorkspaceLines(focus, data),
 			...activityBlock,
+			...(activity?.layOfTheLand ?? []),
 			...loadedWorkBlock,
 			...(index ? ['', index] : [])
 		].join('\n')
 	});
+}
+
+const LAY_OF_THE_LAND_CONVERSATION_LIMIT = 8;
+const LAY_OF_THE_LAND_WHERE: Record<string, string> = {
+	global: 'Workspace chat',
+	general: 'Workspace chat',
+	daily_brief: 'Daily brief chat',
+	calendar: 'Calendar chat',
+	project_create: 'Project setup'
+};
+
+/**
+ * Workspace chat's opening view (tasker/146): the user's recent conversations as
+ * topic lines and the Workspace shelf (newest loose items, open suggestions).
+ * Pressing work and recent projects already render above. The current chat is
+ * left out of its own "recent conversations".
+ */
+function buildLayOfTheLandLines(
+	focus: LitePromptFocus,
+	data: LitePromptInput['data'] | null,
+	clock: PromptClock,
+	currentSessionId: string | null
+): string[] {
+	if (focus.contextType !== 'global' && focus.contextType !== 'general') return [];
+	const record = isRecord(data) ? data : null;
+	const lay = record && isRecord(record.lay_of_the_land) ? record.lay_of_the_land : null;
+	if (!lay) return [];
+	const projectNames = new Map(
+		collectGlobalProjectIndex(record).map((view) => [view.id, view.name])
+	);
+	const relative = (value: unknown) => {
+		const date = parseDate(value);
+		return date ? describeRelativeDay(clock, date) : 'recently';
+	};
+	const lines: string[] = [];
+
+	const conversations = (Array.isArray(lay.recent_conversations) ? lay.recent_conversations : [])
+		.filter(isRecord)
+		.filter((row) => stringValue(row.session_id) !== currentSessionId)
+		.slice(0, LAY_OF_THE_LAND_CONVERSATION_LIMIT);
+	if (conversations.length > 0) {
+		lines.push(
+			'',
+			'Recent conversations (newest first; topics only, for picking up a thread):'
+		);
+		for (const row of conversations) {
+			const contextType = stringValue(row.context_type) ?? 'global';
+			const entityId = stringValue(row.entity_id);
+			const where =
+				contextType === 'project' || contextType === 'ontology'
+					? (entityId && projectNames.get(entityId)) || 'a project'
+					: (LAY_OF_THE_LAND_WHERE[contextType] ?? 'chat');
+			const title = stringValue(row.title);
+			const topic = stringValue(row.topic);
+			const opening =
+				topic && row.topic_source === 'first_message' ? `they asked "${topic}"` : topic;
+			const subject = title && opening ? `${title}: ${opening}` : (title ?? opening ?? '');
+			lines.push(`- ${relative(row.last_at)} · ${where} · ${subject}`);
+		}
+	}
+
+	const shelf = isRecord(lay.workspace_shelf) ? lay.workspace_shelf : null;
+	if (shelf) {
+		const total = numberValue(shelf.loose_total) ?? 0;
+		const items = (Array.isArray(shelf.items) ? shelf.items : []).filter(isRecord);
+		if (total === 0 || items.length === 0) {
+			lines.push('', 'Workspace shelf: nothing loose.');
+		} else {
+			lines.push('', `Workspace shelf (${total} loose, newest first):`);
+			for (const item of items) {
+				const kind = stringValue(item.kind) ?? 'item';
+				const title = stringValue(item.title) ?? 'Untitled';
+				const due = parseDate(item.due_at);
+				lines.push(
+					`- ${kind} "${title}" · added ${relative(item.created_at)}${due ? ` · due ${formatLocalDate(due, clock.timezone)}` : ''} [id: ${stringValue(item.id) ?? '?'}]`
+				);
+			}
+			if (total > items.length) {
+				lines.push(
+					`- …and ${total - items.length} more (search the Workspace for the rest)`
+				);
+			}
+		}
+		const suggestions = (
+			Array.isArray(shelf.open_suggestions) ? shelf.open_suggestions : []
+		).filter(isRecord);
+		if (suggestions.length > 0) {
+			lines.push(
+				'Open Workspace suggestions (the user decides; raise one only when it fits what they are asking):'
+			);
+			for (const suggestion of suggestions) {
+				const count = numberValue(suggestion.item_count) ?? 0;
+				const reason = stringValue(suggestion.reason);
+				const target = stringValue(suggestion.target_project_id);
+				const targetName = (target && projectNames.get(target)) || 'a project';
+				const what =
+					suggestion.kind === 'graduate'
+						? `${count} loose items look like a project: "${stringValue(suggestion.proposed_name) ?? 'Untitled'}"`
+						: suggestion.kind === 'file'
+							? `${count === 1 ? '1 loose item looks' : `${count} loose items look`} like they belong in ${targetName}`
+							: `${targetName} reads like loose notes`;
+				lines.push(
+					`- ${what}${reason ? ` (${reason})` : ''} [suggestion: ${stringValue(suggestion.id) ?? '?'}]`
+				);
+			}
+		}
+	}
+	return lines;
 }
 
 /**
@@ -1255,13 +1376,20 @@ function projectChatWorkspaceLines(
 	focus: LitePromptFocus,
 	data: LitePromptInput['data']
 ): string[] {
-	if (focus.contextType !== 'project' && focus.contextType !== 'ontology') return [];
 	const id = isRecord(data) ? stringValue(data.workspace_project_id) : null;
-	return id
-		? [
-				`- The user's Workspace (project_id: ${id}) holds loose notes and tasks outside any project; save there only what the user says is not for this project.`
-			]
-		: [];
+	if (!id) return [];
+	if (focus.contextType === 'project' || focus.contextType === 'ontology') {
+		return [
+			`- The user's Workspace (project_id: ${id}) holds loose notes and tasks outside any project; save there only what the user says is not for this project.`
+		];
+	}
+	// Calendar and brief chats (tasker 146 F8): a save that names no project goes here.
+	if (focus.contextType === 'calendar' || focus.contextType === 'daily_brief') {
+		return [
+			`- The user's Workspace (project_id: ${id}) holds loose notes and tasks outside any project; save a note or task there when no project clearly fits, and say so.`
+		];
+	}
+	return [];
 }
 
 /**
@@ -2360,7 +2488,12 @@ function buildTimelineSummary(
 	const projectIntelligence = extractProjectIntelligence(data);
 	const bundleViews = collectGlobalBundleViews(data);
 	const projectIndex = collectGlobalProjectIndex(data);
-	const workspace = collectGlobalWorkspace(data, projectIndex);
+	// Calendar and brief chats carry only the Workspace id (tasker 146 F8); their
+	// one-line save rule is in Location, not a project-status block.
+	const workspace =
+		focus.contextType === 'calendar' || focus.contextType === 'daily_brief'
+			? null
+			: collectGlobalWorkspace(data, projectIndex);
 	const contextMeta = data && isRecord(data.context_meta) ? data.context_meta : null;
 	const projectIntelligencePrompt = projectIntelligence
 		? buildProjectIntelligencePromptSections(projectIntelligence, {

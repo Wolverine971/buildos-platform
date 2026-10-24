@@ -468,7 +468,13 @@ export async function sendPeopleRequestReceivedEmail(
 	}
 }
 
-type SharedProject = { id: string; name: string; role: string; agent_access: string };
+type SharedProject = {
+	id: string;
+	name: string;
+	role: string;
+	agent_access: string;
+	status?: string;
+};
 
 /** The owner said yes to an upgrade: what changed, and that the agent can carry on. */
 export function buildUpgradeApprovedEmail(input: {
@@ -480,20 +486,30 @@ export function buildUpgradeApprovedEmail(input: {
 	const single = input.projects.length === 1 ? input.projects[0] : null;
 	const what = single ? single.name : `${input.projects.length} projects`;
 	const need = input.projects[0]?.need ?? null;
-	const subject =
-		need === 'edit'
+	const subject = !single
+		? `${owner} updated your access to ${what}`
+		: need === 'edit'
 			? `${owner} made you an editor of ${what}`
 			: need === 'agents_write'
 				? `${owner} let your agents make changes in ${what}`
 				: `${owner} let your agents see ${what}`;
 	const lines = [
-		need === 'agents_read'
-			? 'Your connected agents can open it now.'
-			: 'Your connected agents can now add tasks and documents there, and change the ones you created or are assigned to.',
+		...(single
+			? [
+					need === 'agents_read'
+						? 'Your connected agents can open it now.'
+						: 'Your connected agents can now add tasks and documents there, and change the ones you created or are assigned to.'
+				]
+			: input.projects.map(
+					(project) =>
+						`${project.name}: You’re ${roleWithArticle(project.role)}. ${inviteeAgentSentence(project.agent_access)}`
+				)),
 		'If your agent was waiting on this, tell it to pick up where it left off.'
 	];
-	const url = single ? `${input.baseUrl}/projects/${single.id}` : `${input.baseUrl}/projects`;
-	const label = single ? `Open ${single.name}` : 'Open your projects';
+	const url = single
+		? `${input.baseUrl}/projects/${single.id}`
+		: `${input.baseUrl}/profile?tab=people#requests`;
+	const label = single ? `Open ${single.name}` : 'Choose a project';
 	const html = render(subject, [
 		heading(subject),
 		...lines.map((line, index) =>
@@ -515,8 +531,10 @@ export function buildRequestApprovedEmail(input: {
 	const single = input.projects.length === 1 ? input.projects[0] : null;
 	const what = single ? single.name : `${input.projects.length} projects`;
 	const subject = `${owner} shared ${what} with you`;
-	const url = single ? `${input.baseUrl}/projects/${single.id}` : `${input.baseUrl}/projects`;
-	const label = single ? `Open ${single.name}` : 'Open your projects';
+	const url = single
+		? `${input.baseUrl}/projects/${single.id}${single.status === 'already_member' ? '' : '?joined=1'}`
+		: `${input.baseUrl}/profile?tab=people#requests`;
+	const label = single ? `Open ${single.name}` : 'Choose a project';
 
 	const lines = single
 		? [
@@ -526,9 +544,8 @@ export function buildRequestApprovedEmail(input: {
 		: [
 				...input.projects.map(
 					(project) =>
-						`${project.name}: ${project.role === 'editor' ? 'you can edit it' : 'you can view it'}.`
-				),
-				'If you connect an AI agent (like Claude or ChatGPT) to BuildOS, it gets the same access where the owner allowed it.'
+						`${project.name}: You’re ${roleWithArticle(project.role)}. ${inviteeRoleSentence(project.role)} ${inviteeAgentSentence(project.agent_access)}`
+				)
 			];
 
 	const html = render(subject, [
@@ -567,7 +584,8 @@ export async function sendPeopleRequestApprovedEmail(
 					grant.agent_access === 'off' || grant.agent_access === 'write'
 						? String(grant.agent_access)
 						: 'read',
-				need: typeof grant.need === 'string' ? grant.need : null
+				need: typeof grant.need === 'string' ? grant.need : null,
+				status: typeof grant.status === 'string' ? grant.status : undefined
 			}));
 		if (grants.length === 0) return 'skipped';
 
@@ -578,7 +596,8 @@ export async function sendPeopleRequestApprovedEmail(
 				'id',
 				grants.map((grant) => grant.project_id)
 			)
-			.is('deleted_at', null);
+			.is('deleted_at', null)
+			.is('archived_at', null);
 		if (projectError) throw projectError;
 		const names = new Map(
 			((projectRows ?? []) as Array<{ id: string; name: string | null }>).map((row) => [
@@ -593,7 +612,8 @@ export async function sendPeopleRequestApprovedEmail(
 				name: names.get(grant.project_id) ?? 'Untitled project',
 				role: grant.role,
 				agent_access: grant.agent_access,
-				need: grant.need
+				need: grant.need,
+				status: grant.status
 			}));
 		if (projects.length === 0) return 'skipped';
 

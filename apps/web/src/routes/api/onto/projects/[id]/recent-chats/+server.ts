@@ -2,6 +2,8 @@
 /**
  * GET /api/onto/projects/[id]/recent-chats
  * Fetch recent chat sessions scoped to a project for the project detail page.
+ * `include=workspace_chats` (the Workspace card) also lists the caller's own
+ * Workspace chats: the global context, whose home is the Workspace (tasker 146).
  */
 
 import type { RequestHandler } from './$types';
@@ -12,6 +14,7 @@ import { logOntologyApiError } from '../../../shared/error-logging';
 import {
 	SESSION_SELECT,
 	hasOwnTitle,
+	isWorkspaceChatRow,
 	mergeSessions,
 	normalizeText,
 	toSummary,
@@ -95,6 +98,35 @@ async function fetchSessionsByIds(
 	return (data ?? []) as ChatSessionRow[];
 }
 
+/** The caller's Workspace chats (global context), for the Workspace card. */
+async function fetchWorkspaceChats(
+	supabase: App.Locals['supabase'],
+	userId: string,
+	workspaceId: string,
+	limit: number
+): Promise<ChatSessionRow[]> {
+	const { data, error } = await supabase
+		.from('chat_sessions')
+		.select(SESSION_SELECT)
+		.eq('user_id', userId)
+		.neq('status', 'archived')
+		.in('context_type', ['global', 'general'])
+		.or('message_count.gte.1,summary.not.is.null,last_message_at.not.is.null')
+		.order('last_message_at', { ascending: false, nullsFirst: false })
+		.order('updated_at', { ascending: false, nullsFirst: false })
+		.order('created_at', { ascending: false, nullsFirst: false })
+		.limit(limit);
+
+	if (error) {
+		console.warn('[Project Recent Chats API] Failed to fetch Workspace chats:', error);
+		return [];
+	}
+
+	return ((data ?? []) as ChatSessionRow[]).filter((session) =>
+		isWorkspaceChatRow(session, workspaceId)
+	);
+}
+
 /** The first thing the user said in each chat, for chats that have no title yet. */
 async function fetchOpeningLines(
 	supabase: App.Locals['supabase'],
@@ -154,51 +186,59 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 			locals.serverTiming ? locals.serverTiming.measure(name, fn) : fn();
 
 		const fetchWindow = Math.min(offset + limit + 1, 75);
+		const includeWorkspaceChats = url.searchParams.get('include') === 'workspace_chats';
 
 		// The access check runs beside the reads instead of ahead of them: each
 		// read is already limited to this user's own sessions, and nothing is
 		// returned unless the check passes.
-		const [authResult, directResult, metadataResult, linkedSessions] = await Promise.all([
-			measure('chats.access', () => verifyProjectAccess(supabase, projectId, user.id)),
-			measure('chats.db.direct', () =>
-				supabase
-					.from('chat_sessions')
-					.select(SESSION_SELECT)
-					.eq('user_id', user.id)
-					.neq('status', 'archived')
-					.eq('context_type', 'project')
-					.eq('entity_id', projectId)
-					.or('message_count.gte.1,summary.not.is.null,last_message_at.not.is.null')
-					.order('last_message_at', { ascending: false, nullsFirst: false })
-					.order('updated_at', { ascending: false, nullsFirst: false })
-					.order('created_at', { ascending: false, nullsFirst: false })
-					.limit(fetchWindow)
-			),
-			measure('chats.db.focus', () =>
-				supabase
-					.from('chat_sessions')
-					.select(SESSION_SELECT)
-					.eq('user_id', user.id)
-					.neq('status', 'archived')
-					.filter('agent_metadata->focus->>projectId', 'eq', projectId)
-					.or('message_count.gte.1,summary.not.is.null,last_message_at.not.is.null')
-					.order('last_message_at', { ascending: false, nullsFirst: false })
-					.order('updated_at', { ascending: false, nullsFirst: false })
-					.order('created_at', { ascending: false, nullsFirst: false })
-					.limit(fetchWindow)
-			),
-			measure('chats.db.linked', async () => {
-				const [linkedIds, turnRunIds] = await Promise.all([
-					fetchLinkedSessionIds(supabase, projectId, fetchWindow),
-					fetchTurnRunSessionIds(supabase, user.id, projectId, fetchWindow * 2)
-				]);
-				return fetchSessionsByIds(
-					supabase,
-					user.id,
-					Array.from(new Set([...linkedIds, ...turnRunIds]))
-				);
-			})
-		]);
+		const [authResult, directResult, metadataResult, linkedSessions, workspaceChats] =
+			await Promise.all([
+				measure('chats.access', () => verifyProjectAccess(supabase, projectId, user.id)),
+				measure('chats.db.direct', () =>
+					supabase
+						.from('chat_sessions')
+						.select(SESSION_SELECT)
+						.eq('user_id', user.id)
+						.neq('status', 'archived')
+						.eq('context_type', 'project')
+						.eq('entity_id', projectId)
+						.or('message_count.gte.1,summary.not.is.null,last_message_at.not.is.null')
+						.order('last_message_at', { ascending: false, nullsFirst: false })
+						.order('updated_at', { ascending: false, nullsFirst: false })
+						.order('created_at', { ascending: false, nullsFirst: false })
+						.limit(fetchWindow)
+				),
+				measure('chats.db.focus', () =>
+					supabase
+						.from('chat_sessions')
+						.select(SESSION_SELECT)
+						.eq('user_id', user.id)
+						.neq('status', 'archived')
+						.filter('agent_metadata->focus->>projectId', 'eq', projectId)
+						.or('message_count.gte.1,summary.not.is.null,last_message_at.not.is.null')
+						.order('last_message_at', { ascending: false, nullsFirst: false })
+						.order('updated_at', { ascending: false, nullsFirst: false })
+						.order('created_at', { ascending: false, nullsFirst: false })
+						.limit(fetchWindow)
+				),
+				measure('chats.db.linked', async () => {
+					const [linkedIds, turnRunIds] = await Promise.all([
+						fetchLinkedSessionIds(supabase, projectId, fetchWindow),
+						fetchTurnRunSessionIds(supabase, user.id, projectId, fetchWindow * 2)
+					]);
+					return fetchSessionsByIds(
+						supabase,
+						user.id,
+						Array.from(new Set([...linkedIds, ...turnRunIds]))
+					);
+				}),
+				// Only the caller's own sessions, so the flag can't widen what anyone sees.
+				includeWorkspaceChats
+					? measure('chats.db.workspace', () =>
+							fetchWorkspaceChats(supabase, user.id, projectId, fetchWindow)
+						)
+					: Promise.resolve([] as ChatSessionRow[])
+			]);
 
 		if (!authResult.authorized) {
 			return authResult.error!;
@@ -233,7 +273,8 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 		const merged = mergeSessions([
 			(directResult.data ?? []) as ChatSessionRow[],
 			metadataResult.error ? [] : ((metadataResult.data ?? []) as ChatSessionRow[]),
-			linkedSessions
+			linkedSessions,
+			workspaceChats
 		]);
 
 		const pageSessions = merged.slice(offset, offset + limit);

@@ -18,6 +18,7 @@
 import { code, isRecord, PROPOSAL_CARD_TTL_MS, text, timestamp, uuid } from './card-fields';
 import { PROJECT_PARENT_CARD_SPEC } from './project-parent-card';
 import { PROJECT_COMBINE_CARD_SPEC } from './project-combine-card';
+import { WORKSPACE_FILE_CARD_SPEC, WORKSPACE_PROJECT_CARD_SPEC } from './workspace-card';
 
 export {
 	PROPOSAL_CARD_TTL_MS,
@@ -31,7 +32,13 @@ export const PROPOSAL_CARD_RAIL = 'proposal_v1' as const;
 export const PROPOSAL_CARD_READY_STATUS = 'proposal_ready' as const;
 export const PROPOSAL_CARD_CLIENT_ACTION_KIND = 'proposal_card' as const;
 
-export const PROPOSAL_CARD_KIND_NAMES = ['project_parent', 'project_combine'] as const;
+export const PROPOSAL_CARD_KIND_NAMES = [
+	'project_parent',
+	'project_combine',
+	// Tasker 146: file loose Workspace items into a project, or start one from them.
+	'workspace_file',
+	'workspace_project'
+] as const;
 export type ProposalCardKind = (typeof PROPOSAL_CARD_KIND_NAMES)[number];
 
 export type ProposalCardOutcome = 'applied' | 'cancelled' | 'stale' | 'unknown';
@@ -134,7 +141,9 @@ type AnySpec = ProposalCardKindSpecV1<any, any, any>;
 /** The kind registry. A kind not listed here cannot be parsed, rendered or resolved. */
 export const PROPOSAL_CARD_KINDS = {
 	project_parent: PROJECT_PARENT_CARD_SPEC,
-	project_combine: PROJECT_COMBINE_CARD_SPEC
+	project_combine: PROJECT_COMBINE_CARD_SPEC,
+	workspace_file: WORKSPACE_FILE_CARD_SPEC,
+	workspace_project: WORKSPACE_PROJECT_CARD_SPEC
 } as const satisfies Record<ProposalCardKind, AnySpec>;
 
 export function isProposalCardKind(value: unknown): value is ProposalCardKind {
@@ -410,3 +419,35 @@ export {
 	type ProjectCombineUndoReceiptV1,
 	type ProjectCombineUndoViewV1
 } from './project-combine-card';
+export {
+	WORKSPACE_FILE_CARD_SPEC,
+	WORKSPACE_PROJECT_CARD_SPEC,
+	WORKSPACE_FILE_TOOL_NAME,
+	WORKSPACE_PROJECT_TOOL_NAME,
+	WORKSPACE_CARD_CHOICES,
+	WORKSPACE_CARD_ITEM_LIMIT,
+	WORKSPACE_PROJECT_MIN_ITEMS,
+	WORKSPACE_PROJECT_NAME_MAX,
+	WORKSPACE_PROJECT_DESCRIPTION_MAX,
+	WORKSPACE_CARD_REASON_MAX,
+	cleanWorkspaceCardText,
+	cleanWorkspaceProjectName,
+	parseWorkspaceItemKeys,
+	parseWorkspaceFilePayload,
+	parseWorkspaceProjectPayload,
+	workspaceFileDigest,
+	workspaceProjectDigest,
+	workspaceItemCountLabel,
+	workspaceItemKey,
+	type WorkspaceCardChoice,
+	type WorkspaceItemEntity,
+	type WorkspaceItemKind,
+	type WorkspaceItemKeyV1,
+	type WorkspaceItemV1,
+	type WorkspaceFileProposalPayloadV1,
+	type WorkspaceFileReceiptV1,
+	type WorkspaceFileUndoReceiptV1,
+	type WorkspaceProjectProposalPayloadV1,
+	type WorkspaceProjectReceiptV1,
+	type WorkspaceProjectUndoReceiptV1
+} from './workspace-card';

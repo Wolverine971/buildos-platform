@@ -9,6 +9,7 @@ import type { calendar_v3 } from 'googleapis';
 import type { OAuth2Client } from 'google-auth-library';
 import type { Database, Json } from '@buildos/shared-types';
 import { isValidUUID } from '@buildos/shared-types';
+import { enqueueGuestTaskCalendarSync, guestTaskCalendarUserId } from './guest-task-calendar';
 import { format as formatDate } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import type { CalendarPort } from '../gateway/op-execution-gateway';
@@ -539,6 +540,7 @@ class AgentRunCalendarPort implements CalendarPort {
 		let ownerType: 'task' | 'project' | 'actor' = 'actor';
 		let ownerId: string | null = actorId;
 		let taskProps: Record<string, unknown> | undefined;
+		let taskCalendarUserId: string | null = null;
 		const taskId = getUuidArg('task_id', args?.task_id, args?.taskId);
 
 		if (taskId) {
@@ -546,6 +548,7 @@ class AgentRunCalendarPort implements CalendarPort {
 			projectId = task.projectId;
 			ownerType = 'task';
 			ownerId = task.taskId;
+			taskCalendarUserId = task.calendarSyncUserId;
 			taskProps = {
 				task_id: task.taskId,
 				task_title: task.taskTitle,
@@ -559,7 +562,7 @@ class AgentRunCalendarPort implements CalendarPort {
 		}
 
 		const syncTarget =
-			args?.sync_to_calendar === false
+			args?.sync_to_calendar === false || taskCalendarUserId
 				? null
 				: await this.resolveCalendarSyncTarget({
 						calendarScope:
@@ -616,6 +619,17 @@ class AgentRunCalendarPort implements CalendarPort {
 		let finalEvent = createdEvent as OntoEventRow;
 		let externalEvent: calendar_v3.Schema$Event | null = null;
 		let syncRow: OntoEventSyncRow | null = null;
+		if (taskId && projectId) {
+			await this.ensureTaskEventEdge({ projectId, taskId, eventId: finalEvent.id });
+		}
+		if (guestTaskCalendarUserId(finalEvent) && args?.sync_to_calendar !== false) {
+			await enqueueGuestTaskCalendarSync(this.admin, finalEvent, 'upsert', this.userId);
+			return {
+				source: 'ontology',
+				event: finalEvent,
+				sync: { success: true, status: 'pending' }
+			};
+		}
 
 		if (syncTarget) {
 			try {
@@ -670,14 +684,6 @@ class AgentRunCalendarPort implements CalendarPort {
 					}
 				};
 			}
-		}
-
-		if (taskId && projectId) {
-			await this.ensureTaskEventEdge({
-				projectId,
-				taskId,
-				eventId: finalEvent.id
-			});
 		}
 
 		return {
@@ -761,7 +767,19 @@ class AgentRunCalendarPort implements CalendarPort {
 				throw new Error('end_at must be after start_at');
 			}
 
+			if (guestTaskCalendarUserId(existing) && args?.sync_to_calendar !== false) {
+				patch.sync_status = 'pending';
+				patch.sync_error = null;
+			}
 			let updated = await this.patchEvent(ontoEventId, patch);
+			if (guestTaskCalendarUserId(updated) && args?.sync_to_calendar !== false) {
+				await enqueueGuestTaskCalendarSync(this.admin, updated, 'upsert', this.userId);
+				return {
+					source: 'ontology',
+					event: updated,
+					sync: { success: true, status: 'pending' }
+				};
+			}
 			if (args?.sync_to_calendar !== false) {
 				for (const {
 					sync,
@@ -896,6 +914,20 @@ class AgentRunCalendarPort implements CalendarPort {
 			const existing = await this.getOntologyEvent(ontoEventId);
 			if (!existing) {
 				throw new Error('Event not found');
+			}
+			if (guestTaskCalendarUserId(existing) && args?.sync_to_calendar !== false) {
+				const deleted = await this.patchEvent(ontoEventId, {
+					deleted_at: new Date().toISOString(),
+					updated_at: new Date().toISOString(),
+					sync_status: 'pending',
+					sync_error: null
+				});
+				await enqueueGuestTaskCalendarSync(this.admin, deleted, 'delete', this.userId);
+				return {
+					source: 'ontology',
+					event: deleted,
+					sync: { success: true, status: 'pending' }
+				};
 			}
 			if (args?.sync_to_calendar !== false) {
 				for (const {
@@ -1680,10 +1712,11 @@ class AgentRunCalendarPort implements CalendarPort {
 		taskTitle: string;
 		projectId: string;
 		taskLink: string;
+		calendarSyncUserId: string | null;
 	}> {
 		const { data: task, error } = await this.admin
 			.from('onto_tasks')
-			.select('id, title, project_id')
+			.select('id, title, project_id, props')
 			.eq('id', taskId)
 			.is('deleted_at', null)
 			.maybeSingle();
@@ -1702,7 +1735,8 @@ class AgentRunCalendarPort implements CalendarPort {
 			taskId: task.id,
 			taskTitle: task.title ?? 'Task',
 			projectId: task.project_id,
-			taskLink: `/projects/${task.project_id}/tasks/${task.id}`
+			taskLink: `/projects/${task.project_id}/tasks/${task.id}`,
+			calendarSyncUserId: guestTaskCalendarUserId(task)
 		};
 	}
 

@@ -32,9 +32,14 @@ import type {
 	ProjectCombineProposalPayloadV1,
 	ProjectCombineUndoViewV1
 } from '@buildos/shared-agent-ops/chat-cards/project-combine-card';
+import type {
+	WorkspaceCardChoice,
+	WorkspaceFileProposalPayloadV1,
+	WorkspaceProjectProposalPayloadV1
+} from '@buildos/shared-agent-ops/chat-cards/proposal-card';
 import type { ActivityEntry, ThinkingBlockMessage, UIMessage } from './agent-chat.types';
 
-export type ProposalCardChoice = ProjectParentChoice | ProjectCombineChoice;
+export type ProposalCardChoice = ProjectParentChoice | ProjectCombineChoice | WorkspaceCardChoice;
 
 /** A card was decided or undone by the user's click (open views refresh). */
 export type ProposalCardResolvedEvent = {
@@ -391,6 +396,18 @@ function plural(count: number, singular: string, pluralForm = `${singular}s`): s
 }
 
 export function proposalCardTitle(card: ProposalCardEnvelopeV1, payload: unknown): string {
+	if (card.kind === 'workspace_file') {
+		const file = payload as WorkspaceFileProposalPayloadV1;
+		const what =
+			file.items.length === 1
+				? `“${file.items[0]!.title}”`
+				: plural(file.items.length, 'item');
+		return `File ${what} into ${file.target.name}`;
+	}
+	if (card.kind === 'workspace_project') {
+		const start = payload as WorkspaceProjectProposalPayloadV1;
+		return `Start ${start.name} from ${plural(start.items.length, 'Workspace item')}`;
+	}
 	if (card.kind === 'project_parent') {
 		const nest = payload as ProjectParentProposalPayloadV1;
 		return nest.action === 'attach'
@@ -550,4 +567,14 @@ export function eventWhen(startAt: string | null): string | null {
 	if (!startAt) return null;
 	const time = Date.parse(startAt);
 	return Number.isFinite(time) ? EVENT_FORMAT.format(new Date(time)) : null;
+}
+
+/** The Workspace cards' item glyph and screen-reader word, from structured fields only. */
+export function workspaceItemKindLabel(kind: 'note' | 'doc' | 'task'): string {
+	return kind === 'task' ? 'task' : kind === 'note' ? 'note' : 'doc';
+}
+
+/** "Plus 2 docs filed inside them." (they move with their folder doc), or null. */
+export function workspaceNestedLine(nested: number): string | null {
+	return nested > 0 ? `Plus ${plural(nested, 'doc')} filed inside them.` : null;
 }

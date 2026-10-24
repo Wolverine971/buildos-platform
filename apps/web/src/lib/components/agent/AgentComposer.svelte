@@ -129,12 +129,15 @@
 	);
 	const isDropActive = $derived(dragDepth > 0 && !disabled && !isStreaming && !workflowSelected);
 
-	// Generic labels like "general chat" / "project chat" / "open-ended chat" /
+	// Generic labels like "workspace chat" / "project chat" / "open-ended chat" /
 	// the unconfigured placeholder don't read naturally with "Ask about ...".
-	// Fall through to the catch-all in those cases.
+	// Fall through to the catch-all in those cases. "general chat" and "global
+	// conversation" are older names for Workspace chat that resumed chats may carry.
 	const GENERIC_CONTEXT_LABELS = new Set([
 		'',
+		'workspace chat',
 		'general chat',
+		'global conversation',
 		'project chat',
 		'open-ended chat',
 		'select a focus to begin'

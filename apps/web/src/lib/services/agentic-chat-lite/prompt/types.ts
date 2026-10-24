@@ -202,6 +202,8 @@ export type LitePromptInput = MasterPromptContext & {
 	productSurface?: string | null;
 	conversationPosition?: string | null;
 	currentUserMessage?: string | null;
+	/** The chat this prompt is for; Workspace chat leaves it out of "recent conversations". */
+	currentSessionId?: string | null;
 	priorDomainIds?: string[] | null;
 	/** @deprecated Use priorOutcomeCardIds. */
 	priorWorkCapabilityIds?: string[] | null;

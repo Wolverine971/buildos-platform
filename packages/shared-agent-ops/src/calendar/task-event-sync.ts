@@ -2,6 +2,7 @@
 import type { Database, Json, ProjectLogChangeSource } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ActivityLogActorContext } from '../ops/async-activity-logger';
+import { guestTaskCalendarUserId, GUEST_TASK_CALENDAR_USER } from './guest-task-calendar';
 import type {
 	TaskCalendarEventReceipt,
 	TaskEventSyncSummary,
@@ -30,6 +31,7 @@ export interface TaskEventMutationPort {
 			endAt: string;
 			createdBy: string;
 			deferCalendarSync: true;
+			calendarSyncUserId?: string;
 			props: Json;
 			activityLog: TaskEventActivityLogOptions;
 		}
@@ -43,6 +45,7 @@ export interface TaskEventMutationPort {
 			startAt: string;
 			endAt: string;
 			deferCalendarSync: true;
+			calendarSyncUserId?: string;
 			props: Json;
 			syncTaskFromEvent: false;
 			activityLog: TaskEventActivityLogOptions;
@@ -54,6 +57,7 @@ export interface TaskEventMutationPort {
 			eventId: string;
 			projectId: string;
 			deferCalendarSync: true;
+			calendarSyncUserId?: string;
 			activityLog: TaskEventActivityLogOptions;
 		}
 	): Promise<TaskEventRow>;
@@ -89,12 +93,14 @@ export class TaskEventSyncCoordinator implements TaskSyncPort {
 		userId: string,
 		actorId: string,
 		task: OntoTaskRow,
-		options: { activityLog?: TaskEventActivityLogOptions } = {}
+		options: { activityLog?: TaskEventActivityLogOptions; calendarSyncUserId?: string } = {}
 	): Promise<TaskEventSyncSummary> {
 		const syncedEvents: TaskCalendarEventReceipt[] = [];
 		let removedEventCount = 0;
 		const desiredSpecs = buildTaskEventSpecs(task);
 		const activityLog = buildActivityLogOptions(options.activityLog, actorId);
+		const calendarSyncUserId = guestTaskCalendarUserId(task) ?? options.calendarSyncUserId;
+		const recipient = calendarSyncUserId ? { calendarSyncUserId } : {};
 
 		const { data: edges, error: edgeError } = await this.supabase
 			.from('onto_edges')
@@ -122,13 +128,16 @@ export class TaskEventSyncCoordinator implements TaskSyncPort {
 			existingEvents = events ?? [];
 		}
 
-		if (task.state_key === 'done') {
+		if (task.deleted_at || task.archived_at || task.state_key === 'done') {
 			removedEventCount = await this.removeEvents(
 				userId,
-				futureTaskEventsOnCompletion(existingEvents),
+				task.deleted_at || task.archived_at
+					? existingEvents
+					: futureTaskEventsOnCompletion(existingEvents),
 				activityLog,
 				task.id,
-				task.project_id
+				task.project_id,
+				calendarSyncUserId
 			);
 			return { events: [], removed_event_count: removedEventCount };
 		}
@@ -139,7 +148,8 @@ export class TaskEventSyncCoordinator implements TaskSyncPort {
 				existingEvents,
 				activityLog,
 				task.id,
-				task.project_id
+				task.project_id,
+				calendarSyncUserId
 			);
 			return { events: [], removed_event_count: removedEventCount };
 		}
@@ -160,6 +170,7 @@ export class TaskEventSyncCoordinator implements TaskSyncPort {
 			if (existing) {
 				usedEventIds.add(existing.id);
 				await this.eventMutations.updateEvent(userId, {
+					...recipient,
 					eventId: existing.id,
 					projectId: task.project_id,
 					title: spec.title,
@@ -180,6 +191,7 @@ export class TaskEventSyncCoordinator implements TaskSyncPort {
 			}
 
 			const result = await this.eventMutations.createEvent(userId, {
+				...recipient,
 				projectId: task.project_id,
 				owner: { type: 'task', id: task.id },
 				typeKey: 'event.task_work',
@@ -215,7 +227,8 @@ export class TaskEventSyncCoordinator implements TaskSyncPort {
 			existingEvents.filter((event) => !usedEventIds.has(event.id)),
 			activityLog,
 			task.id,
-			task.project_id
+			task.project_id,
+			calendarSyncUserId
 		);
 
 		return { events: syncedEvents, removed_event_count: removedEventCount };
@@ -226,10 +239,12 @@ export class TaskEventSyncCoordinator implements TaskSyncPort {
 		events: TaskEventRow[],
 		activityLog: TaskEventActivityLogOptions,
 		taskId: string,
-		projectId: string
+		projectId: string,
+		calendarSyncUserId?: string
 	): Promise<number> {
 		for (const event of events) {
 			await this.eventMutations.deleteEvent(userId, {
+				...(calendarSyncUserId ? { calendarSyncUserId } : {}),
 				eventId: event.id,
 				projectId,
 				deferCalendarSync: true,
@@ -326,12 +341,15 @@ export function futureTaskEventsOnCompletion(
 }
 
 function taskEventProps(
-	task: Pick<OntoTaskRow, 'id' | 'project_id' | 'title'>,
+	task: Pick<OntoTaskRow, 'id' | 'project_id' | 'title' | 'props'>,
 	kind: TaskEventKind,
 	existingProps?: TaskEventRow['props']
 ): Json {
 	return {
 		...((existingProps as Record<string, unknown> | null) ?? {}),
+		...(guestTaskCalendarUserId(task)
+			? { [GUEST_TASK_CALENDAR_USER]: guestTaskCalendarUserId(task) }
+			: {}),
 		task_event_kind: kind,
 		task_id: task.id,
 		task_title: task.title ?? 'Task',

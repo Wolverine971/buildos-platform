@@ -14,6 +14,11 @@
 		shortDate
 	} from '$lib/components/people/people-copy';
 
+	import {
+		projectArrivalHref,
+		projectArrivalMessage
+	} from '$lib/components/people/project-arrival';
+
 	let { data } = $props();
 
 	let joining = $state(false);
@@ -89,13 +94,17 @@
 			const result = payload.data ?? {};
 			const name = result.project_name || projectName;
 			if (
-				(result.status === 'joined' || result.status === 'already_member') &&
+				(result.status === 'joined' ||
+					result.status === 'rejoined' ||
+					result.status === 'already_member') &&
 				result.project_id
 			) {
-				toastService.success(
-					result.status === 'joined' ? `You joined ${name}` : `You’re already in ${name}`
-				);
-				await goto(`/projects/${result.project_id}`, { invalidateAll: true });
+				if (result.status === 'already_member') {
+					toastService.success(projectArrivalMessage(name, result.status));
+				}
+				await goto(projectArrivalHref(result.project_id, result.status), {
+					invalidateAll: true
+				});
 				return;
 			}
 			if (result.status === 'rejoin_requested' || result.status === 'rejoin_pending') {
@@ -184,22 +193,26 @@
 					</div>
 				</div>
 
-				<div
-					class="mt-4 rounded-lg border border-border bg-background px-3.5 py-3 shadow-ink-inner space-y-2"
-				>
-					<p class="text-sm text-foreground">
-						<span class="font-semibold"
-							>You’ll join as {roleWithArticle(active.role_key)}.</span
-						>
-						{inviteeRoleSentence(active.role_key)}
-					</p>
-					<p class="text-sm text-muted-foreground">
-						{inviteeAgentSentence(active.agent_access)}
-					</p>
-					{#if until && !active.already_member}
-						<p class="text-xs text-muted-foreground">This link works until {until}.</p>
-					{/if}
-				</div>
+				{#if !active.already_member}
+					<div
+						class="mt-4 rounded-lg border border-border bg-background px-3.5 py-3 shadow-ink-inner space-y-2"
+					>
+						<p class="text-sm text-foreground">
+							<span class="font-semibold"
+								>You’ll join as {roleWithArticle(active.role_key)}.</span
+							>
+							{inviteeRoleSentence(active.role_key)}
+						</p>
+						<p class="text-sm text-muted-foreground">
+							{inviteeAgentSentence(active.agent_access)}
+						</p>
+						{#if until && !active.already_member}
+							<p class="text-xs text-muted-foreground">
+								This link works until {until}.
+							</p>
+						{/if}
+					</div>
+				{/if}
 
 				{#if actionError}
 					<p class="mt-3 text-sm text-destructive" role="alert">{actionError}</p>

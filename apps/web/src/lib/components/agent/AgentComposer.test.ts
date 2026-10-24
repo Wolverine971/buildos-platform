@@ -36,6 +36,16 @@ describe('AgentComposer', () => {
 		).toBeInTheDocument();
 	});
 
+	it.each(['Workspace chat', 'General chat', 'Global conversation'])(
+		'reads the %s label as generic, not "Ask about …"',
+		(displayContextLabel) => {
+			render(AgentComposer, { props: createProps({ displayContextLabel }) });
+			expect(
+				screen.getByPlaceholderText('Brain-dump anything — messy is fine.')
+			).toBeInTheDocument();
+		}
+	);
+
 	it('queues a typed follow-up mid-response instead of blocking send', async () => {
 		const onSend = vi.fn();
 		const onStop = vi.fn();

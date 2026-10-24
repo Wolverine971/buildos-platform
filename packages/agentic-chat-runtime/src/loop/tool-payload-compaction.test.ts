@@ -1935,6 +1935,28 @@ describe('project hierarchy fields survive compaction', () => {
 		expect(solo).not.toHaveProperty('sub_project_count');
 	});
 
+	// Tasker 146: the Workspace is listed apart from the projects and must survive.
+	it('keeps the Workspace line on a compacted workspace overview', () => {
+		const workspace = {
+			project_id: 'ws',
+			task_count: 3,
+			document_count: 5,
+			note: 'Loose notes, docs and tasks. Not a project; not counted above.'
+		};
+		const payload = buildToolPayloadForModel(
+			toolCall('get_workspace_overview'),
+			toolResult({
+				scope: 'workspace',
+				projects: [{ project_id: 'solo', name: 'Solo Client' }],
+				workspace,
+				message: 'Overview prepared.'
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload.workspace).toEqual(workspace);
+	});
+
 	it('keeps the hierarchy on an oversized get_project_overview', () => {
 		const payload = buildToolPayloadForModel(
 			toolCall('get_project_overview'),

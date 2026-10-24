@@ -395,6 +395,7 @@
 
 	function looseTitle(item: DesktopItem): string | null {
 		if (item.kind === 'project') return null;
+		if (item.id === workspaceHome?.aboutYou?.id) return 'About you';
 		return workspaceHome?.items.find((loose) => loose.id === item.id)?.title ?? null;
 	}
 
@@ -1476,6 +1477,7 @@
 		{busyIds}
 		refreshing={refreshingSuggestions}
 		onOpen={(item) => api.open({ kind: item.entity, id: item.id })}
+		onOpenAboutYou={(id) => api.open({ kind: 'document', id })}
 		onMove={(item, anchor) => api.move({ kind: item.entity, id: item.id }, anchor)}
 		onFile={fileSuggestion}
 		onDismiss={dismissSuggestion}

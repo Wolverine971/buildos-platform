@@ -165,7 +165,9 @@ describe('resolveFastChatTurnPreparation', () => {
 					'search_all_projects'
 				])
 			);
-			expect(toolNames(result), contextType).not.toContain('create_onto_document');
+			// The Workspace (2026-10-23): a note or doc that fits no project is saved
+			// to the user's Workspace from any cross-project chat.
+			expect(toolNames(result), contextType).toContain('create_onto_document');
 		}
 	});
 

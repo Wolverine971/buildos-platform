@@ -9,9 +9,11 @@ import type { ChatContextType } from '@buildos/shared-types';
 export const PREPARED_PROMPT_SEND_WAIT_MS = 250;
 
 export const CONTEXT_DESCRIPTORS: Record<ChatContextType, { title: string; subtitle: string }> = {
+	// Users see the global context as Workspace chat (tasker 146 F1: relabel, the
+	// internal type stays `global`). `general` below is its selector-free alias.
 	global: {
-		title: 'Global conversation',
-		subtitle: 'Work across projects, tasks, and the calendar without constraints.'
+		title: 'Workspace chat',
+		subtitle: "Your projects, loose notes and what's coming up."
 	},
 	project: {
 		title: 'Project chat',
@@ -29,7 +31,7 @@ export const CONTEXT_DESCRIPTORS: Record<ChatContextType, { title: string; subti
 		// Selector-free workspace scope: launch surfaces (e.g. /today quick capture)
 		// use 'general' to skip the context selector; it normalizes to global.
 		title: 'Workspace chat',
-		subtitle: 'Work across projects, tasks, and the calendar.'
+		subtitle: "Your projects, loose notes and what's coming up."
 	},
 	project_create: {
 		title: 'Create a project',

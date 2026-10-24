@@ -5,6 +5,7 @@
 // load, the page itself after a refresh, and tests.
 
 import { isAgentAccess, isPersonRole, type AgentAccess, type PersonRole } from './people-copy';
+import type { ProjectArrivalStatus } from './project-arrival';
 
 /** What a member asked for in a project they're already in (tasker 140). */
 export type UpgradeNeed = 'agents_read' | 'agents_write' | 'edit';
@@ -49,6 +50,16 @@ export type OutgoingPeopleRequest = {
 	created_at: string;
 	decided_at: string | null;
 	status: 'pending' | 'approved' | 'declined' | 'expired' | 'canceled';
+	kind: 'access' | 'rejoin' | 'upgrade';
+	settled_elsewhere: boolean;
+	/** Only structured grants returned for the owner's decision, never inferred from a hint. */
+	projects: Array<{
+		project_id: string;
+		project_name: string;
+		role: PersonRole;
+		agent_access: AgentAccess;
+		status?: ProjectArrivalStatus;
+	}>;
 	role_requested: PersonRole;
 	project_hint: string | null;
 	via: 'web' | 'agent';
@@ -173,11 +184,40 @@ function readOutgoing(value: unknown): OutgoingPeopleRequest | null {
 		typeof row.status === 'string' && OUTGOING_STATUSES.has(row.status)
 			? (row.status as OutgoingPeopleRequest['status'])
 			: 'pending';
+	const projects: OutgoingPeopleRequest['projects'] = [];
+	const seen = new Set<string>();
+	for (const value of Array.isArray(row.projects) ? row.projects : []) {
+		const project = record(value);
+		const projectId = text(project?.project_id);
+		if (
+			!project ||
+			!projectId ||
+			seen.has(projectId) ||
+			!isPersonRole(project.role) ||
+			!isAgentAccess(project.agent_access)
+		)
+			continue;
+		seen.add(projectId);
+		projects.push({
+			project_id: projectId,
+			project_name: text(project.project_name) ?? 'this project',
+			role: project.role,
+			agent_access: project.agent_access,
+			...(project.status === 'joined' ||
+			project.status === 'rejoined' ||
+			project.status === 'already_member'
+				? { status: project.status }
+				: {})
+		});
+	}
 	return {
 		id,
 		created_at: createdAt,
 		decided_at: text(row.decided_at),
 		status,
+		kind: row.kind === 'upgrade' || row.kind === 'rejoin' ? row.kind : 'access',
+		settled_elsewhere: row.settled_elsewhere === true,
+		projects,
 		role_requested: isPersonRole(row.role_requested) ? row.role_requested : 'viewer',
 		project_hint: text(row.project_hint),
 		via: row.via === 'agent' ? 'agent' : 'web',

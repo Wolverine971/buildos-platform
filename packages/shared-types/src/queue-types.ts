@@ -112,6 +112,8 @@ export interface OntoProjectEventSyncJobMetadata {
 	targetUserId: string;
 	triggeredByUserId?: string;
 	createCalendarIfMissing?: boolean;
+	/** Guest writes may use only this user's mapping, never IDs on a shared event. */
+	restrictToTargetUser?: boolean;
 	eventUpdatedAt?: string;
 	/** Durable provider identity retained when a project and its mappings are removed. */
 	deletionSnapshot?: ProjectCalendarDeletionSnapshot;
@@ -320,6 +322,28 @@ export interface WorkspaceSuggestResult {
 	inputHash?: string;
 }
 
+/** about_you_refresh: keeps the inferred About you note in a person's Workspace (tasker/146). */
+export interface AboutYouRefreshJobMetadata {
+	userId: string;
+	/** 'requested' skips the daily cap and the minimum-new-messages wait. */
+	reason?: 'activity' | 'requested';
+}
+
+export interface AboutYouRefreshResult {
+	success: boolean;
+	userId: string;
+	outcome: 'updated' | 'unchanged' | 'nothing_new' | 'skipped' | 'failed';
+	reason?: string;
+	documentId?: string;
+	/** Newest user message the run read; the next run reads only later ones. */
+	watermarkAt?: string;
+	/** What the model read; the next run is skipped when it hasn't changed. */
+	inputHash?: string;
+	messagesRead?: number;
+	linesWritten?: number;
+	linesDropped?: number;
+}
+
 export interface PickProjectEmojiJobMetadata {
 	projectId: string;
 	userId: string;
@@ -371,6 +395,7 @@ export interface JobMetadataMap {
 	embed_onto_entity: EmbedOntoEntityJobMetadata;
 	pick_project_emoji: PickProjectEmojiJobMetadata;
 	workspace_suggest: WorkspaceSuggestJobMetadata;
+	about_you_refresh: AboutYouRefreshJobMetadata;
 	admin_question_tree: AdminQuestionTreeJobMetadata;
 	run_cycle: CycleQueueJobMetadata;
 	freshness_radar_scan: FreshnessScanJobMetadata;
@@ -489,6 +514,7 @@ export interface JobResultMap {
 	embed_onto_entity: EmbedOntoEntityResult;
 	pick_project_emoji: PickProjectEmojiResult;
 	workspace_suggest: WorkspaceSuggestResult;
+	about_you_refresh: AboutYouRefreshResult;
 	run_cycle: CycleQueueJobResult;
 	other: unknown;
 }

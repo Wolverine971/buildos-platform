@@ -45,6 +45,7 @@ afterEach(() => {
 	cleanup();
 	vi.unstubAllGlobals();
 	gotoMock.mockReset();
+	toastSuccessMock.mockReset();
 });
 
 describe('/join/[token] page', () => {
@@ -89,12 +90,15 @@ describe('/join/[token] page', () => {
 		await fireEvent.click(screen.getByRole('button', { name: /Join 9takes/ }));
 
 		await waitFor(() =>
-			expect(gotoMock).toHaveBeenCalledWith('/projects/project-1', { invalidateAll: true })
+			expect(gotoMock).toHaveBeenCalledWith('/projects/project-1?joined=1', {
+				invalidateAll: true
+			})
 		);
 		const call = fetchMock.mock.calls[0];
 		assert.isDefined(call, 'Expected the join request to be sent');
 		expect(JSON.parse(call[1].body)).toEqual({ token: TOKEN });
-		expect(toastSuccessMock).toHaveBeenCalledWith('You joined 9takes');
+		// The authenticated destination shows the one named toast.
+		expect(toastSuccessMock).not.toHaveBeenCalled();
 	});
 
 	it('explains a link that changed while the page was open', async () => {

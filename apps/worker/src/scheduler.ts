@@ -49,6 +49,7 @@ import { getDailyBriefEligibleUserIds } from './workers/brief/dailyBriefEligibil
 import { checkAndScheduleAgentOperatives } from './scheduler/agentOperatives';
 import { runPrivacyRetention } from './scheduler/privacyRetention';
 import { chatCaptureEnabled, sweepChatCheckpoints } from './workers/chat/checkpoint/checkpointJob';
+import { sweepAboutYouRefreshes } from './workers/about-you/aboutYouSweep';
 
 export {
 	calculateNextOperativeRunTime,
@@ -445,6 +446,20 @@ export function startScheduler() {
 		});
 		console.log('📝 Chat checkpoint capture sweep scheduled (every minute)');
 	}
+
+	// About you (tasker/146): every 6 hours, queue a refresh for cohort members who
+	// chatted recently. The job caps model runs at about one a day per person and
+	// no-ops (two indexed reads) when there's too little new. Dark until
+	// ABOUT_YOU_USER_IDS names a cohort.
+	cron.schedule('23 */6 * * *', async () => {
+		try {
+			const { scanned, enqueued } = await sweepAboutYouRefreshes();
+			if (enqueued > 0)
+				console.log(`🪞 About you sweep: queued ${enqueued}/${scanned} person(s)`);
+		} catch (error) {
+			console.error('🪞 About you sweep failed:', error);
+		}
+	});
 
 	// Stranded-run liveness recovery. Every action is idempotent/bounded and
 	// guarded against live workers, so it is safe to run across replicas. Default

@@ -45,6 +45,8 @@ import {
 	type ProjectCalendarSyncMode
 } from './project-calendar-read.service';
 import { ProjectCalendarService } from './project-calendar.service';
+import { guestTaskCalendarUserId, enqueueGuestTaskCalendarSync } from './guest-task-calendar';
+export { guestTaskCalendarUserId, enqueueGuestTaskCalendarSync } from './guest-task-calendar';
 
 type OntoEventRow = Database['public']['Tables']['onto_events']['Row'];
 type OntoEventSyncRow = Database['public']['Tables']['onto_event_sync']['Row'];
@@ -134,6 +136,8 @@ export interface OntoEventActivityLogOptions {
 }
 
 export interface CreateOntoEventRequest {
+	/** Trusted task coordinator override; not a public event tool argument. */
+	calendarSyncUserId?: string;
 	orgId?: string | null;
 	projectId?: string | null;
 	owner: OntoEventOwner;
@@ -160,6 +164,7 @@ export interface CreateOntoEventRequest {
 }
 
 export interface UpdateOntoEventRequest {
+	calendarSyncUserId?: string;
 	eventId: string;
 	title?: string;
 	description?: string | null;
@@ -180,6 +185,7 @@ export interface UpdateOntoEventRequest {
 }
 
 export interface DeleteOntoEventRequest {
+	calendarSyncUserId?: string;
 	eventId: string;
 	syncToCalendar?: boolean;
 	deferCalendarSync?: boolean;
@@ -212,7 +218,8 @@ export type OntoEventProjectCalendarPort = Pick<
 export type OntoEventProjectSyncEnqueuer = (
 	triggeredByUserId: string,
 	event: OntoEventRow,
-	action: ProjectEventSyncAction
+	action: ProjectEventSyncAction,
+	calendarSyncUserId?: string
 ) => Promise<{
 	mode: ProjectCalendarSyncMode;
 	targetUserIds: string[];
@@ -553,14 +560,26 @@ export class OntoEventSyncService extends OntoEventReadService {
 		}
 
 		const syncOptions = {
-			scope: request.calendarScope ?? 'project',
+			scope:
+				guestTaskCalendarUserId(event) || request.calendarSyncUserId
+					? ('project' as const)
+					: (request.calendarScope ?? 'project'),
 			calendarId: request.calendarId ?? null,
 			calendarSourceId: request.calendarSourceId ?? null,
 			createProjectCalendarIfMissing: request.createProjectCalendarIfMissing ?? true
 		};
 
-		if (syncOptions.scope === 'project' && event.project_id && this.enqueueSync) {
-			const enqueueResult = await this.enqueueSync(userId, event, 'upsert');
+		if (
+			syncOptions.scope === 'project' &&
+			event.project_id &&
+			(this.enqueueSync || guestTaskCalendarUserId(event) || request.calendarSyncUserId)
+		) {
+			const enqueueResult = await this.enqueueProjectWrite(
+				userId,
+				event,
+				'upsert',
+				request.calendarSyncUserId
+			);
 			return {
 				event,
 				sync: {
@@ -664,8 +683,11 @@ export class OntoEventSyncService extends OntoEventReadService {
 			return updated;
 		}
 
-		if (updated.project_id && this.enqueueSync) {
-			await this.enqueueSync(userId, updated, 'upsert');
+		if (
+			updated.project_id &&
+			(this.enqueueSync || guestTaskCalendarUserId(updated) || request.calendarSyncUserId)
+		) {
+			await this.enqueueProjectWrite(userId, updated, 'upsert', request.calendarSyncUserId);
 			return updated;
 		}
 
@@ -734,8 +756,16 @@ export class OntoEventSyncService extends OntoEventReadService {
 		}
 
 		if (request.syncToCalendar !== false) {
-			if (updated.project_id && this.enqueueSync) {
-				await this.enqueueSync(userId, updated, 'delete');
+			if (
+				updated.project_id &&
+				(this.enqueueSync || guestTaskCalendarUserId(updated) || request.calendarSyncUserId)
+			) {
+				await this.enqueueProjectWrite(
+					userId,
+					updated,
+					'delete',
+					request.calendarSyncUserId
+				);
 			} else if (request.deferCalendarSync && !updated.project_id) {
 				this.defer('calendar delete', async () => {
 					const latest = await this.getEvent(request.eventId, userId);
@@ -1299,11 +1329,16 @@ export class OntoEventSyncService extends OntoEventReadService {
 	protected async resolveExternalMapping(
 		userId: string,
 		event: OntoEventRow,
-		syncRows: OntoEventSyncRow[]
+		syncRows: OntoEventSyncRow[],
+		restrictToTargetUser = false
 	): Promise<ExternalEventMapping | null> {
 		if (syncRows.length > 0) {
 			const userCandidates = syncRows.filter(
-				(syncRow) => syncRow.user_id === userId || syncRow.user_id == null
+				(syncRow) =>
+					syncRow.user_id === userId ||
+					(!restrictToTargetUser &&
+						!guestTaskCalendarUserId(event) &&
+						syncRow.user_id == null)
 			);
 
 			for (const syncRow of userCandidates) {
@@ -1333,6 +1368,9 @@ export class OntoEventSyncService extends OntoEventReadService {
 			}
 		}
 
+		// Shared props/link can describe another person's Google copy. Restricted
+		// task writes must use an explicitly user-owned sync row, never that fallback.
+		if (restrictToTargetUser || guestTaskCalendarUserId(event)) return null;
 		const props = (event.props as Record<string, unknown>) ?? {};
 		const externalEventId =
 			typeof props.external_event_id === 'string' ? props.external_event_id.trim() : '';
@@ -1516,6 +1554,28 @@ export class OntoEventSyncService extends OntoEventReadService {
 	// Project fan-out targets
 	// ---------------------------------------------------------------------
 
+	/** Pinned task events stay queued even on hosts whose ordinary events write inline. */
+	private async enqueueProjectWrite(
+		triggeredByUserId: string,
+		event: OntoEventRow,
+		action: ProjectEventSyncAction,
+		calendarSyncUserId?: string
+	): ReturnType<OntoEventProjectSyncEnqueuer> {
+		if (this.enqueueSync) {
+			return calendarSyncUserId
+				? this.enqueueSync(triggeredByUserId, event, action, calendarSyncUserId)
+				: this.enqueueSync(triggeredByUserId, event, action);
+		}
+		const targetUserId = await enqueueGuestTaskCalendarSync(
+			this.supabase,
+			event,
+			action,
+			triggeredByUserId,
+			calendarSyncUserId
+		);
+		return { mode: 'actor_projection', targetUserIds: [targetUserId], enqueued: 1 };
+	}
+
 	protected async getProjectCalendarSyncMode(
 		projectId: string
 	): Promise<ProjectCalendarSyncMode> {
@@ -1524,8 +1584,13 @@ export class OntoEventSyncService extends OntoEventReadService {
 
 	protected async resolveProjectSyncTargets(
 		projectId: string,
-		triggeredByUserId: string
+		triggeredByUserId: string,
+		event?: OntoEventRow,
+		calendarSyncUserId?: string
 	): Promise<{ mode: ProjectCalendarSyncMode; targetUserIds: string[] }> {
+		const restrictedUserId = (event && guestTaskCalendarUserId(event)) ?? calendarSyncUserId;
+		if (restrictedUserId)
+			return { mode: 'actor_projection', targetUserIds: [restrictedUserId] };
 		const mode = await this.getProjectCalendarSyncMode(projectId);
 		if (mode === 'actor_projection') {
 			return {
@@ -1674,6 +1739,7 @@ export class OntoEventSyncService extends OntoEventReadService {
 		projectId: string;
 		targetUserId: string;
 		createCalendarIfMissing?: boolean;
+		restrictToTargetUser?: boolean;
 		expectedEventUpdatedAt?: string;
 		deletionSnapshot?: ProjectCalendarDeletionSnapshot;
 	}): Promise<{
@@ -1703,10 +1769,18 @@ export class OntoEventSyncService extends OntoEventReadService {
 			};
 		}
 		const eventVersion = event.updated_at ?? event.created_at;
+		const calendarUserId = guestTaskCalendarUserId(event);
+		const cleanupOtherUser = Boolean(
+			calendarUserId && calendarUserId !== input.targetUserId && input.action === 'delete'
+		);
+		if (calendarUserId && calendarUserId !== input.targetUserId && !cleanupOtherUser) {
+			return { outcome: 'skipped', reason: 'guest_task_calendar_target_mismatch' };
+		}
 		const isDeletedEvent = Boolean(event.deleted_at);
 		if (
 			this.isStaleEventVersion(input.expectedEventUpdatedAt, eventVersion) &&
-			!isDeletedEvent
+			!isDeletedEvent &&
+			!cleanupOtherUser
 		) {
 			// add_queue_job atomically reuses pending/processing jobs with this key.
 			// Preserve the target and creation policy. A live event may have been
@@ -1731,6 +1805,7 @@ export class OntoEventSyncService extends OntoEventReadService {
 					targetUserId: input.targetUserId,
 					triggeredByUserId: input.targetUserId,
 					createCalendarIfMissing: input.createCalendarIfMissing ?? false,
+					...(input.restrictToTargetUser ? { restrictToTargetUser: true } : {}),
 					eventUpdatedAt: eventVersion
 				}
 			});
@@ -1744,8 +1819,14 @@ export class OntoEventSyncService extends OntoEventReadService {
 		const syncRows = event.onto_event_sync ?? [];
 		const shouldDelete = input.action === 'delete' || Boolean(event.deleted_at);
 		if (shouldDelete) {
-			const mapping = await this.resolveExternalMapping(input.targetUserId, event, syncRows);
+			const mapping = await this.resolveExternalMapping(
+				input.targetUserId,
+				event,
+				syncRows,
+				input.restrictToTargetUser
+			);
 			if (!mapping) {
+				if (cleanupOtherUser) return { outcome: 'skipped', reason: 'no_external_mapping' };
 				await this.markEventSynced(
 					event.id,
 					new Date().toISOString(),
@@ -1759,6 +1840,46 @@ export class OntoEventSyncService extends OntoEventReadService {
 				};
 			}
 
+			const finishDelete = async (timestamp: string) => {
+				if (!cleanupOtherUser) {
+					await this.markEventSynced(
+						event.id,
+						timestamp,
+						mapping.syncRowId,
+						'cancelled',
+						eventVersion
+					);
+					return;
+				}
+				// Cancelling an old owner's copy must not cancel the guest's live event.
+				const { error } = await this.supabase
+					.from('onto_event_sync')
+					.update({
+						sync_status: 'cancelled',
+						sync_error: null,
+						last_synced_at: timestamp
+					})
+					.eq('id', mapping.syncRowId!)
+					.eq('user_id', input.targetUserId);
+				if (error) throw new Error(error.message);
+			};
+			const failDelete = async (message: string) => {
+				if (!cleanupOtherUser) {
+					await this.markEventSyncError(
+						event.id,
+						message,
+						mapping.syncRowId,
+						eventVersion
+					);
+					return;
+				}
+				const { error } = await this.supabase
+					.from('onto_event_sync')
+					.update({ sync_status: 'failed', sync_error: message.slice(0, 500) })
+					.eq('id', mapping.syncRowId!)
+					.eq('user_id', input.targetUserId);
+				if (error) throw new Error(error.message);
+			};
 			try {
 				if (this.usesSourceRouting(input.targetUserId)) {
 					await this.getCalendarWriter().deleteEvent({
@@ -1776,13 +1897,7 @@ export class OntoEventSyncService extends OntoEventReadService {
 				}
 
 				const nowIso = new Date().toISOString();
-				await this.markEventSynced(
-					event.id,
-					nowIso,
-					mapping.syncRowId,
-					'cancelled',
-					eventVersion
-				);
+				await finishDelete(nowIso);
 				return {
 					outcome: 'deleted',
 					reason: 'deleted_external_event'
@@ -1791,12 +1906,7 @@ export class OntoEventSyncService extends OntoEventReadService {
 				if (this.isCalendarConnectionError(error)) {
 					const message =
 						error instanceof Error ? error.message : 'Google Calendar is not connected';
-					await this.markEventSyncError(
-						event.id,
-						message,
-						mapping.syncRowId,
-						eventVersion
-					);
+					await failDelete(message);
 					return {
 						outcome: 'skipped',
 						reason: 'calendar_not_connected'
@@ -1805,13 +1915,7 @@ export class OntoEventSyncService extends OntoEventReadService {
 
 				if (this.isGoogleEventAlreadyDeleted(error)) {
 					const nowIso = new Date().toISOString();
-					await this.markEventSynced(
-						event.id,
-						nowIso,
-						mapping.syncRowId,
-						'cancelled',
-						eventVersion
-					);
+					await finishDelete(nowIso);
 					return {
 						outcome: 'deleted',
 						reason: 'external_event_already_missing'
@@ -1835,12 +1939,17 @@ export class OntoEventSyncService extends OntoEventReadService {
 						currentEventUpdatedAt: eventVersion ?? null
 					}
 				});
-				await this.markEventSyncError(event.id, message, mapping.syncRowId, eventVersion);
+				await failDelete(message);
 				throw error instanceof Error ? error : new Error(message);
 			}
 		}
 
-		const mapping = await this.resolveExternalMapping(input.targetUserId, event, syncRows);
+		const mapping = await this.resolveExternalMapping(
+			input.targetUserId,
+			event,
+			syncRows,
+			input.restrictToTargetUser
+		);
 		if (!mapping) {
 			if (this.hasPriorExternalReference(event)) {
 				await this.markEventSyncError(

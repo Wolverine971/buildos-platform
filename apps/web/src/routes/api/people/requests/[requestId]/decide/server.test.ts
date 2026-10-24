@@ -117,7 +117,7 @@ describe('POST /api/people/requests/[requestId]/decide', () => {
 		expect(sendApprovedEmailMock).not.toHaveBeenCalled();
 	});
 
-	it('approves, grants the asking agent the projects its person can reach, and subscribes them', async () => {
+	it('approves and grants only the asking connection, with activity handled by the RPC', async () => {
 		const event = createEvent({
 			decision: 'approve',
 			grants: [
@@ -150,14 +150,7 @@ describe('POST /api/people/requests/[requestId]/decide', () => {
 		expect(grantProjectsForUserMock).toHaveBeenCalledWith('requester-1', 'caller-1', [
 			PROJECT_A
 		]);
-		expect(upsertMock).toHaveBeenCalledWith(
-			expect.objectContaining({
-				user_id: 'requester-1',
-				event_type: 'project.activity.batched',
-				is_active: true
-			}),
-			{ onConflict: 'user_id,event_type', ignoreDuplicates: true }
-		);
+		expect(upsertMock).not.toHaveBeenCalled();
 		// The requester hears by email what was shared.
 		expect(sendApprovedEmailMock).toHaveBeenCalledWith(REQUEST_ID);
 		expect(payload.data.email).toBe('sent');

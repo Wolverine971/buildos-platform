@@ -7,8 +7,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const rpc = vi.fn();
+const adminFrom = vi.fn();
 vi.mock('$lib/supabase/admin', () => ({
-	createAdminSupabaseClient: () => ({ rpc })
+	createAdminSupabaseClient: () => ({ rpc, from: adminFrom })
 }));
 
 import { OntoEventSyncService } from './onto-event-sync.service';
@@ -37,6 +38,7 @@ function createEventListSupabaseMock() {
 beforeEach(() => {
 	rpc.mockReset();
 	rpc.mockResolvedValue({ data: null, error: null });
+	adminFrom.mockReset();
 });
 
 describe('OntoEventSyncService project event listing', () => {
@@ -69,6 +71,61 @@ describe('OntoEventSyncService project event listing', () => {
 });
 
 describe('OntoEventSyncService web queue fan-out', () => {
+	it('queues a pinned guest task under the guest account even when the owner edits it', async () => {
+		const query: any = {
+			select: () => query,
+			eq: () => query,
+			neq: () => query,
+			then: (resolve: any) => resolve({ data: [], error: null })
+		};
+		adminFrom.mockReturnValue(query);
+		const service = new OntoEventSyncService({} as any);
+		const targets = vi.spyOn(service as any, 'resolveProjectSyncTargets');
+		await (service as any).enqueueProjectEventSyncJobs(
+			'owner',
+			{
+				id: 'guest-event',
+				project_id: 'project',
+				updated_at: '2026-10-23T12:00:00Z',
+				props: { guest_agent_calendar_user_id: 'guest' }
+			},
+			'upsert'
+		);
+		expect(targets).not.toHaveBeenCalled();
+		expect(rpc).toHaveBeenCalledOnce();
+		expect(rpc).toHaveBeenCalledWith(
+			'add_queue_job',
+			expect.objectContaining({
+				p_user_id: 'guest',
+				p_metadata: expect.objectContaining({
+					targetUserId: 'guest',
+					restrictToTargetUser: true
+				})
+			})
+		);
+	});
+
+	it('passes a guest write override through target resolution and the durable job', async () => {
+		const service = new OntoEventSyncService({} as any);
+		const targets = vi
+			.spyOn(service as any, 'resolveProjectSyncTargets')
+			.mockResolvedValue({ mode: 'actor_projection', targetUserIds: ['guest'] });
+		const event = {
+			id: 'event',
+			project_id: 'project',
+			props: {},
+			updated_at: '2026-10-23T12:00:00Z'
+		};
+		await (service as any).enqueueProjectEventSyncJobs('guest', event, 'upsert', 'guest');
+		expect(targets).toHaveBeenCalledWith('project', 'guest', event, 'guest');
+		expect(rpc).toHaveBeenCalledWith(
+			'add_queue_job',
+			expect.objectContaining({
+				p_user_id: 'guest',
+				p_metadata: expect.objectContaining({ restrictToTargetUser: true })
+			})
+		);
+	});
 	it('enqueues a sync_calendar job per target through the admin client', async () => {
 		const service = new OntoEventSyncService({} as any);
 		vi.spyOn(service as any, 'resolveProjectSyncTargets').mockResolvedValue({

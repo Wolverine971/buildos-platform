@@ -5,10 +5,13 @@
 	groupings. Starting a project from them is always the person's call: the card only
 	opens a confirm with the name and items, and nothing moves until they say so.
 	Select mode makes the same thing possible from any items the person picks.
+	When BuildOS keeps an About you note, a quiet row for it sits on top: it opens like
+	any loose doc, and it's never one of the loose items.
 -->
 <script lang="ts">
-	import { Layers, Sparkles, X } from '$lib/icons/lucide';
+	import { ChevronRight, Layers, Sparkles, User, X } from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
+	import { relativeDay } from '$lib/components/projects/desktop/desktop-model';
 	import type { ProjectListSummary } from '$lib/components/projects/project-list';
 	import LooseCard from './LooseCard.svelte';
 	import {
@@ -34,6 +37,7 @@
 		busyIds,
 		refreshing = false,
 		onOpen,
+		onOpenAboutYou,
 		onMove,
 		onFile,
 		onDismiss,
@@ -54,6 +58,8 @@
 		busyIds: ReadonlySet<string>;
 		refreshing?: boolean;
 		onOpen: (item: LooseItem) => void;
+		/** Opens the About you doc the way a loose doc opens. */
+		onOpenAboutYou?: (id: string) => void;
 		onMove: (item: LooseItem, anchor: HTMLElement) => void;
 		onFile: (suggestion: WorkspaceSuggestion) => void;
 		onDismiss: (suggestion: WorkspaceSuggestion) => void;
@@ -139,6 +145,23 @@
 </script>
 
 <section class="shelf" aria-label="Loose items in your Workspace">
+	{#if home?.aboutYou && onOpenAboutYou && !needle}
+		{@const aboutYou = home.aboutYou}
+		<button type="button" class="about wt-paper" onclick={() => onOpenAboutYou?.(aboutYou.id)}>
+			<span class="about-glyph" aria-hidden="true"><User class="h-4 w-4" /></span>
+			<span class="min-w-0 flex-1">
+				<span class="block text-sm font-semibold text-foreground">About you</span>
+				<span class="block text-xs text-muted-foreground">
+					What BuildOS has picked up from your chats. Edit anything.
+				</span>
+			</span>
+			<span class="hidden shrink-0 text-2xs text-muted-foreground sm:inline">
+				Updated {relativeDay(aboutYou.updated_at)}
+			</span>
+			<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />
+		</button>
+	{/if}
+
 	{#if groupings.length && !selecting && !needle}
 		<div class="groupings" aria-label="Suggested projects">
 			{#each groupings as suggestion (suggestion.id)}
@@ -335,6 +358,32 @@
 		background: hsl(var(--muted));
 		color: hsl(var(--foreground));
 	}
+	.about {
+		display: flex;
+		align-items: center;
+		gap: 0.7rem;
+		min-height: 2.75rem;
+		padding: 0.55rem 0.8rem;
+		border-radius: 0.7rem;
+		text-align: left;
+	}
+	.about:hover {
+		border-color: hsl(var(--accent) / 0.4);
+	}
+	.about:hover .about-glyph {
+		color: hsl(var(--accent));
+	}
+	.about-glyph {
+		display: inline-grid;
+		place-items: center;
+		width: 2rem;
+		height: 2rem;
+		flex: none;
+		border-radius: 0.45rem;
+		background: hsl(var(--muted));
+		color: hsl(var(--muted-foreground));
+	}
+	.about:focus-visible,
 	.tool:focus-visible,
 	.filters button:focus-visible,
 	.member:focus-visible,

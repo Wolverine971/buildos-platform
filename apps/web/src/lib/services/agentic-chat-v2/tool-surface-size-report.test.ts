@@ -211,7 +211,13 @@ describe('tool surface size report', () => {
 		// the Workspace. Measured 56 → 57 tools, 63,223 chars (the definition itself
 		// is ~1.8k). Jev still mounts it only on document turns. Cap at measured +
 		// ~0.3%.
-		expect(global?.totalChars).toBeLessThanOrEqual(63_400);
+		// RE-BASELINED 2026-10-23 (tasker 146, Workspace chat): list_workspace_suggestions,
+		// propose_workspace_filing and propose_workspace_project joined global only (the
+		// open suggestions for loose items and two cards; only the user's click files or
+		// creates). get_workspace_overview's description now says the Workspace is listed
+		// apart (-6). Measured 57 → 60 tools, 63,223 → 65,158 chars (+1,935). Jev mounts
+		// the cards only on file/start-a-project turns. Cap at measured + ~0.3%.
+		expect(global?.totalChars).toBeLessThanOrEqual(65_350);
 		// Reviewed 2026-09-05 against the previous signed snapshot: +838 for
 		// contract reference/null handling, +321 for typed task estimates, +396
 		// for get_onto_document_details, +1,190 for link_onto_entities. These

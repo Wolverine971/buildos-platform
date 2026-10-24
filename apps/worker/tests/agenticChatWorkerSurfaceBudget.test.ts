@@ -197,7 +197,13 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		// global 55 tools / 56,764 B; project 70 tools / 72,481 B (+21 B over the old
 		// cap, which other description work since 10-17 had already used ~58 B of).
 		// Caps at measured + ~0.1%.
-		expect(global.openingBytes).toBeLessThanOrEqual(56_830);
+		// RE-BASELINED 2026-10-23 (tasker 146, Workspace chat): list_workspace_suggestions,
+		// propose_workspace_filing and propose_workspace_project joined the global surface
+		// only (suggestions for loose Workspace items, and two cards the user clicks; the
+		// worker writes nothing). get_workspace_overview's description got 6 B shorter on
+		// both surfaces. Measured global 58 tools / 58,699 B (+1,935); project unchanged
+		// in tools, -6 B. Cap at measured + ~0.1%.
+		expect(global.openingBytes).toBeLessThanOrEqual(58_760);
 		expect(project.openingBytes).toBeLessThanOrEqual(72_560);
 		expect(project.admittedBytes).toBeLessThanOrEqual(72_560);
 		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(8_470);

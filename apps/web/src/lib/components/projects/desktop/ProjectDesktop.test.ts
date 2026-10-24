@@ -561,6 +561,40 @@ describe('ProjectDesktop', () => {
 		await waitFor(() => expect(chatReads()).toBe(2));
 	});
 
+	it('opens Workspace chat from the Workspace card, and lists those chats in its tab', async () => {
+		const workspace = project('loose', 'Workspace', { kind: 'workspace' });
+		page.state = { desktopCard: 'loose', desktopDepth: 1 };
+		render(ProjectDesktop, {
+			props: {
+				projects: [...PROJECTS, workspace],
+				visible: [...PROJECTS, workspace],
+				completed: [],
+				searching: false,
+				workspaceId: 'loose',
+				onPatch: vi.fn(),
+				onOpenFull: vi.fn(),
+				onDataChanged: vi.fn()
+			}
+		});
+
+		await screen.findByRole('heading', { name: 'Loose items' });
+		await fireEvent.click(screen.getByRole('button', { name: 'Open Workspace chat' }));
+		// Workspace chat itself: the selector-free global context, no project focus.
+		expect(await screen.findByRole('region', { name: 'Workspace chat' })).toBeTruthy();
+		expect(screen.getByRole('button', { name: 'Workspace chat' })).toBeTruthy();
+		expect(screen.queryByText(/All of Workspace/)).toBeNull();
+
+		await fireEvent.click(screen.getByRole('tab', { name: 'Chats' }));
+		await screen.findByRole('button', { name: /Pricing page rewrite/ });
+		expect(
+			fetchMock.mock.calls.some(
+				([url]) =>
+					url.startsWith('/api/onto/projects/loose/recent-chats?') &&
+					url.includes('include=workspace_chats')
+			)
+		).toBe(true);
+	});
+
 	it('collapses back past every card it pushed', async () => {
 		const go = vi.spyOn(history, 'go').mockImplementation(() => undefined);
 		page.state = { desktopCard: 'redline', desktopDepth: 2 };

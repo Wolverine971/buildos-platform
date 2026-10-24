@@ -24,6 +24,8 @@ import { GoogleCalendarWriteService } from '$lib/server/google-calendar-write.se
 import { isMultiCalendarUserAllowed } from '$lib/server/google-calendar-feature';
 import {
 	OntoEventSyncService as SharedOntoEventSyncService,
+	guestTaskCalendarUserId,
+	enqueueGuestTaskCalendarSync,
 	type OntoEventCalendarErrorLogParams,
 	type OntoEventCalendarWriter,
 	type OntoEventProjectCalendarPort,
@@ -100,8 +102,15 @@ export class OntoEventSyncService extends SharedOntoEventSyncService {
 		this.calendarService = calendarService;
 		// Assigned after `super` because it closes over `this`; the base only ever
 		// calls it from a later write, never during construction.
-		this.enqueueSync = (triggeredByUserId, event, action) =>
-			this.enqueueProjectEventSyncJobs(triggeredByUserId, event, action);
+		this.enqueueSync = (triggeredByUserId, event, action, calendarSyncUserId) =>
+			calendarSyncUserId
+				? this.enqueueProjectEventSyncJobs(
+						triggeredByUserId,
+						event,
+						action,
+						calendarSyncUserId
+					)
+				: this.enqueueProjectEventSyncJobs(triggeredByUserId, event, action);
 	}
 
 	/**
@@ -112,7 +121,8 @@ export class OntoEventSyncService extends SharedOntoEventSyncService {
 	private async enqueueProjectEventSyncJobs(
 		triggeredByUserId: string,
 		event: OntoEventRow,
-		action: ProjectEventSyncAction
+		action: ProjectEventSyncAction,
+		calendarSyncUserId?: string
 	): Promise<{
 		mode: ProjectCalendarSyncMode;
 		targetUserIds: string[];
@@ -125,10 +135,21 @@ export class OntoEventSyncService extends SharedOntoEventSyncService {
 				enqueued: 0
 			};
 		}
+		if (guestTaskCalendarUserId(event)) {
+			const targetUserId = await enqueueGuestTaskCalendarSync(
+				createAdminSupabaseClient(),
+				event,
+				action,
+				triggeredByUserId
+			);
+			return { mode: 'actor_projection', targetUserIds: [targetUserId], enqueued: 1 };
+		}
 
 		const { mode, targetUserIds } = await this.resolveProjectSyncTargets(
 			event.project_id,
-			triggeredByUserId
+			triggeredByUserId,
+			event,
+			calendarSyncUserId
 		);
 		const eventVersion = event.updated_at ?? event.created_at ?? new Date().toISOString();
 
@@ -149,6 +170,7 @@ export class OntoEventSyncService extends SharedOntoEventSyncService {
 				projectId: event.project_id,
 				targetUserId,
 				triggeredByUserId,
+				...(calendarSyncUserId ? { restrictToTargetUser: true } : {}),
 				createCalendarIfMissing: targetUserId === triggeredByUserId,
 				eventUpdatedAt: eventVersion
 			};
