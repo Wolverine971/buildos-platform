@@ -172,7 +172,6 @@ describe('ChatWorkspaceFinder', () => {
 			ninetakes: 0.1
 		});
 		const finder = new ChatWorkspaceFinder({
-			mode: 'on',
 			userIds: [USER_ID],
 			client: fakeClient().client,
 			decider
@@ -183,9 +182,8 @@ describe('ChatWorkspaceFinder', () => {
 		expect(decide).not.toHaveBeenCalled();
 	});
 
-	it('digs into the focused project and injects its records in on mode', async () => {
+	it('digs into the focused project and injects its records', async () => {
 		const finder = new ChatWorkspaceFinder({
-			mode: 'on',
 			userIds: [USER_ID],
 			client: fakeClient().client,
 			decider: fakeDecider({ scope: 'projects', dig: 0.9, redline: 0.94, ninetakes: 0.08 })
@@ -218,7 +216,6 @@ describe('ChatWorkspaceFinder', () => {
 			ninetakes: 0.1
 		});
 		const finder = new ChatWorkspaceFinder({
-			mode: 'on',
 			userIds: [USER_ID],
 			client: fakeClient().client,
 			decider
@@ -233,7 +230,6 @@ describe('ChatWorkspaceFinder', () => {
 
 	it('shows nothing and injects nothing when the message needs no saved work', async () => {
 		const finder = new ChatWorkspaceFinder({
-			mode: 'on',
 			userIds: [USER_ID],
 			client: fakeClient().client,
 			decider: fakeDecider({ scope: 'none', dig: 0.1, redline: 0.8, ninetakes: 0.1 }).decider
@@ -244,18 +240,8 @@ describe('ChatWorkspaceFinder', () => {
 		expect(found.injection).toBeNull();
 	});
 
-	it('publishes chips without injecting in chips mode, and fails open', async () => {
-		const chips = new ChatWorkspaceFinder({
-			mode: 'chips',
-			userIds: [USER_ID],
-			client: fakeClient().client,
-			decider: fakeDecider({ scope: 'projects', dig: 0.9, redline: 0.9, ninetakes: 0.1 })
-				.decider
-		});
-		expect((await chips.find(request()))!.injection).toBeNull();
-
+	it('fails open when the project cards cannot be loaded', async () => {
 		const broken = new ChatWorkspaceFinder({
-			mode: 'on',
 			userIds: [USER_ID],
 			client: fakeClient({ failCards: true }).client,
 			decider: fakeDecider({ scope: 'projects', dig: 0.9, redline: 0.9, ninetakes: 0.1 })
@@ -271,7 +257,6 @@ describe('ChatWorkspaceFinder', () => {
 		const controller = new AbortController();
 		controller.abort(new Error('cancelled'));
 		const finder = new ChatWorkspaceFinder({
-			mode: 'on',
 			userIds: [USER_ID],
 			client: fakeClient().client,
 			decider: fakeDecider({ scope: 'projects', dig: 0.9, redline: 0.9, ninetakes: 0.1 })
@@ -299,19 +284,17 @@ describe('global finder helpers', () => {
 	it('routes project turns and global turns to their own finder', async () => {
 		const project = { find: vi.fn(async () => null) };
 		const workspace = { find: vi.fn(async () => null) };
-		const both = composeContextFinders(project, workspace)!;
+		const both = composeContextFinders(project, workspace);
 		await both.find(request({ projectId: REDLINE }));
 		await both.find(request());
 		expect(project.find).toHaveBeenCalledTimes(1);
 		expect(workspace.find).toHaveBeenCalledTimes(1);
-		expect(composeContextFinders(undefined, undefined)).toBeUndefined();
 	});
 
 	it('marks a finder failure as unavailable with no projects', () => {
 		expect(
 			buildWorkspaceSelectionPayload({
 				request: request(),
-				mode: 'chips',
 				context: null,
 				injected: false,
 				failure: 'deadline',

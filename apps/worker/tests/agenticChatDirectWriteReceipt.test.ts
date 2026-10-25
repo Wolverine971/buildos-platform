@@ -1,8 +1,7 @@
 // apps/worker/tests/agenticChatDirectWriteReceipt.test.ts
 //
-// AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT: after a simple direct write fully
-// lands, the turn closes on ledger receipt text instead of a tool-free model
-// pass. Also covers starting a provider pass before its status step is
+// After a simple direct write fully lands, the turn closes on ledger receipt
+// text instead of a tool-free model pass. Also covers starting a provider pass before its status step is
 // persisted (context finder and reviewer lanes).
 import { ONTOLOGY_WRITE_TOOLS } from '@buildos/agentic-chat-runtime/catalog';
 import type { FastToolExecution, WriteLedgerEntry } from '@buildos/agentic-chat-runtime/loop';
@@ -274,18 +273,6 @@ function mutatingSteps(steps: AgenticChatProviderStepV1[]): MutatingStep[] {
 	return steps.filter((step): step is MutatingStep => step.type === 'mutating_tool');
 }
 
-/** A request as sent, minus its per-run abort signal. */
-function withoutSignal(request: object) {
-	// The per-attempt signal and hedge callbacks are fresh objects on every pass.
-	const {
-		slowStreamHedge,
-		mayAbandon: _mayAbandon,
-		observationSignal: _observationSignal,
-		...rest
-	} = request as { slowStreamHedge?: unknown; mayAbandon?: unknown; observationSignal?: unknown };
-	return { ...rest, signal: null, hedgeOffered: typeof slowStreamHedge === 'function' };
-}
-
 async function collect(stream: AsyncIterable<AgenticChatProviderStepV1>) {
 	const result: AgenticChatProviderStepV1[] = [];
 	for await (const step of stream) result.push(step);
@@ -349,7 +336,6 @@ function executionInputWithImage(): AgenticChatWorkerExecutionInputV1 {
 /** Production shape: reviewer present, SHA-bound batch lane on. */
 function batchLaneProvider(
 	client: ClientPort,
-	receiptText: boolean,
 	options: {
 		reviewer?: ClientPort;
 		capacity?: AgenticChatProviderCapacity;
@@ -371,14 +357,12 @@ function batchLaneProvider(
 		},
 		2_000,
 		16,
-		{ createOntoTask: true, createOntoGoal: true, linkOntoEntities: true },
-		receiptText
+		{ createOntoTask: true, createOntoGoal: true, linkOntoEntities: true }
 	);
 }
 
 /** Run one direct write round through its closing answer. */
 async function runDirectWrite(
-	receiptText: boolean,
 	calls: Array<{ id: string; name: string; args: JsonObject }>,
 	results: (
 		steps: AgenticChatProviderStepV1[]
@@ -390,9 +374,7 @@ async function runDirectWrite(
 	const client = clientWithRounds([toolRound(calls), synthesisRound(synthesisText)]);
 	const reviewer = clientWithRounds([]);
 	const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
-	const invocation = await prepare(
-		batchLaneProvider(client, receiptText, { reviewer, capacity })
-	);
+	const invocation = await prepare(batchLaneProvider(client, { reviewer, capacity }));
 	const opening = await collect(invocation.stream());
 	const closing = await collect(
 		invocation.continueWithToolResults!({ round: 2, results: results(opening) })
@@ -409,7 +391,6 @@ async function runReviewedWrite(
 		userAction?: boolean;
 		image?: boolean;
 		missingReceipt?: boolean;
-		flag?: boolean;
 	} = {}
 ) {
 	const calls = ['Permit', 'Cabinets', 'Rough-in', 'Inspection'].map((title, i) =>
@@ -483,7 +464,7 @@ async function runReviewedWrite(
 			}
 		: undefined;
 	const invocation = await prepare(
-		batchLaneProvider(client, options.flag ?? true, { reviewer, liveVision }),
+		batchLaneProvider(client, { reviewer, liveVision }),
 		options.image ? executionInputWithImage() : executionInput()
 	);
 	let round = 2;
@@ -549,8 +530,7 @@ describe('reviewed write receipt text', () => {
 		{ mixedRead: true },
 		{ userAction: true },
 		{ image: true },
-		{ missingReceipt: true },
-		{ flag: false }
+		{ missingReceipt: true }
 	])('keeps the closing pass for %j', async (options) => {
 		const { client, liveVision } = await runReviewedWrite(options);
 		expect(client.stream.mock.calls.length).toBeGreaterThan(options.readFirst ? 2 : 1);
@@ -576,29 +556,9 @@ describe('reviewed write receipt text', () => {
 	});
 });
 
-describe('direct write receipt text (AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT)', () => {
-	it('keeps the tool-free synthesis pass when the flag is off', async () => {
-		const { client, closing } = await runDirectWrite(
-			false,
-			[createTask('create-1', 'Draft Q3 plan')],
-			taskResults
-		);
-
-		expect(client.stream).toHaveBeenCalledTimes(2);
-		expect(client.stream.mock.calls[1]![0]).toMatchObject({ tools: [], toolChoice: 'none' });
-		expect(closing).toEqual([
-			{ type: 'text_delta', text: 'Added it to the project.' },
-			{
-				type: 'finish',
-				finishedReason: 'stop',
-				usage: { promptTokens: 150, completionTokens: 30, totalTokens: 180 }
-			}
-		]);
-	});
-
+describe('direct write receipt text', () => {
 	it('closes one successful simple write on its ledger receipt with no provider call', async () => {
 		const { client, reviewer, capacity, closing } = await runDirectWrite(
-			true,
 			[createTask('create-1', 'Draft Q3 plan')],
 			taskResults
 		);
@@ -652,7 +612,6 @@ describe('direct write receipt text (AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT)', (
 
 	it('lists two or three writes, one per line', async () => {
 		const { client, closing } = await runDirectWrite(
-			true,
 			[
 				createTask('create-1', 'Permit'),
 				createTask('create-2', 'Inspection'),
@@ -692,7 +651,6 @@ describe('direct write receipt text (AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT)', (
 
 	it('keeps the receipt-grounded synthesis pass for a partial batch', async () => {
 		const { client, closing } = await runDirectWrite(
-			true,
 			[createTask('create-1', 'Permit'), createTask('create-2', 'Inspection')],
 			(steps) => {
 				const [first, second] = mutatingSteps(steps);
@@ -720,7 +678,6 @@ describe('direct write receipt text (AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT)', (
 
 	it('keeps the pass when a write result asks the user for something', async () => {
 		const { client } = await runDirectWrite(
-			true,
 			[createTask('create-1', 'Draft Q3 plan')],
 			(steps) =>
 				mutatingSteps(steps).map((step) =>
@@ -748,7 +705,7 @@ describe('direct write receipt text (AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT)', (
 			toolRound([createTask('create-1', 'Draft Q3 plan')]),
 			synthesisRound('Added it. The project has two open risks.')
 		]);
-		const invocation = await prepare(batchLaneProvider(client, true));
+		const invocation = await prepare(batchLaneProvider(client));
 		const readRound = await collect(invocation.stream());
 		const read = readRound.find((step): step is ReadStep => step.type === 'read_tool')!;
 		const writeRound = await collect(
@@ -776,96 +733,58 @@ describe('direct write receipt text (AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT)', (
 			reason: 'Two plans match.',
 			question: 'Which plan should the task go under: Launch or Hiring?'
 		};
-		const runClarification = async (receiptText: boolean) => {
-			const client = clientWithRounds([
-				toolRound([
-					{ id: 'clarify-1', name: 'request_turn_clarification', args: clarification }
-				]),
-				synthesisRound(clarification.question)
-			]);
-			const invocation = await prepare(batchLaneProvider(client, receiptText));
-			const opening = await collect(invocation.stream());
-			const step = opening.find(
-				(candidate): candidate is ReadStep => candidate.type === 'read_tool'
-			)!;
-			const feedback = readResult(step, {
-				status: 'clarification_required',
-				requires_user_action: true
-			});
-			feedback.execution.requiresUserAction = true;
-			const closing = await collect(
-				invocation.continueWithToolResults!({ round: 2, results: [feedback] })
-			);
-			return { client, closing };
-		};
-
-		const off = await runClarification(false);
-		const on = await runClarification(true);
-		expect(on.client.stream).toHaveBeenCalledTimes(2);
-		expect(on.closing).toEqual(off.closing);
-		expect(on.closing[0]).toEqual({ type: 'text_delta', text: clarification.question });
-		expect(withoutSignal(on.client.stream.mock.calls[1]![0])).toEqual(
-			withoutSignal(off.client.stream.mock.calls[1]![0])
+		const client = clientWithRounds([
+			toolRound([
+				{ id: 'clarify-1', name: 'request_turn_clarification', args: clarification }
+			]),
+			synthesisRound(clarification.question)
+		]);
+		const invocation = await prepare(batchLaneProvider(client));
+		const opening = await collect(invocation.stream());
+		const step = opening.find(
+			(candidate): candidate is ReadStep => candidate.type === 'read_tool'
+		)!;
+		const feedback = readResult(step, {
+			status: 'clarification_required',
+			requires_user_action: true
+		});
+		feedback.execution.requiresUserAction = true;
+		const closing = await collect(
+			invocation.continueWithToolResults!({ round: 2, results: [feedback] })
 		);
+
+		// The question reaches the user through the model, never a receipt.
+		expect(client.stream).toHaveBeenCalledTimes(2);
+		expect(closing[0]).toEqual({ type: 'text_delta', text: clarification.question });
 	});
 
-	it('sends byte-identical requests before the closing answer whichever way the flag is set', async () => {
-		const off = await runDirectWrite(
-			false,
-			[createTask('create-1', 'Draft Q3 plan')],
-			taskResults
+	it('closes on the receipt through the composition root', async () => {
+		const client = clientWithRounds([
+			toolRound([createTask('create-1', 'Draft Q3 plan')]),
+			synthesisRound('Added it.')
+		]);
+		const assembly = createAgenticChatCompositionRoot({
+			client: {
+				rpc: vi.fn(),
+				from: vi.fn(),
+				channel: vi.fn(),
+				removeChannel: vi.fn()
+			} as never,
+			providerClient: client,
+			semanticReviewerClient: clientWithRounds([]),
+			providerConfigured: true,
+			mutationCapabilities: { createOntoTask: true }
+		});
+		const invocation = await prepare(assembly.provider);
+		const opening = await collect(invocation.stream());
+		const closing = await collect(
+			invocation.continueWithToolResults!({ round: 2, results: taskResults(opening) })
 		);
-		const on = await runDirectWrite(
-			true,
-			[createTask('create-1', 'Draft Q3 plan')],
-			taskResults
-		);
-		expect(JSON.stringify(withoutSignal(on.client.stream.mock.calls[0]![0]))).toBe(
-			JSON.stringify(withoutSignal(off.client.stream.mock.calls[0]![0]))
-		);
-		expect(on.opening).toEqual(off.opening);
-	});
-
-	it('is plumbed from the composition root into the provider', async () => {
-		const run = async (directWriteReceiptTextEnabled?: boolean) => {
-			const client = clientWithRounds([
-				toolRound([createTask('create-1', 'Draft Q3 plan')]),
-				synthesisRound('Added it.')
-			]);
-			const assembly = createAgenticChatCompositionRoot({
-				client: {
-					rpc: vi.fn(),
-					from: vi.fn(),
-					channel: vi.fn(),
-					removeChannel: vi.fn()
-				} as never,
-				providerClient: client,
-				semanticReviewerClient: clientWithRounds([]),
-				providerConfigured: true,
-				mutationCapabilities: { createOntoTask: true },
-				...(directWriteReceiptTextEnabled === undefined
-					? {}
-					: { directWriteReceiptTextEnabled })
-			});
-			const invocation = await prepare(assembly.provider);
-			const opening = await collect(invocation.stream());
-			const closing = await collect(
-				invocation.continueWithToolResults!({ round: 2, results: taskResults(opening) })
-			);
-			return { client, closing };
-		};
-
-		// Defaults on (tracker 129): the ledger receipt replaces the closing pass.
-		const byDefault = await run();
-		expect(byDefault.client.stream).toHaveBeenCalledTimes(1);
-		const enabled = await run(true);
-		expect(enabled.client.stream).toHaveBeenCalledTimes(1);
-		expect(enabled.closing[0]).toEqual({
+		expect(client.stream).toHaveBeenCalledTimes(1);
+		expect(closing[0]).toEqual({
 			type: 'text_delta',
 			text: 'Done — created task “Draft Q3 plan”.'
 		});
-		const disabled = await run(false);
-		expect(disabled.client.stream).toHaveBeenCalledTimes(2);
 	});
 });
 
@@ -953,7 +872,7 @@ describe('provider pass started before its status step', () => {
 			eventPayload: { type: 'context_selection', items: [] }
 		};
 		const invocation = await prepare(
-			batchLaneProvider(client, false, {
+			batchLaneProvider(client, {
 				contextFinder: {
 					find: vi.fn(() => Promise.resolve({ step, injection: 'WORKING CONTEXT' }))
 				}
@@ -988,7 +907,7 @@ describe('provider pass started before its status step', () => {
 			)
 		]);
 		const reviewer = clientWithRounds([[{ type: 'done', finishedReason: 'stop' }]]);
-		const invocation = await prepare(batchLaneProvider(client, false, { reviewer }));
+		const invocation = await prepare(batchLaneProvider(client, { reviewer }));
 		const iterator = invocation.stream()[Symbol.asyncIterator]();
 
 		let status: AgenticChatProviderStepV1 | undefined;

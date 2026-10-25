@@ -121,11 +121,9 @@ export class SmartLLMService extends SharedSmartLLMService {
 			errorLogger,
 			enforceUserId: config?.enforceUserId ?? true,
 			openrouter: config?.openrouter,
-			// The worker is long-lived, so a timed-out call may be left running to
-			// record how it ended (SMART_LLM_INCIDENT_DRAIN=off to stop).
-			incidents: config?.incidents ?? {
-				drain: process.env.SMART_LLM_INCIDENT_DRAIN?.trim().toLowerCase() !== 'off'
-			}
+			// The worker is long-lived, so a timed-out call is left running (bounded)
+			// to record how it ended.
+			incidents: config?.incidents ?? { drain: true }
 		});
 	}
 }

@@ -1,7 +1,7 @@
 ---
 name: People Context
-catalog_line: 'Profile and contact context: lookup, search and updates, candidate resolution, sensitive-value handling.'
-description: People context playbook for profile lookup, contact search and updates, candidate resolution, and safe handling of sensitive contact values.
+catalog_line: 'Contact context: lookup, search and updates, candidate resolution, sensitive-value handling.'
+description: People context playbook for contact search and updates, candidate resolution, and safe handling of sensitive contact values.
 skill_type: procedure # procedure | strategy | reference | resource | policy | orchestration
 altitude: task # task | domain | meta
 activation: progressive # always_on | progressive | invoked
@@ -26,13 +26,12 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/people_con
 
 ## Identity
 
-People context playbook for profile lookup, contact search and updates, candidate resolution, and safe handling
-of sensitive contact values. This is a **procedure** skill at **task** altitude: an ordered runbook for the
+People context playbook for contact search and updates, candidate resolution, and safe handling of sensitive
+contact values. This is a **procedure** skill at **task** altitude: an ordered runbook for the
 BuildOS people/contact surface.
 
 ## Activation
 
-- Use user profile context when personalization matters
 - Look up a person or contact record
 - Create or update contact details
 - Resolve duplicate or ambiguous contact candidates
@@ -40,19 +39,18 @@ BuildOS people/contact surface.
 
 ## Judgment
 
-- Profile context and contact data are different surfaces: profile is about the user; contacts are about people records.
+- Contacts are records about other people, not about the user.
 - People workflows often fail from overconfidence. Prefer explicit confirmation over silent merging.
 
 ## Procedure
 
-1. Decide whether you need profile context, a contact lookup, a candidate-resolution workflow, or an entity link.
-2. Use util.profile.overview only when personalization or user context materially matters; profile data is not preloaded.
-3. For people lookups, search first and inspect the returned matches before writing anything.
-4. If identity is uncertain or duplicates exist, use the contact candidate tools before assuming records should merge.
-5. Only request raw phone or email values when the user explicitly asks for exact details.
-6. For contact linking, choose the link type first, then pass exact target IDs.
-7. For candidate resolution, only use confirmed merge actions when the user has clearly confirmed the records represent the same person.
-8. After execution, explain what was found or changed and note when sensitive values were intentionally withheld.
+1. Decide whether you need a contact lookup, a candidate-resolution workflow, or an entity link.
+2. For people lookups, search first and inspect the returned matches before writing anything.
+3. If identity is uncertain or duplicates exist, use the contact candidate tools before assuming records should merge.
+4. Only request raw phone or email values when the user explicitly asks for exact details.
+5. For contact linking, choose the link type first, then pass exact target IDs.
+6. For candidate resolution, only use confirmed merge actions when the user has clearly confirmed the records represent the same person.
+7. After execution, explain what was found or changed and note when sensitive values were intentionally withheld.
 
 ## Contract
 
@@ -73,7 +71,6 @@ Stop conditions before replying: no two records were merged on name similarity a
 
 ## Related Tools
 
-- `util.profile.overview`
 - `util.contact.search`
 - `util.contact.upsert`
 - `util.contact.candidates.list`

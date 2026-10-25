@@ -119,7 +119,7 @@ Reads:
 - `get_onto_task_details`, `get_onto_project_details`
 - `search_onto_*` family
 - `list_calendar_events`
-- `get_workspace_overview`, `get_user_profile_overview`
+- `get_workspace_overview`
 - `get_field_info` (schema validation)
 
 Writes:

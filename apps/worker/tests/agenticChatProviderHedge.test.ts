@@ -98,7 +98,7 @@ function controllableResponse(provider: string) {
 
 function harness(
 	responses: Array<Response | (() => Promise<Response>)>,
-	options: { hedging?: boolean; preview?: boolean } = {}
+	options: { preview?: boolean } = {}
 ) {
 	const requests: Array<{ body: Record<string, any>; signal: AbortSignal }> = [];
 	const usage: AgenticChatProviderUsageObservationV1[] = [];
@@ -144,8 +144,7 @@ function harness(
 			httpReferer: 'https://build-os.com',
 			appName: 'BuildOS test',
 			fetchImpl,
-			requestTimeoutMs: 30_000,
-			...(options.hedging === undefined ? {} : { slowStreamHedging: options.hedging })
+			requestTimeoutMs: 30_000
 		}
 	);
 	const previews: AgenticChatLiveTextPreviewUpdateV1[] = [];
@@ -378,24 +377,6 @@ describe('provider hedging for stalled acting streams', () => {
 		const events = await collecting;
 		expect(events.at(-1)).toMatchObject({ type: 'error' });
 		expect(test.requests).toHaveLength(2);
-	});
-
-	it("keeps today's behavior when hedging is off", async () => {
-		vi.useFakeTimers();
-		const slow = controllableResponse('Together');
-		const retry = controllableResponse('BaseTen');
-		const test = harness([slow.response, retry.response], { hedging: false });
-		const collecting = collect(test.stream());
-		await vi.advanceTimersByTimeAsync(0);
-		slow.text('x');
-		await vi.advanceTimersByTimeAsync(HEDGE_SLOW_WINDOW_MS + 500);
-		expect(test.requests).toHaveLength(1);
-		await vi.advanceTimersByTimeAsync(2_000);
-		expect(test.requests).toHaveLength(2);
-		expect(test.requests[0]!.signal.aborted).toBe(true);
-		retry.text('Retried.');
-		retry.finish();
-		expect(texts(await collecting)).toEqual(['Retried.']);
 	});
 
 	it('does not hedge the retry that follows an ordinary failure', async () => {

@@ -273,9 +273,9 @@ export type AgenticChatTurnProviderClientPortV1 = {
 	/** Avoid the completed response's route on the next already-budgeted repair. Does not retry. */
 	rejectRepeatedInvalidToolResponse?(input: AgenticChatTurnProviderClientRequestV1): void;
 	/**
-	 * Display-only live answer preview for this client's user-facing passes
-	 * (AGENTIC_CHAT_LIVE_TEXT_PREVIEW). Only the acting client carries it; reviewer
-	 * clients never do. Absent means passes are exactly as fully buffered as before.
+	 * Display-only live answer preview for this client's user-facing passes. Only
+	 * the acting client carries it; reviewer clients never do, so their passes stay
+	 * fully buffered.
 	 */
 	livePreview?: AgenticChatLiveTextPreviewPortV1;
 };

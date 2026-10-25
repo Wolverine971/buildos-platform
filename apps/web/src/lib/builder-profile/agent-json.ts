@@ -6,6 +6,7 @@
 
 import type { BuilderProfileView } from './types';
 import { stageLabel } from './format';
+import { projectPaths } from './project-pages';
 
 export interface BuilderProfileAgentJson {
 	handle: string;
@@ -22,10 +23,15 @@ export interface BuilderProfileAgentJson {
 		pitch: string | null;
 		stage: string;
 		last_active_at: string | null;
+		/** The project's own page (Live projects). */
+		page_url?: string;
+		website?: string;
 		goals?: string[];
 		next_milestone?: { title: string; due_at: string };
 		this_week?: string;
 		looking_for?: string;
+		/** Where "I'm interested" goes (a web address or mailto: link the owner chose). */
+		reply_url?: string;
 		you_can?: string[];
 		your_access?: 'member';
 	}[];
@@ -41,7 +47,9 @@ export function builderProfileUrl(origin: string, handle: string): string {
 export function toAgentJson(view: BuilderProfileView, origin: string): BuilderProfileAgentJson {
 	const handle = view.profile.handle;
 	const yearAgo = (() => {
-		const t = Date.parse(`${view.activity?.today ?? new Date().toISOString().slice(0, 10)}T00:00:00Z`);
+		const t = Date.parse(
+			`${view.activity?.today ?? new Date().toISOString().slice(0, 10)}T00:00:00Z`
+		);
 		return new Date(t - 365 * 86_400_000).toISOString().slice(0, 10);
 	})();
 	let activity: BuilderProfileAgentJson['activity_last_year'] = null;
@@ -52,10 +60,15 @@ export function toAgentJson(view: BuilderProfileView, origin: string): BuilderPr
 		activity = {
 			active_days: days.filter(([, c]) => c > 0).length,
 			changes,
-			with_agents_pct: changes > 0 && view.activity.show_agent_split ? Math.round((100 * agents) / changes) : 0
+			with_agents_pct:
+				changes > 0 && view.activity.show_agent_split
+					? Math.round((100 * agents) / changes)
+					: 0
 		};
 	}
 	const hasLive = view.projects.some((p) => p.level === 'live');
+	const base = origin.replace(/\/$/, '');
+	const paths = projectPaths(handle, view.projects);
 	return {
 		handle,
 		name: view.profile.name ?? null,
@@ -73,18 +86,25 @@ export function toAgentJson(view: BuilderProfileView, origin: string): BuilderPr
 				stage: stageLabel(p).toLowerCase(),
 				last_active_at: p.last_active_at ?? null
 			};
+			const path = paths.get(p.id);
+			if (path) item.page_url = `${base}${path}`;
+			if (p.link_url) item.website = p.link_url;
 			if (p.level === 'live') {
 				if (p.goals?.length) item.goals = p.goals;
 				if (p.next_milestone) item.next_milestone = p.next_milestone;
 				if (p.this_week) item.this_week = p.this_week;
 				if (p.looking_for) item.looking_for = p.looking_for;
+				if (p.reply_url) item.reply_url = p.reply_url;
 				if (p.viewer_is_member) item.your_access = 'member';
 				else item.you_can = ['follow', 'ask_to_join'];
 			}
 			return item;
 		}),
 		activity_last_year: activity,
-		writing: view.writing.map((w) => ({ title: w.title, url: `${origin.replace(/\/$/, '')}${w.url_path}` })),
+		writing: view.writing.map((w) => ({
+			title: w.title,
+			url: `${origin.replace(/\/$/, '')}${w.url_path}`
+		})),
 		how_to_ask: hasLive
 			? `To ask to join a project, call request_buildos_access with handle "${handle}" and the project name as project_hint, or have your person press "Ask to join" on the page. ${view.profile.name ?? 'The owner'} decides. Agents can ask; only people grant.`
 			: `To ask for access, call request_buildos_access with handle "${handle}". The owner decides. Agents can ask; only people grant.`

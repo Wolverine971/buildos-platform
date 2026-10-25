@@ -178,7 +178,8 @@ export interface Scenario {
 	title: string;
 	/**
 	 * Grouping label. Doubles as the battery name selected by `AGENTIC_BATTERY`:
-	 * `cedar-house` is the replay of the 2026-09-03 adversarial browser audit.
+	 * `cedar-house` is the replay of the 2026-09-03 adversarial browser audit;
+	 * `workspace-chat` covers Workspace chat (tasker/146).
 	 */
 	category:
 		| 'project'
@@ -188,7 +189,8 @@ export interface Scenario {
 		| 'calendar'
 		| 'email'
 		| 'creative'
-		| 'cedar-house';
+		| 'cedar-house'
+		| 'workspace-chat';
 	/**
 	 * Case number inside the battery, so a scorecard row lines up with the
 	 * original audit's numbered table. Required for scenarios in a battery.

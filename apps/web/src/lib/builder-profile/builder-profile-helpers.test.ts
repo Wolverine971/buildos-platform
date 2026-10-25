@@ -158,9 +158,11 @@ describe('agent json', () => {
 			stage: 'building',
 			goals: ['Every new take gets a reply'],
 			looking_for: 'Beta testers',
+			page_url: 'https://build-os.com/@djwayne/9takes',
 			you_can: ['follow', 'ask_to_join']
 		});
 		expect(json.projects[1]).not.toHaveProperty('you_can');
+		expect(json.projects[1]).not.toHaveProperty('page_url');
 		expect(json.activity_last_year).toEqual({
 			active_days: 2,
 			changes: 50,

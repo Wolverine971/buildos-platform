@@ -14,13 +14,10 @@ import {
 	validateAgenticChatDrainTimeout
 } from './consumer';
 import {
-	type AgenticChatContinuationReasoningMode,
 	type AgenticChatOpenAiCompatibleRouteV1,
 	type AgenticChatOpenRouterProviderRoutingV1,
-	DEFAULT_AGENTIC_CHAT_RESPONSE_HEADERS_TIMEOUT_MS,
-	isAgenticChatContinuationReasoningMode
+	DEFAULT_AGENTIC_CHAT_RESPONSE_HEADERS_TIMEOUT_MS
 } from '../provider/openrouter-client';
-import type { ChatContextFinderMode } from '../provider/chat-context-finder';
 import type { JevToolSelectionMode } from '../provider/jev-tool-selector';
 import type { AgenticChatWorkflowReasoningPolicyV1 } from '../workflow/contracts';
 import {
@@ -156,26 +153,18 @@ type AgenticChatBaseConfig = {
 	contextFinderEnabled?: boolean;
 	/** Workflow steps whose hidden reasoning is off. Default: none (definitions' `low`). */
 	workflowReasoning?: AgenticChatWorkflowReasoningPolicyV1;
-	/** Ordinary project chat: Jev-ranked "Working from" chips (off|shadow|chips|on). */
-	contextFinderChat?: ChatContextFinderMode;
-	/** Users whose chats are ranked: ids, or 'all' (env value `*`); empty ranks nobody. */
-	contextFinderChatUserIds?: string[] | 'all';
 	/**
-	 * Global chat (no project in focus): Jev picks the projects a message is about, and digs
-	 * into them only when it looks for something specific. Same user allowlist as project chat.
+	 * AGENTIC_CHAT_CONTEXT_FINDER_CHAT_USER_IDS: users whose chats get Jev-picked context:
+	 * project chat ranks the project's records ("Working from" chips, injected), global chat
+	 * picks the projects a message is about. Ids, or 'all' (env value `*`); empty ranks nobody.
 	 */
-	contextFinderGlobal?: ChatContextFinderMode;
+	contextFinderChatUserIds?: string[] | 'all';
 	liveVisionEnabled: boolean;
 	consumptionBillingEnabled: boolean;
 	consumer: AgenticChatConsumerConfig;
 	publisher: AgenticChatPublisherConfig;
 	providerBudgetMs: number;
 	maxProviderRounds: number;
-	/**
-	 * AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT: a simple direct write that fully landed
-	 * closes on ledger receipt text instead of a tool-free model pass. Default on.
-	 */
-	directWriteReceiptTextEnabled?: boolean;
 	/** Jev opening-pass tool narrowing: on (default), shadow (log only), or off. */
 	jevToolSelection: 'off' | JevToolSelectionMode;
 	/**
@@ -188,41 +177,11 @@ type AgenticChatBaseConfig = {
 	maxToolCalls: number;
 	maxToolConcurrency: number;
 	/**
-	 * AGENTIC_CHAT_LIVE_TEXT_PREVIEW: broadcast a display-only preview of the answer
-	 * while a user-facing pass streams. Default on; `false` disables the preview.
-	 */
-	liveTextPreviewEnabled?: boolean;
-	/**
-	 * AGENTIC_CHAT_PROVIDER_HEDGING: start a backup request on another endpoint
-	 * as soon as an acting stream stalls, instead of waiting out the 4 s window
-	 * and retrying. Default on; `false` turns it off.
-	 */
-	providerHedgingEnabled?: boolean;
-	/**
-	 * AGENTIC_CHAT_CONTEXT_FINDER_BROAD: project chat also asks Jev whether a message is
-	 * about the whole project, and answers those with the project snapshot. Default on;
-	 * `false` keeps per-record ranking only.
-	 */
-	contextFinderBroadEnabled?: boolean;
-	/**
-	 * AGENTIC_CHAT_PROVIDER_INCIDENTS: a model request that stalls or fails is
-	 * written in full to `llm_call_incidents` (request, response bytes, timing).
+	 * AGENTIC_CHAT_PROVIDER_INCIDENTS (privacy switch): a model request that stalls or
+	 * fails is written in full to `llm_call_incidents` (request, response bytes, timing).
 	 * Default on; `false` captures nothing.
 	 */
 	providerIncidentsEnabled?: boolean;
-	/**
-	 * AGENTIC_CHAT_PROVIDER_INCIDENT_DRAIN: a stalled request is left running in
-	 * the background (at most 120 s, 3 at once, 30 an hour) so its incident shows
-	 * how and when it would have finished. Default on; `false` ends it at once.
-	 */
-	providerIncidentDrainEnabled?: boolean;
-	/**
-	 * AGENTIC_CHAT_CONTINUATION_REASONING (audit 2026-10-17 S3 experiment), acting
-	 * client only: `default` (today), `replay` (send the turn's earlier reasoning
-	 * back on continuations), or `off_after_reads` (reasoning off on continuations
-	 * after a read-only round). Default is byte-identical to before.
-	 */
-	continuationReasoning?: AgenticChatContinuationReasoningMode;
 };
 
 export type AgenticChatConfig = AgenticChatBaseConfig & {
@@ -293,14 +252,12 @@ export function loadAgenticChatConfig(
 	const workflowReasoning = parseWorkflowReasoningOffSteps(
 		environment.AGENTIC_CHAT_WORKFLOW_REASONING_OFF_STEPS
 	);
-	const contextFinderChat = parseContextFinderChat(
-		environment.AGENTIC_CHAT_CONTEXT_FINDER_CHAT,
-		'AGENTIC_CHAT_CONTEXT_FINDER_CHAT'
-	);
-	const contextFinderGlobal = parseContextFinderChat(
-		environment.AGENTIC_CHAT_CONTEXT_FINDER_GLOBAL,
-		'AGENTIC_CHAT_CONTEXT_FINDER_GLOBAL'
-	);
+	// Retired switches, deliberately not read so a value left on a deployed service
+	// cannot fail startup (tasker 136, after the 10-18 soak): AGENTIC_CHAT_LIVE_TEXT_PREVIEW,
+	// AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT, AGENTIC_CHAT_PROVIDER_HEDGING,
+	// AGENTIC_CHAT_CONTEXT_FINDER_BROAD, AGENTIC_CHAT_PROVIDER_INCIDENT_DRAIN,
+	// AGENTIC_CHAT_CONTEXT_FINDER_CHAT, AGENTIC_CHAT_CONTEXT_FINDER_GLOBAL and
+	// AGENTIC_CHAT_CONTINUATION_REASONING. Each one's "on" behavior is now the only one.
 	// `*` opens the context finder to every user; otherwise a comma-separated id allowlist.
 	const contextFinderChatUserIds: string[] | 'all' =
 		environment.AGENTIC_CHAT_CONTEXT_FINDER_CHAT_USER_IDS?.trim() === '*'
@@ -371,13 +328,6 @@ export function loadAgenticChatConfig(
 		DEFAULT_AGENTIC_CHAT_MAX_TOOL_ROUNDS,
 		'CHAT_MAX_TOOL_ROUNDS'
 	);
-	// Skips the tool-free closing pass after a simple direct write that fully
-	// landed (one billed pass, ~2–5 s). Default on, matching production.
-	const directWriteReceiptTextEnabled = parseBoolean(
-		environment.AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT,
-		true,
-		'AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT'
-	);
 	// Jev opening-pass tool narrowing (docs/research/jev-tool-selection-2026-09-18).
 	// On by default: 0/64 eval misses, fail-open to the full surface, and the one-shot
 	// surface repair restores omitted tools. `shadow` logs the selection without
@@ -398,33 +348,10 @@ export function loadAgenticChatConfig(
 		DEFAULT_AGENTIC_CHAT_MAX_TOOL_CONCURRENCY,
 		'CHAT_MAX_TOOL_CONCURRENCY'
 	);
-	const liveTextPreviewEnabled = parseBoolean(
-		environment.AGENTIC_CHAT_LIVE_TEXT_PREVIEW,
-		true,
-		'AGENTIC_CHAT_LIVE_TEXT_PREVIEW'
-	);
-	const continuationReasoning = parseContinuationReasoning(
-		environment.AGENTIC_CHAT_CONTINUATION_REASONING
-	);
-	const providerHedgingEnabled = parseBoolean(
-		environment.AGENTIC_CHAT_PROVIDER_HEDGING,
-		true,
-		'AGENTIC_CHAT_PROVIDER_HEDGING'
-	);
-	const contextFinderBroadEnabled = parseBoolean(
-		environment.AGENTIC_CHAT_CONTEXT_FINDER_BROAD,
-		true,
-		'AGENTIC_CHAT_CONTEXT_FINDER_BROAD'
-	);
 	const providerIncidentsEnabled = parseBoolean(
 		environment.AGENTIC_CHAT_PROVIDER_INCIDENTS,
 		true,
 		'AGENTIC_CHAT_PROVIDER_INCIDENTS'
-	);
-	const providerIncidentDrainEnabled = parseBoolean(
-		environment.AGENTIC_CHAT_PROVIDER_INCIDENT_DRAIN,
-		true,
-		'AGENTIC_CHAT_PROVIDER_INCIDENT_DRAIN'
 	);
 	validateAgenticChatDrainTimeout(consumer.drainTimeoutMs);
 
@@ -443,8 +370,6 @@ export function loadAgenticChatConfig(
 		documentEvidenceHandoffEnabled,
 		contextFinderEnabled,
 		workflowReasoning,
-		contextFinderChat,
-		contextFinderGlobal,
 		contextFinderChatUserIds,
 		liveVisionEnabled,
 		consumptionBillingEnabled,
@@ -452,17 +377,11 @@ export function loadAgenticChatConfig(
 		publisher,
 		providerBudgetMs,
 		maxProviderRounds,
-		directWriteReceiptTextEnabled,
 		jevToolSelection,
 		holdUncommissionedWrites,
 		maxToolCalls,
 		maxToolConcurrency,
-		liveTextPreviewEnabled,
-		continuationReasoning,
-		providerHedgingEnabled,
-		contextFinderBroadEnabled,
 		providerIncidentsEnabled,
-		providerIncidentDrainEnabled,
 		provider: loadProviderConfig(environment)
 	};
 }
@@ -572,22 +491,6 @@ function parseWorkflowReasoningOffSteps(
 		policy[step as (typeof WORKFLOW_STEP_KEYS)[number]] = 'none';
 	}
 	return Object.freeze(policy);
-}
-
-function parseContextFinderChat(value: string | undefined, name: string): ChatContextFinderMode {
-	const mode = value?.trim() || 'off';
-	if (mode === 'off' || mode === 'shadow' || mode === 'chips' || mode === 'on') return mode;
-	throw new Error(`${name} must be exactly off, shadow, chips, or on`);
-}
-
-function parseContinuationReasoning(
-	value: string | undefined
-): AgenticChatContinuationReasoningMode {
-	const mode = value?.trim() || 'default';
-	if (isAgenticChatContinuationReasoningMode(mode)) return mode;
-	throw new Error(
-		'AGENTIC_CHAT_CONTINUATION_REASONING must be exactly default, replay, or off_after_reads'
-	);
 }
 
 function parseJevToolSelection(value: string | undefined): 'off' | JevToolSelectionMode {

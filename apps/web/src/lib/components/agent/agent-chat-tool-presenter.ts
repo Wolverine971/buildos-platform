@@ -1732,10 +1732,6 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 			action: 'Loading field guidance',
 			target: fieldInfoTarget(args)
 		}),
-		get_user_profile_overview: (args) => ({
-			action: 'Loading profile overview',
-			target: firstDisplayLabel(args?.section, args?.chapter_id, args?.chapter_title)
-		}),
 		get_workspace_overview: () => ({
 			action: 'Loading workspace overview'
 		}),

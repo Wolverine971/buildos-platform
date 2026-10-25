@@ -153,8 +153,6 @@ type Dispatch = Response | (() => Promise<Response>);
 function harness(
 	responses: Dispatch[],
 	options: {
-		drain?: boolean;
-		hedging?: boolean;
 		responseHeadersTimeoutMs?: number;
 		requestTimeoutMs?: number;
 		generation?: (id: string) => Response;
@@ -202,9 +200,7 @@ function harness(
 			requestTimeoutMs: options.requestTimeoutMs ?? 30_000,
 			...(options.responseHeadersTimeoutMs
 				? { responseHeadersTimeoutMs: options.responseHeadersTimeoutMs }
-				: {}),
-			...(options.drain === undefined ? {} : { incidentDrain: options.drain }),
-			...(options.hedging === undefined ? {} : { slowStreamHedging: options.hedging })
+				: {})
 		}
 	);
 	return {
@@ -573,24 +569,6 @@ describe('LLM call incidents through the OpenRouter client', () => {
 		await new Promise((resolve) => setTimeout(resolve, 300));
 		expect(test.incidents.inserts).toHaveLength(0);
 		expect(ok.cancelled).toBe(true);
-	});
-
-	it('does not leave the request running when draining is off', async () => {
-		vi.useFakeTimers();
-		const slow = controllableResponse('BaseTen');
-		const test = harness([slow.response], { drain: false });
-		const collecting = collect(test.client.stream(request({ allowSlowStreamRecovery: true })));
-		await vi.advanceTimersByTimeAsync(0);
-		slow.text('x');
-		await vi.advanceTimersByTimeAsync(5_000);
-		await collecting;
-		expect(test.requests[0]!.signal.aborted).toBe(true);
-		await vi.advanceTimersByTimeAsync(300);
-		expect(test.incidents.inserts[0]).toMatchObject({
-			kind: 'stall',
-			reason: 'slow_stream',
-			eventual: null
-		});
 	});
 
 	it('records the stalled primary of a hedge, drains it, and leaves the winning backup alone', async () => {

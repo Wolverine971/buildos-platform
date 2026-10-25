@@ -179,7 +179,7 @@
 				<h1 class="text-3xl sm:text-4xl font-bold text-foreground mb-3">
 					How important is this to you?
 				</h1>
-				<p class="text-lg text-muted-foreground">This shapes how we work with you</p>
+				<p class="text-lg text-muted-foreground">Pick the closest fit</p>
 			</div>
 
 			<div class="space-y-3 max-w-lg mx-auto">

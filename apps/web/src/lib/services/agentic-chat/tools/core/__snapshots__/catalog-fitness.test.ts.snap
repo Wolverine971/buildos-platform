@@ -2,7 +2,7 @@
 
 exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry version, and ordered static surfaces 1`] = `
 {
-  "catalogSerializedSha256": "8013ef81951aa9eea5ecd96a1b0b90f9a8288d1eccb7e7bf05222bc5e0dc8e7d",
+  "catalogSerializedSha256": "b26ee7c016ddf488f53d2613ef96d31a23b69e9c0c3795de7d17582881dd991b",
   "contextSurfaces": [
     {
       "contextType": "global",
@@ -841,12 +841,6 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
       "serializedSha256": "ba1ee1b54eeb8589e966a793ebcecf8c22f142705b74263ebed4dce5db174a72",
     },
     {
-      "name": "get_user_profile_overview",
-      "serialized": "{"type":"function","function":{"name":"get_user_profile_overview","description":"Preview profile-memory chapters and structure to choose relevant personal context. Use only when personalization is needed; profile memory is not preloaded.","parameters":{"type":"object","properties":{"include_doc_structure":{"type":"boolean","default":true,"description":"Include the normalized profile document tree."},"include_chapters":{"type":"boolean","default":true,"description":"Include the chapter overview list."},"include_summaries":{"type":"boolean","default":false,"description":"Include short chapter-summary excerpts."},"limit":{"type":"integer","default":40,"minimum":1,"maximum":200,"description":"Maximum chapters when include_chapters=true."}}}}}",
-      "serializedChars": 748,
-      "serializedSha256": "fef8e2e438d4b8a6dde1797b2602f6b495e8e96a8d9fdff6c34cd6b6779b9c83",
-    },
-    {
       "name": "get_workspace_overview",
       "serialized": "{"type":"function","function":{"name":"get_workspace_overview","description":"Preferred status read across all projects: entity/collaborator counts, active and blocked work, upcoming events, recent activity. The Workspace is listed apart.","parameters":{"type":"object","properties":{"project_limit":{"type":"integer","default":8,"minimum":1,"maximum":20,"description":"Maximum projects to summarize."}}}}}",
       "serializedChars": 406,
@@ -1264,7 +1258,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
   "metadataOnlyToolNames": [
     "search_buildos",
   ],
-  "registryVersion": "tool-registry/71ddb96f",
+  "registryVersion": "tool-registry/d0b3b187",
   "staticProfiles": [
     {
       "contextType": "global",

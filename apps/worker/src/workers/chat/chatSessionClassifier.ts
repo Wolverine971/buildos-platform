@@ -16,7 +16,6 @@ import { LegacyJob } from '../shared/jobAdapter';
 import { processSessionActivityAndNextSteps } from './chatSessionActivityProcessor';
 import { enqueueChatCheckpoint } from './checkpoint/checkpointJob';
 import { queueProjectContextSnapshot } from '../ontology/projectContextSnapshotWorker';
-import { processProfileSignals } from './profileSignalProcessor';
 import { processContactSignals } from './contactSignalProcessor';
 import {
 	type SessionExtractedEntities,
@@ -562,45 +561,6 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			}
 		}
 
-		let profileSignalResult: Awaited<ReturnType<typeof processProfileSignals>> = {
-			skipped: true,
-			reason: 'not_attempted',
-			extractedCount: 0,
-			insertedCount: 0,
-			mergedCount: 0,
-			needsReviewCount: 0
-		};
-		try {
-			profileSignalResult = await processProfileSignals({
-				sessionId: validatedData.sessionId,
-				userId: validatedData.userId,
-				messages: typedMessages,
-				classification: {
-					title,
-					topics,
-					summary
-				}
-			});
-			if (!profileSignalResult.skipped) {
-				console.log(
-					`🧬 Profile signals: extracted=${profileSignalResult.extractedCount}, inserted=${profileSignalResult.insertedCount}, merged=${profileSignalResult.mergedCount}, needsReview=${profileSignalResult.needsReviewCount}`
-				);
-			}
-		} catch (profileError) {
-			console.error(`⚠️ Profile signal extraction failed (non-fatal):`, profileError);
-			void logWorkerError(profileError, {
-				userId: validatedData.userId,
-				tableName: 'chat_sessions',
-				recordId: validatedData.sessionId,
-				operationType: 'chat_profile_signal_processing',
-				severity: 'warning',
-				metadata: {
-					jobId: job.id,
-					nonFatal: true
-				}
-			});
-		}
-
 		let contactSignalResult: Awaited<ReturnType<typeof processContactSignals>> = {
 			skipped: true,
 			reason: 'not_attempted',
@@ -663,7 +623,6 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			activityLogsCreated: activityResult.activityLogsCreated,
 			nextStepUpdated: activityResult.nextStepUpdated,
 			projectId: activityResult.projectId,
-			profileSignals: profileSignalResult,
 			contactSignals: contactSignalResult
 		};
 	} catch (error) {

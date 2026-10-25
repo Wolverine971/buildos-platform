@@ -90,7 +90,7 @@ function harness(
 	 * which stay as the backstop under hedging; the hedge itself (a backup request
 	 * 2 s into a stall) is covered in agenticChatProviderHedge.test.ts.
 	 */
-	options: { holdUsage?: boolean; model?: string; timeoutMs?: number; hedging?: boolean } = {}
+	options: { holdUsage?: boolean; model?: string; timeoutMs?: number } = {}
 ) {
 	const requests: Array<{ body: Record<string, any>; signal: AbortSignal }> = [];
 	const usage: AgenticChatProviderUsageObservationV1[] = [];
@@ -138,8 +138,7 @@ function harness(
 			httpReferer: 'https://build-os.com',
 			appName: 'BuildOS test',
 			fetchImpl,
-			requestTimeoutMs: options.timeoutMs ?? 30_000,
-			slowStreamHedging: options.hedging ?? false
+			requestTimeoutMs: options.timeoutMs ?? 30_000
 		}
 	);
 	const capacity = { markTemporarilyUnavailable: vi.fn() };
@@ -153,7 +152,15 @@ function harness(
 		pendingEffects,
 		settleUsage,
 		stream(input = request()) {
-			return streamBufferedProviderPass(input, client, capacity, 2_000);
+			// The pass offers a hedge; declining it isolates the backstop these cases pin.
+			const backstopOnly = {
+				stream: (clientInput: Parameters<typeof client.stream>[0]) =>
+					client.stream({ ...clientInput, slowStreamHedge: undefined }),
+				rejectRepeatedInvalidToolResponse: (
+					clientInput: Parameters<typeof client.stream>[0]
+				) => client.rejectRepeatedInvalidToolResponse(clientInput)
+			};
+			return streamBufferedProviderPass(input, backstopOnly, capacity, 2_000);
 		}
 	};
 }

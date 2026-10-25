@@ -25,8 +25,8 @@ export type AgenticChatLiveTextPreviewStatsV1 = {
 const MAX_REPORTED_PREVIEW_FAILURE_TURNS = 256;
 
 /**
- * Broadcasts display-only live previews on the turn's private user channel
- * (AGENTIC_CHAT_LIVE_TEXT_PREVIEW). Every publish is fire-and-forget: nothing is
+ * Broadcasts display-only live previews on the turn's private user channel.
+ * Every publish is fire-and-forget: nothing is
  * persisted, nothing is awaited by the provider, and a failed or throwing
  * broadcast is counted and logged once per turn generation, never surfaced to
  * the turn. Frames the transport skips (no ready channel, backlog) are counted

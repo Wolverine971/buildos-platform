@@ -220,10 +220,6 @@ export function createAgenticChatCompositionRoot(options: {
 	providerCooldownMs?: number;
 	providerBudgetMs?: number;
 	maxProviderRounds?: number;
-	/** AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT: ledger receipt instead of the closing pass. Defaults on. */
-	directWriteReceiptTextEnabled?: boolean;
-	/** AGENTIC_CHAT_LIVE_TEXT_PREVIEW: display-only live answer preview. Bootstrap defaults on. */
-	liveTextPreviewEnabled?: boolean;
 	/** Optional opening-pass schema narrowing (Jev); absent means the full admitted surface. */
 	toolSelector?: AgenticChatToolSelectorPort;
 	contextFinder?: AgenticChatContextFinderPort;
@@ -372,13 +368,11 @@ export function createAgenticChatCompositionRoot(options: {
 		configured: options.providerConfigured,
 		concurrency: consumerConfig.concurrency
 	});
-	// Off: the acting client passes through untouched and no preview port exists.
-	const actingClient = options.liveTextPreviewEnabled
-		? withAgenticChatLiveTextPreviewV1(
-				options.providerClient,
-				new AgenticChatLiveTextPreviewBroadcaster({ publisher, broadcast })
-			)
-		: options.providerClient;
+	// The acting client carries the display-only live answer preview; reviewers never do.
+	const actingClient = withAgenticChatLiveTextPreviewV1(
+		options.providerClient,
+		new AgenticChatLiveTextPreviewBroadcaster({ publisher, broadcast })
+	);
 	const provider = new AgenticChatTurnProviderAdapter(
 		{
 			client: actingClient,
@@ -401,8 +395,7 @@ export function createAgenticChatCompositionRoot(options: {
 		},
 		options.providerCooldownMs,
 		options.maxProviderRounds,
-		mutationCapabilities,
-		options.directWriteReceiptTextEnabled ?? true
+		mutationCapabilities
 	);
 	const readTool = new AgenticChatToolExecutionAdapter(options.client, {
 		webResearch: options.webResearch ?? createAgentRunWebResearchPort(),

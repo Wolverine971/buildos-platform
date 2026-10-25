@@ -132,20 +132,12 @@ export type AgenticChatEffectiveSettingsV1 = {
 		fallbackModels: string[];
 	};
 	switches: {
-		liveTextPreview: boolean;
-		directWriteReceiptText: boolean;
-		providerHedging: boolean;
-		contextFinderBroad: boolean;
 		jevToolSelection: string;
 		holdUncommissionedWrites: boolean;
-		continuationReasoning: string;
 		providerIncidents: boolean;
-		providerIncidentDrain: boolean;
 		liveVision: boolean;
 		consumptionBilling: boolean;
-		contextFinderChat: string;
-		contextFinderGlobal: string;
-		/** 'all', or how many users are on the allowlist. */
+		/** Context finder (project + global chat): 'all', or how many users are on the allowlist. */
 		contextFinderChatUsers: 'all' | number;
 	};
 	limits: {
@@ -176,19 +168,11 @@ export function summarizeAgenticChatEffectiveSettingsV1(
 			fallbackModels: [...(reviewer.fallbackModels ?? [])]
 		},
 		switches: {
-			liveTextPreview: config.liveTextPreviewEnabled === true,
-			directWriteReceiptText: config.directWriteReceiptTextEnabled === true,
-			providerHedging: config.providerHedgingEnabled ?? true,
-			contextFinderBroad: config.contextFinderBroadEnabled ?? true,
 			jevToolSelection: config.jevToolSelection,
 			holdUncommissionedWrites: config.holdUncommissionedWrites === true,
-			continuationReasoning: config.continuationReasoning ?? 'default',
 			providerIncidents: config.providerIncidentsEnabled !== false,
-			providerIncidentDrain: config.providerIncidentDrainEnabled ?? true,
 			liveVision: config.liveVisionEnabled,
 			consumptionBilling: config.consumptionBillingEnabled,
-			contextFinderChat: config.contextFinderChat ?? 'off',
-			contextFinderGlobal: config.contextFinderGlobal ?? 'off',
 			contextFinderChatUsers: chatUsers === 'all' ? 'all' : chatUsers.length
 		},
 		limits: {
@@ -588,19 +572,14 @@ function createDefaultComposition(
 	const clientOptions = {
 		httpReferer: OPENROUTER_HTTP_REFERER,
 		appName: OPENROUTER_APP_NAME,
-		fetchImpl: input.fetchImpl,
-		incidentDrain: input.config.providerIncidentDrainEnabled ?? true
+		fetchImpl: input.fetchImpl
 	};
 	const providerClient = new AgenticChatOpenRouterClient(clientPorts, {
 		...clientOptions,
 		routes: input.config.provider.routes,
 		...(input.config.provider.responseHeadersTimeoutMs
 			? { responseHeadersTimeoutMs: input.config.provider.responseHeadersTimeoutMs }
-			: {}),
-		// Acting client only; the reviewer client below never replays or drops reasoning.
-		continuationReasoning: input.config.continuationReasoning ?? 'default',
-		// Acting client only; reviewer stalls keep their own watch and retry.
-		slowStreamHedging: input.config.providerHedgingEnabled ?? true
+			: {})
 	});
 	const semanticReviewerClient = new AgenticChatOpenRouterClient(clientPorts, {
 		...clientOptions,
@@ -627,12 +606,10 @@ function createDefaultComposition(
 				});
 	// Ordinary project chat: Jev-ranked "Working from" chips (CONTEXT_FINDER_2026-09-22.md).
 	// Global chat: Jev picks the projects first, then digs (JEV_GLOBAL_CONTEXT_2026-09-23.md).
-	const contextFinderChatMode = input.config.contextFinderChat ?? 'off';
-	const contextFinderGlobalMode = input.config.contextFinderGlobal ?? 'off';
+	// Both run for the allowlisted users only (AGENTIC_CHAT_CONTEXT_FINDER_CHAT_USER_IDS).
 	const contextFinderUserIds = input.config.contextFinderChatUserIds ?? [];
 	const contextFinderJev =
-		(contextFinderUserIds === 'all' || contextFinderUserIds.length > 0) &&
-		(contextFinderChatMode !== 'off' || contextFinderGlobalMode !== 'off')
+		contextFinderUserIds === 'all' || contextFinderUserIds.length > 0
 			? new JevClient({
 					apiKey: (
 						input.config.provider.routes.find((route) => route.kind === 'openrouter') ??
@@ -651,36 +628,28 @@ function createDefaultComposition(
 			: null;
 	const contextFinder = contextFinderJev
 		? composeContextFinders(
-				contextFinderChatMode === 'off'
-					? undefined
-					: new ChatContextFinder({
-							mode: contextFinderChatMode,
-							userIds: contextFinderUserIds,
-							// Service client; the turn's project access was checked at admission.
-							client: input.client as unknown as ContextFinderReadClient,
-							decider: contextFinderJev,
-							askBroad: input.config.contextFinderBroadEnabled ?? true,
-							loadTimezone: (userId) =>
-								resolveUserCivilTimezone(input.client, userId),
-							// A broad request's snapshot carries the open cleanup set, sized to
-							// fit it (get_project_cleanup's projection, at the snapshot budget).
-							loadCleanup: async (projectId) =>
-								projectProjectCleanupViewForChat(
-									await loadProjectCleanupView(input.client as never, projectId, {
-										verify: false
-									}),
-									PROJECT_SNAPSHOT_LIMITS.cleanupChars
-								)
-						}),
-				contextFinderGlobalMode === 'off'
-					? undefined
-					: new ChatWorkspaceFinder({
-							mode: contextFinderGlobalMode,
-							userIds: contextFinderUserIds,
-							// Service client; the loader scopes to the user's accessible projects.
-							client: input.client as unknown as WorkspaceFinderReadClient,
-							decider: contextFinderJev
-						})
+				new ChatContextFinder({
+					userIds: contextFinderUserIds,
+					// Service client; the turn's project access was checked at admission.
+					client: input.client as unknown as ContextFinderReadClient,
+					decider: contextFinderJev,
+					loadTimezone: (userId) => resolveUserCivilTimezone(input.client, userId),
+					// A broad request's snapshot carries the open cleanup set, sized to
+					// fit it (get_project_cleanup's projection, at the snapshot budget).
+					loadCleanup: async (projectId) =>
+						projectProjectCleanupViewForChat(
+							await loadProjectCleanupView(input.client as never, projectId, {
+								verify: false
+							}),
+							PROJECT_SNAPSHOT_LIMITS.cleanupChars
+						)
+				}),
+				new ChatWorkspaceFinder({
+					userIds: contextFinderUserIds,
+					// Service client; the loader scopes to the user's accessible projects.
+					client: input.client as unknown as WorkspaceFinderReadClient,
+					decider: contextFinderJev
+				})
 			)
 		: undefined;
 	// web_navigate: Jev picks links, code fetches politely, Tavily renders pages a
@@ -778,8 +747,6 @@ function createDefaultComposition(
 		publisherConfig: input.config.publisher,
 		providerBudgetMs: input.config.providerBudgetMs,
 		maxProviderRounds: input.config.maxProviderRounds,
-		directWriteReceiptTextEnabled: input.config.directWriteReceiptTextEnabled,
-		liveTextPreviewEnabled: input.config.liveTextPreviewEnabled,
 		maxToolCalls: input.config.maxToolCalls,
 		maxToolConcurrency: input.config.maxToolConcurrency,
 		onExecutionObservationError: input.onUsageError,

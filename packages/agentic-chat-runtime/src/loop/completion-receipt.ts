@@ -33,8 +33,8 @@ import {
  *   never become fulfilled either.
  *
  * The receipt itself never skips the closing model call; it is evidence for
- * inspectors. The one exception is a separate, flag-gated worker policy
- * (`AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT`): simple writes, or reviewed writes
+ * inspectors. The one exception is a separate worker policy (direct-write
+ * receipt text, `provider/turn-state.ts`): simple writes, or reviewed writes
  * whose frozen request checklist is fulfilled, can close with deterministic
  * receipt text. The worker also checks for failed or missing receipts, domain
  * reads, images and required user action (see `provider/turn-state.ts`).

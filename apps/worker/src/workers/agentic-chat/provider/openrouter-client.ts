@@ -75,19 +75,9 @@ import {
 import { validateRoutes, validateToolSurface } from './openrouter/validation';
 import type { ProviderCallCapture } from './openrouter/call-capture';
 import {
-	type AgenticChatContinuationReasoningMode,
-	TurnReasoningReplayStore,
-	capturesReasoning,
-	completedReasoning,
-	createReasoningCapture,
-	effectiveReasoningEffort,
-	isAgenticChatContinuationReasoningMode
-} from './openrouter/reasoning-replay';
-import {
 	AgenticChatReviewerStallError,
 	RUNAWAY_REASONING_CUTOFF,
 	abortableProviderRead,
-	isV41FlashModel,
 	providerAttemptTimingPayload,
 	runawayReasoningTokens,
 	streamWatchPolicy,
@@ -103,11 +93,6 @@ export type {
 } from './openrouter/types';
 export { AgenticChatLlmUsageObserver } from './openrouter/telemetry';
 export { createStableAgenticChatProviderUsageLogIdV1 } from './openrouter/usage';
-export {
-	AGENTIC_CHAT_CONTINUATION_REASONING_MODES,
-	type AgenticChatContinuationReasoningMode,
-	isAgenticChatContinuationReasoningMode
-} from './openrouter/reasoning-replay';
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 90_000;
 // Sep 13: 1,270/1,275 retained successful acting responses opened within 5s.
@@ -144,7 +129,6 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 	private readonly maxSseBufferBytes: number;
 	private readonly routeHealth: TurnRouteHealthTracker;
 	private readonly pendingEffects: Pick<AgenticChatPendingEffectsRegistry, 'forTurn'>;
-	private readonly slowStreamHedging: boolean;
 
 	constructor(
 		private readonly ports: OpenRouterClientPorts,
@@ -158,26 +142,9 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			maxTokens?: number;
 			temperature?: number;
 			maxSseBufferBytes?: number;
-			/**
-			 * AGENTIC_CHAT_CONTINUATION_REASONING (audit 2026-10-17 S3). Only the
-			 * acting client takes it; absent or `default` sends today's requests.
-			 */
-			continuationReasoning?: AgenticChatContinuationReasoningMode;
-			/**
-			 * AGENTIC_CHAT_PROVIDER_HEDGING: when the atomic buffer offers it, ask for
-			 * a backup request as soon as a watched acting stream looks stalled
-			 * (watchForSlowStreamHedge). Default on; off restores the 4 s window abort only.
-			 */
-			slowStreamHedging?: boolean;
-			/**
-			 * AGENTIC_CHAT_PROVIDER_INCIDENT_DRAIN: a stalled request is left running
-			 * (bounded) so its incident shows how it ended. Needs `ports.incidents`.
-			 */
-			incidentDrain?: boolean;
 		}
 	) {
 		this.routes = validateRoutes(options.routes);
-		this.slowStreamHedging = options.slowStreamHedging ?? true;
 		this.routeHealth = new TurnRouteHealthTracker(
 			new Set(this.routes.flatMap((route) => [route.model, ...(route.fallbackModels ?? [])]))
 		);
@@ -216,10 +183,6 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		if (typeof fetchImpl !== 'function') {
 			throw new Error('Agentic Chat provider fetch implementation is unavailable');
 		}
-		const continuationReasoning = options.continuationReasoning ?? 'default';
-		if (!isAgenticChatContinuationReasoningMode(continuationReasoning)) {
-			throw new Error('Agentic Chat continuation reasoning mode is invalid');
-		}
 		this.routeSettings = {
 			fetchImpl,
 			httpReferer,
@@ -228,16 +191,13 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			responseHeadersTimeoutMs,
 			maxTokens,
 			temperature,
-			...(continuationReasoning === 'default' ? {} : { continuationReasoning }),
-			...(continuationReasoning === 'replay'
-				? { reasoningReplay: new TurnReasoningReplayStore() }
-				: {}),
+			// A stalled request is left running (bounded) so its incident shows how it ended.
 			...(ports.incidents
 				? {
 						capture: {
 							sink: ports.incidents,
 							lane: 'agentic_chat_worker_stream',
-							drain: options.incidentDrain ?? true,
+							drain: true,
 							fetchImpl
 						}
 					}
@@ -581,12 +541,6 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				active.response.headers.get('x-openrouter-provider')
 			);
 			state.providerSlug = normalizeProviderSlug(state.provider) ?? null;
-			if (
-				this.routeSettings.reasoningReplay &&
-				capturesReasoning(this.routeSettings.continuationReasoning, input, active.route)
-			) {
-				state.reasoningCapture = createReasoningCapture();
-			}
 			if (input.outputBudgetRecovery) {
 				const recovering = active;
 				firstProgressTimer = setTimeout(() => {
@@ -614,7 +568,8 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				stopProgressWatch = watchStreamProgress(active, state, input, watchPolicy);
 			}
 			const requestHedge = input.slowStreamHedge;
-			if (watchPolicy?.kind === 'acting' && requestHedge && this.slowStreamHedging) {
+			// A watched acting stream that looks stalled asks for a backup request at once.
+			if (watchPolicy?.kind === 'acting' && requestHedge) {
 				const hedged = active;
 				const stopAbortWatch = stopProgressWatch;
 				const stopHedgeWatch = watchForSlowStreamHedge(active, state, input, (trigger) => {
@@ -1009,7 +964,6 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					model: routingModel,
 					providerSlug: state.providerSlug
 				};
-				this.recordReplayableReasoning(input, state, active.route);
 				account('success', null, false);
 			}
 			yield {
@@ -1184,25 +1138,6 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		}
 	}
 
-	/**
-	 * Replay variant: a completed tool-call pass that DeepSeek V4.1 itself served
-	 * leaves its reasoning for the rest of this turn, keyed by its tool-call ids.
-	 * In memory only; a pass served by a fallback model is not replayed.
-	 */
-	private recordReplayableReasoning(
-		input: ClientInput,
-		state: StreamState,
-		route: AgenticChatOpenAiCompatibleRouteV1
-	): void {
-		const capture = state.reasoningCapture;
-		const store = this.routeSettings.reasoningReplay;
-		state.reasoningCapture = undefined;
-		if (!capture || !store || !state.toolCallsObservable || state.toolCalls.size === 0) return;
-		if (!isV41FlashModel(state.modelUsed ?? route.model)) return;
-		const completed = completedReasoning(capture, [...state.toolCalls.keys()]);
-		if (completed) store.record(input.turnRunId, completed.toolCallIds, completed.replay);
-	}
-
 	private enqueueUsage(
 		observation: AgenticChatProviderUsageObservationV1,
 		executionGeneration: number
@@ -1234,14 +1169,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		const receipt: JsonObject = {
 			...payload,
 			max_output_tokens: sentMaxTokens(this.routeSettings.maxTokens, input),
-			// What the request actually asked for: off_after_reads turns some
-			// default-effort continuations off.
-			reasoning_effort:
-				effectiveReasoningEffort(
-					this.routeSettings.continuationReasoning,
-					input,
-					route.model
-				) ?? 'default',
+			reasoning_effort: input.reasoningEffort ?? 'default',
 			output_budget_recovery: input.outputBudgetRecovery === true
 		};
 		if (eventType === 'provider_attempt_ended') capture?.end(receipt);

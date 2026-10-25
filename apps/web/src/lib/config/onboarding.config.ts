@@ -301,17 +301,17 @@ export const ONBOARDING_V3_CONFIG = {
 		{
 			id: 'high',
 			label: 'This is for work or clients — it matters a lot',
-			description: "We'll be extra careful and precise"
+			description: 'Real deadlines and details'
 		},
 		{
 			id: 'medium',
 			label: "It's important to me personally",
-			description: "We'll be supportive and encouraging"
+			description: 'Something you care about getting done'
 		},
 		{
 			id: 'low',
 			label: "It's casual — side projects, hobbies, exploring",
-			description: "We'll keep things relaxed"
+			description: 'No deadlines, no pressure'
 		}
 	],
 

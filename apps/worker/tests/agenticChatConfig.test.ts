@@ -242,30 +242,43 @@ it('keeps shared document evidence off until explicitly enabled', () => {
 	).toBe(true);
 });
 
-it('defaults direct-write receipt text on and allows an explicit opt-out', () => {
-	const load = (value?: string) =>
-		loadAgenticChatConfig({
-			...DEDICATED_PROVIDER_ENV,
-			...(value === undefined ? {} : { AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT: value })
-		}).directWriteReceiptTextEnabled;
-	expect(load()).toBe(true);
-	expect(load('')).toBe(true);
-	expect(load('false')).toBe(false);
-	expect(load('true')).toBe(true);
-	expect(() => load('yes')).toThrow(
-		'AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT must be exactly true or false'
-	);
+// Tasker 136: the soaked kill switches are gone. A value still set on a deployed
+// service (even a malformed one) must neither fail startup nor turn anything off.
+it('ignores the retired kill switches, whatever a deployed service still has set', () => {
+	const retired = {
+		AGENTIC_CHAT_LIVE_TEXT_PREVIEW: 'false',
+		AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT: 'yes',
+		AGENTIC_CHAT_PROVIDER_HEDGING: 'false',
+		AGENTIC_CHAT_CONTEXT_FINDER_BROAD: 'off',
+		AGENTIC_CHAT_PROVIDER_INCIDENT_DRAIN: 'false',
+		AGENTIC_CHAT_CONTEXT_FINDER_CHAT: 'shadow',
+		AGENTIC_CHAT_CONTEXT_FINDER_GLOBAL: 'loud',
+		AGENTIC_CHAT_CONTINUATION_REASONING: 'replay'
+	};
+	const config = loadAgenticChatConfig({ ...DEDICATED_PROVIDER_ENV, ...retired });
+	expect(config).toEqual(loadAgenticChatConfig(DEDICATED_PROVIDER_ENV));
+	for (const key of [
+		'liveTextPreviewEnabled',
+		'directWriteReceiptTextEnabled',
+		'providerHedgingEnabled',
+		'contextFinderBroadEnabled',
+		'providerIncidentDrainEnabled',
+		'contextFinderChat',
+		'contextFinderGlobal',
+		'continuationReasoning'
+	])
+		expect(config).not.toHaveProperty(key);
 });
 
-it('defaults the live text preview on and allows an explicit opt-out', () => {
+it('keeps the incident-capture privacy switch', () => {
 	const load = (value?: string) =>
 		loadAgenticChatConfig({
 			...DEDICATED_PROVIDER_ENV,
-			...(value === undefined ? {} : { AGENTIC_CHAT_LIVE_TEXT_PREVIEW: value })
-		}).liveTextPreviewEnabled;
+			...(value === undefined ? {} : { AGENTIC_CHAT_PROVIDER_INCIDENTS: value })
+		}).providerIncidentsEnabled;
 	expect(load()).toBe(true);
-	expect(load('')).toBe(true);
 	expect(load('false')).toBe(false);
-	expect(load('true')).toBe(true);
-	expect(() => load('on')).toThrow(/exactly true or false/);
+	expect(() => load('off')).toThrow(
+		'AGENTIC_CHAT_PROVIDER_INCIDENTS must be exactly true or false'
+	);
 });

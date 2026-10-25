@@ -266,11 +266,6 @@ export type ProviderTurnStateInit = {
 	/** A distinct reviewer lane exists for this turn. */
 	semanticReviewRequired: boolean;
 	maxProviderRounds: number;
-	/**
-	 * AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT: a simple direct write that fully
-	 * landed closes on ledger receipt text instead of a tool-free model pass.
-	 */
-	directWriteReceiptTextEnabled?: boolean;
 };
 
 type HeldMutationBatch = {
@@ -300,7 +295,6 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	private readonly lease: AgenticChatProviderCapacityLeaseV1;
 	private readonly semanticReviewRequired: boolean;
 	private readonly maxProviderRounds: number;
-	private readonly directWriteReceiptTextEnabled: boolean;
 
 	private released = false;
 	private streamed = false;
@@ -381,7 +375,6 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		this.lease = init.lease;
 		this.semanticReviewRequired = init.semanticReviewRequired;
 		this.maxProviderRounds = init.maxProviderRounds;
-		this.directWriteReceiptTextEnabled = init.directWriteReceiptTextEnabled === true;
 		this.currentRequest = init.baseRequest;
 		this.currentUserMessage = init.executionInput.requestPayload.message;
 		this.attachedAssetIds = collectAttachedProjectAssetIds(
@@ -1210,7 +1203,6 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		calls: readonly NormalizedProviderToolCall[],
 		roundExecutions: readonly FastToolExecution[]
 	): string | null {
-		if (!this.directWriteReceiptTextEnabled) return null;
 		if (this.withheldNonMutationCalls) return null;
 		// The model saw the user's images this turn and may owe a description.
 		if (this.baseRequest.liveVisionRequest) return null;

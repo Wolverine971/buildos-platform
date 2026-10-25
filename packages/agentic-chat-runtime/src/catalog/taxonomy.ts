@@ -133,7 +133,6 @@ export const TOOL_CATEGORIES = {
 	utility: {
 		tools: [
 			'get_field_info',
-			'get_user_profile_overview',
 			'get_workspace_overview',
 			'get_project_overview',
 			'search_user_contacts',

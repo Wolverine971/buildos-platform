@@ -38,6 +38,14 @@ import { cedarCase10CalendarAvailabilityScenario } from './cedar-house/case-10-c
 import { cedarCase11DstValidationScenario } from './cedar-house/case-11-dst-validation.scenario';
 import { cedarCase13ColdRetrievalScenario } from './cedar-house/case-13-cold-retrieval.scenario';
 import { cedarCase14GroundedStatusScenario } from './cedar-house/case-14-grounded-status.scenario';
+// Workspace chat battery (tasker/146). Select with AGENTIC_BATTERY=workspace-chat, or
+// `pnpm agentic:prod-battery --battery=workspace-chat` against production.
+import { workspaceCase01SaveNoteScenario } from './workspace-chat/case-01-save-note.scenario';
+import { workspaceCase02WhatsInWorkspaceScenario } from './workspace-chat/case-02-whats-in-workspace.scenario';
+import { workspaceCase03FileCardScenario } from './workspace-chat/case-03-file-card.scenario';
+import { workspaceCase04ProjectCardScenario } from './workspace-chat/case-04-project-card.scenario';
+import { workspaceCase05BroadOpenerScenario } from './workspace-chat/case-05-broad-opener.scenario';
+import { workspaceCase06ProjectChatStashScenario } from './workspace-chat/case-06-project-chat-stash.scenario';
 
 export const scenarioCatalog: Scenario[] = [
 	documentCreateScenario,
@@ -71,5 +79,11 @@ export const scenarioCatalog: Scenario[] = [
 	cedarCase10CalendarAvailabilityScenario,
 	cedarCase11DstValidationScenario,
 	cedarCase13ColdRetrievalScenario,
-	cedarCase14GroundedStatusScenario
+	cedarCase14GroundedStatusScenario,
+	workspaceCase01SaveNoteScenario,
+	workspaceCase02WhatsInWorkspaceScenario,
+	workspaceCase03FileCardScenario,
+	workspaceCase04ProjectCardScenario,
+	workspaceCase05BroadOpenerScenario,
+	workspaceCase06ProjectChatStashScenario
 ];

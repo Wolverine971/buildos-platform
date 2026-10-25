@@ -6,8 +6,8 @@
 // focused projects on top, so the UI shows "Looking in: …" before the answer starts.
 // Design: docs/architecture/JEV_GLOBAL_CONTEXT_2026-09-23.md.
 //
-// Modes: shadow publishes a hidden receipt; chips publishes visible chips; on also injects the
-// block. Every failure is fail-open: the turn keeps today's global prompt.
+// The chips are visible and the block is injected (the `shadow` and `chips` measurement modes
+// were retired with tasker 136). Every failure is fail-open: the turn keeps the plain global prompt.
 import {
 	type ContextFinderDecider,
 	type WorkspaceContextV1,
@@ -20,7 +20,6 @@ import {
 } from '@buildos/agentic-chat-runtime/context-finder';
 import {
 	type AgenticChatContextFinderPort,
-	type ChatContextFinderMode,
 	type ChatContextFinding,
 	allowsContextFinderUser,
 	contextSelectionTransitionId,
@@ -44,8 +43,6 @@ const MAX_CHIPS = 30;
 export class ChatWorkspaceFinder implements AgenticChatContextFinderPort {
 	constructor(
 		private readonly options: {
-			mode: Exclude<ChatContextFinderMode, 'off'>;
-			/** Only these users are ranked; an empty list ranks nobody. */
 			/** Allowlisted ids, or 'all'. An empty list ranks nobody. */
 			userIds: readonly string[] | 'all';
 			/** Service client: access is decided by the accessible-projects RPC in the loader. */
@@ -96,11 +93,9 @@ export class ChatWorkspaceFinder implements AgenticChatContextFinderPort {
 			}
 		);
 		const context = outcome.ok ? outcome.value : null;
-		const block =
-			context && this.options.mode === 'on' ? renderWorkspaceContextBlock(context) : null;
+		const block = context ? renderWorkspaceContextBlock(context) : null;
 		const payload = buildWorkspaceSelectionPayload({
 			request,
-			mode: this.options.mode,
 			context,
 			injected: block !== null,
 			failure: outcome.ok ? null : outcome.failure,
@@ -151,7 +146,6 @@ export async function loadPreviousFocus(
  */
 export function buildWorkspaceSelectionPayload(input: {
 	request: AgenticChatTurnProviderRequestV1;
-	mode: Exclude<ChatContextFinderMode, 'off'>;
 	context: WorkspaceContextV1 | null;
 	injected: boolean;
 	failure: string | null;
@@ -194,9 +188,10 @@ export function buildWorkspaceSelectionPayload(input: {
 	return {
 		type: 'context_selection',
 		version: 1,
-		mode: input.mode,
+		// Kept in the payload for the shared contract, which still reads older shadow/chips rows.
+		mode: 'on',
 		// "Needs no saved work" turns are receipts only: nothing to show.
-		visible: input.mode !== 'shadow' && context?.status !== 'skipped',
+		visible: context?.status !== 'skipped',
 		injected: input.injected,
 		status,
 		failure: input.failure,
@@ -234,14 +229,10 @@ export function buildWorkspaceSelectionPayload(input: {
 
 /** Project turns go to the project finder, global turns to the workspace finder. */
 export function composeContextFinders(
-	project: AgenticChatContextFinderPort | undefined,
-	workspace: AgenticChatContextFinderPort | undefined
-): AgenticChatContextFinderPort | undefined {
-	if (!project && !workspace) return undefined;
+	project: AgenticChatContextFinderPort,
+	workspace: AgenticChatContextFinderPort
+): AgenticChatContextFinderPort {
 	return {
-		find: async (request) =>
-			request.projectId
-				? ((await project?.find(request)) ?? null)
-				: ((await workspace?.find(request)) ?? null)
+		find: (request) => (request.projectId ? project.find(request) : workspace.find(request))
 	};
 }

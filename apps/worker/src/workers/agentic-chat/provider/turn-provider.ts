@@ -162,12 +162,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		private readonly maxProviderRounds = MAX_PROVIDER_PASSES_PER_TURN,
 		private readonly mutationCapabilities: Readonly<
 			Partial<AgenticChatProviderMutationCapabilitiesV1>
-		> = {},
-		/**
-		 * AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT: close a simple direct write that
-		 * fully landed on ledger receipt text instead of a tool-free model pass.
-		 */
-		private readonly directWriteReceiptTextEnabled = false
+		> = {}
 	) {
 		if (
 			!Number.isSafeInteger(retryableFailureCooldownMs) ||
@@ -225,8 +220,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			executionInput,
 			lease,
 			semanticReviewRequired: Boolean(this.ports.semanticReviewer),
-			maxProviderRounds: this.maxProviderRounds,
-			directWriteReceiptTextEnabled: this.directWriteReceiptTextEnabled
+			maxProviderRounds: this.maxProviderRounds
 		});
 		return {
 			promptSnapshot,

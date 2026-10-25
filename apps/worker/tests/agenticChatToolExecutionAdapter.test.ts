@@ -399,10 +399,6 @@ describe('AgenticChatToolExecutionAdapter', () => {
 		// Retired with the same decision; the worker never executed a real shift.
 		expect(AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1).not.toContain('change_chat_context');
 		expect(isAgenticChatProductionReadToolNameV1('change_chat_context')).toBe(false);
-		// Deliberately absent from the shared allowlist.
-		expect(AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1).not.toContain(
-			'get_user_profile_overview'
-		);
 		expect(isAgenticChatProductionReadToolNameV1('get_project_overview')).toBe(true);
 		expect(isAgenticChatProductionReadToolNameV1('web_search')).toBe(true);
 		expect(isAgenticChatProductionReadToolNameV1('web_visit')).toBe(true);

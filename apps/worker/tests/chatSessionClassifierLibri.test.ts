@@ -34,17 +34,6 @@ vi.mock('../src/workers/chat/chatSessionActivityProcessor', () => ({
 	})
 }));
 
-vi.mock('../src/workers/chat/profileSignalProcessor', () => ({
-	processProfileSignals: vi.fn().mockResolvedValue({
-		skipped: true,
-		reason: 'test',
-		extractedCount: 0,
-		insertedCount: 0,
-		mergedCount: 0,
-		needsReviewCount: 0
-	})
-}));
-
 vi.mock('../src/workers/chat/contactSignalProcessor', () => ({
 	processContactSignals: vi.fn().mockResolvedValue({
 		skipped: true,

@@ -71,8 +71,8 @@ export function startProviderPass<T>(pass: AsyncGenerator<T>): AsyncGenerator<T>
 
 /**
  * The closing answer for a simple direct write that fully landed, rendered
- * from the durable write ledger instead of a tool-free model pass
- * (AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT). It emits what a successful
+ * from the durable write ledger instead of a tool-free model pass. It emits
+ * what a successful
  * synthesis pass emits — one text delta, then `finish` carrying the usage
  * already spent — with no provider call.
  */

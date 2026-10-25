@@ -32,6 +32,7 @@ import {
 	type AgenticChatProviderFailedToolSynthesisInputV1,
 	type AgenticChatProviderMutationSynthesisInputV1,
 	type AgenticChatProviderReadSynthesisInputV1,
+	type AgenticChatPreparedProviderInvocationV1,
 	type AgenticChatProviderStepV1,
 	type AgenticChatTurnProviderClientEventV1,
 	type AgenticChatTurnProviderClientPortV1,
@@ -1116,11 +1117,11 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				})
 			)
 		).resolves.toEqual([
-			{ type: 'text_delta', text: 'Created the launch email task.' },
+			// The landed write closes on its ledger receipt: no closing model pass.
+			{ type: 'text_delta', text: 'Done — created task “Send the launch email”.' },
 			{ type: 'finish', finishedReason: 'stop', usage: null }
 		]);
-		expect(client.stream).toHaveBeenCalledTimes(2);
-		expect(client.stream.mock.calls[1]?.[0]).toMatchObject({ tools: [], toolChoice: 'none' });
+		expect(client.stream).toHaveBeenCalledTimes(1);
 		expect(semanticReviewer.stream).not.toHaveBeenCalled();
 	});
 
@@ -4732,7 +4733,10 @@ describe('AgenticChatTurnProviderAdapter', () => {
 					: mode === 'stray_tool'
 						? providerReadRound('stray', {}, 'update_onto_task')
 						: [{ type: 'done', finishedReason: 'stop' }];
+			// The turn read before it wrote, so the closing pass still runs (a landed
+			// simple write with no read closes on its receipt instead).
 			const streams = [
+				providerReadRound('read-1', { project_id: 'project-1' }),
 				providerReadRound('write-1', argumentsValue, 'update_onto_task'),
 				failure,
 				failure
@@ -4748,23 +4752,29 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			const invocation = await new AgenticChatTurnProviderAdapter(
 				{ client, capacity },
 				2_000,
-				3,
+				4,
 				{ updateOntoTask: true }
 			).prepare({
 				executionInput: executionInputWithReadSurface(
-					[updateTaskToolDefinition()],
-					['update_onto_task']
+					[readToolDefinition('get_project_overview'), updateTaskToolDefinition()],
+					['get_project_overview', 'update_onto_task']
 				),
 				processingToken: PROCESSING_TOKEN,
 				signal: new AbortController().signal
 			});
-			const first = await collect(invocation.stream());
+			await collect(invocation.stream());
+			const first = await collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [durableReadFeedback('read-1', { project_id: 'project-1' })]
+				})
+			);
 			const mutation = first.find((step) => step.type === 'mutating_tool');
 			if (!mutation || mutation.type !== 'mutating_tool')
 				throw new Error('Expected mutation');
 			const final = await collect(
 				invocation.continueWithToolResults!({
-					round: 2,
+					round: 3,
 					results: [
 						durableMutationFeedback({
 							providerToolCallId: 'write-1',
@@ -5804,9 +5814,11 @@ describe('turn-executor audit 2026-09-02 provider fixes', () => {
 				})
 			)
 		).resolves.toEqual([
-			{ type: 'text_delta', text: 'Pushed it to Friday.' },
+			// The landed write closes on its ledger receipt: no closing model pass.
+			{ type: 'text_delta', text: 'Done — updated the task.' },
 			{ type: 'finish', finishedReason: 'stop', usage: null }
 		]);
+		expect(client.stream).toHaveBeenCalledTimes(1);
 	});
 
 	it('executes three resolved single-target updates as one direct batch', async () => {
@@ -7828,11 +7840,13 @@ describe('SHA-bound mutation batch approval', () => {
 	it('never executes a batch this turn already executed, even when the model proposes it again', async () => {
 		// 2026-09-22 gate, case 1: after the reviewer struck a follow-up goal, the
 		// repair pass re-proposed the original create batch, the reviewer approved
-		// the identical digest, and the project existed twice.
+		// the identical digest, and the project existed twice. The request still
+		// owes its dependency link, so the turn goes on after the batch lands.
+		const owed = requestChecklist(true);
 		const client = clientWithRounds([proposedBatchRound(), proposedBatchRound()]);
 		const semanticReviewer = clientWithRounds([
-			reviewerApproval(expectedBatchSha()),
-			reviewerApproval(expectedBatchSha())
+			reviewerApproval(expectedBatchSha(), owed),
+			reviewerApproval(expectedBatchSha(), owed)
 		]);
 		const invocation = await batchProvider(client, semanticReviewer);
 		await collect(invocation.stream());
@@ -7847,7 +7861,7 @@ describe('SHA-bound mutation batch approval', () => {
 							reason: 'The user asked for exactly these four tasks.',
 							batch_sha256: expectedBatchSha(),
 							reference_candidates: [],
-							request_expectation: requestChecklist()
+							request_expectation: owed
 						},
 						{
 							status: 'mutation_batch_review_approved',
@@ -7867,16 +7881,20 @@ describe('SHA-bound mutation batch approval', () => {
 			})
 		);
 		// The second proposal carried the same digest: no review, no execution,
-		// and the user gets the receipts once.
+		// and the user gets the receipts once, with the link still owed named.
 		expect(afterExecution.some((step) => step.type === 'mutating_tool')).toBe(false);
 		expect(afterExecution.some((step) => step.type === 'read_tool')).toBe(false);
-		expect(
-			afterExecution
-				.filter((step) => step.type === 'text_delta')
-				.map((step) => (step as { text: string }).text)
-				.join('')
-		).toMatch(/already saved earlier in this turn/);
-		expect(afterExecution.at(-1)).toMatchObject({ type: 'finish', finishedReason: 'stop' });
+		const text = afterExecution
+			.filter((step) => step.type === 'text_delta')
+			.map((step) => (step as { text: string }).text)
+			.join('');
+		expect(text).toMatch(/I stopped a repeated attempt/);
+		expect(text.match(/Created task: Permit/g)).toHaveLength(1);
+		expect(text).toContain('Cabinets depends on Permit');
+		expect(afterExecution.at(-1)).toMatchObject({
+			type: 'finish',
+			finishedReason: 'mutation_unfulfilled'
+		});
 		expect(semanticReviewer.stream).toHaveBeenCalledTimes(1);
 		expect(client.stream).toHaveBeenCalledTimes(2);
 	});
@@ -8820,6 +8838,21 @@ describe('SHA-bound mutation batch approval', () => {
 				return feedback;
 			});
 	}
+	/**
+	 * A turn that read the project before proposing its batch. A landed batch then
+	 * gets a model pass (the model may owe an answer about the read) instead of
+	 * closing on its "Done" receipt, which is where a model can propose again.
+	 */
+	const firstRead = () => providerReadRound('first-read', { project_id: PROJECT_ID });
+	async function readThenReview(invocation: AgenticChatPreparedProviderInvocationV1) {
+		await collect(invocation.stream());
+		return collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [durableReadFeedback('first-read', { project_id: PROJECT_ID })]
+			})
+		);
+	}
 	it('credits a freshly verified preexisting archive without rewriting it or retrying a complete request', async () => {
 		const archivedId = 'b0000000-0000-4000-8000-000000000001';
 		const checklist = requestChecklist();
@@ -8870,8 +8903,16 @@ describe('SHA-bound mutation batch approval', () => {
 		const end = await collect(
 			invocation.continueWithToolResults!({ round: 3, results: successfulWrites(writes) })
 		);
+		// The fulfilled request closes on its receipt, crediting the verified archive.
+		const text = end
+			.filter((s) => s.type === 'text_delta')
+			.map((s) => s.text)
+			.join('');
+		expect(text).toContain('Created task “Inspection”');
+		expect(text).toContain('Already satisfied before this turn (verified; no new write)');
+		expect(text).toContain('Old task');
 		expect(end.at(-1)).toMatchObject({ finishedReason: 'stop' });
-		expect(client.stream).toHaveBeenCalledTimes(2);
+		expect(client.stream).toHaveBeenCalledTimes(1);
 		expect(reviewer.stream).toHaveBeenCalledTimes(1);
 	});
 	it('names pending work as well as verified no-ops when no new write succeeds', async () => {
@@ -8951,7 +8992,10 @@ describe('SHA-bound mutation batch approval', () => {
 	it.each([['Inspection', 'Permit', 'Rough-in', 'Cabinets'], ['Permit']])(
 		'does not recreate a reordered batch or subset: %j',
 		async (...titles) => {
+			// Read first (readThenReview): the model gets a pass after the batch lands
+			// and proposes the saved creates again.
 			const client = clientWithRounds([
+				firstRead(),
 				proposedBatchRound(),
 				replayProposal(
 					titles.map((title) => ({
@@ -8963,29 +9007,36 @@ describe('SHA-bound mutation batch approval', () => {
 			const reviewer = approvingReviewer();
 			const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
 			const invocation = await batchProvider(client, reviewer, capacity);
-			const review = await collect(invocation.stream());
+			const review = await readThenReview(invocation);
 			const writes = await collect(
 				invocation.continueWithToolResults!({
-					round: 2,
+					round: 3,
 					results: [approvalFeedback(review)]
 				})
 			);
 			const end = await collect(
-				invocation.continueWithToolResults!({ round: 3, results: successfulWrites(writes) })
+				invocation.continueWithToolResults!({ round: 4, results: successfulWrites(writes) })
 			);
 			expect(writes.filter((step) => step.type === 'mutating_tool')).toHaveLength(4);
+			expect(
+				end
+					.filter((step) => step.type === 'text_delta')
+					.map((step) => step.text)
+					.join('')
+			).toMatch(/already saved earlier in this turn, so nothing was repeated/);
 			expect(
 				end.some((step) => step.type === 'mutating_tool' || step.type === 'read_tool')
 			).toBe(false);
 			expect(end.at(-1)).toMatchObject({ type: 'finish', finishedReason: 'stop' });
 			expect(reviewer.stream).toHaveBeenCalledTimes(1);
-			expect(client.stream).toHaveBeenCalledTimes(2);
+			expect(client.stream).toHaveBeenCalledTimes(3);
 			expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 		}
 	);
 
 	it('preserves a new read bundled with an otherwise identical already-saved batch', async () => {
 		const client = clientWithRounds([
+			firstRead(),
 			proposedBatchRound(),
 			replayProposal([
 				...['Permit', 'Cabinets', 'Rough-in', 'Inspection'].map((title) => ({
@@ -9002,12 +9053,12 @@ describe('SHA-bound mutation batch approval', () => {
 		]);
 		const reviewer = approvingReviewer();
 		const invocation = await batchProvider(client, reviewer);
-		const review = await collect(invocation.stream());
+		const review = await readThenReview(invocation);
 		const writes = await collect(
-			invocation.continueWithToolResults!({ round: 2, results: [approvalFeedback(review)] })
+			invocation.continueWithToolResults!({ round: 3, results: [approvalFeedback(review)] })
 		);
 		const reads = await collect(
-			invocation.continueWithToolResults!({ round: 3, results: successfulWrites(writes) })
+			invocation.continueWithToolResults!({ round: 4, results: successfulWrites(writes) })
 		);
 		expect(reads.some((step) => step.type === 'mutating_tool')).toBe(false);
 		expect(reads.filter((step) => step.type === 'read_tool' && step.validationFailure)).toEqual(
@@ -9018,7 +9069,7 @@ describe('SHA-bound mutation batch approval', () => {
 		expect(read.toolName).toBe('get_project_overview');
 		const end = await collect(
 			invocation.continueWithToolResults!({
-				round: 4,
+				round: 5,
 				results: [
 					durableReadFeedbackFor(read.providerToolCallId, read.toolName, read.arguments, {
 						tasks: []
@@ -9028,7 +9079,7 @@ describe('SHA-bound mutation batch approval', () => {
 		);
 		expect(end.at(-1)).toMatchObject({ type: 'finish', finishedReason: 'stop' });
 		expect(reviewer.stream).toHaveBeenCalledTimes(1);
-		expect(client.stream).toHaveBeenCalledTimes(4);
+		expect(client.stream).toHaveBeenCalledTimes(5);
 	});
 
 	it('does not count one saved item as multiple newly requested creates', async () => {
@@ -9039,28 +9090,29 @@ describe('SHA-bound mutation batch approval', () => {
 					args: { project_id: PROJECT_ID, title }
 				}))
 			);
-		const client = clientWithRounds([proposedBatchRound(), copies(), copies()]);
+		const client = clientWithRounds([firstRead(), proposedBatchRound(), copies(), copies()]);
 		const reviewer = approvingReviewer();
 		const invocation = await batchProvider(client, reviewer);
-		const review = await collect(invocation.stream());
+		const review = await readThenReview(invocation);
 		const writes = await collect(
-			invocation.continueWithToolResults!({ round: 2, results: [approvalFeedback(review)] })
+			invocation.continueWithToolResults!({ round: 3, results: [approvalFeedback(review)] })
 		);
 		const end = await collect(
-			invocation.continueWithToolResults!({ round: 3, results: successfulWrites(writes) })
+			invocation.continueWithToolResults!({ round: 4, results: successfulWrites(writes) })
 		);
 		expect(end.some((step) => step.type === 'mutating_tool')).toBe(false);
 		expect(end.at(-1)).toMatchObject({
 			type: 'finish',
 			finishedReason: 'mutation_unfulfilled'
 		});
-		expect(client.stream).toHaveBeenCalledTimes(3);
+		expect(client.stream).toHaveBeenCalledTimes(4);
 		expect(reviewer.stream).toHaveBeenCalledTimes(1);
 	});
 
 	it('bounds the correction of reworded creates and ends honestly if they are repeated again', async () => {
 		const changed = { description: 'Reworded after the first save' };
 		const client = clientWithRounds([
+			firstRead(),
 			proposedBatchRound(),
 			proposedBatchRound(changed),
 			proposedBatchRound(changed)
@@ -9068,12 +9120,12 @@ describe('SHA-bound mutation batch approval', () => {
 		const reviewer = approvingReviewer();
 		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
 		const invocation = await batchProvider(client, reviewer, capacity);
-		const review = await collect(invocation.stream());
+		const review = await readThenReview(invocation);
 		const writes = await collect(
-			invocation.continueWithToolResults!({ round: 2, results: [approvalFeedback(review)] })
+			invocation.continueWithToolResults!({ round: 3, results: [approvalFeedback(review)] })
 		);
 		const end = await collect(
-			invocation.continueWithToolResults!({ round: 3, results: successfulWrites(writes) })
+			invocation.continueWithToolResults!({ round: 4, results: successfulWrites(writes) })
 		);
 		expect(end.some((step) => step.type === 'mutating_tool' || step.type === 'read_tool')).toBe(
 			false
@@ -9089,8 +9141,8 @@ describe('SHA-bound mutation batch approval', () => {
 				.join('')
 		).toContain('new or changed actions');
 		expect(reviewer.stream).toHaveBeenCalledTimes(1);
-		expect(client.stream).toHaveBeenCalledTimes(3);
-		const repair = client.stream.mock.calls[2]![0];
+		expect(client.stream).toHaveBeenCalledTimes(4);
+		const repair = client.stream.mock.calls[3]![0];
 		expect(repair).toMatchObject({ passRole: 'repair', toolChoice: 'auto' });
 		expect(repair.messages.map((message) => message.content).join('\n')).toContain(
 			'a0000000-0000-4000-8000-000000000001'
@@ -9121,7 +9173,9 @@ describe('SHA-bound mutation batch approval', () => {
 				{ type: 'done', finishedReason: 'stop' }
 			]
 		]);
-		const reviewer = approvingReviewer();
+		// The user asked for the tasks and their dependency: the link is still owed
+		// after the creates land.
+		const reviewer = approvingReviewer(undefined, requestChecklist(true));
 		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
 		const invocation = await batchProvider(client, reviewer, capacity);
 		const review = await collect(invocation.stream());
@@ -9218,7 +9272,7 @@ describe('SHA-bound mutation batch approval', () => {
 		// Reproduce Case 2's exact boundary: the create stage is already durable,
 		// then the reviewer semantically approves the link stage but mistypes its
 		// digest once. The bounded retry must preserve the prior receipts.
-		const reviewer = approvingReviewer(2);
+		const reviewer = approvingReviewer(2, requestChecklist(true));
 		const invocation = await batchProvider(client, reviewer);
 		const firstReview = await collect(invocation.stream());
 		expect(firstReview.some((step) => step.type === 'text_delta')).toBe(false);
@@ -9510,7 +9564,9 @@ describe('SHA-bound mutation batch approval', () => {
 	it.each(['Nothing more to propose:', 'Creating the tasks was completed successfully.'])(
 		'does not trigger a wording-based repair after the complete checklist is satisfied: %s',
 		async (answer) => {
+			// Read first, so the model writes the closing answer (readThenReview).
 			const client = clientWithRounds([
+				firstRead(),
 				proposedBatchRound(),
 				[
 					{ type: 'text', content: answer },
@@ -9519,19 +9575,19 @@ describe('SHA-bound mutation batch approval', () => {
 			]);
 			const reviewer = approvingReviewer();
 			const invocation = await batchProvider(client, reviewer);
-			const review = await collect(invocation.stream());
+			const review = await readThenReview(invocation);
 			const writes = await collect(
 				invocation.continueWithToolResults!({
-					round: 2,
+					round: 3,
 					results: [approvalFeedback(review)]
 				})
 			);
 			const final = await collect(
-				invocation.continueWithToolResults!({ round: 3, results: successfulWrites(writes) })
+				invocation.continueWithToolResults!({ round: 4, results: successfulWrites(writes) })
 			);
 			expect(final).toContainEqual({ type: 'text_delta', text: answer });
 			expect(final.at(-1)).toMatchObject({ finishedReason: 'stop' });
-			expect(client.stream).toHaveBeenCalledTimes(2);
+			expect(client.stream).toHaveBeenCalledTimes(3);
 			expect(reviewer.stream).toHaveBeenCalledTimes(1);
 		}
 	);
@@ -9582,24 +9638,28 @@ describe('SHA-bound mutation batch approval', () => {
 				{ type: 'text', content: 'Unsafe partial claim.' },
 				{ type: 'done', finishedReason: 'length' }
 			];
+			// With prior writes the turn read first, so the landed batch gets a
+			// closing pass (readThenReview) instead of its receipt.
 			const client = clientWithRounds([
-				...(priorWrites ? [proposedBatchRound()] : []),
+				...(priorWrites ? [firstRead(), proposedBatchRound()] : []),
 				capped,
 				capped
 			]);
 			const reviewer = approvingReviewer();
 			const invocation = await batchProvider(client, reviewer);
-			let steps = await collect(invocation.stream());
+			let steps = priorWrites
+				? await readThenReview(invocation)
+				: await collect(invocation.stream());
 			if (priorWrites) {
 				const writes = await collect(
 					invocation.continueWithToolResults!({
-						round: 2,
+						round: 3,
 						results: [approvalFeedback(steps)]
 					})
 				);
 				steps = await collect(
 					invocation.continueWithToolResults!({
-						round: 3,
+						round: 4,
 						results: successfulWrites(writes)
 					})
 				);
@@ -9615,7 +9675,7 @@ describe('SHA-bound mutation batch approval', () => {
 				type: 'finish',
 				finishedReason: 'output_budget_exhausted'
 			});
-			expect(client.stream).toHaveBeenCalledTimes(priorWrites ? 3 : 2);
+			expect(client.stream).toHaveBeenCalledTimes(priorWrites ? 4 : 2);
 			expect(client.stream.mock.calls.at(-1)![0]).toMatchObject({
 				reasoningEffort: 'none',
 				outputBudgetRecovery: true
@@ -9629,7 +9689,8 @@ describe('SHA-bound mutation batch approval', () => {
 			{ type: 'done', finishedReason: 'length' }
 		];
 		const client = clientWithRounds([capped, proposedBatchRound(), capped]);
-		const reviewer = approvingReviewer();
+		// The dependency link is still owed after the creates, so the turn goes on.
+		const reviewer = approvingReviewer(undefined, requestChecklist(true));
 		const invocation = await batchProvider(client, reviewer);
 		const first = await collect(invocation.stream());
 		expect(
@@ -9669,7 +9730,9 @@ describe('SHA-bound mutation batch approval', () => {
 				reasoningTokens: 7991
 			}
 		};
+		// Read first, so the landed batch gets a closing pass (readThenReview).
 		const client = clientWithRounds([
+			firstRead(),
 			round,
 			[
 				{ type: 'text', content: 'Created the four tasks.' },
@@ -9678,14 +9741,15 @@ describe('SHA-bound mutation batch approval', () => {
 		]);
 		const reviewer = approvingReviewer();
 		const invocation = await batchProvider(client, reviewer);
-		const first = await collect(invocation.stream());
+		const first = await readThenReview(invocation);
 		const writes = await collect(
-			invocation.continueWithToolResults!({ round: 2, results: [approvalFeedback(first)] })
+			invocation.continueWithToolResults!({ round: 3, results: [approvalFeedback(first)] })
 		);
 		await collect(
-			invocation.continueWithToolResults!({ round: 3, results: successfulWrites(writes) })
+			invocation.continueWithToolResults!({ round: 4, results: successfulWrites(writes) })
 		);
-		expect(client.stream.mock.calls[1]![0].reasoningEffort).toBe('none');
+		expect(client.stream).toHaveBeenCalledTimes(3);
+		expect(client.stream.mock.calls[2]![0].reasoningEffort).toBe('none');
 		expect(reviewer.stream.mock.calls[0]![0].reasoningEffort).not.toBe('none');
 	});
 
@@ -9711,9 +9775,10 @@ describe('SHA-bound mutation batch approval', () => {
 			const reviewer = {
 				stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 					decisions += 1;
+					// The approved creates leave the requested dependency link owed.
 					const events =
 						priorWrites && decisions === 1
-							? reviewerApproval(expectedBatchSha())
+							? reviewerApproval(expectedBatchSha(), requestChecklist(true))
 							: providerReadRound(
 									`revision-${decisions}`,
 									{

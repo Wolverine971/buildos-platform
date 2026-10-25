@@ -2,10 +2,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { User } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
-import {
-	seedProfileFromOnboarding,
-	type OnboardingV3SeedData
-} from '$lib/server/onboarding-profile-seed.service';
 import type { UserContext } from '$lib/types/user-context';
 
 type SupabaseClientType = SupabaseClient<Database>;
@@ -192,7 +188,7 @@ export class OnboardingServerService {
 	}
 
 	/**
-	 * V3: Complete onboarding and seed the behavioral profile
+	 * V3: Complete onboarding
 	 */
 	async completeOnboardingV3(
 		userId: string,
@@ -257,22 +253,6 @@ export class OnboardingServerService {
 					contextInsertError
 				);
 			}
-		}
-
-		// 3. Seed behavioral profile (non-fatal)
-		try {
-			await seedProfileFromOnboarding(userId, {
-				intent: onboardingData.intent as OnboardingV3SeedData['intent'],
-				stakes: onboardingData.stakes as OnboardingV3SeedData['stakes'],
-				projectsCreated: onboardingData.projectsCreated,
-				tasksCreated: onboardingData.tasksCreated,
-				goalsCreated: onboardingData.goalsCreated ?? 0,
-				smsEnabled: onboardingData.smsEnabled,
-				emailEnabled: onboardingData.emailEnabled,
-				timeSpentSeconds: onboardingData.timeSpentSeconds
-			});
-		} catch (seedError) {
-			console.error('Failed to seed behavioral profile (non-fatal):', seedError);
 		}
 	}
 

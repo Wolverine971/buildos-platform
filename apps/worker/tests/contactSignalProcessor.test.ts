@@ -1,4 +1,4 @@
-// apps/worker/tests/profileSignalProcessor.test.ts
+// apps/worker/tests/contactSignalProcessor.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 type Row = Record<string, any>;
@@ -85,7 +85,6 @@ vi.mock('../src/lib/services/smart-llm-service', () => ({
 }));
 
 import { processContactSignals } from '../src/workers/chat/contactSignalProcessor';
-import { processProfileSignals } from '../src/workers/chat/profileSignalProcessor';
 
 const MESSAGES = [
 	{
@@ -95,77 +94,6 @@ const MESSAGES = [
 		created_at: '2026-09-01T12:00:00.000Z'
 	}
 ];
-
-describe('processProfileSignals', () => {
-	beforeEach(() => {
-		mocks.seq = 0;
-		mocks.tables = {
-			user_profiles: [
-				{
-					id: 'profile-1',
-					user_id: 'user-1',
-					actor_id: 'actor-1',
-					doc_structure: { version: 1, root: [] },
-					summary: null,
-					safe_summary: null,
-					extraction_enabled: true
-				}
-			]
-		};
-		mocks.getJSONResponse.mockReset();
-		mocks.getJSONResponse.mockImplementation(async (options: { systemPrompt: string }) =>
-			options.systemPrompt.includes('profile summary')
-				? { summary: 'Leads design.', safe_summary: 'Leads design.' }
-				: {
-						signals: [
-							{
-								content: 'Now leads the design team.',
-								category: 'career',
-								confidence: 0.95,
-								is_update: false
-							},
-							{
-								content: 'Stopped working at an agency.',
-								category: 'career',
-								confidence: 0.95,
-								is_update: true
-							}
-						]
-					}
-		);
-	});
-
-	it('routes review on the model is_update flag, not on words in the fact', async () => {
-		const result = await processProfileSignals({
-			sessionId: 'session-1',
-			userId: 'user-1',
-			messages: MESSAGES,
-			classification: {}
-		});
-
-		const fragments = mocks.tables.profile_fragments ?? [];
-		const byContent = (content: string) => fragments.find((row) => row.content === content);
-		// "Now" in a non-update fact no longer forces review; it merges.
-		expect(byContent('Now leads the design team.')?.status).toBe('accepted');
-		expect(byContent('Stopped working at an agency.')?.status).toBe('needs_review');
-		expect(result).toMatchObject({ mergedCount: 1, needsReviewCount: 1 });
-	});
-
-	it('bounds LLM calls with an abort signal so a timeout cancels the paid request', async () => {
-		await processProfileSignals({
-			sessionId: 'session-1',
-			userId: 'user-1',
-			messages: MESSAGES,
-			classification: {}
-		});
-
-		expect(mocks.getJSONResponse).toHaveBeenCalled();
-		for (const [options] of mocks.getJSONResponse.mock.calls) {
-			expect(options.signal).toBeInstanceOf(AbortSignal);
-			expect(options.signal.aborted).toBe(false);
-		}
-	});
-});
 
 describe('processContactSignals', () => {
 	it('bounds extraction with an abort signal so a timeout cancels the paid request', async () => {

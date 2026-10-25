@@ -64,7 +64,6 @@ const FROZEN_TOOL_OPERATION_ROWS_2026_09_04: readonly string[] = Object.freeze([
 	// Chat-only; no external agent-call op exists for it.
 	'get_project_cleanup onto.project.cleanup.get read',
 	'get_project_overview util.project.overview read',
-	'get_user_profile_overview util.profile.overview read',
 	'get_workspace_overview util.workspace.overview read',
 	'link_onto_entities onto.edge.link write',
 	'link_user_contact util.contact.link write',

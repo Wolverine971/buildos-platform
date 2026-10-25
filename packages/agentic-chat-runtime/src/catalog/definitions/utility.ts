@@ -40,41 +40,6 @@ export const UTILITY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 	{
 		type: 'function',
 		function: {
-			name: 'get_user_profile_overview',
-			description:
-				'Preview profile-memory chapters and structure to choose relevant personal context. Use only when personalization is needed; profile memory is not preloaded.',
-			parameters: {
-				type: 'object',
-				properties: {
-					include_doc_structure: {
-						type: 'boolean',
-						default: true,
-						description: 'Include the normalized profile document tree.'
-					},
-					include_chapters: {
-						type: 'boolean',
-						default: true,
-						description: 'Include the chapter overview list.'
-					},
-					include_summaries: {
-						type: 'boolean',
-						default: false,
-						description: 'Include short chapter-summary excerpts.'
-					},
-					limit: {
-						type: 'integer',
-						default: 40,
-						minimum: 1,
-						maximum: 200,
-						description: 'Maximum chapters when include_chapters=true.'
-					}
-				}
-			}
-		}
-	},
-	{
-		type: 'function',
-		function: {
 			name: 'get_workspace_overview',
 			description:
 				'Preferred status read across all projects: entity/collaborator counts, active and blocked work, upcoming events, recent activity. The Workspace is listed apart.',

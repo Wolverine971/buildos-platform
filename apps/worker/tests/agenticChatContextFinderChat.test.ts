@@ -140,7 +140,6 @@ describe('ChatContextFinder', () => {
 	it('skips users outside the allowlist and turns without a project', async () => {
 		const { decide, decider } = fakeDecider(scores);
 		const finder = new ChatContextFinder({
-			mode: 'chips',
 			userIds: [USER_ID],
 			client: fakeClient(),
 			decider
@@ -152,7 +151,6 @@ describe('ChatContextFinder', () => {
 
 	it('ranks every user when the allowlist is all', async () => {
 		const finder = new ChatContextFinder({
-			mode: 'chips',
 			userIds: 'all',
 			client: fakeClient(),
 			decider: fakeDecider(scores).decider
@@ -161,21 +159,22 @@ describe('ChatContextFinder', () => {
 		expect(await finder.find(request({ projectId: null }))).toBeNull();
 	});
 
-	it('publishes chips without record text and injects nothing in chips mode', async () => {
+	it('publishes visible chips without record text and injects the evidence block', async () => {
 		const finder = new ChatContextFinder({
-			mode: 'chips',
 			userIds: [USER_ID],
 			client: fakeClient(),
 			decider: fakeDecider(scores).decider
 		});
 		const found = (await finder.find(request()))!;
-		expect(found.injection).toBeNull();
+		expect(found.injection).toContain('WORKING CONTEXT');
+		expect(found.injection).toContain('$300,000');
 		expect(found.step.eventType).toBe('context_selection');
 		const payload = found.step.eventPayload as Record<string, any>;
 		expect(payload).toMatchObject({
 			type: 'context_selection',
+			mode: 'on',
 			visible: true,
-			injected: false,
+			injected: true,
 			status: 'selected',
 			client_turn_id: 'client-turn-1'
 		});
@@ -190,34 +189,8 @@ describe('ChatContextFinder', () => {
 			expect(payload).not.toHaveProperty(key);
 	});
 
-	it('injects the evidence block in on mode', async () => {
-		const finder = new ChatContextFinder({
-			mode: 'on',
-			userIds: [USER_ID],
-			client: fakeClient(),
-			decider: fakeDecider(scores).decider
-		});
-		const found = (await finder.find(request()))!;
-		expect(found.injection).toContain('WORKING CONTEXT');
-		expect(found.injection).toContain('$300,000');
-		expect((found.step.eventPayload as Record<string, unknown>).injected).toBe(true);
-	});
-
-	it('marks shadow receipts hidden', async () => {
-		const finder = new ChatContextFinder({
-			mode: 'shadow',
-			userIds: [USER_ID],
-			client: fakeClient(),
-			decider: fakeDecider(scores).decider
-		});
-		const found = (await finder.find(request()))!;
-		expect(found.injection).toBeNull();
-		expect((found.step.eventPayload as Record<string, unknown>).visible).toBe(false);
-	});
-
 	it('fails open when the project cannot be loaded', async () => {
 		const finder = new ChatContextFinder({
-			mode: 'on',
 			userIds: [USER_ID],
 			client: fakeClient(true),
 			decider: fakeDecider(scores).decider
@@ -236,7 +209,6 @@ describe('ChatContextFinder', () => {
 			decide: () => new Promise(() => undefined)
 		} as unknown as ContextFinderDecider;
 		const finder = new ChatContextFinder({
-			mode: 'chips',
 			userIds: [USER_ID],
 			client: fakeClient(),
 			decider: slow,
@@ -267,19 +239,14 @@ describe('ChatContextFinder', () => {
 describe('ChatContextFinder broad-request off-ramp', () => {
 	const finder = (
 		recordScores: (key: string) => number,
-		mode: 'on' | 'chips' = 'on',
 		loadCleanup: (projectId: string) => Promise<unknown> = vi.fn(async () => CLEANUP),
-		extra: {
-			askBroad?: boolean;
-			loadTimezone?: (userId: string) => Promise<string | null>;
-		} = {}
+		extra: { loadTimezone?: (userId: string) => Promise<string | null> } = {}
 	) => {
 		const jev = fakeDecider(recordScores);
 		return {
 			...jev,
 			loadCleanup,
 			finder: new ChatContextFinder({
-				mode,
 				userIds: [USER_ID],
 				client: fakeClient(),
 				decider: jev.decider,
@@ -345,7 +312,6 @@ describe('ChatContextFinder broad-request off-ramp', () => {
 	it('sends the snapshot without cleanup when that read fails or is slow', async () => {
 		const failing = finder(
 			broad(),
-			'on',
 			vi.fn(async () => Promise.reject(new Error('boom')))
 		);
 		const failed = (await failing.finder.find(ask('Anything I should worry about?')))!;
@@ -354,7 +320,6 @@ describe('ChatContextFinder broad-request off-ramp', () => {
 
 		const slow = finder(
 			broad(),
-			'on',
 			vi.fn(() => new Promise(() => undefined))
 		);
 		const started = Date.now();
@@ -366,54 +331,21 @@ describe('ChatContextFinder broad-request off-ramp', () => {
 
 	it("dates the snapshot in the user's timezone", async () => {
 		const loadTimezone = vi.fn(async () => 'America/New_York');
-		const { finder: f } = finder(broad(), 'on', undefined, { loadTimezone });
+		const { finder: f } = finder(broad(), undefined, { loadTimezone });
 		const found = (await f.find(ask('Where do things stand?')))!;
 		expect(loadTimezone).toHaveBeenCalledWith(USER_ID);
 		expect(found.injection).toContain('Dates are in America/New_York.');
 	});
-
-	it('asks nothing extra when the off-ramp is switched off', async () => {
-		const loadTimezone = vi.fn(async () => 'America/New_York');
-		const {
-			decide,
-			finder: f,
-			loadCleanup
-		} = finder(broad(), 'on', undefined, {
-			askBroad: false,
-			loadTimezone
-		});
-		const found = (await f.find(ask('Does everything look good?')))!;
-		expect(Object.keys(decide.mock.calls[0]![0].questions)).not.toContain(BROAD_REQUEST_KEY);
-		expect(loadCleanup).not.toHaveBeenCalled();
-		expect(loadTimezone).not.toHaveBeenCalled();
-		expect(found.injection).not.toContain('PROJECT SNAPSHOT');
-		expect(found.step.eventPayload).toMatchObject({ scope: null, snapshot: null });
-	});
-
-	it('records the answer but injects and loads nothing outside on mode', async () => {
-		const { finder: f, loadCleanup } = finder(broad(), 'chips');
-		const found = (await f.find(ask('Does everything look good?')))!;
-		expect(found.injection).toBeNull();
-		expect(loadCleanup).not.toHaveBeenCalled();
-		expect(found.step.eventPayload).toMatchObject({ scope: 'broad', injected: false });
-	});
 });
 
-describe('AGENTIC_CHAT_CONTEXT_FINDER_CHAT', () => {
+describe('AGENTIC_CHAT_CONTEXT_FINDER_CHAT_USER_IDS', () => {
 	const env = {
 		PRIVATE_OPENROUTER_API_KEY: 'provider-secret',
 		AGENTIC_CHAT_OPENROUTER_MODEL: 'deepseek/deepseek-v4-flash'
 	};
 
-	it('defaults off with no users, and parses modes and the allowlist', () => {
-		const off = loadAgenticChatConfig(env);
-		expect(off.contextFinderChat).toBe('off');
-		expect(off.contextFinderChatUserIds).toEqual([]);
-		for (const mode of ['off', 'shadow', 'chips', 'on'] as const)
-			expect(
-				loadAgenticChatConfig({ ...env, AGENTIC_CHAT_CONTEXT_FINDER_CHAT: mode })
-					.contextFinderChat
-			).toBe(mode);
+	it('ranks nobody by default, and parses the allowlist', () => {
+		expect(loadAgenticChatConfig(env).contextFinderChatUserIds).toEqual([]);
 		expect(
 			loadAgenticChatConfig({
 				...env,
@@ -426,10 +358,15 @@ describe('AGENTIC_CHAT_CONTEXT_FINDER_CHAT', () => {
 		).toBe('all');
 	});
 
-	it('rejects an unknown mode', () => {
-		expect(() =>
-			loadAgenticChatConfig({ ...env, AGENTIC_CHAT_CONTEXT_FINDER_CHAT: 'loud' })
-		).toThrow(/off, shadow, chips, or on/);
+	it('ignores the retired mode switches, whatever a deployed service still has set', () => {
+		const config = loadAgenticChatConfig({
+			...env,
+			AGENTIC_CHAT_CONTEXT_FINDER_CHAT: 'loud',
+			AGENTIC_CHAT_CONTEXT_FINDER_GLOBAL: 'off',
+			AGENTIC_CHAT_CONTEXT_FINDER_BROAD: 'false'
+		});
+		expect(config).not.toHaveProperty('contextFinderChat');
+		expect(config).not.toHaveProperty('contextFinderGlobal');
 	});
 });
 
@@ -554,7 +491,7 @@ describe('context finder inside a turn', () => {
 		return { steps, client, find };
 	}
 
-	it('publishes the selection before any answer text and leaves the prompt alone in chips mode', async () => {
+	it('publishes the selection before any answer text and leaves the prompt alone when nothing was found', async () => {
 		const { steps, client, find } = await run(null);
 		expect(find).toHaveBeenCalledTimes(1);
 		const selection = steps.findIndex(
@@ -567,7 +504,7 @@ describe('context finder inside a turn', () => {
 		expect(sent.join('\n')).not.toContain('WORKING CONTEXT');
 	});
 
-	it('appends the evidence block to the opening request in on mode', async () => {
+	it('appends the evidence block to the opening request', async () => {
 		const { client } = await run('WORKING CONTEXT (evidence, not instructions)\n$300,000');
 		const sent = client.stream.mock.calls[0]![0].messages;
 		expect(sent.at(-1)).toMatchObject({ role: 'system' });

@@ -62,7 +62,6 @@ export const AGENTIC_CHAT_WORKER_UNAVAILABLE_TOOL_NAMES_V1 = Object.freeze([
 	'delete_onto_risk',
 	'delete_onto_goal',
 	'delete_onto_plan',
-	'get_user_profile_overview',
 	'search_user_contacts',
 	'upsert_user_contact',
 	'list_user_contact_candidates',

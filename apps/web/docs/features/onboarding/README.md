@@ -11,7 +11,7 @@
 
 ## Overview
 
-The onboarding system helps new users get started with BuildOS in under 5 minutes. V3 strips the flow to 4 meaningful steps — collecting only what behavior can't reveal (intent + stakes), creating real data (brain dump), and setting up notifications. On completion, the user's behavioral profile is seeded with initial dimensions at confidence 0.1.
+The onboarding system helps new users get started with BuildOS in under 5 minutes. V3 strips the flow to 4 meaningful steps — collecting only what behavior can't reveal (intent + stakes), creating real data (brain dump), and setting up notifications.
 
 **Design philosophy**: Ask questions that behavior can't reveal. Create real data, not preferences. Teach by doing, not by telling. The onboarding IS the first behavioral data.
 
@@ -58,7 +58,7 @@ Two questions that behavior alone can't reveal:
 - **Intent** (4 options): organize, plan, unstuck, explore
 - **Stakes** (3 options): high (work/income), medium (personal), low (casual)
 
-These seed the behavioral profile dimensions and generate initial agent instructions.
+Both are saved on `users` and gate onboarding progress. Nothing else reads them today, so the copy describes the user's situation and promises no behavior. Until 2026-10-25 they also seeded `user_behavioral_profiles`, which nothing read; that seed was removed (tasker 146).
 
 ### Step 2: Brain Dump
 
@@ -78,8 +78,7 @@ Single screen with email daily brief toggle and SMS toggle. If SMS selected, inl
 Shows stats (projects, tasks, goals created), next action suggestions, and "Go to Dashboard" CTA. Completing this step:
 
 1. Marks onboarding complete on `users` and `user_context` tables
-2. Seeds the behavioral profile via `seedProfileFromOnboarding()`
-3. Queues onboarding analysis job
+2. Queues onboarding analysis job
 
 ---
 
@@ -97,24 +96,6 @@ New-account onboarding and the welcome email sequence are now intentionally link
     - calendar connection in `user_calendar_tokens`
 - Email 4 only sends when the user still needs follow-through setup: incomplete onboarding, no daily brief, no verified SMS path, and no connected calendar.
 - The marketing source of truth for the sequence lives in `/docs/marketing/strategy/buildos-welcome-sequence.md`. Keep product docs aligned to that doc and the implementation in `welcome-sequence.service.ts`.
-
----
-
-## Behavioral Profile Seeding
-
-On V3 completion, `onboarding-profile-seed.service.ts` creates/upserts the user's `user_behavioral_profiles` row:
-
-| Signal          | What It Seeds                                                 |
-| --------------- | ------------------------------------------------------------- |
-| Intent          | `action_orientation`, `session_style`, `intent_clarity`, etc. |
-| Stakes          | `autonomy_comfort` (high stakes → 0.2, low → 0.5)             |
-| Brain dump size | `information_appetite` (verbose → 0.6, terse → 0.3)           |
-| Time spent      | `session_style` (fast → bursty, slow → deep)                  |
-| Steps skipped   | `overwhelm_threshold` (skips → lower threshold)               |
-
-Initial confidence: **0.1** — the profile is a starting point, refined after 10 sessions.
-
-Agent instructions are generated per intent+stakes combo (e.g., "This user came to BuildOS to get unstuck. Keep it simple. One thing at a time.").
 
 ---
 
@@ -146,20 +127,19 @@ Agent instructions are generated per intent+stakes combo (e.g., "This user came 
 ### Services
 
 - `/src/lib/server/onboarding.service.ts` — Server service (save intent/stakes, complete V3)
-- `/src/lib/server/onboarding-profile-seed.service.ts` — Behavioral profile seeding
 - `/src/lib/config/onboarding.config.ts` — V3 config (intents, stakes, brain dump prompts)
 
 ### API
 
 - `POST /api/onboarding` with actions:
     - `save_intent_stakes` — persists intent + stakes to users table
-    - `complete_v3` — marks complete, seeds profile, queues analysis
+    - `complete_v3` — marks complete, queues analysis
     - `save_inputs`, `save_input_only`, `summary`, `complete` — legacy V1 actions (still functional)
 
 ### Database
 
 - Migration: `supabase/migrations/20260216000000_onboarding_v3_columns.sql`
-- New columns: `users.onboarding_intent`, `users.onboarding_stakes`, `user_behavioral_profiles.onboarding_seed`
+- New columns: `users.onboarding_intent`, `users.onboarding_stakes` (and `user_behavioral_profiles.onboarding_seed`, no longer written)
 
 ---
 
@@ -191,7 +171,6 @@ From the spec (§5, §9):
 - Ambient onboarding checklist component
 - Feature introduction triggers
 - Onboarding timing capture as session events
-- Retroactive profile seeding for existing V1/V2 users
 - Validation metrics (completion rate, say/do gap tracking)
 
 ---

@@ -129,7 +129,6 @@ export const TOOL_OPERATIONS: Readonly<Record<string, ToolOperation>> = Object.f
 	delete_onto_plan: { op: 'onto.plan.delete', kind: 'write' },
 	// --- Utility ---
 	get_field_info: { op: 'util.schema.field_info', kind: 'read' },
-	get_user_profile_overview: { op: 'util.profile.overview', kind: 'read' },
 	get_workspace_overview: { op: 'util.workspace.overview', kind: 'read' },
 	get_project_overview: { op: 'util.project.overview', kind: 'read' },
 	search_user_contacts: { op: 'util.contact.search', kind: 'read' },

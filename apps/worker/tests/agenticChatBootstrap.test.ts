@@ -1,6 +1,5 @@
 // apps/worker/tests/agenticChatBootstrap.test.ts
 import { describe, expect, it, vi } from 'vitest';
-import { createAgenticChatCompositionRoot } from '../src/workers/agentic-chat/host/composition-root';
 import type { AgenticChatWorkerCapacityEvidenceV1 } from '../src/workers/agentic-chat/host/capacity';
 import type { AgenticChatConsumerRuntimeHealth } from '../src/workers/agentic-chat/host/consumer-runtime';
 import {
@@ -628,8 +627,6 @@ describe('summarizeAgenticChatEffectiveSettingsV1', () => {
 	it('reports the models and switches the worker runs with, never secrets or user ids', () => {
 		const config = loadAgenticChatConfig({
 			...environment(),
-			AGENTIC_CHAT_LIVE_TEXT_PREVIEW: 'true',
-			AGENTIC_CHAT_CONTEXT_FINDER_CHAT: 'on',
 			AGENTIC_CHAT_CONTEXT_FINDER_CHAT_USER_IDS:
 				'11111111-1111-4111-8111-111111111111,22222222-2222-4222-8222-222222222222'
 		});
@@ -646,15 +643,24 @@ describe('summarizeAgenticChatEffectiveSettingsV1', () => {
 				fallbackModels: [...reviewerRoute.fallbackModels!]
 			},
 			switches: {
-				liveTextPreview: true,
-				directWriteReceiptText: true,
-				providerHedging: true,
-				contextFinderBroad: true,
-				contextFinderChat: 'on',
+				jevToolSelection: 'on',
+				providerIncidents: true,
 				contextFinderChatUsers: 2
 			},
 			limits: { maxToolRounds: 16, maxToolCalls: 40 }
 		});
+		// Retired with tasker 136: always on, so no longer a switch to report.
+		for (const key of [
+			'liveTextPreview',
+			'directWriteReceiptText',
+			'providerHedging',
+			'contextFinderBroad',
+			'providerIncidentDrain',
+			'continuationReasoning',
+			'contextFinderChat',
+			'contextFinderGlobal'
+		])
+			expect(settings.switches).not.toHaveProperty(key);
 		const serialized = JSON.stringify(settings);
 		expect(serialized).not.toContain('provider-secret');
 		expect(serialized).not.toContain('11111111-1111-4111-8111-111111111111');
@@ -807,17 +813,5 @@ describe('summarizeAgenticChatCalendarCredentialsV1', () => {
 		} finally {
 			warn.mockRestore();
 		}
-	});
-});
-
-describe('composition receipt defaults', () => {
-	it.each([undefined, false, true])('uses the production default with option %s', (enabled) => {
-		const assembly = createAgenticChatCompositionRoot({
-			client: client() as never,
-			providerClient: { stream: vi.fn() } as never,
-			providerConfigured: true,
-			directWriteReceiptTextEnabled: enabled
-		});
-		expect(assembly.provider).toMatchObject({ directWriteReceiptTextEnabled: enabled ?? true });
 	});
 });

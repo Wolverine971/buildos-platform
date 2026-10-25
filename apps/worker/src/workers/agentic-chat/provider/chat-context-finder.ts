@@ -5,8 +5,9 @@
 // as a durable `context_selection` event so the UI can show "Working from" chips before the
 // answer starts (docs/architecture/CONTEXT_FINDER_2026-09-22.md, "Chat consumer plan").
 //
-// Modes: shadow publishes a hidden receipt; chips publishes visible chips; on also injects the
-// evidence into the opening request. Every failure is fail-open: the turn runs as it does today.
+// The chips are visible and the evidence is injected into the opening request (the `shadow`
+// and `chips` measurement modes were retired with tasker 136). Every failure is fail-open: the
+// turn runs without the finder's context.
 //
 // The off-ramp (rank.ts): Jev also answers whether the request is about the project as a whole.
 // A broad request loads only records Jev is sure about plus a whole-project snapshot (snapshot.ts),
@@ -34,11 +35,9 @@ export function allowsContextFinderUser(
 	return userIds === 'all' || userIds.includes(userId.toLowerCase());
 }
 
-export type ChatContextFinderMode = 'off' | 'shadow' | 'chips' | 'on';
-
 export type ChatContextFinding = {
 	step: Extract<AgenticChatProviderStepV1, { type: 'semantic' }>;
-	/** Evidence block to append to the opening request (`on` only). */
+	/** Evidence block to append to the opening request; null when nothing was found. */
 	injection: string | null;
 };
 
@@ -72,16 +71,13 @@ export type ChatContextFinderTimezoneLoader = (userId: string) => Promise<string
 export class ChatContextFinder implements AgenticChatContextFinderPort {
 	constructor(
 		private readonly options: {
-			mode: Exclude<ChatContextFinderMode, 'off'>;
 			/** Allowlisted ids, or 'all'. An empty list ranks nobody. */
 			userIds: readonly string[] | 'all';
 			client: ContextFinderReadClient;
 			decider: ContextFinderDecider;
-			/** The off-ramp (rank.ts); false asks Jev only about records, as before 10-18. */
-			askBroad?: boolean;
-			/** Adds the open cleanup set to a broad request's snapshot (`on` only). */
+			/** Adds the open cleanup set to a broad request's snapshot. */
 			loadCleanup?: ChatContextFinderCleanupLoader;
-			/** Shows the snapshot's dates in the user's zone (`on` only). */
+			/** Shows the snapshot's dates in the user's zone. */
 			loadTimezone?: ChatContextFinderTimezoneLoader;
 			deadlineMs?: number;
 			jevTimeoutMs?: number;
@@ -99,8 +95,6 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 		const now = this.options.now ?? Date.now;
 		const started = now();
 		const deadlineMs = this.options.deadlineMs ?? CHAT_CONTEXT_FINDER_DEADLINE_MS;
-		const injecting = this.options.mode === 'on';
-		const askBroad = this.options.askBroad !== false;
 		let evidence: ContextEvidenceV1;
 		let plan: ContextPlanV1 | null = null;
 		let result: ContextFinderResultV1 | null = null;
@@ -109,21 +103,18 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 			const project = await loadContextFinderProject(this.options.client, projectId, signal);
 			// Started once the project is in, beside the ranking, so a broad request rarely
 			// waits for them; both are dropped when the request turns out to be specific.
-			const extras = injecting && askBroad;
-			const cleanup =
-				extras && this.options.loadCleanup
-					? this.options.loadCleanup(projectId).then(
-							(value) => value ?? null,
-							() => null
-						)
-					: null;
-			const timeZone =
-				extras && this.options.loadTimezone
-					? this.options.loadTimezone(request.userId).then(
-							(value) => value ?? null,
-							() => null
-						)
-					: null;
+			const cleanup = this.options.loadCleanup
+				? this.options.loadCleanup(projectId).then(
+						(value) => value ?? null,
+						() => null
+					)
+				: null;
+			const timeZone = this.options.loadTimezone
+				? this.options.loadTimezone(request.userId).then(
+						(value) => value ?? null,
+						() => null
+					)
+				: null;
 			const found = await findProjectContext({
 				project,
 				message: turn.message,
@@ -131,7 +122,8 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 				recentConversation: turn.recent,
 				signal,
 				timeoutMs: this.options.jevTimeoutMs ?? CHAT_CONTEXT_FINDER_JEV_TIMEOUT_MS,
-				askBroad,
+				// The off-ramp (rank.ts): is this about the project as a whole?
+				askBroad: true,
 				usage: {
 					operationType: 'agentic_chat_context_finder_chat',
 					userId: request.userId,
@@ -139,7 +131,7 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 					chatSessionId: request.sessionId
 				}
 			});
-			if (!injecting || found.scope !== 'broad') return { found, snapshot: null };
+			if (found.scope !== 'broad') return { found, snapshot: null };
 			const graceMs = Math.min(
 				CHAT_CONTEXT_FINDER_CLEANUP_GRACE_MS,
 				deadlineMs - (now() - started) - CLEANUP_DEADLINE_MARGIN_MS
@@ -170,19 +162,15 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 		} else evidence = unavailableContextEvidence(null);
 
 		const selected = evidence.status === 'selected';
-		const injection = !injecting
-			? null
-			: snapshot
-				? [
-						snapshot.block,
-						...(selected ? [renderContextEvidenceBlock(evidence)] : [])
-					].join('\n\n')
-				: selected
-					? renderContextEvidenceBlock(evidence)
-					: null;
+		const injection = snapshot
+			? [snapshot.block, ...(selected ? [renderContextEvidenceBlock(evidence)] : [])].join(
+					'\n\n'
+				)
+			: selected
+				? renderContextEvidenceBlock(evidence)
+				: null;
 		const payload = buildContextSelectionPayload({
 			request,
-			mode: this.options.mode,
 			evidence,
 			plan,
 			injected: injection !== null,
@@ -291,7 +279,6 @@ export async function withFinderDeadline<T>(
  */
 export function buildContextSelectionPayload(input: {
 	request: AgenticChatTurnProviderRequestV1;
-	mode: Exclude<ChatContextFinderMode, 'off'>;
 	evidence: ContextEvidenceV1;
 	plan: ContextPlanV1 | null;
 	injected: boolean;
@@ -317,8 +304,9 @@ export function buildContextSelectionPayload(input: {
 	return {
 		type: 'context_selection',
 		version: 1,
-		mode: input.mode,
-		visible: input.mode !== 'shadow',
+		// Kept in the payload for the shared contract, which still reads older shadow/chips rows.
+		mode: 'on',
+		visible: true,
 		injected: input.injected,
 		status: evidence.status,
 		failure: input.failure,

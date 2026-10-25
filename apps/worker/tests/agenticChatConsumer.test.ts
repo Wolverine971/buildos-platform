@@ -292,13 +292,9 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			specialistWorkflowsEnabled: false,
 			publishedSpecialistsEnabled: false,
 			contextFinderEnabled: false,
-			contextFinderChat: 'off',
 			contextFinderChatUserIds: [],
-			contextFinderGlobal: 'off',
 			documentReadToolsEnabled: false,
 			documentEvidenceHandoffEnabled: false,
-			directWriteReceiptTextEnabled: true,
-			liveTextPreviewEnabled: true,
 			liveVisionEnabled: false,
 			projectReviewV2Enabled: false,
 			projectReviewV3Enabled: false,
@@ -318,12 +314,7 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			maxProviderRounds: 4,
 			// Jev opening-pass tool narrowing is on by default; `off` is the kill switch.
 			jevToolSelection: 'on',
-			// Continuation reasoning A/B arm; `default` keeps today's request shape.
-			continuationReasoning: 'default',
-			providerHedgingEnabled: true,
-			contextFinderBroadEnabled: true,
 			providerIncidentsEnabled: true,
-			providerIncidentDrainEnabled: true,
 			// Shadow-only until review-decision data justifies holding writes.
 			holdUncommissionedWrites: false,
 			maxToolCalls: 9,

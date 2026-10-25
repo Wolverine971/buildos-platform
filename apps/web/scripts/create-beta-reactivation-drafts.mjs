@@ -262,16 +262,6 @@ async function loadAccountContext(supabase, user, member) {
 		),
 		expectQuery(
 			supabase
-				.from('user_behavioral_profiles')
-				.select('project_summary, patterns, user_context, confidence, computed_at')
-				.eq('user_id', user.id)
-				.order('computed_at', { ascending: false })
-				.limit(1)
-				.maybeSingle(),
-			'behavioral profile'
-		),
-		expectQuery(
-			supabase
 				.from('email_recipients')
 				.select(
 					'status, opened_at, open_count, sent_at, emails!inner(subject, category, sent_at, created_at)'
@@ -306,7 +296,6 @@ async function loadAccountContext(supabase, user, member) {
 		feedback,
 		betaFeedback,
 		activityLogs,
-		behavioralProfile,
 		emailHistory,
 		calendarAnalyses
 	] = await Promise.all(queries);
@@ -324,7 +313,6 @@ async function loadAccountContext(supabase, user, member) {
 		feedback,
 		beta_feedback: betaFeedback,
 		activity_logs: activityLogs,
-		behavioral_profile: behavioralProfile || null,
 		email_history: emailHistory,
 		calendar_analyses: calendarAnalyses,
 		onto_projects: ontoProjects,

@@ -72,7 +72,6 @@ export const AGENTIC_CHAT_TOOL_STORAGE_CLASSES_V1: Readonly<
 	list_workspace_suggestions: 'workspace',
 	get_entity_relationships: 'workspace',
 	get_linked_entities: 'workspace',
-	get_user_profile_overview: 'workspace',
 	search_user_contacts: 'workspace',
 	list_user_contact_candidates: 'workspace',
 	get_field_info: 'workspace',
