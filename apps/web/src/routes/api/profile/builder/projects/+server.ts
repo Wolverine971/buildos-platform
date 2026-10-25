@@ -1,5 +1,5 @@
 // apps/web/src/routes/api/profile/builder/projects/+server.ts
-// PUT { projects: [{ project_id, level: 'listed'|'live', public_name?, pitch?, looking_for?,
+// PUT { projects: [{ project_id, level: 'listed'|'live', public_name?, pitch?, looking_for?, reply_url?,
 //       link_url?, goal_ids?, show_next_milestone?, this_week?, audience? }] }
 // → the projects on the page, in order. Projects left out go back to hidden.
 

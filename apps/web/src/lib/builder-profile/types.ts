@@ -38,6 +38,8 @@ export interface BuilderProfileProjectCard {
 	goals?: string[];
 	next_milestone?: BuilderProfileMilestone;
 	looking_for?: string;
+	/** Live only: where "I'm interested" goes (https or mailto:). */
+	reply_url?: string;
 	this_week?: string;
 	this_week_at?: string;
 	/** Oldest first: [changes, by_agents] per week for the last 12 weeks. */
@@ -98,6 +100,7 @@ export interface BuilderProfileView {
 		headline?: string;
 		location?: string;
 		avatar_url?: string;
+		cover_url?: string;
 		now_text?: string;
 		now_updated_at?: string;
 		member_since?: string;
@@ -122,12 +125,37 @@ export interface BuilderProfileView {
 
 export type BuilderProfileResult = BuilderProfileView | { found: false };
 
+/** A line the owner published about a project. */
+export interface BuilderProjectUpdate {
+	body: string;
+	week_of: string;
+	at: string;
+}
+
+/** build-os.com/@handle/<project>: one Live project with its own page. */
+export interface BuilderProjectPageView {
+	found: true;
+	/** The builder page as this visitor sees it (header, other projects, viewer). */
+	page: BuilderProfileView;
+	project: BuilderProfileProjectCard;
+	/** This project's days for the last year (absent when the owner hides the build log). */
+	activity?: BuilderProfileActivity;
+	updates: BuilderProjectUpdate[];
+	/** Public docs from this project. */
+	writing: BuilderProfileWriting[];
+	/** Other people in the project who agreed to be shown. */
+	built_by: BuilderProfileCollaborator[];
+}
+
+export type BuilderProjectPageResult = BuilderProjectPageView | { found: false };
+
 // ---- Editor ---------------------------------------------------------------
 
 export interface BuilderProfileSettings {
 	headline: string | null;
 	location: string | null;
 	avatar_url: string | null;
+	cover_url: string | null;
 	now_text: string | null;
 	bio: string | null;
 	show_build_log: boolean;
@@ -175,6 +203,7 @@ export interface BuilderEditorPlacement {
 	public_name: string | null;
 	pitch: string | null;
 	looking_for: string | null;
+	reply_url: string | null;
 	link_url: string | null;
 	goal_ids: string[];
 	show_next_milestone: boolean;
@@ -212,4 +241,14 @@ export interface BuilderPageDraftSuggestion {
 	headline: string | null;
 	bio: string | null;
 	pitches: { project_id: string; pitch: string }[];
+}
+
+/** Parts of the page the editor can open from the live card. */
+export type BuilderPageSection = 'profile' | 'links' | 'projects' | 'updates' | 'settings';
+
+/** The editor's hook into the live card: which part is open, and how to open another. */
+export interface BuilderPageEditing {
+	active: BuilderPageSection | null;
+	activeProjectId?: string | null;
+	onedit: (section: BuilderPageSection, projectId?: string) => void;
 }

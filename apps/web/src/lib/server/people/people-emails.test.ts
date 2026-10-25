@@ -327,6 +327,50 @@ describe('sendPeopleRequestApprovedEmail', () => {
 });
 
 describe('upgrade emails (tasker 140)', () => {
+	it('does not present earlier invite settlements as newly approved access', async () => {
+		const sendEmail = vi.fn().mockResolvedValue({ success: true });
+		const outcome = await sendPeopleRequestApprovedEmail('req-partial', {
+			admin: fakeAdmin({
+				people_requests: {
+					id: 'req-partial',
+					from_user_id: SAM.id,
+					to_user_id: OWNER.id,
+					status: 'approved',
+					kind: 'upgrade',
+					decision: [
+						{
+							project_id: 'p1',
+							role: 'viewer',
+							agent_access: 'read',
+							need: 'agents_read',
+							status: 'joined_elsewhere'
+						},
+						{
+							project_id: 'p2',
+							role: 'editor',
+							agent_access: 'write',
+							need: 'edit',
+							status: 'already_member'
+						}
+					]
+				},
+				onto_projects: [
+					{ id: 'p1', name: '9takes' },
+					{ id: 'p2', name: 'Cadre' }
+				],
+				users: [OWNER, SAM]
+			}),
+			mailer: { sendEmail },
+			baseUrl: 'https://build-os.com'
+		});
+		expect(outcome).toBe('sent');
+		const [sent] = sendEmail.mock.calls[0]!;
+		expect(sent.subject).toBe('DJ made you an editor of Cadre');
+		expect(sent.body).toContain('https://build-os.com/projects/p2');
+		expect(sent.body + sent.html).not.toContain('9takes');
+		expect(sent.body + sent.html).not.toContain('joined=1');
+	});
+
 	it('lists mixed upgrades accurately and opens the approved project choices', () => {
 		const email = buildUpgradeApprovedEmail({
 			owner: OWNER,

@@ -23,14 +23,16 @@
 	let error = $state<string | null>(null);
 
 	afterNavigate(() => {
+		// Shallow replaceState leaves page.url (and the history entry's route URL)
+		// unchanged. Read the address bar so Back cannot replay a consumed arrival.
+		const url = new URL(window.location.href);
 		if (
 			!isAuthenticated ||
-			page.url.pathname !== `/projects/${projectId}` ||
-			page.url.searchParams.get('joined') !== '1'
+			url.pathname !== `/projects/${projectId}` ||
+			url.searchParams.get('joined') !== '1'
 		)
 			return;
 		// Consume only this marker, preserving the current reader, filters and history state.
-		const url = new URL(page.url);
 		url.searchParams.delete('joined');
 		replaceState(url, page.state);
 		toastService.success(projectArrivalMessage(projectName));

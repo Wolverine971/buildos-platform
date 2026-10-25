@@ -554,7 +554,10 @@
 						and projects marked "people I work with" show only to people who share a
 						project with you. Publishing also lets people find you by your handle. For
 						your page's own stats we count views and link taps per day, with no
-						information about who visited. Taking the page down hides it at once.
+						information about who visited. Taking the page down hides it at once. A
+						photo or cover image you upload is stored at its own unlisted web address so
+						your page can show it; removing it, or deleting your account, deletes the
+						file.
 					</p>
 					<p>
 						Our emails can include open and click measurement. Optional emails have an

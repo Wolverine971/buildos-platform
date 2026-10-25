@@ -170,6 +170,56 @@ describe('GET /api/notification-preferences', () => {
 });
 
 describe('PUT /api/notification-preferences', () => {
+	it.each([
+		{ label: 'project push opt-in', body: { push_enabled: true }, expectedActive: false },
+		{
+			label: 'explicit daily brief opt-in',
+			body: { should_email_daily_brief: true },
+			expectedActive: true
+		}
+	])('preserves brief opt-outs unless requested: $label', async ({ body, expectedActive }) => {
+		const event = createMockRequestEvent({}, body);
+		const subscriptions = new Map([['brief.completed', false]]);
+		const supabase = event.locals.supabase as any;
+		supabase.from.mockImplementation((table: string) => {
+			if (table === 'notification_subscriptions') {
+				return {
+					upsert: vi.fn(async (rows, options) => {
+						for (const row of rows) {
+							if (!options?.ignoreDuplicates || !subscriptions.has(row.event_type)) {
+								subscriptions.set(row.event_type, row.is_active);
+							}
+						}
+						return { error: null };
+					})
+				};
+			}
+			if (table === 'user_brief_preferences') {
+				return {
+					select: () => ({
+						eq: () => ({
+							single: async () => ({ data: { is_active: true }, error: null })
+						})
+					})
+				};
+			}
+			return {
+				upsert: () => ({
+					select: () => ({
+						single: async () => ({
+							data: { user_id: 'test-user-id', push_enabled: true, ...body },
+							error: null
+						})
+					})
+				})
+			};
+		});
+
+		expect((await PUT(event)).status).toBe(200);
+		expect(subscriptions.get('brief.completed')).toBe(expectedActive);
+		expect(subscriptions.get('brief.failed')).toBe(true);
+	});
+
 	it('should update user-level daily brief preferences with ?daily_brief=true', async () => {
 		const body = {
 			should_email_daily_brief: true,

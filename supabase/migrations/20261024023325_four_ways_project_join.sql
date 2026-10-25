@@ -618,7 +618,19 @@ BEGIN
 		END IF;
 
 		UPDATE public.people_requests
-		SET status = 'approved', decision = v_applied, decided_at = now()
+		-- Keep earlier settlements for history; only v_applied is returned for new
+		-- connection grants and the notification about this explicit owner decision.
+		SET status = 'approved', decision = COALESCE((
+			SELECT jsonb_agg(previous ORDER BY ord)
+			FROM jsonb_array_elements(COALESCE(v_request.decision, '[]'::jsonb)) WITH ORDINALITY t(previous, ord)
+			-- A new request for a previously settled project replaces that project's
+			-- old outcome, so project choices stay unique and show the latest decision.
+			WHERE NOT EXISTS (
+				SELECT 1 FROM jsonb_array_elements(v_applied) applied
+				WHERE applied->>'project_id' = previous->>'project_id'
+			)
+		), '[]'::jsonb) || v_applied,
+			decided_at = now()
 		WHERE id = v_request.id;
 
 		v_owner_name := public.people_layer_display_name(v_uid);
@@ -626,10 +638,15 @@ BEGIN
 			THEN '/projects/' || (v_applied->0->>'project_id')
 			ELSE '/profile?tab=people#requests' END;
 		v_payload := jsonb_build_object(
-			'title', v_owner_name || CASE v_applied->0->>'need'
-				WHEN 'edit' THEN ' made you an editor and let your agents make changes in '
-				WHEN 'agents_write' THEN ' let your agents make changes in '
-				ELSE ' let your agents see '
+			'title', v_owner_name || CASE
+				-- Mixed upgrades must not describe every project using the first one's permission.
+				WHEN (SELECT count(DISTINCT item->>'need') FROM jsonb_array_elements(v_applied) item) > 1
+					THEN ' updated your access in '
+				ELSE CASE v_applied->0->>'need'
+					WHEN 'edit' THEN ' made you an editor and let your agents make changes in '
+					WHEN 'agents_write' THEN ' let your agents make changes in '
+					ELSE ' let your agents see '
+				END
 			END || CASE
 				WHEN array_length(v_project_names, 1) = 1 THEN v_project_names[1]
 				ELSE array_length(v_project_names, 1)::text || ' projects'
@@ -1124,8 +1141,17 @@ BEGIN
 			)
 		) AS can_accept,
 		CASE
-			WHEN auth.role() = 'anon' THEN NULL::text
-			ELSE i.invitee_email
+			-- A bearer of the link can preview the project, not another person's email.
+			-- Enforce this here too: page-level masking cannot protect direct RPC calls.
+			WHEN auth.uid() IS NOT NULL AND (
+				i.invitee_user_id = auth.uid()
+				OR (i.invitee_user_id IS NULL AND EXISTS (
+					SELECT 1 FROM public.users recipient
+					WHERE recipient.id = auth.uid()
+						AND lower(btrim(recipient.email)) = lower(btrim(i.invitee_email))
+				))
+			) THEN i.invitee_email
+			ELSE NULL::text
 		END,
 		i.invited_by_actor_id,
 		COALESCE(u.name, a.name, u.email, a.email) AS invited_by_name,

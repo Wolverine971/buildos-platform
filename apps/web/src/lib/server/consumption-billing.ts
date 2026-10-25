@@ -18,7 +18,6 @@ const ALLOWED_MUTATION_PREFIXES_WHEN_FROZEN = [
 	'/api/public/',
 	'/api/billing/',
 	'/api/account/',
-	'/api/users/preferences/',
 	'/api/users/calendar-preferences/',
 	'/api/notification-preferences/',
 	'/api/sms/preferences/',

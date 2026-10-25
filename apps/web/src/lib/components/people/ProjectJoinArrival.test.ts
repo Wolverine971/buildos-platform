@@ -39,9 +39,11 @@ function arrive(props = { projectId: 'project-1', projectName: '9takes', isAuthe
 }
 
 beforeEach(() => {
-	mocks.page.url = new URL('https://buildos.app/projects/project-1?joined=1&tab=tasks#task-list');
+	window.history.replaceState({}, '', '/projects/project-1?joined=1&tab=tasks#task-list');
+	mocks.page.url = new URL(window.location.href);
 	mocks.replaceState.mockImplementation((url, state) => {
-		mocks.page.url = url;
+		// Like SvelteKit's shallow replaceState, update history without changing page.url.
+		window.history.replaceState({}, '', url);
 		mocks.page.state = state;
 	});
 	mocks.isSupported.mockReturnValue(true);
@@ -59,7 +61,7 @@ describe('project arrival', () => {
 		arrive();
 		expect(mocks.success).toHaveBeenCalledExactlyOnceWith('You joined 9takes');
 		expect(mocks.replaceState).toHaveBeenCalledWith(
-			new URL('https://buildos.app/projects/project-1?tab=tasks#task-list'),
+			new URL('/projects/project-1?tab=tasks#task-list', window.location.origin),
 			{ desktopCard: 'project' }
 		);
 		mocks.afterNavigate.mock.calls[0]?.[0]();
@@ -69,6 +71,21 @@ describe('project arrival', () => {
 		).toBeInTheDocument();
 		expect(fetch).not.toHaveBeenCalled();
 		expect(mocks.requestPermission).not.toHaveBeenCalled();
+	});
+
+	it('does not replay arrival when Back remounts the project with its original route URL', async () => {
+		const view = arrive();
+		await fireEvent.click(await screen.findByRole('button', { name: 'Not now' }));
+		expect(mocks.page.url.searchParams.get('joined')).toBe('1');
+		expect(new URL(window.location.href).searchParams.has('joined')).toBe(false);
+		view.unmount();
+		mocks.afterNavigate.mockClear();
+
+		// Back restores the consumed address, but route data retains SvelteKit's original URL.
+		arrive();
+		expect(mocks.success).toHaveBeenCalledExactlyOnceWith('You joined 9takes');
+		expect(mocks.replaceState).toHaveBeenCalledTimes(1);
+		expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
 	});
 
 	it('dismisses without changing any notification preference', async () => {
@@ -129,10 +146,12 @@ describe('project arrival', () => {
 	});
 
 	it('does nothing on ordinary project visits or without authenticated data', () => {
-		mocks.page.url = new URL('https://buildos.app/projects/project-1');
+		window.history.replaceState({}, '', '/projects/project-1');
+		mocks.page.url = new URL(window.location.href);
 		arrive().unmount();
 		mocks.afterNavigate.mockClear();
-		mocks.page.url = new URL('https://buildos.app/projects/project-1?joined=1');
+		window.history.replaceState({}, '', '/projects/project-1?joined=1');
+		mocks.page.url = new URL(window.location.href);
 		arrive({ projectId: 'project-1', projectName: '9takes', isAuthenticated: false });
 		expect(mocks.success).not.toHaveBeenCalled();
 		expect(mocks.replaceState).not.toHaveBeenCalled();

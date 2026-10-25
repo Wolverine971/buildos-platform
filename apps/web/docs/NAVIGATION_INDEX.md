@@ -38,7 +38,6 @@
 - **Project Export**: [`/features/project-export/README.md`](./features/project-export/README.md) - Browser-native PDF export
 - **Project Sharing**: [`/features/project-sharing/README.md`](./features/project-sharing/README.md) - Project sharing capabilities
 - **Time Blocks**: [`/features/time-blocks/README.md`](./features/time-blocks/README.md) - Time block scheduling
-- **User Preferences**: [`/features/preferences/README.md`](./features/preferences/README.md) - AI behavior preferences
 
 ## 📁 Complete Directory Structure
 
@@ -96,9 +95,6 @@
 │   │
 │   ├── /phase-generation/                 # Procedural phase generation
 │   │   └── README.md
-│   │
-│   ├── /preferences/                      # User preferences
-│   │   └── README.md                      # Preference system documentation
 │   │
 │   ├── /project-activity-logging/         # Activity tracking & next steps
 │   │   └── README.md
@@ -278,7 +274,6 @@ Based on common development tasks:
 - **Update the database?** → `/technical/database/MIGRATIONS.md`
 - **Fix a bug?** → Check relevant feature docs first
 - **Deploy changes?** → `/technical/deployment/README.md`
-- **Add AI preferences?** → `/features/preferences/README.md`
 - **Update onboarding?** → `/features/onboarding/ONBOARDING_V2_UPDATE_ASSESSMENT.md`
 
 ---

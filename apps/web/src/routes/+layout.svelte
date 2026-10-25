@@ -256,8 +256,12 @@
 	// Auth screens bring their own focused chrome. Derived from the route (not set in an
 	// effect) so the server render already omits the app header/footer — no flash on load.
 	let isAuthRoute = $derived(($page.route?.id ?? '').startsWith('/auth'));
-	// Builder pages (/@handle) are link-in-bio pages with their own small header.
-	let isBuilderPageRoute = $derived($page.route?.id === '/(public)/[handle=at_handle]');
+	// Builder pages (/@handle and /@handle/<project>) are link-in-bio pages with their own
+	// small header.
+	let isBuilderPageRoute = $derived(
+		$page.route?.id === '/(public)/[handle=at_handle]' ||
+			$page.route?.id === '/(public)/[handle=at_handle]/[project]'
+	);
 	let showNavigation = $derived(!isAuthRoute && !isBuilderPageRoute);
 	let showFooter = $derived(!isAuthRoute && !isAdminRoute && !isBuilderPageRoute);
 	// App pages are a sheet (bg-background) lying on the bench; admin and auth bring their own.

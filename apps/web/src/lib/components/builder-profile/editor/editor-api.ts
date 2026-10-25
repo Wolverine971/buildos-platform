@@ -8,7 +8,7 @@ export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string; s
 
 export async function callApi<T>(
 	url: string,
-	method: 'GET' | 'POST' | 'PUT' | 'PATCH' = 'GET',
+	method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'GET',
 	body?: unknown,
 	fallbackError = 'Could not save that. Try again.'
 ): Promise<ApiResult<T>> {
@@ -28,11 +28,18 @@ export async function callApi<T>(
 			return {
 				ok: false,
 				status: res.status,
-				error: typeof payload?.error === 'string' && payload.error ? payload.error : fallbackError
+				error:
+					typeof payload?.error === 'string' && payload.error
+						? payload.error
+						: fallbackError
 			};
 		}
 		return { ok: true, data: (payload?.data ?? null) as T };
 	} catch {
-		return { ok: false, status: 0, error: 'Could not reach BuildOS. Check your connection and try again.' };
+		return {
+			ok: false,
+			status: 0,
+			error: 'Could not reach BuildOS. Check your connection and try again.'
+		};
 	}
 }

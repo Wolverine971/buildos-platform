@@ -154,6 +154,106 @@ describe('guest task calendar isolation', () => {
 		).toBeNull();
 	});
 
+	it.each([
+		{
+			name: 'legacy mapping',
+			owner: 'owner-user',
+			legacy: true,
+			restricted: true,
+			creates: true
+		},
+		{
+			name: 'source mapping',
+			owner: 'owner-user',
+			legacy: false,
+			restricted: true,
+			creates: true
+		},
+		{
+			name: 'unpinned guest write',
+			owner: 'owner-user',
+			legacy: false,
+			restricted: false,
+			creates: true
+		},
+		{ name: 'unknown owner', owner: null, legacy: false, restricted: true, creates: false },
+		{
+			name: 'guest mapping needing repair',
+			owner: 'guest-user',
+			legacy: true,
+			restricted: true,
+			creates: false
+		},
+		{
+			name: 'unmapped reference',
+			owner: 'owner-user',
+			legacy: false,
+			restricted: true,
+			creates: false,
+			unknownReference: true
+		}
+	])(
+		'creates the guest copy only with proven foreign references: $name',
+		async ({ owner, legacy, restricted, creates, unknownReference }) => {
+			const foreign = {
+				id: 'owner-map',
+				user_id: owner,
+				provider: 'google',
+				project_calendar_id: legacy ? 'owner-project-calendar' : null,
+				calendar_source_id: legacy ? null : 'owner-source',
+				external_event_id: 'owner-event',
+				external_calendar_id: legacy ? null : 'owner-calendar',
+				// Cleanup may finish before this upsert; cancelled rows still prove ownership.
+				sync_status: 'cancelled',
+				project_calendar: { calendar_id: 'owner-calendar', user_id: 'owner-user' }
+			};
+			const row = {
+				...event,
+				props: {
+					...(restricted ? event.props : {}),
+					external_event_id: unknownReference ? 'unknown-event' : 'owner-event',
+					external_calendar_id: 'owner-calendar'
+				},
+				onto_event_sync: [foreign]
+			};
+			const query: any = {
+				select: () => query,
+				eq: () => query,
+				maybeSingle: async () => ({ data: row, error: null }),
+				then: (resolve: any) => resolve({ data: [foreign], error: null })
+			};
+			const { service } = createLegacyService({ from: () => query });
+			vi.spyOn(service as any, 'markEventSyncError').mockResolvedValue(undefined);
+			vi.spyOn(service as any, 'hasStoredCalendarCredential').mockResolvedValue(true);
+			vi.spyOn(service as any, 'resolveProjectCalendar').mockResolvedValue({
+				id: 'guest-calendar',
+				sync_enabled: true
+			});
+			const create = vi
+				.spyOn(service as any, 'syncEventToCalendar')
+				.mockResolvedValue({ event: row, sync: { success: true } });
+			const result = await service.processProjectEventSyncJob({
+				action: 'upsert',
+				eventId: event.id,
+				projectId: event.project_id,
+				targetUserId: 'guest-user',
+				restrictToTargetUser: true
+			});
+			expect(result).toEqual(
+				creates
+					? { outcome: 'synced', reason: 'created_external_event' }
+					: { outcome: 'skipped', reason: 'missing_project_sync_mapping' }
+			);
+			if (creates)
+				expect(create).toHaveBeenCalledWith(
+					'guest-user',
+					expect.anything(),
+					expect.objectContaining({ scope: 'project' })
+				);
+			else expect(create).not.toHaveBeenCalled();
+		}
+	);
+
 	it.each(['success', 'missing', 'disconnected', 'retryable'])(
 		'keeps %s cleanup of an old owner copy separate from the guest event',
 		async (outcome) => {

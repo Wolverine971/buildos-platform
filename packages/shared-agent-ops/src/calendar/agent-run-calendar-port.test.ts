@@ -459,6 +459,59 @@ describe('Agent Run personal event sync', () => {
 });
 
 describe('Agent Run guest task calendar sync', () => {
+	it.each(['read', 'insert'])(
+		'does not queue an orphaned event when its task-edge %s fails',
+		async (failure) => {
+			const taskId = '44444444-4444-4444-8444-444444444444';
+			const row = {
+				...ontoEvent(1),
+				project_id: PROJECT_ID,
+				props: { guest_agent_calendar_user_id: 'guest-user' }
+			};
+			const admin = {
+				rpc: vi.fn(async () => ({ error: null })),
+				from: (table: string) => {
+					const query: any = {
+						insert: () => query,
+						select: () => query,
+						eq: () => query,
+						neq: () => query,
+						single: async () => ({ data: row, error: null }),
+						maybeSingle: async () => ({
+							data: null,
+							error: failure === 'read' ? { message: 'edge read failed' } : null
+						}),
+						then: (resolve: any) =>
+							resolve({
+								data: [],
+								error:
+									table === 'onto_edges'
+										? { message: 'edge insert failed' }
+										: null
+							})
+					};
+					return query;
+				}
+			};
+			const port = createAgentRunCalendarPort({ admin, userId: USER_ID }) as any;
+			port.getActorId = vi.fn(async () => 'actor');
+			port.resolveInputTimezone = vi.fn(async () => 'UTC');
+			port.resolveTaskMetadata = vi.fn(async () => ({
+				taskId,
+				projectId: PROJECT_ID,
+				calendarSyncUserId: 'guest-user'
+			}));
+			await expect(
+				port.createCalendarEvent({
+					task_id: taskId,
+					title: 'Work',
+					start_at: '2026-10-25T12:00:00Z'
+				})
+			).rejects.toThrow(`edge ${failure} failed`);
+			expect(admin.rpc).not.toHaveBeenCalled();
+		}
+	);
+
 	it('links a new guest task event before queueing, without resolving the editing owner’s calendar', async () => {
 		const taskId = '44444444-4444-4444-8444-444444444444';
 		const event = {

@@ -10,15 +10,19 @@ import type {
 	BuilderEditorLink,
 	BuilderEditorProject,
 	BuilderLinkKind,
+	BuilderProfileLink,
+	BuilderProfileProjectCard,
 	BuilderProfileSettings,
 	BuilderProfileView,
 	BuilderProjectLevel
 } from '$lib/builder-profile/types';
 import { normalizeLinkUrl } from '$lib/builder-profile/links';
+import { normalizeReplyUrl, projectSlug, replyDisplay } from '$lib/builder-profile/project-pages';
 import { activeLabel } from '$lib/builder-profile/format';
 
 /** Mirrors the server's limits (builder-profile.service.ts) so inputs stop where the API does. */
 export const LIMITS = {
+	name: 80,
 	headline: 120,
 	location: 80,
 	bio: 280,
@@ -35,11 +39,12 @@ export const LIMITS = {
 } as const;
 
 export const URL_ERROR = 'Needs a web address that starts with https://';
+export const REPLY_ERROR = 'Needs a web address or an email address';
 
 // ---- Header ---------------------------------------------------------------------
 
-export type HeaderField = 'headline' | 'location' | 'bio' | 'now_text';
-export const HEADER_FIELDS: HeaderField[] = ['headline', 'location', 'bio', 'now_text'];
+export type HeaderField = 'name' | 'headline' | 'location' | 'bio' | 'now_text';
+export const HEADER_FIELDS: HeaderField[] = ['name', 'headline', 'location', 'bio', 'now_text'];
 
 /** The server collapses runs of whitespace and trims; compare the same way. */
 export function normalizeText(value: string | null | undefined): string {
@@ -59,8 +64,12 @@ export function headerChange(
 	return next || null;
 }
 
-export function headerDraftsFrom(settings: BuilderProfileSettings): Record<HeaderField, string> {
+export function headerDraftsFrom(
+	settings: BuilderProfileSettings,
+	name: string | null = null
+): Record<HeaderField, string> {
 	return {
+		name: name ?? '',
 		headline: settings.headline ?? '',
 		location: settings.location ?? '',
 		bio: settings.bio ?? '',
@@ -105,7 +114,8 @@ export function linkRowsFrom(
 	const toRow = (link: BuilderEditorLink): EditorLinkRow => ({
 		key: link.id ?? makeKey(),
 		kind: link.kind,
-		url: link.url,
+		// "x.com/you" reads better than "https://x.com/you"; saving puts https:// back.
+		url: link.url.replace(/^https:\/\//i, ''),
 		label: link.label ?? '',
 		note: link.note ?? '',
 		audience: link.audience
@@ -164,6 +174,8 @@ export interface EditorProjectRow {
 	goal_ids: string[];
 	show_next_milestone: boolean;
 	looking_for: string;
+	/** Where "I'm interested" goes, as typed: a link or an email address. */
+	reply_url: string;
 	this_week: string;
 }
 
@@ -177,6 +189,7 @@ export interface ProjectPayloadItem {
 	goal_ids?: string[];
 	show_next_milestone?: boolean;
 	looking_for?: string;
+	reply_url?: string;
 	this_week?: string;
 }
 
@@ -195,13 +208,16 @@ export function rowsFromProjects(projects: BuilderEditorProject[]): EditorProjec
 			goal_ids: (p?.goal_ids ?? []).filter((id) => goalIds.has(id)).slice(0, LIMITS.goals),
 			show_next_milestone: p?.show_next_milestone ?? true,
 			looking_for: p?.looking_for ?? '',
+			reply_url: replyDisplay(p?.reply_url),
 			this_week: p?.this_week ?? ''
 		};
 	});
 	// Keep the invariant the editor relies on: placed rows first, in page order.
 	const placed = rows
 		.filter((r) => r.level !== 'hidden')
-		.sort((a, b) => (a.project.placement?.position ?? 0) - (b.project.placement?.position ?? 0));
+		.sort(
+			(a, b) => (a.project.placement?.position ?? 0) - (b.project.placement?.position ?? 0)
+		);
 	return [...placed, ...rows.filter((r) => r.level === 'hidden')];
 }
 
@@ -272,6 +288,43 @@ export function projectRowErrors(rows: EditorProjectRow[]): Record<string, strin
 	return errors;
 }
 
+/** Live rows whose "I'm interested" address can't be used, keyed by project id. */
+export function projectReplyErrors(rows: EditorProjectRow[]): Record<string, string> {
+	const errors: Record<string, string> = {};
+	for (const row of rows) {
+		if (row.level !== 'live') continue;
+		if (row.reply_url.trim() && !normalizeReplyUrl(row.reply_url)) {
+			errors[row.project.project_id] = REPLY_ERROR;
+		}
+	}
+	return errors;
+}
+
+/**
+ * A website from your links that looks like this project's (same name as the link's
+ * title, or as its domain), offered as a one-tap fill for the project's link. Null when
+ * the project already has a link or nothing matches. Compares names and host names,
+ * structured strings; a wrong guess is only a suggestion the owner can ignore.
+ */
+export function suggestProjectLink(
+	row: EditorProjectRow,
+	links: Pick<EditorLinkRow, 'kind' | 'url' | 'label'>[]
+): string | null {
+	if (row.link_url.trim()) return null;
+	const key = (value: string) => projectSlug(value).replace(/-/g, '');
+	const wanted = key(row.public_name.trim() || row.project.name);
+	if (!wanted) return null;
+	for (const link of links) {
+		if (link.kind !== 'link') continue;
+		const url = normalizeLinkUrl(link.url);
+		if (!url) continue;
+		const host = new URL(url).hostname.replace(/^www\./, '');
+		const stem = host.split('.').slice(0, -1).join('.');
+		if (key(link.label) === wanted || key(stem) === wanted) return url;
+	}
+	return null;
+}
+
 /**
  * The PUT /api/profile/builder/projects body: every placed row in page order. Hidden
  * rows are left out (which hides them). The Live-only parts (goals, milestone,
@@ -299,7 +352,9 @@ export function buildProjectsPayload(rows: EditorProjectRow[]): { projects: Proj
 			item.show_next_milestone = row.show_next_milestone;
 			const lookingFor = normalizeText(row.looking_for);
 			const thisWeek = normalizeText(row.this_week);
+			const reply = row.reply_url.trim();
 			if (lookingFor) item.looking_for = lookingFor;
+			if (reply) item.reply_url = normalizeReplyUrl(reply) ?? reply;
 			if (thisWeek) item.this_week = thisWeek;
 		}
 		projects.push(item);
@@ -325,7 +380,9 @@ export function draftProjectIds(rows: EditorProjectRow[], fallbackCount = 5): st
 	if (placed.length) return placed.slice(0, 8);
 	return [...rows]
 		.filter((r) => r.project.last_active_at)
-		.sort((a, b) => (b.project.last_active_at ?? '').localeCompare(a.project.last_active_at ?? ''))
+		.sort((a, b) =>
+			(b.project.last_active_at ?? '').localeCompare(a.project.last_active_at ?? '')
+		)
 		.slice(0, fallbackCount)
 		.map((r) => r.project.project_id);
 }
@@ -354,7 +411,9 @@ export function projectActivityLine(project: BuilderEditorProject, now: Date = n
 	const parts: string[] = [];
 	if (project.changes_year > 0) {
 		const changes = `${project.changes_year} change${project.changes_year === 1 ? '' : 's'} this year`;
-		const pct = Math.round((100 * Math.min(project.by_agents_year, project.changes_year)) / project.changes_year);
+		const pct = Math.round(
+			(100 * Math.min(project.by_agents_year, project.changes_year)) / project.changes_year
+		);
 		parts.push(project.by_agents_year > 0 ? `${changes}, ${pct}% by agents` : changes);
 	}
 	parts.push(activeLabel(project.last_active_at, now));
@@ -377,18 +436,115 @@ export function sharedWithLabel(project: BuilderEditorProject): string | null {
 export type PreviewAudience = 'anyone' | 'collaborators';
 
 /**
- * The owner's page as a given visitor would see it. "Anyone" drops links and projects
- * kept for people you work with; "People I work with" sees everything.
+ * The saved page with the editor's unsaved edits laid over it, so the card on the
+ * canvas changes as you type: header text, photo and cover, links, which projects show
+ * and in what order, their text, goals and milestone, and the section switches. A
+ * project just added has no weekly bars until it saves and the page reloads.
  */
-export function previewViewFor(
-	view: BuilderProfileView,
-	audience: PreviewAudience
+export function overlayView(
+	base: BuilderProfileView,
+	draft: {
+		header: Record<HeaderField, string>;
+		settings: BuilderProfileSettings;
+		socials: EditorLinkRow[];
+		links: EditorLinkRow[];
+		rows: EditorProjectRow[];
+		audience: PreviewAudience;
+	}
 ): BuilderProfileView {
-	if (audience === 'collaborators') return view;
+	const { header, settings, audience } = draft;
+	const text = (value: string) => normalizeText(value) || undefined;
+	const visible = (who: BuilderAudience) => audience === 'collaborators' || who === 'anyone';
+
+	const links: BuilderProfileLink[] = [];
+	for (const row of [...draft.socials, ...draft.links]) {
+		const url = normalizeLinkUrl(row.url);
+		if (!url || !visible(row.audience)) continue;
+		links.push({
+			id: row.key,
+			kind: row.kind,
+			url,
+			label: text(row.label),
+			note: row.kind === 'link' ? text(row.note) : undefined,
+			audience: row.audience
+		});
+	}
+
+	const saved = new Map(base.projects.map((card) => [card.id, card]));
+	const projects: BuilderProfileProjectCard[] = [];
+	for (const row of draft.rows) {
+		if (row.level === 'hidden' || !visible(row.audience)) continue;
+		const p = row.project;
+		const live = row.level === 'live';
+		const card: BuilderProfileProjectCard = {
+			...(saved.get(p.project_id) ?? {
+				id: p.project_id,
+				stage: p.stage ?? undefined,
+				state: p.state ?? undefined,
+				glyphs: p.glyphs,
+				last_active_at: p.last_active_at ?? undefined,
+				member_count: p.member_count
+			}),
+			id: p.project_id,
+			level: row.level,
+			name: text(row.public_name) ?? p.name,
+			pitch: text(row.pitch),
+			link_url: normalizeLinkUrl(row.link_url) ?? undefined,
+			audience: row.audience
+		};
+		if (live) {
+			const names = new Map(p.goals.map((g) => [g.id, g.name]));
+			const goals = row.goal_ids.map((id) => names.get(id)).filter((n): n is string => !!n);
+			card.goals = goals.length ? goals : undefined;
+			card.next_milestone = row.show_next_milestone
+				? (p.next_milestone ?? undefined)
+				: undefined;
+			card.looking_for = text(row.looking_for);
+			card.reply_url = normalizeReplyUrl(row.reply_url) ?? undefined;
+			card.this_week = text(row.this_week);
+		} else {
+			for (const key of [
+				'goals',
+				'next_milestone',
+				'looking_for',
+				'reply_url',
+				'this_week',
+				'weekly'
+			] as const) {
+				delete card[key];
+			}
+		}
+		projects.push(card);
+	}
+	// The page shows Live cards first, then Listed, each in the order you set.
+	projects.sort((a, b) => Number(b.level === 'live') - Number(a.level === 'live'));
+
+	const activity =
+		settings.show_build_log && base.activity
+			? { ...base.activity, show_agent_split: settings.show_agent_split }
+			: undefined;
+
 	return {
-		...view,
-		links: view.links.filter((l) => l.audience !== 'collaborators'),
-		projects: view.projects.filter((p) => p.audience !== 'collaborators')
+		...base,
+		profile: {
+			...base.profile,
+			name: text(header.name) ?? base.profile.name,
+			headline: text(header.headline),
+			location: text(header.location),
+			bio: text(header.bio),
+			now_text: text(header.now_text),
+			avatar_url: settings.avatar_url ?? undefined,
+			cover_url: settings.cover_url ?? undefined
+		},
+		settings: {
+			show_build_log: settings.show_build_log,
+			show_agent_split: settings.show_agent_split,
+			show_writing: settings.show_writing,
+			show_builds_with: settings.show_builds_with
+		},
+		links,
+		projects,
+		activity
 	};
 }
 

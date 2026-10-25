@@ -576,7 +576,12 @@ export async function sendPeopleRequestApprovedEmail(
 		}
 
 		const grants = (request.decision as Array<Record<string, unknown>>)
-			.filter((grant) => typeof grant?.project_id === 'string')
+			// History also retains projects satisfied through another entrance. The
+			// approval email describes only this owner's newly approved items.
+			.filter(
+				(grant) =>
+					typeof grant?.project_id === 'string' && grant.status !== 'joined_elsewhere'
+			)
 			.map((grant) => ({
 				project_id: String(grant.project_id),
 				role: grant.role === 'editor' ? 'editor' : 'viewer',

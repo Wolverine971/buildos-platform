@@ -6,6 +6,26 @@
 	padding-top: env(safe-area-inset-top, 0px);
 }
 
+/* iOS 27 blurs the top ~80pt of home-screen apps unless an opaque
+   position:fixed box touches the top edge; the sticky nav does not count.
+   This strip repaints the nav's own surface over the status-bar inset, so it
+   is seamless. Its height is the inset, so it has no box where there is none
+   (browser tabs, Android, landscape). Above the nav (z 100), below modals. */
+.status-bar-strip {
+	display: none;
+}
+
+.pwa-installed .status-bar-strip {
+	display: block;
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: env(safe-area-inset-top, 0px);
+	z-index: 101;
+	pointer-events: none;
+}
+
 /* Prevent text selection on UI elements in PWA */
 .pwa-installed button,
 .pwa-installed nav {

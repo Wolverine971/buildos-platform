@@ -1473,6 +1473,63 @@ export class OntoEventSyncService extends OntoEventReadService {
 		);
 	}
 
+	/**
+	 * A shared event's IDs can describe an older member's copy. Those IDs must
+	 * neither redirect a restricted write nor prevent the target user's first copy.
+	 * Prove every reference belongs to another user; ambiguous/lost mappings still
+	 * fail closed. This extra read is only needed for an existing external reference
+	 * with no usable mapping for the target, not ordinary creates or updates.
+	 */
+	private async sharedReferencesBelongToOtherUsers(
+		event: OntoEventRow,
+		targetUserId: string
+	): Promise<boolean> {
+		const props = (event.props as Record<string, unknown> | null) ?? {};
+		const propEventId =
+			typeof props.external_event_id === 'string' ? props.external_event_id.trim() : '';
+		const propCalendarId =
+			typeof props.external_calendar_id === 'string' ? props.external_calendar_id.trim() : '';
+		const link = parseGoogleEventMappingFromExternalLink(event.external_link);
+		const references: Array<{ externalEventId: string; calendarId: string }> = [];
+		if (propEventId || propCalendarId) {
+			const externalEventId = propEventId || link?.externalEventId;
+			const calendarId = propCalendarId || link?.calendarId;
+			if (!externalEventId || !calendarId) return false;
+			references.push({ externalEventId, calendarId });
+		}
+		if (link) references.push(link);
+		if (references.length === 0) return false;
+
+		// getEvent deliberately returns only the target's sync rows. Inspect other
+		// mappings internally for ownership evidence without exposing them in reads.
+		const { data: mappings, error } = await this.supabase
+			.from('onto_event_sync')
+			.select(
+				'user_id, external_event_id, external_calendar_id, project_calendar:project_calendars!onto_event_sync_project_calendar_id_fkey(calendar_id, user_id)'
+			)
+			.eq('event_id', event.id)
+			.eq('provider', 'google');
+		if (error) throw new Error(error.message);
+		if (
+			!mappings?.length ||
+			mappings.some((mapping) => !mapping.user_id || mapping.user_id === targetUserId)
+		)
+			return false;
+		return references.every((reference) =>
+			mappings.some((mapping) => {
+				const calendarId =
+					mapping.external_calendar_id ??
+					(mapping.project_calendar?.user_id === mapping.user_id
+						? mapping.project_calendar.calendar_id
+						: null);
+				return (
+					mapping.external_event_id === reference.externalEventId &&
+					calendarId === reference.calendarId
+				);
+			})
+		);
+	}
+
 	protected async repairProjectSyncRow(params: {
 		userId: string;
 		event: OntoEventRow;
@@ -1951,7 +2008,11 @@ export class OntoEventSyncService extends OntoEventReadService {
 			input.restrictToTargetUser
 		);
 		if (!mapping) {
-			if (this.hasPriorExternalReference(event)) {
+			if (
+				this.hasPriorExternalReference(event) &&
+				(!(calendarUserId || input.restrictToTargetUser) ||
+					!(await this.sharedReferencesBelongToOtherUsers(event, input.targetUserId)))
+			) {
 				await this.markEventSyncError(
 					event.id,
 					'missing_project_sync_mapping',

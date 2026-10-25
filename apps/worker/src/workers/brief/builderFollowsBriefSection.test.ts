@@ -329,14 +329,14 @@ describe('formatBuilderFollowsSection', () => {
 				'- [Sam Rivera](/@samr) · **Taste Buds** — Shipped the pricing page and booked three tester calls.\n' +
 				'- [@priya](/@priya) · **Now** — Rewriting the onboarding flow before the beta opens.\n\n' +
 				'## Your Page\n\n' +
-				'Your page has 3 drafted updates waiting. Publish, edit or skip them in [Profile → People & agents](/profile?tab=people#your-page).\n\n'
+				'Your page has 3 drafted updates waiting. [Publish, edit or skip them](/profile/page?section=updates).\n\n'
 		);
 	});
 
 	it('renders the drafts nudge alone, in the singular', () => {
 		expect(formatBuilderFollowsSection({ lines: [], lineCount: 0, draftedCount: 1 })).toBe(
 			'## Your Page\n\n' +
-				'Your page has 1 drafted update waiting. Publish, edit or skip it in [Profile → People & agents](/profile?tab=people#your-page).\n\n'
+				'Your page has 1 drafted update waiting. [Publish, edit or skip it](/profile/page?section=updates).\n\n'
 		);
 	});
 

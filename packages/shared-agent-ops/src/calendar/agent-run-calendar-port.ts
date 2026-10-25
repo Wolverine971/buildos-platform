@@ -1745,7 +1745,7 @@ class AgentRunCalendarPort implements CalendarPort {
 		taskId: string;
 		eventId: string;
 	}): Promise<void> {
-		const { data: existingEdge } = await this.admin
+		const { data: existingEdge, error: lookupError } = await this.admin
 			.from('onto_edges')
 			.select('id')
 			.eq('src_id', input.taskId)
@@ -1754,12 +1754,13 @@ class AgentRunCalendarPort implements CalendarPort {
 			.eq('dst_kind', 'event')
 			.eq('rel', 'has_event')
 			.maybeSingle();
+		if (lookupError) throw new Error(lookupError.message);
 
 		if (existingEdge) {
 			return;
 		}
 
-		await this.admin.from('onto_edges').insert({
+		const { error: insertError } = await this.admin.from('onto_edges').insert({
 			project_id: input.projectId,
 			src_id: input.taskId,
 			src_kind: 'task',
@@ -1767,6 +1768,7 @@ class AgentRunCalendarPort implements CalendarPort {
 			dst_kind: 'event',
 			rel: 'has_event'
 		});
+		if (insertError) throw new Error(insertError.message);
 	}
 
 	private async createProjectCalendarMapping(input: {

@@ -839,6 +839,9 @@
 	});
 </script>
 
+<!-- Stops the iOS 27 home-screen-app top blur. Styled in pwa.css. -->
+<div class="status-bar-strip bg-bench bench-grain" aria-hidden="true"></div>
+
 <!-- Keep the app shell above page-local stacking contexts and below portal-backed modals. -->
 <nav
 	aria-label="Main navigation"

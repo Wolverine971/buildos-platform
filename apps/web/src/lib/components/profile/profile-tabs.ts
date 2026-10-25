@@ -2,7 +2,6 @@
 export const BASE_PROFILE_TAB_IDS = [
 	'account',
 	'contacts',
-	'preferences',
 	'briefs',
 	'calendar',
 	'email',

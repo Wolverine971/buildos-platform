@@ -10,7 +10,7 @@ import type { BuilderFollowsBriefLine, BuilderFollowsBriefSection } from './onto
 export const BUILDER_FOLLOWS_LINE_CAP = 6;
 // Far more than a day of weekly lines; the cap above applies after the visibility checks.
 const CANDIDATE_LIMIT = 60;
-export const BUILDER_PAGE_DRAFTS_HREF = '/profile?tab=people#your-page';
+export const BUILDER_PAGE_DRAFTS_HREF = '/profile/page?section=updates';
 
 type LooseResult = { data: unknown; error: { message: string } | null; count?: number | null };
 interface LooseQuery extends PromiseLike<LooseResult> {
@@ -81,7 +81,8 @@ async function loadFollowedLines(
 	const wholePerson = new Set<string>();
 	const followedProjects = new Set<string>();
 	for (const follow of follows) {
-		if (follow.project_id) followedProjects.add(pairKey(follow.target_user_id, follow.project_id));
+		if (follow.project_id)
+			followedProjects.add(pairKey(follow.target_user_id, follow.project_id));
 		else wholePerson.add(follow.target_user_id);
 	}
 
@@ -206,7 +207,8 @@ async function loadFollowedLines(
 			if (!project || project.deleted_at || project.archived_at) continue;
 			if ((project.kind ?? 'project') !== 'project') continue;
 			if (placement.audience !== 'anyone' && !worksWithReader.has(update.user_id)) continue;
-			projectLabel = placement.public_name?.trim() || project.name?.trim() || 'Untitled project';
+			projectLabel =
+				placement.public_name?.trim() || project.name?.trim() || 'Untitled project';
 		}
 
 		// One bullet per line, even if the body has line breaks.
@@ -291,7 +293,7 @@ export function formatBuilderFollowsSection(
 	if (section.draftedCount > 0) {
 		const one = section.draftedCount === 1;
 		markdown += `## Your Page\n\n`;
-		markdown += `Your page has ${section.draftedCount} drafted ${one ? 'update' : 'updates'} waiting. Publish, edit or skip ${one ? 'it' : 'them'} in [Profile → People & agents](${BUILDER_PAGE_DRAFTS_HREF}).\n\n`;
+		markdown += `Your page has ${section.draftedCount} drafted ${one ? 'update' : 'updates'} waiting. [Publish, edit or skip ${one ? 'it' : 'them'}](${BUILDER_PAGE_DRAFTS_HREF}).\n\n`;
 	}
 	return markdown;
 }

@@ -17,7 +17,7 @@
 	import SettingsCard from './_shared/SettingsCard.svelte';
 	import AgentKeysTab from './AgentKeysTab.svelte';
 	import YouSection from '$lib/components/people/hub/YouSection.svelte';
-	import BuilderPageEditor from '$lib/components/builder-profile/editor/BuilderPageEditor.svelte';
+	import YourPageCard from '$lib/components/builder-profile/YourPageCard.svelte';
 	import PeopleSection from '$lib/components/people/hub/PeopleSection.svelte';
 	import PeopleRequests from '$lib/components/people/PeopleRequests.svelte';
 	import AccessHistory from '$lib/components/people/AccessHistory.svelte';
@@ -42,7 +42,6 @@
 	let historyKey = $state(0);
 	/** Bumped when the handle may have changed, so Your page picks up the new address. */
 	let handleRevision = $state(0);
-	let youRevision = $state(0);
 	let sharePicking = $state(false);
 	let shareProjectId = $state<string | null>(null);
 
@@ -132,20 +131,19 @@
 	{/if}
 
 	<div id="you" class="scroll-mt-4">
-		{#key youRevision}
-			<YouSection
-				name={userName}
-				onchanged={() => {
-					handleRevision += 1;
-					void reload();
-				}}
-			/>
-		{/key}
+		<YouSection
+			name={userName}
+			onchanged={() => {
+				handleRevision += 1;
+				void reload();
+			}}
+		/>
 	</div>
 
 	<div id="your-page" class="scroll-mt-4">
-		<!-- Publishing turns on "find me by handle", so the You section re-reads it. -->
-		<BuilderPageEditor revision={handleRevision} onstatuschange={() => (youRevision += 1)} />
+		{#key handleRevision}
+			<YourPageCard />
+		{/key}
 	</div>
 
 	{#if hub && incomingCount > 0}

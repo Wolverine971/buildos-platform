@@ -47,4 +47,5 @@
 	origin={data.origin}
 	askProjectId={$page.url.searchParams.get('ask')}
 	intent={$page.url.searchParams.get('intent')}
+	followProjectId={$page.url.searchParams.get('project')}
 />

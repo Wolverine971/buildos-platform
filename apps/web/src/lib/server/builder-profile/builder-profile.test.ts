@@ -5,6 +5,7 @@ import {
 	askToJoin,
 	BuilderProfileError,
 	follow,
+	loadBuilderProject,
 	parseLinks,
 	parsePlacements
 } from './builder-profile.service';
@@ -131,6 +132,90 @@ describe('parsePlacements', () => {
 		expect(() => parsePlacements([{ project_id: PROJECT, pitch: 'x'.repeat(201) }])).toThrow(
 			/200/
 		);
+	});
+});
+
+describe('parsePlacements reply_url', () => {
+	it('keeps a reply link or email on Live projects only', () => {
+		const [live, listed, email] = parsePlacements([
+			{ project_id: PROJECT, level: 'live', reply_url: 'calendly.com/dj/beta' },
+			{ project_id: OTHER, level: 'listed', reply_url: 'https://ignored.com' },
+			{
+				project_id: '11111111-1111-4111-8111-111111111111',
+				level: 'live',
+				reply_url: 'dj@example.com'
+			}
+		]);
+		expect(live!.reply_url).toBe('https://calendly.com/dj/beta');
+		expect(listed!.reply_url).toBeNull();
+		expect(email!.reply_url).toBe('mailto:dj@example.com');
+	});
+
+	it('refuses a reply address that is neither a link nor an email', () => {
+		expect(() =>
+			parsePlacements([
+				{ project_id: PROJECT, level: 'live', reply_url: 'javascript:alert(1)' }
+			])
+		).toThrow(/web address or an email/);
+	});
+});
+
+describe('loadBuilderProject', () => {
+	const page = {
+		found: true,
+		status: 'published',
+		viewer: {
+			signed_in: false,
+			is_owner: false,
+			works_with: false,
+			follows: false,
+			ask_pending: false
+		},
+		profile: { handle: 'djwayne', name: 'DJ Wayne' },
+		settings: {
+			show_build_log: true,
+			show_agent_split: true,
+			show_writing: true,
+			show_builds_with: true
+		},
+		projects: [{ id: PROJECT, level: 'live', name: '9takes', audience: 'anyone' }]
+	};
+
+	it('reads the page and the project through one RPC, filling empty lists', async () => {
+		const { client, rpc } = fakeClient({
+			rpc: {
+				get_builder_project: () => ({
+					data: { found: true, page, project: page.projects[0], activity: null }
+				})
+			}
+		});
+		const result = await loadBuilderProject(client, 'djwayne', '9takes');
+		expect(rpc).toHaveBeenCalledWith('get_builder_project', {
+			p_handle: 'djwayne',
+			p_slug: '9takes'
+		});
+		expect(result.found).toBe(true);
+		if (!result.found) return;
+		expect(result.project.name).toBe('9takes');
+		expect(result.page.links).toEqual([]);
+		expect(result.page.writing).toEqual([]);
+		expect(result.updates).toEqual([]);
+		expect(result.writing).toEqual([]);
+		expect(result.built_by).toEqual([]);
+		expect(result.activity).toBeUndefined();
+	});
+
+	it('is not found when the RPC finds nothing or returns no project', async () => {
+		const none = fakeClient({
+			rpc: { get_builder_project: () => ({ data: { found: false } }) }
+		});
+		expect(await loadBuilderProject(none.client, 'djwayne', 'radar')).toEqual({ found: false });
+		const bare = fakeClient({
+			rpc: { get_builder_project: () => ({ data: { found: true, page } }) }
+		});
+		expect(await loadBuilderProject(bare.client, 'djwayne', '9takes')).toEqual({
+			found: false
+		});
 	});
 });
 

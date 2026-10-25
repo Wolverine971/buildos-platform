@@ -75,11 +75,11 @@ describe('SettingsNavigation', () => {
 		expect(document.activeElement).toBe(account);
 
 		await fireEvent.keyDown(account, { key: 'ArrowDown' });
-		const preferences = within(menu).getByRole('menuitemradio', { name: /AI Preferences/ });
-		expect(document.activeElement).toBe(preferences);
+		const briefs = within(menu).getByRole('menuitemradio', { name: /Brief Settings/ });
+		expect(document.activeElement).toBe(briefs);
 
-		await fireEvent.click(preferences);
-		expect(onchange).toHaveBeenCalledWith('preferences');
+		await fireEvent.click(briefs);
+		expect(onchange).toHaveBeenCalledWith('briefs');
 		await waitFor(() => expect(document.activeElement).toBe(trigger));
 		expect(trigger.getAttribute('aria-expanded')).toBe('false');
 	});

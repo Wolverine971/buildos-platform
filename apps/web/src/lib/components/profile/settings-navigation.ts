@@ -9,7 +9,6 @@ import {
 	Database,
 	Mail,
 	Repeat,
-	Sparkles,
 	User,
 	Users
 } from '$lib/icons/lucide';
@@ -33,7 +32,6 @@ export interface SettingsDestination {
 
 const SETTINGS_DESTINATIONS: readonly SettingsDestination[] = [
 	{ id: 'account', label: 'Account', icon: User, group: 'your-buildos' },
-	{ id: 'preferences', label: 'AI Preferences', icon: Sparkles, group: 'your-buildos' },
 	{
 		id: 'cycles',
 		label: 'Cycles',

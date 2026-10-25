@@ -1,20 +1,22 @@
 // apps/web/src/lib/components/builder-profile/editor/builder-editor-state.svelte.ts
 //
-// The state behind "Your page" (Profile > People & agents). One instance per editor;
-// the section components read and write it directly. Saves go out per group (header
-// fields on blur, links and projects with their Save buttons, toggles at once), and
-// every successful save refreshes the live preview. A failed save keeps whatever the
-// owner typed and puts the server's message next to the control.
+// The state behind the "Your page" editor (/profile/page). One instance per editor; the
+// panels read and write it directly. Everything saves on its own: header fields when
+// you leave them, links and projects a moment after you stop changing them, switches
+// at once, images after the crop. The card on the canvas shows unsaved edits as you
+// type (overlayView); the saved page is re-read after a save to pick up what only the
+// server knows (weekly bars, the build log). A failed save keeps what the owner typed
+// and puts the server's message next to the control.
 
 import type {
 	BuilderEditorData,
 	BuilderPageDraftSuggestion,
+	BuilderPageSection,
 	BuilderProfileSettings,
 	BuilderProfileStatus,
 	BuilderProfileUpdateDraft,
 	BuilderProfileView
 } from '$lib/builder-profile/types';
-import { normalizeLinkUrl } from '$lib/builder-profile/links';
 import { callApi } from './editor-api';
 import {
 	applySuggestedPitch,
@@ -24,7 +26,6 @@ import {
 	draftProjectIds,
 	headerChange,
 	headerDraftsFrom,
-	isBlankLinkRow,
 	linkRowError,
 	linkRowsFrom,
 	linksKey,
@@ -32,7 +33,8 @@ import {
 	moveItem,
 	movePlacedRow,
 	normalizeText,
-	previewViewFor,
+	overlayView,
+	projectReplyErrors,
 	projectRowErrors,
 	projectsKey,
 	rowsFromProjects,
@@ -44,8 +46,9 @@ import {
 	type HeaderField,
 	type PreviewAudience
 } from './builder-editor';
+import type { CropShape } from './image-crop';
 
-export type SavableField = HeaderField | 'avatar_url';
+export type SavableField = HeaderField | 'avatar_url' | 'cover_url';
 export type ToggleSetting =
 	| 'show_build_log'
 	| 'build_log_includes_private'
@@ -54,11 +57,13 @@ export type ToggleSetting =
 	| 'show_builds_with'
 	| 'show_on_collaborator_pages'
 	| 'weekly_drafts';
+export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 const EMPTY_SETTINGS: BuilderProfileSettings = {
 	headline: null,
 	location: null,
 	avatar_url: null,
+	cover_url: null,
 	now_text: null,
 	bio: null,
 	show_build_log: true,
@@ -72,16 +77,32 @@ const EMPTY_SETTINGS: BuilderProfileSettings = {
 
 const BASE = '/api/profile/builder';
 const NOTHING_MOVED = 'Nothing moved this week, so there’s nothing to draft.';
+/** How long after the last change links and projects save. */
+const AUTOSAVE_MS = 800;
+/** Settings the server needs to recount before the card can show them. */
+const RELOAD_AFTER: ToggleSetting[] = [
+	'show_build_log',
+	'build_log_includes_private',
+	'show_writing',
+	'show_builds_with'
+];
 
 export class BuilderPageEditorState {
 	/** Called after Publish or Take down succeeds (publishing turns on handle findability). */
 	onstatuschange: ((status: BuilderProfileStatus) => void) | null = null;
+
 	// ---- Load ----
 	loading = $state(true);
 	loadError = $state<string | null>(null);
 
+	// ---- Where the owner is ----
+	section = $state<BuilderPageSection>('profile');
+	/** The project open in the Projects panel, or null for the list. */
+	openProjectId = $state<string | null>(null);
+
 	// ---- Identity and status ----
 	handle = $state<string | null>(null);
+	/** The saved name (users.name). */
 	name = $state<string | null>(null);
 	status = $state<BuilderProfileStatus>('draft');
 	publishBusy = $state(false);
@@ -95,8 +116,10 @@ export class BuilderPageEditorState {
 	signInAvatarUrl = $state<string | null>(null);
 	fieldSaving = $state<SavableField | null>(null);
 	fieldErrors = $state<Partial<Record<SavableField, string>>>({});
-	/** The field that just saved, for a quiet "Saved". */
-	justSaved = $state<SavableField | null>(null);
+
+	// ---- Images ----
+	imageBusy = $state<CropShape | null>(null);
+	imageError = $state<string | null>(null);
 
 	// ---- Draft my page ----
 	suggestion = $state<BuilderPageDraftSuggestion | null>(null);
@@ -111,16 +134,12 @@ export class BuilderPageEditorState {
 	savedLinksKey = $state(linksKey([], []));
 	linksBusy = $state(false);
 	linksError = $state<string | null>(null);
-	linksAttempted = $state(false);
-	linksJustSaved = $state(false);
 
 	// ---- Projects ----
 	rows = $state<EditorProjectRow[]>([]);
-	savedRows = $state.raw<EditorProjectRow[]>([]);
+	savedProjectsKey = $state(projectsKey([]));
 	projectsBusy = $state(false);
 	projectsError = $state<string | null>(null);
-	projectsAttempted = $state(false);
-	projectsJustSaved = $state(false);
 
 	// ---- Section toggles ----
 	toggleBusy = $state<Partial<Record<ToggleSetting, boolean>>>({});
@@ -138,23 +157,67 @@ export class BuilderPageEditorState {
 	// ---- Preview ----
 	preview = $state.raw<BuilderProfileView | null>(null);
 	origin = $state('');
-	previewLoading = $state(true);
 	previewError = $state<string | null>(null);
 	previewAudience = $state<PreviewAudience>('anyone');
 
+	// ---- Save status (top bar) ----
+	saveState = $state<SaveState>('idle');
+	saveMessage = $state<string | null>(null);
+
 	// ---- Derived ----
-	linksDirty = $derived(linksKey(this.socials, this.links) !== this.savedLinksKey);
-	projectsDirty = $derived(projectsKey(this.rows) !== projectsKey(this.savedRows));
+	linksKeyNow = $derived(linksKey(this.socials, this.links));
+	projectsKeyNow = $derived(projectsKey(this.rows));
+	linksDirty = $derived(this.linksKeyNow !== this.savedLinksKey);
+	projectsDirty = $derived(this.projectsKeyNow !== this.savedProjectsKey);
+	linkErrors = $derived(
+		Object.fromEntries(
+			[...this.socials, ...this.links]
+				.map((row) => [row.key, linkRowError(row)] as const)
+				.filter(([, error]) => error !== null)
+		) as Record<string, string>
+	);
 	projectErrors = $derived(projectRowErrors(this.rows));
-	previewView = $derived(this.preview ? previewViewFor(this.preview, this.previewAudience) : null);
+	replyErrors = $derived(projectReplyErrors(this.rows));
+	placedRows = $derived(this.rows.filter((row) => row.level !== 'hidden'));
+	hiddenRows = $derived(this.rows.filter((row) => row.level === 'hidden'));
+	unsaved = $derived(
+		this.linksDirty || this.projectsDirty || this.headerDirty() || this.fieldSaving !== null
+	);
+	liveView = $derived(
+		this.preview
+			? overlayView(this.preview, {
+					header: this.header,
+					settings: this.settings,
+					socials: this.socials,
+					links: this.links,
+					rows: this.rows,
+					audience: this.previewAudience
+				})
+			: null
+	);
 	pageUrl = $derived(
-		this.handle ? `${(this.origin || 'https://build-os.com').replace(/\/$/, '')}/@${this.handle}` : null
+		this.handle
+			? `${(this.origin || 'https://build-os.com').replace(/\/$/, '')}/@${this.handle}`
+			: null
 	);
 
 	#previewSeq = 0;
 	#timers = new Set<ReturnType<typeof setTimeout>>();
+	#linksTimer: ReturnType<typeof setTimeout> | null = null;
+	#projectsTimer: ReturnType<typeof setTimeout> | null = null;
+	#savedFlash: ReturnType<typeof setTimeout> | null = null;
+	#inFlight = 0;
+	#batchError: string | null = null;
 
 	// ---- Loading ----------------------------------------------------------------
+
+	/** Start from what the server rendered with the page (no spinner, no extra calls). */
+	hydrate(data: BuilderEditorData, preview: BuilderProfileView | null, origin: string): void {
+		this.apply(data);
+		this.preview = preview;
+		this.origin = origin;
+		this.loading = false;
+	}
 
 	async load(): Promise<void> {
 		this.loading = true;
@@ -176,8 +239,8 @@ export class BuilderPageEditorState {
 		this.handle = data.handle;
 		this.name = data.name;
 		this.status = data.status;
-		this.settings = { ...data.settings };
-		this.header = headerDraftsFrom(data.settings);
+		this.settings = { ...EMPTY_SETTINGS, ...data.settings };
+		this.header = headerDraftsFrom(this.settings, data.name);
 		this.signInAvatarUrl = data.sign_in_avatar_url;
 		const split = linkRowsFrom(data.links);
 		this.socials = split.socials;
@@ -185,16 +248,15 @@ export class BuilderPageEditorState {
 		this.savedLinksKey = linksKey(split.socials, split.links);
 		const rows = rowsFromProjects(data.projects);
 		this.rows = rows;
-		this.savedRows = rows.map((row) => ({ ...row, goal_ids: [...row.goal_ids] }));
+		this.savedProjectsKey = projectsKey(rows);
 		this.setDrafts(data.drafts);
 	}
 
-	/** After the handle changes above: pick up the new handle and status only. */
+	/** After the handle changes: pick up the new handle and status only. */
 	async refreshIdentity(): Promise<void> {
 		const editor = await callApi<BuilderEditorData>(BASE, 'GET');
 		if (editor.ok && editor.data) {
 			this.handle = editor.data.handle;
-			this.name = editor.data.name;
 			this.status = editor.data.status;
 		}
 		await this.refreshPreview();
@@ -209,7 +271,6 @@ export class BuilderPageEditorState {
 			'Could not load the preview.'
 		);
 		if (seq !== this.#previewSeq) return;
-		this.previewLoading = false;
 		if (!result.ok) {
 			this.previewError = result.error;
 			return;
@@ -219,17 +280,67 @@ export class BuilderPageEditorState {
 		if (result.data?.origin) this.origin = result.data.origin;
 	}
 
+	// ---- Navigation -------------------------------------------------------------
+
+	open(section: BuilderPageSection, projectId?: string): void {
+		this.section = section;
+		this.openProjectId = section === 'projects' ? (projectId ?? null) : null;
+	}
+
+	// ---- Save status ------------------------------------------------------------
+
+	/**
+	 * Wraps every save so the top bar can say Saving… / Saved / Not saved. Saves that
+	 * overlap count as one batch: it reads Saved only if none of them failed.
+	 */
+	private async track<T>(
+		work: () => Promise<T>,
+		failed: (result: T) => string | null
+	): Promise<T> {
+		if (this.#inFlight === 0) this.#batchError = null;
+		this.#inFlight += 1;
+		this.saveState = 'saving';
+		this.saveMessage = null;
+		const result = await work();
+		this.#inFlight -= 1;
+		this.#batchError = failed(result) ?? this.#batchError;
+		if (this.#inFlight > 0) return result;
+		if (this.#batchError) {
+			this.saveState = 'error';
+			this.saveMessage = this.#batchError;
+			return result;
+		}
+		this.saveState = 'saved';
+		if (this.#savedFlash) clearTimeout(this.#savedFlash);
+		this.#savedFlash = setTimeout(() => {
+			if (this.saveState === 'saved') this.saveState = 'idle';
+		}, 2400);
+		return result;
+	}
+
+	private headerDirty(): boolean {
+		return (
+			headerChange(this.header.name, this.name) !== undefined ||
+			(['headline', 'location', 'bio', 'now_text'] as const).some(
+				(field) => headerChange(this.header[field], this.settings[field]) !== undefined
+			)
+		);
+	}
+
 	// ---- Publish ----------------------------------------------------------------
 
 	async setPublished(publish: boolean): Promise<void> {
 		if (this.publishBusy) return;
+		await this.flush();
 		this.publishBusy = true;
 		this.publishError = null;
 		const result = await callApi<{ status: BuilderProfileStatus }>(
 			`${BASE}/publish`,
 			'POST',
 			{ publish },
-			publish ? 'Could not publish your page. Try again.' : 'Could not take your page down. Try again.'
+			publish
+				? 'Could not publish your page. Try again.'
+				: 'Could not take your page down. Try again.'
 		);
 		this.publishBusy = false;
 		if (!result.ok) {
@@ -241,38 +352,61 @@ export class BuilderPageEditorState {
 		void this.refreshPreview();
 	}
 
+	/** Save anything waiting (before publishing or leaving). */
+	async flush(): Promise<void> {
+		if (this.#linksTimer) clearTimeout(this.#linksTimer);
+		if (this.#projectsTimer) clearTimeout(this.#projectsTimer);
+		this.#linksTimer = this.#projectsTimer = null;
+		const work: Promise<unknown>[] = [];
+		if (this.linksDirty) work.push(this.saveLinks());
+		if (this.projectsDirty) work.push(this.saveProjects());
+		await Promise.all(work);
+	}
+
 	// ---- Header -----------------------------------------------------------------
 
 	async saveField(field: HeaderField): Promise<void> {
 		const sent = this.header[field];
-		const change = headerChange(sent, this.settings[field]);
+		const saved = field === 'name' ? this.name : this.settings[field];
+		const change = headerChange(sent, saved);
 		if (change === undefined) {
 			this.clearFieldError(field);
 			return;
 		}
-		const ok = await this.patch(field, { [field]: change });
+		if (field === 'name' && !change) {
+			this.fieldErrors = { ...this.fieldErrors, name: 'Add your name.' };
+			return;
+		}
+		const ok = await this.patch(field, { [field]: change }, false);
 		if (!ok) return;
-		this.settings = { ...this.settings, [field]: change };
+		if (field === 'name') this.name = change;
+		else this.settings = { ...this.settings, [field]: change };
 		// Show the cleaned value unless they kept typing while it saved.
 		if (this.header[field] === sent) this.header[field] = change ?? '';
 	}
 
 	async setAvatar(url: string | null): Promise<void> {
-		const ok = await this.patch('avatar_url', { avatar_url: url });
+		const ok = await this.patch('avatar_url', { avatar_url: url }, true);
 		if (ok) this.settings = { ...this.settings, avatar_url: url };
 	}
 
-	private async patch(field: SavableField, body: Record<string, unknown>): Promise<boolean> {
+	private async patch(
+		field: SavableField,
+		body: Record<string, unknown>,
+		reload: boolean
+	): Promise<boolean> {
 		this.fieldSaving = field;
-		const result = await callApi<{ saved: boolean }>(BASE, 'PATCH', body);
+		const result = await this.track(
+			() => callApi<{ saved: boolean }>(BASE, 'PATCH', body),
+			(r) => (r.ok ? null : r.error)
+		);
 		if (this.fieldSaving === field) this.fieldSaving = null;
 		if (!result.ok) {
 			this.fieldErrors = { ...this.fieldErrors, [field]: result.error };
 			return false;
 		}
 		this.clearFieldError(field);
-		this.flash('field', field);
-		void this.refreshPreview();
+		if (reload) void this.refreshPreview();
 		return true;
 	}
 
@@ -281,6 +415,76 @@ export class BuilderPageEditorState {
 		const next = { ...this.fieldErrors };
 		delete next[field];
 		this.fieldErrors = next;
+	}
+
+	// ---- Photo and cover ----------------------------------------------------------
+
+	async uploadImage(kind: CropShape, blob: Blob): Promise<boolean> {
+		if (this.imageBusy) return false;
+		this.imageBusy = kind;
+		this.imageError = null;
+		const form = new FormData();
+		form.append('kind', kind);
+		form.append('file', blob, `${kind}.${blob.type === 'image/webp' ? 'webp' : 'jpg'}`);
+		const result = await this.track(
+			async () => {
+				try {
+					const res = await fetch(`${BASE}/image`, {
+						method: 'POST',
+						body: form,
+						credentials: 'same-origin'
+					});
+					const payload = (await res.json().catch(() => null)) as {
+						data?: { url?: string };
+						error?: string;
+					} | null;
+					if (!res.ok || !payload?.data?.url) {
+						return {
+							ok: false as const,
+							error: payload?.error || 'Could not save that image. Try again.'
+						};
+					}
+					return { ok: true as const, url: payload.data.url };
+				} catch {
+					return {
+						ok: false as const,
+						error: 'Could not reach BuildOS. Check your connection and try again.'
+					};
+				}
+			},
+			(r) => (r.ok ? null : r.error)
+		);
+		this.imageBusy = null;
+		if (!result.ok) {
+			this.imageError = result.error;
+			return false;
+		}
+		const column = kind === 'avatar' ? 'avatar_url' : 'cover_url';
+		this.settings = { ...this.settings, [column]: result.url };
+		return true;
+	}
+
+	async removeImage(kind: CropShape): Promise<void> {
+		if (this.imageBusy) return;
+		this.imageBusy = kind;
+		this.imageError = null;
+		const result = await this.track(
+			() =>
+				callApi<{ removed: boolean }>(
+					`${BASE}/image?kind=${kind}`,
+					'DELETE',
+					undefined,
+					'Could not remove that image. Try again.'
+				),
+			(r) => (r.ok ? null : r.error)
+		);
+		this.imageBusy = null;
+		if (!result.ok) {
+			this.imageError = result.error;
+			return;
+		}
+		const column = kind === 'avatar' ? 'avatar_url' : 'cover_url';
+		this.settings = { ...this.settings, [column]: null };
 	}
 
 	// ---- Draft my page ------------------------------------------------------------
@@ -298,7 +502,9 @@ export class BuilderPageEditorState {
 		);
 		this.suggestionBusy = false;
 		if (!result.ok || !result.data) {
-			this.suggestionError = result.ok ? 'Could not draft your page. Try again.' : result.error;
+			this.suggestionError = result.ok
+				? 'Could not draft your page. Try again.'
+				: result.error;
 			return;
 		}
 		this.suggestion = result.data;
@@ -319,50 +525,25 @@ export class BuilderPageEditorState {
 		await this.saveField(field);
 	}
 
-	async useSuggestedPitch(projectId: string): Promise<void> {
+	useSuggestedPitch(projectId: string): void {
 		const pitch = this.suggestion?.pitches.find((p) => p.project_id === projectId)?.pitch;
 		if (!pitch) return;
 		this.rows = applySuggestedPitch(this.rows, projectId, pitch);
 		this.markUsed(`pitch:${projectId}`);
-		await this.saveProjectsFromSuggestion();
 	}
 
 	async useAllSuggestions(): Promise<void> {
 		const suggestion = this.suggestion;
 		if (!suggestion) return;
-		const patch: Partial<Pick<BuilderProfileSettings, 'headline' | 'bio'>> = {};
 		for (const field of ['headline', 'bio'] as const) {
-			const text = suggestion[field];
-			if (!text) continue;
-			this.header[field] = text.slice(0, LIMITS[field]);
-			const change = headerChange(this.header[field], this.settings[field]);
-			if (change !== undefined) patch[field] = change;
-			this.markUsed(field);
+			if (suggestion[field]) await this.useSuggestedText(field);
 		}
-		let rows = this.rows;
-		for (const { project_id, pitch } of suggestion.pitches) {
-			rows = applySuggestedPitch(rows, project_id, pitch);
-			this.markUsed(`pitch:${project_id}`);
-		}
-		this.rows = rows;
-		if (Object.keys(patch).length) {
-			const target: SavableField = 'headline' in patch ? 'headline' : 'bio';
-			const ok = await this.patch(target, patch);
-			if (ok) this.settings = { ...this.settings, ...patch };
-		}
-		if (suggestion.pitches.length) await this.saveProjectsFromSuggestion();
-	}
-
-	/** Save after accepting a pitch; a failure shows in the draft panel too, where they clicked. */
-	private async saveProjectsFromSuggestion() {
-		const ok = await this.saveProjects();
-		if (!ok && this.projectsError) {
-			this.suggestionError = `The pitch is in place but not saved yet. ${this.projectsError}`;
-		}
+		for (const { project_id } of suggestion.pitches) this.useSuggestedPitch(project_id);
 	}
 
 	private markUsed(key: string) {
-		if (!this.usedSuggestions.includes(key)) this.usedSuggestions = [...this.usedSuggestions, key];
+		if (!this.usedSuggestions.includes(key))
+			this.usedSuggestions = [...this.usedSuggestions, key];
 	}
 
 	// ---- Links ------------------------------------------------------------------
@@ -380,42 +561,48 @@ export class BuilderPageEditorState {
 		else this.links = this.links.filter((r) => r.key !== key);
 	}
 
-	moveLink(kind: 'social' | 'link', index: number, delta: -1 | 1): void {
-		if (kind === 'social') this.socials = moveItem(this.socials, index, delta);
-		else this.links = moveItem(this.links, index, delta);
+	moveLink(kind: 'social' | 'link', from: number, to: number): void {
+		const list = kind === 'social' ? this.socials : this.links;
+		const next = moveItem(list, from, to - from);
+		if (kind === 'social') this.socials = next;
+		else this.links = next;
+	}
+
+	/** Called whenever the links change; saves once typing settles and every row is valid. */
+	scheduleLinksSave(): void {
+		if (this.#linksTimer) clearTimeout(this.#linksTimer);
+		this.#linksTimer = setTimeout(() => {
+			this.#linksTimer = null;
+			void this.saveLinks();
+		}, AUTOSAVE_MS);
 	}
 
 	async saveLinks(): Promise<boolean> {
-		if (this.linksBusy) return false;
-		this.linksAttempted = true;
-		const invalid = [...this.socials, ...this.links].some((row) => linkRowError(row));
-		if (invalid) {
-			this.linksError = 'Fix the links marked below, then save.';
+		if (!this.linksDirty || Object.keys(this.linkErrors).length) return false;
+		if (this.linksBusy) {
+			this.scheduleLinksSave();
 			return false;
 		}
+		const sentKey = this.linksKeyNow;
 		this.linksBusy = true;
 		this.linksError = null;
-		const result = await callApi<unknown>(
-			`${BASE}/links`,
-			'PUT',
-			buildLinksPayload(this.socials, this.links),
-			'Could not save your links. Try again.'
+		const result = await this.track(
+			() =>
+				callApi<unknown>(
+					`${BASE}/links`,
+					'PUT',
+					buildLinksPayload(this.socials, this.links),
+					'Could not save your links. Try again.'
+				),
+			(r) => (r.ok ? null : r.error)
 		);
 		this.linksBusy = false;
 		if (!result.ok) {
 			this.linksError = result.error;
 			return false;
 		}
-		const tidy = (rows: EditorLinkRow[]) =>
-			rows
-				.filter((row) => !isBlankLinkRow(row))
-				.map((row) => ({ ...row, url: normalizeLinkUrl(row.url) ?? row.url }));
-		this.socials = tidy(this.socials);
-		this.links = tidy(this.links);
-		this.savedLinksKey = linksKey(this.socials, this.links);
-		this.linksAttempted = false;
-		this.flash('links');
-		void this.refreshPreview();
+		this.savedLinksKey = sentKey;
+		if (this.linksDirty) this.scheduleLinksSave();
 		return true;
 	}
 
@@ -425,8 +612,29 @@ export class BuilderPageEditorState {
 		this.rows = setRowLevel(this.rows, projectId, level);
 	}
 
+	/** Put a hidden project on the page (Listed) and open it. */
+	addProject(projectId: string): boolean {
+		const before = this.placedRows.length;
+		this.setLevel(projectId, 'listed');
+		if (this.placedRows.length === before) return false;
+		this.open('projects', projectId);
+		return true;
+	}
+
+	removeProject(projectId: string): void {
+		this.setLevel(projectId, 'hidden');
+		if (this.openProjectId === projectId) this.openProjectId = null;
+	}
+
 	moveProject(projectId: string, delta: -1 | 1): void {
 		this.rows = movePlacedRow(this.rows, projectId, delta);
+	}
+
+	/** Move a placed project from one spot to another (drag to reorder). */
+	movePlaced(from: number, to: number): void {
+		const count = this.placedRows.length;
+		if (from < 0 || from >= count || to < 0 || to >= count || from === to) return;
+		this.rows = moveItem(this.rows, from, to - from);
 	}
 
 	/** Edit one row in place (typing in a project's fields). */
@@ -437,35 +645,60 @@ export class BuilderPageEditorState {
 
 	toggleGoal(projectId: string, goalId: string): void {
 		this.rows = this.rows.map((row) =>
-			row.project.project_id === projectId ? { ...row, goal_ids: toggleGoal(row, goalId) } : row
+			row.project.project_id === projectId
+				? { ...row, goal_ids: toggleGoal(row, goalId) }
+				: row
 		);
 	}
 
+	scheduleProjectsSave(): void {
+		if (this.#projectsTimer) clearTimeout(this.#projectsTimer);
+		this.#projectsTimer = setTimeout(() => {
+			this.#projectsTimer = null;
+			void this.saveProjects();
+		}, AUTOSAVE_MS);
+	}
+
 	async saveProjects(): Promise<boolean> {
-		if (this.projectsBusy) return false;
-		this.projectsAttempted = true;
-		if (Object.keys(projectRowErrors(this.rows)).length) {
-			this.projectsError = 'Fix the project links marked below, then save.';
+		if (
+			!this.projectsDirty ||
+			Object.keys(this.projectErrors).length ||
+			Object.keys(this.replyErrors).length
+		)
+			return false;
+		if (this.projectsBusy) {
+			this.scheduleProjectsSave();
 			return false;
 		}
+		const sentKey = this.projectsKeyNow;
+		const payload = buildProjectsPayload(this.rows);
+		const placedBefore = new Set(
+			(this.preview?.projects ?? []).map((card) => `${card.id}:${card.level}`)
+		);
 		this.projectsBusy = true;
 		this.projectsError = null;
-		const snapshot = this.rows.map((row) => ({ ...row, goal_ids: [...row.goal_ids] }));
-		const result = await callApi<{ saved: number }>(
-			`${BASE}/projects`,
-			'PUT',
-			buildProjectsPayload(snapshot),
-			'Could not save your projects. Try again.'
+		const result = await this.track(
+			() =>
+				callApi<{ saved: number }>(
+					`${BASE}/projects`,
+					'PUT',
+					payload,
+					'Could not save your projects. Try again.'
+				),
+			(r) => (r.ok ? null : r.error)
 		);
 		this.projectsBusy = false;
 		if (!result.ok) {
 			this.projectsError = result.error;
 			return false;
 		}
-		this.savedRows = snapshot;
-		this.projectsAttempted = false;
-		this.flash('projects');
-		void this.refreshPreview();
+		this.savedProjectsKey = sentKey;
+		// A project newly shown or made Live needs its bars and counts from the server.
+		const needsReload = payload.projects.some(
+			(p) => !placedBefore.has(`${p.project_id}:${p.level}`)
+		);
+		if (needsReload) void this.refreshPreview();
+		if (this.projectsDirty) this.scheduleProjectsSave();
 		return true;
 	}
 
@@ -477,14 +710,17 @@ export class BuilderPageEditorState {
 		this.settings = { ...this.settings, [key]: value };
 		this.toggleBusy = { ...this.toggleBusy, [key]: true };
 		if (this.toggleError?.key === key) this.toggleError = null;
-		const result = await callApi<{ saved: boolean }>(BASE, 'PATCH', { [key]: value });
+		const result = await this.track(
+			() => callApi<{ saved: boolean }>(BASE, 'PATCH', { [key]: value }),
+			(r) => (r.ok ? null : r.error)
+		);
 		this.toggleBusy = { ...this.toggleBusy, [key]: false };
 		if (!result.ok) {
 			this.settings = { ...this.settings, [key]: previous };
 			this.toggleError = { key, message: result.error };
 			return;
 		}
-		if (key !== 'weekly_drafts') void this.refreshPreview();
+		if (RELOAD_AFTER.includes(key)) void this.refreshPreview();
 	}
 
 	// ---- Weekly update ----------------------------------------------------------
@@ -503,6 +739,7 @@ export class BuilderPageEditorState {
 
 	async draftThisWeek(): Promise<void> {
 		if (this.weeklyBusy) return;
+		await this.flush();
 		this.weeklyBusy = 'draft';
 		this.weeklyMessage = null;
 		this.weeklyError = null;
@@ -538,14 +775,21 @@ export class BuilderPageEditorState {
 		if (!draft || this.draftBusy[draftId]) return false;
 		const body = normalizeText(this.draftBodies[draftId] ?? draft.body);
 		if (action === 'publish' && !body) {
-			this.draftErrors = { ...this.draftErrors, [draftId]: 'Write something first, or skip it.' };
+			this.draftErrors = {
+				...this.draftErrors,
+				[draftId]: 'Write something first, or skip it.'
+			};
 			return false;
 		}
 		this.draftBusy = { ...this.draftBusy, [draftId]: action };
-		const result = await callApi<unknown>(
-			`${BASE}/updates`,
-			'PATCH',
-			action === 'publish' ? { id: draftId, action, body } : { id: draftId, action }
+		const result = await this.track(
+			() =>
+				callApi<unknown>(
+					`${BASE}/updates`,
+					'PATCH',
+					action === 'publish' ? { id: draftId, action, body } : { id: draftId, action }
+				),
+			(r) => (r.ok ? null : r.error)
 		);
 		const busy = { ...this.draftBusy };
 		delete busy[draftId];
@@ -582,9 +826,13 @@ export class BuilderPageEditorState {
 		}
 		const rest = [...this.drafts];
 		if (rest.length) {
-			const result = await callApi<{ published: number }>(`${BASE}/updates`, 'PATCH', {
-				action: 'publish_all'
-			});
+			const result = await this.track(
+				() =>
+					callApi<{ published: number }>(`${BASE}/updates`, 'PATCH', {
+						action: 'publish_all'
+					}),
+				(r) => (r.ok ? null : r.error)
+			);
 			if (!result.ok) {
 				this.weeklyBusy = null;
 				this.weeklyError = result.error;
@@ -612,40 +860,29 @@ export class BuilderPageEditorState {
 	/** A published line lands on the page; mirror it so the editor shows the same text. */
 	private applyPublishedLine(draft: BuilderProfileUpdateDraft, body: string) {
 		if (!draft.project_id) {
-			const untouched = normalizeText(this.header.now_text) === normalizeText(this.settings.now_text);
+			const untouched =
+				normalizeText(this.header.now_text) === normalizeText(this.settings.now_text);
 			this.settings = { ...this.settings, now_text: body };
 			if (untouched) this.header.now_text = body;
 			return;
 		}
 		const pid = draft.project_id;
-		const savedRow = this.savedRows.find((r) => r.project.project_id === pid);
-		const liveRow = this.rows.find((r) => r.project.project_id === pid);
-		const untouched = normalizeText(liveRow?.this_week) === normalizeText(savedRow?.this_week);
-		this.savedRows = this.savedRows.map((r) =>
-			r.project.project_id === pid ? { ...r, this_week: body } : r
-		);
-		if (untouched) {
-			this.rows = this.rows.map((r) => (r.project.project_id === pid ? { ...r, this_week: body } : r));
-		}
+		const row = this.rows.find((r) => r.project.project_id === pid);
+		if (!row) return;
+		// The server already saved this line; keep the saved snapshot in step so it
+		// doesn't count as an unsaved change.
+		const wasClean = !this.projectsDirty;
+		row.this_week = body;
+		if (wasClean) this.savedProjectsKey = projectsKey(this.rows);
 	}
 
 	// ---- Misc -------------------------------------------------------------------
 
-	private flash(kind: 'field' | 'links' | 'projects', field?: SavableField) {
-		if (kind === 'field' && field) this.justSaved = field;
-		if (kind === 'links') this.linksJustSaved = true;
-		if (kind === 'projects') this.projectsJustSaved = true;
-		const timer = setTimeout(() => {
-			this.#timers.delete(timer);
-			if (kind === 'field' && this.justSaved === field) this.justSaved = null;
-			if (kind === 'links') this.linksJustSaved = false;
-			if (kind === 'projects') this.projectsJustSaved = false;
-		}, 2400);
-		this.#timers.add(timer);
-	}
-
 	dispose(): void {
 		for (const timer of this.#timers) clearTimeout(timer);
 		this.#timers.clear();
+		if (this.#linksTimer) clearTimeout(this.#linksTimer);
+		if (this.#projectsTimer) clearTimeout(this.#projectsTimer);
+		if (this.#savedFlash) clearTimeout(this.#savedFlash);
 	}
 }

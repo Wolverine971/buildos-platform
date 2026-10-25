@@ -176,8 +176,10 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 
 		if (error) throw error;
 
-		// Ensure daily brief subscriptions are explicitly opted in/out
-		// A user is considered opted-in if any daily brief channel is enabled
+		// A global channel change (including the project's push opt-in) must not
+		// overwrite an existing brief opt-out. Only an explicit brief choice does.
+		const updatesDailyBrief =
+			should_email_daily_brief !== undefined || should_sms_daily_brief !== undefined;
 		const wantsDailyBriefNotifications = Boolean(
 			data?.should_email_daily_brief ||
 				data?.should_sms_daily_brief ||
@@ -197,7 +199,8 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 					created_by: user.id
 				})),
 				{
-					onConflict: 'user_id,event_type'
+					onConflict: 'user_id,event_type',
+					ignoreDuplicates: !updatesDailyBrief
 				}
 			);
 

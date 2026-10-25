@@ -25,7 +25,6 @@
 	import AccountTab from '$lib/components/profile/AccountTab.svelte';
 	import ContactsTab from '$lib/components/profile/ContactsTab.svelte';
 	import NotificationsTab from '$lib/components/profile/NotificationsTab.svelte';
-	import PreferencesTab from '$lib/components/profile/PreferencesTab.svelte';
 	import PeopleAgentsTab from '$lib/components/profile/PeopleAgentsTab.svelte';
 	import BillingTab from '$lib/components/profile/BillingTab.svelte';
 	import CyclesTab from '$lib/components/profile/CyclesTab.svelte';
@@ -185,7 +184,7 @@
 	<title>Settings - BuildOS</title>
 	<meta
 		name="description"
-		content="Manage your BuildOS account, preferences, recurring work, notifications, and connections."
+		content="Manage your BuildOS account, briefs, recurring work, notifications, and connections."
 	/>
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
@@ -342,8 +341,6 @@
 						onsuccess={handleComponentSuccess}
 						onerror={handleComponentError}
 					/>
-				{:else if activeTab === 'preferences'}
-					<PreferencesTab />
 				{:else if activeTab === 'cycles' && data.cyclesProfileEnabled}
 					<CyclesTab executionAuthority={data.cyclesExecutionAuthority} />
 				{:else if activeTab === 'briefs'}

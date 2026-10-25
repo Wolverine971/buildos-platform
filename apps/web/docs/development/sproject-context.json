@@ -21,16 +21,6 @@
 			"components": ["AgentChatModal", "GraphControls", "OntologyGraph", "NodeDetailsPanel"]
 		},
 		{
-			"file": "src/routes/today/+page.svelte",
-			"type": "page",
-			"components": [
-				"DailyBriefModal",
-				"BriefChatModal",
-				"DashboardInboxModal",
-				"OverdueTaskTriageModal"
-			]
-		},
-		{
 			"file": "src/routes/time-blocks/+page.svelte",
 			"type": "page",
 			"components": [
@@ -41,6 +31,26 @@
 				"AvailableSlotList",
 				"CalendarConnectionOverlay"
 			]
+		},
+		{
+			"file": "src/routes/today/+page.svelte",
+			"type": "page",
+			"components": [
+				"DailyBriefModal",
+				"BriefChatModal",
+				"DashboardInboxModal",
+				"OverdueTaskTriageModal"
+			]
+		},
+		{
+			"file": "src/lib/components/agent/ChatShareButton.svelte",
+			"type": "component",
+			"components": ["ChatShareSheet"]
+		},
+		{
+			"file": "src/lib/components/email/EmailManager.svelte",
+			"type": "component",
+			"components": ["EmailComposer", "EmailPreview"]
 		},
 		{
 			"file": "src/lib/components/dashboard/DashboardInboxModal.svelte",
@@ -61,16 +71,6 @@
 				"OverdueTaskTriageModal",
 				"DashboardInboxModal"
 			]
-		},
-		{
-			"file": "src/lib/components/agent/ChatShareButton.svelte",
-			"type": "component",
-			"components": ["ChatShareSheet"]
-		},
-		{
-			"file": "src/lib/components/email/EmailManager.svelte",
-			"type": "component",
-			"components": ["EmailComposer", "EmailPreview"]
 		},
 		{
 			"file": "src/lib/components/landing/HomepageV2.svelte",
@@ -950,6 +950,18 @@
 			]
 		},
 		{
+			"file": "src/lib/components/consolidation/consolidation-picture.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["consolidationPicture"]
+		},
+		{
+			"file": "src/lib/components/dashboard/dashboard-presentation.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["formatActivityDay", "getDashboardChatPresentation"]
+		},
+		{
 			"file": "src/lib/components/agent/agent-chat-attachments.svelte.ts",
 			"type": "component",
 			"components": [],
@@ -1500,16 +1512,16 @@
 			]
 		},
 		{
-			"file": "src/lib/components/dashboard/dashboard-presentation.ts",
+			"file": "src/lib/components/layout/agent-chat-launch-params.ts",
 			"type": "component",
 			"components": [],
-			"exports": ["formatActivityDay", "getDashboardChatPresentation"]
+			"exports": ["AGENT_CHAT_LAUNCH_PARAMS", "readAgentChatLaunchRequest"]
 		},
 		{
-			"file": "src/lib/components/consolidation/consolidation-picture.ts",
+			"file": "src/lib/components/layout/agent-chat-resume-link.ts",
 			"type": "component",
 			"components": [],
-			"exports": ["consolidationPicture"]
+			"exports": ["createChatResumeLinkHandler"]
 		},
 		{
 			"file": "src/lib/components/inbox/cleanup-note.client.ts",
@@ -1567,28 +1579,10 @@
 			]
 		},
 		{
-			"file": "src/lib/components/layout/agent-chat-launch-params.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["AGENT_CHAT_LAUNCH_PARAMS", "readAgentChatLaunchRequest"]
-		},
-		{
-			"file": "src/lib/components/layout/agent-chat-resume-link.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["createChatResumeLinkHandler"]
-		},
-		{
 			"file": "src/lib/components/notifications/notification-preview.ts",
 			"type": "component",
 			"components": [],
 			"exports": ["getNotificationPreview", "notificationPreviewAriaLabel"]
-		},
-		{
-			"file": "src/lib/components/ontology/document-agent-mutation.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["resolveDocumentAgentMutationAction"]
 		},
 		{
 			"file": "src/lib/components/organize/organize-api.ts",
@@ -1637,6 +1631,12 @@
 			"type": "component",
 			"components": [],
 			"exports": ["createOrganizePersistence"]
+		},
+		{
+			"file": "src/lib/components/ontology/document-agent-mutation.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["resolveDocumentAgentMutationAction"]
 		},
 		{
 			"file": "src/lib/components/people/people-copy.ts",
@@ -2136,12 +2136,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/agent/__fixtures__/chat-history-state.svelte.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["navigating"]
-		},
-		{
 			"file": "src/lib/components/builder-profile/editor/builder-editor-state.svelte.ts",
 			"type": "component",
 			"components": [],
@@ -2179,9 +2173,15 @@
 				"projectActivityLine",
 				"sharedWithCount",
 				"sharedWithLabel",
-				"previewViewFor",
+				"overlayView",
 				"moveItem"
 			]
+		},
+		{
+			"file": "src/lib/components/builder-profile/editor/drag-reorder.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["dragHandle"]
 		},
 		{
 			"file": "src/lib/components/builder-profile/editor/editor-api.ts",
@@ -2200,6 +2200,34 @@
 				"textButtonClass",
 				"selectClass"
 			]
+		},
+		{
+			"file": "src/lib/components/builder-profile/editor/image-crop.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"CROP_OUTPUT",
+				"MIN_ZOOM",
+				"MAX_ZOOM",
+				"MAX_IMAGE_BYTES",
+				"DECODE_FAILED_MESSAGE",
+				"cropAspect",
+				"imageFileProblem",
+				"coverScale",
+				"clampZoom",
+				"visibleSize",
+				"centeredView",
+				"clampView",
+				"cropRect",
+				"panBy",
+				"zoomAt"
+			]
+		},
+		{
+			"file": "src/lib/components/agent/__fixtures__/chat-history-state.svelte.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["navigating"]
 		},
 		{
 			"file": "src/lib/components/ontology/doc-tree/drop-geometry.ts",
@@ -2231,21 +2259,6 @@
 			"exports": ["createDragDropState"]
 		},
 		{
-			"file": "src/lib/components/people/hub/hub-actions.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"setMemberRole",
-				"setMemberAgents",
-				"removeMember",
-				"resendInvite",
-				"revokeInvite",
-				"clearExpiredInvites",
-				"inviteExistingPerson",
-				"runAll"
-			]
-		},
-		{
 			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 			"type": "component",
 			"components": [],
@@ -2273,6 +2286,34 @@
 				"getEntityDisplayName",
 				"formatRelationshipLabel",
 				"getFilteredSections"
+			]
+		},
+		{
+			"file": "src/lib/components/profile/cycles/cycle-presenter.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"presentCycleKind",
+				"formatCycleSchedule",
+				"presentCycleCadence",
+				"presentCycleStatus",
+				"formatCycleTimestamp",
+				"presentCycle"
+			]
+		},
+		{
+			"file": "src/lib/components/people/hub/hub-actions.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"setMemberRole",
+				"setMemberAgents",
+				"removeMember",
+				"resendInvite",
+				"revokeInvite",
+				"clearExpiredInvites",
+				"inviteExistingPerson",
+				"runAll"
 			]
 		},
 		{
@@ -2313,19 +2354,6 @@
 			"type": "component",
 			"components": [],
 			"exports": ["handleRovingTabKeydown", "slideMotion", "fadeMotion"]
-		},
-		{
-			"file": "src/lib/components/profile/cycles/cycle-presenter.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"presentCycleKind",
-				"formatCycleSchedule",
-				"presentCycleCadence",
-				"presentCycleStatus",
-				"formatCycleTimestamp",
-				"presentCycle"
-			]
 		},
 		{
 			"file": "src/lib/components/projects/desktop/desktop-chats.svelte.ts",
@@ -2616,9 +2644,9 @@
 		]
 	},
 	"unusedComponents": [
+		"src/lib/components/agent/ChatShareButton.svelte",
 		"src/lib/components/dashboard/RecentActivityPanels.svelte",
 		"src/lib/components/dashboard/TodayRow.svelte",
-		"src/lib/components/agent/ChatShareButton.svelte",
 		"src/lib/components/landing/HomepageV2.svelte",
 		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
@@ -2638,6 +2666,8 @@
 		"src/lib/components/projects/desktop/ReaderPanes.svelte",
 		"src/lib/components/admin/adminRoutes.ts",
 		"src/lib/components/chat/project-selector-browser.ts",
+		"src/lib/components/consolidation/consolidation-picture.ts",
+		"src/lib/components/dashboard/dashboard-presentation.ts",
 		"src/lib/components/agent/agent-chat-attachments.svelte.ts",
 		"src/lib/components/agent/agent-chat-client-actions.ts",
 		"src/lib/components/agent/agent-chat-formatters.ts",
@@ -2686,21 +2716,19 @@
 		"src/lib/components/agent/shared-document-edit-card-state.svelte.ts",
 		"src/lib/components/agent/shared-document-edit-cards.ts",
 		"src/lib/components/agent/table-change-cards.ts",
-		"src/lib/components/dashboard/dashboard-presentation.ts",
-		"src/lib/components/consolidation/consolidation-picture.ts",
+		"src/lib/components/layout/agent-chat-launch-params.ts",
+		"src/lib/components/layout/agent-chat-resume-link.ts",
 		"src/lib/components/inbox/cleanup-note.client.ts",
 		"src/lib/components/inbox/cleanup-triage.ts",
 		"src/lib/components/inbox/inbox-presentation.ts",
 		"src/lib/components/inbox/project-cleanup-presentation.ts",
-		"src/lib/components/layout/agent-chat-launch-params.ts",
-		"src/lib/components/layout/agent-chat-resume-link.ts",
 		"src/lib/components/notifications/notification-preview.ts",
-		"src/lib/components/ontology/document-agent-mutation.ts",
 		"src/lib/components/organize/organize-api.ts",
 		"src/lib/components/organize/organize-fixtures.ts",
 		"src/lib/components/organize/organize-plan.ts",
 		"src/lib/components/organize/useOrganizeDrag.svelte.ts",
 		"src/lib/components/organize/useOrganizePersistence.svelte.ts",
+		"src/lib/components/ontology/document-agent-mutation.ts",
 		"src/lib/components/people/people-copy.ts",
 		"src/lib/components/people/people-types.ts",
 		"src/lib/components/people/project-arrival.ts",
@@ -2735,22 +2763,24 @@
 		"src/lib/components/admin/chat/session-audit-ui.ts",
 		"src/lib/components/admin/chat-users/chat-user-export.ts",
 		"src/lib/components/admin/chat-users/chat-user-ui.ts",
-		"src/lib/components/agent/__fixtures__/chat-history-state.svelte.ts",
 		"src/lib/components/builder-profile/editor/builder-editor-state.svelte.ts",
 		"src/lib/components/builder-profile/editor/builder-editor.ts",
+		"src/lib/components/builder-profile/editor/drag-reorder.ts",
 		"src/lib/components/builder-profile/editor/editor-api.ts",
 		"src/lib/components/builder-profile/editor/editor-styles.ts",
+		"src/lib/components/builder-profile/editor/image-crop.ts",
+		"src/lib/components/agent/__fixtures__/chat-history-state.svelte.ts",
 		"src/lib/components/ontology/doc-tree/drop-geometry.ts",
 		"src/lib/components/ontology/doc-tree/tree-images.ts",
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
-		"src/lib/components/people/hub/hub-actions.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
+		"src/lib/components/profile/cycles/cycle-presenter.ts",
+		"src/lib/components/people/hub/hub-actions.ts",
 		"src/lib/components/project/freshness/freshness-context.svelte.ts",
 		"src/lib/components/project/emoji/emoji-catalog.generated.ts",
 		"src/lib/components/project/emoji/project-emoji.ts",
 		"src/lib/components/project/v2/board-a11y.ts",
-		"src/lib/components/profile/cycles/cycle-presenter.ts",
 		"src/lib/components/projects/desktop/desktop-chats.svelte.ts",
 		"src/lib/components/projects/desktop/desktop-context.ts",
 		"src/lib/components/projects/desktop/desktop-model.ts",

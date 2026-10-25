@@ -1,8 +1,8 @@
 <!-- apps/web/src/lib/components/builder-profile/editor/EditorField.svelte -->
-<!-- A labelled text input or textarea with a character count, a quiet "Saved", and the
-     server's message when a save fails (the typed text stays put). -->
+<!-- A labelled text input or textarea. The character count shows only near the limit;
+     saving shows once, in the top bar. A failed save shows the server's message here and
+     keeps the typed text. -->
 <script lang="ts">
-	import { Check } from '$lib/icons/lucide';
 	import { inputClass, inputErrorClass } from './editor-styles';
 
 	let {
@@ -15,8 +15,6 @@
 		placeholder = '',
 		hint = '',
 		error = null,
-		saving = false,
-		saved = false,
 		type = 'text',
 		inputmode,
 		onblur
@@ -30,8 +28,6 @@
 		placeholder?: string;
 		hint?: string;
 		error?: string | null;
-		saving?: boolean;
-		saved?: boolean;
 		type?: 'text' | 'url';
 		inputmode?: 'text' | 'url';
 		/** Save-on-blur fields pass this; Enter in a one-line field blurs too. */
@@ -39,8 +35,9 @@
 	} = $props();
 
 	const count = $derived(value.length);
+	const showCount = $derived(!!max && count >= max * 0.8);
 	const describedBy = $derived(
-		[hint ? `${id}-hint` : null, max ? `${id}-count` : null, error ? `${id}-error` : null]
+		[hint ? `${id}-hint` : null, showCount ? `${id}-count` : null, error ? `${id}-error` : null]
 			.filter(Boolean)
 			.join(' ') || undefined
 	);
@@ -56,24 +53,15 @@
 <div class="space-y-1.5">
 	<div class="flex items-baseline justify-between gap-2">
 		<label for={id} class="text-sm font-medium text-foreground">{label}</label>
-		<span class="flex shrink-0 items-center gap-2 text-xs">
-			<span aria-live="polite" class="inline-flex items-center">
-				{#if saving}
-					<span class="text-muted-foreground">Saving…</span>
-				{:else if saved}
-					<span class="inline-flex items-center gap-1 text-success"
-						><Check class="h-3.5 w-3.5" aria-hidden="true" />Saved</span
-					>
-				{/if}
-			</span>
-			{#if max}
-				<span
-					id="{id}-count"
-					class="stamp {count >= max ? 'font-semibold text-foreground' : 'text-muted-foreground'}"
-					>{count}/{max}<span class="sr-only"> characters</span></span
-				>
-			{/if}
-		</span>
+		{#if showCount && max}
+			<span
+				id="{id}-count"
+				class="stamp text-xs {count >= max
+					? 'font-semibold text-foreground'
+					: 'text-muted-foreground'}"
+				>{count}/{max}<span class="sr-only"> characters</span></span
+			>
+		{/if}
 	</div>
 	{#if multiline}
 		<textarea
@@ -85,7 +73,10 @@
 			aria-describedby={describedBy}
 			aria-invalid={error ? true : undefined}
 			{onblur}
-			class="{inputClass} resize-y leading-relaxed {error ? inputErrorClass : ''}"
+			style:min-height="calc({rows} * 1.45rem + 1.1rem)"
+			class="{inputClass} field-sizing-content resize-none leading-relaxed {error
+				? inputErrorClass
+				: ''}"
 		></textarea>
 	{:else}
 		<input
@@ -112,3 +103,10 @@
 		<p id="{id}-error" class="text-xs text-destructive" role="alert">{error}</p>
 	{/if}
 </div>
+
+<style>
+	/* Grow with the text where the browser supports it; `rows` is the floor. */
+	.field-sizing-content {
+		field-sizing: content;
+	}
+</style>

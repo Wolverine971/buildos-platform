@@ -134,6 +134,65 @@ SELECT public.accept_project_invite_by_id(pg_temp.t143_id(208));
 RESET ROLE;
 SELECT pg_temp.t143_assert((SELECT status='canceled' AND settled_elsewhere AND jsonb_array_length(decision)=2 FROM public.people_requests WHERE id=pg_temp.t143_id(304)),'all satisfied upgrade items close without owner approval or connection grant');
 
+-- A later owner decision preserves projects settled through another entrance.
+INSERT INTO public.onto_project_members(project_id,actor_id,role_key,access,agent_access,removed_at)
+VALUES(pg_temp.t143_id(104),pg_temp.t143_id(32),'viewer','read','off',now()),
+      (pg_temp.t143_id(105),pg_temp.t143_id(32),'viewer','read','read',NULL);
+SELECT pg_temp.t143_request(306,12,'upgrade',104,'viewer','read',jsonb_build_array(
+ jsonb_build_object('project_id',pg_temp.t143_id(104),'need','agents_read','caller_ids','[]'::jsonb),
+ jsonb_build_object('project_id',pg_temp.t143_id(105),'need','edit','caller_ids','[]'::jsonb)));
+SELECT pg_temp.t143_invite(211,12,104,'viewer','read');
+SELECT pg_temp.t143_as(12);
+SET LOCAL ROLE authenticated;
+SELECT public.accept_project_invite_by_id(pg_temp.t143_id(211));
+RESET ROLE;
+SAVEPOINT request_again;
+-- A later stronger request may merge the settled project back into this open card.
+UPDATE public.people_requests SET requested_items=requested_items || jsonb_build_array(
+ jsonb_build_object('project_id',pg_temp.t143_id(104),'need','edit','caller_ids','[]'::jsonb))
+WHERE id=pg_temp.t143_id(306);
+SELECT pg_temp.t143_as(1);
+SET LOCAL ROLE authenticated;
+SELECT public.decide_people_request(pg_temp.t143_id(306),'approve',jsonb_build_array(
+ jsonb_build_object('project_id',pg_temp.t143_id(104),'need','edit','allow',true),
+ jsonb_build_object('project_id',pg_temp.t143_id(105),'need','edit','allow',true)));
+RESET ROLE;
+SELECT pg_temp.t143_assert((SELECT jsonb_array_length(decision)=2 AND NOT decision @> '[{"status":"joined_elsewhere"}]'::jsonb
+ FROM public.people_requests WHERE id=pg_temp.t143_id(306)), 'renewed upgrade replaces earlier settlement without duplicate project choices');
+ROLLBACK TO SAVEPOINT request_again;
+SAVEPOINT mixed_permissions;
+UPDATE public.people_requests SET requested_items=jsonb_build_array(
+ jsonb_build_object('project_id',pg_temp.t143_id(104),'need','edit','caller_ids','[]'::jsonb),
+ jsonb_build_object('project_id',pg_temp.t143_id(105),'need','agents_read','caller_ids','[]'::jsonb))
+WHERE id=pg_temp.t143_id(306);
+SELECT pg_temp.t143_as(1);
+SET LOCAL ROLE authenticated;
+SELECT public.decide_people_request(pg_temp.t143_id(306),'approve',jsonb_build_array(
+ jsonb_build_object('project_id',pg_temp.t143_id(104),'need','edit','allow',true),
+ jsonb_build_object('project_id',pg_temp.t143_id(105),'need','agents_read','allow',true)));
+RESET ROLE;
+SELECT pg_temp.t143_assert((SELECT title='Joiner 1 updated your access in 2 projects'
+ AND action_url='/profile?tab=people#requests' FROM public.user_notifications
+ WHERE user_id=pg_temp.t143_id(12) AND event_type='people.request.approved'
+ AND data->>'request_id'=pg_temp.t143_id(306)::text), 'mixed approval notice does not claim editing in every project');
+SELECT pg_temp.t143_assert((SELECT role_key='viewer' FROM public.onto_project_members
+ WHERE project_id=pg_temp.t143_id(105) AND actor_id=pg_temp.t143_id(32)), 'read-only upgrade preserves viewer role');
+ROLLBACK TO SAVEPOINT mixed_permissions;
+SELECT pg_temp.t143_as(1);
+SET LOCAL ROLE authenticated;
+INSERT INTO t143_results SELECT 'partial_approval', public.decide_people_request(pg_temp.t143_id(306),'approve',
+ jsonb_build_array(jsonb_build_object('project_id',pg_temp.t143_id(105),'need','edit','allow',true)));
+RESET ROLE;
+SELECT pg_temp.t143_assert((SELECT jsonb_array_length(decision)=2 FROM public.people_requests WHERE id=pg_temp.t143_id(306)),
+ 'owner approval retains previously settled project history');
+SELECT pg_temp.t143_assert((SELECT jsonb_array_length(value->'projects')=1 AND value->'projects'->0->>'project_id'=pg_temp.t143_id(105)::text FROM t143_results WHERE key='partial_approval'),
+ 'approval only grants connections for newly approved projects');
+SELECT pg_temp.t143_as(12);
+SET LOCAL ROLE authenticated;
+SELECT pg_temp.t143_assert(jsonb_array_length(public.list_people_requests()->'outgoing'->0->'projects')=2,
+ 'outgoing history keeps both authorized project links');
+RESET ROLE;
+
 -- Rejoin approval cannot be redirected to a different project, including through a direct RPC call.
 SELECT pg_temp.t143_request(305,8,'rejoin',101);
 SELECT pg_temp.t143_as(1);
@@ -150,6 +209,8 @@ SELECT pg_temp.t143_invite(209,9,106);
 UPDATE public.onto_project_invites SET status='declined',declined_at=now()-interval '1 hour' WHERE id=pg_temp.t143_id(209);
 SELECT pg_temp.t143_as(10);
 SET LOCAL ROLE authenticated;
+SELECT pg_temp.t143_assert((SELECT invitee_email IS NULL FROM public.get_project_invite_preview(lpad('209',64,'0'))),
+ 'authenticated nonrecipient cannot read invitee email through the preview RPC');
 DO $$ BEGIN
  PERFORM public.accept_project_invite_by_id(pg_temp.t143_id(209));
  RAISE EXCEPTION 'task143: another user accepted invite';
@@ -157,6 +218,8 @@ EXCEPTION WHEN insufficient_privilege THEN NULL; END $$;
 RESET ROLE;
 SELECT pg_temp.t143_as(9);
 SET LOCAL ROLE authenticated;
+SELECT pg_temp.t143_assert((SELECT invitee_email='join143.9@example.com' FROM public.get_project_invite_preview(lpad('209',64,'0'))),
+ 'recipient can still match their invite email');
 SELECT pg_temp.t143_assert((SELECT agent_access='read' FROM public.list_pending_project_invites() WHERE invite_id=pg_temp.t143_id(209)),'list preview contains agent access');
 SELECT pg_temp.t143_assert((SELECT status='joined' FROM public.accept_project_invite_by_id(pg_temp.t143_id(209))),'declined invite recoverable');
 RESET ROLE;

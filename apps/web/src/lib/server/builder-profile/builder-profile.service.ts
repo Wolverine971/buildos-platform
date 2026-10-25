@@ -7,6 +7,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { normalizeLinkUrl } from '$lib/builder-profile/links';
+import { normalizeReplyUrl } from '$lib/builder-profile/project-pages';
 import type {
 	BuilderAudience,
 	BuilderEditorData,
@@ -18,7 +19,9 @@ import type {
 	BuilderProfileSettings,
 	BuilderProfileUpdateDraft,
 	BuilderProfileView,
-	BuilderProjectLevel
+	BuilderProjectLevel,
+	BuilderProjectPageResult,
+	BuilderProjectPageView
 } from '$lib/builder-profile/types';
 
 type Client = SupabaseClient<any>;
@@ -26,12 +29,13 @@ type Client = SupabaseClient<any>;
 export const MAX_LINKS = 30;
 export const MAX_PROJECTS = 24;
 export const MAX_BIO = 280;
+export const MAX_NAME = 80;
 const ACTIVITY_MAX_AGE_MS = 20 * 60 * 60 * 1000;
 
 export class BuilderProfileError extends Error {
 	constructor(
 		message: string,
-		public status: 400 | 403 | 404 | 409 | 429 = 400
+		public status: 400 | 403 | 404 | 409 | 413 | 415 | 429 = 400
 	) {
 		super(message);
 	}
@@ -63,6 +67,35 @@ export async function loadBuilderProfileAs(
 	return normalizeResult(data);
 }
 
+/**
+ * One Live project's page as the current visitor sees it, read through the same rules
+ * as the builder page (one RPC; anything not visible comes back as not found).
+ */
+export async function loadBuilderProject(
+	supabase: Client,
+	handle: string,
+	slug: string
+): Promise<BuilderProjectPageResult> {
+	const { data, error } = await supabase.rpc('get_builder_project', {
+		p_handle: handle,
+		p_slug: slug
+	});
+	if (error) throw error;
+	const value = data as Partial<BuilderProjectPageView> | null;
+	if (!value || value.found !== true || !value.project) return { found: false };
+	const page = normalizeResult(value.page);
+	if (!page.found) return { found: false };
+	return {
+		found: true,
+		page,
+		project: value.project,
+		activity: value.activity ?? undefined,
+		updates: value.updates ?? [],
+		writing: value.writing ?? [],
+		built_by: value.built_by ?? []
+	};
+}
+
 function normalizeResult(data: unknown): BuilderProfileResult {
 	const value = data as Partial<BuilderProfileView> | null;
 	if (!value || value.found !== true) return { found: false };
@@ -82,7 +115,10 @@ export interface BuilderTarget {
 	activity_refreshed_at: string | null;
 }
 
-export async function resolveBuilderTarget(admin: Client, handle: string): Promise<BuilderTarget | null> {
+export async function resolveBuilderTarget(
+	admin: Client,
+	handle: string
+): Promise<BuilderTarget | null> {
 	const { data, error } = await admin.rpc('builder_profile_target', { p_handle: handle });
 	if (error) throw error;
 	const row = (Array.isArray(data) ? data[0] : data) as BuilderTarget | undefined;
@@ -122,7 +158,9 @@ async function actorIdFor(admin: Client, userId: string): Promise<string | null>
 
 function glyphsOf(iconEmoji: unknown): string[] {
 	const glyphs = (iconEmoji as { glyphs?: unknown } | null)?.glyphs;
-	return Array.isArray(glyphs) ? glyphs.filter((g): g is string => typeof g === 'string').slice(0, 2) : [];
+	return Array.isArray(glyphs)
+		? glyphs.filter((g): g is string => typeof g === 'string').slice(0, 2)
+		: [];
 }
 
 function readSettings(row: Record<string, any> | null, bio: string | null): BuilderProfileSettings {
@@ -130,6 +168,7 @@ function readSettings(row: Record<string, any> | null, bio: string | null): Buil
 		headline: row?.headline ?? null,
 		location: row?.location ?? null,
 		avatar_url: row?.avatar_url ?? null,
+		cover_url: row?.cover_url ?? null,
 		now_text: row?.now_text ?? null,
 		bio,
 		show_build_log: row?.show_build_log !== false,
@@ -276,6 +315,7 @@ export async function loadEditorData(params: {
 			public_name: row.public_name,
 			pitch: row.pitch,
 			looking_for: row.looking_for,
+			reply_url: row.reply_url ?? null,
 			link_url: row.link_url,
 			goal_ids: row.goal_ids ?? [],
 			show_next_milestone: row.show_next_milestone !== false,
@@ -350,7 +390,8 @@ function cleanText(value: unknown, max: number, field: string): string | null {
 	if (typeof value !== 'string') throw new BuilderProfileError(`${field} must be text`);
 	const trimmed = value.replace(/\s+/g, ' ').trim();
 	if (!trimmed) return null;
-	if (trimmed.length > max) throw new BuilderProfileError(`${field} can be at most ${max} characters`);
+	if (trimmed.length > max)
+		throw new BuilderProfileError(`${field} can be at most ${max} characters`);
 	return trimmed;
 }
 
@@ -404,12 +445,15 @@ export async function saveSettings(params: {
 	const update: Record<string, unknown> = {};
 	if ('headline' in patch) update.headline = cleanText(patch.headline, 120, 'Headline');
 	if ('location' in patch) update.location = cleanText(patch.location, 80, 'Location');
-	if ('avatar_url' in patch) {
-		if (patch.avatar_url === null || patch.avatar_url === '') update.avatar_url = null;
+	for (const key of ['avatar_url', 'cover_url'] as const) {
+		if (!(key in patch)) continue;
+		if (patch[key] === null || patch[key] === '') update[key] = null;
 		else {
-			const url = normalizeLinkUrl(String(patch.avatar_url));
-			if (!url || !url.startsWith('https://')) throw new BuilderProfileError('Photo must be an https link');
-			update.avatar_url = url;
+			const url = normalizeLinkUrl(String(patch[key]));
+			const what = key === 'avatar_url' ? 'Photo' : 'Cover image';
+			if (!url || !url.startsWith('https://'))
+				throw new BuilderProfileError(`${what} must be an https link`);
+			update[key] = url;
 		}
 	}
 	let nowChanged: string | null = null;
@@ -428,7 +472,8 @@ export async function saveSettings(params: {
 	}
 	for (const key of BOOLEAN_SETTINGS) {
 		if (key in patch) {
-			if (typeof patch[key] !== 'boolean') throw new BuilderProfileError(`${key} must be true or false`);
+			if (typeof patch[key] !== 'boolean')
+				throw new BuilderProfileError(`${key} must be true or false`);
 			update[key] = patch[key];
 		}
 	}
@@ -436,9 +481,15 @@ export async function saveSettings(params: {
 		const { error } = await admin.from('builder_profiles').update(update).eq('user_id', userId);
 		if (error) throw error;
 	}
-	if ('bio' in patch) {
-		const bio = cleanText(patch.bio, MAX_BIO, 'Bio');
-		const { error } = await admin.from('users').update({ bio }).eq('id', userId);
+	const userUpdate: Record<string, string | null> = {};
+	if ('bio' in patch) userUpdate.bio = cleanText(patch.bio, MAX_BIO, 'Bio');
+	if ('name' in patch) {
+		const name = cleanText(patch.name, MAX_NAME, 'Name');
+		if (!name) throw new BuilderProfileError('Add your name');
+		userUpdate.name = name;
+	}
+	if (Object.keys(userUpdate).length > 0) {
+		const { error } = await admin.from('users').update(userUpdate).eq('id', userId);
 		if (error) throw error;
 	}
 	if (nowChanged) await recordPublishedLine(admin, userId, null, nowChanged);
@@ -446,11 +497,15 @@ export async function saveSettings(params: {
 
 export function parseLinks(input: unknown): BuilderEditorLink[] {
 	if (!Array.isArray(input)) throw new BuilderProfileError('Links must be a list');
-	if (input.length > MAX_LINKS) throw new BuilderProfileError(`You can add up to ${MAX_LINKS} links`);
+	if (input.length > MAX_LINKS)
+		throw new BuilderProfileError(`You can add up to ${MAX_LINKS} links`);
 	return input.map((raw, index) => {
 		const item = (raw ?? {}) as Record<string, unknown>;
 		const url = normalizeLinkUrl(typeof item.url === 'string' ? item.url : '');
-		if (!url) throw new BuilderProfileError(`Link ${index + 1} needs a web address that starts with https://`);
+		if (!url)
+			throw new BuilderProfileError(
+				`Link ${index + 1} needs a web address that starts with https://`
+			);
 		const kind: BuilderLinkKind = item.kind === 'social' ? 'social' : 'link';
 		return {
 			kind,
@@ -462,14 +517,20 @@ export function parseLinks(input: unknown): BuilderEditorLink[] {
 	});
 }
 
-export async function replaceLinks(params: { admin: Client; userId: string; links: BuilderEditorLink[] }) {
+export async function replaceLinks(params: {
+	admin: Client;
+	userId: string;
+	links: BuilderEditorLink[];
+}) {
 	const { admin, userId, links } = params;
 	const del = await admin.from('builder_profile_links').delete().eq('user_id', userId);
 	if (del.error) throw del.error;
 	if (links.length === 0) return;
-	const { error } = await admin.from('builder_profile_links').insert(
-		links.map((link, position) => ({ user_id: userId, ...link, id: undefined, position }))
-	);
+	const { error } = await admin
+		.from('builder_profile_links')
+		.insert(
+			links.map((link, position) => ({ user_id: userId, ...link, id: undefined, position }))
+		);
 	if (error) throw error;
 }
 
@@ -491,13 +552,26 @@ export function parsePlacements(input: unknown): PlacementInput[] {
 		seen.add(projectId);
 		const level: BuilderProjectLevel = item.level === 'live' ? 'live' : 'listed';
 		const goalIds = Array.isArray(item.goal_ids)
-			? item.goal_ids.filter((g): g is string => typeof g === 'string' && /^[0-9a-f-]{36}$/i.test(g))
+			? item.goal_ids.filter(
+					(g): g is string => typeof g === 'string' && /^[0-9a-f-]{36}$/i.test(g)
+				)
 			: [];
 		if (goalIds.length > 3) throw new BuilderProfileError('Pick up to 3 goals per project');
 		let linkUrl: string | null = null;
 		if (typeof item.link_url === 'string' && item.link_url.trim()) {
 			linkUrl = normalizeLinkUrl(item.link_url);
-			if (!linkUrl) throw new BuilderProfileError('Project link needs a web address that starts with https://');
+			if (!linkUrl)
+				throw new BuilderProfileError(
+					'Project link needs a web address that starts with https://'
+				);
+		}
+		let replyUrl: string | null = null;
+		if (level === 'live' && typeof item.reply_url === 'string' && item.reply_url.trim()) {
+			replyUrl = normalizeReplyUrl(item.reply_url);
+			if (!replyUrl)
+				throw new BuilderProfileError(
+					'"I\'m interested" needs a web address or an email address'
+				);
 		}
 		return {
 			project_id: projectId,
@@ -505,6 +579,7 @@ export function parsePlacements(input: unknown): PlacementInput[] {
 			public_name: cleanText(item.public_name, 80, 'Public name'),
 			pitch: cleanText(item.pitch, 200, 'Pitch'),
 			looking_for: cleanText(item.looking_for, 200, 'Looking for'),
+			reply_url: replyUrl,
 			link_url: linkUrl,
 			goal_ids: goalIds,
 			show_next_milestone: item.show_next_milestone !== false,
@@ -575,9 +650,16 @@ export async function setPublished(params: { admin: Client; userId: string; publ
 	const { admin, userId, publish } = params;
 	await ensureProfileRow(admin, userId);
 	if (publish) {
-		const { data: user } = await admin.from('users').select('username').eq('id', userId).maybeSingle();
+		const { data: user } = await admin
+			.from('users')
+			.select('username')
+			.eq('id', userId)
+			.maybeSingle();
 		if (!(user as any)?.username) {
-			throw new BuilderProfileError('Pick a handle first. Your page lives at build-os.com/@handle.', 409);
+			throw new BuilderProfileError(
+				'Pick a handle first. Your page lives at build-os.com/@handle.',
+				409
+			);
 		}
 		// A published page is findable by its handle, so people can ask from it.
 		const { error: findError } = await admin
@@ -610,7 +692,8 @@ export async function follow(params: {
 }): Promise<{ following: boolean }> {
 	const { admin, viewerId, handle, projectId, on } = params;
 	const target = await resolveBuilderTarget(admin, handle);
-	if (!target || target.status !== 'published') throw new BuilderProfileError('Page not found', 404);
+	if (!target || target.status !== 'published')
+		throw new BuilderProfileError('Page not found', 404);
 	if (target.user_id === viewerId) throw new BuilderProfileError('You can’t follow yourself');
 
 	if (!on) {
@@ -628,11 +711,16 @@ export async function follow(params: {
 	if (projectId) {
 		const view = await loadBuilderProfileAs(admin, handle, viewerId);
 		const card = view.found ? view.projects.find((p) => p.id === projectId) : null;
-		if (!card || card.level !== 'live') throw new BuilderProfileError('That project isn’t on this page', 404);
+		if (!card || card.level !== 'live')
+			throw new BuilderProfileError('That project isn’t on this page', 404);
 	}
 	const { data, error } = await admin
 		.from('builder_follows')
-		.insert({ follower_user_id: viewerId, target_user_id: target.user_id, project_id: projectId })
+		.insert({
+			follower_user_id: viewerId,
+			target_user_id: target.user_id,
+			project_id: projectId
+		})
 		.select('id');
 	if (error && (error as any).code !== '23505') throw error;
 	if (!error && data?.length) {
@@ -643,7 +731,12 @@ export async function follow(params: {
 	return { following: true };
 }
 
-export type AskOutcome = 'sent' | 'already_waiting' | 'unavailable' | 'declined_recently' | 'rate_limited';
+export type AskOutcome =
+	| 'sent'
+	| 'already_waiting'
+	| 'unavailable'
+	| 'declined_recently'
+	| 'rate_limited';
 
 export async function askToJoin(params: {
 	supabase: Client;
@@ -655,10 +748,12 @@ export async function askToJoin(params: {
 }): Promise<AskOutcome> {
 	const { supabase, admin, viewerId, handle, projectId } = params;
 	const view = await loadBuilderProfileAs(admin, handle, viewerId);
-	if (!view.found || view.status !== 'published') throw new BuilderProfileError('Page not found', 404);
+	if (!view.found || view.status !== 'published')
+		throw new BuilderProfileError('Page not found', 404);
 	if (view.viewer.is_owner) throw new BuilderProfileError('This is your page');
 	const card = view.projects.find((p) => p.id === projectId);
-	if (!card || card.level !== 'live') throw new BuilderProfileError('That project isn’t on this page', 404);
+	if (!card || card.level !== 'live')
+		throw new BuilderProfileError('That project isn’t on this page', 404);
 	if (card.viewer_is_member) throw new BuilderProfileError('You’re already in this project', 409);
 
 	const note = params.note?.trim().slice(0, 400) || null;
@@ -666,7 +761,9 @@ export async function askToJoin(params: {
 		p_handle: view.profile.handle,
 		p_role: 'viewer',
 		p_project_hint: card.name,
-		p_note: note ? `From your page, about ${card.name}: ${note}` : `Asked from your page to join ${card.name}.`
+		p_note: note
+			? `From your page, about ${card.name}: ${note}`
+			: `Asked from your page to join ${card.name}.`
 	});
 	if (error) throw error;
 	const result = (data ?? {}) as { status?: string; already_pending?: boolean };
@@ -713,7 +810,10 @@ export async function recordEvent(params: {
  * The published builder page that replaces an author index at /p/{slug}: the slug is
  * either the author's public-page prefix (from their name) or their handle.
  */
-export async function builderHandleForAuthorSlug(admin: Client, slug: string): Promise<string | null> {
+export async function builderHandleForAuthorSlug(
+	admin: Client,
+	slug: string
+): Promise<string | null> {
 	const direct = await resolveBuilderTarget(admin, slug).catch(() => null);
 	if (direct?.status === 'published') return direct.username;
 
@@ -726,10 +826,18 @@ export async function builderHandleForAuthorSlug(admin: Client, slug: string): P
 		.maybeSingle();
 	const actorId = (page as any)?.published_by ?? (page as any)?.created_by;
 	if (!actorId) return null;
-	const { data: actor } = await admin.from('onto_actors').select('user_id').eq('id', actorId).maybeSingle();
+	const { data: actor } = await admin
+		.from('onto_actors')
+		.select('user_id')
+		.eq('id', actorId)
+		.maybeSingle();
 	const userId = (actor as any)?.user_id;
 	if (!userId) return null;
-	const { data: user } = await admin.from('users').select('username').eq('id', userId).maybeSingle();
+	const { data: user } = await admin
+		.from('users')
+		.select('username')
+		.eq('id', userId)
+		.maybeSingle();
 	const username = (user as any)?.username;
 	if (!username) return null;
 	const target = await resolveBuilderTarget(admin, username).catch(() => null);
