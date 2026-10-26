@@ -289,6 +289,78 @@ describe('EmailService lifecycle compliance', () => {
 		expect(mailOptions.html.split(address)).toHaveLength(2);
 	});
 
+	it('treats campaign email as marketing: one-click unsubscribe, opt-out footer, From name', async () => {
+		const service = new EmailService(createSupabaseMock() as any);
+
+		const result = await service.sendEmail({
+			to: 'user@example.com',
+			subject: 'about your buildos signup',
+			body: 'Hi Kay,\n\nIt is ready now.',
+			html: '<html><body><p>Hi Kay,</p><a href="https://build-os.com/s/start">Start</a></body></html>',
+			fromName: 'DJ',
+			metadata: {
+				category: 'campaign',
+				campaign_type: 'marketing',
+				campaign_id: 'campaign-1',
+				tracking_id: 'campaign-tracking-1'
+			}
+		});
+
+		expect(result).toMatchObject({ success: true, trackingId: 'campaign-tracking-1' });
+		const mailOptions = sendMailMock.mock.calls[0]?.[0];
+		expect(mailOptions.from).toEqual({ name: 'DJ', address: 'dj@build-os.com' });
+		expect(mailOptions.replyTo).toBe('dj@build-os.com');
+		expect(mailOptions.headers).toMatchObject({
+			'List-ID': 'BuildOS Updates <updates.build-os.com>',
+			'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
+		});
+		expect(mailOptions.headers['List-Unsubscribe']).toContain(
+			'https://build-os.com/api/email-tracking/campaign-tracking-1/unsubscribe'
+		);
+		expect(mailOptions.text).toContain('You can opt out of these BuildOS emails here:');
+		expect(mailOptions.text).toContain('PO Box 662, Glen Burnie, MD 21061-0662');
+		expect(mailOptions.html).toContain('You can opt out of these BuildOS emails');
+		expect(mailOptions.html).toContain('/api/email-tracking/campaign-tracking-1/click?url=');
+		expect(mailOptions.html).toContain('PO Box 662, Glen Burnie, MD 21061-0662');
+	});
+
+	it('gives campaign test sends the same marketing footer and headers', async () => {
+		const service = new EmailService(createSupabaseMock() as any);
+		await service.sendEmail({
+			to: 'dj@example.com',
+			subject: '[Test] hi',
+			body: 'Hi DJ',
+			html: '<p>Hi DJ</p>',
+			metadata: { category: 'campaign_test' }
+		});
+		const mailOptions = sendMailMock.mock.calls[0]?.[0];
+		expect(mailOptions.headers['List-ID']).toBe('BuildOS Updates <updates.build-os.com>');
+		expect(mailOptions.html).toContain('/unsubscribe');
+		// Without a fromName the sender's own display name stays.
+		expect(mailOptions.from).toEqual({ name: 'DJ from BuildOS', address: 'dj@build-os.com' });
+	});
+
+	it('routes campaign email to the local log sink without calling Gmail', async () => {
+		privateEnv.PRIVATE_LIFECYCLE_EMAIL_SINK = 'log';
+		const consoleInfo = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+		const service = new EmailService(createSupabaseMock() as any);
+
+		const result = await service.sendEmail({
+			to: 'user@example.com',
+			subject: 'about your buildos signup',
+			body: 'Hi Kay',
+			html: '<p>Hi Kay</p>',
+			fromName: 'DJ',
+			metadata: { category: 'campaign', campaign_type: 'marketing' }
+		});
+
+		expect(result.success).toBe(true);
+		expect(result.messageId).toContain('lifecycle-log-sink/');
+		expect(result.trackingId).toEqual(expect.any(String));
+		expect(sendMailMock).not.toHaveBeenCalled();
+		consoleInfo.mockRestore();
+	});
+
 	it('routes lifecycle emails to the local log sink without calling Gmail', async () => {
 		privateEnv.PRIVATE_LIFECYCLE_EMAIL_SINK = 'log';
 		const consoleInfo = vi.spyOn(console, 'info').mockImplementation(() => undefined);

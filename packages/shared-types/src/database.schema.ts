@@ -1,5 +1,5 @@
-// packages/shared-types/src/database.schema.ts
-// Generated on: 2026-10-25T20:15:20.184Z
+// Lightweight database schema - auto-generated from database.types.ts
+// Generated on: 2026-10-25T20:25:15.069Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1648,7 +1648,7 @@ export type DatabaseSchema = {
 		content_type: string;
 		created_at: string | null;
 		created_by: string;
-		email_id: string;
+		email_id: string | null;
 		file_size: number;
 		filename: string;
 		id: string;
@@ -1660,6 +1660,61 @@ export type DatabaseSchema = {
 		original_filename: string;
 		storage_bucket: string;
 		storage_path: string;
+	};
+	email_campaign_recipients: {
+		attempt_count: number;
+		beta_signup_id: string | null;
+		body_override: string | null;
+		bounced_at: string | null;
+		campaign_id: string;
+		context: Json;
+		created_at: string;
+		email: string;
+		email_id: string | null;
+		error_message: string | null;
+		first_name: string | null;
+		id: string;
+		included: boolean;
+		lease_expires_at: string | null;
+		message_id: string | null;
+		name: string | null;
+		override_source: string | null;
+		replied_at: string | null;
+		reply_checked_at: string | null;
+		scheduled_for: string | null;
+		segment: string;
+		sent_at: string | null;
+		skip_reason: string | null;
+		source_email_id: string | null;
+		status: string;
+		subject_override: string | null;
+		tailor_error: string | null;
+		tailor_status: string;
+		tailored_at: string | null;
+		tracking_id: string | null;
+		updated_at: string;
+		user_id: string | null;
+	};
+	email_campaigns: {
+		audience: Json;
+		body_template: string;
+		canceled_at: string | null;
+		completed_at: string | null;
+		created_at: string;
+		created_by: string | null;
+		from_name: string;
+		id: string;
+		metadata: Json;
+		name: string;
+		queued_at: string | null;
+		source: string;
+		starts_at: string | null;
+		status: string;
+		subject_template: string;
+		tailoring_instructions: string | null;
+		updated_at: string;
+		wave_interval_minutes: number;
+		wave_size: number;
 	};
 	email_capability_grants: {
 		capability: string;
@@ -5096,6 +5151,8 @@ export const tableNames = [
 	'draft_tasks',
 	'email_access_audit_events',
 	'email_attachments',
+	'email_campaign_recipients',
+	'email_campaigns',
 	'email_capability_grants',
 	'email_connection_credentials',
 	'email_logs',

@@ -23,6 +23,10 @@ vi.mock('$env/static/public', () => ({
 	PUBLIC_APP_URL: 'https://build-os.com'
 }));
 
+vi.mock('$env/dynamic/private', () => ({
+	env: { PRIVATE_SUPABASE_SERVICE_KEY: 'test-service-key' }
+}));
+
 vi.mock('$lib/supabase/admin', () => ({
 	createAdminSupabaseClient: createAdminSupabaseClientMock
 }));
@@ -36,6 +40,7 @@ vi.mock('$lib/server/posthog', () => ({
 }));
 
 import { GET } from './+server';
+import { signEmailClickUrl } from '$lib/server/email-link-signing';
 
 describe('/api/email-tracking/[tracking_id]/click', () => {
 	beforeEach(() => {
@@ -85,6 +90,42 @@ describe('/api/email-tracking/[tracking_id]/click', () => {
 			} as any)
 		).rejects.toMatchObject({ status: 302, location: '/' });
 		expect(supabase.from).not.toHaveBeenCalled();
+	});
+
+	it('follows an off-site link only when the email signed it', async () => {
+		const query: any = {
+			select: vi.fn(() => query),
+			eq: vi.fn(() => query),
+			maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null })
+		};
+		createAdminSupabaseClientMock.mockReturnValue({ from: vi.fn(() => query) });
+		const destination = 'https://calendly.com/dj/30min?utm=x&ref=email';
+		const signature = signEmailClickUrl('tracking-1', destination);
+		expect(signature).toMatch(/^[0-9a-f]{32}$/);
+		const base = `https://build-os.com/api/email-tracking/tracking-1/click?url=${encodeURIComponent(destination)}`;
+
+		await expect(
+			GET({
+				params: { tracking_id: 'tracking-1' },
+				url: new URL(`${base}&sig=${signature}`)
+			} as any)
+		).rejects.toMatchObject({ status: 302, location: destination });
+
+		// Signed for a different email, or tampered: back to the homepage.
+		await expect(
+			GET({
+				params: { tracking_id: 'tracking-2' },
+				url: new URL(
+					`https://build-os.com/api/email-tracking/tracking-2/click?url=${encodeURIComponent(destination)}&sig=${signature}`
+				)
+			} as any)
+		).rejects.toMatchObject({ status: 302, location: '/' });
+		await expect(
+			GET({
+				params: { tracking_id: 'tracking-1' },
+				url: new URL(`${base}&sig=${'0'.repeat(32)}`)
+			} as any)
+		).rejects.toMatchObject({ status: 302, location: '/' });
 	});
 
 	it('redirects relative in-app destinations (brief links must keep working)', async () => {

@@ -9,6 +9,8 @@
 //   pnpm agentic:prod-battery --preflight-only   # free: target, model, deploy, calendar
 //   pnpm agentic:prod-battery --confirm-prod     # paid: the full three-repetition run
 //   pnpm agentic:prod-battery --confirm-prod --cases=1,2,14   # paid: selected cases only
+//   pnpm agentic:prod-battery --battery=workspace-chat --preflight-only   # free
+//   pnpm agentic:prod-battery --battery=workspace-chat --confirm-prod     # paid: Workspace chat slice
 //
 // Paid: it spends production model budget. Run it only with the user's explicit
 // approval for that run (AGENTS.md).
@@ -25,14 +27,17 @@ import {
 	DEFAULT_PROD_WEB_URL,
 	DEFAULT_PROD_WORKER_URL,
 	assertDeploymentUnchanged,
-	CEDAR_SCENARIO_IDS,
+	BATTERY_SCENARIO_IDS,
 	assertProdBatteryTarget,
+	batteryNeedsCalendar,
 	deployedProvenance,
 	evaluateCaseSubset,
 	failedTurnStreamRunIds,
+	parseBatterySelection,
 	parseCaseSelection,
 	parseVercelProductionDeployment
 } from './prod-battery-policy';
+import type { BatteryName } from './gate-policy';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const startedAt = new Date();
@@ -287,12 +292,27 @@ async function openRouterUsage(key: string): Promise<number | null> {
 	}
 }
 
-function runBattery(env: NodeJS.ProcessEnv): Promise<number> {
+function runBattery(env: NodeJS.ProcessEnv, battery: BatteryName): Promise<number> {
+	// `test:agentic:battery` pins AGENTIC_BATTERY=cedar-house inline, so any other
+	// battery runs the same entry file directly with AGENTIC_BATTERY from env.
+	const args =
+		battery === 'cedar-house'
+			? ['--filter', '@buildos/web', 'test:agentic:battery']
+			: [
+					'--filter',
+					'@buildos/web',
+					'exec',
+					'vitest',
+					'run',
+					'--config',
+					'vitest.config.agentic.ts',
+					'src/lib/tests/agentic-e2e/__tests__/agentic-scenarios.test.ts',
+					'--retry=0'
+				];
 	const attempt = (label: string) =>
 		new Promise<number>((done, reject) => {
 			console.info(`[agentic:prod-battery] ${label}`);
 			const log = createWriteStream(resolve(output, `${label}.log`));
-			const args = ['--filter', '@buildos/web', 'test:agentic:battery'];
 			const child = spawn(testGate ?? 'pnpm', testGate ? ['run', 'pnpm', ...args] : args, {
 				cwd: root,
 				env,
@@ -326,7 +346,9 @@ async function main() {
 		const judgeKey = local.PRIVATE_OPENROUTER_API_KEY?.trim();
 		const preflightOnly = process.argv.includes('--preflight-only');
 		evidence.preflightOnly = preflightOnly;
-		const selectedCases = parseCaseSelection(process.argv);
+		const battery = parseBatterySelection(process.argv);
+		evidence.battery = battery;
+		const selectedCases = parseCaseSelection(process.argv, battery);
 		evidence.cases = selectedCases ?? 'all';
 		assertProdBatteryTarget({
 			confirmed: preflightOnly || process.argv.includes('--confirm-prod'),
@@ -376,11 +398,17 @@ async function main() {
 		const actors = await rest(`onto_actors?select=id&user_id=eq.${userId}`);
 		if (actors.length !== 1) throw new Error('The harness account has no single actor row');
 		const actorId = actors[0].id as string;
-		// Only Case 10 reads the calendar; a subset without it does not need the connection.
-		evidence.calendar =
-			!selectedCases || selectedCases.includes(10)
-				? await assertCalendarConnected(rest, userId)
-				: 'not_required';
+		// Only Cedar House case 10 reads the calendar; nothing else needs the connection.
+		evidence.calendar = batteryNeedsCalendar(battery, selectedCases)
+			? await assertCalendarConnected(rest, userId)
+			: 'not_required';
+		// A dead judge key fails every judged case after the paid turns already ran
+		// (2026-10-25: a 401 key left cases 2 and 5 of the Workspace battery ungraded).
+		const judgeUsageBefore = await openRouterUsage(judgeKey);
+		if (judgeUsageBefore === null)
+			throw new Error(
+				'OpenRouter rejected the judge key (PRIVATE_OPENROUTER_API_KEY in the prod battery env file); replace it before a paid run'
+			);
 		if (preflightOnly) {
 			evidence.status = 'preflight_passed';
 			return;
@@ -388,7 +416,6 @@ async function main() {
 
 		// Hard-delete leftovers first so readback starts from an empty account.
 		evidence.preClean = { projectsDeleted: await deleteHarnessProjects(rest, actorId) };
-		const judgeUsageBefore = await openRouterUsage(judgeKey);
 		const runSince = new Date().toISOString();
 		cleanup = async () => {
 			const projectsDeleted = await deleteHarnessProjects(rest, actorId);
@@ -418,9 +445,10 @@ async function main() {
 			AGENTIC_BATTERY_TARGET: 'deployed',
 			AGENTIC_BATTERY_EXPECTED_PROVENANCE: JSON.stringify(before.expected),
 			AGENTIC_BATTERY_WEB_PROVENANCE: JSON.stringify(before.web),
-			AGENTIC_BATTERY: 'cedar-house',
+			AGENTIC_BATTERY: battery,
+			AGENTIC_E2E_RUN_LABEL: battery,
 			AGENTIC_SCENARIOS: selectedCases
-				? selectedCases.map((value) => CEDAR_SCENARIO_IDS[value]).join(',')
+				? selectedCases.map((value) => BATTERY_SCENARIO_IDS[battery][value]).join(',')
 				: '',
 			AGENTIC_E2E_RETRY_COUNT: '0',
 			AGENTIC_ASSERT_TELEMETRY: 'true',
@@ -435,11 +463,11 @@ async function main() {
 		delete env.AGENTIC_CHAT_LOCAL_PROMPT_DUMPS;
 		delete env.AGENTIC_CHAT_LOCAL_PROMPT_DUMP_DIRECTORY;
 
-		const exitCode = await runBattery(env);
+		const exitCode = await runBattery(env, battery);
 		const scorecard = JSON.parse(readFileSync(resolve(output, 'scorecard.json'), 'utf8'));
 		const failures = selectedCases
-			? evaluateCaseSubset(scorecard, selectedCases, repetitions)
-			: evaluateGateScorecard(scorecard, repetitions);
+			? evaluateCaseSubset(scorecard, selectedCases, repetitions, battery)
+			: evaluateGateScorecard(scorecard, repetitions, battery);
 		if (repetitions < 3) failures.unshift('A full run requires three repetitions');
 		const after = await readDeployed();
 		assertDeploymentUnchanged(before.expected, after.expected, 'Production deployment');
@@ -485,8 +513,10 @@ async function main() {
 		);
 		if (exitCode || failures.length)
 			throw new Error(`Deployed battery failed (${exitCode}): ${failures.join('; ')}`);
-		// A green subset is evidence for those cases only, never a full post-deploy pass.
-		evidence.status = selectedCases ? 'passed_selected_cases' : 'passed';
+		// A green subset (or any battery but the Cedar House gate) is evidence for
+		// those cases only, never a full post-deploy pass.
+		evidence.status =
+			selectedCases || battery !== 'cedar-house' ? 'passed_selected_cases' : 'passed';
 	} catch (error) {
 		evidence.status = 'failed';
 		evidence.error = error instanceof Error ? error.message : String(error);

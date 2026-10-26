@@ -64,6 +64,14 @@
 		{
 			"path": "/api/cron/account-deletions",
 			"schedule": "0 * * * *"
+		},
+		{
+			"path": "/api/cron/email-campaigns",
+			"schedule": "* * * * *"
+		},
+		{
+			"path": "/api/cron/email-campaign-replies",
+			"schedule": "*/10 * * * *"
 		}
 	],
 	"headers": [

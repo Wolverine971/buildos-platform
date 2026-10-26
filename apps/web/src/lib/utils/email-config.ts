@@ -9,6 +9,14 @@ export interface EmailSender {
 	name?: string;
 }
 
+// Fail a stuck Gmail connection in seconds, not nodemailer's minutes, so one bad
+// send can't run a serverless function out of time.
+const GMAIL_TIMEOUTS = {
+	connectionTimeout: 15_000,
+	greetingTimeout: 10_000,
+	socketTimeout: 20_000
+} as const;
+
 // Email sender configurations
 export const EMAIL_SENDERS = {
 	dj: {
@@ -53,7 +61,8 @@ export function createGmailTransporter(senderType: SenderType = 'dj') {
 		auth: {
 			user: sender.email,
 			pass: sender.password
-		}
+		},
+		...GMAIL_TIMEOUTS
 	});
 }
 
@@ -76,7 +85,8 @@ export function createGmailTransporterByEmail(email: string) {
 		auth: {
 			user: sender.email,
 			pass: sender.password
-		}
+		},
+		...GMAIL_TIMEOUTS
 	});
 }
 

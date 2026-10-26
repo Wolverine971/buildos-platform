@@ -212,12 +212,12 @@
 
 	async function loadEmailManager() {
 		if (!emailManagerPromise) {
-			emailManagerPromise = import('$lib/components/email/EmailManager.svelte').then(
-				(module) => {
-					EmailManagerComponent = module.default;
-					return module.default;
-				}
-			);
+			emailManagerPromise = import(
+				'$lib/components/email-campaigns/CampaignList.svelte'
+			).then((module) => {
+				EmailManagerComponent = module.default;
+				return module.default;
+			});
 		}
 
 		return emailManagerPromise;
@@ -691,6 +691,7 @@
 	{#if activeTab === 'emails'}
 		<!-- Email Management Component -->
 		{#if EmailManagerComponent}
+			<!-- Same campaigns as /admin/emails (beta signups are one of its audiences). -->
 			<EmailManagerComponent />
 		{:else}
 			<div class="admin-panel p-8 text-center text-sm text-muted-foreground">

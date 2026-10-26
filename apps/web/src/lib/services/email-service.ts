@@ -15,14 +15,17 @@ import {
 	type SenderType
 } from '$lib/utils/email-config';
 import {
+	appendEmailOptOutFooterHtml,
+	appendEmailOptOutFooterText,
 	appendEmailPostalAddressHtml,
 	appendEmailPostalAddressText,
-	generateMinimalEmailHTML
+	generateMinimalEmailHTML,
+	type EmailOptOutScope
 } from '$lib/utils/emailTemplate';
 import { ErrorLoggerService } from './errorLogger.service';
+import { signEmailClickUrl } from '$lib/server/email-link-signing';
 
 type LifecycleEmailSink = 'log' | 'smtp' | 'gmail';
-type EmailOptOutScope = 'lifecycle' | 'daily_brief';
 
 export interface EmailData {
 	to: string;
@@ -33,6 +36,8 @@ export interface EmailData {
 	bcc?: string[];
 	replyTo?: string;
 	from?: SenderType;
+	/** Display name in the From header (address stays the sender's). Defaults to the sender's name. */
+	fromName?: string;
 	metadata?: Record<string, any>;
 	/** Associate the send with a user for logging + rate limiting */
 	userId?: string | null;
@@ -54,9 +59,13 @@ export class EmailService {
 	/**
 	 * Send an email through Gmail with database + open tracking.
 	 */
-	async sendEmail(
-		data: EmailData
-	): Promise<{ success: boolean; messageId?: string; emailId?: string | null; error?: string }> {
+	async sendEmail(data: EmailData): Promise<{
+		success: boolean;
+		messageId?: string;
+		emailId?: string | null;
+		trackingId?: string | null;
+		error?: string;
+	}> {
 		const sentAt = new Date().toISOString();
 		const senderType = data.from || 'dj';
 		const trackingEnabled = data.trackingEnabled ?? true;
@@ -78,7 +87,9 @@ export class EmailService {
 		const trackingId = trackingEnabled
 			? metadataTrackingId || htmlTrackingId || randomUUID()
 			: null;
-		const sender = getSenderByType(senderType);
+		const baseSender = getSenderByType(senderType);
+		const fromName = data.fromName?.trim();
+		const sender: EmailSender = fromName ? { ...baseSender, name: fromName } : baseSender;
 		const baseUrl = PUBLIC_APP_URL || (dev ? 'http://localhost:5173' : 'https://build-os.com');
 		const optOutScope = this.getOptOutScope(data.metadata);
 		const unsubscribeUrl =
@@ -119,7 +130,12 @@ export class EmailService {
 			unsubscribeUrl,
 			optOutScope
 		});
-		const lifecycleSink = optOutScope === 'lifecycle' ? this.getLifecycleEmailSink() : null;
+		// Bulk email (lifecycle + marketing campaigns) goes to the log sink in local dev, which
+		// shares the production database: a dev run must never mail real people.
+		const lifecycleSink =
+			optOutScope === 'lifecycle' || optOutScope === 'marketing'
+				? this.getLifecycleEmailSink()
+				: null;
 
 		try {
 			if (lifecycleSink === 'log') {
@@ -130,6 +146,7 @@ export class EmailService {
 					trackingId,
 					sendMetadata,
 					senderType,
+					sender,
 					sentAt
 				});
 			}
@@ -145,10 +162,11 @@ export class EmailService {
 				lifecycleSink === 'smtp'
 					? this.createLifecycleSmtpTransporter()
 					: createGmailTransporter(senderType);
+			// An address object lets nodemailer quote the display name ("DJ, BuildOS" stays one address).
 			const fromAddress =
 				lifecycleSink === 'smtp' && env.PRIVATE_LIFECYCLE_SMTP_FROM
 					? env.PRIVATE_LIFECYCLE_SMTP_FROM
-					: `${sender.name || 'BuildOS'} <${sender.email}>`;
+					: { name: sender.name || 'BuildOS', address: sender.email };
 			const info = await transporter.sendMail({
 				from: fromAddress,
 				to: data.to,
@@ -223,7 +241,8 @@ export class EmailService {
 			return {
 				success: true,
 				messageId: info.messageId,
-				emailId: emailRecordId
+				emailId: emailRecordId,
+				trackingId
 			};
 		} catch (error) {
 			console.error('Error sending email:', error);
@@ -335,6 +354,7 @@ export class EmailService {
 		trackingId,
 		sendMetadata,
 		senderType,
+		sender,
 		sentAt
 	}: {
 		data: EmailData;
@@ -343,8 +363,14 @@ export class EmailService {
 		trackingId: string | null;
 		sendMetadata?: Record<string, any>;
 		senderType: SenderType;
+		sender: EmailSender;
 		sentAt: string;
-	}): Promise<{ success: boolean; messageId: string; emailId: string | null }> {
+	}): Promise<{
+		success: boolean;
+		messageId: string;
+		emailId: string | null;
+		trackingId: string | null;
+	}> {
 		const messageId = `lifecycle-log-sink/${trackingId || randomUUID()}`;
 		console.info('Lifecycle email log sink', {
 			messageId,
@@ -358,7 +384,6 @@ export class EmailService {
 			sentAt
 		});
 
-		const sender = getSenderByType(senderType);
 		const emailRecordId = await this.logRichEmailData({
 			recipientEmail: data.to,
 			recipientId: data.userId ?? null,
@@ -397,7 +422,8 @@ export class EmailService {
 		return {
 			success: true,
 			messageId,
-			emailId: emailRecordId
+			emailId: emailRecordId,
+			trackingId
 		};
 	}
 
@@ -451,36 +477,31 @@ export class EmailService {
 			return textBody;
 		}
 
-		if (textBody.includes(unsubscribeUrl)) {
-			return textBody;
-		}
-
-		const message =
-			optOutScope === 'daily_brief'
-				? 'You can turn off BuildOS daily briefs here:'
-				: 'You can opt out of these BuildOS emails here:';
-
-		return `${textBody.trimEnd()}
-
-${message}
-${unsubscribeUrl}`;
+		return appendEmailOptOutFooterText(textBody, unsubscribeUrl, optOutScope ?? 'lifecycle');
 	}
 
 	private rewriteLinksForTracking(html: string, trackingId: string): string {
 		const baseUrl = PUBLIC_APP_URL || (dev ? 'http://localhost:5173' : 'https://build-os.com');
 
-		// Rewrite all <a href="..."> tags to go through click tracking
+		// Rewrite <a href="..."> web links to go through click tracking
 		return html.replace(
 			/<a\s+([^>]*?)href=["']([^"']+)["']([^>]*)>/gi,
 			(match, before, url, after) => {
-				// Skip if it's already a tracking link or an anchor link
+				// Skip anchors, existing tracking links, and non-web links (mailto:, tel:) —
+				// the click endpoint can only redirect to web pages.
 				if (url.startsWith('#') || url.includes('/api/email-tracking/')) {
 					return match;
 				}
+				if (/^[a-z][a-z0-9+.-]*:/i.test(url) && !/^https?:/i.test(url)) {
+					return match;
+				}
 
-				// Encode the destination URL
-				const encodedUrl = encodeURIComponent(url);
-				const trackingUrl = `${baseUrl}/api/email-tracking/${trackingId}/click?url=${encodedUrl}`;
+				// The HTML attribute holds entities (&amp;); sign and send the real URL.
+				const destination = url.replaceAll('&amp;', '&');
+				const signature = signEmailClickUrl(trackingId, destination);
+				const trackingUrl =
+					`${baseUrl}/api/email-tracking/${trackingId}/click?url=${encodeURIComponent(destination)}` +
+					(signature ? `&amp;sig=${signature}` : '');
 
 				return `<a ${before}href="${trackingUrl}"${after}>`;
 			}
@@ -504,28 +525,11 @@ ${unsubscribeUrl}`;
 		unsubscribeUrl: string | null,
 		optOutScope: EmailOptOutScope | null
 	): string {
-		if (!unsubscribeUrl || html.includes(unsubscribeUrl)) {
+		if (!unsubscribeUrl) {
 			return html;
 		}
 
-		const message =
-			optOutScope === 'daily_brief'
-				? 'You can turn off BuildOS daily briefs'
-				: 'You can opt out of these BuildOS emails';
-
-		const footer = `
-			<hr style="border: 0; border-top: 1px solid #E5E0DA; margin: 28px 0 16px;" />
-			<p style="font-size: 12px; line-height: 1.5; color: #6B625C;">
-				${message}
-				<a href="${this.escapeHtml(unsubscribeUrl)}" style="color: #6B625C;">here</a>.
-			</p>
-		`;
-
-		if (html.includes('</body>')) {
-			return html.replace('</body>', `${footer}</body>`);
-		}
-
-		return `${html}${footer}`;
+		return appendEmailOptOutFooterHtml(html, unsubscribeUrl, optOutScope ?? 'lifecycle');
 	}
 
 	private extractTrackingIdFromMetadata(metadata?: Record<string, any>): string | null {
@@ -579,6 +583,14 @@ ${unsubscribeUrl}`;
 		}
 
 		if (
+			metadata?.campaign_type === 'marketing' ||
+			metadata?.category === 'campaign' ||
+			metadata?.category === 'campaign_test'
+		) {
+			return 'marketing';
+		}
+
+		if (
 			metadata?.campaign_type === 'lifecycle' ||
 			metadata?.campaign_type === 'retargeting' ||
 			metadata?.category === 'welcome_sequence' ||
@@ -613,19 +625,12 @@ ${unsubscribeUrl}`;
 			'List-ID':
 				optOutScope === 'daily_brief'
 					? 'BuildOS Daily Briefs <daily-briefs.build-os.com>'
-					: 'BuildOS <emails.build-os.com>',
+					: optOutScope === 'marketing'
+						? 'BuildOS Updates <updates.build-os.com>'
+						: 'BuildOS <emails.build-os.com>',
 			'List-Unsubscribe': `<${unsubscribeUrl}>, <mailto:${sender.email}?subject=unsubscribe>`,
 			'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
 		};
-	}
-
-	private escapeHtml(value: string): string {
-		return value
-			.replaceAll('&', '&amp;')
-			.replaceAll('<', '&lt;')
-			.replaceAll('>', '&gt;')
-			.replaceAll('"', '&quot;')
-			.replaceAll("'", '&#39;');
 	}
 
 	private normalizeEmail(value: string): string | null {

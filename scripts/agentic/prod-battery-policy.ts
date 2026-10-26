@@ -5,7 +5,12 @@
 // worker must both serve one clean commit. Kept apart from the orchestrator so
 // every refusal has a free unit test.
 import type { SourceProvenance } from '@buildos/agentic-chat-runtime/provenance';
-import { CEDAR_CASES, evaluateGateScorecard } from './gate-policy';
+import {
+	BATTERY_CASES,
+	evaluateGateScorecard,
+	incompleteBatteryFailure,
+	type BatteryName
+} from './gate-policy';
 
 /** sha256 of zero bytes: a deploy built from an exact commit with no local edits. */
 export const CLEAN_TREE_SHA256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
@@ -133,18 +138,65 @@ export const CEDAR_SCENARIO_IDS: Readonly<Record<number, string>> = Object.freez
 	14: 'cedar-14-grounded-status'
 });
 
+/** Workspace chat case number → scenario id (apps/web …/scenarios/workspace-chat, tasker/146). */
+export const WORKSPACE_CHAT_SCENARIO_IDS: Readonly<Record<number, string>> = Object.freeze({
+	1: 'workspace-01-save-note',
+	2: 'workspace-02-whats-in-workspace',
+	3: 'workspace-03-file-card',
+	4: 'workspace-04-project-card',
+	5: 'workspace-05-broad-opener',
+	6: 'workspace-06-project-chat-stash'
+});
+
+export const BATTERY_SCENARIO_IDS: Readonly<Record<BatteryName, Readonly<Record<number, string>>>> =
+	Object.freeze({
+		'cedar-house': CEDAR_SCENARIO_IDS,
+		'workspace-chat': WORKSPACE_CHAT_SCENARIO_IDS
+	});
+
+const BATTERY_LABELS: Readonly<Record<BatteryName, string>> = {
+	'cedar-house': 'Cedar House',
+	'workspace-chat': 'Workspace chat'
+};
+
+/** `--battery=workspace-chat` → that battery; absent means the Cedar House gate. */
+export function parseBatterySelection(argv: readonly string[]): BatteryName {
+	const flag = argv.find((arg) => arg.startsWith('--battery='));
+	if (!flag) return 'cedar-house';
+	const name = flag.slice('--battery='.length).trim();
+	if (!(name in BATTERY_CASES))
+		throw new Error(
+			`--battery must be one of: ${Object.keys(BATTERY_CASES).join(', ')} (got "${name}")`
+		);
+	return name as BatteryName;
+}
+
+/** Only Cedar House case 10 reads the harness account's Google Calendar. */
+export function batteryNeedsCalendar(
+	battery: BatteryName,
+	selectedCases: readonly number[] | null
+): boolean {
+	return battery === 'cedar-house' && (!selectedCases || selectedCases.includes(10));
+}
+
 /** `--cases=1,2,14` → sorted case numbers; null means the full battery. */
-export function parseCaseSelection(argv: readonly string[]): number[] | null {
+export function parseCaseSelection(
+	argv: readonly string[],
+	battery: BatteryName = 'cedar-house'
+): number[] | null {
 	const flag = argv.find((arg) => arg.startsWith('--cases='));
 	if (!flag) return null;
+	const known = BATTERY_CASES[battery];
 	const cases = flag
 		.slice('--cases='.length)
 		.split(',')
 		.map((value) => value.trim())
 		.filter(Boolean)
 		.map(Number);
-	if (!cases.length || cases.some((value) => !CEDAR_CASES.includes(value)))
-		throw new Error(`--cases must list Cedar House cases from: ${CEDAR_CASES.join(', ')}`);
+	if (!cases.length || cases.some((value) => !known.includes(value)))
+		throw new Error(
+			`--cases must list ${BATTERY_LABELS[battery]} cases from: ${known.join(', ')}`
+		);
 	return [...new Set(cases)].sort((a, b) => a - b);
 }
 
@@ -155,13 +207,14 @@ export function parseCaseSelection(argv: readonly string[]): number[] | null {
 export function evaluateCaseSubset(
 	scorecard: unknown,
 	cases: readonly number[],
-	repetitions: number
+	repetitions: number,
+	battery: BatteryName = 'cedar-house'
 ): string[] {
 	const ran = ((scorecard as { cases?: Array<{ case: number }> })?.cases ?? []).map(
 		(entry) => entry.case
 	);
-	const failures = evaluateGateScorecard(scorecard, repetitions).filter(
-		(failure) => failure !== 'The complete 13-case battery did not run'
+	const failures = evaluateGateScorecard(scorecard, repetitions, battery).filter(
+		(failure) => failure !== incompleteBatteryFailure(battery)
 	);
 	if (JSON.stringify(ran) !== JSON.stringify([...cases]))
 		failures.unshift(

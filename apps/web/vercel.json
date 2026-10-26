@@ -33,6 +33,14 @@
 		{
 			"path": "/api/cron/builder-profiles",
 			"schedule": "0 11 * * *"
+		},
+		{
+			"path": "/api/cron/email-campaigns",
+			"schedule": "* * * * *"
+		},
+		{
+			"path": "/api/cron/email-campaign-replies",
+			"schedule": "*/10 * * * *"
 		}
 	]
 }

@@ -107,10 +107,10 @@
 					description: 'Voice of the customer'
 				},
 				{
-					title: 'Email Drafts',
+					title: 'Email',
 					href: '/admin/emails',
 					icon: Mail,
-					description: 'Compose, review & send'
+					description: 'Campaigns & sent log'
 				},
 				{
 					title: 'Email Sequences',

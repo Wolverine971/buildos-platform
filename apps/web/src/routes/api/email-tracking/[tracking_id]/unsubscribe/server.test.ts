@@ -215,6 +215,56 @@ describe('/api/email-tracking/[tracking_id]/unsubscribe', () => {
 		});
 	});
 
+	it('records a marketing opt-out for campaign emails', async () => {
+		createAdminSupabaseClientMock.mockReturnValue(
+			createSupabase({
+				id: 'email-3',
+				category: 'campaign',
+				created_by: 'admin-1',
+				subject: 'about your buildos signup',
+				template_data: {
+					category: 'campaign',
+					campaign_type: 'marketing',
+					campaign_id: 'campaign-1'
+				},
+				email_recipients: [
+					{
+						id: 'recipient-3',
+						recipient_email: 'Beta@Example.com',
+						recipient_id: null
+					}
+				]
+			})
+		);
+
+		const response = await POST({
+			params: { tracking_id: 'tracking-campaign' },
+			request: new Request(
+				'https://build-os.com/api/email-tracking/tracking-campaign/unsubscribe',
+				{ method: 'POST', body: new URLSearchParams({ confirm: 'email_link' }) }
+			)
+		} as any);
+
+		expect(response.status).toBe(200);
+		expect(await response.text()).toContain(
+			'You will not receive these BuildOS emails anymore.'
+		);
+		expect(rpcMock).toHaveBeenCalledWith(
+			'upsert_email_suppression',
+			expect.objectContaining({
+				p_email: 'beta@example.com',
+				p_scope: 'marketing',
+				p_reason: 'unsubscribe',
+				p_source: 'email_link'
+			})
+		);
+		expect(tableCalls.events[0]).toMatchObject({
+			email_id: 'email-3',
+			event_type: 'unsubscribed'
+		});
+		expect(tableCalls.notificationPreferenceUpserts).toHaveLength(0);
+	});
+
 	it('only asks for confirmation when the link is opened, so link scanners change nothing', async () => {
 		createAdminSupabaseClientMock.mockReturnValue(createSupabase(createDailyBriefEmail()));
 

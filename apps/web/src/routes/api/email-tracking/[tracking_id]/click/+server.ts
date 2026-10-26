@@ -8,6 +8,7 @@ import { PUBLIC_APP_URL } from '$env/static/public';
 import { captureServerEvent } from '$lib/server/posthog';
 import { analyticsUrl } from '$lib/utils/analytics-url';
 import { getSafeLocalRedirect } from '$lib/server/safe-redirect';
+import { isExternalWebUrl, verifyEmailClickUrl } from '$lib/server/email-link-signing';
 
 function getTemplateData(value: unknown): Record<string, unknown> {
 	return value && typeof value === 'object' && !Array.isArray(value)
@@ -52,7 +53,14 @@ export const GET: RequestHandler = async ({ params, url }) => {
 		throw redirect(302, '/');
 	}
 
-	const destination = getSafeRedirectDestination(requestedDestination);
+	// In-app links redirect as before. Off-site links redirect only when the
+	// email signed them at send time (otherwise this would be an open redirect).
+	const destination =
+		getSafeRedirectDestination(requestedDestination) ??
+		(isExternalWebUrl(requestedDestination) &&
+		verifyEmailClickUrl(tracking_id, requestedDestination, url.searchParams.get('sig'))
+			? requestedDestination.trim()
+			: null);
 	if (!destination) {
 		baseLogger.warn('Blocked unsafe email click redirect destination', {
 			trackingId: tracking_id,

@@ -93,6 +93,16 @@ export const AGENTIC_CHAT_MUTATION_ARGUMENT_NORMALIZERS_V1: Readonly<
 	},
 
 	/**
+	 * `content_source: 'user_verbatim'` only routes the write to review
+	 * (`write-routing.ts`); `content` is stored verbatim either way. The shared
+	 * gateway has no such field and rejected every verbatim save with
+	 * "Unsupported parameter: content_source" (Workspace battery, 2026-10-25).
+	 */
+	drop_routing_only_content_source: ({ args }) => {
+		delete args.content_source;
+	},
+
+	/**
 	 * `project_id` is not a field on the canonical gateway operation. By the
 	 * time this runs, `resolveProjectFence` has already read it as the worker
 	 * scope fence; the gateway resolves assignee handles against the task's own

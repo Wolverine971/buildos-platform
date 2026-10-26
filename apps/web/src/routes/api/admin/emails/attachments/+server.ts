@@ -3,6 +3,14 @@ import type { RequestHandler } from './$types';
 import sharp from 'sharp';
 import { ApiResponse } from '$lib/utils/api-response';
 
+const BUCKET = 'email-attachments';
+// The bucket is public: emails need image URLs that never expire.
+type StorageClient = App.Locals['supabase'];
+
+function publicUrl(supabase: StorageClient, path: string): string {
+	return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const ALLOWED_FILE_TYPES = [...ALLOWED_IMAGE_TYPES, 'application/pdf', 'text/plain'];
@@ -40,27 +48,10 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		if (error) throw error;
 
-		// Get signed URLs for each attachment
-		const attachmentsWithUrls = await Promise.all(
-			(attachments || []).map(async (attachment) => {
-				try {
-					const { data: signedUrl } = await supabase.storage
-						.from('email-attachments')
-						.createSignedUrl(attachment.storage_path, 60 * 60); // 1 hour
-
-					return {
-						...attachment,
-						url: signedUrl?.signedUrl || null
-					};
-				} catch (error) {
-					console.error(`Error getting signed URL for ${attachment.filename}:`, error);
-					return {
-						...attachment,
-						url: null
-					};
-				}
-			})
-		);
+		const attachmentsWithUrls = (attachments || []).map((attachment) => ({
+			...attachment,
+			url: publicUrl(supabase, attachment.storage_path)
+		}));
 
 		return ApiResponse.success({ attachments: attachmentsWithUrls });
 	} catch (error) {
@@ -78,12 +69,15 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 	try {
 		const formData = await request.formData();
-		const file = formData.get('file') as File;
-		const email_id = formData.get('email_id') as string;
-		const is_shared = formData.get('is_shared') === 'true';
+		const file = formData.get('file');
+		const rawEmailId = formData.get('email_id');
+		const email_id =
+			typeof rawEmailId === 'string' && rawEmailId.trim() ? rawEmailId.trim() : null;
+		// Without an email row the image is shared (campaign images, unsaved drafts).
+		const is_shared = formData.get('is_shared') === 'true' || !email_id;
 		const is_inline = formData.get('is_inline') === 'true';
 
-		if (!file) {
+		if (!(file instanceof File)) {
 			return ApiResponse.badRequest('No file provided');
 		}
 
@@ -132,10 +126,10 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 				const [webpUpload, thumbnailUpload] = await Promise.all([
 					supabase.storage
-						.from('email-attachments')
+						.from(BUCKET)
 						.upload(webpPath, webpBuffer, { contentType: 'image/webp' }),
 					supabase.storage
-						.from('email-attachments')
+						.from(BUCKET)
 						.upload(thumbnailPath, thumbnailBuffer, { contentType: 'image/webp' })
 				]);
 
@@ -153,7 +147,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		// Upload original file
 		const { error: uploadError } = await supabase.storage
-			.from('email-attachments')
+			.from(BUCKET)
 			.upload(storagePath, processedBuffer, {
 				contentType: file.type,
 				upsert: false
@@ -168,7 +162,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		const { data: attachment, error: insertError } = await supabase
 			.from('email_attachments')
 			.insert({
-				email_id: email_id || '',
+				email_id: is_shared ? null : email_id,
 				filename: uniqueFilename,
 				original_filename: file.name,
 				file_size: file.size,
@@ -188,15 +182,10 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		if (insertError) throw insertError;
 
-		// Get signed URL for immediate use
-		const { data: signedUrl } = await supabase.storage
-			.from('email-attachments')
-			.createSignedUrl(storagePath, 60 * 60); // 1 hour
-
 		return ApiResponse.success({
 			attachment: {
 				...attachment,
-				url: signedUrl?.signedUrl || null
+				url: publicUrl(supabase, storagePath)
 			}
 		});
 	} catch (error) {
@@ -247,7 +236,7 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 
 		// Delete files from storage
 		await Promise.all(
-			filesToDelete.map((path) => supabase.storage.from('email-attachments').remove([path]))
+			filesToDelete.map((path) => supabase.storage.from(BUCKET).remove([path]))
 		);
 
 		// Delete attachment record

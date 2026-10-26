@@ -846,6 +846,28 @@ describe('table row create_onto_document', () => {
 		});
 	});
 
+	it('keeps content_source out of the gateway call (it only routes the write to review)', async () => {
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
+			ok: true,
+			data: { document: documentReceipt(), structure: { version: 3 }, structure_error: null }
+		}));
+		await adapter({ runGateway }).execute(
+			input({
+				args: {
+					project_id: PROJECT_ID,
+					title: 'Pottery class idea',
+					description: 'Saved as the user wrote it.',
+					content: 'weekend pottery class idea (ref KILN-482)',
+					content_source: 'user_verbatim'
+				}
+			})
+		);
+		expect(runGateway).toHaveBeenCalledOnce();
+		const sent = runGateway.mock.calls[0]![0] as { args: Record<string, unknown> };
+		expect(sent.args).not.toHaveProperty('content_source');
+		expect(sent.args.content).toBe('weekend pottery class idea (ref KILN-482)');
+	});
+
 	it('fails closed on project mismatch before dispatch', async () => {
 		const runGateway = vi.fn();
 		await expect(

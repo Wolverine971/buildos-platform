@@ -22,6 +22,52 @@ export function escapeHtmlText(value: string): string {
 		.replace(/'/g, '&#39;');
 }
 
+export type EmailOptOutScope = 'lifecycle' | 'daily_brief' | 'marketing';
+
+const POSTAL_ADDRESS_FOOTER_START =
+	'<p style="font-size: 12px; line-height: 1.5; color: #6B625C; margin-top: 16px;">BuildOS mailing address:';
+
+function optOutMessage(scope: EmailOptOutScope): string {
+	return scope === 'daily_brief'
+		? 'You can turn off BuildOS daily briefs'
+		: 'You can opt out of these BuildOS emails';
+}
+
+/** The unsubscribe line EmailService adds to opted-out-able email (HTML part). */
+export function appendEmailOptOutFooterHtml(
+	html: string,
+	unsubscribeUrl: string,
+	scope: EmailOptOutScope
+): string {
+	if (!unsubscribeUrl || html.includes(unsubscribeUrl)) return html;
+
+	const footer = `
+			<hr style="border: 0; border-top: 1px solid #E5E0DA; margin: 28px 0 16px;" />
+			<p style="font-size: 12px; line-height: 1.5; color: #6B625C;">
+				${optOutMessage(scope)}
+				<a href="${escapeHtmlText(unsubscribeUrl)}" style="color: #6B625C;">here</a>.
+			</p>
+		`;
+
+	// Keep the opt-out line above the mailing address when the address is already there.
+	const addressAt = html.indexOf(POSTAL_ADDRESS_FOOTER_START);
+	if (addressAt >= 0) return `${html.slice(0, addressAt)}${footer}${html.slice(addressAt)}`;
+
+	return html.includes('</body>')
+		? html.replace('</body>', `${footer}</body>`)
+		: `${html}${footer}`;
+}
+
+/** The unsubscribe line EmailService adds to opted-out-able email (text part). */
+export function appendEmailOptOutFooterText(
+	text: string,
+	unsubscribeUrl: string,
+	scope: EmailOptOutScope
+): string {
+	if (!unsubscribeUrl || text.includes(unsubscribeUrl)) return text;
+	return `${text.trimEnd()}\n\n${optOutMessage(scope)} here:\n${unsubscribeUrl}`;
+}
+
 export function appendEmailPostalAddressText(
 	text: string,
 	postalAddress = BUILDOS_MAILING_ADDRESS
@@ -36,7 +82,7 @@ export function appendEmailPostalAddressHtml(
 ): string {
 	const escapedAddress = escapeHtmlText(postalAddress);
 	if (html.includes(escapedAddress)) return html;
-	const footer = `<p style="font-size: 12px; line-height: 1.5; color: #6B625C; margin-top: 16px;">BuildOS mailing address: ${escapedAddress}</p>`;
+	const footer = `${POSTAL_ADDRESS_FOOTER_START} ${escapedAddress}</p>`;
 	return html.includes('</body>')
 		? html.replace('</body>', `${footer}</body>`)
 		: `${html}${footer}`;

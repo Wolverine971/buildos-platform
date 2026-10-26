@@ -7,12 +7,16 @@ import {
 	DEFAULT_PROD_WORKER_URL,
 	assertDeploymentUnchanged,
 	assertProdBatteryTarget,
+	BATTERY_SCENARIO_IDS,
+	batteryNeedsCalendar,
 	deployedProvenance,
 	evaluateCaseSubset,
 	failedTurnStreamRunIds,
+	parseBatterySelection,
 	parseCaseSelection,
 	parseVercelProductionDeployment
 } from './prod-battery-policy';
+import { BATTERY_CASES } from './gate-policy';
 
 const SHA = '76302509db7ce48463eebb2aa4f3038f73b9f7ce';
 const OTHER = 'e4c82b3560000000000000000000000000000000';
@@ -99,6 +103,24 @@ test('selects Cedar House cases by number and refuses unknown ones', () => {
 	assert.deepEqual(parseCaseSelection(['--cases=14,2,1,2']), [1, 2, 14]);
 	assert.throws(() => parseCaseSelection(['--cases=12']), /Cedar House cases/);
 	assert.throws(() => parseCaseSelection(['--cases=']), /Cedar House cases/);
+});
+
+test('selects the Workspace chat battery and its cases; only Cedar case 10 needs a calendar', () => {
+	assert.equal(parseBatterySelection([]), 'cedar-house');
+	assert.equal(parseBatterySelection(['--battery=workspace-chat']), 'workspace-chat');
+	assert.throws(() => parseBatterySelection(['--battery=cedar']), /--battery must be one of/);
+	assert.deepEqual(parseCaseSelection(['--cases=6,1'], 'workspace-chat'), [1, 6]);
+	assert.throws(
+		() => parseCaseSelection(['--cases=7'], 'workspace-chat'),
+		/Workspace chat cases from: 1, 2, 3, 4, 5, 6/
+	);
+	assert.equal(batteryNeedsCalendar('cedar-house', null), true);
+	assert.equal(batteryNeedsCalendar('cedar-house', [1, 2]), false);
+	assert.equal(batteryNeedsCalendar('workspace-chat', null), false);
+	for (const battery of ['cedar-house', 'workspace-chat'] as const)
+		assert.deepEqual(Object.keys(BATTERY_SCENARIO_IDS[battery]).map(Number), [
+			...BATTERY_CASES[battery]
+		]);
 });
 
 test('scores a subset with the full rules but only for the selected cases', () => {

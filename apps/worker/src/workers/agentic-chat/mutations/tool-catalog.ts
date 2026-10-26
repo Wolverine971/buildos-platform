@@ -79,6 +79,7 @@ export type AgenticChatMutationArgumentNormalizerIdV1 =
 	| 'require_trimmed_description'
 	| 'rename_parent_id_to_parent_document_id'
 	| 'drop_unusable_document_position'
+	| 'drop_routing_only_content_source'
 	| 'drop_scope_only_project_id'
 	| 'normalize_target_date_end_of_day'
 	| 'normalize_due_at_start_of_day'
@@ -218,7 +219,8 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			argumentNormalizers: [
 				'require_trimmed_description',
 				'rename_parent_id_to_parent_document_id',
-				'drop_unusable_document_position'
+				'drop_unusable_document_position',
+				'drop_routing_only_content_source'
 			],
 			receiptPostProcessors: ['strip_external_agent_origin'],
 			receipt: {
@@ -259,7 +261,11 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			runner: 'gateway',
 			scope: { mode: 'context_project', required: false },
 			requiredUuidArguments: ['document_id'],
-			argumentNormalizers: ['reject_merge_llm_update_strategy', 'drop_empty_props'],
+			argumentNormalizers: [
+				'reject_merge_llm_update_strategy',
+				'drop_empty_props',
+				'drop_routing_only_content_source'
+			],
 			receiptPostProcessors: ['strip_external_agent_origin'],
 			// +/- line stats, diff hunks, and the Undo patch for the chat toast and card.
 			passthroughReceiptFields: [

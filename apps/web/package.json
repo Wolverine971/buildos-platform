@@ -172,6 +172,7 @@
 		"fflate": "^0.8.3",
 		"google-auth-library": "^10.6.2",
 		"googleapis": "^171.4.0",
+		"imapflow": "^2.9.1",
 		"lucide-svelte": "^0.536.0",
 		"marked": "^16.1.1",
 		"marked-gfm-heading-id": "^4.1.3",

@@ -4,9 +4,9 @@ import type { RequestHandler } from './$types';
 import { createLogger } from '@buildos/shared-utils';
 
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { suppressionScopeFor } from '$lib/server/email-suppression-scope';
 
 type SuppressionSource = 'email_link' | 'list_header';
-type SuppressionScope = 'lifecycle' | 'daily_brief';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -68,22 +68,6 @@ function confirmUnsubscribeResponse(): Response {
 				'Cache-Control': 'no-store'
 			}
 		}
-	);
-}
-
-function isDailyBriefEmail(email: Record<string, any>): boolean {
-	const templateData =
-		email.template_data && typeof email.template_data === 'object'
-			? (email.template_data as Record<string, any>)
-			: {};
-
-	return (
-		email.category === 'daily_brief' ||
-		templateData.category === 'daily_brief' ||
-		templateData.category === 'daily-brief' ||
-		templateData.event_type === 'brief.completed' ||
-		templateData.event_type === 'brief.failed' ||
-		(typeof templateData.brief_id === 'string' && typeof templateData.brief_date === 'string')
 	);
 }
 
@@ -277,8 +261,8 @@ async function handleUnsubscribe({
 
 		const recipients = Array.isArray(email.email_recipients) ? email.email_recipients : [];
 		const now = new Date().toISOString();
-		const isDailyBrief = isDailyBriefEmail(email);
-		const suppressionScope: SuppressionScope = isDailyBrief ? 'daily_brief' : 'lifecycle';
+		const suppressionScope = suppressionScopeFor(email);
+		const isDailyBrief = suppressionScope === 'daily_brief';
 		let disabledDailyBrief = false;
 
 		for (const recipient of recipients) {
