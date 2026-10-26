@@ -1,5 +1,6 @@
 // apps/web/src/lib/server/builder-profile/builder-profile.test.ts
 import { describe, expect, it, vi } from 'vitest';
+import { createClient } from '@supabase/supabase-js';
 import {
 	activityIsStale,
 	askToJoin,
@@ -7,7 +8,8 @@ import {
 	follow,
 	loadBuilderProject,
 	parseLinks,
-	parsePlacements
+	parsePlacements,
+	replaceLinks
 } from './builder-profile.service';
 import { decideDraft, draftPage, draftWeeklyUpdates } from './builder-profile-drafts';
 
@@ -104,6 +106,73 @@ describe('parseLinks', () => {
 		expect(() =>
 			parseLinks(Array.from({ length: 31 }, () => ({ url: 'https://a.co' })))
 		).toThrow(/up to 30/);
+	});
+});
+
+describe('replaceLinks', () => {
+	it.each([false, true])(
+		'lets the database generate link IDs (existing IDs: %s)',
+		async (existing) => {
+			const fetch = vi.fn<typeof globalThis.fetch>(
+				async () => new Response(null, { status: 204 })
+			);
+			const admin = createClient('https://builder-links.test', 'offline-test-key', {
+				global: { fetch },
+				auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+			});
+			const links = parseLinks([
+				{ kind: 'social', url: 'x.com/djwayne3' },
+				{
+					kind: 'link',
+					url: 'https://9takes.com',
+					label: '9takes',
+					audience: 'collaborators'
+				}
+			]);
+			await replaceLinks({
+				admin,
+				userId: PROJECT,
+				links: existing ? links.map((link) => ({ ...link, id: OTHER })) : links
+			});
+
+			expect(fetch).toHaveBeenCalledTimes(2);
+			const [deleteUrl, deleteOptions] = fetch.mock.calls[0]!;
+			expect(deleteOptions?.method).toBe('DELETE');
+			expect(new URL(String(deleteUrl)).searchParams.get('user_id')).toBe(`eq.${PROJECT}`);
+			const [insertUrl, insertOptions] = fetch.mock.calls[1]!;
+			expect(insertOptions?.method).toBe('POST');
+			expect(new URL(String(insertUrl)).pathname).toBe('/rest/v1/builder_profile_links');
+			// Inspect the real client's column list: JSON alone drops undefined properties,
+			// but an `id: undefined` key still becomes an explicit null in a bulk insert.
+			expect(
+				new URL(String(insertUrl)).searchParams.get('columns')?.split(',')
+			).not.toContain('"id"');
+			expect(JSON.parse(String(insertOptions?.body))).toEqual(
+				links.map((link, position) => ({ ...link, user_id: PROJECT, position }))
+			);
+		}
+	);
+
+	it('clears all links without sending an empty insert', async () => {
+		const { client, calls } = fakeClient({});
+		await replaceLinks({ admin: client, userId: PROJECT, links: [] });
+		expect(calls).toEqual([
+			{ table: 'builder_profile_links', op: 'delete', args: [] },
+			{ table: 'builder_profile_links', op: 'eq', args: ['user_id', PROJECT] }
+		]);
+	});
+
+	it('does not insert when deleting the previous links fails', async () => {
+		const error = { message: 'Delete failed' };
+		const { client, calls } = fakeClient({ tables: { builder_profile_links: [{ error }] } });
+		await expect(
+			replaceLinks({
+				admin: client,
+				userId: PROJECT,
+				links: parseLinks([{ url: '9takes.com' }])
+			})
+		).rejects.toEqual(error);
+		expect(calls.some((call) => call.op === 'insert')).toBe(false);
 	});
 });
 

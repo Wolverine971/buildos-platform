@@ -526,11 +526,19 @@ export async function replaceLinks(params: {
 	const del = await admin.from('builder_profile_links').delete().eq('user_id', userId);
 	if (del.error) throw del.error;
 	if (links.length === 0) return;
-	const { error } = await admin
-		.from('builder_profile_links')
-		.insert(
-			links.map((link, position) => ({ user_id: userId, ...link, id: undefined, position }))
-		);
+	// Omit id entirely so the database generates it. In bulk inserts, even an
+	// undefined key enters PostgREST's column list and becomes null instead of DEFAULT.
+	const { error } = await admin.from('builder_profile_links').insert(
+		links.map((link, position) => ({
+			user_id: userId,
+			kind: link.kind,
+			url: link.url,
+			label: link.label,
+			note: link.note,
+			audience: link.audience,
+			position
+		}))
+	);
 	if (error) throw error;
 }
 
