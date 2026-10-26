@@ -2,9 +2,9 @@
 <!--
 	AI Inbox triage mode: every project's cleanup items, one at a time. Ready-to-apply changes
 	come first as one batch per project; calls and notes follow one by one. Each verdict is a
-	single tap or key (A apply/done, N not needed, D note to Jev, S skip, Z undo). Decisions
+	single tap or key (A apply/done, N not needed, D discuss, S skip, Z undo). Decisions
 	wait a few seconds so they can be undone, then save together, one request per project.
-	A note hands the item to Jev with the user's words; Jev handles it in the background.
+	Discuss opens a quick note; one model call reads it into a decision that runs in the background.
 -->
 <script lang="ts">
 	import { onDestroy, onMount, tick } from 'svelte';
@@ -61,7 +61,7 @@
 		projects: TriageProject[];
 		/** How long a decision waits (undoable) before it saves. */
 		undoWindowMs?: number;
-		/** Hand one item to Jev with the user's note. */
+		/** Send one item on with the user's note. */
 		onSendNote: (
 			project: TriageProject,
 			item: ProjectCleanupItem,
@@ -707,11 +707,11 @@
 								class="mt-4 rounded-md border border-accent/30 bg-card p-2.5 shadow-ink"
 							>
 								<p class="text-xs font-semibold text-foreground">
-									Tell Jev what to do with this
+									What should happen with this?
 								</p>
 								<p class="mt-0.5 text-2xs text-muted-foreground">
-									Jev handles quick calls itself and hands bigger edits to an
-									agent. You can keep going.
+									Quick calls happen right away; bigger edits go to an agent. You
+									can keep going.
 								</p>
 								<TextareaWithVoice
 									bind:value={noteText}
@@ -755,7 +755,7 @@
 											disabled={!noteText.trim()}
 											class="text-xs"
 										>
-											Send to Jev
+											Send note
 										</Button>
 									</div>
 								</div>
@@ -773,7 +773,9 @@
 						tallies.applied ? `${tallies.applied} applied` : null,
 						tallies.done ? `${tallies.done} done` : null,
 						tallies.not_needed ? `${tallies.not_needed} not needed` : null,
-						tallies.noted ? `${tallies.noted} sent to Jev` : null,
+						tallies.noted
+							? `${tallies.noted} ${tallies.noted === 1 ? 'note' : 'notes'} sent`
+							: null,
 						tallies.skipped ? `${tallies.skipped} left for later` : null
 					]
 						.filter(Boolean)
@@ -800,7 +802,7 @@
 			<div class="mx-auto mt-4 max-w-2xl space-y-2" aria-live="polite">
 				{#if notes.length}
 					<div class="rounded-md border border-border bg-muted/30 p-2.5">
-						<p class="micro-label text-muted-foreground">With Jev</p>
+						<p class="micro-label text-muted-foreground">Your notes</p>
 						<ul class="mt-1 space-y-1">
 							{#each notes as note (note.key)}
 								<li class="flex min-w-0 items-start gap-1.5 text-xs">
@@ -827,7 +829,7 @@
 												? 'sending…'
 												: (note.message ??
 													(note.status === 'sent'
-														? 'Jev is on it'
+														? 'Handling it'
 														: 'could not send'))}
 										</span>
 									</span>

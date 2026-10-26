@@ -24,7 +24,7 @@
 		"test:watch": "vitest watch",
 		"test:coverage": "VITEST_COVERAGE=1 vitest run --coverage",
 		"test:scheduler": "vitest run tests/scheduler.test.ts",
-		"test:integration": "vitest run tests/integration",
+		"test:integration": "vitest run --config vitest.integration.config.ts",
 		"test:agent-run:integration": "vitest run --config vitest.integration.config.ts",
 		"guardrails:http-modules": "node ./scripts/check-worker-http-module-size.cjs",
 		"backtest:freshness": "tsx scripts/freshness-radar-backtest.ts",

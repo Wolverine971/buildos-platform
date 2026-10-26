@@ -32,14 +32,13 @@ describe('POST /api/chat/shared-document-edits/[id]', () => {
 		expect(mocks.resolve).not.toHaveBeenCalled();
 	});
 
-	it.each([
-		[{ choice: 'yes', session_id: SESSION }],
-		[{ choice: 'apply' }],
-		['not json']
-	])('rejects a malformed request %#', async (body) => {
-		expect((await call(body)).status).toBe(400);
-		expect(mocks.resolve).not.toHaveBeenCalled();
-	});
+	it.each([[{ choice: 'yes', session_id: SESSION }], [{ choice: 'apply' }], ['not json']])(
+		'rejects a malformed request %#',
+		async (body) => {
+			expect((await call(body)).status).toBe(400);
+			expect(mocks.resolve).not.toHaveBeenCalled();
+		}
+	);
 
 	it('passes only the card id, session and choice, with the user from the session', async () => {
 		mocks.resolve.mockResolvedValue({
@@ -83,7 +82,7 @@ describe('POST /api/chat/shared-document-edits/[id]', () => {
 			ok: false,
 			status: 410,
 			code: 'CARD_EXPIRED',
-			message: 'This preview expired after 24 hours. Ask Jev again. Nothing changed.'
+			message: 'This preview expired after 24 hours. Ask again. Nothing changed.'
 		});
 		const response = await call({ choice: 'copy', session_id: SESSION });
 		expect(response.status).toBe(410);

@@ -58,7 +58,7 @@ export const GET: RequestHandler = async ({ request }) => {
 			await supabase.from('cron_logs').insert({
 				job_name: JOB_NAME,
 				status: summary.failed > 0 || summary.expired > 0 ? 'partial_success' : 'success',
-				message: `Claimed ${summary.claimed}, sent ${summary.sent}, failed ${summary.failed}, skipped ${summary.skipped}, released ${summary.released}, expired ${summary.expired}, completed ${summary.completedCampaigns} campaign(s), daily cap left ${summary.dailyCapRemaining}`,
+				message: `Claimed ${summary.claimed}, sent ${summary.sent}, failed ${summary.failed}, skipped ${summary.skipped}, released ${summary.released}, expired ${summary.expired}, completed ${summary.completedCampaigns} campaign(s), daily allowance at start ${summary.dailyCapRemaining}`,
 				error_message:
 					summary.errors
 						.slice(0, 10)

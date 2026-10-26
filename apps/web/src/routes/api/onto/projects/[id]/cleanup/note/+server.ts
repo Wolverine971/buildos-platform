@@ -4,8 +4,8 @@
 //   body: { cleanup_item_id, note, expected_fingerprints? }
 //   -> { decision, reply, agent_run_id, outcomes, view }
 //
-// A quick note on one Project cleanup item from the AI Inbox. Jev reads the note in one
-// model call into apply / not_needed / done / agent, then that decision runs: the first
+// A quick note on one Project cleanup item from the AI Inbox. One model call reads the note
+// into apply / not_needed / done / agent, then that decision runs: the first
 // three through the card's own decision path, "agent" as a clarified approval that hands
 // the item to a background agent run with the owner's words.
 //
@@ -101,7 +101,7 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 	}
 	const reading = parseCleanupNoteReading(raw, isCleanupItemSelectable(item));
 	if (!reading) {
-		return ApiResponse.error("Jev couldn't read that note. Try again, or open the chat.", 502);
+		return ApiResponse.error("Couldn't read that note. Try again, or open the chat.", 502);
 	}
 
 	const result = await actOnCleanupNote({

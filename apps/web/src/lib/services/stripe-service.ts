@@ -106,11 +106,15 @@ function inferSubscriptionTier(args: {
 }
 
 function getInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
-	const subscription = (
-		invoice as Stripe.Invoice & {
-			subscription?: string | Stripe.Subscription | null;
-		}
-	).subscription;
+	// Basil moved the subscription reference under parent; accept older webhook versions too.
+	const subscription =
+		invoice.parent?.type === 'subscription_details'
+			? invoice.parent.subscription_details?.subscription
+			: (
+					invoice as Stripe.Invoice & {
+						subscription?: string | Stripe.Subscription | null;
+					}
+				).subscription;
 
 	if (!subscription) return null;
 	return typeof subscription === 'string' ? subscription : subscription.id;
@@ -179,26 +183,29 @@ export class StripeService {
 		const stripe = StripeService.getClient();
 
 		// Check if user already has a Stripe customer ID
-		const { data: user } = await this.supabase
+		const { data: user, error: userLookupError } = await this.supabase
 			.from('users')
 			.select('stripe_customer_id')
 			.eq('id', userId)
 			.single();
+
+		throwOnWriteError(userLookupError, 'Failed to look up Stripe customer');
 
 		if (user?.stripe_customer_id) {
 			return user.stripe_customer_id;
 		}
 
 		// Create new Stripe customer
-		const customer = await stripe.customers.create({
-			email,
-			metadata: {
-				user_id: userId
-			}
-		});
+		const customer = await stripe.customers.create(
+			{
+				email,
+				metadata: { user_id: userId }
+			},
+			{ idempotencyKey: `buildos-customer:${userId}` }
+		);
 
 		// Save customer ID to database
-		await this.supabase
+		const { error: linkError } = await this.supabase
 			.from('users')
 			.update({
 				stripe_customer_id: customer.id,
@@ -206,6 +213,7 @@ export class StripeService {
 			})
 			.eq('id', userId);
 
+		throwOnWriteError(linkError, 'Failed to link Stripe customer');
 		return customer.id;
 	}
 
@@ -216,12 +224,13 @@ export class StripeService {
 		const stripe = StripeService.getClient();
 
 		// Check for existing active subscription
-		const { data: existingSub } = await this.supabase
+		const { data: existingSub, error: existingSubError } = await this.supabase
 			.from('customer_subscriptions')
 			.select('id, status')
 			.eq('user_id', options.userId)
 			.in('status', ['active', 'trialing'])
-			.single();
+			.maybeSingle();
+		throwOnWriteError(existingSubError, 'Failed to check existing subscription');
 
 		if (existingSub) {
 			throw new Error('You already have an active subscription');
@@ -259,8 +268,8 @@ export class StripeService {
 			discounts,
 			subscription_data: {
 				metadata: {
-					user_id: options.userId,
-					...options.metadata
+					...options.metadata,
+					user_id: options.userId
 				},
 				description: INVOICE_CONFIG.memoTemplates.subscription
 			},
@@ -269,8 +278,8 @@ export class StripeService {
 				name: 'auto'
 			},
 			metadata: {
-				user_id: options.userId,
-				...options.metadata
+				...options.metadata,
+				user_id: options.userId
 			}
 		});
 
@@ -434,25 +443,40 @@ export class StripeService {
 			);
 		}
 
-		const upgradedSubscription = await stripe.subscriptions.update(subscriptionId, {
-			cancel_at_period_end: false,
-			proration_behavior: 'create_prorations',
-			items: [
-				{
-					id: primaryItem.id,
-					price: toPowerPriceId,
-					quantity: primaryItem.quantity ?? 1
+		// A previous request may have charged successfully before local persistence failed.
+		if (primaryItem.price.id === toPowerPriceId) {
+			await this.handleSubscriptionUpdate(stripeSubscription);
+			return buildResult('already_power', {
+				subscriptionId,
+				fromPriceId,
+				toPriceId: toPowerPriceId,
+				currentCycleCredits
+			});
+		}
+
+		const upgradedSubscription = await stripe.subscriptions.update(
+			subscriptionId,
+			{
+				cancel_at_period_end: false,
+				proration_behavior: 'create_prorations',
+				items: [
+					{
+						id: primaryItem.id,
+						price: toPowerPriceId,
+						quantity: primaryItem.quantity ?? 1
+					}
+				],
+				metadata: {
+					// Stable payload for retries of the same cycle's idempotency key. Stripe
+					// merges these metadata keys without removing other existing metadata.
+					user_id: userId,
+					auto_tier_upgrade: 'pro_to_power',
+					auto_tier_upgrade_cycle: currentSub.current_period_start,
+					auto_tier_upgrade_threshold: String(thresholdCredits)
 				}
-			],
-			metadata: {
-				...stripeSubscription.metadata,
-				user_id: userId,
-				auto_tier_upgrade: 'pro_to_power',
-				auto_tier_upgrade_at: new Date().toISOString(),
-				auto_tier_upgrade_credits: String(currentCycleCredits),
-				auto_tier_upgrade_threshold: String(thresholdCredits)
-			}
-		});
+			},
+			{ idempotencyKey: `buildos-power:${subscriptionId}:${currentSub.current_period_start}` }
+		);
 
 		await this.handleSubscriptionUpdate(upgradedSubscription);
 
@@ -484,12 +508,10 @@ export class StripeService {
 			{ onConflict: 'user_id' }
 		);
 
-		if (billingAccountError) {
-			console.error(
-				`Failed to sync billing_accounts for ${userId} after auto-upgrade:`,
-				billingAccountError
-			);
-		}
+		throwOnWriteError(
+			billingAccountError,
+			`Failed to sync billing_accounts for ${userId} after auto-upgrade`
+		);
 
 		invalidateBillingContextCache(userId);
 
@@ -577,11 +599,12 @@ export class StripeService {
 	 */
 	async handleWebhookEvent(event: Stripe.Event): Promise<void> {
 		// Check if we've already processed this event
-		const { data: existingEvent } = await this.supabase
+		const { data: existingEvent, error: eventReadError } = await this.supabase
 			.from('webhook_events')
 			.select('id, status, attempts')
 			.eq('event_id', event.id)
-			.single();
+			.maybeSingle();
+		throwOnWriteError(eventReadError, 'Failed to read webhook receipt');
 
 		if (existingEvent?.status === 'processed') {
 			console.log(`Event ${event.id} already processed, skipping`);
@@ -589,7 +612,7 @@ export class StripeService {
 		}
 
 		// Log webhook event
-		await this.supabase.from('webhook_events').upsert(
+		const { error: receiptError } = await this.supabase.from('webhook_events').upsert(
 			{
 				event_id: event.id,
 				event_type: event.type,
@@ -602,6 +625,7 @@ export class StripeService {
 			}
 		);
 
+		throwOnWriteError(receiptError, 'Failed to save webhook receipt');
 		try {
 			switch (event.type) {
 				case 'checkout.session.completed':
@@ -610,33 +634,37 @@ export class StripeService {
 
 				case 'customer.subscription.created':
 				case 'customer.subscription.updated':
-					await this.handleSubscriptionUpdate(event.data.object as Stripe.Subscription);
-					break;
-
 				case 'customer.subscription.deleted':
-					await this.handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
+					// Stripe does not promise event order. Reconcile current provider state.
+					await this.refreshSubscription((event.data.object as Stripe.Subscription).id);
 					break;
 
 				case 'invoice.payment_succeeded':
-					await this.handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice);
+				case 'invoice.payment_failed': {
+					const invoiceId = (event.data.object as Stripe.Invoice).id;
+					if (!invoiceId) throw new Error('Invoice webhook is missing its invoice ID');
+					const current = await StripeService.getClient().invoices.retrieve(invoiceId);
+					if (current.status === 'paid')
+						await this.handleInvoicePaymentSucceeded(current);
+					else if (current.status === 'open' && event.type === 'invoice.payment_failed') {
+						await this.handleInvoicePaymentFailed(current);
+					}
 					break;
-
-				case 'invoice.payment_failed':
-					await this.handleInvoicePaymentFailed(event.data.object as Stripe.Invoice);
-					break;
+				}
 
 				default:
 					console.log(`Unhandled webhook event type: ${event.type}`);
 			}
 
-			// Mark as processed
-			await this.supabase
+			// Mark as processed only after every write succeeds.
+			const { error: processedError } = await this.supabase
 				.from('webhook_events')
 				.update({
 					status: 'processed',
 					processed_at: new Date().toISOString()
 				})
 				.eq('event_id', event.id);
+			throwOnWriteError(processedError, 'Failed to finish webhook receipt');
 		} catch (error) {
 			console.error(`Error processing webhook event ${event.id}:`, error);
 
@@ -671,6 +699,13 @@ export class StripeService {
 		}
 	}
 
+	private async refreshSubscription(id: string): Promise<Stripe.Subscription> {
+		const current = await StripeService.getClient().subscriptions.retrieve(id);
+		if (current.status === 'canceled') await this.handleSubscriptionDeleted(current);
+		else await this.handleSubscriptionUpdate(current);
+		return current;
+	}
+
 	/**
 	 * Handle successful checkout
 	 */
@@ -680,11 +715,11 @@ export class StripeService {
 
 		// Session will have subscription ID if it was a subscription checkout
 		if (session.subscription) {
-			const stripe = StripeService.getClient();
-			const subscription = await stripe.subscriptions.retrieve(
-				session.subscription as string
+			await this.refreshSubscription(
+				typeof session.subscription === 'string'
+					? session.subscription
+					: session.subscription.id
 			);
-			await this.handleSubscriptionUpdate(subscription);
 		}
 	}
 
@@ -719,13 +754,15 @@ export class StripeService {
 			: null;
 
 		// Get plan details
-		const { data: plan } = await this.supabase
+		const { data: plan, error: planError } = await this.supabase
 			.from('subscription_plans')
 			.select(
 				'id, name, price_cents, stripe_price_id, billing_interval, interval_count, is_active'
 			)
 			.eq('stripe_price_id', priceId)
 			.maybeSingle();
+
+		throwOnWriteError(planError, 'Failed to read subscription plan');
 
 		// Upsert subscription record
 		const customerId = getSubscriptionCustomerId(subscription);
@@ -824,11 +861,12 @@ export class StripeService {
 		let userId = subscription.metadata?.user_id;
 
 		if (!userId) {
-			const { data: existingSubscription } = await this.supabase
+			const { data: existingSubscription, error: lookupError } = await this.supabase
 				.from('customer_subscriptions')
 				.select('user_id')
 				.eq('stripe_subscription_id', subscription.id)
-				.single();
+				.maybeSingle();
+			throwOnWriteError(lookupError, 'Failed to resolve canceled subscription owner');
 
 			userId = existingSubscription?.user_id ?? undefined;
 		}
@@ -844,6 +882,21 @@ export class StripeService {
 			})
 			.eq('stripe_subscription_id', subscription.id);
 		throwOnWriteError(subscriptionCancelError, 'Failed to mark subscription canceled');
+
+		// Canceling an old subscription must not revoke a replacement subscription.
+		const { data: replacement, error: replacementError } = await this.supabase
+			.from('customer_subscriptions')
+			.select('id')
+			.eq('user_id', userId)
+			.neq('stripe_subscription_id', subscription.id)
+			.in('status', ['active', 'trialing', 'past_due'])
+			.limit(1)
+			.maybeSingle();
+		throwOnWriteError(replacementError, 'Failed to check replacement subscription');
+		if (replacement) {
+			invalidateBillingContextCache(userId);
+			return;
+		}
 
 		// Update user to free tier
 		const { error: userDowngradeError } = await this.supabase
@@ -903,23 +956,23 @@ export class StripeService {
 		const customerId = getInvoiceCustomerId(invoice);
 		if (!subscriptionId || !customerId) return;
 
-		const stripe = StripeService.getClient();
-
-		const { data: existingSubscription } = await this.supabase
+		const { data: existingSubscription, error: subscriptionReadError } = await this.supabase
 			.from('customer_subscriptions')
 			.select('id, user_id, status')
 			.eq('stripe_subscription_id', subscriptionId)
-			.single();
+			.maybeSingle();
+		throwOnWriteError(subscriptionReadError, 'Failed to resolve invoice subscription');
 
 		let userId = existingSubscription?.user_id ?? undefined;
-		let customerSubscriptionId = existingSubscription?.id ?? undefined;
+		const customerSubscriptionId = existingSubscription?.id ?? undefined;
 
 		if (!userId) {
-			const { data: userByCustomer } = await this.supabase
+			const { data: userByCustomer, error: ownerReadError } = await this.supabase
 				.from('users')
 				.select('id')
 				.eq('stripe_customer_id', customerId)
-				.single();
+				.maybeSingle();
+			throwOnWriteError(ownerReadError, 'Failed to resolve invoice owner');
 
 			userId = userByCustomer?.id ?? undefined;
 		}
@@ -949,48 +1002,24 @@ export class StripeService {
 		);
 		throwOnWriteError(invoiceUpsertError, 'Failed to record invoice');
 
-		// Sync subscription state from Stripe to capture the latest status changes
-		try {
-			const latestSubscription = await stripe.subscriptions.retrieve(subscriptionId);
-			await this.handleSubscriptionUpdate(latestSubscription);
-		} catch (error) {
-			console.error(`Failed to refresh subscription ${subscriptionId}:`, error);
-		}
-
-		if (!existingSubscription) return;
-
-		// Always resolve a failed payment for this invoice. The stored status may
-		// already be 'active' (customer.subscription.updated can land first), and
-		// gating on past_due would leave dunning running against a paid invoice.
+		// A paid invoice can arrive after cancellation. Never infer active from the event.
+		const latestSubscription = await this.refreshSubscription(subscriptionId);
 		if (invoice.id) {
 			const { DunningService } = await import('./dunning-service');
-			const dunningService = new DunningService(this.supabase);
-			await dunningService.resolveFailedPayment(invoice.id, 'paid');
+			await new DunningService(this.supabase).resolveFailedPayment(invoice.id, 'paid');
 		}
-
-		if (existingSubscription.status === 'past_due') {
-			// Update subscription status back to active
-			const { error: reactivateError } = await this.supabase
-				.from('customer_subscriptions')
-				.update({
-					status: 'active'
-				})
-				.eq('id', existingSubscription.id);
-			throwOnWriteError(reactivateError, 'Failed to reactivate subscription');
-
-			// Update user status
-			const { error: restoreAccessError } = await this.supabase
+		if (['active', 'trialing'].includes(latestSubscription.status)) {
+			const { error: restoreError } = await this.supabase
 				.from('users')
 				.update({
-					subscription_status: 'active',
 					access_restricted: false,
 					access_restricted_at: null
 				})
-				.eq('id', existingSubscription.user_id);
-			throwOnWriteError(restoreAccessError, 'Failed to restore user access');
+				.eq('id', userId);
+			throwOnWriteError(restoreError, 'Failed to restore user access');
 		}
 
-		invalidateBillingContextCache(existingSubscription.user_id);
+		invalidateBillingContextCache(userId);
 	}
 
 	/**
@@ -1001,11 +1030,14 @@ export class StripeService {
 		const customerId = getInvoiceCustomerId(invoice);
 		if (!subscriptionId || !customerId) return;
 
-		const { data: subscription } = await this.supabase
+		// Invoice delivery can precede subscription.created; establish current state first.
+		await this.refreshSubscription(subscriptionId);
+		const { data: subscription, error: subscriptionReadError } = await this.supabase
 			.from('customer_subscriptions')
 			.select('id, user_id')
 			.eq('stripe_subscription_id', subscriptionId)
-			.single();
+			.maybeSingle();
+		throwOnWriteError(subscriptionReadError, 'Failed to resolve failed invoice subscription');
 
 		if (!subscription) return;
 		if (!invoice.id) return; // Invoice must have an ID to record
@@ -1020,24 +1052,6 @@ export class StripeService {
 			invoiceId: invoice.id,
 			amountDue: invoice.amount_due
 		});
-
-		// Update subscription status
-		const { error: pastDueError } = await this.supabase
-			.from('customer_subscriptions')
-			.update({
-				status: 'past_due'
-			})
-			.eq('id', subscription.id);
-		throwOnWriteError(pastDueError, 'Failed to mark subscription past_due');
-
-		// Update user status
-		const { error: userPastDueError } = await this.supabase
-			.from('users')
-			.update({
-				subscription_status: 'past_due'
-			})
-			.eq('id', subscription.user_id);
-		throwOnWriteError(userPastDueError, 'Failed to mark user past_due');
 
 		invalidateBillingContextCache(subscription.user_id);
 

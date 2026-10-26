@@ -1,9 +1,9 @@
 # BuildOS Database Schema Reference
 
-Complete column listing for all 287 tables, grouped by domain.
+Complete column listing for all 289 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-10-25T18:34:42.289Z
+**Schema generated:** 2026-10-26T17:38:04.274Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -21,7 +21,7 @@ For enum values, constraints, and RLS, check migrations in `supabase/migrations/
 - [Calendar](#calendar) (13 tables)
 - [Notifications](#notifications) (7 tables)
 - [SMS & Twilio](#sms--twilio) (7 tables)
-- [Email](#email) (29 tables)
+- [Email](#email) (31 tables)
 - [Billing](#billing) (14 tables)
 - [Beta Program](#beta-program) (6 tables)
 - [Queue & Jobs](#queue--jobs) (2 tables)
@@ -700,7 +700,15 @@ connection_id `string?` · created_at `string` · id `string` · metadata `Json`
 
 ### email_attachments
 
-cid `string?` · content_type `string` · created_at `string?` · created_by `string` · email_id `string` · file_size `number` · filename `string` · id `string` · image_height `number?` · image_width `number?` · is_image `boolean?` · is_inline `boolean?` · optimized_versions `Json?` · original_filename `string` · storage_bucket `string` · storage_path `string`
+cid `string?` · content_type `string` · created_at `string?` · created_by `string` · email_id `string?` · file_size `number` · filename `string` · id `string` · image_height `number?` · image_width `number?` · is_image `boolean?` · is_inline `boolean?` · optimized_versions `Json?` · original_filename `string` · storage_bucket `string` · storage_path `string`
+
+### email_campaign_recipients
+
+attempt_count `number` · beta_signup_id `string?` · body_override `string?` · bounced_at `string?` · campaign_id `string` · context `Json` · created_at `string` · email `string` · email_id `string?` · error_message `string?` · first_name `string?` · id `string` · included `boolean` · lease_expires_at `string?` · message_id `string?` · name `string?` · override_source `string?` · replied_at `string?` · reply_checked_at `string?` · scheduled_for `string?` · segment `string` · sent_at `string?` · skip_reason `string?` · source_email_id `string?` · status `string` · subject_override `string?` · tailor_error `string?` · tailor_status `string` · tailored_at `string?` · tracking_id `string?` · updated_at `string` · user_id `string?`
+
+### email_campaigns
+
+audience `Json` · body_template `string` · canceled_at `string?` · completed_at `string?` · created_at `string` · created_by `string?` · from_name `string` · id `string` · metadata `Json` · name `string` · queued_at `string?` · source `string` · starts_at `string?` · status `string` · subject_template `string` · tailoring_instructions `string?` · updated_at `string` · wave_interval_minutes `number` · wave_size `number`
 
 ### email_capability_grants
 

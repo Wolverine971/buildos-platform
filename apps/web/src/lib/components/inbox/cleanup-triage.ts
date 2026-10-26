@@ -27,7 +27,7 @@ export type TriageStep =
 export type TriageNoteResult = { ok: boolean; message?: string | null };
 export type TriageSummary = { handled: number; projectIds: string[] };
 
-/** What the user decided on one item. `note` hands the item to Jev with their words. */
+/** What the user decided on one item. `note` sends the item on with the user's own words. */
 export type TriageVerdict = 'apply' | 'done' | 'not_needed' | 'note' | 'skip';
 
 const SECTION_ORDER = { safe_cleanup: 0, needs_call: 1, note: 2 } as const;
@@ -93,7 +93,7 @@ export const TRIAGE_VERDICT_LABEL: Record<TriageVerdict, string> = {
 	apply: 'Apply',
 	done: 'Done',
 	not_needed: 'Not needed',
-	note: 'Note to Jev',
+	note: 'Discuss',
 	skip: 'Skip for now'
 };
 

@@ -92,25 +92,67 @@ describe('Scheduler - calculateNextRunTime', () => {
 			expect(result?.getUTCHours()).toBe(0);
 		});
 
-		it('should handle DST transitions correctly', () => {
-			// Test during DST transition (spring forward)
-			const now = new Date('2025-03-09T06:00:00Z'); // Day before DST
+		it.each([
+			[
+				'spring morning',
+				'daily',
+				'09:00:00',
+				'2025-03-09T06:00:00Z',
+				'2025-03-09T13:00:00.000Z'
+			],
+			[
+				'spring gap advances by the missing hour',
+				'daily',
+				'02:30:00',
+				'2025-03-09T06:45:00Z',
+				'2025-03-09T07:30:00.000Z'
+			],
+			[
+				'fall overlap uses the first occurrence',
+				'daily',
+				'01:30:00',
+				'2025-11-02T04:00:00Z',
+				'2025-11-02T05:30:00.000Z'
+			],
+			[
+				'fall overlap never returns a past instant',
+				'daily',
+				'01:30:00',
+				'2025-11-02T06:15:00Z',
+				'2025-11-03T06:30:00.000Z'
+			],
+			[
+				'weekly spring gap',
+				'weekly',
+				'02:30:00',
+				'2025-03-09T06:45:00Z',
+				'2025-03-09T07:30:00.000Z'
+			],
+			[
+				'weekly fall overlap skips a second delivery',
+				'weekly',
+				'01:30:00',
+				'2025-11-02T06:15:00Z',
+				'2025-11-09T06:30:00.000Z'
+			]
+		])('%s', (_name, frequency, timeOfDay, nowIso, expected) => {
 			const preference: UserBriefPreference = {
 				id: 'test-id',
 				user_id: 'user-1',
-				frequency: 'daily',
-				time_of_day: '09:00:00',
+				frequency,
+				time_of_day: timeOfDay,
 				is_active: true,
-				day_of_week: null,
+				day_of_week: frequency === 'weekly' ? 0 : null,
 				created_at: '2025-01-01T00:00:00Z',
 				updated_at: '2025-01-01T00:00:00Z'
 			};
-
-			const result = calculateNextRunTime(preference, now, 'America/New_York');
-
-			expect(result).not.toBeNull();
-			// date-fns-tz should handle DST automatically
-			expect(result).toBeInstanceOf(Date);
+			expect(
+				calculateNextRunTime(
+					preference,
+					new Date(nowIso),
+					'America/New_York'
+				)?.toISOString()
+			).toBe(expected);
 		});
 
 		it('should remove milliseconds for precise scheduling', () => {

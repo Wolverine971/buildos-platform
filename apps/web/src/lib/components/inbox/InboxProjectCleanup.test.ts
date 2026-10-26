@@ -318,7 +318,7 @@ describe('InboxProjectCleanup', () => {
 		).not.toBeChecked();
 	});
 
-	it('sends a quick note to Jev from Discuss and shows the reply', async () => {
+	it('sends a quick note from Discuss and shows the reply', async () => {
 		const nextView = cleanupView({
 			items: [archivePolitical, archiveStubs, goalCall, radar],
 			counts: { total: 4, safe_cleanup: 2, needs_call: 2, note: 0 }

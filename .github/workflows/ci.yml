@@ -16,11 +16,16 @@ concurrency:
 jobs:
     checks:
         name: Typecheck, lint, test
+        needs: current-schema-contracts
+        if: always()
         runs-on: ubuntu-latest
         # The full repository and coverage suites run close to 30 minutes;
         # retain headroom so the dependent Libri safety gate gets a verdict.
         timeout-minutes: 45
         steps:
+            - name: Require current-schema SQL contracts
+              run: test "${{ needs.current-schema-contracts.result }}" = "success"
+
             - uses: actions/checkout@v4
               with:
                   fetch-depth: 0
@@ -53,13 +58,10 @@ jobs:
                   cp apps/web/.env.example apps/web/.env
                   cp apps/worker/.env.example apps/worker/.env
 
-            - name: Verify repository contract
+            - name: Verify repository contract with one coverage run
               env:
                   MIGRATION_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
-              run: pnpm verify
-
-            - name: Test coverage
-              run: pnpm turbo test:coverage
+              run: pnpm verify:ci
 
             # Disposable-PostgreSQL coverage for Agent Run cost reservations,
             # privilege fences, and stranded proposal commit recovery.
@@ -80,6 +82,35 @@ jobs:
                       packages/*/coverage/**
                   if-no-files-found: warn
                   retention-days: 14
+
+    current-schema-contracts:
+        name: Current schema SQL contracts (PostgreSQL 15)
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        services:
+            postgres:
+                image: pgvector/pgvector:0.8.7-pg15
+                env:
+                    POSTGRES_PASSWORD: postgres
+                options: >-
+                    --health-cmd "pg_isready -U postgres"
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+                ports:
+                    - 5432:5432
+        steps:
+            - uses: actions/checkout@v4
+            - name: Add PostgreSQL tools to PATH
+              run: |
+                  PG_BIN="$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -n 1)"
+                  test -n "$PG_BIN" || { echo "::error::no postgres binaries on runner"; exit 1; }
+                  echo "$PG_BIN" >> "$GITHUB_PATH"
+            - name: Run every current-schema assertion
+              env:
+                  BUILDOS_EXPECTED_POSTGRES_MAJOR: '15'
+                  BUILDOS_CURRENT_SCHEMA_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+              run: python3 scripts/database/current_schema.py
 
     libri-migration-safety:
         name: Libri migration safety

@@ -239,7 +239,7 @@
 		<div class="mt-3 grid gap-1">
 			<h1
 				id="builder-name"
-				class="text-2xl font-semibold leading-tight tracking-tight text-foreground sm:text-[1.75rem]"
+				class="text-2xl font-semibold leading-tight tracking-tight text-foreground sm:text-3xl"
 			>
 				{displayName}
 			</h1>
@@ -259,12 +259,12 @@
 			</p>
 		</div>
 		{#if view.profile.headline}
-			<p class="mt-3 text-[15px] font-semibold text-foreground">{view.profile.headline}</p>
+			<p class="mt-3 text-base font-semibold text-foreground">{view.profile.headline}</p>
 		{:else if editing}
 			<p class="mt-3">{@render placeholder('Add a headline')}</p>
 		{/if}
 		{#if view.profile.bio}
-			<p class="mt-2 text-[15px] leading-relaxed text-foreground/90">{view.profile.bio}</p>
+			<p class="mt-2 text-base leading-relaxed text-foreground/90">{view.profile.bio}</p>
 		{:else if editing}
 			<p class="mt-2">{@render placeholder('Add a short bio')}</p>
 		{/if}
@@ -334,8 +334,7 @@
 				>
 					<SiteIcon url={link.url} label={title} />
 					<span class="grid min-w-0 flex-1">
-						<span class="truncate text-[15px] font-semibold text-foreground"
-							>{title}</span
+						<span class="truncate text-base font-semibold text-foreground">{title}</span
 						>
 						<span class="truncate text-xs text-muted-foreground"
 							>{link.note || displayUrl(link.url)}</span
@@ -399,7 +398,7 @@
 				class="group/w flex items-baseline justify-between gap-3 border-b border-border py-3 first:pt-0 last:border-b-0 last:pb-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 			>
 				<span
-					class="min-w-0 text-[15px] font-semibold text-foreground group-hover/w:text-accent"
+					class="min-w-0 text-base font-semibold text-foreground group-hover/w:text-accent"
 					>{piece.title}</span
 				>
 				{#if piece.published_at}<span class="stamp shrink-0 text-xs text-muted-foreground"

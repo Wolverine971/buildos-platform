@@ -1,6 +1,6 @@
 // apps/worker/src/scheduler.ts
-import { addDays, addHours, isAfter, isBefore, setHours, setMinutes, setSeconds } from 'date-fns';
-import { fromZonedTime, toZonedTime } from 'date-fns-tz';
+import { addDays, addHours, isAfter, isBefore } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 import cron from 'node-cron';
 import { format } from 'date-fns';
 
@@ -14,9 +14,18 @@ import {
 	reclaimStalledProjectLoopRuns
 } from './workers/project-loop/enqueue';
 import { enqueueScheduledProjectAudits } from './workers/project-loop/auditEnqueue';
-import { type DailyBriefJobMetadata, type Database } from '@buildos/shared-types';
+import {
+	type CycleWeekday,
+	type DailyBriefJobMetadata,
+	type Database
+} from '@buildos/shared-types';
 import { BriefBackoffCalculator } from './lib/briefBackoffCalculator';
-import { type Alert, smsAlertsService, smsMetricsService } from '@buildos/shared-utils';
+import {
+	type Alert,
+	calculateNextCycleScheduleAt,
+	smsAlertsService,
+	smsMetricsService
+} from '@buildos/shared-utils';
 import { resolveScheduledBriefDate } from './workers/brief/briefDateGuard';
 import {
 	BRIEF_SCHEDULE_BLOCKING_STATUSES,
@@ -1016,27 +1025,20 @@ function calculateDailyRunTime(
 	seconds: number,
 	timezone: string
 ): Date {
-	// Get current time in user's timezone
-	const nowInUserTz = toZonedTime(now, timezone);
-
-	// Set target time for today with precise time (no milliseconds)
-	let targetInUserTz = setHours(nowInUserTz, hours);
-	targetInUserTz = setMinutes(targetInUserTz, minutes);
-	targetInUserTz = setSeconds(targetInUserTz, seconds);
-	targetInUserTz.setMilliseconds(0); // Ensure precise scheduling without millisecond drift
-
-	// If target time has passed today, schedule for tomorrow
-	if (isBefore(targetInUserTz, nowInUserTz)) {
-		targetInUserTz = addDays(targetInUserTz, 1);
-	}
-
-	// Convert back to UTC
-	return fromZonedTime(targetInUserTz, timezone);
+	// Share the reviewed Cycle policy: advance spring gaps, select the first
+	// fall occurrence, and compare instants so the repeated hour cannot run twice.
+	return calculateNextCycleScheduleAt(
+		{
+			type: 'daily',
+			timezone,
+			time_of_day: [hours, minutes, seconds]
+				.map((value) => String(value).padStart(2, '0'))
+				.join(':')
+		},
+		now
+	);
 }
 
-/**
- * Calculate weekly run time
- */
 function calculateWeeklyRunTime(
 	now: Date,
 	dayOfWeek: number,
@@ -1045,30 +1047,17 @@ function calculateWeeklyRunTime(
 	seconds: number,
 	timezone: string
 ): Date {
-	// Get current time in user's timezone
-	const nowInUserTz = toZonedTime(now, timezone);
-	const currentDayOfWeek = nowInUserTz.getDay();
-
-	// Calculate days until target day
-	let daysUntilTarget = dayOfWeek - currentDayOfWeek;
-
-	// If target day is today but time has passed, or if target day has passed this week
-	let targetInUserTz = setHours(nowInUserTz, hours);
-	targetInUserTz = setMinutes(targetInUserTz, minutes);
-	targetInUserTz = setSeconds(targetInUserTz, seconds);
-	targetInUserTz.setMilliseconds(0); // Ensure precise scheduling without millisecond drift
-
-	if (daysUntilTarget < 0 || (daysUntilTarget === 0 && isBefore(targetInUserTz, nowInUserTz))) {
-		daysUntilTarget += 7; // Schedule for next week
-	}
-
-	// Add days to reach target day
-	if (daysUntilTarget > 0) {
-		targetInUserTz = addDays(targetInUserTz, daysUntilTarget);
-	}
-
-	// Convert back to UTC
-	return fromZonedTime(targetInUserTz, timezone);
+	return calculateNextCycleScheduleAt(
+		{
+			type: 'weekly',
+			timezone,
+			days_of_week: [dayOfWeek as CycleWeekday],
+			time_of_day: [hours, minutes, seconds]
+				.map((value) => String(value).padStart(2, '0'))
+				.join(':')
+		},
+		now
+	);
 }
 
 /**

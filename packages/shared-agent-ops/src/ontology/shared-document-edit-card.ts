@@ -412,7 +412,7 @@ export function describeSharedDocumentEditResolution(resolution: SharedDocumentE
 		case 'stale':
 			return {
 				// Phrased without a possessive so no name needs grammatical guessing.
-				text: `The copy in ${resolution.parent_name} changed since this preview. Ask Jev again.`,
+				text: `The copy in ${resolution.parent_name} changed since this preview. Ask again.`,
 				href: null
 			};
 		case 'unknown':

@@ -12,6 +12,8 @@ export class FakeDb {
 	tables: Record<string, Row[]>;
 	rpcHandlers: Record<string, RpcHandler> = {};
 	rpcCalls: Array<{ name: string; args: Record<string, any> }> = [];
+	/** Simulate database side effects only when a test registers them. */
+	onUpdate?: (table: string, before: Row, after: Row) => void;
 	/** Make the next query against a table fail with this message. */
 	failures: Record<string, string> = {};
 
@@ -171,7 +173,11 @@ class FakeQuery implements PromiseLike<{ data: any; error: any; count?: number |
 
 		if (this.op === 'update') {
 			const matched = this.matches();
-			for (const row of matched) Object.assign(row, this.patch);
+			for (const row of matched) {
+				const before = { ...row };
+				Object.assign(row, this.patch);
+				this.db.onUpdate?.(this.name, before, row);
+			}
 			return {
 				data: this.returnRows ? matched.map((row) => ({ ...row })) : null,
 				error: null
@@ -213,8 +219,38 @@ class FakeQuery implements PromiseLike<{ data: any; error: any; count?: number |
 	}
 }
 
-/** claim_email_campaign_sends, as the SQL does it (minus locking). */
+/** Orchestration fake. Real locking is tested by current_schema.py with two connections. */
 export function registerClaimRpc(db: FakeDb, now: () => Date = () => new Date()): void {
+	const reservations = db.table('campaign_reservations');
+	for (const row of db.table('email_campaign_recipients')) {
+		if (row.sent_at || row.status === 'sending') {
+			reservations.push({
+				recipientId: row.id,
+				attempt: row.attempt_count,
+				at: row.sent_at ?? now().toISOString()
+			});
+		}
+	}
+	const remaining = (cap: number) =>
+		Math.max(
+			0,
+			cap -
+				reservations.filter((r) => new Date(r.at).getTime() >= now().getTime() - 86_400_000)
+					.length
+		);
+	db.rpcHandlers.get_email_campaign_daily_allowance = (args) => ({
+		data: remaining(args.p_daily_cap),
+		error: null
+	});
+	db.onUpdate = (table, before, after) => {
+		if (table !== 'email_campaign_recipients' || before.status !== 'sending') return;
+		const index = reservations.findIndex(
+			(r) => r.recipientId === after.id && r.attempt === after.attempt_count
+		);
+		if (index < 0) return;
+		if (after.status === 'queued' || after.status === 'skipped') reservations.splice(index, 1);
+		else if (after.status === 'sent') reservations[index]!.at = now().toISOString();
+	};
 	db.rpcHandlers.claim_email_campaign_sends = (args, fake) => {
 		const nowIso = now().toISOString();
 		const campaigns = new Map(fake.table('email_campaigns').map((c) => [c.id, c]));
@@ -228,7 +264,7 @@ export function registerClaimRpc(db: FakeDb, now: () => Date = () => new Date())
 					campaigns.get(row.campaign_id)?.status === 'sending'
 			)
 			.sort((a, b) => (a.scheduled_for < b.scheduled_for ? -1 : 1))
-			.slice(0, args.p_limit);
+			.slice(0, Math.min(args.p_limit, remaining(args.p_daily_cap ?? 400)));
 		const lease = new Date(
 			now().getTime() + (args.p_lease_seconds ?? 120) * 1000
 		).toISOString();
@@ -236,6 +272,7 @@ export function registerClaimRpc(db: FakeDb, now: () => Date = () => new Date())
 			row.status = 'sending';
 			row.lease_expires_at = lease;
 			row.attempt_count = (row.attempt_count ?? 0) + 1;
+			reservations.push({ recipientId: row.id, attempt: row.attempt_count, at: nowIso });
 		}
 		return { data: due.map((row) => ({ ...row })), error: null };
 	};

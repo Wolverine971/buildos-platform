@@ -649,7 +649,11 @@
 		visibleSession: getChatUrlSessionId,
 		suspendUrl: suspendChatUrlSync,
 		cleanUrl: async (url) => {
-			const { agentChat, agentChatPushed, ...state } = $page.state;
+			const {
+				agentChat: _agentChat,
+				agentChatPushed: _agentChatPushed,
+				...state
+			} = $page.state;
 			await goto(`${url.pathname}${url.search}${url.hash}`, {
 				replaceState: true,
 				keepFocus: true,

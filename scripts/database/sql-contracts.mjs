@@ -20,6 +20,7 @@ export function inventorySqlContracts(repoRoot) {
 		let mode;
 		if (filename.endsWith('.production_verify.sql')) mode = 'production-verification';
 		else if (filename.endsWith('.preflight.sql')) mode = 'manual-preflight';
+		else if (filename.endsWith('.check.sql')) mode = 'current-schema-disposable';
 		else if (!filename.endsWith('.test.sql')) mode = 'support-fixture';
 		else if (
 			/^\\ir\s+fixtures\//m.test(content) &&

@@ -252,7 +252,7 @@ async function handleTodayNavigation(event, url) {
 	let response;
 	try {
 		response = await fetch(event.request);
-	} catch (error) {
+	} catch {
 		const target = `${url.pathname}${url.search}`;
 		const snapshot = await readSnapshot().catch(() => null);
 		if (snapshot) {

@@ -1,202 +1,93 @@
 <!-- docs/testing/README.md -->
 
-# BuildOS Testing Infrastructure
+# BuildOS testing
 
-- **Last updated**: 2026-07-06
-- **Status**: Active
-- **Scope**: Vitest-first test infrastructure across the BuildOS monorepo
+- **Last updated:** 2026-10-26
+- **Status:** Active
+- **Scope:** Free local/CI gates, separately approved live validation, and test selection
 
-## Audit Summary
+Start with the behavior that could fail, then choose the narrowest runner that exercises it.
+Use [the behavior risk matrix](./COVERAGE_MATRIX.md) and
+[the October audit](./TEST_AUDIT_2026-10-26.md) to choose missing contracts.
+Do not infer coverage from a count of test files or from a mock returning the expected value.
 
-BuildOS uses **Vitest** as the primary test runner for web, worker, and package tests. The current infrastructure is much broader than earlier testing docs described: this repo now has **378 Vitest-discoverable test/spec files** by filesystem inventory.
+## Runner inventory
 
-| Area          | Test/spec files | Runner                  | Notes                                                                                                        |
-| ------------- | --------------: | ----------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `apps/web`    |             320 | Vitest + SvelteKit      | Default Node environment, per-file `jsdom` for component/page tests, LLM tests split into a separate config. |
-| `apps/worker` |              42 | Vitest                  | Node environment, setup file, integration tests excluded from default runs.                                  |
-| `packages`    |              16 | Vitest where configured | Package-owned tests now exist for every package with a package manifest.                                     |
-| **Total**     |         **378** |                         | Counted from runnable `*.test.{js,ts}`, `*.spec.{js,ts}`, and `.svelte.test.{js,ts}` style files.            |
+Run `pnpm test:inventory` for current workspace test scripts and file counts. It reads the
+working tree instead of maintaining a dated count here. Counts include separately configured
+suites and do **not** mean every file runs in the default gate. Vitest configs own exclusions;
+[CI](../../.github/workflows/ci.yml) owns automated execution.
 
-This is a test-file inventory, not a line or branch coverage measurement. Coverage is not consistently configured across the monorepo yet, so do not treat old percentage claims in archived testing docs as current truth.
+| Command                                          | What it proves                                                                                            | Execution owner                                   |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `pnpm verify:static`                             | Documentation/migration/SQL inventory, standalone tooling/policy tests, application/test typechecks, lint | Local and CI                                      |
+| `pnpm verify`                                    | Static gate, builds, one regular workspace test run                                                       | Local pre-push                                    |
+| `pnpm verify:ci`                                 | Static gate, builds, one coverage-enabled workspace test run                                              | Main CI job                                       |
+| `pnpm test:sql-current`                          | Every `.check.sql` against a fresh current schema; two-connection campaign cap/claim races                | PostgreSQL 15 + pgvector CI lane                  |
+| `pnpm test:sql-contracts`                        | Classified self-contained SQL contracts                                                                   | Main CI and separate PostgreSQL 15 safety gate    |
+| `pnpm --filter @buildos/worker test:integration` | Four Agent Run database integration suites through their dedicated config                                 | Main CI (also named `test:agent-run:integration`) |
+| `pnpm test:browser:smoke`                        | Experimental isolated built-app harness; journeys are incomplete                                          | Paused; manual only, excluded from CI             |
+| `pnpm test:agentic:gate`                         | Production battery provenance, scoring, account/model restrictions; no model calls                        | Included in `verify:static`                       |
+| `pnpm test:database-tools`                       | Current-schema runner and migration-rehearsal tooling                                                     | Included in `verify:static`                       |
 
-## Current Infrastructure
+The main CI job requires current-schema contracts to pass. Its
+workspace suites run once, with coverage enabled; database integration and version-specific
+contracts remain separate. Coverage includes unloaded source through
+[`vitest.coverage.ts`](../../vitest.coverage.ts). There is no arbitrary repository-wide
+percentage gate. Read branch reports for critical modules alongside their failure-path tests.
 
-### Root orchestration
+## Local validation
 
-Root scripts in [`package.json`](../../package.json):
-
-```bash
-pnpm test       # turbo test
-pnpm test:run   # turbo test:run
-pnpm typecheck  # turbo typecheck
-pnpm lint       # turbo lint
-pnpm build      # turbo build
-pnpm pre-push   # turbo typecheck test:run lint build
-```
-
-Turborepo configuration in [`turbo.json`](../../turbo.json):
-
-- `test` depends on upstream workspace builds and is explicitly uncached.
-- `test:run` depends on upstream workspace builds and uses Turbo's default cache behavior.
-- `typecheck` depends on upstream workspace builds.
-- Environment-sensitive tasks include the env keys listed in `globalEnv`.
-
-### CI
-
-GitHub Actions is configured in [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml). On pushes to `main` and on pull requests it:
-
-1. Installs dependencies with `pnpm install --frozen-lockfile`.
-2. Copies example env files to `.env`, `apps/web/.env`, and `apps/worker/.env`.
-3. Runs `pnpm turbo typecheck`.
-4. Runs `pnpm turbo lint`.
-5. Runs `pnpm turbo test:run`.
-
-CI does **not** currently run `pnpm pre-push`, `pnpm turbo build`, coverage, web LLM tests, or worker integration tests.
-
-## Running Tests
-
-### Monorepo
+On the shared development laptop, run heavy commands through `test-gate`, with one Vitest
+worker for agent work. If the gate refuses or times out, wait at least 60 seconds and retry
+once; then report the limitation. Do not bypass worker caps or run broad suites in parallel.
 
 ```bash
-pnpm test
-pnpm test:run
-pnpm pre-push
+test-gate run env VITEST_MAX_WORKERS=1 pnpm --filter @buildos/web exec vitest run src/lib/services/stripe-service.test.ts
+test-gate run env VITEST_MAX_WORKERS=1 pnpm --filter @buildos/worker exec vitest run tests/scheduler.comprehensive.test.ts
 ```
 
-Use `pnpm test:run` for the same test task CI runs. Use `pnpm pre-push` when you want the local typecheck, test, lint, and build sequence.
+See [`AGENTS.md`](../../AGENTS.md) for the machine limits and paid-test rules. New migrations
+must also pass the [schema rehearsal](../../scripts/migration-rehearsal/README.md).
+A skipped PostgreSQL suite is not a passing database contract; install the local tools or use
+its documented disposable database connection. Current-schema fixtures contain schema and
+synthetic data, never a copy of production rows.
 
-### Web app
+## Browser smoke — paused
 
-```bash
-pnpm --filter @buildos/web test:run
-pnpm --filter @buildos/web test:watch
-pnpm --filter @buildos/web test:ui
-pnpm --filter @buildos/web test:llm
-```
+Browser development and execution were paused at the user's request on 2026-10-26 because
+the builds and Playwright runs slowed the development laptop. The experimental harness is
+preserved under `apps/web/tests/browser`, but is **not a completed or required CI gate**.
+Do not run it as routine validation. See [its status and remaining work](../../apps/web/tests/browser/README.md).
 
-Web test config:
+The runner copies application source into a temporary workspace, supplies synthetic environment
+values, and builds a selected subset of application routes. Its configuration defines one
+Chromium worker at desktop and mobile sizes. Deployment packaging, unrelated routes and
+marketing-page prerendering are omitted. Application hooks and included routes are real;
+Auth/PostgREST are local transport fixtures. These fixtures cannot establish RLS or model
+quality; those require separate evidence. Unknown fixture database operations fail visibly.
 
-- Standard config: [`apps/web/vitest.config.ts`](../../apps/web/vitest.config.ts)
-- LLM config: [`apps/web/vitest.config.llm.ts`](../../apps/web/vitest.config.llm.ts)
-- Setup file: [`apps/web/vitest.setup.ts`](../../apps/web/vitest.setup.ts)
+Node connections and browser requests to external hosts are blocked, and production credentials
+are not inherited. The command never reuses a running app server. Failure traces/screenshots go
+to `apps/web/test-results/smoke`. Login reached Today in local testing; the task-edit journey
+still fails, and the project/chat/invite/mobile journeys remain unfinished. Keep future smoke
+coverage small and deterministic before considering CI wiring.
 
-Standard web tests include `**/*.{test,spec}.{js,ts}` and exclude `apps/web/src/lib/tests/llm/**` plus `llm-simple/**` to prevent accidental paid API calls. Component and page tests that need a DOM should use a file-level directive:
+## Live validation costs money
 
-```ts
-// @vitest-environment jsdom
-```
+Default Vitest and browser runners exclude paid model suites. Every live run and rerun requires
+explicit approval for that scope, acting model and estimated cost (or an explicit unknown cost).
+Implementation approval does not authorize paid testing. Prefer mocks and offline replays.
+Follow [the production battery guide](./agentic-chat-gate.md); report unapproved live validation
+as **not run**, never passing.
 
-### Worker
+## Test design
 
-```bash
-pnpm --filter @buildos/worker test:run
-pnpm --filter @buildos/worker test:watch
-pnpm --filter @buildos/worker test:scheduler
-pnpm --filter @buildos/worker test:coverage
-pnpm --filter @buildos/worker test:integration
-```
-
-Worker test config:
-
-- Config: [`apps/worker/vitest.config.ts`](../../apps/worker/vitest.config.ts)
-- Setup file: `apps/worker/tests/setup.ts`
-
-Default worker tests exclude `apps/worker/tests/integration/**`. Use `test:integration` only when database credentials and any required external services are available.
-
-### Packages
-
-Configured package test scripts:
-
-```bash
-pnpm --filter @buildos/smart-llm test:run
-pnpm --filter @buildos/shared-agent-ops test:run
-pnpm --filter @buildos/shared-types test:run
-pnpm --filter @buildos/shared-utils test:run
-pnpm --filter @buildos/supabase-client test:run
-pnpm --filter @buildos/twilio-service test:run
-pnpm --filter @buildos/mcp-server test:run
-```
-
-All packages under `packages/` now have `test` and `test:run` scripts. The `shared-agent-ops`, `shared-types`, and `supabase-client` suites are seed suites; expand them as shared contracts change.
-
-## What Is Working Well
-
-- CI now runs typecheck, lint, and `test:run` for pull requests.
-- Web has broad server, route, agentic-chat, admin analytics, utility, and component test coverage by file count.
-- Web LLM tests are isolated behind an explicit `test:llm` command.
-- Worker has dedicated scheduler, brief, queue contract, Project Review, HTTP utility, and integration test areas.
-- Package tests cover the shared LLM package, shared agent ops utilities, shared type validation, Supabase client factories, Twilio service, shared utilities, and MCP client/config behavior.
-- Web setup centralizes `$env/dynamic/public`, `matchMedia`, and console-noise handling.
-- The old webhook `server.ts.spec` implementation sketch has been moved out of the route tree to documentation so it is no longer mistaken for a runnable test.
-
-## Infrastructure Gaps
-
-### P0: Coverage is not standardized
-
-Only the worker has a `test:coverage` script, and only `twilio-service` has coverage configured in package Vitest config. The web app has no coverage script or thresholds. There is no monorepo coverage aggregation or CI coverage gate.
-
-Recommended next steps:
-
-- Add `test:coverage` to `apps/web`.
-- Add coverage provider/reporters to shared package Vitest configs.
-- Define realistic initial thresholds for critical paths instead of broad percentage targets.
-- Publish CI coverage artifacts before enforcing thresholds.
-
-### P1: No browser E2E, visual regression, or accessibility runner
-
-There is no Playwright/Cypress dependency or CI job in the current package manifests. Existing UI tests are unit/component style and rely on `jsdom` where needed.
-
-Recommended next steps:
-
-- Add Playwright for a short list of critical flows: auth, project page load, agent stream, invite flow, and billing/admin smoke paths.
-- Add axe checks for high-traffic pages once Playwright is in place.
-- Keep E2E separate from default unit tests until the suite is stable and low-noise.
-
-### P1: CI excludes expensive and environment-dependent suites
-
-The default CI path intentionally excludes:
-
-- Web LLM tests.
-- Worker integration tests.
-- Coverage.
-- Production build.
-
-Recommended next steps:
-
-- Add scheduled or manually dispatched workflows for LLM and integration suites.
-- Run build in CI or align the CI job with `pnpm pre-push`.
-- Document required secrets for each non-default suite.
-
-### P2: Package test ownership is still shallow
-
-Every package now has a package-owned test entrypoint, but several are still seed suites. Shared code used by both runtime surfaces should keep moving from app-only indirect coverage into package-level tests.
-
-Recommended next steps:
-
-- Treat shared package tests as the default home for framework-agnostic logic.
-- Keep app tests focused on SvelteKit, route, service composition, and integration behavior.
-- Expand `shared-agent-ops`, `shared-types`, and `supabase-client` beyond seed suites.
-- Add a short "where should this test live?" section to contributor docs if confusion persists.
-
-## Test Placement Guidelines
-
-- Put web route tests next to the route module, for example `server.test.ts` beside `server.ts`.
-- Put web service and utility tests next to the source module under `apps/web/src/lib/**`.
-- Put Svelte component tests next to the component and use `// @vitest-environment jsdom` when rendering DOM.
-- Put worker unit tests under `apps/worker/tests/**` unless there is already a local pattern beside the source.
-- Put database or external-service integration tests under `apps/worker/tests/integration/**` or another clearly excluded path.
-- Put framework-agnostic behavior in package-level tests when the source lives in `packages/**`.
-
-## Documentation Links
-
-- [Web app coverage notes](./WEB_APP_COVERAGE.md)
-- [Coverage matrix](./COVERAGE_MATRIX.md)
-- [Agentic chat prompt test plan](./AGENTIC_CHAT_PROMPT_TEST_PLAN.md)
-- [Agentic chat hybrid tool surface prompt tests](./AGENTIC_CHAT_HYBRID_TOOL_SURFACE_PROMPT_TESTS_2026-04-10.md)
-- [Agentic chat project creation manual flow](./AGENTIC_CHAT_PROJECT_CREATION_MANUAL_FLOW.md)
-- [Manual agent work smoke tests](./MANUAL_AGENT_WORK_SMOKE_TESTS_2026-06-20.md)
-- [Manual AI inbox smoke tests](./MANUAL_AI_INBOX_SMOKE_TESTS_2026-06-25.md)
-- [Daily brief email webhook implementation sketch](./daily-brief-email-webhook-implementation-sketch.md)
-- [Web testing checklist](../../apps/web/docs/technical/testing/TESTING_CHECKLIST.md)
-
-Keep durable audit summaries in this folder. Do not keep one-off raw run artifacts under `docs/testing/artifacts/`; regenerate them locally when needed.
+- Assert persisted user outcomes, ownership, role fences, retries and failure recovery.
+- Use rendered components and accessibility roles for UI behavior. Use a browser for layout,
+  hydration, navigation and reload persistence.
+- Keep source checks for actual dependency/security boundaries; avoid exact CSS ordering,
+  private variable names, transpiled callback extraction and whole-catalog prose snapshots.
+- Keep tool schema/dispatch/capability invariants and reviewed payload budgets. A harmless
+  description edit should not require approving a new full-catalog hash.
+- Treat fake database concurrency as orchestration evidence; use two real connections for locks.

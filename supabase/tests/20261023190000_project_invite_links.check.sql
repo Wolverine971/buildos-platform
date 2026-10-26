@@ -251,12 +251,12 @@ SELECT pg_temp.assert_true(
 	'the link counts the join once'
 );
 
--- Removed by the owner: the link never adds them back. Left on their own: they can return.
+-- Both removed members and people who left must ask the owner before returning.
 SELECT pg_temp.act_as('e2000000-0000-4000-8000-000000000004', 'authenticated');
 SET LOCAL ROLE authenticated;
 SELECT pg_temp.assert_true(
-	public.accept_project_invite_link(repeat('1', 64))->>'status' = 'removed',
-	'someone the owner removed cannot rejoin by link'
+	public.accept_project_invite_link(repeat('1', 64))->>'status' = 'rejoin_requested',
+	'someone the owner removed must request permission to rejoin'
 );
 RESET ROLE;
 SELECT pg_temp.assert_true(
@@ -267,10 +267,20 @@ SELECT pg_temp.assert_true(
 SELECT pg_temp.act_as('e2000000-0000-4000-8000-000000000005', 'authenticated');
 SET LOCAL ROLE authenticated;
 SELECT pg_temp.assert_true(
-	public.accept_project_invite_link(repeat('1', 64))->>'status' = 'joined',
-	'someone who left can come back with the link'
+	public.accept_project_invite_link(repeat('1', 64))->>'status' = 'rejoin_requested',
+	'someone who left must also request permission to rejoin'
 );
 RESET ROLE;
+
+SELECT pg_temp.assert_true(
+ (SELECT count(*) = 2 FROM public.people_requests
+  WHERE project_id = 'e2000000-0000-4000-8000-000000000021'
+   AND kind = 'rejoin' AND status = 'pending'),
+ 'both former members have pending owner decisions');
+SELECT pg_temp.assert_true(
+ NOT public.actor_has_project_member_access('e2000000-0000-4000-8000-000000000015',
+  'e2000000-0000-4000-8000-000000000021', 'read'),
+ 'requesting rejoin does not restore access');
 
 -- 4. Changing settings keeps the same link; a Viewer never gets agent Write.
 SELECT pg_temp.act_as('e2000000-0000-4000-8000-000000000001', 'authenticated');
@@ -406,7 +416,7 @@ RESET ROLE;
 SELECT pg_temp.assert_true(
 	(SELECT count(*) FROM public.onto_project_members AS m JOIN public.onto_actors AS a ON a.id = m.actor_id
 	 WHERE m.project_id = 'e2000000-0000-4000-8000-000000000021' AND m.removed_at IS NULL
-		AND a.user_id IN ('e2000000-0000-4000-8000-000000000003', 'e2000000-0000-4000-8000-000000000005', 'e2000000-0000-4000-8000-000000000006')) = 3,
+		AND a.user_id IN ('e2000000-0000-4000-8000-000000000003', 'e2000000-0000-4000-8000-000000000006')) = 2,
 	'everyone who joined by link is still a member'
 );
 

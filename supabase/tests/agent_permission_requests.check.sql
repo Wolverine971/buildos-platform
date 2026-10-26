@@ -2,6 +2,9 @@
 -- Disposable rehearsal database only: no hosted data or paid calls.
 \set ON_ERROR_STOP on
 BEGIN;
+-- Exercise the default-off singleton and later enable it inside this transaction.
+INSERT INTO public.agent_permission_feature(id, enabled, epoch) VALUES(true, false, 1)
+ON CONFLICT (id) DO UPDATE SET enabled = false, epoch = 1;
 CREATE FUNCTION pg_temp.assert_true(value boolean,message text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN IF NOT coalesce(value,false) THEN RAISE EXCEPTION 'assertion_failed: %',message; END IF; END $$;
 CREATE FUNCTION pg_temp.fail_checkpoint() RETURNS trigger LANGUAGE plpgsql AS $$

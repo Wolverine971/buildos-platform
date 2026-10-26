@@ -114,7 +114,7 @@ describe('SharedDocumentEditCard', () => {
 		});
 		for (const name of ['Update shared doc', 'Copy here', 'Cancel'])
 			expect(screen.getByRole('button', { name })).toBeDisabled();
-		expect(screen.getByText('You can choose when Jev finishes replying.')).toBeTruthy();
+		expect(screen.getByText('You can choose when the reply finishes.')).toBeTruthy();
 	});
 
 	it('applies on click, disables while in flight, then resolves in place and announces it', async () => {
@@ -188,7 +188,7 @@ describe('SharedDocumentEditCard', () => {
 
 	it.each([
 		['cancelled', 'Cancelled'],
-		['stale', 'The copy in Wayne Strategies changed since this preview. Ask Jev again.']
+		['stale', 'The copy in Wayne Strategies changed since this preview. Ask again.']
 	] as const)('shows the %s outcome', (outcome, text) => {
 		const card = action();
 		render(SharedDocumentEditCard, {

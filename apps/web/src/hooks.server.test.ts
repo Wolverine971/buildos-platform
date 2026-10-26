@@ -2,7 +2,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Handle, RequestEvent } from '@sveltejs/kit';
 
-const mocks = vi.hoisted(() => ({ createServer: vi.fn(), logError: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+	createServer: vi.fn(),
+	logError: vi.fn(),
+	adminRpc: vi.fn(),
+	upgrade: vi.fn(),
+	billingEnabled: false,
+	autoUpgrade: false
+}));
 // SvelteKit's sequence wrapper requires its HTTP tracing request store. Compose
 // the real application hooks here without the framework's tracing infrastructure.
 vi.mock('@sveltejs/kit/hooks', () => ({
@@ -20,18 +27,27 @@ vi.mock('@sveltejs/kit/hooks', () => ({
 		}
 }));
 vi.mock('$lib/supabase', () => ({ createSupabaseServer: mocks.createServer }));
-vi.mock('$lib/supabase/admin', () => ({ createAdminSupabaseClient: vi.fn() }));
-vi.mock('$lib/services/stripe-service', () => ({ StripeService: class {} }));
+vi.mock('$lib/supabase/admin', () => ({
+	createAdminSupabaseClient: () => ({ rpc: mocks.adminRpc })
+}));
+vi.mock('$lib/services/stripe-service', () => ({
+	StripeService: class {
+		maybeAutoUpgradeToPowerTier = mocks.upgrade;
+	}
+}));
+vi.mock('$lib/server/stripe-config', () => ({ isStripeEnabled: () => true }));
 vi.mock('$lib/server/calendar-token-crypto', () => ({
 	buildEncryptedCalendarTokenPatch: vi.fn(),
 	decodeStoredCalendarTokens: vi.fn()
 }));
-vi.mock('$lib/server/consumption-billing', () => ({
-	CONSUMPTION_AUTO_POWER_UPGRADE_ENABLED: false,
-	CONSUMPTION_BILLING_GUARD_ENABLED: false,
-	CONSUMPTION_BILLING_LIMITS: {},
-	classifyFrozenMutationCapability: vi.fn(),
-	shouldGuardMutationForConsumptionBilling: () => false
+vi.mock('$lib/server/consumption-billing', async (importOriginal) => ({
+	...(await importOriginal<typeof import('$lib/server/consumption-billing')>()),
+	get CONSUMPTION_BILLING_GUARD_ENABLED() {
+		return mocks.billingEnabled;
+	},
+	get CONSUMPTION_AUTO_POWER_UPGRADE_ENABLED() {
+		return mocks.autoUpgrade;
+	}
 }));
 vi.mock('$lib/server/error-tracking', () => ({
 	logServerError: mocks.logError,
@@ -94,6 +110,10 @@ function fixture(path = '/today', method = 'GET') {
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	mocks.billingEnabled = false;
+	mocks.autoUpgrade = false;
+	mocks.adminRpc.mockReset();
+	mocks.upgrade.mockResolvedValue({ upgraded: false });
 	mocks.logError.mockResolvedValue(undefined);
 });
 
@@ -217,5 +237,91 @@ describe('server hook session verification', () => {
 		});
 		expect(f.auth.getClaims).not.toHaveBeenCalled();
 		expect(f.from).not.toHaveBeenCalled();
+	});
+});
+
+describe('consumption billing through the real server hook', () => {
+	beforeEach(() => {
+		mocks.billingEnabled = true;
+	});
+	it.each([
+		['/api/onto/tasks/task-1', 'workspace_write'],
+		['/api/agent/v2/stream', 'ai_compute']
+	])('blocks frozen mutation %s before the handler runs', async (path, capability) => {
+		mocks.adminRpc.mockResolvedValue({
+			data: [{ is_frozen: true, billing_tier: 'explorer' }],
+			error: null
+		});
+		const f = fixture(path, 'POST');
+		const resolve = vi.fn(async () => new Response('should not run'));
+		const response = await handle({ event: f.event, resolve });
+		expect(response.status).toBe(402);
+		expect(await response.json()).toMatchObject({
+			code: 'UPGRADE_REQUIRED',
+			blocked_capability: capability,
+			read_only: true,
+			activation_path: '/billing/activate'
+		});
+		expect(resolve).not.toHaveBeenCalled();
+		expect(mocks.adminRpc).toHaveBeenCalledWith(
+			'evaluate_user_consumption_gate',
+			expect.objectContaining({ p_user_id: 'verified-user' })
+		);
+	});
+	it.each([
+		['/api/onto/tasks/task-1', 'GET'],
+		['/api/stripe/checkout', 'POST'],
+		['/api/stripe/portal', 'POST'],
+		['/api/account/delete', 'POST'],
+		['/api/auth/logout', 'POST']
+	])('preserves read or recovery access at %s %s', async (path, method) => {
+		const f = fixture(path, method);
+		const resolve = vi.fn(async () => new Response('allowed'));
+		expect((await handle({ event: f.event, resolve })).status).toBe(200);
+		expect(resolve).toHaveBeenCalledOnce();
+		expect(mocks.adminRpc).not.toHaveBeenCalled();
+	});
+	it('does not run billing when its rollout flag is off', async () => {
+		mocks.billingEnabled = false;
+		expect(
+			(
+				await handle({
+					event: fixture('/api/onto/tasks/task-1', 'PATCH').event,
+					resolve: async () => new Response('ok')
+				})
+			).status
+		).toBe(200);
+		expect(mocks.adminRpc).not.toHaveBeenCalled();
+	});
+	it.each([false, true])(
+		'only checks an automatic tier upgrade when separately enabled (%s)',
+		async (enabled) => {
+			mocks.autoUpgrade = enabled;
+			mocks.adminRpc.mockResolvedValue({
+				data: [{ is_frozen: false, billing_tier: 'pro', lifetime_credits_used: 1_000_000 }],
+				error: null
+			});
+			await handle({
+				event: fixture('/api/agent/v2/stream', 'POST').event,
+				resolve: async () => new Response('ok')
+			});
+			expect(mocks.adminRpc).toHaveBeenCalledTimes(2);
+			expect(mocks.upgrade).toHaveBeenCalledTimes(enabled ? 1 : 0);
+			if (enabled)
+				expect(mocks.upgrade).toHaveBeenCalledWith('verified-user', expect.any(Object));
+		}
+	);
+	it('does not upgrade after a failed mutation', async () => {
+		mocks.autoUpgrade = true;
+		mocks.adminRpc.mockResolvedValue({
+			data: [{ is_frozen: false, billing_tier: 'pro', lifetime_credits_used: 1_000_000 }],
+			error: null
+		});
+		await handle({
+			event: fixture('/api/agent/v2/stream', 'POST').event,
+			resolve: async () => new Response('failed', { status: 500 })
+		});
+		expect(mocks.adminRpc).toHaveBeenCalledTimes(1);
+		expect(mocks.upgrade).not.toHaveBeenCalled();
 	});
 });

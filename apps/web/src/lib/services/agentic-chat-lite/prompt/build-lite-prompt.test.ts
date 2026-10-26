@@ -1,6 +1,5 @@
 // apps/web/src/lib/services/agentic-chat-lite/prompt/build-lite-prompt.test.ts
 import { requireTestValue } from '$lib/test-helpers/require-test-value';
-import { getGatewaySurfaceForContextType } from '@buildos/agentic-chat-runtime/catalog';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	applyActiveDomainSignalsOverlay,

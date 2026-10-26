@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/agent/ProposalCard.svelte -->
 <!--
-	A chat proposal card (tasker 122, proposal-card rail): Jev proposes a change,
+	A chat proposal card (tasker 122, proposal-card rail): the chat proposes a change,
 	the user's click is the only consent. One frame and state machine for every
 	card kind: pending → working → applied / cancelled / stale / unknown /
 	expired, then Undo (confirmed, once, for 7 days). The body is per kind (nest,
@@ -216,7 +216,7 @@
 	);
 	const locked = $derived(busy !== null || turnActive);
 	const hint = $derived.by(() => {
-		if (turnActive) return 'You can choose when Jev finishes replying.';
+		if (turnActive) return 'You can choose when the reply finishes.';
 		if (combineBlocked === 'blocked')
 			return 'Clear what’s listed above, then Check again. Nothing changes until you choose.';
 		if (combineBlocked === 'member_choice') {
@@ -648,7 +648,7 @@
 		{:else if displayState === 'expired'}
 			<p class="flex items-start gap-1.5 text-xs text-muted-foreground">
 				<TriangleAlert class="mt-px h-3.5 w-3.5 shrink-0 text-warning" aria-hidden="true" />
-				<span>{closedMessage ?? 'This card expired. Ask Jev again. Nothing changed.'}</span>
+				<span>{closedMessage ?? 'This card expired. Ask again. Nothing changed.'}</span>
 			</p>
 		{:else}
 			<div

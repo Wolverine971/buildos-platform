@@ -235,11 +235,12 @@ INSERT INTO public.onto_project_invites (
 	'e1000000-0000-4000-8000-000000000031', 'e1000000-0000-4000-8000-000000000023', 'owner.test@example.com',
 	repeat('f', 64), 'viewer', 'read', 'pending', now() + interval '7 days', 'e1000000-0000-4000-8000-000000000013', 'off'
 );
-INSERT INTO public.onto_project_members (project_id, actor_id, role_key, access, added_by_actor_id) VALUES
-	('e1000000-0000-4000-8000-000000000023', 'e1000000-0000-4000-8000-000000000011', 'viewer', 'read', 'e1000000-0000-4000-8000-000000000013');
-UPDATE public.onto_project_invites
-SET status = 'accepted', accepted_by_actor_id = 'e1000000-0000-4000-8000-000000000011', accepted_at = now()
-WHERE id = 'e1000000-0000-4000-8000-000000000031';
+-- Acceptance now writes membership atomically; the old status-copy trigger was
+-- removed because a stale invite could overwrite newer membership permissions.
+SELECT pg_temp.act_as('e1000000-0000-4000-8000-000000000001', 'authenticated');
+SET LOCAL ROLE authenticated;
+SELECT * FROM public.accept_project_invite_by_id('e1000000-0000-4000-8000-000000000031');
+RESET ROLE;
 SELECT pg_temp.assert_true(
 	(SELECT agent_access FROM public.onto_project_members
 	 WHERE project_id = 'e1000000-0000-4000-8000-000000000023'

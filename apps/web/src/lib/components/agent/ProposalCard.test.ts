@@ -71,7 +71,7 @@ describe('ProposalCard — nest', () => {
 		});
 		expect(screen.getByRole('button', { name: 'Move under Wayne Strategies' })).toBeDisabled();
 		expect(screen.getByRole('button', { name: 'Not now' })).toBeDisabled();
-		expect(screen.getByText('You can choose when Jev finishes replying.')).toBeTruthy();
+		expect(screen.getByText('You can choose when the reply finishes.')).toBeTruthy();
 	});
 
 	it('applies once on a double click, shows working, then resolves in place with Undo', async () => {
@@ -194,13 +194,13 @@ describe('ProposalCard — nest', () => {
 				client_action: { ...old.client_action, expires_at: '2026-01-01T00:00:00.000Z' }
 			}
 		});
-		expect(screen.getByText('This card expired. Ask Jev again. Nothing changed.')).toBeTruthy();
+		expect(screen.getByText('This card expired. Ask again. Nothing changed.')).toBeTruthy();
 		cleanup();
 
 		stubFetch(
 			jsonResponse(410, {
 				success: false,
-				error: 'This card expired after 24 hours. Ask Jev again. Nothing changed.',
+				error: 'This card expired after 24 hours. Ask again. Nothing changed.',
 				code: 'CARD_EXPIRED'
 			})
 		);
@@ -208,7 +208,7 @@ describe('ProposalCard — nest', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Move under Wayne Strategies' }));
 		await waitFor(() => expect(screen.getByText('Expired')).toBeTruthy());
 		expect(
-			screen.getAllByText('This card expired after 24 hours. Ask Jev again. Nothing changed.')
+			screen.getAllByText('This card expired after 24 hours. Ask again. Nothing changed.')
 				.length
 		).toBeGreaterThan(0);
 		expect(screen.queryByRole('button', { name: 'Not now' })).toBeNull();

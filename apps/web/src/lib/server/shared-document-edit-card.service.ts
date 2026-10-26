@@ -176,7 +176,11 @@ function buildResolution(
 }
 
 type ActionResult =
-	| { kind: 'resolved'; outcome: SharedDocumentEditOutcome; copy: SharedDocumentEditCopyV1 | null }
+	| {
+			kind: 'resolved';
+			outcome: SharedDocumentEditOutcome;
+			copy: SharedDocumentEditCopyV1 | null;
+	  }
 	/** Nothing was written; release the claim so the card stays usable. */
 	| { kind: 'released'; failure: SharedDocumentEditCardFailure };
 
@@ -255,10 +259,10 @@ export async function resolveSharedDocumentEditCard(params: {
 		return failure(
 			410,
 			'CARD_EXPIRED',
-			'This preview expired after 24 hours. Ask Jev again. Nothing changed.'
+			'This preview expired after 24 hours. Ask again. Nothing changed.'
 		);
 
-	// A card can appear before Jev finishes replying. The turn's own bookkeeping
+	// A card can appear before the reply finishes. The turn's own bookkeeping
 	// settles its open ledger rows when it ends, so a claim waits for that.
 	const { data: turn, error: turnError } = await admin
 		.from('chat_turn_runs')
@@ -271,7 +275,7 @@ export async function resolveSharedDocumentEditCard(params: {
 		return failure(
 			409,
 			'TURN_IN_PROGRESS',
-			'Jev is still replying. Choose again when the reply finishes.'
+			'The chat is still replying. Choose again when the reply finishes.'
 		);
 
 	// Read-only checks first: a missing permission leaves the card open for the

@@ -148,7 +148,8 @@ export default defineConfig({
 			// battery (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 J7).
 			'**/lib/tests/agentic-e2e/__tests__/**',
 			// Playwright specs, not vitest.
-			'**/lib/tests/agentic-e2e/browser/**'
+			'**/lib/tests/agentic-e2e/browser/**',
+			'tests/browser/**'
 		],
 		// Suppress console output during tests for cleaner output
 		silent: false, // Set to true to suppress all console output

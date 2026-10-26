@@ -9,7 +9,6 @@ export const config = {
 };
 
 import type { RequestHandler } from './$types';
-import { env } from '$env/dynamic/private';
 import type { ChatContextType, ChatSession, Json, ProjectFocus } from '@buildos/shared-types';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';

@@ -384,7 +384,7 @@ function staleFileText(reason: string | null, payload: WorkspaceFileProposalPayl
 		case 'target_unavailable':
 			return `${payload.target.name} is archived or gone, so nothing moved.`;
 		default:
-			return 'Something changed since this card, so nothing moved. Ask Jev again.';
+			return 'Something changed since this card, so nothing moved. Ask again.';
 	}
 }
 
@@ -461,7 +461,7 @@ function staleProjectText(reason: string | null): string {
 		case 'items_moved':
 			return 'These items already left the Workspace, so no project was started.';
 		default:
-			return 'Something changed since this card, so no project was started. Ask Jev again.';
+			return 'Something changed since this card, so no project was started. Ask again.';
 	}
 }
 

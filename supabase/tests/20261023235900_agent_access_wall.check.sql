@@ -74,7 +74,7 @@ SELECT pg_temp.assert_true(
 	'helpers are server-only'
 );
 SELECT pg_temp.assert_true(
-	NOT has_function_privilege('anon', 'public.create_project_upgrade_request(uuid[], text, text, uuid, uuid, text, uuid)', 'EXECUTE')
+	NOT has_function_privilege('anon', 'public.create_project_upgrade_request(uuid[], text, text, uuid, uuid, text, uuid, uuid)', 'EXECUTE')
 		AND NOT has_function_privilege('service_role', 'public.set_project_editor_agents_write(uuid, boolean)', 'EXECUTE'),
 	'request RPC is not anon; standing approval is signed-in owners only'
 );
@@ -159,13 +159,17 @@ SELECT pg_temp.assert_true(
 -- 4. Asking again (as the agent, via the gateway) merges into the waiting request.
 SELECT pg_temp.act_as(NULL, 'service_role');
 SELECT pg_temp.assert_true(
-	(SELECT r->>'status' = 'pending' AND (r->>'already_pending')::boolean AND NOT (r->>'merged')::boolean
+	(SELECT r->>'status' = 'pending' AND (r->>'already_pending')::boolean AND (r->>'merged')::boolean
 	FROM (SELECT public.create_project_upgrade_request(
 		ARRAY['e4000000-0000-4000-8000-000000000022']::uuid[], 'agents_write', NULL,
 		'e4000000-0000-4000-8000-000000000031', NULL, 'Claude',
 		'e4000000-0000-4000-8000-000000000002') AS r) AS x),
-	'a repeat ask joins the waiting request'
+	'an agent ask adds its connection to the waiting web request'
 );
+SELECT pg_temp.assert_true(
+ (SELECT requested_items @> '[{"project_id":"e4000000-0000-4000-8000-000000000022","caller_ids":["e4000000-0000-4000-8000-000000000031"]}]'::jsonb
+  FROM public.people_requests WHERE id = (SELECT (r->>'request_id')::uuid FROM wall_result)),
+ 'the owner can see which connection needs access');
 -- Projects of a different owner can't ride along; non-members get not_found.
 SELECT pg_temp.assert_true(
 	(SELECT public.create_project_upgrade_request(
@@ -211,7 +215,7 @@ SELECT pg_temp.assert_true(
 SELECT pg_temp.assert_true(
 	(SELECT public.decide_people_request(
 		(SELECT (r->>'request_id')::uuid FROM wall_result), 'approve',
-		'[{"project_id":"e4000000-0000-4000-8000-000000000022"}]'::jsonb)->>'kind') = 'upgrade',
+		'[{"project_id":"e4000000-0000-4000-8000-000000000021","need":"edit","allow":false},{"project_id":"e4000000-0000-4000-8000-000000000022","need":"agents_write","allow":true}]'::jsonb)->>'kind') = 'upgrade',
 	'owner approves the upgrade'
 );
 RESET ROLE;
@@ -246,7 +250,7 @@ SELECT pg_temp.assert_true(
 );
 SELECT pg_temp.act_as('e4000000-0000-4000-8000-000000000001', 'authenticated');
 SET LOCAL ROLE authenticated;
-SELECT public.decide_people_request((SELECT (r->>'request_id')::uuid FROM wall_second), 'decline', '[]'::jsonb);
+SELECT public.decide_people_request((SELECT (r->>'request_id')::uuid FROM wall_second), 'decline', '[{"project_id":"e4000000-0000-4000-8000-000000000021","need":"agents_read","allow":false}]'::jsonb);
 RESET ROLE;
 SELECT pg_temp.act_as(NULL, 'service_role');
 SELECT pg_temp.assert_true(

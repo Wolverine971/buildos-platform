@@ -13,6 +13,11 @@
 ALTER ROLE service_role BYPASSRLS;
 BEGIN;
 
+-- Schema-only snapshots omit deployment flag rows; seed both rollout states explicitly.
+INSERT INTO private.organize_rollout(singleton, calendar_sync_ready, asset_access_ready)
+VALUES (true, false, false) ON CONFLICT (singleton) DO UPDATE
+SET calendar_sync_ready = false, asset_access_ready = false;
+
 GRANT USAGE ON SCHEMA auth TO authenticated;
 
 CREATE TEMP TABLE results (key text PRIMARY KEY, value jsonb) ON COMMIT DROP;

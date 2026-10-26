@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/agent/SharedDocumentEditCard.svelte -->
 <!--
-	Confirm card for an edit Jev proposed to a document the parent project shares
+	Confirm card for an edit the chat proposed to a document the parent project shares
 	with its sub-projects (project hierarchy Phase 2). Shows the exact change and
 	three choices; the click is the only consent. Resolves in place and stays
 	resolved after reload (the server records the outcome on the tool result).
@@ -70,7 +70,8 @@
 
 	function fieldLine(change: SharedDocumentEditFieldChangeV1): string {
 		const label = FIELD_LABELS[change.field];
-		if (change.field === 'description' || change.field === 'metadata') return `${label} updated`;
+		if (change.field === 'description' || change.field === 'metadata')
+			return `${label} updated`;
 		return `${label}: ${change.from || '—'} → ${change.to || '—'}`;
 	}
 
@@ -173,14 +174,16 @@
 					>
 						Open
 						<ExternalLink class="h-3 w-3" aria-hidden="true" />
-						<span class="sr-only">{resolution.copy?.title ?? action.document_title}</span>
+						<span class="sr-only"
+							>{resolution.copy?.title ?? action.document_title}</span
+						>
 					</a>
 				{/if}
 			</p>
 		{:else if expired || closedMessage}
 			<p class="flex items-start gap-1.5 text-xs text-muted-foreground">
 				<TriangleAlert class="mt-px h-3.5 w-3.5 shrink-0 text-warning" aria-hidden="true" />
-				<span>{closedMessage ?? 'This preview expired. Ask Jev again. Nothing changed.'}</span>
+				<span>{closedMessage ?? 'This preview expired. Ask again. Nothing changed.'}</span>
 			</p>
 		{:else}
 			<div
@@ -243,11 +246,12 @@
 			</div>
 			<p id="{uid}-hint" class="mt-1.5 text-2xs leading-snug text-muted-foreground">
 				{#if turnActive}
-					You can choose when Jev finishes replying.
+					You can choose when the reply finishes.
 				{:else}
 					Update changes the copy all {action.shared_with_count}
-					{action.shared_with_count === 1 ? 'sub-project sees' : 'sub-projects see'}. Copy here
-					gives this project its own copy with the change. Nothing changes until you choose.
+					{action.shared_with_count === 1 ? 'sub-project sees' : 'sub-projects see'}. Copy
+					here gives this project its own copy with the change. Nothing changes until you
+					choose.
 				{/if}
 			</p>
 			{#if error}

@@ -737,7 +737,7 @@ function describeResolution(
 				// Said plainly: people can lose access even though nothing combined.
 				text: removed.length
 					? `Not combined. ${names(removed)} ${removed.length === 1 ? 'was' : 'were'} already removed from ${payload.source.name} before it stopped. Nothing else changed.`
-					: 'The projects changed since this card, so nothing was combined. Ask Jev again.',
+					: 'The projects changed since this card, so nothing was combined. Ask again.',
 				href: `/projects/${payload.source.id}`
 			};
 		case 'unknown':

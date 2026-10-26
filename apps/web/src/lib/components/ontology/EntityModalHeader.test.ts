@@ -1,48 +1,43 @@
 // apps/web/src/lib/components/ontology/EntityModalHeader.test.ts
-import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+// @vitest-environment jsdom
+import { cleanup, fireEvent, render, screen } from '@testing-library/svelte';
+import { createRawSnippet } from 'svelte';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import EntityModalHeader from './EntityModalHeader.svelte';
 
-const editModalCases = [
-	'TaskEditModal.svelte',
-	'GoalEditModal.svelte',
-	'PlanEditModal.svelte',
-	'RiskEditModal.svelte',
-	'MilestoneEditModal.svelte',
-	'EventEditModal.svelte',
-	'OntologyProjectEditModal.svelte'
-] as const;
+const icon = createRawSnippet(() => ({ render: () => '<svg aria-label="Task" role="img"></svg>' }));
 
-describe('EntityModalHeader standardization', () => {
-	it('keeps the shared header limited to identity and actions', () => {
-		const source = readFileSync(new URL('./EntityModalHeader.svelte', import.meta.url), 'utf8');
+afterEach(cleanup);
 
-		expect(source).toContain('title: string');
-		expect(source).toContain('icon: Snippet');
-		expect(source).toContain('actions?: Snippet');
-		expect(source).toContain('px-2 py-1.5 sm:px-3 sm:py-2');
-		expect(source).toContain('rounded-md bg-accent/10');
-		expect(source).not.toMatch(/date|state|priority|status/i);
+describe('EntityModalHeader', () => {
+	it('renders the entity identity as an accessible heading and updates it when renamed', async () => {
+		const view = render(EntityModalHeader, { title: 'Prepare the launch', icon });
+		expect(
+			screen.getByRole('heading', { level: 2, name: 'Prepare the launch' })
+		).toBeInTheDocument();
+		expect(screen.getByRole('img', { name: 'Task' })).toBeInTheDocument();
+		expect(screen.queryByRole('button')).not.toBeInTheDocument();
+		await view.rerender({ title: 'Publish the launch', icon });
+		expect(
+			screen.getByRole('heading', { level: 2, name: 'Publish the launch' })
+		).toBeInTheDocument();
+		expect(
+			screen.queryByRole('heading', { name: 'Prepare the launch' })
+		).not.toBeInTheDocument();
 	});
 
-	it.each(editModalCases)('uses the minimal shared header in %s', (fileName) => {
-		const source = readFileSync(new URL(`./${fileName}`, import.meta.url), 'utf8');
-		const headerStart = source.indexOf('{#snippet header()}');
-		const headerEnd = source.indexOf('{/snippet}', headerStart);
-		const headerSource = source.slice(headerStart, headerEnd);
-
-		expect(source).toContain("import EntityModalHeader from './EntityModalHeader.svelte'");
-		expect(source).toMatch(/ariaLabel=\{[^}]+\}/);
-		expect(headerSource).toContain('<EntityModalHeader');
-		expect(headerSource).toContain('icon={headerIcon}');
-		expect(headerSource).toContain('actions={headerActions}');
-		expect(headerSource).not.toMatch(/Badge|Created|Updated|Due|state|priority|impact/i);
-	});
-
-	it('leaves the document header independent so its extra context is preserved', () => {
-		const source = readFileSync(new URL('./DocumentModal.svelte', import.meta.url), 'utf8');
-
-		expect(source).not.toContain("import EntityModalHeader from './EntityModalHeader.svelte'");
-		expect(source).toContain('class="document-modal-header');
-		expect(source).toContain('{@render saveStatusIndicator()}');
+	it('exposes optional actions without changing the heading or swallowing interaction', async () => {
+		const onClose = vi.fn();
+		const actions = createRawSnippet(() => ({
+			render: () => '<button type="button">Close task</button>',
+			setup: (element) => {
+				element.addEventListener('click', onClose);
+				return () => element.removeEventListener('click', onClose);
+			}
+		}));
+		render(EntityModalHeader, { title: 'Prepare the launch', icon, actions });
+		await fireEvent.click(screen.getByRole('button', { name: 'Close task' }));
+		expect(onClose).toHaveBeenCalledOnce();
+		expect(screen.getByRole('heading', { name: 'Prepare the launch' })).toBeInTheDocument();
 	});
 });

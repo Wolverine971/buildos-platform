@@ -1,6 +1,5 @@
 // apps/web/src/lib/services/agentic-chat-v2/worker-turn-preparation.server.ts
 import { randomUUID } from 'node:crypto';
-import { env } from '$env/dynamic/private';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,

@@ -1,89 +1,116 @@
 // apps/web/src/lib/components/ontology/EntityModalDetailsDrawer.test.ts
-import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+// @vitest-environment jsdom
+import { cleanup, fireEvent, render, screen } from '@testing-library/svelte';
+import { createRawSnippet } from 'svelte';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import EntityModalDetailsDrawer from './EntityModalDetailsDrawer.svelte';
 
-const modalCases = [
-	['TaskEditModal.svelte', 'Task details'],
-	['GoalEditModal.svelte', 'Goal details'],
-	['MilestoneEditModal.svelte', 'Milestone details'],
-	['PlanEditModal.svelte', 'Plan details'],
-	['EventEditModal.svelte', 'Event details'],
-	['RiskEditModal.svelte', 'Risk details'],
-	['OntologyProjectEditModal.svelte', 'Project details'],
-	['PlanCreateModal.svelte', 'Plan guidance'],
-	['../time-blocks/TimeBlockDetailModal.svelte', 'Time block details']
-] as const;
-
-const denseReviewedCases = [
-	['TaskEditModal.svelte', 'Task details'],
-	['PlanEditModal.svelte', 'Plan details'],
-	['GoalEditModal.svelte', 'Goal details']
-] as const;
-
-describe('EntityModalDetailsDrawer rollout', () => {
-	it('keeps the shared desktop drawer closed by default and anchored to the right', () => {
-		const source = readFileSync(
-			new URL('./EntityModalDetailsDrawer.svelte', import.meta.url),
-			'utf8'
-		);
-
-		expect(source).toContain('let open = $state(false)');
-		expect(source).toContain("? 'right-80 xl:right-96'");
-		expect(source).toContain(": 'right-0'");
-		expect(source).toContain('[writing-mode:vertical-rl]');
-		expect(source).toContain("new MediaQuery('(min-width: 1024px)', false)");
-		expect(source).toContain('lg:col-start-2 lg:row-start-1 lg:block lg:w-80');
-		expect(source).toContain('lg:absolute lg:inset-y-0 lg:right-0');
-		expect(source).toContain('lg:sticky lg:top-0 lg:flex');
-		expect(source).toContain('lg:h-[calc(85dvh-10.125rem)]');
-		expect(source).toContain('lg:max-h-full lg:min-h-0 lg:flex-col lg:overflow-hidden');
-		expect(source).toContain('showDesktopHeader?: boolean');
-		expect(source).toContain('lg:min-h-0 lg:flex-1 lg:overflow-y-auto');
-		expect(source).toContain('lg:overscroll-contain');
-		expect(source).toContain('lg:[scrollbar-gutter:stable]');
-	});
-
-	it.each(modalCases)('uses the shared drawer in %s', (fileName, panelLabel) => {
-		const source = readFileSync(new URL(`./${fileName}`, import.meta.url), 'utf8');
-
-		expect(source).toContain('import EntityModalDetailsDrawer from');
-		expect(source).toContain(`panelLabel="${panelLabel}"`);
-		expect(source).toContain('lg:grid-cols-[minmax(0,1fr)_auto]');
-		expect(source).toContain('lg:overflow-x-clip');
-		expect(source).not.toContain('grid-cols-1 lg:grid-cols-3');
-	});
-
-	it.each(denseReviewedCases)(
-		'keeps %s dense, labeled, and progressively disclosed',
-		(fileName, panelLabel) => {
-			const source = readFileSync(new URL(`./${fileName}`, import.meta.url), 'utf8');
-
-			expect(source).toContain(`panelLabel="${panelLabel}"`);
-			expect(source).toContain('showDesktopHeader={true}');
-			expect(source).toContain('let showLinkedEntities = $state(false)');
-			expect(source).toContain('class="w-full py-2 flex items-center');
-			expect(source).toContain('transition:slide={slideMotion()}');
-			expect(source).not.toContain('Plan operations');
-			expect(source).not.toContain('Goal operations');
-		}
+const children = createRawSnippet(() => ({
+	render: () => '<button type="button">Edit due date</button>'
+}));
+const props = { panelLabel: 'Task details', children };
+function setDesktop(desktop: boolean) {
+	vi.stubGlobal(
+		'matchMedia',
+		vi.fn((query: string) => ({
+			matches: desktop,
+			media: query,
+			onchange: null,
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn(),
+			addListener: vi.fn(),
+			removeListener: vi.fn(),
+			dispatchEvent: vi.fn()
+		}))
 	);
+}
 
-	it('mounts project edit modals conditionally so each open gets fresh drawer state', () => {
-		const projectHost = readFileSync(
-			new URL('../project/ProjectModalsHost.svelte', import.meta.url),
-			'utf8'
-		);
-		const workspaceHost = readFileSync(
-			new URL(
-				'../../../routes/projects/[id]/ProjectWorkspaceEntityModals.svelte',
-				import.meta.url
-			),
-			'utf8'
-		);
+beforeEach(() => {
+	localStorage.clear();
+	setDesktop(true);
+});
+afterEach(() => {
+	cleanup();
+	vi.unstubAllGlobals();
+});
 
-		expect(projectHost).toContain('{#if showProjectEditModal}');
-		expect(projectHost).toContain('<OntologyProjectEditModal');
-		expect(workspaceHost).toContain("{:else if editTarget?.kind === 'project'}");
-		expect(workspaceHost).toContain('<OntologyProjectEditModal');
+describe('EntityModalDetailsDrawer', () => {
+	it('starts closed on desktop, exposes its controlled panel, and toggles accessibility', async () => {
+		render(EntityModalDetailsDrawer, props);
+		const toggle = screen.getByRole('button', { name: 'Open Task details' });
+		const panel = document.getElementById(toggle.getAttribute('aria-controls')!)!;
+		expect(toggle).toHaveAttribute('aria-expanded', 'false');
+		expect(panel).toHaveAttribute('aria-label', 'Task details');
+		expect(panel).toHaveAttribute('aria-hidden', 'true');
+		expect(panel.inert).toBe(true);
+		expect(screen.queryByRole('button', { name: 'Edit due date' })).not.toBeInTheDocument();
+		await fireEvent.click(toggle);
+		expect(screen.getByRole('button', { name: 'Close Task details' })).toHaveAttribute(
+			'aria-expanded',
+			'true'
+		);
+		expect(panel).toHaveAttribute('aria-hidden', 'false');
+		expect(panel.inert).toBe(false);
+		expect(screen.getByRole('button', { name: 'Edit due date' })).toBeInTheDocument();
+		await fireEvent.click(toggle);
+		expect(panel.inert).toBe(true);
+		expect(screen.queryByRole('button', { name: 'Edit due date' })).not.toBeInTheDocument();
+	});
+
+	it('opens a fresh desktop drawer closed after the previous modal unmounts', async () => {
+		const first = render(EntityModalDetailsDrawer, props);
+		await fireEvent.click(screen.getByRole('button', { name: 'Open Task details' }));
+		first.unmount();
+		render(EntityModalDetailsDrawer, props);
+		expect(screen.getByRole('button', { name: 'Open Task details' })).toHaveAttribute(
+			'aria-expanded',
+			'false'
+		);
+	});
+
+	it('keeps details accessible on mobile when collapsing is not requested', () => {
+		setDesktop(false);
+		render(EntityModalDetailsDrawer, props);
+		expect(screen.getByRole('complementary', { name: 'Task details' })).toHaveAttribute(
+			'aria-hidden',
+			'false'
+		);
+		expect(screen.getByRole('button', { name: 'Edit due date' })).toBeInTheDocument();
+	});
+
+	it('remembers the mobile disclosure choice across modal opens', async () => {
+		setDesktop(false);
+		const view = render(EntityModalDetailsDrawer, { ...props, mobileCollapsible: true });
+		const toggle = screen.getByRole('button', { name: 'Details' });
+		expect(toggle).toHaveAttribute('aria-expanded', 'false');
+		expect(screen.queryByRole('button', { name: 'Edit due date' })).not.toBeInTheDocument();
+		await fireEvent.click(toggle);
+		expect(screen.getByRole('button', { name: 'Edit due date' })).toBeInTheDocument();
+		view.unmount();
+		render(EntityModalDetailsDrawer, { ...props, mobileCollapsible: true });
+		expect(screen.getByRole('button', { name: 'Details' })).toHaveAttribute(
+			'aria-expanded',
+			'true'
+		);
+		await fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+		expect(screen.queryByRole('button', { name: 'Edit due date' })).not.toBeInTheDocument();
+	});
+
+	it('still opens when browser storage is unavailable', async () => {
+		setDesktop(false);
+		const get = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+			throw new Error('unavailable');
+		});
+		const set = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+			throw new Error('unavailable');
+		});
+		try {
+			render(EntityModalDetailsDrawer, { ...props, mobileCollapsible: true });
+			await fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+			expect(screen.getByRole('button', { name: 'Edit due date' })).toBeInTheDocument();
+		} finally {
+			get.mockRestore();
+			set.mockRestore();
+		}
 	});
 });

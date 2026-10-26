@@ -1,21 +1,15 @@
 // apps/web/src/lib/services/agentic-chat/tools/core/catalog-fitness.test.ts
-import { createHash } from 'node:crypto';
 import {
 	AGENTIC_CHAT_TOTAL_TOOL_VOCABULARY,
 	CHAT_TOOL_DEFINITIONS,
 	GATEWAY_SURFACE_PROFILE_NAMES,
 	getGatewayDirectToolNamesForProfile,
-	getGatewaySurfaceForContextType,
 	getGatewaySurfaceForProfile,
 	getToolRegistry,
 	TOOL_METADATA
 } from '@buildos/agentic-chat-runtime/catalog';
-import type { ChatContextType, ChatToolDefinition } from '@buildos/shared-types';
+import type { ChatToolDefinition } from '@buildos/shared-types';
 import { describe, expect, it } from 'vitest';
-import {
-	buildCanonicalToolSurfaceSizeReports,
-	buildGatewayProfileToolSurfaceSizeReports
-} from '../../../agentic-chat-v2/tool-surface-size-report';
 
 const TOTAL_TOOL_VOCABULARY = AGENTIC_CHAT_TOTAL_TOOL_VOCABULARY;
 
@@ -85,62 +79,43 @@ describe('agentic chat catalog fitness', () => {
 		}
 	});
 
-	it('pins the pre-move vocabulary, registry version, and ordered static surfaces', () => {
-		expect(buildCatalogBaseline()).toMatchSnapshot();
+	it('keeps required parameters satisfiable and registry dispatch aligned', () => {
+		const registry = getToolRegistry();
+		for (const definition of TOTAL_TOOL_VOCABULARY) {
+			checkSchema(definition.function.parameters, toolName(definition));
+		}
+		for (const definition of CHAT_TOOL_DEFINITIONS) {
+			const name = toolName(definition);
+			const entry = registry.byToolName[name]!;
+			expect(entry.tool_name).toBe(name);
+			expect(registry.ops[entry.op]).toBe(entry);
+			expect(entry.parameters_schema).toEqual(definition.function.parameters);
+		}
 	});
+	// Payload budgets and required capabilities live in tool-surface-size-report.test.ts.
+	// Description wording and harmless definition reordering are not a compatibility contract.
 });
 
-function buildCatalogBaseline() {
-	const registry = getToolRegistry();
-	const canonicalReports = buildCanonicalToolSurfaceSizeReports();
-	const profileReports = buildGatewayProfileToolSurfaceSizeReports();
-
-	return {
-		registryVersion: registry.version,
-		metadataOnlyToolNames: EXPECTED_METADATA_ONLY_TOOL_NAMES,
-		catalogSerializedSha256: sha256(JSON.stringify(TOTAL_TOOL_VOCABULARY)),
-		definitions: [...TOTAL_TOOL_VOCABULARY]
-			.sort((a, b) => toolName(a).localeCompare(toolName(b)))
-			.map((definition) => {
-				const serialized = JSON.stringify(definition);
-				return {
-					name: toolName(definition),
-					serialized,
-					serializedChars: serialized.length,
-					serializedSha256: sha256(serialized)
-				};
-			}),
-		contextSurfaces: canonicalReports.map((report) => {
-			const definitions = getGatewaySurfaceForContextType(
-				report.contextType as ChatContextType
-			);
-			return baselineSurface(report.profile, report.contextType, definitions, report);
-		}),
-		staticProfiles: profileReports.map((report) => {
-			const definitions = getGatewaySurfaceForProfile(
-				report.profile as (typeof GATEWAY_SURFACE_PROFILE_NAMES)[number]
-			);
-			return baselineSurface(report.profile, report.contextType, definitions, report);
-		})
-	};
-}
-
-function baselineSurface(
-	profile: string,
-	contextType: string,
-	definitions: ChatToolDefinition[],
-	report: { toolCount: number; totalChars: number; estimatedTokens: number }
-) {
-	const serializedDefinitions = JSON.stringify(definitions);
-	return {
-		profile,
-		contextType,
-		toolNames: definitionNames(definitions),
-		toolCount: report.toolCount,
-		totalChars: report.totalChars,
-		estimatedTokens: report.estimatedTokens,
-		serializedDefinitionsSha256: sha256(serializedDefinitions)
-	};
+function checkSchema(value: unknown, path: string): void {
+	if (!value || typeof value !== 'object') return;
+	const schema = value as Record<string, any>;
+	if (schema.required) {
+		expect(new Set(schema.required).size, `${path}: duplicate required keys`).toBe(
+			schema.required.length
+		);
+		for (const key of schema.required) {
+			expect(
+				Object.hasOwn(schema.properties ?? {}, key),
+				`${path}: required ${key} must be defined`
+			).toBe(true);
+		}
+	}
+	for (const [key, child] of Object.entries(schema.properties ?? {}))
+		checkSchema(child, `${path}.${key}`);
+	if (schema.items) checkSchema(schema.items, `${path}[]`);
+	for (const branch of ['oneOf', 'anyOf', 'allOf']) {
+		for (const child of schema[branch] ?? []) checkSchema(child, `${path}.${branch}`);
+	}
 }
 
 function definitionNames(definitions: ChatToolDefinition[]): string[] {
@@ -151,8 +126,4 @@ function toolName(definition: ChatToolDefinition): string {
 	const name = definition.function?.name;
 	if (!name) throw new Error('Agentic Chat tool definition is missing function.name');
 	return name;
-}
-
-function sha256(value: string): string {
-	return createHash('sha256').update(value).digest('hex');
 }

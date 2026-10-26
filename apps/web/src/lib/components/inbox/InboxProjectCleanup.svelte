@@ -3,8 +3,8 @@
 	Tasker 112: a project's one living "Project cleanup" change set in the AI Inbox.
 	Pick verified changes and apply them together; each still applies through its own
 	suggestion decision (own verification, result and trail), so one failure never blocks
-	the rest. Findings are marked done or not needed in one tap; a quick note hands an item
-	to Jev, who applies it, sets it aside or passes it to an agent. Anything not picked
+	the rest. Findings are marked done or not needed in one tap; a quick note on an item
+	is read and applied, set aside or passed to an agent. Anything not picked
 	stays for later. Triage walks every item one at a time.
 -->
 <script lang="ts">
@@ -57,7 +57,7 @@
 	} from './project-cleanup-presentation';
 
 	type Receipt = CleanupItemResult & { id: string; title: string };
-	type JevReply = { id: string; title: string; reply: string; ok: boolean };
+	type NoteReply = { id: string; title: string; reply: string; ok: boolean };
 	type PendingKind = 'apply' | 'dismiss' | 'address' | 'reload';
 
 	let {
@@ -106,7 +106,7 @@
 	let notingId = $state<string | null>(null);
 	let noteText = $state('');
 	let noteSendingIds = $state.raw<Set<string>>(new Set());
-	let jevReplies = $state.raw<JevReply[]>([]);
+	let noteReplies = $state.raw<NoteReply[]>([]);
 	let auditOpen = $state(false);
 	let auditLoading = $state(false);
 	let auditError = $state<string | null>(null);
@@ -255,7 +255,7 @@
 		void submit('address', addressDecisionsFor(item), [item], item.id);
 	}
 
-	// One tap: "Not needed" never asks why. A reason, if there is one, goes in a note to Jev.
+	// One tap: "Not needed" never asks why. A reason, if there is one, goes in a note (Discuss).
 	function markNotNeeded(item: ProjectCleanupItem) {
 		void submit('dismiss', dismissDecisionsFor(item, 'not_relevant'), [item], item.id);
 	}
@@ -285,8 +285,8 @@
 		const sending = new Set(noteSendingIds);
 		sending.delete(item.id);
 		noteSendingIds = sending;
-		jevReplies = [
-			...jevReplies.filter((entry) => entry.id !== item.id),
+		noteReplies = [
+			...noteReplies.filter((entry) => entry.id !== item.id),
 			{
 				id: item.id,
 				title: item.title,
@@ -440,11 +440,11 @@
 		</div>
 
 		<div aria-live="polite" class="space-y-2">
-			{#if jevReplies.length}
+			{#if noteReplies.length}
 				<div class="rounded-md border border-accent/25 bg-accent/5 p-2.5">
-					<p class="micro-label text-accent">Jev</p>
+					<p class="micro-label text-accent">Your notes</p>
 					<ul class="mt-1 space-y-1">
-						{#each jevReplies as entry (entry.id)}
+						{#each noteReplies as entry (entry.id)}
 							<li class="flex min-w-0 items-start gap-1.5 text-xs">
 								{#if entry.ok}
 									<MessageCircle
@@ -770,7 +770,7 @@
 												class="text-xs"
 											>
 												{noteSendingIds.has(item.id)
-													? 'Jev is reading…'
+													? 'Reading note…'
 													: 'Discuss'}
 											</Button>
 										</div>
@@ -780,11 +780,11 @@
 												class="mt-2 min-w-0 rounded-md border border-accent/30 bg-card p-2.5"
 											>
 												<p class="text-xs font-semibold text-foreground">
-													Quick note to Jev
+													What should happen with this?
 												</p>
 												<p class="mt-0.5 text-2xs text-muted-foreground">
-													Say what should happen. Jev applies it, sets it
-													aside, or hands bigger edits to an agent.
+													Quick calls happen right away; bigger edits go
+													to an agent.
 												</p>
 												<TextareaWithVoice
 													bind:value={noteText}
@@ -837,7 +837,7 @@
 															disabled={!noteText.trim()}
 															class="text-xs"
 														>
-															Send to Jev
+															Send note
 														</Button>
 													</div>
 												</div>

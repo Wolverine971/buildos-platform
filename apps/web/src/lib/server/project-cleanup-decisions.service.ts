@@ -1,7 +1,7 @@
 // apps/web/src/lib/server/project-cleanup-decisions.service.ts
 //
 // Tasker 112: saving decisions on a project's "Project cleanup" card. Shared by the card's
-// batch endpoint and the quick-note endpoint (Jev reads a note into one of these decisions).
+// batch endpoint and the quick-note endpoint (one model call reads a note into one of these decisions).
 // Decisions apply one at a time through decideProjectSuggestion, so each keeps its own
 // verification, result and trail, and one failure never stops the rest.
 

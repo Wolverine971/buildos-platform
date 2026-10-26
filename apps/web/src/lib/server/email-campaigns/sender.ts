@@ -45,7 +45,7 @@ export interface ProcessDueCampaignSendsOptions {
 	/** Stop starting new sends after this much wall time (claimed leftovers go back to queued). */
 	budgetMs?: number;
 	perRunLimit?: number;
-	/** Max campaign sends in any rolling 24 h (Gmail daily limits are shared with daily briefs). */
+	/** Max campaign sends/reserved attempts in any rolling 24 h; uncertain sends retain their slot. */
 	dailyCap?: number;
 	leaseSeconds?: number;
 	emailService?: CampaignEmailSender;
@@ -60,6 +60,7 @@ export interface CampaignSendError {
 
 export interface CampaignSendSummary {
 	expired: number;
+	/** Allowance at the start of this run; each claim rechecks it atomically. */
 	dailyCapRemaining: number;
 	claimed: number;
 	sent: number;
@@ -146,14 +147,14 @@ export async function processDueCampaignSends(
 	if (expireError) throw new Error(`Failed to expire stale sends: ${expireError.message}`);
 	summary.expired = expiredRows?.length ?? 0;
 
-	// 2. Daily cap across all campaigns.
-	const since = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
-	const { count: sentLastDay, error: countError } = await supabase
-		.from('email_campaign_recipients')
-		.select('id', { count: 'exact', head: true })
-		.gte('sent_at', since);
-	if (countError) throw new Error(`Failed to count recent sends: ${countError.message}`);
-	summary.dailyCapRemaining = Math.max(0, dailyCap - (sentLastDay ?? 0));
+	// 2. Read the shared allowance for diagnostics. The claim RPC rechecks and
+	// reserves it atomically; this snapshot is never the concurrency boundary.
+	const { data: allowance, error: countError } = await supabase.rpc(
+		'get_email_campaign_daily_allowance',
+		{ p_daily_cap: dailyCap }
+	);
+	if (countError) throw new Error(`Failed to read campaign allowance: ${countError.message}`);
+	summary.dailyCapRemaining = allowance ?? 0;
 	const limit = Math.min(perRunLimit, summary.dailyCapRemaining);
 
 	// 3. Claim and send one row at a time. Claiming a batch up front meant one
@@ -163,9 +164,10 @@ export async function processDueCampaignSends(
 	for (let sentThisRun = 0; sentThisRun < limit; sentThisRun++) {
 		if (clock() - startedAt >= budgetMs) break;
 
-		const { data, error } = await (supabase as any).rpc('claim_email_campaign_sends', {
+		const { data, error } = await supabase.rpc('claim_email_campaign_sends', {
 			p_limit: 1,
-			p_lease_seconds: leaseSeconds
+			p_lease_seconds: leaseSeconds,
+			p_daily_cap: dailyCap
 		});
 		if (error) throw new Error(`Failed to claim campaign sends: ${error.message}`);
 		const row = ((data ?? []) as RecipientRow[])[0];

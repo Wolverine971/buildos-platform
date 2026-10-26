@@ -94,12 +94,14 @@
 	} from './agent-chat-initial-review';
 	import { buildLiveContextUsageSnapshot } from './agent-chat-formatters';
 	import { mergeToolProgressStep, type ToolProgressStep } from './agent-chat-tool-progress';
+	import { upsertCaptureReceipt } from './capture-receipt';
+	import { observeChatCaptureReceipts } from './agent-chat-capture-receipts.svelte';
 	import {
-		CAPTURE_RECEIPT_COLUMNS,
-		type CaptureReceiptRow,
-		buildCaptureReceiptUIMessage,
-		upsertCaptureReceipt
-	} from './capture-receipt';
+		adoptAdmissionForCurrentFocus,
+		hydrateBrainDumpForCurrentSession,
+		logActiveFocusChange,
+		releaseChatSession
+	} from './agent-chat-session-lifecycle';
 	import {
 		findThinkingBlockById,
 		type ActivityEntry,
@@ -558,47 +560,14 @@
 		if (sid) subscribeSessionMessages(sid);
 	});
 
-	// Capture receipts for the active session: earlier ones on open, new and
-	// undone ones live.
-	$effect(() => {
-		const sid = currentSessionId;
-		captureReceipts = [];
-		if (!browser || !supabaseClient || !sid) return;
-		const client = supabaseClient;
-		let disposed = false;
-		const apply = (row: unknown) => {
-			if (disposed || currentSessionId !== sid) return;
-			const record = row as Partial<CaptureReceiptRow> | null;
-			if (record?.session_id !== sid) return;
-			const receipt = buildCaptureReceiptUIMessage(record);
-			if (receipt) captureReceipts = upsertCaptureReceipt(captureReceipts, receipt);
-		};
-		const channel = client.channel(`chat-capture-receipts:${sid}`);
-		channel.on(
-			'postgres_changes',
-			{
-				event: '*',
-				schema: 'public',
-				table: 'chat_capture_checkpoints',
-				filter: `session_id=eq.${sid}`
-			},
-			(payload) => apply(payload.new)
-		);
-		void channel.subscribe();
-		void client
-			.from('chat_capture_checkpoints')
-			.select(CAPTURE_RECEIPT_COLUMNS)
-			.eq('session_id', sid)
-			.in('status', ['captured', 'undone'])
-			.order('created_at', { ascending: true })
-			.limit(50)
-			.then(({ data }) => {
-				for (const row of data ?? []) apply(row);
-			});
-		return () => {
-			disposed = true;
-			void client.removeChannel(channel);
-		};
+	// Svelte disposes the old subscription before a session change or unmount.
+	observeChatCaptureReceipts({
+		client: () => supabaseClient,
+		sessionId: () => currentSessionId,
+		receipts: () => captureReceipts,
+		onReceipts: (receipts) => {
+			captureReceipts = receipts;
+		}
 	});
 
 	// Establish the standing per-user worker delivery path at chat-surface mount.
@@ -919,25 +888,16 @@
 				throw new Error('Worker admission runtime is unavailable');
 			}
 			const { descriptor } = parseAdmissionResponse(value);
-			if (!currentSession) {
-				// A new chat's first turn (and every raw review) creates its session
-				// inside admission. The response carries the row; older servers
-				// don't, so fall back to one snapshot read.
-				const projectId = reviewProjectId;
-				const runId = stream.activeStreamRunId;
-				const session =
+			return adoptAdmissionForCurrentFocus({
+				currentSession: () => currentSession,
+				projectId: () => reviewProjectId,
+				runId: () => stream.activeStreamRunId,
+				loadSession: async () =>
 					admittedSessionFromResponse(value, descriptor.handle.sessionId) ??
-					(await loadAgentChatSessionSnapshot(descriptor.handle.sessionId)).session;
-				if (
-					currentSession ||
-					projectId !== reviewProjectId ||
-					runId !== stream.activeStreamRunId
-				) {
-					throw new Error('Chat focus changed while the turn was starting');
-				}
-				hydrateSessionFromEvent(session);
-			}
-			return workerAdoption.adoptAdmissionResponse(value);
+					(await loadAgentChatSessionSnapshot(descriptor.handle.sessionId)).session,
+				hydrate: hydrateSessionFromEvent,
+				adopt: () => workerAdoption!.adoptAdmissionResponse(value)
+			});
 		},
 		discoverWorkerSession: async (sessionId) => {
 			if (!workerAdoption) return [];
@@ -1621,27 +1581,18 @@
 
 	// Load a chat session and restore its messages for resumption
 	async function hydrateBrainDumpContextFromSession(session: ChatSession): Promise<void> {
-		const metadata = (session.agent_metadata ?? {}) as Record<string, unknown>;
-		const braindumpId =
-			typeof metadata.braindump_id === 'string'
-				? metadata.braindump_id
-				: typeof metadata.source_id === 'string' && metadata.source === 'onto_braindump'
-					? metadata.source_id
-					: null;
-		if (!braindumpId || brainDumpContext?.id === braindumpId) return;
-
-		try {
-			const response = await fetch(`/api/onto/braindumps/${braindumpId}`);
-			const result = await response.json().catch(() => null);
-			if (currentSession?.id !== session.id) return;
-			if (response.ok && result?.success && result?.data?.braindump) {
-				brainDumpContext = result.data.braindump as AgentBrainDumpContext;
+		await hydrateBrainDumpForCurrentSession({
+			session,
+			currentSessionId: () => currentSession?.id ?? null,
+			currentBrainDumpId: () => brainDumpContext?.id ?? null,
+			apply: (context) => {
+				brainDumpContext = context;
+			},
+			onError: (error) => {
+				if (dev)
+					console.warn('[AgentChatModal] Failed to hydrate Brain Dump context', error);
 			}
-		} catch (err) {
-			if (dev) {
-				console.warn('[AgentChatModal] Failed to hydrate Brain Dump context', err);
-			}
-		}
+		});
 	}
 
 	function applyChatSessionSnapshot(sessionId: string, snapshot: AgentChatSessionSnapshot): void {
@@ -2225,42 +2176,37 @@
 		reason: 'close' | 'destroy',
 		options: { deferBroadcast?: boolean } = {}
 	): DataMutationSummary {
-		finalizeSession(reason);
-		voice.stop();
-		clearSessionRefreshTimeout();
-		activeRestoredTurnRunId = null;
-		invalidateSessionLoads();
-		// A first send may still be awaiting admission with no session to release.
-		stream.reset();
-		workerAdoption?.clear('teardown');
-		void workerRealtime?.stop();
-		voice.cleanup();
-		attachments.cleanup();
-		void unsubscribeSessionMessages();
-		for (const timer of agentRunFallbackTimers.values()) clearTimeout(timer);
-		agentRunFallbackTimers.clear();
-		seenTerminalAgentRunIds.clear();
-
-		// Clear per-turn tool state to prevent memory leaks
-		pendingToolResults.clear();
-		processedToolCallIds.clear();
-		processedToolResultIds.clear();
-		handleSSEMessage.resetTurnState();
-
-		const summary = presenter.buildMutationSummary({
-			hasMessagesSent: stream.hasSentMessage,
-			sessionId: currentSession?.id ?? null
-		});
-		// Broadcast mutations globally so any surface showing this data (project page,
-		// dashboard, embedded edit modals, …) can refetch itself. This works regardless
-		// of launch surface or chat context — unlike the old per-project `invalidate()`
-		// path, which was inert because the pages refresh via their own client refetch.
-		if (summary.hasChanges && !options.deferBroadcast) {
-			notifyDataMutation(summary);
-		}
-
-		presenter.resetMutationTracking();
-		return summary;
+		return releaseChatSession(
+			{
+				finalize: finalizeSession,
+				voice,
+				clearSessionRefresh: clearSessionRefreshTimeout,
+				clearRestoredTurn: () => {
+					activeRestoredTurnRunId = null;
+				},
+				invalidateSessionLoads,
+				stream,
+				workerAdoption,
+				workerRealtime,
+				attachments,
+				unsubscribeSessionMessages,
+				fallbackTimers: agentRunFallbackTimers,
+				seenTerminalRunIds: seenTerminalAgentRunIds,
+				clearToolState: () => {
+					pendingToolResults.clear();
+					processedToolCallIds.clear();
+					processedToolResultIds.clear();
+					handleSSEMessage.resetTurnState();
+				},
+				presenter,
+				get sessionId() {
+					return currentSession?.id ?? null;
+				},
+				notifyDataMutation
+			},
+			reason,
+			options
+		);
 	}
 
 	// A second close (X then Esc) while the first is waiting on its Back step is a no-op.
@@ -2600,21 +2546,13 @@
 			})
 		: null;
 
-	function describeFocus(focus: ProjectFocus | null): string {
-		if (!focus) return 'project workspace';
-		if (focus.focusType === 'project-wide') {
-			return `${focus.projectName} (project-wide)`;
-		}
-		const entityName = focus.focusEntityName ?? 'Selected entity';
-		return `${entityName} (${focus.focusType})`;
-	}
-
 	function logFocusActivity(action: string, focus: ProjectFocus | null) {
-		if (!stream.isTurnBusy || !currentThinkingBlockId) return;
-		const details = focus ? describeFocus(focus) : 'project workspace';
-		addActivityToThinkingBlock(`${action}: ${details}`, 'context_shift', {
-			focus
-		});
+		logActiveFocusChange(
+			{ isTurnBusy: stream.isTurnBusy, thinkingBlockId: currentThinkingBlockId },
+			action,
+			focus,
+			addActivityToThinkingBlock
+		);
 	}
 
 	function addCreatedEntitiesMessage(entities: CreatedEntityRef[]) {

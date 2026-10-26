@@ -1,7 +1,7 @@
 // apps/web/src/lib/components/inbox/cleanup-note.client.ts
 //
-// Sends a quick note on one Project cleanup item to Jev (POST .../cleanup/note). Jev reads
-// it into apply / not needed / done / hand to an agent and answers with one line.
+// Sends a quick note on one Project cleanup item (POST .../cleanup/note). One model call
+// reads it into apply / not needed / done / hand to an agent and answers with one line.
 import type { ProjectCleanupItem, ProjectCleanupView } from '@buildos/shared-types';
 
 export type CleanupNoteDecision = 'apply' | 'not_needed' | 'done' | 'agent';
@@ -41,19 +41,19 @@ export async function sendCleanupNote(params: {
 		);
 		const json = await res.json().catch(() => null);
 		if (!res.ok) {
-			return { ok: false, message: json?.error ?? 'Could not send the note to Jev' };
+			return { ok: false, message: json?.error ?? 'Could not send the note' };
 		}
 		return {
 			ok: true,
 			decision: json?.data?.decision ?? 'agent',
-			reply: json?.data?.reply ?? 'Jev is on it.',
+			reply: json?.data?.reply ?? 'Handling it.',
 			agentRunId: json?.data?.agent_run_id ?? null,
 			view: (json?.data?.view ?? null) as ProjectCleanupView | null
 		};
 	} catch (error) {
 		return {
 			ok: false,
-			message: error instanceof Error ? error.message : 'Could not send the note to Jev'
+			message: error instanceof Error ? error.message : 'Could not send the note'
 		};
 	}
 }

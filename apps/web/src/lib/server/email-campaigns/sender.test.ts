@@ -314,7 +314,52 @@ describe('processDueCampaignSends', () => {
 			dailyCap: 3
 		});
 		expect(cappedSummary.claimed).toBe(0);
-		expect(capped.rpcCalls).toHaveLength(0);
+		expect(capped.rpcCalls.some((call) => call.name === 'claim_email_campaign_sends')).toBe(
+			false
+		);
+	});
+
+	it('shares the allowance across concurrent senders and campaigns', async () => {
+		const db = setup(
+			[recipient('r1'), recipient('r2', { campaign_id: 'campaign-2' })],
+			[campaign(), campaign({ id: 'campaign-2' })]
+		);
+		// Hold the first transport open so the second run encounters an in-flight send.
+		let finish!: () => void;
+		let started!: () => void;
+		const inFlight = new Promise<void>((resolve) => {
+			started = resolve;
+		});
+		const transport = new Promise<void>((resolve) => {
+			finish = resolve;
+		});
+		emailService.sendEmail.mockImplementationOnce(async () => {
+			started();
+			await transport;
+			return { success: true };
+		});
+		const options = { supabase: db as any, now: NOW, emailService, dailyCap: 1 };
+		const first = processDueCampaignSends(options);
+		await inFlight;
+		const second = await processDueCampaignSends(options);
+		finish();
+		expect((await first).sent).toBe(1);
+		expect(second).toMatchObject({ claimed: 0, sent: 0 });
+		expect(emailService.sendEmail).toHaveBeenCalledTimes(1);
+		expect(row(db, 'r2').status).toBe('queued');
+	});
+
+	it('fails closed when the shared allowance cannot be read', async () => {
+		const db = setup([recipient('r1')]);
+		db.rpcHandlers.get_email_campaign_daily_allowance = () => ({
+			data: null,
+			error: { message: 'offline' }
+		});
+		await expect(
+			processDueCampaignSends({ supabase: db as any, now: NOW, emailService })
+		).rejects.toThrow('offline');
+		expect(emailService.sendEmail).not.toHaveBeenCalled();
+		expect(row(db, 'r1').status).toBe('queued');
 	});
 
 	it('never claims rows from a paused campaign', async () => {

@@ -51,7 +51,7 @@ const DISMISS_REASONS = new Set<CleanupDismissReason>([
 ]);
 
 export const CLEANUP_NOTE_SYSTEM_PROMPT = [
-	'You are Jev, the assistant inside BuildOS. The owner is going through their AI Inbox: cleanup items that a project review proposed. On one item they left a quick note instead of pressing a button. Read the note and pick exactly one decision.',
+	'You are the assistant inside BuildOS. The owner is going through their AI Inbox: cleanup items that a project review proposed. On one item they left a quick note instead of pressing a button. Read the note and pick exactly one decision.',
 	'',
 	'Decisions:',
 	'- "apply": the note agrees with the proposed change exactly as shown (for example "yes", "do it", "archive it", "good call"). Only allowed when item.can_apply is true.',

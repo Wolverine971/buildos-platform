@@ -161,7 +161,7 @@
 					<div class="flex flex-wrap items-center gap-x-2.5 gap-y-1">
 						<h1
 							id="project-name"
-							class="text-2xl font-semibold leading-tight tracking-tight text-foreground sm:text-[1.75rem]"
+							class="text-2xl font-semibold leading-tight tracking-tight text-foreground sm:text-3xl"
 						>
 							{project.name}
 						</h1>
@@ -191,7 +191,7 @@
 			</div>
 
 			{#if project.pitch}
-				<p class="mt-4 text-[17px] leading-relaxed text-foreground">{project.pitch}</p>
+				<p class="mt-4 text-lg leading-relaxed text-foreground">{project.pitch}</p>
 			{/if}
 
 			<div class="mt-5 flex flex-wrap items-center gap-2">
@@ -243,7 +243,7 @@
 				<div
 					class="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-xl bg-accent/10 px-4 py-3.5"
 				>
-					<p class="min-w-0 flex-1 basis-56 text-[15px] leading-snug text-foreground">
+					<p class="min-w-0 flex-1 basis-56 text-base leading-snug text-foreground">
 						{project.looking_for}
 					</p>
 					{#if project.reply_url}
@@ -267,7 +267,7 @@
 					{#if project.goals?.length}
 						<div>
 							<p class="micro-label mb-2">Goals</p>
-							<ul class="grid gap-2 text-[15px] text-foreground">
+							<ul class="grid gap-2 text-base text-foreground">
 								{#each project.goals as goal (goal)}
 									<li class="flex gap-2.5">
 										<span
@@ -284,7 +284,7 @@
 						<div>
 							<p class="micro-label mb-2">Next milestone</p>
 							<div class="rounded-xl border border-border bg-card px-3.5 py-3">
-								<p class="text-[15px] font-semibold text-foreground">
+								<p class="text-base font-semibold text-foreground">
 									{project.next_milestone.title}
 								</p>
 								<p class="stamp mt-0.5 text-xs text-muted-foreground">
@@ -308,7 +308,7 @@
 							<span class="stamp pt-0.5 text-xs text-muted-foreground"
 								>{update.at ? shortDate(update.at) : ''}</span
 							>
-							<p class="text-[15px] leading-snug text-foreground">{update.body}</p>
+							<p class="text-base leading-snug text-foreground">{update.body}</p>
 						</li>
 					{/each}
 				</ol>
@@ -343,7 +343,7 @@
 							class="group/w flex items-baseline justify-between gap-3 border-b border-border py-3 first:pt-0 last:border-b-0 last:pb-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
 							<span
-								class="min-w-0 text-[15px] font-semibold text-foreground group-hover/w:text-accent"
+								class="min-w-0 text-base font-semibold text-foreground group-hover/w:text-accent"
 								>{piece.title}</span
 							>
 							{#if piece.published_at}<span
@@ -510,7 +510,7 @@
 		>{(other.glyphs ?? []).join('') || other.name.slice(0, 1).toUpperCase()}</span
 	>
 	<span class="grid min-w-0 flex-1">
-		<span class="truncate text-[15px] font-semibold text-foreground">{other.name}</span>
+		<span class="truncate text-base font-semibold text-foreground">{other.name}</span>
 		{#if other.pitch}<span class="truncate text-xs text-muted-foreground">{other.pitch}</span
 			>{/if}
 	</span>

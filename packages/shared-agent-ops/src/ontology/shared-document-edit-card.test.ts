@@ -11,8 +11,9 @@ import {
 } from './shared-document-edit-card';
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
-const [CARD, SESSION, DOC, PARENT, CHILD, FOLDER, MESSAGE, COPY] = Array.from({ length: 8 }, (_, n) =>
-	id(n + 1)
+const [CARD, SESSION, DOC, PARENT, CHILD, FOLDER, MESSAGE, COPY] = Array.from(
+	{ length: 8 },
+	(_, n) => id(n + 1)
 );
 
 function action() {
@@ -162,7 +163,7 @@ describe('shared-document edit card contract', () => {
 			).text
 		).toBe('Cancelled');
 		expect(describeSharedDocumentEditResolution(resolution({ outcome: 'stale' })).text).toBe(
-			'The copy in Wayne Strategies changed since this preview. Ask Jev again.'
+			'The copy in Wayne Strategies changed since this preview. Ask again.'
 		);
 	});
 

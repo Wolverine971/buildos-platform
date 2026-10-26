@@ -7,16 +7,7 @@
 -->
 <script lang="ts">
 	import { tick } from 'svelte';
-	import {
-		AlertCircle,
-		AtSign,
-		Bot,
-		FolderOpen,
-		Inbox,
-		Search,
-		Send,
-		Users
-	} from '$lib/icons/lucide';
+	import { AlertCircle, AtSign, Bot, FolderOpen, Inbox, Search, Send } from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
@@ -504,8 +495,6 @@
 		return `Expires in ${days} days`;
 	}
 
-	const linkClass =
-		'rounded-sm font-medium text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 	const cardClass = 'rounded-xl border border-border bg-card p-4 shadow-ink sm:p-5';
 </script>
 

@@ -28,7 +28,7 @@
 		payload: ProjectCombineProposalPayloadV1;
 		/** remove: they lose access; add: they're added to the destination. No default. */
 		memberChoice?: 'remove' | 'add' | null;
-		/** The card can't take a choice right now (decided, busy, or Jev still replying). */
+		/** The card can't take a choice right now (decided, busy, or the chat still replying). */
 		disabled?: boolean;
 		/** Id prefix from the card frame. */
 		uid: string;
@@ -212,7 +212,7 @@
 				{/if}
 			</ul>
 			<p class="mt-1 text-muted-foreground">
-				Move or delete {payload.upcoming_events_total === 1 ? 'it' : 'them'} first (Jev can help),
+				Move or delete {payload.upcoming_events_total === 1 ? 'it' : 'them'} first (just ask),
 				then Check again.
 			</p>
 		</div>

@@ -173,7 +173,7 @@ describe('InboxCleanupTriage', () => {
 		expect(fetchMock).not.toHaveBeenCalled();
 	});
 
-	it('hands an item to Jev with a note and keeps going', async () => {
+	it('sends an item on with a note and keeps going', async () => {
 		const { container, onSendNote } = setup([project('p1', 'Job Search', [salary, owners])]);
 		const root = container.querySelector('[aria-label="Triage"]') as HTMLElement;
 

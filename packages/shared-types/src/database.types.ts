@@ -25804,7 +25804,7 @@ export type Database = {
         Returns: Json
       }
       claim_email_campaign_sends: {
-        Args: { p_lease_seconds?: number; p_limit: number }
+        Args: { p_daily_cap?: number; p_lease_seconds?: number; p_limit: number }
         Returns: {
           attempt_count: number
           beta_signup_id: string | null
@@ -27443,6 +27443,10 @@ export type Database = {
       get_document_route_location: {
         Args: { p_document_id: string }
         Returns: Json
+      }
+      get_email_campaign_daily_allowance: {
+        Args: { p_daily_cap?: number }
+        Returns: number
       }
       get_email_campaign_engagement: {
         Args: { p_campaign_ids: string[] }

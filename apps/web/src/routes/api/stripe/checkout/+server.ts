@@ -16,8 +16,11 @@ type CheckoutRequestPayload = {
 function sanitizeRelativePath(candidate: unknown, fallback: string): string {
 	if (typeof candidate !== 'string') return fallback;
 	if (!candidate.startsWith('/')) return fallback;
-	if (candidate.startsWith('//')) return fallback;
-	return candidate;
+	// URL parsing also catches backslash and control-character forms that a
+	// leading-slash check alone would turn into an external redirect.
+	const base = 'https://checkout-return.invalid';
+	const parsed = new URL(candidate, base);
+	return parsed.origin === base ? `${parsed.pathname}${parsed.search}${parsed.hash}` : fallback;
 }
 
 export const POST: RequestHandler = async ({

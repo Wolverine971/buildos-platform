@@ -398,14 +398,14 @@ export async function resolveProposalCard(
 		return failure(
 			410,
 			'CARD_EXPIRED',
-			'This card expired after 24 hours. Ask Jev again. Nothing changed.'
+			'This card expired after 24 hours. Ask again. Nothing changed.'
 		);
-	// A card can appear before Jev finishes replying; a click waits for the turn.
+	// A card can appear before the reply finishes; a click waits for the turn.
 	if (!TERMINAL_TURN_STATUSES.has(String(turn.status)))
 		return failure(
 			409,
 			'TURN_IN_PROGRESS',
-			'Jev is still replying. Choose again when the reply finishes.'
+			'The chat is still replying. Choose again when the reply finishes.'
 		);
 
 	const handler = PROPOSAL_CARD_HANDLERS[card.kind];
@@ -688,7 +688,7 @@ export async function previewProposalCard(
 			});
 		const proposedAt = Date.parse(loaded.row.created_at ?? '');
 		if (!Number.isFinite(proposedAt) || deps.now().getTime() - proposedAt >= spec.ttlMs)
-			return failure(410, 'CARD_EXPIRED', 'This card expired after 24 hours. Ask Jev again.');
+			return failure(410, 'CARD_EXPIRED', 'This card expired after 24 hours. Ask again.');
 		return handler.preview(ctx);
 	}
 

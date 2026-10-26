@@ -197,7 +197,7 @@ function staleText(reason: string | null, payload: ProjectParentProposalPayloadV
 		case 'project_not_found':
 			return 'One of these projects no longer exists or is archived. Nothing changed.';
 		default:
-			return 'Where this project sits changed since this card. Nothing changed. Ask Jev again.';
+			return 'Where this project sits changed since this card. Nothing changed. Ask again.';
 	}
 }
 

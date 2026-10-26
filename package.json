@@ -11,6 +11,8 @@
 		"test:coverage": "turbo test:coverage --concurrency=2",
 		"test:schema-tools": "node --import tsx --test scripts/lib/supabase-openapi-types.test.ts",
 		"test:sveltekit-sync": "node --test scripts/testing/sveltekit-sync.test.mjs",
+		"test:sql-current": "python3 scripts/database/current_schema.py",
+		"test:database-tools": "python3 -m unittest discover -s scripts/database && python3 -m unittest discover -s scripts/migration-rehearsal -v",
 		"test:sql-contracts": "node scripts/database/run-sql-contracts.mjs",
 		"test:agentic-chat-read-canary": "node --import tsx --test scripts/lib/agentic-chat-read-canary.test.ts",
 		"verify:agentic-chat-read-canary": "node --import tsx scripts/verify-agentic-chat-read-canary.ts",
@@ -22,7 +24,7 @@
 		"format": "prettier --write .",
 		"format:changed": "node --import tsx scripts/formatChanged.ts",
 		"clean": "turbo clean",
-		"verify:static": "pnpm run check:doc-health:strict && pnpm run check:migrations && pnpm run check:libri-migrations && pnpm run check:sql-contracts && pnpm run test:schema-tools && pnpm run test:sveltekit-sync && turbo typecheck typecheck:tests --concurrency=2 && turbo lint --concurrency=2",
+		"verify:static": "pnpm run check:doc-health:strict && pnpm run check:migrations && pnpm run check:libri-migrations && pnpm run check:sql-contracts && pnpm run test:schema-tools && pnpm run test:sveltekit-sync && pnpm run test:agentic:gate && pnpm run test:database-tools && turbo typecheck typecheck:tests --concurrency=2 && turbo lint --concurrency=2",
 		"verify": "pnpm run verify:static && turbo build --concurrency=2 && turbo test:run --concurrency=2",
 		"verify:libri-migrations": "pnpm run check:migrations && pnpm run check:libri-migrations && pnpm run check:sql-contracts && pnpm run test:sql-contracts",
 		"pre-push": "pnpm run verify",
@@ -45,7 +47,10 @@
 		"agentic:prod-battery": "node --import tsx scripts/agentic/prod-battery.ts",
 		"agentic:incidents": "node --import tsx scripts/agentic/llm-incidents.ts",
 		"db:rehearse": "python3 scripts/migration-rehearsal/rehearse.py",
-		"test:agentic:gate": "node --import tsx --test scripts/agentic/*.test.ts"
+		"test:agentic:gate": "node --import tsx --test scripts/agentic/*.test.ts",
+		"verify:ci": "pnpm run verify:static && pnpm run build && pnpm run test:coverage",
+		"test:inventory": "node scripts/testing/test-inventory.mjs",
+		"test:browser:smoke": "node apps/web/tests/browser/run.mjs"
 	},
 	"devDependencies": {
 		"dotenv": "^16.4.5",
