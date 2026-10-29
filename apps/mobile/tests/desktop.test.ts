@@ -222,6 +222,47 @@ describe('arrangeDesktop', () => {
 		expect(arrangeDesktop(all, { query: 'nothing here' }).groups).toEqual([]);
 		expect(arrangeDesktop([workspace]).groups).toEqual([]);
 	});
+
+	it('shows only planning and active tiles; completed folds away; search finds every state', () => {
+		const planning = tile({
+			id: 'planning',
+			name: 'Plan',
+			state_key: 'planning',
+			updated_at: at(2)
+		});
+		const paused = tile({
+			id: 'paused',
+			name: 'Paused one',
+			state_key: 'paused',
+			updated_at: at(3)
+		});
+		const done = tile({
+			id: 'done',
+			name: 'Done one',
+			state_key: 'completed',
+			updated_at: at(4)
+		});
+		const cancelled = tile({ id: 'cancelled', state_key: 'cancelled', updated_at: at(6) });
+		const odd = tile({ id: 'odd', state_key: null as unknown as string, updated_at: at(7) });
+		const list = [workspace, solo, planning, paused, done, cancelled, odd];
+
+		const result = arrangeDesktop(list);
+		expect(ids(result.groups[0]?.projects ?? [])).toEqual(['planning', 'solo', 'odd']);
+		expect(result.shown).toBe(3);
+		expect(ids(result.completed)).toEqual(['done']);
+
+		const searched = arrangeDesktop(list, { query: 'one' });
+		expect(ids(searched.groups[0]?.projects ?? []).sort()).toEqual(['done', 'paused']);
+		expect(searched.completed).toEqual([]);
+	});
+
+	it('a finished folder stays on the grid while something inside it is current', () => {
+		const shelf = tile({ id: 'shelf', state_key: 'completed', updated_at: at(1) });
+		const live = tile({ id: 'live', parent_project_id: 'shelf', updated_at: at(2) });
+		const result = arrangeDesktop([shelf, live]);
+		expect(ids(result.groups[0]?.projects ?? [])).toEqual(['shelf']);
+		expect(result.completed).toEqual([]);
+	});
 });
 
 describe('what a tile says', () => {

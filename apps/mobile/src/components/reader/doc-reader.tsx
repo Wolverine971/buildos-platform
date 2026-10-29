@@ -12,6 +12,7 @@ import { ReaderHead, useScrolledPastTop } from '@/components/reader/reader-head'
 import { ReaderNote, ReaderStatus, Rise } from '@/components/reader/reader-status';
 import { useDocument, useUpdateDocument } from '@/hooks/use-entities';
 import { unreachableMessage } from '@/lib/api';
+import { withoutRepeatedTitle } from '@/lib/markdown';
 import { useInk } from '@/providers/theme-provider';
 import { radius, spacing, typeScale } from '@/theme';
 
@@ -279,7 +280,7 @@ export function DocReader({
 				>
 					<Rise>
 						{doc.content?.trim() ? (
-							<Markdown source={doc.content} />
+							<Markdown source={withoutRepeatedTitle(doc.content, doc.title)} />
 						) : (
 							<Text
 								maxFontSizeMultiplier={1.4}
@@ -334,7 +335,9 @@ export function DocReader({
 							icon={Pencil}
 							variant="outline"
 							disabled={!canEdit}
-							accessibilityHint={table ? 'Tables are edited on the website' : undefined}
+							accessibilityHint={
+								table ? 'Tables are edited on the website' : undefined
+							}
 							onPress={startEdit}
 						/>
 						<BarKey

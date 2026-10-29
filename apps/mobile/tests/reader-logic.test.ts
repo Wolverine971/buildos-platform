@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { orderDocs } from '@/lib/doc-order';
 import { civilDay, describeDue, duePicks, isDueOn } from '@/lib/due-date';
-import { inlineText, parseMarkdown } from '@/lib/markdown';
+import { inlineText, parseMarkdown, withoutRepeatedTitle } from '@/lib/markdown';
 import { getReaderWalk, setReaderWalk, walkPosition } from '@/lib/reader-walk';
 import { bucketOf, fetchWholeBucket, groupTasks } from '@/lib/task-buckets';
 
@@ -270,5 +270,25 @@ describe('markdown', () => {
 	it('returns nothing for empty text', () => {
 		expect(parseMarkdown('')).toEqual([]);
 		expect(parseMarkdown(null)).toEqual([]);
+	});
+});
+
+describe('withoutRepeatedTitle', () => {
+	it('drops a first heading that repeats the title', () => {
+		expect(
+			withoutRepeatedTitle(
+				'# BuildOS Brand Voice Reference\n\n## Core Vibe\nText',
+				'BuildOS  Brand Voice Reference'
+			)
+		).toBe('## Core Vibe\nText');
+	});
+
+	it('keeps anything else', () => {
+		expect(withoutRepeatedTitle('# Another heading\nText', 'BuildOS')).toBe(
+			'# Another heading\nText'
+		);
+		expect(withoutRepeatedTitle('Intro\n# BuildOS', 'BuildOS')).toBe('Intro\n# BuildOS');
+		expect(withoutRepeatedTitle('## BuildOS\nText', 'BuildOS')).toBe('## BuildOS\nText');
+		expect(withoutRepeatedTitle('# BuildOS', null)).toBe('# BuildOS');
 	});
 });

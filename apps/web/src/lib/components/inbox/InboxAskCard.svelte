@@ -134,7 +134,7 @@
 						{answer.label}
 						{#if answer.recommended}
 							<span
-								class="rounded border border-info/40 px-1 py-px font-mono text-[10px] font-semibold uppercase tracking-wide text-info"
+								class="rounded border border-info/40 px-1 py-px font-mono text-2xs font-semibold uppercase tracking-wide text-info"
 							>
 								Recommended
 							</span>

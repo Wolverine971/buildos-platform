@@ -3,6 +3,7 @@
 // belong to no project yet) on top, then every project as a tile. One search box filters both;
 // capture is docked at the bottom.
 import {
+	type DesktopProject,
 	type DesktopResponse,
 	isBuildOsApiError,
 	type LooseItemSummary
@@ -26,6 +27,8 @@ import {
 	AccountKey,
 	AlertTriangle,
 	BoltSpinner,
+	ChevronDown,
+	ChevronRight,
 	Key,
 	MicroLabel,
 	NavBar,
@@ -469,9 +472,60 @@ function ProjectsSection({
 					)
 				)
 			)}
+
+			{arrangement.completed.length ? (
+				<CompletedFold
+					projects={arrangement.completed}
+					nestedCounts={arrangement.nestedCounts}
+				/>
+			) : null}
 		</View>
 	);
 }
+
+/** Finished projects, folded away like the website's COMPLETED section. */
+function CompletedFold({
+	projects,
+	nestedCounts
+}: {
+	projects: DesktopProject[];
+	nestedCounts: Map<string, number>;
+}) {
+	const { colors } = useInk();
+	const [open, setOpen] = useState(false);
+	return (
+		<View style={styles.group}>
+			<Pressable
+				accessibilityRole="button"
+				accessibilityState={{ expanded: open }}
+				accessibilityLabel={`Completed, ${projects.length}`}
+				hitSlop={10}
+				onPress={() => {
+					playHaptic('selection');
+					setOpen((value) => !value);
+				}}
+				style={styles.foldHead}
+			>
+				{open ? (
+					<ChevronDown size={14} color={colors.mutedForeground} strokeWidth={2.25} />
+				) : (
+					<ChevronRight size={14} color={colors.mutedForeground} strokeWidth={2.25} />
+				)}
+				<MicroLabel>{`Completed · ${projects.length}`}</MicroLabel>
+			</Pressable>
+			{open ? (
+				<TileGrid
+					projects={projects}
+					nestedCounts={nestedCounts}
+					parentNames={EMPTY_NAMES}
+					onOpen={dismissKeyboard}
+				/>
+			) : null}
+		</View>
+	);
+}
+
+const EMPTY_NAMES = new Map<string, string>();
 
 function dismissKeyboard() {
 	Keyboard.dismiss();
@@ -719,6 +773,13 @@ const styles = StyleSheet.create({
 	},
 	tools: { flexDirection: 'row', alignItems: 'center', gap: 6 },
 	group: { gap: 2 },
+	foldHead: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 6,
+		minHeight: 36,
+		alignSelf: 'flex-start'
+	},
 	track: { flexDirection: 'row', padding: SEG.pad, borderRadius: SEG.radius + SEG.pad },
 	thumb: {
 		position: 'absolute',

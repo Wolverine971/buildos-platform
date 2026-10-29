@@ -145,6 +145,8 @@ export type DesktopArrangement = {
 	groups: TileGroup[];
 	/** Tiles shown across the groups. */
 	shown: number;
+	/** Finished top-level projects for the folded Completed section (empty while searching). */
+	completed: DesktopProject[];
 	/** Every project tile, sub-projects included (the Workspace row excluded). */
 	total: number;
 	nestedCounts: Map<string, number>;
@@ -153,9 +155,29 @@ export type DesktopArrangement = {
 	searching: boolean;
 };
 
+/** Unknown or missing states count as planning, like the website's normalizeProjectState. */
+function stateOf(project: DesktopProject): string {
+	const state = project.state_key?.trim().toLowerCase();
+	return state === 'active' ||
+		state === 'paused' ||
+		state === 'completed' ||
+		state === 'cancelled'
+		? state
+		: 'planning';
+}
+
+/** The website's default "current" scope: planning and active. Paused, completed and
+ * cancelled leave the grid (completed folds into its own section); search still finds them. */
+export function isCurrent(project: DesktopProject): boolean {
+	const state = stateOf(project);
+	return state === 'planning' || state === 'active';
+}
+
 /**
- * Everything the Workspace grid needs in one call. Without a query: top-level tiles. With
- * one: matches laid out flat, sub-projects included (as the website's search does).
+ * Everything the Workspace grid needs in one call, matching the website's desktop. Without a
+ * query: top-level tiles in the current scope (a folder stays when anything inside it is
+ * current), plus finished top-level projects for the folded Completed section. With a query:
+ * matches across every state, laid out flat, sub-projects included.
  */
 export function arrangeDesktop(
 	projects: readonly DesktopProject[],
@@ -163,7 +185,27 @@ export function arrangeDesktop(
 ): DesktopArrangement {
 	const tiles = projects.filter(isTile);
 	const searching = query.trim().length > 0;
-	const shown = sortRecent(searching ? filterByName(tiles, query) : topLevel(projects), projects);
+	const currentChild = new Set(
+		tiles
+			.filter((project) => project.parent_project_id && isCurrent(project))
+			.map((project) => project.parent_project_id as string)
+	);
+	const desk = topLevel(projects);
+	const shown = sortRecent(
+		searching
+			? filterByName(tiles, query)
+			: desk.filter((project) => isCurrent(project) || currentChild.has(project.id)),
+		projects
+	);
+	const placed = new Set(shown.map((project) => project.id));
+	const completed = searching
+		? []
+		: sortRecent(
+				desk.filter(
+					(project) => stateOf(project) === 'completed' && !placed.has(project.id)
+				),
+				projects
+			);
 	const groups: TileGroup[] =
 		sort === 'activity'
 			? groupByPulse(shown)
@@ -181,6 +223,7 @@ export function arrangeDesktop(
 	return {
 		groups,
 		shown: shown.length,
+		completed,
 		total: tiles.length,
 		nestedCounts: nestedCounts(projects),
 		parentNames,

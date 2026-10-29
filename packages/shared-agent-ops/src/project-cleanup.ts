@@ -228,9 +228,10 @@ export function openCleanupAsks(
 		const itemIds = (ask.item_ids ?? []).filter((id) => byId.has(id) && !claimed.has(id));
 		if (!itemIds.length) continue;
 		const allExecutable = itemIds.every((id) => byId.get(id)?.executable);
-		const answers = (ask.answers ?? []).filter(
-			(answer) => answer.action !== 'apply' || allExecutable
-		);
+		const answers = ask.answers ?? [];
+		// An "apply" answer needs every covered item to have a change. Without it the question
+		// would offer only "no" and "talk", so the items keep their own cards instead.
+		if (!allExecutable && answers.some((answer) => answer.action === 'apply')) continue;
 		if (answers.length < 2) continue;
 		itemIds.forEach((id) => claimed.add(id));
 		open.push({ ...ask, item_ids: itemIds, answers });

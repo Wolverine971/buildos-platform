@@ -179,3 +179,16 @@ export function inlineText(inline: Inline[]): string {
 		})
 		.join('');
 }
+
+/**
+ * Drops a leading "# Title" when it repeats the title the reader already shows in its head,
+ * so a doc's name isn't printed twice. Only an exact (case- and space-insensitive) match goes.
+ */
+export function withoutRepeatedTitle(source: string, title: string | null | undefined): string {
+	const name = title?.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+	if (!name) return source;
+	const match = /^\s*#[ \t]+([^\n]*?)[ \t#]*(?:\n|$)/.exec(source);
+	if (!match) return source;
+	const heading = (match[1] ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+	return heading === name ? source.slice(match[0].length).replace(/^\s*\n/, '') : source;
+}

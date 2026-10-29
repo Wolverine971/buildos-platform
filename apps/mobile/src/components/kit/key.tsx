@@ -59,7 +59,11 @@ function usePressMotion(rest: number, pressed: number) {
 		},
 		up() {
 			if (reduceMotion) {
-				Animated.timing(value, { toValue: rest, duration: 0, useNativeDriver: true }).start();
+				Animated.timing(value, {
+					toValue: rest,
+					duration: 0,
+					useNativeDriver: true
+				}).start();
 				return;
 			}
 			Animated.spring(value, { toValue: rest, ...KEY_SPRING, useNativeDriver: true }).start();
@@ -151,7 +155,9 @@ export function Key({
 						border: colors.border,
 						text: colors.foreground,
 						lip: ink.lip,
-						highlight: ink.dark ? 'rgba(255, 255, 255, 0.07)' : 'rgba(255, 255, 255, 0.35)'
+						highlight: ink.dark
+							? 'rgba(255, 255, 255, 0.07)'
+							: 'rgba(255, 255, 255, 0.35)'
 					}
 				: {
 						face: 'transparent',
@@ -215,6 +221,8 @@ export function Key({
 					<Animated.View
 						style={[
 							styles.face,
+							// Only bar cells grow to fill their slot; other keys hug their content.
+							stacked ? styles.fill : null,
 							{
 								minHeight: m.height,
 								minWidth: iconOnly && !stacked ? m.height : undefined,
@@ -223,7 +231,9 @@ export function Key({
 								backgroundColor:
 									!raised && pressed ? withAlpha(colors.muted, 0.7) : tone.face,
 								borderColor: tone.border,
-								boxShadow: tone.highlight ? `inset 0 1px 0 ${tone.highlight}` : undefined,
+								boxShadow: tone.highlight
+									? `inset 0 1px 0 ${tone.highlight}`
+									: undefined,
 								transform: [{ translateY: press.value }]
 							}
 						]}
@@ -233,7 +243,11 @@ export function Key({
 							<View style={styles.spinner}>
 								<BoltSpinner
 									size={Math.round(m.icon * 1.15)}
-									color={variant === 'primary' ? colors.accentForeground : colors.accent}
+									color={
+										variant === 'primary'
+											? colors.accentForeground
+											: colors.accent
+									}
 									label="Working"
 								/>
 							</View>
@@ -370,7 +384,11 @@ export function RoundKey({
 					}
 				]}
 			>
-				<IconGlyph size={iconSize ?? Math.round(size * 0.45)} color={palette.glyph} strokeWidth={2} />
+				<IconGlyph
+					size={iconSize ?? Math.round(size * 0.45)}
+					color={palette.glyph}
+					strokeWidth={2}
+				/>
 			</Animated.View>
 		</Pressable>
 	);
@@ -380,11 +398,11 @@ const styles = StyleSheet.create({
 	key: { paddingBottom: KEY_PRESS.travel },
 	lip: { position: 'absolute', left: 0, right: 0, top: KEY_PRESS.travel, bottom: 0 },
 	face: {
-		flexGrow: 1,
 		borderWidth: 1,
 		alignItems: 'center',
 		justifyContent: 'center'
 	},
+	fill: { flexGrow: 1 },
 	row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
 	stack: { alignItems: 'center', justifyContent: 'center' },
 	title: { fontWeight: '600', letterSpacing: -0.1 },

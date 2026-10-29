@@ -238,12 +238,22 @@ describe('openCleanupAsks', () => {
 		expect(asks[0]?.answers).toHaveLength(3);
 	});
 
-	it('drops an apply answer when a covered item has nothing to apply', () => {
+	it('drops an ask whose apply answer covers an item with nothing to apply', () => {
 		const asks = openCleanupAsks(
-			[{ id: 'q1', question: 'Both?', context: null, item_ids: ['a', 'b'], answers }],
+			[
+				{ id: 'q1', question: 'Both?', context: null, item_ids: ['a', 'b'], answers },
+				{
+					id: 'q2',
+					question: 'Handled?',
+					context: null,
+					item_ids: ['b'],
+					answers: answers.slice(1)
+				}
+			],
 			view.items
 		);
-		expect(asks[0]?.answers.map((answer) => answer.action)).toEqual(['dismiss', 'chat']);
+		// q1 would have kept only "Keep it" and "Tell me more"; b is free for q2.
+		expect(asks.map((ask) => ask.id)).toEqual(['q2']);
 	});
 
 	it('gives each item to one ask and drops asks left with fewer than two answers', () => {

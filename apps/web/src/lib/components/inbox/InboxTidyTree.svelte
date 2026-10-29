@@ -157,7 +157,7 @@
 							: 'text-foreground'}>{node.title}</span
 					>
 					{#if node.note}
-						<span class="ml-1 font-mono text-[10.5px] {MARK_NOTE[node.mark ?? 'call']}"
+						<span class="ml-1 font-mono text-2xs {MARK_NOTE[node.mark ?? 'call']}"
 							>{node.note}</span
 						>
 					{/if}
