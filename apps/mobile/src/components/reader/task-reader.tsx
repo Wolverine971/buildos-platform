@@ -29,6 +29,7 @@ import {
 	taskStateLabel
 } from '@/components/reader/task-state';
 import { useTask, useUpdateTask } from '@/hooks/use-entities';
+import { unreachableMessage } from '@/lib/api';
 import { describeDue, endOfDay } from '@/lib/due-date';
 import { bucketOf } from '@/lib/task-buckets';
 import { useInk } from '@/providers/theme-provider';
@@ -36,7 +37,8 @@ import { radius, spacing, typeScale } from '@/theme';
 
 function describeError(error: unknown): string {
 	if (isBuildOsApiError(error)) {
-		if (error.isNetworkError) return 'No connection. That change was not saved.';
+		if (error.isNetworkError)
+			return unreachableMessage('No connection. That change was not saved.');
 		if (error.status === 403) return 'This project is view-only for you.';
 		return error.message;
 	}

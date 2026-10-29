@@ -3,8 +3,19 @@ import { BuildOsApiError, createBuildOsClient } from '@buildos/api-client';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
+import { devServerHint } from '@/lib/config';
 import { config } from '@/lib/env';
 import { supabase } from '@/lib/supabase';
+
+const serverHint = devServerHint(config.apiBaseUrl);
+
+/**
+ * What to say when a request never reached BuildOS. Pointed at a laptop dev server, that
+ * almost always means the server isn't running, so say that instead of "No connection".
+ */
+export function unreachableMessage(offline: string): string {
+	return serverHint ?? offline;
+}
 
 const appVersion = Constants.expoConfig?.version ?? '0.0.0';
 const defaultHeaders = { 'X-BuildOS-Client': `${Platform.OS}/${appVersion}` };

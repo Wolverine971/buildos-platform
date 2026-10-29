@@ -49,6 +49,8 @@ import {
 	type CleanupAutoApplyCandidate,
 	type CleanupAutoApplyTool,
 	buildCleanupAutoApplyRequest,
+	cleanupAutoApplyProjectView,
+	cleanupCandidateRecordIds,
 	passesCleanupAutoApplyGate,
 	readCleanupAutoApplyScores
 } from '../src/workers/project-loop/cleanupAutoApply';
@@ -129,7 +131,18 @@ function loopContext(project: ContextFinderProjectV1): LoopContext {
 			name: String(goal.name ?? 'Untitled goal'),
 			description: (goal.description as string | null) ?? null
 		})),
-		documents: [],
+		// Facts Jev sees about the records a tidy-up touches (the pass gets these from its graph).
+		documents: project.documents.map((doc) => ({
+			id: String(doc.id),
+			title: String(doc.title ?? 'Untitled'),
+			type_key: (doc.type_key as string | null) ?? null,
+			state_key: (doc.state_key as string | null) ?? null,
+			description: null,
+			updated_at:
+				(doc.updated_at as string | null) ?? (doc.created_at as string | null) ?? null,
+			parent_id: null,
+			...(typeof doc.content === 'string' ? { content_chars: doc.content.length } : {})
+		})),
 		docStructureSummary: '(not loaded by the dry run)',
 		tasks: project.tasks
 			.filter((task) => task.state_key !== 'done')
@@ -169,6 +182,20 @@ async function main() {
 	const signal = new AbortController().signal;
 	const project = await loadContextFinderProject(db as never, projectId!, signal);
 	const ctx = loopContext(project);
+	// The owner's recent filing and archiving answers, read like the pass's loadPriorDecisions.
+	const { data: decided } = await db
+		.from('project_suggestions')
+		.select('kind, status, title')
+		.eq('project_id', projectId!)
+		.in('status', ['applied', 'rejected', 'addressed'])
+		.gte('updated_at', new Date(Date.now() - 60 * 86_400_000).toISOString())
+		.order('updated_at', { ascending: false })
+		.limit(30);
+	ctx.priorDecisions = ((decided ?? []) as Array<Record<string, unknown>>).map((row) => ({
+		title: String(row.title ?? ''),
+		kind: String(row.kind ?? ''),
+		status: String(row.status ?? '')
+	}));
 	const [rows, view] = await Promise.all([
 		loadProjectCleanupRows(db as never, projectId!),
 		loadProjectCleanupView(db as never, projectId!, { verify: true })
@@ -244,18 +271,17 @@ async function main() {
 						.join('; '),
 					summary: item.summary,
 					evidenceTitles: item.evidence_refs.map((ref) => ref.title).slice(0, 6),
+					recordIds: cleanupCandidateRecordIds(itemRows as unknown as OpenReviewRow[]),
 					rows: itemRows as unknown as OpenReviewRow[],
 					tools: tools as CleanupAutoApplyTool[],
 					firstSeenAt: item.first_seen_at
 				}
 			];
 		});
-	const projectView = {
-		name: ctx.projectName,
-		description: ctx.projectDescription,
-		goals: ctx.goals,
-		currentState: ctx.startHere?.currentState ?? null
-	};
+	const projectView = cleanupAutoApplyProjectView(ctx);
+	console.log(
+		`Past tidy decisions: ${JSON.stringify(projectView.pastTidyDecisions)}; records with facts: ${projectView.records?.size ?? 0}`
+	);
 	const currentSections = new Map(reviewItems.map((item) => [item.id, item.section]));
 	const preview = buildCleanupAutoApplyRequest({
 		project: projectView,
@@ -266,6 +292,7 @@ async function main() {
 	);
 	for (const candidate of preview?.candidates ?? [])
 		console.log(`  candidate: ${candidate.headline}`);
+	if (preview) writeFileSync(join(out, 'jev-request.json'), JSON.stringify(preview.request, null, 2));
 	if (!live) return;
 
 	let cost = 0;

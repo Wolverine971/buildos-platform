@@ -32,7 +32,7 @@ import {
 	walkOrder
 } from '@/components/today';
 import { useTabStack } from '@/hooks/use-tab-stack';
-import { api } from '@/lib/api';
+import { api, unreachableMessage } from '@/lib/api';
 import { civilDay } from '@/lib/due-date';
 import { setReaderWalk } from '@/lib/reader-walk';
 import { projectHref } from '@/lib/routes';
@@ -248,7 +248,7 @@ function describeError(error: unknown): string {
 		return 'You are signed in, but BuildOS could not authorize this request. Try again shortly.';
 	}
 	if (error && typeof error === 'object' && 'isNetworkError' in error && error.isNetworkError) {
-		return 'No connection. Your day will load when you are back online.';
+		return unreachableMessage('No connection. Your day will load when you are back online.');
 	}
 	return error instanceof Error ? error.message : 'Something went wrong.';
 }

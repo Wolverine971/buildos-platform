@@ -592,7 +592,7 @@ describe('parseCleanupSynthesis asks', () => {
 		);
 	});
 
-	it('drops "apply" unless every covered item has a change, and asks left with < 2 answers', () => {
+	it('drops an ask whose "apply" covers an item with no change, and asks left with < 2 answers', () => {
 		const asks = parse([
 			{
 				items: ['i1', 'i2'],
@@ -621,11 +621,9 @@ describe('parseCleanupSynthesis asks', () => {
 				]
 			}
 		]);
-		expect(asks.map((ask) => ask.item_ids)).toEqual([['lin-doc', 'lin-goal'], ['lin-archive']]);
-		expect(asks[0].answers.map((answer) => answer.action)).toEqual(['dismiss', 'chat']);
-		// The recommended answer was dropped; nothing else is promoted.
-		expect(asks[0].answers.some((answer) => answer.recommended)).toBe(false);
-		expect(asks[1].answers.map((answer) => answer.action)).toEqual(['apply', 'dismiss']);
+		// The first ask would be left with only "Not needed" and "Talk it through".
+		expect(asks.map((ask) => ask.item_ids)).toEqual([['lin-archive']]);
+		expect(asks[0].answers.map((answer) => answer.action)).toEqual(['apply', 'dismiss']);
 	});
 
 	it('puts each item in one ask, skips items resolved or merged away, and caps lengths', () => {

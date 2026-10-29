@@ -41,6 +41,7 @@ import { LegendKey } from '@/components/workspace/legend';
 import { TileGrid } from '@/components/workspace/tile-grid';
 import { useDesktop } from '@/hooks/use-desktop';
 import { useTabStack } from '@/hooks/use-tab-stack';
+import { unreachableMessage } from '@/lib/api';
 import { arrangeDesktop, type DesktopArrangement, type DesktopSort } from '@/lib/desktop';
 import { type ReaderItem, setReaderWalk } from '@/lib/reader-walk';
 import { OPEN_PROJECT_PARAM, projectHref } from '@/lib/routes';
@@ -610,7 +611,9 @@ function isOffline(error: unknown): boolean {
 
 function describeError(error: unknown): string {
 	if (isOffline(error))
-		return 'No connection. Your Workspace will load when you are back online.';
+		return unreachableMessage(
+			'No connection. Your Workspace will load when you are back online.'
+		);
 	if (isBuildOsApiError(error) && error.status === 401) {
 		return 'You are signed in, but BuildOS could not authorize this request. Try again shortly.';
 	}
@@ -651,7 +654,7 @@ function StaleNote({ error }: { error: unknown }) {
 				style={[typeScale.meta, styles.staleText, { color: colors.mutedForeground }]}
 			>
 				{isOffline(error)
-					? 'No connection. Showing what loaded last.'
+					? unreachableMessage('No connection. Showing what loaded last.')
 					: 'Could not refresh. Showing what loaded last; pull down to try again.'}
 			</Text>
 		</View>

@@ -6,12 +6,16 @@ import { type Icon, MicroLabel, Stamp, type StampTone } from '@/components/kit';
 import { useCaptureQueue } from '@/hooks/use-capture-queue';
 import { formatDuration } from '@/lib/capture-audio';
 import type { CaptureStage, DrainStop, PendingCapture } from '@/lib/capture-queue';
+import { devServerHint } from '@/lib/config';
+import { config } from '@/lib/env';
 import { useTheme } from '@/providers/theme-provider';
 import { typeScale, withAlpha } from '@/theme';
 
 /** Why pending captures are waiting, by why the last send attempt stopped. */
 const REASON: Record<DrainStop, string> = {
-	offline: 'No connection, saved on this phone',
+	offline: devServerHint(config.apiBaseUrl)
+		? 'Dev server not running, saved on this phone'
+		: 'No connection, saved on this phone',
 	unauthorized: 'Sign in to send',
 	server: 'BuildOS unreachable, will retry'
 };

@@ -1,6 +1,6 @@
 // apps/mobile/tests/config.test.ts
 import { describe, expect, it } from 'vitest';
-import { readMobileConfig } from '@/lib/config';
+import { devServerHint, readMobileConfig } from '@/lib/config';
 
 const valid = {
 	supabaseUrl: 'https://abc.supabase.co/',
@@ -39,5 +39,18 @@ describe('readMobileConfig', () => {
 		['secret key', { ...valid, supabaseAnonKey: 'sb_secret_123' }, /never a secret key/]
 	])('rejects %s', (_label, env, message) => {
 		expect(() => readMobileConfig(env)).toThrow(message);
+	});
+});
+
+describe('devServerHint', () => {
+	it('names a LAN dev server and how to start it', () => {
+		const hint = devServerHint('http://192.168.1.154:5199');
+		expect(hint).toContain('192.168.1.154:5199');
+		expect(hint).toContain('--port 5199');
+	});
+
+	it('stays quiet for the real HTTPS server or a bad URL', () => {
+		expect(devServerHint('https://build-os.com')).toBeNull();
+		expect(devServerHint('not a url')).toBeNull();
 	});
 });

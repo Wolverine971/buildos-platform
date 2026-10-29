@@ -140,6 +140,7 @@ export const CLEANUP_ASK_GUIDANCE = [
 	'Answer actions: "apply" only when the answer means "make the change shown under approving it", and only for items that have a change; "dismiss" when it is not needed; "done" when the owner already handled it; "note" when the answer describes a specific situation (the answer is handed to a reader that updates the project or starts an agent); "chat" to talk it through.',
 	'Audit items are offers of work: phrase them as "Want me to …?" with answers like {"label": "Yes, ask me", "action": "chat"} and {"label": "Not for this project", "action": "dismiss"}.',
 	'Findings with nothing to apply get answers like "Already handled" (done), "Not needed" (dismiss), or a specific situation (note).',
+	'An "apply" answer applies every item in its ask, so never put an item whose approving changes nothing (a note) in an ask that has an "apply" answer; such an ask is discarded. Ask about the note separately.',
 	'Mark at most one answer recommended. Item ids never appear in questions, context, labels or effects.'
 ].join('\n');
 
@@ -202,6 +203,7 @@ export function parseCleanupAsks(params: {
 		const everyItemHasAChange = items.every((item) => item.executable);
 		const answers: ProjectCleanupAnswer[] = [];
 		let recommendedTaken = false;
+		let lostApply = false;
 		for (const rawAnswer of Array.isArray(record.answers) ? record.answers : []) {
 			if (!rawAnswer || typeof rawAnswer !== 'object') continue;
 			const answer = rawAnswer as Record<string, unknown>;
@@ -211,7 +213,10 @@ export function parseCleanupAsks(params: {
 			const label = readable(answer.label, CLEANUP_ASK_LIMITS.label);
 			if (!action || !label) continue;
 			// "Make the change" only when every covered item has a change to make.
-			if (action === 'apply' && !everyItemHasAChange) continue;
+			if (action === 'apply' && !everyItemHasAChange) {
+				lostApply = true;
+				continue;
+			}
 			if (answers.some((other) => other.label.toLowerCase() === label.toLowerCase()))
 				continue;
 			const recommended = answer.recommended === true && !recommendedTaken;
@@ -224,7 +229,9 @@ export function parseCleanupAsks(params: {
 			});
 			if (answers.length === CLEANUP_ASK_LIMITS.maxAnswers) break;
 		}
-		if (answers.length < CLEANUP_ASK_LIMITS.minAnswers) continue;
+		// A question whose "yes" was dropped would offer only "no" and "talk": its items keep
+		// their own cards instead (live Wayne pass, 2026-10-29).
+		if (lostApply || answers.length < CLEANUP_ASK_LIMITS.minAnswers) continue;
 		const lineageIds = items.map((item) => item.lineageId);
 		lineageIds.forEach((id) => claimed.add(id));
 		asks.push({

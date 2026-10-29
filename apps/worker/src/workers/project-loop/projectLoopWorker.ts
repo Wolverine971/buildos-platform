@@ -99,6 +99,7 @@ import { type CleanupSynthesisResult, buildHeuristicCleanupSynthesis } from './c
 import {
 	type CleanupAutoApplyWriters,
 	describeCleanupAutoApply,
+	cleanupAutoApplyProjectView,
 	runCleanupAutoApply,
 	selectCleanupAutoApplyCandidates
 } from './cleanupAutoApply';
@@ -3850,12 +3851,7 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 							projectId,
 							userId: run.user_id,
 							runId,
-							project: {
-								name: ctx.projectName,
-								description: ctx.projectDescription,
-								goals: ctx.goals,
-								currentState: ctx.startHere?.currentState ?? null
-							},
+							project: cleanupAutoApplyProjectView(ctx),
 							// An item the roll-up wrote a question for waits for the answer.
 							candidates: selectCleanupAutoApplyCandidates({
 								items: judged.items,

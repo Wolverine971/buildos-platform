@@ -47,6 +47,23 @@ export function readMobileConfig(env: {
 	return { supabaseUrl: parsed.origin, supabaseAnonKey, apiBaseUrl };
 }
 
+/**
+ * When the app points at a laptop dev server, a failed request almost always means that server
+ * isn't running, not that the phone is offline. Returns the line to show instead of "No
+ * connection", or null for a real (HTTPS) server.
+ */
+export function devServerHint(apiBaseUrl: string): string | null {
+	let api: URL;
+	try {
+		api = new URL(apiBaseUrl);
+	} catch {
+		return null;
+	}
+	if (api.protocol !== 'http:' || !isPrivateHost(api.hostname)) return null;
+	const port = api.port || '80';
+	return `Can't reach the BuildOS dev server at ${api.host}. On the laptop, run: pnpm --filter @buildos/web dev --host 0.0.0.0 --port ${port} --strictPort`;
+}
+
 // Local dev servers run on the laptop's LAN address; everything else must be HTTPS.
 function isPrivateHost(hostname: string): boolean {
 	return (

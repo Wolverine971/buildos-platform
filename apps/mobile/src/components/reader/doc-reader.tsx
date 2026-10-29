@@ -11,6 +11,7 @@ import type { ReaderChromeProps } from '@/components/reader/reader-handle';
 import { ReaderHead, useScrolledPastTop } from '@/components/reader/reader-head';
 import { ReaderNote, ReaderStatus, Rise } from '@/components/reader/reader-status';
 import { useDocument, useUpdateDocument } from '@/hooks/use-entities';
+import { unreachableMessage } from '@/lib/api';
 import { useInk } from '@/providers/theme-provider';
 import { radius, spacing, typeScale } from '@/theme';
 
@@ -24,7 +25,9 @@ const isConflict = (error: unknown) => isBuildOsApiError(error) && error.status 
 function describeError(error: unknown): string {
 	if (isBuildOsApiError(error)) {
 		if (error.isNetworkError) {
-			return 'No connection. Your text is still here; save again when you are back online.';
+			return unreachableMessage(
+				'No connection. Your text is still here; save again when you are back online.'
+			);
 		}
 		if (error.status === 403) return 'This project is view-only for you.';
 		return error.message;
