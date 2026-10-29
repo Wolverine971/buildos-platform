@@ -5,6 +5,7 @@
 	"description": "BuildOS Platform - AI-powered productivity platform monorepo",
 	"scripts": {
 		"dev": "node scripts/dev.mjs",
+		"dev:mobile": "pnpm --filter @buildos/mobile dev",
 		"build": "turbo build --concurrency=2",
 		"test": "turbo test --concurrency=2",
 		"test:run": "turbo test:run --concurrency=2",
@@ -38,6 +39,7 @@
 		"fix:doc-health": "node scripts/docs/check-doc-health.mjs --stamp",
 		"gen:schema": "node --import tsx scripts/extract-database-schema.ts && node --import tsx scripts/generate-supabase-skill-schema.ts",
 		"gen:skill-schema": "node --import tsx scripts/generate-supabase-skill-schema.ts",
+		"gen:mobile-theme": "node scripts/mobile/generate-inkprint-theme.mjs",
 		"gen:web": "pnpm --filter=web gen:web",
 		"gen": "node --import tsx scripts/run-gen.ts",
 		"gen:all": "pnpm run gen:types -- --allow-stale && pnpm run gen:schema && pnpm run gen:web && pnpm --filter=@buildos/shared-types build && pnpm run label-paths:changed && pnpm run format:changed && pnpm typecheck",

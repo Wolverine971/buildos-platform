@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { z } from 'zod';
 import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
 import { parseJsonRequest } from '$lib/utils/request-validation';
+import { saveNotificationPreferences } from '$lib/server/notification-preferences';
 
 const notificationPreferencesUpdateSchema = z
 	.object({
@@ -150,63 +151,10 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 			}
 		}
 
-		// Build update object for global preferences
-		const updateData: Record<string, any> = {
-			user_id: user.id,
-			updated_at: new Date().toISOString(),
-			...updates
-		};
-
-		if (should_email_daily_brief !== undefined) {
-			updateData.should_email_daily_brief = should_email_daily_brief;
-		}
-
-		if (should_sms_daily_brief !== undefined) {
-			updateData.should_sms_daily_brief = should_sms_daily_brief;
-		}
-
-		// Upsert global user preferences (one row per user)
-		const { data, error } = await supabase
-			.from('user_notification_preferences')
-			.upsert(updateData as any, {
-				onConflict: 'user_id'
-			})
-			.select()
-			.single();
-
-		if (error) throw error;
-
-		// A global channel change (including the project's push opt-in) must not
-		// overwrite an existing brief opt-out. Only an explicit brief choice does.
-		const updatesDailyBrief =
-			should_email_daily_brief !== undefined || should_sms_daily_brief !== undefined;
-		const wantsDailyBriefNotifications = Boolean(
-			data?.should_email_daily_brief ||
-				data?.should_sms_daily_brief ||
-				data?.push_enabled ||
-				data?.in_app_enabled
-		);
-
-		const { error: subscriptionError } = await supabase
-			.from('notification_subscriptions')
-			.upsert(
-				['brief.completed', 'brief.failed'].map((eventType) => ({
-					user_id: user.id,
-					event_type: eventType,
-					is_active: wantsDailyBriefNotifications,
-					admin_only: false,
-					updated_at: new Date().toISOString(),
-					created_by: user.id
-				})),
-				{
-					onConflict: 'user_id,event_type',
-					ignoreDuplicates: !updatesDailyBrief
-				}
-			);
-
-		if (subscriptionError) {
-			throw subscriptionError;
-		}
+		// Upsert the preferences row and keep the brief subscriptions in step. A global
+		// channel change (including the project's push opt-in) must not overwrite an
+		// existing brief opt-out; only an explicit brief choice does.
+		const data = await saveNotificationPreferences(supabase, user.id, body);
 
 		return ApiResponse.success(
 			{ preference: data },

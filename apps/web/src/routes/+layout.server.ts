@@ -15,6 +15,7 @@ import {
 } from '$lib/server/billing-context-cache';
 import { recordAuthenticatedUserActivity } from '$lib/server/authenticated-user-activity';
 import { isGmailRelevancePhaseAReviewUserAllowed } from '$lib/server/gmail-relevance/config';
+import { resolveAppMode } from '$lib/server/app-mode';
 
 type BillingContext = CachedBillingContext;
 
@@ -136,6 +137,7 @@ const WORKFLOW_LAB_NAV_EMAIL = 'djwayne35@gmail.com';
 export const load: LayoutServerLoad = async ({
 	locals: { safeGetSession, supabase, serverTiming },
 	url,
+	cookies,
 	depends
 }) => {
 	depends('app:auth');
@@ -149,9 +151,13 @@ export const load: LayoutServerLoad = async ({
 
 	const stripeEnabled = isStripeEnabled();
 
+	// Inside the BuildOS iPhone app the web chrome (nav, footer) is hidden.
+	const appMode = resolveAppMode({ url, cookies }, { secure: !dev });
+
 	const baseData = {
 		url: url.origin,
-		stripeEnabled
+		stripeEnabled,
+		appMode
 	};
 
 	if (!user) {

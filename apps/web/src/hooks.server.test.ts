@@ -4,6 +4,7 @@ import type { Handle, RequestEvent } from '@sveltejs/kit';
 
 const mocks = vi.hoisted(() => ({
 	createServer: vi.fn(),
+	createBearer: vi.fn(),
 	logError: vi.fn(),
 	adminRpc: vi.fn(),
 	upgrade: vi.fn(),
@@ -26,7 +27,10 @@ vi.mock('@sveltejs/kit/hooks', () => ({
 			return run(0, event);
 		}
 }));
-vi.mock('$lib/supabase', () => ({ createSupabaseServer: mocks.createServer }));
+vi.mock('$lib/supabase', () => ({
+	createSupabaseServer: mocks.createServer,
+	createSupabaseBearer: mocks.createBearer
+}));
 vi.mock('$lib/supabase/admin', () => ({
 	createAdminSupabaseClient: () => ({ rpc: mocks.adminRpc })
 }));
@@ -58,7 +62,7 @@ vi.mock('$lib/server/error-tracking', () => ({
 
 import { handle } from './hooks.server';
 
-function fixture(path = '/today', method = 'GET') {
+function fixture(path = '/today', method = 'GET', headers: Record<string, string> = {}) {
 	const profile = {
 		id: 'verified-user',
 		email: 'profile@example.test',
@@ -96,10 +100,11 @@ function fixture(path = '/today', method = 'GET') {
 	};
 	const from = vi.fn().mockReturnValue(query);
 	mocks.createServer.mockReturnValue({ auth, from });
+	mocks.createBearer.mockReturnValue({ auth, from });
 	const url = new URL(path, 'https://build-os.com');
 	const event = {
 		url,
-		request: new Request(url, { method }),
+		request: new Request(url, { method, headers }),
 		locals: {},
 		route: { id: path },
 		params: {},
@@ -237,6 +242,106 @@ describe('server hook session verification', () => {
 		});
 		expect(f.auth.getClaims).not.toHaveBeenCalled();
 		expect(f.from).not.toHaveBeenCalled();
+	});
+});
+
+describe('bearer sign-in for native clients', () => {
+	const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');
+	const bearerToken = `${encode({ alg: 'ES256' })}.${encode({
+		sub: 'verified-user',
+		exp: Math.floor(Date.now() / 1000) + 3600
+	})}.c2lnbmF0dXJl`;
+	const bearer = (path = '/api/today', method = 'GET') =>
+		fixture(path, method, { authorization: `Bearer ${bearerToken}` });
+
+	it('signs in from the Authorization header without touching cookies', async () => {
+		const f = bearer();
+		await handle({
+			event: f.event,
+			resolve: async (event) => {
+				expect(event.locals.authSource).toBe('bearer');
+				expect(event.locals.user).toBe(f.profile);
+				expect(event.locals.session?.access_token).toBe(bearerToken);
+				return new Response('ok');
+			}
+		});
+		expect(mocks.createBearer).toHaveBeenCalledWith(bearerToken);
+		expect(mocks.createServer).not.toHaveBeenCalled();
+		expect(f.auth.getSession).not.toHaveBeenCalled();
+		expect(f.auth.getClaims).toHaveBeenCalledWith(bearerToken);
+		expect(f.query.eq).toHaveBeenCalledWith('id', f.profile.id);
+		expect(f.event.cookies.set).not.toHaveBeenCalled();
+	});
+
+	it('asks Auth for the live user on bearer mutations', async () => {
+		const f = bearer('/api/onto/tasks/task-1', 'PATCH');
+		await handle({ event: f.event, resolve: async () => new Response('ok') });
+		expect(f.auth.getUser).toHaveBeenCalledWith(bearerToken);
+		expect(f.auth.getClaims).not.toHaveBeenCalled();
+	});
+
+	it('fails closed on a bad bearer token instead of falling back to cookies', async () => {
+		const f = bearer();
+		f.auth.getClaims.mockResolvedValue({ data: null, error: new Error('Invalid signature') });
+		await handle({
+			event: f.event,
+			resolve: async (event) => {
+				expect(event.locals.user).toBeNull();
+				expect(await event.locals.safeGetSession()).toEqual({ user: null, session: null });
+				return new Response('ok');
+			}
+		});
+		expect(mocks.createServer).not.toHaveBeenCalled();
+		expect(f.auth.getSession).not.toHaveBeenCalled();
+		expect(f.from).not.toHaveBeenCalled();
+	});
+
+	it.each(['boca_live_0123456789abcdef', 'bo_0123456789abcdef'])(
+		'leaves agent credentials (%s) to their own routes on the cookie path',
+		async (token) => {
+			const f = fixture('/api/agent-call', 'POST', { authorization: `Bearer ${token}` });
+			f.auth.getSession.mockResolvedValue({ data: { session: null }, error: null });
+			await handle({
+				event: f.event,
+				resolve: async (event) => {
+					expect(event.locals.authSource).toBe('cookie');
+					expect(event.locals.user).toBeNull();
+					return new Response('ok');
+				}
+			});
+			expect(mocks.createBearer).not.toHaveBeenCalled();
+			expect(mocks.createServer).toHaveBeenCalledTimes(1);
+		}
+	);
+
+	it('keeps a pending account deletion signed out without a cookie sign-out', async () => {
+		const f = bearer();
+		f.query.single.mockResolvedValue({
+			data: { ...f.profile, deletion_status: 'pending' },
+			error: null
+		});
+		await handle({
+			event: f.event,
+			resolve: async (event) => {
+				expect(event.locals.user).toBeNull();
+				expect(event.locals._explicitlyCleared).toBe(true);
+				return new Response('ok');
+			}
+		});
+		expect(f.auth.signOut).not.toHaveBeenCalled();
+	});
+
+	it('still runs the consumption gate for bearer mutations', async () => {
+		mocks.billingEnabled = true;
+		mocks.adminRpc.mockResolvedValue({
+			data: [{ is_frozen: true, billing_tier: 'explorer' }],
+			error: null
+		});
+		const f = bearer('/api/onto/tasks/task-1', 'POST');
+		const resolve = vi.fn(async () => new Response('should not run'));
+		const response = await handle({ event: f.event, resolve });
+		expect(response.status).toBe(402);
+		expect(resolve).not.toHaveBeenCalled();
 	});
 });
 

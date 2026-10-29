@@ -262,8 +262,10 @@
 		$page.route?.id === '/(public)/[handle=at_handle]' ||
 			$page.route?.id === '/(public)/[handle=at_handle]/[project]'
 	);
-	let showNavigation = $derived(!isAuthRoute && !isBuilderPageRoute);
-	let showFooter = $derived(!isAuthRoute && !isAdminRoute && !isBuilderPageRoute);
+	// Opened inside the BuildOS iPhone app: the native app provides navigation.
+	let appMode = $derived(Boolean(data.appMode));
+	let showNavigation = $derived(!isAuthRoute && !isBuilderPageRoute && !appMode);
+	let showFooter = $derived(!isAuthRoute && !isAdminRoute && !isBuilderPageRoute && !appMode);
 	// App pages are a sheet (bg-background) lying on the bench; admin and auth bring their own.
 	let isSheetRoute = $derived(!isAdminRoute && !isAuthRoute && !isBuilderPageRoute);
 	let mainContentClasses = $derived(

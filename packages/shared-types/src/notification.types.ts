@@ -223,16 +223,27 @@ export interface NotificationDelivery<
   updated_at: string;
 }
 
+/** Who delivers to this subscription: the browser's push service or Expo's push API. */
+export type PushProvider = 'web_push' | 'expo';
+export type PushPlatform = 'web' | 'ios' | 'android';
+
 export interface PushSubscription {
   id: string;
   user_id: string;
+  /** Web Push endpoint URL, or the Expo push token (`ExponentPushToken[...]`) for Expo rows. */
   endpoint: string;
-  p256dh_key: string;
-  auth_key: string;
+  /** Required for web_push rows; null for Expo rows (the DB CHECK enforces this). */
+  p256dh_key: string | null;
+  auth_key: string | null;
   user_agent?: string;
   created_at: string;
   last_used_at?: string;
   is_active: boolean;
+  /** Defaults to 'web_push' for rows created before native apps existed. */
+  provider?: PushProvider;
+  platform?: PushPlatform;
+  device_name?: string | null;
+  app_version?: string | null;
 }
 
 // =====================================================

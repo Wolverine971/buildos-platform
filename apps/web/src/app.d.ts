@@ -23,6 +23,9 @@ declare global {
 			}>;
 			session: VerifiedSession | null;
 			user: User | null;
+			/** How this request proved who it is: the web's cookie session or a native
+			 *  client's bearer access token. Set by the server hook on every request. */
+			authSource?: 'cookie' | 'bearer';
 			serverTiming?: ServerTiming;
 			_explicitlyCleared?: boolean;
 			getCalendarTokens(): Promise<CalendarTokens | null>;
@@ -48,6 +51,8 @@ declare global {
 			completedOnboarding?: boolean;
 			onboardingProgress?: Streamable<number>;
 			stripeEnabled?: boolean;
+			/** True when opened inside the BuildOS iPhone app (hides web nav/footer). */
+			appMode?: boolean;
 			billingContext?: Streamable<{
 				subscription: any | null;
 				trialStatus: {

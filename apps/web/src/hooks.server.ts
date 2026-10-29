@@ -3,10 +3,15 @@ import { redirectToLogin } from '$lib/server/auth-redirects';
 import { json, redirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import type { Handle, HandleServerError, RequestEvent } from '@sveltejs/kit';
-import { createSupabaseServer } from '$lib/supabase';
+import { createSupabaseBearer, createSupabaseServer } from '$lib/supabase';
 import { applyBaselineSecurityHeaders } from '$lib/server/security-headers';
 import { createServerTiming } from '$lib/server/server-timing';
-import { getVerifiedSession, requiresLiveAuthCheck } from '$lib/server/session-verification';
+import {
+	getVerifiedBearerSession,
+	getVerifiedSession,
+	requiresLiveAuthCheck
+} from '$lib/server/session-verification';
+import { readUserBearerToken } from '$lib/server/bearer-auth';
 import { dev } from '$app/environment';
 import type { ErrorSeverity } from '$lib/types/error-logging';
 import {
@@ -157,23 +162,35 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		return privateConfigProbeResponse;
 	}
 
-	// Create Supabase client with proper cookie handling per SvelteKit docs
-	event.locals.supabase = createSupabaseServer({
-		getAll: () => event.cookies.getAll(),
-		setAll: (cookiesToSet) => {
-			/**
-			 * Note: SvelteKit requires the `path` variable to be set.
-			 * Setting path to '/' replicates standard behavior.
-			 * https://kit.svelte.dev/docs/types#public-types-cookies
-			 */
-			cookiesToSet.forEach(({ name, value, options }) => {
-				event.cookies.set(name, value, {
-					...options,
-					path: '/'
+	// Native clients (the iPhone app) send `Authorization: Bearer <Supabase access token>`
+	// instead of cookies. A bearer request gets a client that forwards that token for RLS and
+	// never reads or writes cookies; a bad token yields no session and never falls back to
+	// cookies. Agent credentials in the same header are not JWTs and take the cookie path, so
+	// their routes keep authenticating them as before.
+	const bearerToken = readUserBearerToken(event.request);
+	if (bearerToken) {
+		event.locals.supabase = createSupabaseBearer(bearerToken);
+		event.locals.authSource = 'bearer';
+	} else {
+		// Create Supabase client with proper cookie handling per SvelteKit docs
+		event.locals.supabase = createSupabaseServer({
+			getAll: () => event.cookies.getAll(),
+			setAll: (cookiesToSet) => {
+				/**
+				 * Note: SvelteKit requires the `path` variable to be set.
+				 * Setting path to '/' replicates standard behavior.
+				 * https://kit.svelte.dev/docs/types#public-types-cookies
+				 */
+				cookiesToSet.forEach(({ name, value, options }) => {
+					event.cookies.set(name, value, {
+						...options,
+						path: '/'
+					});
 				});
-			});
-		}
-	});
+			}
+		});
+		event.locals.authSource = 'cookie';
+	}
 
 	const timingEnabled =
 		dev || (typeof process !== 'undefined' && process.env.PERF_TIMING === 'true');
@@ -218,6 +235,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		pathname.startsWith('/static/') ||
 		pathname.startsWith('/api/webhooks/') || // Public webhooks
 		pathname.startsWith('/webhooks/') || // Public webhooks at root level
+		pathname.startsWith('/.well-known/') || // App-site association and similar static trust files
 		pathname === '/favicon.ico' ||
 		pathname === '/robots.txt' ||
 		pathname === '/sitemap.xml'
@@ -254,13 +272,16 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 					return { session: null, user: null };
 				}
 
-				const verifiedSession = await getVerifiedSession(supabase.auth, {
+				const verifyOptions = {
 					requireLiveUser: requiresLiveAuthCheck(
 						event.route.id ?? pathname,
 						event.request.method
 					),
 					measure
-				});
+				};
+				const verifiedSession = bearerToken
+					? await getVerifiedBearerSession(supabase.auth, bearerToken, verifyOptions)
+					: await getVerifiedSession(supabase.auth, verifyOptions);
 				if (!verifiedSession) {
 					return { session: null, user: null };
 				}
@@ -294,7 +315,11 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 				if (deletionStatus === 'pending' || deletionStatus === 'processing') {
 					// Deletion is distinct from billing dunning. Even if a billing webhook
 					// clears access_restricted, a scheduled deletion remains inaccessible.
-					await supabase.auth.signOut({ scope: 'local' });
+					// A bearer client holds no cookie session to clear; the device keeps its
+					// token and simply gets no user from here on.
+					if (!bearerToken) {
+						await supabase.auth.signOut({ scope: 'local' });
+					}
 					event.locals._explicitlyCleared = true;
 					return { session: null, user: null };
 				}

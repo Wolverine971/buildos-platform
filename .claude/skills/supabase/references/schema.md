@@ -1,9 +1,9 @@
 # BuildOS Database Schema Reference
 
-Complete column listing for all 289 tables, grouped by domain.
+Complete column listing for all 294 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-10-26T17:38:04.274Z
+**Schema generated:** 2026-10-29T04:05:31.767Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -26,9 +26,9 @@ For enum values, constraints, and RLS, check migrations in `supabase/migrations/
 - [Beta Program](#beta-program) (6 tables)
 - [Queue & Jobs](#queue--jobs) (2 tables)
 - [Daily Briefs](#daily-briefs) (5 tables)
-- [Monitoring & Analytics](#monitoring--analytics) (10 tables)
+- [Monitoring & Analytics](#monitoring--analytics) (11 tables)
 - [Web & Webhooks](#web--webhooks) (4 tables)
-- [Other](#other) (60 tables)
+- [Other](#other) (64 tables)
 
 ---
 
@@ -64,7 +64,7 @@ created_at `string` · id `number` · ip_address `unknown` · updated_at `string
 
 ### people_requests
 
-settled_elsewhere `boolean` · agent_access_requested `string?` · created_at `string` · decided_at `string?` · decision `Json?` · expires_at `string` · from_user_id `string` · id `string` · kind `string` · note `string?` · project_hint `string?` · project_id `string?` · requested_items `Json?` · role_requested `string` · status `string` · to_user_id `string` · via `string` · via_agent_label `string?` · via_caller_id `string?` · via_invite_link_id `string?` · via_oauth_grant_id `string?`
+agent_access_requested `string?` · created_at `string` · decided_at `string?` · decision `Json?` · expires_at `string` · from_user_id `string` · id `string` · kind `string` · note `string?` · project_hint `string?` · project_id `string?` · requested_items `Json?` · role_requested `string` · status `string` · to_user_id `string` · via `string` · via_agent_label `string?` · via_caller_id `string?` · via_invite_link_id `string?` · via_oauth_grant_id `string?`
 
 ### user_contact_access_audit
 
@@ -540,7 +540,7 @@ failure_count `number` · first_failed_at `string` · last_error `string?` · la
 
 ### chat_turn_runs
 
-assistant_message_id `string?` · cache_age_seconds `number?` · cache_source `string?` · cancel_reason `string?` · cancel_requested_at `string?` · client_turn_id `string?` · context_type `string` · correlation_id `string` · created_at `string` · entity_id `string?` · execution_generation `number` · execution_mode `string` · execution_started_at `string?` · failure_code `string?` · finished_at `string?` · finished_reason `string?` · first_canonical_op `string?` · first_help_path `string?` · first_lane `string?` · first_skill_path `string?` · gateway_enabled `boolean` · history_compressed `boolean?` · history_cutoff_at `string?` · history_for_model_count `number?` · history_message_ids `string[]?` · history_strategy `string?` · id `string` · input_artifact_id `string?` · irreversible_boundary_at `string?` · last_event_sequence `number` · last_progress_at `string?` · llm_pass_count `number` · mutation_reserved_at `string?` · prepared_prompt_hit `boolean?` · prepared_prompt_id `string?` · prepared_prompt_miss_reason `string?` · prepared_surface_profile `string?` · project_id `string?` · prompt_snapshot_id `string?` · queue_job_id `string?` · raw_history_count `number?` · request_hash `string?` · request_hash_version `string?` · request_message `string` · request_payload `Json` · request_payload_version `string` · request_prewarmed_context `boolean?` · session_id `string` · source `string` · stale_context_policy `string?` · started_at `string` · status `string` · stream_run_id `string` · terminal_event_id `string?` · terminalized_at `string?` · timing_metric_id `string?` · tool_call_count `number` · tool_round_count `number` · transport_contract_version `string?` · transport_decision_id `string?` · updated_at `string` · user_id `string` · user_message_id `string?` · validation_failure_count `number` · worker_lease_generation `number?` · worker_lease_renewed_at `string?` · worker_started_at `string?`
+assistant_message_id `string?` · cache_age_seconds `number?` · cache_source `string?` · cancel_reason `string?` · cancel_requested_at `string?` · client_turn_id `string?` · context_type `string` · correlation_id `string` · created_at `string` · entity_id `string?` · execution_generation `number` · execution_mode `string` · execution_started_at `string?` · failure_code `string?` · finished_at `string?` · finished_reason `string?` · first_canonical_op `string?` · first_help_path `string?` · first_lane `string?` · first_skill_path `string?` · first_visible_text_at `string?` · first_visible_text_source `string?` · gateway_enabled `boolean` · history_compressed `boolean?` · history_cutoff_at `string?` · history_for_model_count `number?` · history_message_ids `string[]?` · history_strategy `string?` · id `string` · input_artifact_id `string?` · irreversible_boundary_at `string?` · last_event_sequence `number` · last_progress_at `string?` · llm_pass_count `number` · mutation_reserved_at `string?` · prepared_prompt_hit `boolean?` · prepared_prompt_id `string?` · prepared_prompt_miss_reason `string?` · prepared_surface_profile `string?` · project_id `string?` · prompt_snapshot_id `string?` · queue_job_id `string?` · raw_history_count `number?` · request_hash `string?` · request_hash_version `string?` · request_message `string` · request_payload `Json` · request_payload_version `string` · request_prewarmed_context `boolean?` · session_id `string` · source `string` · stale_context_policy `string?` · started_at `string` · status `string` · stream_run_id `string` · terminal_event_id `string?` · terminalized_at `string?` · timing_metric_id `string?` · tool_call_count `number` · tool_round_count `number` · transport_contract_version `string?` · transport_decision_id `string?` · updated_at `string` · user_id `string` · user_message_id `string?` · validation_failure_count `number` · worker_lease_generation `number?` · worker_lease_renewed_at `string?` · worker_started_at `string?`
 
 ### chat_turn_signals
 
@@ -864,7 +864,7 @@ card_brand `string?` · card_last4 `string?` · created_at `string?` · id `stri
 
 ### push_subscriptions
 
-auth_key `string` · created_at `string?` · endpoint `string` · id `string` · is_active `boolean?` · last_used_at `string?` · p256dh_key `string` · user_agent `string?` · user_id `string`
+app_version `string?` · auth_key `string?` · created_at `string?` · device_name `string?` · endpoint `string` · id `string` · is_active `boolean?` · last_used_at `string?` · p256dh_key `string?` · platform `string` · provider `string` · user_agent `string?` · user_id `string`
 
 ### subscription_plans
 
@@ -953,6 +953,10 @@ created_at `string` · date `string` · id `string` · metadata `Json?` · metri
 ### error_logs
 
 app_version `string?` · brain_dump_id `string?` · browser_info `Json?` · completion_tokens `number?` · created_at `string` · endpoint `string?` · environment `string?` · error_code `string?` · error_message `string` · error_stack `string?` · error_type `string` · http_method `string?` · id `string` · ip_address `unknown` · llm_max_tokens `number?` · llm_model `string?` · llm_provider `string?` · llm_temperature `number?` · metadata `Json?` · operation_payload `Json?` · operation_type `string?` · project_id `string?` · prompt_tokens `number?` · record_id `string?` · request_id `string?` · resolution_notes `string?` · resolved `boolean?` · resolved_at `string?` · resolved_by `string?` · response_time_ms `number?` · severity `string?` · table_name `string?` · total_tokens `number?` · updated_at `string` · user_agent `string?` · user_id `string?`
+
+### llm_call_incidents
+
+created_at `string` · duration_ms `number?` · ended_at `string?` · eventual `Json?` · generation_id `string?` · generation_stats `Json?` · http_status `number?` · id `string` · kind `string` · lane `string` · logical_provider_round `number?` · model_requested `string` · model_used `string?` · outcome `Json` · pass_role `string?` · project_id `string?` · provider `string?` · provider_attempt `number?` · reason `string` · request_body `string` · request_headers `Json` · request_sha256 `string` · response_body `string?` · response_headers `Json?` · response_truncated `boolean` · route_id `string?` · session_id `string?` · started_at `string` · timeline `Json` · turn_run_id `string?` · updated_at `string` · usage_log_id `string?` · user_id `string?`
 
 ### llm_usage_logs
 
@@ -1045,6 +1049,38 @@ attempt_token `string` · created_at `string` · expires_at `string` · finished
 ### agentic_chat_specialist_versions
 
 created_at `string` · draft_id `string` · draft_revision `number` · name `string` · snapshot `Json` · snapshot_hash `string` · user_id `string` · version `number`
+
+### auth_handoff_codes
+
+code_hash `string` · consumed_at `string?` · created_at `string` · created_ip `string?` · expires_at `string` · id `string` · next_path `string?` · user_agent `string?` · user_id `string`
+
+### builder_follows
+
+created_at `string` · follower_user_id `string` · id `string` · project_id `string?` · target_user_id `string`
+
+### builder_profile_activity_daily
+
+by_agents `number` · changes `number` · day `string` · project_id `string` · user_id `string`
+
+### builder_profile_links
+
+audience `string` · created_at `string` · id `string` · kind `string` · label `string?` · note `string?` · position `number` · updated_at `string` · url `string` · user_id `string`
+
+### builder_profile_projects
+
+audience `string` · created_at `string` · goal_ids `string[]` · level `string` · link_url `string?` · looking_for `string?` · pitch `string?` · position `number` · project_id `string` · public_name `string?` · reply_url `string?` · show_next_milestone `boolean` · this_week `string?` · this_week_at `string?` · updated_at `string` · user_id `string`
+
+### builder_profile_stats_daily
+
+asks `number` · day `string` · follows `number` · link_taps `number` · user_id `string` · views `number`
+
+### builder_profile_updates
+
+body `string` · created_at `string` · decided_at `string?` · id `string` · project_id `string?` · source `string` · status `string` · user_id `string` · week_of `string`
+
+### builder_profiles
+
+activity_refreshed_at `string?` · avatar_url `string?` · build_log_includes_private `boolean` · cover_url `string?` · created_at `string` · headline `string?` · location `string?` · now_text `string?` · now_updated_at `string?` · published_at `string?` · show_agent_split `boolean` · show_build_log `boolean` · show_builds_with `boolean` · show_on_collaborator_pages `boolean` · show_writing `boolean` · status `string` · updated_at `string` · user_id `string` · weekly_drafts `boolean`
 
 ### consolidation_merges
 
@@ -1181,22 +1217,6 @@ content `string?` · created_at `string` · deleted_at `string?` · id `string` 
 ### profile_fragments
 
 category `string` · confidence `number` · content `string` · created_at `string` · extracted_from_message_ids `Json?` · fingerprint_hash `string` · id `string` · idempotency_key `string` · profile_id `string` · sensitivity `string` · source_id `string?` · source_type `string` · status `string` · suggested_chapter_id `string?` · suggested_chapter_title `string?`
-
-### question_tree_events
-
-created_at `string` · event_type `string` · id `string` · node_id `string?` · payload `Json` · run_id `string` · seq `number`
-
-### question_tree_nodes
-
-answer `string?` · attempt_count `number` · completed_at `string?` · completion_tokens `number` · confidence `number?` · cost_usd `number` · created_at `string` · depth `number` · epistemic_assessment `Json?` · error_code `string?` · error_message `string?` · id `string` · latency_ms `number` · lease_expires_at `string?` · lease_owner `string?` · model_requested `string?` · model_used `string?` · node_kind `string` · node_number `number` · normalized_question `string` · parent_node_id `string?` · prompt_tokens `number` · provider_request_id `string?` · question `string` · reasoning_tokens `number` · run_id `string` · search_document `unknown` · sibling_index `number?` · started_at `string?` · status `string` · stop_reason `string?` · thesis `string?` · updated_at `string`
-
-### question_tree_proposals
-
-child_node_id `string?` · created_at `string` · duplicate_of_node_id `string?` · expected_information_gain `string` · id `string` · model_priority `number?` · normalized_question `string` · purpose `string` · question `string` · rank `number` · run_id `string` · scheduler_score `number?` · source_node_id `string` · status `string` · target_claim `string?` · updated_at `string` · validation_error `string?` · why_it_matters `string`
-
-### question_tree_runs
-
-advance_sequence `number` · completed_at `string?` · config `Json` · created_at `string` · created_by `string` · deepest_depth `number` · explorer_model_requested `string` · frontier_count `number` · id `string` · max_provider_requests `number` · model_policy `string` · next_batch_not_before `string?` · next_retry_at `string?` · node_limit `number` · nodes_completed `number` · nodes_created `number` · nodes_failed `number` · pause_reason `string?` · phase `string` · prompt_version `string` · provider_requests `number` · root_node_id `string?` · root_question `string` · started_at `string?` · status `string` · synthesis `Json?` · synthesis_model_requested `string` · updated_at `string` · usage `Json`
 
 ### recurring_task_instances
 

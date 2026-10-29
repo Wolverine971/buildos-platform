@@ -38,6 +38,7 @@
 import { browser, dev } from '$app/environment';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import {
+	createSupabaseBearer as createBearer,
 	createSupabaseBrowser as createBrowser,
 	createSupabaseServer as createServer,
 	getRedirectURL as getRedirect,
@@ -71,6 +72,17 @@ export const createSupabaseBrowser = () =>
  */
 export const createSupabaseServer = (cookies: CookieMethodsServer) =>
 	createServer(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, cookies);
+
+/**
+ * Create a server Supabase client for a request authenticated with a bearer access token
+ * (the native app). It forwards the token for RLS and never touches cookies.
+ * The server hook verifies the token before anything trusts `locals.user`.
+ *
+ * @param accessToken Supabase access token from the Authorization header
+ * @returns TypedSupabaseClient acting as that user
+ */
+export const createSupabaseBearer = (accessToken: string) =>
+	createBearer(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, accessToken);
 
 /**
  * Default browser client instance (only available in browser context)

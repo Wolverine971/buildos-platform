@@ -1,0 +1,53 @@
+{
+	"expo": {
+		"name": "BuildOS",
+		"slug": "buildos",
+		"version": "0.1.0",
+		"scheme": "buildos",
+		"platforms": ["ios", "android"],
+		"orientation": "portrait",
+		"userInterfaceStyle": "automatic",
+		"icon": "./assets/icon.png",
+		"ios": {
+			"bundleIdentifier": "com.buildos.app",
+			"supportsTablet": false,
+			"associatedDomains": ["applinks:build-os.com"],
+			"infoPlist": {
+				"NSMicrophoneUsageDescription": "BuildOS records voice notes you choose to capture."
+			}
+		},
+		"android": {
+			"package": "com.buildos.app",
+			"adaptiveIcon": {
+				"foregroundImage": "./assets/icon.png",
+				"backgroundColor": "#fbfaf9"
+			},
+			"intentFilters": [
+				{
+					"action": "VIEW",
+					"autoVerify": true,
+					"data": [{ "scheme": "https", "host": "build-os.com" }],
+					"category": ["BROWSABLE", "DEFAULT"]
+				}
+			]
+		},
+		"plugins": [
+			"expo-router",
+			"expo-secure-store",
+			"expo-web-browser",
+			[
+				"expo-splash-screen",
+				{
+					"backgroundColor": "#fbfaf9",
+					"image": "./assets/splash-icon.png",
+					"imageWidth": 120,
+					"resizeMode": "contain",
+					"dark": { "backgroundColor": "#1d1c1b" }
+				}
+			]
+		],
+		"experiments": {
+			"typedRoutes": true
+		}
+	}
+}

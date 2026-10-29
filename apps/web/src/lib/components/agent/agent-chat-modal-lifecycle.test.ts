@@ -84,7 +84,10 @@ describe('chat session resource lifecycle', () => {
 			vi.useFakeTimers();
 			const deps = releaseDeps();
 			const lateRefresh = vi.fn();
-			deps.fallbackTimers.set('old', setTimeout(lateRefresh, 100));
+			deps.fallbackTimers.set(
+				'old',
+				setTimeout(() => lateRefresh(), 100)
+			);
 			releaseChatSession(deps, reason);
 			vi.advanceTimersByTime(200);
 			expect(lateRefresh).not.toHaveBeenCalled();

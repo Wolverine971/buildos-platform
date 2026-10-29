@@ -2,9 +2,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import type { VerifiedSession } from '$lib/types/verified-session';
+import { readUnverifiedJwtExpiry } from '$lib/server/bearer-auth';
 
 type AuthClient = Pick<SupabaseClient<Database>['auth'], 'getSession' | 'getUser' | 'getClaims'>;
 type Measure = <T>(name: string, fn: () => Promise<T>) => Promise<T>;
+type VerifyOptions = { requireLiveUser: boolean; measure?: Measure };
+type VerifiedIdentity = VerifiedSession['user'];
 
 // These route families need immediate server-side revocation detection, including
 // their SvelteKit /__data.json requests. Match URL segments, not user prose.
@@ -35,33 +38,32 @@ export function requiresLiveAuthCheck(route: string, method: string): boolean {
 	return LIVE_AUTH_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
-/** Refresh the session when needed, then verify the exact token used for data access.
- * getClaims uses cached public keys for asymmetric tokens and falls back to Auth
- * for legacy symmetric tokens, so this can deploy before the signing-key rotation.
+/**
+ * Verify one access token and return the identity it proves, or null.
+ *
+ * Live mode asks Auth for the user (detects revocation); otherwise the signature and the
+ * standard claims are checked locally. getClaims uses cached public keys for asymmetric tokens
+ * and falls back to Auth for legacy symmetric tokens, so this can deploy before the signing-key
+ * rotation.
  */
-export async function getVerifiedSession(
+async function verifyAccessToken(
 	auth: AuthClient,
-	options: { requireLiveUser: boolean; measure?: Measure }
-): Promise<VerifiedSession | null> {
+	accessToken: string,
+	options: VerifyOptions
+): Promise<VerifiedIdentity | null> {
 	const measure: Measure = options.measure ?? ((_name, fn) => fn());
-	const {
-		data: { session },
-		error: sessionError
-	} = await measure('auth.session', () => auth.getSession());
-	if (sessionError || !session) return null;
 
 	if (options.requireLiveUser) {
 		const {
 			data: { user },
 			error
-		} = await measure('auth.user', () => auth.getUser(session.access_token));
+		} = await measure('auth.user', () => auth.getUser(accessToken));
 		if (error || !user) return null;
-		return { ...session, user };
+		// The live Auth record is trustworthy, so callers keep its full shape.
+		return user;
 	}
 
-	const { data, error } = await measure('auth.claims', () =>
-		auth.getClaims(session.access_token)
-	);
+	const { data, error } = await measure('auth.claims', () => auth.getClaims(accessToken));
 	if (error || !data) return null;
 
 	const { claims } = data;
@@ -75,13 +77,54 @@ export async function getVerifiedSession(
 		return null;
 	}
 
+	return {
+		id: claims.sub,
+		...(typeof claims.email === 'string' ? { email: claims.email } : {})
+	};
+}
+
+/** Refresh the cookie session when needed, then verify the exact token used for data access. */
+export async function getVerifiedSession(
+	auth: AuthClient,
+	options: VerifyOptions
+): Promise<VerifiedSession | null> {
+	const measure: Measure = options.measure ?? ((_name, fn) => fn());
+	const {
+		data: { session },
+		error: sessionError
+	} = await measure('auth.session', () => auth.getSession());
+	if (sessionError || !session) return null;
+
+	const identity = await verifyAccessToken(auth, session.access_token, options);
+	if (!identity) return null;
+
 	// Do not spread session.user: cookies can supply forged IDs, email, metadata,
 	// or admin flags even when their access token is valid for a different user.
+	return { ...session, user: identity };
+}
+
+/**
+ * Verify a bearer access token presented by a native client (no cookies, no refresh token on
+ * the server). The device owns refreshing; the server only ever sees the current access token.
+ * An invalid or expired token yields null and never falls back to cookies.
+ */
+export async function getVerifiedBearerSession(
+	auth: AuthClient,
+	accessToken: string,
+	options: VerifyOptions
+): Promise<VerifiedSession | null> {
+	const identity = await verifyAccessToken(auth, accessToken, options);
+	if (!identity) return null;
+
+	const expiresAt = readUnverifiedJwtExpiry(accessToken);
+	const expiresIn = expiresAt ? Math.max(0, expiresAt - Math.floor(Date.now() / 1000)) : 0;
+
 	return {
-		...session,
-		user: {
-			id: claims.sub,
-			...(typeof claims.email === 'string' ? { email: claims.email } : {})
-		}
+		access_token: accessToken,
+		refresh_token: '',
+		token_type: 'bearer',
+		expires_in: expiresIn,
+		...(expiresAt ? { expires_at: expiresAt } : {}),
+		user: identity
 	};
 }

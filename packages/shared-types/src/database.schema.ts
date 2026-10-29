@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-10-26T17:38:04.274Z
+// Generated on: 2026-10-29T04:19:32.668Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -488,6 +488,17 @@ export type DatabaseSchema = {
 		user_id: string;
 		version: number;
 	};
+	auth_handoff_codes: {
+		code_hash: string;
+		consumed_at: string | null;
+		created_at: string;
+		created_ip: string | null;
+		expires_at: string;
+		id: string;
+		next_path: string | null;
+		user_agent: string | null;
+		user_id: string;
+	};
 	beta_event_attendance: {
 		attended: boolean | null;
 		created_at: string;
@@ -671,6 +682,90 @@ export type DatabaseSchema = {
 		to_billing_tier: string;
 		to_frozen_reason: string | null;
 		user_id: string;
+	};
+	builder_follows: {
+		created_at: string;
+		follower_user_id: string;
+		id: string;
+		project_id: string | null;
+		target_user_id: string;
+	};
+	builder_profile_activity_daily: {
+		by_agents: number;
+		changes: number;
+		day: string;
+		project_id: string;
+		user_id: string;
+	};
+	builder_profile_links: {
+		audience: string;
+		created_at: string;
+		id: string;
+		kind: string;
+		label: string | null;
+		note: string | null;
+		position: number;
+		updated_at: string;
+		url: string;
+		user_id: string;
+	};
+	builder_profile_projects: {
+		audience: string;
+		created_at: string;
+		goal_ids: string[];
+		level: string;
+		link_url: string | null;
+		looking_for: string | null;
+		pitch: string | null;
+		position: number;
+		project_id: string;
+		public_name: string | null;
+		reply_url: string | null;
+		show_next_milestone: boolean;
+		this_week: string | null;
+		this_week_at: string | null;
+		updated_at: string;
+		user_id: string;
+	};
+	builder_profile_stats_daily: {
+		asks: number;
+		day: string;
+		follows: number;
+		link_taps: number;
+		user_id: string;
+		views: number;
+	};
+	builder_profile_updates: {
+		body: string;
+		created_at: string;
+		decided_at: string | null;
+		id: string;
+		project_id: string | null;
+		source: string;
+		status: string;
+		user_id: string;
+		week_of: string;
+	};
+	builder_profiles: {
+		activity_refreshed_at: string | null;
+		avatar_url: string | null;
+		build_log_includes_private: boolean;
+		cover_url: string | null;
+		created_at: string;
+		headline: string | null;
+		location: string | null;
+		now_text: string | null;
+		now_updated_at: string | null;
+		published_at: string | null;
+		show_agent_split: boolean;
+		show_build_log: boolean;
+		show_builds_with: boolean;
+		show_on_collaborator_pages: boolean;
+		show_writing: boolean;
+		status: string;
+		updated_at: string;
+		user_id: string;
+		weekly_drafts: boolean;
 	};
 	calendar_access_audit_events: {
 		calendar_source_id: string | null;
@@ -1186,6 +1281,8 @@ export type DatabaseSchema = {
 		first_help_path: string | null;
 		first_lane: string | null;
 		first_skill_path: string | null;
+		first_visible_text_at: string | null;
+		first_visible_text_source: string | null;
 		gateway_enabled: boolean;
 		history_compressed: boolean | null;
 		history_cutoff_at: string | null;
@@ -2543,6 +2640,41 @@ export type DatabaseSchema = {
 		user_agent: string | null;
 		user_id: string;
 	};
+	llm_call_incidents: {
+		created_at: string;
+		duration_ms: number | null;
+		ended_at: string | null;
+		eventual: Json | null;
+		generation_id: string | null;
+		generation_stats: Json | null;
+		http_status: number | null;
+		id: string;
+		kind: string;
+		lane: string;
+		logical_provider_round: number | null;
+		model_requested: string;
+		model_used: string | null;
+		outcome: Json;
+		pass_role: string | null;
+		project_id: string | null;
+		provider: string | null;
+		provider_attempt: number | null;
+		reason: string;
+		request_body: string;
+		request_headers: Json;
+		request_sha256: string;
+		response_body: string | null;
+		response_headers: Json | null;
+		response_truncated: boolean;
+		route_id: string | null;
+		session_id: string | null;
+		started_at: string;
+		timeline: Json;
+		turn_run_id: string | null;
+		updated_at: string;
+		usage_log_id: string | null;
+		user_id: string | null;
+	};
 	llm_usage_logs: {
 		brain_dump_id: string | null;
 		brief_id: string | null;
@@ -3484,7 +3616,6 @@ export type DatabaseSchema = {
 		user_id: string;
 	};
 	people_requests: {
-		settled_elsewhere: boolean;
 		agent_access_requested: string | null;
 		created_at: string;
 		decided_at: string | null;
@@ -3962,110 +4093,19 @@ export type DatabaseSchema = {
 		version_number: number;
 	};
 	push_subscriptions: {
-		auth_key: string;
+		app_version: string | null;
+		auth_key: string | null;
 		created_at: string | null;
+		device_name: string | null;
 		endpoint: string;
 		id: string;
 		is_active: boolean | null;
 		last_used_at: string | null;
-		p256dh_key: string;
+		p256dh_key: string | null;
+		platform: string;
+		provider: string;
 		user_agent: string | null;
 		user_id: string;
-	};
-	question_tree_events: {
-		created_at: string;
-		event_type: string;
-		id: string;
-		node_id: string | null;
-		payload: Json;
-		run_id: string;
-		seq: number;
-	};
-	question_tree_nodes: {
-		answer: string | null;
-		attempt_count: number;
-		completed_at: string | null;
-		completion_tokens: number;
-		confidence: number | null;
-		cost_usd: number;
-		created_at: string;
-		depth: number;
-		epistemic_assessment: Json | null;
-		error_code: string | null;
-		error_message: string | null;
-		id: string;
-		latency_ms: number;
-		lease_expires_at: string | null;
-		lease_owner: string | null;
-		model_requested: string | null;
-		model_used: string | null;
-		node_kind: string;
-		node_number: number;
-		normalized_question: string;
-		parent_node_id: string | null;
-		prompt_tokens: number;
-		provider_request_id: string | null;
-		question: string;
-		reasoning_tokens: number;
-		run_id: string;
-		search_document: unknown;
-		sibling_index: number | null;
-		started_at: string | null;
-		status: string;
-		stop_reason: string | null;
-		thesis: string | null;
-		updated_at: string;
-	};
-	question_tree_proposals: {
-		child_node_id: string | null;
-		created_at: string;
-		duplicate_of_node_id: string | null;
-		expected_information_gain: string;
-		id: string;
-		model_priority: number | null;
-		normalized_question: string;
-		purpose: string;
-		question: string;
-		rank: number;
-		run_id: string;
-		scheduler_score: number | null;
-		source_node_id: string;
-		status: string;
-		target_claim: string | null;
-		updated_at: string;
-		validation_error: string | null;
-		why_it_matters: string;
-	};
-	question_tree_runs: {
-		advance_sequence: number;
-		completed_at: string | null;
-		config: Json;
-		created_at: string;
-		created_by: string;
-		deepest_depth: number;
-		explorer_model_requested: string;
-		frontier_count: number;
-		id: string;
-		max_provider_requests: number;
-		model_policy: string;
-		next_batch_not_before: string | null;
-		next_retry_at: string | null;
-		node_limit: number;
-		nodes_completed: number;
-		nodes_created: number;
-		nodes_failed: number;
-		pause_reason: string | null;
-		phase: string;
-		prompt_version: string;
-		provider_requests: number;
-		root_node_id: string | null;
-		root_question: string;
-		started_at: string | null;
-		status: string;
-		synthesis: Json | null;
-		synthesis_model_requested: string;
-		updated_at: string;
-		usage: Json;
 	};
 	queue_jobs: {
 		attempts: number | null;
@@ -5090,6 +5130,7 @@ export const tableNames = [
 	'agentic_chat_specialist_drafts',
 	'agentic_chat_specialist_recommendations',
 	'agentic_chat_specialist_versions',
+	'auth_handoff_codes',
 	'beta_event_attendance',
 	'beta_events',
 	'beta_feature_votes',
@@ -5101,6 +5142,13 @@ export const tableNames = [
 	'billing_ops_anomalies',
 	'billing_ops_snapshots',
 	'billing_state_transitions',
+	'builder_follows',
+	'builder_profile_activity_daily',
+	'builder_profile_links',
+	'builder_profile_projects',
+	'builder_profile_stats_daily',
+	'builder_profile_updates',
+	'builder_profiles',
 	'calendar_access_audit_events',
 	'calendar_analyses',
 	'calendar_analysis_events',
@@ -5198,6 +5246,7 @@ export const tableNames = [
 	'legacy_entity_mappings',
 	'legal_acceptance_intents',
 	'legal_acceptances',
+	'llm_call_incidents',
 	'llm_usage_logs',
 	'llm_usage_summary',
 	'migration_log',
@@ -5289,10 +5338,6 @@ export const tableNames = [
 	'projects',
 	'projects_history',
 	'push_subscriptions',
-	'question_tree_events',
-	'question_tree_nodes',
-	'question_tree_proposals',
-	'question_tree_runs',
 	'queue_jobs',
 	'recurring_task_instances',
 	'recurring_task_migration_log',

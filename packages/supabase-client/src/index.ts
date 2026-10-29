@@ -183,6 +183,43 @@ export function createSupabaseServer(
 }
 
 /**
+ * Create a Supabase client that acts as the user who presented a bearer access token.
+ *
+ * Native clients (the BuildOS iPhone app) keep their Supabase session on the device and send
+ * `Authorization: Bearer <access token>` on every API call instead of cookies. This client
+ * forwards that token to PostgREST and Storage, so RLS applies exactly as it does for a cookie
+ * session, and it never reads or writes cookies.
+ *
+ * It holds no session of its own: verify the token with `auth.getClaims(token)` or
+ * `auth.getUser(token)` before trusting it, and never call `auth.getSession()` on it.
+ *
+ * @param supabaseUrl Public Supabase URL
+ * @param supabaseAnonKey Public anonymous key for the Supabase project
+ * @param accessToken The caller's Supabase access token (a JWT), already extracted from the header
+ */
+export function createSupabaseBearer(
+	supabaseUrl: string,
+	supabaseAnonKey: string,
+	accessToken: string
+): TypedSupabaseClient {
+	if (!supabaseUrl || !supabaseAnonKey) {
+		throw new Error('Missing public Supabase environment variables');
+	}
+	if (!accessToken) {
+		throw new Error('createSupabaseBearer requires an access token');
+	}
+
+	return createClient<Database>(supabaseUrl, supabaseAnonKey, {
+		global: { headers: { Authorization: `Bearer ${accessToken}` } },
+		auth: {
+			autoRefreshToken: false,
+			persistSession: false,
+			detectSessionInUrl: false
+		}
+	});
+}
+
+/**
  * Create a custom Supabase client with provided credentials
  * Use this when you need full control over the client configuration
  */

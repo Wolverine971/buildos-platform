@@ -1,0 +1,36 @@
+{
+	"name": "@buildos/api-client",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Typed BuildOS API client shared by the mobile app and (over time) the web app",
+	"main": "./dist/index.js",
+	"module": "./dist/index.mjs",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"react-native": "./src/index.ts",
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.mjs",
+			"require": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"build": "tsup src/index.ts --format cjs,esm --dts",
+		"dev": "tsup src/index.ts --format cjs,esm --watch",
+		"clean": "rm -rf dist .turbo",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest",
+		"test:run": "vitest run",
+		"test:coverage": "vitest run --coverage"
+	},
+	"dependencies": {
+		"@buildos/shared-types": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^20.11.10",
+		"@vitest/coverage-v8": "^4.1.11",
+		"tsup": "^8.3.5",
+		"typescript": "^5.9.2",
+		"vitest": "^4.1.11"
+	}
+}

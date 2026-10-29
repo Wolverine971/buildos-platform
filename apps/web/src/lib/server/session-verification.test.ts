@@ -2,7 +2,11 @@
 import { createHmac, generateKeyPairSync, randomUUID, sign } from 'node:crypto';
 import { createClient, type Session, type User } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
-import { getVerifiedSession, requiresLiveAuthCheck } from './session-verification';
+import {
+	getVerifiedBearerSession,
+	getVerifiedSession,
+	requiresLiveAuthCheck
+} from './session-verification';
 
 const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
 const jwk = { ...publicKey.export({ format: 'jwk' }), kid: 'test-key', alg: 'ES256', use: 'sig' };
@@ -208,5 +212,76 @@ describe('requiresLiveAuthCheck', () => {
 		'/administrator'
 	])('uses claims for routine reads of %s', (path) => {
 		expect(requiresLiveAuthCheck(path, 'GET')).toBe(false);
+	});
+});
+
+describe('getVerifiedBearerSession', () => {
+	it('verifies a bearer token locally and never consults a cookie session', async () => {
+		const token = makeToken();
+		const fixture = setup(token);
+		const metrics: string[] = [];
+		const result = await getVerifiedBearerSession(fixture.auth, token, {
+			requireLiveUser: false,
+			measure: async (name, fn) => {
+				metrics.push(name);
+				return fn();
+			}
+		});
+		expect(result?.user).toEqual({ id: userId, email: 'signed@example.test' });
+		expect(result?.access_token).toBe(token);
+		expect(result?.refresh_token).toBe('');
+		expect(result?.expires_at).toBe(JSON.parse(atob(token.split('.')[1]!)).exp);
+		expect(result?.expires_in).toBeGreaterThan(3000);
+		expect(fixture.getSession).not.toHaveBeenCalled();
+		expect(fixture.getUser).not.toHaveBeenCalled();
+		expect(metrics).toEqual(['auth.claims']);
+	});
+
+	it('asks Auth for the live user on sensitive requests', async () => {
+		const token = makeToken();
+		const fixture = setup(token);
+		const result = await getVerifiedBearerSession(fixture.auth, token, {
+			requireLiveUser: true
+		});
+		expect(fixture.getUser).toHaveBeenCalledWith(token);
+		expect(fixture.getClaims).not.toHaveBeenCalled();
+		expect(fixture.getSession).not.toHaveBeenCalled();
+		expect(result?.user).toEqual(liveUser);
+	});
+
+	it('rejects a tampered bearer token', async () => {
+		const token = makeToken();
+		const [header, payload, signature] = token.split('.');
+		const tampered = Buffer.from(
+			JSON.stringify({
+				...JSON.parse(Buffer.from(payload!, 'base64url').toString()),
+				sub: 'forged-id'
+			})
+		).toString('base64url');
+		const forged = `${header}.${tampered}.${signature}`;
+		const fixture = setup(forged);
+		expect(
+			await getVerifiedBearerSession(fixture.auth, forged, { requireLiveUser: false })
+		).toBeNull();
+		expect(fixture.getUser).not.toHaveBeenCalled();
+	});
+
+	it.each([{ sub: '' }, { role: 'service_role' }, { aud: 'another-app' }])(
+		'rejects bearer claims that are not an authenticated user: %j',
+		async (claims) => {
+			const token = makeToken(claims);
+			const fixture = setup(token);
+			expect(
+				await getVerifiedBearerSession(fixture.auth, token, { requireLiveUser: false })
+			).toBeNull();
+		}
+	);
+
+	it('rejects an expired bearer token', async () => {
+		const token = makeToken({ exp: 1 });
+		const fixture = setup(token);
+		await expect(
+			getVerifiedBearerSession(fixture.auth, token, { requireLiveUser: false })
+		).rejects.toThrow('JWT has expired');
 	});
 });

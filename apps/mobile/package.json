@@ -1,0 +1,42 @@
+{
+	"name": "@buildos/mobile",
+	"version": "0.1.0",
+	"private": true,
+	"main": "expo-router/entry",
+	"scripts": {
+		"dev": "expo start --go",
+		"ios": "expo start --go --ios",
+		"android": "expo start --go --android",
+		"export": "expo export --platform ios",
+		"check": "tsc --noEmit",
+		"typecheck": "tsc --noEmit",
+		"doctor": "expo-doctor",
+		"test": "vitest",
+		"test:run": "vitest run"
+	},
+	"dependencies": {
+		"@buildos/api-client": "workspace:*",
+		"@buildos/shared-types": "workspace:*",
+		"@supabase/supabase-js": "^2.89.0",
+		"@tanstack/react-query": "^5.105.0",
+		"expo": "~58.0.21",
+		"expo-constants": "~58.0.14",
+		"expo-linking": "~58.0.15",
+		"expo-router": "~58.0.28",
+		"expo-secure-store": "~58.0.2",
+		"expo-splash-screen": "~58.0.12",
+		"expo-status-bar": "~58.0.4",
+		"expo-system-ui": "~58.0.7",
+		"expo-web-browser": "~58.0.7",
+		"react": "19.3.0",
+		"react-native": "0.88.0",
+		"react-native-safe-area-context": "~5.10.1",
+		"react-native-screens": "~4.30.0",
+		"react-native-url-polyfill": "^4.0.0"
+	},
+	"devDependencies": {
+		"@types/react": "~19.3.0",
+		"typescript": "~6.0.3",
+		"vitest": "^4.1.11"
+	}
+}

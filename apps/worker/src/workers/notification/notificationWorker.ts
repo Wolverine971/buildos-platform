@@ -18,6 +18,7 @@ import type {
 	NotificationJobMetadata,
 	NotificationJsonObject,
 	NotificationStatus,
+	PushPlatform,
 	PushSubscription as PushSubscriptionType
 } from '@buildos/shared-types';
 import {
@@ -31,6 +32,7 @@ import type { ProcessingJob } from '../../lib/supabaseQueue.js';
 import { getErrorMessage, getErrorStatusCode } from '../../lib/utils/errors.js';
 import webpush from 'web-push';
 import { sendEmailNotification } from './emailAdapter.js';
+import { buildExpoMessage, sendExpoPushNotification } from './expoPushAdapter.js';
 import { sendSMSNotification } from './smsAdapter.js';
 import { isNotificationSmsSendingEnabled } from '../../config/sms.js';
 import { type Logger, createLogger, generateCorrelationId } from '@buildos/shared-utils';
@@ -368,6 +370,118 @@ async function getUnreadPushCount(
 }
 
 /**
+ * Record that a push subscription just received a notification. Never fails the delivery:
+ * the notification was already sent.
+ */
+async function markPushSubscriptionUsed(subscriptionId: string, pushLogger: Logger): Promise<void> {
+	const { error: updateError } = await supabase
+		.from('push_subscriptions')
+		.update({ last_used_at: new Date().toISOString() })
+		.eq('id', subscriptionId);
+
+	if (updateError) {
+		pushLogger.warn('Failed to update push subscription last_used_at', {
+			subscriptionId,
+			error: updateError.message
+		});
+	}
+}
+
+/**
+ * Deactivate a subscription whose device is gone (web-push 410/404, Expo DeviceNotRegistered)
+ * so `emit_notification_event` stops creating deliveries for it.
+ */
+async function deactivatePushSubscription(
+	subscriptionId: string,
+	pushLogger: Logger
+): Promise<void> {
+	const { error: deactivateError } = await supabase
+		.from('push_subscriptions')
+		.update({ is_active: false })
+		.eq('id', subscriptionId);
+
+	if (deactivateError) {
+		pushLogger.error('Failed to deactivate expired push subscription', deactivateError, {
+			subscriptionId,
+			warning: 'Subscription will be retried on next notification'
+		});
+		// Return anyway - the subscription is dead
+	}
+}
+
+/**
+ * Send a push notification to a native app install (iPhone/Android) through Expo.
+ *
+ * Same delivery row, same title/body/data as the web-push path; Expo's ticket replaces the
+ * HTTP status for "this device is gone".
+ */
+async function sendExpoPushDelivery(
+	delivery: NotificationDelivery,
+	pushSubscription: PushSubscriptionType,
+	pushLogger: Logger
+): Promise<DeliveryResult> {
+	const expoLogger = pushLogger.child('expo');
+
+	try {
+		expoLogger.debug('Sending Expo push notification', {
+			notificationDeliveryId: delivery.id,
+			recipientUserId: delivery.recipient_user_id,
+			subscriptionId: pushSubscription.id,
+			platform: pushSubscription.platform
+		});
+
+		const unreadPushCount = await getUnreadPushCount(delivery.recipient_user_id, expoLogger);
+		const message = buildExpoMessage(delivery, pushSubscription.endpoint, unreadPushCount);
+		const result = await sendExpoPushNotification(message);
+
+		if (result.ok) {
+			await markPushSubscriptionUsed(pushSubscription.id, expoLogger);
+
+			expoLogger.info('Expo push notification sent successfully', {
+				notificationDeliveryId: delivery.id,
+				subscriptionId: pushSubscription.id,
+				ticketId: result.ticketId
+			});
+
+			return { success: true, external_id: result.ticketId ?? undefined };
+		}
+
+		if (result.deviceGone) {
+			expoLogger.warn('Expo push device no longer registered', {
+				notificationDeliveryId: delivery.id,
+				subscriptionId: pushSubscription.id,
+				code: result.code
+			});
+
+			await deactivatePushSubscription(pushSubscription.id, expoLogger);
+
+			return {
+				success: false,
+				error: 'Push subscription expired or not found'
+			};
+		}
+
+		expoLogger.error('Expo push notification failed', new Error(result.error), {
+			notificationDeliveryId: delivery.id,
+			subscriptionId: pushSubscription.id,
+			code: result.code
+		});
+
+		return { success: false, error: result.error };
+	} catch (error) {
+		expoLogger.error('Expo push notification failed', error, {
+			notificationDeliveryId: delivery.id,
+			subscriptionId: pushSubscription.id
+		});
+
+		return {
+			success: false,
+			error: getErrorMessage(error, 'Unknown Expo push notification error')
+		};
+	}
+}
+
+/**
  * Send browser push notification
  */
 async function sendPushNotification(
@@ -377,9 +491,19 @@ async function sendPushNotification(
 ): Promise<DeliveryResult> {
 	const pushLogger = jobLogger.child('push');
 
+	// Native app installs register through Expo instead of a browser push service.
+	if (pushSubscription.provider === 'expo') {
+		return sendExpoPushDelivery(delivery, pushSubscription, pushLogger);
+	}
+
 	try {
 		if (!pushNotificationsConfigured) {
 			throw new Error('VAPID keys not configured');
+		}
+
+		// The DB CHECK requires both keys for web_push rows; guard for the type system.
+		if (!pushSubscription.p256dh_key || !pushSubscription.auth_key) {
+			throw new Error('Push subscription is missing encryption keys');
 		}
 
 		// Format push subscription object
@@ -425,18 +549,7 @@ async function sendPushNotification(
 		});
 
 		// Update last_used_at for push subscription
-		const { error: updateError } = await supabase
-			.from('push_subscriptions')
-			.update({ last_used_at: new Date().toISOString() })
-			.eq('id', pushSubscription.id);
-
-		if (updateError) {
-			pushLogger.warn('Failed to update push subscription last_used_at', {
-				subscriptionId: pushSubscription.id,
-				error: updateError.message
-			});
-			// Don't fail the notification - it was already sent successfully
-		}
+		await markPushSubscriptionUsed(pushSubscription.id, pushLogger);
 
 		pushLogger.info('Push notification sent successfully', {
 			notificationDeliveryId: delivery.id,
@@ -455,22 +568,7 @@ async function sendPushNotification(
 			});
 
 			// Subscription expired - deactivate it
-			const { error: deactivateError } = await supabase
-				.from('push_subscriptions')
-				.update({ is_active: false })
-				.eq('id', pushSubscription.id);
-
-			if (deactivateError) {
-				pushLogger.error(
-					'Failed to deactivate expired push subscription',
-					deactivateError,
-					{
-						subscriptionId: pushSubscription.id,
-						warning: 'Subscription will be retried on next notification'
-					}
-				);
-				// Return error anyway - the subscription is dead
-			}
+			await deactivatePushSubscription(pushSubscription.id, pushLogger);
 
 			return {
 				success: false,
@@ -622,7 +720,10 @@ async function sendNotification(
 				created_at: pushSub.created_at || new Date().toISOString(),
 				last_used_at: pushSub.last_used_at || undefined,
 				user_agent: pushSub.user_agent || undefined,
-				is_active: pushSub.is_active || false
+				is_active: pushSub.is_active || false,
+				// Rows from before native apps carry the column defaults ('web_push' / 'web').
+				provider: pushSub.provider === 'expo' ? 'expo' : 'web_push',
+				platform: pushSub.platform as PushPlatform
 			};
 
 			return sendPushNotification(delivery, subscription, jobLogger);

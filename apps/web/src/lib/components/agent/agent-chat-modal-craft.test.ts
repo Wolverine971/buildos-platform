@@ -1,3 +1,4 @@
+// apps/web/src/lib/components/agent/agent-chat-modal-craft.test.ts
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/svelte';
 import { flushSync } from 'svelte';
@@ -131,8 +132,8 @@ describe('conversation scrolling', () => {
 		scroller.getBoundingClientRect = () => ({ top: 0 }) as DOMRect;
 		contentEnd.getBoundingClientRect = () =>
 			({ top: contentHeight - scroller.scrollTop }) as DOMRect;
-		const scrollTo = vi.fn((options: ScrollToOptions) => {
-			scroller.scrollTop = options.top ?? 0;
+		const scrollTo = vi.fn((options?: ScrollToOptions | number, y?: number) => {
+			scroller.scrollTop = (typeof options === 'number' ? y : options?.top) ?? 0;
 		});
 		scroller.scrollTo = scrollTo;
 		// Reading input cancels the initial session-restore positioning.
