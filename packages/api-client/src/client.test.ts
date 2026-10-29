@@ -508,6 +508,42 @@ describe('endpoint wrappers', () => {
 		});
 	});
 
+	it('workspace.sortCapture and undoSort post to the sort routes', async () => {
+		const receipt = { document_id: 'd1', move_batch: null, created: [], updates: [] };
+		const fetchMock = vi
+			.fn<typeof fetch>()
+			.mockResolvedValueOnce(
+				jsonResponse(
+					envelope({
+						outcome: 'sorted',
+						lines: ['2 tasks → Fading Crown'],
+						added: [],
+						removed_ids: ['d1'],
+						receipt
+					})
+				)
+			)
+			.mockResolvedValueOnce(
+				jsonResponse(envelope({ restored: null, removed_ids: [], failed: 0 }))
+			);
+		const api = makeClient(fetchMock);
+
+		const sorted = await api.workspace.sortCapture({ document_id: 'd1', source: 'ios' });
+		expect(sorted.lines).toEqual(['2 tasks → Fading Crown']);
+		expect(lastCall(fetchMock).url).toBe('https://build-os.com/api/workspace/capture/sort');
+		expect(JSON.parse(String(lastCall(fetchMock).init.body))).toEqual({
+			document_id: 'd1',
+			source: 'ios'
+		});
+
+		const undone = await api.workspace.undoSort(sorted.receipt!);
+		expect(undone.failed).toBe(0);
+		expect(lastCall(fetchMock).url).toBe(
+			'https://build-os.com/api/workspace/capture/sort/undo'
+		);
+		expect(JSON.parse(String(lastCall(fetchMock).init.body))).toEqual({ receipt });
+	});
+
 	it('push.listDevices and agent.listActiveTurns issue GETs with the right query', async () => {
 		const fetchMock = vi
 			.fn<typeof fetch>()

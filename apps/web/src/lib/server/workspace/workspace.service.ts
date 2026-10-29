@@ -317,6 +317,22 @@ export async function captureLooseItem(input: {
 		return { workspaceId, item: toLooseTask(task) };
 	}
 
+	// A retry of one capture (the phone's offline queue resends after a dropped response)
+	// gets the note already saved under that key, as the task RPC does for tasks. Documents
+	// have no idempotency column, so the key lives in props; the Workspace is one project per
+	// person, so the lookup is scoped by project_id.
+	const idempotencyKey = capture.idempotencyKey?.trim() || null;
+	if (idempotencyKey) {
+		const { data: existing } = await session
+			.from('onto_documents')
+			.select('*')
+			.eq('project_id', workspaceId)
+			.contains('props', { idempotency_key: idempotencyKey })
+			.limit(1)
+			.maybeSingle();
+		if (existing) return { workspaceId, item: toLooseDoc(existing) };
+	}
+
 	const title = noteTitleFromText(text);
 	const { data: doc, error } = await session
 		.from('onto_documents')
@@ -326,7 +342,11 @@ export async function captureLooseItem(input: {
 			type_key: NOTE_TYPE_KEY,
 			state_key: 'draft',
 			content: text,
-			props: { body_markdown: text, captured_via: source },
+			props: {
+				body_markdown: text,
+				captured_via: source,
+				...(idempotencyKey ? { idempotency_key: idempotencyKey } : {})
+			},
 			created_by: actorId
 		})
 		.select('*')

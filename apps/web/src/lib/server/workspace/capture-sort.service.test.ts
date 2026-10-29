@@ -94,15 +94,26 @@ const freshNote = {
 };
 
 function makeSession(
-	doc: Omit<typeof freshNote, 'props'> & { props: Record<string, unknown> } = freshNote
+	doc: Omit<typeof freshNote, 'props'> & { props: Record<string, unknown> } = freshNote,
+	options: { claimLost?: boolean } = {}
 ) {
+	/** Every props write after the claim (the claim itself is in `claims`). */
 	const updates: unknown[] = [];
+	const claims: unknown[] = [];
 	const session = {
 		from: vi.fn((table: string) => {
 			if (table === 'onto_documents')
 				return {
 					select: () => chain({ data: doc, error: null }),
 					update: (value: unknown) => {
+						const props = (value as { props?: { sorted?: unknown } }).props;
+						if (props?.sorted === 'sorting') {
+							claims.push(value);
+							return chain({
+								data: options.claimLost ? [] : [{ id: doc.id }],
+								error: null
+							});
+						}
 						updates.push(value);
 						return chain({ error: null });
 					}
@@ -123,7 +134,7 @@ function makeSession(
 			throw new Error(`unexpected table ${table}`);
 		})
 	};
-	return { session, updates };
+	return { session, updates, claims };
 }
 const admin = { from: () => chain({ count: 0, error: null }) };
 
@@ -240,6 +251,37 @@ describe('sortCapturedNote', () => {
 		expect(result).toMatchObject({ outcome: 'kept', lines: [], receipt: null });
 		expect(fetch).not.toHaveBeenCalled();
 		expect(updates).toHaveLength(1);
+	});
+
+	it('claims the note before the model call, and a retry that loses the claim does nothing', async () => {
+		mocks.getJSONResponse.mockResolvedValue({
+			items: [{ kind: 'note', title: 'An idea', project: null, confidence: 0.9 }],
+			updates: []
+		});
+		const first = makeSession();
+		await sortCapturedNote({
+			...base,
+			session: first.session as never,
+			admin: admin as never,
+			fetch: routeFetch() as never
+		});
+		expect(first.claims).toEqual([
+			{ props: expect.objectContaining({ sorted: 'sorting', captured_via: 'workspace' }) }
+		]);
+
+		mocks.getJSONResponse.mockClear();
+		const retry = makeSession(freshNote, { claimLost: true });
+		const fetch = routeFetch();
+		const result = await sortCapturedNote({
+			...base,
+			session: retry.session as never,
+			admin: admin as never,
+			fetch: fetch as never
+		});
+		expect(result.outcome).toBe('skipped');
+		expect(mocks.getJSONResponse).not.toHaveBeenCalled();
+		expect(fetch).not.toHaveBeenCalled();
+		expect(retry.updates).toEqual([]);
 	});
 
 	it('never sorts an old or already-sorted note, and makes no model call', async () => {

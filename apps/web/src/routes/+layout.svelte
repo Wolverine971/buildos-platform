@@ -433,6 +433,7 @@
 				timeBlockBridgeModule,
 				agentRunBridgeModule,
 				chatSessionBridgeModule,
+				dailyBriefBridgeModule,
 				gmailReconnectAttentionBridgeModule,
 				timeBlocksStoreModule,
 				agentRunsRealtimeModule
@@ -443,6 +444,7 @@
 				import('$lib/services/time-block-notification.bridge'),
 				import('$lib/services/agent-run-notification.bridge'),
 				import('$lib/services/chat-session-notification.bridge'),
+				import('$lib/services/daily-brief-notification.bridge'),
 				import('$lib/services/gmail-reconnect-attention.bridge'),
 				import('$lib/stores/timeBlocksStore'),
 				import('$lib/services/agentRunsRealtime.service')
@@ -460,6 +462,7 @@
 					timeBlockBridgeModule,
 					agentRunBridgeModule,
 					chatSessionBridgeModule,
+					dailyBriefBridgeModule,
 					gmailReconnectAttentionBridgeModule,
 					timeBlocksStoreModule
 				},
@@ -487,6 +490,7 @@
 			timeBlockBridgeModule: any;
 			agentRunBridgeModule: any;
 			chatSessionBridgeModule: any;
+			dailyBriefBridgeModule: any;
 			gmailReconnectAttentionBridgeModule: any;
 			timeBlocksStoreModule: any;
 		},
@@ -499,6 +503,7 @@
 		modules.timeBlockBridgeModule.initTimeBlockNotificationBridge();
 		modules.agentRunBridgeModule.initAgentRunNotificationBridge();
 		modules.chatSessionBridgeModule.initChatSessionNotificationBridge();
+		modules.dailyBriefBridgeModule.initDailyBriefNotificationBridge();
 		modules.gmailReconnectAttentionBridgeModule.initGmailReconnectAttentionBridge(
 			supabase,
 			resourceUserId
@@ -511,6 +516,7 @@
 			modules.projectSynthesisBridgeModule.cleanupProjectSynthesisNotificationBridge();
 			modules.agentRunBridgeModule.destroyAgentRunNotificationBridge();
 			modules.chatSessionBridgeModule.destroyChatSessionNotificationBridge();
+			modules.dailyBriefBridgeModule.destroyDailyBriefNotificationBridge();
 			modules.gmailReconnectAttentionBridgeModule.destroyGmailReconnectAttentionBridge();
 		};
 	}

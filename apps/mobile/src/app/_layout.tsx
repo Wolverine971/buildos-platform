@@ -58,7 +58,12 @@ function Navigation() {
 				<Stack.Screen name="sign-in" options={{ headerShown: false }} />
 			</Stack.Protected>
 			<Stack.Protected guard={!!session}>
-				<Stack.Screen name="index" options={{ title: 'Today' }} />
+				<Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Today' }} />
+				<Stack.Screen
+					name="project/[id]"
+					options={{ title: 'Project', headerBackTitle: 'Back' }}
+				/>
+				<Stack.Screen name="reader" options={{ presentation: 'modal', title: 'Task' }} />
 			</Stack.Protected>
 		</Stack>
 	);

@@ -1084,3 +1084,40 @@ export type WorkspaceCaptureResponse = {
 	workspaceId: string;
 	item: LooseItem;
 };
+
+/**
+ * POST /api/workspace/capture/sort — apps/web/src/routes/api/workspace/capture/sort/+server.ts
+ * Smart capture's second step, the same one the web capture box runs after every save: one
+ * fast model call decides whether the note becomes tasks or notes, moves into a project it
+ * clearly belongs to, or updates a task that exists. Only a note saved in the last 30 minutes
+ * is sorted, once; a repeat call answers `skipped`, so a retry is safe.
+ */
+export type CaptureSortInput = {
+	/** `item.id` from `workspace.capture` (a note). */
+	document_id: string;
+	/** ≤ 40 chars, e.g. `ios`. */
+	source?: string;
+};
+
+/** Undo token for a sort. Opaque: send it back to `workspace.undoSort` unchanged. */
+export type CaptureSortReceipt = Record<string, unknown>;
+
+/** Mirrors `CaptureSortResult` in apps/web/src/lib/server/workspace/capture-sort.service.ts. */
+export type CaptureSortResult = {
+	outcome: 'kept' | 'moved' | 'sorted' | 'partial' | 'skipped';
+	/** Plain lines saying what happened and where, ready to show. */
+	lines: string[];
+	/** New loose items now in the Workspace. */
+	added: LooseItem[];
+	/** Loose items that left the Workspace (the original note). */
+	removed_ids: string[];
+	receipt: CaptureSortReceipt | null;
+};
+
+/** POST /api/workspace/capture/sort/undo */
+export type CaptureUndoResult = {
+	restored: LooseItem | null;
+	removed_ids: string[];
+	/** Changes that could not be put back. */
+	failed: number;
+};

@@ -1,6 +1,7 @@
 // apps/web/src/lib/server/csrf.ts
 import { json } from '@sveltejs/kit';
 import type { RequestEvent } from '@sveltejs/kit';
+import { readUserBearerToken } from '$lib/server/bearer-auth';
 
 const CROSS_ORIGIN_FORM_POST_ALLOWED_PATHS = new Set(['/oauth/token', '/oauth/revoke']);
 
@@ -38,6 +39,12 @@ function isFormContentType(contentType: string | null): boolean {
  * SvelteKit treats a missing Origin as a failed same-origin check. Keep that
  * fail-closed behavior here: sandboxed/legacy clients must not bypass CSRF
  * protection simply by omitting the header.
+ *
+ * The one exception is a request signed in with a user bearer token (the iPhone app's
+ * multipart audio uploads, which carry no Origin). CSRF rides on ambient cookies; a bearer
+ * request never reads them (hooks.server.ts builds a cookie-free client, and a bad token
+ * gets no session rather than a cookie fallback), and a browser cannot attach an
+ * Authorization header to a cross-site form post on its own.
  */
 export function createCrossSiteFormPostResponse(event: RequestEvent): Response | null {
 	const method = event.request.method.toUpperCase();
@@ -50,6 +57,10 @@ export function createCrossSiteFormPostResponse(event: RequestEvent): Response |
 	}
 
 	if (isCrossOriginFormPostAllowed(event.url.pathname)) {
+		return null;
+	}
+
+	if (readUserBearerToken(event.request)) {
 		return null;
 	}
 

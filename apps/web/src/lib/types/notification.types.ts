@@ -349,6 +349,33 @@ export interface ChatSessionNotification extends BaseNotification {
 }
 
 // ============================================================================
+// Daily Brief Notification (generation progress → ready / failed)
+// ============================================================================
+
+/**
+ * The daily-brief generation card in the bottom-right stack. Driven by
+ * `daily-brief-notification.bridge`, which mirrors `briefNotificationStatus`
+ * (the realtime view of the active `generate_daily_brief` job). One card at a
+ * time: it tracks the job while it runs, then flips to ready / failed /
+ * cancelled. Clicking it opens the brief; there is no NotificationModal view.
+ */
+export interface DailyBriefNotification extends BaseNotification {
+	type: 'daily-brief';
+	data: {
+		/** YYYY-MM-DD in the user's timezone; null when the signal carried no date. */
+		briefDate: string | null;
+		/** "Today" or a short date, resolved once in the user's timezone. */
+		dateLabel: string;
+		jobId: string | null;
+		/** Worker step message while generating (e.g. "Generating project briefs..."). */
+		message?: string | null;
+		error?: string | null;
+	};
+	progress: NotificationProgress;
+	actions: NotificationActions;
+}
+
+// ============================================================================
 // Generic Notification
 // ============================================================================
 
@@ -379,6 +406,7 @@ export type Notification =
 	| CalendarAnalysisNotification
 	| AgentRunNotification
 	| ChatSessionNotification
+	| DailyBriefNotification
 	| GenericNotification;
 
 // ============================================================================
@@ -460,6 +488,12 @@ export function isChatSessionNotification(
 	notification: Notification
 ): notification is ChatSessionNotification {
 	return notification.type === 'chat-session';
+}
+
+export function isDailyBriefNotification(
+	notification: Notification
+): notification is DailyBriefNotification {
+	return notification.type === 'daily-brief';
 }
 
 // ============================================================================

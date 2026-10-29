@@ -6,6 +6,7 @@ import MinimizedNotification from './MinimizedNotification.svelte';
 import type {
 	AgentRunNotification,
 	ChatSessionNotification,
+	DailyBriefNotification,
 	ProjectSynthesisNotification
 } from '$lib/types/notification.types';
 
@@ -172,5 +173,96 @@ describe('MinimizedNotification', () => {
 
 		expect(card).toHaveClass('border-success/50');
 		expect(card).not.toHaveClass('border-border', 'ring-2', 'ring-success/50');
+	});
+});
+
+function dailyBriefNotification(
+	overrides: Partial<Pick<DailyBriefNotification, 'status' | 'data' | 'progress'>> = {},
+	view = vi.fn(),
+	dismiss = vi.fn()
+): DailyBriefNotification {
+	return {
+		id: 'daily-brief-notification-1',
+		type: 'daily-brief',
+		status: 'processing',
+		createdAt: Date.now(),
+		updatedAt: Date.now(),
+		isMinimized: true,
+		isPersistent: true,
+		autoCloseMs: null,
+		data: {
+			briefDate: '2026-10-29',
+			dateLabel: 'Today',
+			jobId: 'job-1',
+			message: 'Generating project briefs...',
+			error: null
+		},
+		progress: { type: 'percentage', percentage: 40, message: 'Generating project briefs...' },
+		actions: { view, dismiss },
+		...overrides
+	};
+}
+
+describe('MinimizedNotification daily-brief card', () => {
+	afterEach(() => {
+		cleanup();
+		vi.clearAllMocks();
+	});
+
+	it('shows progress and opens the brief from its own button instead of expanding', async () => {
+		const view = vi.fn();
+		const dismiss = vi.fn();
+		render(MinimizedNotification, {
+			props: { notification: dailyBriefNotification({}, view, dismiss) }
+		});
+
+		// The wrapper is a plain group — this card has no modal to expand into.
+		expect(await screen.findByRole('group', { name: 'Daily brief for Today' })).toBeTruthy();
+		expect(screen.queryByRole('button', { name: /expand/i })).toBeNull();
+
+		const open = await screen.findByRole('button', { name: /^Generating your brief/ });
+		expect(open.getAttribute('aria-label')).toBe(
+			'Generating your brief. Generating project briefs... · 40%'
+		);
+		expect(screen.getByText('Today')).toBeTruthy();
+
+		await fireEvent.click(open);
+		expect(view).toHaveBeenCalledTimes(1);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Hide brief progress' }));
+		expect(dismiss).toHaveBeenCalledTimes(1);
+	});
+
+	it('reads as ready once the brief lands and as failed with the error', async () => {
+		const { unmount } = render(MinimizedNotification, {
+			props: {
+				notification: dailyBriefNotification({
+					status: 'success',
+					progress: { type: 'binary', message: 'Tap to read it' }
+				})
+			}
+		});
+		expect(await screen.findByText('Your brief is ready')).toBeTruthy();
+		expect(screen.getByText('Tap to read it')).toBeTruthy();
+		expect(screen.getByRole('button', { name: 'Dismiss' })).toBeTruthy();
+		unmount();
+
+		render(MinimizedNotification, {
+			props: {
+				notification: dailyBriefNotification({
+					status: 'error',
+					data: {
+						briefDate: '2026-10-29',
+						dateLabel: 'Today',
+						jobId: 'job-1',
+						message: null,
+						error: 'LLM timed out'
+					},
+					progress: { type: 'binary', message: 'LLM timed out' }
+				})
+			}
+		});
+		expect(await screen.findByText('Brief generation failed')).toBeTruthy();
+		expect(screen.getByText('LLM timed out')).toBeTruthy();
 	});
 });

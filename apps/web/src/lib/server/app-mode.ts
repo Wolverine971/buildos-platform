@@ -1,4 +1,5 @@
 // apps/web/src/lib/server/app-mode.ts
+import { building } from '$app/environment';
 import type { RequestEvent } from '@sveltejs/kit';
 
 /** Cookie that keeps pages in app mode (inside the BuildOS iPhone app) across navigations. */
@@ -14,6 +15,10 @@ export function resolveAppMode(
 	event: Pick<RequestEvent, 'url' | 'cookies'>,
 	options: { secure: boolean }
 ): boolean {
+	// The root layout also runs while prerendering public pages. They must keep the
+	// web chrome and cannot read request-specific query params or cookies at build time.
+	if (building) return false;
+
 	const flag = event.url.searchParams.get('app');
 
 	if (flag === '1') {

@@ -5,12 +5,13 @@ import { createCrossSiteFormPostResponse } from './csrf';
 
 function makeEvent(
 	pathname: string,
-	options: { method?: string; origin?: string; contentType?: string } = {}
+	options: { method?: string; origin?: string; contentType?: string; authorization?: string } = {}
 ): RequestEvent {
 	const url = new URL(pathname, 'https://build-os.com');
 	const headers = new Headers();
 	if (options.origin !== undefined) headers.set('origin', options.origin);
 	if (options.contentType !== undefined) headers.set('content-type', options.contentType);
+	if (options.authorization !== undefined) headers.set('authorization', options.authorization);
 
 	return {
 		url,
@@ -99,6 +100,38 @@ describe('createCrossSiteFormPostResponse', () => {
 					})
 				)
 			).toBeNull();
+		}
+	});
+
+	it('lets a bearer-signed upload from the phone through without an Origin', () => {
+		// The iPhone app posts recordings as multipart with its Supabase access token and no
+		// Origin. Cookies are never read on the bearer path, so there is nothing to forge.
+		const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.c2lnbmF0dXJl';
+		expect(
+			createCrossSiteFormPostResponse(
+				makeEvent('/api/transcribe', {
+					contentType: 'multipart/form-data; boundary=abc',
+					authorization: `Bearer ${jwt}`
+				})
+			)
+		).toBeNull();
+	});
+
+	it('still guards form posts whose Authorization is not a user bearer token', () => {
+		for (const authorization of [
+			'Bearer not-a-jwt',
+			'Bearer boca_agent_token_value',
+			'Basic dXNlcjpwYXNz',
+			'Bearer '
+		]) {
+			expect(
+				createCrossSiteFormPostResponse(
+					makeEvent('/api/transcribe', {
+						contentType: 'multipart/form-data; boundary=abc',
+						authorization
+					})
+				)?.status
+			).toBe(403);
 		}
 	});
 });

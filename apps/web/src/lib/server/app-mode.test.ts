@@ -1,6 +1,13 @@
 // apps/web/src/lib/server/app-mode.test.ts
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { APP_MODE_COOKIE, resolveAppMode } from './app-mode';
+
+const environment = vi.hoisted(() => ({ building: false }));
+vi.mock('$app/environment', () => ({
+	get building() {
+		return environment.building;
+	}
+}));
 
 function makeEvent(search: string, cookieValue?: string) {
 	const cookies = {
@@ -13,6 +20,29 @@ function makeEvent(search: string, cookieValue?: string) {
 }
 
 describe('resolveAppMode', () => {
+	beforeEach(() => {
+		environment.building = false;
+	});
+
+	it('keeps prerendered pages in web mode without reading query params or cookies', () => {
+		environment.building = true;
+		const { event, cookies } = makeEvent('', '1');
+		event.url = new URL('https://build-os.com/blogs');
+		// SvelteKit disables this getter while prerendering, even with no query string.
+		Object.defineProperty(event.url, 'searchParams', {
+			get() {
+				throw new Error(
+					'Cannot access url.searchParams on a page with prerendering enabled'
+				);
+			}
+		});
+
+		expect(resolveAppMode(event, { secure: true })).toBe(false);
+		expect(cookies.get).not.toHaveBeenCalled();
+		expect(cookies.set).not.toHaveBeenCalled();
+		expect(cookies.delete).not.toHaveBeenCalled();
+	});
+
 	it('sets the cookie and returns true when ?app=1 is present', () => {
 		const { event, cookies } = makeEvent('?app=1');
 		expect(resolveAppMode(event, { secure: true })).toBe(true);

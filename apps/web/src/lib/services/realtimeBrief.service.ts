@@ -20,7 +20,10 @@ export interface BriefNotificationStatus {
 	timezone?: string;
 }
 
-// Store for navigation brief status
+// Live status of the user's daily-brief generation. Drives the daily-brief card
+// in the bottom-right stack (daily-brief-notification.bridge): processing while
+// `isGenerating`, then one terminal `status` (completed / failed / cancelled).
+// A bare `{ isGenerating: false }` means "cleared, no verdict".
 export const briefNotificationStatus = writable<BriefNotificationStatus>({
 	isGenerating: false
 });
@@ -456,7 +459,7 @@ export class RealtimeBriefService {
 		const notificationKey = `brief_complete_${job.queue_job_id}`;
 		if (this.state.shownNotifications.has(notificationKey)) {
 			console.log(`Skipping duplicate completion notification for job ${job.queue_job_id}`);
-			// Still clear the status but don't show toast
+			// Still clear the status, but don't re-announce it
 			briefNotificationStatus.set({
 				isGenerating: false
 			});
@@ -474,12 +477,14 @@ export class RealtimeBriefService {
 			5 * 60 * 1000
 		);
 
-		// Show success toast
-		toastService.success(`Your brief for ${briefDate || 'today'} is ready!`);
-
-		// Clear the status immediately - don't keep showing completed status
+		// The daily-brief card flips to "ready" and opens the brief on click — no toast.
 		briefNotificationStatus.set({
-			isGenerating: false
+			isGenerating: false,
+			status: 'completed',
+			briefDate,
+			jobId: job.queue_job_id,
+			completedAt: job.completed_at ?? new Date().toISOString(),
+			timezone: this.state.userTimezone
 		});
 
 		this.emitCompletionEvent(briefDate);
@@ -498,7 +503,7 @@ export class RealtimeBriefService {
 		const notificationKey = `brief_failed_${job.queue_job_id}`;
 		if (this.state.shownNotifications.has(notificationKey)) {
 			console.log(`Skipping duplicate failure notification for job ${job.queue_job_id}`);
-			// Still clear the status but don't show toast
+			// Still clear the status, but don't re-announce it
 			briefNotificationStatus.set({
 				isGenerating: false
 			});
@@ -516,13 +521,15 @@ export class RealtimeBriefService {
 			5 * 60 * 1000
 		);
 
-		// Show error toast with details
+		// The daily-brief card shows the failure and stays until dismissed — no toast.
 		const errorMessage = job.error_message || 'Brief generation failed';
-		toastService.error(`${errorMessage} for ${briefDate || 'today'}`);
-
-		// Clear the status immediately - don't keep showing failed status
 		briefNotificationStatus.set({
-			isGenerating: false
+			isGenerating: false,
+			status: 'failed',
+			briefDate,
+			jobId: job.queue_job_id,
+			error: errorMessage,
+			timezone: this.state.userTimezone
 		});
 	}
 
@@ -616,8 +623,12 @@ export class RealtimeBriefService {
 	private static handleBriefCompleted(payload: any): void {
 		const { briefDate } = payload;
 
-		// Clear the status - don't keep showing completed status
-		briefNotificationStatus.set({ isGenerating: false });
+		briefNotificationStatus.set({
+			isGenerating: false,
+			status: 'completed',
+			briefDate,
+			timezone: this.state.userTimezone
+		});
 
 		this.emitCompletionEvent(briefDate);
 	}
@@ -628,11 +639,13 @@ export class RealtimeBriefService {
 	private static handleBriefFailed(payload: any): void {
 		const { briefDate } = payload;
 
-		// Show error notification
-		toastService.error(`Brief generation failed for ${briefDate || 'today'}`);
-
-		// Clear the status - don't keep showing failed status
-		briefNotificationStatus.set({ isGenerating: false });
+		briefNotificationStatus.set({
+			isGenerating: false,
+			status: 'failed',
+			briefDate,
+			error: 'Brief generation failed',
+			timezone: this.state.userTimezone
+		});
 	}
 
 	/**
@@ -742,8 +755,8 @@ export class RealtimeBriefService {
 	}
 
 	/**
-	 * Clear the nav indicator when polling saw this date's generation end, so the
-	 * indicator never depends on realtime alone to stop spinning.
+	 * Clear the brief card when polling saw this date's generation end, so the
+	 * card never depends on realtime alone to stop spinning.
 	 */
 	static clearStatusForDate(briefDate: string): void {
 		if (get(briefNotificationStatus).briefDate === briefDate) {

@@ -153,6 +153,24 @@ data: {
 }
 ```
 
+### Daily Brief
+
+Driven by `$lib/services/daily-brief-notification.bridge`, which mirrors
+`briefNotificationStatus` (realtime view of the active `generate_daily_brief` job).
+One card: processing with a progress bar → ready (auto-closes, click opens the brief) /
+failed (stays until dismissed) / cancelled. No modal view; the card's own buttons act.
+
+```typescript
+type: 'daily-brief';
+data: {
+	briefDate: string | null; // YYYY-MM-DD in the user's timezone
+	dateLabel: string; // "Today" or "Oct 28"
+	jobId: string | null;
+	message?: string | null; // worker step message while generating
+	error?: string | null;
+}
+```
+
 ### Generic (Fallback)
 
 ```typescript

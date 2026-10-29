@@ -40,7 +40,6 @@
 		Users
 	} from '$lib/icons/lucide';
 	import { toggleMode } from 'mode-watcher';
-	import BriefStatusIndicator from './BriefStatusIndicator.svelte';
 	import BuildOSLogo from './BuildOSLogo.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { logout } from '$lib/utils/auth';
@@ -958,11 +957,6 @@
 			<!-- Right side -->
 			<div class="flex items-center gap-1.5 sm:gap-2 lg:gap-2 xl:gap-3 flex-shrink-0">
 				{#if user}
-					<!-- Brief Status (desktop only) -->
-					<div class="hidden xl:block">
-						<BriefStatusIndicator />
-					</div>
-
 					<!-- Agent Work: persistent run history/control. Kept separate from
 					     AI Inbox, which owns pending mutation reviews. -->
 					<button
@@ -1417,11 +1411,6 @@
 			data-mobile-menu
 		>
 			{#if user}
-				<!-- Mobile Brief Status -->
-				<div class="px-3 pt-2 pb-2">
-					<BriefStatusIndicator />
-				</div>
-
 				<!-- Mobile Navigation -->
 				<div class="px-2 pt-1.5 pb-2 space-y-1">
 					{#if needsOnboarding}

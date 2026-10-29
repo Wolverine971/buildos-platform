@@ -44,7 +44,14 @@
 					"resizeMode": "contain",
 					"dark": { "backgroundColor": "#1d1c1b" }
 				}
-			]
+			],
+			[
+				"expo-audio",
+				{ "microphonePermission": "BuildOS records voice notes you choose to capture." }
+			],
+			"expo-asset",
+			"expo-font",
+			"@react-native-community/datetimepicker"
 		],
 		"experiments": {
 			"typedRoutes": true

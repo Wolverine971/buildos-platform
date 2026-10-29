@@ -26,6 +26,7 @@
 	let TimeBlockMinimizedView = $state<any>(null);
 	let AgentRunMinimizedView = $state<any>(null);
 	let ChatSessionMinimizedView = $state<any>(null);
+	let DailyBriefMinimizedView = $state<any>(null);
 
 	// Lazy load type-specific component
 	async function loadTypeSpecificComponent() {
@@ -71,6 +72,14 @@
 						ChatSessionMinimizedView = module.default;
 					}
 					break;
+				case 'daily-brief':
+					if (!DailyBriefMinimizedView) {
+						const module = await import(
+							'./types/daily-brief/DailyBriefMinimizedView.svelte'
+						);
+						DailyBriefMinimizedView = module.default;
+					}
+					break;
 				default:
 					break;
 			}
@@ -106,7 +115,9 @@
 						? AgentRunMinimizedView
 						: notification.type === 'chat-session'
 							? ChatSessionMinimizedView
-							: null
+							: notification.type === 'daily-brief'
+								? DailyBriefMinimizedView
+								: null
 	);
 
 	// Get notification title based on type (fallback for generic view)
@@ -143,7 +154,9 @@
 							? notification.data.title
 							: notification.type === 'chat-session'
 								? notification.data.title
-								: 'Processing'
+								: notification.type === 'daily-brief'
+									? 'Daily brief'
+									: 'Processing'
 	);
 
 	// Get subtitle/progress message with type-safe handling across progress variants
@@ -220,12 +233,22 @@
 			return `Parked chat in ${notification.data.contextLabel ?? (notification.data.contextType === 'global' ? 'workspace' : 'project')}`;
 		}
 
+		if (notification.type === 'daily-brief') {
+			return `Daily brief for ${notification.data.dateLabel}`;
+		}
+
 		return `Expand ${notification.type} notification`;
 	});
 
+	// Cards whose own buttons carry the actions (open / dismiss) and that have
+	// no NotificationModal view — the wrapper must not expand them.
+	let hasOwnActions = $derived(
+		notification.type === 'chat-session' || notification.type === 'daily-brief'
+	);
+
 	// Handle click to expand
 	function handleClick() {
-		if (notification.type === 'chat-session') return;
+		if (hasOwnActions) return;
 		notificationStore.expand(notification.id);
 	}
 
@@ -293,7 +316,7 @@
 	{/if}
 {/snippet}
 
-{#if notification.type === 'chat-session'}
+{#if hasOwnActions}
 	<div
 		class="pointer-events-auto w-full min-w-0 rounded-lg border {statusBorderClass} bg-card shadow-ink-strong transition-all duration-200 hover:shadow-ink-strong motion-reduce:transition-none sm:min-w-[320px] sm:max-w-[400px]"
 		role="group"

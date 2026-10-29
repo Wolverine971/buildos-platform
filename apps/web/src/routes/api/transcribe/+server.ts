@@ -12,6 +12,7 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
+import { transcriptionTimeoutFor } from '$lib/server/transcription/transcription-timeout';
 import {
 	estimateTranscriptionReservation,
 	expensiveOperationLimiter,
@@ -25,7 +26,8 @@ const DEFAULT_OPENROUTER_TRANSCRIPTION_FALLBACK_MODELS = ['openai/gpt-4o-mini-tr
 // Timeout and retry configuration. Browser dictation sends short segments and
 // retries them itself, so the server tries each model at most twice and always
 // answers inside the function's maxDuration.
-const TRANSCRIPTION_TIMEOUT_MS = 30000; // per attempt
+// Per attempt: 30 s for dictation segments, longer for a whole phone recording
+// (transcriptionTimeoutFor scales with the upload size).
 const TRANSCRIPTION_DEADLINE_MS = 100000; // across models and retries (< maxDuration 120s)
 const MAX_RETRIES = 1;
 const INITIAL_RETRY_DELAY_MS = 1000;
@@ -185,7 +187,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			allowEmptyTranscript: allowEmpty,
 			deadlineMs: TRANSCRIPTION_DEADLINE_MS,
 			models: openrouterModels,
-			timeoutMs: TRANSCRIPTION_TIMEOUT_MS,
+			timeoutMs: transcriptionTimeoutFor(audioFile.size),
 			maxRetries: MAX_RETRIES,
 			initialRetryDelayMs: INITIAL_RETRY_DELAY_MS
 		});

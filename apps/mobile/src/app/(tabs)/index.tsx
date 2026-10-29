@@ -1,12 +1,18 @@
-// apps/mobile/src/app/index.tsx
+// apps/mobile/src/app/(tabs)/index.tsx
 import { useQuery } from '@tanstack/react-query';
-import type { TodayFeed, TodayTask } from '@buildos/api-client';
-import { RefreshControl, View } from 'react-native';
+import { BuildOsApiError, type TodayFeed, type TodayTask } from '@buildos/api-client';
+import { router } from 'expo-router';
+import { Pressable, RefreshControl, View } from 'react-native';
 
 import { Button } from '@/components/button';
+import { CaptureBar } from '@/components/capture-bar';
+import { PendingCaptures } from '@/components/pending-captures';
 import { Screen } from '@/components/screen';
+import { TaskRow } from '@/components/task-row';
 import { AppText } from '@/components/text';
 import { api } from '@/lib/api';
+import { describeDue } from '@/lib/due-date';
+import { setReaderWalk } from '@/lib/reader-walk';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth-provider';
 import { useTheme } from '@/providers/theme-provider';
@@ -18,7 +24,11 @@ const BUCKET_LABELS: Record<TodayTask['bucket'], string> = {
 	in_progress: 'In progress'
 };
 
-/** Today, read-only: the same feed the web's /today renders, through /api/today. */
+/**
+ * Today, the command center: the same feed the web's /today renders, through /api/today. Tap
+ * a task to open it in the reader and walk the day with Prev and Next; capture is pinned to the
+ * bottom in thumb reach.
+ */
 export default function TodayScreen() {
 	const { session } = useAuth();
 	const colors = useTheme();
@@ -33,54 +43,72 @@ export default function TodayScreen() {
 	const feed = today.data;
 
 	return (
-		<Screen
-			refreshControl={
-				<RefreshControl
-					refreshing={today.isRefetching}
-					onRefresh={() => void today.refetch()}
-					tintColor={colors.accent}
-				/>
-			}
-		>
-			<View style={{ gap: spacing.xs }}>
-				<AppText variant="label">{feed ? formatDate(feed.date) : 'Today'}</AppText>
-				<AppText variant="title">{headline(feed)}</AppText>
-			</View>
+		<View style={{ flex: 1, backgroundColor: colors.background }}>
+			<Screen
+				keyboardDismissMode="interactive"
+				refreshControl={
+					<RefreshControl
+						refreshing={today.isRefetching}
+						onRefresh={() => void today.refetch()}
+						tintColor={colors.accent}
+					/>
+				}
+			>
+				<View style={{ gap: spacing.xs }}>
+					<AppText variant="label">{feed ? formatDate(feed.date) : 'Today'}</AppText>
+					<AppText variant="title">{headline(feed)}</AppText>
+				</View>
 
-			{today.isPending ? <AppText variant="muted">Loading your day…</AppText> : null}
+				<PendingCaptures />
 
-			{today.isError ? (
-				<View style={{ gap: spacing.sm }}>
-					<AppText variant="error">{describeError(today.error)}</AppText>
+				{today.isPending ? <AppText variant="muted">Loading your day…</AppText> : null}
+
+				{today.isError ? (
+					<View style={{ gap: spacing.sm }}>
+						<AppText variant="error">{describeError(today.error)}</AppText>
+						<Button
+							title="Try again"
+							variant="ghost"
+							onPress={() => void today.refetch()}
+						/>
+					</View>
+				) : null}
+
+				{feed ? <FeedBody feed={feed} /> : null}
+
+				<View style={{ marginTop: 'auto', gap: spacing.sm }}>
+					<AppText variant="muted" style={{ textAlign: 'center' }}>
+						{session?.user.email}
+					</AppText>
 					<Button
-						title="Try again"
+						title="Sign out"
 						variant="ghost"
-						onPress={() => void today.refetch()}
+						onPress={() => void supabase.auth.signOut({ scope: 'local' })}
 					/>
 				</View>
-			) : null}
-
-			{feed ? <FeedBody feed={feed} /> : null}
-
-			<View style={{ marginTop: 'auto', gap: spacing.sm }}>
-				<AppText variant="muted" style={{ textAlign: 'center' }}>
-					{session?.user.email}
-				</AppText>
-				<Button
-					title="Sign out"
-					variant="ghost"
-					onPress={() => void supabase.auth.signOut({ scope: 'local' })}
-				/>
-			</View>
-		</Screen>
+			</Screen>
+			<CaptureBar inTabs />
+		</View>
 	);
 }
 
 function FeedBody({ feed }: { feed: TodayFeed }) {
 	const colors = useTheme();
+	const now = new Date();
 	const buckets = (Object.keys(BUCKET_LABELS) as TodayTask['bucket'][])
 		.map((bucket) => ({ bucket, tasks: feed.tasks.filter((task) => task.bucket === bucket) }))
 		.filter((group) => group.tasks.length > 0);
+
+	// Prev/Next in the reader walk the day in the order it is shown here.
+	const openTask = (taskId: string) => {
+		setReaderWalk({
+			label: 'Today',
+			items: buckets.flatMap((group) =>
+				group.tasks.map((task) => ({ kind: 'task' as const, id: task.id }))
+			)
+		});
+		router.push({ pathname: '/reader', params: { kind: 'task', id: taskId } });
+	};
 
 	return (
 		<View style={{ gap: spacing.lg }}>
@@ -98,20 +126,15 @@ function FeedBody({ feed }: { feed: TodayFeed }) {
 				<View key={group.bucket} style={{ gap: spacing.sm }}>
 					<AppText variant="label">{BUCKET_LABELS[group.bucket]}</AppText>
 					{group.tasks.map((task) => (
-						<View
+						<TaskRow
 							key={task.id}
-							style={{
-								padding: spacing.md,
-								gap: 2,
-								borderRadius: radius.md,
-								borderWidth: 1,
-								borderColor: colors.border,
-								backgroundColor: colors.card
-							}}
-						>
-							<AppText>{task.title}</AppText>
-							<AppText variant="muted">{task.project_name}</AppText>
-						</View>
+							title={task.title}
+							done={task.state_key === 'done'}
+							meta={[task.project_name, describeDue(task.due_at, now)]
+								.filter(Boolean)
+								.join(' · ')}
+							onPress={() => openTask(task.id)}
+						/>
 					))}
 				</View>
 			))}
@@ -123,10 +146,20 @@ function FeedBody({ feed }: { feed: TodayFeed }) {
 						.filter((project) => project.next_step_short)
 						.slice(0, 5)
 						.map((project) => (
-							<View key={project.id} style={{ gap: 2 }}>
+							<Pressable
+								key={project.id}
+								accessibilityRole="button"
+								onPress={() =>
+									router.push({
+										pathname: '/project/[id]',
+										params: { id: project.id }
+									})
+								}
+								style={({ pressed }) => ({ gap: 2, opacity: pressed ? 0.6 : 1 })}
+							>
 								<AppText>{project.next_step_short}</AppText>
 								<AppText variant="muted">{project.name}</AppText>
-							</View>
+							</Pressable>
 						))}
 				</View>
 			) : null}
@@ -191,6 +224,9 @@ function formatDate(isoDate: string): string {
 }
 
 function describeError(error: unknown): string {
+	if (error instanceof BuildOsApiError && error.isUnauthorized()) {
+		return 'You are signed in, but BuildOS could not authorize this request. Try again shortly.';
+	}
 	if (error && typeof error === 'object' && 'isNetworkError' in error && error.isNetworkError) {
 		return 'No connection. Your day will load when you are back online.';
 	}

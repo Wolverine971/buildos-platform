@@ -137,6 +137,31 @@ async function markNote(session: Client, doc: DocRow, sorted: string) {
 	if (error) console.warn('[Workspace sort] could not mark the note:', error.message);
 }
 
+/**
+ * Takes the note for this sort, so a retry that lands while the model call runs (a phone on a
+ * bad connection resending) cannot sort it twice. Postgres re-checks the WHERE clause on the
+ * locked row, so only one request wins. An unexpected error lets the sort go ahead, as before.
+ */
+async function claimNote(session: Client, doc: DocRow): Promise<boolean> {
+	const props =
+		doc.props && typeof doc.props === 'object' && !Array.isArray(doc.props)
+			? (doc.props as Record<string, unknown>)
+			: {};
+	const { data, error } = await session
+		.from('onto_documents')
+		.update({
+			props: { ...props, sorted: 'sorting', sorted_at: new Date().toISOString() } as never
+		})
+		.eq('id', doc.id)
+		.is('props->>sorted', null)
+		.select('id');
+	if (error) {
+		console.warn('[Workspace sort] could not claim the note:', error.message);
+		return true;
+	}
+	return Array.isArray(data) && data.length > 0;
+}
+
 async function sortsToday(admin: Client, userId: string): Promise<number> {
 	const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 	const { count, error } = await admin
@@ -254,6 +279,7 @@ export async function sortCapturedNote(input: {
 	if ((await sortsToday(admin, userId)) >= SORT_DAILY_CAP) {
 		return skipped('Saved as a note. Sorting is paused for today.');
 	}
+	if (!(await claimNote(session, doc))) return skipped();
 
 	const context = await loadSortContext({ session, userId, actorId, workspaceId });
 	let raw: unknown = null;

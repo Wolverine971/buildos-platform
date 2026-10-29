@@ -87,3 +87,44 @@ describe('RealtimeBriefService.clearStatusForDate', () => {
 		expect(get(briefNotificationStatus).isGenerating).toBe(false);
 	});
 });
+
+describe('RealtimeBriefService terminal job signals', () => {
+	afterEach(() => {
+		briefNotificationStatus.set({ isGenerating: false });
+		(RealtimeBriefService as any).state.activeJobsByDate.clear();
+		(RealtimeBriefService as any).state.shownNotifications.clear();
+	});
+
+	// The daily-brief card (daily-brief-notification.bridge) reads these
+	// verdicts off the status store; a silent clear would leave it spinning
+	// with nothing to say.
+	it('publishes completed with the job and date instead of clearing silently', () => {
+		(RealtimeBriefService as any).handleJobCompleted(
+			{ queue_job_id: 'job-1', completed_at: '2026-10-29T12:00:00.000Z' },
+			'2026-10-29'
+		);
+
+		expect(get(briefNotificationStatus)).toMatchObject({
+			isGenerating: false,
+			status: 'completed',
+			briefDate: '2026-10-29',
+			jobId: 'job-1',
+			completedAt: '2026-10-29T12:00:00.000Z'
+		});
+	});
+
+	it('publishes failed with the error message', () => {
+		(RealtimeBriefService as any).handleJobFailed(
+			{ queue_job_id: 'job-2', error_message: 'LLM timed out' },
+			'2026-10-29'
+		);
+
+		expect(get(briefNotificationStatus)).toMatchObject({
+			isGenerating: false,
+			status: 'failed',
+			briefDate: '2026-10-29',
+			jobId: 'job-2',
+			error: 'LLM timed out'
+		});
+	});
+});
