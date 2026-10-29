@@ -8,6 +8,15 @@
 	import ChangeSetFailureSummary from '$lib/components/notifications/types/agent-run/ChangeSetFailureSummary.svelte';
 	import ChangeSetReview from '$lib/components/notifications/types/agent-run/ChangeSetReview.svelte';
 	import InboxChangeDetails from '$lib/components/inbox/InboxChangeDetails.svelte';
+	import InboxCheckIns from '$lib/components/inbox/InboxCheckIns.svelte';
+	import {
+		browserTimeZone,
+		checkInTaskCount,
+		fetchCheckIns,
+		requestCheckInChat,
+		type CheckInChangeSummary
+	} from '$lib/components/inbox/check-ins';
+	import type { CheckInProject } from '$lib/types/inbox-check-ins';
 	import InboxCleanupTriage from '$lib/components/inbox/InboxCleanupTriage.svelte';
 	import type {
 		TriageNoteResult,
@@ -20,12 +29,18 @@
 	import InboxManagerBriefControls from '$lib/components/inbox/InboxManagerBriefControls.svelte';
 	import InboxProjectBadge from '$lib/components/inbox/InboxProjectBadge.svelte';
 	import InboxProjectCleanup from '$lib/components/inbox/InboxProjectCleanup.svelte';
+	import InboxDoneForYouStrip, {
+		type DoneForYouEntry
+	} from '$lib/components/inbox/InboxDoneForYouStrip.svelte';
 	import InboxProjectManagerBrief from '$lib/components/inbox/InboxProjectManagerBrief.svelte';
 	import InboxReviewDetails from '$lib/components/inbox/InboxReviewDetails.svelte';
 	import InboxFreshnessReviewItems from '$lib/components/inbox/InboxFreshnessReviewItems.svelte';
 	import {
 		formatInboxAttentionSummary,
-		formatInboxSourceLabel
+		formatInboxGroupWorkload,
+		formatInboxSourceLabel,
+		isDormantProjectState,
+		orderInboxGroups
 	} from '$lib/components/inbox/inbox-presentation';
 	import type { VerifiedProjectSuggestionChangeSummary } from '@buildos/shared-agent-ops/proposal-context';
 	import type {
@@ -47,7 +62,6 @@
 		ChangeSet,
 		ProjectCleanupItem,
 		ProjectCleanupView,
-		ProjectFocus,
 		ProjectSuggestion,
 		ProjectSuggestionEvidenceRef,
 		ProjectSuggestionResult,
@@ -80,7 +94,7 @@
 		summary: string | null;
 		risk_tier: number | null;
 		created_at: string;
-		project?: { id: string; name: string | null } | null;
+		project?: InboxProject | null;
 		can_decide?: boolean;
 		decision_disabled_reason?: string | null;
 		/** Freshness radar (Tasker 88): newer information may have made this item obsolete. */
@@ -91,6 +105,13 @@
 			project_loop_run?: ProjectLoopRunContext | null;
 			project_audit?: ProjectAuditContext | null;
 		} | null;
+	};
+
+	type InboxProject = {
+		id: string;
+		name: string | null;
+		state_key?: string | null;
+		updated_at?: string | null;
 	};
 
 	type AgentRunPayload = {
@@ -187,14 +208,37 @@
 	let chatSessionId = $state<string | null>(null);
 	let chatItemId = $state<string | null>(null);
 	let chatContext = $state<{ contextType: ChatContextType; entityId?: string } | null>(null);
-	// "Fix in chat" from the Project cleanup card: a fresh project chat with the request pre-filled.
-	let chatDraft = $state<string | null>(null);
-	let chatFocus = $state<ProjectFocus | null>(null);
 	let resolvingChatAction = $state<ChatResolutionAction | null>(null);
 	let explicitlyResolvedChatItemId = $state<string | null>(null);
 	let openingChatIds = $state<Set<string>>(new Set());
 	let decisionNoteById = $state<Record<string, string>>({});
 	let triageProjects = $state.raw<TriageProject[] | null>(null);
+	// "Did this happen?" check-ins: computed from overdue tasks, not inbox rows.
+	let checkIns = $state.raw<CheckInProject[]>([]);
+	// Tasker 149: changes applied without asking this week, across projects.
+	let doneForYou = $state.raw<DoneForYouEntry[]>([]);
+	// A project whose cleanup card is open shows its own "Done for you"; list the rest here.
+	const doneForYouElsewhere = $derived(
+		doneForYou.filter(
+			(entry) =>
+				!items.some(
+					(item) =>
+						item.source_type === 'project_cleanup' &&
+						item.project_id === entry.project_id
+				)
+		)
+	);
+	let checkInsToday = $state<string | undefined>(undefined);
+	let checkInsLoading = $state(false);
+	/** Tasks still unanswered per project, as each check-in card reports it. */
+	let checkInRemaining = $state<Record<string, number>>({});
+	let openingCheckInChatId = $state<string | null>(null);
+	let chatCheckInProjectId = $state<string | null>(null);
+	let checkInsDirty = false;
+	let checkInsRequest = 0;
+	const openCheckInCards = $derived(
+		checkIns.filter((project) => (checkInRemaining[project.project_id] ?? 1) > 0).length
+	);
 	const activeChatItem = $derived(
 		chatItemId ? (items.find((item) => item.id === chatItemId) ?? null) : null
 	);
@@ -260,24 +304,71 @@
 			const key = audit ? `audit:${audit.id}` : (project?.id ?? accountGroupKey);
 			groups.set(key, [...(groups.get(key) ?? []), item]);
 		}
-		return [...groups.entries()].map(([key, groupItems]) => {
+		// Check-ins join their project's group (above its cleanup card), or get their own.
+		const checkInByProject = new Map(checkIns.map((project) => [project.project_id, project]));
+		const buildGroup = (
+			key: string,
+			groupItems: InboxItem[],
+			checkIn: CheckInProject | null
+		) => {
 			const project = groupItems.map(itemProject).find(Boolean) ?? null;
 			const audit = groupItems.map(projectAuditContext).find(Boolean) ?? null;
+			const cleanupCounts =
+				groupItems.map((item) => projectCleanupView(item)?.counts).find(Boolean) ?? null;
+			const projectState = project?.state_key ?? checkIn?.project_state ?? null;
 			return {
 				key,
 				label: audit
 					? auditGroupLabel(audit, project?.name ?? 'Project')
 					: key === accountGroupKey
 						? 'Account'
-						: (project?.name ?? 'Project'),
+						: (project?.name ?? checkIn?.project_name ?? 'Project'),
 				projectId:
 					key === accountGroupKey
 						? null
-						: (project?.id ?? groupItems[0]?.project_id ?? null),
+						: (project?.id ?? groupItems[0]?.project_id ?? checkIn?.project_id ?? null),
+				projectState,
+				projectUpdatedAt: project?.updated_at ?? checkIn?.last_touched_at ?? null,
+				dormant: key !== accountGroupKey && isDormantProjectState(projectState),
+				quiet: Boolean(checkIn?.quiet),
+				checkIn,
+				workload: formatInboxGroupWorkload({
+					itemCount: groupItems.length,
+					cleanupCounts,
+					checkIns: checkIn
+						? { toConfirm: checkInTaskCount(checkIn), quiet: checkIn.quiet }
+						: null
+				}),
+				// A cleanup card is one row holding many items; count the items.
+				openCount:
+					(cleanupCounts
+						? cleanupCounts.safe_cleanup +
+							cleanupCounts.needs_call +
+							cleanupCounts.note +
+							Math.max(0, groupItems.length - 1)
+						: groupItems.length) +
+					(checkIn ? (checkIn.quiet ? 1 : checkInTaskCount(checkIn)) : 0),
 				items: groupItems
 			};
-		});
+		};
+		const built = [...groups.entries()].map(([key, groupItems]) =>
+			buildGroup(
+				key,
+				groupItems,
+				key === accountGroupKey ? null : (checkInByProject.get(key) ?? null)
+			)
+		);
+		for (const checkIn of checkIns) {
+			if (!groups.has(checkIn.project_id)) {
+				built.push(buildGroup(checkIn.project_id, [], checkIn));
+			}
+		}
+		return orderInboxGroups(built);
 	});
+	const firstDormantGroupKey = $derived(groupedItems.find((group) => group.dormant)?.key ?? null);
+	const firstQuietGroupKey = $derived(
+		groupedItems.find((group) => group.quiet && !group.dormant)?.key ?? null
+	);
 	const activeGroup = $derived(
 		groupedItems.find((group) => group.key === activeGroupKey) ?? groupedItems[0] ?? null
 	);
@@ -289,7 +380,10 @@
 		}, 0)
 	);
 	const pendingProjectCount = $derived(
-		new Set(items.map((item) => itemProject(item)?.id ?? item.project_id).filter(Boolean)).size
+		new Set([
+			...items.map((item) => itemProject(item)?.id ?? item.project_id).filter(Boolean),
+			...checkIns.map((project) => project.project_id)
+		]).size
 	);
 	const hasMoreItems = $derived(items.length < totalAvailable && loadedLimit < MAX_INBOX_LIMIT);
 	const nextPageCount = $derived(
@@ -313,6 +407,8 @@
 	}
 
 	function selectGroup(key: string, options: { focus?: boolean } = {}) {
+		// Leaving a card with answers: refresh so answered tasks (and cleared cards) drop off.
+		if (key !== activeGroupKey && checkInsDirty) void loadCheckIns();
 		if (key !== activeGroupKey && typeof document !== 'undefined') {
 			// Each project opens at its top, not wherever the last one was scrolled to.
 			void tick().then(() =>
@@ -391,7 +487,7 @@
 		return item.source_context?.project_audit ?? null;
 	}
 
-	function itemProject(item: InboxItem): { id: string; name: string | null } | null {
+	function itemProject(item: InboxItem): InboxProject | null {
 		return item.project ?? (item.project_id ? { id: item.project_id, name: null } : null);
 	}
 
@@ -572,12 +668,66 @@
 		return removeItemById(item.id);
 	}
 
+	/** The nav badge counts inbox rows plus one per open check-in card. */
+	function syncRemainingCount() {
+		setAiInboxRemainingCount(totalAvailable + openCheckInCards);
+	}
+
+	async function loadCheckIns(): Promise<void> {
+		const request = ++checkInsRequest;
+		checkInsDirty = false;
+		checkInsLoading = true;
+		try {
+			const payload = await fetchCheckIns(browserTimeZone());
+			if (request !== checkInsRequest) return;
+			checkIns = payload.projects;
+			checkInsToday = payload.today;
+			checkInRemaining = {};
+			syncRemainingCount();
+		} catch (err) {
+			// Check-ins are additive; the rest of the inbox still works without them.
+			if (request === checkInsRequest) {
+				console.warn('[AI Inbox] Failed to load check-ins:', err);
+			}
+		} finally {
+			if (request === checkInsRequest) checkInsLoading = false;
+		}
+	}
+
+	function handleCheckInsChanged(summary: CheckInChangeSummary) {
+		changedCount = Math.max(0, changedCount + summary.handled);
+		checkInRemaining = { ...checkInRemaining, [summary.projectId]: summary.remaining };
+		checkInsDirty = true;
+		syncRemainingCount();
+	}
+
+	async function openCheckInChat(projectId: string, taskIds: string[]) {
+		if (openingCheckInChatId || !taskIds.length) return;
+		openingCheckInChatId = projectId;
+		try {
+			await loadAgentChatModal();
+			const result = await requestCheckInChat({
+				projectId,
+				taskIds,
+				timeZone: browserTimeZone()
+			});
+			chatContext = { contextType: 'project', entityId: result.entity_id };
+			chatItemId = null;
+			chatCheckInProjectId = projectId;
+			chatSessionId = result.chat_session_id;
+		} catch (err) {
+			toastService.error(err instanceof Error ? err.message : 'Failed to open chat');
+		} finally {
+			openingCheckInChatId = null;
+		}
+	}
+
 	function removeItemById(itemId: string): boolean {
 		const before = items.length;
 		items = items.filter((candidate) => candidate.id !== itemId);
 		if (items.length !== before) {
 			totalAvailable = Math.max(items.length, totalAvailable - 1);
-			setAiInboxRemainingCount(totalAvailable);
+			syncRemainingCount();
 			decisionNoteById = Object.fromEntries(
 				Object.entries(decisionNoteById).filter(([id]) => id !== itemId)
 			);
@@ -641,7 +791,10 @@
 		return typeof value === 'string' && value.trim() ? value.trim() : null;
 	}
 
-	async function openChat(item: InboxItem, options: { cleanupItemId?: string | null } = {}) {
+	async function openChat(
+		item: InboxItem,
+		options: { cleanupItemId?: string | null; cleanupRecordId?: string | null } = {}
+	) {
 		if (!canChat(item) || isOpeningChat(item)) return;
 		openingChatIds = new Set(openingChatIds).add(item.id);
 		try {
@@ -652,7 +805,12 @@
 					? {
 							method: 'POST',
 							headers: { 'Content-Type': 'application/json' },
-							body: JSON.stringify({ cleanup_item_id: options.cleanupItemId })
+							body: JSON.stringify({
+								cleanup_item_id: options.cleanupItemId,
+								...(options.cleanupRecordId
+									? { cleanup_record_id: options.cleanupRecordId }
+									: {})
+							})
 						}
 					: { method: 'POST' }
 			);
@@ -674,8 +832,6 @@
 				contextType: contextTypeForChat(item, result, session),
 				entityId: entityId ?? undefined
 			};
-			chatDraft = null;
-			chatFocus = null;
 			chatSessionId = nextChatSessionId;
 			chatItemId = item.id;
 		} catch (err) {
@@ -687,28 +843,20 @@
 		}
 	}
 
-	/** Radar "Fix in chat": a fresh project chat on that record, with the request pre-filled. */
-	async function openFixInChat(item: InboxItem, reviewItem: ProjectSuggestionReviewItem) {
-		const project = itemProject(item);
-		const prompt = reviewItem.fix_in_chat_prompt?.trim();
-		if (!project || !prompt) return;
-		try {
-			await loadAgentChatModal();
-		} catch (err) {
-			toastService.error(err instanceof Error ? err.message : 'Failed to open chat');
-			return;
-		}
-		chatContext = { contextType: 'project', entityId: project.id };
-		chatFocus = {
-			focusType: reviewItem.entity_type,
-			focusEntityId: reviewItem.entity_id,
-			focusEntityName: reviewItem.title,
-			projectId: project.id,
-			projectName: project.name ?? 'Project'
-		};
-		chatSessionId = null;
-		chatDraft = prompt;
-		chatItemId = item.id;
+	/**
+	 * Radar "Fix in chat": a chat on that one record where the assistant speaks first (what
+	 * looks out of date, what it would do, one question), instead of a pre-filled request
+	 * the user had to send themselves.
+	 */
+	function openFixInChat(
+		item: InboxItem,
+		reviewItem: ProjectSuggestionReviewItem,
+		cleanupItem: ProjectCleanupItem
+	) {
+		void openChat(item, {
+			cleanupItemId: cleanupItem.id,
+			cleanupRecordId: reviewItem.concern_id
+		});
 	}
 
 	function discussCleanup(item: InboxItem, cleanupItem: ProjectCleanupItem | null) {
@@ -854,12 +1002,20 @@
 		const itemId = chatItemId;
 		const wasExplicitlyResolved = !!itemId && explicitlyResolvedChatItemId === itemId;
 		const wasCleanupChat = activeChatItem?.source_type === 'project_cleanup';
+		const wasCheckInChat = chatCheckInProjectId !== null;
 		chatSessionId = null;
 		chatItemId = null;
 		chatContext = null;
-		chatDraft = null;
-		chatFocus = null;
+		chatCheckInProjectId = null;
 		resolvingChatAction = null;
+		if (wasCheckInChat) {
+			// The chat marks, moves and archives tasks; reload so the cards match.
+			if (summary?.hasChanges) {
+				changedCount += Math.max(1, summary.totalMutations);
+				void loadCheckIns();
+			}
+			return;
+		}
 		if (wasCleanupChat) {
 			// Chat edits can close cleanup items; reload so the card shows what is still open.
 			if (summary?.hasChanges) void loadInbox({ silent: true });
@@ -905,7 +1061,7 @@
 				: items.length;
 			const responseHeldTotal = Number(json.data?.heldTotal);
 			heldTotal = Number.isFinite(responseHeldTotal) ? Math.max(0, responseHeldTotal) : 0;
-			setAiInboxRemainingCount(totalAvailable);
+			syncRemainingCount();
 			if (initialDataReadyPending) {
 				initialDataReadyPending = false;
 				await tick();
@@ -1095,7 +1251,33 @@
 	}
 
 	function handleInboxChanged() {
-		if (isOpen) void loadInbox({ silent: true });
+		if (!isOpen) return;
+		void loadInbox({ silent: true });
+		void loadCheckIns();
+	}
+
+	function refreshAll() {
+		void loadInbox({ repair: true });
+		void loadCheckIns();
+		void loadDoneForYou();
+	}
+
+	async function loadDoneForYou(): Promise<void> {
+		try {
+			const res = await fetch('/api/inbox/done-for-you');
+			const json = await res.json().catch(() => null);
+			if (!res.ok) throw new Error(json?.error ?? 'Failed to load Done for you');
+			doneForYou = (json?.data?.items ?? []) as DoneForYouEntry[];
+		} catch (err) {
+			// Decoration only: the inbox works without it.
+			console.warn('[AI Inbox] Failed to load Done for you:', err);
+			doneForYou = [];
+		}
+	}
+
+	function handleCleanupUndone() {
+		changedCount += 1;
+		void loadDoneForYou();
 	}
 
 	function close() {
@@ -1105,7 +1287,7 @@
 		onClose({
 			hasChanges: changedCount > 0,
 			changedCount,
-			remainingCount: totalAvailable
+			remainingCount: totalAvailable + openCheckInCards
 		});
 	}
 
@@ -1117,14 +1299,19 @@
 			loadedLimit = INBOX_PAGE_SIZE;
 			totalAvailable = 0;
 			heldTotal = 0;
+			checkIns = [];
+			checkInRemaining = {};
+			doneForYou = [];
 			void loadInbox({ limit: INBOX_PAGE_SIZE });
+			void loadCheckIns();
+			void loadDoneForYou();
 		} else if (!isOpen && wasOpen) {
 			wasOpen = false;
 		}
 	});
 
 	$effect(() => {
-		if (!items.length) {
+		if (!groupedItems.length) {
 			activeGroupKey = null;
 			return;
 		}
@@ -1159,8 +1346,8 @@
 						Loading inbox
 					{:else}
 						{formatInboxAttentionSummary({
-							loaded: items.length,
-							total: totalAvailable,
+							loaded: items.length + openCheckInCards,
+							total: totalAvailable + openCheckInCards,
 							held: heldTotal
 						})}
 					{/if}
@@ -1169,7 +1356,7 @@
 					<p class="mt-0.5 text-2xs text-muted-foreground">
 						{changedCount} handled this session
 					</p>
-				{:else if items.length && pendingProjectCount > 0}
+				{:else if (items.length || checkIns.length) && pendingProjectCount > 0}
 					<p class="mt-0.5 text-2xs text-muted-foreground">
 						Across {pendingProjectCount} project{pendingProjectCount === 1 ? '' : 's'}
 					</p>
@@ -1191,7 +1378,7 @@
 				<Button
 					variant="outline"
 					size="sm"
-					onclick={() => loadInbox({ repair: true })}
+					onclick={refreshAll}
 					disabled={loading || loadingMore}
 					class="h-11 w-11 p-0"
 					title="Refresh inbox"
@@ -1206,6 +1393,15 @@
 			</div>
 		</div>
 
+		{#if !triageProjects}
+			<InboxDoneForYouStrip
+				entries={doneForYouElsewhere}
+				onUndone={() => {
+					changedCount += 1;
+				}}
+			/>
+		{/if}
+
 		{#if triageProjects}
 			<div class="flex min-h-0 flex-1 flex-col">
 				<InboxCleanupTriage
@@ -1215,7 +1411,7 @@
 					onExit={exitTriage}
 				/>
 			</div>
-		{:else if loading}
+		{:else if loading || (checkInsLoading && items.length === 0 && checkIns.length === 0)}
 			<div class="space-y-2 p-3">
 				{#each Array(4) as _, index (index)}
 					<div
@@ -1226,16 +1422,9 @@
 		{:else if error}
 			<div class="p-4">
 				<p class="text-sm text-destructive">{error}</p>
-				<Button
-					variant="outline"
-					size="sm"
-					onclick={() => loadInbox({ repair: true })}
-					class="mt-3"
-				>
-					Retry
-				</Button>
+				<Button variant="outline" size="sm" onclick={refreshAll} class="mt-3">Retry</Button>
 			</div>
-		{:else if items.length === 0}
+		{:else if items.length === 0 && checkIns.length === 0}
 			<div class="flex flex-1 flex-col items-center justify-center px-4 py-12 text-center">
 				<Inbox class="h-6 w-6 text-muted-foreground" />
 				<p class="mt-2 text-sm font-semibold text-foreground">Nothing needs attention</p>
@@ -1257,6 +1446,22 @@
 						class="flex min-w-0 snap-x scroll-px-2 gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible"
 					>
 						{#each groupedItems as group (group.key)}
+							{#if group.key === firstQuietGroupKey && groupedItems[0]?.key !== group.key}
+								<p
+									class="micro-label hidden px-1 pt-2 text-muted-foreground lg:block"
+									aria-hidden="true"
+								>
+									Gone quiet
+								</p>
+							{/if}
+							{#if group.key === firstDormantGroupKey && groupedItems[0]?.key !== group.key}
+								<p
+									class="micro-label hidden px-1 pt-2 text-muted-foreground lg:block"
+									aria-hidden="true"
+								>
+									Paused or finished
+								</p>
+							{/if}
 							<button
 								type="button"
 								id={groupTabId(group.key)}
@@ -1269,7 +1474,10 @@
 								class="inline-flex min-h-[44px] min-w-32 max-w-[44vw] shrink-0 snap-start items-center gap-2 rounded-md border px-3 py-2 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background motion-reduce:transition-none lg:block lg:w-full lg:max-w-none lg:min-w-0 {activeGroup?.key ===
 								group.key
 									? 'border-accent/40 bg-accent/10'
-									: 'border-border bg-card hover:bg-muted/40'}"
+									: 'border-border bg-card hover:bg-muted/40'} {group.dormant &&
+								activeGroup?.key !== group.key
+									? 'opacity-70'
+									: ''}"
 							>
 								<p
 									class="min-w-0 flex-1 truncate text-xs font-semibold text-foreground"
@@ -1279,10 +1487,12 @@
 								<span
 									class="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-2xs font-semibold text-foreground lg:hidden"
 								>
-									{group.items.length}
+									{group.openCount}
 								</span>
 								<p class="mt-1 hidden text-2xs text-muted-foreground lg:block">
-									{group.items.length} need attention
+									{group.dormant && group.projectState
+										? `${group.projectState === 'paused' ? 'Paused' : 'Finished'} · `
+										: ''}{group.workload}
 								</p>
 							</button>
 						{/each}
@@ -1301,14 +1511,14 @@
 						>
 							<div class="min-w-0">
 								<p class="text-xs font-semibold text-foreground lg:hidden">
-									{activeGroup.items.length} need attention
+									{activeGroup.workload}
 								</p>
 								<p
 									class="hidden truncate text-xs font-semibold text-foreground lg:block"
 								>
 									{activeGroup.label}
-									<span class="text-muted-foreground">
-										({activeGroup.items.length})
+									<span class="font-normal text-muted-foreground">
+										· {activeGroup.workload}
 									</span>
 								</p>
 							</div>
@@ -1325,6 +1535,21 @@
 						<div
 							class="inbox-spotlight-group min-h-0 min-w-0 flex-1 space-y-2 overflow-x-hidden overflow-y-auto p-2 lg:space-y-0 lg:divide-y lg:divide-border lg:p-0"
 						>
+							{#if activeGroup.checkIn}
+								<!-- Keyed so another project's card starts fresh (no carried-over answers). -->
+								{#key activeGroup.checkIn.project_id}
+									<div class="inbox-spotlight-item min-w-0 p-1 lg:p-3">
+										<InboxCheckIns
+											project={activeGroup.checkIn}
+											today={checkInsToday}
+											openingChat={openingCheckInChatId ===
+												activeGroup.checkIn.project_id}
+											onChanged={handleCheckInsChanged}
+											onTalk={openCheckInChat}
+										/>
+									</div>
+								{/key}
+							{/if}
 							{#each activeGroup.items as item (item.id)}
 								{@const payload = projectSuggestion(item)}
 								{@const agent = agentRun(item)}
@@ -1359,11 +1584,12 @@
 											onSnooze={() => snooze(item)}
 											onDiscuss={(cleanupItem) =>
 												discussCleanup(item, cleanupItem)}
-											onFixInChat={(reviewItem) =>
-												openFixInChat(item, reviewItem)}
+											onFixInChat={(reviewItem, cleanupItem) =>
+												openFixInChat(item, reviewItem, cleanupItem)}
 											onTriage={() => startTriage(item)}
 											onDecided={(summary) =>
 												handleCleanupDecided(item, summary)}
+											onUndone={handleCleanupUndone}
 										/>
 									{:else}
 										<div
@@ -1707,14 +1933,12 @@
 	</div>
 </Modal>
 
-{#if AgentChatModalComponent && (chatSessionId || chatDraft)}
+{#if AgentChatModalComponent && chatSessionId}
 	<AgentChatModalComponent
-		isOpen={Boolean(chatSessionId || chatDraft)}
+		isOpen={Boolean(chatSessionId)}
 		contextType={chatContext?.contextType ?? 'global'}
 		entityId={chatContext?.entityId}
 		initialChatSessionId={chatSessionId}
-		initialProjectFocus={chatFocus}
-		initialDraft={chatDraft}
 		{inboxResolutionActions}
 		onClose={closeChat}
 	/>

@@ -97,6 +97,12 @@ import { randomUUID } from 'node:crypto';
 import type { ProjectCleanupSynthesis } from '@buildos/shared-types';
 import { type CleanupSynthesisResult, buildHeuristicCleanupSynthesis } from './cleanupSynthesis';
 import {
+	type CleanupAutoApplyWriters,
+	describeCleanupAutoApply,
+	runCleanupAutoApply,
+	selectCleanupAutoApplyCandidates
+} from './cleanupAutoApply';
+import {
 	type RowVerification,
 	ancestorsFrom,
 	closedThisPass,
@@ -634,6 +640,19 @@ function getProjectLoopJev(): JevClient | null {
 		: null;
 	return projectLoopJev;
 }
+
+/**
+ * Auto-apply writes through the worker's reviewed write paths: the gateway (document moves,
+ * task archives) and the worker archive seam (document archives). Loaded on first use.
+ */
+const loadGateway = () => import('@buildos/shared-agent-ops/gateway/op-execution-gateway');
+const CLEANUP_AUTO_APPLY_WRITERS: CleanupAutoApplyWriters = {
+	runGatewayWriteOp: async (params) => (await loadGateway()).runGatewayWriteOp(params as never),
+	previewGatewayDocumentArchive: async (params) =>
+		(await loadGateway()).previewGatewayDocumentArchive(params as never),
+	runReviewedDocumentArchive: async (params) =>
+		(await loadGateway()).runReviewedDocumentArchive(params as never)
+};
 
 async function failRun(
 	runId: string,
@@ -1600,9 +1619,11 @@ function buildCompleteAuditPacket(params: {
 			evidence_refs: projectEvidence,
 			uncertainty:
 				'A decision owner and decision criteria were not visible in the loaded project evidence.',
-			recommendations: [
-				'Name the next project decision and the risks or blockers that could change it.'
-			]
+			// No recommendation: these two checks cannot see risks or dependencies, so a
+			// recommendation here was the same homework on every project (2026-10-29). What the
+			// audit could not see stays an open question; the synthesis may still raise a
+			// grounded recommendation from evidence it did see.
+			recommendations: []
 		}),
 		dimension({
 			key: 'dependency_readiness',
@@ -1613,9 +1634,7 @@ function buildCompleteAuditPacket(params: {
 			evidence_refs: projectEvidence,
 			uncertainty:
 				'Dependency ownership and timing were not visible in the loaded project evidence.',
-			recommendations: [
-				'Confirm the owner, handoff, and due date for each external dependency.'
-			]
+			recommendations: []
 		}),
 		dimension({
 			key: 'evidence_freshness',
@@ -3817,11 +3836,54 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 		});
 		throwIfOwnershipLost();
 
+		// "Done for you" (tasker 149): Jev scores the verified safe tidy-ups and code applies the
+		// ones over the bar, before the card syncs. Only after a real roll-up: without its
+		// still-true verdicts nothing is applied unasked.
+		const autoApplied =
+			synthesis.synthesis.source === 'llm'
+				? await (async () => {
+						await heartbeat('Applying safe tidy-ups');
+						return runCleanupAutoApply({
+							db: supabase,
+							decider: getProjectLoopJev(),
+							writers: CLEANUP_AUTO_APPLY_WRITERS,
+							projectId,
+							userId: run.user_id,
+							runId,
+							project: {
+								name: ctx.projectName,
+								description: ctx.projectDescription,
+								goals: ctx.goals,
+								currentState: ctx.startHere?.currentState ?? null
+							},
+							// An item the roll-up wrote a question for waits for the answer.
+							candidates: selectCleanupAutoApplyCandidates({
+								items: judged.items,
+								sections: synthesis.sections,
+								summaries: synthesis.summaries,
+								rowsById,
+								verification
+							}).filter(
+								(candidate) =>
+									!(synthesis.synthesis.asks ?? []).some((ask) =>
+										ask.item_ids.includes(candidate.lineageId)
+									)
+							),
+							signal: job.signal
+						});
+					})()
+				: null;
+		if (autoApplied) await job.log(describeCleanupAutoApply(autoApplied));
+		throwIfOwnershipLost();
+		const autoAppliedLineages = new Set(autoApplied?.appliedLineageIds ?? []);
+
 		const closedItems = [
 			...codeCloses,
 			...closedThisPass(judged.events, (id) => titleByLineage.get(id) ?? 'Review item')
 		];
-		const openLineages = judged.items.filter((item) => item.status === 'open');
+		const openLineages = judged.items.filter(
+			(item) => item.status === 'open' && !autoAppliedLineages.has(item.lineageId)
+		);
 		const cleanup: ProjectCleanupSynthesis = {
 			...synthesis.synthesis,
 			// Groups name only findings still open after the judgment.
@@ -3930,6 +3992,9 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			rollup_closed_count: closedItems.length,
 			rollup_merged_count: synthesis.merges.length,
 			rollup_source: synthesis.synthesis.source,
+			auto_apply_status: autoApplied?.status ?? 'skipped_no_rollup',
+			auto_applied_count: autoApplied?.applied ?? 0,
+			auto_apply_held_count: autoApplied?.held ?? 0,
 			brief_attention_level: brief.attention_level ?? 'legacy',
 			skipped_generators: skippedLenses.map((lens) => lens.label),
 			// Codes and ids only: `detail` is provider error text.

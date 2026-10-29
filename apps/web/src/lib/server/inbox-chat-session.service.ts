@@ -7,13 +7,19 @@ import { loadProjectCleanupView } from '@buildos/shared-agent-ops/project-cleanu
 import { createAgentRunChatSession } from './agent-run-chat-session.service';
 import { createOrReuseProjectAuditChatSession } from './project-audit-chat-session.service';
 import { ensureProjectSuggestionReviewIntegrity } from './project-suggestion-integrity.service';
+import {
+	buildCleanupItemOpener,
+	CLEANUP_OPENER_MODEL_NOTE,
+	describeAskForModel
+} from './inbox-chat-opener';
 import type { InboxIndexRow, InboxSourceType } from '@buildos/shared-agent-ops/inbox-index';
 import type {
 	Json,
 	ProjectCleanupItem,
 	ProjectCleanupSection,
 	ProjectCleanupSource,
-	ProjectCleanupView
+	ProjectCleanupView,
+	ProjectSuggestionReviewItem
 } from '@buildos/shared-types';
 import {
 	appendSeedSection as appendSection,
@@ -442,8 +448,16 @@ function buildProjectCleanupContext(params: {
 	view: ProjectCleanupView;
 	projectName: string | null;
 	focus: ProjectCleanupItem | null;
+	/** One out-of-date record inside a radar item, when the user picked one. */
+	focusRecord?: ProjectSuggestionReviewItem | null;
 }): SourceContext {
 	const { item, view, projectName, focus } = params;
+	const focusRecord = focus ? (params.focusRecord ?? null) : null;
+	// The review pass's pre-written question covering the focused item, if any.
+	const focusAsk =
+		focus && !focusRecord
+			? ((view.asks ?? []).find((ask) => ask.item_ids.includes(focus.id)) ?? null)
+			: null;
 	const items = Array.isArray(view.items) ? view.items : [];
 	const bottomLine =
 		compactVisibleText(view.bottom_line, 420) ?? compactVisibleText(item.title, 420);
@@ -453,54 +467,54 @@ function buildProjectCleanupContext(params: {
 		items: items.filter((entry) => entry.section === section)
 	})).filter((entry) => entry.items.length > 0);
 
-	const visibleLines: string[] = [`${projectName ?? 'Project'} — project cleanup`, ''];
+	// Opened from one item: the assistant starts the conversation about that item only.
+	// Opened from the card: a short report of the whole list.
+	const visibleLines: string[] = [];
 	if (focus) {
-		visibleLines.push(`Let's look at: ${focus.title}`);
+		const itemsById = new Map((view.items ?? []).map((entry) => [entry.id, entry]));
 		visibleLines.push(
-			[
-				CLEANUP_SECTION_LABEL[focus.section],
-				`from ${CLEANUP_SOURCE_LABEL[focus.source] ?? 'Project Review'}`,
-				cleanupSeenText(focus)
-			]
-				.filter(Boolean)
-				.join(' · ')
+			buildCleanupItemOpener({
+				item: focus,
+				reviewItem: focusRecord,
+				ask: focusAsk,
+				askItemTitles: focusAsk
+					? focusAsk.item_ids.map((id) => itemsById.get(id)?.title ?? '').filter(Boolean)
+					: undefined
+			})
 		);
-		const summary = compactVisibleText(focus.summary, 500);
-		if (summary) visibleLines.push(summary);
-		const whyNow = compactVisibleText(focus.why_now, 300);
-		if (whyNow) visibleLines.push(`Why now: ${whyNow}`);
-		appendSection(
-			visibleLines,
-			'Out of date',
-			(focus.review_items ?? []).map((entry) => `${entry.title}: ${entry.reason}`)
-		);
-		visibleLines.push('');
-	}
-	if (bottomLine) visibleLines.push(`Bottom line: ${bottomLine}`);
-	if (recommendation) visibleLines.push(`Recommendation: ${recommendation}`);
-	for (const { section, items: sectionItems } of sections) {
-		const shown = sectionItems
-			.slice(0, CLEANUP_VISIBLE_ITEMS_PER_SECTION)
-			.map((entry, index) => `${index + 1}. ${entry.title}`);
-		if (sectionItems.length > shown.length) {
-			shown.push(`...and ${sectionItems.length - shown.length} more.`);
+	} else {
+		visibleLines.push(`${projectName ?? 'Project'} — project cleanup`, '');
+		if (bottomLine) visibleLines.push(`Bottom line: ${bottomLine}`);
+		if (recommendation) visibleLines.push(`Recommendation: ${recommendation}`);
+		for (const { section, items: sectionItems } of sections) {
+			const shown = sectionItems
+				.slice(0, CLEANUP_VISIBLE_ITEMS_PER_SECTION)
+				.map((entry, index) => `${index + 1}. ${entry.title}`);
+			if (sectionItems.length > shown.length) {
+				shown.push(`...and ${sectionItems.length - shown.length} more.`);
+			}
+			appendSection(
+				visibleLines,
+				`${CLEANUP_SECTION_LABEL[section]} (${sectionItems.length})`,
+				shown
+			);
 		}
-		appendSection(
-			visibleLines,
-			`${CLEANUP_SECTION_LABEL[section]} (${sectionItems.length})`,
-			shown
+		visibleLines.push(
+			'',
+			'You can ask me to explain any item, check the records involved, or make a change you approve. Applying or dismissing items stays on the cleanup card.'
 		);
 	}
-	visibleLines.push(
-		'',
-		'You can ask me to explain any item, check the records involved, or make a change you approve. Applying or dismissing items stays on the cleanup card.'
-	);
 
 	const llmLines = [
 		"You are discussing a BuildOS project cleanup list with the user: the project's open review findings, audit recommendations and freshness concerns, grouped into Ready to apply, Needs your call and Worth knowing.",
 		focus
 			? `The user opened this chat from one item (item id ${focus.id}). Lead with it; bring in other items only when they bear on it.`
 			: 'Lead with the bottom line and the recommendation.',
+		focusRecord
+			? `They picked one out-of-date record in it: ${focusRecord.entity_type} "${focusRecord.title}" (${focusRecord.entity_id}). Read that record before answering.`
+			: null,
+		focus ? CLEANUP_OPENER_MODEL_NOTE : null,
+		focusAsk ? describeAskForModel(focusAsk) : null,
 		'Use project tools to inspect the records involved before making claims; do not invent evidence.',
 		'Items are applied, dismissed or marked done from the cleanup card. Only change the project directly when the user clearly asks you to.',
 		'',
@@ -528,7 +542,7 @@ function buildProjectCleanupContext(params: {
 	return {
 		humanText: visibleLines.join('\n'),
 		llmText: llmLines.join('\n'),
-		displayTitle: focus?.title ?? bottomLine ?? 'Project cleanup',
+		displayTitle: focusRecord?.title ?? focus?.title ?? bottomLine ?? 'Project cleanup',
 		operationSummaries: (focus?.rows ?? [])
 			.map((row) => readString(row.verified_headline) ?? readString(row.title))
 			.filter((value): value is string => Boolean(value)),
@@ -721,28 +735,42 @@ function buildInboxSessionMetadata(params: {
 	scope: SessionScope;
 	context: SourceContext;
 	cleanupItemId?: string | null;
+	cleanupRecord?: ProjectSuggestionReviewItem | null;
 }): Record<string, unknown> {
+	const record = params.cleanupRecord ?? null;
 	return {
 		source: 'ai_inbox',
 		inbox_item_id: params.item.id ?? null,
 		source_type: params.item.source_type,
 		source_ref_id: params.item.source_ref_id,
-		// One chat per cleanup item discussed, plus one for the whole card (null).
+		// One chat per cleanup item discussed (and per out-of-date record inside a radar
+		// item), plus one for the whole card (null).
 		...(params.item.source_type === 'project_cleanup'
-			? { cleanup_item_id: params.cleanupItemId ?? null }
+			? {
+					cleanup_item_id: params.cleanupItemId ?? null,
+					cleanup_record_id: record?.concern_id ?? null
+				}
 			: {}),
 		source_status: params.item.source_status ?? null,
 		source_label: SOURCE_LABEL_BY_TYPE[params.item.source_type as SupportedInboxSourceType],
 		project_id: params.scope.projectId,
 		project_name: params.scope.projectName,
 		focus: params.scope.projectId
-			? {
-					focusType: 'project-wide',
-					focusEntityId: null,
-					focusEntityName: null,
-					projectId: params.scope.projectId,
-					projectName: params.scope.projectName ?? 'Project'
-				}
+			? record
+				? {
+						focusType: record.entity_type,
+						focusEntityId: record.entity_id,
+						focusEntityName: record.title,
+						projectId: params.scope.projectId,
+						projectName: params.scope.projectName ?? 'Project'
+					}
+				: {
+						focusType: 'project-wide',
+						focusEntityId: null,
+						focusEntityName: null,
+						projectId: params.scope.projectId,
+						projectName: params.scope.projectName ?? 'Project'
+					}
 			: undefined,
 		proposal_context: {
 			llm_text: params.context.llmText,
@@ -776,6 +804,7 @@ async function findExistingChatSession(params: {
 	sourcePayload: Record<string, unknown> | null;
 	userId: string;
 	cleanupItemId?: string | null;
+	cleanupRecordId?: string | null;
 }): Promise<Record<string, unknown> | null> {
 	if (params.item.source_type === 'project_cleanup') {
 		// The card lives on across nights, so reuse is keyed by project and focused item,
@@ -789,7 +818,8 @@ async function findExistingChatSession(params: {
 				source: 'ai_inbox',
 				source_type: 'project_cleanup',
 				source_ref_id: params.item.source_ref_id,
-				cleanup_item_id: params.cleanupItemId ?? null
+				cleanup_item_id: params.cleanupItemId ?? null,
+				cleanup_record_id: params.cleanupRecordId ?? null
 			})
 			.order('updated_at', { ascending: false })
 			.limit(1)
@@ -949,6 +979,8 @@ export async function createInboxChatSession(params: {
 	userId: string;
 	/** Project cleanup only: the card item the user chose to discuss (null = whole card). */
 	focusCleanupItemId?: string | null;
+	/** Project cleanup only: one out-of-date record (concern id) inside that radar item. */
+	focusCleanupRecordId?: string | null;
 }): Promise<InboxChatSessionResult> {
 	if (!isSupportedInboxChatSource(params.item.source_type)) {
 		throw new Error(`Unsupported inbox source: ${params.item.source_type}`);
@@ -1022,12 +1054,19 @@ export async function createInboxChatSession(params: {
 			? ((cleanupView.items ?? []).find((entry) => entry.id === params.focusCleanupItemId) ??
 				null)
 			: null;
+	const cleanupRecord =
+		cleanupFocus && params.focusCleanupRecordId
+			? ((cleanupFocus.review_items ?? []).find(
+					(entry) => entry.concern_id === params.focusCleanupRecordId
+				) ?? null)
+			: null;
 	const context = cleanupView
 		? buildProjectCleanupContext({
 				item: params.item,
 				view: cleanupView,
 				projectName,
-				focus: cleanupFocus
+				focus: cleanupFocus,
+				focusRecord: cleanupRecord
 			})
 		: params.item.source_type === 'project_review'
 			? buildProjectReviewContext(params.item, sourcePayload, projectName)
@@ -1047,7 +1086,8 @@ export async function createInboxChatSession(params: {
 		item: params.item,
 		scope,
 		context,
-		cleanupItemId: cleanupFocus?.id ?? null
+		cleanupItemId: cleanupFocus?.id ?? null,
+		cleanupRecord
 	});
 
 	const existingSession = await findExistingChatSession({
@@ -1055,7 +1095,8 @@ export async function createInboxChatSession(params: {
 		item: params.item,
 		sourcePayload,
 		userId: params.userId,
-		cleanupItemId: cleanupFocus?.id ?? null
+		cleanupItemId: cleanupFocus?.id ?? null,
+		cleanupRecordId: cleanupRecord?.concern_id ?? null
 	});
 	if (existingSession) {
 		const refreshedSession = await refreshExistingInboxChatSession({

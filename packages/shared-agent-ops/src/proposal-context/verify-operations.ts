@@ -266,6 +266,19 @@ const UPDATE_TOOL_SPECS: Record<string, UpdateToolSpec> = {
 	}
 };
 
+/**
+ * A project type_key in plain words for cards: "project.service.strategy" → "service strategy".
+ * type_key is a structured namespace, so splitting on its separators is safe.
+ */
+export function projectTypeLabel(typeKey: string): string {
+	const label = typeKey
+		.replace(/^project\./, '')
+		.split(/[._-]+/)
+		.filter(Boolean)
+		.join(' ');
+	return label || typeKey;
+}
+
 /** Every tool Project Review's integrity check can resolve, display and fingerprint. */
 export const PROJECT_REVIEW_VERIFIABLE_OPERATION_TOOLS: readonly string[] = Object.freeze([
 	'move_document_in_tree',
@@ -1296,11 +1309,21 @@ export async function verifyProjectSuggestionIntegrity(
 									? editDisplayText(entry.proposed)
 									: '(removed)'
 							}
-						: {
-								label: PROJECT_UPDATE_FIELD_LABELS[entry.field],
-								before: formatLoopOperationValue(entry.current),
-								value: formatLoopOperationValue(entry.proposed)
-							}
+						: entry.field === 'type_key'
+							? {
+									label: PROJECT_UPDATE_FIELD_LABELS.type_key,
+									before: entry.current
+										? projectTypeLabel(entry.current)
+										: '(none)',
+									value: entry.proposed
+										? projectTypeLabel(entry.proposed)
+										: '(none)'
+								}
+							: {
+									label: PROJECT_UPDATE_FIELD_LABELS[entry.field],
+									before: formatLoopOperationValue(entry.current),
+									value: formatLoopOperationValue(entry.proposed)
+								}
 				);
 				const only = changed.length === 1 ? changed[0]! : null;
 				const summary =
@@ -1311,7 +1334,7 @@ export async function verifyProjectSuggestionIntegrity(
 								? 'Update the project description.'
 								: 'Clear the project description.'
 							: only?.field === 'type_key'
-								? `Change the project type to "${only.proposed}".`
+								? `Change the project type to "${projectTypeLabel(only.proposed ?? '')}".`
 								: `Update the project ${listWithAnd(
 										changed.map((entry) =>
 											entry.field === 'type_key' ? 'type' : entry.field

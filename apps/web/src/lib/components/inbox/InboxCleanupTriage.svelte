@@ -647,7 +647,8 @@
 						>
 							{item.title}
 						</h3>
-						{#if item.summary && item.summary !== item.title}
+						<!-- A radar bundle's summary is written for chat; its records below say it better. -->
+						{#if item.summary && item.summary !== item.title && !item.review_items?.length}
 							<p class="mt-1 break-words text-sm leading-relaxed text-foreground/80">
 								{item.summary}
 							</p>

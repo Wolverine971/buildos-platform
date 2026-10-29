@@ -5,13 +5,19 @@ import {
 	CLEANUP_ADDRESS_NOTE,
 	CLEANUP_CHANGED_MESSAGE,
 	approveDecisionsFor,
+	cleanupAnswerNote,
+	cleanupAnswerReceipt,
+	cleanupAskCounts,
+	cleanupAskSummaryLine,
 	cleanupCloseReasonText,
+	cleanupItemAskKind,
 	cleanupCountsLine,
 	cleanupItemCautions,
 	cleanupRowOperations,
 	cleanupSeenLine,
 	addressDecisionsFor,
 	dismissDecisionsFor,
+	groupCleanupByAsk,
 	isCleanupItemSelectable,
 	orderedCleanupGroups,
 	summarizeCleanupItemOutcome
@@ -257,5 +263,152 @@ describe('project cleanup presentation', () => {
 			},
 			{ key: 'op-1', label: 'Change', target: null, summary: null, changes: [] }
 		]);
+	});
+
+	it('reads what an item asks, falling back to the server rule on older views', () => {
+		expect(cleanupItemAskKind(item({ ask_kind: 'offer' }))).toBe('offer');
+		expect(cleanupItemAskKind(item())).toBe('tidy');
+		expect(cleanupItemAskKind(item({ source: 'audit' }))).toBe('offer');
+		expect(cleanupItemAskKind(item({ source: 'radar', section: 'safe_cleanup' }))).toBe(
+			'stale'
+		);
+		expect(cleanupItemAskKind(item({ section: 'needs_call' }))).toBe('path');
+		expect(cleanupItemAskKind(item({ section: 'note', executable: false }))).toBe('stale');
+	});
+
+	it('groups items by what they ask, asks first, each item once', () => {
+		const tidy = item({ id: 'tidy', ask_kind: 'tidy' });
+		const covered = item({ id: 'covered', ask_kind: 'tidy' });
+		const goal = item({ id: 'goal', ask_kind: 'stale', executable: false, section: 'note' });
+		const path = item({ id: 'path', ask_kind: 'path', section: 'needs_call', summary: null });
+		const offer = item({ id: 'offer', ask_kind: 'offer', source: 'audit' });
+		const radar = item({ id: 'radar', ask_kind: 'stale', source: 'radar' });
+		const base = view(
+			[tidy, covered, goal, path, offer, radar],
+			[
+				{
+					title: 'Ready',
+					section: 'safe_cleanup',
+					item_ids: ['covered', 'tidy'],
+					recommendation: null
+				},
+				{
+					title: 'Calls',
+					section: 'needs_call',
+					item_ids: ['radar', 'path', 'goal', 'offer'],
+					recommendation: null
+				}
+			]
+		);
+		const blocks = groupCleanupByAsk({
+			...base,
+			asks: [
+				{
+					id: 'rod',
+					question: 'Is the Rod site still happening?',
+					context: 'Two items point the same way.',
+					item_ids: ['goal', 'covered', 'missing'],
+					answers: [
+						{ label: 'Still going', effect: null, action: 'note', recommended: true },
+						{
+							label: 'On hold',
+							effect: 'Mark it on hold.',
+							action: 'note',
+							recommended: true
+						},
+						{
+							label: 'Bogus',
+							effect: null,
+							action: 'explode' as never,
+							recommended: false
+						}
+					]
+				},
+				// Every item already claimed: dropped.
+				{
+					id: 'dupe',
+					question: 'Again?',
+					context: null,
+					item_ids: ['goal'],
+					answers: [
+						{ label: 'Yes', effect: null, action: 'done', recommended: false },
+						{ label: 'No', effect: null, action: 'dismiss', recommended: false }
+					]
+				},
+				// Fewer than two usable answers: dropped, its item stays in its own block.
+				{
+					id: 'thin',
+					question: 'Only one way?',
+					context: null,
+					item_ids: ['offer'],
+					answers: [{ label: 'Yes', effect: null, action: 'chat', recommended: false }]
+				}
+			],
+			auto_applied: [
+				{
+					item_id: 'auto',
+					suggestion_id: 's-auto',
+					title: 'Moved Templates under Processes & Specs',
+					applied_at: '2026-10-29T10:00:00.000Z',
+					reason: 'It is a template.',
+					undoable: true
+				}
+			]
+		});
+
+		expect(blocks.paths.map((entry) => entry.key)).toEqual(['ask:rod', 'item:path']);
+		const rod = blocks.paths[0]!;
+		expect(rod.items.map((entry) => entry.id)).toEqual(['goal', 'covered']);
+		expect(rod.ask.item_ids).toEqual(['goal', 'covered']);
+		expect(rod.ask.answers.map((answer) => [answer.label, answer.recommended])).toEqual([
+			['Still going', true],
+			['On hold', false]
+		]);
+		expect(blocks.paths[1]).toMatchObject({
+			fromItem: true,
+			ask: {
+				question: path.title,
+				context: null,
+				answers: [
+					{ label: 'Make this change', action: 'apply', recommended: true },
+					{ label: 'Keep as is', action: 'dismiss', recommended: false }
+				]
+			}
+		});
+		expect(blocks.tidy.map((entry) => entry.id)).toEqual(['tidy']);
+		expect(blocks.stale.map((entry) => entry.id)).toEqual(['radar']);
+		expect(blocks.offers.map((entry) => entry.id)).toEqual(['offer']);
+		expect(blocks.autoApplied).toHaveLength(1);
+
+		expect(cleanupAskCounts(blocks)).toEqual([
+			{ key: 'path', count: 2, label: 'paths to pick' },
+			{ key: 'tidy', count: 1, label: 'tidy-up' },
+			{ key: 'stale', count: 1, label: 'out of date' },
+			{ key: 'offer', count: 1, label: 'offer' },
+			{ key: 'done', count: 1, label: 'done for you' }
+		]);
+		expect(cleanupAskSummaryLine(blocks)).toBe(
+			'2 paths to pick · 1 tidy-up · 1 out of date · 1 offer'
+		);
+		expect(cleanupAskSummaryLine(groupCleanupByAsk(null))).toBe('Nothing open');
+	});
+
+	it('writes the note and receipt for an answer', () => {
+		const answer = {
+			label: 'On hold',
+			effect: 'Mark the goal on hold with a date.',
+			action: 'note' as const,
+			recommended: true
+		};
+		expect(cleanupAnswerNote('Is the Rod site still happening?', answer)).toBe(
+			'Is the Rod site still happening? — On hold: Mark the goal on hold with a date.'
+		);
+		expect(cleanupAnswerNote('Keep it?', { ...answer, effect: null })).toBe(
+			'Keep it? — On hold'
+		);
+		expect(cleanupAnswerReceipt(answer)).toBe('On hold. Mark the goal on hold with a date.');
+		expect(cleanupAnswerReceipt({ ...answer, label: "It's over!", effect: null })).toBe(
+			"It's over!"
+		);
 	});
 });

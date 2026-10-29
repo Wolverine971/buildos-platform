@@ -1,4 +1,5 @@
 import { get, writable } from 'svelte/store';
+import { browserTimeZone } from '$lib/components/inbox/check-ins';
 
 export type AiInboxCountState = {
 	total: number;
@@ -67,7 +68,10 @@ export function loadAiInboxCount(options: { force?: boolean } = {}): Promise<voi
 
 	const request = (async () => {
 		try {
-			const response = await fetch('/api/inbox/count?status=pending&limit=1000', {
+			// The zone decides which tasks count as overdue for "Did this happen?" check-ins.
+			const timeZone = browserTimeZone();
+			const zoneParam = timeZone ? `&tz=${encodeURIComponent(timeZone)}` : '';
+			const response = await fetch(`/api/inbox/count?status=pending&limit=1000${zoneParam}`, {
 				signal: controller.signal,
 				headers: { accept: 'application/json' }
 			});

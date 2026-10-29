@@ -7,7 +7,10 @@
 // it as one item per project; project chat reads the same view.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
+	InboxAskKind,
 	LoopOperation,
+	ProjectCleanupAsk,
+	ProjectCleanupAutoApplied,
 	ProjectCleanupGroup,
 	ProjectCleanupItem,
 	ProjectCleanupItemRow,
@@ -193,6 +196,48 @@ export function resolveCleanupSection(
 		: defaultCleanupSection(facts);
 }
 
+/**
+ * What an item asks of the user (AI Inbox "Assistant's Desk", 2026-10-29). Decided from
+ * structure only: audit recommendations are offers of work, the radar's records may be out of
+ * date, a verified safe change is a tidy-up, any other change is a fork, and a finding with
+ * nothing to apply is a record to re-check.
+ */
+export function cleanupAskKind(
+	item: Pick<ProjectCleanupItem, 'source' | 'section' | 'executable'>
+): InboxAskKind {
+	if (item.source === 'audit') return 'offer';
+	if (item.source === 'radar') return 'stale';
+	if (item.section === 'safe_cleanup') return 'tidy';
+	return item.executable ? 'path' : 'stale';
+}
+
+/**
+ * The synthesis's pre-written questions, narrowed to items still open. An ask whose items have
+ * all closed is dropped; an answer that applies a change is dropped once any covered item has
+ * nothing left to apply; each item belongs to at most one ask.
+ */
+export function openCleanupAsks(
+	asks: readonly ProjectCleanupAsk[] | null | undefined,
+	items: readonly ProjectCleanupItem[]
+): ProjectCleanupAsk[] {
+	if (!asks?.length) return [];
+	const byId = new Map(items.map((item) => [item.id, item]));
+	const claimed = new Set<string>();
+	const open: ProjectCleanupAsk[] = [];
+	for (const ask of asks) {
+		const itemIds = (ask.item_ids ?? []).filter((id) => byId.has(id) && !claimed.has(id));
+		if (!itemIds.length) continue;
+		const allExecutable = itemIds.every((id) => byId.get(id)?.executable);
+		const answers = (ask.answers ?? []).filter(
+			(answer) => answer.action !== 'apply' || allExecutable
+		);
+		if (answers.length < 2) continue;
+		itemIds.forEach((id) => claimed.add(id));
+		open.push({ ...ask, item_ids: itemIds, answers });
+	}
+	return open;
+}
+
 export type ProjectCleanupVerification =
 	| {
 			ok: true;
@@ -216,6 +261,8 @@ export function buildProjectCleanupView(params: {
 	latestAudit?: ProjectCleanupView['latest_audit'];
 	auditIdBySuggestionId?: ReadonlyMap<string, string>;
 	verification?: ReadonlyMap<string, ProjectCleanupVerification>;
+	/** Recent changes applied without asking (see loadRecentAutoApplied). */
+	autoApplied?: ProjectCleanupAutoApplied[];
 }): ProjectCleanupView {
 	const verification = params.verification;
 	const byLineage = new Map<string, ProjectCleanupRowRecord[]>();
@@ -253,6 +300,9 @@ export function buildProjectCleanupView(params: {
 				verified_headline: verified?.headline ?? null,
 				verified_fingerprint: verified?.fingerprint ?? null,
 				...(verified ? { verified_operations: verified.operations } : {}),
+				...(treeOperations(row.operations).length
+					? { tree_operations: treeOperations(row.operations) }
+					: {}),
 				...(verified?.cautions.length ? { cautions: verified.cautions } : {}),
 				updated_at: row.updated_at
 			};
@@ -286,14 +336,16 @@ export function buildProjectCleanupView(params: {
 		// The latest synthesis's group wins; the section the roll-up stamped on the rows
 		// covers items the synthesis did not group.
 		const stampedSection = rollup.map((value) => value.section).find(Boolean) ?? null;
+		const section = resolveCleanupSection(
+			requestedSection.get(lineageId) ?? stampedSection,
+			facts
+		);
 		items.push({
 			id: lineageId,
 			source,
 			kind: lead.kind,
-			section: resolveCleanupSection(
-				requestedSection.get(lineageId) ?? stampedSection,
-				facts
-			),
+			section,
+			ask_kind: cleanupAskKind({ source, section, executable: facts.executable }),
 			title: lead.kind === 'freshness_update' ? lead.title : (singleVerified ?? lead.title),
 			summary:
 				rollup.map((value) => value.summary).find((value) => Boolean(value)) ??
@@ -359,8 +411,21 @@ export function buildProjectCleanupView(params: {
 		recently_closed: (params.synthesis?.closed_this_pass ?? []).map((closed) => ({
 			...closed,
 			at: params.synthesisAt ?? params.synthesis?.generated_at ?? null
-		}))
+		})),
+		asks: openCleanupAsks(params.synthesis?.asks, items),
+		auto_applied: params.autoApplied ?? []
 	};
+}
+
+/** Raw move/archive steps for the card's tree preview; never text edits. */
+function treeOperations(
+	operations: readonly LoopOperation[]
+): Array<{ tool: string; args: Record<string, unknown> }> {
+	return operations.flatMap((operation) =>
+		SAFE_CLEANUP_TOOLS.has(operation.tool) && asRecord(operation.args)
+			? [{ tool: operation.tool, args: asRecord(operation.args)! }]
+			: []
+	);
 }
 
 function dedupeEvidence(refs: ProjectSuggestionEvidenceRef[]): ProjectSuggestionEvidenceRef[] {
@@ -392,6 +457,58 @@ export async function loadProjectCleanupRows(
 		.filter((row): row is ProjectCleanupRowRecord => Boolean(row));
 }
 
+/** How long a change applied without asking stays on the card with its Undo. */
+export const AUTO_APPLIED_VISIBLE_DAYS = 7;
+
+/**
+ * Changes a review pass applied without asking, newest first, still within the visible window
+ * and not undone. Contract with the worker's auto-apply: status 'applied',
+ * result.applied_via 'auto', result.headline, result.auto_apply.reason, and result.undone_at
+ * once undone.
+ */
+export async function loadRecentAutoApplied(
+	supabase: AnySupabase,
+	projectId: string,
+	now: Date = new Date()
+): Promise<ProjectCleanupAutoApplied[]> {
+	const since = new Date(now.getTime() - AUTO_APPLIED_VISIBLE_DAYS * 86_400_000).toISOString();
+	const { data, error } = await (supabase as any)
+		.from('project_suggestions')
+		.select(AUTO_APPLIED_SELECT)
+		.eq('project_id', projectId)
+		.eq('status', 'applied')
+		.eq('result->>applied_via', 'auto')
+		.gte('applied_at', since)
+		.order('applied_at', { ascending: false })
+		.limit(30);
+	if (error) throw error;
+	return ((data ?? []) as Array<Record<string, unknown>>).flatMap((row) => {
+		const entry = autoAppliedFromRow(row);
+		return entry ? [entry] : [];
+	});
+}
+
+/** The columns autoAppliedFromRow reads. */
+export const AUTO_APPLIED_SELECT = 'id, kind, title, lineage_id, applied_at, result, reversible';
+
+/** One auto-applied suggestion row as the card shows it; null when undone or malformed. */
+export function autoAppliedFromRow(row: Record<string, unknown>): ProjectCleanupAutoApplied | null {
+	const id = asString(row.id);
+	const appliedAt = asString(row.applied_at);
+	const result = asRecord(row.result);
+	if (!id || !appliedAt || !result || result.applied_via !== 'auto') return null;
+	if (asString(result.undone_at)) return null;
+	const autoApply = asRecord(result.auto_apply);
+	return {
+		item_id: asString(row.kind) === 'freshness_update' ? id : (asString(row.lineage_id) ?? id),
+		suggestion_id: id,
+		title: asString(result.headline) ?? asString(row.title) ?? 'Cleanup change',
+		applied_at: appliedAt,
+		reason: asString(autoApply?.reason),
+		undoable: row.reversible !== false
+	};
+}
+
 /** The newest review pass that wrote a roll-up synthesis (brief v3). */
 export async function loadLatestProjectCleanupSynthesis(
 	supabase: AnySupabase,
@@ -421,7 +538,8 @@ export async function loadLatestProjectCleanupSynthesis(
 			groups: Array.isArray(synthesis.groups) ? synthesis.groups : [],
 			closed_this_pass: Array.isArray(synthesis.closed_this_pass)
 				? synthesis.closed_this_pass
-				: []
+				: [],
+			asks: Array.isArray(synthesis.asks) ? synthesis.asks : []
 		}
 	};
 }
@@ -481,9 +599,14 @@ export async function loadProjectCleanupView(
 	projectId: string,
 	options: { verify?: boolean } = {}
 ): Promise<ProjectCleanupView> {
-	const [rows, latest] = await Promise.all([
+	const [rows, latest, autoApplied] = await Promise.all([
 		loadProjectCleanupRows(supabase, projectId),
-		loadLatestProjectCleanupSynthesis(supabase, projectId)
+		loadLatestProjectCleanupSynthesis(supabase, projectId),
+		// "Done for you" decorates the card; a failed read never blocks it.
+		loadRecentAutoApplied(supabase, projectId).catch((error) => {
+			console.warn('[ProjectCleanup] could not load auto-applied changes:', error);
+			return [] as ProjectCleanupAutoApplied[];
+		})
 	]);
 	const audit = await loadAuditContext(
 		supabase,
@@ -529,7 +652,8 @@ export async function loadProjectCleanupView(
 		latestRunId: latest?.runId ?? null,
 		latestAudit: audit.latest,
 		auditIdBySuggestionId: audit.bySuggestionId,
-		verification
+		verification,
+		autoApplied
 	});
 }
 

@@ -1,17 +1,18 @@
 // apps/mobile/src/components/reader/doc-reader.tsx
 import { isBuildOsApiError } from '@buildos/api-client';
-import { type Ref, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, TextInput, View } from 'react-native';
+import { useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { Button } from '@/components/button';
+import { Check, FileText, Key, Pencil, playHaptic, Stamp, Undo2, X } from '@/components/kit';
 import { Markdown } from '@/components/markdown';
-import { ReaderBar } from '@/components/reader/reader-bar';
-import type { ReaderHandle } from '@/components/reader/reader-handle';
-import { AppText } from '@/components/text';
+import { ActionBar, BarKey } from '@/components/reader/action-bar';
+import { shortDate } from '@/components/reader/format';
+import type { ReaderChromeProps } from '@/components/reader/reader-handle';
+import { ReaderHead, useScrolledPastTop } from '@/components/reader/reader-head';
+import { ReaderNote, ReaderStatus, Rise } from '@/components/reader/reader-status';
 import { useDocument, useUpdateDocument } from '@/hooks/use-entities';
-import type { WalkPosition } from '@/lib/reader-walk';
-import { useTheme } from '@/providers/theme-provider';
-import { radius, spacing } from '@/theme';
+import { useInk } from '@/providers/theme-provider';
+import { radius, spacing, typeScale } from '@/theme';
 
 /** Tables are edited row by row on the website; their text is generated from the rows. */
 const TABLE_TYPE_KEY = 'document.table';
@@ -31,33 +32,25 @@ function describeError(error: unknown): string {
 	return error instanceof Error ? error.message : 'Could not save that.';
 }
 
-function edited(updatedAt: string): string {
-	const date = new Date(updatedAt);
-	if (Number.isNaN(date.getTime())) return '';
-	return `Edited ${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
-}
-
 /**
- * One doc, formatted for reading, editable as plain text. An edit is based on the revision on
- * screen when Edit was tapped, so a save never overwrites a newer edit made somewhere else; on
- * a clash the person keeps their text and chooses. Leaving saves what is still being typed.
+ * One doc in the reader sheet, formatted for reading, editable as plain text. An edit is based
+ * on the revision on screen when Edit was tapped, so a save never overwrites a newer edit made
+ * somewhere else; on a clash the person keeps their text and chooses. Leaving saves what is
+ * still being typed.
  */
 export function DocReader({
 	ref,
 	documentId,
 	position,
+	walkLabel,
+	leaving,
 	onPrev,
 	onNext,
-	onDirtyChange
-}: {
-	ref?: Ref<ReaderHandle>;
-	documentId: string;
-	position: WalkPosition | null;
-	onPrev: () => void;
-	onNext: () => void;
-	onDirtyChange: (dirty: boolean) => void;
-}) {
-	const colors = useTheme();
+	onClose,
+	onDirtyChange,
+	onEditingChange
+}: ReaderChromeProps & { documentId: string }) {
+	const { colors } = useInk();
 	const query = useDocument(documentId);
 	const update = useUpdateDocument(documentId);
 	const doc = query.data?.document;
@@ -67,24 +60,29 @@ export function DocReader({
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [conflict, setConflict] = useState(false);
+	const [editorFocused, setEditorFocused] = useState(false);
 	const titleRef = useRef(title);
 	titleRef.current = title;
 	/** The revision the open edit is based on; moves forward with this phone's own title saves. */
 	const draftRevision = useRef<string | undefined>(undefined);
+	const { scrolled, onScroll, reset: resetScroll } = useScrolledPastTop();
 
 	useEffect(() => {
 		setDraft(null);
 		setError(null);
 		setConflict(false);
 		draftRevision.current = undefined;
-	}, [documentId]);
+		resetScroll();
+	}, [documentId, resetScroll]);
 	useEffect(() => {
 		if (doc) setTitle(doc.title ?? '');
 	}, [doc?.id, doc?.title]);
 
 	const titleDirty = Boolean(doc && title.trim() && title.trim() !== (doc.title ?? ''));
-	const dirty = titleDirty || draft !== null;
+	const editing = draft !== null;
+	const dirty = titleDirty || editing;
 	useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
+	useEffect(() => onEditingChange(editing), [editing, onEditingChange]);
 
 	const commitTitle = async (): Promise<boolean> => {
 		if (!doc) return true;
@@ -145,173 +143,223 @@ export function DocReader({
 
 	if (!doc) {
 		return (
-			<View style={{ flex: 1, backgroundColor: colors.background }}>
-				<View
-					style={{
-						flex: 1,
-						alignItems: 'center',
-						justifyContent: 'center',
-						padding: spacing.lg,
-						gap: spacing.md
-					}}
+			// Not flattened: the sheet stretches a scroll view it finds directly inside.
+			<View collapsable={false} style={[styles.root, { backgroundColor: colors.background }]}>
+				<ReaderHead
+					glyph={FileText}
+					title={null}
+					meta={walkLabel}
+					onClose={onClose}
+					closing={leaving === 'close'}
+				/>
+				<ReaderStatus
+					error={query.isError ? describeError(query.error) : null}
+					onRetry={() => void query.refetch()}
+					label="Loading the doc"
+				/>
+				<ActionBar
+					word="doc"
+					position={position}
+					leaving={leaving}
+					onPrev={onPrev}
+					onNext={onNext}
 				>
-					{query.isError ? (
-						<>
-							<AppText variant="error" style={{ textAlign: 'center' }}>
-								{describeError(query.error)}
-							</AppText>
-							<Button
-								title="Try again"
-								variant="ghost"
-								onPress={() => void query.refetch()}
-							/>
-						</>
-					) : (
-						<ActivityIndicator
-							color={colors.accent}
-							accessibilityLabel="Loading the doc"
-						/>
-					)}
-				</View>
-				<ReaderBar position={position} onPrev={onPrev} onNext={onNext}>
-					<View />
-				</ReaderBar>
+					<BarKey title="Edit" icon={Pencil} variant="outline" disabled />
+					<BarKey
+						title="Close"
+						icon={X}
+						variant="ghost"
+						loading={leaving === 'close'}
+						disabled={leaving !== null && leaving !== 'close'}
+						onPress={onClose}
+					/>
+				</ActionBar>
 			</View>
 		);
 	}
 
-	const editing = draft !== null;
 	const table = isTable(doc.type_key);
 	// Edit only from settled data: text and revision must come from the same read.
 	const canEdit = !table && !query.isFetching && Boolean(query.data?.editor_revision);
+	const edited = shortDate(doc.updated_at);
+	const closeLabel = dirty ? 'Save and close' : 'Close';
+
+	const startEdit = () => {
+		draftRevision.current = query.data?.editor_revision;
+		setDraft(doc.content ?? '');
+	};
+	const cancelEdit = () => {
+		setDraft(null);
+		setConflict(false);
+	};
+	const loadTheirs = () => {
+		setDraft(null);
+		setConflict(false);
+		draftRevision.current = undefined;
+		void query.refetch();
+	};
 
 	return (
-		<View style={{ flex: 1, backgroundColor: colors.background }}>
-			<ScrollView
-				automaticallyAdjustKeyboardInsets
-				keyboardShouldPersistTaps="handled"
-				contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}
-			>
-				<TextInput
-					accessibilityLabel="Doc title"
-					value={title}
-					onChangeText={setTitle}
-					onEndEditing={() => void commitTitle()}
-					placeholder="Untitled"
-					placeholderTextColor={colors.mutedForeground}
-					multiline
-					submitBehavior="blurAndSubmit"
-					returnKeyType="done"
-					style={{
-						fontSize: 24,
-						lineHeight: 30,
-						fontWeight: '700',
-						color: colors.foreground,
-						padding: 0
-					}}
-				/>
-				<AppText variant="muted">{edited(doc.updated_at)}</AppText>
+		// Not flattened: the sheet stretches a scroll view it finds directly inside.
+		<View collapsable={false} style={[styles.root, { backgroundColor: colors.background }]}>
+			<ReaderHead
+				glyph={FileText}
+				title={{
+					value: title,
+					onChange: setTitle,
+					onCommit: () => void commitTitle(),
+					accessibilityLabel: 'Doc title',
+					placeholder: 'Untitled'
+				}}
+				badge={edited ? <Stamp size={11.5}>{`Edited ${edited}`}</Stamp> : null}
+				meta={walkLabel}
+				onClose={onClose}
+				closing={leaving === 'close'}
+				closeLabel={closeLabel}
+				edge={editing || scrolled}
+			/>
 
-				{conflict ? (
-					<View
-						style={{
-							gap: spacing.sm,
-							padding: spacing.md,
-							borderRadius: radius.md,
-							borderWidth: 1,
-							borderColor: colors.warning,
-							backgroundColor: colors.card
-						}}
-					>
-						<AppText>
-							Someone saved a newer version of this doc while you were editing. Your
-							text is still below: copy what you need, then load their version.
-						</AppText>
-						<Button
+			{error ? (
+				<ReaderNote tone="error" style={styles.pinned}>
+					{error}
+				</ReaderNote>
+			) : null}
+			{conflict ? (
+				<ReaderNote
+					tone="warning"
+					style={styles.pinned}
+					action={
+						<Key
 							title="Load their version"
-							variant="ghost"
-							onPress={() => {
-								setDraft(null);
-								setConflict(false);
-								draftRevision.current = undefined;
-								void query.refetch();
-							}}
+							size="sm"
+							variant="outline"
+							onPress={loadTheirs}
 						/>
-					</View>
-				) : null}
+					}
+				>
+					Someone saved a newer version of this doc while you were editing. Your text is
+					still below: copy what you need, then load their version.
+				</ReaderNote>
+			) : null}
 
-				{editing ? (
-					<View style={{ gap: spacing.sm }}>
-						{/* Above the text, so the keyboard never hides them. */}
-						<View style={{ flexDirection: 'row', gap: spacing.sm }}>
-							<Button
-								title="Cancel"
-								variant="ghost"
-								style={{ flex: 1 }}
-								onPress={() => {
-									setDraft(null);
-									setConflict(false);
-								}}
-							/>
-							<Button
-								title="Save"
-								style={{ flex: 1 }}
-								loading={saving}
-								disabled={conflict}
-								onPress={() => void saveDraft()}
-							/>
-						</View>
-						<TextInput
-							accessibilityLabel="Doc text"
-							value={draft ?? ''}
-							onChangeText={setDraft}
-							multiline
-							autoFocus
-							textAlignVertical="top"
-							style={{
-								minHeight: 320,
-								padding: spacing.md,
-								fontSize: 16,
-								lineHeight: 23,
+			{editing ? (
+				<View style={styles.editorWrap}>
+					<TextInput
+						accessibilityLabel="Doc text"
+						value={draft ?? ''}
+						onChangeText={setDraft}
+						onFocus={() => setEditorFocused(true)}
+						onBlur={() => setEditorFocused(false)}
+						placeholder="Start writing"
+						placeholderTextColor={colors.mutedForeground}
+						selectionColor={colors.accent}
+						multiline
+						textAlignVertical="top"
+						style={[
+							typeScale.body,
+							styles.editor,
+							{
 								color: colors.foreground,
 								backgroundColor: colors.card,
-								borderColor: colors.borderStrong,
-								borderWidth: 1,
-								borderRadius: radius.md
+								borderColor: editorFocused ? colors.accent : colors.borderStrong
+							}
+						]}
+					/>
+				</View>
+			) : (
+				<ScrollView
+					key={documentId}
+					keyboardShouldPersistTaps="handled"
+					onScroll={onScroll}
+					scrollEventThrottle={32}
+					contentContainerStyle={styles.body}
+				>
+					<Rise>
+						{doc.content?.trim() ? (
+							<Markdown source={doc.content} />
+						) : (
+							<Text
+								maxFontSizeMultiplier={1.4}
+								style={[typeScale.meta, { color: colors.mutedForeground }]}
+							>
+								This doc is empty.
+							</Text>
+						)}
+						{table ? (
+							<ReaderNote tone="info" style={styles.tableNote}>
+								This doc is a table; edit its rows on the website.
+							</ReaderNote>
+						) : null}
+					</Rise>
+				</ScrollView>
+			)}
+
+			<ActionBar
+				word="doc"
+				position={position}
+				leaving={leaving}
+				onPrev={onPrev}
+				onNext={onNext}
+				liftWithKeyboard={editing}
+			>
+				{editing ? (
+					<>
+						<BarKey
+							title="Cancel"
+							icon={Undo2}
+							variant="outline"
+							accessibilityLabel="Cancel editing"
+							onPress={cancelEdit}
+						/>
+						<BarKey
+							title="Save"
+							icon={Check}
+							variant="primary"
+							loading={saving}
+							disabled={conflict}
+							onPress={() => {
+								void saveDraft().then((ok) => {
+									if (ok) playHaptic('success');
+								});
 							}}
 						/>
-					</View>
-				) : doc.content?.trim() ? (
-					<Markdown source={doc.content} />
+					</>
 				) : (
-					<AppText variant="muted">This doc is empty.</AppText>
+					<>
+						<BarKey
+							title="Edit"
+							icon={Pencil}
+							variant="outline"
+							disabled={!canEdit}
+							accessibilityHint={table ? 'Tables are edited on the website' : undefined}
+							onPress={startEdit}
+						/>
+						<BarKey
+							title="Close"
+							icon={X}
+							variant="ghost"
+							accessibilityLabel={closeLabel}
+							loading={leaving === 'close'}
+							disabled={leaving !== null && leaving !== 'close'}
+							onPress={onClose}
+						/>
+					</>
 				)}
-
-				{table && !editing ? (
-					<AppText variant="muted">
-						This doc is a table; edit its rows on the website.
-					</AppText>
-				) : null}
-				{error ? <AppText variant="error">{error}</AppText> : null}
-			</ScrollView>
-
-			<ReaderBar position={position} onPrev={onPrev} onNext={onNext}>
-				{editing ? (
-					<AppText variant="muted" style={{ textAlign: 'center' }}>
-						Editing
-					</AppText>
-				) : (
-					<Button
-						title="Edit"
-						variant="ghost"
-						disabled={!canEdit}
-						onPress={() => {
-							draftRevision.current = query.data?.editor_revision;
-							setDraft(doc.content ?? '');
-						}}
-					/>
-				)}
-			</ReaderBar>
+			</ActionBar>
 		</View>
 	);
 }
+
+const styles = StyleSheet.create({
+	root: { flex: 1 },
+	pinned: { marginHorizontal: 14, marginBottom: 10 },
+	body: { paddingHorizontal: 14, paddingTop: 4, paddingBottom: 28 },
+	tableNote: { marginTop: spacing.lg },
+	editorWrap: { flex: 1, paddingHorizontal: 14, paddingTop: 4, paddingBottom: 10 },
+	editor: {
+		flex: 1,
+		padding: spacing.md,
+		borderWidth: 1,
+		borderRadius: radius.md
+	}
+});

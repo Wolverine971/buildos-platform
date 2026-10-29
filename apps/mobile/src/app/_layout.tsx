@@ -3,14 +3,14 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { Button } from '@/components/button';
-import { Screen } from '@/components/screen';
-import { AppText } from '@/components/text';
+import { BoltSpinner, Key } from '@/components/kit';
+import { READER_DETENTS } from '@/components/reader/sheet';
 import { AuthProvider, useAuth } from '@/providers/auth-provider';
 import { QueryProvider } from '@/providers/query-provider';
 import { ThemeProvider, useTheme } from '@/providers/theme-provider';
+import { radius, spacing, typeScale } from '@/theme';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -26,21 +26,22 @@ function Navigation() {
 
 	if (loading || error) {
 		return (
-			<Screen contentContainerStyle={{ justifyContent: 'center' }}>
+			<View style={[styles.gate, { backgroundColor: colors.background }]}>
 				{loading ? (
-					<ActivityIndicator
-						color={colors.accent}
-						accessibilityLabel="Restoring your session"
-					/>
+					<BoltSpinner size={32} label="Restoring your session" />
 				) : (
 					<>
-						<AppText variant="error" selectable>
+						<Text
+							selectable
+							maxFontSizeMultiplier={1.4}
+							style={[typeScale.row, styles.center, { color: colors.destructive }]}
+						>
 							{error}
-						</AppText>
-						<Button title="Try again" onPress={retry} />
+						</Text>
+						<Key title="Try again" size="sm" variant="outline" onPress={retry} />
 					</>
 				)}
-			</Screen>
+			</View>
 		);
 	}
 
@@ -58,12 +59,31 @@ function Navigation() {
 				<Stack.Screen name="sign-in" options={{ headerShown: false }} />
 			</Stack.Protected>
 			<Stack.Protected guard={!!session}>
+				{/*
+				 * Today and Workspace, each with its own stack; project pages are pushed inside a
+				 * tab so the tab bar stays (see app/(tabs)/(today,workspace)/_layout.tsx).
+				 */}
 				<Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Today' }} />
+				{/*
+				 * The reader: a native iOS sheet that opens at two thirds and pulls up to full
+				 * height. On this root stack, so it covers the tab bar. The route switches detents
+				 * while editing and turns off swipe-to-close while something is unsaved (see
+				 * app/reader.tsx).
+				 */}
 				<Stack.Screen
-					name="project/[id]"
-					options={{ title: 'Project', headerBackTitle: 'Back' }}
+					name="reader"
+					options={{
+						presentation: 'formSheet',
+						headerShown: false,
+						title: 'Reader',
+						sheetAllowedDetents: READER_DETENTS,
+						sheetInitialDetentIndex: 0,
+						sheetGrabberVisible: true,
+						sheetCornerRadius: radius.sheet,
+						sheetExpandsWhenScrolledToEdge: true,
+						contentStyle: { backgroundColor: colors.background }
+					}}
 				/>
-				<Stack.Screen name="reader" options={{ presentation: 'modal', title: 'Task' }} />
 			</Stack.Protected>
 		</Stack>
 	);
@@ -81,3 +101,14 @@ export default function RootLayout() {
 		</ThemeProvider>
 	);
 }
+
+const styles = StyleSheet.create({
+	gate: {
+		flex: 1,
+		alignItems: 'center',
+		justifyContent: 'center',
+		padding: spacing.xl,
+		gap: spacing.lg
+	},
+	center: { textAlign: 'center' }
+});

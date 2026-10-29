@@ -29,6 +29,9 @@ export type InboxGroupFilter = 'account' | 'project';
 export type InboxProjectMeta = {
 	id: string;
 	name: string | null;
+	/** Lets the inbox put paused and finished projects after active work. */
+	state_key?: string | null;
+	updated_at?: string | null;
 };
 
 export type InboxDecisionCapability = {
@@ -913,15 +916,22 @@ async function loadProjectMetadata(params: {
 
 	const { data, error } = await params.supabase
 		.from('onto_projects')
-		.select('id, name')
+		.select('id, name, state_key, updated_at')
 		.in('id', projectIds);
 	if (error) throw error;
 
-	for (const project of (data ?? []) as Array<{ id?: unknown; name?: unknown }>) {
+	for (const project of (data ?? []) as Array<{
+		id?: unknown;
+		name?: unknown;
+		state_key?: unknown;
+		updated_at?: unknown;
+	}>) {
 		if (typeof project.id !== 'string') continue;
 		projects.set(project.id, {
 			id: project.id,
-			name: typeof project.name === 'string' ? project.name : null
+			name: typeof project.name === 'string' ? project.name : null,
+			state_key: typeof project.state_key === 'string' ? project.state_key : null,
+			updated_at: typeof project.updated_at === 'string' ? project.updated_at : null
 		});
 	}
 

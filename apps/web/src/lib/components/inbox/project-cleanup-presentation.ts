@@ -3,6 +3,11 @@
 // Pure helpers for the Project cleanup card (tasker 112). Kept out of the component so the
 // selection, decision and receipt rules are testable without rendering.
 import type {
+	InboxAskKind,
+	ProjectCleanupAnswer,
+	ProjectCleanupAnswerAction,
+	ProjectCleanupAsk,
+	ProjectCleanupAutoApplied,
 	ProjectCleanupClosedItem,
 	ProjectCleanupItem,
 	ProjectCleanupSection,
@@ -309,4 +314,187 @@ export function cleanupRowOperations(
 			changes
 		};
 	});
+}
+
+// ---------------------------------------------------------------------------------------------
+// Blocks by what each item asks of the user (AI Inbox "Assistant's Desk", tasker 149).
+// ---------------------------------------------------------------------------------------------
+
+export type CleanupAskBlockKey = 'path' | 'tidy' | 'stale' | 'offer' | 'done';
+
+export const CLEANUP_ASK_BLOCK: Record<CleanupAskBlockKey, { label: string; hint: string }> = {
+	path: { label: 'Pick a path', hint: 'A fork only you can choose' },
+	tidy: { label: 'Tidy-ups', hint: 'Safe filing and archiving. Nothing is deleted.' },
+	stale: { label: 'Out of date', hint: 'Records that may no longer hold' },
+	offer: { label: 'Want me to…?', hint: 'Work the assistant can take on, if you want it' },
+	done: { label: 'Done for you', hint: 'Safe changes made without asking. Undo any of them.' }
+};
+
+/** What an item asks of the user; older views without `ask_kind` follow the server's rule. */
+export function cleanupItemAskKind(item: ProjectCleanupItem): InboxAskKind {
+	if (item.ask_kind) return item.ask_kind;
+	if (item.source === 'audit') return 'offer';
+	if (item.source === 'radar') return 'stale';
+	if (item.section === 'safe_cleanup') return 'tidy';
+	return item.executable ? 'path' : 'stale';
+}
+
+/** One "Pick a path" card: a pre-written question, or one change to make or not. */
+export type CleanupAskEntry = {
+	key: string;
+	ask: ProjectCleanupAsk;
+	items: ProjectCleanupItem[];
+	/** Built from a single path item no pre-written question covers. */
+	fromItem: boolean;
+};
+
+export type CleanupAskBlocks = {
+	paths: CleanupAskEntry[];
+	tidy: ProjectCleanupItem[];
+	stale: ProjectCleanupItem[];
+	offers: ProjectCleanupItem[];
+	autoApplied: ProjectCleanupAutoApplied[];
+};
+
+const ANSWER_ACTIONS = new Set<ProjectCleanupAnswerAction>([
+	'apply',
+	'dismiss',
+	'done',
+	'note',
+	'chat'
+]);
+
+export const CLEANUP_KEEP_EFFECT = 'Nothing changes.';
+
+/** The default fork for a change no pre-written question covers. */
+export function defaultPathAsk(item: ProjectCleanupItem): ProjectCleanupAsk {
+	return {
+		id: `item:${item.id}`,
+		question: item.title,
+		context: item.summary && item.summary !== item.title ? item.summary : null,
+		item_ids: [item.id],
+		answers: [
+			{ label: 'Make this change', effect: null, action: 'apply', recommended: true },
+			{
+				label: 'Keep as is',
+				effect: CLEANUP_KEEP_EFFECT,
+				action: 'dismiss',
+				recommended: false
+			}
+		]
+	};
+}
+
+/**
+ * The card's blocks, in the view's group order. Each item shows once: an item a pre-written
+ * question covers is answered there, not in its own block.
+ */
+export function groupCleanupByAsk(view: ProjectCleanupView | null): CleanupAskBlocks {
+	const blocks: CleanupAskBlocks = {
+		paths: [],
+		tidy: [],
+		stale: [],
+		offers: [],
+		autoApplied: view?.auto_applied ?? []
+	};
+	if (!view) return blocks;
+	const ordered = orderedCleanupGroups(view).flatMap((group) => group.items);
+	const byId = new Map(ordered.map((item) => [item.id, item]));
+	const covered = new Set<string>();
+
+	for (const ask of view.asks ?? []) {
+		const items = (ask.item_ids ?? [])
+			.map((id) => byId.get(id))
+			.filter((item): item is ProjectCleanupItem => Boolean(item && !covered.has(item.id)));
+		let recommendedSeen = false;
+		const answers = (ask.answers ?? [])
+			.filter((answer) => answer?.label?.trim() && ANSWER_ACTIONS.has(answer.action))
+			.map((answer) => {
+				const recommended = Boolean(answer.recommended) && !recommendedSeen;
+				if (recommended) recommendedSeen = true;
+				return { ...answer, recommended };
+			});
+		if (!items.length || answers.length < 2 || !ask.question?.trim()) continue;
+		items.forEach((item) => covered.add(item.id));
+		blocks.paths.push({
+			key: `ask:${ask.id}`,
+			ask: { ...ask, item_ids: items.map((item) => item.id), answers },
+			items,
+			fromItem: false
+		});
+	}
+
+	for (const item of ordered) {
+		if (covered.has(item.id)) continue;
+		switch (cleanupItemAskKind(item)) {
+			case 'path':
+				blocks.paths.push({
+					key: `item:${item.id}`,
+					ask: defaultPathAsk(item),
+					items: [item],
+					fromItem: true
+				});
+				break;
+			case 'tidy':
+				blocks.tidy.push(item);
+				break;
+			case 'offer':
+				blocks.offers.push(item);
+				break;
+			default:
+				blocks.stale.push(item);
+		}
+	}
+	return blocks;
+}
+
+/** Header chips: how much is open in each block. */
+export function cleanupAskCounts(
+	blocks: CleanupAskBlocks
+): Array<{ key: CleanupAskBlockKey; count: number; label: string }> {
+	const chips: Array<{ key: CleanupAskBlockKey; count: number; label: string }> = [
+		{
+			key: 'path',
+			count: blocks.paths.length,
+			label: blocks.paths.length === 1 ? 'path to pick' : 'paths to pick'
+		},
+		{
+			key: 'tidy',
+			count: blocks.tidy.length,
+			label: blocks.tidy.length === 1 ? 'tidy-up' : 'tidy-ups'
+		},
+		{ key: 'stale', count: blocks.stale.length, label: 'out of date' },
+		{
+			key: 'offer',
+			count: blocks.offers.length,
+			label: blocks.offers.length === 1 ? 'offer' : 'offers'
+		},
+		{ key: 'done', count: blocks.autoApplied.length, label: 'done for you' }
+	];
+	return chips.filter((chip) => chip.count > 0);
+}
+
+/** "2 paths to pick · 10 tidy-ups" (only open work; Done for you is not open). */
+export function cleanupAskSummaryLine(blocks: CleanupAskBlocks): string {
+	const parts = cleanupAskCounts(blocks)
+		.filter((chip) => chip.key !== 'done')
+		.map((chip) => `${chip.count} ${chip.label}`);
+	return parts.length ? parts.join(' · ') : 'Nothing open';
+}
+
+/** What the note reader is handed when an answer's action is `note`. */
+export function cleanupAnswerNote(question: string, answer: ProjectCleanupAnswer): string {
+	const effect = answer.effect?.trim();
+	return effect
+		? `${question.trim()} — ${answer.label.trim()}: ${effect}`
+		: `${question.trim()} — ${answer.label.trim()}`;
+}
+
+/** "On hold. Mark the goal on hold with a date." */
+export function cleanupAnswerReceipt(answer: ProjectCleanupAnswer): string {
+	const label = answer.label.trim();
+	// Display punctuation only: avoid "It's over?." when a label already ends a sentence.
+	const lead = /[.!?…]$/.test(label) ? label : `${label}.`;
+	const effect = answer.effect?.trim();
+	return effect ? `${lead} ${effect}` : lead;
 }

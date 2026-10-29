@@ -500,6 +500,7 @@ describe('parseCleanupSynthesis', () => {
 			generatedAt: '2026-09-29T00:00:00.000Z',
 			items
 		});
+		expect(result.synthesis.asks).toEqual([]);
 		expect(result.synthesis.bottom_line).toBe(
 			'2 cleanup changes ready to apply; 1 item needs your call'
 		);
@@ -509,6 +510,205 @@ describe('parseCleanupSynthesis', () => {
 			['aud-1'],
 			['lin-3']
 		]);
+	});
+});
+
+describe('parseCleanupSynthesis asks', () => {
+	const stale = synthesisItem({
+		handle: 'i1',
+		lineageId: 'lin-doc',
+		kind: 'drift',
+		title: 'Rod Chamberlin notes look stale',
+		executable: false,
+		change: null,
+		allowedSections: ['note', 'needs_call']
+	});
+	const goal = synthesisItem({
+		handle: 'i2',
+		lineageId: 'lin-goal',
+		kind: 'drift',
+		title: 'Mark "Launch Rob Chamberlin book website" abandoned',
+		executable: true,
+		change: 'Set goal state to abandoned',
+		allowedSections: ['needs_call']
+	});
+	const archive = synthesisItem({
+		handle: 'i3',
+		lineageId: 'lin-archive',
+		title: 'Archive the old recovery plan'
+	});
+	const audit = synthesisItem({
+		handle: 'i4',
+		lineageId: 'aud-1',
+		kind: 'audit_recommendation',
+		source: 'audit',
+		title: 'Add a weekly review',
+		executable: false,
+		change: null,
+		allowedSections: ['needs_call', 'note'],
+		judged: false
+	});
+	const items = [stale, goal, archive, audit];
+	const parse = (asks: unknown, extra: Record<string, unknown> = {}) =>
+		parseCleanupSynthesis({
+			generatedAt: '2026-10-29T00:00:00.000Z',
+			items,
+			raw: { asks, ...extra }
+		}).synthesis.asks ?? [];
+
+	it('maps handles to lineages, keeps 2–3 answers, one recommended, and a stable id', () => {
+		const asks = parse([
+			{
+				items: ['i2', 'i1', 'i99', 'i2'],
+				question: 'Is the Rod Chamberlin website still happening (i2)?',
+				context: 'The notes have not changed since June.',
+				answers: [
+					{
+						label: 'Still going',
+						effect: 'Keeps the goal open.',
+						action: 'dismiss',
+						recommended: true
+					},
+					{ label: 'On hold', effect: null, action: 'note', recommended: true },
+					{ label: "It's over", effect: 'Marks i2 abandoned.', action: 'chat' },
+					{ label: 'Fourth', action: 'done' }
+				]
+			}
+		]);
+		expect(asks).toHaveLength(1);
+		const [ask] = asks;
+		expect(ask.item_ids).toEqual(['lin-goal', 'lin-doc']);
+		expect(ask.id).toBe('ask:lin-doc,lin-goal');
+		expect(ask.question).toBe('Is the Rod Chamberlin website still happening?');
+		expect(ask.answers.map((answer) => answer.label)).toEqual([
+			'Still going',
+			'On hold',
+			"It's over"
+		]);
+		expect(ask.answers.map((answer) => answer.recommended)).toEqual([true, false, false]);
+		// A bare handle in prose becomes the item's title, never the handle.
+		expect(ask.answers[2].effect).toBe(
+			'Marks "Mark "Launch Rob Chamberlin book website" abandoned" abandoned.'
+		);
+	});
+
+	it('drops "apply" unless every covered item has a change, and asks left with < 2 answers', () => {
+		const asks = parse([
+			{
+				items: ['i1', 'i2'],
+				question: 'Is the website still happening?',
+				answers: [
+					{ label: 'Yes, apply', action: 'apply', recommended: true },
+					{ label: 'Not needed', action: 'dismiss' },
+					{ label: 'Talk it through', action: 'chat' }
+				]
+			},
+			{
+				items: ['i3'],
+				question: 'Archive the recovery plan?',
+				answers: [
+					{ label: 'Archive it', effect: 'Archives the plan.', action: 'apply' },
+					{ label: 'Keep it', action: 'dismiss' }
+				]
+			},
+			{
+				items: ['i4'],
+				question: 'Want me to set up a weekly review?',
+				answers: [
+					{ label: 'Yes', action: 'apply' },
+					{ label: 'Not for this project', action: 'dismiss' },
+					{ label: 'Bad action', action: 'delete' }
+				]
+			}
+		]);
+		expect(asks.map((ask) => ask.item_ids)).toEqual([['lin-doc', 'lin-goal'], ['lin-archive']]);
+		expect(asks[0].answers.map((answer) => answer.action)).toEqual(['dismiss', 'chat']);
+		// The recommended answer was dropped; nothing else is promoted.
+		expect(asks[0].answers.some((answer) => answer.recommended)).toBe(false);
+		expect(asks[1].answers.map((answer) => answer.action)).toEqual(['apply', 'dismiss']);
+	});
+
+	it('puts each item in one ask, skips items resolved or merged away, and caps lengths', () => {
+		const long = 'x'.repeat(400);
+		const asks = parse(
+			[
+				{
+					items: ['i1'],
+					question: 'Is this resolved?',
+					answers: [
+						{ label: 'Yes', action: 'done' },
+						{ label: 'No', action: 'dismiss' }
+					]
+				},
+				{
+					items: ['i4'],
+					question: long,
+					context: long,
+					answers: [
+						{ label: long, effect: long, action: 'chat' },
+						{ label: 'Not for this project', action: 'dismiss' }
+					]
+				},
+				{
+					items: ['i4', 'i2'],
+					question: 'Second ask for the audit item?',
+					answers: [
+						{ label: 'A', action: 'done' },
+						{ label: 'B', action: 'dismiss' }
+					]
+				},
+				{
+					items: ['i2'],
+					answers: [
+						{ label: 'A', action: 'done' },
+						{ label: 'B', action: 'dismiss' }
+					]
+				}
+			],
+			{ items: [{ id: 'i1', verdict: 'resolved', reason: 'START HERE covers it now.' }] }
+		);
+		expect(asks).toHaveLength(2);
+		const [audit, second] = asks;
+		expect(audit.item_ids).toEqual(['aud-1']);
+		expect(audit.question.length).toBeLessThanOrEqual(200);
+		expect(audit.context?.length).toBeLessThanOrEqual(300);
+		expect(audit.answers[0].label.length).toBeLessThanOrEqual(48);
+		expect(audit.answers[0].effect?.length).toBeLessThanOrEqual(160);
+		// The audit item is already claimed; the goal is all that is left of the third ask.
+		expect(second.item_ids).toEqual(['lin-goal']);
+		expect(second.question).toBe('Second ask for the audit item?');
+	});
+
+	it('bounds the id when an ask covers many items', () => {
+		const many = Array.from({ length: 12 }, (_, index) =>
+			synthesisItem({
+				handle: `m${index}`,
+				lineageId: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+				executable: false,
+				change: null,
+				allowedSections: ['note']
+			})
+		);
+		const [ask] =
+			parseCleanupSynthesis({
+				generatedAt: '2026-10-29T00:00:00.000Z',
+				items: many,
+				raw: {
+					asks: [
+						{
+							items: many.map((item) => item.handle),
+							question: 'Are these notes still current?',
+							answers: [
+								{ label: 'Yes', action: 'done' },
+								{ label: 'No', action: 'note' }
+							]
+						}
+					]
+				}
+			}).synthesis.asks ?? [];
+		expect(ask.item_ids).toHaveLength(12);
+		expect(ask.id.length).toBeLessThanOrEqual(200);
+		expect(ask.id.startsWith('ask:')).toBe(true);
 	});
 });
 

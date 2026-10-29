@@ -10,6 +10,7 @@ import {
 	parseInboxLimit,
 	type InboxGroupFilter
 } from '$lib/server/inbox.service';
+import { countInboxCheckInCards } from '$lib/server/inbox-check-ins.service';
 
 function parseGroup(value: string | null): InboxGroupFilter | null {
 	if (value === 'account' || value === 'project') return value;
@@ -106,6 +107,21 @@ async function countInboxItemsWithTransientRetry(params: Parameters<typeof count
 	}
 }
 
+/**
+ * "Did this happen?" check-in cards for the badge (one per project). Additive: a failure
+ * here never fails the inbox count.
+ */
+async function countCheckInCardsSafely(
+	params: Parameters<typeof countInboxCheckInCards>[0]
+): Promise<{ cards: number; by_project: Record<string, number> } | null> {
+	try {
+		return await countInboxCheckInCards(params);
+	} catch (error) {
+		console.warn('[Inbox count] Failed to count check-ins:', error);
+		return null;
+	}
+}
+
 export const GET: RequestHandler = async (event) => {
 	const {
 		url,
@@ -143,20 +159,42 @@ export const GET: RequestHandler = async (event) => {
 		}
 
 		const admin = createAdminSupabaseClient();
-		const result = await countInboxItemsWithTransientRetry({
-			supabase: supabase as any,
-			admin: admin as any,
-			userId: user.id,
-			status,
-			projectId,
-			sourceType,
-			group,
-			limit: parseInboxLimit(url.searchParams.get('limit'), 1000, 5000),
-			repair: repairParam === 'full',
-			timing: serverTiming
-		});
+		// Check-ins are pending project work; they never match a source or account filter.
+		const includeCheckIns = status === 'pending' && !sourceType && group !== 'account';
+		const [result, checkIns] = await Promise.all([
+			countInboxItemsWithTransientRetry({
+				supabase: supabase as any,
+				admin: admin as any,
+				userId: user.id,
+				status,
+				projectId,
+				sourceType,
+				group,
+				limit: parseInboxLimit(url.searchParams.get('limit'), 1000, 5000),
+				repair: repairParam === 'full',
+				timing: serverTiming
+			}),
+			includeCheckIns
+				? countCheckInCardsSafely({
+						supabase,
+						userId: user.id,
+						timeZone: url.searchParams.get('tz'),
+						projectId
+					})
+				: Promise.resolve(null)
+		]);
 
-		return ApiResponse.success(result);
+		if (!checkIns?.cards) return ApiResponse.success({ ...result, check_ins: 0 });
+		const byProject = { ...result.by_project };
+		for (const [id, cards] of Object.entries(checkIns.by_project)) {
+			byProject[id] = (byProject[id] ?? 0) + cards;
+		}
+		return ApiResponse.success({
+			...result,
+			total: result.total + checkIns.cards,
+			by_project: byProject,
+			check_ins: checkIns.cards
+		});
 	} catch (error) {
 		const transient = isTransientInboxCountError(error);
 		const response = await routeErrorResponse(event, error, {

@@ -617,14 +617,14 @@ describe('update_onto_project', () => {
 		).toMatchObject({
 			ok: true,
 			summary: {
-				headline: 'Change the project type to "project.business.agency".',
+				headline: 'Change the project type to "business agency".',
 				operations: [
 					{
 						changes: [
 							{
 								label: 'Type',
-								before: 'project.business.consulting',
-								value: 'project.business.agency'
+								before: 'business consulting',
+								value: 'business agency'
 							}
 						]
 					}

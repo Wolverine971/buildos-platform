@@ -14,12 +14,7 @@ export type ProjectLoopTriggerReason =
 	| 'critical_change'
 	| 'manual';
 
-export type ProjectLoopRunStatus =
-	| 'queued'
-	| 'running'
-	| 'waiting_review'
-	| 'completed'
-	| 'failed';
+export type ProjectLoopRunStatus = 'queued' | 'running' | 'waiting_review' | 'completed' | 'failed';
 
 /** The reconciliation jobs a project loop performs. */
 export type ProjectSuggestionKind =
@@ -194,6 +189,76 @@ export interface ProjectSuggestionRollup {
 	} | null;
 }
 
+/**
+ * What a cleanup item asks of the user (AI Inbox "Assistant's Desk", 2026-10-29). Code decides
+ * it from the item's source, section and change, never from its wording.
+ * - path: a fork to choose (a change to make or not, or a pre-written question)
+ * - tidy: safe, reversible filing or archiving
+ * - stale: a record that may no longer hold
+ * - offer: work the assistant can take on (audit recommendations)
+ */
+export type InboxAskKind = 'path' | 'tidy' | 'stale' | 'offer';
+
+/**
+ * What tapping a pre-written answer does.
+ * - apply: approve the covered items' verified changes
+ * - dismiss: not needed (recorded as the user's decision)
+ * - done: mark the covered findings handled
+ * - note: hand the answer (question + label + effect) to the note reader, which applies,
+ *   sets aside, marks done or starts an agent
+ * - chat: open chat on the item, with the assistant speaking first
+ */
+export type ProjectCleanupAnswerAction = 'apply' | 'dismiss' | 'done' | 'note' | 'chat';
+
+export interface ProjectCleanupAnswer {
+	/** Short button label, e.g. "Strategy practice". */
+	label: string;
+	/** What happens if chosen, one line. */
+	effect: string | null;
+	action: ProjectCleanupAnswerAction;
+	recommended: boolean;
+}
+
+/**
+ * A question the review pass pre-wrote so the user can answer in the card. One ask may settle
+ * several items ("Is the Rod Chamberlin site still happening?"). `item_ids` are lineage ids.
+ */
+export interface ProjectCleanupAsk {
+	id: string;
+	question: string;
+	context: string | null;
+	item_ids: string[];
+	/** 2 or 3 answers; at most one recommended. */
+	answers: ProjectCleanupAnswer[];
+}
+
+/** Jev's four answers for one proposed change, each a probability in [0, 1]. */
+export interface ProjectCleanupAutoApplyScores {
+	/** Fits the project's current direction / what was said. */
+	about: number;
+	/** The owner would want it. */
+	wanted: number;
+	/** The owner would want to see it first (lower is better). */
+	review: number;
+	/** Safe to apply without input. */
+	safe: number;
+}
+
+/**
+ * A change applied without asking ("Done for you"). Lives on the suggestion row:
+ * status 'applied', result.applied_via 'auto', result.auto_apply { scores, reason, model },
+ * and result.undone_at once undone.
+ */
+export interface ProjectCleanupAutoApplied {
+	/** Lineage id of the item it came from. */
+	item_id: string;
+	suggestion_id: string;
+	title: string;
+	applied_at: string;
+	reason: string | null;
+	undoable: boolean;
+}
+
 export interface ProjectCleanupGroup {
 	title: string;
 	section: ProjectCleanupSection;
@@ -218,6 +283,8 @@ export interface ProjectCleanupSynthesis {
 	closed_this_pass: ProjectCleanupClosedItem[];
 	generated_at: string;
 	source: 'llm' | 'heuristic';
+	/** Pre-written questions (2026-10-29). Absent on older syntheses. */
+	asks?: ProjectCleanupAsk[];
 }
 
 export interface ProjectCleanupItemRow {
@@ -229,6 +296,12 @@ export interface ProjectCleanupItemRow {
 	verified_headline: string | null;
 	verified_fingerprint: string | null;
 	verified_operations?: Array<Record<string, unknown>>;
+	/**
+	 * The row's raw move and archive steps (tool + args), so the card can preview the
+	 * document tree after a tidy-up. Only move_document_in_tree, archive_onto_document and
+	 * archive_onto_task are included; other tools' args can be large text edits.
+	 */
+	tree_operations?: Array<{ tool: string; args: Record<string, unknown> }>;
 	cautions?: string[];
 	updated_at: string;
 }
@@ -252,6 +325,8 @@ export interface ProjectCleanupItem {
 	/** Radar items fixed in chat (tasker 106). */
 	review_items?: ProjectSuggestionReviewItem[];
 	audit_id?: string | null;
+	/** What it asks of the user; set by buildProjectCleanupView. */
+	ask_kind?: InboxAskKind;
 }
 
 /** One project's living cleanup change set, as the inbox card and chat read it. */
@@ -266,6 +341,10 @@ export interface ProjectCleanupView {
 	latest_audit: { id: string; created_at: string | null; summary: string | null } | null;
 	counts: { total: number; safe_cleanup: number; needs_call: number; note: number };
 	recently_closed: Array<ProjectCleanupClosedItem & { at: string | null }>;
+	/** Pre-written questions covering open items only. */
+	asks?: ProjectCleanupAsk[];
+	/** Changes applied without asking in the last 7 days and not undone ("Done for you"). */
+	auto_applied?: ProjectCleanupAutoApplied[];
 }
 
 export interface ProjectLoopBrief {

@@ -1,19 +1,22 @@
 // apps/mobile/src/components/markdown.tsx
 import { useMemo } from 'react';
-import { Linking, ScrollView, Text, type TextStyle, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, Text, type TextStyle, View } from 'react-native';
 
+import { Check } from '@/components/kit';
 import { type Block, type Inline, parseMarkdown } from '@/lib/markdown';
 import { useTheme } from '@/providers/theme-provider';
-import { fontFamily, radius, spacing } from '@/theme';
+import { fontFamily, radius, spacing, typeScale, withAlpha } from '@/theme';
+
+// The reader's prose: body 15.5/1.55, headings 20 / 17 / 15.5 (the web's 650 is 600 here).
+const BODY: TextStyle = typeScale.body;
 
 const HEADING: Record<number, TextStyle> = {
-	1: { fontSize: 24, lineHeight: 30, fontWeight: '700' },
-	2: { fontSize: 20, lineHeight: 26, fontWeight: '700' },
-	3: { fontSize: 18, lineHeight: 24, fontWeight: '600' },
-	4: { fontSize: 16, lineHeight: 22, fontWeight: '600' }
+	1: { fontSize: 20, lineHeight: 26, fontWeight: '600', letterSpacing: -0.3 },
+	2: { fontSize: 17, lineHeight: 23, fontWeight: '600', letterSpacing: -0.2 },
+	3: { fontSize: 15.5, lineHeight: 22, fontWeight: '600' }
 };
 
-const BODY: TextStyle = { fontSize: 16, lineHeight: 24 };
+const MONO = fontFamily.mono;
 
 function openLink(href: string) {
 	if (!/^(https?:|mailto:|tel:)/i.test(href)) return;
@@ -36,13 +39,13 @@ function Blocks({ blocks, gap }: { blocks: Block[]; gap: number }) {
 	return (
 		<View style={{ gap }}>
 			{blocks.map((block, index) => (
-				<BlockView key={index} block={block} />
+				<BlockView key={index} block={block} first={index === 0} />
 			))}
 		</View>
 	);
 }
 
-function BlockView({ block }: { block: Block }) {
+function BlockView({ block, first }: { block: Block; first: boolean }) {
 	const colors = useTheme();
 	switch (block.kind) {
 		case 'heading':
@@ -50,9 +53,10 @@ function BlockView({ block }: { block: Block }) {
 				<Text
 					selectable
 					accessibilityRole="header"
+					maxFontSizeMultiplier={1.5}
 					style={[
-						{ color: colors.foreground, marginTop: spacing.xs },
-						HEADING[Math.min(block.depth, 4)]
+						HEADING[Math.min(block.depth, 3)],
+						{ color: colors.foreground, marginTop: first ? 0 : spacing.xs }
 					]}
 				>
 					<Spans inline={block.inline} />
@@ -66,31 +70,38 @@ function BlockView({ block }: { block: Block }) {
 			);
 		case 'list':
 			return (
-				<View style={{ gap: spacing.xs }}>
+				<View style={styles.list}>
 					{block.items.map((item, index) => (
-						<View key={index} style={{ flexDirection: 'row', gap: spacing.sm }}>
-							<Text
-								style={[
-									BODY,
-									{
-										minWidth: block.ordered ? 22 : 14,
-										color:
-											item.checked === null
-												? colors.mutedForeground
-												: colors.accent,
-										fontVariant: ['tabular-nums']
-									}
-								]}
-							>
-								{item.checked === true
-									? '☑'
-									: item.checked === false
-										? '☐'
-										: block.ordered
-											? `${block.start + index}.`
-											: '•'}
-							</Text>
-							<View style={{ flex: 1, minWidth: 0, opacity: item.checked ? 0.6 : 1 }}>
+						<View key={index} style={styles.item}>
+							{item.checked === null ? (
+								<Text
+									style={[
+										BODY,
+										styles.marker,
+										block.ordered ? styles.number : null,
+										{ color: colors.mutedForeground }
+									]}
+								>
+									{block.ordered ? `${block.start + index}.` : '•'}
+								</Text>
+							) : (
+								<View
+									accessible
+									accessibilityRole="checkbox"
+									accessibilityState={{ checked: item.checked }}
+									style={[
+										styles.box,
+										item.checked
+											? { backgroundColor: colors.accent, borderColor: colors.accent }
+											: { borderColor: colors.borderStrong }
+									]}
+								>
+									{item.checked ? (
+										<Check size={11} color={colors.accentForeground} strokeWidth={3} />
+									) : null}
+								</View>
+							)}
+							<View style={[styles.itemBody, { opacity: item.checked ? 0.6 : 1 }]}>
 								<Blocks blocks={item.blocks} gap={spacing.xs} />
 							</View>
 						</View>
@@ -99,13 +110,7 @@ function BlockView({ block }: { block: Block }) {
 			);
 		case 'quote':
 			return (
-				<View
-					style={{
-						borderLeftWidth: 3,
-						borderLeftColor: colors.borderStrong,
-						paddingLeft: spacing.md
-					}}
-				>
+				<View style={[styles.quote, { borderLeftColor: colors.accent }]}>
 					<Blocks blocks={block.blocks} gap={spacing.sm} />
 				</View>
 			);
@@ -113,61 +118,43 @@ function BlockView({ block }: { block: Block }) {
 			return (
 				<ScrollView
 					horizontal
-					style={{ borderRadius: radius.sm, backgroundColor: colors.muted }}
-					contentContainerStyle={{ padding: spacing.md }}
+					style={[styles.codeBlock, { backgroundColor: colors.muted }]}
+					contentContainerStyle={styles.codeContent}
 				>
-					<Text
-						selectable
-						style={{
-							fontFamily: fontFamily.mono,
-							fontSize: 13,
-							lineHeight: 19,
-							color: colors.foreground
-						}}
-					>
+					<Text selectable style={[styles.codeText, { color: colors.foreground }]}>
 						{block.text}
 					</Text>
 				</ScrollView>
 			);
 		case 'rule':
-			return (
-				<View
-					style={{
-						height: 1,
-						backgroundColor: colors.border,
-						marginVertical: spacing.xs
-					}}
-				/>
-			);
+			return <View style={[styles.rule, { backgroundColor: colors.border }]} />;
 		case 'table':
 			return (
-				<ScrollView
-					horizontal
-					style={{ borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm }}
-				>
+				<ScrollView horizontal style={[styles.table, { borderColor: colors.border }]}>
 					<View>
 						{[block.header, ...block.rows].map((row, rowIndex) => (
 							<View
 								key={rowIndex}
-								style={{
-									flexDirection: 'row',
-									borderTopWidth: rowIndex ? 1 : 0,
-									borderTopColor: colors.border,
-									backgroundColor: rowIndex ? undefined : colors.card
-								}}
+								style={[
+									styles.tableRow,
+									{
+										borderTopWidth: rowIndex ? StyleSheet.hairlineWidth : 0,
+										borderTopColor: colors.border,
+										backgroundColor: rowIndex ? undefined : colors.card
+									}
+								]}
 							>
 								{row.map((cell, cellIndex) => (
 									<Text
 										key={cellIndex}
 										selectable
-										style={{
-											width: 150,
-											padding: spacing.sm,
-											fontSize: 14,
-											lineHeight: 20,
-											color: colors.foreground,
-											fontWeight: rowIndex ? '400' : '600'
-										}}
+										style={[
+											styles.cell,
+											{
+												color: colors.foreground,
+												fontWeight: rowIndex ? '400' : '600'
+											}
+										]}
 									>
 										<Spans inline={cell} />
 									</Text>
@@ -191,33 +178,33 @@ function Spans({ inline }: { inline: Inline[] }) {
 					case 'break':
 						return '\n';
 					case 'code':
+						// Nested text cannot round its background; blocks get the 6pt radius.
 						return (
 							<Text
 								key={index}
-								style={{
-									fontFamily: fontFamily.mono,
-									fontSize: 14,
-									backgroundColor: colors.muted
-								}}
+								style={[
+									styles.inlineCode,
+									{ backgroundColor: colors.muted, color: colors.foreground }
+								]}
 							>
 								{node.text}
 							</Text>
 						);
 					case 'strong':
 						return (
-							<Text key={index} style={{ fontWeight: '700' }}>
+							<Text key={index} style={styles.strong}>
 								<Spans inline={node.children} />
 							</Text>
 						);
 					case 'em':
 						return (
-							<Text key={index} style={{ fontStyle: 'italic' }}>
+							<Text key={index} style={styles.em}>
 								<Spans inline={node.children} />
 							</Text>
 						);
 					case 'del':
 						return (
-							<Text key={index} style={{ textDecorationLine: 'line-through' }}>
+							<Text key={index} style={styles.del}>
 								<Spans inline={node.children} />
 							</Text>
 						);
@@ -227,7 +214,11 @@ function Spans({ inline }: { inline: Inline[] }) {
 								key={index}
 								accessibilityRole="link"
 								onPress={() => openLink(node.href)}
-								style={{ color: colors.accent, textDecorationLine: 'underline' }}
+								style={{
+									color: colors.accent,
+									textDecorationLine: 'underline',
+									textDecorationColor: withAlpha(colors.accent, 0.45)
+								}}
 							>
 								<Spans inline={node.children} />
 							</Text>
@@ -237,3 +228,34 @@ function Spans({ inline }: { inline: Inline[] }) {
 		</>
 	);
 }
+
+const styles = StyleSheet.create({
+	list: { gap: spacing.xs },
+	item: { flexDirection: 'row', gap: spacing.sm },
+	marker: { minWidth: 14 },
+	number: { minWidth: 22, fontVariant: ['tabular-nums'] },
+	// Centered on the first 24pt line.
+	box: {
+		width: 16,
+		height: 16,
+		marginTop: 4,
+		marginRight: 2,
+		borderRadius: 4,
+		borderWidth: 1.5,
+		alignItems: 'center',
+		justifyContent: 'center'
+	},
+	itemBody: { flex: 1, minWidth: 0 },
+	quote: { borderLeftWidth: 2, paddingLeft: spacing.md },
+	codeBlock: { borderRadius: radius.xs },
+	codeContent: { padding: spacing.md },
+	codeText: { fontFamily: MONO, fontSize: 13, lineHeight: 19 },
+	rule: { height: StyleSheet.hairlineWidth, marginVertical: spacing.xs },
+	table: { borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.xs },
+	tableRow: { flexDirection: 'row' },
+	cell: { width: 150, padding: spacing.sm, fontSize: 14, lineHeight: 20 },
+	inlineCode: { fontFamily: MONO, fontSize: 13.5 },
+	strong: { fontWeight: '700' },
+	em: { fontStyle: 'italic' },
+	del: { textDecorationLine: 'line-through' }
+});

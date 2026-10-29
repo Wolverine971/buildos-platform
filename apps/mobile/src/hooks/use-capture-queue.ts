@@ -3,12 +3,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { AppState, Platform } from 'react-native';
 
+import { invalidateDesktop } from '@/hooks/use-desktop';
 import { createUserApi } from '@/lib/api';
 import { deleteRecording, findRecordings, transcribeForm } from '@/lib/capture-audio';
 import {
 	type CaptureAudio,
 	type CaptureQueue,
 	createCaptureQueue,
+	createDrainClaim,
 	type QueueSnapshot,
 	shouldRefreshToday,
 	type SortedCapture
@@ -23,6 +25,8 @@ const EMPTY: QueueSnapshot = {
 	sorted: Object.freeze([])
 };
 const queues = new Map<string, CaptureQueue>();
+/** Up to four hooks (box + pending rows, on both tabs) share each drain; one refreshes. */
+const claimDrain = createDrainClaim();
 
 /**
  * Per-call limits, so one hung request can never hold the queue. The server gives a whole
@@ -98,12 +102,17 @@ export function useCaptureQueue() {
 	const drain = useCallback(async () => {
 		if (!queue) return null;
 		const result = await queue.drain();
+		if (!claimDrain(result)) return result;
 		// A sort can add tasks due today or finish one; a picked task (first build) may be due.
 		if (shouldRefreshToday(result)) {
 			refreshToday();
 		}
+		// A saved capture lands loose in the Workspace; a sort files it into a project.
+		if (result?.saved?.length || result?.sorted?.length) {
+			void invalidateDesktop(queryClient, userId);
+		}
 		return result;
-	}, [queue, refreshToday]);
+	}, [queue, refreshToday, queryClient, userId]);
 
 	useEffect(() => {
 		if (!queue) return;
@@ -143,9 +152,10 @@ export function useCaptureQueue() {
 			const result = await createUserApi(userId).workspace.undoSort(entry.receipt);
 			queue?.dismissSorted(entry.id);
 			refreshToday();
+			void invalidateDesktop(queryClient, userId);
 			return { failed: result.failed };
 		},
-		[queue, userId, refreshToday]
+		[queue, userId, refreshToday, queryClient]
 	);
 
 	const { items, lastStop, active, sorted } = snapshot;

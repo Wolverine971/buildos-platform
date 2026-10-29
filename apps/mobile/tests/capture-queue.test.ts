@@ -6,6 +6,7 @@ import {
 	CaptureRejectedError,
 	classifyCaptureError,
 	createCaptureQueue,
+	createDrainClaim,
 	makeCaptureId,
 	MAX_SERVER_FAILURES,
 	MAX_SORTED,
@@ -128,6 +129,24 @@ describe('refreshing Today after a drain', () => {
 		const { queue } = makeQueue({ store, save: vi.fn(async () => savedAs('t1', 'task')) });
 		const result = await queue.drain();
 		expect(shouldRefreshToday({ saved: result.saved })).toBe(true);
+	});
+});
+
+describe('createDrainClaim', () => {
+	it('lets only the first of the screens sharing one drain run the refreshes', async () => {
+		const { queue } = makeQueue({ sort: vi.fn(async () => sortedAs(['Task added'])) });
+		await queue.enqueueText('Book the venue');
+		const claim = createDrainClaim();
+
+		// The capture box and pending rows on both tabs drain together on foreground.
+		const results = await Promise.all([queue.drain(), queue.drain(), queue.drain()]);
+		expect(new Set(results).size).toBe(1);
+		expect(results.map((result) => claim(result))).toEqual([true, false, false]);
+
+		// The next drain is a new result, claimed afresh.
+		expect(claim(await queue.drain())).toBe(true);
+		expect(claim(null)).toBe(false);
+		expect(claim(undefined)).toBe(false);
 	});
 });
 

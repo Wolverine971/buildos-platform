@@ -2,7 +2,10 @@
 import { describe, expect, it } from 'vitest';
 import {
 	type ProjectCleanupRowRecord,
+	autoAppliedFromRow,
 	buildProjectCleanupView,
+	cleanupAskKind,
+	openCleanupAsks,
 	projectCleanupInboxCopy
 } from './project-cleanup';
 
@@ -168,5 +171,137 @@ describe('buildProjectCleanupView', () => {
 			title: 'Two goals drifted.',
 			summary: 'Rename the goal first. (1 ready to apply · 1 needs your call · 1 to know)'
 		});
+	});
+});
+
+describe('cleanupAskKind', () => {
+	it('sorts items by what they ask of the user, from structure only', () => {
+		expect(cleanupAskKind({ source: 'audit', section: 'needs_call', executable: false })).toBe(
+			'offer'
+		);
+		expect(cleanupAskKind({ source: 'radar', section: 'safe_cleanup', executable: true })).toBe(
+			'stale'
+		);
+		expect(
+			cleanupAskKind({ source: 'review', section: 'safe_cleanup', executable: true })
+		).toBe('tidy');
+		expect(cleanupAskKind({ source: 'review', section: 'needs_call', executable: true })).toBe(
+			'path'
+		);
+		expect(cleanupAskKind({ source: 'review', section: 'note', executable: false })).toBe(
+			'stale'
+		);
+	});
+
+	it('stamps every item in the view', () => {
+		const view = buildProjectCleanupView({
+			projectId: 'p1',
+			rows: [row({ id: 'a', lineage_id: 'a' })]
+		});
+		expect(view.items[0]?.ask_kind).toBe('tidy');
+		expect(view.asks).toEqual([]);
+		expect(view.auto_applied).toEqual([]);
+	});
+});
+
+describe('openCleanupAsks', () => {
+	const archive = row({ id: 'a', lineage_id: 'a' });
+	const note = row({ id: 'b', lineage_id: 'b', kind: 'drift', operations: [] });
+	const view = buildProjectCleanupView({ projectId: 'p1', rows: [archive, note] });
+	const answers = [
+		{
+			label: 'Archive it',
+			effect: 'Archives the plan.',
+			action: 'apply' as const,
+			recommended: true
+		},
+		{ label: 'Keep it', effect: null, action: 'dismiss' as const, recommended: false },
+		{ label: 'Tell me more', effect: null, action: 'chat' as const, recommended: false }
+	];
+
+	it('keeps asks on open items and narrows them to what is still open', () => {
+		const asks = openCleanupAsks(
+			[
+				{
+					id: 'q1',
+					question: 'Archive the old plan?',
+					context: null,
+					item_ids: ['a', 'gone'],
+					answers
+				},
+				{ id: 'q2', question: 'Gone?', context: null, item_ids: ['gone'], answers }
+			],
+			view.items
+		);
+		expect(asks).toHaveLength(1);
+		expect(asks[0]?.item_ids).toEqual(['a']);
+		expect(asks[0]?.answers).toHaveLength(3);
+	});
+
+	it('drops an apply answer when a covered item has nothing to apply', () => {
+		const asks = openCleanupAsks(
+			[{ id: 'q1', question: 'Both?', context: null, item_ids: ['a', 'b'], answers }],
+			view.items
+		);
+		expect(asks[0]?.answers.map((answer) => answer.action)).toEqual(['dismiss', 'chat']);
+	});
+
+	it('gives each item to one ask and drops asks left with fewer than two answers', () => {
+		const asks = openCleanupAsks(
+			[
+				{ id: 'q1', question: 'First', context: null, item_ids: ['a'], answers },
+				{ id: 'q2', question: 'Second', context: null, item_ids: ['a'], answers },
+				{
+					id: 'q3',
+					question: 'Only apply',
+					context: null,
+					item_ids: ['b'],
+					answers: [answers[0]!, answers[1]!].map((answer) => ({
+						...answer,
+						action: 'apply' as const
+					}))
+				}
+			],
+			view.items
+		);
+		expect(asks.map((ask) => ask.id)).toEqual(['q1']);
+	});
+});
+
+describe('autoAppliedFromRow', () => {
+	const base = {
+		id: 's1',
+		kind: 'doc_org',
+		title: 'Move brief',
+		lineage_id: 'lin-1',
+		applied_at: '2026-10-29T10:00:00Z',
+		reversible: true,
+		result: {
+			ok: true,
+			applied_via: 'auto',
+			headline: 'Move "LA Industrial Services brief" under "Client Work"',
+			auto_apply: { reason: 'Fits the project and nothing is lost; you can undo it' }
+		}
+	};
+
+	it('reads the auto-apply contract', () => {
+		expect(autoAppliedFromRow(base)).toEqual({
+			item_id: 'lin-1',
+			suggestion_id: 's1',
+			title: 'Move "LA Industrial Services brief" under "Client Work"',
+			applied_at: '2026-10-29T10:00:00Z',
+			reason: 'Fits the project and nothing is lost; you can undo it',
+			undoable: true
+		});
+	});
+
+	it('skips undone rows and ones the user applied', () => {
+		expect(
+			autoAppliedFromRow({
+				...base,
+				result: { ...base.result, undone_at: '2026-10-29T11:00:00Z' }
+			})
+		).toBeNull();
+		expect(autoAppliedFromRow({ ...base, result: { ok: true } })).toBeNull();
 	});
 });

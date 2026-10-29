@@ -87,6 +87,20 @@ export function shouldRefreshToday(result: Partial<DrainResult> | null | undefin
 	);
 }
 
+/**
+ * True only the first time a drain result is seen. Every screen with a capture box drains on
+ * mount and on foreground, and they share one drain (and so one result object); the refreshes
+ * after it should run once, not once per screen, each cancelling the last.
+ */
+export function createDrainClaim(): (result: object | null | undefined) => boolean {
+	const seen = new WeakSet<object>();
+	return (result) => {
+		if (!result || seen.has(result)) return false;
+		seen.add(result);
+		return true;
+	};
+}
+
 /** What subscribers see. Stable between changes, so it suits `useSyncExternalStore`. */
 export type QueueSnapshot = {
 	items: readonly PendingCapture[];

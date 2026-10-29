@@ -41,6 +41,22 @@ describe('aiInboxCountStore', () => {
 		});
 	});
 
+	it('sends the browser time zone so check-ins count the right overdue tasks', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValue(
+				new Response(JSON.stringify({ success: true, data: { total: 1 } }), { status: 200 })
+			);
+		vi.stubGlobal('fetch', fetchMock);
+
+		await loadAiInboxCount();
+
+		const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+		expect(fetchMock.mock.calls[0]![0]).toBe(
+			`/api/inbox/count?status=pending&limit=1000&tz=${encodeURIComponent(zone)}`
+		);
+	});
+
 	it('reuses a loaded count until a forced refresh', async () => {
 		const fetchMock = vi
 			.fn()

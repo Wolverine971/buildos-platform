@@ -1,6 +1,7 @@
 // packages/api-client/src/endpoints/projects.ts
 import type { BuildOsHttp, RequestOptions } from '../client';
 import type {
+	DesktopResponse,
 	ProjectFullParams,
 	ProjectFullResponse,
 	ProjectListParams,
@@ -37,7 +38,14 @@ export function createProjectEndpoints(http: BuildOsHttp) {
 					asOf: params.asOf
 				},
 				...options
-			})
+			}),
+
+		/**
+		 * GET /api/projects/desktop — every project as a tile (pulse, bars, task mix, emoji,
+		 * parent) plus the Workspace's loose items, in one request.
+		 */
+		desktop: (options?: RequestOptions) =>
+			http.request<DesktopResponse>('/api/projects/desktop', { ...options })
 	};
 }
 

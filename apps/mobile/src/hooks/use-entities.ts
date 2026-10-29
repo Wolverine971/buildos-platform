@@ -5,8 +5,9 @@ import type {
 	ProjectFullResponse,
 	TaskUpdateInput
 } from '@buildos/api-client';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { invalidateDesktop } from '@/hooks/use-desktop';
 import { api } from '@/lib/api';
 import { applyTaskEdit, serverFields, type TaskFields } from '@/lib/task-cache';
 import { useAuth } from '@/providers/auth-provider';
@@ -20,15 +21,6 @@ import { useAuth } from '@/providers/auth-provider';
 function useUserId(): string | null {
 	const { session } = useAuth();
 	return session?.user.id ?? null;
-}
-
-export function useProjects() {
-	const userId = useUserId();
-	return useQuery({
-		queryKey: ['projects', userId],
-		queryFn: async () => (await api.projects.list({ limit: 100 })).projects,
-		enabled: Boolean(userId)
-	});
 }
 
 export function useProject(projectId: string | undefined) {
@@ -103,6 +95,9 @@ export function useUpdateTask() {
 		onError: (_error, _variables, context) => context?.edit.undo(),
 		onSuccess: ({ task }, _variables, context) => {
 			if (context) context.edit.confirm(serverFields(task, context.sent));
+			// Tile pulse, task mix and loose items move with task edits. Only marked stale: a
+			// run of Mark done / Next costs one read when the Workspace is focused again.
+			void invalidateDesktop(queryClient, userId, { refetch: false });
 		}
 	});
 }
@@ -118,6 +113,45 @@ type DocumentSave = {
 	/** Told the revision the save was based on and the new one, before the next save starts. */
 	onSaved?: (previous: string | undefined, next: string) => void;
 };
+
+/**
+ * After a doc save: the doc's own read, its title in every cached project, and the
+ * Workspace (a loose note's title and excerpt) marked stale, like a task edit.
+ */
+export function applyDocumentSave(
+	queryClient: QueryClient,
+	userId: string | null,
+	documentId: string,
+	saved: DocumentDetailResponse
+) {
+	queryClient.setQueryData<DocumentDetailResponse>(['document', userId, documentId], {
+		document: saved.document,
+		editor_revision: saved.editor_revision
+	});
+	const rename = <T extends { id: string; title: string | null; updated_at: string }>(
+		doc: T
+	): T =>
+		doc.id === documentId
+			? { ...doc, title: saved.document.title, updated_at: saved.document.updated_at }
+			: doc;
+	for (const [projectKey, project] of queryClient.getQueriesData<ProjectFullResponse>({
+		queryKey: ['project', userId]
+	})) {
+		if (!project) continue;
+		const inList = project.documents.some((doc) => doc.id === documentId);
+		const isContext = project.context_document?.id === documentId;
+		if (!inList && !isContext) continue;
+		queryClient.setQueryData<ProjectFullResponse>(projectKey, {
+			...project,
+			documents: project.documents.map(rename),
+			context_document: project.context_document
+				? rename(project.context_document)
+				: project.context_document
+		});
+	}
+	// Only marked stale: the Workspace tab refetches when it is focused again.
+	void invalidateDesktop(queryClient, userId, { refetch: false });
+}
 
 /**
  * Saves a doc change. Saves of one doc run one after another, so a title rename and a body save
@@ -141,36 +175,11 @@ export function useUpdateDocument(documentId: string) {
 		},
 		onSuccess: ({ response, expected }, { onSaved }) => {
 			if (!('editor_revision' in response)) return;
-			queryClient.setQueryData<DocumentDetailResponse>(key, {
+			applyDocumentSave(queryClient, userId, documentId, {
 				document: response.document,
 				editor_revision: response.editor_revision
 			});
 			onSaved?.(expected, response.editor_revision);
-			const rename = <T extends { id: string; title: string | null; updated_at: string }>(
-				doc: T
-			): T =>
-				doc.id === documentId
-					? {
-							...doc,
-							title: response.document.title,
-							updated_at: response.document.updated_at
-						}
-					: doc;
-			for (const [projectKey, project] of queryClient.getQueriesData<ProjectFullResponse>({
-				queryKey: ['project', userId]
-			})) {
-				if (!project) continue;
-				const inList = project.documents.some((doc) => doc.id === documentId);
-				const isContext = project.context_document?.id === documentId;
-				if (!inList && !isContext) continue;
-				queryClient.setQueryData<ProjectFullResponse>(projectKey, {
-					...project,
-					documents: project.documents.map(rename),
-					context_document: project.context_document
-						? rename(project.context_document)
-						: project.context_document
-				});
-			}
 		}
 	});
 }

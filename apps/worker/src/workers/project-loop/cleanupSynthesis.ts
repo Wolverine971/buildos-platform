@@ -7,12 +7,16 @@
 // verdict is mapped back through the handle table: an unknown handle is ignored, and code's
 // section floor still decides what may sit in "Safe cleanup".
 import type {
+	ProjectCleanupAnswer,
+	ProjectCleanupAnswerAction,
+	ProjectCleanupAsk,
 	ProjectCleanupGroup,
 	ProjectCleanupSection,
 	ProjectCleanupSource,
 	ProjectCleanupSynthesis,
 	ProjectReviewAttentionLevel
 } from '@buildos/shared-types';
+import { createHash } from 'node:crypto';
 import type { RollupVerdict } from './reviewRollup';
 
 export interface CleanupSynthesisItem {
@@ -120,9 +124,119 @@ export const CLEANUP_SYNTHESIS_OUTPUT = [
 	'  "next_best_action": string|null,',
 	'  "items": [ { "id": "i1", "verdict": "still_true"|"resolved", "reason": string|null, "section": "safe_cleanup"|"needs_call"|"note", "summary": string } ],',
 	'  "merges": [ { "keep": "i1", "absorb": ["i4"], "reason": string } ],',
-	'  "groups": [ { "title": string, "section": "safe_cleanup"|"needs_call"|"note", "item_ids": ["i1","i2"], "recommendation": string|null } ]',
+	'  "groups": [ { "title": string, "section": "safe_cleanup"|"needs_call"|"note", "item_ids": ["i1","i2"], "recommendation": string|null } ],',
+	'  "asks": [ { "items": ["i3","i5"], "question": string, "context": string|null, "answers": [ { "label": string, "effect": string|null, "action": "apply"|"dismiss"|"done"|"note"|"chat", "recommended": boolean } ] } ]',
 	'} }'
 ].join('\n');
+
+/**
+ * How the roll-up pre-writes questions ("asks", AI Inbox Assistant's Desk, 2026-10-29). Plain
+ * language for the model; parseCleanupSynthesis still decides what survives.
+ */
+export const CLEANUP_ASK_GUIDANCE = [
+	"Asks: pre-write the question the owner answers with one tap. Write an ask for every item that needs the owner's judgment (items you put in needs_call or note, audit items, radar items). Do not write asks for safe_cleanup items.",
+	'One ask may cover several items when one answer settles them all. Example: a stale "Rod Chamberlin" doc, a goal "Launch Rob Chamberlin book website" that looks abandoned, and an archive of the old recovery plan become one ask, "Is the Rod Chamberlin website still happening?", with answers "Still going", "On hold" and "It\'s over". Each item belongs to at most one ask.',
+	"The question names the record and can be answered with a tap. Give 2 or 3 mutually exclusive answers. Each answer's effect says in one line what will change if the owner picks it.",
+	'Answer actions: "apply" only when the answer means "make the change shown under approving it", and only for items that have a change; "dismiss" when it is not needed; "done" when the owner already handled it; "note" when the answer describes a specific situation (the answer is handed to a reader that updates the project or starts an agent); "chat" to talk it through.',
+	'Audit items are offers of work: phrase them as "Want me to …?" with answers like {"label": "Yes, ask me", "action": "chat"} and {"label": "Not for this project", "action": "dismiss"}.',
+	'Findings with nothing to apply get answers like "Already handled" (done), "Not needed" (dismiss), or a specific situation (note).',
+	'Mark at most one answer recommended. Item ids never appear in questions, context, labels or effects.'
+].join('\n');
+
+/** Caps on what the card shows from an ask. */
+export const CLEANUP_ASK_LIMITS = {
+	question: 200,
+	context: 300,
+	label: 48,
+	effect: 160,
+	minAnswers: 2,
+	maxAnswers: 3,
+	/** Bound on the stable id; a long list of lineage ids is hashed down. */
+	idChars: 200
+} as const;
+
+const ANSWER_ACTIONS: readonly ProjectCleanupAnswerAction[] = [
+	'apply',
+	'dismiss',
+	'done',
+	'note',
+	'chat'
+];
+
+/** Stable across passes for the same items: `ask:` + the covered lineage ids, sorted. */
+export function cleanupAskId(lineageIds: readonly string[]): string {
+	const joined = `ask:${[...lineageIds].sort().join(',')}`;
+	if (joined.length <= CLEANUP_ASK_LIMITS.idChars) return joined;
+	return `ask:${createHash('sha256').update(joined).digest('hex').slice(0, 40)}`;
+}
+
+/**
+ * The model's asks, mapped onto lineages. Code wins: unknown handles and items already settled
+ * this pass drop out, each item is in at most one ask, an answer that applies a change needs
+ * every covered item to have one, and an ask keeps 2–3 answers with at most one recommended.
+ */
+export function parseCleanupAsks(params: {
+	raw: unknown;
+	byHandle: ReadonlyMap<string, CleanupSynthesisItem>;
+	/** Lineages resolved or merged away this pass: an ask never covers them. */
+	settled: ReadonlySet<string>;
+	readable: (value: unknown, max: number) => string | null;
+}): ProjectCleanupAsk[] {
+	// Scrubbing can turn a handle into a quoted title, so clip again after it.
+	const readable = (value: unknown, max: number) => text(params.readable(value, max), max);
+	const asks: ProjectCleanupAsk[] = [];
+	const claimed = new Set<string>();
+	for (const entry of Array.isArray(params.raw) ? params.raw : []) {
+		if (!entry || typeof entry !== 'object') continue;
+		const record = entry as Record<string, unknown>;
+		const items: CleanupSynthesisItem[] = [];
+		for (const handle of Array.isArray(record.items) ? record.items : []) {
+			const item = typeof handle === 'string' ? params.byHandle.get(handle) : undefined;
+			if (!item || params.settled.has(item.lineageId) || claimed.has(item.lineageId))
+				continue;
+			if (!items.includes(item)) items.push(item);
+		}
+		if (!items.length) continue;
+		const question = readable(record.question, CLEANUP_ASK_LIMITS.question);
+		if (!question) continue;
+		const everyItemHasAChange = items.every((item) => item.executable);
+		const answers: ProjectCleanupAnswer[] = [];
+		let recommendedTaken = false;
+		for (const rawAnswer of Array.isArray(record.answers) ? record.answers : []) {
+			if (!rawAnswer || typeof rawAnswer !== 'object') continue;
+			const answer = rawAnswer as Record<string, unknown>;
+			const action = ANSWER_ACTIONS.includes(answer.action as ProjectCleanupAnswerAction)
+				? (answer.action as ProjectCleanupAnswerAction)
+				: null;
+			const label = readable(answer.label, CLEANUP_ASK_LIMITS.label);
+			if (!action || !label) continue;
+			// "Make the change" only when every covered item has a change to make.
+			if (action === 'apply' && !everyItemHasAChange) continue;
+			if (answers.some((other) => other.label.toLowerCase() === label.toLowerCase()))
+				continue;
+			const recommended = answer.recommended === true && !recommendedTaken;
+			if (recommended) recommendedTaken = true;
+			answers.push({
+				label,
+				effect: readable(answer.effect, CLEANUP_ASK_LIMITS.effect),
+				action,
+				recommended
+			});
+			if (answers.length === CLEANUP_ASK_LIMITS.maxAnswers) break;
+		}
+		if (answers.length < CLEANUP_ASK_LIMITS.minAnswers) continue;
+		const lineageIds = items.map((item) => item.lineageId);
+		lineageIds.forEach((id) => claimed.add(id));
+		asks.push({
+			id: cleanupAskId(lineageIds),
+			question,
+			context: readable(record.context, CLEANUP_ASK_LIMITS.context),
+			item_ids: lineageIds,
+			answers
+		});
+	}
+	return asks;
+}
 
 /**
  * Map the model's answer back onto lineages. Anything that names an unknown handle, a section
@@ -238,6 +352,12 @@ export function parseCleanupSynthesis(params: {
 	)
 		? (raw.attention_level as ProjectReviewAttentionLevel)
 		: defaultAttention(open, sectionOf);
+	const asks = parseCleanupAsks({
+		raw: raw.asks,
+		byHandle,
+		settled: new Set([...resolved, ...absorbed]),
+		readable
+	});
 	return {
 		synthesis: {
 			bottom_line: readable(raw.bottom_line, 240),
@@ -246,7 +366,8 @@ export function parseCleanupSynthesis(params: {
 			open_count: open.length,
 			closed_this_pass: [],
 			generated_at: params.generatedAt,
-			source: 'llm'
+			source: 'llm',
+			asks
 		},
 		verdicts,
 		merges,
@@ -317,7 +438,8 @@ export function buildHeuristicCleanupSynthesis(params: {
 			open_count: params.items.length,
 			closed_this_pass: [],
 			generated_at: params.generatedAt,
-			source: 'heuristic'
+			source: 'heuristic',
+			asks: []
 		},
 		verdicts: [],
 		merges: [],

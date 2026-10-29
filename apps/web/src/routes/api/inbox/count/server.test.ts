@@ -3,12 +3,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
 	countInboxItems: vi.fn(),
+	countInboxCheckInCards: vi.fn(),
 	createAdminSupabaseClient: vi.fn(),
 	routeErrorResponse: vi.fn()
 }));
 
 vi.mock('$lib/supabase/admin', () => ({
 	createAdminSupabaseClient: mocks.createAdminSupabaseClient
+}));
+
+vi.mock('$lib/server/inbox-check-ins.service', () => ({
+	countInboxCheckInCards: mocks.countInboxCheckInCards
 }));
 
 vi.mock('$lib/server/route-error', () => ({
@@ -80,6 +85,7 @@ describe('GET /api/inbox/count', () => {
 		vi.clearAllMocks();
 		mocks.createAdminSupabaseClient.mockReturnValue({ from: vi.fn() });
 		mocks.countInboxItems.mockResolvedValue(countPayload);
+		mocks.countInboxCheckInCards.mockResolvedValue({ cards: 0, by_project: {} });
 		mocks.routeErrorResponse.mockImplementation(
 			async (
 				_event: unknown,
@@ -120,6 +126,53 @@ describe('GET /api/inbox/count', () => {
 				repair: false
 			})
 		);
+	});
+
+	it('skips check-ins when the count is filtered to one source', async () => {
+		await GET(
+			makeEvent('http://localhost/api/inbox/count?status=pending&source_type=agent_run')
+		);
+		expect(mocks.countInboxCheckInCards).not.toHaveBeenCalled();
+	});
+
+	it('adds one card per project with check-ins to the badge total', async () => {
+		mocks.countInboxItems.mockResolvedValue({
+			...countPayload,
+			by_project: { 'project-1': 1 }
+		});
+		mocks.countInboxCheckInCards.mockResolvedValue({
+			cards: 2,
+			by_project: { 'project-1': 1, 'project-2': 1 }
+		});
+		const event = makeEvent(
+			'http://localhost/api/inbox/count?status=pending&limit=1000&tz=America/Chicago'
+		);
+
+		const response = await GET(event);
+		const json = await response.json();
+
+		expect(json.data.total).toBe(4);
+		expect(json.data.check_ins).toBe(2);
+		expect(json.data.by_project).toEqual({ 'project-1': 2, 'project-2': 1 });
+		expect(mocks.countInboxCheckInCards).toHaveBeenCalledWith({
+			supabase: event.locals.supabase,
+			userId: USER_ID,
+			timeZone: 'America/Chicago',
+			projectId: null
+		});
+	});
+
+	it('still returns the inbox count when check-ins fail', async () => {
+		mocks.countInboxCheckInCards.mockRejectedValue(new Error('check-ins down'));
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+		const response = await GET(makeEvent());
+		const json = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(json.data.total).toBe(2);
+		expect(json.data.check_ins).toBe(0);
+		warn.mockRestore();
 	});
 
 	it('enables full source repair only when explicitly requested', async () => {

@@ -1070,7 +1070,8 @@ describe('createInboxChatSession', () => {
 					source: 'ai_inbox',
 					source_type: 'project_cleanup',
 					source_ref_id: PROJECT_ID,
-					cleanup_item_id: null
+					cleanup_item_id: null,
+					cleanup_record_id: null
 				}
 			]);
 			expect(findOperation(operations, 'project_suggestions', 'update')).toBeUndefined();
@@ -1090,16 +1091,17 @@ describe('createInboxChatSession', () => {
 			expect(result.created).toBe(true);
 			const message = findOperation(operations, 'chat_messages', 'insert')?.payload as any;
 			const lines = (message.content as string).split('\n');
-			expect(lines[0]).toBe('9takes — project cleanup');
-			expect(lines[2]).toBe("Let's look at: Move the Rod folder to Beyond Exit Planning");
-			expect(lines[3]).toBe(
-				'Needs your call · from Project Review · seen in 2 reviews since 2026-09-04'
-			);
+			// The assistant opens on the item itself, not a report of the whole list.
+			expect(lines[0]).toBe('Move the Rod folder to Beyond Exit Planning.');
 			expect(message.content).toContain('Rod work now lives in another project.');
+			expect(message.content).toContain('Where does this stand now?');
+			expect(message.content).not.toContain('9takes — project cleanup');
+			expect(message.content).not.toContain('Archive Political Analysis');
 			const llmText = message.metadata.proposal_context.llm_text as string;
 			expect(llmText).toContain(
 				'The user opened this chat from one item (item id lineage-rod).'
 			);
+			expect(llmText).toContain('You opened this conversation with the message');
 			expect(llmText.indexOf('## Focused item')).toBeLessThan(
 				llmText.indexOf('## Open items')
 			);
@@ -1108,6 +1110,68 @@ describe('createInboxChatSession', () => {
 			expect(session.agent_metadata.cleanup_item_id).toBe('lineage-rod');
 			expect(session.agent_metadata.proposal_context.evidence_summaries).toEqual([
 				'document: Rod folder (doc-rod)'
+			]);
+		});
+
+		it('opens on one out-of-date record with the assistant speaking first', async () => {
+			const radarItem = {
+				...rodItem,
+				id: 'suggestion-radar',
+				source: 'radar' as const,
+				kind: 'freshness_update' as const,
+				section: 'needs_call' as const,
+				title: '3 things look out of date',
+				summary: null,
+				why_now: null,
+				rows: [],
+				review_items: [
+					{
+						concern_id: 'concern-client',
+						entity_type: 'document' as const,
+						entity_id: 'doc-client',
+						title: 'Client Work',
+						reason: 'May be out of date. Seen in 3 separate checks.',
+						fix_in_chat_prompt: '"Client Work" looks out of date.'
+					}
+				]
+			};
+			mocks.loadProjectCleanupView.mockResolvedValue({
+				...cleanupView,
+				items: [archiveItem, rodItem, radarItem]
+			});
+			const { supabase, operations } = createProjectSuggestionSupabaseMock();
+
+			await createInboxChatSession({
+				supabase,
+				item: cleanupInboxItem,
+				userId: USER_ID,
+				focusCleanupItemId: 'suggestion-radar',
+				focusCleanupRecordId: 'concern-client'
+			});
+
+			const message = findOperation(operations, 'chat_messages', 'insert')?.payload as any;
+			expect((message.content as string).split('\n')[0]).toBe(
+				'I think the **Client Work** doc is out of date.'
+			);
+			expect(message.metadata.proposal_context.llm_text).toContain(
+				'They picked one out-of-date record in it: document "Client Work" (doc-client).'
+			);
+			const session = findOperation(operations, 'chat_sessions', 'insert')?.payload as any;
+			expect(session.title).toBe('Chat: Client Work');
+			expect(session.agent_metadata).toMatchObject({
+				cleanup_item_id: 'suggestion-radar',
+				cleanup_record_id: 'concern-client',
+				focus: {
+					focusType: 'document',
+					focusEntityId: 'doc-client',
+					focusEntityName: 'Client Work'
+				}
+			});
+			expect(findOperation(operations, 'chat_sessions', 'select')?.containsFilters).toEqual([
+				expect.objectContaining({
+					cleanup_item_id: 'suggestion-radar',
+					cleanup_record_id: 'concern-client'
+				})
 			]);
 		});
 

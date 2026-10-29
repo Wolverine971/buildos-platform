@@ -350,6 +350,68 @@ export type ProjectTasksResponse = {
 	nextOffset: number | null;
 };
 
+/**
+ * A tile's color: what actually happened lately, not the status field.
+ * moving = finished a task in 14 days; shaping = worked on in 14 days, nothing finished;
+ * quiet = no change for 14+ days; parked = paused/done, or no change for 60+ days.
+ * Mirrors apps/web/src/lib/components/projects/desktop/desktop-signals.ts `Pulse`.
+ */
+export type ProjectPulse = 'moving' | 'shaping' | 'quiet' | 'parked';
+
+/** Open tasks by bucket, for the T bar's segments. */
+export type TaskMix = { overdue: number; in_progress: number; scheduled: number; backlog: number };
+
+/** One project as a desktop tile. Mirrors apps/web/src/lib/server/projects/desktop-response.ts. */
+export type DesktopProject = {
+	id: string;
+	name: string;
+	/** `workspace` is the viewer's loose-items holder; never draw it as a tile. */
+	kind: ProjectKind;
+	state_key: string;
+	updated_at: string;
+	/** Last recorded change (app, chat or agents) within 60 days; null when none. */
+	last_touch_at: string | null;
+	next_step_short: string | null;
+	/** Up to two emojis; null shows the monogram. */
+	emoji: string[] | null;
+	/** Set only when the parent is also in this viewer's list. */
+	parent_project_id: string | null;
+	/** null when there is no history to judge. */
+	pulse: ProjectPulse | null;
+	/** Why the pulse is what it is, e.g. "Finished 2 tasks in the last 14 days"; '' with no pulse. */
+	pulse_reason: string;
+	/** Bar lengths 0–1, ranked against the viewer's other projects (0 = nothing). */
+	bars: { docs: number; tasks: number };
+	mix: TaskMix;
+	open_tasks: number;
+	document_count: number;
+	task_count: number;
+};
+
+/** A loose note, doc or task in the Workspace. `note` and `doc` open as documents. */
+export type LooseItemSummary = {
+	id: string;
+	kind: 'note' | 'doc' | 'task';
+	title: string;
+	excerpt: string | null;
+	updated_at: string;
+};
+
+/**
+ * GET /api/projects/desktop — apps/web/src/routes/api/projects/desktop/+server.ts
+ * Every project as a tile (most recently active first; the Workspace row included with
+ * kind `workspace`) and the Workspace's loose items (newest first). `workspace` is null
+ * when it could not be loaded.
+ */
+export type DesktopResponse = {
+	projects: DesktopProject[];
+	workspace: {
+		id: string;
+		items: LooseItemSummary[];
+		totals: { notes: number; docs: number; tasks: number };
+	} | null;
+};
+
 // ---------------------------------------------------------------------------
 // Tasks
 // ---------------------------------------------------------------------------

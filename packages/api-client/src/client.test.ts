@@ -408,6 +408,52 @@ describe('endpoint wrappers', () => {
 		);
 	});
 
+	it('projects.desktop GETs the desktop route and unwraps tiles and loose items', async () => {
+		const desktop = {
+			projects: [
+				{
+					id: 'p1',
+					name: 'Novel',
+					kind: 'project',
+					state_key: 'active',
+					updated_at: '2026-10-28T12:00:00.000Z',
+					last_touch_at: '2026-10-28T11:00:00.000Z',
+					next_step_short: 'Outline act two',
+					emoji: ['📚'],
+					parent_project_id: null,
+					pulse: 'moving',
+					pulse_reason: 'Finished 1 task in the last 14 days',
+					bars: { docs: 1, tasks: 0.59 },
+					mix: { overdue: 1, in_progress: 0, scheduled: 2, backlog: 3 },
+					open_tasks: 6,
+					document_count: 4,
+					task_count: 9
+				}
+			],
+			workspace: {
+				id: 'w1',
+				items: [
+					{
+						id: 'n1',
+						kind: 'note',
+						title: 'Call the printer',
+						excerpt: null,
+						updated_at: '2026-10-28T10:00:00.000Z'
+					}
+				],
+				totals: { notes: 1, docs: 0, tasks: 0 }
+			}
+		};
+		const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(envelope(desktop)));
+		const api = makeClient(fetchMock);
+
+		const result = await api.projects.desktop();
+
+		expect(result).toEqual(desktop);
+		expect(lastCall(fetchMock).url).toBe('https://build-os.com/api/projects/desktop');
+		expect(lastCall(fetchMock).init.method).toBe('GET');
+	});
+
 	it('tasks.remove and push.unregisterDevice send DELETE with a JSON body', async () => {
 		const fetchMock = vi
 			.fn<typeof fetch>()

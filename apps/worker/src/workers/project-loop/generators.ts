@@ -23,6 +23,7 @@ import { generateEnglishProjectReview } from './reviewLanguage';
 import { type ProjectDriftEvidence, renderDriftEvidence } from './driftEvidence';
 import { PROJECT_REVIEW_CLIPPED_TEXT_RULE, clipForPrompt } from './promptText';
 import {
+	CLEANUP_ASK_GUIDANCE,
 	CLEANUP_SYNTHESIS_OUTPUT,
 	type CleanupSynthesisItem,
 	type CleanupSynthesisResult,
@@ -543,6 +544,13 @@ async function callGenerator(params: {
 	return Array.isArray(result?.suggestions) ? result.suggestions : [];
 }
 
+/**
+ * Output cap for the roll-up call. Its JSON carries a verdict per item plus groups and, since
+ * 2026-10-29, the pre-written asks (about 100–150 tokens each), so a 40-item list can pass 5k
+ * tokens. Raised from 4096 so the JSON is not cut off; billing follows tokens actually used.
+ */
+const CLEANUP_ROLLUP_MAX_TOKENS = 8192;
+
 async function callBriefGenerator(params: {
 	llm: SmartLLMService;
 	userId: string;
@@ -567,7 +575,7 @@ async function callBriefGenerator(params: {
 				userPrompt: params.userPrompt,
 				userId: params.userId,
 				profile: 'balanced',
-				maxTokens: 4096,
+				maxTokens: CLEANUP_ROLLUP_MAX_TOKENS,
 				signal: params.signal,
 				providerRouting: providerOrder.length
 					? { order: providerOrder, allow_fallbacks: true }
@@ -839,6 +847,7 @@ export async function generateProjectCleanupSynthesis(params: {
 		'Item ids (i1, i2, ...) are only for the JSON fields that ask for them. Never write them in titles, summaries, reasons, bottom_line or recommendation; name the item instead.',
 		'Attention: none=nothing useful; minor=notes only; decision=changes or calls wait on the owner; urgent=blocked work or a material consequence.',
 		'next_best_action is the one concrete step that moves the project forward now, independent of the cleanup list: pick work from the earliest unfinished phase, preferably an existing open task. Use null when the evidence does not show one.',
+		CLEANUP_ASK_GUIDANCE,
 		'',
 		CLEANUP_SYNTHESIS_OUTPUT
 	].join('\n');

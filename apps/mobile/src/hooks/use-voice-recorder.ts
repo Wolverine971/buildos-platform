@@ -24,6 +24,22 @@ export type VoicePhase = 'idle' | 'starting' | 'recording' | 'stopping';
 /** How many level samples the live waveform shows. */
 export const LEVEL_SAMPLES = 32;
 
+/**
+ * The last stop's release of the audio session. Each tab's capture box has its own recorder,
+ * and turning recording off (`allowsRecording: false`) stops every recorder in the app, so a
+ * new recording waits until the previous one has let go.
+ */
+let audioReleased: Promise<void> = Promise.resolve();
+
+function releaseAudio<T>(run: () => Promise<T>): Promise<T> {
+	const done = run();
+	audioReleased = done.then(
+		() => undefined,
+		() => undefined
+	);
+	return done;
+}
+
 /** Metering is dBFS (about -160 to 0). Speech sits around -50 to -10; map that to 0–1. */
 export function levelFromMetering(db: number | undefined): number {
 	if (db === undefined || !Number.isFinite(db)) return 0;
@@ -79,14 +95,17 @@ export function useVoiceRecorder(
 			if (phaseRef.current !== 'recording') return;
 			move('stopping');
 			const durationMs = Math.max(durationRef.current, recorder.getStatus().durationMillis);
-			try {
-				await recorder.stop();
-			} catch {
-				// Already stopped by the system; the file is still there.
-			}
-			const uri = fileRef.current ?? recorder.uri;
-			fileRef.current = null;
-			await setAudioModeAsync({ allowsRecording: false }).catch(() => {});
+			const uri = await releaseAudio(async () => {
+				try {
+					await recorder.stop();
+				} catch {
+					// Already stopped by the system; the file is still there.
+				}
+				const file = fileRef.current ?? recorder.uri;
+				fileRef.current = null;
+				await setAudioModeAsync({ allowsRecording: false }).catch(() => {});
+				return file;
+			});
 
 			try {
 				if (!uri) {
@@ -121,6 +140,7 @@ export function useVoiceRecorder(
 		setError(null);
 		move('starting');
 		try {
+			await audioReleased;
 			const permission = await requestRecordingPermissionsAsync();
 			if (!permission.granted) {
 				setError(

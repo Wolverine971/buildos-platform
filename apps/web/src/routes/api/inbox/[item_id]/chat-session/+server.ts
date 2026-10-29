@@ -19,12 +19,22 @@ function readString(value: unknown): string | null {
 	return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
-/** Project cleanup: which card item the user chose to discuss (absent = the whole card). */
-async function readFocusCleanupItemId(request: Request | undefined): Promise<string | null> {
-	if (!request) return null;
-	const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
-	const id = readString(body?.cleanup_item_id);
+function boundedId(value: unknown): string | null {
+	const id = readString(value);
 	return id && id.length <= 128 ? id : null;
+}
+
+/**
+ * Project cleanup: which card item the user chose to discuss (absent = the whole card), and
+ * optionally one out-of-date record inside it ("Fix in chat" on a radar item).
+ */
+async function readCleanupFocus(
+	request: Request | undefined
+): Promise<{ itemId: string | null; recordId: string | null }> {
+	if (!request) return { itemId: null, recordId: null };
+	const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+	const itemId = boundedId(body?.cleanup_item_id);
+	return { itemId, recordId: itemId ? boundedId(body?.cleanup_record_id) : null };
 }
 
 async function loadInboxItem(params: {
@@ -97,13 +107,16 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 	}
 
 	try {
-		const focusCleanupItemId =
-			item.source_type === 'project_cleanup' ? await readFocusCleanupItemId(request) : null;
+		const focus =
+			item.source_type === 'project_cleanup'
+				? await readCleanupFocus(request)
+				: { itemId: null, recordId: null };
 		const result = await createInboxChatSession({
 			supabase: locals.supabase as any,
 			item,
 			userId: user.id,
-			...(focusCleanupItemId ? { focusCleanupItemId } : {})
+			...(focus.itemId ? { focusCleanupItemId: focus.itemId } : {}),
+			...(focus.recordId ? { focusCleanupRecordId: focus.recordId } : {})
 		});
 		return result.created ? ApiResponse.created(result) : ApiResponse.success(result);
 	} catch (error) {
