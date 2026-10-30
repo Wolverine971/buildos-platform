@@ -37,12 +37,24 @@ import type { OpenReviewRow } from './reviewRollupStore';
 // Policy (code owns the rules)
 // ---------------------------------------------------------------------------
 
+export interface CleanupAutoApplyBar {
+	minAbout: number;
+	minWanted: number;
+	minSafe: number;
+	maxReview: number;
+}
+
 export const CLEANUP_AUTO_APPLY_POLICY = Object.freeze({
-	/** Jev's four answers must clear these. */
-	minAbout: 0.85,
-	minWanted: 0.85,
-	minSafe: 0.85,
-	maxReview: 0.3,
+	/**
+	 * Jev's four answers must clear the bar for the change's kind (DJ, 2026-10-29). Jev ranks
+	 * well but its "wanted" topped out near 0.81 on Wayne Strategies, so one 0.85 bar never
+	 * fired. A move loses nothing and undoes exactly, so it gets a looser bar; anything that
+	 * archives keeps a strict one.
+	 */
+	bars: Object.freeze({
+		move: Object.freeze({ minAbout: 0.85, minWanted: 0.75, minSafe: 0.85, maxReview: 0.65 }),
+		archive: Object.freeze({ minAbout: 0.85, minWanted: 0.8, minSafe: 0.9, maxReview: 0.3 })
+	}),
 	/** At most this many changes are applied without asking in one pass. */
 	maxAppliesPerPass: 8,
 	/** At most this many candidates are scored in one Jev request. */
@@ -72,13 +84,23 @@ export function cleanupAutoApplyEnabled(
 	return !(value === 'off' || value === 'false' || value === '0');
 }
 
-export function passesCleanupAutoApplyGate(scores: ProjectCleanupAutoApplyScores): boolean {
-	const policy = CLEANUP_AUTO_APPLY_POLICY;
+/** Moves only → the move bar; anything that archives → the archive bar. */
+export function cleanupAutoApplyBar(tools: readonly string[]): CleanupAutoApplyBar {
+	return tools.length && tools.every((tool) => tool === 'move_document_in_tree')
+		? CLEANUP_AUTO_APPLY_POLICY.bars.move
+		: CLEANUP_AUTO_APPLY_POLICY.bars.archive;
+}
+
+export function passesCleanupAutoApplyGate(
+	scores: ProjectCleanupAutoApplyScores,
+	tools: readonly string[]
+): boolean {
+	const bar = cleanupAutoApplyBar(tools);
 	return (
-		scores.about >= policy.minAbout &&
-		scores.wanted >= policy.minWanted &&
-		scores.safe >= policy.minSafe &&
-		scores.review <= policy.maxReview
+		scores.about >= bar.minAbout &&
+		scores.wanted >= bar.minWanted &&
+		scores.safe >= bar.minSafe &&
+		scores.review <= bar.maxReview
 	);
 }
 
@@ -1195,7 +1217,7 @@ export async function runCleanupAutoApply(params: {
 			const candidateScores = scores[index] ?? null;
 			if (
 				!candidateScores ||
-				!passesCleanupAutoApplyGate(candidateScores) ||
+				!passesCleanupAutoApplyGate(candidateScores, candidate.tools) ||
 				summary.applied >= CLEANUP_AUTO_APPLY_POLICY.maxAppliesPerPass
 			) {
 				summary.held += 1;
@@ -1205,7 +1227,8 @@ export async function runCleanupAutoApply(params: {
 					status: 'held',
 					scores: candidateScores,
 					detail:
-						candidateScores && passesCleanupAutoApplyGate(candidateScores)
+						candidateScores &&
+						passesCleanupAutoApplyGate(candidateScores, candidate.tools)
 							? 'per-pass cap'
 							: 'below the bar'
 				});

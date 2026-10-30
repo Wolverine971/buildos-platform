@@ -2,7 +2,7 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { Inbox, LoaderCircle, RefreshCw, Settings, Sparkles, Zap } from '$lib/icons/lucide';
+	import { Inbox, RefreshCw, Settings, Sparkles, X, Zap } from '$lib/icons/lucide';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ChangeSetFailureSummary from '$lib/components/notifications/types/agent-run/ChangeSetFailureSummary.svelte';
@@ -18,6 +18,8 @@
 	} from '$lib/components/inbox/check-ins';
 	import type { CheckInProject } from '$lib/types/inbox-check-ins';
 	import InboxCleanupTriage from '$lib/components/inbox/InboxCleanupTriage.svelte';
+	import { withoutAnsweredItems } from '$lib/components/inbox/cleanup-outbox';
+	import { clearedPile } from '$lib/stores/inbox-cleared-pile.svelte';
 	import type {
 		TriageNoteResult,
 		TriageProject,
@@ -376,7 +378,11 @@
 	const triageableCount = $derived(
 		items.reduce((total, item) => {
 			if (item.source_type !== 'project_cleanup' || !canDecide(item)) return total;
-			return total + (projectCleanupView(item)?.items.length ?? 0);
+			const project = itemProject(item);
+			const view = project
+				? withoutAnsweredItems(projectCleanupView(item), project.id)
+				: projectCleanupView(item);
+			return total + (view?.items.length ?? 0);
 		}, 0)
 	);
 	const pendingProjectCount = $derived(
@@ -869,7 +875,10 @@
 		for (const group of groupedItems) {
 			for (const item of group.items) {
 				const project = itemProject(item);
-				const view = projectCleanupView(item);
+				// Answers still in the Cleared pile stay out of the walk.
+				const view = project
+					? withoutAnsweredItems(projectCleanupView(item), project.id)
+					: null;
 				if (!project || !view?.items.length || !canDecide(item)) continue;
 				projects.push({
 					projectId: project.id,
@@ -913,17 +922,27 @@
 		if (item) discussCleanup(item, cleanupItem);
 	}
 
+	/**
+	 * A background save landed (it can land after the user moved on, or after the walk-through
+	 * closed): keep the card's fresh view so a remounted card starts from it.
+	 */
 	function handleCleanupDecided(
-		item: InboxItem,
+		itemId: string,
 		summary: { handled: number; view: ProjectCleanupView | null }
 	) {
 		if (summary.handled > 0) changedCount += summary.handled;
 		const view = summary.view;
+		if (!view) return;
 		// With nothing left that needs a decision the server retires the card; follow suit.
-		if (view && view.counts.safe_cleanup + view.counts.needs_call === 0) {
-			removeItemById(item.id);
-			toastService.success('Project cleanup is clear. Nothing else needs you here.');
+		if (view.counts.safe_cleanup + view.counts.needs_call === 0) {
+			removeItemById(itemId);
+			return;
 		}
+		items = items.map((candidate) =>
+			candidate.id === itemId
+				? { ...candidate, source_payload: view as unknown as InboxItem['source_payload'] }
+				: candidate
+		);
 	}
 
 	async function resolveChatItem(
@@ -1291,6 +1310,12 @@
 		});
 	}
 
+	// The Cleared pile stays put while the inbox is open, and fades after it closes.
+	$effect(() => {
+		clearedPile.setPinned(isOpen);
+		return () => clearedPile.setPinned(false);
+	});
+
 	$effect(() => {
 		if (isOpen && !wasOpen) {
 			wasOpen = true;
@@ -1330,37 +1355,44 @@
 <Modal
 	{isOpen}
 	onClose={close}
-	title="AI Inbox"
+	ariaLabel="AI Inbox"
 	size="xl"
 	variant="bottom-sheet"
 	enableGestures={false}
 	showDragHandle={false}
+	contentScrollable={false}
 >
-	<div
-		class="flex h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-4.25rem-var(--keyboard-height,0px))] min-h-0 flex-col overflow-hidden sm:h-[min(85dvh,60rem)]"
-	>
-		<div class="flex items-center justify-between gap-3 border-b border-border px-3 py-2.5">
+	{#snippet header()}
+		<!-- One header bar: title, live summary, and actions (no second bar under it). -->
+		<div
+			class="flex min-h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-muted px-4 py-1.5"
+		>
 			<div class="min-w-0">
-				<p class="text-sm font-semibold text-foreground" aria-live="polite">
+				<h2 class="truncate text-base font-semibold leading-tight text-foreground">
+					AI Inbox
+				</h2>
+				<p class="mt-0.5 truncate text-xs text-muted-foreground" aria-live="polite">
 					{#if loading}
-						Loading inbox
+						Loading inbox…
 					{:else}
-						{formatInboxAttentionSummary({
-							loaded: items.length + openCheckInCards,
-							total: totalAvailable + openCheckInCards,
-							held: heldTotal
-						})}
+						<span
+							>{formatInboxAttentionSummary({
+								loaded: items.length + openCheckInCards,
+								total: totalAvailable + openCheckInCards,
+								held: heldTotal
+							})}</span
+						>
+						{#if changedCount > 0}
+							<span>· {changedCount} handled this session</span>
+						{:else if (items.length || checkIns.length) && pendingProjectCount > 0}
+							<span>
+								· {pendingProjectCount} project{pendingProjectCount === 1
+									? ''
+									: 's'}
+							</span>
+						{/if}
 					{/if}
 				</p>
-				{#if changedCount > 0}
-					<p class="mt-0.5 text-2xs text-muted-foreground">
-						{changedCount} handled this session
-					</p>
-				{:else if (items.length || checkIns.length) && pendingProjectCount > 0}
-					<p class="mt-0.5 text-2xs text-muted-foreground">
-						Across {pendingProjectCount} project{pendingProjectCount === 1 ? '' : 's'}
-					</p>
-				{/if}
 			</div>
 			<div class="flex shrink-0 items-center gap-2">
 				{#if !triageProjects && triageableCount > 1}
@@ -1371,28 +1403,42 @@
 						onclick={() => startTriage(activeGroup?.items[0] ?? null)}
 						disabled={loading}
 						class="text-xs"
+						aria-label={`Triage ${triageableCount} items`}
 					>
-						Triage {triageableCount} items
+						Triage {triageableCount}<span class="hidden sm:inline">&nbsp;items</span>
 					</Button>
 				{/if}
-				<Button
-					variant="outline"
-					size="sm"
+				<button
+					type="button"
 					onclick={refreshAll}
 					disabled={loading || loadingMore}
-					class="h-11 w-11 p-0"
+					class="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground shadow-ink pressable tx-button hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
 					title="Refresh inbox"
 					aria-label="Refresh inbox"
 				>
-					<LoaderCircle
-						class="h-3.5 w-3.5 {loading
-							? 'animate-spin motion-reduce:animate-none'
-							: ''}"
+					<RefreshCw
+						class="h-4 w-4 {loading ? 'animate-spin motion-reduce:animate-none' : ''}"
+						aria-hidden="true"
 					/>
-				</Button>
+				</button>
+				<button
+					type="button"
+					onclick={close}
+					class="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground shadow-ink pressable tx-button hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					aria-label="Close AI Inbox"
+				>
+					<X class="h-4 w-4" aria-hidden="true" />
+				</button>
 			</div>
 		</div>
+	{/snippet}
 
+	<!-- Only the rail and the item pane scroll; the body itself never does.
+	     `relative` keeps absolutely positioned children (sr-only text) inside
+	     this box instead of stretching the dialog and opening a gap below. -->
+	<div
+		class="relative flex h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-4.75rem-var(--keyboard-height,0px))] min-h-0 flex-col overflow-hidden sm:h-[min(calc(85dvh-3.5rem),56rem)]"
+	>
 		{#if !triageProjects}
 			<InboxDoneForYouStrip
 				entries={doneForYouElsewhere}
@@ -1408,6 +1454,9 @@
 					projects={triageProjects}
 					onSendNote={triageSendNote}
 					onOpenChat={triageOpenChat}
+					onSaved={({ project, view }) =>
+						// The walk counts its own answers on exit.
+						handleCleanupDecided(project.inboxItemId, { handled: 0, view })}
 					onExit={exitTriage}
 				/>
 			</div>
@@ -1438,7 +1487,7 @@
 				class="grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)] gap-0 overflow-hidden lg:grid-cols-[240px_minmax(0,1fr)]"
 			>
 				<div
-					class="min-w-0 shrink-0 border-b border-border p-2 lg:min-h-0 lg:overflow-y-auto lg:border-b-0 lg:border-r"
+					class="relative min-w-0 shrink-0 border-b border-border p-2 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:border-b-0 lg:border-r"
 				>
 					<div
 						role="tablist"
@@ -1533,7 +1582,7 @@
 						</div>
 
 						<div
-							class="inbox-spotlight-group min-h-0 min-w-0 flex-1 space-y-2 overflow-x-hidden overflow-y-auto p-2 lg:space-y-0 lg:divide-y lg:divide-border lg:p-0"
+							class="inbox-spotlight-group relative min-h-0 min-w-0 flex-1 space-y-2 overflow-x-hidden overflow-y-auto overscroll-contain p-2 lg:space-y-0 lg:divide-y lg:divide-border lg:p-0"
 						>
 							{#if activeGroup.checkIn}
 								<!-- Keyed so another project's card starts fresh (no carried-over answers). -->
@@ -1576,6 +1625,7 @@
 										<InboxProjectCleanup
 											view={projectCleanupView(item)}
 											projectId={project.id}
+											projectName={project.name ?? activeGroup.label}
 											canDecide={canDecide(item)}
 											decisionDisabledReason={item.decision_disabled_reason ??
 												null}
@@ -1588,7 +1638,7 @@
 												openFixInChat(item, reviewItem, cleanupItem)}
 											onTriage={() => startTriage(item)}
 											onDecided={(summary) =>
-												handleCleanupDecided(item, summary)}
+												handleCleanupDecided(item.id, summary)}
 											onUndone={handleCleanupUndone}
 										/>
 									{:else}
@@ -1911,6 +1961,12 @@
 									{/if}
 								</div>
 							{/each}
+							<!-- Room to scroll the last card clear of the Cleared pile. -->
+							<div
+								aria-hidden="true"
+								class="shrink-0"
+								style="height: var(--cleared-pile-offset, 0px)"
+							></div>
 						</div>
 					</div>
 				{/if}

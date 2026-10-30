@@ -24,14 +24,13 @@
 		Undo2,
 		X
 	} from '$lib/icons/lucide';
-	import type { ProjectCleanupItem } from '@buildos/shared-types';
+	import type { ProjectCleanupItem, ProjectCleanupView } from '@buildos/shared-types';
+	import { queueCleanupAnswer, type CleanupSendResult } from './cleanup-outbox';
 	import {
 		CLEANUP_SECTION_LABEL,
 		CLEANUP_SOURCE_LABEL,
 		cleanupItemCautions,
-		cleanupSeenLine,
-		summarizeCleanupItemOutcome,
-		type CleanupOutcome
+		cleanupSeenLine
 	} from './project-cleanup-presentation';
 	import {
 		TRIAGE_KEYS,
@@ -56,6 +55,7 @@
 		undoWindowMs = 4000,
 		onSendNote,
 		onOpenChat,
+		onSaved,
 		onExit
 	}: {
 		projects: TriageProject[];
@@ -69,6 +69,15 @@
 		) => Promise<TriageNoteResult>;
 		/** Open the full chat on one item instead of leaving a note. */
 		onOpenChat?: (project: TriageProject, item: ProjectCleanupItem) => void;
+		/**
+		 * A background save landed (it may land after the walk closed): items handled and the
+		 * project's fresh view.
+		 */
+		onSaved?: (summary: {
+			project: TriageProject;
+			handled: number;
+			view: ProjectCleanupView | null;
+		}) => void;
 		onExit: (summary: TriageSummary) => void;
 	} = $props();
 
@@ -174,6 +183,8 @@
 		);
 	}
 
+	// Each save goes through the Cleared pile (bottom-right), so it keeps going after the walk
+	// closes and shows up with everything else answered in the inbox.
 	async function send(
 		projectId: string,
 		entries: QueuedTriageDecision[],
@@ -181,52 +192,49 @@
 	) {
 		inFlight += 1;
 		touchedProjects.add(projectId);
-		const projectName =
-			steps.find((step) => step.project.projectId === projectId)?.project.projectName ??
-			'Project';
+		const project = steps.find((step) => step.project.projectId === projectId)?.project;
+		const projectName = project?.projectName ?? 'Project';
 		const items = entries.flatMap((entry) => entry.items);
-		try {
-			const res = await fetch(`/api/onto/projects/${encodeURIComponent(projectId)}/cleanup`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ decisions: entries.flatMap((entry) => entry.decisions) }),
-				keepalive: options.keepalive
-			});
-			const json = await res.json().catch(() => null);
-			if (!res.ok) throw new Error(json?.error ?? 'Could not save these choices');
-			const outcomes = (json?.data?.outcomes ?? []) as CleanupOutcome[];
-			const failed: Problem[] = items.flatMap((item) => {
-				const result = summarizeCleanupItemOutcome(item, outcomes);
-				if (!result || (result.status !== 'failed' && result.status !== 'changed')) {
-					return [];
-				}
-				return [
-					{
-						key: `${projectId}:${item.id}`,
-						title: item.title,
-						projectName,
-						message:
-							result.status === 'changed'
-								? 'Changed since you saw it — it stays in the list for another look.'
-								: (result.message ?? 'Could not apply this.')
-					}
-				];
-			});
-			if (failed.length) problems = [...problems, ...failed];
-		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Could not save these choices';
-			problems = [
-				...problems,
-				...items.map((item) => ({
-					key: `${projectId}:${item.id}`,
-					title: item.title,
-					projectName,
-					message
-				}))
-			];
-		} finally {
-			inFlight -= 1;
-		}
+		let result: CleanupSendResult | null = null;
+		const { settled } = queueCleanupAnswer({
+			projectId,
+			projectName,
+			title: items.length === 1 ? items[0]!.title : `${items.length} answers`,
+			label: 'From the walk-through',
+			items,
+			decisions: entries.flatMap((entry) => entry.decisions),
+			// The walk already waited out its own Undo window.
+			holdMs: 0,
+			keepalive: options.keepalive,
+			onResult: (saved) => {
+				result = saved;
+				if (!project || saved.error) return;
+				const handled = items.filter((item) => {
+					const status = saved.results.get(item.id)?.status;
+					return status !== 'failed' && status !== 'changed';
+				}).length;
+				onSaved?.({ project, handled, view: saved.view });
+			}
+		});
+		await settled;
+		inFlight -= 1;
+		const saved = result as CleanupSendResult | null;
+		const failed: Problem[] = items.flatMap((item) => {
+			const outcome = saved?.error ? null : saved?.results.get(item.id);
+			const message = !saved
+				? 'Could not save these choices'
+				: saved.error
+					? saved.error
+					: outcome?.status === 'changed'
+						? 'Changed since you saw it — it stays in the list for another look.'
+						: outcome?.status === 'failed'
+							? (outcome.message ?? 'Could not apply this.')
+							: null;
+			return message
+				? [{ key: `${projectId}:${item.id}`, title: item.title, projectName, message }]
+				: [];
+		});
+		if (failed.length) problems = [...problems, ...failed];
 	}
 
 	function record(
@@ -381,11 +389,11 @@
 		onOpenChat(step.project, step.item);
 	}
 
-	async function exit() {
+	function exit() {
 		if (exiting) return;
 		exiting = true;
-		// Save first so the refreshed inbox reflects every choice.
-		await flush();
+		// No waiting: the Cleared pile finishes the saves and the cards hide what was answered.
+		void flush();
 		onExit({
 			handled: tallies.applied + tallies.not_needed + tallies.done + tallies.noted,
 			projectIds: [...touchedProjects]
@@ -405,7 +413,7 @@
 			// One Escape peels one layer and never closes the inbox from here.
 			event.preventDefault();
 			if (noteOpen) closeNote();
-			else void exit();
+			else exit();
 			return;
 		}
 		if (isTyping(event.target) || noteOpen) return;

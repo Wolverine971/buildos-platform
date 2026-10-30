@@ -54,7 +54,8 @@
 		/** A quiet footer line, e.g. "Seen in 3 reviews since Oct 4". */
 		meta?: string | null;
 		openingChat?: boolean;
-		onAnswer?: (answer: ProjectCleanupAnswer, index: number) => void;
+		/** `source` is the card, for the fly-to-pile animation. */
+		onAnswer?: (answer: ProjectCleanupAnswer, index: number, source: Element | null) => void;
 		onTalk?: () => void;
 		/** Extra detail under the context, e.g. "What changes". */
 		details?: Snippet;
@@ -115,7 +116,8 @@
 				{@const loading = loadingIndex === index}
 				<button
 					type="button"
-					onclick={() => onAnswer?.(answer, index)}
+					onclick={(event) =>
+						onAnswer?.(answer, index, event.currentTarget.closest('article'))}
 					disabled={disabled || blocked}
 					aria-busy={loading}
 					class="flex min-h-11 min-w-0 flex-col items-start gap-0.5 rounded-md border bg-card px-3 py-2.5 text-left transition-colors hover:border-info hover:bg-info/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border-strong disabled:hover:bg-card motion-reduce:transition-none {answer.recommended

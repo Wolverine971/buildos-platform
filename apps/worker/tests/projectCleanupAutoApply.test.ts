@@ -153,13 +153,46 @@ describe('selectCleanupAutoApplyCandidates', () => {
 });
 
 describe('gate, kill switch and request', () => {
-	it('applies only at about/wanted/safe >= 0.85 and review <= 0.30', () => {
-		const pass = { about: 0.85, wanted: 0.85, review: 0.3, safe: 0.85 };
-		expect(passesCleanupAutoApplyGate(pass)).toBe(true);
-		expect(passesCleanupAutoApplyGate({ ...pass, about: 0.84 })).toBe(false);
-		expect(passesCleanupAutoApplyGate({ ...pass, wanted: 0.84 })).toBe(false);
-		expect(passesCleanupAutoApplyGate({ ...pass, safe: 0.84 })).toBe(false);
-		expect(passesCleanupAutoApplyGate({ ...pass, review: 0.31 })).toBe(false);
+	it('applies an archive only at about >= 0.85, wanted >= 0.80, safe >= 0.90, review <= 0.30', () => {
+		const pass = { about: 0.85, wanted: 0.8, review: 0.3, safe: 0.9 };
+		const archive = ['archive_onto_document'];
+		expect(passesCleanupAutoApplyGate(pass, archive)).toBe(true);
+		expect(passesCleanupAutoApplyGate({ ...pass, about: 0.84 }, archive)).toBe(false);
+		expect(passesCleanupAutoApplyGate({ ...pass, wanted: 0.79 }, archive)).toBe(false);
+		expect(passesCleanupAutoApplyGate({ ...pass, safe: 0.89 }, archive)).toBe(false);
+		expect(passesCleanupAutoApplyGate({ ...pass, review: 0.31 }, archive)).toBe(false);
+		// A change that archives anything takes the archive bar, even alongside moves.
+		expect(
+			passesCleanupAutoApplyGate({ ...pass, safe: 0.89 }, [
+				'move_document_in_tree',
+				'archive_onto_task'
+			])
+		).toBe(false);
+	});
+
+	it('gives moves only a looser bar: wanted >= 0.75, review <= 0.65, safe >= 0.85', () => {
+		const move = ['move_document_in_tree'];
+		// Live Wayne Strategies scores (2026-10-29): Brand Direction move, AI Guy Pitches archive.
+		expect(
+			passesCleanupAutoApplyGate({ about: 0.87, wanted: 0.8, review: 0.62, safe: 0.95 }, move)
+		).toBe(true);
+		expect(
+			passesCleanupAutoApplyGate({ about: 0.9, wanted: 0.81, review: 0.24, safe: 0.97 }, [
+				'archive_onto_document'
+			])
+		).toBe(true);
+		// Book Research archive (wanted 0.69, review 0.54) still waits for the owner.
+		expect(
+			passesCleanupAutoApplyGate({ about: 0.84, wanted: 0.69, review: 0.54, safe: 0.72 }, [
+				'archive_onto_document'
+			])
+		).toBe(false);
+		const base = { about: 0.85, wanted: 0.75, review: 0.65, safe: 0.85 };
+		expect(passesCleanupAutoApplyGate(base, move)).toBe(true);
+		expect(passesCleanupAutoApplyGate({ ...base, wanted: 0.74 }, move)).toBe(false);
+		expect(passesCleanupAutoApplyGate({ ...base, review: 0.66 }, move)).toBe(false);
+		expect(passesCleanupAutoApplyGate({ ...base, safe: 0.84 }, move)).toBe(false);
+		expect(passesCleanupAutoApplyGate({ ...base, about: 0.84 }, move)).toBe(false);
 	});
 
 	it('is on by default and off only for off/false/0', () => {

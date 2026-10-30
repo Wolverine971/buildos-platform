@@ -39,6 +39,7 @@
 	import type { Snippet } from 'svelte';
 	import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 	import { LOGOUT_REDIRECT_STORAGE_KEY } from '$lib/utils/auth';
+	import { clearedPile } from '$lib/stores/inbox-cleared-pile.svelte';
 
 	// FIXED: Convert to $props() for Svelte 5 runes mode compatibility
 	let { data, children }: { data: LayoutData; children?: Snippet } = $props();
@@ -50,6 +51,17 @@
 	let toastService = $state<any>(undefined);
 	let PaymentWarning = $state<any>(undefined);
 	let NotificationStackManager = $state<any>(undefined);
+	// The AI Inbox "Cleared" pile loads with the first answer and outlives the inbox modal.
+	let ClearedPile = $state<
+		typeof import('$lib/components/inbox/InboxClearedPile.svelte').default | null
+	>(null);
+
+	$effect(() => {
+		if (ClearedPile || !clearedPile.entries.length) return;
+		void import('$lib/components/inbox/InboxClearedPile.svelte').then(
+			(module) => (ClearedPile = module.default)
+		);
+	});
 
 	// Onboarding state — reactive to data changes, not just route changes
 	let forceOnboardingActive = $state(false);
@@ -1184,6 +1196,10 @@
 
 	{#if user && NotificationStackManager}
 		<NotificationStackManager />
+	{/if}
+
+	{#if ClearedPile}
+		<ClearedPile />
 	{/if}
 
 	<TrackingPreferences />

@@ -10,6 +10,7 @@ import type {
 } from '@buildos/shared-types';
 import InboxProjectCleanup from './InboxProjectCleanup.svelte';
 import { CLEANUP_CHANGED_MESSAGE } from './project-cleanup-presentation';
+import { clearedPile, configureClearedPileForTests } from '$lib/stores/inbox-cleared-pile.svelte';
 
 function row(id: string, fingerprint: string | null, extra: Record<string, unknown> = {}) {
 	return {
@@ -265,11 +266,14 @@ describe('InboxProjectCleanup', () => {
 	beforeEach(() => {
 		fetchMock.mockReset();
 		vi.stubGlobal('fetch', fetchMock);
+		// Answers save at once here; Undo has its own test.
+		configureClearedPileForTests({ holdMs: 0 });
 	});
 
 	afterEach(() => {
 		cleanup();
 		vi.unstubAllGlobals();
+		configureClearedPileForTests();
 	});
 
 	it('sorts items into blocks by what they ask, with checkboxes only for tidy-ups', () => {
@@ -317,7 +321,7 @@ describe('InboxProjectCleanup', () => {
 		expect(screen.queryByRole('button', { name: /^Done/ })).not.toBeInTheDocument();
 	});
 
-	it('applies the picked tidy-ups and reports per-item results', async () => {
+	it('applies the picked tidy-ups in the background and puts back what failed', async () => {
 		const nextView = cleanupView({
 			items: [archiveStubs, goalCall, radar, cautious, offer],
 			groups: [],
@@ -340,7 +344,13 @@ describe('InboxProjectCleanup', () => {
 		);
 		const onDecided = vi.fn();
 		render(InboxProjectCleanup, {
-			props: { view: cleanupView(), projectId: 'project-1', canDecide: true, onDecided }
+			props: {
+				view: cleanupView(),
+				projectId: 'project-1',
+				projectName: 'Wayne Strategies',
+				canDecide: true,
+				onDecided
+			}
 		});
 
 		const apply = screen.getByRole('button', { name: /Apply 0 selected/ });
@@ -348,11 +358,26 @@ describe('InboxProjectCleanup', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Select all ready' }));
 		await fireEvent.click(screen.getByRole('button', { name: /Apply 2 selected/ }));
 
+		// Off the card at once, into the Cleared pile.
+		expect(
+			screen.queryByRole('checkbox', { name: 'Archive Political Analysis' })
+		).not.toBeInTheDocument();
+		expect(
+			screen.queryByRole('checkbox', { name: 'Archive the empty blog stubs' })
+		).not.toBeInTheDocument();
+		expect(clearedPile.entries[0]).toMatchObject({
+			title: '2 tidy-ups',
+			label: 'Applied',
+			context: 'Wayne Strategies',
+			count: 2
+		});
+
 		await waitFor(() => expect(onDecided).toHaveBeenCalled());
 		expect(fetchMock).toHaveBeenCalledWith('/api/onto/projects/project-1/cleanup', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: expect.any(String)
+			body: expect.any(String),
+			keepalive: false
 		});
 		expect(JSON.parse(fetchMock.mock.calls[0]![1].body).decisions).toEqual([
 			{
@@ -365,14 +390,17 @@ describe('InboxProjectCleanup', () => {
 		]);
 		expect(onDecided).toHaveBeenCalledWith({ handled: 1, view: nextView });
 
-		expect(screen.getByText('Applied:')).toBeInTheDocument();
-		expect(screen.getByText(/— The document is locked\./)).toBeInTheDocument();
+		// The failure comes back to the card, unpicked, saying why.
+		await waitFor(() =>
+			expect(
+				screen.getByRole('checkbox', { name: 'Archive the empty blog stubs' })
+			).not.toBeChecked()
+		);
+		expect(screen.getByText('Not applied: The document is locked.')).toBeInTheDocument();
 		expect(
 			screen.queryByRole('checkbox', { name: 'Archive Political Analysis' })
 		).not.toBeInTheDocument();
-		expect(
-			screen.getByRole('checkbox', { name: 'Archive the empty blog stubs' })
-		).not.toBeChecked();
+		expect(clearedPile.entries[0]?.status).toBe('partial');
 	});
 
 	it('marks a tidy-up not needed in one tap, without asking why', async () => {
@@ -389,12 +417,20 @@ describe('InboxProjectCleanup', () => {
 		await fireEvent.click(
 			screen.getByRole('button', { name: 'Not needed: Archive Political Analysis' })
 		);
+		expect(clearedPile.entries[0]).toMatchObject({
+			title: 'Archive Political Analysis',
+			label: 'Not needed'
+		});
 
 		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 		expect(JSON.parse(fetchMock.mock.calls[0]![1].body).decisions).toEqual([
 			{ suggestion_id: 's-political', action: 'dismiss', reason: 'not_relevant' }
 		]);
-		await waitFor(() => expect(screen.getByText('Marked not needed:')).toBeInTheDocument());
+		await waitFor(() => expect(clearedPile.entries[0]?.status).toBe('done'));
+		// Cleared stays cleared even if an older view still lists it.
+		expect(
+			screen.queryByRole('checkbox', { name: 'Archive Political Analysis' })
+		).not.toBeInTheDocument();
 	});
 
 	it('selects every ready tidy-up from the block header', async () => {
@@ -416,38 +452,85 @@ describe('InboxProjectCleanup', () => {
 		).not.toBeChecked();
 	});
 
-	it('answers a change in one tap and leaves a receipt in its place', async () => {
+	it('answers a change in one tap and the card leaves at once', async () => {
 		const nextView = cleanupView({
 			items: [archivePolitical, archiveStubs, goalCall, radar, offer],
 			counts: { total: 5, safe_cleanup: 2, needs_call: 2, note: 1 }
 		});
-		fetchMock.mockResolvedValue(
-			jsonResponse({
-				outcomes: [{ suggestion_id: 's-rod', ok: true, status: 'applied' }],
-				view: nextView
-			})
+		let respond!: () => void;
+		fetchMock.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					respond = () =>
+						resolve(
+							jsonResponse({
+								outcomes: [{ suggestion_id: 's-rod', ok: true, status: 'applied' }],
+								view: nextView
+							})
+						);
+				})
 		);
 		const onDecided = vi.fn();
 		render(InboxProjectCleanup, {
-			props: { view: cleanupView(), projectId: 'project-1', canDecide: true, onDecided }
+			props: {
+				view: cleanupView(),
+				projectId: 'project-1',
+				projectName: 'Wayne Strategies',
+				canDecide: true,
+				onDecided
+			}
 		});
 
 		await fireEvent.click(
 			card('Archive the Rod folder').getByRole('button', { name: /Make this change/ })
 		);
 
-		await waitFor(() => expect(onDecided).toHaveBeenCalledWith({ handled: 1, view: nextView }));
+		// Gone before the server answers, and nothing else on the card is locked.
+		expect(
+			screen.queryByRole('article', { name: 'Archive the Rod folder' })
+		).not.toBeInTheDocument();
+		expect(
+			screen.getByRole('button', { name: 'Not needed: Archive Political Analysis' })
+		).toBeEnabled();
+		expect(clearedPile.entries[0]).toMatchObject({
+			title: 'Archive the Rod folder',
+			label: 'Make this change',
+			context: 'Wayne Strategies'
+		});
+
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 		expect(JSON.parse(fetchMock.mock.calls[0]![1].body).decisions).toEqual([
 			{ suggestion_id: 's-rod', action: 'approve', expected_fingerprint: 'fp-rod' }
 		]);
-		const rod = card('Archive the Rod folder');
-		expect(rod.getByRole('status')).toHaveTextContent('Make this change.');
-		expect(rod.queryByRole('button', { name: /Keep as is/ })).not.toBeInTheDocument();
-		// The receipt lives on the card, not in the "Just now" list.
-		expect(screen.queryByText('Applied:')).not.toBeInTheDocument();
+		respond();
+		await waitFor(() => expect(onDecided).toHaveBeenCalledWith({ handled: 1, view: nextView }));
+		expect(clearedPile.entries[0]?.status).toBe('done');
 	});
 
-	it('keeps the options when the change moved under it', async () => {
+	it('holds an answer for Undo, then puts the card back untouched', async () => {
+		configureClearedPileForTests({ holdMs: 60_000 });
+		render(InboxProjectCleanup, {
+			props: { view: cleanupView(), projectId: 'project-1', canDecide: true }
+		});
+
+		await fireEvent.click(
+			card('Archive the Rod folder').getByRole('button', { name: /Keep as is/ })
+		);
+		expect(
+			screen.queryByRole('article', { name: 'Archive the Rod folder' })
+		).not.toBeInTheDocument();
+		expect(clearedPile.entries[0]?.status).toBe('holding');
+
+		expect(clearedPile.undoLatest()).toBe(true);
+		await waitFor(() =>
+			expect(
+				card('Archive the Rod folder').getByRole('button', { name: /Keep as is/ })
+			).toBeEnabled()
+		);
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it('puts a change back on the card when it moved under it', async () => {
 		fetchMock.mockResolvedValue(
 			jsonResponse({
 				outcomes: [
@@ -470,9 +553,9 @@ describe('InboxProjectCleanup', () => {
 		);
 
 		await waitFor(() =>
-			expect(card('Archive the Rod folder').getByRole('alert')).toHaveTextContent(
-				CLEANUP_CHANGED_MESSAGE
-			)
+			expect(
+				card('Archive the Rod folder').getByText('Updated — review again')
+			).toBeInTheDocument()
 		);
 		expect(JSON.parse(fetchMock.mock.calls[0]![1].body).decisions).toEqual([
 			{ suggestion_id: 's-rod', action: 'dismiss', reason: 'not_relevant' }
@@ -480,6 +563,8 @@ describe('InboxProjectCleanup', () => {
 		expect(
 			card('Archive the Rod folder').getByRole('button', { name: /Keep as is/ })
 		).toBeEnabled();
+		expect(clearedPile.entries[0]).toMatchObject({ status: 'failed' });
+		expect(clearedPile.entries[0]?.detail).toContain("It's back on your card.");
 	});
 
 	it('shows a pre-written question with what it settles, once per item', () => {
@@ -530,6 +615,7 @@ describe('InboxProjectCleanup', () => {
 		);
 		expect(onDiscuss).toHaveBeenCalledTimes(2);
 		expect(fetchMock).not.toHaveBeenCalled();
+		expect(clearedPile.entries).toHaveLength(0);
 		utils.unmount();
 
 		// apply: only the covered item with a verified change.
@@ -545,17 +631,15 @@ describe('InboxProjectCleanup', () => {
 		await fireEvent.click(
 			card(/Rod Chamberlin website/).getByRole('button', { name: /It's over/ })
 		);
-		await waitFor(() =>
-			expect(card(/Rod Chamberlin website/).getByRole('status')).toHaveTextContent(
-				"It's over. Archive the recovery plan."
-			)
-		);
+		expect(clearedPile.isHidden('cleanup:project-1:rod-plan')).toBe(true);
+		expect(clearedPile.isHidden('cleanup:project-1:rod-goal')).toBe(false);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 		expect(JSON.parse(fetchMock.mock.calls.at(-1)![1].body).decisions).toEqual([
 			{ suggestion_id: 's-rod-plan', action: 'approve', expected_fingerprint: 'fp-rod-plan' }
 		]);
 		utils.unmount();
 
-		// dismiss and done: every covered item.
+		// dismiss and done: every covered item, and the question leaves the card.
 		for (const [action, expected] of [
 			[
 				'dismiss',
@@ -580,6 +664,7 @@ describe('InboxProjectCleanup', () => {
 				]
 			]
 		] as const) {
+			configureClearedPileForTests({ holdMs: 0 });
 			fetchMock.mockResolvedValueOnce(
 				jsonResponse({
 					outcomes: expected.map((decision) => ({
@@ -590,17 +675,22 @@ describe('InboxProjectCleanup', () => {
 					view: null
 				})
 			);
+			const calls = fetchMock.mock.calls.length;
 			utils = render(InboxProjectCleanup, {
 				props: { view: askView(answers(action)), projectId: 'project-1', canDecide: true }
 			});
 			await fireEvent.click(
 				card(/Rod Chamberlin website/).getByRole('button', { name: /^Yes/ })
 			);
-			await waitFor(() =>
-				expect(card(/Rod Chamberlin website/).getByRole('status')).toHaveTextContent(
-					'Yes. Do the thing.'
-				)
-			);
+			expect(
+				screen.queryByRole('article', { name: /Rod Chamberlin website/ })
+			).not.toBeInTheDocument();
+			expect(clearedPile.entries[0]).toMatchObject({
+				title: 'Is the Rod Chamberlin website still happening?',
+				label: 'Yes',
+				count: 2
+			});
+			await waitFor(() => expect(fetchMock.mock.calls.length).toBe(calls + 1));
 			expect(JSON.parse(fetchMock.mock.calls.at(-1)![1].body).decisions).toEqual(expected);
 			utils.unmount();
 		}
@@ -643,6 +733,9 @@ describe('InboxProjectCleanup', () => {
 		await fireEvent.click(
 			card(/Rod Chamberlin website/).getByRole('button', { name: /On hold/ })
 		);
+		expect(
+			screen.queryByRole('article', { name: /Rod Chamberlin website/ })
+		).not.toBeInTheDocument();
 
 		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
 		const note =
@@ -660,13 +753,16 @@ describe('InboxProjectCleanup', () => {
 			cleanup_item_id: 'rod-plan',
 			note
 		});
-		// The question stays in place with its receipt after the view drops it.
-		const receipt = await waitFor(() => card(/Rod Chamberlin website/).getByRole('status'));
-		expect(receipt).toHaveTextContent('On hold. Mark the goal on hold with a date.');
-		expect(receipt).toHaveTextContent(
-			'Marked the goal on hold until January. Kept the recovery plan for now.'
-		);
+		// The replies land in the pile; the fresh view no longer has the question.
+		await waitFor(() => expect(clearedPile.entries[0]?.status).toBe('done'));
+		expect(clearedPile.entries[0]).toMatchObject({
+			label: 'On hold',
+			detail: 'Marked the goal on hold until January. Kept the recovery plan for now.'
+		});
 		expect(onDecided).toHaveBeenCalledWith({ handled: 2, view: nextView });
+		expect(
+			screen.queryByRole('article', { name: /Rod Chamberlin website/ })
+		).not.toBeInTheDocument();
 	});
 
 	it('disables an apply answer when nothing it covers can be applied', () => {
@@ -683,7 +779,7 @@ describe('InboxProjectCleanup', () => {
 		expect(over).toHaveTextContent('Not ready to apply from here. Talk it through instead.');
 	});
 
-	it('sends a quick note on a change and shows the reply', async () => {
+	it('sends a quick note on a change and shows the reply in the pile', async () => {
 		const nextView = cleanupView({
 			items: [archivePolitical, archiveStubs, goalCall, radar, offer],
 			counts: { total: 5, safe_cleanup: 2, needs_call: 2, note: 1 }
@@ -717,6 +813,9 @@ describe('InboxProjectCleanup', () => {
 		await fireEvent.input(box, { target: { value: 'Keep it, I still use those docs' } });
 		await fireEvent.keyDown(box, { key: 'Enter' });
 
+		expect(
+			screen.queryByRole('button', { name: 'Add a note: Archive the Rod folder' })
+		).not.toBeInTheDocument();
 		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 		expect(fetchMock.mock.calls[0]![0]).toBe('/api/onto/projects/project-1/cleanup/note');
 		expect(JSON.parse(fetchMock.mock.calls[0]![1].body)).toEqual({
@@ -725,7 +824,11 @@ describe('InboxProjectCleanup', () => {
 			expected_fingerprints: { 's-rod': 'fp-rod' }
 		});
 		await waitFor(() =>
-			expect(screen.getByText('Kept it. You still need that folder.')).toBeInTheDocument()
+			expect(clearedPile.entries[0]).toMatchObject({
+				label: 'Your note',
+				status: 'done',
+				detail: 'Kept it. You still need that folder.'
+			})
 		);
 		expect(onDecided).toHaveBeenCalledWith({ handled: 1, view: nextView });
 		expect(
@@ -779,9 +882,17 @@ describe('InboxProjectCleanup', () => {
 
 		await fireEvent.click(
 			screen.getByRole('button', {
+				name: 'Talk it through: Maryland Content Authority goal drifted'
+			})
+		);
+		expect(onDiscuss).toHaveBeenLastCalledWith(goalCall);
+
+		await fireEvent.click(
+			screen.getByRole('button', {
 				name: 'Already handled: Maryland Content Authority goal drifted'
 			})
 		);
+		expect(clearedPile.entries[0]).toMatchObject({ label: 'Already handled' });
 		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 		expect(JSON.parse(fetchMock.mock.calls[0]![1].body).decisions).toEqual([
 			{
@@ -790,14 +901,11 @@ describe('InboxProjectCleanup', () => {
 				note: 'Handled from the project cleanup list'
 			}
 		]);
-		await waitFor(() => expect(screen.getByText('Already handled:')).toBeInTheDocument());
-
-		await fireEvent.click(
-			screen.getByRole('button', {
-				name: 'Talk it through: Maryland Content Authority goal drifted'
+		expect(
+			screen.queryByRole('button', {
+				name: 'Already handled: Maryland Content Authority goal drifted'
 			})
-		);
-		expect(onDiscuss).toHaveBeenLastCalledWith(goalCall);
+		).not.toBeInTheDocument();
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Fix in chat: Rod goal' }));
 		expect(onFixInChat).toHaveBeenCalledWith(radar.review_items![0], radar);
@@ -831,7 +939,10 @@ describe('InboxProjectCleanup', () => {
 		expect(JSON.parse(fetchMock.mock.calls[0]![1].body).decisions).toEqual([
 			{ suggestion_id: 's-offer', action: 'dismiss', reason: 'not_relevant' }
 		]);
-		await waitFor(() => expect(screen.getByText('Not for this project:')).toBeInTheDocument());
+		expect(clearedPile.entries[0]).toMatchObject({ label: 'Not for this project' });
+		expect(
+			screen.queryByRole('button', { name: `Not for this project: ${offer.title}` })
+		).not.toBeInTheDocument();
 	});
 
 	it('lists changes made without asking and undoes one', async () => {
@@ -890,7 +1001,6 @@ describe('InboxProjectCleanup', () => {
 		await waitFor(() =>
 			expect(onUndone).toHaveBeenCalledWith({ suggestionId: 's-auto-1', view: nextView })
 		);
-		expect(screen.getByText('Undone:')).toBeInTheDocument();
 		expect(
 			screen.queryByRole('button', { name: 'Undo: Moved Templates under Processes & Specs' })
 		).not.toBeInTheDocument();

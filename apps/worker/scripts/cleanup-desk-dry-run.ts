@@ -292,7 +292,8 @@ async function main() {
 	);
 	for (const candidate of preview?.candidates ?? [])
 		console.log(`  candidate: ${candidate.headline}`);
-	if (preview) writeFileSync(join(out, 'jev-request.json'), JSON.stringify(preview.request, null, 2));
+	if (preview)
+		writeFileSync(join(out, 'jev-request.json'), JSON.stringify(preview.request, null, 2));
 	if (!live) return;
 
 	let cost = 0;
@@ -364,7 +365,8 @@ async function main() {
 	const fmt = (n: number) => n.toFixed(2);
 	built.candidates.forEach((candidate, index) => {
 		const s = scores[index];
-		const verdict = s && passesCleanupAutoApplyGate(s) ? 'WOULD APPLY' : 'would ask';
+		const verdict =
+			s && passesCleanupAutoApplyGate(s, candidate.tools) ? 'WOULD APPLY' : 'would ask';
 		console.log(
 			`  ${verdict}: ${candidate.headline}${s ? `  [about ${fmt(s.about)} · wanted ${fmt(s.wanted)} · review ${fmt(s.review)} · safe ${fmt(s.safe)}]` : '  [no answer]'}`
 		);

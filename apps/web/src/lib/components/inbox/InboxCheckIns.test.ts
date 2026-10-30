@@ -2,8 +2,9 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import InboxCheckIns from './InboxCheckIns.svelte';
+import { clearedPile, configureClearedPileForTests } from '$lib/stores/inbox-cleared-pile.svelte';
 import { dueAtFromDateInput, nextWeekday, toDateInputValue } from './check-ins';
 import type {
 	CheckInAnswer,
@@ -87,8 +88,17 @@ function row(title: string) {
 	return screen.getByRole('group', { name: `Did "${title}" happen?` });
 }
 
+function queryRow(title: string) {
+	return screen.queryByRole('group', { name: `Did "${title}" happen?` });
+}
+
 describe('InboxCheckIns', () => {
-	afterEach(cleanup);
+	// Saves go out at once unless a test holds them for Undo.
+	beforeEach(() => configureClearedPileForTests({ holdMs: 0 }));
+	afterEach(() => {
+		cleanup();
+		configureClearedPileForTests();
+	});
 
 	it('shows one card per due day with Done / Move / Drop per task', () => {
 		render(InboxCheckIns, {
@@ -105,9 +115,6 @@ describe('InboxCheckIns', () => {
 			'Move',
 			'Drop'
 		]);
-		expect(controls.every((button) => button.getAttribute('aria-pressed') === 'false')).toBe(
-			true
-		);
 	});
 
 	it('keeps the newest days open and folds older days to one line', async () => {
@@ -148,74 +155,94 @@ describe('InboxCheckIns', () => {
 			screen.getByRole('group', { name: 'Did "Oct 6 task 1" happen?', hidden: true })
 		).not.toBeVisible();
 
-		// A folded day can still be marked done in one tap.
-		const folded = screen.getByRole('article', { name: 'Oct 6 · 12 tasks' });
-		await fireEvent.click(within(folded).getByRole('button', { name: 'Mark all done' }));
-		expect(submitAnswers).toHaveBeenCalledWith(
-			Array.from({ length: 12 }, (_, index) => ({
-				task_id: `2026-10-06-${index}`,
-				answer: 'done'
-			}))
-		);
-
 		await fireEvent.click(show);
+		const folded = screen.getByRole('article', { name: 'Oct 6 · 12 tasks' });
 		expect(within(folded).getByRole('button', { name: 'Hide' })).toHaveAttribute(
 			'aria-expanded',
 			'true'
 		);
 		expect(row('Oct 6 task 1')).toBeVisible();
+
+		// A whole day can be marked done in one tap; it leaves the list at once.
+		await fireEvent.click(within(folded).getByRole('button', { name: 'Mark all done' }));
+		expect(screen.queryByRole('article', { name: 'Oct 6 · 12 tasks' })).not.toBeInTheDocument();
+		await waitFor(() =>
+			expect(submitAnswers).toHaveBeenCalledWith(
+				Array.from({ length: 12 }, (_, index) => ({
+					task_id: `2026-10-06-${index}`,
+					answer: 'done'
+				}))
+			)
+		);
 	});
 
-	it('saves Done right away and can undo it', async () => {
+	it('takes an answered task off the list at once and saves it in the background', async () => {
+		let release!: () => void;
+		const gate = new Promise<void>((resolve) => (release = resolve));
+		const ok = okSubmit();
+		const submitAnswers = vi.fn(async (answers: CheckInAnswer[]) => {
+			await gate;
+			return ok(answers);
+		});
+		const onChanged = vi.fn();
+		render(InboxCheckIns, {
+			props: { project: project(), today: '2026-10-29', submitAnswers, onChanged }
+		});
+
+		await fireEvent.click(
+			within(row('Call Dauntless Dogs')).getByRole('button', { name: 'Done' })
+		);
+
+		// Gone before the save finishes; the rest of the card stays usable.
+		expect(queryRow('Call Dauntless Dogs')).not.toBeInTheDocument();
+		expect(
+			within(row("Walk in: Cindy's Hot Shots")).getByRole('button', { name: 'Done' })
+		).toBeEnabled();
+		expect(onChanged).toHaveBeenLastCalledWith({
+			projectId: PROJECT_ID,
+			handled: 1,
+			remaining: 1
+		});
+		const [entry] = clearedPile.entries;
+		expect(entry).toMatchObject({
+			title: 'Call Dauntless Dogs',
+			label: 'Marked done',
+			context: 'Wayne Strategies'
+		});
+
+		await waitFor(() =>
+			expect(submitAnswers).toHaveBeenCalledWith([{ task_id: 'dogs', answer: 'done' }])
+		);
+		release();
+		await waitFor(() => expect(clearedPile.entries[0]?.status).toBe('done'));
+		expect(queryRow('Call Dauntless Dogs')).not.toBeInTheDocument();
+	});
+
+	it('puts a task back when its answer is undone before it saves', async () => {
+		configureClearedPileForTests({ holdMs: 60_000 });
 		const submitAnswers = okSubmit();
 		const onChanged = vi.fn();
 		render(InboxCheckIns, {
 			props: { project: project(), today: '2026-10-29', submitAnswers, onChanged }
 		});
 
-		const done = within(row('Call Dauntless Dogs')).getByRole('button', { name: 'Done' });
-		await fireEvent.click(done);
-
-		expect(submitAnswers).toHaveBeenCalledWith([{ task_id: 'dogs', answer: 'done' }]);
-		await waitFor(() => expect(screen.getByText('1 of 2 answered')).toBeInTheDocument());
-		expect(done).toHaveAttribute('aria-pressed', 'true');
-		expect(screen.getByText('Marked done')).toBeInTheDocument();
-		expect(onChanged).toHaveBeenLastCalledWith({
-			projectId: PROJECT_ID,
-			handled: 1,
-			remaining: 1
+		await fireEvent.click(
+			within(row('Call Dauntless Dogs')).getByRole('button', { name: 'Drop' })
+		);
+		expect(queryRow('Call Dauntless Dogs')).not.toBeInTheDocument();
+		expect(clearedPile.entries[0]).toMatchObject({
+			status: 'holding',
+			label: 'Dropped (archived)'
 		});
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
-
-		expect(submitAnswers).toHaveBeenLastCalledWith([
-			{ task_id: 'dogs', answer: 'restore', previous: before }
-		]);
-		await waitFor(() => expect(screen.getByText('0 of 2 answered')).toBeInTheDocument());
+		expect(clearedPile.undoLatest()).toBe(true);
+		await waitFor(() => expect(row('Call Dauntless Dogs')).toBeInTheDocument());
+		expect(submitAnswers).not.toHaveBeenCalled();
 		expect(onChanged).toHaveBeenLastCalledWith({
 			projectId: PROJECT_ID,
 			handled: -1,
 			remaining: 2
 		});
-	});
-
-	it('puts a task back before saving a different answer', async () => {
-		const submitAnswers = okSubmit();
-		render(InboxCheckIns, {
-			props: { project: project(), today: '2026-10-29', submitAnswers }
-		});
-		const controls = within(row('Call Dauntless Dogs'));
-
-		await fireEvent.click(controls.getByRole('button', { name: 'Done' }));
-		await waitFor(() => expect(screen.getByText('Marked done')).toBeInTheDocument());
-		await fireEvent.click(controls.getByRole('button', { name: 'Drop' }));
-
-		expect(submitAnswers).toHaveBeenLastCalledWith([
-			{ task_id: 'dogs', answer: 'restore', previous: before },
-			{ task_id: 'dogs', answer: 'drop' }
-		]);
-		await waitFor(() => expect(screen.getByText('Dropped (archived)')).toBeInTheDocument());
-		expect(screen.getByText('1 of 2 answered')).toBeInTheDocument();
 	});
 
 	it('moves a task to the next weekday by default', async () => {
@@ -236,22 +263,19 @@ describe('InboxCheckIns', () => {
 
 		const confirm = screen
 			.getAllByRole('button', { name: 'Move' })
-			.find((button) => !button.hasAttribute('aria-pressed'))!;
+			.find((button) => !button.hasAttribute('aria-expanded'))!;
 		await fireEvent.click(confirm);
 
-		expect(submitAnswers).toHaveBeenCalledWith([
-			{ task_id: 'dogs', answer: 'move', due_at: dueAtFromDateInput(nextDay) }
-		]);
+		expect(queryRow('Call Dauntless Dogs')).not.toBeInTheDocument();
+		expect(clearedPile.entries[0]?.label).toMatch(/^Moved to /);
 		await waitFor(() =>
-			expect(controls.getByRole('button', { name: 'Move' })).toHaveAttribute(
-				'aria-pressed',
-				'true'
-			)
+			expect(submitAnswers).toHaveBeenCalledWith([
+				{ task_id: 'dogs', answer: 'move', due_at: dueAtFromDateInput(nextDay) }
+			])
 		);
-		expect(screen.getByText(/^Moved to /)).toBeInTheDocument();
 	});
 
-	it('marks the whole day done with one Undo for the batch', async () => {
+	it('marks the whole day done as one answer in the pile', async () => {
 		const submitAnswers = okSubmit();
 		const onChanged = vi.fn();
 		render(InboxCheckIns, {
@@ -260,26 +284,23 @@ describe('InboxCheckIns', () => {
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Mark all done' }));
 
-		expect(submitAnswers).toHaveBeenCalledWith([
-			{ task_id: 'dogs', answer: 'done' },
-			{ task_id: 'cindy', answer: 'done' }
-		]);
-		await waitFor(() => expect(screen.getByText('2 of 2 answered')).toBeInTheDocument());
-		expect(screen.getByText('Marked 2 done')).toBeInTheDocument();
+		expect(screen.getByRole('status')).toHaveTextContent('All answered');
 		expect(onChanged).toHaveBeenLastCalledWith({
 			projectId: PROJECT_ID,
 			handled: 2,
 			remaining: 0
 		});
-
-		await fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
-		expect(submitAnswers).toHaveBeenLastCalledWith([
-			{ task_id: 'dogs', answer: 'restore', previous: before },
-			{ task_id: 'cindy', answer: 'restore', previous: before }
-		]);
+		expect(clearedPile.entries).toHaveLength(1);
+		expect(clearedPile.entries[0]).toMatchObject({ label: 'Marked all done', count: 2 });
+		await waitFor(() =>
+			expect(submitAnswers).toHaveBeenCalledWith([
+				{ task_id: 'dogs', answer: 'done' },
+				{ task_id: 'cindy', answer: 'done' }
+			])
+		);
 	});
 
-	it('keeps the task unanswered and says why when saving fails', async () => {
+	it('puts the task back and says why when saving fails', async () => {
 		const submitAnswers = vi.fn(
 			async (): Promise<CheckInAnswerResult[]> => [
 				{
@@ -292,20 +313,27 @@ describe('InboxCheckIns', () => {
 				}
 			]
 		);
+		const onChanged = vi.fn();
 		render(InboxCheckIns, {
-			props: { project: project(), today: '2026-10-29', submitAnswers }
+			props: { project: project(), today: '2026-10-29', submitAnswers, onChanged }
 		});
-		const done = within(row('Call Dauntless Dogs')).getByRole('button', { name: 'Done' });
 
-		await fireEvent.click(done);
+		await fireEvent.click(
+			within(row('Call Dauntless Dogs')).getByRole('button', { name: 'Done' })
+		);
 
 		await waitFor(() =>
 			expect(screen.getByRole('alert')).toHaveTextContent(
-				'You do not have write access to this project.'
+				"You do not have write access to this project. It's back on your list."
 			)
 		);
-		expect(done).toHaveAttribute('aria-pressed', 'false');
-		expect(screen.getByText('0 of 2 answered')).toBeInTheDocument();
+		expect(row('Call Dauntless Dogs')).toBeInTheDocument();
+		expect(clearedPile.entries[0]?.status).toBe('failed');
+		expect(onChanged).toHaveBeenLastCalledWith({
+			projectId: PROJECT_ID,
+			handled: -1,
+			remaining: 2
+		});
 	});
 
 	it('hands the unanswered tasks to "Tell me how it went"', async () => {
@@ -317,13 +345,12 @@ describe('InboxCheckIns', () => {
 		await fireEvent.click(
 			within(row('Call Dauntless Dogs')).getByRole('button', { name: 'Done' })
 		);
-		await waitFor(() => expect(screen.getByText('1 of 2 answered')).toBeInTheDocument());
 		await fireEvent.click(screen.getByRole('button', { name: 'Tell me how it went' }));
 
 		expect(onTalk).toHaveBeenCalledWith(PROJECT_ID, ['cindy']);
 	});
 
-	it('asks a quiet project "Still on?" once, and can pause it with Undo', async () => {
+	it('asks a quiet project "Still on?" once, and pauses it from the pile', async () => {
 		const submitAnswers = okSubmit();
 		const onChanged = vi.fn();
 		render(InboxCheckIns, {
@@ -351,27 +378,42 @@ describe('InboxCheckIns', () => {
 
 		await fireEvent.click(screen.getByRole('button', { name: /Pause it/ }));
 
-		expect(submitAnswers).toHaveBeenCalledWith([
-			{ project_id: PROJECT_ID, project_answer: 'pause' }
-		]);
-		await waitFor(() =>
-			expect(screen.getByRole('status')).toHaveTextContent(
-				'Paused BuildOS CEO Training Sprint.'
-			)
-		);
+		expect(screen.getByRole('status')).toHaveTextContent('Answered.');
+		expect(clearedPile.entries[0]).toMatchObject({
+			title: 'BuildOS CEO Training Sprint',
+			label: 'Paused'
+		});
 		expect(onChanged).toHaveBeenLastCalledWith({
 			projectId: PROJECT_ID,
 			handled: 1,
 			remaining: 0
 		});
+		await waitFor(() =>
+			expect(submitAnswers).toHaveBeenCalledWith([
+				{ project_id: PROJECT_ID, project_answer: 'pause' }
+			])
+		);
+	});
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
-		expect(submitAnswers).toHaveBeenLastCalledWith([
-			{ project_id: PROJECT_ID, project_answer: 'restore', previous_state: 'active' }
-		]);
+	it('brings "Still on?" back when the pause is undone in time', async () => {
+		configureClearedPileForTests({ holdMs: 60_000 });
+		const submitAnswers = okSubmit();
+		render(InboxCheckIns, {
+			props: {
+				project: project({ quiet: true }),
+				today: '2026-10-29',
+				submitAnswers
+			}
+		});
+
+		await fireEvent.click(screen.getByRole('button', { name: /Pause it/ }));
+		expect(screen.queryByRole('button', { name: /Pause it/ })).not.toBeInTheDocument();
+
+		clearedPile.undoLatest();
 		await waitFor(() =>
 			expect(screen.getByRole('button', { name: /Pause it/ })).toBeInTheDocument()
 		);
+		expect(submitAnswers).not.toHaveBeenCalled();
 	});
 
 	it('expands a quiet project to its tasks on "Still on"', async () => {

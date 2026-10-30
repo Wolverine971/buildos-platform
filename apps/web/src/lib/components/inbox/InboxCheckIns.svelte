@@ -1,12 +1,13 @@
 <!-- apps/web/src/lib/components/inbox/InboxCheckIns.svelte -->
 <!--
 	"Did this happen?" for a project's overdue tasks, one card per due day, with Done /
-	Move / Drop per task. A quiet project asks "Still on?" once instead. Answers save
-	right away; the latest one can be undone for a few seconds. The newest days stay open;
-	older days fold to one line with a preview and Mark all done.
+	Move / Drop per task. A quiet project asks "Still on?" once instead. An answered task
+	leaves the list at once and lands in the Cleared pile (bottom-right), which holds it a few
+	seconds for Undo and then saves it in the background; a failed save puts it back here.
+	The newest days stay open; older days fold to one line with a preview and Mark all done.
 -->
 <script lang="ts">
-	import { onDestroy, tick } from 'svelte';
+	import { tick } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { Check, ChevronDown, CircleCheck, MessageCircle } from '$lib/icons/lucide';
 	import type {
@@ -14,9 +15,9 @@
 		CheckInAnswerResult,
 		CheckInGroup,
 		CheckInProject,
-		CheckInTask,
-		CheckInTaskSnapshot
+		CheckInTask
 	} from '$lib/types/inbox-check-ins';
+	import { clearedPile, type PileOutcome } from '$lib/stores/inbox-cleared-pile.svelte';
 	import {
 		dueAtFromDateInput,
 		formatCheckInGroupAge,
@@ -29,18 +30,9 @@
 		toDateInputValue,
 		type CheckInChangeSummary
 	} from './check-ins';
+	import { flyToPile } from './pile-fly';
 
 	type RowAnswer = 'done' | 'move' | 'drop';
-	type RowState = {
-		answer: RowAnswer;
-		/** The task before its first answer: what Undo and a changed answer put back. */
-		original: CheckInTaskSnapshot | null;
-		moveLabel?: string;
-		pending: boolean;
-	};
-	type UndoEntry = { task_id: string; previous: CheckInTaskSnapshot };
-	type TaskUndo = { kind: 'tasks'; key: string; label: string; entries: UndoEntry[] };
-	type ProjectUndo = { kind: 'project'; key: string; previousState: string };
 
 	let {
 		project,
@@ -59,60 +51,65 @@
 		onTalk?: (projectId: string, taskIds: string[]) => void;
 	} = $props();
 
-	const UNDO_MS = 10_000;
 	const OPEN_TASK_BUDGET = 6;
 	const SEGMENTS = [
-		{
-			answer: 'done',
-			label: 'Done',
-			title: 'It happened: mark it done',
-			pressed: 'bg-success/10 text-success'
-		},
-		{
-			answer: 'move',
-			label: 'Move',
-			title: "It didn't happen yet: pick a new date",
-			pressed: 'bg-info/10 text-info'
-		},
-		{
-			answer: 'drop',
-			label: 'Drop',
-			title: "It's off: archive the task",
-			pressed: 'bg-muted text-foreground'
-		}
+		{ answer: 'done', label: 'Done', title: 'It happened: mark it done' },
+		{ answer: 'move', label: 'Move', title: "It didn't happen yet: pick a new date" },
+		{ answer: 'drop', label: 'Drop', title: "It's off: archive the task" }
 	] as const;
 
-	let rows = $state<Record<string, RowState>>({});
 	let rowErrors = $state<Record<string, string>>({});
 	let groupErrors = $state<Record<string, string>>({});
-	let busyGroups = $state<Record<string, boolean>>({});
 	let movingTaskId = $state<string | null>(null);
 	let moveDate = $state('');
-	let undo = $state<TaskUndo | ProjectUndo | null>(null);
-	let undoing = $state(false);
-	let projectAnswer = $state<{ answer: 'pause' | 'finish'; pending: boolean } | null>(null);
 	let projectError = $state<string | null>(null);
 	let expanded = $state(false);
 	/** Days the user opened or closed; the rest follow openByDefault. */
 	let openOverrides = $state<Record<string, boolean>>({});
-	let undoTimer: ReturnType<typeof setTimeout> | null = null;
 
+	const lane = $derived(`checkin:${project.project_id}`);
+	const projectKey = $derived(`checkin:project:${project.project_id}`);
+	// A Pause / Finished answer the pile is holding, saving or has saved.
+	const projectAnswered = $derived(clearedPile.isHidden(projectKey));
 	const askStillOn = $derived(project.quiet && !expanded);
-	const projectUndo = $derived(undo?.kind === 'project' ? undo : null);
 	const allTasks = $derived(project.groups.flatMap((group) => group.tasks));
-	const remaining = $derived(allTasks.filter((task) => !rows[task.id]).length);
+	// Answered tasks leave the list; the pile has them.
+	const visibleGroups = $derived(
+		project.groups
+			.map((group) => ({
+				...group,
+				tasks: group.tasks.filter((task) => !clearedPile.isHidden(taskKey(task.id)))
+			}))
+			.filter((group) => group.tasks.length > 0)
+	);
+	const remaining = $derived(
+		visibleGroups.reduce((total, group) => total + group.tasks.length, 0)
+	);
 	const shownCount = $derived(allTasks.length);
 	// Newest days stay open until about OPEN_TASK_BUDGET rows show; older days fold to one line.
 	const openByDefault = $derived.by(() => {
 		const open = new Set<string>();
 		let shown = 0;
-		for (const group of project.groups) {
+		for (const group of visibleGroups) {
 			if (open.size > 0 && shown + group.tasks.length > OPEN_TASK_BUDGET) break;
 			open.add(group.key);
 			shown += group.tasks.length;
 		}
 		return open;
 	});
+	const minMoveDate = $derived.by(() => {
+		const date = new Date();
+		date.setDate(date.getDate() + 1);
+		return toDateInputValue(date);
+	});
+
+	function taskKey(taskId: string): string {
+		return `checkin:task:${taskId}`;
+	}
+
+	function totalTasks(group: CheckInGroup): number {
+		return project.groups.find((candidate) => candidate.key === group.key)?.tasks.length ?? 0;
+	}
 
 	function isGroupOpen(group: CheckInGroup): boolean {
 		if (group.tasks.length <= 1) return true;
@@ -128,15 +125,6 @@
 		const rest = group.tasks.length - titles.length;
 		return rest > 0 ? `${titles.join(' · ')} · +${rest} more` : titles.join(' · ');
 	}
-	const minMoveDate = $derived.by(() => {
-		const date = new Date();
-		date.setDate(date.getDate() + 1);
-		return toDateInputValue(date);
-	});
-
-	onDestroy(() => {
-		if (undoTimer) clearTimeout(undoTimer);
-	});
 
 	function domId(value: string): string {
 		return `check-in-${value.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
@@ -148,21 +136,6 @@
 		return next;
 	}
 
-	function clearUndo() {
-		if (undoTimer) clearTimeout(undoTimer);
-		undoTimer = null;
-		undo = null;
-	}
-
-	function showUndo(next: TaskUndo | ProjectUndo) {
-		clearUndo();
-		undo = next;
-		undoTimer = setTimeout(() => {
-			undo = null;
-			undoTimer = null;
-		}, UNDO_MS);
-	}
-
 	function report(handled: number, remainingOverride?: number) {
 		onChanged?.({
 			projectId: project.project_id,
@@ -171,90 +144,66 @@
 		});
 	}
 
-	function errorText(error: unknown, fallback: string): string {
-		return error instanceof Error && error.message ? error.message : fallback;
-	}
-
 	function firstFailure(results: CheckInAnswerResult[], fallback: string): string {
 		const failed = results.find((result) => !result.ok);
 		return failed && !failed.ok ? failed.error : fallback;
 	}
 
-	function rowLabel(row: RowState): string {
-		if (row.answer === 'done') return 'Marked done';
-		if (row.answer === 'drop') return 'Dropped (archived)';
-		return row.moveLabel ? `Moved to ${row.moveLabel}` : 'Moved';
+	// Display punctuation only, so "Failed." never becomes "Failed.. It's back…".
+	function backHere(message: string): string {
+		return `${message.trim().replace(/[.\s]+$/, '')}. It's back on your list.`;
 	}
 
-	function taskUndo(): TaskUndo | null {
-		return undo?.kind === 'tasks' ? undo : null;
+	/** The row an answer came from, for the fly-to-pile animation. */
+	function sourceOf(event: Event | undefined): Element | null {
+		const target = event?.currentTarget;
+		return target instanceof Element ? (target.closest('li, article') ?? target) : null;
 	}
 
-	async function answerTask(
+	function answerLabel(answer: RowAnswer, moveLabel?: string): string {
+		if (answer === 'done') return 'Marked done';
+		if (answer === 'drop') return 'Dropped (archived)';
+		return moveLabel ? `Moved to ${moveLabel}` : 'Moved';
+	}
+
+	function answerTask(
 		task: CheckInTask,
 		answer: RowAnswer,
-		move?: { dueAt: string; label: string }
+		move?: { dueAt: string; label: string },
+		source: Element | null = null
 	) {
-		const current = rows[task.id];
-		if (current?.pending || undoing) return;
-		if (current?.answer === answer && answer !== 'move') return;
-		clearUndo();
+		if (clearedPile.isHidden(taskKey(task.id))) return;
 		movingTaskId = null;
-
-		// Changing an earlier answer puts the task back first, so each answer starts clean.
-		const answers: CheckInAnswer[] = [];
-		if (current?.original) {
-			answers.push({ task_id: task.id, answer: 'restore', previous: current.original });
-		}
-		answers.push({ task_id: task.id, answer, ...(move ? { due_at: move.dueAt } : {}) });
-
-		rows = {
-			...rows,
-			[task.id]: {
-				answer,
-				original: current?.original ?? null,
-				moveLabel: move?.label,
-				pending: true
-			}
-		};
 		rowErrors = withoutKey(rowErrors, task.id);
-
-		let results: CheckInAnswerResult[] = [];
-		let requestError: string | null = null;
-		try {
-			results = await submitAnswers(answers);
-		} catch (error) {
-			requestError = errorText(error, 'Could not save that answer');
-		}
-
-		const last = results[results.length - 1];
-		if (last?.kind === 'task' && last.ok) {
-			const original = current?.original ?? last.previous;
-			const saved: RowState = { answer, original, moveLabel: move?.label, pending: false };
-			rows = { ...rows, [task.id]: saved };
-			showUndo({
-				kind: 'tasks',
-				key: task.id,
-				label: rowLabel(saved),
-				entries: [{ task_id: task.id, previous: original }]
-			});
-			if (!current) report(1);
-			return;
-		}
-
-		// If only the "put it back" step went through, the task is unanswered again.
-		const restoredOnly = answers.length === 2 && results[0]?.ok === true;
-		rows =
-			current && !restoredOnly ? { ...rows, [task.id]: current } : withoutKey(rows, task.id);
-		rowErrors = {
-			...rowErrors,
-			[task.id]: requestError ?? firstFailure(results, 'Could not save that answer')
-		};
-		if (current && restoredOnly) report(-1);
+		flyToPile(source, task.title);
+		const { settled } = clearedPile.add({
+			title: task.title,
+			label: answerLabel(answer, move?.label),
+			context: project.project_name,
+			keys: [taskKey(task.id)],
+			lane,
+			onUndo: () => report(-1),
+			run: async (): Promise<PileOutcome> => {
+				const results = await submitAnswers([
+					{ task_id: task.id, answer, ...(move ? { due_at: move.dueAt } : {}) }
+				]);
+				const last = results[results.length - 1];
+				if (last?.kind === 'task' && last.ok) return {};
+				return {
+					failed: true,
+					detail: backHere(firstFailure(results, 'Could not save that answer'))
+				};
+			}
+		});
+		report(1);
+		void settled.then((entry) => {
+			if (entry.status !== 'failed') return;
+			rowErrors = { ...rowErrors, [task.id]: entry.detail ?? 'Could not save that answer' };
+			report(-1);
+		});
 	}
 
 	async function startMove(task: CheckInTask) {
-		if (rows[task.id]?.pending || undoing) return;
 		if (movingTaskId === task.id) {
 			cancelMove();
 			return;
@@ -273,173 +222,83 @@
 		document.getElementById(`${domId(taskId)}-move`)?.focus();
 	}
 
-	function confirmMove(task: CheckInTask) {
+	function confirmMove(task: CheckInTask, event?: Event) {
 		const dueAt = dueAtFromDateInput(moveDate);
 		if (!dueAt) return;
-		void answerTask(task, 'move', { dueAt, label: formatMoveDate(moveDate) });
+		answerTask(task, 'move', { dueAt, label: formatMoveDate(moveDate) }, sourceOf(event));
 	}
 
-	async function markAllDone(group: CheckInGroup) {
-		const targets = group.tasks.filter((task) => !rows[task.id]);
-		if (!targets.length || busyGroups[group.key] || undoing) return;
-		clearUndo();
+	function markAllDone(group: CheckInGroup, event?: Event) {
+		const targets = group.tasks.filter((task) => !clearedPile.isHidden(taskKey(task.id)));
+		if (!targets.length) return;
 		movingTaskId = null;
-		busyGroups = { ...busyGroups, [group.key]: true };
 		groupErrors = withoutKey(groupErrors, group.key);
-		rows = {
-			...rows,
-			...Object.fromEntries(
-				targets.map((task) => [
-					task.id,
-					{ answer: 'done', original: null, pending: true } satisfies RowState
-				])
-			)
-		};
-
-		let results: CheckInAnswerResult[] = [];
-		let requestError: string | null = null;
-		try {
-			results = await submitAnswers(
-				targets.map((task) => ({ task_id: task.id, answer: 'done' }))
-			);
-		} catch (error) {
-			requestError = errorText(error, 'Could not save those answers');
-		}
-
-		const next = { ...rows };
-		const entries: UndoEntry[] = [];
-		targets.forEach((task, index) => {
-			const result = results[index];
-			if (result?.kind === 'task' && result.ok) {
-				next[task.id] = { answer: 'done', original: result.previous, pending: false };
-				entries.push({ task_id: task.id, previous: result.previous });
-			} else {
-				delete next[task.id];
+		flyToPile(sourceOf(event), `${targets.length} done`);
+		const { settled } = clearedPile.add({
+			title: `${targets.length} task${targets.length === 1 ? '' : 's'} · ${group.label}`,
+			label: 'Marked all done',
+			context: project.project_name,
+			keys: targets.map((task) => taskKey(task.id)),
+			lane,
+			onUndo: () => report(-targets.length),
+			run: async (): Promise<PileOutcome> => {
+				const results = await submitAnswers(
+					targets.map((task) => ({ task_id: task.id, answer: 'done' as const }))
+				);
+				const back = targets.filter((task, index) => {
+					const result = results[index];
+					return !(result?.kind === 'task' && result.ok);
+				});
+				if (!back.length) return {};
+				return {
+					returnedKeys: back.map((task) => taskKey(task.id)),
+					detail: backHere(
+						`${back.length} could not be saved: ${firstFailure(results, 'unknown error')}`
+					)
+				};
 			}
 		});
-		rows = next;
-		busyGroups = withoutKey(busyGroups, group.key);
-
-		const failed = targets.length - entries.length;
-		if (failed) {
+		report(targets.length);
+		void settled.then((entry) => {
+			if (entry.status !== 'failed' && entry.status !== 'partial') return;
+			const back = entry.status === 'failed' ? targets.length : entry.returnedKeys.length;
 			groupErrors = {
 				...groupErrors,
-				[group.key]:
-					requestError ??
-					`${failed} could not be saved: ${firstFailure(results, 'unknown error')}`
+				[group.key]: entry.detail ?? 'Some could not be saved'
 			};
-		}
-		if (entries.length) {
-			showUndo({
-				kind: 'tasks',
-				key: group.key,
-				label: `Marked ${entries.length} done`,
-				entries
-			});
-			report(entries.length);
-		}
+			report(-back);
+		});
 	}
 
-	async function undoTasks(entry: TaskUndo) {
-		if (undoing) return;
-		undoing = true;
-		clearUndo();
-		rows = {
-			...rows,
-			...Object.fromEntries(
-				entry.entries
-					.filter(({ task_id }) => rows[task_id])
-					.map(({ task_id }) => [task_id, { ...rows[task_id]!, pending: true }])
-			)
-		};
-
-		let results: CheckInAnswerResult[] = [];
-		try {
-			results = await submitAnswers(
-				entry.entries.map(({ task_id, previous }) => ({
-					task_id,
-					answer: 'restore',
-					previous
-				}))
-			);
-		} catch {
-			results = [];
-		}
-
-		const next = { ...rows };
-		const errors = { ...rowErrors };
-		let undone = 0;
-		entry.entries.forEach(({ task_id }, index) => {
-			if (results[index]?.ok) {
-				delete next[task_id];
-				delete errors[task_id];
-				undone += 1;
-			} else if (next[task_id]) {
-				next[task_id] = { ...next[task_id]!, pending: false };
-				errors[task_id] = 'Could not undo this one';
+	function answerProject(answer: 'pause' | 'finish', event?: Event) {
+		if (projectAnswered) return;
+		projectError = null;
+		flyToPile(sourceOf(event), project.project_name);
+		const { settled } = clearedPile.add({
+			title: project.project_name,
+			label: answer === 'pause' ? 'Paused' : 'Marked finished',
+			context: `${project.overdue_count} overdue task${project.overdue_count === 1 ? '' : 's'}`,
+			keys: [projectKey],
+			lane,
+			onUndo: () => report(-1, project.overdue_count),
+			run: async (): Promise<PileOutcome> => {
+				const results = await submitAnswers([
+					{ project_id: project.project_id, project_answer: answer }
+				]);
+				const result = results[0];
+				if (result?.kind === 'project' && result.ok) return {};
+				return {
+					failed: true,
+					detail: backHere(firstFailure(results, 'Could not update the project'))
+				};
 			}
 		});
-		rows = next;
-		rowErrors = errors;
-		undoing = false;
-		if (undone) report(-undone);
-	}
-
-	async function answerProject(answer: 'pause' | 'finish') {
-		if (projectAnswer?.pending || undoing) return;
-		clearUndo();
-		projectError = null;
-		projectAnswer = { answer, pending: true };
-
-		let results: CheckInAnswerResult[] = [];
-		let requestError: string | null = null;
-		try {
-			results = await submitAnswers([
-				{ project_id: project.project_id, project_answer: answer }
-			]);
-		} catch (error) {
-			requestError = errorText(error, 'Could not update the project');
-		}
-
-		const result = results[0];
-		if (result?.kind === 'project' && result.ok) {
-			projectAnswer = { answer, pending: false };
-			showUndo({
-				kind: 'project',
-				key: project.project_id,
-				previousState: result.previous_state
-			});
-			report(1, 0);
-			return;
-		}
-		projectAnswer = null;
-		projectError = requestError ?? firstFailure(results, 'Could not update the project');
-	}
-
-	async function undoProject(entry: ProjectUndo) {
-		if (undoing) return;
-		undoing = true;
-		clearUndo();
-		let ok = false;
-		try {
-			const results = await submitAnswers([
-				{
-					project_id: project.project_id,
-					project_answer: 'restore',
-					previous_state: entry.previousState
-				}
-			]);
-			ok = results[0]?.ok === true;
-		} catch {
-			ok = false;
-		}
-		undoing = false;
-		if (ok) {
-			projectAnswer = null;
+		report(1, 0);
+		void settled.then((entry) => {
+			if (entry.status !== 'failed') return;
+			projectError = entry.detail ?? 'Could not update the project';
 			report(-1, project.overdue_count);
-		} else {
-			projectError = 'Could not undo. Change the project state from the project page.';
-		}
+		});
 	}
 </script>
 
@@ -491,28 +350,17 @@
 				{formatQuietDetail(project, today)}
 			</p>
 
-			{#if projectAnswer && !projectAnswer.pending}
-				<div
+			{#if projectAnswered}
+				<p
 					role="status"
-					class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-success/10 px-2.5 py-2 text-xs text-foreground"
+					class="mt-3 flex items-center gap-2 rounded-md bg-success/10 px-2.5 py-2 text-xs text-foreground"
 				>
 					<CircleCheck class="h-3.5 w-3.5 shrink-0 text-success" aria-hidden="true" />
 					<span class="min-w-0 break-words">
-						{projectAnswer.answer === 'pause'
-							? `Paused ${project.project_name}. These tasks stop coming back here.`
-							: `Marked ${project.project_name} finished.`}
+						Answered. It's in your Cleared list, where you can undo it for a few
+						seconds.
 					</span>
-					{#if projectUndo}
-						<button
-							type="button"
-							class="inline-flex min-h-11 items-center rounded-md px-2 text-xs font-semibold text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							disabled={undoing}
-							onclick={() => projectUndo && undoProject(projectUndo)}
-						>
-							Undo
-						</button>
-					{/if}
-				</div>
+				</p>
 			{:else}
 				<div
 					role="group"
@@ -521,13 +369,8 @@
 				>
 					<button
 						type="button"
-						aria-pressed={projectAnswer?.answer === 'pause'}
-						disabled={Boolean(projectAnswer?.pending) || undoing}
-						onclick={() => answerProject('pause')}
-						class="flex min-h-11 flex-col items-start gap-1 rounded-md border p-3 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none {projectAnswer?.answer ===
-						'pause'
-							? 'border-accent bg-accent/10'
-							: 'border-border bg-background hover:border-accent/50'}"
+						onclick={(event) => answerProject('pause', event)}
+						class="flex min-h-11 flex-col items-start gap-1 rounded-md border border-border bg-background p-3 text-left transition-colors hover:border-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 					>
 						<span
 							class="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-foreground"
@@ -545,13 +388,8 @@
 					</button>
 					<button
 						type="button"
-						aria-pressed={projectAnswer?.answer === 'finish'}
-						disabled={Boolean(projectAnswer?.pending) || undoing}
-						onclick={() => answerProject('finish')}
-						class="flex min-h-11 flex-col items-start gap-1 rounded-md border p-3 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none {projectAnswer?.answer ===
-						'finish'
-							? 'border-accent bg-accent/10'
-							: 'border-border bg-background hover:border-accent/50'}"
+						onclick={(event) => answerProject('finish', event)}
+						class="flex min-h-11 flex-col items-start gap-1 rounded-md border border-border bg-background p-3 text-left transition-colors hover:border-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 					>
 						<span class="text-sm font-semibold text-foreground">It's finished</span>
 						<span class="text-xs text-muted-foreground"
@@ -560,9 +398,8 @@
 					</button>
 					<button
 						type="button"
-						disabled={Boolean(projectAnswer?.pending) || undoing}
 						onclick={() => (expanded = true)}
-						class="flex min-h-11 flex-col items-start gap-1 rounded-md border border-border bg-background p-3 text-left transition-colors hover:border-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none"
+						class="flex min-h-11 flex-col items-start gap-1 rounded-md border border-border bg-background p-3 text-left transition-colors hover:border-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 					>
 						<span class="text-sm font-semibold text-foreground">Still on</span>
 						<span class="text-xs text-muted-foreground">
@@ -578,12 +415,22 @@
 			{/if}
 		</article>
 	{:else}
-		{#each project.groups as group (group.key)}
-			{@const answered = group.tasks.filter(
-				(task) => rows[task.id] && !rows[task.id]?.pending
-			).length}
-			{@const unanswered = group.tasks.filter((task) => !rows[task.id])}
-			{@const groupUndo = taskUndo()?.key === group.key ? taskUndo() : null}
+		{#if !visibleGroups.length && allTasks.length}
+			<p
+				role="status"
+				class="flex items-center gap-2 rounded-lg border border-dashed border-border px-3 py-3 text-xs text-foreground"
+			>
+				<CircleCheck class="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+				<span class="min-w-0 break-words">
+					All answered. Saving in the background; anything that doesn't go through comes
+					back here.
+				</span>
+			</p>
+		{/if}
+		{#each visibleGroups as group (group.key)}
+			{@const total = totalTasks(group)}
+			{@const answered = total - group.tasks.length}
+			{@const unanswered = group.tasks}
 			{@const open = isGroupOpen(group)}
 			<article
 				class="min-w-0 rounded-lg border border-border bg-card shadow-ink"
@@ -598,12 +445,7 @@
 							{formatCheckInGroupTitle(group)}
 						</h3>
 						<p class="mt-0.5 text-xs text-muted-foreground">
-							{formatCheckInGroupAge(
-								group.due_date,
-								today,
-								answered,
-								group.tasks.length
-							)}
+							{formatCheckInGroupAge(group.due_date, today, answered, total)}
 						</p>
 						{#if !open}
 							<p class="mt-1 line-clamp-2 break-words text-xs text-muted-foreground">
@@ -641,36 +483,13 @@
 						: ''}"
 				>
 					{#each group.tasks as task (task.id)}
-						{@const row = rows[task.id]}
-						{@const rowUndo = taskUndo()?.key === task.id ? taskUndo() : null}
 						<li
 							class="grid min-w-0 gap-2 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
 						>
 							<div class="min-w-0">
-								<p
-									class="break-words text-sm {row && !row.pending
-										? 'text-muted-foreground'
-										: 'text-foreground'}"
-								>
+								<p class="break-words text-sm text-foreground">
 									{task.title}
 								</p>
-								{#if row && !row.pending}
-									<p
-										class="mt-0.5 flex flex-wrap items-center gap-x-2 text-2xs text-muted-foreground"
-									>
-										<span>{rowLabel(row)}</span>
-										{#if rowUndo}
-											<button
-												type="button"
-												class="inline-flex min-h-11 items-center rounded-md px-1 text-xs font-semibold text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-0 sm:py-1"
-												disabled={undoing}
-												onclick={() => undoTasks(rowUndo)}
-											>
-												Undo
-											</button>
-										{/if}
-									</p>
-								{/if}
 								{#if rowErrors[task.id]}
 									<p role="alert" class="mt-0.5 text-2xs text-destructive">
 										{rowErrors[task.id]}
@@ -690,19 +509,22 @@
 											? `${domId(task.id)}-move`
 											: undefined}
 										title={segment.title}
-										aria-pressed={row?.answer === segment.answer}
 										aria-expanded={segment.answer === 'move'
 											? movingTaskId === task.id
 											: undefined}
-										disabled={Boolean(row?.pending) || undoing}
-										onclick={() =>
+										onclick={(event) =>
 											segment.answer === 'move'
 												? startMove(task)
-												: answerTask(task, segment.answer)}
-										class="min-h-11 flex-1 border-l border-border px-3 text-xs font-semibold transition-colors first:border-l-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none sm:flex-none {row?.answer ===
-										segment.answer
-											? segment.pressed
-											: 'text-muted-foreground hover:bg-muted hover:text-foreground'}"
+												: answerTask(
+														task,
+														segment.answer,
+														undefined,
+														sourceOf(event)
+													)}
+										class="min-h-11 flex-1 border-l border-border px-3 text-xs font-semibold text-muted-foreground transition-colors first:border-l-0 hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none sm:flex-none {segment.answer ===
+											'move' && movingTaskId === task.id
+											? 'bg-info/10 text-info'
+											: ''}"
 									>
 										{segment.label}
 									</button>
@@ -737,7 +559,7 @@
 										variant="primary"
 										size="sm"
 										disabled={!moveDate}
-										onclick={() => confirmMove(task)}
+										onclick={(event: MouseEvent) => confirmMove(task, event)}
 										class="text-xs"
 									>
 										Move
@@ -756,10 +578,9 @@
 					{/each}
 				</ul>
 
-				{#if open && group.task_count > group.tasks.length}
+				{#if open && group.task_count > total}
 					<p class="px-3 pt-2 text-2xs text-muted-foreground">
-						{group.task_count - group.tasks.length} more from this day are on the project
-						page.
+						{group.task_count - total} more from this day are on the project page.
 					</p>
 				{/if}
 
@@ -772,20 +593,7 @@
 							aria-live="polite"
 						>
 							<!-- The header's age line already shows progress; the tally is for screen readers. -->
-							<span class="sr-only"
-								>{formatCheckInTally(answered, group.tasks.length)}</span
-							>
-							{#if groupUndo}
-								<span>{groupUndo.label}</span>
-								<button
-									type="button"
-									class="inline-flex min-h-11 items-center rounded-md px-1 text-xs font-semibold text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-									disabled={undoing}
-									onclick={() => undoTasks(groupUndo)}
-								>
-									Undo
-								</button>
-							{/if}
+							<span class="sr-only">{formatCheckInTally(answered, total)}</span>
 						</p>
 						<div class="flex flex-wrap items-center gap-1">
 							{@render talkButton(unanswered)}
@@ -793,9 +601,7 @@
 								<Button
 									variant="ghost"
 									size="sm"
-									loading={Boolean(busyGroups[group.key])}
-									disabled={Boolean(busyGroups[group.key]) || undoing}
-									onclick={() => markAllDone(group)}
+									onclick={(event: MouseEvent) => markAllDone(group, event)}
 									class="text-xs"
 								>
 									Mark all done

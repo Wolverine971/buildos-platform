@@ -15,7 +15,7 @@
 	import { tick } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
-	import InboxAskCard, { type AskCardReceipt } from './InboxAskCard.svelte';
+	import InboxAskCard from './InboxAskCard.svelte';
 	import InboxCleanupChangeList from './InboxCleanupChangeList.svelte';
 	import InboxProjectManagerBrief from './InboxProjectManagerBrief.svelte';
 	import InboxTidyTree from './InboxTidyTree.svelte';
@@ -50,48 +50,42 @@
 		ProjectSuggestionReviewItem
 	} from '@buildos/shared-types';
 	import { formatRelativeTime } from '$lib/utils/date-utils';
-	import { sendCleanupNote } from './cleanup-note.client';
+	import {
+		queueCleanupAnswer,
+		queueCleanupNote,
+		withoutAnsweredItems,
+		type CleanupNoteSendResult,
+		type CleanupSendResult
+	} from './cleanup-outbox';
+	import { flyToPile } from './pile-fly';
 	import {
 		CLEANUP_ASK_BLOCK,
 		CLEANUP_CHANGED_MESSAGE,
 		addressDecisionsFor,
 		approveDecisionsFor,
 		cleanupAnswerNote,
-		cleanupAnswerReceipt,
 		cleanupAskCounts,
 		cleanupAskSummaryLine,
 		cleanupCloseReasonText,
 		cleanupItemCautions,
-		cleanupResultLabel,
 		cleanupSeenLine,
 		dismissDecisionsFor,
 		formatCleanupDate,
 		groupCleanupByAsk,
 		isCleanupItemSelectable,
-		summarizeCleanupItemOutcome,
 		type CleanupAskBlockKey,
 		type CleanupAskEntry,
-		type CleanupDecision,
-		type CleanupItemResult,
-		type CleanupOutcome
+		type CleanupDecision
 	} from './project-cleanup-presentation';
 
-	type Receipt = {
-		id: string;
-		title: string;
-		status: CleanupItemResult['status'] | 'undone';
-		message: string | null;
-		/** Overrides the default label ("Marked not needed") for a settled item. */
-		label?: string;
-	};
-	type NoteReply = { id: string; title: string; reply: string; ok: boolean };
-	type PendingKind = 'apply' | 'dismiss' | 'address' | 'note' | 'reload';
-	type SubmitResult = { ok: true; receipts: Receipt[] } | { ok: false; message: string };
-	type AnsweredAsk = { entry: CleanupAskEntry; index: number; receipt: AskCardReceipt };
+	type AnswerKind = 'apply' | 'dismiss' | 'address';
+	/** Why an item is back on the card after a save, shown on the item. */
+	type ItemNote = { tone: 'warn' | 'info'; text: string };
 
 	let {
 		view = null,
 		projectId,
+		projectName = null,
 		canDecide = false,
 		decisionDisabledReason = null,
 		snoozing = false,
@@ -105,6 +99,8 @@
 	}: {
 		view?: ProjectCleanupView | null;
 		projectId: string;
+		/** Shown beside each answer in the Cleared pile. */
+		projectName?: string | null;
 		canDecide?: boolean;
 		decisionDisabledReason?: string | null;
 		snoozing?: boolean;
@@ -115,7 +111,7 @@
 		onFixInChat?: (reviewItem: ProjectSuggestionReviewItem, item: ProjectCleanupItem) => void;
 		/** Walk every item one at a time. */
 		onTriage?: () => void;
-		/** After a save: items handled and the freshly verified view. */
+		/** After a background save: items handled and the freshly verified view. */
 		onDecided?: (summary: { handled: number; view: ProjectCleanupView | null }) => void;
 		/** After a "Done for you" change is undone, with the view the server returned. */
 		onUndone?: (summary: { suggestionId: string; view: ProjectCleanupView | null }) => void;
@@ -128,57 +124,39 @@
 		base: ProjectCleanupView | null;
 		view: ProjectCleanupView;
 	} | null>(null);
-	const current = $derived(override && override.base === view ? override.view : view);
+	const latest = $derived(override && override.base === view ? override.view : view);
+	// Answers leave the card at once; the Cleared pile saves them in the background.
+	const current = $derived(withoutAnsweredItems(latest, projectId));
+	const allAnswered = $derived(
+		Boolean(latest?.items.length) && (current?.items.length ?? 0) === 0
+	);
 
 	let selected = $state.raw<Set<string>>(new Set());
-	let pending = $state<{ kind: PendingKind; itemId: string | null } | null>(null);
-	let receipts = $state.raw<Receipt[]>([]);
+	let reloading = $state(false);
 	let changedIds = $state.raw<Set<string>>(new Set());
+	let itemNotes = $state.raw<Map<string, ItemNote>>(new Map());
 	let requestError = $state<string | null>(null);
 	let notingId = $state<string | null>(null);
 	let noteText = $state('');
-	let noteSendingIds = $state.raw<Set<string>>(new Set());
-	let noteReplies = $state.raw<NoteReply[]>([]);
 	let auditOpen = $state(false);
 	let auditLoading = $state(false);
 	let auditError = $state<string | null>(null);
 	let auditRecord = $state.raw<Record<string, unknown> | null>(null);
-	let answeredAsks = $state.raw<Map<string, AnsweredAsk>>(new Map());
-	let askErrors = $state.raw<Map<string, string>>(new Map());
-	let answering = $state<{ key: string; index: number } | null>(null);
 	let undoingId = $state<string | null>(null);
 	let undoErrors = $state.raw<Map<string, string>>(new Map());
 	let undoneIds = $state.raw<Set<string>>(new Set());
 	// Bumped after anything that may change the document tree, so the preview reloads.
 	let treeVersion = $state(0);
 
-	const busy = $derived(pending !== null);
 	const blocks = $derived(groupCleanupByAsk(current));
 	const itemsById = $derived(new Map((current?.items ?? []).map((item) => [item.id, item])));
 
-	// Answered questions keep their place with a receipt after the save drops them from the view.
-	const pathEntries = $derived.by(() => {
-		const list = [...blocks.paths];
-		const present = new Set(list.map((entry) => entry.key));
-		const gone = [...answeredAsks.values()]
-			.filter((answered) => !present.has(answered.entry.key))
-			.sort((a, b) => a.index - b.index);
-		for (const answered of gone) {
-			list.splice(Math.min(answered.index, list.length), 0, answered.entry);
-		}
-		return list;
-	});
-	const openPathCount = $derived(
-		pathEntries.filter((entry) => !answeredAsks.has(entry.key)).length
-	);
+	const pathEntries = $derived(blocks.paths);
+	const openPathCount = $derived(pathEntries.length);
 	const autoApplied = $derived(
 		blocks.autoApplied.filter((entry) => !undoneIds.has(entry.suggestion_id))
 	);
-	const openBlocks = $derived({
-		...blocks,
-		paths: pathEntries.filter((entry) => !answeredAsks.has(entry.key)),
-		autoApplied
-	});
+	const openBlocks = $derived({ ...blocks, autoApplied });
 	const countChips = $derived(cleanupAskCounts(openBlocks));
 	const headline = $derived(
 		current ? (current.bottom_line ?? cleanupAskSummaryLine(openBlocks)) : 'Project cleanup'
@@ -217,9 +195,7 @@
 				: `all ${tidyPreviewItems.length}`
 	);
 	const treeCallItems = $derived([
-		...pathEntries
-			.filter((entry) => !answeredAsks.has(entry.key))
-			.flatMap((entry) => entry.items),
+		...pathEntries.flatMap((entry) => entry.items),
 		...blocks.stale,
 		...blocks.offers
 	]);
@@ -258,12 +234,10 @@
 		return item.rows.some((row) => (row.verified_operations?.length ?? 0) > 0);
 	}
 
-	function receiptLabel(receipt: Receipt): string {
-		if (receipt.status === 'undone') return 'Undone';
-		if (receipt.label && receipt.status !== 'failed' && receipt.status !== 'changed') {
-			return receipt.label;
-		}
-		return cleanupResultLabel({ status: receipt.status, message: receipt.message });
+	/** The card or row an answer came from, for the fly-to-pile animation. */
+	function sourceOf(event: Event | undefined): Element | null {
+		const target = event?.currentTarget;
+		return target instanceof Element ? (target.closest('article, li') ?? target) : null;
 	}
 
 	function toggle(id: string, checked: boolean) {
@@ -286,214 +260,192 @@
 		selected = next;
 	}
 
-	async function submit(
-		kind: Exclude<PendingKind, 'reload' | 'note'>,
-		decisions: CleanupDecision[],
-		items: ProjectCleanupItem[],
-		itemId: string | null = null,
-		options: { showReceipts?: boolean; inlineError?: boolean; label?: string } = {}
-	): Promise<SubmitResult> {
-		if (busy || decisions.length === 0) {
-			return { ok: false, message: 'Nothing to save' };
-		}
-		pending = { kind, itemId };
-		if (!options.inlineError) requestError = null;
-		try {
-			const res = await fetch(cleanupUrl(), {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ decisions })
-			});
-			const json = await res.json().catch(() => null);
-			if (!res.ok) throw new Error(json?.error ?? 'Could not save your choices');
-			const outcomes = (json?.data?.outcomes ?? []) as CleanupOutcome[];
-			const nextView = (json?.data?.view ?? null) as ProjectCleanupView | null;
-			const nextReceipts = items.flatMap((item): Receipt[] => {
-				const result = summarizeCleanupItemOutcome(item, outcomes);
-				return result
-					? [
-							{
-								...result,
-								id: item.id,
-								title: item.title,
-								...(options.label ? { label: options.label } : {})
-							}
-						]
-					: [];
-			});
-			const submittedIds = new Set(items.map((item) => item.id));
-			if (options.showReceipts !== false) receipts = nextReceipts;
-			changedIds = new Set(
-				nextReceipts.filter((receipt) => receipt.status === 'changed').map((r) => r.id)
-			);
-			selected = new Set([...selected].filter((id) => !submittedIds.has(id)));
-			if (nextView) override = { base: view, view: nextView };
-			if (kind === 'apply') treeVersion += 1;
-			onDecided?.({
-				handled: nextReceipts.filter(
-					(receipt) => receipt.status !== 'changed' && receipt.status !== 'failed'
-				).length,
-				view: nextView
-			});
-			return { ok: true, receipts: nextReceipts };
-		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Could not save your choices';
-			if (!options.inlineError) requestError = message;
-			return { ok: false, message };
-		} finally {
-			pending = null;
+	function forget(items: ProjectCleanupItem[]) {
+		const ids = new Set(items.map((item) => item.id));
+		selected = new Set([...selected].filter((id) => !ids.has(id)));
+		if ([...ids].some((id) => itemNotes.has(id) || changedIds.has(id))) {
+			itemNotes = new Map([...itemNotes].filter(([id]) => !ids.has(id)));
+			changedIds = new Set([...changedIds].filter((id) => !ids.has(id)));
 		}
 	}
 
-	function applySelected() {
+	function adoptView(next: ProjectCleanupView | null) {
+		if (next) override = { base: view, view: next };
+	}
+
+	/** The save landed: take the fresh view and say why anything came back. */
+	function handleSaved(kind: AnswerKind, items: ProjectCleanupItem[], result: CleanupSendResult) {
+		adoptView(result.view);
+		if (kind === 'apply') treeVersion += 1;
+		const notes = new Map(itemNotes);
+		const changed = new Set(changedIds);
+		let handled = 0;
+		for (const item of items) {
+			const outcome = result.results.get(item.id) ?? null;
+			if (result.error) {
+				notes.set(item.id, { tone: 'warn', text: `Not saved: ${result.error}` });
+			} else if (outcome?.status === 'changed') {
+				changed.add(item.id);
+			} else if (outcome?.status === 'failed') {
+				notes.set(item.id, {
+					tone: 'warn',
+					text: `Not applied: ${outcome.message ?? 'Could not apply this.'}`
+				});
+			} else {
+				handled += 1;
+			}
+		}
+		itemNotes = notes;
+		changedIds = changed;
+		if (!result.error) onDecided?.({ handled, view: result.view });
+	}
+
+	function queueAnswer(
+		kind: AnswerKind,
+		items: ProjectCleanupItem[],
+		decisions: CleanupDecision[],
+		copy: { title: string; label: string },
+		source: Element | null
+	) {
+		if (!canDecide || !items.length || !decisions.length) return;
+		forget(items);
+		flyToPile(source, copy.title);
+		queueCleanupAnswer({
+			projectId,
+			projectName,
+			title: copy.title,
+			label: copy.label,
+			items,
+			decisions,
+			onResult: (result) => handleSaved(kind, items, result)
+		});
+	}
+
+	function handleNoteSaved(items: ProjectCleanupItem[], result: CleanupNoteSendResult) {
+		if (!result.view) return;
+		adoptView(result.view);
+		treeVersion += 1;
+		// The reader can leave an item open; if it comes back, say what the note did.
+		const reply = [...new Set(result.replies)].join(' ');
+		const stillOpen = new Set(result.view.items.map((item) => item.id));
+		if (reply) {
+			const notes = new Map(itemNotes);
+			for (const item of items) {
+				if (stillOpen.has(item.id)) notes.set(item.id, { tone: 'info', text: reply });
+			}
+			itemNotes = notes;
+		}
+		onDecided?.({ handled: result.replies.length, view: result.view });
+	}
+
+	function queueNote(
+		items: ProjectCleanupItem[],
+		note: string,
+		copy: { title: string; label: string },
+		source: Element | null
+	) {
+		if (!canDecide || !items.length || !note.trim()) return;
+		forget(items);
+		flyToPile(source, copy.title);
+		queueCleanupNote({
+			projectId,
+			projectName,
+			title: copy.title,
+			label: copy.label,
+			items,
+			note,
+			onResult: (result) => handleNoteSaved(items, result)
+		});
+	}
+
+	function applySelected(event?: Event) {
 		const items = selectedItems;
 		if (!items.length) return;
-		void submit('apply', approveDecisionsFor(items), items);
+		queueAnswer(
+			'apply',
+			items,
+			approveDecisionsFor(items),
+			{
+				title: items.length === 1 ? items[0]!.title : `${items.length} tidy-ups`,
+				label: 'Applied'
+			},
+			sourceOf(event)
+		);
 	}
 
-	function applyOne(item: ProjectCleanupItem) {
+	function applyOne(item: ProjectCleanupItem, event?: Event) {
 		if (!isCleanupItemSelectable(item)) return;
-		void submit('apply', approveDecisionsFor([item]), [item], item.id);
+		queueAnswer(
+			'apply',
+			[item],
+			approveDecisionsFor([item]),
+			{ title: item.title, label: 'Update it' },
+			sourceOf(event)
+		);
 	}
 
-	function markDone(item: ProjectCleanupItem) {
-		void submit('address', addressDecisionsFor(item), [item], item.id, {
-			label: 'Already handled'
-		});
+	function markDone(item: ProjectCleanupItem, event?: Event) {
+		queueAnswer(
+			'address',
+			[item],
+			addressDecisionsFor(item),
+			{ title: item.title, label: 'Already handled' },
+			sourceOf(event)
+		);
 	}
 
 	// One tap: "Not needed" never asks why. A reason, if there is one, goes in a note.
-	function markNotNeeded(item: ProjectCleanupItem, label?: string) {
-		void submit('dismiss', dismissDecisionsFor(item, 'not_relevant'), [item], item.id, {
-			...(label ? { label } : {})
-		});
-	}
-
-	function setAskError(key: string, message: string | null) {
-		const next = new Map(askErrors);
-		if (message) next.set(key, message);
-		else next.delete(key);
-		askErrors = next;
-	}
-
-	/** `index` is the card's place before the save, so its receipt stays where it was. */
-	function recordAnswer(entry: CleanupAskEntry, index: number, receipt: AskCardReceipt) {
-		answeredAsks = new Map(answeredAsks).set(entry.key, {
-			entry,
-			index: Math.max(0, index),
-			receipt
-		});
+	function markNotNeeded(item: ProjectCleanupItem, label = 'Not needed', event?: Event) {
+		queueAnswer(
+			'dismiss',
+			[item],
+			dismissDecisionsFor(item, 'not_relevant'),
+			{ title: item.title, label },
+			sourceOf(event)
+		);
 	}
 
 	function canApplyAsk(entry: CleanupAskEntry): boolean {
 		return entry.items.some((item) => isCleanupItemSelectable(item));
 	}
 
-	async function answerAsk(entry: CleanupAskEntry, answer: ProjectCleanupAnswer, index: number) {
-		if (busy || answering || !entry.items.length) return;
-		setAskError(entry.key, null);
+	function answerAsk(
+		entry: CleanupAskEntry,
+		answer: ProjectCleanupAnswer,
+		source: Element | null = null
+	) {
+		if (!entry.items.length) return;
 		if (answer.action === 'chat') {
 			onDiscuss?.(entry.items[0] ?? null);
 			return;
 		}
-		answering = { key: entry.key, index };
-		const position = pathEntries.findIndex((candidate) => candidate.key === entry.key);
-		try {
-			if (answer.action === 'note') {
-				await answerWithNote(entry, answer, position);
-				return;
-			}
-			const targets =
-				answer.action === 'apply'
-					? entry.items.filter((item) => isCleanupItemSelectable(item))
-					: entry.items;
-			if (!targets.length) return;
-			const decisions =
-				answer.action === 'apply'
-					? approveDecisionsFor(targets)
-					: answer.action === 'dismiss'
-						? targets.flatMap((item) => dismissDecisionsFor(item, 'not_relevant'))
-						: targets.flatMap((item) => addressDecisionsFor(item));
-			const kind =
-				answer.action === 'apply'
-					? 'apply'
-					: answer.action === 'dismiss'
-						? 'dismiss'
-						: 'address';
-			const result = await submit(kind, decisions, targets, entry.key, {
-				showReceipts: false,
-				inlineError: true
-			});
-			if (!result.ok) {
-				setAskError(entry.key, result.message);
-				return;
-			}
-			const changed = result.receipts.filter((receipt) => receipt.status === 'changed');
-			const failed = result.receipts.filter((receipt) => receipt.status === 'failed');
-			if (changed.length) {
-				setAskError(entry.key, CLEANUP_CHANGED_MESSAGE);
-				return;
-			}
-			if (failed.length && failed.length === result.receipts.length) {
-				setAskError(entry.key, failed[0]?.message ?? 'Could not apply this.');
-				return;
-			}
-			recordAnswer(entry, position, {
-				text: cleanupAnswerReceipt(answer),
-				detail: failed.length
-					? `Could not apply: ${failed.map((receipt) => receipt.title).join(', ')}`
-					: null,
-				tone: failed.length ? 'warn' : 'done'
-			});
-		} finally {
-			answering = null;
-		}
-	}
-
-	// The answer goes to the note reader for each item it settles, one after another.
-	async function answerWithNote(
-		entry: CleanupAskEntry,
-		answer: ProjectCleanupAnswer,
-		position: number
-	) {
-		const note = cleanupAnswerNote(entry.ask.question, answer);
-		const replies: string[] = [];
-		let failure: string | null = null;
-		let lastView: ProjectCleanupView | null = null;
-		pending = { kind: 'note', itemId: entry.key };
-		try {
-			for (const item of entry.items) {
-				const result = await sendCleanupNote({ projectId, item, note });
-				if (result.ok) {
-					replies.push(result.reply);
-					if (result.view) lastView = result.view;
-				} else {
-					failure ??= result.message;
-				}
-			}
-		} finally {
-			pending = null;
-		}
-		if (lastView) {
-			const settledIds = new Set(entry.items.map((item) => item.id));
-			selected = new Set([...selected].filter((id) => !settledIds.has(id)));
-			override = { base: view, view: lastView };
-			treeVersion += 1;
-			onDecided?.({ handled: replies.length, view: lastView });
-		}
-		if (!replies.length) {
-			setAskError(entry.key, failure ?? 'Could not send your answer');
+		const copy = { title: entry.ask.question, label: answer.label };
+		if (answer.action === 'note') {
+			queueNote(entry.items, cleanupAnswerNote(entry.ask.question, answer), copy, source);
 			return;
 		}
-		recordAnswer(entry, position, {
-			text: cleanupAnswerReceipt(answer),
-			detail: [...new Set(replies)].join(' '),
-			tone: failure ? 'warn' : 'done'
-		});
+		const targets =
+			answer.action === 'apply'
+				? entry.items.filter((item) => isCleanupItemSelectable(item))
+				: entry.items;
+		if (!targets.length) return;
+		const kind: AnswerKind =
+			answer.action === 'apply'
+				? 'apply'
+				: answer.action === 'dismiss'
+					? 'dismiss'
+					: 'address';
+		const decisions =
+			kind === 'apply'
+				? approveDecisionsFor(targets)
+				: kind === 'dismiss'
+					? targets.flatMap((item) => dismissDecisionsFor(item, 'not_relevant'))
+					: targets.flatMap((item) => addressDecisionsFor(item));
+		queueAnswer(kind, targets, decisions, copy, source);
 	}
 
 	async function undoAutoApplied(entry: ProjectCleanupAutoApplied) {
-		if (busy || undoingId) return;
+		if (undoingId) return;
 		undoingId = entry.suggestion_id;
 		const errors = new Map(undoErrors);
 		errors.delete(entry.suggestion_id);
@@ -510,10 +462,7 @@
 			}
 			const nextView = (json?.data?.view ?? null) as ProjectCleanupView | null;
 			undoneIds = new Set(undoneIds).add(entry.suggestion_id);
-			if (nextView) override = { base: view, view: nextView };
-			receipts = [
-				{ id: entry.suggestion_id, title: entry.title, status: 'undone', message: null }
-			];
+			adoptView(nextView);
 			changedIds = new Set();
 			treeVersion += 1;
 			onUndone?.({ suggestionId: entry.suggestion_id, view: nextView });
@@ -542,37 +491,22 @@
 		);
 	}
 
-	async function sendNote(item: ProjectCleanupItem) {
+	function sendNote(item: ProjectCleanupItem, event?: Event) {
 		const note = noteText.trim();
-		if (!note || noteSendingIds.has(item.id)) return;
-		noteSendingIds = new Set(noteSendingIds).add(item.id);
+		if (!note) return;
+		const source =
+			sourceOf(event) ??
+			document.getElementById(`${uid}-item-${item.id}-note`)?.closest('article, li') ??
+			null;
 		notingId = null;
 		noteText = '';
-		const result = await sendCleanupNote({ projectId, item, note });
-		const sending = new Set(noteSendingIds);
-		sending.delete(item.id);
-		noteSendingIds = sending;
-		noteReplies = [
-			...noteReplies.filter((entry) => entry.id !== item.id),
-			{
-				id: item.id,
-				title: item.title,
-				reply: result.ok ? result.reply : result.message,
-				ok: result.ok
-			}
-		];
-		if (result.ok && result.view) {
-			selected = new Set([...selected].filter((id) => id !== item.id));
-			override = { base: view, view: result.view };
-			treeVersion += 1;
-			onDecided?.({ handled: 1, view: result.view });
-		}
+		queueNote([item], note, { title: item.title, label: 'Your note' }, source);
 	}
 
 	function handleNoteKeydown(event: KeyboardEvent, item: ProjectCleanupItem) {
 		if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
 			event.preventDefault();
-			void sendNote(item);
+			sendNote(item);
 		} else if (event.key === 'Escape') {
 			event.preventDefault();
 			notingId = null;
@@ -580,8 +514,8 @@
 	}
 
 	async function reload() {
-		if (busy) return;
-		pending = { kind: 'reload', itemId: null };
+		if (reloading) return;
+		reloading = true;
 		requestError = null;
 		try {
 			const res = await fetch(cleanupUrl());
@@ -589,12 +523,12 @@
 			if (!res.ok || !json?.data?.view) {
 				throw new Error(json?.error ?? 'Could not load the cleanup list');
 			}
-			override = { base: view, view: json.data.view as ProjectCleanupView };
+			adoptView(json.data.view as ProjectCleanupView);
 		} catch (error) {
 			requestError =
 				error instanceof Error ? error.message : 'Could not load the cleanup list';
 		} finally {
-			pending = null;
+			reloading = false;
 		}
 	}
 
@@ -641,13 +575,30 @@
 {/snippet}
 
 {#snippet changedBadge(item: ProjectCleanupItem)}
+	{@const note = itemNotes.get(item.id)}
 	{#if changedIds.has(item.id)}
 		<span
 			class="mb-1 inline-flex items-center gap-1 rounded border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-2xs font-medium text-foreground"
+			title={CLEANUP_CHANGED_MESSAGE}
 		>
 			<AlertTriangle class="h-3 w-3 text-warning" aria-hidden="true" />
 			Updated — review again
 		</span>
+	{/if}
+	{#if note}
+		<p
+			class="mb-1 flex min-w-0 items-start gap-1 rounded border px-1.5 py-0.5 text-2xs text-foreground {note.tone ===
+			'warn'
+				? 'border-warning/40 bg-warning/10'
+				: 'border-accent/30 bg-accent/5'}"
+		>
+			{#if note.tone === 'warn'}
+				<AlertTriangle class="mt-0.5 h-3 w-3 shrink-0 text-warning" aria-hidden="true" />
+			{:else}
+				<MessageCircle class="mt-0.5 h-3 w-3 shrink-0 text-accent" aria-hidden="true" />
+			{/if}
+			<span class="min-w-0 break-words">{note.text}</span>
+		</p>
 	{/if}
 {/snippet}
 
@@ -698,14 +649,13 @@
 	<button
 		type="button"
 		onclick={() => toggleNote(item)}
-		disabled={noteSendingIds.has(item.id)}
 		aria-expanded={notingId === item.id}
 		aria-controls={`${uid}-item-${item.id}-note`}
 		aria-label={`Add a note: ${item.title}`}
 		class={LINK_BUTTON}
 	>
 		<PencilLine class="h-3.5 w-3.5" aria-hidden="true" />
-		{noteSendingIds.has(item.id) ? 'Reading note…' : 'Add a note'}
+		Add a note
 	</button>
 {/snippet}
 
@@ -760,7 +710,7 @@
 						variant="primary"
 						size="sm"
 						icon={Send}
-						onclick={() => sendNote(item)}
+						onclick={(event: MouseEvent) => sendNote(item, event)}
 						disabled={!noteText.trim()}
 						class="text-xs"
 					>
@@ -784,8 +734,8 @@
 				size="sm"
 				icon={RefreshCw}
 				onclick={reload}
-				loading={pending?.kind === 'reload'}
-				disabled={busy}
+				loading={reloading}
+				disabled={reloading}
 				class="mt-2 text-xs"
 			>
 				Try again
@@ -822,7 +772,6 @@
 					size="sm"
 					icon={Zap}
 					onclick={() => onTriage?.()}
-					disabled={busy}
 					class="mt-2 w-full text-xs sm:w-auto"
 				>
 					Triage {openCount} item{openCount === 1 ? '' : 's'} one at a time
@@ -860,76 +809,6 @@
 			{/if}
 		</div>
 
-		<div aria-live="polite" class="space-y-2">
-			{#if noteReplies.length}
-				<div class="rounded-md border border-accent/25 bg-accent/5 p-2.5">
-					<p class="micro-label text-accent">Your notes</p>
-					<ul class="mt-1 space-y-1">
-						{#each noteReplies as entry (entry.id)}
-							<li class="flex min-w-0 items-start gap-1.5 text-xs">
-								{#if entry.ok}
-									<MessageCircle
-										class="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent"
-										aria-hidden="true"
-									/>
-								{:else}
-									<X
-										class="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive"
-										aria-hidden="true"
-									/>
-								{/if}
-								<span class="min-w-0 break-words text-foreground">
-									<span class="font-semibold">{entry.title}:</span>
-									{entry.reply}
-								</span>
-							</li>
-						{/each}
-					</ul>
-				</div>
-			{/if}
-			{#if receipts.length}
-				<div class="rounded-md border border-border bg-muted/30 p-2.5">
-					<p class="micro-label text-muted-foreground">Just now</p>
-					<ul class="mt-1 space-y-1">
-						{#each receipts as receipt (receipt.id)}
-							<li class="flex min-w-0 items-start gap-1.5 text-xs">
-								{#if receipt.status === 'failed'}
-									<X
-										class="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive"
-										aria-hidden="true"
-									/>
-								{:else if receipt.status === 'changed'}
-									<AlertTriangle
-										class="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning"
-										aria-hidden="true"
-									/>
-								{:else if receipt.status === 'undone'}
-									<Undo2
-										class="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground"
-										aria-hidden="true"
-									/>
-								{:else}
-									<Check
-										class="mt-0.5 h-3.5 w-3.5 shrink-0 text-success"
-										aria-hidden="true"
-									/>
-								{/if}
-								<span class="min-w-0 break-words text-foreground">
-									<span class="font-semibold">{receiptLabel(receipt)}:</span>
-									{receipt.title}
-									{#if receipt.status === 'failed' && receipt.message}
-										<span class="text-muted-foreground"
-											>— {receipt.message}</span
-										>
-									{/if}
-								</span>
-							</li>
-						{/each}
-					</ul>
-				</div>
-			{/if}
-		</div>
-
 		{#if requestError}
 			<p
 				role="alert"
@@ -940,14 +819,24 @@
 		{/if}
 
 		{#if current.items.length === 0 && !pathEntries.length}
-			<div class="rounded-md border border-dashed border-border px-3 py-6 text-center">
+			<div
+				role="status"
+				class="rounded-md border border-dashed border-border px-3 py-6 text-center"
+			>
 				<CircleCheck class="mx-auto h-6 w-6 text-success" aria-hidden="true" />
-				<p class="mt-2 text-sm font-semibold text-foreground">
-					Nothing to clean up right now
-				</p>
-				<p class="mx-auto mt-1 max-w-sm text-xs text-muted-foreground">
-					New findings from reviews, audits and freshness checks gather here.
-				</p>
+				{#if allAnswered}
+					<p class="mt-2 text-sm font-semibold text-foreground">All answered</p>
+					<p class="mx-auto mt-1 max-w-sm text-xs text-muted-foreground">
+						Saving in the background. Anything that doesn't go through comes back here.
+					</p>
+				{:else}
+					<p class="mt-2 text-sm font-semibold text-foreground">
+						Nothing to clean up right now
+					</p>
+					<p class="mx-auto mt-1 max-w-sm text-xs text-muted-foreground">
+						New findings from reviews, audits and freshness checks gather here.
+					</p>
+				{/if}
 			</div>
 		{/if}
 
@@ -956,7 +845,6 @@
 			<section aria-labelledby={`${uid}-block-path`} class="min-w-0 space-y-2">
 				{@render blockHead('path', openPathCount)}
 				{#each pathEntries as entry (entry.key)}
-					{@const answered = answeredAsks.get(entry.key) ?? null}
 					{@const lead = entry.items[0] ?? null}
 					{@const changeRows = entry.items.flatMap((item) =>
 						item.rows.filter((row) => (row.verified_operations?.length ?? 0) > 0)
@@ -965,53 +853,45 @@
 						ask={entry.ask}
 						items={entry.items}
 						{canDecide}
-						disabled={busy || answering !== null}
-						loadingIndex={answering?.key === entry.key ? answering.index : null}
 						canApply={canApplyAsk(entry)}
-						answered={answered?.receipt ?? null}
-						error={askErrors.get(entry.key) ?? null}
 						meta={entry.fromItem && lead ? cleanupSeenLine(lead) : null}
 						{openingChat}
-						onAnswer={(answer, index) => answerAsk(entry, answer, index)}
+						onAnswer={(answer, _index, source) => answerAsk(entry, answer, source)}
 						onTalk={onDiscuss && lead ? () => onDiscuss?.(lead) : undefined}
 					>
 						{#snippet details()}
-							{#if !answered}
-								{@const cautions = [
-									...new Set(
-										entry.items.flatMap((item) => cleanupItemCautions(item))
-									)
-								]}
-								{#each entry.items as item (item.id)}
-									{@render changedBadge(item)}
-								{/each}
-								{#if cautions.length}
-									<ul class="mt-1.5 space-y-1" aria-label="Cautions">
-										{#each cautions as caution (caution)}
-											<li
-												class="flex items-start gap-1.5 rounded-md border border-warning/40 bg-warning/10 px-2 py-1 text-2xs text-foreground"
-											>
-												<AlertTriangle
-													class="mt-0.5 h-3 w-3 shrink-0 text-warning"
-													aria-hidden="true"
-												/>
-												<span class="min-w-0 break-words">{caution}</span>
-											</li>
-										{/each}
-									</ul>
-								{/if}
-								{#if changeRows.length}
-									{@render whatChanges(changeRows, changeRows.length > 1)}
-								{/if}
+							{@const cautions = [
+								...new Set(entry.items.flatMap((item) => cleanupItemCautions(item)))
+							]}
+							{#each entry.items as item (item.id)}
+								{@render changedBadge(item)}
+							{/each}
+							{#if cautions.length}
+								<ul class="mt-1.5 space-y-1" aria-label="Cautions">
+									{#each cautions as caution (caution)}
+										<li
+											class="flex items-start gap-1.5 rounded-md border border-warning/40 bg-warning/10 px-2 py-1 text-2xs text-foreground"
+										>
+											<AlertTriangle
+												class="mt-0.5 h-3 w-3 shrink-0 text-warning"
+												aria-hidden="true"
+											/>
+											<span class="min-w-0 break-words">{caution}</span>
+										</li>
+									{/each}
+								</ul>
+							{/if}
+							{#if changeRows.length}
+								{@render whatChanges(changeRows, changeRows.length > 1)}
 							{/if}
 						{/snippet}
 						{#snippet actions()}
-							{#if entry.fromItem && lead && !answered}
+							{#if entry.fromItem && lead}
 								{@render noteToggle(lead)}
 							{/if}
 						{/snippet}
 						{#snippet footer()}
-							{#if entry.fromItem && lead && !answered}
+							{#if entry.fromItem && lead}
 								{@render noteBox(lead)}
 							{/if}
 						{/snippet}
@@ -1042,7 +922,6 @@
 							type="checkbox"
 							checked={pickedCount === pickIds.length}
 							indeterminate={pickedCount > 0 && pickedCount < pickIds.length}
-							disabled={busy}
 							onchange={(event) => toggleGroup(pickIds, event.currentTarget.checked)}
 							class="h-4 w-4 rounded border-border-strong text-accent focus:ring-accent"
 						/>
@@ -1053,7 +932,6 @@
 					{#each blocks.tidy as item (item.id)}
 						{@const selectable = canDecide && isCleanupItemSelectable(item)}
 						{@const itemDomId = `${uid}-item-${item.id}`}
-						{@const itemBusy = pending?.itemId === item.id}
 						<li
 							class="rounded-md border p-2.5 shadow-ink-inner {selected.has(item.id)
 								? 'border-accent/40 bg-accent/5'
@@ -1068,7 +946,6 @@
 											id={`${itemDomId}-pick`}
 											type="checkbox"
 											checked={selected.has(item.id)}
-											disabled={busy}
 											aria-labelledby={`${itemDomId}-title`}
 											onchange={(event) =>
 												toggle(item.id, event.currentTarget.checked)}
@@ -1109,9 +986,8 @@
 												variant="ghost"
 												size="sm"
 												icon={X}
-												onclick={() => markNotNeeded(item)}
-												disabled={busy || noteSendingIds.has(item.id)}
-												loading={itemBusy && pending?.kind === 'dismiss'}
+												onclick={(event: MouseEvent) =>
+													markNotNeeded(item, 'Not needed', event)}
 												aria-label={`Not needed: ${item.title}`}
 												class="text-xs"
 											>
@@ -1128,7 +1004,8 @@
 				</ul>
 				{#if canDecide && readyIds.length}
 					<div
-						class="sticky bottom-0 z-10 -mx-1 flex flex-col gap-2 rounded-md border border-border bg-card/95 p-2 shadow-ink backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between"
+						style="bottom: calc(var(--cleared-pile-offset, 0px) + 0.5rem)"
+						class="sticky z-10 -mx-1 flex flex-col gap-2 rounded-md border border-border bg-card/95 p-2 shadow-ink backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:pl-3"
 					>
 						<p class="text-2xs text-muted-foreground">
 							Anything you don't pick stays here for later.
@@ -1138,7 +1015,7 @@
 								variant="outline"
 								size="sm"
 								onclick={selectAllReady}
-								disabled={busy || allReadySelected}
+								disabled={allReadySelected}
 								class="text-xs"
 							>
 								Select all ready
@@ -1147,14 +1024,11 @@
 								variant="primary"
 								size="sm"
 								icon={Check}
-								onclick={applySelected}
-								disabled={busy || selectedItems.length === 0}
-								loading={pending?.kind === 'apply' && pending.itemId === null}
+								onclick={(event: MouseEvent) => applySelected(event)}
+								disabled={selectedItems.length === 0}
 								class="text-xs"
 							>
-								{pending?.kind === 'apply' && pending.itemId === null
-									? 'Applying…'
-									: `Apply ${selectedItems.length} selected`}
+								Apply {selectedItems.length} selected
 							</Button>
 						</div>
 					</div>
@@ -1168,7 +1042,6 @@
 				{@render blockHead('stale', blocks.stale.length)}
 				<ul class="space-y-2">
 					{#each blocks.stale as item (item.id)}
-						{@const itemBusy = pending?.itemId === item.id}
 						<li
 							class="rounded-md border border-border bg-background p-2.5 shadow-ink-inner"
 						>
@@ -1237,9 +1110,8 @@
 											variant="outline"
 											size="sm"
 											icon={Check}
-											onclick={() => applyOne(item)}
-											disabled={busy || !isCleanupItemSelectable(item)}
-											loading={itemBusy && pending?.kind === 'apply'}
+											onclick={(event: MouseEvent) => applyOne(item, event)}
+											disabled={!isCleanupItemSelectable(item)}
 											aria-label={`Update it: ${item.title}`}
 											class="text-xs"
 										>
@@ -1250,9 +1122,7 @@
 											variant="outline"
 											size="sm"
 											icon={Check}
-											onclick={() => markDone(item)}
-											disabled={busy}
-											loading={itemBusy && pending?.kind === 'address'}
+											onclick={(event: MouseEvent) => markDone(item, event)}
 											aria-label={`Already handled: ${item.title}`}
 											class="text-xs"
 										>
@@ -1263,9 +1133,8 @@
 										variant="ghost"
 										size="sm"
 										icon={X}
-										onclick={() => markNotNeeded(item)}
-										disabled={busy || noteSendingIds.has(item.id)}
-										loading={itemBusy && pending?.kind === 'dismiss'}
+										onclick={(event: MouseEvent) =>
+											markNotNeeded(item, 'Not needed', event)}
 										aria-label={`Not needed: ${item.title}`}
 										class="text-xs"
 									>
@@ -1299,7 +1168,6 @@
 				{@render blockHead('offer', blocks.offers.length)}
 				<ul class="space-y-2">
 					{#each blocks.offers as item (item.id)}
-						{@const itemBusy = pending?.itemId === item.id}
 						<li
 							class="rounded-md border border-border bg-background p-2.5 shadow-ink-inner"
 						>
@@ -1319,7 +1187,7 @@
 											size="sm"
 											icon={MessageCircle}
 											onclick={() => onDiscuss?.(item)}
-											disabled={busy || openingChat}
+											disabled={openingChat}
 											aria-label={`Yes, ask me: ${item.title}`}
 											class="text-xs"
 										>
@@ -1329,9 +1197,8 @@
 									<Button
 										variant="ghost"
 										size="sm"
-										onclick={() => markNotNeeded(item, 'Not for this project')}
-										disabled={busy}
-										loading={itemBusy && pending?.kind === 'dismiss'}
+										onclick={(event: MouseEvent) =>
+											markNotNeeded(item, 'Not for this project', event)}
 										aria-label={`Not for this project: ${item.title}`}
 										class="text-xs"
 									>
@@ -1389,7 +1256,7 @@
 									size="sm"
 									icon={Undo2}
 									onclick={() => undoAutoApplied(entry)}
-									disabled={busy || undoingId !== null}
+									disabled={undoingId !== null}
 									loading={undoingId === entry.suggestion_id}
 									aria-label={`Undo: ${entry.title}`}
 									class="shrink-0 text-xs"
@@ -1443,7 +1310,7 @@
 							size="sm"
 							icon={MessageCircle}
 							onclick={() => onDiscuss?.(null)}
-							disabled={busy || openingChat}
+							disabled={openingChat}
 							loading={openingChat}
 							class="text-xs"
 						>
@@ -1456,7 +1323,7 @@
 							size="sm"
 							icon={Clock3}
 							onclick={() => onSnooze?.()}
-							disabled={busy || snoozing}
+							disabled={snoozing}
 							loading={snoozing}
 							title="Snooze until tomorrow"
 							class="text-xs"

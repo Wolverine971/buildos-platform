@@ -12,7 +12,8 @@ const mocks = vi.hoisted(() => ({
 	loadVisibleProjects: vi.fn()
 }));
 
-vi.mock('../ontology/ontology-projects.service', () => ({
+vi.mock('../ontology/ontology-projects.service', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../ontology/ontology-projects.service')>()),
 	ensureActorId: mocks.ensureActorId
 }));
 
