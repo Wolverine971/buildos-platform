@@ -495,10 +495,10 @@ describe('ProjectDesktop', () => {
 		// A task changes state in one tap; the list and tiles catch up.
 		await fireEvent.click(screen.getByRole('tab', { name: /Tasks/ }));
 		await fireEvent.click(screen.getByRole('button', { name: 'Call Ana' }));
+		// The status row's Done (the header no longer carries a check).
 		const markDone = (await screen.findByRole('button', {
-			name: 'Mark done'
+			name: 'Done'
 		})) as HTMLButtonElement;
-		// The reader renders this control before its full task has loaded.
 		await waitFor(() => expect(markDone.disabled).toBe(false));
 		await fireEvent.click(markDone);
 		await waitFor(() =>

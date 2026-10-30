@@ -22,6 +22,7 @@
 	import ReaderPanes from './ReaderPanes.svelte';
 	import ReaderDocTree from './ReaderDocTree.svelte';
 	import ReaderTaskList from './ReaderTaskList.svelte';
+	import { treeWithoutRemoved, withoutRemoved } from './reader-removals.svelte';
 	import { groupTasksForReader, taskReaderOrder } from './reader-task-groups';
 	import type { ChatScope, ReaderItem, ReaderKind } from './reader-model';
 
@@ -54,7 +55,7 @@
 	const canWrite = $derived(card ? card.project.can_write : data.canWrite);
 	const projectName = $derived(card?.project.name || data.projectName || 'Project');
 
-	const tree = $derived(card ? visibleDocumentTree(card.project) : []);
+	const tree = $derived(card ? treeWithoutRemoved(visibleDocumentTree(card.project)) : []);
 	const titles = $derived(new Map(card?.project.documents.map((doc) => [doc.id, doc.title])));
 	const tableIds = $derived(
 		new Set(
@@ -63,7 +64,7 @@
 				.map((doc) => doc.id)
 		)
 	);
-	const taskGroups = $derived(groupTasksForReader(card?.project.tasks ?? []));
+	const taskGroups = $derived(groupTasksForReader(withoutRemoved(card?.project.tasks ?? [])));
 	const openTaskCount = $derived(
 		taskGroups.reduce(
 			(total, group) => total + (group.key === 'done' ? 0 : group.tasks.length),

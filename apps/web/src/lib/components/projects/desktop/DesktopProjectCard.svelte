@@ -37,6 +37,8 @@
 	import { isTableTypeKey, type LoadedTable } from '@buildos/shared-agent-ops/tables';
 	import { untrack } from 'svelte';
 	import { MediaQuery } from 'svelte/reactivity';
+	import { prefersReducedMotion } from 'svelte/motion';
+	import { slide } from 'svelte/transition';
 	import { resolve } from '$app/paths';
 	import { PROJECT_STATE_META, normalizeProjectState } from '$lib/config/project-states';
 	import {
@@ -54,6 +56,7 @@
 	import { SCHEDULED_TASK_MOVES_ENABLED, isDatedTask, type DesktopCard } from './desktop-moves';
 	import type { DesktopItem } from './desktop-rules';
 	import ReaderPanes from './ReaderPanes.svelte';
+	import { treeWithoutRemoved, withoutRemoved } from './reader-removals.svelte';
 	import { createCardChats, type CardChat } from './desktop-chats.svelte';
 	import type { ChatScope, ReaderItem, ReaderKind, ResumedChat } from './reader-model';
 
@@ -127,7 +130,8 @@
 	const look = $derived(lookUp(project.id));
 	const now = Date.now();
 
-	const tree = $derived(data ? visibleDocumentTree(data.project) : []);
+	// Archived or deleted items leave every list at once, before the server answers.
+	const tree = $derived(data ? treeWithoutRemoved(visibleDocumentTree(data.project)) : []);
 	const titles = $derived(new Map(data?.project.documents.map((doc) => [doc.id, doc.title])));
 	const tableDocIds = $derived(
 		new Set(
@@ -137,10 +141,11 @@
 		)
 	);
 	const tasks = $derived(
-		[...(data?.project.tasks ?? [])].sort(
+		[...withoutRemoved(data?.project.tasks ?? [])].sort(
 			(a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at)
 		)
 	);
+	const goals = $derived(withoutRemoved(data?.goals ?? []));
 	const openTasks = $derived(tasks.filter((task) => task.state_key !== 'done'));
 	const doneTasks = $derived(tasks.filter((task) => task.state_key === 'done'));
 	// The same split as the tile's T bar, from the card's fresher task list.
@@ -183,7 +188,7 @@
 						{
 							key: 'goals' as const,
 							label: 'Goals',
-							count: data ? data.goals.length : project.goal_count
+							count: data ? goals.length : project.goal_count
 						}
 					]),
 			{
@@ -309,21 +314,17 @@
 		if (kind === 'document') return docOrder;
 		if (kind === 'task')
 			return [...openTasks, ...(showDone ? doneTasks : [])].map((task) => task.id);
-		return (data?.goals ?? []).map((goal) => goal.id);
+		return goals.map((goal) => goal.id);
 	}
 
 	const knownIds = $derived(
-		new Set([
-			...docOrder,
-			...tasks.map((task) => task.id),
-			...(data?.goals ?? []).map((g) => g.id)
-		])
+		new Set([...docOrder, ...tasks.map((task) => task.id), ...goals.map((g) => g.id)])
 	);
 
 	function titleOf(item: ReaderItem): string {
 		if (item.kind === 'document') return titles.get(item.id) ?? '';
 		if (item.kind === 'task') return tasks.find((task) => task.id === item.id)?.title ?? '';
-		return data?.goals.find((goal) => goal.id === item.id)?.name ?? '';
+		return goals.find((goal) => goal.id === item.id)?.name ?? '';
 	}
 
 	// A doc opened from Prev/Next may sit in a collapsed folder: open the way to it.
@@ -701,13 +702,18 @@
 					{:else}
 						<div class="empty-drop">No tasks yet.</div>
 					{/if}
-				{:else if data.goals.length}
+				{:else if goals.length}
 					<p class="hint">
 						Click a goal to open it. Goals stay with their project for now.
 					</p>
-					{#each data.goals as goal (goal.id)}
+					{#each goals as goal (goal.id)}
 						{@const selected = reader?.kind === 'goal' && reader.id === goal.id}
-						<div class="row" class:sel={selected} data-row-id={goal.id}>
+						<div
+							class="row"
+							class:sel={selected}
+							data-row-id={goal.id}
+							out:slide={{ duration: prefersReducedMotion.current ? 0 : 160 }}
+						>
 							<span></span>
 							<Target class="h-4 w-4 text-accent" />
 							<button
@@ -858,6 +864,7 @@
 		class="row"
 		class:sel={selected}
 		data-row-id={task.id}
+		out:slide={{ duration: prefersReducedMotion.current ? 0 : 160 }}
 		class:lifted={lifted === `task:${task.id}`}
 		data-drag-kind={movable ? 'task' : undefined}
 		data-drag-id={movable ? task.id : undefined}

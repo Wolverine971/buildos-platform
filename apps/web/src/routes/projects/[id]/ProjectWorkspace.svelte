@@ -37,6 +37,10 @@
 	import ReaderPanes from '$lib/components/projects/desktop/ReaderPanes.svelte';
 	import ReaderTaskList from '$lib/components/projects/desktop/ReaderTaskList.svelte';
 	import {
+		treeWithoutRemoved,
+		withoutRemoved
+	} from '$lib/components/projects/desktop/reader-removals.svelte';
+	import {
 		groupTasksForReader,
 		taskReaderOrder
 	} from '$lib/components/projects/desktop/reader-task-groups';
@@ -326,7 +330,7 @@
 	const readingWide = $derived(Boolean(readerItem) && !phone);
 	const readerHasList = $derived(activeTab === 'docs' || activeTab === 'work');
 
-	const taskGroups = $derived(groupTasksForReader(tasks));
+	const taskGroups = $derived(groupTasksForReader(withoutRemoved(tasks)));
 	const docOrder = $derived.by(() => {
 		const ids: string[] = [];
 		const walk = (nodes: { id: string; children?: unknown[] }[]) => {
@@ -335,7 +339,11 @@
 				walk((node.children ?? []) as { id: string; children?: unknown[] }[]);
 			}
 		};
-		walk((docTreeStructure?.root ?? []) as { id: string; children?: unknown[] }[]);
+		walk(
+			treeWithoutRemoved(
+				(docTreeStructure?.root ?? []) as { id: string; children?: { id: string }[] }[]
+			) as { id: string; children?: unknown[] }[]
+		);
 		return ids;
 	});
 
@@ -430,7 +438,7 @@
 	);
 
 	const activeGoals = $derived(
-		goals.filter(
+		withoutRemoved(goals).filter(
 			(goal) => !goal.deleted_at && !['achieved', 'abandoned'].includes(goal.state_key)
 		)
 	);

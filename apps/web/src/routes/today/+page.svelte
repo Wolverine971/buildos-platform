@@ -39,6 +39,7 @@
 		ReaderKind
 	} from '$lib/components/projects/desktop/reader-model';
 	import { todayTaskOrder } from '$lib/components/today/today-task-order';
+	import { withoutRemoved } from '$lib/components/projects/desktop/reader-removals.svelte';
 	import {
 		AlertCircle,
 		ArrowUpRight,
@@ -312,7 +313,9 @@
 			};
 		}
 
-		const taskById = new Map(feed.tasks.map((task) => [task.id, task]));
+		// Archived or deleted tasks leave the agenda at once.
+		const feedTasks = withoutRemoved(feed.tasks);
+		const taskById = new Map(feedTasks.map((task) => [task.id, task]));
 		const scheduledTaskIds = new Set<string>();
 		for (const event of feed.events) {
 			if (event.task_id && taskById.has(event.task_id)) {
@@ -342,7 +345,7 @@
 		}
 
 		const anytime: TodayTask[] = [];
-		for (const task of feed.tasks) {
+		for (const task of feedTasks) {
 			if (scheduledTaskIds.has(task.id)) continue;
 			if (task.bucket === 'due_today' && task.due_at && hasClockTime(task.due_at, 'end')) {
 				schedule.push({
@@ -406,7 +409,7 @@
 	}
 
 	const openTaskCount = $derived(
-		feed ? feed.tasks.filter((task) => !doneIds.has(task.id)).length : 0
+		feed ? withoutRemoved(feed.tasks).filter((task) => !doneIds.has(task.id)).length : 0
 	);
 	const eventCount = $derived(feed ? feed.events.length : 0);
 

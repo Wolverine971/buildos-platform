@@ -1,17 +1,20 @@
 <!-- apps/web/src/lib/components/projects/desktop/DesktopReader.svelte -->
 <!--
-	The card's reader: one doc, task or goal, read in place. Docs edit in place
-	(autosaved, with the doc modal's conflict check); a task changes state in one
-	tap; task and goal details open their usual editors. The header carries
+	The card's reader: one doc, task or goal, read and edited in place. Facts
+	(state, priority, dates) change in one click from their chips. The pencil (E)
+	makes the title and the body or description editable, autosaved (docs with
+	the doc modal's conflict check). "All details" opens the full editor for the
+	rest (assignees, repeats, links, comments). Bottom left archives (a goal:
+	deletes) with Undo, and the reader moves to the next item. The header carries
 	Prev/Next and the depth toggles (list, focus, full page). On phones the same
 	actions sit in a thumb bar, and the handle (data-sheet-drag) drags the sheet.
-	A doc's "All details" opens the full doc editor (archive, add child, comments,
-	links); a task lists the docs made for it, which open here too.
+	A task lists the docs made for it, which open here too.
 -->
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { tick, untrack, type Snippet } from 'svelte';
 	import { resolve } from '$app/paths';
 	import {
+		Archive,
 		ArrowUpRight,
 		Check,
 		ChevronDown,
@@ -22,6 +25,8 @@
 		CircleCheck,
 		CircleDot,
 		CircleSlash,
+		Edit3,
+		Eye,
 		FilePlus,
 		FileText,
 		FolderKanban,
@@ -29,12 +34,16 @@
 		Minimize2,
 		PanelLeftClose,
 		PanelLeftOpen,
+		PanelRightClose,
+		PanelRightOpen,
 		Pencil,
 		RefreshCw,
 		Table2 as Table,
 		Target,
+		Trash2,
 		X
 	} from '$lib/icons/lucide';
+	import { prefersReducedMotion } from 'svelte/motion';
 	import { toastService } from '$lib/stores/toast.store';
 	import {
 		getProseClasses,
@@ -54,6 +63,22 @@
 	import TaskMentionText from '$lib/components/task-entities/TaskMentionText.svelte';
 	import { entityMentions } from '$lib/components/task-entities/entity-mentions';
 	import { TaskEntities } from '$lib/components/task-entities/task-entities.svelte';
+	import ReaderChip from './ReaderChip.svelte';
+	import {
+		DATE_PRESETS,
+		DOC_STATES,
+		GOAL_PRIORITIES,
+		GOAL_STATES,
+		TASK_PRIORITIES,
+		dayOf,
+		optimisticTimestamp,
+		optionLabel,
+		presetDay,
+		removalFor,
+		taskPriorityLabel,
+		valueForDay
+	} from './reader-edit';
+	import { removeWithUndo } from './reader-removals.svelte';
 	import {
 		KIND_WORD,
 		TASK_STATES,
@@ -71,6 +96,7 @@
 		state_key: string;
 		type_key?: string | null;
 		updated_at: string;
+		created_at?: string;
 	};
 	type TaskData = {
 		id: string;
@@ -81,6 +107,10 @@
 		due_at: string | null;
 		start_at: string | null;
 		updated_at: string;
+		created_at?: string;
+		completed_at?: string | null;
+		props?: Record<string, unknown> | null;
+		assignees?: { actor_id?: string | null; name?: string | null; email?: string | null }[];
 	};
 	type GoalData = {
 		id: string;
@@ -90,6 +120,7 @@
 		target_date: string | null;
 		props?: { priority?: string | null; description?: string | null } | null;
 		updated_at: string;
+		created_at?: string;
 	};
 	/** A doc made for the task, as listed under it (it opens here). */
 	type TaskDocSummary = { id: string; title: string; state_key: string };
@@ -204,7 +235,7 @@
 		}
 		seededKey = null;
 		// An open editor keeps its text; it saves against the version it opened.
-		if (untrack(() => editing && loaded?.key === k)) return;
+		if (untrack(() => (editing || titleEditing) && loaded?.key === k)) return;
 		const controller = new AbortController();
 		loadError = '';
 		fetchEntityModalData(kind, id, controller.signal, { withTaskDocuments: true })
@@ -223,10 +254,6 @@
 	const title = $derived(
 		current?.doc?.title ?? current?.task?.title ?? current?.goal?.name ?? fallbackTitle
 	);
-	const stateKey = $derived(
-		current?.doc?.state_key ?? current?.task?.state_key ?? current?.goal?.state_key ?? ''
-	);
-
 	// People, organizations and places in the task's words open a card; key details sit on top.
 	const taskEntities = new TaskEntities(() => ({
 		taskId: current?.task?.id ?? null,
@@ -330,41 +357,111 @@
 		void editorApi?.insertAtCursor(tableEmbedInsertion(table.id));
 	}
 
-	// ---------- Doc editing ----------
+	// ---------- Editing ----------
 
+	// The pencil (E) makes the open item's words editable in place: its title,
+	// and a doc's body or a task's or goal's description. Edits autosave; a doc
+	// saves against the version it opened (the doc modal's conflict check).
 	type SaveState = 'saved' | 'unsaved' | 'saving' | 'conflict' | 'error';
+	type PendingSave = {
+		kind: ReaderItem['kind'];
+		id: string;
+		title: string;
+		body: string;
+		overwrite: boolean;
+	};
+	const ENDPOINT: Record<ReaderItem['kind'], string> = {
+		document: 'documents',
+		task: 'tasks',
+		goal: 'goals'
+	};
 	let editing = $state(false);
 	let editingKey = '';
 	let draft = $state('');
+	let titleDraft = $state('');
+	// What the server last took, so a save sends only what changed.
+	let savedTitle = '';
+	let savedBody = '';
 	let saveState = $state<SaveState>('saved');
 	let serverUpdatedAt: string | null = null;
 	let serverRevision: string | null = null;
 	let saveTimer: ReturnType<typeof setTimeout> | null = null;
-	let pendingSave: { docId: string; content: string; overwrite: boolean } | null = null;
+	let pendingSave: PendingSave | null = null;
 	let inFlight = false;
 	const SAVE_DEBOUNCE_MS = 1500;
 
 	type EditorComponent = typeof import('$lib/components/ui/RichMarkdownEditor.svelte').default;
 	let Editor = $state<EditorComponent | null>(null);
 
-	async function startEdit() {
-		const doc = current?.doc;
-		if (!doc || !canWrite || editing) return;
-		draft = doc.content ?? '';
-		serverUpdatedAt = doc.updated_at;
-		serverRevision = current?.revision ?? null;
+	const canEdit = $derived(canWrite && Boolean(current) && !isTable);
+
+	function goalDescription(goal: GoalData): string {
+		return goal.description ?? goal.props?.description ?? '';
+	}
+
+	// Two edits, apart: the title (its pencil, in the header) and the body or
+	// description (the Edit tab on the text). One session and one save path
+	// serve both, so a save sends only what changed.
+	let titleEditing = $state(false);
+	let titleInput = $state<HTMLInputElement | null>(null);
+
+	/** Open a session on the open item, or join the one already open. */
+	function beginSession(): boolean {
+		if (editing || titleEditing) return editingKey === key;
+		const open = current;
+		if (!open || !canWrite || isTable) return false;
+		if (open.doc) {
+			draft = open.doc.content ?? '';
+			titleDraft = open.doc.title ?? '';
+			serverUpdatedAt = open.doc.updated_at;
+			serverRevision = open.revision ?? null;
+		} else if (open.task) {
+			draft = open.task.description ?? '';
+			titleDraft = open.task.title ?? '';
+		} else if (open.goal) {
+			draft = goalDescription(open.goal);
+			titleDraft = open.goal.name ?? '';
+		} else {
+			return false;
+		}
+		savedTitle = titleDraft;
+		savedBody = draft;
 		saveState = 'saved';
-		editing = true;
 		editingKey = key;
+		return true;
+	}
+
+	function endSessionIfIdle() {
+		if (!editing && !titleEditing) editingKey = '';
+	}
+
+	// The editor's code loads when the pointer reaches Edit, so the switch is instant.
+	function preloadEditor() {
+		if (!Editor) {
+			void import('$lib/components/ui/RichMarkdownEditor.svelte').then(
+				(module) => (Editor ??= module.default)
+			);
+		}
+	}
+
+	/** The text's Edit tab (or E): the body or description becomes the editor. */
+	async function startEdit() {
+		if (editing || !beginSession()) return;
+		editing = true;
 		if (phone) onDetent?.('full');
 		Editor ??= (await import('$lib/components/ui/RichMarkdownEditor.svelte')).default;
 	}
 
 	function scheduleSave() {
-		if (!editing) return;
-		saveState = saveState === 'conflict' ? 'conflict' : 'unsaved';
-		if (saveState === 'conflict') return;
-		pendingSave = { docId: item.id, content: draft, overwrite: false };
+		if (!(editing || titleEditing) || saveState === 'conflict') return;
+		saveState = 'unsaved';
+		pendingSave = {
+			kind: item.kind,
+			id: item.id,
+			title: titleDraft,
+			body: draft,
+			overwrite: false
+		};
 		if (saveTimer) clearTimeout(saveTimer);
 		saveTimer = setTimeout(() => void flush(), SAVE_DEBOUNCE_MS);
 	}
@@ -379,53 +476,148 @@
 		const next = pendingSave;
 		pendingSave = null;
 		if (!next) return;
+		const isDoc = next.kind === 'document';
+		const nextKey = `${next.kind}:${next.id}`;
+		// A title can't be emptied here; an empty one keeps the last saved title.
+		const title = next.title.trim();
+		const titleChanged = Boolean(title) && title !== savedTitle.trim();
+		const bodyChanged = next.overwrite || next.body !== savedBody;
+		const payload: Record<string, unknown> = {};
+		if (titleChanged) payload[next.kind === 'goal' ? 'name' : 'title'] = title;
+		if (bodyChanged) payload[isDoc ? 'content' : 'description'] = next.body;
+		if (!titleChanged && !bodyChanged) {
+			saveState = 'saved';
+			return;
+		}
+		if (isDoc && !next.overwrite && serverUpdatedAt) {
+			payload.expected_updated_at = serverUpdatedAt;
+			if (serverRevision) payload.expected_editor_revision = serverRevision;
+		}
 		inFlight = true;
 		saveState = 'saving';
 		try {
-			const payload: Record<string, unknown> = { content: next.content };
-			if (!next.overwrite && serverUpdatedAt) {
-				payload.expected_updated_at = serverUpdatedAt;
-				if (serverRevision) payload.expected_editor_revision = serverRevision;
-			}
-			const response = await fetch(`/api/onto/documents/${next.docId}`, {
+			const response = await fetch(`/api/onto/${ENDPOINT[next.kind]}/${next.id}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(payload)
 			});
 			const result = await response.json().catch(() => null);
-			if (response.status === 409) {
+			if (isDoc && response.status === 409) {
 				saveState = 'conflict';
 				return;
 			}
-			if (!response.ok) throw new Error(result?.error || 'Could not save this doc.');
-			const doc = result?.data?.document as Partial<DocData> | undefined;
-			if (doc?.updated_at) serverUpdatedAt = doc.updated_at;
-			serverRevision = result?.data?.editor_revision ?? null;
-			if (loaded?.key === `document:${next.docId}` && loaded.doc) {
-				loaded = {
-					...loaded,
-					doc: { ...loaded.doc, ...doc, content: next.content },
-					revision: serverRevision
-				};
+			if (!response.ok) {
+				throw new Error(result?.error || `Could not save this ${KIND_WORD[next.kind]}.`);
 			}
+			const stillEditing = editingKey === nextKey;
+			if (stillEditing) {
+				if (titleChanged) savedTitle = title;
+				if (bodyChanged) savedBody = next.body;
+			}
+			if (isDoc && stillEditing) {
+				const doc = result?.data?.document as Partial<DocData> | undefined;
+				if (doc?.updated_at) serverUpdatedAt = doc.updated_at;
+				serverRevision = result?.data?.editor_revision ?? null;
+			}
+			mergeSaved(nextKey, result?.data, {
+				title: titleChanged ? title : undefined,
+				body: bodyChanged ? next.body : undefined
+			});
 			saveState = pendingSave ? 'unsaved' : 'saved';
+			// A new title shows in the list too.
+			if (titleChanged) onChanged();
 		} catch (cause) {
 			saveState = 'error';
-			toastService.error(cause instanceof Error ? cause.message : 'Could not save this doc.');
+			toastService.error(
+				cause instanceof Error
+					? cause.message
+					: `Could not save this ${KIND_WORD[next.kind]}.`
+			);
 		} finally {
 			inFlight = false;
 		}
 	}
 
+	/** Fold a save into what the reader shows (the server's row, then what was sent). */
+	function mergeSaved(
+		k: string,
+		data: Record<string, any> | null | undefined,
+		sent: { title?: string; body?: string }
+	) {
+		if (loaded?.key !== k) return;
+		if (loaded.doc) {
+			loaded = {
+				...loaded,
+				doc: {
+					...loaded.doc,
+					...(data?.document ?? {}),
+					...(sent.title !== undefined ? { title: sent.title } : {}),
+					...(sent.body !== undefined ? { content: sent.body } : {})
+				},
+				revision: data?.editor_revision ?? null
+			};
+		} else if (loaded.task) {
+			loaded = {
+				...loaded,
+				task: {
+					...loaded.task,
+					...(data?.task ?? {}),
+					...(sent.title !== undefined ? { title: sent.title } : {}),
+					...(sent.body !== undefined ? { description: sent.body } : {})
+				}
+			};
+		} else if (loaded.goal) {
+			loaded = {
+				...loaded,
+				goal: {
+					...loaded.goal,
+					...(data?.goal ?? {}),
+					...(sent.title !== undefined ? { name: sent.title } : {}),
+					...(sent.body !== undefined ? { description: sent.body } : {})
+				}
+			};
+		}
+	}
+
+	/** Back to Preview: save, then show the text as it reads. */
 	async function finishEdit() {
 		await flush();
 		if (saveState === 'conflict' || saveState === 'error') return;
 		editing = false;
-		editingKey = '';
+		endSessionIfIdle();
+	}
+
+	/** The title's pencil: only the title becomes editable. */
+	async function startTitleEdit() {
+		if (titleEditing || !beginSession()) return;
+		titleEditing = true;
+		await tick();
+		titleInput?.focus();
+		titleInput?.select();
+	}
+
+	async function finishTitleEdit() {
+		if (!titleEditing) return;
+		titleEditing = false;
+		await flush();
+		endSessionIfIdle();
+	}
+
+	function cancelTitleEdit() {
+		titleDraft = savedTitle;
+		titleEditing = false;
+		if (pendingSave) pendingSave = { ...pendingSave, title: savedTitle };
+		endSessionIfIdle();
 	}
 
 	function keepMine() {
-		pendingSave = { docId: item.id, content: draft, overwrite: true };
+		pendingSave = {
+			kind: item.kind,
+			id: item.id,
+			title: titleDraft,
+			body: draft,
+			overwrite: true
+		};
 		saveState = 'unsaved';
 		void flush();
 	}
@@ -433,18 +625,32 @@
 	function takeLatest() {
 		pendingSave = null;
 		editing = false;
+		titleEditing = false;
 		editingKey = '';
 		saveState = 'saved';
 		reloadTick += 1;
+	}
+
+	function titleKeydown(event: KeyboardEvent) {
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			void finishTitleEdit();
+		} else if (event.key === 'Escape') {
+			// Esc here only cancels the rename; the reader stays open.
+			event.preventDefault();
+			event.stopPropagation();
+			cancelTitleEdit();
+		}
 	}
 
 	// Moving to another item saves the open edit first.
 	$effect(() => {
 		const k = key;
 		untrack(() => {
-			if (editing && editingKey && editingKey !== k) {
+			if ((editing || titleEditing) && editingKey && editingKey !== k) {
 				void flush();
 				editing = false;
+				titleEditing = false;
 				editingKey = '';
 			}
 		});
@@ -458,20 +664,83 @@
 		error: 'Not saved'
 	};
 
-	// ---------- Tasks and goals ----------
+	// ---------- Facts: one click, no edit mode ----------
 
 	let taskBusy = $state(false);
-	// 'document' opens the open doc's full editor; 'task-doc' starts a doc for the open task.
+	// The full editors stay one click away ("All details") for what the reader
+	// doesn't carry: assignees, repeats, tags, links, comments, activity.
+	// 'task-doc' starts a doc for the open task.
 	let detailEditor = $state<'task' | 'goal' | 'document' | 'task-doc' | null>(null);
 
-	async function openDocDetails() {
+	async function openDetails() {
+		if (titleEditing) await finishTitleEdit();
 		if (editing) await finishEdit();
 		if (editing) return;
-		detailEditor = 'document';
+		detailEditor = item.kind;
 	}
 
 	// The docs made for a task (its old Workspace tab) come with the task's read.
 	const taskDocList = $derived(current?.taskDocs ?? []);
+
+	type EntitySlot = 'doc' | 'task' | 'goal';
+	const SLOT: Record<ReaderItem['kind'], EntitySlot> = {
+		document: 'doc',
+		task: 'task',
+		goal: 'goal'
+	};
+
+	/**
+	 * Change a few fields now and save them behind the scenes: `shown` is how
+	 * the change reads until the server answers with its own values.
+	 */
+	async function patchFacts(fields: Record<string, unknown>, shown: Record<string, unknown>) {
+		const open = current;
+		if (!open || !canWrite) return;
+		const { kind, id } = item;
+		const k = key;
+		const slot = SLOT[kind];
+		const before = open[slot] as Record<string, unknown> | undefined;
+		if (!before) return;
+		const keys = Object.keys(shown);
+		const apply = (patch: Record<string, unknown>) => {
+			if (loaded?.key !== k) return;
+			const entity = loaded[slot] as Record<string, unknown> | undefined;
+			if (entity) loaded = { ...loaded, [slot]: { ...entity, ...patch } } as Loaded;
+		};
+		apply(shown);
+		try {
+			const response = await fetch(`/api/onto/${ENDPOINT[kind]}/${id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(fields)
+			});
+			const result = await response.json().catch(() => null);
+			if (!response.ok) throw new Error(result?.error || `Could not update this ${word}.`);
+			const saved = result?.data?.[kind === 'document' ? 'document' : kind];
+			if (saved && typeof saved === 'object') {
+				apply(
+					Object.fromEntries(
+						[...keys, 'updated_at']
+							.filter((field) => field in saved)
+							.map((field) => [field, saved[field]])
+					)
+				);
+			}
+			onChanged();
+		} catch (cause) {
+			apply(Object.fromEntries(keys.map((field) => [field, before[field]])));
+			toastService.error(
+				cause instanceof Error ? cause.message : `Could not update this ${word}.`
+			);
+		}
+	}
+
+	function setDate(field: 'start_at' | 'due_at' | 'target_date', value: string | null) {
+		void patchFacts(
+			{ [field]: value },
+			{ [field]: optimisticTimestamp(value, field === 'start_at' ? 'start' : 'end') }
+		);
+	}
 
 	async function setTaskState(next: string) {
 		const task = current?.task;
@@ -508,6 +777,128 @@
 	function detailsChanged() {
 		reloadTick += 1;
 		onChanged();
+	}
+
+	// ---------- Details panel ----------
+
+	// What the full editors keep in their drawer (assignees, links, comments,
+	// activity…) opens beside the item. Open or shut is remembered here.
+	const DETAILS_KEY = 'buildos:reader-details-open';
+	function readDetailsOpen(): boolean {
+		try {
+			return localStorage.getItem(DETAILS_KEY) === '1';
+		} catch {
+			return false;
+		}
+	}
+	let detailsOpen = $state(readDetailsOpen());
+	type DetailsComponent = typeof import('./ReaderDetailsPanel.svelte').default;
+	let DetailsPanel = $state<DetailsComponent | null>(null);
+	$effect(() => {
+		if (detailsOpen && !DetailsPanel) {
+			void import('./ReaderDetailsPanel.svelte').then(
+				(module) => (DetailsPanel = module.default)
+			);
+		}
+	});
+	const showDetails = $derived(detailsOpen && Boolean(current) && !isTable);
+
+	function toggleDetails() {
+		detailsOpen = !detailsOpen;
+		try {
+			localStorage.setItem(DETAILS_KEY, detailsOpen ? '1' : '0');
+		} catch {
+			// Storage can be off (private mode); the panel still opens.
+		}
+	}
+
+	async function saveAssignees(actorIds: string[]): Promise<boolean> {
+		const task = current?.task;
+		if (!task || !canWrite) return false;
+		const k = key;
+		try {
+			const response = await fetch(`/api/onto/tasks/${task.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ assignee_actor_ids: actorIds })
+			});
+			const result = await response.json().catch(() => null);
+			if (!response.ok) throw new Error(result?.error || 'Could not change the assignees.');
+			const saved = result?.data?.task;
+			if (saved && loaded?.key === k && loaded.task) {
+				loaded = {
+					...loaded,
+					task: {
+						...loaded.task,
+						assignees: saved.assignees ?? loaded.task.assignees,
+						updated_at: saved.updated_at ?? loaded.task.updated_at
+					}
+				};
+			}
+			onChanged();
+			return true;
+		} catch (cause) {
+			toastService.error(
+				cause instanceof Error ? cause.message : 'Could not change the assignees.'
+			);
+			return false;
+		}
+	}
+
+	// A linked doc, task or goal opens here; a plan opens its editor.
+	let linkedPlanId = $state<string | null>(null);
+	function openLinked(kind: string, id: string) {
+		if (kind === 'task' || kind === 'document' || kind === 'goal') onOpen?.({ kind, id });
+		else if (kind === 'plan') linkedPlanId = id;
+	}
+
+	// ---------- Archive / delete (bottom left) ----------
+
+	// The item leaves at once and the reader moves to the next one; the change
+	// is sent after the Undo window (see reader-removals).
+	const removal = $derived(removalFor(item.kind, item.id));
+	let leaving = $state(false);
+	let arriving = $state(false);
+	let mounted = true;
+	$effect(() => () => {
+		mounted = false;
+	});
+
+	function pause(ms: number): Promise<void> {
+		return new Promise((done) => setTimeout(done, prefersReducedMotion.current ? 0 : ms));
+	}
+
+	async function removeItem() {
+		if (!canWrite || !current || leaving) return;
+		if (titleEditing) await finishTitleEdit();
+		if (editing) await finishEdit();
+		if (editing) return;
+		const target: ReaderItem = { kind: item.kind, id: item.id };
+		const action = removalFor(target.kind, target.id);
+		const nextId = near.next ?? near.prev;
+		const name = title.trim() || 'Untitled';
+		leaving = true;
+		removeWithUndo({
+			id: target.id,
+			message: `${action.done} “${name}”`,
+			failMessage: `Could not ${action.label.toLowerCase()} “${name}”. It's back in the list.`,
+			request: action.request,
+			// Undo brings it back where you were reading.
+			onUndo: () => {
+				if (mounted) onOpen?.(target);
+			},
+			onSent: onChanged
+		});
+		await pause(160);
+		leaving = false;
+		if (!nextId) {
+			onClose();
+			return;
+		}
+		arriving = true;
+		onStep(nextId);
+		await pause(220);
+		arriving = false;
 	}
 
 	// ---------- Shared ----------
@@ -553,14 +944,11 @@
 			void finishEdit();
 			return true;
 		}
-		if (
-			(event.key === 'e' || event.key === 'E') &&
-			!editing &&
-			item.kind === 'document' &&
-			canWrite &&
-			current?.doc &&
-			!isTable
-		) {
+		if ((event.key === 'd' || event.key === 'D') && current && !isTable) {
+			toggleDetails();
+			return true;
+		}
+		if ((event.key === 'e' || event.key === 'E') && !editing && canEdit) {
 			void startEdit();
 			return true;
 		}
@@ -600,15 +988,40 @@
 				/>{/if}
 		</span>
 		<div class="min-w-0 flex-1">
-			<h3 class="title">
-				{#if current?.task}<TaskMentionText
-						text={title}
-						entities={taskEntities}
-					/>{:else}{title}{/if}
-			</h3>
+			{#if titleEditing}
+				<input
+					bind:this={titleInput}
+					class="title title-input"
+					bind:value={titleDraft}
+					oninput={scheduleSave}
+					onkeydown={titleKeydown}
+					onblur={() => void finishTitleEdit()}
+					placeholder="{word[0]?.toUpperCase()}{word.slice(1)} title"
+					aria-label="{word[0]?.toUpperCase()}{word.slice(1)} title"
+					maxlength={500}
+				/>
+			{:else}
+				<div class="title-row">
+					<h3 class="title">
+						{#if current?.task}<TaskMentionText
+								text={title}
+								entities={taskEntities}
+							/>{:else}{title}{/if}
+					</h3>
+					{#if canEdit}
+						<button
+							type="button"
+							class="title-pencil"
+							onclick={() => void startTitleEdit()}
+							aria-label="Rename this {word}"
+							title="Rename"
+						>
+							<Pencil class="h-3.5 w-3.5" />
+						</button>
+					{/if}
+				</div>
+			{/if}
 			<div class="meta">
-				{#if stateKey}<span class="state state-{stateKey}">{stateLabel(stateKey)}</span
-					>{/if}
 				{#if current?.doc}<span>Updated {shortDate(current.doc.updated_at)}</span>{/if}
 				{#if current?.task?.due_at}<span class:due-late={overdue}
 						>Due {shortDate(current.task.due_at)}</span
@@ -623,17 +1036,6 @@
 						<FolderKanban class="h-3 w-3 shrink-0" aria-hidden="true" />
 						<span class="truncate">{projectName}</span>
 					</a>
-				{/if}
-				{#if editing}<span class="save save-{saveState}">{SAVE_LABEL[saveState]}</span>{/if}
-				{#if item.kind === 'document' && current?.doc}
-					<button
-						type="button"
-						class="meta-link"
-						onclick={() => void openDocDetails()}
-						title="Archive, add a nested doc, comments, links and Document Interact"
-					>
-						All details
-					</button>
 				{/if}
 			</div>
 		</div>
@@ -687,32 +1089,6 @@
 				>
 					<img src="/brain-bolt.webp" alt="" class="h-5 w-5 rounded object-cover" />
 				</button>
-				{#if item.kind === 'document' && canWrite && !isTable}
-					<button
-						type="button"
-						class="ib"
-						onclick={() => (editing ? finishEdit() : startEdit())}
-						aria-pressed={editing}
-						disabled={!current?.doc}
-						title={editing ? 'Finish editing (Esc)' : 'Edit (E)'}
-						aria-label={editing ? 'Finish editing' : 'Edit'}
-					>
-						<Pencil class="h-4 w-4" />
-					</button>
-				{:else if item.kind === 'task' && canWrite}
-					<button
-						type="button"
-						class="ib"
-						onclick={() =>
-							setTaskState(current?.task?.state_key === 'done' ? 'todo' : 'done')}
-						aria-pressed={current?.task?.state_key === 'done'}
-						disabled={!current?.task || taskBusy}
-						title={current?.task?.state_key === 'done' ? 'Reopen' : 'Mark done'}
-						aria-label={current?.task?.state_key === 'done' ? 'Reopen' : 'Mark done'}
-					>
-						<Check class="h-4 w-4" />
-					</button>
-				{/if}
 				{#if canShowList}
 					<button
 						type="button"
@@ -752,231 +1128,415 @@
 		{/if}
 	</header>
 
-	<div
-		class="body"
-		class:table-body={isTable}
-		class:across={!phone && !listShown}
-		data-autoscroll
-	>
-		{#if !current}
-			{#if loadError}
-				<div class="note" role="alert">
-					<span>{loadError}</span>
-					<button type="button" class="act" onclick={() => (reloadTick += 1)}>
-						<RefreshCw class="h-3.5 w-3.5" /> Try again
-					</button>
-				</div>
-			{:else}
-				<div class="grid gap-2" aria-busy="true" aria-label="Loading">
-					<div
-						class="h-6 w-2/3 animate-pulse rounded bg-muted motion-reduce:animate-none"
-					></div>
-					{#each [0, 1, 2, 3, 4] as index (index)}
-						<div
-							class="h-4 animate-pulse rounded bg-muted motion-reduce:animate-none"
-						></div>
-					{/each}
-				</div>
-			{/if}
-		{:else if current.doc && isTable}
-			{#if Workspace}
-				<Workspace
-					documentId={current.doc.id}
-					{projectId}
-					layout={phone ? 'sheet' : 'panel'}
-					readonly={!canWrite}
-					onAsk={askAboutTable}
-				/>
-			{:else}
-				<div
-					class="m-4 h-64 animate-pulse rounded-lg bg-muted motion-reduce:animate-none"
-					aria-busy="true"
-					aria-label="Loading table"
-				></div>
-			{/if}
-		{:else if current.doc}
-			{#if editing}
-				{#if saveState === 'conflict'}
+	<div class="main">
+		<div
+			class="body"
+			class:table-body={isTable}
+			class:across={!phone && !listShown}
+			class:leaving
+			class:arriving
+			data-autoscroll
+		>
+			{#if !current}
+				{#if loadError}
 					<div class="note" role="alert">
-						<span
-							>This doc changed somewhere else since you opened it. Your text is still
-							below.</span
-						>
-						<span class="flex flex-wrap gap-2">
-							<button type="button" class="act" onclick={takeLatest}
-								>Load the latest</button
-							>
-							<button type="button" class="act" onclick={keepMine}>Keep mine</button>
-						</span>
+						<span>{loadError}</span>
+						<button type="button" class="act" onclick={() => (reloadTick += 1)}>
+							<RefreshCw class="h-3.5 w-3.5" /> Try again
+						</button>
+					</div>
+				{:else}
+					<div class="grid gap-2" aria-busy="true" aria-label="Loading">
+						<div
+							class="h-6 w-2/3 animate-pulse rounded bg-muted motion-reduce:animate-none"
+						></div>
+						{#each [0, 1, 2, 3, 4] as index (index)}
+							<div
+								class="h-4 animate-pulse rounded bg-muted motion-reduce:animate-none"
+							></div>
+						{/each}
 					</div>
 				{/if}
-				<div class="editor">
-					{#if Editor}
-						<Editor
-							bind:this={editorApi}
-							bind:value={draft}
-							onDocChange={(next: string) => {
-								draft = next;
-								scheduleSave();
-							}}
-							onSave={() => void flush()}
-							onInsertTableRequested={() => (tablePickerOpen = true)}
-							embedProjectId={projectId}
-							maxLength={50000}
-							helpText=""
-							fillHeight={true}
-						/>
-					{:else}
+			{:else if current.doc && isTable}
+				{#if Workspace}
+					<Workspace
+						documentId={current.doc.id}
+						{projectId}
+						layout={phone ? 'sheet' : 'panel'}
+						readonly={!canWrite}
+						onAsk={askAboutTable}
+					/>
+				{:else}
+					<div
+						class="m-4 h-64 animate-pulse rounded-lg bg-muted motion-reduce:animate-none"
+						aria-busy="true"
+						aria-label="Loading table"
+					></div>
+				{/if}
+			{:else if current.doc}
+				{@const doc = current.doc}
+				<div class="lead">
+					<div class="facts">
+						<ReaderChip
+							label={optionLabel(
+								DOC_STATES,
+								doc.state_key,
+								stateLabel(doc.state_key)
+							)}
+							title="Doc state"
+							editable={canWrite}
+							disabled={editing}
+						>
+							{#snippet picker(close: () => void)}
+								{#each DOC_STATES as option (option.value)}
+									<button
+										type="button"
+										class="opt"
+										aria-pressed={doc.state_key === option.value}
+										onclick={() => {
+											close();
+											if (doc.state_key !== option.value)
+												void patchFacts(
+													{ state_key: option.value },
+													{ state_key: option.value }
+												);
+										}}>{option.label}</button
+									>
+								{/each}
+							{/snippet}
+						</ReaderChip>
+					</div>
+					{@render editControl()}
+				</div>
+				{#snippet docText()}
+					{#if doc.content?.trim()}
+						{@const bodyHtml = renderDocumentMarkdown(doc.content, { projectId })}
 						<div
-							class="h-64 animate-pulse rounded-lg bg-muted motion-reduce:animate-none"
-						></div>
-					{/if}
-				</div>
-			{:else if current.doc.content?.trim()}
-				{@const bodyHtml = renderDocumentMarkdown(current.doc.content, { projectId })}
-				<div
-					class="{prose} text-foreground"
-					{@attach documentEmbeds({
-						projectId,
-						html: bodyHtml,
-						onMakeLiveTable: canWrite ? handleMakeLiveTable : undefined,
-						onOpenTable: (tableId) => onStep(tableId)
-					})}
-				>
-					{@html bodyHtml}
-				</div>
-			{:else}
-				<p class="muted">
-					This doc is empty.{canWrite ? ' Edit it to start writing.' : ''}
-				</p>
-			{/if}
-		{:else if current.task}
-			{@const task = current.task}
-			{#if canWrite}
-				<div class="states" role="group" aria-label="Task state">
-					{#each TASK_STATES as entry (entry.key)}
-						<button
-							type="button"
-							aria-pressed={task.state_key === entry.key}
-							disabled={taskBusy}
-							onclick={() => setTaskState(entry.key)}
+							class="{prose} text-foreground"
+							{@attach documentEmbeds({
+								projectId,
+								html: bodyHtml,
+								onMakeLiveTable: canWrite ? handleMakeLiveTable : undefined,
+								onOpenTable: (tableId) => onStep(tableId)
+							})}
 						>
-							{#if entry.key === 'done'}<CircleCheck
-									class="h-3.5 w-3.5"
-								/>{:else if entry.key === 'in_progress'}<CircleDot
-									class="h-3.5 w-3.5"
-								/>{:else if entry.key === 'blocked'}<CircleSlash
-									class="h-3.5 w-3.5"
-								/>{:else}<Circle class="h-3.5 w-3.5" />{/if}
-							{entry.label}
+							{@html bodyHtml}
+						</div>
+					{:else if canEdit}
+						<button type="button" class="add-words" onclick={() => void startEdit()}>
+							<Pencil class="h-3.5 w-3.5" /> This doc is empty. Start writing
 						</button>
-					{/each}
+					{:else}
+						<p class="muted">This doc is empty.</p>
+					{/if}
+				{/snippet}
+				{@render textFrame(true, docText)}
+			{:else if current.task}
+				{@const task = current.task}
+				<div class="lead">
+					<div class="states" role="group" aria-label="Task state">
+						{#each TASK_STATES as entry (entry.key)}
+							<button
+								type="button"
+								class="state-{entry.key}"
+								aria-pressed={task.state_key === entry.key}
+								disabled={!canWrite || taskBusy}
+								onclick={() => setTaskState(entry.key)}
+							>
+								{#if entry.key === 'done'}<CircleCheck
+										class="h-3.5 w-3.5"
+									/>{:else if entry.key === 'in_progress'}<CircleDot
+										class="h-3.5 w-3.5"
+									/>{:else if entry.key === 'blocked'}<CircleSlash
+										class="h-3.5 w-3.5"
+									/>{:else}<Circle class="h-3.5 w-3.5" />{/if}
+								{entry.label}
+							</button>
+						{/each}
+					</div>
+					{@render editControl()}
 				</div>
-			{/if}
-			<div class="facts">
-				{#if task.priority != null}<span class="tag">Priority {task.priority}</span>{/if}
-				{#if task.start_at}<span class="tag">Starts {shortDate(task.start_at)}</span>{/if}
-				{#if task.due_at}
-					<span class="tag" class:late={overdue}
-						>Due {shortDate(task.due_at)}{overdue ? ' · overdue' : ''}</span
+				<div class="facts">
+					{#if canWrite || task.priority != null}
+						<ReaderChip
+							label={task.priority != null
+								? taskPriorityLabel(task.priority)
+								: '+ Priority'}
+							empty={task.priority == null}
+							title="Priority"
+							editable={canWrite}
+						>
+							{#snippet picker(close: () => void)}
+								{#each TASK_PRIORITIES as option (option.value)}
+									<button
+										type="button"
+										class="opt"
+										aria-pressed={task.priority === option.value}
+										onclick={() => {
+											close();
+											if (task.priority !== option.value)
+												void patchFacts(
+													{ priority: option.value },
+													{ priority: option.value }
+												);
+										}}
+										>{option.label}<span class="opt-note">{option.note}</span
+										></button
+									>
+								{/each}
+							{/snippet}
+						</ReaderChip>
+					{/if}
+					{#if canWrite || task.start_at}
+						<ReaderChip
+							label={task.start_at
+								? `Starts ${shortDate(task.start_at)}`
+								: '+ Start date'}
+							empty={!task.start_at}
+							title="Start date"
+							editable={canWrite}
+						>
+							{#snippet picker(close: () => void)}
+								{@render datePicker(close, task.start_at, (value) =>
+									setDate('start_at', value)
+								)}
+							{/snippet}
+						</ReaderChip>
+					{/if}
+					{#if canWrite || task.due_at}
+						<ReaderChip
+							label={task.due_at
+								? `Due ${shortDate(task.due_at)}${overdue ? ' · overdue' : ''}`
+								: '+ Due date'}
+							empty={!task.due_at}
+							late={overdue}
+							title="Due date"
+							editable={canWrite}
+						>
+							{#snippet picker(close: () => void)}
+								{@render datePicker(close, task.due_at, (value) =>
+									setDate('due_at', value)
+								)}
+							{/snippet}
+						</ReaderChip>
+					{/if}
+					<span class="tag">Updated {shortDate(task.updated_at)}</span>
+				</div>
+				{#if !editing}
+					<TaskKeyDetails
+						chips={taskEntities.keyChips}
+						entities={taskEntities}
+						class="-mt-2 mb-4"
+					/>
+				{/if}
+				{#snippet taskText()}
+					{#if task.description?.trim()}
+						{@const descriptionHtml = renderTaskMarkdown(task.description)}
+						<div
+							class="{prose} text-foreground"
+							{@attach entityMentions({
+								html: descriptionHtml,
+								targets: taskEntities.targets,
+								onOpen: (id, trigger) => taskEntities.openCardFor(id, trigger)
+							})}
+						>
+							{@html descriptionHtml}
+						</div>
+					{:else if canEdit}
+						<button type="button" class="add-words" onclick={() => void startEdit()}>
+							<Pencil class="h-3.5 w-3.5" /> Add a description
+						</button>
+					{:else}
+						<p class="muted">No description.</p>
+					{/if}
+				{/snippet}
+				{@render textFrame(false, taskText)}
+				<section class="task-docs" aria-label="Docs for this task">
+					<div class="task-docs-head">
+						<span class="micro">Docs for this task</span>
+						{#if taskDocList.length}<span class="count">{taskDocList.length}</span>{/if}
+						{#if canWrite}
+							<button
+								type="button"
+								class="act"
+								onclick={() => (detailEditor = 'task-doc')}
+							>
+								<FilePlus class="h-3.5 w-3.5" /> New doc
+							</button>
+						{/if}
+					</div>
+					{#if taskDocList.length}
+						<ul>
+							{#each taskDocList as entry (entry.id)}
+								<li>
+									<button
+										type="button"
+										onclick={() => onOpen?.({ kind: 'document', id: entry.id })}
+									>
+										<FileText class="h-4 w-4 shrink-0 text-muted-foreground" />
+										<span class="truncate">{entry.title || 'Untitled'}</span>
+										{#if entry.state_key}
+											<span class="tag">{stateLabel(entry.state_key)}</span>
+										{/if}
+									</button>
+								</li>
+							{/each}
+						</ul>
+					{:else}
+						<p class="muted">
+							None yet. Notes, drafts and research for this task live here.
+						</p>
+					{/if}
+				</section>
+			{:else if current.goal}
+				{@const goal = current.goal}
+				{@const description = goalDescription(goal)}
+				{@const goalPriority = goal.props?.priority ?? null}
+				<div class="facts lead">
+					<ReaderChip
+						label={optionLabel(GOAL_STATES, goal.state_key, stateLabel(goal.state_key))}
+						title="Goal state"
+						editable={canWrite}
 					>
-				{/if}
-				<span class="tag">Updated {shortDate(task.updated_at)}</span>
-				{#if canWrite}
-					<button type="button" class="act" onclick={() => (detailEditor = 'task')}>
-						<Pencil class="h-3.5 w-3.5" /> Edit details
-					</button>
-				{/if}
-			</div>
-			<TaskKeyDetails chips={taskEntities.keyChips} entities={taskEntities} class="-mt-2 mb-4" />
-			{#if task.description?.trim()}
-				{@const descriptionHtml = renderTaskMarkdown(task.description)}
-				<div
-					class="{prose} text-foreground"
-					{@attach entityMentions({
-						html: descriptionHtml,
-						targets: taskEntities.targets,
-						onOpen: (id, trigger) => taskEntities.openCardFor(id, trigger)
-					})}
-				>
-					{@html descriptionHtml}
-				</div>
-			{:else}
-				<p class="muted">No description.</p>
-			{/if}
-			<section class="task-docs" aria-label="Docs for this task">
-				<div class="task-docs-head">
-					<span class="micro">Docs for this task</span>
-					{#if taskDocList.length}<span class="count">{taskDocList.length}</span>{/if}
-					{#if canWrite}
-						<button
-							type="button"
-							class="act"
-							onclick={() => (detailEditor = 'task-doc')}
-						>
-							<FilePlus class="h-3.5 w-3.5" /> New doc
-						</button>
-					{/if}
-				</div>
-				{#if taskDocList.length}
-					<ul>
-						{#each taskDocList as entry (entry.id)}
-							<li>
+						{#snippet picker(close: () => void)}
+							{#each GOAL_STATES as option (option.value)}
 								<button
 									type="button"
-									onclick={() => onOpen?.({ kind: 'document', id: entry.id })}
+									class="opt"
+									aria-pressed={goal.state_key === option.value}
+									onclick={() => {
+										close();
+										if (goal.state_key !== option.value)
+											void patchFacts(
+												{ state_key: option.value },
+												{ state_key: option.value }
+											);
+									}}>{option.label}</button
 								>
-									<FileText class="h-4 w-4 shrink-0 text-muted-foreground" />
-									<span class="truncate">{entry.title || 'Untitled'}</span>
-									{#if entry.state_key}
-										<span class="tag">{stateLabel(entry.state_key)}</span>
-									{/if}
-								</button>
-							</li>
-						{/each}
-					</ul>
-				{:else}
-					<p class="muted">
-						None yet. Notes, drafts and research for this task live here.
-					</p>
-				{/if}
-			</section>
-		{:else if current.goal}
-			{@const goal = current.goal}
-			{@const description = goal.description ?? goal.props?.description ?? ''}
-			<div class="facts">
-				{#if goal.props?.priority}<span class="tag">{goal.props.priority} priority</span
-					>{/if}
-				<span class="tag"
-					>{goal.target_date
-						? `Target ${shortDate(goal.target_date)}`
-						: 'No target date'}</span
-				>
-				<span class="tag">Updated {shortDate(goal.updated_at)}</span>
-				{#if canWrite}
-					<button type="button" class="act" onclick={() => (detailEditor = 'goal')}>
-						<Pencil class="h-3.5 w-3.5" /> Edit goal
-					</button>
-				{/if}
-			</div>
-			{#if description.trim()}
-				<div class="{prose} text-foreground">{@html renderMarkdown(description)}</div>
-			{:else}
-				<p class="muted">No description.</p>
+							{/each}
+						{/snippet}
+					</ReaderChip>
+					{#if canWrite || goalPriority}
+						<ReaderChip
+							label={goalPriority
+								? `${optionLabel(GOAL_PRIORITIES, goalPriority, goalPriority)} priority`
+								: '+ Priority'}
+							empty={!goalPriority}
+							title="Priority"
+							editable={canWrite}
+						>
+							{#snippet picker(close: () => void)}
+								{#each GOAL_PRIORITIES as option (option.value)}
+									<button
+										type="button"
+										class="opt"
+										aria-pressed={goalPriority === option.value}
+										onclick={() => {
+											close();
+											if (goalPriority !== option.value)
+												void patchFacts(
+													{ priority: option.value },
+													{
+														props: {
+															...(goal.props ?? {}),
+															priority: option.value
+														}
+													}
+												);
+										}}>{option.label}</button
+									>
+								{/each}
+							{/snippet}
+						</ReaderChip>
+					{/if}
+					<ReaderChip
+						label={goal.target_date
+							? `Target ${shortDate(goal.target_date)}`
+							: canWrite
+								? '+ Target date'
+								: 'No target date'}
+						empty={!goal.target_date}
+						title="Target date"
+						editable={canWrite}
+					>
+						{#snippet picker(close: () => void)}
+							{@render datePicker(close, goal.target_date, (value) =>
+								setDate('target_date', value)
+							)}
+						{/snippet}
+					</ReaderChip>
+					<span class="tag">Updated {shortDate(goal.updated_at)}</span>
+					{@render editControl()}
+				</div>
+				{#snippet goalText()}
+					{#if description.trim()}
+						<div class="{prose} text-foreground">
+							{@html renderMarkdown(description)}
+						</div>
+					{:else if canEdit}
+						<button type="button" class="add-words" onclick={() => void startEdit()}>
+							<Pencil class="h-3.5 w-3.5" /> Add a description
+						</button>
+					{:else}
+						<p class="muted">No description.</p>
+					{/if}
+				{/snippet}
+				{@render textFrame(false, goalText)}
 			{/if}
+		</div>
+		{#if showDetails && DetailsPanel && current}
+			{@const entity = current.task ?? current.goal ?? current.doc}
+			<div class="details-col">
+				{#key key}
+					<DetailsPanel
+						kind={item.kind}
+						id={item.id}
+						{projectId}
+						{canWrite}
+						{title}
+						props={(current.task?.props ?? null) as Record<string, unknown> | null}
+						assignees={current.task?.assignees ?? []}
+						createdAt={entity?.created_at ?? null}
+						completedAt={current.task?.state_key === 'done'
+							? (current.task.completed_at ?? null)
+							: null}
+						onAssignees={item.kind === 'task' ? saveAssignees : undefined}
+						onOpenLinked={openLinked}
+						onLinksChanged={detailsChanged}
+						onAllDetails={() => void openDetails()}
+						onClose={toggleDetails}
+					/>
+				{/key}
+			</div>
 		{/if}
 	</div>
 
 	{#if !phone}
 		<footer class="keys">
-			<span><kbd>↑</kbd> <kbd>↓</kbd> walk the list</span>
-			{#if canShowList}<span><kbd>F</kbd> focus</span>{/if}
-			{#if item.kind === 'document' && canWrite && !isTable}<span><kbd>E</kbd> edit</span
-				>{/if}
-			<span><kbd>Esc</kbd> back out</span>
+			{#if canWrite && current}
+				<button
+					type="button"
+					class="remove"
+					disabled={leaving}
+					onclick={() => void removeItem()}
+					title="{removal.label} this {word}. You can undo it for a few seconds."
+				>
+					{#if removal.label === 'Delete'}<Trash2 class="h-3.5 w-3.5" />{:else}<Archive
+							class="h-3.5 w-3.5"
+						/>{/if}
+					{removal.label}
+				</button>
+			{/if}
+			<span class="hints">
+				<span><kbd>↑</kbd> <kbd>↓</kbd> walk the list</span>
+				{#if canShowList}<span><kbd>F</kbd> focus</span>{/if}
+				{#if canEdit}<span><kbd>E</kbd> edit</span>{/if}
+				{#if current && !isTable}<span><kbd>D</kbd> details</span>{/if}
+				<span><kbd>Esc</kbd> back out</span>
+			</span>
 		</footer>
 	{:else}
-		<nav class="bar" aria-label="{word} actions">
+		<nav class="bar" class:with-remove={canWrite} aria-label="{word} actions">
 			<button
 				type="button"
 				disabled={!near.prev}
@@ -985,6 +1545,19 @@
 			>
 				<ChevronLeft class="h-5 w-5" />
 			</button>
+			{#if canWrite}
+				<button
+					type="button"
+					class="remove"
+					disabled={!current || leaving}
+					onclick={() => void removeItem()}
+				>
+					{#if removal.label === 'Delete'}<Trash2 class="h-5 w-5" />{:else}<Archive
+							class="h-5 w-5"
+						/>{/if}
+					<span>{removal.label}</span>
+				</button>
+			{/if}
 			{#if item.kind === 'task' && canWrite}
 				<button
 					type="button"
@@ -996,22 +1569,10 @@
 					<Check class="h-5 w-5" />
 					<span>{current?.task?.state_key === 'done' ? 'Reopen' : 'Mark done'}</span>
 				</button>
-			{:else if item.kind === 'document' && canWrite && !isTable}
-				<button
-					type="button"
-					disabled={!current?.doc}
-					onclick={() => (editing ? finishEdit() : startEdit())}
-				>
+			{:else if canEdit}
+				<button type="button" onclick={() => (editing ? finishEdit() : startEdit())}>
 					{#if editing}<Check class="h-5 w-5" />{:else}<Pencil class="h-5 w-5" />{/if}
 					<span>{editing ? 'Finish' : 'Edit'}</span>
-				</button>
-			{:else if item.kind === 'goal' && canWrite}
-				<button
-					type="button"
-					disabled={!current?.goal}
-					onclick={() => (detailEditor = 'goal')}
-				>
-					<Pencil class="h-5 w-5" /><span>Edit</span>
 				</button>
 			{:else}
 				<span></span>
@@ -1040,6 +1601,150 @@
 		</nav>
 	{/if}
 </div>
+
+<!-- Edit sits at the end of the first row of the body, not in the header. -->
+{#snippet editControl()}
+	{#if current && !isTable}
+		<span class="edit-slot">
+			<button
+				type="button"
+				class="act"
+				onclick={toggleDetails}
+				aria-pressed={detailsOpen}
+				aria-label="Details"
+				title="Assignees, links, comments and activity (D)"
+			>
+				{#if detailsOpen}<PanelRightClose class="h-3.5 w-3.5" />{:else}<PanelRightOpen
+						class="h-3.5 w-3.5"
+					/>{/if}
+				{#if !phone}<span>Details</span>{/if}
+			</button>
+		</span>
+	{/if}
+{/snippet}
+
+<!--
+	The text in a frame with Edit | Preview, Preview first. Preview is the
+	reader's own rendering (names stay clickable, embeds live); Edit swaps in
+	the editor, whose Preview tab hands back here. The editor's code loads on
+	the way to Edit, never with the page.
+-->
+{#snippet textFrame(isDoc: boolean, preview: Snippet)}
+	{#if editing}
+		{@render bodyEditor(isDoc)}
+	{:else if canEdit}
+		<div class="sheet rounded-xl border border-border bg-card shadow-ink tx tx-frame tx-weak">
+			<div class="sheet-head border-b border-border bg-muted/30">
+				<div
+					class="inline-flex rounded-lg bg-muted/60 p-0.5 border border-border/50"
+					role="tablist"
+					aria-label="Text"
+				>
+					<button
+						type="button"
+						role="tab"
+						aria-label="Edit"
+						aria-selected="false"
+						class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground"
+						onpointerenter={preloadEditor}
+						onfocus={preloadEditor}
+						onclick={() => void startEdit()}
+					>
+						<Edit3 class="w-3.5 h-3.5" /><span>Edit</span>
+					</button>
+					<button
+						type="button"
+						role="tab"
+						aria-label="Preview"
+						aria-selected="true"
+						class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-card text-foreground shadow-ink"
+					>
+						<Eye class="w-3.5 h-3.5" /><span>Preview</span>
+					</button>
+				</div>
+			</div>
+			<div class="sheet-body">{@render preview()}</div>
+		</div>
+	{:else}
+		{@render preview()}
+	{/if}
+{/snippet}
+
+{#snippet bodyEditor(isDoc: boolean)}
+	{#if saveState === 'conflict'}
+		<div class="note" role="alert">
+			<span
+				>This doc changed somewhere else since you opened it. Your text is still below.</span
+			>
+			<span class="flex flex-wrap gap-2">
+				<button type="button" class="act" onclick={takeLatest}>Load the latest</button>
+				<button type="button" class="act" onclick={keepMine}>Keep mine</button>
+			</span>
+		</div>
+	{/if}
+	<div class="editor" class:short={!isDoc}>
+		{#if Editor}
+			<Editor
+				bind:this={editorApi}
+				bind:value={draft}
+				onDocChange={(next: string) => {
+					draft = next;
+					scheduleSave();
+				}}
+				onSave={() => void flush()}
+				onPreview={() => void finishEdit()}
+				statusLabel={SAVE_LABEL[saveState]}
+				onInsertTableRequested={isDoc ? () => (tablePickerOpen = true) : undefined}
+				embedProjectId={isDoc ? projectId : null}
+				maxLength={50000}
+				placeholder={isDoc ? undefined : 'What does done look like? Steps, links, notes…'}
+				helpText=""
+				fillHeight={isDoc}
+			/>
+		{:else}
+			<div class="h-64 animate-pulse rounded-lg bg-muted motion-reduce:animate-none"></div>
+		{/if}
+	</div>
+{/snippet}
+
+{#snippet datePicker(close: () => void, value: string | null, apply: (next: string | null) => void)}
+	{#each DATE_PRESETS as preset (preset.key)}
+		{@const day = presetDay(preset.key)}
+		<button
+			type="button"
+			class="opt"
+			aria-pressed={dayOf(value) === day}
+			onclick={() => {
+				close();
+				if (dayOf(value) !== day) apply(valueForDay(day, value));
+			}}>{preset.label}<span class="opt-note">{shortDate(`${day}T12:00:00`)}</span></button
+		>
+	{/each}
+	<div class="sep" role="separator"></div>
+	<form
+		class="pick-day"
+		onsubmit={(event) => {
+			event.preventDefault();
+			const day = new FormData(event.currentTarget).get('day');
+			if (typeof day !== 'string' || !day) return;
+			close();
+			if (day !== dayOf(value)) apply(valueForDay(day, value));
+		}}
+	>
+		<input type="date" name="day" value={dayOf(value)} aria-label="Pick a day" />
+		<button type="submit" class="set">Set</button>
+	</form>
+	{#if value}
+		<button
+			type="button"
+			class="opt clear"
+			onclick={() => {
+				close();
+				apply(null);
+			}}>Clear</button
+		>
+	{/if}
+{/snippet}
 
 {#if current?.task}
 	<TaskEntityPopover entities={taskEntities} taskId={current.task.id} canEdit={canWrite} />
@@ -1083,6 +1788,19 @@
 			onDeleted={() => {
 				onChanged();
 				onClose();
+			}}
+		/>
+	{/await}
+{:else if linkedPlanId}
+	{#await import('$lib/components/ontology/PlanEditModal.svelte') then { default: PlanEditModal }}
+		<PlanEditModal
+			planId={linkedPlanId}
+			{projectId}
+			onClose={() => (linkedPlanId = null)}
+			onUpdated={detailsChanged}
+			onDeleted={() => {
+				linkedPlanId = null;
+				detailsChanged();
 			}}
 		/>
 	{/await}
@@ -1167,37 +1885,8 @@
 		font-size: 11.5px;
 		color: hsl(var(--muted-foreground));
 	}
-	.state {
-		border-radius: 5px;
-		background: hsl(var(--muted));
-		padding: 1px 6px;
-		font-size: 10.5px;
-		font-weight: 700;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
-		color: hsl(var(--foreground));
-	}
-	.state-ready,
-	.state-published,
-	.state-done,
-	.state-in_progress {
-		color: hsl(var(--success));
-	}
-	.state-draft,
-	.state-in_review {
-		color: hsl(var(--warning));
-	}
-	.state-blocked {
+	.due-late {
 		color: hsl(var(--destructive));
-	}
-	.due-late,
-	.tag.late {
-		color: hsl(var(--destructive));
-	}
-	.save-conflict,
-	.save-error {
-		color: hsl(var(--destructive));
-		font-weight: 600;
 	}
 	.glyph {
 		display: grid;
@@ -1262,7 +1951,38 @@
 		margin: 0 4px;
 		background: hsl(var(--border));
 	}
+	/* The body, and the Details panel beside it (over it where the reader is narrow). */
+	.main {
+		position: relative;
+		display: flex;
+		flex: 1;
+		min-height: 0;
+		container-type: inline-size;
+	}
+	.details-col {
+		flex: none;
+		width: 300px;
+		min-height: 0;
+		border-left: 1px solid hsl(var(--border));
+	}
+	@container (max-width: 760px) {
+		.details-col {
+			position: absolute;
+			inset: 0 0 0 auto;
+			z-index: 6;
+			width: min(320px, 100%);
+			box-shadow: -12px 0 32px hsl(0 0% 0% / 0.22);
+		}
+	}
+	@container (max-width: 480px) {
+		.details-col {
+			width: 100%;
+			border-left: 0;
+			box-shadow: none;
+		}
+	}
 	.body {
+		min-width: 0;
 		flex: 1;
 		min-height: 0;
 		overflow-y: auto;
@@ -1288,6 +2008,25 @@
 		flex: 1;
 		min-height: 0;
 	}
+	/* Archive: the item slides off, the next one rises in. */
+	.body.leaving {
+		animation: leave 160ms ease-in forwards;
+	}
+	.body.arriving {
+		animation: arrive 200ms ease-out;
+	}
+	@keyframes leave {
+		to {
+			opacity: 0;
+			transform: translateX(-28px);
+		}
+	}
+	@keyframes arrive {
+		from {
+			opacity: 0;
+			transform: translateY(6px);
+		}
+	}
 	@keyframes rise {
 		from {
 			opacity: 0;
@@ -1302,6 +2041,44 @@
 		display: flex;
 		min-height: min(60dvh, 34rem);
 		flex-direction: column;
+	}
+	.editor.short {
+		min-height: 0;
+		margin-bottom: 8px;
+	}
+	.title-input {
+		display: block;
+		width: 100%;
+		border: 0;
+		border-bottom: 1px dashed hsl(var(--border-strong));
+		border-radius: 0;
+		background: transparent;
+		padding: 0 0 1px;
+	}
+	.phone .title-input {
+		display: block;
+	}
+	.title-input:focus {
+		outline: none;
+		border-bottom: 1px solid hsl(var(--accent));
+	}
+	.add-words {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		border-radius: 8px;
+		padding: 6px 8px;
+		margin-left: -8px;
+		font-size: 13.5px;
+		color: hsl(var(--muted-foreground));
+	}
+	.add-words:hover {
+		background: hsl(var(--muted));
+		color: hsl(var(--foreground));
+	}
+	.add-words:focus-visible {
+		outline: 2px solid hsl(var(--ring));
+		outline-offset: 1px;
 	}
 	.note {
 		display: grid;
@@ -1406,6 +2183,75 @@
 	.task-docs .tag {
 		margin-left: auto;
 	}
+	/* The body's first row: status (or a goal's or doc's facts) left, Edit far right. */
+	.lead {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 8px 12px;
+		margin-bottom: 12px;
+	}
+	.body > .lead {
+		max-width: none;
+	}
+	.body.across > .lead {
+		max-width: 72ch;
+	}
+	.lead > .states,
+	.lead > .facts {
+		margin-bottom: 0;
+	}
+	.facts.lead {
+		gap: 6px;
+		margin-bottom: 16px;
+	}
+	.edit-slot {
+		display: inline-flex;
+		align-items: center;
+		gap: 10px;
+		margin-left: auto;
+	}
+	.title-row {
+		display: flex;
+		min-width: 0;
+		align-items: center;
+		gap: 4px;
+	}
+	.title-row .title {
+		min-width: 0;
+	}
+	.title-pencil {
+		display: inline-grid;
+		flex: none;
+		place-items: center;
+		width: 24px;
+		height: 24px;
+		border-radius: 6px;
+		color: hsl(var(--muted-foreground) / 0.7);
+	}
+	.phone .title-pencil {
+		width: 36px;
+		height: 36px;
+	}
+	.title-pencil:hover {
+		background: hsl(var(--muted));
+		color: hsl(var(--foreground));
+	}
+	.title-pencil:focus-visible {
+		outline: 2px solid hsl(var(--ring));
+		outline-offset: 1px;
+	}
+	.sheet {
+		overflow: hidden;
+	}
+	.sheet-head {
+		display: flex;
+		align-items: center;
+		padding: 6px 8px;
+	}
+	.sheet-body {
+		padding: 16px;
+	}
 	.states {
 		display: inline-flex;
 		flex-wrap: wrap;
@@ -1429,10 +2275,33 @@
 	.phone .states button {
 		min-height: 40px;
 	}
-	.states button[aria-pressed='true'] {
-		background: hsl(var(--card));
+	.states button:hover:not(:disabled):not([aria-pressed='true']) {
 		color: hsl(var(--foreground));
-		box-shadow: 0 1px 2px hsl(0 0% 0% / 0.15);
+	}
+	.states button:disabled {
+		cursor: default;
+	}
+	/* The current status takes its color, so it reads at a glance in light and dark. */
+	.states button {
+		--tone: var(--foreground);
+	}
+	.states .state-in_progress,
+	.states .state-done {
+		--tone: var(--success);
+	}
+	.states .state-blocked {
+		--tone: var(--destructive);
+	}
+	.states button[aria-pressed='true'] {
+		background: hsl(var(--tone) / 0.16);
+		color: hsl(var(--tone));
+		font-weight: 700;
+		box-shadow: inset 0 0 0 1.5px hsl(var(--tone) / 0.6);
+	}
+	.states .state-done[aria-pressed='true'] {
+		background: hsl(var(--success));
+		color: hsl(var(--success-foreground));
+		box-shadow: none;
 	}
 	.facts {
 		display: flex;
@@ -1453,12 +2322,39 @@
 	.keys {
 		display: flex;
 		flex: none;
-		flex-wrap: wrap;
+		align-items: center;
 		gap: 4px 14px;
 		border-top: 1px solid hsl(var(--border));
-		padding: 7px 14px;
+		padding: 5px 14px 5px 8px;
 		font-size: 11.5px;
 		color: hsl(var(--muted-foreground));
+	}
+	.hints {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+		gap: 4px 14px;
+		margin-left: auto;
+	}
+	.keys .remove {
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		gap: 6px;
+		min-height: 28px;
+		border-radius: 7px;
+		padding: 0 8px;
+		font-size: 12px;
+		font-weight: 500;
+		color: hsl(var(--muted-foreground));
+	}
+	.keys .remove:hover:not(:disabled) {
+		background: hsl(var(--destructive) / 0.1);
+		color: hsl(var(--destructive));
+	}
+	.keys .remove:focus-visible {
+		outline: 2px solid hsl(var(--ring));
+		outline-offset: 1px;
 	}
 	kbd {
 		border-radius: 4px;
@@ -1494,6 +2390,12 @@
 	.bar > [aria-pressed='true'] {
 		color: hsl(var(--accent));
 	}
+	.bar.with-remove {
+		grid-template-columns: 52px repeat(4, minmax(0, 1fr)) 52px;
+	}
+	.bar .remove:active:not(:disabled) {
+		color: hsl(var(--destructive));
+	}
 	.bar .go {
 		background: hsl(var(--accent));
 		color: hsl(var(--accent-foreground));
@@ -1502,7 +2404,9 @@
 		opacity: 0.3;
 	}
 	@media (prefers-reduced-motion: reduce) {
-		.body {
+		.body,
+		.body.leaving,
+		.body.arriving {
 			animation: none;
 		}
 	}

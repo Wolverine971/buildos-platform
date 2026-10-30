@@ -39,6 +39,7 @@
 		copyTextToClipboard
 	} from '$lib/utils/public-page-url';
 	import DocTreeNode from './DocTreeNode.svelte';
+	import { treeWithoutRemoved } from '$lib/components/projects/desktop/reader-removals.svelte';
 	import DocTreeSkeleton from './DocTreeSkeleton.svelte';
 	import DocTreeContextMenu from './DocTreeContextMenu.svelte';
 	import UnlinkedDocuments from './UnlinkedDocuments.svelte';
@@ -399,7 +400,8 @@
 			archived.length > 0
 				? withoutArchivedNodes(structure.root, new Set(archived.map((doc) => doc.id)))
 				: structure.root;
-		return enrichTreeNodes(root, documents, 0, []);
+		// Docs archived from the reader leave at once (their children move up).
+		return enrichTreeNodes(treeWithoutRemoved(root), documents, 0, []);
 	});
 
 	/** Row-count pills for table nodes, read from props.table.row_count (no rows loaded). */

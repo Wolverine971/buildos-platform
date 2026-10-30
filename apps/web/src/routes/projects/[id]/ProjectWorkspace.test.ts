@@ -586,7 +586,7 @@ describe('ProjectWorkspace edge states', () => {
 		vi.clearAllMocks();
 	});
 
-	it('reads a goal in the reader, edits it in its form, and refreshes only that goal', async () => {
+	it('reads a goal in the reader, edits it in its full form, and refreshes only that goal', async () => {
 		const originalFetch = vi.mocked(fetch).getMockImplementation()!;
 		let goal = { ...goals(1)[0]!, name: 'Launch goal', project_id: PROJECT_ID };
 		vi.mocked(fetch).mockImplementation(async (input, init) => {
@@ -611,7 +611,10 @@ describe('ProjectWorkspace edge states', () => {
 				.mock.calls.filter(([url]) => String(url).includes(`/goals/${goal.id}/full`))
 		).toHaveLength(1);
 
-		await fireEvent.click(screen.getByRole('button', { name: /Edit goal/ }));
+		// The goal's full form opens from the Details panel (words and facts edit in place).
+		await fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+		await vi.dynamicImportSettled();
+		await fireEvent.click(await screen.findByRole('button', { name: 'Open the full editor' }));
 		await vi.dynamicImportSettled();
 		await fireEvent.input(await screen.findByDisplayValue('Launch goal'), {
 			target: { value: 'Updated launch goal' }

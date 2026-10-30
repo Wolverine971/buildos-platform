@@ -6,6 +6,8 @@
 -->
 <script lang="ts">
 	import { ChevronRight, Circle, CircleCheck, CircleDot, CircleSlash } from '$lib/icons/lucide';
+	import { prefersReducedMotion } from 'svelte/motion';
+	import { slide } from 'svelte/transition';
 	import './desktop-colors.css';
 	import { taskBucket } from './desktop-signals';
 	import type { TaskGroup } from './reader-task-groups';
@@ -72,6 +74,7 @@
 					class:sel={selected}
 					data-row-id={task.id}
 					aria-current={selected ? 'true' : undefined}
+					out:slide={{ duration: prefersReducedMotion.current ? 0 : 160 }}
 					onclick={() => onOpen(task.id)}
 				>
 					<span class="glyph bucket-{bucket}">

@@ -99,6 +99,13 @@
 		/** Optional handler to launch the table picker (inserts a `buildos-table` embed). */
 		onInsertTableRequested?: () => void;
 		/**
+		 * The host shows its own preview: Preview hands back to it instead of
+		 * switching inside the editor (the project reader's Edit | Preview).
+		 */
+		onPreview?: () => void;
+		/** A short save status shown at the toolbar's end ("Saving…", "Saved"). */
+		statusLabel?: string;
+		/**
 		 * Document bodies: when set, Preview renders `[[document:id|label]]` links for this
 		 * project and mounts embedded tables. Leave unset for non-document fields.
 		 */
@@ -150,6 +157,8 @@
 		onSave,
 		onInsertImageRequested,
 		onInsertTableRequested,
+		onPreview,
+		statusLabel = '',
 		embedProjectId,
 		onMakeLiveTable,
 		onDocChange,
@@ -371,6 +380,11 @@
 	}
 
 	function toggleMode(nextMode: 'edit' | 'preview') {
+		if (nextMode === 'preview' && onPreview) {
+			if (dictation.phase === 'recording') requestStop();
+			onPreview();
+			return;
+		}
 		if (nextMode === 'preview') {
 			// The editor unmounts in Preview; remember where dictation lands first.
 			rememberDictationRange();
@@ -686,6 +700,10 @@
 						? 'hidden sm:flex'
 						: 'flex'} items-center gap-2 text-2xs sm:text-xs text-muted-foreground ml-auto pl-2 shrink-0"
 				>
+					{#if statusLabel}
+						<span aria-live="polite">{statusLabel}</span>
+						<span class="text-border">·</span>
+					{/if}
 					<span class="tabular-nums">{stats.words}w</span>
 					<span class="hidden sm:inline text-border">·</span>
 					<span class="hidden sm:inline tabular-nums">{stats.chars}c</span>

@@ -14,6 +14,7 @@
 	import { MediaQuery } from 'svelte/reactivity';
 	import { portal } from '$lib/actions/portal';
 	import DesktopChatPane from './DesktopChatPane.svelte';
+	import { removedIds } from './reader-removals.svelte';
 	import {
 		loadReaderLayout,
 		neighbors,
@@ -146,7 +147,7 @@
 	let walk = $state<{ kind: ReaderKind; ids: string[] } | null>(null);
 	function orderOf(kind: ReaderKind): string[] {
 		if (walk?.kind !== kind) return order(kind);
-		return walk.ids.filter((id) => known(kind, id));
+		return walk.ids.filter((id) => known(kind, id) && !removedIds.has(id));
 	}
 
 	const readerTitle = $derived(reader ? titleOf(reader) : '');
