@@ -4,6 +4,7 @@
 export type { LucideIcon as Icon, LucideProps as IconProps } from 'lucide-react-native';
 
 export { default as AlertTriangle } from 'lucide-react-native/icons/triangle-alert';
+export { default as ArrowUp } from 'lucide-react-native/icons/arrow-up';
 export { default as BookOpen } from 'lucide-react-native/icons/book-open';
 export { default as Calendar } from 'lucide-react-native/icons/calendar';
 export { default as Check } from 'lucide-react-native/icons/check';
@@ -28,12 +29,16 @@ export { default as Inbox } from 'lucide-react-native/icons/inbox';
 export { default as Info } from 'lucide-react-native/icons/info';
 export { default as LogOut } from 'lucide-react-native/icons/log-out';
 export { default as Mic } from 'lucide-react-native/icons/mic';
+export { default as Pause } from 'lucide-react-native/icons/pause';
 export { default as Pencil } from 'lucide-react-native/icons/pencil';
+export { default as Play } from 'lucide-react-native/icons/play';
 export { default as Plus } from 'lucide-react-native/icons/plus';
 export { default as Search } from 'lucide-react-native/icons/search';
 export { default as Send } from 'lucide-react-native/icons/send';
 export { default as Square } from 'lucide-react-native/icons/square';
+export { default as SquarePen } from 'lucide-react-native/icons/square-pen';
 export { default as Sun } from 'lucide-react-native/icons/sun';
+export { default as Sunrise } from 'lucide-react-native/icons/sunrise';
 export { default as Undo2 } from 'lucide-react-native/icons/undo-2';
 export { default as UserRound } from 'lucide-react-native/icons/user-round';
 export { default as X } from 'lucide-react-native/icons/x';

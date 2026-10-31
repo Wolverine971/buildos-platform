@@ -15,6 +15,7 @@
 		"test:run": "vitest run"
 	},
 	"dependencies": {
+		"@buildos/agentic-chat-client": "workspace:*",
 		"@buildos/api-client": "workspace:*",
 		"@buildos/shared-types": "workspace:*",
 		"@react-native-community/datetimepicker": "9.2.1",

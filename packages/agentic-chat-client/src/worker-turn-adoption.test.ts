@@ -1,4 +1,4 @@
-// apps/web/src/lib/services/agentic-chat-v2/worker-turn-adoption.test.ts
+// packages/agentic-chat-client/src/worker-turn-adoption.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import {
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,

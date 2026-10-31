@@ -1,4 +1,4 @@
-// apps/web/src/lib/components/agent/agent-chat-thinking-state.test.ts
+// packages/agentic-chat-client/src/agent-chat-thinking-state.test.ts
 import { describe, expect, it } from 'vitest';
 import type { ActivityEntry, ThinkingBlockMessage, UIMessage } from './agent-chat.types';
 import {

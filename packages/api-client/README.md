@@ -36,7 +36,11 @@ Every call returns the unwrapped envelope `data` and throws `BuildOsApiError` ot
 on any non-2xx status.
 
 Agent chat: `agent.sendTurn` posts a turn and gets back a JSON admission (202 new, 200 duplicate);
-the reply streams over the session's Supabase realtime channel, not over HTTP.
+the reply streams over the person's private Supabase realtime channel, not over HTTP. The app opens
+that channel with its own Supabase client using `chatUserChannelTopic(userId)`,
+`CHAT_USER_CHANNEL_CONFIG` and `CHAT_REALTIME_EVENTS` from this package; `agent.reconcileTurn`
+replays what a dropped connection missed, `agent.cancelTurn` is Stop, and `chat.history` loads a
+reopened session (messages, tool calls, turn runs, timeline) in one read.
 
 ## The additive-API rule
 

@@ -5,7 +5,9 @@ import { router } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { BriefCard } from '@/components/brief';
 import { CaptureBar } from '@/components/capture-bar';
+import { ChatKey } from '@/components/chat/chat-key';
 import { AccountKey, BoltSpinner, NavBar } from '@/components/kit';
 import { PendingCaptures } from '@/components/pending-captures';
 import { Screen } from '@/components/screen';
@@ -32,6 +34,7 @@ import {
 	walkOrder
 } from '@/components/today';
 import { useTabStack } from '@/hooks/use-tab-stack';
+import { GLOBAL_TARGET } from '@/lib/chat/context';
 import { api, unreachableMessage } from '@/lib/api';
 import { civilDay } from '@/lib/due-date';
 import { setReaderWalk } from '@/lib/reader-walk';
@@ -149,7 +152,16 @@ export default function TodayScreen() {
 		<>
 			<FollowReader onTask={setSelectedId} />
 			<Screen
-				header={<NavBar right={<AccountKey />} />}
+				header={
+					<NavBar
+						right={
+							<>
+								<ChatKey target={GLOBAL_TARGET} from="Today" />
+								<AccountKey />
+							</>
+						}
+					/>
+				}
 				footer={<CaptureBar inTabs />}
 				refreshing={pulling}
 				onRefresh={onRefresh}
@@ -168,6 +180,8 @@ export default function TodayScreen() {
 					overdueCount={feed?.overdueCount ?? 0}
 					upNext={upNext}
 				/>
+
+				<BriefCard />
 
 				<PendingCaptures />
 

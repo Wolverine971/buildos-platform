@@ -1,4 +1,4 @@
-// apps/web/src/lib/services/agentic-chat-v2/worker-realtime-runtime.test.ts
+// packages/agentic-chat-client/src/worker-realtime-runtime.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import type {
 	AgenticChatRealtimeChannelLike,

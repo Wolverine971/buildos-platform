@@ -1,4 +1,4 @@
-// apps/web/src/lib/components/agent/agent-chat-worker-live-preview.test.ts
+// packages/agentic-chat-client/src/agent-chat-worker-live-preview.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
@@ -7,8 +7,8 @@ import {
 	type AgentStreamEventV1,
 	type TurnHandleV1
 } from '@buildos/shared-types';
-import type { AgenticChatWorkerReconciledReceipt } from '$lib/services/agentic-chat-v2/worker-realtime-inbox';
-import { LIVE_TEXT_PREVIEW_STALE_MS } from '$lib/services/agentic-chat-v2/worker-realtime-preview';
+import type { AgenticChatWorkerReconciledReceipt } from './worker-realtime-inbox';
+import { LIVE_TEXT_PREVIEW_STALE_MS } from './worker-realtime-preview';
 import {
 	AgentChatWorkerUiAdapter,
 	type AgentChatWorkerUiAdapterPort

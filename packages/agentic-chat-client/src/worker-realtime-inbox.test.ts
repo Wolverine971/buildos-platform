@@ -1,4 +1,4 @@
-// apps/web/src/lib/services/agentic-chat-v2/worker-realtime-inbox.test.ts
+// packages/agentic-chat-client/src/worker-realtime-inbox.test.ts
 import {
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
 	type AgentStreamEventV1,

@@ -130,6 +130,7 @@
 	},
 	"dependencies": {
 		"@ambientcss/css": "3.0.1",
+		"@buildos/agentic-chat-client": "workspace:*",
 		"@buildos/agentic-chat-runtime": "workspace:*",
 		"@buildos/shared-agent-ops": "workspace:*",
 		"@buildos/shared-types": "workspace:*",

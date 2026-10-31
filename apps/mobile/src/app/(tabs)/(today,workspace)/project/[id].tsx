@@ -1,4 +1,5 @@
 // apps/mobile/src/app/(tabs)/(today,workspace)/project/[id].tsx
+// apps/mobile/src/app/(tabs)/(today,workspace)/project/[id].tsx
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { type ReactElement, useCallback, useMemo, useRef, useState } from 'react';
@@ -34,8 +35,10 @@ import {
 	useDesktopSnapshot,
 	webProjectUrl
 } from '@/components/project';
+import { ChatKey } from '@/components/chat/chat-key';
 import { Screen } from '@/components/screen';
 import { useProject } from '@/hooks/use-entities';
+import { GLOBAL_TARGET } from '@/lib/chat/context';
 import { nestedCounts } from '@/lib/desktop';
 import { orderDocs } from '@/lib/doc-order';
 import { config } from '@/lib/env';
@@ -302,6 +305,14 @@ export default function ProjectScreen() {
 						back={{ label: backLabel }}
 						right={
 							<>
+								<ChatKey
+									target={
+										isWorkspace
+											? GLOBAL_TARGET
+											: { type: 'project', projectId: id, projectName: name }
+									}
+									from={name}
+								/>
 								{contextDoc ? (
 									<NavKey
 										icon={BookOpen}

@@ -1,4 +1,4 @@
-// apps/web/src/lib/components/agent/agent-chat-worker-status.test.ts
+// packages/agentic-chat-client/src/agent-chat-worker-status.test.ts
 import { describe, expect, it } from 'vitest';
 import {
 	isWorkerQueueTimeout,

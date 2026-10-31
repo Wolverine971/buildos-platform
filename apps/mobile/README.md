@@ -39,15 +39,17 @@ switching the API URL back to `https://build-os.com`.
 Routes (`src/app/`):
 
 ```
-_layout.tsx                    root Stack: sign-in | (tabs) | reader (form sheet over the tab bar)
+_layout.tsx                    root Stack: sign-in | (tabs) | reader (form sheet) | chat (full-screen modal)
 +native-intent.ts              incoming project links open on the Workspace stack
 (tabs)/_layout.tsx             js-tabs with the kit TabBar: (today) "Today" | (workspace) "Workspace"
 (tabs)/(today,workspace)/      shared: built once per tab
   _layout.tsx                  that tab's own native Stack (headers off; anchor = the tab's root)
   project/[id].tsx             the project page, pushed on the tab it was opened from
 (tabs)/(today)/index.tsx       Today          /
+(tabs)/(today)/brief.tsx       Your brief     /brief, /brief?date=YYYY-MM-DD (pushed on Today's stack)
 (tabs)/(workspace)/projects.tsx Workspace     /projects
 reader.tsx, sign-in.tsx
+chat.tsx                       chat with BuildOS about the Workspace or one project (Brain Bolt, top-right)
 ```
 
 A project keeps the tab bar and stays in its tab: links build group-qualified hrefs with
@@ -59,7 +61,19 @@ Re-tapping the current tab pops its stack to the root, then scrolls the root to 
   events · N tasks", a sideways chip row (overdue, Up next), then All day, Schedule (mono time
   rail with an accent "now" line), Anytime today (Due today / Starts today / In progress, by
   project) and "Here's what's waiting". Tap a row to open the reader and walk the day with
-  Prev/Next. Capture box docked at the bottom.
+  Prev/Next. Capture box docked at the bottom. When a brief exists, a card under the header
+  ("Your brief · Today", its first line, "Listen · 0:22") opens it; with none for today, the
+  last one written ("Your last brief · Thu, Oct 30"); with none at all, no card.
+- **Brief** (`src/app/(tabs)/(today)/brief.tsx`, pieces in `src/components/brief/`, pure
+  splitting and link mapping in `src/lib/brief.ts`): the daily brief, pushed on Today's stack
+  with the tab bar under it. Title + date, "Generated 12:13 AM" (or being written / failed),
+  Prev/Next day keys (`?date=`), Listen (play/pause, clock, progress; `expo-audio` over the
+  signed URL from `GET /api/daily-briefs/:id/audio-url`, fetched on the first tap; the card's
+  Listen chip opens `/brief?autoplay=1`), the Executive Brief, START HERE rows that open their
+  tasks in the reader, the rest of the readout, the analysis, and the per-project details
+  folded behind "Show project details · N". Links in the brief open the project, task or doc
+  in the app; others open in the in-app browser. The phone never asks for a brief to be
+  written (that runs a model); the page polls every 10 s while one is being written.
 - **Workspace** (`src/app/(tabs)/(workspace)/projects.tsx`; the URL stays `/projects`): search, `LOOSE · N`
   (loose notes, docs and tasks; tap opens the reader), `PROJECTS · N` with Recent | By activity
   and the ⓘ legend, then the 4-column tile grid (`src/components/workspace/`). Long-press a tile
@@ -124,6 +138,17 @@ drops the bounces.
   deployed with that route, `src/lib/desktop-fallback.ts` builds plain tiles from the project
   list (parents from its `include=hierarchy` read, so nesting shows) and the Workspace read;
   the app rechecks the route every 10 minutes. The fallback list stops at 50 projects.
+- **Chat** (`src/app/chat.tsx`, opened by the Brain Bolt in every nav bar) sends a turn with
+  `api.agent.sendTurn` and gets a JSON admission back; the reply streams over the person's private
+  Supabase realtime channel. The ordering, gap-filling and reconciliation of those events is the
+  web's own code, now shared as `@buildos/agentic-chat-client`; `src/lib/chat/runtime.ts` wires it
+  to this device (Supabase client, bearer fetch, AppState) and `src/lib/chat/session-store.ts`
+  turns it into rows. Stores outlive the screen, so a reply keeps arriving after the chat closes.
+  Stop is `api.agent.cancelTurn`; earlier chats come from `api.chat.recentForProject`. The list is
+  inverted (offset 0 = newest row) and the composer docks to the screen's bottom edge and rides
+  the keyboard with `useKeyboardOverlap`, so opening the keyboard never hides the conversation.
+  Dev: `/chat?demo=history|streaming|done|live|idle` seeds a scripted store through the same port
+  (no turn is sent); `&autofocus=<any>` opens the keyboard, `&history=1` opens earlier chats.
 - **Design tokens** come from the web's Inkprint CSS: `pnpm gen:mobile-theme` regenerates
   `src/theme/inkprint.generated.ts`.
 
@@ -131,7 +156,7 @@ drops the bounces.
 
 ```sh
 pnpm --filter @buildos/mobile typecheck   # tsc
-pnpm --filter @buildos/mobile test:run    # vitest (pure TS: storage, capture queue, kit math, tiles, agenda)
+pnpm --filter @buildos/mobile test:run    # vitest (pure TS: storage, capture queue, chat store, kit math, tiles, agenda)
 pnpm --filter @buildos/mobile doctor      # expo-doctor
 pnpm --filter @buildos/mobile export      # Metro bundle for iOS (the install-layout smoke test)
 ```

@@ -8,7 +8,9 @@
  * here as a type error.
  */
 import type {
+	AgenticChatReconcileRpcResultV1,
 	AgenticChatWorkerTurnDescriptorV1,
+	CancelTurnResultV1,
 	ChatTurnStatusV1,
 	Database,
 	Json
@@ -814,6 +816,58 @@ export type DailyBriefResponse = {
 	brief: DailyBrief | null;
 };
 
+/** GET /api/daily-briefs/history query. `limit` is clamped to 1–100 (default 50). */
+export type DailyBriefHistoryParams = {
+	page?: number;
+	limit?: number;
+	/** YYYY-MM-DD, inclusive. */
+	start_date?: string;
+	/** YYYY-MM-DD, inclusive. */
+	end_date?: string;
+	search?: string;
+};
+
+/**
+ * One row of GET /api/daily-briefs/history. The route selects a narrow column set: no
+ * `llm_analysis` (so there is no `insights` and `summary_content` is the executive summary)
+ * and no audio columns. Read the brief by date for those.
+ */
+export type DailyBriefListItem = Pick<
+	DailyBrief,
+	| 'id'
+	| 'chat_brief_id'
+	| 'user_id'
+	| 'brief_date'
+	| 'summary_content'
+	| 'executive_summary'
+	| 'priority_actions'
+	| 'generation_status'
+	| 'generation_error'
+	| 'generation_started_at'
+	| 'generation_completed_at'
+	| 'metadata'
+	| 'created_at'
+	| 'updated_at'
+>;
+
+export type DailyBriefHistoryResponse = {
+	briefs: DailyBriefListItem[];
+	pagination: {
+		page: number;
+		limit: number;
+		total: number;
+		totalPages: number;
+		hasNext: boolean;
+		hasPrev: boolean;
+	};
+};
+
+/** GET /api/daily-briefs/:id/audio-url — a signed URL for the narration mp3, and when it lapses. */
+export type DailyBriefAudioUrl = {
+	url: string;
+	expiresAt: string;
+};
+
 // ---------------------------------------------------------------------------
 // Activity
 // ---------------------------------------------------------------------------
@@ -1100,6 +1154,309 @@ export type AgentActiveTurn = AgenticChatWorkerTurnDescriptorV1;
 
 export type AgentActiveTurnsResponse = {
 	turns: AgentActiveTurn[];
+};
+
+/**
+ * GET /api/agent/v2/turns/[id] — apps/web/src/routes/api/agent/v2/turns/[id]/+server.ts.
+ * A snapshot of one turn the caller owns (status, generation, last event); 404 otherwise.
+ */
+export type AgentTurnSnapshot = AgenticChatWorkerTurnDescriptorV1;
+
+/** POST /api/agent/v2/turns/[id]/cancel body (strict: no other keys). */
+export type AgentCancelTurnRequest = {
+	/** `user_cancelled` = the person pressed Stop; `superseded` = a newer send replaces it. */
+	reason: 'user_cancelled' | 'superseded';
+};
+
+/** `cancel_requested` while the worker winds down, else the terminal state it already reached. */
+export type AgentCancelTurnResponse = CancelTurnResultV1;
+
+/**
+ * GET /api/agent/v2/turns/[id]/reconcile?generation=&after= — the durable events a
+ * screen missed while its realtime channel was down. Both cursors are non-negative
+ * integers; `after` defaults to 0 (everything).
+ */
+export type AgentReconcileTurnQuery = {
+	generation?: number;
+	after?: number;
+};
+
+export type AgentReconcileTurnResponse = AgenticChatReconcileRpcResultV1;
+
+// ---------------------------------------------------------------------------
+// Chat sessions (history, probes, per-project lists)
+// ---------------------------------------------------------------------------
+
+export type ChatMessageRow = Tables['chat_messages']['Row'];
+export type ChatToolExecutionRow = Tables['chat_tool_executions']['Row'];
+export type ChatTurnRunRow = Tables['chat_turn_runs']['Row'];
+export type VoiceNoteGroupRow = Tables['voice_note_groups']['Row'];
+
+/**
+ * The allowlisted columns the restore RPC returns (apps/web/src/lib/types/
+ * chat-session-restore.ts). Private request/context snapshots are deliberately absent.
+ */
+export type ChatHistoryMessage = Pick<
+	ChatMessageRow,
+	| 'id'
+	| 'session_id'
+	| 'user_id'
+	| 'role'
+	| 'content'
+	| 'tool_calls'
+	| 'tool_call_id'
+	| 'created_at'
+	| 'metadata'
+> & {
+	/**
+	 * Image/file refs from `buildAttachmentRef` (apps/web/src/lib/server/
+	 * chat-session-enrichment.ts); only on messages that have any. Untyped on the
+	 * server too, so read defensively.
+	 */
+	attachments?: Record<string, unknown>[];
+};
+
+export type ChatHistoryToolExecution = Pick<
+	ChatToolExecutionRow,
+	| 'id'
+	| 'session_id'
+	| 'message_id'
+	| 'turn_run_id'
+	| 'stream_run_id'
+	| 'client_turn_id'
+	| 'provider_tool_call_id'
+	| 'tool_name'
+	| 'tool_category'
+	| 'gateway_op'
+	| 'help_path'
+	| 'sequence_index'
+	| 'arguments'
+	| 'result'
+	| 'result_count'
+	| 'zero_result'
+	| 'execution_time_ms'
+	| 'tokens_consumed'
+	| 'success'
+	| 'error_message'
+	| 'requires_user_action'
+	| 'affected_entities'
+	| 'created_at'
+> & {
+	/** True when `arguments`/`result` were cut to fit the restore payload. */
+	restore_payload_truncated: boolean;
+};
+
+export type ChatHistoryTurnRun = Pick<
+	ChatTurnRunRow,
+	| 'id'
+	| 'session_id'
+	| 'user_id'
+	| 'stream_run_id'
+	| 'client_turn_id'
+	| 'status'
+	| 'finished_reason'
+	| 'request_message'
+	| 'assistant_message_id'
+	| 'started_at'
+	| 'finished_at'
+	| 'created_at'
+	| 'updated_at'
+>;
+
+/** How much of the session the restore returned; `truncated` summarizes it. */
+export type ChatHistoryWindow = {
+	messageLimit: number;
+	toolLimit: number;
+	eventLimit: number;
+	toolsTruncated: boolean;
+	eventsTruncated: boolean;
+	/** Oldest message included, for a "load earlier" cursor. */
+	oldestMessageId: string | null;
+};
+
+// The agent timeline, mirrored from apps/web/src/lib/components/agent/agent-chat.types.ts.
+// `buildAgentTimeline` turns runs, events, tool executions and messages into these items;
+// the web's collapsed "Worked for 54s · 12 steps" line is derived from them.
+
+export type ChatTimelineItemSource =
+	| 'turn_run'
+	| 'turn_event'
+	| 'tool_execution'
+	| 'message'
+	| 'entity_change';
+
+export type ChatTimelineItemKind = 'step' | 'tool' | 'change' | 'message' | 'status';
+
+export type ChatTimelineItemStatus =
+	| 'pending'
+	| 'running'
+	| 'completed'
+	| 'failed'
+	| 'partial'
+	| 'needs_input'
+	| 'cancelled';
+
+export type ChatTimelineEntityRef = {
+	kind: string;
+	id: string;
+	title?: string | null;
+	projectId?: string | null;
+	url?: string | null;
+	operation?: 'created' | 'updated' | 'deleted' | 'linked' | 'read' | string;
+};
+
+export type ChatTimelineToolSummary = {
+	name: string;
+	category?: string | null;
+	gatewayOp?: string | null;
+	helpPath?: string | null;
+	durationMs?: number | null;
+	tokensConsumed?: number | null;
+	argsPreview?: string | null;
+	/** Absent from the session GET: it builds the timeline with `includeToolDetails: false`. */
+	argsFullJson?: string | null;
+	resultPreview?: string | null;
+	resultFullJson?: string | null;
+	errorMessage?: string | null;
+	zeroResult?: boolean | null;
+	resultCount?: number | null;
+};
+
+export type ChatTimelineItem = {
+	id: string;
+	sessionId: string;
+	turnRunId?: string | null;
+	streamRunId?: string | null;
+	clientTurnId?: string | null;
+	messageId?: string | null;
+	source: ChatTimelineItemSource;
+	kind: ChatTimelineItemKind;
+	status: ChatTimelineItemStatus;
+	timestamp: string;
+	sequenceIndex?: number | null;
+	title: string;
+	summary?: string | null;
+	detailPreview?: string | null;
+	tool?: ChatTimelineToolSummary | null;
+	projectRef?: ChatTimelineEntityRef | null;
+	entityRefs: ChatTimelineEntityRef[];
+	redaction?: {
+		argsRedacted?: boolean;
+		resultRedacted?: boolean;
+		reason?: string | null;
+	};
+};
+
+/**
+ * A change the agent proposed and is waiting on (apps/web/src/lib/services/
+ * agentic-chat-v2/pending-change.ts). `key` identifies this exact proposal so a
+ * dismiss never clears a newer one.
+ */
+export type ChatPendingChange = {
+	key: string;
+	createdAt: string;
+	/** One line per action and kind, in the proposal's order. */
+	items: string[];
+};
+
+export type ChatSessionHistoryQuery = {
+	/** Also return the voice-note groups and notes the messages reference. */
+	includeVoiceNotes?: boolean;
+};
+
+/**
+ * GET /api/chat/sessions/[id] — apps/web/src/routes/api/chat/sessions/[id]/+server.ts.
+ * The whole session in one read: the newest window of messages, the tool calls and
+ * turn runs behind them, and the timeline the web renders. 404 when the session is
+ * not the caller's.
+ */
+export type ChatSessionHistoryResponse = {
+	/** `agent_metadata` is rewritten to `{ focus }` (project chats) or null. */
+	session: ChatSessionRow;
+	messages: ChatHistoryMessage[];
+	toolExecutions: ChatHistoryToolExecution[];
+	turnRuns: ChatHistoryTurnRun[];
+	timelineItems: ChatTimelineItem[];
+	/** Empty unless `includeVoiceNotes` was sent. */
+	voiceNoteGroups: VoiceNoteGroupRow[];
+	voiceNotes: VoiceNoteRow[];
+	truncated: boolean;
+	historyWindow: ChatHistoryWindow;
+	pendingChange: ChatPendingChange | null;
+};
+
+/** `?probe=active-turn` — the five newest turn runs from one cheap query, for a running-turn poll. */
+export type ChatActiveTurnProbeRun = Pick<
+	ChatTurnRunRow,
+	| 'id'
+	| 'session_id'
+	| 'status'
+	| 'stream_run_id'
+	| 'client_turn_id'
+	| 'finished_reason'
+	| 'updated_at'
+>;
+
+export type ChatActiveTurnProbeResponse = {
+	turnRuns: ChatActiveTurnProbeRun[];
+};
+
+/** `?probe=pending-change` — just the pending proposal, after a turn finishes. */
+export type ChatPendingChangeProbeResponse = {
+	pendingChange: ChatPendingChange | null;
+};
+
+/** PATCH /api/chat/sessions/[id] body (strict). */
+export type ChatSessionRenameRequest = {
+	title: string;
+};
+
+export type ChatSessionRenameResponse = {
+	session: ChatSessionRow;
+};
+
+export type ChatSessionDeleteResponse = {
+	deleted: true;
+};
+
+/**
+ * One row of a project's chat list — `toSummary` in apps/web/src/lib/server/
+ * project-recent-chats.ts. `title` is always display-ready (own title, auto title,
+ * or the opening line).
+ */
+export type ChatSummary = Pick<
+	ChatSessionRow,
+	'id' | 'context_type' | 'entity_id' | 'status' | 'created_at' | 'updated_at' | 'last_message_at'
+> & {
+	title: string;
+	summary: string | null;
+	chat_topics: string[];
+	message_count: number;
+	/** e.g. the focused task's name; null for project-wide chats. */
+	focus_label: string | null;
+	focus_type: string | null;
+	/** Latest of `last_message_at` / `updated_at` / `created_at`, for sorting. */
+	last_activity_at: string | null;
+};
+
+export type ProjectRecentChatsQuery = {
+	/** Default 10, max 25. */
+	limit?: number;
+	offset?: number;
+	/** Also list the caller's Workspace (global) chats; meant for the Workspace project. */
+	include?: 'workspace_chats';
+};
+
+/**
+ * GET /api/onto/projects/[id]/recent-chats — apps/web/src/routes/api/onto/projects/
+ * [id]/recent-chats/+server.ts. Newest activity first. There is no user-wide session
+ * list route yet; the web's /history page reads the table in its page load.
+ */
+export type ProjectRecentChatsResponse = {
+	chats: ChatSummary[];
+	/** Sessions seen in this fetch window (≤ 75), not a true count. */
+	total: number;
+	hasMore: boolean;
 };
 
 // ---------------------------------------------------------------------------

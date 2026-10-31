@@ -97,7 +97,9 @@ export function NavBar({ back, right, style }: NavBarProps) {
 }
 
 export type NavKeyProps = {
-	icon: Icon;
+	icon?: Icon;
+	/** Drawn instead of `icon`, e.g. the Brain Bolt image. */
+	glyph?: ReactNode;
 	onPress?: () => void;
 	onLongPress?: () => void;
 	accessibilityLabel: string;
@@ -116,6 +118,7 @@ export type NavKeyProps = {
  */
 export function NavKey({
 	icon: IconGlyph,
+	glyph,
 	onPress,
 	onLongPress,
 	accessibilityLabel,
@@ -179,7 +182,10 @@ export function NavKey({
 						}
 					]}
 				>
-					<IconGlyph size={18} color={colors.foreground} strokeWidth={2} />
+					{glyph ??
+						(IconGlyph ? (
+							<IconGlyph size={18} color={colors.foreground} strokeWidth={2} />
+						) : null)}
 				</Animated.View>
 			)}
 		</Pressable>

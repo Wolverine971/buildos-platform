@@ -1,5 +1,5 @@
 // apps/mobile/src/components/markdown.tsx
-import { useMemo } from 'react';
+import { createContext, use, useMemo } from 'react';
 import { Linking, ScrollView, StyleSheet, Text, type TextStyle, View } from 'react-native';
 
 import { Check } from '@/components/kit';
@@ -23,16 +23,26 @@ function openLink(href: string) {
 	void Linking.openURL(href).catch(() => {});
 }
 
+// What a tapped link does. Screens that know their links (the brief) supply their own.
+const LinkHandler = createContext<(href: string) => void>(openLink);
+
 /** A doc or task description, rendered natively with Inkprint type. Text is selectable. */
 export function Markdown({
 	source,
-	compact = false
+	compact = false,
+	onLink
 }: {
 	source: string | null | undefined;
 	compact?: boolean;
+	/** Handles a tapped link. By default http, mailto and tel links open outside the app. */
+	onLink?: (href: string) => void;
 }) {
 	const blocks = useMemo(() => parseMarkdown(source), [source]);
-	return <Blocks blocks={blocks} gap={compact ? spacing.sm : spacing.md} />;
+	return (
+		<LinkHandler value={onLink ?? openLink}>
+			<Blocks blocks={blocks} gap={compact ? spacing.sm : spacing.md} />
+		</LinkHandler>
+	);
 }
 
 function Blocks({ blocks, gap }: { blocks: Block[]; gap: number }) {
@@ -92,12 +102,19 @@ function BlockView({ block, first }: { block: Block; first: boolean }) {
 									style={[
 										styles.box,
 										item.checked
-											? { backgroundColor: colors.accent, borderColor: colors.accent }
+											? {
+													backgroundColor: colors.accent,
+													borderColor: colors.accent
+												}
 											: { borderColor: colors.borderStrong }
 									]}
 								>
 									{item.checked ? (
-										<Check size={11} color={colors.accentForeground} strokeWidth={3} />
+										<Check
+											size={11}
+											color={colors.accentForeground}
+											strokeWidth={3}
+										/>
 									) : null}
 								</View>
 							)}
@@ -169,6 +186,7 @@ function BlockView({ block, first }: { block: Block; first: boolean }) {
 
 function Spans({ inline }: { inline: Inline[] }) {
 	const colors = useTheme();
+	const open = use(LinkHandler);
 	return (
 		<>
 			{inline.map((node, index) => {
@@ -213,7 +231,7 @@ function Spans({ inline }: { inline: Inline[] }) {
 							<Text
 								key={index}
 								accessibilityRole="link"
-								onPress={() => openLink(node.href)}
+								onPress={() => open(node.href)}
 								style={{
 									color: colors.accent,
 									textDecorationLine: 'underline',

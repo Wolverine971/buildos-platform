@@ -10,6 +10,7 @@ import { createActivityEndpoints } from './endpoints/activity';
 import { createAgentEndpoints } from './endpoints/agent';
 import { createAuthEndpoints } from './endpoints/auth';
 import { createBriefEndpoints } from './endpoints/briefs';
+import { createChatEndpoints } from './endpoints/chat';
 import { createDocumentEndpoints } from './endpoints/documents';
 import { createProjectEndpoints } from './endpoints/projects';
 import { createPushEndpoints } from './endpoints/push';
@@ -40,10 +41,12 @@ export {
 	type RequestOptions
 } from './client';
 export * from './types';
+export * from './realtime';
 export type { ActivityEndpoints } from './endpoints/activity';
 export type { AgentEndpoints } from './endpoints/agent';
 export type { AuthEndpoints } from './endpoints/auth';
 export type { BriefEndpoints } from './endpoints/briefs';
+export type { ChatEndpoints } from './endpoints/chat';
 export type { DocumentEndpoints } from './endpoints/documents';
 export type { ProjectEndpoints } from './endpoints/projects';
 export type { PushEndpoints } from './endpoints/push';
@@ -67,6 +70,8 @@ export interface BuildOsClient extends BuildOsHttp {
 	transcribe: ReturnType<typeof createTranscribeEndpoint>;
 	push: ReturnType<typeof createPushEndpoints>;
 	agent: ReturnType<typeof createAgentEndpoints>;
+	/** Stored chat sessions: history, probes, rename/delete, a project's chat list. */
+	chat: ReturnType<typeof createChatEndpoints>;
 	/** Quick capture into the person's Workspace (loose notes and tasks). */
 	workspace: ReturnType<typeof createWorkspaceEndpoints>;
 }
@@ -88,6 +93,7 @@ export function createBuildOsClient(options: BuildOsClientOptions): BuildOsClien
 		transcribe: createTranscribeEndpoint(http),
 		push: createPushEndpoints(http),
 		agent: createAgentEndpoints(http),
+		chat: createChatEndpoints(http),
 		workspace: createWorkspaceEndpoints(http)
 	};
 }

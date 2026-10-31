@@ -84,6 +84,20 @@ function Navigation() {
 						contentStyle: { backgroundColor: colors.background }
 					}}
 				/>
+				{/*
+				 * Chat: full screen over whatever was open (the website's phone chat is a
+				 * full-screen modal too). Opened by the Brain Bolt in any page's nav bar; the
+				 * context (Workspace or a project) travels in its params (see app/chat.tsx).
+				 */}
+				<Stack.Screen
+					name="chat"
+					options={{
+						presentation: 'fullScreenModal',
+						headerShown: false,
+						title: 'Chat',
+						contentStyle: { backgroundColor: colors.bench }
+					}}
+				/>
 			</Stack.Protected>
 		</Stack>
 	);

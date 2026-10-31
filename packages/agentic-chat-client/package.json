@@ -1,0 +1,122 @@
+{
+	"name": "@buildos/agentic-chat-client",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Client-side agentic chat core shared by the web app and the iPhone app: realtime inbox, reconciliation coordinator, turn adoption, worker status, and the worker UI adapter",
+	"sideEffects": false,
+	"main": "./dist/index.js",
+	"module": "./dist/index.mjs",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"react-native": "./src/index.ts",
+			"development": "./src/index.ts",
+			"import": "./dist/index.mjs",
+			"require": "./dist/index.js"
+		},
+		"./worker-realtime-inbox": {
+			"types": "./dist/worker-realtime-inbox.d.ts",
+			"react-native": "./src/worker-realtime-inbox.ts",
+			"development": "./src/worker-realtime-inbox.ts",
+			"import": "./dist/worker-realtime-inbox.mjs",
+			"require": "./dist/worker-realtime-inbox.js"
+		},
+		"./worker-realtime-coordinator": {
+			"types": "./dist/worker-realtime-coordinator.d.ts",
+			"react-native": "./src/worker-realtime-coordinator.ts",
+			"development": "./src/worker-realtime-coordinator.ts",
+			"import": "./dist/worker-realtime-coordinator.mjs",
+			"require": "./dist/worker-realtime-coordinator.js"
+		},
+		"./worker-realtime-preview": {
+			"types": "./dist/worker-realtime-preview.d.ts",
+			"react-native": "./src/worker-realtime-preview.ts",
+			"development": "./src/worker-realtime-preview.ts",
+			"import": "./dist/worker-realtime-preview.mjs",
+			"require": "./dist/worker-realtime-preview.js"
+		},
+		"./worker-realtime-channel": {
+			"types": "./dist/worker-realtime-channel.d.ts",
+			"react-native": "./src/worker-realtime-channel.ts",
+			"development": "./src/worker-realtime-channel.ts",
+			"import": "./dist/worker-realtime-channel.mjs",
+			"require": "./dist/worker-realtime-channel.js"
+		},
+		"./worker-realtime-runtime": {
+			"types": "./dist/worker-realtime-runtime.d.ts",
+			"react-native": "./src/worker-realtime-runtime.ts",
+			"development": "./src/worker-realtime-runtime.ts",
+			"import": "./dist/worker-realtime-runtime.mjs",
+			"require": "./dist/worker-realtime-runtime.js"
+		},
+		"./worker-turn-adoption": {
+			"types": "./dist/worker-turn-adoption.d.ts",
+			"react-native": "./src/worker-turn-adoption.ts",
+			"development": "./src/worker-turn-adoption.ts",
+			"import": "./dist/worker-turn-adoption.mjs",
+			"require": "./dist/worker-turn-adoption.js"
+		},
+		"./agent-chat-worker-status": {
+			"types": "./dist/agent-chat-worker-status.d.ts",
+			"react-native": "./src/agent-chat-worker-status.ts",
+			"development": "./src/agent-chat-worker-status.ts",
+			"import": "./dist/agent-chat-worker-status.mjs",
+			"require": "./dist/agent-chat-worker-status.js"
+		},
+		"./agent-chat-workflow": {
+			"types": "./dist/agent-chat-workflow.d.ts",
+			"react-native": "./src/agent-chat-workflow.ts",
+			"development": "./src/agent-chat-workflow.ts",
+			"import": "./dist/agent-chat-workflow.mjs",
+			"require": "./dist/agent-chat-workflow.js"
+		},
+		"./agent-chat-thinking-state": {
+			"types": "./dist/agent-chat-thinking-state.d.ts",
+			"react-native": "./src/agent-chat-thinking-state.ts",
+			"development": "./src/agent-chat-thinking-state.ts",
+			"import": "./dist/agent-chat-thinking-state.mjs",
+			"require": "./dist/agent-chat-thinking-state.js"
+		},
+		"./agent-chat.types": {
+			"types": "./dist/agent-chat.types.d.ts",
+			"react-native": "./src/agent-chat.types.ts",
+			"development": "./src/agent-chat.types.ts",
+			"import": "./dist/agent-chat.types.mjs",
+			"require": "./dist/agent-chat.types.js"
+		},
+		"./agent-chat-worker-ui-adapter": {
+			"types": "./dist/agent-chat-worker-ui-adapter.d.ts",
+			"react-native": "./src/agent-chat-worker-ui-adapter.ts",
+			"development": "./src/agent-chat-worker-ui-adapter.ts",
+			"import": "./dist/agent-chat-worker-ui-adapter.mjs",
+			"require": "./dist/agent-chat-worker-ui-adapter.js"
+		},
+		"./agent-chat-workflow.fixture": {
+			"types": "./dist/agent-chat-workflow.fixture.d.ts",
+			"react-native": "./src/agent-chat-workflow.fixture.ts",
+			"development": "./src/agent-chat-workflow.fixture.ts",
+			"import": "./dist/agent-chat-workflow.fixture.mjs",
+			"require": "./dist/agent-chat-workflow.fixture.js"
+		}
+	},
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"clean": "rm -rf dist .turbo",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest",
+		"test:run": "vitest run",
+		"test:coverage": "vitest run --coverage"
+	},
+	"dependencies": {
+		"@buildos/shared-types": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^20.11.10",
+		"@vitest/coverage-v8": "^4.1.11",
+		"tsup": "^8.3.5",
+		"typescript": "^5.9.2",
+		"vitest": "^4.1.11"
+	}
+}

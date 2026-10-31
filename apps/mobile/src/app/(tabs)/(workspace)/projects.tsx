@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 
 import { CaptureBar } from '@/components/capture-bar';
+import { ChatKey } from '@/components/chat/chat-key';
 import {
 	AccountKey,
 	AlertTriangle,
@@ -44,6 +45,7 @@ import { LegendKey } from '@/components/workspace/legend';
 import { TileGrid } from '@/components/workspace/tile-grid';
 import { useDesktop } from '@/hooks/use-desktop';
 import { useTabStack } from '@/hooks/use-tab-stack';
+import { GLOBAL_TARGET } from '@/lib/chat/context';
 import { unreachableMessage } from '@/lib/api';
 import { arrangeDesktop, type DesktopArrangement, type DesktopSort } from '@/lib/desktop';
 import { type ReaderItem, setReaderWalk } from '@/lib/reader-walk';
@@ -109,7 +111,19 @@ export default function WorkspaceScreen() {
 	}, [refetch]);
 
 	// Same elements every render: typing in search re-renders this screen, not the bars.
-	const header = useMemo(() => <NavBar right={<AccountKey />} />, []);
+	const header = useMemo(
+		() => (
+			<NavBar
+				right={
+					<>
+						<ChatKey target={GLOBAL_TARGET} from="Workspace" />
+						<AccountKey />
+					</>
+				}
+			/>
+		),
+		[]
+	);
 	const footer = useMemo(() => <CaptureBar inTabs />, []);
 
 	const data = desktop.data;

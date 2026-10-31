@@ -1,4 +1,4 @@
-// apps/web/src/lib/components/agent/agent-chat-workflow.test.ts
+// packages/agentic-chat-client/src/agent-chat-workflow.test.ts
 import { describe, expect, it } from 'vitest';
 import { readDurableChatWorkflowProgress, workflowMessageTurnId } from './agent-chat-workflow';
 import { workflowProjectionFixture } from './agent-chat-workflow.fixture';

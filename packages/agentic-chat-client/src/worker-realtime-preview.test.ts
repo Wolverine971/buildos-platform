@@ -1,4 +1,4 @@
-// apps/web/src/lib/services/agentic-chat-v2/worker-realtime-preview.test.ts
+// packages/agentic-chat-client/src/worker-realtime-preview.test.ts
 import {
 	AGENTIC_CHAT_REALTIME_PREVIEW_EVENT,
 	AGENTIC_CHAT_REALTIME_RECONCILE_EVENT,
@@ -70,7 +70,9 @@ function live(
 describe('parseAgenticChatLiveTextPreview', () => {
 	it('accepts the worker contract and rejects anything else', () => {
 		expect(parseAgenticChatLiveTextPreview(preview())).toEqual(preview());
-		expect(parseAgenticChatLiveTextPreview(preview({ state: 'discard', text: '' }))).not.toBeNull();
+		expect(
+			parseAgenticChatLiveTextPreview(preview({ state: 'discard', text: '' }))
+		).not.toBeNull();
 		for (const bad of [
 			null,
 			'text',
@@ -230,7 +232,9 @@ describe('live text preview state', () => {
 
 	it('expires after the stale window and clears on demand', () => {
 		const state = live(createLiveTextPreviewState());
-		expect(expireLiveTextPreview(state, 1_000 + LIVE_TEXT_PREVIEW_STALE_MS - 1).active).not.toBeNull();
+		expect(
+			expireLiveTextPreview(state, 1_000 + LIVE_TEXT_PREVIEW_STALE_MS - 1).active
+		).not.toBeNull();
 		expect(expireLiveTextPreview(state, 1_000 + LIVE_TEXT_PREVIEW_STALE_MS).active).toBeNull();
 		expect(clearLiveTextPreview(state).active).toBeNull();
 	});
@@ -297,7 +301,9 @@ describe('live preview transport', () => {
 			AGENTIC_CHAT_REALTIME_PREVIEW_EVENT
 		]);
 
-		expect(() => channels[0]!.emit(AGENTIC_CHAT_REALTIME_PREVIEW_EVENT, preview())).not.toThrow();
+		expect(() =>
+			channels[0]!.emit(AGENTIC_CHAT_REALTIME_PREVIEW_EVENT, preview())
+		).not.toThrow();
 		expect(received).toEqual([preview()]);
 		expect(receiveStreamEvent).not.toHaveBeenCalled();
 
@@ -320,7 +326,9 @@ describe('live preview transport', () => {
 		coordinator.receivePreview(preview());
 		coordinator.receivePreview({ ...preview(), seq: 'nope' });
 		coordinator.receivePreview(preview({ session_id: 'd2000000-0000-4000-8000-000000000009' }));
-		coordinator.receivePreview(preview({ turn_run_id: 'd4000000-0000-4000-8000-000000000009' }));
+		coordinator.receivePreview(
+			preview({ turn_run_id: 'd4000000-0000-4000-8000-000000000009' })
+		);
 
 		expect(applyPreview).toHaveBeenCalledExactlyOnceWith(preview());
 		expect(coordinator.inbox.getSnapshot(TURN_ID)).toEqual(before);

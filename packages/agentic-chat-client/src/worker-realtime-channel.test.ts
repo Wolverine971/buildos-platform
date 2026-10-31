@@ -1,4 +1,4 @@
-// apps/web/src/lib/services/agentic-chat-v2/worker-realtime-channel.test.ts
+// packages/agentic-chat-client/src/worker-realtime-channel.test.ts
 import {
 	AGENTIC_CHAT_REALTIME_RECONCILE_EVENT,
 	AGENTIC_CHAT_REALTIME_STREAM_EVENT,

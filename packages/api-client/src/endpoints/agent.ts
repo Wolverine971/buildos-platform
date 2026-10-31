@@ -1,8 +1,18 @@
 // packages/api-client/src/endpoints/agent.ts
 import type { BuildOsHttp, RequestOptions } from '../client';
-import type { AgentActiveTurnsResponse, AgentTurnAdmission, AgentTurnRequest } from '../types';
+import type {
+	AgentActiveTurnsResponse,
+	AgentCancelTurnRequest,
+	AgentCancelTurnResponse,
+	AgentReconcileTurnQuery,
+	AgentReconcileTurnResponse,
+	AgentTurnAdmission,
+	AgentTurnRequest,
+	AgentTurnSnapshot
+} from '../types';
 
 const TURNS_PATH = '/api/agent/v2/turns';
+const turnPath = (turnRunId: string) => `${TURNS_PATH}/${encodeURIComponent(turnRunId)}`;
 
 export function createAgentEndpoints(http: BuildOsHttp) {
 	return {
@@ -26,6 +36,35 @@ export function createAgentEndpoints(http: BuildOsHttp) {
 		listActiveTurns: (sessionId: string, options?: RequestOptions) =>
 			http.request<AgentActiveTurnsResponse>(TURNS_PATH, {
 				query: { session_id: sessionId },
+				...options
+			}),
+
+		/**
+		 * GET /api/agent/v2/turns/[id] — a snapshot of one turn (status, generation,
+		 * last event) for picking up after the app was backgrounded.
+		 */
+		getTurn: (turnRunId: string, options?: RequestOptions) =>
+			http.request<AgentTurnSnapshot>(turnPath(turnRunId), { ...options }),
+
+		/** POST /api/agent/v2/turns/[id]/cancel — Stop. */
+		cancelTurn: (turnRunId: string, body: AgentCancelTurnRequest, options?: RequestOptions) =>
+			http.request<AgentCancelTurnResponse>(`${turnPath(turnRunId)}/cancel`, {
+				method: 'POST',
+				body,
+				...options
+			}),
+
+		/**
+		 * GET /api/agent/v2/turns/[id]/reconcile?generation=&after= — replay the durable
+		 * events after a cursor, on a reconcile hint or after the channel reconnects.
+		 */
+		reconcileTurn: (
+			turnRunId: string,
+			query: AgentReconcileTurnQuery = {},
+			options?: RequestOptions
+		) =>
+			http.request<AgentReconcileTurnResponse>(`${turnPath(turnRunId)}/reconcile`, {
+				query: { generation: query.generation, after: query.after },
 				...options
 			})
 	};

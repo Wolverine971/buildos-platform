@@ -1,4 +1,4 @@
-// apps/web/src/lib/components/agent/agent-chat-worker-ui-adapter.test.ts
+// packages/agentic-chat-client/src/agent-chat-worker-ui-adapter.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import {
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
@@ -7,7 +7,7 @@ import {
 	type JsonObject,
 	type TurnHandleV1
 } from '@buildos/shared-types';
-import type { AgenticChatWorkerReconciledReceipt } from '$lib/services/agentic-chat-v2/worker-realtime-inbox';
+import type { AgenticChatWorkerReconciledReceipt } from './worker-realtime-inbox';
 import {
 	AgentChatWorkerUiAdapter,
 	type AgentChatWorkerUiAdapterPort

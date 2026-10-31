@@ -1,6 +1,14 @@
 // packages/api-client/src/client.test.ts
 import { describe, expect, it, vi } from 'vitest';
-import { API_CLIENT_CONTRACT_VERSION, BuildOsApiError, createBuildOsClient } from './index';
+import {
+	API_CLIENT_CONTRACT_VERSION,
+	BuildOsApiError,
+	CHAT_REALTIME_EVENTS,
+	CHAT_USER_CHANNEL_CONFIG,
+	chatUserChannelTopic,
+	createBuildOsClient,
+	readBroadcastPayload
+} from './index';
 
 type FetchMock = ReturnType<typeof vi.fn<typeof fetch>>;
 
@@ -638,5 +646,116 @@ describe('endpoint wrappers', () => {
 		expect(handoff.url).toContain('/auth/handoff');
 		expect(lastCall(fetchMock).init.method).toBe('POST');
 		expect(lastCall(fetchMock).init.body).toBe(JSON.stringify({ next: '/profile' }));
+	});
+
+	it('agent.getTurn, cancelTurn and reconcileTurn hit the per-turn routes', async () => {
+		const turnId = '11111111-2222-4333-8444-555555555555';
+		const base = `https://build-os.com/api/agent/v2/turns/${turnId}`;
+		const fetchMock = vi
+			.fn<typeof fetch>()
+			.mockResolvedValueOnce(jsonResponse(envelope({ turnRunId: turnId, status: 'running' })))
+			.mockResolvedValueOnce(jsonResponse(envelope({ outcome: 'cancel_requested' })))
+			.mockResolvedValueOnce(
+				jsonResponse(envelope({ outcome: 'not_found', turn_run_id: turnId }))
+			)
+			.mockResolvedValueOnce(
+				jsonResponse(envelope({ outcome: 'not_found', turn_run_id: turnId }))
+			);
+		const api = makeClient(fetchMock);
+
+		await api.agent.getTurn(turnId);
+		expect(lastCall(fetchMock).url).toBe(base);
+		expect(lastCall(fetchMock).init.method).toBe('GET');
+
+		const cancel = await api.agent.cancelTurn(turnId, { reason: 'user_cancelled' });
+		expect(cancel.outcome).toBe('cancel_requested');
+		expect(lastCall(fetchMock).url).toBe(`${base}/cancel`);
+		expect(lastCall(fetchMock).init.method).toBe('POST');
+		expect(lastCall(fetchMock).init.body).toBe(JSON.stringify({ reason: 'user_cancelled' }));
+
+		await api.agent.reconcileTurn(turnId, { generation: 2, after: 17 });
+		expect(lastCall(fetchMock).url).toBe(`${base}/reconcile?generation=2&after=17`);
+
+		await api.agent.reconcileTurn(turnId);
+		expect(lastCall(fetchMock).url).toBe(`${base}/reconcile`);
+	});
+
+	it('chat.history, the probes, rename and remove address one session route', async () => {
+		const sessionId = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+		const base = `https://build-os.com/api/chat/sessions/${sessionId}`;
+		const fetchMock = vi
+			.fn<typeof fetch>()
+			.mockImplementation(async () =>
+				jsonResponse(envelope({ session: { id: sessionId }, messages: [], deleted: true }))
+			);
+		const api = makeClient(fetchMock);
+
+		await api.chat.history(sessionId);
+		expect(lastCall(fetchMock).url).toBe(base);
+		await api.chat.history(sessionId, { includeVoiceNotes: true });
+		expect(lastCall(fetchMock).url).toBe(`${base}?includeVoiceNotes=1`);
+
+		await api.chat.probeActiveTurn(sessionId);
+		expect(lastCall(fetchMock).url).toBe(`${base}?probe=active-turn`);
+		await api.chat.probePendingChange(sessionId);
+		expect(lastCall(fetchMock).url).toBe(`${base}?probe=pending-change`);
+
+		await api.chat.rename(sessionId, { title: 'Launch plan' });
+		expect(lastCall(fetchMock).init.method).toBe('PATCH');
+		expect(lastCall(fetchMock).init.body).toBe(JSON.stringify({ title: 'Launch plan' }));
+
+		const gone = await api.chat.remove(sessionId);
+		expect(gone.deleted).toBe(true);
+		expect(lastCall(fetchMock).init.method).toBe('DELETE');
+		expect(lastCall(fetchMock).url).toBe(base);
+	});
+
+	it('chat.recentForProject passes paging and the workspace include', async () => {
+		const fetchMock = vi
+			.fn<typeof fetch>()
+			.mockImplementation(async () =>
+				jsonResponse(envelope({ chats: [], total: 0, hasMore: false }))
+			);
+		const api = makeClient(fetchMock);
+
+		await api.chat.recentForProject('p1');
+		expect(lastCall(fetchMock).url).toBe(
+			'https://build-os.com/api/onto/projects/p1/recent-chats'
+		);
+
+		const page = await api.chat.recentForProject('p1', {
+			limit: 5,
+			offset: 10,
+			include: 'workspace_chats'
+		});
+		expect(page.hasMore).toBe(false);
+		expect(lastCall(fetchMock).url).toBe(
+			'https://build-os.com/api/onto/projects/p1/recent-chats?limit=5&offset=10&include=workspace_chats'
+		);
+	});
+});
+
+describe('realtime contract', () => {
+	it('names the private per-user channel and unwraps broadcast payloads', () => {
+		expect(chatUserChannelTopic('AAAAAAAA-BBBB-4CCC-8DDD-EEEEEEEEEEEE')).toBe(
+			'chat-user:aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
+		);
+		expect(CHAT_USER_CHANNEL_CONFIG).toEqual({
+			config: { private: true, broadcast: { self: false } }
+		});
+		expect(CHAT_REALTIME_EVENTS).toEqual({
+			stream: 'agent-stream-event',
+			reconcile: 'agent-stream-reconcile',
+			preview: 'agentic_chat_preview'
+		});
+		expect(
+			readBroadcastPayload({
+				type: 'broadcast',
+				event: 'agent-stream-event',
+				payload: { type: 'text' }
+			})
+		).toEqual({ type: 'text' });
+		expect(readBroadcastPayload(null)).toBeNull();
+		expect(readBroadcastPayload({ type: 'broadcast' })).toBeNull();
 	});
 });
