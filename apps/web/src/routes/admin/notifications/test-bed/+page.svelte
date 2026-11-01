@@ -342,7 +342,7 @@
 						<div
 							class="absolute z-10 w-full mt-2 bg-card border border-border rounded-lg shadow-ink-strong max-h-60 overflow-y-auto"
 						>
-							{#each searchResults as result}
+							{#each searchResults as result (result.id)}
 								<button
 									type="button"
 									onclick={() => selectUser(result)}
@@ -426,7 +426,7 @@
 
 				<div class="space-y-3">
 					{#if userContext}
-						{#each userContext.channels as capability}
+						{#each userContext.channels as capability (capability.channel)}
 							<label class="flex items-center space-x-3 cursor-pointer">
 								<input
 									type="checkbox"

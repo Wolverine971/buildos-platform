@@ -165,73 +165,68 @@
 </script>
 
 <Modal bind:isOpen title="Upload Image" size="md" onClose={closeModal}>
-	{#snippet children()}
-		<div class="space-y-3 px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
-			{#if formError}
-				<p
-					class="rounded border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs text-destructive"
-				>
-					{formError}
-				</p>
-			{/if}
+	<div class="space-y-3 px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
+		{#if formError}
+			<p
+				class="rounded border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs text-destructive"
+			>
+				{formError}
+			</p>
+		{/if}
 
-			<div class="space-y-2">
-				<label
-					class="text-xs font-medium text-muted-foreground"
-					for="onto-image-upload-input"
-				>
-					Image file
-				</label>
-				<input
-					bind:this={fileInput}
-					id="onto-image-upload-input"
-					type="file"
-					accept="image/*"
-					class="block w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground"
-					onchange={onFileSelected}
-				/>
-			</div>
-
-			{#if previewUrl}
-				<div class="rounded border border-border bg-muted/30 p-2">
-					<img
-						src={previewUrl}
-						alt="Selected preview"
-						class="max-h-48 w-full rounded object-contain"
-					/>
-					<p class="mt-1 truncate text-2xs text-muted-foreground">
-						{selectedFile?.name}
-					</p>
-				</div>
-			{/if}
-
-			<div class="space-y-1.5">
-				<label class="text-xs font-medium text-muted-foreground" for="onto-image-caption">
-					Caption (optional)
-				</label>
-				<input
-					id="onto-image-caption"
-					type="text"
-					class="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground"
-					bind:value={caption}
-					placeholder="Team whiteboard sketch"
-				/>
-			</div>
-
-			<div class="space-y-1.5">
-				<label class="text-xs font-medium text-muted-foreground" for="onto-image-alt-text">
-					Alt text (optional)
-				</label>
-				<input
-					id="onto-image-alt-text"
-					type="text"
-					class="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground"
-					bind:value={altText}
-					placeholder="Construction progress photo"
-				/>
-			</div>
+		<div class="space-y-2">
+			<label class="text-xs font-medium text-muted-foreground" for="onto-image-upload-input">
+				Image file
+			</label>
+			<input
+				bind:this={fileInput}
+				id="onto-image-upload-input"
+				type="file"
+				accept="image/*"
+				class="block w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground"
+				onchange={onFileSelected}
+			/>
 		</div>
-	{/snippet}
+
+		{#if previewUrl}
+			<div class="rounded border border-border bg-muted/30 p-2">
+				<img
+					src={previewUrl}
+					alt="Selected preview"
+					class="max-h-48 w-full rounded object-contain"
+				/>
+				<p class="mt-1 truncate text-2xs text-muted-foreground">
+					{selectedFile?.name}
+				</p>
+			</div>
+		{/if}
+
+		<div class="space-y-1.5">
+			<label class="text-xs font-medium text-muted-foreground" for="onto-image-caption">
+				Caption (optional)
+			</label>
+			<input
+				id="onto-image-caption"
+				type="text"
+				class="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground"
+				bind:value={caption}
+				placeholder="Team whiteboard sketch"
+			/>
+		</div>
+
+		<div class="space-y-1.5">
+			<label class="text-xs font-medium text-muted-foreground" for="onto-image-alt-text">
+				Alt text (optional)
+			</label>
+			<input
+				id="onto-image-alt-text"
+				type="text"
+				class="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground"
+				bind:value={altText}
+				placeholder="Construction progress photo"
+			/>
+		</div>
+	</div>
 
 	{#snippet footer()}
 		<div

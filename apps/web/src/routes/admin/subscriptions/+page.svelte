@@ -193,14 +193,13 @@
 
 	// Load users on mount and when filters change
 	$effect(() => {
-		if (!browser) return;
 		statusFilter; // Track dependency
 		currentPage; // Track dependency
 		loadUsers();
 	});
 
 	$effect(() => {
-		if (!browser || hasLoadedOpsMetrics) return;
+		if (hasLoadedOpsMetrics) return;
 		hasLoadedOpsMetrics = true;
 		loadOpsMetrics();
 	});
@@ -620,7 +619,7 @@
 			</h3>
 			<!-- Mobile card list -->
 			<ul class="space-y-2 lg:hidden">
-				{#each opsTrends as trend}
+				{#each opsTrends as trend (trend.snapshot_date)}
 					<li class="rounded-md border border-border bg-card px-3 py-2">
 						<p class="text-sm font-medium text-foreground">
 							{new Date(`${trend.snapshot_date}T00:00:00Z`).toLocaleDateString()}
@@ -677,7 +676,7 @@
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-border">
-						{#each opsTrends as trend}
+						{#each opsTrends as trend (trend.snapshot_date)}
 							<tr class="hover:bg-muted/40">
 								<td class="px-3 py-2 text-sm text-foreground">
 									{new Date(
@@ -896,7 +895,7 @@
 		{:else}
 			<!-- Mobile card list -->
 			<ul class="divide-y divide-border lg:hidden">
-				{#each users as user}
+				{#each users as user (user.id)}
 					{@const subscription = user.customer_subscriptions?.[0]}
 					<li class="p-3">
 						<div class="flex items-start justify-between gap-2">
@@ -1009,7 +1008,7 @@
 						</tr>
 					</thead>
 					<tbody class="bg-card divide-y divide-border">
-						{#each users as user}
+						{#each users as user (user.id)}
 							{@const subscription = user.customer_subscriptions?.[0]}
 							<tr class="hover:bg-muted/50">
 								<td class="px-6 py-4 whitespace-nowrap">
@@ -1184,14 +1183,14 @@
 
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
 				<Select bind:value={timelineSourceFilter} size="md">
-					{#each TIMELINE_SOURCE_OPTIONS as option}
+					{#each TIMELINE_SOURCE_OPTIONS as option (option.value)}
 						<option value={option.value}>{option.label}</option>
 					{/each}
 				</Select>
 
 				<Select bind:value={timelineActorFilter} size="md">
 					<option value="all">All Actors</option>
-					{#each billingActorOptions as actor}
+					{#each billingActorOptions as actor (actor.id)}
 						<option value={actor.id}>{actor.name || actor.email || actor.id}</option>
 					{/each}
 				</Select>
@@ -1233,7 +1232,7 @@
 				</div>
 			{:else}
 				<div class="space-y-3">
-					{#each billingTimeline as event}
+					{#each billingTimeline as event (event.id)}
 						<div class="rounded-md border border-border bg-card px-4 py-3">
 							<div
 								class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"

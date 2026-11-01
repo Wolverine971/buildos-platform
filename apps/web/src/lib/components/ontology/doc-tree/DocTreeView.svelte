@@ -775,7 +775,6 @@
 	}
 
 	$effect(() => {
-		if (!browser) return;
 		if (pollInterval <= 0) {
 			stopPolling();
 			return;
@@ -797,11 +796,9 @@
 		startPolling();
 
 		// Add global event listeners for drag
-		if (browser) {
-			document.addEventListener('visibilitychange', handleVisibilityChange);
-		}
+		document.addEventListener('visibilitychange', handleVisibilityChange);
 
-		if (browser && enableDragDrop) {
+		if (enableDragDrop) {
 			document.addEventListener('mousemove', handleGlobalMouseMove);
 			document.addEventListener('mouseup', handleGlobalMouseUp);
 			document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });

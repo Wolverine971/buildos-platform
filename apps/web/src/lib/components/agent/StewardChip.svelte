@@ -293,135 +293,130 @@
 		closeOnEscape={!busy}
 		persistent={busy}
 	>
-		{#snippet children()}
-			{#if review}
-				<div class="space-y-3 px-4 py-3">
-					<p class="text-sm text-foreground">
-						The steward follows these orders like system rules until you change them.
-						Approve only text you have read.
+		{#if review}
+			<div class="space-y-3 px-4 py-3">
+				<p class="text-sm text-foreground">
+					The steward follows these orders like system rules until you change them.
+					Approve only text you have read.
+				</p>
+
+				<div class="flex flex-wrap items-center justify-between gap-2">
+					<p class="min-w-0 truncate micro-label text-muted-foreground">
+						{review.documentTitle}
 					</p>
-
-					<div class="flex flex-wrap items-center justify-between gap-2">
-						<p class="min-w-0 truncate micro-label text-muted-foreground">
-							{review.documentTitle}
-						</p>
-						{#if diffRows}
-							<div
-								class="inline-flex shrink-0 rounded-lg border border-border bg-muted p-0.5"
-								role="group"
-								aria-label="Show"
+					{#if diffRows}
+						<div
+							class="inline-flex shrink-0 rounded-lg border border-border bg-muted p-0.5"
+							role="group"
+							aria-label="Show"
+						>
+							<button
+								type="button"
+								aria-pressed={reviewView === 'changes'}
+								onclick={() => (reviewView = 'changes')}
+								class="min-h-11 rounded-md px-3 text-xs font-semibold touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 {reviewView ===
+								'changes'
+									? 'bg-card text-foreground shadow-ink'
+									: 'text-muted-foreground hover:text-foreground'}"
 							>
-								<button
-									type="button"
-									aria-pressed={reviewView === 'changes'}
-									onclick={() => (reviewView = 'changes')}
-									class="min-h-11 rounded-md px-3 text-xs font-semibold touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 {reviewView ===
-									'changes'
-										? 'bg-card text-foreground shadow-ink'
-										: 'text-muted-foreground hover:text-foreground'}"
-								>
-									Changes
-								</button>
-								<button
-									type="button"
-									aria-pressed={reviewView === 'full'}
-									onclick={() => (reviewView = 'full')}
-									class="min-h-11 rounded-md px-3 text-xs font-semibold touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 {reviewView ===
-									'full'
-										? 'bg-card text-foreground shadow-ink'
-										: 'text-muted-foreground hover:text-foreground'}"
-								>
-									Full text
-								</button>
-							</div>
-						{/if}
-					</div>
-
-					{#if review.charterText === null}
-						<p
-							class="rounded-md border border-border bg-muted px-3 py-2 text-sm text-muted-foreground"
-						>
-							There is nothing new to approve: the charter matches what the steward
-							already follows.
-						</p>
-					{:else if diffRows && reviewView === 'changes'}
-						<p class="text-xs text-muted-foreground">
-							<span class="text-success">+{diffCounts.added}</span>
-							<span class="text-destructive">&minus;{diffCounts.removed}</span>
-							lines since your last approval
-						</p>
-						<div
-							class="max-h-[45dvh] overflow-y-auto overscroll-contain rounded-md border border-border bg-background py-2 text-sm leading-relaxed shadow-ink-inner sm:max-h-[60vh]"
-						>
-							{#each diffRows as row, index (index)}
-								<div
-									class="flex gap-2 px-3 {row.kind === 'added'
-										? 'bg-success/10 text-success'
-										: row.kind === 'removed'
-											? 'bg-destructive/10 text-destructive'
-											: 'text-muted-foreground'}"
-								>
-									<span
-										class="w-3 shrink-0 select-none font-mono"
-										aria-hidden="true"
-										>{row.kind === 'added'
-											? '+'
-											: row.kind === 'removed'
-												? '−'
-												: ' '}</span
-									>
-									{#if row.kind === 'added'}
-										<ins
-											class="min-w-0 flex-1 whitespace-pre-wrap break-words no-underline"
-											><span class="sr-only">Added: </span>{row.text ||
-												' '}</ins
-										>
-									{:else if row.kind === 'removed'}
-										<del class="min-w-0 flex-1 whitespace-pre-wrap break-words"
-											><span class="sr-only">Removed: </span>{row.text ||
-												' '}</del
-										>
-									{:else}
-										<span class="min-w-0 flex-1 whitespace-pre-wrap break-words"
-											>{row.text || ' '}</span
-										>
-									{/if}
-								</div>
-							{/each}
-						</div>
-					{:else}
-						<div
-							class="max-h-[45dvh] overflow-y-auto overscroll-contain whitespace-pre-wrap break-words rounded-md border border-border bg-background px-3 py-2 text-sm leading-relaxed text-foreground shadow-ink-inner sm:max-h-[60vh]"
-						>
-							{review.charterText}
-						</div>
-					{/if}
-
-					{#if review.tooLong && review.charterText !== null}
-						<div
-							class="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-foreground"
-						>
-							<TriangleAlert class="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-							<p>
-								This charter is {review.charterText.length.toLocaleString()} characters;
-								the steward's limit is {review.maxChars.toLocaleString()}. Shorten
-								the document, then approve.
-							</p>
-						</div>
-					{/if}
-
-					{#if reviewError}
-						<div
-							class="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-foreground"
-							role="alert"
-						>
-							<TriangleAlert class="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-							<p>{reviewError}</p>
+								Changes
+							</button>
+							<button
+								type="button"
+								aria-pressed={reviewView === 'full'}
+								onclick={() => (reviewView = 'full')}
+								class="min-h-11 rounded-md px-3 text-xs font-semibold touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 {reviewView ===
+								'full'
+									? 'bg-card text-foreground shadow-ink'
+									: 'text-muted-foreground hover:text-foreground'}"
+							>
+								Full text
+							</button>
 						</div>
 					{/if}
 				</div>
-			{/if}
-		{/snippet}
+
+				{#if review.charterText === null}
+					<p
+						class="rounded-md border border-border bg-muted px-3 py-2 text-sm text-muted-foreground"
+					>
+						There is nothing new to approve: the charter matches what the steward
+						already follows.
+					</p>
+				{:else if diffRows && reviewView === 'changes'}
+					<p class="text-xs text-muted-foreground">
+						<span class="text-success">+{diffCounts.added}</span>
+						<span class="text-destructive">&minus;{diffCounts.removed}</span>
+						lines since your last approval
+					</p>
+					<div
+						class="max-h-[45dvh] overflow-y-auto overscroll-contain rounded-md border border-border bg-background py-2 text-sm leading-relaxed shadow-ink-inner sm:max-h-[60vh]"
+					>
+						{#each diffRows as row, index (index)}
+							<div
+								class="flex gap-2 px-3 {row.kind === 'added'
+									? 'bg-success/10 text-success'
+									: row.kind === 'removed'
+										? 'bg-destructive/10 text-destructive'
+										: 'text-muted-foreground'}"
+							>
+								<span class="w-3 shrink-0 select-none font-mono" aria-hidden="true"
+									>{row.kind === 'added'
+										? '+'
+										: row.kind === 'removed'
+											? '−'
+											: ' '}</span
+								>
+								{#if row.kind === 'added'}
+									<ins
+										class="min-w-0 flex-1 whitespace-pre-wrap break-words no-underline"
+										><span class="sr-only">Added: </span>{row.text || ' '}</ins
+									>
+								{:else if row.kind === 'removed'}
+									<del class="min-w-0 flex-1 whitespace-pre-wrap break-words"
+										><span class="sr-only">Removed: </span>{row.text ||
+											' '}</del
+									>
+								{:else}
+									<span class="min-w-0 flex-1 whitespace-pre-wrap break-words"
+										>{row.text || ' '}</span
+									>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<div
+						class="max-h-[45dvh] overflow-y-auto overscroll-contain whitespace-pre-wrap break-words rounded-md border border-border bg-background px-3 py-2 text-sm leading-relaxed text-foreground shadow-ink-inner sm:max-h-[60vh]"
+					>
+						{review.charterText}
+					</div>
+				{/if}
+
+				{#if review.tooLong && review.charterText !== null}
+					<div
+						class="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-foreground"
+					>
+						<TriangleAlert class="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+						<p>
+							This charter is {review.charterText.length.toLocaleString()} characters;
+							the steward's limit is {review.maxChars.toLocaleString()}. Shorten the
+							document, then approve.
+						</p>
+					</div>
+				{/if}
+
+				{#if reviewError}
+					<div
+						class="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-foreground"
+						role="alert"
+					>
+						<TriangleAlert class="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+						<p>{reviewError}</p>
+					</div>
+				{/if}
+			</div>
+		{/if}
 
 		{#snippet footer()}
 			<div

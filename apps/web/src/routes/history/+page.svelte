@@ -18,7 +18,7 @@
 	import { onMount, untrack } from 'svelte';
 	import { deserialize } from '$app/forms';
 	import { goto, invalidate, replaceState } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import {
 		Lightbulb,
 		Search,
@@ -145,8 +145,8 @@
 	}
 
 	onMount(() => {
-		if (!$page.url.searchParams.has('search')) return;
-		const url = new URL($page.url);
+		if (!page.url.searchParams.has('search')) return;
+		const url = new URL(page.url);
 		url.searchParams.delete('search');
 		goto(`${url.pathname}${url.search}`, {
 			replaceState: true,
@@ -229,7 +229,7 @@
 				const url = legacyHistoryChatResumeUrl(
 					new URL(window.location.href),
 					resolvedData.selectedItem.id,
-					$page.state
+					page.state
 				);
 				if (url) {
 					// Navigation awaits its own cleanup before opening/pushing the chat.
@@ -237,7 +237,7 @@
 						replaceState: true,
 						keepFocus: true,
 						noScroll: true,
-						state: $page.state
+						state: page.state
 					});
 				}
 			}
@@ -410,7 +410,7 @@
 		}
 
 		activeSearch = normalizedSearch;
-		if (`${$page.url.pathname}${$page.url.search}` !== url) {
+		if (`${page.url.pathname}${page.url.search}` !== url) {
 			goto(url, { keepFocus: true, noScroll: true });
 		}
 		void runSearch(0);
@@ -434,7 +434,7 @@
 			void runSearch(currentOffset + limit);
 			return;
 		}
-		const params = new URLSearchParams($page.url.searchParams);
+		const params = new URLSearchParams(page.url.searchParams);
 		params.set('offset', String(currentOffset + limit));
 		goto(`/history?${params.toString()}`);
 	}
@@ -475,7 +475,7 @@
 			return;
 		}
 		// Brain Dump selection retains its dedicated context and local host.
-		const params = new URLSearchParams($page.url.searchParams);
+		const params = new URLSearchParams(page.url.searchParams);
 		params.set('id', item.id);
 		params.set('itemType', item.type);
 		goto(`/history?${params.toString()}`, { replaceState: true });
@@ -489,7 +489,7 @@
 		const url = new URL(window.location.href);
 		url.searchParams.delete('id');
 		url.searchParams.delete('itemType');
-		replaceState(url, { ...$page.state });
+		replaceState(url, { ...page.state });
 		if (summary?.hasMessagesSent) {
 			void invalidate('history:data');
 			if (activeSearch) void runSearch(searchOffset);

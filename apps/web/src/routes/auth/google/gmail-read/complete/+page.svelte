@@ -1,6 +1,7 @@
+<!-- apps/web/src/routes/auth/google/gmail-read/complete/+page.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import {
 		GMAIL_OAUTH_COMPLETE_MESSAGE,
 		gmailOAuthErrorMessage,
@@ -10,9 +11,9 @@
 	let sent = $state(false);
 	let canClose = $state(false);
 
-	const success = $derived($page.url.searchParams.get('success') === 'gmail_connected');
-	const errorCode = $derived($page.url.searchParams.get('error'));
-	const connectionId = $derived($page.url.searchParams.get('connection'));
+	const success = $derived(page.url.searchParams.get('success') === 'gmail_connected');
+	const errorCode = $derived(page.url.searchParams.get('error'));
+	const connectionId = $derived(page.url.searchParams.get('connection'));
 	const statusMessage = $derived(
 		success
 			? 'Gmail read-only access is connected.'

@@ -533,7 +533,7 @@
 
 				{#if matchingPreviews.length || matchingDomains.length || matchingPacks.length || matchingReferences.length || matchingArticles.length}
 					<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-						{#each matchingPreviews as preview}
+						{#each matchingPreviews as preview (preview.runtime_skill_id)}
 							<a
 								href={getPreviewSkillPath(preview)}
 								class="group flex min-h-[10rem] flex-col rounded-lg border border-dashed border-accent/60 bg-accent/5 p-4 shadow-ink transition-colors hover:border-accent hover:bg-accent/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring tx tx-frame tx-weak"
@@ -558,7 +558,7 @@
 							</a>
 						{/each}
 
-						{#each matchingDomains as domain}
+						{#each matchingDomains as domain (domain.id)}
 							<a
 								href={getDomainPath(domain)}
 								class="group flex min-h-[10rem] flex-col rounded-lg border border-border bg-card p-4 shadow-ink transition-colors hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring tx tx-frame tx-weak"
@@ -583,7 +583,7 @@
 							</a>
 						{/each}
 
-						{#each matchingPacks as pack}
+						{#each matchingPacks as pack (pack.id)}
 							<a
 								href={getPackPath(pack)}
 								class="group flex min-h-[10rem] flex-col rounded-lg border border-border bg-card p-4 shadow-ink transition-colors hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring tx tx-thread tx-weak"
@@ -639,7 +639,7 @@
 							</a>
 						{/each}
 
-						{#each matchingArticles as article}
+						{#each matchingArticles as article (article.slug)}
 							<a
 								href={`/agent-skills/${article.slug}`}
 								class="group flex min-h-[10rem] flex-col rounded-lg border border-border bg-card p-4 shadow-ink transition-colors hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring tx tx-frame tx-weak"
@@ -684,7 +684,7 @@
 				</div>
 
 				<div class="grid gap-3 lg:grid-cols-3">
-					{#each featuredSkills as skill}
+					{#each featuredSkills as skill (skill.slug)}
 						<a
 							href={getSkillPath(skill)}
 							class="group flex min-h-[15rem] flex-col rounded-lg border border-border bg-card p-4 shadow-ink transition-colors hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring tx tx-frame tx-weak"
@@ -749,7 +749,7 @@
 					</div>
 
 					<div id="runtime-preview-grid" class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-						{#each visiblePreviews as preview}
+						{#each visiblePreviews as preview (preview.runtime_skill_id)}
 							<article
 								class="flex min-h-[16rem] flex-col rounded-lg border border-dashed border-accent/60 bg-card p-4 shadow-ink transition-colors hover:border-accent tx tx-frame tx-weak"
 							>
@@ -837,7 +837,7 @@
 				</div>
 
 				<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-					{#each allDomainOptions as domain}
+					{#each allDomainOptions as domain (domain.id)}
 						<article
 							class={`flex min-h-[15rem] flex-col rounded-lg border p-4 shadow-ink transition-colors ${
 								activeDomain === domain.id
@@ -924,7 +924,7 @@
 				</div>
 
 				<div class="grid gap-3 lg:grid-cols-4">
-					{#each packCards as pack}
+					{#each packCards as pack (pack.id)}
 						{@const PackIcon = pack.kind === 'Stack' ? Workflow : Package}
 						<article
 							class={`flex min-h-[19rem] flex-col rounded-lg border p-4 shadow-ink transition-colors ${
@@ -1011,7 +1011,7 @@
 
 				{#if filteredSkills.length > 0}
 					<div class="grid min-w-0 gap-3 xl:grid-cols-2">
-						{#each filteredSkills as skill}
+						{#each filteredSkills as skill (skill.slug)}
 							{@const post = postBySlug.get(skill.slug)}
 							{@const sourceCount = getNumericStat(skill, 'sources')}
 							{@const searchMatches = getSkillSearchMatches(skill, post, query)}
@@ -1092,7 +1092,7 @@
 										<ul
 											class="mt-2 space-y-1 text-xs leading-5 text-muted-foreground"
 										>
-											{#each searchMatches as match}
+											{#each searchMatches as match (match.label)}
 												<li class="line-clamp-2">
 													<span class="font-semibold text-foreground"
 														>{match.label}:</span
@@ -1228,7 +1228,7 @@
 						</h2>
 					</div>
 					<div class="mt-4 space-y-4">
-						{#each filteredFamilies as family}
+						{#each filteredFamilies as family (family.name)}
 							<div>
 								<a
 									href={getFamilyPath(family)}
@@ -1238,7 +1238,7 @@
 									<ArrowRight class="h-3 w-3" />
 								</a>
 								<div class="mt-2 space-y-1.5">
-									{#each family.skills as skill}
+									{#each family.skills as skill (skill.slug)}
 										<a
 											href={getSkillPath(skill)}
 											class="flex min-h-[44px] min-w-0 items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"

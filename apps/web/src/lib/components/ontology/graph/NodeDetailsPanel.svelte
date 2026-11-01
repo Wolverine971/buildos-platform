@@ -792,7 +792,7 @@
 						Additional Info
 					</p>
 					<dl class="space-y-1.5">
-						{#each displayProps as [key, value]}
+						{#each displayProps as [key, value] (key)}
 							<div class="flex items-start gap-2 text-xs">
 								<dt
 									class="text-muted-foreground flex-shrink-0 min-w-[80px] capitalize"

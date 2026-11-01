@@ -360,7 +360,7 @@ Content-Type: application/json
 			</div>
 
 			<div class="mx-auto grid max-w-6xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
-				{#each supportedTools as tool}
+				{#each supportedTools as tool (tool.name)}
 					<Card variant="default" class="shadow-ink tx tx-frame tx-weak">
 						<CardBody padding="md">
 							<div class="flex items-start justify-between gap-2 mb-2">
@@ -407,7 +407,7 @@ Content-Type: application/json
 						</p>
 
 						<div class="space-y-4">
-							{#each ['BuildOS is the system of record for your projects, tasks, docs, and decisions.', 'Your tools never get direct database access. They go through a scoped session.', 'BuildOS verifies the caller before any tool runs. Per-project, per-op, per-key.', 'No vendor SDK. No OAuth dance. No retraining your agents on your context every session.'] as point}
+							{#each ['BuildOS is the system of record for your projects, tasks, docs, and decisions.', 'Your tools never get direct database access. They go through a scoped session.', 'BuildOS verifies the caller before any tool runs. Per-project, per-op, per-key.', 'No vendor SDK. No OAuth dance. No retraining your agents on your context every session.'] as point (point)}
 								<div class="flex gap-3">
 									<CheckCircle2 class="mt-1 h-5 w-5 shrink-0 text-success" />
 									<p class="text-sm text-foreground sm:text-base">{point}</p>
@@ -460,7 +460,7 @@ Content-Type: application/json
 			</div>
 
 			<div class="mx-auto mt-12 grid max-w-6xl gap-6 md:grid-cols-2 xl:grid-cols-4">
-				{#each setupSteps as step, index}
+				{#each setupSteps as step, index (step.title)}
 					{@const StepIcon = step.icon}
 					<Card variant="interactive" class="shadow-ink tx tx-frame tx-weak">
 						<CardHeader>
@@ -493,7 +493,7 @@ Content-Type: application/json
 			</div>
 
 			<div class="mx-auto mt-12 grid max-w-6xl gap-6 md:grid-cols-2 xl:grid-cols-4">
-				{#each callConcepts as concept}
+				{#each callConcepts as concept (concept.title)}
 					{@const ConceptIcon = concept.icon}
 					<Card variant="default" class="shadow-ink tx tx-grain tx-weak">
 						<CardBody padding="md">
@@ -529,7 +529,7 @@ Content-Type: application/json
 						</p>
 
 						<div class="space-y-4">
-							{#each availableTools as tool}
+							{#each availableTools as tool (tool.name)}
 								<div class="rounded-lg border border-border bg-muted/20 p-4">
 									<div class="font-mono text-sm font-semibold text-foreground">
 										{tool.name}
@@ -648,7 +648,7 @@ Content-Type: application/json
 				</div>
 
 				<div class="mt-10 grid gap-4 md:grid-cols-2">
-					{#each guardrails as guardrail}
+					{#each guardrails as guardrail (guardrail)}
 						<div
 							class="flex gap-3 rounded-lg border border-border bg-card p-4 shadow-ink tx tx-grain tx-weak"
 						>

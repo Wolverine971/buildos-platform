@@ -316,414 +316,406 @@
 		</div>
 	{/snippet}
 
-	{#snippet children()}
-		<div class="px-2 py-2 sm:px-6 sm:py-4 space-y-3 sm:space-y-4">
-			<!-- Stacked grid cell instead of absolute panes: content stays in normal
-			     flow, so the pane grows with its content and the modal's own
-			     .modal-content scroll applies (no fixed 420px inner scroll window).
-			     During the slide transition both panes share grid-area 1/1. -->
-			<div class="grid min-h-[420px] overflow-hidden">
-				{#key showTemplateSelection}
-					<div
-						in:fly={{ x: slideDirection * 120, duration: 300, easing: cubicOut }}
-						out:fly={{ x: slideDirection * -120, duration: 300, easing: cubicOut }}
-						class="[grid-area:1/1] min-w-0"
-					>
-						{#if showTemplateSelection}
-							<div class="space-y-5">
+	<div class="px-2 py-2 sm:px-6 sm:py-4 space-y-3 sm:space-y-4">
+		<!-- Stacked grid cell instead of absolute panes: content stays in normal
+		     flow, so the pane grows with its content and the modal's own
+		     .modal-content scroll applies (no fixed 420px inner scroll window).
+		     During the slide transition both panes share grid-area 1/1. -->
+		<div class="grid min-h-[420px] overflow-hidden">
+			{#key showTemplateSelection}
+				<div
+					in:fly={{ x: slideDirection * 120, duration: 300, easing: cubicOut }}
+					out:fly={{ x: slideDirection * -120, duration: 300, easing: cubicOut }}
+					class="[grid-area:1/1] min-w-0"
+				>
+					{#if showTemplateSelection}
+						<div class="space-y-5">
+							<div
+								class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
+							>
+								<div>
+									<h3 class="text-lg font-semibold text-foreground">
+										Explore templates
+									</h3>
+									<p class="text-sm text-muted-foreground">
+										Filter by problem type, planning horizon, or go custom.
+									</p>
+								</div>
+								<div class="w-full lg:w-72">
+									<FormField
+										label="Search templates"
+										uppercase={false}
+										showOptional={false}
+									>
+										<TextInput
+											bind:value={templateSearch}
+											placeholder="Search by name, metric, scope..."
+											type="search"
+											inputmode="search"
+											enterkeyhint="search"
+											size="sm"
+											icon={Search}
+										/>
+									</FormField>
+								</div>
+							</div>
+
+							{#if filteredTemplates.length === 0}
 								<div
-									class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
+									class="text-center py-20 border border-dashed border-border rounded-lg"
 								>
-									<div>
-										<h3 class="text-lg font-semibold text-foreground">
-											Explore templates
-										</h3>
-										<p class="text-sm text-muted-foreground">
-											Filter by problem type, planning horizon, or go custom.
-										</p>
-									</div>
-									<div class="w-full lg:w-72">
-										<FormField
-											label="Search templates"
-											uppercase={false}
-											showOptional={false}
-										>
+									<p class="text-muted-foreground">
+										No templates match that search.
+									</p>
+									<p class="text-sm text-muted-foreground">
+										Try another keyword or start from scratch.
+									</p>
+								</div>
+							{:else}
+								<div class="space-y-6">
+									{#each Object.entries(templateCategories) as [category, categoryTemplates] (category)}
+										<section class="space-y-3">
+											<div class="flex items-center justify-between">
+												<h4
+													class="text-sm font-semibold tracking-[0.2em] uppercase text-muted-foreground"
+												>
+													{category}
+												</h4>
+												<span class="text-xs text-muted-foreground">
+													{categoryTemplates.length} option{categoryTemplates.length ===
+													1
+														? ''
+														: 's'}
+												</span>
+											</div>
+											<div
+												class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"
+											>
+												{#each categoryTemplates as template (template.id)}
+													<button
+														type="button"
+														onclick={() => selectTemplate(template)}
+														class="group text-left pressable"
+													>
+														<Card
+															variant="interactive"
+															class="h-full border border-border group-hover:border-accent shadow-ink tx tx-frame tx-weak"
+														>
+															<CardBody class="space-y-3">
+																<div
+																	class="flex items-start justify-between gap-3"
+																>
+																	<div>
+																		<p
+																			class="text-sm uppercase tracking-[0.3em] text-muted-foreground"
+																		>
+																			{template.metadata
+																				?.category ||
+																				'General'}
+																		</p>
+																		<h5
+																			class="text-lg font-semibold text-foreground"
+																		>
+																			{template.name}
+																		</h5>
+																	</div>
+																	<ChevronRight
+																		class="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors"
+																	/>
+																</div>
+																<p
+																	class="text-sm text-muted-foreground line-clamp-3"
+																>
+																	{template.metadata
+																		?.description ||
+																		'Structured yet flexible execution template.'}
+																</p>
+																<div
+																	class="flex flex-wrap gap-2 pt-1"
+																>
+																	{#if template.metadata?.typical_scope}
+																		<Badge
+																			size="sm"
+																			variant="info"
+																		>
+																			{#snippet icon()}<Calendar
+																					class="w-3 h-3"
+																				/>{/snippet}
+																			{template.metadata
+																				.typical_scope}
+																		</Badge>
+																	{/if}
+																	{#if template.metadata?.measurement_type}
+																		<Badge
+																			size="sm"
+																			variant="success"
+																		>
+																			{#snippet icon()}<Target
+																					class="w-3 h-3"
+																				/>{/snippet}
+																			{template.metadata
+																				.measurement_type}
+																		</Badge>
+																	{/if}
+																</div>
+															</CardBody>
+														</Card>
+													</button>
+												{/each}
+											</div>
+										</section>
+									{/each}
+								</div>
+							{/if}
+						</div>
+					{:else}
+						<form class="space-y-3 sm:space-y-4" onsubmit={handleSubmit}>
+							<div
+								class="relative grid grid-cols-1 gap-y-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:overflow-x-clip"
+							>
+								<Card class="min-w-0 shadow-ink">
+									<CardHeader
+										class="flex items-center justify-between border-b border-border bg-muted tx tx-frame tx-weak"
+									>
+										<div>
+											<p
+												class="text-xs font-semibold uppercase tracking-[0.3em] text-accent"
+											>
+												Blueprint details
+											</p>
+											<h3 class="text-xl font-semibold text-foreground">
+												Name, context, and timeline
+											</h3>
+										</div>
+										<Badge variant="info" size="sm">Step 2 of 2</Badge>
+									</CardHeader>
+									<CardBody class="space-y-5">
+										<FormField label="Plan name" labelFor="plan-name" required>
 											<TextInput
-												bind:value={templateSearch}
-												placeholder="Search by name, metric, scope..."
-												type="search"
-												inputmode="search"
-												enterkeyhint="search"
-												size="sm"
-												icon={Search}
+												id="plan-name"
+												bind:value={name}
+												placeholder="e.g., Foundation Sprint, Q2 GTM Rollout"
+												inputmode="text"
+												enterkeyhint="next"
+												required
 											/>
 										</FormField>
-									</div>
-								</div>
 
-								{#if filteredTemplates.length === 0}
-									<div
-										class="text-center py-20 border border-dashed border-border rounded-lg"
-									>
-										<p class="text-muted-foreground">
-											No templates match that search.
-										</p>
-										<p class="text-sm text-muted-foreground">
-											Try another keyword or start from scratch.
-										</p>
-									</div>
-								{:else}
-									<div class="space-y-6">
-										{#each Object.entries(templateCategories) as [category, categoryTemplates] (category)}
-											<section class="space-y-3">
-												<div class="flex items-center justify-between">
-													<h4
-														class="text-sm font-semibold tracking-[0.2em] uppercase text-muted-foreground"
-													>
-														{category}
-													</h4>
-													<span class="text-xs text-muted-foreground">
-														{categoryTemplates.length} option{categoryTemplates.length ===
-														1
-															? ''
-															: 's'}
-													</span>
-												</div>
-												<div
-													class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"
-												>
-													{#each categoryTemplates as template (template.id)}
-														<button
-															type="button"
-															onclick={() => selectTemplate(template)}
-															class="group text-left pressable"
-														>
-															<Card
-																variant="interactive"
-																class="h-full border border-border group-hover:border-accent shadow-ink tx tx-frame tx-weak"
-															>
-																<CardBody class="space-y-3">
-																	<div
-																		class="flex items-start justify-between gap-3"
-																	>
-																		<div>
-																			<p
-																				class="text-sm uppercase tracking-[0.3em] text-muted-foreground"
-																			>
-																				{template.metadata
-																					?.category ||
-																					'General'}
-																			</p>
-																			<h5
-																				class="text-lg font-semibold text-foreground"
-																			>
-																				{template.name}
-																			</h5>
-																		</div>
-																		<ChevronRight
-																			class="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors"
-																		/>
-																	</div>
-																	<p
-																		class="text-sm text-muted-foreground line-clamp-3"
-																	>
-																		{template.metadata
-																			?.description ||
-																			'Structured yet flexible execution template.'}
-																	</p>
-																	<div
-																		class="flex flex-wrap gap-2 pt-1"
-																	>
-																		{#if template.metadata?.typical_scope}
-																			<Badge
-																				size="sm"
-																				variant="info"
-																			>
-																				{#snippet icon()}<Calendar
-																						class="w-3 h-3"
-																					/>{/snippet}
-																				{template.metadata
-																					.typical_scope}
-																			</Badge>
-																		{/if}
-																		{#if template.metadata?.measurement_type}
-																			<Badge
-																				size="sm"
-																				variant="success"
-																			>
-																				{#snippet icon()}<Target
-																						class="w-3 h-3"
-																					/>{/snippet}
-																				{template.metadata
-																					.measurement_type}
-																			</Badge>
-																		{/if}
-																	</div>
-																</CardBody>
-															</Card>
-														</button>
-													{/each}
-												</div>
-											</section>
-										{/each}
-									</div>
-								{/if}
-							</div>
-						{:else}
-							<form class="space-y-3 sm:space-y-4" onsubmit={handleSubmit}>
-								<div
-									class="relative grid grid-cols-1 gap-y-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:overflow-x-clip"
-								>
-									<Card class="min-w-0 shadow-ink">
-										<CardHeader
-											class="flex items-center justify-between border-b border-border bg-muted tx tx-frame tx-weak"
+										<FormField
+											label="Plan description"
+											labelFor="plan-description"
+											showOptional={false}
 										>
-											<div>
-												<p
-													class="text-xs font-semibold uppercase tracking-[0.3em] text-accent"
-												>
-													Blueprint details
-												</p>
-												<h3 class="text-xl font-semibold text-foreground">
-													Name, context, and timeline
-												</h3>
-											</div>
-											<Badge variant="info" size="sm">Step 2 of 2</Badge>
-										</CardHeader>
-										<CardBody class="space-y-5">
+											<Textarea
+												id="plan-description"
+												bind:value={description}
+												rows={4}
+												enterkeyhint="next"
+												placeholder="Summarize the scope, success criteria, and how this plan ladders up to goals."
+											/>
+										</FormField>
+
+										<FormField
+											label="Plan details"
+											labelFor="plan-details"
+											hint="Optional execution notes or outline"
+											showOptional={true}
+										>
+											<Textarea
+												id="plan-details"
+												bind:value={planDetails}
+												rows={4}
+												enterkeyhint="next"
+												placeholder="Capture the execution outline, milestones, or runbook details..."
+											/>
+										</FormField>
+
+										<div class="grid gap-4 sm:grid-cols-2">
 											<FormField
-												label="Plan name"
-												labelFor="plan-name"
-												required
+												label="Start date"
+												labelFor="plan-start"
+												showOptional={false}
 											>
 												<TextInput
-													id="plan-name"
-													bind:value={name}
-													placeholder="e.g., Foundation Sprint, Q2 GTM Rollout"
-													inputmode="text"
-													enterkeyhint="next"
-													required
+													id="plan-start"
+													bind:value={startDate}
+													type="date"
 												/>
 											</FormField>
-
 											<FormField
-												label="Plan description"
-												labelFor="plan-description"
+												label="End date"
+												labelFor="plan-end"
+												error={dateError}
 												showOptional={false}
 											>
-												<Textarea
-													id="plan-description"
-													bind:value={description}
-													rows={4}
-													enterkeyhint="next"
-													placeholder="Summarize the scope, success criteria, and how this plan ladders up to goals."
+												<TextInput
+													id="plan-end"
+													bind:value={endDate}
+													type="date"
 												/>
 											</FormField>
+										</div>
 
-											<FormField
-												label="Plan details"
-												labelFor="plan-details"
-												hint="Optional execution notes or outline"
-												showOptional={true}
+										<FormField
+											label="Initial state"
+											labelFor="plan-state"
+											showOptional={false}
+										>
+											<Select id="plan-state" bind:value={stateKey}>
+												{#each stateOptions as option (option.value)}
+													<option value={option.value}
+														>{option.label}</option
+													>
+												{/each}
+											</Select>
+										</FormField>
+									</CardBody>
+								</Card>
+
+								<EntityModalDetailsDrawer
+									panelLabel="Plan guidance"
+									class="space-y-4"
+								>
+									<Card class="shadow-ink">
+										<CardHeader
+											class="flex items-center gap-2 border-b border-border"
+										>
+											<Clock class="w-4 h-4 text-accent" />
+											<h4
+												class="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground"
 											>
-												<Textarea
-													id="plan-details"
-													bind:value={planDetails}
-													rows={4}
-													enterkeyhint="next"
-													placeholder="Capture the execution outline, milestones, or runbook details..."
-												/>
-											</FormField>
-
-											<div class="grid gap-4 sm:grid-cols-2">
-												<FormField
-													label="Start date"
-													labelFor="plan-start"
-													showOptional={false}
-												>
-													<TextInput
-														id="plan-start"
-														bind:value={startDate}
-														type="date"
-													/>
-												</FormField>
-												<FormField
-													label="End date"
-													labelFor="plan-end"
-													error={dateError}
-													showOptional={false}
-												>
-													<TextInput
-														id="plan-end"
-														bind:value={endDate}
-														type="date"
-													/>
-												</FormField>
+												Timeline insight
+											</h4>
+										</CardHeader>
+										<CardBody class="space-y-3">
+											<div class="flex items-center gap-3">
+												<div class="rounded-full bg-muted p-2">
+													<Calendar class="w-4 h-4 text-accent" />
+												</div>
+												<div>
+													<p
+														class="text-xs uppercase tracking-[0.4em] text-muted-foreground"
+													>
+														Duration
+													</p>
+													<p
+														class="text-lg font-semibold text-foreground"
+													>
+														{durationLabel}
+													</p>
+												</div>
 											</div>
-
-											<FormField
-												label="Initial state"
-												labelFor="plan-state"
-												showOptional={false}
-											>
-												<Select id="plan-state" bind:value={stateKey}>
-													{#each stateOptions as option (option.value)}
-														<option value={option.value}
-															>{option.label}</option
-														>
-													{/each}
-												</Select>
-											</FormField>
+											<div class="grid grid-cols-2 gap-3 text-sm">
+												<div
+													class="rounded bg-muted p-3 border border-border"
+												>
+													<p
+														class="text-xs uppercase tracking-[0.3em] text-muted-foreground"
+													>
+														Start
+													</p>
+													<p class="font-semibold text-foreground">
+														{startLabel}
+													</p>
+												</div>
+												<div
+													class="rounded bg-muted p-3 border border-border"
+												>
+													<p
+														class="text-xs uppercase tracking-[0.3em] text-muted-foreground"
+													>
+														End
+													</p>
+													<p class="font-semibold text-foreground">
+														{endLabel}
+													</p>
+												</div>
+											</div>
 										</CardBody>
 									</Card>
 
-									<EntityModalDetailsDrawer
-										panelLabel="Plan guidance"
-										class="space-y-4"
-									>
-										<Card class="shadow-ink">
-											<CardHeader
-												class="flex items-center gap-2 border-b border-border"
+									<Card class="shadow-ink">
+										<CardHeader
+											class="flex items-center gap-2 border-b border-border"
+										>
+											<Target class="w-4 h-4 text-accent" />
+											<h4
+												class="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground"
 											>
-												<Clock class="w-4 h-4 text-accent" />
-												<h4
-													class="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground"
-												>
-													Timeline insight
-												</h4>
-											</CardHeader>
-											<CardBody class="space-y-3">
-												<div class="flex items-center gap-3">
-													<div class="rounded-full bg-muted p-2">
-														<Calendar class="w-4 h-4 text-accent" />
-													</div>
-													<div>
-														<p
-															class="text-xs uppercase tracking-[0.4em] text-muted-foreground"
-														>
-															Duration
-														</p>
-														<p
-															class="text-lg font-semibold text-foreground"
-														>
-															{durationLabel}
-														</p>
-													</div>
-												</div>
-												<div class="grid grid-cols-2 gap-3 text-sm">
-													<div
-														class="rounded bg-muted p-3 border border-border"
+												Template guidance
+											</h4>
+										</CardHeader>
+										<CardBody class="space-y-3">
+											<p class="text-base font-semibold text-foreground">
+												{selectedTemplate?.name || 'Custom plan'}
+											</p>
+											<p class="text-sm text-muted-foreground">
+												{selectedTemplate?.metadata?.description ||
+													'A flexible plan structure for your workflow.'}
+											</p>
+											<div class="flex flex-wrap gap-2">
+												{#if selectedTemplate?.metadata?.typical_scope}
+													<span
+														class="text-xs font-semibold text-foreground rounded-full bg-muted px-3 py-1"
 													>
-														<p
-															class="text-xs uppercase tracking-[0.3em] text-muted-foreground"
-														>
-															Start
-														</p>
-														<p class="font-semibold text-foreground">
-															{startLabel}
-														</p>
-													</div>
-													<div
-														class="rounded bg-muted p-3 border border-border"
+														Scope: {selectedTemplate.metadata
+															.typical_scope}
+													</span>
+												{/if}
+											</div>
+											<div class="text-xs text-muted-foreground">
+												<p>
+													State preview: <span
+														class="font-semibold text-foreground"
+														>{formattedStateLabel}</span
 													>
-														<p
-															class="text-xs uppercase tracking-[0.3em] text-muted-foreground"
-														>
-															End
-														</p>
-														<p class="font-semibold text-foreground">
-															{endLabel}
-														</p>
-													</div>
-												</div>
-											</CardBody>
-										</Card>
-
-										<Card class="shadow-ink">
-											<CardHeader
-												class="flex items-center gap-2 border-b border-border"
-											>
-												<Target class="w-4 h-4 text-accent" />
-												<h4
-													class="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground"
-												>
-													Template guidance
-												</h4>
-											</CardHeader>
-											<CardBody class="space-y-3">
-												<p class="text-base font-semibold text-foreground">
-													{selectedTemplate?.name || 'Custom plan'}
 												</p>
-												<p class="text-sm text-muted-foreground">
-													{selectedTemplate?.metadata?.description ||
-														'A flexible plan structure for your workflow.'}
+												<p>
+													Type key: <span
+														class="font-mono text-2xs text-muted-foreground"
+														>{selectedTemplate?.type_key ||
+															'plan.process.base'}</span
+													>
 												</p>
-												<div class="flex flex-wrap gap-2">
-													{#if selectedTemplate?.metadata?.typical_scope}
-														<span
-															class="text-xs font-semibold text-foreground rounded-full bg-muted px-3 py-1"
-														>
-															Scope: {selectedTemplate.metadata
-																.typical_scope}
-														</span>
-													{/if}
-												</div>
-												<div class="text-xs text-muted-foreground">
-													<p>
-														State preview: <span
-															class="font-semibold text-foreground"
-															>{formattedStateLabel}</span
-														>
-													</p>
-													<p>
-														Type key: <span
-															class="font-mono text-2xs text-muted-foreground"
-															>{selectedTemplate?.type_key ||
-																'plan.process.base'}</span
-														>
-													</p>
-												</div>
-											</CardBody>
-										</Card>
-									</EntityModalDetailsDrawer>
-								</div>
+											</div>
+										</CardBody>
+									</Card>
+								</EntityModalDetailsDrawer>
+							</div>
 
-								{#if error}
-									<div
-										class="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive tx tx-static tx-weak"
-									>
-										{error}
-									</div>
-								{/if}
-
+							{#if error}
 								<div
-									class="flex flex-row items-center justify-between gap-2 sm:gap-3"
+									class="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive tx tx-static tx-weak"
 								>
-									<Button
-										variant="ghost"
-										type="button"
-										onclick={handleBackToTemplates}
-										class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
-									>
-										<span class="hidden sm:inline">← Back</span>
-										<span class="sm:hidden">←</span>
-									</Button>
-									<Button
-										type="submit"
-										variant="primary"
-										loading={isSaving}
-										disabled={!canSubmit}
-										class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
-									>
-										<span class="hidden sm:inline">Create Plan</span>
-										<span class="sm:hidden">Create</span>
-									</Button>
+									{error}
 								</div>
-							</form>
-						{/if}
-					</div>
-				{/key}
-			</div>
+							{/if}
+
+							<div class="flex flex-row items-center justify-between gap-2 sm:gap-3">
+								<Button
+									variant="ghost"
+									type="button"
+									onclick={handleBackToTemplates}
+									class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
+								>
+									<span class="hidden sm:inline">← Back</span>
+									<span class="sm:hidden">←</span>
+								</Button>
+								<Button
+									type="submit"
+									variant="primary"
+									loading={isSaving}
+									disabled={!canSubmit}
+									class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
+								>
+									<span class="hidden sm:inline">Create Plan</span>
+									<span class="sm:hidden">Create</span>
+								</Button>
+							</div>
+						</form>
+					{/if}
+				</div>
+			{/key}
 		</div>
-	{/snippet}
+	</div>
 </Modal>

@@ -197,113 +197,104 @@
 		</div>
 	{/snippet}
 
-	{#snippet children()}
-		<div class="space-y-4 sm:space-y-6">
-			<div class="space-y-1">
-				<label for="task-series-timezone" class="text-sm font-medium text-muted-foreground">
-					Timezone
+	<div class="space-y-4 sm:space-y-6">
+		<div class="space-y-1">
+			<label for="task-series-timezone" class="text-sm font-medium text-muted-foreground">
+				Timezone
+			</label>
+			<TextInput
+				id="task-series-timezone"
+				bind:value={timezone}
+				placeholder="e.g. America/Los_Angeles"
+				list="timezone-options"
+				disabled={isSubmitting}
+			/>
+			<datalist id="timezone-options">
+				{#each getTimezoneOptions(COMMON_TIMEZONES) as tz (tz)}
+					<option value={tz}></option>
+				{/each}
+			</datalist>
+			<p class="text-xs text-muted-foreground">
+				Start and recurrence will follow this timezone.
+			</p>
+		</div>
+
+		<div class="space-y-1">
+			<label for="task-series-start" class="text-sm font-medium text-muted-foreground">
+				Start date & time
+			</label>
+			<input
+				id="task-series-start"
+				type="datetime-local"
+				class="w-full rounded border border-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+				bind:value={startAt}
+				disabled={isSubmitting}
+			/>
+		</div>
+
+		<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+			<div>
+				<label
+					for="task-series-frequency"
+					class="text-sm font-medium text-muted-foreground"
+				>
+					Frequency
+				</label>
+				<Select id="task-series-frequency" bind:value={frequency} disabled={isSubmitting}>
+					<option value="DAILY">Daily</option>
+					<option value="WEEKLY">Weekly</option>
+					<option value="MONTHLY">Monthly</option>
+				</Select>
+			</div>
+
+			<div>
+				<label for="task-series-interval" class="text-sm font-medium text-muted-foreground">
+					Interval
 				</label>
 				<TextInput
-					id="task-series-timezone"
-					bind:value={timezone}
-					placeholder="e.g. America/Los_Angeles"
-					list="timezone-options"
-					disabled={isSubmitting}
-				/>
-				<datalist id="timezone-options">
-					{#each getTimezoneOptions(COMMON_TIMEZONES) as tz}
-						<option value={tz}></option>
-					{/each}
-				</datalist>
-				<p class="text-xs text-muted-foreground">
-					Start and recurrence will follow this timezone.
-				</p>
-			</div>
-
-			<div class="space-y-1">
-				<label for="task-series-start" class="text-sm font-medium text-muted-foreground">
-					Start date & time
-				</label>
-				<input
-					id="task-series-start"
-					type="datetime-local"
-					class="w-full rounded border border-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-					bind:value={startAt}
+					id="task-series-interval"
+					type="number"
+					min="1"
+					bind:value={interval}
 					disabled={isSubmitting}
 				/>
 			</div>
 
-			<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-				<div>
-					<label
-						for="task-series-frequency"
-						class="text-sm font-medium text-muted-foreground"
-					>
-						Frequency
-					</label>
-					<Select
-						id="task-series-frequency"
-						bind:value={frequency}
-						disabled={isSubmitting}
-					>
-						<option value="DAILY">Daily</option>
-						<option value="WEEKLY">Weekly</option>
-						<option value="MONTHLY">Monthly</option>
-					</Select>
-				</div>
-
-				<div>
-					<label
-						for="task-series-interval"
-						class="text-sm font-medium text-muted-foreground"
-					>
-						Interval
-					</label>
-					<TextInput
-						id="task-series-interval"
-						type="number"
-						min="1"
-						bind:value={interval}
-						disabled={isSubmitting}
-					/>
-				</div>
-
-				<div>
-					<label
-						for="task-series-occurrences"
-						class="text-sm font-medium text-muted-foreground"
-					>
-						Occurrences
-					</label>
-					<TextInput
-						id="task-series-occurrences"
-						type="number"
-						min="1"
-						max="200"
-						bind:value={count}
-						disabled={isSubmitting}
-					/>
-				</div>
-			</div>
-
-			<div
-				class="rounded border border-accent/30 bg-accent/10 p-4 text-sm text-foreground tx tx-bloom tx-weak"
-			>
-				<p class="font-medium">Generated RRULE</p>
-				<p class="font-mono text-xs break-all mt-1 text-accent">
-					{buildRrule()}
-				</p>
-			</div>
-
-			{#if error}
-				<div
-					class="rounded border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+			<div>
+				<label
+					for="task-series-occurrences"
+					class="text-sm font-medium text-muted-foreground"
 				>
-					{error}
-				</div>
-			{/if}
+					Occurrences
+				</label>
+				<TextInput
+					id="task-series-occurrences"
+					type="number"
+					min="1"
+					max="200"
+					bind:value={count}
+					disabled={isSubmitting}
+				/>
+			</div>
 		</div>
-	{/snippet}
+
+		<div
+			class="rounded border border-accent/30 bg-accent/10 p-4 text-sm text-foreground tx tx-bloom tx-weak"
+		>
+			<p class="font-medium">Generated RRULE</p>
+			<p class="font-mono text-xs break-all mt-1 text-accent">
+				{buildRrule()}
+			</p>
+		</div>
+
+		{#if error}
+			<div
+				class="rounded border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+			>
+				{error}
+			</div>
+		{/if}
+	</div>
 
 	{#snippet footer()}
 		<div

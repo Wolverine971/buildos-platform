@@ -69,7 +69,7 @@
 			Select at least one channel to configure payloads
 		</p>
 	{:else}
-		{#each selectedChannels as channel}
+		{#each selectedChannels as channel (channel)}
 			<div class="border border-border rounded-lg p-4">
 				<h3 class="text-lg font-semibold text-foreground mb-4 capitalize">
 					{channel} Notification
@@ -123,7 +123,7 @@
 									bind:value={channelPayloads.push.priority}
 									class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								>
-									{#each priorityOptions as priority}
+									{#each priorityOptions as priority (priority)}
 										<option value={priority}>{priority}</option>
 									{/each}
 								</select>
@@ -210,7 +210,7 @@
 									bind:value={channelPayloads.in_app.type}
 									class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								>
-									{#each inAppTypeOptions as type}
+									{#each inAppTypeOptions as type (type)}
 										<option value={type}>{type}</option>
 									{/each}
 								</select>
@@ -228,7 +228,7 @@
 									bind:value={channelPayloads.in_app.priority}
 									class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								>
-									{#each priorityOptions as priority}
+									{#each priorityOptions as priority (priority)}
 										<option value={priority}>{priority}</option>
 									{/each}
 								</select>
@@ -435,7 +435,7 @@
 								bind:value={channelPayloads.sms.priority}
 								class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							>
-								{#each priorityOptions as priority}
+								{#each priorityOptions as priority (priority)}
 									<option value={priority}>{priority}</option>
 								{/each}
 							</select>

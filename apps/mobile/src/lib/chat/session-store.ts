@@ -18,7 +18,17 @@ import {
 import type { ChatPendingChange, ChatSessionHistoryResponse } from '@buildos/api-client';
 import type { AgentSSEMessage, ChatTurnStatusV1, TurnHandleV1 } from '@buildos/shared-types';
 
+import {
+	type ChangeReceipts,
+	changesFromExecutions,
+	collectReceipts,
+	emptyReceipts,
+	hasChanges,
+	mergeChanges,
+	type TurnChanges
+} from './changes';
 import { newChatId } from './ids';
+import { parseProposalCard, proposalProgress, type ProposalCard } from './proposals';
 import { toolLine } from './tool-lines';
 
 export type WorkerTurnHandle = Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>;
@@ -69,7 +79,36 @@ export type WorkRow = {
 	connectionLost: boolean;
 };
 
-export type ChatRow = UserRow | AssistantRow | WorkRow;
+/** A proposal the agent is waiting on (nest, combine, file, start); see lib/chat/proposals.ts. */
+export type CardRow = {
+	kind: 'card';
+	/** `card:<card_id>`. */
+	id: string;
+	turnRunId: string | null;
+	at: number;
+	card: ProposalCard;
+	/** What the last answer said ("Filed 2 items into Launch"), shown in place of the state. */
+	note: string | null;
+	busy: 'apply' | 'cancel' | 'undo' | null;
+};
+
+/** What a finished turn changed: chips for what it created, cards for what it edited; see lib/chat/changes.ts. */
+export type ChangesRow = {
+	kind: 'changes';
+	/** `changes:<turn run id>`. */
+	id: string;
+	turnRunId: string | null;
+	at: number;
+	changes: TurnChanges;
+	/** Document and table change ids whose Undo went through. */
+	undone: string[];
+	/** Per change id: what the last Undo attempt said ("The text has changed since…"). */
+	notes: Record<string, string>;
+	/** The change id whose Undo is in flight. */
+	busy: string | null;
+};
+
+export type ChatRow = UserRow | AssistantRow | WorkRow | CardRow | ChangesRow;
 
 export type ChatSessionState = {
 	sessionId: string | null;
@@ -79,6 +118,8 @@ export type ChatSessionState = {
 	activeTurn: WorkerTurnHandle | null;
 	error: string | null;
 	pendingChange: ChatPendingChange | null;
+	/** Bumped when a turn ends with a failed step: time to ask the server for the strip again. */
+	pendingChangeCheck: number;
 };
 
 export type SessionStore = ReturnType<typeof createSessionStore>;
@@ -112,9 +153,16 @@ export function createSessionStore(
 		rows: [],
 		activeTurn: null,
 		error: null,
-		pendingChange: null
+		pendingChange: null,
+		pendingChangeCheck: 0
 	};
 	const listeners = new Set<() => void>();
+	// Tool calls by id (name and arguments), so a result can be read for what it created.
+	const calls = new Map<string, { name: string; args: unknown }>();
+	// Receipts gathered per running turn; merged into one changes row when the turn ends.
+	const receiptsByTurn = new Map<string, ChangeReceipts>();
+	// Ids of entities already shown as created this conversation (a replay adds no second chip).
+	const seenCreated = new Set<string>();
 
 	const set = (patch: Partial<ChatSessionState>) => {
 		state = { ...state, ...patch };
@@ -171,6 +219,78 @@ export function createSessionStore(
 				step.toolCallId === toolCallId ? { ...step, ...patch } : step
 			)
 		}));
+
+	/**
+	 * A card arrived (or a later copy with its decision/undo): keep the furthest-along copy, in
+	 * place; a new card lands right after its turn's work row so it reads as part of that turn.
+	 */
+	const upsertCard = (card: ProposalCard, turnRunId: string | null, at: number) => {
+		const id = `card:${card.card_id}`;
+		updateRows((rows) => {
+			const index = rows.findIndex((row) => row.kind === 'card' && row.id === id);
+			if (index >= 0) {
+				const existing = rows[index] as CardRow;
+				if (proposalProgress(card) < proposalProgress(existing.card)) return rows;
+				const next = [...rows];
+				next[index] = { ...existing, card };
+				return next;
+			}
+			const row: CardRow = { kind: 'card', id, turnRunId, at, card, note: null, busy: null };
+			const workAt = turnRunId
+				? rows.findIndex(
+						(candidate) =>
+							candidate.kind === 'work' && candidate.turnRunId === turnRunId
+					)
+				: -1;
+			const next = [...rows];
+			next.splice(workAt >= 0 ? workAt + 1 : next.length, 0, row);
+			return next;
+		});
+	};
+	/** The index just past the last row that belongs to a turn (its work, card and answer rows). */
+	const afterTurn = (rows: ChatRow[], turnRunId: string): number => {
+		let last = -1;
+		rows.forEach((row, index) => {
+			if (row.kind !== 'user' && row.turnRunId === turnRunId) last = index;
+		});
+		return last >= 0 ? last + 1 : rows.length;
+	};
+	/** The turn ended: everything it changed becomes one row at the end of the turn. */
+	const flushChanges = (turnRunId: string, at: number) => {
+		const receipts = receiptsByTurn.get(turnRunId);
+		receiptsByTurn.delete(turnRunId);
+		if (!receipts) return;
+		const changes = mergeChanges(receipts);
+		if (!hasChanges(changes)) return;
+		const id = `changes:${turnRunId}`;
+		updateRows((rows) => {
+			if (rows.some((row) => row.id === id)) return rows;
+			const next = [...rows];
+			next.splice(afterTurn(next, turnRunId), 0, {
+				kind: 'changes',
+				id,
+				turnRunId,
+				at,
+				changes,
+				undone: [],
+				notes: {},
+				busy: null
+			});
+			return next;
+		});
+	};
+	const patchChanges = (rowId: string, patch: (row: ChangesRow) => Partial<ChangesRow>) =>
+		updateRows((rows) =>
+			rows.map((row) =>
+				row.kind === 'changes' && row.id === rowId ? { ...row, ...patch(row) } : row
+			)
+		);
+	const patchCard = (cardId: string, patch: Partial<CardRow>) =>
+		updateRows((rows) =>
+			rows.map((row) =>
+				row.kind === 'card' && row.card.card_id === cardId ? { ...row, ...patch } : row
+			)
+		);
 
 	const port: AgentChatWorkerUiAdapterPort = {
 		beginGeneration({ handle, status }) {
@@ -252,6 +372,12 @@ export function createSessionStore(
 				case 'tool_call': {
 					const call = event.tool_call;
 					const toolCallId = call?.id ?? null;
+					if (toolCallId && call?.function?.name) {
+						calls.set(toolCallId, {
+							name: call.function.name,
+							args: call.function.arguments
+						});
+					}
 					const line = toolLine(
 						call?.function?.name ?? 'unknown',
 						call?.function?.arguments
@@ -284,10 +410,19 @@ export function createSessionStore(
 					const result = event.result ?? {};
 					const toolCallId =
 						typeof result.tool_call_id === 'string' ? result.tool_call_id : null;
-					if (!toolCallId) return;
-					patchStep(turnRunId, toolCallId, {
-						status: result.success === false ? 'failed' : 'completed'
-					});
+					if (toolCallId) {
+						patchStep(turnRunId, toolCallId, {
+							status: result.success === false ? 'failed' : 'completed'
+						});
+					}
+					if (result.success !== false) {
+						const call = toolCallId ? calls.get(toolCallId) : undefined;
+						const receipts = receiptsByTurn.get(turnRunId) ?? emptyReceipts();
+						collectReceipts(receipts, call?.name, call?.args, result, seenCreated);
+						receiptsByTurn.set(turnRunId, receipts);
+					}
+					const card = parseProposalCard(result);
+					if (card) upsertCard(card, turnRunId, now());
 					return;
 				}
 				case 'tool_progress':
@@ -344,9 +479,17 @@ export function createSessionStore(
 					return next;
 				});
 			}
+			flushChanges(handle.turnRunId, at);
 			const patch: Partial<ChatSessionState> = {};
 			if (state.activeTurn?.turnRunId === handle.turnRunId) patch.activeTurn = null;
 			if (status === 'failed') patch.error = failureMessage(finishedReason, failureCode);
+			// A failed write leaves a commission on the session; the screen re-reads the strip.
+			const workAt = workIndex(handle);
+			const failedStep =
+				workAt >= 0 &&
+				(state.rows[workAt] as WorkRow).steps.some((step) => step.status === 'failed');
+			if (status === 'failed' || failedStep)
+				patch.pendingChangeCheck = state.pendingChangeCheck + 1;
 			set(patch);
 		},
 		setAssistantPreview({ handle, text }) {
@@ -443,6 +586,42 @@ export function createSessionStore(
 				)
 			);
 			set({ activeTurn: terminal ? null : handle });
+		},
+		setPendingChange(view: ChatPendingChange | null) {
+			set({ pendingChange: view });
+		},
+		setCardBusy(cardId: string, busy: CardRow['busy']) {
+			patchCard(cardId, { busy });
+		},
+		/** The server answered a choice or an undo: show its outcome and its one-line receipt. */
+		settleCard(cardId: string, card: ProposalCard, note: string | null) {
+			patchCard(cardId, { card, note, busy: null });
+		},
+		setCardNote(cardId: string, note: string | null) {
+			patchCard(cardId, { note, busy: null });
+		},
+		setChangeBusy(rowId: string, changeId: string | null) {
+			patchChanges(rowId, () => ({ busy: changeId }));
+		},
+		/** An Undo came back: mark the change undone, or keep its note for the person to read. */
+		settleChange(
+			rowId: string,
+			changeId: string,
+			outcome: { undone: boolean; note: string | null }
+		) {
+			patchChanges(rowId, (row) => {
+				const notes = { ...row.notes };
+				if (outcome.note) notes[changeId] = outcome.note;
+				else delete notes[changeId];
+				return {
+					busy: null,
+					notes,
+					undone:
+						outcome.undone && !row.undone.includes(changeId)
+							? [...row.undone, changeId]
+							: row.undone
+				};
+			});
 		},
 		requestStop(turnRunId: string, requested = true) {
 			patchWork({ turnRunId }, { stopRequested: requested });
@@ -550,6 +729,67 @@ export function createSessionStore(
 				if (!work.answerId) continue;
 				const answerAt = merged.findIndex((row) => row.id === work.answerId);
 				if (answerAt >= 0) merged.splice(answerAt, 0, work.row);
+			}
+			// Proposal cards ride in tool results; each sits right after its turn's work row.
+			const seen = new Map<string, number>();
+			for (const execution of history.toolExecutions) {
+				const card = parseProposalCard(execution.result);
+				if (!card) continue;
+				const id = `card:${card.card_id}`;
+				const at = parseTime(execution.created_at, 0);
+				const row: CardRow = {
+					kind: 'card',
+					id,
+					turnRunId: execution.turn_run_id ?? null,
+					at,
+					card,
+					note: null,
+					busy: null
+				};
+				const existingAt = seen.get(id);
+				if (existingAt !== undefined) {
+					const existing = merged[existingAt] as CardRow;
+					if (proposalProgress(card) >= proposalProgress(existing.card))
+						merged[existingAt] = row;
+					continue;
+				}
+				const workAt = merged.findIndex(
+					(candidate) =>
+						candidate.kind === 'work' && candidate.turnRunId === row.turnRunId
+				);
+				const answerAt = merged.findIndex(
+					(candidate) =>
+						candidate.kind === 'assistant' && candidate.turnRunId === row.turnRunId
+				);
+				const insertAt =
+					workAt >= 0 ? workAt + 1 : answerAt >= 0 ? answerAt : merged.length;
+				merged.splice(insertAt, 0, row);
+				seen.clear();
+				merged.forEach((candidate, index) => {
+					if (candidate.kind === 'card') seen.set(candidate.id, index);
+				});
+			}
+			// What each turn changed, read back from its stored tool results, at the end of the turn.
+			seenCreated.clear();
+			for (const run of history.turnRuns) {
+				const executions = history.toolExecutions.filter(
+					(execution) => execution.turn_run_id === run.id
+				);
+				if (executions.length === 0) continue;
+				const changes = changesFromExecutions(executions, seenCreated);
+				if (!hasChanges(changes)) continue;
+				const id = `changes:${run.id}`;
+				if (merged.some((row) => row.id === id)) continue;
+				merged.splice(afterTurn(merged, run.id), 0, {
+					kind: 'changes',
+					id,
+					turnRunId: run.id,
+					at: parseTime(run.finished_at ?? run.created_at, 0),
+					changes,
+					undone: [],
+					notes: {},
+					busy: null
+				});
 			}
 			set({
 				sessionId: history.session.id,

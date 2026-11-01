@@ -283,7 +283,7 @@
 					<section class="rounded-lg border border-border bg-card p-4 shadow-ink">
 						<h2 class="text-lg font-semibold">More {preview.family} previews</h2>
 						<div class="mt-3 space-y-2">
-							{#each data.relatedPreviews.slice(0, 4) as related}
+							{#each data.relatedPreviews.slice(0, 4) as related (related.runtime_skill_id)}
 								<a
 									href={getPreviewSkillPath(related)}
 									class="flex min-h-[44px] items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"

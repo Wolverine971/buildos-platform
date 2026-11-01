@@ -179,7 +179,6 @@
 					>
 						<!-- Expand toggle for folders -->
 						{#if node.type === 'folder' && node.children?.length}
-							<!-- svelte-ignore a11y_no_static_element_interactions -->
 							<span
 								role="button"
 								tabindex="0"

@@ -275,7 +275,7 @@
 			</div>
 
 			<div class="grid gap-4 md:grid-cols-3">
-				{#each problemCards as card}
+				{#each problemCards as card (card.title)}
 					{@const Icon = card.icon}
 					<article class="p-5 wt-card sp-block tx tx-frame tx-weak">
 						<div
@@ -316,7 +316,7 @@
 			</div>
 
 			<div class="grid gap-4 md:grid-cols-3">
-				{#each whyNowCards as card}
+				{#each whyNowCards as card (card.title)}
 					{@const Icon = card.icon}
 					<article class="p-5 wt-paper sp-inline bg-card">
 						<div
@@ -397,7 +397,7 @@
 			</div>
 
 			<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-				{#each productLoop as card}
+				{#each productLoop as card (card.title)}
 					{@const Icon = card.icon}
 					<article class="p-5 wt-paper sp-inline bg-card">
 						<div
@@ -444,7 +444,7 @@
 			</div>
 
 			<div class="grid gap-4 sm:grid-cols-2">
-				{#each differentiators as item}
+				{#each differentiators as item (item.looksLike)}
 					<article class="p-5 wt-card sp-block">
 						<p class="text-sm font-semibold text-accent">{item.looksLike}</p>
 						<p class="mt-2 text-sm leading-relaxed text-muted-foreground">
@@ -496,7 +496,7 @@
 			     paid conversion, briefs generated), add a stat row here. Never use placeholder
 			     or estimated numbers on this public page. -->
 			<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-				{#each currentState as item}
+				{#each currentState as item (item.title)}
 					<article class="p-5 wt-paper sp-inline bg-card">
 						<div class="mb-1 text-2xl font-bold text-accent sm:text-3xl">
 							{item.stat}
@@ -569,7 +569,7 @@
 			</div>
 
 			<div class="grid gap-4 md:grid-cols-3">
-				{#each idealInvestor as card}
+				{#each idealInvestor as card (card.title)}
 					{@const Icon = card.icon}
 					<article class="p-5 wt-card sp-block tx tx-frame tx-weak">
 						<div

@@ -137,7 +137,7 @@
 					No public pages found.
 				</p>
 			{:else}
-				{#each data.pages as page}
+				{#each data.pages as page (page.id)}
 					<div class="space-y-3 rounded-lg border border-border bg-background/40 p-3">
 						<!-- Page -->
 						<div>
@@ -202,7 +202,7 @@
 							</td>
 						</tr>
 					{:else}
-						{#each data.pages as page}
+						{#each data.pages as page (page.id)}
 							<tr class="hover:bg-muted/30">
 								<td class="px-4 py-3 align-top">
 									<p class="font-medium text-foreground">
@@ -284,7 +284,7 @@
 					No review attempts for this filter.
 				</p>
 			{:else}
-				{#each filteredReviews as review}
+				{#each filteredReviews as review (review.id)}
 					{@const llmNote = llmReviewNote(review)}
 					<div class="space-y-3 rounded-lg border border-border bg-background/40 p-3">
 						<!-- Result + When -->
@@ -428,7 +428,7 @@
 							</td>
 						</tr>
 					{:else}
-						{#each filteredReviews as review}
+						{#each filteredReviews as review (review.id)}
 							{@const llmNote = llmReviewNote(review)}
 							<tr class="hover:bg-muted/30">
 								<td class="px-4 py-3 align-top">

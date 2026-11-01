@@ -1,6 +1,5 @@
 <!-- apps/web/src/lib/components/ontology/ImageAssetsPanel.svelte -->
 <script lang="ts">
-	import { browser } from '$app/environment';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { Upload, Link2, Unlink, Eye, ImageIcon } from 'lucide-svelte';
@@ -87,7 +86,7 @@
 	}
 
 	$effect(() => {
-		if (!browser || !projectId) return;
+		if (!projectId) return;
 		void fetchAssets();
 	});
 

@@ -340,7 +340,7 @@
 					</h2>
 					{#if filteredSkills.length}
 						<div class="mt-5 grid gap-3 md:grid-cols-2">
-							{#each filteredSkills as skill}
+							{#each filteredSkills as skill (skill.slug)}
 								{@const post = postBySlug.get(skill.slug)}
 								<article
 									class="flex min-h-[18rem] flex-col rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak"
@@ -414,7 +414,7 @@
 						</p>
 						{#if filteredStandalonePreviews.length}
 							<div class="mt-5 grid gap-3 md:grid-cols-2">
-								{#each filteredStandalonePreviews as preview}
+								{#each filteredStandalonePreviews as preview (preview.runtime_skill_id)}
 									<article
 										class="flex min-h-[17rem] flex-col rounded-lg border border-dashed border-accent/60 bg-card p-4 shadow-ink tx tx-frame tx-weak"
 									>
@@ -491,7 +491,7 @@
 						</p>
 						{#if filteredTrees.length}
 							<div class="mt-5 space-y-4">
-								{#each filteredTrees as tree}
+								{#each filteredTrees as tree (tree.skill.slug)}
 									<article
 										class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-thread tx-weak"
 									>
@@ -622,7 +622,7 @@
 							<h2 id="family-domains" class="text-lg font-semibold">Domains</h2>
 						</div>
 						<div class="mt-4 space-y-2">
-							{#each data.domains as domain}
+							{#each data.domains as domain (domain.id)}
 								<a
 									href={getDomainPath(domain)}
 									class="flex min-h-[44px] min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -647,7 +647,7 @@
 							</h2>
 						</div>
 						<div class="mt-4 space-y-2">
-							{#each data.packs as pack}
+							{#each data.packs as pack (pack.id)}
 								<a
 									href={getPackPath(pack)}
 									class="flex min-h-[44px] min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"

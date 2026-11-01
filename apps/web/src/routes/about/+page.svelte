@@ -219,7 +219,7 @@
 			</header>
 
 			<div class="mx-auto grid max-w-5xl gap-4 md:grid-cols-3">
-				{#each productPrinciples as principle}
+				{#each productPrinciples as principle (principle.title)}
 					{@const PrincipleIcon = principle.icon}
 					<article
 						class="rounded-lg border border-border bg-card p-5 shadow-ink tx tx-frame tx-weak"
@@ -255,7 +255,7 @@
 			</header>
 
 			<ol class="mx-auto grid max-w-5xl gap-4 md:grid-cols-3">
-				{#each workflowSteps as item}
+				{#each workflowSteps as item (item.title)}
 					{@const StepIcon = item.icon}
 					<li class="rounded-lg border border-border bg-card p-5 shadow-ink">
 						<div class="flex items-center justify-between gap-3">

@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/briefs/DailyBriefModal.svelte -->
 <script lang="ts">
+	import ErrorBoundary from '$lib/components/ui/ErrorBoundary.svelte';
 	import {
 		Copy,
 		Download,
@@ -24,7 +25,7 @@
 		streamingStatus,
 		briefGenerationCompleted
 	} from '$lib/services/briefClient.service';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 
 	// Props using Svelte 5 runes syntax
 	let {
@@ -99,14 +100,12 @@
 
 	// Fetch brief when briefDate changes
 	$effect(() => {
-		if (!browser) return;
 		if (isOpen && briefDate && !brief) {
 			loadBriefByDate(briefDate);
 		}
 	});
 
 	$effect(() => {
-		if (!browser) return;
 		if (!isOpen) {
 			stopAudioPolling();
 			fetchedBrief = null;
@@ -248,7 +247,6 @@
 
 	// Watch for regeneration completion
 	$effect(() => {
-		if (!browser) return;
 		if (
 			isRegenerating &&
 			completionEvent &&
@@ -345,14 +343,14 @@
 		}
 
 		// Get user from page data
-		const userData = $page.data?.user;
+		const userData = page.data?.user;
 		if (!userData) {
 			toastService.error('User not found. Please refresh the page.');
 			return;
 		}
 
 		// Get supabase client from page data (may be undefined, service will handle it)
-		const supabaseClient = $page.data?.supabase;
+		const supabaseClient = page.data?.supabase;
 
 		try {
 			isRegenerating = true;
@@ -380,7 +378,7 @@
 </script>
 
 <Modal {isOpen} {onClose} title="Daily Brief" size="lg" closeOnBackdrop={true} closeOnEscape={true}>
-	{#snippet children()}
+	<ErrorBoundary area="daily-brief" context={{ briefId: displayBrief?.id ?? null }}>
 		{#if isRegenerating}
 			<!-- Regenerating state -->
 			<div class="flex flex-col items-center justify-center py-8 sm:py-12 px-4 sm:px-6">
@@ -485,10 +483,10 @@
 
 				<div
 					class="daily-brief-markdown prose prose-sm max-w-none overflow-x-auto break-words
-						prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground
-						prose-strong:text-foreground prose-a:text-accent prose-blockquote:text-muted-foreground
-						prose-blockquote:border-border prose-code:bg-muted prose-code:text-foreground
-						prose-pre:bg-muted prose-pre:text-foreground prose-hr:border-border"
+					prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground
+					prose-strong:text-foreground prose-a:text-accent prose-blockquote:text-muted-foreground
+					prose-blockquote:border-border prose-code:bg-muted prose-code:text-foreground
+					prose-pre:bg-muted prose-pre:text-foreground prose-hr:border-border"
 				>
 					{@html renderMarkdown(displayBrief.summary_content)}
 				</div>
@@ -499,7 +497,7 @@
 				<p class="text-muted-foreground">No brief available</p>
 			</div>
 		{/if}
-	{/snippet}
+	</ErrorBoundary>
 
 	{#snippet footer()}
 		<!-- Footer Actions -->

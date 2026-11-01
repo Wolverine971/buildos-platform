@@ -459,476 +459,467 @@
 		/>
 	{/snippet}
 
-	{#snippet children()}
-		<!-- Main content -->
-		<div class="px-2 py-2 sm:px-4 sm:py-4">
-			{#if isLoading}
-				<div class="flex items-center justify-center py-12">
-					<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
-				</div>
-			{:else if !risk}
-				<div class="text-center py-8">
-					<p class="text-destructive">Risk not found</p>
-				</div>
-			{:else}
-				<div
-					class="relative grid grid-cols-1 gap-y-3 sm:gap-y-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:overflow-x-clip"
-				>
-					<!-- Main Form (Left 2 columns) -->
-					<div class="min-w-0">
-						<form
-							id={detailsFormId}
-							onsubmit={(e) => {
-								e.preventDefault();
-								handleSave();
-							}}
-							class="space-y-3 sm:space-y-4"
-						>
-							<Card variant="elevated" class="wt-paper">
-								<CardHeader variant="accent" texture="strip">
-									<div
-										class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end"
-									>
-										<div class="flex flex-wrap items-center gap-1.5">
-											<Badge variant={stateMeta.variant} size="sm"
-												>{stateMeta.label}</Badge
-											>
-										</div>
+	<!-- Main content -->
+	<div class="px-2 py-2 sm:px-4 sm:py-4">
+		{#if isLoading}
+			<div class="flex items-center justify-center py-12">
+				<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
+			</div>
+		{:else if !risk}
+			<div class="text-center py-8">
+				<p class="text-destructive">Risk not found</p>
+			</div>
+		{:else}
+			<div
+				class="relative grid grid-cols-1 gap-y-3 sm:gap-y-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:overflow-x-clip"
+			>
+				<!-- Main Form (Left 2 columns) -->
+				<div class="min-w-0">
+					<form
+						id={detailsFormId}
+						onsubmit={(e) => {
+							e.preventDefault();
+							handleSave();
+						}}
+						class="space-y-3 sm:space-y-4"
+					>
+						<Card variant="elevated" class="wt-paper">
+							<CardHeader variant="accent" texture="strip">
+								<div
+									class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end"
+								>
+									<div class="flex flex-wrap items-center gap-1.5">
+										<Badge variant={stateMeta.variant} size="sm"
+											>{stateMeta.label}</Badge
+										>
 									</div>
-								</CardHeader>
-								<CardBody class="space-y-4">
+								</div>
+							</CardHeader>
+							<CardBody class="space-y-4">
+								<FormField
+									label="Risk Title"
+									labelFor="title"
+									required={true}
+									uppercase={false}
+									showOptional={false}
+									error={!title.trim() && error ? 'Risk title is required' : ''}
+								>
+									<TextInput
+										id="title"
+										bind:value={title}
+										inputmode="text"
+										enterkeyhint="next"
+										placeholder="What could go wrong?"
+										required={true}
+										disabled={isSaving}
+										error={!title.trim() && error ? true : false}
+									/>
+								</FormField>
+
+								<FormField
+									label="Risk Details"
+									labelFor="content"
+									uppercase={false}
+									showOptional={false}
+								>
+									<Textarea
+										id="content"
+										bind:value={content}
+										enterkeyhint="next"
+										placeholder="Describe what could happen and why..."
+										rows={3}
+										disabled={isSaving}
+										size="md"
+									/>
+								</FormField>
+
+								<FormField
+									label="Mitigation Strategy"
+									labelFor="mitigation-strategy"
+									uppercase={false}
+									showOptional={false}
+								>
+									<Textarea
+										id="mitigation-strategy"
+										bind:value={mitigationStrategy}
+										enterkeyhint="next"
+										placeholder="Steps to mitigate or prevent this risk..."
+										rows={3}
+										disabled={isSaving}
+										size="md"
+									/>
+								</FormField>
+							</CardBody>
+						</Card>
+
+						<Card variant="default" class="wt-paper">
+							<CardHeader variant="transparent" texture="none">
+								<div
+									class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+								>
+									<div>
+										<div class="flex items-center gap-2">
+											<Shield class="h-4 w-4 text-muted-foreground" />
+											<p
+												class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+											>
+												Assessment
+											</p>
+										</div>
+										<h3 class="mt-1 text-sm font-semibold text-foreground">
+											Impact, probability, and ownership
+										</h3>
+									</div>
+									<p
+										class="text-xs text-muted-foreground sm:max-w-52 sm:text-right"
+									>
+										Keep operational controls together so the risk's severity is
+										obvious at a glance.
+									</p>
+								</div>
+							</CardHeader>
+							<CardBody class="space-y-4">
+								<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 									<FormField
-										label="Risk Title"
-										labelFor="title"
+										label="Impact"
+										labelFor="impact"
 										required={true}
 										uppercase={false}
 										showOptional={false}
-										error={!title.trim() && error
-											? 'Risk title is required'
-											: ''}
+									>
+										<Select
+											id="impact"
+											bind:value={impact}
+											disabled={isSaving}
+											size="sm"
+											placeholder="Select impact"
+										>
+											{#each IMPACT_OPTIONS as opt (opt.value)}
+												<option value={opt.value}>{opt.label}</option>
+											{/each}
+										</Select>
+									</FormField>
+
+									<FormField
+										label="Probability"
+										labelFor="probability"
+										uppercase={false}
+										showOptional={false}
+									>
+										<Select
+											id="probability"
+											bind:value={probability}
+											disabled={isSaving}
+											size="sm"
+											placeholder="Select likelihood"
+										>
+											{#each PROBABILITY_OPTIONS as opt (opt.value)}
+												<option value={opt.value}>{opt.label}</option>
+											{/each}
+										</Select>
+									</FormField>
+								</div>
+
+								<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+									<FormField
+										label="State"
+										labelFor="state"
+										required={true}
+										uppercase={false}
+										showOptional={false}
+									>
+										<Select
+											id="state"
+											bind:value={stateKey}
+											disabled={isSaving}
+											size="sm"
+											placeholder="Select state"
+										>
+											{#each STATE_OPTIONS as opt (opt.value)}
+												<option value={opt.value}>{opt.label}</option>
+											{/each}
+										</Select>
+									</FormField>
+
+									<FormField
+										label="Owner"
+										labelFor="owner"
+										uppercase={false}
+										showOptional={false}
 									>
 										<TextInput
-											id="title"
-											bind:value={title}
+											id="owner"
+											bind:value={owner}
 											inputmode="text"
-											enterkeyhint="next"
-											placeholder="What could go wrong?"
-											required={true}
+											enterkeyhint="done"
+											placeholder="Person responsible..."
 											disabled={isSaving}
-											error={!title.trim() && error ? true : false}
+											size="sm"
 										/>
 									</FormField>
-
-									<FormField
-										label="Risk Details"
-										labelFor="content"
-										uppercase={false}
-										showOptional={false}
-									>
-										<Textarea
-											id="content"
-											bind:value={content}
-											enterkeyhint="next"
-											placeholder="Describe what could happen and why..."
-											rows={3}
-											disabled={isSaving}
-											size="md"
-										/>
-									</FormField>
-
-									<FormField
-										label="Mitigation Strategy"
-										labelFor="mitigation-strategy"
-										uppercase={false}
-										showOptional={false}
-									>
-										<Textarea
-											id="mitigation-strategy"
-											bind:value={mitigationStrategy}
-											enterkeyhint="next"
-											placeholder="Steps to mitigate or prevent this risk..."
-											rows={3}
-											disabled={isSaving}
-											size="md"
-										/>
-									</FormField>
-								</CardBody>
-							</Card>
-
-							<Card variant="default" class="wt-paper">
-								<CardHeader variant="transparent" texture="none">
-									<div
-										class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
-									>
-										<div>
-											<div class="flex items-center gap-2">
-												<Shield class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
-												>
-													Assessment
-												</p>
-											</div>
-											<h3 class="mt-1 text-sm font-semibold text-foreground">
-												Impact, probability, and ownership
-											</h3>
-										</div>
-										<p
-											class="text-xs text-muted-foreground sm:max-w-52 sm:text-right"
-										>
-											Keep operational controls together so the risk's
-											severity is obvious at a glance.
-										</p>
-									</div>
-								</CardHeader>
-								<CardBody class="space-y-4">
-									<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-										<FormField
-											label="Impact"
-											labelFor="impact"
-											required={true}
-											uppercase={false}
-											showOptional={false}
-										>
-											<Select
-												id="impact"
-												bind:value={impact}
-												disabled={isSaving}
-												size="sm"
-												placeholder="Select impact"
-											>
-												{#each IMPACT_OPTIONS as opt}
-													<option value={opt.value}>{opt.label}</option>
-												{/each}
-											</Select>
-										</FormField>
-
-										<FormField
-											label="Probability"
-											labelFor="probability"
-											uppercase={false}
-											showOptional={false}
-										>
-											<Select
-												id="probability"
-												bind:value={probability}
-												disabled={isSaving}
-												size="sm"
-												placeholder="Select likelihood"
-											>
-												{#each PROBABILITY_OPTIONS as opt}
-													<option value={opt.value}>{opt.label}</option>
-												{/each}
-											</Select>
-										</FormField>
-									</div>
-
-									<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-										<FormField
-											label="State"
-											labelFor="state"
-											required={true}
-											uppercase={false}
-											showOptional={false}
-										>
-											<Select
-												id="state"
-												bind:value={stateKey}
-												disabled={isSaving}
-												size="sm"
-												placeholder="Select state"
-											>
-												{#each STATE_OPTIONS as opt}
-													<option value={opt.value}>{opt.label}</option>
-												{/each}
-											</Select>
-										</FormField>
-
-										<FormField
-											label="Owner"
-											labelFor="owner"
-											uppercase={false}
-											showOptional={false}
-										>
-											<TextInput
-												id="owner"
-												bind:value={owner}
-												inputmode="text"
-												enterkeyhint="done"
-												placeholder="Person responsible..."
-												disabled={isSaving}
-												size="sm"
-											/>
-										</FormField>
-									</div>
-								</CardBody>
-							</Card>
-
-							{#if error}
-								<div
-									class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 shadow-ink-inner"
-								>
-									<p class="text-sm text-destructive">{error}</p>
-								</div>
-							{/if}
-						</form>
-					</div>
-
-					<!-- Sidebar (Right column) -->
-					<EntityModalDetailsDrawer panelLabel="Risk details">
-						<Card variant="elevated" class="wt-card">
-							<CardHeader variant="muted" texture="strip">
-								<div class="flex items-center justify-between gap-3">
-									<div>
-										<p
-											class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
-										>
-											Controls
-										</p>
-										<h3 class="mt-1 text-sm font-semibold text-foreground">
-											Risk operations
-										</h3>
-									</div>
-									<Badge variant={stateMeta.variant} size="sm"
-										>{stateMeta.label}</Badge
-									>
-								</div>
-							</CardHeader>
-							<CardBody padding="none">
-								<div class="divide-y divide-border/70">
-									<!-- Risk Score -->
-									<section class="px-3 py-3 sm:px-4" aria-label="Risk score">
-										<div class="flex items-center gap-2">
-											<Shield class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Risk Score</p>
-										</div>
-										<div class="mt-2 text-center">
-											<p
-												class="text-2xl font-bold {riskScore >= 2
-													? 'text-destructive'
-													: riskScore >= 1
-														? 'text-warning'
-														: 'text-foreground'}"
-											>
-												{riskScore.toFixed(1)}
-											</p>
-											<p class="text-xs text-muted-foreground mt-1">
-												{riskScore >= 2
-													? 'High Priority'
-													: riskScore >= 1
-														? 'Medium Priority'
-														: 'Low Priority'}
-											</p>
-											<p class="text-2xs text-muted-foreground mt-1">
-												Impact ({riskImpactScore}) x Probability ({Math.round(
-													riskProb * 100
-												)}%)
-											</p>
-										</div>
-										<div class="mt-3 grid grid-cols-2 gap-2 text-sm">
-											<div>
-												<p class="micro-label font-semibold">Impact</p>
-												<p class="mt-0.5 font-semibold text-foreground">
-													{impactBadge?.label ?? impact}
-												</p>
-											</div>
-											<div>
-												<p class="micro-label font-semibold">Probability</p>
-												<p class="mt-0.5 font-semibold text-foreground">
-													{Math.round(riskProb * 100)}%
-												</p>
-											</div>
-										</div>
-									</section>
-
-									<!-- Owner -->
-									{#if owner}
-										<section class="px-3 py-3 sm:px-4" aria-label="Owner">
-											<div class="flex items-center gap-2">
-												<User class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">Owner</p>
-											</div>
-											<p class="mt-2 text-sm text-foreground">{owner}</p>
-										</section>
-									{/if}
-
-									<!-- Status -->
-									<section class="px-3 py-3 sm:px-4" aria-label="Status">
-										<div class="flex items-center justify-between gap-2">
-											<div class="flex items-center gap-2">
-												<FileText class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">Status</p>
-											</div>
-											<Badge variant={stateMeta.variant} size="sm"
-												>{stateMeta.label}</Badge
-											>
-										</div>
-									</section>
-
-									<!-- Record -->
-									<section class="px-3 py-3 sm:px-4">
-										<div class="flex items-center gap-2">
-											<Clock class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Record</p>
-										</div>
-										<div class="mt-2 space-y-1.5 text-sm">
-											<div class="flex items-center justify-between gap-3">
-												<span class="text-muted-foreground">Created</span>
-												<span class="text-right text-foreground">
-													{risk.created_at
-														? new Date(
-																risk.created_at
-															).toLocaleDateString(undefined, {
-																month: 'short',
-																day: 'numeric',
-																year: 'numeric'
-															})
-														: '—'}
-												</span>
-											</div>
-											<div class="flex items-center justify-between gap-3">
-												<span class="text-muted-foreground">Updated</span>
-												<span class="text-right text-foreground">
-													{risk.updated_at
-														? new Date(
-																risk.updated_at
-															).toLocaleDateString(undefined, {
-																month: 'short',
-																day: 'numeric',
-																year: 'numeric'
-															})
-														: '—'}
-												</span>
-											</div>
-										</div>
-									</section>
-
-									<!-- Tags -->
-									{#if risk?.props?.tags?.length}
-										<section class="px-3 py-3 sm:px-4">
-											<div class="flex items-center gap-2 mb-2">
-												<TagIcon class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">Tags</p>
-											</div>
-											<TagsDisplay
-												props={risk.props}
-												size="sm"
-												compact={true}
-											/>
-										</section>
-									{/if}
-
-									<!-- Linked Entities (collapsible, default open) -->
-									<section class="px-3 sm:px-4">
-										<button
-											type="button"
-											onclick={() =>
-												(showLinkedEntities = !showLinkedEntities)}
-											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
-											aria-expanded={showLinkedEntities}
-										>
-											<div class="flex items-center gap-2">
-												<LinkIcon class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">
-													Linked Entities
-												</p>
-											</div>
-											<ChevronDown
-												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showLinkedEntities
-													? 'rotate-180'
-													: ''}"
-											/>
-										</button>
-										{#if showLinkedEntities}
-											<div class="pb-3">
-												<LinkedEntities
-													sourceId={riskId}
-													sourceKind="risk"
-													{projectId}
-													onEntityClick={handleLinkedEntityClick}
-													onLinksChanged={() =>
-														loadRisk({ preserveEdits: true })}
-												/>
-											</div>
-										{/if}
-									</section>
-
-									<!-- Images (collapsible) -->
-									<section class="px-3 sm:px-4">
-										<button
-											type="button"
-											onclick={() => (showImages = !showImages)}
-											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
-											aria-expanded={showImages}
-										>
-											<div class="flex items-center gap-2">
-												<ImageIcon class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">Images</p>
-											</div>
-											<ChevronDown
-												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showImages
-													? 'rotate-180'
-													: ''}"
-											/>
-										</button>
-										{#if showImages}
-											<div class="pb-3">
-												<ImageAssetsPanel
-													{projectId}
-													entityKind="risk"
-													entityId={riskId}
-													showTitle={false}
-													compact={true}
-													onChanged={() => {
-														void loadRisk({ preserveEdits: true });
-														onUpdated?.();
-													}}
-												/>
-											</div>
-										{/if}
-									</section>
-
-									<!-- Activity (collapsible) -->
-									<section class="px-3 sm:px-4">
-										<button
-											type="button"
-											onclick={() => (showActivityLog = !showActivityLog)}
-											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
-											aria-expanded={showActivityLog}
-										>
-											<div class="flex items-center gap-2">
-												<Activity class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">Activity</p>
-											</div>
-											<ChevronDown
-												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showActivityLog
-													? 'rotate-180'
-													: ''}"
-											/>
-										</button>
-										{#if showActivityLog}
-											<div class="pb-3">
-												<EntityActivityLog
-													entityType="risk"
-													entityId={riskId}
-													autoLoad={true}
-													embedded={true}
-												/>
-											</div>
-										{/if}
-									</section>
 								</div>
 							</CardBody>
 						</Card>
-					</EntityModalDetailsDrawer>
+
+						{#if error}
+							<div
+								class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 shadow-ink-inner"
+							>
+								<p class="text-sm text-destructive">{error}</p>
+							</div>
+						{/if}
+					</form>
 				</div>
 
-				<div class="mt-4">
-					<EntityCommentsSection {projectId} entityType="risk" entityId={riskId} />
-				</div>
-			{/if}
-		</div>
-	{/snippet}
+				<!-- Sidebar (Right column) -->
+				<EntityModalDetailsDrawer panelLabel="Risk details">
+					<Card variant="elevated" class="wt-card">
+						<CardHeader variant="muted" texture="strip">
+							<div class="flex items-center justify-between gap-3">
+								<div>
+									<p
+										class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+									>
+										Controls
+									</p>
+									<h3 class="mt-1 text-sm font-semibold text-foreground">
+										Risk operations
+									</h3>
+								</div>
+								<Badge variant={stateMeta.variant} size="sm"
+									>{stateMeta.label}</Badge
+								>
+							</div>
+						</CardHeader>
+						<CardBody padding="none">
+							<div class="divide-y divide-border/70">
+								<!-- Risk Score -->
+								<section class="px-3 py-3 sm:px-4" aria-label="Risk score">
+									<div class="flex items-center gap-2">
+										<Shield class="h-4 w-4 text-muted-foreground" />
+										<p class="micro-label font-semibold">Risk Score</p>
+									</div>
+									<div class="mt-2 text-center">
+										<p
+											class="text-2xl font-bold {riskScore >= 2
+												? 'text-destructive'
+												: riskScore >= 1
+													? 'text-warning'
+													: 'text-foreground'}"
+										>
+											{riskScore.toFixed(1)}
+										</p>
+										<p class="text-xs text-muted-foreground mt-1">
+											{riskScore >= 2
+												? 'High Priority'
+												: riskScore >= 1
+													? 'Medium Priority'
+													: 'Low Priority'}
+										</p>
+										<p class="text-2xs text-muted-foreground mt-1">
+											Impact ({riskImpactScore}) x Probability ({Math.round(
+												riskProb * 100
+											)}%)
+										</p>
+									</div>
+									<div class="mt-3 grid grid-cols-2 gap-2 text-sm">
+										<div>
+											<p class="micro-label font-semibold">Impact</p>
+											<p class="mt-0.5 font-semibold text-foreground">
+												{impactBadge?.label ?? impact}
+											</p>
+										</div>
+										<div>
+											<p class="micro-label font-semibold">Probability</p>
+											<p class="mt-0.5 font-semibold text-foreground">
+												{Math.round(riskProb * 100)}%
+											</p>
+										</div>
+									</div>
+								</section>
+
+								<!-- Owner -->
+								{#if owner}
+									<section class="px-3 py-3 sm:px-4" aria-label="Owner">
+										<div class="flex items-center gap-2">
+											<User class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Owner</p>
+										</div>
+										<p class="mt-2 text-sm text-foreground">{owner}</p>
+									</section>
+								{/if}
+
+								<!-- Status -->
+								<section class="px-3 py-3 sm:px-4" aria-label="Status">
+									<div class="flex items-center justify-between gap-2">
+										<div class="flex items-center gap-2">
+											<FileText class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Status</p>
+										</div>
+										<Badge variant={stateMeta.variant} size="sm"
+											>{stateMeta.label}</Badge
+										>
+									</div>
+								</section>
+
+								<!-- Record -->
+								<section class="px-3 py-3 sm:px-4">
+									<div class="flex items-center gap-2">
+										<Clock class="h-4 w-4 text-muted-foreground" />
+										<p class="micro-label font-semibold">Record</p>
+									</div>
+									<div class="mt-2 space-y-1.5 text-sm">
+										<div class="flex items-center justify-between gap-3">
+											<span class="text-muted-foreground">Created</span>
+											<span class="text-right text-foreground">
+												{risk.created_at
+													? new Date(risk.created_at).toLocaleDateString(
+															undefined,
+															{
+																month: 'short',
+																day: 'numeric',
+																year: 'numeric'
+															}
+														)
+													: '—'}
+											</span>
+										</div>
+										<div class="flex items-center justify-between gap-3">
+											<span class="text-muted-foreground">Updated</span>
+											<span class="text-right text-foreground">
+												{risk.updated_at
+													? new Date(risk.updated_at).toLocaleDateString(
+															undefined,
+															{
+																month: 'short',
+																day: 'numeric',
+																year: 'numeric'
+															}
+														)
+													: '—'}
+											</span>
+										</div>
+									</div>
+								</section>
+
+								<!-- Tags -->
+								{#if risk?.props?.tags?.length}
+									<section class="px-3 py-3 sm:px-4">
+										<div class="flex items-center gap-2 mb-2">
+											<TagIcon class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Tags</p>
+										</div>
+										<TagsDisplay props={risk.props} size="sm" compact={true} />
+									</section>
+								{/if}
+
+								<!-- Linked Entities (collapsible, default open) -->
+								<section class="px-3 sm:px-4">
+									<button
+										type="button"
+										onclick={() => (showLinkedEntities = !showLinkedEntities)}
+										class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										aria-expanded={showLinkedEntities}
+									>
+										<div class="flex items-center gap-2">
+											<LinkIcon class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Linked Entities</p>
+										</div>
+										<ChevronDown
+											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showLinkedEntities
+												? 'rotate-180'
+												: ''}"
+										/>
+									</button>
+									{#if showLinkedEntities}
+										<div class="pb-3">
+											<LinkedEntities
+												sourceId={riskId}
+												sourceKind="risk"
+												{projectId}
+												onEntityClick={handleLinkedEntityClick}
+												onLinksChanged={() =>
+													loadRisk({ preserveEdits: true })}
+											/>
+										</div>
+									{/if}
+								</section>
+
+								<!-- Images (collapsible) -->
+								<section class="px-3 sm:px-4">
+									<button
+										type="button"
+										onclick={() => (showImages = !showImages)}
+										class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										aria-expanded={showImages}
+									>
+										<div class="flex items-center gap-2">
+											<ImageIcon class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Images</p>
+										</div>
+										<ChevronDown
+											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showImages
+												? 'rotate-180'
+												: ''}"
+										/>
+									</button>
+									{#if showImages}
+										<div class="pb-3">
+											<ImageAssetsPanel
+												{projectId}
+												entityKind="risk"
+												entityId={riskId}
+												showTitle={false}
+												compact={true}
+												onChanged={() => {
+													void loadRisk({ preserveEdits: true });
+													onUpdated?.();
+												}}
+											/>
+										</div>
+									{/if}
+								</section>
+
+								<!-- Activity (collapsible) -->
+								<section class="px-3 sm:px-4">
+									<button
+										type="button"
+										onclick={() => (showActivityLog = !showActivityLog)}
+										class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										aria-expanded={showActivityLog}
+									>
+										<div class="flex items-center gap-2">
+											<Activity class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Activity</p>
+										</div>
+										<ChevronDown
+											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showActivityLog
+												? 'rotate-180'
+												: ''}"
+										/>
+									</button>
+									{#if showActivityLog}
+										<div class="pb-3">
+											<EntityActivityLog
+												entityType="risk"
+												entityId={riskId}
+												autoLoad={true}
+												embedded={true}
+											/>
+										</div>
+									{/if}
+								</section>
+							</div>
+						</CardBody>
+					</Card>
+				</EntityModalDetailsDrawer>
+			</div>
+
+			<div class="mt-4">
+				<EntityCommentsSection {projectId} entityType="risk" entityId={riskId} />
+			</div>
+		{/if}
+	</div>
 
 	<!-- Footer Actions -->
 	{#snippet footer()}

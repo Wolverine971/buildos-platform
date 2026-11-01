@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/profile/EmailTab.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { consumeOneTimeUrlParams } from '$lib/utils/one-time-url-params';
 	import {
 		CircleAlert,
@@ -72,7 +72,7 @@
 	}
 
 	function getReturnPath(): string {
-		const returnUrl = new URL($page.url);
+		const returnUrl = new URL(page.url);
 		returnUrl.searchParams.set('tab', 'email');
 		returnUrl.searchParams.set('gmail', '1');
 		returnUrl.searchParams.delete('success');

@@ -36,17 +36,12 @@
 
 	let { data }: { data: PageData } = $props();
 
-	// svelte-ignore state_referenced_locally
-	let selectedTimeframe = $state(data.timeframe ?? '30d');
+	let selectedTimeframe = $derived(data.timeframe ?? '30d');
 	let refreshing = $state(false);
 	let autoRefresh = $state(true);
 	let selectedSecurityEvent = $state<PromptInjectionEvent | null>(null);
 
 	let analysis = $derived(data.analysis);
-
-	$effect(() => {
-		selectedTimeframe = data.timeframe ?? '30d';
-	});
 
 	onMount(() => {
 		const interval = window.setInterval(() => {
@@ -407,7 +402,7 @@
 
 			{#if analysis.securityEventStream.recentEvents.length}
 				<div class="mt-5 space-y-3 md:hidden">
-					{#each analysis.securityEventStream.recentEvents as event}
+					{#each analysis.securityEventStream.recentEvents as event (event.id)}
 						<article
 							class="rounded-lg border border-border bg-background/70 p-3 shadow-ink"
 						>
@@ -467,7 +462,7 @@
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-border">
-							{#each analysis.securityEventStream.recentEvents as event}
+							{#each analysis.securityEventStream.recentEvents as event (event.id)}
 								<tr>
 									<td class="whitespace-nowrap py-3 pr-4 text-muted-foreground">
 										{formatShortDate(event.createdAt)}
@@ -514,7 +509,7 @@
 
 			{#if analysis.securityEventStream.byEventType.length}
 				<div class="mt-5 flex flex-wrap gap-2">
-					{#each analysis.securityEventStream.byEventType.slice(0, 10) as eventType}
+					{#each analysis.securityEventStream.byEventType.slice(0, 10) as eventType (eventType.label)}
 						<Badge size="sm" variant="default"
 							>{eventType.label}: {eventType.count}</Badge
 						>
@@ -542,7 +537,7 @@
 				</div>
 
 				<div class="mt-5 space-y-3">
-					{#each analysis.findings as finding}
+					{#each analysis.findings as finding (finding.id)}
 						<div class="rounded-lg border border-border bg-background/70 p-4">
 							<div
 								class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
@@ -599,7 +594,7 @@
 					<Database class="h-5 w-5 text-muted-foreground" />
 				</div>
 				<div class="mt-5 divide-y divide-border">
-					{#each analysis.dataSources as source}
+					{#each analysis.dataSources as source (source.key)}
 						<div
 							class="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0"
 						>
@@ -674,7 +669,7 @@
 					<div class="mt-5 space-y-2">
 						<p class="text-sm font-semibold text-foreground">Top patterns</p>
 						<div class="flex flex-wrap gap-2">
-							{#each analysis.promptInjection.topPatterns as pattern}
+							{#each analysis.promptInjection.topPatterns as pattern (`${pattern.pattern}|${pattern.severity}|${pattern.category}`)}
 								<Badge size="sm" variant={severityBadge(pattern.severity)}>
 									{pattern.pattern} ({pattern.count})
 								</Badge>
@@ -703,7 +698,7 @@
 								</tr>
 							</thead>
 							<tbody class="divide-y divide-border">
-								{#each analysis.promptInjection.recentEvents as event}
+								{#each analysis.promptInjection.recentEvents as event (event.id)}
 									<tr>
 										<td
 											class="whitespace-nowrap py-3 pr-4 text-muted-foreground"
@@ -778,7 +773,7 @@
 					<div>
 						<p class="text-sm font-semibold text-foreground">Top endpoints</p>
 						<div class="mt-2 space-y-2">
-							{#each analysis.errors.byEndpoint as endpoint}
+							{#each analysis.errors.byEndpoint as endpoint (endpoint.endpoint)}
 								<div
 									class="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2"
 								>
@@ -795,7 +790,7 @@
 					<div>
 						<p class="text-sm font-semibold text-foreground">Open critical</p>
 						<div class="mt-2 space-y-2">
-							{#each analysis.errors.recentCritical as error}
+							{#each analysis.errors.recentCritical as error (error.id)}
 								<div class="rounded-lg border border-border px-3 py-2">
 									<div class="flex items-center justify-between gap-3">
 										<Badge size="sm" variant={severityBadge(error.severity)}>
@@ -867,7 +862,7 @@
 				</div>
 
 				<div class="mt-5 space-y-3">
-					{#each analysis.externalAgents.callers as caller}
+					{#each analysis.externalAgents.callers as caller (caller.id)}
 						<div class="rounded-lg border border-border p-4">
 							<div
 								class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
@@ -910,7 +905,7 @@
 								</tr>
 							</thead>
 							<tbody class="divide-y divide-border">
-								{#each analysis.externalAgents.sessions as session}
+								{#each analysis.externalAgents.sessions as session (session.id)}
 									<tr>
 										<td
 											class="whitespace-nowrap py-3 pr-4 text-muted-foreground"
@@ -985,7 +980,7 @@
 				</div>
 
 				<div class="mt-5 space-y-3">
-					{#each analysis.sensitiveAccess.recent as access}
+					{#each analysis.sensitiveAccess.recent as access (`${access.source}:${access.id}`)}
 						<div class="rounded-lg border border-border p-4">
 							<div
 								class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
@@ -1019,7 +1014,7 @@
 							</div>
 							{#if metadataRows(access.metadata).length}
 								<div class="mt-3 flex flex-wrap gap-2">
-									{#each metadataRows(access.metadata) as meta}
+									{#each metadataRows(access.metadata) as meta (meta.key)}
 										<Badge
 											size="sm"
 											variant="default"
@@ -1126,7 +1121,7 @@
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-border">
-							{#each analysis.integrations.recentWebhookFailures as event}
+							{#each analysis.integrations.recentWebhookFailures as event (event.id)}
 								<tr>
 									<td class="whitespace-nowrap py-3 pr-4 text-muted-foreground">
 										{formatShortDate(event.createdAt)}
@@ -1243,7 +1238,7 @@
 					<div class="mt-5">
 						<p class="text-sm font-semibold text-foreground">Sanitized metadata</p>
 						<div class="mt-2 flex flex-wrap gap-2">
-							{#each metadataRows(selectedSecurityEvent.metadata) as meta}
+							{#each metadataRows(selectedSecurityEvent.metadata) as meta (meta.key)}
 								<Badge
 									size="sm"
 									variant="default"

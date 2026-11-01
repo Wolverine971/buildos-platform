@@ -325,7 +325,7 @@
 					>
 						All
 					</button>
-					{#each categoryOptions as category}
+					{#each categoryOptions as category (category)}
 						<button
 							type="button"
 							aria-pressed={activeCategory === category}
@@ -371,7 +371,7 @@
 
 		{#if filteredSkills.length > 0}
 			<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-				{#each filteredSkills as skill}
+				{#each filteredSkills as skill (skill.slug)}
 					{@const sourceCount = getNumericStat(skill, 'sources')}
 					{@const primitiveCount = getNumericStat(skill, 'primitives')}
 					{@const skillPeople = resolveSkillExperts(skill.lineage_people ?? [])}

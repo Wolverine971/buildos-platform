@@ -21,7 +21,6 @@
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import type { BriefAnalytics } from '$lib/types/daily-brief';
 	import { requireApiData } from '$lib/utils/api-client-helpers';
-	import { browser } from '$app/environment';
 
 	let analytics = $state<BriefAnalytics | null>(null);
 	let isLoading = $state(true);
@@ -30,7 +29,6 @@
 
 	// $effect runs on mount AND when selectedTimeframe changes - perfect for our needs
 	$effect(() => {
-		if (!browser) return;
 		selectedTimeframe; // Track this dependency
 		loadAnalytics();
 	});
@@ -294,7 +292,7 @@
 
 					{#if analytics.engagement_metrics.most_active_projects?.length}
 						<div class="space-y-3">
-							{#each analytics.engagement_metrics.most_active_projects.slice(0, 5) as project, index}
+							{#each analytics.engagement_metrics.most_active_projects.slice(0, 5) as project, index (project.project_id)}
 								<div class="flex items-center space-x-3">
 									<div
 										class="flex-shrink-0 w-6 h-6 bg-info/10 rounded-full flex items-center justify-center"
@@ -345,7 +343,7 @@
 
 					{#if analytics.engagement_metrics?.most_active_goals?.length}
 						<div class="space-y-3">
-							{#each analytics.engagement_metrics.most_active_goals.slice(0, 5) as goal, index}
+							{#each analytics.engagement_metrics.most_active_goals.slice(0, 5) as goal, index (goal.goal_id)}
 								<div class="flex items-center space-x-3">
 									<div
 										class="flex-shrink-0 w-6 h-6 bg-accent/10 rounded-full flex items-center justify-center"
@@ -470,7 +468,7 @@
 
 					<div class="space-y-2">
 						{#if achievements?.length}
-							{#each achievements as achievement}
+							{#each achievements as achievement (achievement.id)}
 								{@const Icon = achievement.icon}
 								<div class="flex items-center space-x-2 p-2 bg-muted/50 rounded">
 									<div

@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/layout/Navigation.svelte -->
 <script lang="ts">
 	import { BRAND_TAGLINE, START_PROJECT_CTA } from '$lib/constants/brand';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { afterNavigate, goto, replaceState } from '$app/navigation';
 	import { createChatResumeLinkHandler } from './agent-chat-resume-link';
 	import {
@@ -151,7 +151,7 @@
 	let lastScrollY = $state(0);
 	let navHidden = $state(false);
 
-	const currentPath: string = $derived($page.url.pathname);
+	const currentPath: string = $derived(page.url.pathname);
 	const projectDetailMatch = $derived(
 		currentPath.match(/^\/projects\/([^/]+)(?:\/organize)?\/?$/)
 	);
@@ -162,7 +162,7 @@
 	// Context-aware chat configuration based on current page
 	const chatContextType = $derived.by((): ChatContextType => {
 		// Project detail page or task focus page
-		if ((projectDetailMatch || projectTaskMatch) && $page.data?.project) {
+		if ((projectDetailMatch || projectTaskMatch) && page.data?.project) {
 			return 'project';
 		}
 		// Default: global context
@@ -171,18 +171,18 @@
 
 	const chatEntityId = $derived.by((): string | undefined => {
 		// Project detail page or task focus page: return project ID
-		if ((projectDetailMatch || projectTaskMatch) && $page.data?.project) {
-			return $page.data.project.id ?? projectDetailMatch?.[1] ?? projectTaskMatch?.[1];
+		if ((projectDetailMatch || projectTaskMatch) && page.data?.project) {
+			return page.data.project.id ?? projectDetailMatch?.[1] ?? projectTaskMatch?.[1];
 		}
 		// No entity
 		return undefined;
 	});
 
 	const chatAutoInitProject = $derived.by(() => {
-		if (projectDetailMatch && $page.data?.project) {
+		if (projectDetailMatch && page.data?.project) {
 			return {
-				projectId: $page.data.project.id,
-				projectName: $page.data.project.name ?? 'Project',
+				projectId: page.data.project.id,
+				projectName: page.data.project.name ?? 'Project',
 				showActionSelector: false
 			};
 		}
@@ -190,20 +190,20 @@
 	});
 
 	const chatInitialProjectFocus = $derived.by((): ProjectFocus | null => {
-		if (!projectTaskMatch || !$page.data?.project || !$page.data?.task) {
+		if (!projectTaskMatch || !page.data?.project || !page.data?.task) {
 			return null;
 		}
 
-		const projectId = $page.data.project.id ?? projectTaskMatch[1];
-		const taskId = $page.data.task.id ?? projectTaskMatch[2];
+		const projectId = page.data.project.id ?? projectTaskMatch[1];
+		const taskId = page.data.task.id ?? projectTaskMatch[2];
 		if (!projectId || !taskId) return null;
 
 		return {
 			focusType: 'task',
 			focusEntityId: taskId,
-			focusEntityName: $page.data.task.title ?? 'Untitled Task',
+			focusEntityName: page.data.task.title ?? 'Untitled Task',
 			projectId,
-			projectName: $page.data.project.name ?? 'Project'
+			projectName: page.data.project.name ?? 'Project'
 		};
 	});
 
@@ -224,8 +224,8 @@
 	);
 	const selectedHistoryBrainDumpId = $derived.by(() => {
 		if (currentPath !== '/history') return null;
-		if ($page.url.searchParams.get('itemType') !== 'braindump') return null;
-		const id = $page.url.searchParams.get('id');
+		if (page.url.searchParams.get('itemType') !== 'braindump') return null;
+		const id = page.url.searchParams.get('id');
 		return id && id.trim() ? id : null;
 	});
 
@@ -260,7 +260,7 @@
 	const isOnOnboarding = $derived(currentPath === '/onboarding');
 	const userName = $derived(user?.name || user?.email || '');
 	const pendingInvites = $derived.by(() => {
-		const invites = $page.data?.pendingInvites;
+		const invites = page.data?.pendingInvites;
 		return Array.isArray(invites) ? invites : [];
 	});
 	const pendingInviteCount = $derived(pendingInvites.length);
@@ -460,7 +460,6 @@
 
 	// Body scroll lock + focus management while the mobile drawer is open.
 	$effect(() => {
-		if (!browser) return;
 		if (!showMobileMenu) return;
 
 		// Ref-counted position:fixed lock — raw `body.style.overflow = 'hidden'`
@@ -652,7 +651,7 @@
 				agentChat: _agentChat,
 				agentChatPushed: _agentChatPushed,
 				...state
-			} = $page.state;
+			} = page.state;
 			await goto(`${url.pathname}${url.search}${url.hash}`, {
 				replaceState: true,
 				keepFocus: true,
@@ -674,7 +673,7 @@
 			// Only fix the link. The entry's chat marker stays: an open chat with no message
 			// yet has no link but still owns this entry, and stripping the marker would read
 			// as Back and close it. A marker left by a closed chat is inert.
-			replaceState(url, { ...$page.state });
+			replaceState(url, { ...page.state });
 		},
 		record: (result, cameThroughLogin) =>
 			captureEvent('chat_link_opened', {
@@ -687,7 +686,7 @@
 		if (!to?.url) return;
 		// The router starts just after the first hydration callback. Cleanup must finish
 		// before the modal pushes its own entry, so Back stays on the linked page.
-		const isChatHistoryEntry = type === 'popstate' && Boolean($page.state.agentChat);
+		const isChatHistoryEntry = type === 'popstate' && Boolean(page.state.agentChat);
 		queueMicrotask(() => void resumeLinks.handle(to.url, from?.url, isChatHistoryEntry));
 	});
 
@@ -709,7 +708,6 @@
 	});
 
 	$effect(() => {
-		if (!browser) return;
 		const userId = typeof user?.id === 'string' ? user.id : '';
 		if (userId === loadedInboxUserId) return;
 		loadedInboxUserId = userId;
@@ -718,7 +716,7 @@
 	});
 
 	$effect(() => {
-		if (!browser || !user?.id) return;
+		if (!user?.id) return;
 		const nextFingerprint = Array.from($agentRunsStore.values())
 			.filter((run) => run.user_id === user.id && run.status === 'proposal_ready')
 			.map((run) => run.id)
@@ -794,8 +792,6 @@
 	}
 
 	onMount(() => {
-		if (!browser) return;
-
 		// Check if we're in dark mode
 		isDark = document.documentElement.classList.contains('dark');
 
@@ -1399,7 +1395,6 @@
 
 	<!-- Mobile menu -->
 	{#if showMobileMenu}
-		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<div
 			bind:this={mobileMenuElement}
 			role="dialog"

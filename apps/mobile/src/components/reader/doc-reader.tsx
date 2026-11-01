@@ -4,6 +4,7 @@ import { useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Check, FileText, Key, Pencil, playHaptic, Stamp, Undo2, X } from '@/components/kit';
+import { ReaderChatKey } from '@/components/chat/reader-chat-key';
 import { Markdown } from '@/components/markdown';
 import { ActionBar, BarKey } from '@/components/reader/action-bar';
 import { shortDate } from '@/components/reader/format';
@@ -221,6 +222,14 @@ export function DocReader({
 				closing={leaving === 'close'}
 				closeLabel={closeLabel}
 				edge={editing || scrolled}
+				action={
+					doc.project_id ? (
+						<ReaderChatKey
+							projectId={doc.project_id}
+							focus={{ kind: 'document', id: doc.id, name: title }}
+						/>
+					) : null
+				}
 			/>
 
 			{error ? (

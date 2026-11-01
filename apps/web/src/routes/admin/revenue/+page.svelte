@@ -70,7 +70,6 @@
 
 	// Load revenue data on mount and when filters change
 	$effect(() => {
-		if (!browser) return;
 		selectedPeriod; // Track dependency
 		selectedYear; // Track dependency
 		selectedMonth; // Track dependency
@@ -415,7 +414,7 @@
 					</h3>
 					<!-- Mobile card list -->
 					<ul class="space-y-3 lg:hidden">
-						{#each revenueData.deferred.breakdown as item}
+						{#each revenueData.deferred.breakdown as item (item.period)}
 							<li class="rounded-md border border-border bg-card p-4">
 								<div class="font-medium text-foreground">{item.period}</div>
 								<dl class="mt-2 grid grid-cols-2 gap-2 text-sm">
@@ -458,7 +457,7 @@
 								</tr>
 							</thead>
 							<tbody class="divide-y divide-border">
-								{#each revenueData.deferred.breakdown as item}
+								{#each revenueData.deferred.breakdown as item (item.period)}
 									<tr>
 										<td
 											class="px-6 py-4 whitespace-nowrap text-sm text-foreground"

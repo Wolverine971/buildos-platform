@@ -124,7 +124,7 @@
 				bodyClass="p-0 sm:p-0"
 			>
 				<div class="divide-y divide-border">
-					{#each subscriptionDetails.invoices as invoice}
+					{#each subscriptionDetails.invoices as invoice (invoice.id)}
 						<div class="flex items-center justify-between gap-3 px-4 sm:px-5 py-2.5">
 							<div class="min-w-0">
 								<p class="text-sm font-medium text-foreground">

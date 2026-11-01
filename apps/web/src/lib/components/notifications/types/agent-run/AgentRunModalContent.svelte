@@ -461,291 +461,277 @@
 		variant="bottom-sheet"
 		showCloseButton={true}
 	>
-		{#snippet children()}
-			<div class="px-3 sm:px-4 py-3 sm:py-4 space-y-4">
-				<!-- Header: project + friendly status/source/access + preview -->
-				<div class="flex items-start gap-3">
-					<div class="flex-shrink-0 mt-0.5">
-						{#if headIcon}
-							{@const HeadIcon = headIcon.icon}
-							<HeadIcon class="w-5 h-5 {headIcon.cls}" />
+		<div class="px-3 sm:px-4 py-3 sm:py-4 space-y-4">
+			<!-- Header: project + friendly status/source/access + preview -->
+			<div class="flex items-start gap-3">
+				<div class="flex-shrink-0 mt-0.5">
+					{#if headIcon}
+						{@const HeadIcon = headIcon.icon}
+						<HeadIcon class="w-5 h-5 {headIcon.cls}" />
+					{/if}
+				</div>
+				<div class="flex-1 min-w-0">
+					{#if projectHref(notification.data.projectId)}
+						<a
+							href={projectHref(notification.data.projectId)}
+							class="inline-block max-w-full truncate text-sm font-semibold text-accent hover:underline"
+						>
+							{projectLabel}
+						</a>
+					{:else}
+						<div class="truncate text-sm font-semibold text-foreground">
+							{projectLabel}
+						</div>
+					{/if}
+					<div class="flex items-center gap-2 flex-wrap">
+						<span class="text-xs font-medium text-foreground"
+							>{isReview ? 'Ready for review' : agentRunStatusLabel(runStatus)}</span
+						>
+						<span class="text-xs text-muted-foreground">·</span>
+						<span class="text-xs text-muted-foreground">{sourceLabel}</span>
+						<span class="text-xs text-muted-foreground">·</span>
+						<span class="text-xs text-muted-foreground">{accessLabel}</span>
+						{#if startedRelative}
+							<span class="text-xs text-muted-foreground">·</span>
+							<span class="text-xs text-muted-foreground">{startedRelative}</span>
 						{/if}
 					</div>
-					<div class="flex-1 min-w-0">
-						{#if projectHref(notification.data.projectId)}
-							<a
-								href={projectHref(notification.data.projectId)}
-								class="inline-block max-w-full truncate text-sm font-semibold text-accent hover:underline"
-							>
-								{projectLabel}
-							</a>
-						{:else}
-							<div class="truncate text-sm font-semibold text-foreground">
-								{projectLabel}
+					<p class="mt-1 text-sm text-foreground">
+						{notification.data.preview ?? notification.data.goal}
+					</p>
+				</div>
+			</div>
+
+			<!-- Steer / pause / resume (live runs; needs_input uses the answer box) -->
+			{#if !isReview && (runStatus === 'running' || runStatus === 'paused' || runStatus === 'queued')}
+				<AgentRunSteerControl {runId} {runStatus} {appliedSteerMessages} />
+			{/if}
+
+			<!-- Proposal review — the run staged changes for your approval (review run) -->
+			{#if isReview && reviewChangeSet}
+				<ChangeSetReview
+					{runId}
+					changeSet={reviewChangeSet}
+					acceptLabel="Accept"
+					dismissLabel="Dismiss"
+					approveAllLabel="Accept"
+					rejectAllLabel="Dismiss"
+					onApplied={createDismissHandler()}
+					onApplying={handleReviewApplying}
+				/>
+			{:else if failedChangeSet}
+				<ChangeSetFailureSummary
+					changeSet={failedChangeSet}
+					onChat={canOpenChat ? handleOpenChat : undefined}
+					{openingChat}
+				/>
+			{/if}
+
+			<!-- Answer box — the run is blocked or can continue from a partial result -->
+			{#if canAnswerRun}
+				<div class="space-y-2 rounded-lg border border-warning/40 bg-warning/5 p-3">
+					<div class="micro-label text-warning">
+						{runStatus === 'partial'
+							? 'Continue this work'
+							: 'BuildOS needs your input'}
+					</div>
+					{#if result?.open_questions?.length}
+						<ul class="list-disc list-inside space-y-0.5">
+							{#each result.open_questions as q}
+								<li class="text-sm text-foreground">{q}</li>
+							{/each}
+						</ul>
+					{/if}
+					<div class="flex flex-col gap-2 sm:flex-row sm:items-end">
+						<textarea
+							bind:value={answerText}
+							rows="2"
+							disabled={answering}
+							placeholder={runStatus === 'partial'
+								? 'Tell BuildOS what to do next…'
+								: 'Type your answer…'}
+							class="min-h-[4.5rem] flex-1 resize-none rounded-md border border-border bg-background px-2.5 py-2 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50 sm:min-h-0 sm:text-sm"
+						></textarea>
+						<Button
+							onclick={submitAnswer}
+							variant="primary"
+							size="md"
+							disabled={answering || !answerText.trim()}
+							class="w-full sm:w-auto"
+						>
+							{runStatus === 'partial' ? 'Continue' : 'Answer'}
+						</Button>
+					</div>
+				</div>
+			{/if}
+
+			{#snippet runDetails()}
+				<!-- Result summary / answer -->
+				{#if result?.summary || result?.answer}
+					<div class="space-y-2 rounded-lg border border-border bg-muted/40 p-3">
+						{#if result.summary}
+							<div>
+								<div class="micro-label text-muted-foreground">Summary</div>
+								<div class="agent-run-prose {proseClasses} mt-0.5 break-words">
+									{@html renderMarkdown(result.summary)}
+								</div>
 							</div>
 						{/if}
-						<div class="flex items-center gap-2 flex-wrap">
-							<span class="text-xs font-medium text-foreground"
-								>{isReview
-									? 'Ready for review'
-									: agentRunStatusLabel(runStatus)}</span
-							>
-							<span class="text-xs text-muted-foreground">·</span>
-							<span class="text-xs text-muted-foreground">{sourceLabel}</span>
-							<span class="text-xs text-muted-foreground">·</span>
-							<span class="text-xs text-muted-foreground">{accessLabel}</span>
-							{#if startedRelative}
-								<span class="text-xs text-muted-foreground">·</span>
-								<span class="text-xs text-muted-foreground">{startedRelative}</span>
-							{/if}
-						</div>
-						<p class="mt-1 text-sm text-foreground">
-							{notification.data.preview ?? notification.data.goal}
+						{#if result.answer && result.answer !== result.summary}
+							<div>
+								<div class="micro-label text-muted-foreground">Answer</div>
+								<div class="agent-run-prose {proseClasses} mt-0.5 break-words">
+									{@html renderMarkdown(result.answer)}
+								</div>
+							</div>
+						{/if}
+					</div>
+				{/if}
+
+				<!-- Error -->
+				{#if runStatus === 'failed' && notification.data.error}
+					<div class="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+						<div class="micro-label text-destructive">Error</div>
+						<p class="text-sm text-destructive mt-0.5 whitespace-pre-wrap">
+							{notification.data.error}
 						</p>
+					</div>
+				{/if}
+
+				<!-- Entities touched -->
+				{#if result?.entities_touched?.length}
+					<div>
+						<div class="micro-label mb-1.5 text-muted-foreground">
+							Changes ({result.entities_touched.length})
+						</div>
+						<div class="flex flex-wrap gap-1.5">
+							{#each result.entities_touched as entity (`${entity.type}:${entity.id}:${entity.action}`)}
+								{@const href = entityHref(entity)}
+								{#if href}
+									<a
+										{href}
+										class="inline-flex min-h-11 items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground transition-colors hover:border-accent/50 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+										title={entity.description}
+									>
+										<span class="text-muted-foreground">{entity.action}</span>
+										{entityLabel(entity)}
+									</a>
+								{:else}
+									<span
+										class="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground"
+										title={entity.description}
+									>
+										<span class="text-muted-foreground">{entity.action}</span>
+										{entityLabel(entity)}
+									</span>
+								{/if}
+							{/each}
+						</div>
+					</div>
+				{/if}
+
+				<!-- Open questions (continuable runs render them in the answer box above) -->
+				{#if result?.open_questions?.length && !canAnswerRun}
+					<div>
+						<div class="micro-label mb-1.5 text-muted-foreground">Open questions</div>
+						<ul class="list-disc list-inside space-y-0.5">
+							{#each result.open_questions as q}
+								<li class="text-sm text-foreground">{q}</li>
+							{/each}
+						</ul>
+					</div>
+				{/if}
+
+				<!-- Narration / event log -->
+				<div>
+					<div class="micro-label mb-1.5 text-muted-foreground">Activity</div>
+					<div
+						class="rounded-lg border border-border bg-card max-h-64 overflow-y-auto divide-y divide-border/60"
+					>
+						{#if loadingEvents && events.length === 0}
+							<div class="flex items-center gap-2 p-3 text-xs text-muted-foreground">
+								<LoaderCircle
+									class="h-4 w-4 animate-spin motion-reduce:animate-none"
+									aria-hidden="true"
+								/>
+								Loading activity…
+							</div>
+						{:else if eventsError}
+							<div class="flex items-center justify-between gap-2 p-3">
+								<p role="alert" class="text-xs text-destructive">
+									{eventsError}
+								</p>
+								<Button onclick={loadEvents} variant="outline" size="sm"
+									>Retry activity</Button
+								>
+							</div>
+						{:else if events.length === 0}
+							<div class="p-3 text-xs text-muted-foreground">No activity yet.</div>
+						{:else}
+							{#each events as event (event.id)}
+								{@const line = eventLine(event)}
+								{#if line.text}
+									{@const LineIcon = line.icon}
+									<div class="flex items-start gap-2 p-2.5">
+										<LineIcon
+											class="w-3.5 h-3.5 mt-0.5 flex-shrink-0 {line.cls}"
+										/>
+										<span class="text-xs text-foreground break-words"
+											>{line.text}</span
+										>
+									</div>
+								{/if}
+							{/each}
+						{/if}
 					</div>
 				</div>
 
-				<!-- Steer / pause / resume (live runs; needs_input uses the answer box) -->
-				{#if !isReview && (runStatus === 'running' || runStatus === 'paused' || runStatus === 'queued')}
-					<AgentRunSteerControl {runId} {runStatus} {appliedSteerMessages} />
-				{/if}
-
-				<!-- Proposal review — the run staged changes for your approval (review run) -->
-				{#if isReview && reviewChangeSet}
-					<ChangeSetReview
-						{runId}
-						changeSet={reviewChangeSet}
-						acceptLabel="Accept"
-						dismissLabel="Dismiss"
-						approveAllLabel="Accept"
-						rejectAllLabel="Dismiss"
-						onApplied={createDismissHandler()}
-						onApplying={handleReviewApplying}
-					/>
-				{:else if failedChangeSet}
-					<ChangeSetFailureSummary
-						changeSet={failedChangeSet}
-						onChat={canOpenChat ? handleOpenChat : undefined}
-						{openingChat}
-					/>
-				{/if}
-
-				<!-- Answer box — the run is blocked or can continue from a partial result -->
-				{#if canAnswerRun}
-					<div class="space-y-2 rounded-lg border border-warning/40 bg-warning/5 p-3">
-						<div class="micro-label text-warning">
-							{runStatus === 'partial'
-								? 'Continue this work'
-								: 'BuildOS needs your input'}
+				<!-- Metrics -->
+				{#if metrics}
+					<div class="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
+						<div class="rounded-lg bg-muted/40 p-2">
+							<div class="text-sm font-medium text-foreground">
+								{metrics.tool_calls ?? 0}
+							</div>
+							<div class="micro-label text-muted-foreground">Tools</div>
 						</div>
-						{#if result?.open_questions?.length}
-							<ul class="list-disc list-inside space-y-0.5">
-								{#each result.open_questions as q}
-									<li class="text-sm text-foreground">{q}</li>
-								{/each}
-							</ul>
-						{/if}
-						<div class="flex flex-col gap-2 sm:flex-row sm:items-end">
-							<textarea
-								bind:value={answerText}
-								rows="2"
-								disabled={answering}
-								placeholder={runStatus === 'partial'
-									? 'Tell BuildOS what to do next…'
-									: 'Type your answer…'}
-								class="min-h-[4.5rem] flex-1 resize-none rounded-md border border-border bg-background px-2.5 py-2 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50 sm:min-h-0 sm:text-sm"
-							></textarea>
-							<Button
-								onclick={submitAnswer}
-								variant="primary"
-								size="md"
-								disabled={answering || !answerText.trim()}
-								class="w-full sm:w-auto"
-							>
-								{runStatus === 'partial' ? 'Continue' : 'Answer'}
-							</Button>
+						<div class="rounded-lg bg-muted/40 p-2">
+							<div class="text-sm font-medium text-foreground">
+								{(metrics.tokens ?? 0).toLocaleString()}
+							</div>
+							<div class="micro-label text-muted-foreground">Tokens</div>
+						</div>
+						<div class="rounded-lg bg-muted/40 p-2">
+							<div class="text-sm font-medium text-foreground">
+								${(metrics.cost_usd ?? 0).toFixed(3)}
+							</div>
+							<div class="micro-label text-muted-foreground">Cost</div>
+						</div>
+						<div class="rounded-lg bg-muted/40 p-2">
+							<div class="text-sm font-medium text-foreground">
+								{formatDuration(metrics.duration_ms)}
+							</div>
+							<div class="micro-label text-muted-foreground">Time</div>
 						</div>
 					</div>
 				{/if}
-
-				{#snippet runDetails()}
-					<!-- Result summary / answer -->
-					{#if result?.summary || result?.answer}
-						<div class="space-y-2 rounded-lg border border-border bg-muted/40 p-3">
-							{#if result.summary}
-								<div>
-									<div class="micro-label text-muted-foreground">Summary</div>
-									<div class="agent-run-prose {proseClasses} mt-0.5 break-words">
-										{@html renderMarkdown(result.summary)}
-									</div>
-								</div>
-							{/if}
-							{#if result.answer && result.answer !== result.summary}
-								<div>
-									<div class="micro-label text-muted-foreground">Answer</div>
-									<div class="agent-run-prose {proseClasses} mt-0.5 break-words">
-										{@html renderMarkdown(result.answer)}
-									</div>
-								</div>
-							{/if}
-						</div>
-					{/if}
-
-					<!-- Error -->
-					{#if runStatus === 'failed' && notification.data.error}
-						<div class="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-							<div class="micro-label text-destructive">Error</div>
-							<p class="text-sm text-destructive mt-0.5 whitespace-pre-wrap">
-								{notification.data.error}
-							</p>
-						</div>
-					{/if}
-
-					<!-- Entities touched -->
-					{#if result?.entities_touched?.length}
-						<div>
-							<div class="micro-label mb-1.5 text-muted-foreground">
-								Changes ({result.entities_touched.length})
-							</div>
-							<div class="flex flex-wrap gap-1.5">
-								{#each result.entities_touched as entity (`${entity.type}:${entity.id}:${entity.action}`)}
-									{@const href = entityHref(entity)}
-									{#if href}
-										<a
-											{href}
-											class="inline-flex min-h-11 items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground transition-colors hover:border-accent/50 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
-											title={entity.description}
-										>
-											<span class="text-muted-foreground"
-												>{entity.action}</span
-											>
-											{entityLabel(entity)}
-										</a>
-									{:else}
-										<span
-											class="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground"
-											title={entity.description}
-										>
-											<span class="text-muted-foreground"
-												>{entity.action}</span
-											>
-											{entityLabel(entity)}
-										</span>
-									{/if}
-								{/each}
-							</div>
-						</div>
-					{/if}
-
-					<!-- Open questions (continuable runs render them in the answer box above) -->
-					{#if result?.open_questions?.length && !canAnswerRun}
-						<div>
-							<div class="micro-label mb-1.5 text-muted-foreground">
-								Open questions
-							</div>
-							<ul class="list-disc list-inside space-y-0.5">
-								{#each result.open_questions as q}
-									<li class="text-sm text-foreground">{q}</li>
-								{/each}
-							</ul>
-						</div>
-					{/if}
-
-					<!-- Narration / event log -->
-					<div>
-						<div class="micro-label mb-1.5 text-muted-foreground">Activity</div>
-						<div
-							class="rounded-lg border border-border bg-card max-h-64 overflow-y-auto divide-y divide-border/60"
-						>
-							{#if loadingEvents && events.length === 0}
-								<div
-									class="flex items-center gap-2 p-3 text-xs text-muted-foreground"
-								>
-									<LoaderCircle
-										class="h-4 w-4 animate-spin motion-reduce:animate-none"
-										aria-hidden="true"
-									/>
-									Loading activity…
-								</div>
-							{:else if eventsError}
-								<div class="flex items-center justify-between gap-2 p-3">
-									<p role="alert" class="text-xs text-destructive">
-										{eventsError}
-									</p>
-									<Button onclick={loadEvents} variant="outline" size="sm"
-										>Retry activity</Button
-									>
-								</div>
-							{:else if events.length === 0}
-								<div class="p-3 text-xs text-muted-foreground">
-									No activity yet.
-								</div>
-							{:else}
-								{#each events as event (event.id)}
-									{@const line = eventLine(event)}
-									{#if line.text}
-										{@const LineIcon = line.icon}
-										<div class="flex items-start gap-2 p-2.5">
-											<LineIcon
-												class="w-3.5 h-3.5 mt-0.5 flex-shrink-0 {line.cls}"
-											/>
-											<span class="text-xs text-foreground break-words"
-												>{line.text}</span
-											>
-										</div>
-									{/if}
-								{/each}
-							{/if}
-						</div>
-					</div>
-
-					<!-- Metrics -->
-					{#if metrics}
-						<div class="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
-							<div class="rounded-lg bg-muted/40 p-2">
-								<div class="text-sm font-medium text-foreground">
-									{metrics.tool_calls ?? 0}
-								</div>
-								<div class="micro-label text-muted-foreground">Tools</div>
-							</div>
-							<div class="rounded-lg bg-muted/40 p-2">
-								<div class="text-sm font-medium text-foreground">
-									{(metrics.tokens ?? 0).toLocaleString()}
-								</div>
-								<div class="micro-label text-muted-foreground">Tokens</div>
-							</div>
-							<div class="rounded-lg bg-muted/40 p-2">
-								<div class="text-sm font-medium text-foreground">
-									${(metrics.cost_usd ?? 0).toFixed(3)}
-								</div>
-								<div class="micro-label text-muted-foreground">Cost</div>
-							</div>
-							<div class="rounded-lg bg-muted/40 p-2">
-								<div class="text-sm font-medium text-foreground">
-									{formatDuration(metrics.duration_ms)}
-								</div>
-								<div class="micro-label text-muted-foreground">Time</div>
-							</div>
-						</div>
-					{/if}
-				{/snippet}
-				{#if isReview}
-					<details
-						ontoggle={toggleReviewDetails}
-						class="rounded-lg border border-border bg-muted/20 p-3"
+			{/snippet}
+			{#if isReview}
+				<details
+					ontoggle={toggleReviewDetails}
+					class="rounded-lg border border-border bg-muted/20 p-3"
+				>
+					<summary class="cursor-pointer text-xs font-medium text-muted-foreground"
+						>Review context and activity</summary
 					>
-						<summary class="cursor-pointer text-xs font-medium text-muted-foreground"
-							>Review context and activity</summary
-						>
-						{#if showReviewDetails}
-							<div class="mt-3 space-y-4">{@render runDetails()}</div>
-						{/if}
-					</details>
-				{:else}
-					{@render runDetails()}
-				{/if}
-			</div>
-		{/snippet}
+					{#if showReviewDetails}
+						<div class="mt-3 space-y-4">{@render runDetails()}</div>
+					{/if}
+				</details>
+			{:else}
+				{@render runDetails()}
+			{/if}
+		</div>
 
 		{#snippet footer()}
 			<div

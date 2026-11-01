@@ -154,102 +154,98 @@
 		</div>
 	{/snippet}
 
-	{#snippet children()}
-		<div class="px-6 py-5 space-y-6">
-			<div class="space-y-2">
-				{#if formattedDate}
-					<p class="text-sm text-muted-foreground">{formattedDate}</p>
+	<div class="px-6 py-5 space-y-6">
+		<div class="space-y-2">
+			{#if formattedDate}
+				<p class="text-sm text-muted-foreground">{formattedDate}</p>
+			{/if}
+
+			<div class="p-4 bg-muted rounded-lg space-y-2">
+				{#if formattedTime}
+					<div class="flex items-center text-sm text-foreground">
+						<Clock class="mr-2 h-4 w-4 shrink-0" aria-hidden="true" />
+						{formattedTime}
+						{#if durationText}
+							<span class="ml-2 text-muted-foreground">({durationText})</span>
+						{/if}
+					</div>
 				{/if}
 
-				<div class="p-4 bg-muted rounded-lg space-y-2">
-					{#if formattedTime}
-						<div class="flex items-center text-sm text-foreground">
-							<Clock class="mr-2 h-4 w-4 shrink-0" aria-hidden="true" />
-							{formattedTime}
-							{#if durationText}
-								<span class="ml-2 text-muted-foreground">({durationText})</span>
-							{/if}
-						</div>
-					{/if}
-
-					{#if notification.data.projectName}
-						<div class="text-sm text-foreground">
-							<span class="font-medium">Project:</span>
-							{notification.data.projectName}
-						</div>
-					{/if}
-				</div>
-			</div>
-
-			{#if status === 'success' && notification.data.suggestions?.length}
-				<div class="space-y-4">
-					<div>
-						<h4 class="text-sm font-medium text-foreground mb-3">AI-suggested tasks</h4>
-
-						<div class="space-y-3">
-							{#each notification.data.suggestions as suggestion, index (suggestion.task_id ?? suggestion)}
-								<div class="rounded-lg border border-border bg-card p-3">
-									<div class="text-sm font-medium text-foreground">
-										{index + 1}. {suggestion.title}
-									</div>
-									{#if suggestion.reason}
-										<div class="text-xs text-muted-foreground mt-1">
-											{suggestion.reason}
-										</div>
-									{/if}
-									<div
-										class="flex items-center gap-3 mt-2 text-xs text-muted-foreground"
-									>
-										{#if suggestion.estimated_minutes}
-											<span>{suggestion.estimated_minutes} min</span>
-										{/if}
-										{#if suggestion.priority}
-											<span class="rounded-full bg-muted px-2 py-0.5">
-												{suggestion.priority}
-											</span>
-										{/if}
-										{#if suggestion.project_name && notification.data.blockType === 'build'}
-											<span class="text-info">
-												{suggestion.project_name}
-											</span>
-										{/if}
-									</div>
-								</div>
-							{/each}
-						</div>
+				{#if notification.data.projectName}
+					<div class="text-sm text-foreground">
+						<span class="font-medium">Project:</span>
+						{notification.data.projectName}
 					</div>
-
-					{#if notification.data.suggestionsSummary}
-						<div
-							class="rounded-lg border border-info/30 bg-info/10 p-3 text-sm text-info"
-						>
-							{notification.data.suggestionsSummary}
-						</div>
-					{/if}
-				</div>
-			{/if}
-
-			{#if status === 'error'}
-				<div
-					class="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
-				>
-					{notification.data.error ?? 'The time block could not be created.'}
-				</div>
-			{/if}
-
-			{#if notification.data.calendarEventLink}
-				<div class="flex gap-2 pt-2">
-					<Button
-						onclick={handleOpenCalendar}
-						variant="primary"
-						size="md"
-						icon={Calendar}
-						class="flex-1"
-					>
-						Open in Google Calendar
-					</Button>
-				</div>
-			{/if}
+				{/if}
+			</div>
 		</div>
-	{/snippet}
+
+		{#if status === 'success' && notification.data.suggestions?.length}
+			<div class="space-y-4">
+				<div>
+					<h4 class="text-sm font-medium text-foreground mb-3">AI-suggested tasks</h4>
+
+					<div class="space-y-3">
+						{#each notification.data.suggestions as suggestion, index (suggestion.task_id ?? suggestion)}
+							<div class="rounded-lg border border-border bg-card p-3">
+								<div class="text-sm font-medium text-foreground">
+									{index + 1}. {suggestion.title}
+								</div>
+								{#if suggestion.reason}
+									<div class="text-xs text-muted-foreground mt-1">
+										{suggestion.reason}
+									</div>
+								{/if}
+								<div
+									class="flex items-center gap-3 mt-2 text-xs text-muted-foreground"
+								>
+									{#if suggestion.estimated_minutes}
+										<span>{suggestion.estimated_minutes} min</span>
+									{/if}
+									{#if suggestion.priority}
+										<span class="rounded-full bg-muted px-2 py-0.5">
+											{suggestion.priority}
+										</span>
+									{/if}
+									{#if suggestion.project_name && notification.data.blockType === 'build'}
+										<span class="text-info">
+											{suggestion.project_name}
+										</span>
+									{/if}
+								</div>
+							</div>
+						{/each}
+					</div>
+				</div>
+
+				{#if notification.data.suggestionsSummary}
+					<div class="rounded-lg border border-info/30 bg-info/10 p-3 text-sm text-info">
+						{notification.data.suggestionsSummary}
+					</div>
+				{/if}
+			</div>
+		{/if}
+
+		{#if status === 'error'}
+			<div
+				class="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+			>
+				{notification.data.error ?? 'The time block could not be created.'}
+			</div>
+		{/if}
+
+		{#if notification.data.calendarEventLink}
+			<div class="flex gap-2 pt-2">
+				<Button
+					onclick={handleOpenCalendar}
+					variant="primary"
+					size="md"
+					icon={Calendar}
+					class="flex-1"
+				>
+					Open in Google Calendar
+				</Button>
+			</div>
+		{/if}
+	</div>
 </Modal>

@@ -6,11 +6,11 @@
   - Zero layout shift - exact number of cards rendered from start
 -->
 <script lang="ts">
+	import ErrorBoundary from '$lib/components/ui/ErrorBoundary.svelte';
 	import { onDestroy, untrack } from 'svelte';
-	import { get } from 'svelte/store';
 	import { goto, invalidate, invalidateAll, preloadData, pushState } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -187,7 +187,7 @@
 
 	let activeTab = $state<'overview' | 'graph'>(
 		untrack(() =>
-			isAdmin && get(page).url.searchParams.get('view') === 'graph' ? 'graph' : 'overview'
+			isAdmin && page.url.searchParams.get('view') === 'graph' ? 'graph' : 'overview'
 		)
 	);
 	let graphViewMode = $state<ViewMode>('projects'); // Default to Projects & Entities
@@ -513,9 +513,9 @@
 			void refreshWorkspace();
 			// Open the new project's card on the desktop.
 			pushState('', {
-				...$page.state,
+				...page.state,
 				desktopCard: receipt.project_id,
-				desktopDepth: ($page.state.desktopDepth ?? 0) + 1,
+				desktopDepth: (page.state.desktopDepth ?? 0) + 1,
 				desktopPeek: undefined,
 				desktopPeekPushed: undefined
 			});
@@ -543,7 +543,7 @@
 							? 'The items are back in your Workspace. The project stays, since something else was added to it.'
 							: 'Nothing to undo: those items changed since.'
 			});
-			if ($page.state.desktopCard === projectId) history.back();
+			if (page.state.desktopCard === projectId) history.back();
 		} catch (err) {
 			toastService.error(err instanceof Error ? err.message : 'Could not undo that.');
 		} finally {
@@ -659,7 +659,7 @@
 
 	let searchQuery = $state('');
 	let selectedScope = $state<ProjectListScope>(
-		normalizeProjectListScope(get(page).url.searchParams.get('state'))
+		normalizeProjectListScope(page.url.searchParams.get('state'))
 	);
 	let selectedOwnership = $state<OwnershipFilter>('all');
 	let selectedContexts = $state<string[]>([]);
@@ -743,7 +743,7 @@
 
 	const isSearching = $derived(searchQuery.trim().length > 0);
 	// A desktop card takes the page; search and filters come back when it closes.
-	const desktopCardOpen = $derived(Boolean($page.state.desktopCard));
+	const desktopCardOpen = $derived(Boolean(page.state.desktopCard));
 
 	function applyProjectPatches(patches: ProjectPatch[]) {
 		const byId = new Map(patches.map(({ id, patch }) => [id, patch]));
@@ -796,13 +796,13 @@
 
 	async function setProjectScope(scope: ProjectListScope) {
 		selectedScope = scope;
-		const params = new URLSearchParams($page.url.searchParams);
+		const params = new URLSearchParams(page.url.searchParams);
 		if (scope === 'current') params.delete('state');
 		else params.set('state', scope);
 
 		const query = params.toString();
 		const nextUrl = resolve(query ? `/projects?${query}` : '/projects');
-		if (nextUrl === `${$page.url.pathname}${$page.url.search}`) return;
+		if (nextUrl === `${page.url.pathname}${page.url.search}`) return;
 		await goto(resolve(query ? `/projects?${query}` : '/projects'), {
 			replaceState: true,
 			keepFocus: true,
@@ -845,7 +845,7 @@
 			);
 		}
 
-		const params = new URLSearchParams($page.url.searchParams);
+		const params = new URLSearchParams(page.url.searchParams);
 		if (tab === 'graph') {
 			params.set('view', 'graph');
 		} else {
@@ -872,7 +872,7 @@
 
 	$effect(() => {
 		const viewParam =
-			isAdmin && $page.url.searchParams.get('view') === 'graph' ? 'graph' : 'overview';
+			isAdmin && page.url.searchParams.get('view') === 'graph' ? 'graph' : 'overview';
 		if (viewParam !== activeTab) {
 			activeTab = viewParam;
 		}
@@ -880,7 +880,7 @@
 
 	// Deep-link support: /projects?state=active applies the same scope used by Filters.
 	$effect(() => {
-		const scope = normalizeProjectListScope($page.url.searchParams.get('state'));
+		const scope = normalizeProjectListScope(page.url.searchParams.get('state'));
 		untrack(() => {
 			if (selectedScope !== scope) selectedScope = scope;
 		});
@@ -1006,20 +1006,25 @@
 					</Button>
 				</div>
 				{#if data.user}
-					<TodayRow
-						user={{
-							id: data.user.id,
-							email: data.user.email,
-							is_admin: data.user.is_admin,
-							timezone: data.userTimezone
-						}}
-						overdueTasks={dashboard?.attention.overdueTasks ?? null}
-						pendingInvites={data.pendingInvites ?? []}
-						showAgentConnectionCta={!data.hasConnectedAgents}
-						onrefresh={refreshToday}
-						bind:modalOpen={todayModalOpen}
+					<ErrorBoundary
+						area="today-row"
 						class="col-span-full lg:col-span-1 lg:col-start-2 lg:row-start-1"
-					/>
+					>
+						<TodayRow
+							user={{
+								id: data.user.id,
+								email: data.user.email,
+								is_admin: data.user.is_admin,
+								timezone: data.userTimezone
+							}}
+							overdueTasks={dashboard?.attention.overdueTasks ?? null}
+							pendingInvites={data.pendingInvites ?? []}
+							showAgentConnectionCta={!data.hasConnectedAgents}
+							onrefresh={refreshToday}
+							bind:modalOpen={todayModalOpen}
+							class="col-span-full lg:col-span-1 lg:col-start-2 lg:row-start-1"
+						/>
+					</ErrorBoundary>
 				{/if}
 			{:else}
 				<Button
@@ -1040,7 +1045,7 @@
 				onCaptured={handleCaptured}
 				onSorted={handleSorted}
 				onUndone={handleSortUndone}
-				autofocus={$page.url.searchParams.get('capture') === '1'}
+				autofocus={page.url.searchParams.get('capture') === '1'}
 			/>
 		{/if}
 

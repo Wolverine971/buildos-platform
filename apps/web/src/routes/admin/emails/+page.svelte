@@ -1,7 +1,7 @@
 <!-- apps/web/src/routes/admin/emails/+page.svelte -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { Mail } from 'lucide-svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import CampaignList from '$lib/components/email-campaigns/CampaignList.svelte';
@@ -10,11 +10,11 @@
 	type Tab = 'campaigns' | 'sent';
 
 	const activeTab = $derived<Tab>(
-		$page.url.searchParams.get('tab') === 'sent' ? 'sent' : 'campaigns'
+		page.url.searchParams.get('tab') === 'sent' ? 'sent' : 'campaigns'
 	);
 
 	function selectTab(tab: Tab) {
-		const url = new URL($page.url);
+		const url = new URL(page.url);
 		if (tab === 'campaigns') url.searchParams.delete('tab');
 		else url.searchParams.set('tab', tab);
 		void goto(url, { replaceState: true, noScroll: true, keepFocus: true });

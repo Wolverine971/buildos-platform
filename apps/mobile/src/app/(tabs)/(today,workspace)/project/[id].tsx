@@ -1,5 +1,4 @@
 // apps/mobile/src/app/(tabs)/(today,workspace)/project/[id].tsx
-// apps/mobile/src/app/(tabs)/(today,workspace)/project/[id].tsx
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { type ReactElement, useCallback, useMemo, useRef, useState } from 'react';

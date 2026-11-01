@@ -139,7 +139,7 @@
 	}: Props = $props();
 
 	let textareaRef = $state<Textarea | null>(null);
-	let textareaElement = $state<HTMLTextAreaElement | null>(null);
+	const textareaElement = $derived<HTMLTextAreaElement | null>(textareaRef?.getElement() ?? null);
 	/** The user has put the caret somewhere on purpose; dictate there instead of at the end. */
 	let userPlacedCaret = false;
 	let savedRecording: SavedRecording | null = null;
@@ -231,10 +231,6 @@
 	});
 
 	$effect(() => {
-		textareaElement = textareaRef?.getElement() ?? null;
-	});
-
-	$effect(() => {
 		if (enableVoice) scheduleVoiceDraftCleanup();
 	});
 
@@ -295,7 +291,7 @@
 	}
 
 	$effect(() => {
-		if (!browser || dictation.phase !== 'recording') return;
+		if (dictation.phase !== 'recording') return;
 		document.addEventListener('keydown', handleGlobalKeyDown);
 		return () => document.removeEventListener('keydown', handleGlobalKeyDown);
 	});

@@ -106,77 +106,72 @@
 </script>
 
 <Modal bind:isOpen title="Insert table" size="md" {onClose}>
-	{#snippet children()}
-		<div class="grid gap-3 p-3">
-			<p class="text-xs text-muted-foreground">
-				The table shows up in this document as a live preview. Edits to the table show here
-				too.
-			</p>
+	<div class="grid gap-3 p-3">
+		<p class="text-xs text-muted-foreground">
+			The table shows up in this document as a live preview. Edits to the table show here too.
+		</p>
 
-			{#if options.length > 8}
-				<label class="relative block">
-					<span class="sr-only">Search tables</span>
-					<Search
-						class="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
-					/>
-					<input
-						type="search"
-						bind:value={query}
-						placeholder="Search tables"
-						class="h-10 w-full rounded-md border border-border-strong bg-background pl-8 pr-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-sm"
-					/>
-				</label>
-			{/if}
+		{#if options.length > 8}
+			<label class="relative block">
+				<span class="sr-only">Search tables</span>
+				<Search
+					class="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+				/>
+				<input
+					type="search"
+					bind:value={query}
+					placeholder="Search tables"
+					class="h-10 w-full rounded-md border border-border-strong bg-background pl-8 pr-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-sm"
+				/>
+			</label>
+		{/if}
 
-			{#if loading}
-				<div class="grid gap-1.5" aria-busy="true" aria-label="Loading tables">
-					{#each [0, 1, 2] as index (index)}
-						<div
-							class="h-11 animate-pulse rounded-md bg-muted motion-reduce:animate-none"
-						></div>
-					{/each}
-				</div>
-			{:else if loadError}
-				<p class="text-sm text-destructive" role="alert">{loadError}</p>
-			{:else if filtered.length === 0}
-				<p
-					class="rounded-md bg-muted/40 px-3 py-4 text-center text-sm text-muted-foreground"
-				>
-					{options.length === 0 ? 'No tables in this project yet.' : 'No tables match.'}
-				</p>
-			{:else}
-				<ul class="grid max-h-80 gap-1 overflow-y-auto" role="list">
-					{#each filtered as option (option.id)}
-						<li>
-							<button
-								type="button"
-								onclick={() => pick(option)}
-								class="flex min-h-11 w-full items-center gap-2 rounded-md px-2.5 text-left text-sm text-foreground transition-colors hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
-							>
-								<Table class="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
-								<span class="min-w-0 flex-1 truncate">{option.title}</span>
-								{#if option.rowCount !== null}
-									<span class="stamp shrink-0 text-xs text-muted-foreground">
-										{formatRowCount(option.rowCount)}
-									</span>
-								{/if}
-							</button>
-						</li>
-					{/each}
-				</ul>
-			{/if}
-
-			<div class="flex justify-end border-t border-border pt-3">
-				<button
-					type="button"
-					onclick={() => (creating = true)}
-					class="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-xs font-semibold text-foreground shadow-ink transition-colors hover:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
-				>
-					<Plus class="h-3.5 w-3.5" /> New table
-				</button>
+		{#if loading}
+			<div class="grid gap-1.5" aria-busy="true" aria-label="Loading tables">
+				{#each [0, 1, 2] as index (index)}
+					<div
+						class="h-11 animate-pulse rounded-md bg-muted motion-reduce:animate-none"
+					></div>
+				{/each}
 			</div>
+		{:else if loadError}
+			<p class="text-sm text-destructive" role="alert">{loadError}</p>
+		{:else if filtered.length === 0}
+			<p class="rounded-md bg-muted/40 px-3 py-4 text-center text-sm text-muted-foreground">
+				{options.length === 0 ? 'No tables in this project yet.' : 'No tables match.'}
+			</p>
+		{:else}
+			<ul class="grid max-h-80 gap-1 overflow-y-auto" role="list">
+				{#each filtered as option (option.id)}
+					<li>
+						<button
+							type="button"
+							onclick={() => pick(option)}
+							class="flex min-h-11 w-full items-center gap-2 rounded-md px-2.5 text-left text-sm text-foreground transition-colors hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
+						>
+							<Table class="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+							<span class="min-w-0 flex-1 truncate">{option.title}</span>
+							{#if option.rowCount !== null}
+								<span class="stamp shrink-0 text-xs text-muted-foreground">
+									{formatRowCount(option.rowCount)}
+								</span>
+							{/if}
+						</button>
+					</li>
+				{/each}
+			</ul>
+		{/if}
+
+		<div class="flex justify-end border-t border-border pt-3">
+			<button
+				type="button"
+				onclick={() => (creating = true)}
+				class="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-xs font-semibold text-foreground shadow-ink transition-colors hover:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
+			>
+				<Plus class="h-3.5 w-3.5" /> New table
+			</button>
 		</div>
-	{/snippet}
+	</div>
 </Modal>
 
 {#if creating}

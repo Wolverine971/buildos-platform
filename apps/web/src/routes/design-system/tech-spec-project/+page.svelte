@@ -662,7 +662,7 @@
 
 					{#if expandedPanels.goals}
 						<div class="divide-y divide-border" transition:slide={{ duration: 120 }}>
-							{#each goals as goal}
+							{#each goals as goal (goal.id)}
 								{@const status = getStatusIndicator(goal.state_key)}
 								<div class="px-4 py-3 hover:bg-muted/30 transition-colors">
 									<div class="flex items-start justify-between gap-2 mb-2">
@@ -734,7 +734,7 @@
 
 					{#if expandedPanels.milestones}
 						<div class="divide-y divide-border" transition:slide={{ duration: 120 }}>
-							{#each milestones as milestone}
+							{#each milestones as milestone (milestone.id)}
 								{@const status = getStatusIndicator(milestone.state_key)}
 								<div class="px-4 py-3 hover:bg-muted/30 transition-colors">
 									<div class="flex items-start justify-between gap-2">
@@ -798,7 +798,7 @@
 
 					{#if expandedPanels.tasks}
 						<div class="divide-y divide-border" transition:slide={{ duration: 120 }}>
-							{#each tasks as task}
+							{#each tasks as task (task.id)}
 								{@const status = getStatusIndicator(task.state_key)}
 								{@const TaskIcon = getTaskIcon(task.state_key)}
 								<div class="px-4 py-3 hover:bg-muted/30 transition-colors group">
@@ -878,7 +878,7 @@
 
 					{#if expandedPanels.risks}
 						<div class="divide-y divide-border" transition:slide={{ duration: 120 }}>
-							{#each risks as risk}
+							{#each risks as risk (risk.id)}
 								{@const status = getStatusIndicator(risk.state_key)}
 								<div class="px-4 py-3 hover:bg-muted/30 transition-colors">
 									<div class="flex items-start justify-between gap-2">

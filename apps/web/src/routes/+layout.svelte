@@ -1,10 +1,11 @@
 <!-- apps/web/src/routes/+layout.svelte -->
 <script lang="ts">
+	import ErrorBoundary from '$lib/components/ui/ErrorBoundary.svelte';
 	import '../app.css';
 	import '$lib/styles/pwa.css';
 	import { ModeWatcher } from 'mode-watcher';
 	import { setContext, onMount, onDestroy, untrack } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { browser } from '$app/environment';
 	import { syncBrowserTimezone } from '$lib/utils/browser-timezone-sync';
 	import { goto, onNavigate, afterNavigate, invalidate, invalidateAll } from '$app/navigation';
@@ -107,7 +108,7 @@
 	// (saved Today screen or Brain Bolt instead of a black screen). Waits for an idle
 	// moment so it never competes with the first render.
 	$effect(() => {
-		if (!browser || !user?.id) return;
+		if (!user?.id) return;
 		const schedule = window.requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 2000));
 		schedule(() => void registerAppServiceWorker());
 	});
@@ -263,16 +264,16 @@
 	});
 
 	// Onboarding state — fully reactive to user/data changes (not route-gated)
-	let pathname = $derived($page.url.pathname);
+	let pathname = $derived(page.url.pathname);
 	let isAdminRoute = $derived(pathname === '/admin' || pathname.startsWith('/admin/'));
 	// Auth screens bring their own focused chrome. Derived from the route (not set in an
 	// effect) so the server render already omits the app header/footer — no flash on load.
-	let isAuthRoute = $derived(($page.route?.id ?? '').startsWith('/auth'));
+	let isAuthRoute = $derived((page.route?.id ?? '').startsWith('/auth'));
 	// Builder pages (/@handle and /@handle/<project>) are link-in-bio pages with their own
 	// small header.
 	let isBuilderPageRoute = $derived(
-		$page.route?.id === '/(public)/[handle=at_handle]' ||
-			$page.route?.id === '/(public)/[handle=at_handle]/[project]'
+		page.route?.id === '/(public)/[handle=at_handle]' ||
+			page.route?.id === '/(public)/[handle=at_handle]/[project]'
 	);
 	// Opened inside the BuildOS iPhone app: the native app provides navigation.
 	let appMode = $derived(Boolean(data.appMode));
@@ -291,7 +292,7 @@
 	let showOnboardingModal = $derived.by(() => {
 		if (!needsOnboarding) return false;
 		// Projects is the home surface (the dashboard folded into it, 2026-10-01).
-		const isHome = $page?.url?.pathname === '/projects';
+		const isHome = page?.url?.pathname === '/projects';
 		if (!isHome) return false;
 		return forceOnboardingActive || (onboardingProgress < 25 && !checkModalDismissed());
 	});
@@ -328,7 +329,7 @@
 
 	// Convert to $effect - load resources when user becomes available
 	$effect(() => {
-		if (browser && user && !resourcesLoaded && !resourcesLoadPromise) {
+		if (user && !resourcesLoaded && !resourcesLoadPromise) {
 			// Use untrack to prevent state update from re-triggering this effect
 			untrack(() => {
 				resourcesLoadPromise = loadAuthenticatedResources();
@@ -337,7 +338,7 @@
 	});
 
 	$effect(() => {
-		if (browser && user && !notificationResourcesLoaded && !notificationResourcesLoadPromise) {
+		if (user && !notificationResourcesLoaded && !notificationResourcesLoadPromise) {
 			untrack(() => {
 				notificationResourcesLoadPromise = scheduleAuthenticatedBackgroundResources();
 			});
@@ -345,7 +346,7 @@
 	});
 
 	$effect(() => {
-		if (browser && user && supabase && notificationResourcesLoaded) {
+		if (user && supabase && notificationResourcesLoaded) {
 			initAgentRunsRealtime();
 		}
 	});
@@ -619,7 +620,7 @@
 
 		try {
 			// Guard against calling invalidate when page context is not available
-			if ($page) {
+			if (page) {
 				if (invalidateData) {
 					// invalidateAll() covers all dependencies including
 					// 'supabase:auth' and 'app:auth', so a single call suffices.
@@ -698,7 +699,7 @@
 		// Session ended elsewhere (another tab, expiry): refresh data so protected pages send the
 		// user to sign in with a way back, then leave any remaining app page.
 		await synchronizeAuthState(true);
-		if (!($page.route?.id ?? '').startsWith('/auth')) {
+		if (!(page.route?.id ?? '').startsWith('/auth')) {
 			await goto('/auth/login', { replaceState: true });
 		}
 	}
@@ -833,7 +834,6 @@
 	}
 
 	onMount(() => {
-		if (!browser) return;
 		void ensureGlobalStyles();
 
 		const analyticsCleanup = initializeBrowserAnalytics();
@@ -1107,7 +1107,7 @@
 	{#if showNavigation}
 		<Navigation bind:element={navigationElement} {...navigationProps} />
 	{/if}
-	{#if needsOnboarding && showNavigation && !isAdminRoute && $page.url.pathname !== '/onboarding' && !showOnboardingModal}
+	{#if needsOnboarding && showNavigation && !isAdminRoute && page.url.pathname !== '/onboarding' && !showOnboardingModal}
 		<aside
 			class="mx-auto mt-3 flex w-full max-w-7xl flex-wrap items-center justify-between gap-2 px-4 text-sm"
 			aria-label="Finish your setup"
@@ -1172,7 +1172,13 @@
 	<main id="main-content" class={mainContentClasses} tabindex="-1">
 		<!-- Never carry a previous account’s component state into a new session. -->
 		{#key user?.id}
-			{@render children?.()}
+			<ErrorBoundary
+				area="page"
+				variant="page"
+				resetKey={page.url.pathname + page.url.search}
+			>
+				{@render children?.()}
+			</ErrorBoundary>
 		{/key}
 	</main>
 

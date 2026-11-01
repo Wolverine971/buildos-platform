@@ -47,7 +47,7 @@
 				<option value="">
 					{isLoadingEvalScenarios ? 'Loading scenarios...' : 'Select scenario'}
 				</option>
-				{#each evalScenarios as scenario}
+				{#each evalScenarios as scenario (scenario.slug)}
 					<option value={scenario.slug}>{scenario.title}</option>
 				{/each}
 			</select>
@@ -70,7 +70,7 @@
 	{/if}
 	{#if run.eval_runs.length > 0}
 		<div class="space-y-2">
-			{#each run.eval_runs as evalRun}
+			{#each run.eval_runs as evalRun (evalRun.id)}
 				<details class="rounded border border-border bg-card p-2 text-xs">
 					<summary
 						class="cursor-pointer list-none flex flex-wrap items-center justify-between gap-2"

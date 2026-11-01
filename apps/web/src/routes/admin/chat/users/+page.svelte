@@ -1,8 +1,9 @@
 <!-- apps/web/src/routes/admin/chat/users/+page.svelte -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { browser } from '$app/environment';
 	import { replaceState } from '$app/navigation';
-	import { page as pageStore } from '$app/stores';
+	import { page as appPage } from '$app/state';
 	import { AlertTriangle, Download, RefreshCw, Users } from '$lib/icons/lucide';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import ChatUserDetailDrawer from '$lib/components/admin/chat-users/ChatUserDetailDrawer.svelte';
@@ -203,19 +204,20 @@
 			DEFAULT_SLOW_THRESHOLD_MS
 		);
 		if (url.toString() !== window.location.href) {
-			replaceState(url.toString(), { ...$pageStore.state });
+			replaceState(url.toString(), { ...appPage.state });
 		}
 	}
 
 	$effect(() => {
-		if (!browser) return;
-		$pageStore.url.href;
-		applyUrlState(new URLSearchParams(window.location.search));
+		appPage.url.href;
+		// untrack: applyUrlState reads appliedSearch, and tracking it made a new search
+		// re-run this effect against the old URL and undo itself.
+		untrack(() => applyUrlState(new URLSearchParams(window.location.search)));
 		hasHydratedUrlState = true;
 	});
 
 	$effect(() => {
-		if (!browser || !hasHydratedUrlState) return;
+		if (!hasHydratedUrlState) return;
 		selectedTimeframe;
 		sortBy;
 		sortOrder;
@@ -234,7 +236,7 @@
 	});
 
 	$effect(() => {
-		if (!browser || !autoRefresh) return;
+		if (!autoRefresh) return;
 		const timer = window.setInterval(() => {
 			void loadUsers();
 			if (selectedUserId) {

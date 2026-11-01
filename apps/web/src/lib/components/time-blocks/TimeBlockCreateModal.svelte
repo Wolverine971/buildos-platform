@@ -262,7 +262,7 @@
 						required={blockType === 'project'}
 					>
 						<option value="" disabled>Select a project…</option>
-						{#each projects as project}
+						{#each projects as project (project.id)}
 							<option value={project.id}>{project.name}</option>
 						{/each}
 					</select>

@@ -1,6 +1,5 @@
 <!-- apps/web/src/lib/components/project/ProjectCalendarSettingsModal.svelte -->
 <script lang="ts">
-	import { browser } from '$app/environment';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import TabNav from '$lib/components/ui/TabNav.svelte';
 	import type { Tab } from '$lib/components/ui/TabNav.svelte';
@@ -227,7 +226,6 @@
 	);
 
 	$effect(() => {
-		if (!browser) return;
 		if (!isOpen) {
 			activeTab = 'calendar';
 			calendarConnections = null;
@@ -759,598 +757,588 @@
 		</div>
 	{/snippet}
 
-	{#snippet children()}
-		<!-- dvh (not vh) so the fixed pane never exceeds the visible iOS viewport;
-		     subtract --keyboard-height so internal scroll stays usable while typing -->
-		<div
-			class="flex h-[calc(72dvh-var(--keyboard-height,0px))] max-h-[calc(72dvh-var(--keyboard-height,0px))] flex-col bg-background tx tx-frame tx-weak"
-		>
-			<div class="px-3 sm:px-4 pt-2 border-b border-border">
-				<TabNav
-					{tabs}
-					{activeTab}
-					onchange={handleTabChange}
-					ariaLabel="Project calendar tabs"
+	<!-- dvh (not vh) so the fixed pane never exceeds the visible iOS viewport;
+	     subtract --keyboard-height so internal scroll stays usable while typing -->
+	<div
+		class="flex h-[calc(72dvh-var(--keyboard-height,0px))] max-h-[calc(72dvh-var(--keyboard-height,0px))] flex-col bg-background tx tx-frame tx-weak"
+	>
+		<div class="px-3 sm:px-4 pt-2 border-b border-border">
+			<TabNav
+				{tabs}
+				{activeTab}
+				onchange={handleTabChange}
+				ariaLabel="Project calendar tabs"
+			/>
+		</div>
+
+		{#if activeTab === 'calendar'}
+			<div class="flex-1 overflow-y-auto p-2 sm:p-3 space-y-2">
+				<ProjectCalendarPanel
+					projectId={project?.id ?? null}
+					refreshKey={calendarRefreshKey}
+					onItemSelect={handleCalendarItemSelect}
 				/>
 			</div>
-
-			{#if activeTab === 'calendar'}
-				<div class="flex-1 overflow-y-auto p-2 sm:p-3 space-y-2">
-					<ProjectCalendarPanel
-						projectId={project?.id ?? null}
-						refreshKey={calendarRefreshKey}
-						onItemSelect={handleCalendarItemSelect}
-					/>
-				</div>
-			{:else}
-				<div class="flex-1 overflow-y-auto bg-background tx tx-frame tx-weak">
-					{#if loading}
-						<div class="flex items-center justify-center py-12">
-							<LoaderCircle class="h-6 w-6 animate-spin text-accent" />
-						</div>
-					{:else}
-						<div class="p-4 space-y-3 sm:p-5 sm:space-y-4">
-							{#if errors.length > 0}
-								<div
-									class="p-3 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
-								>
-									<div class="flex items-start gap-2">
-										<AlertCircle
-											class="h-4 w-4 text-destructive mt-0.5 flex-shrink-0"
-										/>
-										<div class="flex-1">
-											<h3 class="text-xs font-semibold text-destructive">
-												Error with calendar settings
-											</h3>
-											<div class="mt-1 text-xs text-destructive/80">
-												<ul class="list-disc space-y-0.5 pl-4">
-													{#each errors as error (error)}
-														<li>{error}</li>
-													{/each}
-												</ul>
-											</div>
+		{:else}
+			<div class="flex-1 overflow-y-auto bg-background tx tx-frame tx-weak">
+				{#if loading}
+					<div class="flex items-center justify-center py-12">
+						<LoaderCircle class="h-6 w-6 animate-spin text-accent" />
+					</div>
+				{:else}
+					<div class="p-4 space-y-3 sm:p-5 sm:space-y-4">
+						{#if errors.length > 0}
+							<div
+								class="p-3 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
+							>
+								<div class="flex items-start gap-2">
+									<AlertCircle
+										class="h-4 w-4 text-destructive mt-0.5 flex-shrink-0"
+									/>
+									<div class="flex-1">
+										<h3 class="text-xs font-semibold text-destructive">
+											Error with calendar settings
+										</h3>
+										<div class="mt-1 text-xs text-destructive/80">
+											<ul class="list-disc space-y-0.5 pl-4">
+												{#each errors as error (error)}
+													<li>{error}</li>
+												{/each}
+											</ul>
 										</div>
 									</div>
 								</div>
-							{/if}
+							</div>
+						{/if}
 
-							<form onsubmit={handleSubmit} class="space-y-3 sm:space-y-4">
-								<div
-									class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
-								>
-									<div class="flex items-center justify-between gap-2">
-										<div class="flex items-center gap-2 sm:gap-3">
-											<div class="p-1.5 sm:p-2 bg-accent/10 rounded-lg">
-												<Settings
-													class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent"
-												/>
-											</div>
-											<div>
-												<p class="text-sm font-semibold text-foreground">
-													Calendar Status
-												</p>
-												<p class="text-xs text-muted-foreground">
-													{calendarExists
-														? currentCalendarSource
-															? getCalendarSourceLabel(
-																	currentCalendarSource
-																)
-															: 'Linked to Google Calendar'
-														: 'No calendar created yet'}
-												</p>
-											</div>
+						<form onsubmit={handleSubmit} class="space-y-3 sm:space-y-4">
+							<div
+								class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
+							>
+								<div class="flex items-center justify-between gap-2">
+									<div class="flex items-center gap-2 sm:gap-3">
+										<div class="p-1.5 sm:p-2 bg-accent/10 rounded-lg">
+											<Settings
+												class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent"
+											/>
 										</div>
-										{#if calendarExists}
-											<div
-												class="flex items-center gap-1.5 px-2 py-1 bg-success/10 rounded-lg text-xs font-medium text-success"
-											>
-												<Check class="h-3 w-3" />
-												<span class="hidden sm:inline">Connected</span>
-											</div>
-										{:else}
-											<div
-												class="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-lg text-xs font-medium text-muted-foreground"
-											>
-												<AlertCircle class="h-3 w-3" />
-												<span class="hidden sm:inline">Not connected</span>
-											</div>
-										{/if}
-									</div>
-								</div>
-
-								{#if !calendarExists && (calendarConnectionsLoading || calendarConnectionsError || calendarConnections)}
-									<div
-										class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
-									>
-										<div class="flex items-center gap-2 mb-2">
-											<div class="p-1.5 bg-accent/10 rounded-lg">
-												<Calendar class="w-3.5 h-3.5 text-accent" />
-											</div>
-											<div>
-												<p class="text-sm font-semibold text-foreground">
-													Google Calendar target
-												</p>
-												<p class="text-xs text-muted-foreground">
-													Choose the account and calendar this project
-													should use.
-												</p>
-											</div>
-										</div>
-
-										{#if calendarConnectionsLoading}
-											<div
-												class="flex items-center gap-2 py-3 text-xs text-muted-foreground"
-											>
-												<LoaderCircle class="h-4 w-4 animate-spin" />
-												Loading connected calendars…
-											</div>
-										{:else if calendarConnectionsError}
-											<p class="text-xs text-destructive">
-												{calendarConnectionsError}
-											</p>
-										{:else if writableProjectCalendarSources.length === 0}
-											<div
-												class="rounded-md border border-dashed border-border bg-muted/30 p-3"
-											>
-												<p class="text-xs text-muted-foreground">
-													No writable calendars are available. Connect or
-													refresh a Google account in Calendar settings
-													first.
-												</p>
-												<a
-													href="/profile?tab=calendar"
-													class="mt-2 inline-flex text-xs font-medium text-accent hover:underline"
-												>
-													Open Calendar settings
-												</a>
-											</div>
-										{:else}
-											<div class="space-y-3">
-												<FormField
-													label="Setup"
-													hint="Create a dedicated project calendar or link one you already use"
-												>
-													<select
-														bind:value={calendarTargetMode}
-														class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
-													>
-														<option value="create"
-															>Create a new project calendar</option
-														>
-														<option value="link"
-															>Link an existing calendar</option
-														>
-													</select>
-												</FormField>
-
-												{#if calendarTargetMode === 'create'}
-													<FormField
-														label="Google account"
-														hint="The new calendar will be owned by this account"
-													>
-														<select
-															bind:value={selectedConnectionId}
-															class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
-														>
-															{#each writableConnections as connection (connection.id)}
-																<option value={connection.id}>
-																	{connection.accountLabel} — {connection.emailAddress}
-																</option>
-															{/each}
-														</select>
-													</FormField>
-												{:else}
-													<FormField
-														label="Existing calendar"
-														hint="Unlinking later will not delete this calendar from Google"
-													>
-														<select
-															bind:value={selectedCalendarSourceId}
-															class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
-														>
-															{#each writableProjectCalendarSources as source (source.id)}
-																<option value={source.id}
-																	>{getCalendarSourceLabel(
-																		source
-																	)}</option
-																>
-															{/each}
-														</select>
-													</FormField>
-												{/if}
-											</div>
-										{/if}
-									</div>
-								{/if}
-
-								<div
-									class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
-								>
-									<div class="flex items-center justify-between gap-2 mb-2">
 										<div>
 											<p class="text-sm font-semibold text-foreground">
-												Event Sync Health
+												Calendar Status
 											</p>
-											{#if syncHealthPayload}
-												<p class="text-xs text-muted-foreground">
-													{syncHealthPayload.summary.failed_targets} failed
-													target syncs
-													{#if syncHealthPayload.summary.active_queue_targets > 0}
-														• {syncHealthPayload.summary
-															.active_queue_targets} active retries
-													{/if}
-												</p>
-											{:else}
-												<p class="text-xs text-muted-foreground">
-													Recent per-target event sync status and retry
-													controls
-												</p>
-											{/if}
+											<p class="text-xs text-muted-foreground">
+												{calendarExists
+													? currentCalendarSource
+														? getCalendarSourceLabel(
+																currentCalendarSource
+															)
+														: 'Linked to Google Calendar'
+													: 'No calendar created yet'}
+											</p>
 										</div>
-										{#if syncHealthLoading}
-											<LoaderCircle
-												class="h-4 w-4 animate-spin text-muted-foreground"
-											/>
-										{/if}
 									</div>
-
-									{#if syncHealthError}
-										<p class="text-xs text-destructive">{syncHealthError}</p>
-									{:else if syncHealthPayload}
-										<div class="max-h-64 overflow-y-auto space-y-2 pr-1">
-											{#if syncHealthPayload.events.length === 0}
-												<p class="text-xs text-muted-foreground">
-													No project events found for sync health.
-												</p>
-											{:else}
-												{#each syncHealthPayload.events as event (event.event_id)}
-													<div
-														class="rounded-md border border-border/70 bg-background/70 px-2.5 py-2"
-													>
-														<p
-															class="text-xs font-medium text-foreground truncate"
-														>
-															{event.title}
-														</p>
-														<div class="mt-1 space-y-1.5">
-															{#if event.targets.length === 0}
-																<p
-																	class="text-2xs text-muted-foreground"
-																>
-																	No sync targets recorded yet
-																</p>
-															{:else}
-																{#each event.targets as target (target.user_id ?? `${target.email ?? target.display_name}:${target.retry_action}`)}
-																	{@const statusBadge =
-																		getSyncTargetBadge(target)}
-																	<div
-																		class="flex items-start justify-between gap-2 rounded border border-border/70 bg-background px-2 py-1.5"
-																	>
-																		<div class="min-w-0 flex-1">
-																			<p
-																				class="text-2xs font-medium text-foreground truncate"
-																			>
-																				{target.display_name}
-																			</p>
-																			{#if target.sync_error || target.queue_error}
-																				<p
-																					class="text-2xs text-destructive truncate"
-																				>
-																					{target.sync_error ||
-																						target.queue_error}
-																				</p>
-																			{/if}
-																			{#if target.queue_max_attempts !== null && target.queue_attempts !== null}
-																				<p
-																					class="text-2xs text-muted-foreground"
-																				>
-																					Attempts: {target.queue_attempts}/{target.queue_max_attempts}
-																				</p>
-																			{/if}
-																		</div>
-																		<div
-																			class="flex flex-col items-end gap-1"
-																		>
-																			<span
-																				class={`shrink-0 rounded px-2 py-0.5 text-2xs font-medium ${statusBadge.className}`}
-																			>
-																				{statusBadge.label}
-																			</span>
-																			{#if target.can_retry && target.user_id}
-																				<button
-																					type="button"
-																					class="inline-flex items-center rounded border border-border bg-card px-2 py-1 text-2xs font-medium text-foreground hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
-																					disabled={isRetryingTarget(
-																						event.event_id,
-																						target.user_id
-																					)}
-																					onclick={() =>
-																						retrySyncTarget(
-																							event.event_id,
-																							target
-																						)}
-																				>
-																					{#if isRetryingTarget(event.event_id, target.user_id)}
-																						<LoaderCircle
-																							class="mr-1 h-3 w-3 animate-spin"
-																						/>
-																						Retrying
-																					{:else}
-																						Retry
-																					{/if}
-																				</button>
-																			{/if}
-																		</div>
-																	</div>
-																{/each}
-															{/if}
-														</div>
-													</div>
-												{/each}
-											{/if}
-										</div>
-									{/if}
-								</div>
-
-								<div
-									class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
-								>
-									<div class="flex items-center justify-between gap-2 mb-2">
-										<div class="flex items-center gap-2 sm:gap-3">
-											<div class="p-1.5 sm:p-2 bg-accent/10 rounded-lg">
-												<Users
-													class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent"
-												/>
-											</div>
-											<div>
-												<p class="text-sm font-semibold text-foreground">
-													Team Sync Coverage
-												</p>
-												{#if collaborationSummary}
-													<p class="text-xs text-muted-foreground">
-														{collaborationSummary.active_sync_members} of
-														{collaborationSummary.total_members} members
-														actively syncing
-														{#if collaborationSummary.pending_invite_count > 0}
-															• {collaborationSummary.pending_invite_count}
-															pending invite{collaborationSummary.pending_invite_count ===
-															1
-																? ''
-																: 's'}
-														{/if}
-													</p>
-												{:else}
-													<p class="text-xs text-muted-foreground">
-														Shows who has linked a project calendar
-													</p>
-												{/if}
-											</div>
-										</div>
-										{#if collaborationLoading}
-											<LoaderCircle
-												class="h-4 w-4 animate-spin text-muted-foreground"
-											/>
-										{/if}
-									</div>
-
-									{#if collaborationError}
-										<p class="text-xs text-destructive">{collaborationError}</p>
-									{:else if collaborationSummary}
-										<div class="space-y-2">
-											<div
-												class="flex items-center justify-between rounded-md border border-border/70 bg-background/70 px-2.5 py-2 text-xs"
-											>
-												<span class="text-muted-foreground"
-													>Project sync mode</span
-												>
-												<span class="font-medium text-foreground">
-													{collaborationSummary.sync_mode ===
-													'member_fanout'
-														? 'Member fanout'
-														: 'Actor projection'}
-												</span>
-											</div>
-											<div class="max-h-44 overflow-y-auto space-y-1.5 pr-1">
-												{#each collaborationSummary.members as member (member.actor_id)}
-													{@const badge = getMemberSyncBadge(member)}
-													<div
-														class="flex items-start justify-between gap-2 rounded-md border border-border/80 bg-background/70 px-2.5 py-2"
-													>
-														<div class="min-w-0">
-															<p
-																class="text-xs font-medium text-foreground truncate"
-															>
-																{member.display_name}
-																{#if member.is_current_user}
-																	<span
-																		class="text-muted-foreground font-normal"
-																	>
-																		(You)
-																	</span>
-																{/if}
-															</p>
-															<p
-																class="text-2xs text-muted-foreground truncate"
-															>
-																{member.calendar_name ||
-																	'No calendar linked'}
-															</p>
-														</div>
-														<span
-															class={`shrink-0 rounded px-2 py-0.5 text-2xs font-medium ${badge.className}`}
-														>
-															{badge.label}
-														</span>
-													</div>
-												{/each}
-												{#each collaborationSummary.pending_invites as invite (invite.invitee_email)}
-													<div
-														class="flex items-start justify-between gap-2 rounded-md border border-dashed border-warning/40 bg-warning/5 px-2.5 py-2"
-													>
-														<div class="min-w-0">
-															<p
-																class="text-xs font-medium text-foreground truncate"
-															>
-																{invite.invitee_email}
-															</p>
-															<p
-																class="text-2xs text-muted-foreground truncate"
-															>
-																Invite pending, not linked yet
-															</p>
-														</div>
-														<div class="flex flex-col items-end gap-1">
-															<span
-																class="shrink-0 rounded px-2 py-0.5 text-2xs font-medium bg-warning/10 text-warning border border-warning/30"
-															>
-																Pending invite
-															</span>
-															<span
-																class="shrink-0 rounded px-2 py-0.5 text-2xs font-medium bg-muted text-muted-foreground border border-border"
-															>
-																Not linked
-															</span>
-														</div>
-													</div>
-												{/each}
-											</div>
-										</div>
-									{/if}
-								</div>
-
-								<div
-									class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
-								>
-									<FormField label="Calendar Name" required>
-										<TextInput
-											bind:value={formData.calendarName}
-											placeholder="{project?.name} - Tasks"
-											required
-											class="w-full"
-										/>
-									</FormField>
-								</div>
-
-								{#if !calendarExists}
-									<div
-										class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
-									>
-										<FormField
-											label="Calendar Description"
-											hint="Brief description for the calendar"
+									{#if calendarExists}
+										<div
+											class="flex items-center gap-1.5 px-2 py-1 bg-success/10 rounded-lg text-xs font-medium text-success"
 										>
-											<Textarea
-												bind:value={formData.calendarDescription}
-												placeholder="Tasks and events for {project?.name}"
-												rows={3}
-												class="w-full font-sans"
-											/>
-										</FormField>
-									</div>
-								{/if}
+											<Check class="h-3 w-3" />
+											<span class="hidden sm:inline">Connected</span>
+										</div>
+									{:else}
+										<div
+											class="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-lg text-xs font-medium text-muted-foreground"
+										>
+											<AlertCircle class="h-3 w-3" />
+											<span class="hidden sm:inline">Not connected</span>
+										</div>
+									{/if}
+								</div>
+							</div>
 
+							{#if !calendarExists && (calendarConnectionsLoading || calendarConnectionsError || calendarConnections)}
 								<div
 									class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
 								>
 									<div class="flex items-center gap-2 mb-2">
 										<div class="p-1.5 bg-accent/10 rounded-lg">
-											<Palette class="w-3.5 h-3.5 text-accent" />
+											<Calendar class="w-3.5 h-3.5 text-accent" />
 										</div>
-										<p class="text-sm font-semibold text-foreground">
-											Calendar Color
-										</p>
+										<div>
+											<p class="text-sm font-semibold text-foreground">
+												Google Calendar target
+											</p>
+											<p class="text-xs text-muted-foreground">
+												Choose the account and calendar this project should
+												use.
+											</p>
+										</div>
 									</div>
-									<p class="text-xs text-muted-foreground mb-3">
-										Choose a color to identify this calendar
-									</p>
-									<div
-										class="grid grid-cols-6 gap-2 sm:grid-cols-8 md:grid-cols-12"
-									>
-										{#each Object.entries(GOOGLE_CALENDAR_COLORS) as [colorId, colorInfo] (colorId)}
-											<button
-												type="button"
-												onclick={() => selectColor(colorId)}
-												class="group relative aspect-square w-full rounded-lg border-2 transition-all hover:scale-105 pressable {formData.selectedColorId ===
-												colorId
-													? 'border-foreground shadow-ink-strong ring-2 ring-offset-1 ring-accent/30 scale-105'
-													: 'border-border hover:border-accent/50 hover:shadow-ink'}"
-												style="background-color: {colorInfo.hex}"
-												title="{colorInfo.name} ({colorId})"
-												aria-label="Select {colorInfo.name} color"
-											>
-												{#if formData.selectedColorId === colorId}
-													<Check
-														class="absolute inset-0 m-auto h-3 w-3 sm:h-4 sm:w-4 {colorInfo.text ===
-														'text-white'
-															? 'text-white'
-															: 'text-foreground'} drop-shadow-lg"
-													/>
-												{/if}
-												<span class="sr-only">{colorInfo.name}</span>
-											</button>
-										{/each}
-									</div>
-									<div class="mt-2 text-center">
-										<p
-											class="text-2xs uppercase tracking-wide text-muted-foreground"
+
+									{#if calendarConnectionsLoading}
+										<div
+											class="flex items-center gap-2 py-3 text-xs text-muted-foreground"
 										>
-											Selected: <span class="font-semibold text-foreground"
-												>{GOOGLE_CALENDAR_COLORS[formData.selectedColorId]
-													?.name}</span
-											>
+											<LoaderCircle class="h-4 w-4 animate-spin" />
+											Loading connected calendars…
+										</div>
+									{:else if calendarConnectionsError}
+										<p class="text-xs text-destructive">
+											{calendarConnectionsError}
 										</p>
+									{:else if writableProjectCalendarSources.length === 0}
+										<div
+											class="rounded-md border border-dashed border-border bg-muted/30 p-3"
+										>
+											<p class="text-xs text-muted-foreground">
+												No writable calendars are available. Connect or
+												refresh a Google account in Calendar settings first.
+											</p>
+											<a
+												href="/profile?tab=calendar"
+												class="mt-2 inline-flex text-xs font-medium text-accent hover:underline"
+											>
+												Open Calendar settings
+											</a>
+										</div>
+									{:else}
+										<div class="space-y-3">
+											<FormField
+												label="Setup"
+												hint="Create a dedicated project calendar or link one you already use"
+											>
+												<select
+													bind:value={calendarTargetMode}
+													class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+												>
+													<option value="create"
+														>Create a new project calendar</option
+													>
+													<option value="link"
+														>Link an existing calendar</option
+													>
+												</select>
+											</FormField>
+
+											{#if calendarTargetMode === 'create'}
+												<FormField
+													label="Google account"
+													hint="The new calendar will be owned by this account"
+												>
+													<select
+														bind:value={selectedConnectionId}
+														class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+													>
+														{#each writableConnections as connection (connection.id)}
+															<option value={connection.id}>
+																{connection.accountLabel} — {connection.emailAddress}
+															</option>
+														{/each}
+													</select>
+												</FormField>
+											{:else}
+												<FormField
+													label="Existing calendar"
+													hint="Unlinking later will not delete this calendar from Google"
+												>
+													<select
+														bind:value={selectedCalendarSourceId}
+														class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+													>
+														{#each writableProjectCalendarSources as source (source.id)}
+															<option value={source.id}
+																>{getCalendarSourceLabel(
+																	source
+																)}</option
+															>
+														{/each}
+													</select>
+												</FormField>
+											{/if}
+										</div>
+									{/if}
+								</div>
+							{/if}
+
+							<div
+								class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
+							>
+								<div class="flex items-center justify-between gap-2 mb-2">
+									<div>
+										<p class="text-sm font-semibold text-foreground">
+											Event Sync Health
+										</p>
+										{#if syncHealthPayload}
+											<p class="text-xs text-muted-foreground">
+												{syncHealthPayload.summary.failed_targets} failed target
+												syncs
+												{#if syncHealthPayload.summary.active_queue_targets > 0}
+													• {syncHealthPayload.summary
+														.active_queue_targets} active retries
+												{/if}
+											</p>
+										{:else}
+											<p class="text-xs text-muted-foreground">
+												Recent per-target event sync status and retry
+												controls
+											</p>
+										{/if}
 									</div>
+									{#if syncHealthLoading}
+										<LoaderCircle
+											class="h-4 w-4 animate-spin text-muted-foreground"
+										/>
+									{/if}
 								</div>
 
+								{#if syncHealthError}
+									<p class="text-xs text-destructive">{syncHealthError}</p>
+								{:else if syncHealthPayload}
+									<div class="max-h-64 overflow-y-auto space-y-2 pr-1">
+										{#if syncHealthPayload.events.length === 0}
+											<p class="text-xs text-muted-foreground">
+												No project events found for sync health.
+											</p>
+										{:else}
+											{#each syncHealthPayload.events as event (event.event_id)}
+												<div
+													class="rounded-md border border-border/70 bg-background/70 px-2.5 py-2"
+												>
+													<p
+														class="text-xs font-medium text-foreground truncate"
+													>
+														{event.title}
+													</p>
+													<div class="mt-1 space-y-1.5">
+														{#if event.targets.length === 0}
+															<p
+																class="text-2xs text-muted-foreground"
+															>
+																No sync targets recorded yet
+															</p>
+														{:else}
+															{#each event.targets as target (target.user_id ?? `${target.email ?? target.display_name}:${target.retry_action}`)}
+																{@const statusBadge =
+																	getSyncTargetBadge(target)}
+																<div
+																	class="flex items-start justify-between gap-2 rounded border border-border/70 bg-background px-2 py-1.5"
+																>
+																	<div class="min-w-0 flex-1">
+																		<p
+																			class="text-2xs font-medium text-foreground truncate"
+																		>
+																			{target.display_name}
+																		</p>
+																		{#if target.sync_error || target.queue_error}
+																			<p
+																				class="text-2xs text-destructive truncate"
+																			>
+																				{target.sync_error ||
+																					target.queue_error}
+																			</p>
+																		{/if}
+																		{#if target.queue_max_attempts !== null && target.queue_attempts !== null}
+																			<p
+																				class="text-2xs text-muted-foreground"
+																			>
+																				Attempts: {target.queue_attempts}/{target.queue_max_attempts}
+																			</p>
+																		{/if}
+																	</div>
+																	<div
+																		class="flex flex-col items-end gap-1"
+																	>
+																		<span
+																			class={`shrink-0 rounded px-2 py-0.5 text-2xs font-medium ${statusBadge.className}`}
+																		>
+																			{statusBadge.label}
+																		</span>
+																		{#if target.can_retry && target.user_id}
+																			<button
+																				type="button"
+																				class="inline-flex items-center rounded border border-border bg-card px-2 py-1 text-2xs font-medium text-foreground hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
+																				disabled={isRetryingTarget(
+																					event.event_id,
+																					target.user_id
+																				)}
+																				onclick={() =>
+																					retrySyncTarget(
+																						event.event_id,
+																						target
+																					)}
+																			>
+																				{#if isRetryingTarget(event.event_id, target.user_id)}
+																					<LoaderCircle
+																						class="mr-1 h-3 w-3 animate-spin"
+																					/>
+																					Retrying
+																				{:else}
+																					Retry
+																				{/if}
+																			</button>
+																		{/if}
+																	</div>
+																</div>
+															{/each}
+														{/if}
+													</div>
+												</div>
+											{/each}
+										{/if}
+									</div>
+								{/if}
+							</div>
+
+							<div
+								class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
+							>
+								<div class="flex items-center justify-between gap-2 mb-2">
+									<div class="flex items-center gap-2 sm:gap-3">
+										<div class="p-1.5 sm:p-2 bg-accent/10 rounded-lg">
+											<Users class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />
+										</div>
+										<div>
+											<p class="text-sm font-semibold text-foreground">
+												Team Sync Coverage
+											</p>
+											{#if collaborationSummary}
+												<p class="text-xs text-muted-foreground">
+													{collaborationSummary.active_sync_members} of
+													{collaborationSummary.total_members} members actively
+													syncing
+													{#if collaborationSummary.pending_invite_count > 0}
+														• {collaborationSummary.pending_invite_count}
+														pending invite{collaborationSummary.pending_invite_count ===
+														1
+															? ''
+															: 's'}
+													{/if}
+												</p>
+											{:else}
+												<p class="text-xs text-muted-foreground">
+													Shows who has linked a project calendar
+												</p>
+											{/if}
+										</div>
+									</div>
+									{#if collaborationLoading}
+										<LoaderCircle
+											class="h-4 w-4 animate-spin text-muted-foreground"
+										/>
+									{/if}
+								</div>
+
+								{#if collaborationError}
+									<p class="text-xs text-destructive">{collaborationError}</p>
+								{:else if collaborationSummary}
+									<div class="space-y-2">
+										<div
+											class="flex items-center justify-between rounded-md border border-border/70 bg-background/70 px-2.5 py-2 text-xs"
+										>
+											<span class="text-muted-foreground"
+												>Project sync mode</span
+											>
+											<span class="font-medium text-foreground">
+												{collaborationSummary.sync_mode === 'member_fanout'
+													? 'Member fanout'
+													: 'Actor projection'}
+											</span>
+										</div>
+										<div class="max-h-44 overflow-y-auto space-y-1.5 pr-1">
+											{#each collaborationSummary.members as member (member.actor_id)}
+												{@const badge = getMemberSyncBadge(member)}
+												<div
+													class="flex items-start justify-between gap-2 rounded-md border border-border/80 bg-background/70 px-2.5 py-2"
+												>
+													<div class="min-w-0">
+														<p
+															class="text-xs font-medium text-foreground truncate"
+														>
+															{member.display_name}
+															{#if member.is_current_user}
+																<span
+																	class="text-muted-foreground font-normal"
+																>
+																	(You)
+																</span>
+															{/if}
+														</p>
+														<p
+															class="text-2xs text-muted-foreground truncate"
+														>
+															{member.calendar_name ||
+																'No calendar linked'}
+														</p>
+													</div>
+													<span
+														class={`shrink-0 rounded px-2 py-0.5 text-2xs font-medium ${badge.className}`}
+													>
+														{badge.label}
+													</span>
+												</div>
+											{/each}
+											{#each collaborationSummary.pending_invites as invite (invite.invitee_email)}
+												<div
+													class="flex items-start justify-between gap-2 rounded-md border border-dashed border-warning/40 bg-warning/5 px-2.5 py-2"
+												>
+													<div class="min-w-0">
+														<p
+															class="text-xs font-medium text-foreground truncate"
+														>
+															{invite.invitee_email}
+														</p>
+														<p
+															class="text-2xs text-muted-foreground truncate"
+														>
+															Invite pending, not linked yet
+														</p>
+													</div>
+													<div class="flex flex-col items-end gap-1">
+														<span
+															class="shrink-0 rounded px-2 py-0.5 text-2xs font-medium bg-warning/10 text-warning border border-warning/30"
+														>
+															Pending invite
+														</span>
+														<span
+															class="shrink-0 rounded px-2 py-0.5 text-2xs font-medium bg-muted text-muted-foreground border border-border"
+														>
+															Not linked
+														</span>
+													</div>
+												</div>
+											{/each}
+										</div>
+									</div>
+								{/if}
+							</div>
+
+							<div
+								class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
+							>
+								<FormField label="Calendar Name" required>
+									<TextInput
+										bind:value={formData.calendarName}
+										placeholder="{project?.name} - Tasks"
+										required
+										class="w-full"
+									/>
+								</FormField>
+							</div>
+
+							{#if !calendarExists}
 								<div
 									class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
 								>
 									<FormField
-										label="Project Sync Mode"
-										hint="Choose how project event changes are projected to member calendars"
+										label="Calendar Description"
+										hint="Brief description for the calendar"
 									>
-										<select
-											bind:value={formData.syncMode}
-											class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
-										>
-											<option value="actor_projection"
-												>Actor projection</option
-											>
-											<option value="member_fanout">Member fanout</option>
-										</select>
+										<Textarea
+											bind:value={formData.calendarDescription}
+											placeholder="Tasks and events for {project?.name}"
+											rows={3}
+											class="w-full font-sans"
+										/>
 									</FormField>
-									<p class="mt-2 text-xs text-muted-foreground">
-										Actor projection updates only the editor's linked calendar.
-										Member fanout updates all members with linked, enabled
-										calendars.
+								</div>
+							{/if}
+
+							<div
+								class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
+							>
+								<div class="flex items-center gap-2 mb-2">
+									<div class="p-1.5 bg-accent/10 rounded-lg">
+										<Palette class="w-3.5 h-3.5 text-accent" />
+									</div>
+									<p class="text-sm font-semibold text-foreground">
+										Calendar Color
 									</p>
 								</div>
-
-								{#if calendarExists}
-									<div
-										class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
-									>
-										<FormField label="Sync Settings">
-											<label class="flex items-center gap-2 cursor-pointer">
-												<input
-													type="checkbox"
-													bind:checked={formData.syncEnabled}
-													class="h-4 w-4 rounded border-border text-accent focus:ring-accent/50 focus:ring-offset-0"
+								<p class="text-xs text-muted-foreground mb-3">
+									Choose a color to identify this calendar
+								</p>
+								<div class="grid grid-cols-6 gap-2 sm:grid-cols-8 md:grid-cols-12">
+									{#each Object.entries(GOOGLE_CALENDAR_COLORS) as [colorId, colorInfo] (colorId)}
+										<button
+											type="button"
+											onclick={() => selectColor(colorId)}
+											class="group relative aspect-square w-full rounded-lg border-2 transition-all hover:scale-105 pressable {formData.selectedColorId ===
+											colorId
+												? 'border-foreground shadow-ink-strong ring-2 ring-offset-1 ring-accent/30 scale-105'
+												: 'border-border hover:border-accent/50 hover:shadow-ink'}"
+											style="background-color: {colorInfo.hex}"
+											title="{colorInfo.name} ({colorId})"
+											aria-label="Select {colorInfo.name} color"
+										>
+											{#if formData.selectedColorId === colorId}
+												<Check
+													class="absolute inset-0 m-auto h-3 w-3 sm:h-4 sm:w-4 {colorInfo.text ===
+													'text-white'
+														? 'text-white'
+														: 'text-foreground'} drop-shadow-lg"
 												/>
-												<span class="text-sm text-foreground">
-													Automatically sync events to this calendar
-												</span>
-											</label>
-										</FormField>
-									</div>
-								{/if}
-							</form>
-						</div>
-					{/if}
-				</div>
-			{/if}
-		</div>
-	{/snippet}
+											{/if}
+											<span class="sr-only">{colorInfo.name}</span>
+										</button>
+									{/each}
+								</div>
+								<div class="mt-2 text-center">
+									<p
+										class="text-2xs uppercase tracking-wide text-muted-foreground"
+									>
+										Selected: <span class="font-semibold text-foreground"
+											>{GOOGLE_CALENDAR_COLORS[formData.selectedColorId]
+												?.name}</span
+										>
+									</p>
+								</div>
+							</div>
+
+							<div
+								class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
+							>
+								<FormField
+									label="Project Sync Mode"
+									hint="Choose how project event changes are projected to member calendars"
+								>
+									<select
+										bind:value={formData.syncMode}
+										class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+									>
+										<option value="actor_projection">Actor projection</option>
+										<option value="member_fanout">Member fanout</option>
+									</select>
+								</FormField>
+								<p class="mt-2 text-xs text-muted-foreground">
+									Actor projection updates only the editor's linked calendar.
+									Member fanout updates all members with linked, enabled
+									calendars.
+								</p>
+							</div>
+
+							{#if calendarExists}
+								<div
+									class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
+								>
+									<FormField label="Sync Settings">
+										<label class="flex items-center gap-2 cursor-pointer">
+											<input
+												type="checkbox"
+												bind:checked={formData.syncEnabled}
+												class="h-4 w-4 rounded border-border text-accent focus:ring-accent/50 focus:ring-offset-0"
+											/>
+											<span class="text-sm text-foreground">
+												Automatically sync events to this calendar
+											</span>
+										</label>
+									</FormField>
+								</div>
+							{/if}
+						</form>
+					</div>
+				{/if}
+			</div>
+		{/if}
+	</div>
 
 	{#snippet footer()}
 		<div class="border-t border-border px-4 py-3 bg-card sm:px-5">

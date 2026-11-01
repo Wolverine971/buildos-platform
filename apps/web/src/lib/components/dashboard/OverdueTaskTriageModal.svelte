@@ -3,6 +3,7 @@
 	import { browser } from '$app/environment';
 	import { flip } from 'svelte/animate';
 	import { cubicOut } from 'svelte/easing';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { fly, slide } from 'svelte/transition';
 	import {
 		ArrowRight,
@@ -147,8 +148,8 @@
 	let activeProjectId = $state<string | null>(getInitialProjectId());
 	let batches = $state<OverdueProjectBatch[]>([]);
 	let completedBatches = $state<CompletedBatch[]>([]);
-	let pendingTaskIds = $state(new Set<string>());
-	let schedulingTaskIds = $state(new Set<string>());
+	const pendingTaskIds = new SvelteSet<string>();
+	const schedulingTaskIds = new SvelteSet<string>();
 	let projectMenuOpen = $state(false);
 	let projectMenuRef = $state<HTMLDivElement | null>(null);
 	let expandedTaskId = $state<string | null>(null);
@@ -176,8 +177,8 @@
 		loadingSlotKey = null;
 		slotPlansByTask = {};
 		slotErrorsByTask = {};
-		pendingTaskIds = new Set<string>();
-		schedulingTaskIds = new Set<string>();
+		pendingTaskIds.clear();
+		schedulingTaskIds.clear();
 	}
 
 	function isTaskBusy(taskId: string): boolean {
@@ -329,8 +330,6 @@
 	}
 
 	$effect(() => {
-		if (!browser) return;
-
 		if (isOpen && !wasOpen) {
 			wasOpen = true;
 			activeProjectId = initialProjectId;
@@ -445,7 +444,7 @@
 		const taskId = found.task.id;
 		if (pendingTaskIds.has(taskId)) return false;
 
-		pendingTaskIds = new Set([...pendingTaskIds, taskId]);
+		pendingTaskIds.add(taskId);
 		removeTaskFromBatches(taskId);
 		try {
 			await patchTask(taskId, updates, {
@@ -463,9 +462,7 @@
 			toastService.error(err instanceof Error ? err.message : 'Failed to update task');
 			return false;
 		} finally {
-			const nextPending = new Set(pendingTaskIds);
-			nextPending.delete(taskId);
-			pendingTaskIds = nextPending;
+			pendingTaskIds.delete(taskId);
 		}
 	}
 
@@ -575,7 +572,7 @@
 		const found = findTask(taskId);
 		if (!found || isTaskBusy(taskId) || isProjectActionRunning) return false;
 
-		schedulingTaskIds = new Set([...schedulingTaskIds, taskId]);
+		schedulingTaskIds.add(taskId);
 		try {
 			const plan = await fetchBatchReschedulePlan([taskId], preset);
 			const assignment = plan.assignments.find((item) => item.task_id === taskId);
@@ -601,9 +598,7 @@
 			toastService.error(err instanceof Error ? err.message : 'Failed to schedule task');
 			return false;
 		} finally {
-			const nextScheduling = new Set(schedulingTaskIds);
-			nextScheduling.delete(taskId);
-			schedulingTaskIds = nextScheduling;
+			schedulingTaskIds.delete(taskId);
 		}
 	}
 
@@ -1316,7 +1311,7 @@
 													class="space-y-2 rounded-lg border border-border bg-card p-3"
 												>
 													<div class="flex flex-wrap items-center gap-2">
-														{#each RESCHEDULE_PRESETS as preset}
+														{#each RESCHEDULE_PRESETS as preset (preset)}
 															<button
 																type="button"
 																class="rounded-md border px-2 py-1.5 text-2xs font-semibold transition-colors {activeSlotPreset ===

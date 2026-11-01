@@ -270,7 +270,7 @@
 				</div>
 
 				<ol class="space-y-4">
-					{#each pack.skills as skill, index}
+					{#each pack.skills as skill, index (skill.slug)}
 						{@const post = postBySlug.get(skill.slug)}
 						<li
 							class="grid gap-4 rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak sm:grid-cols-[3.25rem_minmax(0,1fr)]"
@@ -359,7 +359,7 @@
 						</h2>
 					</div>
 					<ol class="mt-4 space-y-2">
-						{#each pack.skills as skill, index}
+						{#each pack.skills as skill, index (skill.slug)}
 							<li class="flex min-w-0 gap-2 text-sm">
 								<span
 									class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-background text-xs font-semibold text-foreground"
@@ -411,7 +411,7 @@
 							</h2>
 						</div>
 						<div class="mt-4 space-y-2">
-							{#each data.domains as domain}
+							{#each data.domains as domain (domain.id)}
 								<a
 									href={getDomainPath(domain)}
 									class="flex min-h-[44px] min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -436,7 +436,7 @@
 							</h2>
 						</div>
 						<div class="mt-4 space-y-2">
-							{#each data.relatedPacks as related}
+							{#each data.relatedPacks as related (related.id)}
 								<a
 									href={getPackPath(related)}
 									class="flex min-h-[44px] min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"

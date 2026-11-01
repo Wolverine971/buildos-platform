@@ -1,7 +1,7 @@
 <!-- apps/web/src/routes/admin/model-incidents/+page.svelte -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import type { PageData } from './$types';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import { Download, Timer, TriangleAlert, CircleCheck, Clock } from '$lib/icons/lucide';
@@ -13,7 +13,7 @@
 	const filters = $derived(data.filters);
 
 	function hrefWith(changes: Record<string, string | number | null>): string {
-		const params = new URLSearchParams($page.url.searchParams);
+		const params = new URLSearchParams(page.url.searchParams);
 		for (const [key, value] of Object.entries(changes)) {
 			if (value === null || value === '') params.delete(key);
 			else params.set(key, String(value));
@@ -23,7 +23,7 @@
 	}
 
 	const exportHref = $derived(
-		`/admin/model-incidents/export${$page.url.search ? $page.url.search : ''}`
+		`/admin/model-incidents/export${page.url.search ? page.url.search : ''}`
 	);
 
 	function relative(iso: string): string {

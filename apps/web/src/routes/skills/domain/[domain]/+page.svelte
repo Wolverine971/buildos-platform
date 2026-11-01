@@ -343,7 +343,7 @@
 			</div>
 
 			<ol class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-				{#each domain.path as step, index}
+				{#each domain.path as step, index (step)}
 					<li
 						class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak"
 					>
@@ -382,7 +382,7 @@
 
 				{#if filteredFamilies.length > 0 || filteredPreviewFamilies.length > 0}
 					<div class="space-y-8">
-						{#each filteredFamilies as family}
+						{#each filteredFamilies as family (family.name)}
 							<section
 								aria-labelledby={familyId(family.name)}
 								class="border-t border-border pt-6 first:border-t-0 first:pt-0"
@@ -406,7 +406,7 @@
 								</div>
 
 								<div class="grid gap-3 xl:grid-cols-2">
-									{#each family.skills as skill}
+									{#each family.skills as skill (skill.slug)}
 										{@const post = postBySlug.get(skill.slug)}
 										<article
 											class="flex min-h-[19rem] flex-col rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak"
@@ -482,7 +482,7 @@
 							</section>
 						{/each}
 
-						{#each filteredPreviewFamilies as family}
+						{#each filteredPreviewFamilies as family (family.name)}
 							<section
 								aria-labelledby={familyId(`preview-${family.name}`)}
 								class="border-t border-border pt-6 first:border-t-0 first:pt-0"
@@ -509,7 +509,7 @@
 								</div>
 
 								<div class="grid gap-3 xl:grid-cols-2">
-									{#each family.previews as preview}
+									{#each family.previews as preview (preview.runtime_skill_id)}
 										<article
 											class="flex min-h-[19rem] flex-col rounded-lg border border-dashed border-accent/60 bg-card p-4 shadow-ink tx tx-frame tx-weak"
 										>
@@ -695,7 +695,7 @@
 							</h2>
 						</div>
 						<div class="mt-4 space-y-3">
-							{#each data.packs as pack}
+							{#each data.packs as pack (pack.id)}
 								{@const PackIcon = pack.kind === 'Stack' ? Workflow : Package}
 								<div class="rounded-md border border-border bg-background p-3">
 									<div class="flex items-start justify-between gap-2">
@@ -713,7 +713,7 @@
 										{pack.job}
 									</p>
 									<div class="mt-3 space-y-1.5">
-										{#each pack.skills.slice(0, 4) as skill}
+										{#each pack.skills.slice(0, 4) as skill (skill.slug)}
 											<a
 												href={getSkillPath(skill)}
 												class="flex min-h-[44px] min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"

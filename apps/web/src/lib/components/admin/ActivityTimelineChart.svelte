@@ -167,7 +167,7 @@
 				<div class="absolute left-5 top-0 bottom-0 w-0.5 bg-border"></div>
 
 				<div class="space-y-4">
-					{#each Object.entries(groupedActivities) as [date, dayActivities]}
+					{#each Object.entries(groupedActivities) as [date, dayActivities] (date)}
 						<!-- Date header -->
 						<div class="relative">
 							<div
@@ -245,7 +245,7 @@
 								const [type = 'unknown'] = activity.entity_type.split('_');
 								counts[type] = (counts[type] || 0) + 1;
 								return counts;
-							}, {} )) as [type, count]}
+							}, {} )) as [type, count] (type)}
 						<div class="text-center">
 							<div class="text-base font-bold text-foreground">
 								{count}

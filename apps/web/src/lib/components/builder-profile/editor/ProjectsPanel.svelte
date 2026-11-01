@@ -66,10 +66,10 @@
 								type="button"
 								class="inline-flex h-11 w-7 shrink-0 cursor-grab items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
 								aria-label="Move {name}. Drag, or use the arrow keys."
-								use:dragHandle={{
+								{@attach dragHandle(() => ({
 									index,
 									onmove: (from, to) => editor.movePlaced(from, to)
-								}}
+								}))}
 							>
 								<GripVertical class="h-4 w-4" aria-hidden="true" />
 							</button>

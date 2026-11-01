@@ -38,7 +38,7 @@
 		</button>
 	</div>
 	<div class="flex flex-wrap items-center gap-1.5">
-		{#each Object.keys(eventTypeFilters) as rawType}
+		{#each Object.keys(eventTypeFilters) as rawType (rawType)}
 			{@const type = rawType as TimelineType}
 			<button
 				type="button"

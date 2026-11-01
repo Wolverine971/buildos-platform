@@ -229,84 +229,80 @@
 		</div>
 	{/snippet}
 
-	{#snippet children()}
-		<div class="p-4 space-y-4">
-			<!-- Warning -->
-			<div
-				class="flex items-start gap-3 p-3 rounded-lg bg-warning/10 border border-warning/30"
-			>
-				<AlertTriangle class="w-5 h-5 text-warning shrink-0 mt-0.5" />
-				<div class="text-sm text-warning">
-					<p class="font-medium mb-1">This action will overwrite the current document.</p>
-					<p class="text-warning">
-						Your current edits will be saved to history first. The document will then be
-						replaced with version
-						{version.number}. The restore will also be recorded in history.
-					</p>
-				</div>
+	<div class="p-4 space-y-4">
+		<!-- Warning -->
+		<div class="flex items-start gap-3 p-3 rounded-lg bg-warning/10 border border-warning/30">
+			<AlertTriangle class="w-5 h-5 text-warning shrink-0 mt-0.5" />
+			<div class="text-sm text-warning">
+				<p class="font-medium mb-1">This action will overwrite the current document.</p>
+				<p class="text-warning">
+					Your current edits will be saved to history first. The document will then be
+					replaced with version
+					{version.number}. The restore will also be recorded in history.
+				</p>
 			</div>
-
-			<!-- Version details -->
-			<div class="rounded-lg border border-border bg-muted p-3 space-y-2">
-				<h3 class="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">
-					Target Version
-				</h3>
-				<div class="space-y-1.5 text-sm">
-					<div class="flex items-center gap-2 text-muted-foreground">
-						<Hash class="w-4 h-4" />
-						<span>
-							Version <span class="font-mono font-semibold text-foreground"
-								>{version.number}</span
-							>
-						</span>
-					</div>
-					<div class="flex items-center gap-2 text-muted-foreground">
-						<User class="w-4 h-4" />
-						<span>{version.created_by_name || 'Unknown author'}</span>
-					</div>
-					<div class="flex items-center gap-2 text-muted-foreground">
-						<Clock class="w-4 h-4" />
-						<span>
-							{formatDate(version.window?.ended_at || version.created_at)}
-						</span>
-					</div>
-					{#if version.snapshot_hash}
-						<div class="flex items-center gap-2 text-muted-foreground/70">
-							<span class="font-mono text-xs">
-								Hash: {version.snapshot_hash.slice(0, 12)}...
-							</span>
-						</div>
-					{/if}
-				</div>
-			</div>
-
-			<!-- Confirmation checkbox -->
-			<label class="flex items-start gap-3 cursor-pointer group">
-				<input
-					type="checkbox"
-					bind:checked={confirmed}
-					disabled={isRestoring}
-					class="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent/50 disabled:opacity-50"
-				/>
-				<span
-					class="text-sm text-muted-foreground group-hover:text-foreground transition-colors"
-				>
-					I understand this will overwrite the current document content with version
-					{version.number}
-				</span>
-			</label>
-
-			<!-- Error message -->
-			{#if error}
-				<div
-					class="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30"
-				>
-					<AlertTriangle class="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-					<span class="text-sm text-destructive">{error}</span>
-				</div>
-			{/if}
 		</div>
-	{/snippet}
+
+		<!-- Version details -->
+		<div class="rounded-lg border border-border bg-muted p-3 space-y-2">
+			<h3 class="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">
+				Target Version
+			</h3>
+			<div class="space-y-1.5 text-sm">
+				<div class="flex items-center gap-2 text-muted-foreground">
+					<Hash class="w-4 h-4" />
+					<span>
+						Version <span class="font-mono font-semibold text-foreground"
+							>{version.number}</span
+						>
+					</span>
+				</div>
+				<div class="flex items-center gap-2 text-muted-foreground">
+					<User class="w-4 h-4" />
+					<span>{version.created_by_name || 'Unknown author'}</span>
+				</div>
+				<div class="flex items-center gap-2 text-muted-foreground">
+					<Clock class="w-4 h-4" />
+					<span>
+						{formatDate(version.window?.ended_at || version.created_at)}
+					</span>
+				</div>
+				{#if version.snapshot_hash}
+					<div class="flex items-center gap-2 text-muted-foreground/70">
+						<span class="font-mono text-xs">
+							Hash: {version.snapshot_hash.slice(0, 12)}...
+						</span>
+					</div>
+				{/if}
+			</div>
+		</div>
+
+		<!-- Confirmation checkbox -->
+		<label class="flex items-start gap-3 cursor-pointer group">
+			<input
+				type="checkbox"
+				bind:checked={confirmed}
+				disabled={isRestoring}
+				class="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent/50 disabled:opacity-50"
+			/>
+			<span
+				class="text-sm text-muted-foreground group-hover:text-foreground transition-colors"
+			>
+				I understand this will overwrite the current document content with version
+				{version.number}
+			</span>
+		</label>
+
+		<!-- Error message -->
+		{#if error}
+			<div
+				class="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30"
+			>
+				<AlertTriangle class="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+				<span class="text-sm text-destructive">{error}</span>
+			</div>
+		{/if}
+	</div>
 
 	{#snippet footer()}
 		<div

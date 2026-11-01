@@ -1,6 +1,5 @@
 <!-- apps/web/src/lib/components/ontology/TaskAssigneeSelector.svelte -->
 <script lang="ts">
-	import { browser } from '$app/environment';
 	import { Search, X } from 'lucide-svelte';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
@@ -154,7 +153,7 @@
 	);
 
 	$effect(() => {
-		if (!browser || !projectId || loadedProjectId === projectId) return;
+		if (!projectId || loadedProjectId === projectId) return;
 		void loadMembers(projectId);
 	});
 
@@ -308,7 +307,7 @@
 			</p>
 		{:else}
 			<div class="max-h-32 overflow-y-auto divide-y divide-border/40">
-				{#each filteredMembers as member}
+				{#each filteredMembers as member (member.actorId)}
 					{@const checked = isSelected(member.actorId)}
 					<button
 						type="button"

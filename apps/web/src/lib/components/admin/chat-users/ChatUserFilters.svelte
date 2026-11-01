@@ -218,7 +218,7 @@
 				aria-label="Filter by context type"
 			>
 				<option value="all">All Contexts</option>
-				{#each filterOptions?.context_types ?? [] as contextType}
+				{#each filterOptions?.context_types ?? [] as contextType (contextType)}
 					<option value={contextType}>{contextType}</option>
 				{/each}
 			</Select>
@@ -232,7 +232,7 @@
 				aria-label="Filter by project"
 			>
 				<option value="all">All Projects</option>
-				{#each filterOptions?.projects ?? [] as project}
+				{#each filterOptions?.projects ?? [] as project (project.project_id)}
 					<option value={project.project_id}>{project.name ?? project.project_id}</option>
 				{/each}
 			</Select>
@@ -246,7 +246,7 @@
 				aria-label="Filter by topic"
 			>
 				<option value="all">All Topics</option>
-				{#each filterOptions?.topics ?? [] as topic}
+				{#each filterOptions?.topics ?? [] as topic (topic)}
 					<option value={topic}>{topic}</option>
 				{/each}
 			</Select>

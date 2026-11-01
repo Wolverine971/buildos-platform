@@ -35,28 +35,24 @@
 </script>
 
 <Modal bind:isOpen {title} {size} onClose={handleClose}>
-	{#snippet children()}
-		<div class="px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
-			{#if showIcon}
-				<div class="flex items-start space-x-3">
-					<div class="flex-shrink-0">
-						<div
-							class="flex items-center justify-center w-10 h-10 rounded-full bg-info/15"
-						>
-							<Info class="w-6 h-6 text-info" />
-						</div>
-					</div>
-					<div class="flex-1">
-						{#if slotContent}
-							{@render slotContent()}
-						{/if}
+	<div class="px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
+		{#if showIcon}
+			<div class="flex items-start space-x-3">
+				<div class="flex-shrink-0">
+					<div class="flex items-center justify-center w-10 h-10 rounded-full bg-info/15">
+						<Info class="w-6 h-6 text-info" />
 					</div>
 				</div>
-			{:else if slotContent}
-				{@render slotContent()}
-			{/if}
-		</div>
-	{/snippet}
+				<div class="flex-1">
+					{#if slotContent}
+						{@render slotContent()}
+					{/if}
+				</div>
+			</div>
+		{:else if slotContent}
+			{@render slotContent()}
+		{/if}
+	</div>
 
 	{#snippet footer()}
 		{#if slotFooter}

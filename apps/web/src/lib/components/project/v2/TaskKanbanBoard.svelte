@@ -43,7 +43,7 @@
 	column lazy-loads them from /api/onto/projects/[id]/tasks/archived.
 -->
 <script lang="ts">
-	import { preloadEntityModal } from '$lib/actions/preload-entity-modal';
+	import { preloadEntityModal } from '$lib/attachments/preload-entity-modal';
 	import { onMount, untrack, type Snippet } from 'svelte';
 	import { dataMutationEvents, mutationAffectsProject } from '$lib/stores/projectDataMutations';
 	import { slide } from 'svelte/transition';
@@ -915,7 +915,7 @@
 								ondragstart={(e) => handleDragStart(e, task)}
 								ondragend={handleDragEnd}
 								onclick={() => onEditTask(task.id)}
-								use:preloadEntityModal={'task'}
+								{@attach preloadEntityModal('task')}
 								title={isArchivedCard
 									? 'Drag to a state column to restore'
 									: undefined}

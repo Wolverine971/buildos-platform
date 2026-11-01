@@ -7,12 +7,13 @@
 	kept (history state or the URL); this owns the depths, the sheets and the keys.
 -->
 <script lang="ts">
+	import ErrorBoundary from '$lib/components/ui/ErrorBoundary.svelte';
 	import { tick, untrack, type Snippet } from 'svelte';
 	import { fade, fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import { MediaQuery } from 'svelte/reactivity';
-	import { portal } from '$lib/actions/portal';
+	import { portal } from '$lib/attachments/portal';
 	import DesktopChatPane from './DesktopChatPane.svelte';
 	import { removedIds } from './reader-removals.svelte';
 	import {
@@ -361,7 +362,7 @@
 </div>
 
 {#if phone && (reader || chatOpen)}
-	<div use:portal class="sheet-layer">
+	<div {@attach portal()} class="sheet-layer">
 		<button
 			type="button"
 			class="scrim"
@@ -400,36 +401,43 @@
 
 {#snippet readerView(item: ReaderItem)}
 	{#if Reader}
-		<Reader
-			bind:this={readerApi}
-			{item}
-			{projectId}
-			{canWrite}
-			order={orderOf(item.kind)}
-			fallbackTitle={readerTitle}
-			layout={effectiveLayout}
-			{listShown}
-			canShowList={hasList}
-			chatOn={chatOpen && chatScope === 'item' && !chatSession}
-			{phone}
-			{detent}
-			reloadKey={reloadKey + localReload}
-			seed={seedFor(item)}
-			{pageLink}
-			onClose={() => void close()}
-			onStep={(id) => onOpenItem({ kind: item.kind, id })}
-			onOpen={(next) => onOpenItem(next)}
-			onToggleFocus={toggleFocus}
-			onToggleList={toggleList}
-			onChat={() => openChat('item')}
-			{onChanged}
-			{onTaskState}
-			projectName={showProject ? projectName : null}
-			onDetent={(next) => (detent = next)}
-			onTableShown={(id) => {
-				if (!phone) tableFocusId = id;
-			}}
-		/>
+		<ErrorBoundary
+			area="reader"
+			context={{ kind: item.kind, id: item.id }}
+			resetKey={`${item.kind}:${item.id}`}
+			class="m-3"
+		>
+			<Reader
+				bind:this={readerApi}
+				{item}
+				{projectId}
+				{canWrite}
+				order={orderOf(item.kind)}
+				fallbackTitle={readerTitle}
+				layout={effectiveLayout}
+				{listShown}
+				canShowList={hasList}
+				chatOn={chatOpen && chatScope === 'item' && !chatSession}
+				{phone}
+				{detent}
+				reloadKey={reloadKey + localReload}
+				seed={seedFor(item)}
+				{pageLink}
+				onClose={() => void close()}
+				onStep={(id) => onOpenItem({ kind: item.kind, id })}
+				onOpen={(next) => onOpenItem(next)}
+				onToggleFocus={toggleFocus}
+				onToggleList={toggleList}
+				onChat={() => openChat('item')}
+				{onChanged}
+				{onTaskState}
+				projectName={showProject ? projectName : null}
+				onDetent={(next) => (detent = next)}
+				onTableShown={(id) => {
+					if (!phone) tableFocusId = id;
+				}}
+			/>
+		</ErrorBoundary>
 	{:else}
 		<div class="grid h-full place-items-center text-sm text-muted-foreground" aria-busy="true">
 			Opening…

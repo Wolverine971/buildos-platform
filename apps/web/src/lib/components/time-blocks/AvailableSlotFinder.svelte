@@ -128,7 +128,7 @@
 			<div class="space-y-1.5">
 				<p class="block text-xs font-semibold text-foreground">Buffer Time</p>
 				<div class="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-					{#each [0, 15, 30, 60] as time}
+					{#each [0, 15, 30, 60] as time (time)}
 						<button
 							type="button"
 							class={`rounded-md px-3 py-2 text-xs font-medium transition touch-manipulation ${

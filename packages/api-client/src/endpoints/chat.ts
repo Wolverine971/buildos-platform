@@ -2,7 +2,13 @@
 import type { BuildOsHttp, RequestOptions } from '../client';
 import type {
 	ChatActiveTurnProbeResponse,
+	ChatPendingChangeDismissResponse,
 	ChatPendingChangeProbeResponse,
+	ProposalChooseRequest,
+	ProposalChooseResponse,
+	ProposalPreviewResponse,
+	ProposalUndoRequest,
+	ProposalUndoResponse,
 	ChatSessionDeleteResponse,
 	ChatSessionHistoryQuery,
 	ChatSessionHistoryResponse,
@@ -13,6 +19,7 @@ import type {
 } from '../types';
 
 const sessionPath = (sessionId: string) => `/api/chat/sessions/${encodeURIComponent(sessionId)}`;
+const cardPath = (cardId: string) => `/api/chat/proposal-cards/${encodeURIComponent(cardId)}`;
 
 /**
  * Chat sessions as stored: history for a reopened chat, cheap probes while a turn
@@ -47,6 +54,50 @@ export function createChatEndpoints(http: BuildOsHttp) {
 		probePendingChange: (sessionId: string, options?: RequestOptions) =>
 			http.request<ChatPendingChangeProbeResponse>(sessionPath(sessionId), {
 				query: { probe: 'pending-change' },
+				...options
+			}),
+
+		/**
+		 * DELETE /api/chat/sessions/[id]/pending-change?key= — dismiss the "didn't finish
+		 * from earlier" strip. `key` is the strip's own key, so a newer change is never cleared.
+		 */
+		dismissPendingChange: (sessionId: string, key: string, options?: RequestOptions) =>
+			http.request<ChatPendingChangeDismissResponse>(
+				`${sessionPath(sessionId)}/pending-change`,
+				{
+					method: 'DELETE',
+					query: { key },
+					...options
+				}
+			),
+
+		/** POST /api/chat/proposal-cards/[id] — answer a proposal card (apply, cancel, …). */
+		chooseProposal: (cardId: string, body: ProposalChooseRequest, options?: RequestOptions) =>
+			http.request<ProposalChooseResponse>(cardPath(cardId), {
+				method: 'POST',
+				body,
+				...options
+			}),
+
+		/** POST /api/chat/proposal-cards/[id]/undo — take an applied proposal back (once). */
+		undoProposal: (cardId: string, body: ProposalUndoRequest, options?: RequestOptions) =>
+			http.request<ProposalUndoResponse>(`${cardPath(cardId)}/undo`, {
+				method: 'POST',
+				body,
+				...options
+			}),
+
+		/** GET /api/chat/proposal-cards/[id]/preview?session_id= — what applying would do now. */
+		previewProposal: (cardId: string, sessionId: string, options?: RequestOptions) =>
+			http.request<ProposalPreviewResponse>(`${cardPath(cardId)}/preview`, {
+				query: { session_id: sessionId },
+				...options
+			}),
+
+		/** GET /api/chat/proposal-cards/[id]/undo-preview?session_id= — what undoing would do now. */
+		undoPreviewProposal: (cardId: string, sessionId: string, options?: RequestOptions) =>
+			http.request<ProposalPreviewResponse>(`${cardPath(cardId)}/undo-preview`, {
+				query: { session_id: sessionId },
 				...options
 			}),
 

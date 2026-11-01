@@ -46,7 +46,6 @@
 	// The page arrives with its data; start from it (no spinner, no extra requests).
 	// svelte-ignore state_referenced_locally
 	editor.hydrate(data, preview, origin);
-	// svelte-ignore state_referenced_locally
 	const startProject = editor.placedRows.find((r) => r.project.project_id === initialProjectId);
 	// svelte-ignore state_referenced_locally
 	editor.open(initialSection, startProject?.project.project_id);

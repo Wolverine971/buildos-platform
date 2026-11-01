@@ -451,7 +451,7 @@
 					<div
 						class="flex items-center gap-3 px-3 py-1.5 bg-muted/30 rounded-lg border border-border/50"
 					>
-						{#each systemMetrics as metric}
+						{#each systemMetrics as metric (metric.label)}
 							<div class="flex items-center gap-1.5">
 								<span
 									class="font-mono text-2xs uppercase tracking-wider text-muted-foreground"
@@ -610,7 +610,7 @@
 								transition:slide={{ duration: 120 }}
 								class="divide-y divide-border"
 							>
-								{#each specSections as spec}
+								{#each specSections as spec (spec.id)}
 									{@const status = getStatusIndicator(spec.status)}
 									<div class="p-3">
 										<!-- Spec Header -->
@@ -645,7 +645,7 @@
 
 										<!-- Spec Items - Key-Value Grid -->
 										<div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-											{#each spec.items as item}
+											{#each spec.items as item (item.key)}
 												<div
 													class="px-2 py-1.5 bg-muted/20 rounded border border-border/50"
 												>
@@ -756,7 +756,7 @@
 								</div>
 
 								<div class="divide-y divide-border/50">
-									{#each tasks as task}
+									{#each tasks as task (task.id)}
 										{@const status = getStatusIndicator(task.state_key)}
 										{@const priority = getPriorityIndicator(task.priority)}
 										{@const TaskIcon = getTaskIcon(task.state_key)}
@@ -1140,7 +1140,7 @@
 
 					{#if expandedPanels.goals}
 						<div transition:slide={{ duration: 120 }} class="divide-y divide-border/50">
-							{#each goals as goal}
+							{#each goals as goal (goal.id)}
 								{@const status = getStatusIndicator(goal.state_key)}
 								<div class="px-3 py-2.5 hover:bg-muted/20 transition-colors">
 									<div class="flex items-start justify-between gap-2 mb-1.5">
@@ -1211,7 +1211,7 @@
 
 					{#if expandedPanels.milestones}
 						<div transition:slide={{ duration: 120 }} class="divide-y divide-border/50">
-							{#each milestones as milestone}
+							{#each milestones as milestone (milestone.id)}
 								{@const status = getStatusIndicator(milestone.state_key)}
 								<div class="px-3 py-2.5 hover:bg-muted/20 transition-colors">
 									<div class="flex items-start justify-between gap-2">
@@ -1287,7 +1287,7 @@
 
 					{#if expandedPanels.risks}
 						<div transition:slide={{ duration: 120 }} class="divide-y divide-border/50">
-							{#each risks as risk}
+							{#each risks as risk (risk.id)}
 								{@const status = getStatusIndicator(risk.state_key)}
 								<div class="px-3 py-2.5 hover:bg-muted/20 transition-colors">
 									<div class="flex items-start justify-between gap-2 mb-1.5">

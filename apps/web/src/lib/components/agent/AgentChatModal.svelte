@@ -574,7 +574,7 @@
 	// The runtime is intentionally handle-free until server-authoritative worker
 	// admission lands; mounting it cannot change the worker Send path.
 	$effect(() => {
-		if (!browser || !isSurfaceActive || !workerRealtime) return;
+		if (!isSurfaceActive || !workerRealtime) return;
 		void workerRealtime.start();
 		return () => {
 			void workerRealtime.stop();
@@ -585,7 +585,7 @@
 	// It cannot select worker transport or construct a handle from local state.
 	$effect(() => {
 		const sessionId = currentSessionId;
-		if (!browser || !isSurfaceActive || !sessionId || !workerAdoption) return;
+		if (!isSurfaceActive || !sessionId || !workerAdoption) return;
 		const signal = getAbortSignal();
 		void workerAdoption.discoverSession(sessionId, { signal }).catch((error) => {
 			if (signal.aborted) return;
@@ -680,7 +680,7 @@
 	const documentOrganizationSelected = $derived(selectedReviewIntent === 'document_organization');
 
 	$effect(() => {
-		if (!browser || !(isOpen || embedded) || hidden) return;
+		if (!(isOpen || embedded) || hidden) return;
 		let active = true;
 		void loadAgentChatCapabilities()
 			.then((capabilities) => {
@@ -1453,8 +1453,6 @@
 
 	// Auto-initialize the modal when launched with a context preset or project preset
 	$effect(() => {
-		if (!browser) return;
-
 		if (!isOpen) {
 			if (wasOpen) {
 				if (embedded) {
@@ -2307,7 +2305,6 @@
 	// drop its parked stack card.
 	let wasHiddenWhileParked = false;
 	$effect(() => {
-		if (!browser) return;
 		if (hidden) {
 			wasHiddenWhileParked = true;
 			return;
@@ -2403,7 +2400,6 @@
 	}
 
 	$effect(() => {
-		if (!browser) return;
 		void stream.handlePendingSendAfterTranscription(hasSendableImageAttachments);
 	});
 
@@ -3377,67 +3373,65 @@
 			</div>
 		{/snippet}
 
-		{#snippet children()}
-			<!-- INKPRINT panel container - fills modal content area -->
-			<div class="relative z-10 flex h-full flex-col overflow-hidden bg-card">
-				<!-- Keep context selection mounted so Back returns to prior step -->
-				<div
-					class={`flex h-full min-h-0 flex-col ${shellRouter.showContextSelection ? '' : 'hidden'}`}
-					aria-hidden={!shellRouter.showContextSelection}
-				>
-					<ContextSelectionScreen
-						bind:this={shellRouter.contextSelectionRef}
-						active={shellRouter.showContextSelection && isOpen && !hidden}
-						onSelect={handleContextSelect}
-						onNavigationChange={handleContextSelectionNavChange}
-					/>
-				</div>
-
-				<!-- Chat view - Same height constraint as selection -->
-				<div
-					class={`${shellRouter.showContextSelection ? 'hidden' : 'flex'} relative h-full min-h-0 flex-col`}
-				>
-					<!-- The conversation stays mounted (and laid out) under the project
-					     action/focus pickers: unmounting it lost the reader's place and
-					     replayed the whole thread when the picker closed. -->
-					<div
-						class="flex min-h-0 flex-1 flex-col"
-						aria-hidden={isChatPickerOpen}
-						inert={isChatPickerOpen}
-					>
-						{@render chatConversationPane(
-							shouldShowSessionLoadingState,
-							shouldShowSessionLoadErrorState,
-							initialChatSessionId
-						)}
-					</div>
-					{#if shellRouter.showProjectActionSelector}
-						<div class="absolute inset-0 z-10 flex flex-col overflow-hidden bg-card">
-							<ProjectActionSelector
-								projectId={shellRouter.selectedEntityId || ''}
-								projectName={shellRouter.projectFocus?.projectName ??
-									shellRouter.selectedContextLabel ??
-									'Project'}
-								onSelectAction={(action) => handleProjectActionSelect(action)}
-								onSelectFocus={handleFocusSelection}
-							/>
-						</div>
-					{:else if isFocusPickerOpen && shellRouter.selectedEntityId && resolvedProjectFocus}
-						<div class="absolute inset-0 z-10 flex flex-col overflow-hidden bg-card">
-							<ProjectFocusSelector
-								projectId={shellRouter.selectedEntityId}
-								projectName={resolvedProjectFocus.projectName}
-								currentFocus={resolvedProjectFocus}
-								onSelect={handleFocusSelection}
-							/>
-						</div>
-					{/if}
-					{#if shouldShowComposer}
-						<!-- INKPRINT composer footer -->
-						{@render chatComposerFooter()}
-					{/if}
-				</div>
+		<!-- INKPRINT panel container - fills modal content area -->
+		<div class="relative z-10 flex h-full flex-col overflow-hidden bg-card">
+			<!-- Keep context selection mounted so Back returns to prior step -->
+			<div
+				class={`flex h-full min-h-0 flex-col ${shellRouter.showContextSelection ? '' : 'hidden'}`}
+				aria-hidden={!shellRouter.showContextSelection}
+			>
+				<ContextSelectionScreen
+					bind:this={shellRouter.contextSelectionRef}
+					active={shellRouter.showContextSelection && isOpen && !hidden}
+					onSelect={handleContextSelect}
+					onNavigationChange={handleContextSelectionNavChange}
+				/>
 			</div>
-		{/snippet}
+
+			<!-- Chat view - Same height constraint as selection -->
+			<div
+				class={`${shellRouter.showContextSelection ? 'hidden' : 'flex'} relative h-full min-h-0 flex-col`}
+			>
+				<!-- The conversation stays mounted (and laid out) under the project
+				     action/focus pickers: unmounting it lost the reader's place and
+				     replayed the whole thread when the picker closed. -->
+				<div
+					class="flex min-h-0 flex-1 flex-col"
+					aria-hidden={isChatPickerOpen}
+					inert={isChatPickerOpen}
+				>
+					{@render chatConversationPane(
+						shouldShowSessionLoadingState,
+						shouldShowSessionLoadErrorState,
+						initialChatSessionId
+					)}
+				</div>
+				{#if shellRouter.showProjectActionSelector}
+					<div class="absolute inset-0 z-10 flex flex-col overflow-hidden bg-card">
+						<ProjectActionSelector
+							projectId={shellRouter.selectedEntityId || ''}
+							projectName={shellRouter.projectFocus?.projectName ??
+								shellRouter.selectedContextLabel ??
+								'Project'}
+							onSelectAction={(action) => handleProjectActionSelect(action)}
+							onSelectFocus={handleFocusSelection}
+						/>
+					</div>
+				{:else if isFocusPickerOpen && shellRouter.selectedEntityId && resolvedProjectFocus}
+					<div class="absolute inset-0 z-10 flex flex-col overflow-hidden bg-card">
+						<ProjectFocusSelector
+							projectId={shellRouter.selectedEntityId}
+							projectName={resolvedProjectFocus.projectName}
+							currentFocus={resolvedProjectFocus}
+							onSelect={handleFocusSelection}
+						/>
+					</div>
+				{/if}
+				{#if shouldShowComposer}
+					<!-- INKPRINT composer footer -->
+					{@render chatComposerFooter()}
+				{/if}
+			</div>
+		</div>
 	</Modal>
 {/if}

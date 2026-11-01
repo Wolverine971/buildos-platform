@@ -340,7 +340,7 @@
 		{:else}
 			<!-- Mobile Card View -->
 			<div class="block space-y-3 lg:hidden">
-				{#each data.projects as project}
+				{#each data.projects as project (project.id)}
 					{@const status = getStatusBadge(project)}
 					<div class="rounded-lg border border-border bg-card p-4">
 						<div class="flex items-start justify-between">
@@ -402,7 +402,7 @@
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-border bg-card">
-						{#each data.projects as project}
+						{#each data.projects as project (project.id)}
 							{@const status = getStatusBadge(project)}
 							{@const StatusIcon = getStatusIcon(project)}
 							<tr class="transition-colors hover:bg-muted/30">
@@ -513,7 +513,7 @@
 			</div>
 
 			<div class="space-y-2">
-				{#each data.errors.slice(0, 5) as error}
+				{#each data.errors.slice(0, 5) as error (error.id)}
 					<div class="rounded-lg border border-border bg-muted p-3">
 						<div class="flex items-start justify-between">
 							<div>

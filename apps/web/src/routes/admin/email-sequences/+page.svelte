@@ -1,7 +1,7 @@
 <!-- apps/web/src/routes/admin/email-sequences/+page.svelte -->
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { untrack } from 'svelte';
 	import {
 		Activity,
@@ -132,7 +132,7 @@
 	const selectedCopy = $derived((data.selectedCopy ?? null) as CopyOption | null);
 	const copyOptions = $derived((data.copyOptions ?? []) as CopyOption[]);
 	const groupedCopyOptions = $derived(groupCopyOptions(copyOptions));
-	const selectedCopyParam = $derived($page.url.searchParams.get('copy'));
+	const selectedCopyParam = $derived(page.url.searchParams.get('copy'));
 	const recipients = $derived(
 		selectedSequenceKey === 'buildos_welcome'
 			? ((data.welcome?.recipients ?? []) as RecipientRow[])
@@ -294,7 +294,7 @@
 		copyModalOpen = false;
 		activeCopyKey = null;
 
-		const url = new URL($page.url);
+		const url = new URL(page.url);
 		url.searchParams.delete('copy');
 		void goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
 	}
@@ -450,7 +450,7 @@
 
 			const counts = payload.data?.counts;
 			cohortMessage = `Built dormant audience with ${counts?.total ?? 0} people (${counts?.sendable ?? 0} sendable).`;
-			const url = new URL($page.url);
+			const url = new URL(page.url);
 			url.searchParams.set('sequence', 'buildos_reactivation_founder_pilot');
 			if (campaignId) {
 				url.searchParams.set('campaign_id', campaignId);
@@ -506,7 +506,7 @@
 	{/if}
 
 	<div class="flex flex-wrap gap-2">
-		{#each data.sequences as sequence}
+		{#each data.sequences as sequence (sequence.key)}
 			<a
 				href={`/admin/email-sequences?sequence=${sequence.key}`}
 				class="inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {selectedSequenceKey ===
@@ -562,7 +562,7 @@
 								{data.reactivation?.selectedCohortId ?? 'founder-pilot'} (not built yet)
 							</option>
 						{/if}
-						{#each data.reactivation?.cohortOptions ?? [] as cohort}
+						{#each data.reactivation?.cohortOptions ?? [] as cohort (`${cohort.campaignId}:${cohort.cohortId}`)}
 							<option
 								value={cohort.cohortId}
 								selected={cohort.cohortId === data.reactivation?.selectedCohortId}
@@ -589,7 +589,7 @@
 						<option value="" selected={!data.reactivation?.selectedBatchId}
 							>All batches</option
 						>
-						{#each selectedCohortBatches as batch}
+						{#each selectedCohortBatches as batch (batch)}
 							<option
 								value={batch}
 								selected={batch === data.reactivation?.selectedBatchId}
@@ -798,7 +798,7 @@
 
 			{#if triggerResult?.results?.length}
 				<ul class="mt-4 max-h-72 space-y-2 overflow-auto lg:hidden">
-					{#each triggerResult.results as result}
+					{#each triggerResult.results as result (result.memberId)}
 						<li class="rounded-md border border-border bg-background p-3">
 							<div class="flex items-start justify-between gap-2">
 								<p class="min-w-0 truncate text-sm font-medium text-foreground">
@@ -843,7 +843,7 @@
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-border">
-							{#each triggerResult.results as result}
+							{#each triggerResult.results as result (result.memberId)}
 								<tr>
 									<td class="px-3 py-2 text-foreground">{result.email}</td>
 									<td class="px-3 py-2 text-muted-foreground">
@@ -880,7 +880,7 @@
 			</p>
 		</div>
 		<div class="divide-y divide-border">
-			{#each groupedCopyOptions as group}
+			{#each groupedCopyOptions as group (group.stepKey)}
 				<section class="grid gap-4 px-4 py-4 lg:grid-cols-[14rem_minmax(0,1fr)]">
 					<div class="min-w-0">
 						<div class="flex items-center gap-3">
@@ -955,7 +955,7 @@
 			</p>
 		</div>
 		<ul class="divide-y divide-border lg:hidden">
-			{#each recipients as recipient}
+			{#each recipients as recipient (recipient.id)}
 				<li class="space-y-3 px-4 py-4">
 					<div class="flex items-start justify-between gap-3">
 						<div class="flex min-w-0 items-start gap-3">
@@ -1089,7 +1089,7 @@
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-border">
-					{#each recipients as recipient}
+					{#each recipients as recipient (recipient.id)}
 						<tr>
 							{#if selectedSequenceKey === 'buildos_reactivation_founder_pilot'}
 								<td class="px-4 py-3">
@@ -1307,7 +1307,7 @@
 									Available tokens
 								</p>
 								<div class="mt-2 flex flex-wrap gap-1.5">
-									{#each data.tokens as token}
+									{#each data.tokens as token (token)}
 										<code
 											class="rounded-md bg-background px-2 py-1 text-2xs text-foreground break-all"
 										>

@@ -18,7 +18,7 @@
 -->
 <script lang="ts">
 	import { onDestroy, onMount, tick, untrack } from 'svelte';
-	import { preloadEntityModal } from '$lib/actions/preload-entity-modal';
+	import { preloadEntityModal } from '$lib/attachments/preload-entity-modal';
 	import {
 		dataMutationEvents,
 		mutationAffectsProject,
@@ -1743,7 +1743,9 @@
 																				'goal',
 																				goal.id
 																			)}
-																		use:preloadEntityModal={'goal'}
+																		{@attach preloadEntityModal(
+																			'goal'
+																		)}
 																	>
 																		<div class="min-w-0 flex-1">
 																			<p

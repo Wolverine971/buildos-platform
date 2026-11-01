@@ -3,7 +3,7 @@
 	import { fade } from 'svelte/transition';
 	import { Calendar, ArrowRight, Shield, Clock } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { portal } from '$lib/actions/portal';
+	import { portal } from '$lib/attachments/portal';
 	import { getGoogleCalendarConnectUrl } from '$lib/utils/google-calendar-connect-url';
 
 	let isConnecting = $state(false);
@@ -30,7 +30,7 @@
 </script>
 
 <div
-	use:portal
+	{@attach portal()}
 	class="calendar-overlay-root"
 	transition:fade={{ duration: 200 }}
 	role="dialog"

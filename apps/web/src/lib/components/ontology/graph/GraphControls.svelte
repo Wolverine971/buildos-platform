@@ -446,7 +446,7 @@
 					aria-labelledby="layout-label"
 					class="w-full h-10 sm:h-8 px-2 text-xs font-bold rounded-lg border border-border bg-card text-foreground shadow-ink-inner focus:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition"
 				>
-					{#each layouts as layout}
+					{#each layouts as layout (layout.value)}
 						<option value={layout.value}>{layout.label}</option>
 					{/each}
 				</select>
@@ -481,7 +481,7 @@
 								Tasks
 							</p>
 							<div class="grid grid-cols-2 gap-1.5">
-								{#each taskScopeToggles as toggle}
+								{#each taskScopeToggles as toggle (toggle.key)}
 									<label
 										class="flex min-h-11 sm:min-h-0 min-w-0 items-center gap-1.5 py-1 sm:py-0 text-2xs text-muted-foreground hover:text-foreground"
 										title={getScopeCountTitle(toggle)}
@@ -515,7 +515,7 @@
 								Other
 							</p>
 							<div class="grid grid-cols-2 gap-1.5">
-								{#each entityScopeToggles as toggle}
+								{#each entityScopeToggles as toggle (toggle.key)}
 									<label
 										class="flex min-h-11 sm:min-h-0 min-w-0 items-center gap-1.5 py-1 sm:py-0 text-2xs text-muted-foreground hover:text-foreground"
 										title={getScopeCountTitle(toggle)}
@@ -549,7 +549,7 @@
 								Structure
 							</p>
 							<div class="grid grid-cols-2 gap-1.5">
-								{#each structureScopeToggles as toggle}
+								{#each structureScopeToggles as toggle (toggle.key)}
 									<label
 										class="flex min-h-11 sm:min-h-0 min-w-0 items-center gap-1.5 py-1 sm:py-0 text-2xs text-muted-foreground hover:text-foreground"
 										title={getScopeCountTitle(toggle)}
@@ -604,7 +604,7 @@
 						aria-label="Filter node type"
 						class="w-full h-10 sm:h-8 pl-8 pr-2 text-xs font-bold rounded-lg border border-border bg-card text-foreground shadow-ink-inner focus:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition appearance-none"
 					>
-						{#each filters as filter}
+						{#each filters as filter (filter.value)}
 							<option value={filter.value}>{filter.label}</option>
 						{/each}
 					</select>
@@ -652,7 +652,7 @@
 				<div class="space-y-2 animate-ink-in motion-reduce:animate-none">
 					<!-- Node Types — shapes mirror the canvas -->
 					<div class="grid grid-cols-4 gap-x-2 gap-y-1.5">
-						{#each nodeLegend as item}
+						{#each nodeLegend as item (item.label)}
 							<div class="flex items-center gap-1.5 text-xs" title={item.label}>
 								<svg
 									viewBox="0 0 18 14"
@@ -756,7 +756,7 @@
 						>
 							Lifecycle
 						</span>
-						{#each lifecycleLegend as item}
+						{#each lifecycleLegend as item (item.style)}
 							<div class="flex items-center gap-1.5 text-xs">
 								<svg
 									viewBox="0 0 18 6"
@@ -787,7 +787,7 @@
 
 					<!-- Edge Types -->
 					<div class="flex flex-wrap gap-x-3 gap-y-1 pt-1 border-t border-border/50">
-						{#each edgeLegend as item}
+						{#each edgeLegend as item (item.label)}
 							<div class="flex items-center gap-1.5 text-xs">
 								<div class="w-4 h-0.5 rounded-full {item.color}"></div>
 								<span class="text-muted-foreground">{item.label}</span>

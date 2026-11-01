@@ -1,7 +1,7 @@
 <!-- apps/web/src/routes/auth/register/+page.svelte -->
 <script lang="ts">
 	import { BRAND_TAGLINE } from '$lib/constants/brand';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
 	import { PUBLIC_GOOGLE_CLIENT_ID } from '$env/static/public';
@@ -34,7 +34,7 @@
 	// Optional. Held in this tab and claimed on the onboarding People step once the account exists.
 	// Prefilled when someone claims a handle from a builder page (/auth/register?handle=…).
 	let handle = $state(
-		normalizeHandleInput($page.url.searchParams.get('handle') ?? '').slice(0, 24)
+		normalizeHandleInput(page.url.searchParams.get('handle') ?? '').slice(0, 24)
 	);
 	let handleTouched = $state(false);
 	const handleError = $derived(
@@ -48,13 +48,13 @@
 	let success = $state(false);
 	let successMessage = $state('');
 	let emailError = $state('');
-	let redirectParam = $derived(normalizeRedirectPath($page.url.searchParams.get('redirect')));
+	let redirectParam = $derived(normalizeRedirectPath(page.url.searchParams.get('redirect')));
 	let redirectQuery = $derived(
 		redirectParam ? `?redirect=${encodeURIComponent(redirectParam)}` : ''
 	);
 
 	function resolveRedirectTarget() {
-		return normalizeRedirectPath($page.url.searchParams.get('redirect'));
+		return normalizeRedirectPath(page.url.searchParams.get('redirect'));
 	}
 
 	// The state rides in a cookie (4 KB cap, and base64 adds a third). A long Try-launch draft
@@ -158,7 +158,7 @@
 	// a fixed table so a crafted link can't put its own words on this page. Errors render
 	// inline (toasts are not mounted for signed-out visitors).
 	afterNavigate(() => {
-		const url = new URL($page.url);
+		const url = new URL(page.url);
 		const urlError = url.searchParams.get('error');
 		if (!urlError && !url.searchParams.has('message')) return;
 
@@ -198,7 +198,7 @@
 
 		try {
 			await createAcceptanceIntent('google_signup');
-			const redirectUri = `${$page.url.origin}/auth/google/register-callback`;
+			const redirectUri = `${page.url.origin}/auth/google/register-callback`;
 			const state = encodeOAuthState(resolveRedirectTarget());
 
 			const params = new URLSearchParams({

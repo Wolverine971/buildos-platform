@@ -1,6 +1,5 @@
 <!-- apps/web/src/lib/components/admin/EmailComposerModal.svelte -->
 <script lang="ts">
-	import { browser } from '$app/environment';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
@@ -93,7 +92,6 @@
 
 	// Load user context and email history when modal opens
 	$effect(() => {
-		if (!browser) return;
 		if (isOpen && userEmail) {
 			loadUserContext();
 			loadEmailHistory();
@@ -102,7 +100,7 @@
 
 	// Apply quick-email intents passed from admin context panels.
 	$effect(() => {
-		if (!browser || !isOpen) return;
+		if (!isOpen) return;
 		initialTemplate;
 		initialInstructions;
 		initialComposeKey;
@@ -114,7 +112,7 @@
 
 	// Context must be loaded before generation so quick actions use the selected user's data.
 	$effect(() => {
-		if (!browser || !isOpen || !initialAutoGenerate || !userContext) return;
+		if (!isOpen || !initialAutoGenerate || !userContext) return;
 
 		const key = getInitialComposeKey();
 		if (!key || appliedInitialComposeKey !== key || generatedInitialComposeKey === key) {
@@ -692,7 +690,7 @@ Guidelines:
 							bind:value={emailType}
 							onchange={handleTemplateChange}
 						>
-							{#each emailTemplates as template}
+							{#each emailTemplates as template (template.value)}
 								<option value={template.value}>{template.label}</option>
 							{/each}
 						</select>
@@ -716,7 +714,7 @@ Guidelines:
 								}
 							}}
 						>
-							{#each toneOptions as option}
+							{#each toneOptions as option (option.value)}
 								<option value={option.value}>{option.label}</option>
 							{/each}
 						</select>

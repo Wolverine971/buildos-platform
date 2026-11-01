@@ -275,7 +275,7 @@
 			</header>
 
 			<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-				{#each shipped as item}
+				{#each shipped as item (item.title)}
 					{@const ItemIcon = item.icon}
 					<article
 						class="min-w-0 border border-border bg-card p-5 shadow-ink tx tx-grain tx-weak wt-paper"
@@ -316,7 +316,7 @@
 			</header>
 
 			<div class="grid gap-3 lg:grid-cols-2">
-				{#each now as item}
+				{#each now as item (item.title)}
 					{@const ItemIcon = item.icon}
 					<article
 						class="min-w-0 border border-accent/30 bg-card p-5 shadow-ink tx tx-pulse tx-weak wt-paper"
@@ -357,7 +357,7 @@
 			</header>
 
 			<div class="grid gap-3 lg:grid-cols-2">
-				{#each next as item}
+				{#each next as item (item.title)}
 					{@const ItemIcon = item.icon}
 					<article
 						class="min-w-0 border border-info/30 bg-card p-5 shadow-ink tx tx-thread tx-weak wt-paper"
@@ -400,7 +400,7 @@
 			</header>
 
 			<div class="grid gap-3 lg:grid-cols-2">
-				{#each exploring as item}
+				{#each exploring as item (item.title)}
 					{@const ItemIcon = item.icon}
 					<article
 						class="min-w-0 border border-border bg-card p-5 shadow-ink tx tx-bloom tx-weak wt-ghost"

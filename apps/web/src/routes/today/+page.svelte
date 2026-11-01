@@ -1,5 +1,6 @@
 <!-- apps/web/src/routes/today/+page.svelte -->
 <script lang="ts">
+	import ErrorBoundary from '$lib/components/ui/ErrorBoundary.svelte';
 	import { onMount, tick, untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { MediaQuery } from 'svelte/reactivity';
@@ -62,8 +63,9 @@
 
 	let { data }: { data: PageData } = $props();
 
-	// svelte-ignore state_referenced_locally -- intentional: server load seeds the
-	// state once; client-side refresh() owns updates afterwards.
+	// Intentional: server load seeds the state once; client-side refresh() owns updates
+	// afterwards.
+	// svelte-ignore state_referenced_locally
 	let feed = $state<TodayFeed | null>(data.feed);
 	let refreshing = $state(false);
 	let inboxCount = $state(0);
@@ -1084,11 +1086,13 @@
 			<div class="mt-2 flex flex-wrap items-center border-b border-border/70 pb-1">
 				{#if hasProjects}
 					<div class="mr-1.5 flex py-0.5">
-						<DashboardBriefWidget
-							user={briefUser}
-							onviewbrief={openBrief}
-							onpreloadbrief={preloadBriefModals}
-						/>
+						<ErrorBoundary area="today-brief-widget">
+							<DashboardBriefWidget
+								user={briefUser}
+								onviewbrief={openBrief}
+								onpreloadbrief={preloadBriefModals}
+							/>
+						</ErrorBoundary>
 					</div>
 				{/if}
 				{#if inboxCount > 0}
@@ -1417,52 +1421,60 @@
 													<div class="h-px flex-1 bg-accent/40"></div>
 												</div>
 											{/if}
-											<TodayAgendaRow
-												kind={entry.kind}
-												title={entry.title}
-												rowId={entry.task?.id ??
-													entry.linkedTask?.id ??
-													null}
-												selected={readerItem?.kind === 'task' &&
-													readerItem.id ===
-														(entry.task?.id ?? entry.linkedTask?.id)}
-												timeLabel={entry.timeLabel}
-												metaLabel={entry.metaLabel}
-												stateKey={entry.task?.state_key ??
-													entry.linkedTask?.state_key ??
-													null}
-												done={entry.task
-													? doneIds.has(entry.task.id)
-													: entry.linkedTask
-														? doneIds.has(entry.linkedTask.id)
-														: false}
-												past={entryIsPast(entry)}
-												current={entryIsCurrent(entry)}
-												projectName={entry.task?.project_name ??
-													entry.linkedTask?.project_name ??
-													projectNameFor(entry.event?.project_id ?? null)}
-												projectHref={entry.task
-													? `/projects/${entry.task.project_id}`
-													: entry.linkedTask
-														? `/projects/${entry.linkedTask.project_id}`
-														: entry.event?.project_id
-															? `/projects/${entry.event.project_id}`
+											<ErrorBoundary
+												area="today-agenda-row"
+												context={{ kind: entry.kind }}
+											>
+												<TodayAgendaRow
+													kind={entry.kind}
+													title={entry.title}
+													rowId={entry.task?.id ??
+														entry.linkedTask?.id ??
+														null}
+													selected={readerItem?.kind === 'task' &&
+														readerItem.id ===
+															(entry.task?.id ??
+																entry.linkedTask?.id)}
+													timeLabel={entry.timeLabel}
+													metaLabel={entry.metaLabel}
+													stateKey={entry.task?.state_key ??
+														entry.linkedTask?.state_key ??
+														null}
+													done={entry.task
+														? doneIds.has(entry.task.id)
+														: entry.linkedTask
+															? doneIds.has(entry.linkedTask.id)
+															: false}
+													past={entryIsPast(entry)}
+													current={entryIsCurrent(entry)}
+													projectName={entry.task?.project_name ??
+														entry.linkedTask?.project_name ??
+														projectNameFor(
+															entry.event?.project_id ?? null
+														)}
+													projectHref={entry.task
+														? `/projects/${entry.task.project_id}`
+														: entry.linkedTask
+															? `/projects/${entry.linkedTask.project_id}`
+															: entry.event?.project_id
+																? `/projects/${entry.event.project_id}`
+																: null}
+													onChat={() =>
+														entry.kind === 'task' && entry.task
+															? openTaskChat(entry.task)
+															: openEventChat(entry)}
+													onOpenTask={entry.task
+														? () => openTask(entry.task!)
+														: entry.linkedTask
+															? () => openTask(entry.linkedTask!)
 															: null}
-												onChat={() =>
-													entry.kind === 'task' && entry.task
-														? openTaskChat(entry.task)
-														: openEventChat(entry)}
-												onOpenTask={entry.task
-													? () => openTask(entry.task!)
-													: entry.linkedTask
-														? () => openTask(entry.linkedTask!)
-														: null}
-												onToggleDone={entry.task
-													? () => toggleDone(entry.task!)
-													: entry.linkedTask
-														? () => toggleDone(entry.linkedTask!)
-														: null}
-											/>
+													onToggleDone={entry.task
+														? () => toggleDone(entry.task!)
+														: entry.linkedTask
+															? () => toggleDone(entry.linkedTask!)
+															: null}
+												/>
+											</ErrorBoundary>
 										{/each}
 										{#if nowMarkerIndex === agenda.schedule.length}
 											<div class="flex items-center gap-2" aria-hidden="true">
@@ -1490,16 +1502,18 @@
 											>{agenda.anytime.length}</span
 										>
 									</div>
-									<TodayTaskGroups
-										tasks={agenda.anytime}
-										{doneIds}
-										selectedId={readerItem?.kind === 'task'
-											? readerItem.id
-											: null}
-										onChat={openTaskChat}
-										onOpenTask={openTask}
-										onToggleDone={toggleDone}
-									/>
+									<ErrorBoundary area="today-tasks">
+										<TodayTaskGroups
+											tasks={agenda.anytime}
+											{doneIds}
+											selectedId={readerItem?.kind === 'task'
+												? readerItem.id
+												: null}
+											onChat={openTaskChat}
+											onOpenTask={openTask}
+											onToggleDone={toggleDone}
+										/>
+									</ErrorBoundary>
 								</section>
 							{/if}
 
@@ -1610,7 +1624,9 @@
 			</div>
 		{/if}
 		{#if changesFeed && !readingWide}
-			<WhatChangedSection feed={changesFeed} onChatAboutEntry={openReceiptChat} />
+			<ErrorBoundary area="today-what-changed">
+				<WhatChangedSection feed={changesFeed} onChatAboutEntry={openReceiptChat} />
+			</ErrorBoundary>
 		{/if}
 	</main>
 </div>

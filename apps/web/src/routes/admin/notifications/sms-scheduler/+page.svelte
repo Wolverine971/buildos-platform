@@ -1,6 +1,7 @@
 <!-- apps/web/src/routes/admin/notifications/sms-scheduler/+page.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { SvelteMap } from 'svelte/reactivity';
 	import { format } from 'date-fns';
 	import { toastService } from '$lib/stores/toast.store';
 	import {
@@ -112,7 +113,7 @@
 	// Status tracking
 	let isTriggering = $state(false);
 	let lastTriggerResult = $state<TriggerResult | null>(null);
-	let jobStatuses = $state(new Map<string, JobStatus>());
+	const jobStatuses = new SvelteMap<string, JobStatus>();
 	let isPolling = $state(false);
 	let pollInterval: number | null = null;
 	let activeTab = $state<'trigger' | 'results' | 'monitor'>('trigger');
@@ -243,7 +244,6 @@
 					if (response.ok) {
 						const data = await response.json();
 						jobStatuses.set(detail.user_id, data.data);
-						jobStatuses = new Map(jobStatuses); // Trigger reactivity
 					}
 				} catch (error) {
 					console.error('Failed to fetch job status:', error);
@@ -447,7 +447,7 @@
 								</Button>
 							</div>
 						</div>
-						{#each searchResults as user}
+						{#each searchResults as user (user.id)}
 							<label
 								class="flex items-center gap-3 p-2 hover:bg-muted rounded cursor-pointer"
 							>
@@ -604,7 +604,7 @@
 					</div>
 
 					<div class="space-y-4">
-						{#each calendarPreviewResults as result}
+						{#each calendarPreviewResults as result (result.user_id)}
 							<div class="border border-border rounded-lg p-4 hover:bg-muted/50">
 								<!-- User Header -->
 								<div class="flex items-start justify-between mb-3">
@@ -863,7 +863,7 @@
 						<div
 							class="block lg:hidden border border-border rounded-lg divide-y divide-border"
 						>
-							{#each lastTriggerResult.details as detail}
+							{#each lastTriggerResult.details as detail (detail.user_id)}
 								<div class="p-3 space-y-3">
 									<div class="flex items-start justify-between gap-2">
 										<div class="font-mono text-xs text-foreground">
@@ -937,7 +937,7 @@
 									</tr>
 								</thead>
 								<tbody class="divide-y divide-border">
-									{#each lastTriggerResult.details as detail}
+									{#each lastTriggerResult.details as detail (detail.user_id)}
 										<tr class="hover:bg-muted/50">
 											<td class="p-3 font-mono text-xs text-foreground">
 												{detail.user_id.slice(0, 8)}...
@@ -991,7 +991,7 @@
 		<!-- Monitor Tab -->
 		{#if jobStatuses.size > 0}
 			<div class="space-y-4">
-				{#each Array.from(jobStatuses.entries()) as [userId, status]}
+				{#each Array.from(jobStatuses.entries()) as [userId, status] (userId)}
 					<div class="admin-panel p-4">
 						<div class="flex items-start justify-between mb-3">
 							<div>

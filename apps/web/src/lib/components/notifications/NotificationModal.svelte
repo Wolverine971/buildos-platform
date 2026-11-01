@@ -155,122 +155,120 @@
 {:else}
 	<!-- Generic fallback modal -->
 	<Modal isOpen={true} onClose={handleClose} title={modalTitle} size="lg" showCloseButton={true}>
-		{#snippet children()}
-			<div class="px-3 sm:px-4 py-3 sm:py-4">
-				<div class="space-y-4">
-					{#if notification.status === 'processing'}
-						<div class="text-center py-8">
-							<LoaderCircle
-								class="w-12 h-12 text-accent animate-spin motion-reduce:animate-none mx-auto mb-4"
-								aria-hidden="true"
-							/>
-							<p class="text-muted-foreground" aria-live="polite">
-								{notification.progress?.message || 'Processing...'}
-							</p>
+		<div class="px-3 sm:px-4 py-3 sm:py-4">
+			<div class="space-y-4">
+				{#if notification.status === 'processing'}
+					<div class="text-center py-8">
+						<LoaderCircle
+							class="w-12 h-12 text-accent animate-spin motion-reduce:animate-none mx-auto mb-4"
+							aria-hidden="true"
+						/>
+						<p class="text-muted-foreground" aria-live="polite">
+							{notification.progress?.message || 'Processing...'}
+						</p>
 
-							<!-- Progress bar for percentage-based progress -->
-							{#if notification.progress?.type === 'percentage' && notification.progress.percentage !== undefined}
-								<div class="mt-4 max-w-md mx-auto">
-									<div class="h-2 bg-muted rounded-full overflow-hidden">
+						<!-- Progress bar for percentage-based progress -->
+						{#if notification.progress?.type === 'percentage' && notification.progress.percentage !== undefined}
+							<div class="mt-4 max-w-md mx-auto">
+								<div class="h-2 bg-muted rounded-full overflow-hidden">
+									<div
+										role="progressbar"
+										aria-label="Progress"
+										aria-valuemin="0"
+										aria-valuemax="100"
+										aria-valuenow={progressPercentage}
+										class="h-full bg-accent transition-all duration-300 motion-reduce:transition-none"
+										style="width: {progressPercentage}%"
+									></div>
+								</div>
+								<p class="text-sm text-muted-foreground mt-2">
+									{progressPercentage}%
+								</p>
+							</div>
+						{/if}
+
+						<!-- Step-based progress -->
+						{#if notification.progress?.type === 'steps'}
+							<div class="mt-6 space-y-2 max-w-md mx-auto">
+								{#each notification.progress.steps as step (step.key ?? step)}
+									<div class="flex items-center gap-3">
 										<div
-											role="progressbar"
-											aria-label="Progress"
-											aria-valuemin="0"
-											aria-valuemax="100"
-											aria-valuenow={progressPercentage}
-											class="h-full bg-accent transition-all duration-300 motion-reduce:transition-none"
-											style="width: {progressPercentage}%"
-										></div>
-									</div>
-									<p class="text-sm text-muted-foreground mt-2">
-										{progressPercentage}%
-									</p>
-								</div>
-							{/if}
-
-							<!-- Step-based progress -->
-							{#if notification.progress?.type === 'steps'}
-								<div class="mt-6 space-y-2 max-w-md mx-auto">
-									{#each notification.progress.steps as step (step.key ?? step)}
-										<div class="flex items-center gap-3">
-											<div
-												class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center
-												{step.status === 'completed'
+											class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center
+											{step.status === 'completed'
+												? 'bg-accent/10'
+												: step.status === 'processing'
 													? 'bg-accent/10'
-													: step.status === 'processing'
-														? 'bg-accent/10'
-														: step.status === 'error'
-															? 'bg-destructive/10'
-															: 'bg-muted'}"
-											>
-												{#if step.status === 'completed'}
-													<CircleCheck
-														class="w-4 h-4 text-accent"
-														aria-hidden="true"
-													/>
-												{:else if step.status === 'processing'}
-													<LoaderCircle
-														class="w-4 h-4 text-accent animate-spin motion-reduce:animate-none"
-														aria-hidden="true"
-													/>
-												{:else if step.status === 'error'}
-													<AlertCircle
-														class="w-4 h-4 text-destructive"
-														aria-hidden="true"
-													/>
-												{:else}
-													<div
-														class="w-2 h-2 bg-muted-foreground rounded-full"
-													></div>
-												{/if}
-											</div>
-											<span
-												class="text-sm
-												{step.status === 'processing' ? 'text-foreground font-medium' : 'text-muted-foreground'}"
-											>
-												{step.name}
-											</span>
+													: step.status === 'error'
+														? 'bg-destructive/10'
+														: 'bg-muted'}"
+										>
+											{#if step.status === 'completed'}
+												<CircleCheck
+													class="w-4 h-4 text-accent"
+													aria-hidden="true"
+												/>
+											{:else if step.status === 'processing'}
+												<LoaderCircle
+													class="w-4 h-4 text-accent animate-spin motion-reduce:animate-none"
+													aria-hidden="true"
+												/>
+											{:else if step.status === 'error'}
+												<AlertCircle
+													class="w-4 h-4 text-destructive"
+													aria-hidden="true"
+												/>
+											{:else}
+												<div
+													class="w-2 h-2 bg-muted-foreground rounded-full"
+												></div>
+											{/if}
 										</div>
-									{/each}
-								</div>
-							{/if}
-						</div>
-					{:else if notification.status === 'success'}
-						<div class="text-center py-8">
-							<CircleCheck
-								class="w-16 h-16 text-accent mx-auto mb-4"
-								aria-hidden="true"
-							/>
-							<h3 class="text-lg font-semibold text-foreground mb-2">All set</h3>
-							<p class="text-muted-foreground">
-								{notification.type === 'calendar-analysis'
-									? 'Calendar analyzed successfully'
-									: notification.type === 'generic'
-										? notification.data.message
-										: 'Operation completed successfully'}
-							</p>
-						</div>
-					{:else if notification.status === 'error'}
-						<div class="text-center py-8">
-							<AlertCircle
-								class="w-16 h-16 text-destructive mx-auto mb-4"
-								aria-hidden="true"
-							/>
-							<h3 class="text-lg font-semibold text-foreground mb-2">
-								Something went wrong
-							</h3>
-							<p class="text-destructive">
-								{notification.type === 'calendar-analysis'
-									? notification.data?.error || 'Calendar analysis failed'
-									: notification.type === 'generic'
-										? notification.data?.error || 'An error occurred'
-										: 'An error occurred'}
-							</p>
-						</div>
-					{/if}
-				</div>
+										<span
+											class="text-sm
+											{step.status === 'processing' ? 'text-foreground font-medium' : 'text-muted-foreground'}"
+										>
+											{step.name}
+										</span>
+									</div>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				{:else if notification.status === 'success'}
+					<div class="text-center py-8">
+						<CircleCheck
+							class="w-16 h-16 text-accent mx-auto mb-4"
+							aria-hidden="true"
+						/>
+						<h3 class="text-lg font-semibold text-foreground mb-2">All set</h3>
+						<p class="text-muted-foreground">
+							{notification.type === 'calendar-analysis'
+								? 'Calendar analyzed successfully'
+								: notification.type === 'generic'
+									? notification.data.message
+									: 'Operation completed successfully'}
+						</p>
+					</div>
+				{:else if notification.status === 'error'}
+					<div class="text-center py-8">
+						<AlertCircle
+							class="w-16 h-16 text-destructive mx-auto mb-4"
+							aria-hidden="true"
+						/>
+						<h3 class="text-lg font-semibold text-foreground mb-2">
+							Something went wrong
+						</h3>
+						<p class="text-destructive">
+							{notification.type === 'calendar-analysis'
+								? notification.data?.error || 'Calendar analysis failed'
+								: notification.type === 'generic'
+									? notification.data?.error || 'An error occurred'
+									: 'An error occurred'}
+						</p>
+					</div>
+				{/if}
 			</div>
-		{/snippet}
+		</div>
 		{#snippet footer()}
 			{#if notification.status === 'success' || notification.status === 'error'}
 				<div

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 
 import { Calendar, Check, Circle, Key, Pencil, playHaptic, Undo2, X } from '@/components/kit';
+import { ReaderChatKey } from '@/components/chat/reader-chat-key';
 import { Markdown } from '@/components/markdown';
 import { ActionBar, BarKey } from '@/components/reader/action-bar';
 import { type DueChoice, dueChoices } from '@/components/reader/due-menu';
@@ -242,6 +243,14 @@ export function TaskReader({
 				closing={leaving === 'close'}
 				closeLabel={closeLabel}
 				edge={scrolled}
+				action={
+					task.project_id ? (
+						<ReaderChatKey
+							projectId={task.project_id}
+							focus={{ kind: 'task', id: task.id, name: title }}
+						/>
+					) : null
+				}
 			/>
 
 			{error ? (
@@ -267,7 +276,9 @@ export function TaskReader({
 					/>
 
 					<View style={styles.facts}>
-						{task.priority != null ? <FactTag label={`Priority ${task.priority}`} /> : null}
+						{task.priority != null ? (
+							<FactTag label={`Priority ${task.priority}`} />
+						) : null}
 						<FactTag
 							icon={Calendar}
 							label={due ?? 'No due date'}
@@ -275,7 +286,9 @@ export function TaskReader({
 							open={picking || menuOpen}
 							onPress={openDueMenu}
 							accessibilityLabel={due ?? 'No due date'}
-							accessibilityHint={picking ? 'Closes the calendar' : 'Changes the due date'}
+							accessibilityHint={
+								picking ? 'Closes the calendar' : 'Changes the due date'
+							}
 						/>
 						{updated ? <FactTag label={`Updated ${updated}`} /> : null}
 						{editing ? null : (
@@ -375,7 +388,9 @@ export function TaskReader({
 									{
 										color: colors.foreground,
 										backgroundColor: colors.card,
-										borderColor: editorFocused ? colors.accent : colors.borderStrong
+										borderColor: editorFocused
+											? colors.accent
+											: colors.borderStrong
 									}
 								]}
 							/>
@@ -393,7 +408,13 @@ export function TaskReader({
 				</Rise>
 			</ScrollView>
 
-			<ActionBar word="task" position={position} leaving={leaving} onPrev={onPrev} onNext={onNext}>
+			<ActionBar
+				word="task"
+				position={position}
+				leaving={leaving}
+				onPrev={onPrev}
+				onNext={onNext}
+			>
 				<BarKey
 					title={done ? 'Reopen' : 'Mark done'}
 					icon={done ? Undo2 : Check}

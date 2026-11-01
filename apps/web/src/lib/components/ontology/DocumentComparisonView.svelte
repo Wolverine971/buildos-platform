@@ -10,7 +10,6 @@
 	Inkprint design tokens. Svelte 5 runes.
 -->
 <script lang="ts">
-	import { browser } from '$app/environment';
 	import { untrack } from 'svelte';
 	import { LoaderCircle, AlertCircle, RefreshCw } from '$lib/icons/lucide';
 	import ComparisonToolbar from './ComparisonToolbar.svelte';
@@ -109,7 +108,6 @@
 			latestVersionNumber,
 			refreshKey
 		};
-		if (!browser) return;
 		untrack(() => void loadAndDiff(request));
 		return () => {
 			currentAbortController?.abort();

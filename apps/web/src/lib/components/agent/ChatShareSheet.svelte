@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/agent/ChatShareSheet.svelte -->
 <script lang="ts">
+	import ErrorBoundary from '$lib/components/ui/ErrorBoundary.svelte';
 	import { getAbortSignal } from 'svelte';
 	import {
 		AlertTriangle,
@@ -433,7 +434,9 @@
 									</ul>
 								</div>
 							{/if}
-							<SharedChatMessage {message} />
+							<ErrorBoundary area="shared-chat-message">
+								<SharedChatMessage {message} />
+							</ErrorBoundary>
 						</article>
 					{/each}
 					{#if preview.messages.length === 0}<p

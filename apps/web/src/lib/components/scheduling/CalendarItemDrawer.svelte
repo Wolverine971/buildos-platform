@@ -2,7 +2,7 @@
 <script lang="ts">
 	import { fly } from 'svelte/transition';
 	import { browser } from '$app/environment';
-	import { portal } from '$lib/actions/portal';
+	import { portal } from '$lib/attachments/portal';
 	import { slideMotion } from '$lib/components/project/v2/board-a11y';
 	import { X } from '$lib/icons/lucide';
 	import { lockBodyScroll, unlockBodyScroll } from '$lib/utils/body-scroll-lock';
@@ -132,7 +132,7 @@
 	}
 
 	$effect(() => {
-		if (!browser || !isOpen) return;
+		if (!isOpen) return;
 		lockBodyScroll();
 		elementToRestoreFocus =
 			document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -162,7 +162,7 @@
 
 {#if isOpen}
 	<!-- Above the sticky app nav (z-100), below Modals (z-9999) and toasts. -->
-	<div bind:this={portalRootElement} use:portal class="fixed inset-0 z-[1000]">
+	<div bind:this={portalRootElement} {@attach portal()} class="fixed inset-0 z-[1000]">
 		<button
 			type="button"
 			class="absolute inset-0 bg-black/30"

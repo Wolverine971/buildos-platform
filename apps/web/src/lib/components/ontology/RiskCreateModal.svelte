@@ -297,284 +297,272 @@
 		</div>
 	{/snippet}
 
-	{#snippet children()}
-		<div class="px-2 py-2 sm:px-6 sm:py-4">
-			<!-- Horizontal Slide Animation Between Views -->
-			<div class="relative overflow-hidden" style="min-height: 420px;">
-				{#key showTypeSelection}
-					<div
-						in:fly={{ x: slideDirection * 100, duration: 300, easing: cubicOut }}
-						out:fly={{ x: slideDirection * -100, duration: 300, easing: cubicOut }}
-						class="absolute inset-0 overflow-y-auto"
-					>
-						{#if showTypeSelection}
-							<!-- RISK TYPE SELECTION VIEW -->
-							<div class="space-y-3 sm:space-y-4">
-								<!-- Header -->
-								<div class="flex items-center gap-3 pb-4 border-b border-border">
-									<div class="p-2 rounded bg-muted tx tx-bloom tx-weak">
-										<AlertTriangle class="w-5 h-5 text-warning" />
-									</div>
-									<div>
-										<h3 class="text-lg font-semibold text-foreground">
-											What Type of Risk?
-										</h3>
-										<p class="text-sm text-muted-foreground">
-											Select a category to help organize and track this risk
-										</p>
-									</div>
+	<div class="px-2 py-2 sm:px-6 sm:py-4">
+		<!-- Horizontal Slide Animation Between Views -->
+		<div class="relative overflow-hidden" style="min-height: 420px;">
+			{#key showTypeSelection}
+				<div
+					in:fly={{ x: slideDirection * 100, duration: 300, easing: cubicOut }}
+					out:fly={{ x: slideDirection * -100, duration: 300, easing: cubicOut }}
+					class="absolute inset-0 overflow-y-auto"
+				>
+					{#if showTypeSelection}
+						<!-- RISK TYPE SELECTION VIEW -->
+						<div class="space-y-3 sm:space-y-4">
+							<!-- Header -->
+							<div class="flex items-center gap-3 pb-4 border-b border-border">
+								<div class="p-2 rounded bg-muted tx tx-bloom tx-weak">
+									<AlertTriangle class="w-5 h-5 text-warning" />
 								</div>
-
-								<div class="space-y-4 sm:space-y-6">
-									{#each Object.entries(typesByCategory) as [category, types]}
-										<div>
-											<h3
-												class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2"
-											>
-												<span class="w-1.5 h-1.5 bg-warning rounded-full"
-												></span>
-												{category}
-											</h3>
-											<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-												{#each types as type}
-													{@const TypeIcon = type.icon}
-													<button
-														type="button"
-														onclick={() => selectType(type)}
-														class="bg-card border border-border p-2.5 sm:p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200 pressable tx tx-frame tx-weak"
-													>
-														<div
-															class="flex items-start justify-between mb-2"
-														>
-															<div class="flex items-center gap-2">
-																<TypeIcon
-																	class="w-4 h-4 text-accent"
-																/>
-																<h4
-																	class="font-semibold text-foreground group-hover:text-accent transition-colors"
-																>
-																	{type.name}
-																</h4>
-															</div>
-															<ChevronRight
-																class="w-5 h-5 text-muted-foreground group-hover:text-accent flex-shrink-0 transition-transform group-hover:translate-x-0.5"
-															/>
-														</div>
-														<p
-															class="text-sm text-muted-foreground line-clamp-2"
-														>
-															{type.description}
-														</p>
-													</button>
-												{/each}
-											</div>
-										</div>
-									{/each}
-
-									<!-- Quick Add Option -->
-									<div class="pt-4 border-t border-border">
-										<button
-											type="button"
-											onclick={skipTypeSelection}
-											class="w-full bg-muted border border-dashed border-border p-2.5 sm:p-4 rounded-lg text-left hover:bg-muted hover:border-warning/50 transition-all duration-200"
-										>
-											<div class="flex items-center justify-between">
-												<div class="flex items-center gap-3">
-													<AlertTriangle
-														class="w-5 h-5 text-muted-foreground"
-													/>
-													<div>
-														<h4 class="font-medium text-foreground">
-															General Risk
-														</h4>
-														<p class="text-sm text-muted-foreground">
-															Skip categorization and create a general
-															risk
-														</p>
-													</div>
-												</div>
-												<ChevronRight
-													class="w-5 h-5 text-muted-foreground"
-												/>
-											</div>
-										</button>
-									</div>
+								<div>
+									<h3 class="text-lg font-semibold text-foreground">
+										What Type of Risk?
+									</h3>
+									<p class="text-sm text-muted-foreground">
+										Select a category to help organize and track this risk
+									</p>
 								</div>
 							</div>
-						{:else}
-							<!-- RISK DETAILS FORM -->
-							<form class="space-y-3 sm:space-y-4" onsubmit={handleSubmit}>
-								<!-- Selected Type Badge -->
-								{#if selectedType}
-									{@const SelectedTypeIcon = selectedType.icon}
-									<div
-										class="rounded-lg border border-border bg-muted p-2.5 sm:p-4 tx tx-grain tx-weak"
-									>
-										<div class="flex items-center justify-between gap-3">
-											<div class="flex items-center gap-3 flex-1 min-w-0">
-												<div class="p-2 rounded bg-card shadow-ink">
-													<SelectedTypeIcon
-														class="w-4 h-4 text-warning"
-													/>
-												</div>
-												<div class="flex-1 min-w-0">
-													<h4
-														class="text-sm font-semibold text-foreground"
+
+							<div class="space-y-4 sm:space-y-6">
+								{#each Object.entries(typesByCategory) as [category, types] (category)}
+									<div>
+										<h3
+											class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2"
+										>
+											<span class="w-1.5 h-1.5 bg-warning rounded-full"
+											></span>
+											{category}
+										</h3>
+										<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+											{#each types as type (type.type_key)}
+												{@const TypeIcon = type.icon}
+												<button
+													type="button"
+													onclick={() => selectType(type)}
+													class="bg-card border border-border p-2.5 sm:p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200 pressable tx tx-frame tx-weak"
+												>
+													<div
+														class="flex items-start justify-between mb-2"
 													>
-														{selectedType.name}
-													</h4>
+														<div class="flex items-center gap-2">
+															<TypeIcon class="w-4 h-4 text-accent" />
+															<h4
+																class="font-semibold text-foreground group-hover:text-accent transition-colors"
+															>
+																{type.name}
+															</h4>
+														</div>
+														<ChevronRight
+															class="w-5 h-5 text-muted-foreground group-hover:text-accent flex-shrink-0 transition-transform group-hover:translate-x-0.5"
+														/>
+													</div>
 													<p
-														class="text-xs text-muted-foreground truncate"
+														class="text-sm text-muted-foreground line-clamp-2"
 													>
-														{selectedType.description}
+														{type.description}
+													</p>
+												</button>
+											{/each}
+										</div>
+									</div>
+								{/each}
+
+								<!-- Quick Add Option -->
+								<div class="pt-4 border-t border-border">
+									<button
+										type="button"
+										onclick={skipTypeSelection}
+										class="w-full bg-muted border border-dashed border-border p-2.5 sm:p-4 rounded-lg text-left hover:bg-muted hover:border-warning/50 transition-all duration-200"
+									>
+										<div class="flex items-center justify-between">
+											<div class="flex items-center gap-3">
+												<AlertTriangle
+													class="w-5 h-5 text-muted-foreground"
+												/>
+												<div>
+													<h4 class="font-medium text-foreground">
+														General Risk
+													</h4>
+													<p class="text-sm text-muted-foreground">
+														Skip categorization and create a general
+														risk
 													</p>
 												</div>
 											</div>
-											<Button
-												type="button"
-												variant="ghost"
-												size="sm"
-												onclick={handleBack}
-												class="shrink-0"
-											>
-												Change
-											</Button>
+											<ChevronRight class="w-5 h-5 text-muted-foreground" />
 										</div>
-									</div>
-								{/if}
-
-								<!-- Risk Title -->
-								<FormField
-									label="Risk Title"
-									labelFor="title"
-									required={true}
-									error={!title.trim() && error ? 'Risk title is required' : ''}
-								>
-									<TextInput
-										id="title"
-										bind:value={title}
-										placeholder="What could go wrong?"
-										inputmode="text"
-										enterkeyhint="next"
-										required={true}
-										disabled={isSaving}
-										error={!title.trim() && error ? true : false}
-										size="md"
-									/>
-								</FormField>
-
-								<!-- Description -->
-								<FormField
-									label="Risk Details"
-									labelFor="content"
-									hint="Explain the risk in detail"
-								>
-									<Textarea
-										id="content"
-										bind:value={content}
-										placeholder="Describe what could happen and why..."
-										enterkeyhint="next"
-										rows={3}
-										disabled={isSaving}
-										size="md"
-									/>
-								</FormField>
-
-								<!-- Impact & Probability Grid -->
-								<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-									<FormField label="Impact" labelFor="impact" required={true}>
-										<Select
-											id="impact"
-											bind:value={impact}
-											disabled={isSaving}
-											size="md"
-											placeholder="Select impact level"
-										>
-											{#each IMPACT_OPTIONS as opt}
-												<option value={opt.value}
-													>{opt.label} - {opt.description}</option
-												>
-											{/each}
-										</Select>
-									</FormField>
-
-									<FormField
-										label="Probability"
-										labelFor="probability"
-										hint="How likely is this to occur?"
-									>
-										<Select
-											id="probability"
-											bind:value={probability}
-											disabled={isSaving}
-											size="md"
-											placeholder="Select likelihood"
-										>
-											{#each PROBABILITY_OPTIONS as opt}
-												<option value={opt.value}>{opt.label}</option>
-											{/each}
-										</Select>
-									</FormField>
+									</button>
 								</div>
-
-								<!-- Mitigation Strategy -->
-								<FormField
-									label="Mitigation Strategy"
-									labelFor="mitigation_strategy"
-									hint="How will you prevent or reduce this risk?"
+							</div>
+						</div>
+					{:else}
+						<!-- RISK DETAILS FORM -->
+						<form class="space-y-3 sm:space-y-4" onsubmit={handleSubmit}>
+							<!-- Selected Type Badge -->
+							{#if selectedType}
+								{@const SelectedTypeIcon = selectedType.icon}
+								<div
+									class="rounded-lg border border-border bg-muted p-2.5 sm:p-4 tx tx-grain tx-weak"
 								>
-									<Textarea
-										id="mitigation_strategy"
-										bind:value={mitigationStrategy}
-										placeholder="Steps to mitigate or prevent this risk..."
-										enterkeyhint="next"
-										rows={3}
-										disabled={isSaving}
-										size="md"
-									/>
-								</FormField>
+									<div class="flex items-center justify-between gap-3">
+										<div class="flex items-center gap-3 flex-1 min-w-0">
+											<div class="p-2 rounded bg-card shadow-ink">
+												<SelectedTypeIcon class="w-4 h-4 text-warning" />
+											</div>
+											<div class="flex-1 min-w-0">
+												<h4 class="text-sm font-semibold text-foreground">
+													{selectedType.name}
+												</h4>
+												<p class="text-xs text-muted-foreground truncate">
+													{selectedType.description}
+												</p>
+											</div>
+										</div>
+										<Button
+											type="button"
+											variant="ghost"
+											size="sm"
+											onclick={handleBack}
+											class="shrink-0"
+										>
+											Change
+										</Button>
+									</div>
+								</div>
+							{/if}
 
-								<!-- Initial State -->
-								<FormField label="Initial State" labelFor="state" required={true}>
+							<!-- Risk Title -->
+							<FormField
+								label="Risk Title"
+								labelFor="title"
+								required={true}
+								error={!title.trim() && error ? 'Risk title is required' : ''}
+							>
+								<TextInput
+									id="title"
+									bind:value={title}
+									placeholder="What could go wrong?"
+									inputmode="text"
+									enterkeyhint="next"
+									required={true}
+									disabled={isSaving}
+									error={!title.trim() && error ? true : false}
+									size="md"
+								/>
+							</FormField>
+
+							<!-- Description -->
+							<FormField
+								label="Risk Details"
+								labelFor="content"
+								hint="Explain the risk in detail"
+							>
+								<Textarea
+									id="content"
+									bind:value={content}
+									placeholder="Describe what could happen and why..."
+									enterkeyhint="next"
+									rows={3}
+									disabled={isSaving}
+									size="md"
+								/>
+							</FormField>
+
+							<!-- Impact & Probability Grid -->
+							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+								<FormField label="Impact" labelFor="impact" required={true}>
 									<Select
-										id="state"
-										bind:value={stateKey}
+										id="impact"
+										bind:value={impact}
 										disabled={isSaving}
 										size="md"
-										placeholder="Select state"
+										placeholder="Select impact level"
 									>
-										{#each RISK_STATES as state}
-											<option value={state}>
-												{state === 'identified'
-													? 'Identified'
-													: state === 'mitigated'
-														? 'Mitigated'
-														: state === 'occurred'
-															? 'Occurred'
-															: state === 'closed'
-																? 'Closed'
-																: state}
-											</option>
+										{#each IMPACT_OPTIONS as opt (opt.value)}
+											<option value={opt.value}
+												>{opt.label} - {opt.description}</option
+											>
 										{/each}
 									</Select>
 								</FormField>
 
-								{#if error}
-									<div
-										class="p-4 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
+								<FormField
+									label="Probability"
+									labelFor="probability"
+									hint="How likely is this to occur?"
+								>
+									<Select
+										id="probability"
+										bind:value={probability}
+										disabled={isSaving}
+										size="md"
+										placeholder="Select likelihood"
 									>
-										<p class="text-sm text-destructive">
-											{error}
-										</p>
-									</div>
-								{/if}
-							</form>
-						{/if}
-					</div>
-				{/key}
-			</div>
+										{#each PROBABILITY_OPTIONS as opt (opt.value)}
+											<option value={opt.value}>{opt.label}</option>
+										{/each}
+									</Select>
+								</FormField>
+							</div>
+
+							<!-- Mitigation Strategy -->
+							<FormField
+								label="Mitigation Strategy"
+								labelFor="mitigation_strategy"
+								hint="How will you prevent or reduce this risk?"
+							>
+								<Textarea
+									id="mitigation_strategy"
+									bind:value={mitigationStrategy}
+									placeholder="Steps to mitigate or prevent this risk..."
+									enterkeyhint="next"
+									rows={3}
+									disabled={isSaving}
+									size="md"
+								/>
+							</FormField>
+
+							<!-- Initial State -->
+							<FormField label="Initial State" labelFor="state" required={true}>
+								<Select
+									id="state"
+									bind:value={stateKey}
+									disabled={isSaving}
+									size="md"
+									placeholder="Select state"
+								>
+									{#each RISK_STATES as state (state)}
+										<option value={state}>
+											{state === 'identified'
+												? 'Identified'
+												: state === 'mitigated'
+													? 'Mitigated'
+													: state === 'occurred'
+														? 'Occurred'
+														: state === 'closed'
+															? 'Closed'
+															: state}
+										</option>
+									{/each}
+								</Select>
+							</FormField>
+
+							{#if error}
+								<div
+									class="p-4 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
+								>
+									<p class="text-sm text-destructive">
+										{error}
+									</p>
+								</div>
+							{/if}
+						</form>
+					{/if}
+				</div>
+			{/key}
 		</div>
-	{/snippet}
+	</div>
 
 	<!-- Footer Actions -->
 	{#snippet footer()}

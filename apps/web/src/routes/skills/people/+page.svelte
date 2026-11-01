@@ -168,7 +168,7 @@
 			</div>
 
 			<div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-				{#each data.experts as item}
+				{#each data.experts as item (item.expert.slug)}
 					<div class="flex min-w-0 flex-col">
 						<SkillExpertCard expert={item.expert} />
 						<p class="px-1 pt-2 text-xs text-muted-foreground">

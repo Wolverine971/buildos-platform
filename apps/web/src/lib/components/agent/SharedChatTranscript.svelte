@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/agent/SharedChatTranscript.svelte -->
 <script lang="ts">
+	import ErrorBoundary from '$lib/components/ui/ErrorBoundary.svelte';
 	import type { SharedChatSnapshotV1 } from '$lib/types/chat-share';
 	import SharedChatMessage from './SharedChatMessage.svelte';
 	let { snapshot }: { snapshot: SharedChatSnapshotV1 } = $props();
@@ -15,7 +16,9 @@
 			<p class="mb-3 micro-label text-muted-foreground">
 				{message.role === 'user' ? 'Author' : 'BuildOS'}
 			</p>
-			<SharedChatMessage {message} />
+			<ErrorBoundary area="shared-chat-message">
+				<SharedChatMessage {message} />
+			</ErrorBoundary>
 		</li>
 	{/each}
 </ol>

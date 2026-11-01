@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/agent/AgentMessageList.svelte -->
 <!-- INKPRINT Design System: Message list with semantic textures -->
 <script lang="ts">
+	import ErrorBoundary from '$lib/components/ui/ErrorBoundary.svelte';
 	import { onDestroy, untrack } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import { prefersReducedMotion } from 'svelte/motion';
@@ -846,7 +847,7 @@
 						</p>
 						<!-- Suggestion buttons: prefill the composer on click -->
 						<ul class="space-y-1.5">
-							{#each emptyStateSuggestions as suggestion}
+							{#each emptyStateSuggestions as suggestion (suggestion)}
 								<li>
 									<button
 										type="button"
@@ -869,336 +870,340 @@
 			{/if}
 		{:else}
 			{#each messages as message (rowKey(message))}
-				{#if message.type === 'user'}
-					{@const key = rowKey(message)}
-					<!-- INKPRINT user message with accent border -->
-					<!-- Flex column: message bubble + voice panel (when expanded, takes full width) -->
-					<!-- data-live-turn-start: this row through the end skip content-visibility. -->
-					<div
-						class="flex flex-col items-end gap-1.5"
-						data-row-key={key}
-						data-live-turn-start={key === lastUserKey ? '' : undefined}
-					>
-						<!-- Message bubble -->
+				<ErrorBoundary area="chat-message" context={{ messageType: message.type }}>
+					{#if message.type === 'user'}
+						{@const key = rowKey(message)}
+						<!-- INKPRINT user message with accent border -->
+						<!-- Flex column: message bubble + voice panel (when expanded, takes full width) -->
+						<!-- data-live-turn-start: this row through the end skip content-visibility. -->
 						<div
-							data-testid="agent-chat-user-message"
-							class="max-w-[88%] min-w-0 overflow-hidden rounded-lg border border-accent/30 bg-accent/5 p-3 text-sm font-medium text-foreground shadow-ink sm:max-w-[85%] sm:p-4"
-							class:bubble-send={playsEntrance(message)}
+							class="flex flex-col items-end gap-1.5"
+							data-row-key={key}
+							data-live-turn-start={key === lastUserKey ? '' : undefined}
 						>
-							{#if message.attachments?.length}
-								<div class="mb-2 grid max-w-full gap-2 sm:grid-cols-2">
-									{#each message.attachments as attachment, index (attachment.asset_id ?? index)}
-										{@const previewUrl = attachmentPreviewUrl(attachment)}
-										<div
-											class="flex min-w-0 gap-2 rounded-lg border border-accent/20 bg-background/70 p-2"
-										>
-											{#if previewUrl}
-												<img
-													src={previewUrl}
-													alt={attachment.file_name ?? 'Attached image'}
-													class="h-14 w-14 shrink-0 rounded-md border border-border object-cover bg-muted"
-													loading="lazy"
-													decoding="async"
-												/>
-											{:else}
-												<div
-													class="flex h-14 w-14 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-2xs font-bold uppercase text-muted-foreground"
-												>
-													IMG
+							<!-- Message bubble -->
+							<div
+								data-testid="agent-chat-user-message"
+								class="max-w-[88%] min-w-0 overflow-hidden rounded-lg border border-accent/30 bg-accent/5 p-3 text-sm font-medium text-foreground shadow-ink sm:max-w-[85%] sm:p-4"
+								class:bubble-send={playsEntrance(message)}
+							>
+								{#if message.attachments?.length}
+									<div class="mb-2 grid max-w-full gap-2 sm:grid-cols-2">
+										{#each message.attachments as attachment, index (attachment.asset_id ?? index)}
+											{@const previewUrl = attachmentPreviewUrl(attachment)}
+											<div
+												class="flex min-w-0 gap-2 rounded-lg border border-accent/20 bg-background/70 p-2"
+											>
+												{#if previewUrl}
+													<img
+														src={previewUrl}
+														alt={attachment.file_name ??
+															'Attached image'}
+														class="h-14 w-14 shrink-0 rounded-md border border-border object-cover bg-muted"
+														loading="lazy"
+														decoding="async"
+													/>
+												{:else}
+													<div
+														class="flex h-14 w-14 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-2xs font-bold uppercase text-muted-foreground"
+													>
+														IMG
+													</div>
+												{/if}
+												<div class="min-w-0 flex-1">
+													<p class="truncate text-xs font-semibold">
+														{attachment.file_name ?? 'Attached image'}
+													</p>
+													<p
+														class="mt-1 truncate text-2xs text-muted-foreground"
+													>
+														{attachment.attachment_kind ===
+														'temporary_file'
+															? 'Ready for visual analysis'
+															: attachment.ocr_status === 'complete'
+																? 'OCR ready'
+																: attachment.ocr_status
+																	? `OCR ${attachment.ocr_status}`
+																	: 'OCR queued'}
+													</p>
 												</div>
-											{/if}
-											<div class="min-w-0 flex-1">
-												<p class="truncate text-xs font-semibold">
-													{attachment.file_name ?? 'Attached image'}
-												</p>
-												<p
-													class="mt-1 truncate text-2xs text-muted-foreground"
-												>
-													{attachment.attachment_kind === 'temporary_file'
-														? 'Ready for visual analysis'
-														: attachment.ocr_status === 'complete'
-															? 'OCR ready'
-															: attachment.ocr_status
-																? `OCR ${attachment.ocr_status}`
-																: 'OCR queued'}
-												</p>
 											</div>
-										</div>
-									{/each}
-								</div>
-							{/if}
-							{#if hasVisibleUserText(message)}
-								<div
-									class="whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed"
-									class:user-message-content-collapsed={isCollapsibleUserMessage(
-										message
-									) && !isUserMessageExpanded(key)}
-								>
-									{message.content}
-								</div>
-							{/if}
-							<div class="message-footer mt-1">
-								{#if isCollapsibleUserMessage(message)}
-									<button
-										type="button"
-										class="message-expand-button"
-										onclick={() => toggleUserMessageExpansion(key)}
-										aria-expanded={isUserMessageExpanded(key)}
-									>
-										{isUserMessageExpanded(key) ? 'Less' : 'More'}
-									</button>
-								{:else}
-									<span aria-hidden="true"></span>
+										{/each}
+									</div>
 								{/if}
-								<div class="message-meta">
-									<span class="message-timestamp text-accent/60">
-										{formatTime(message.timestamp)}
-									</span>
-									{#if message.metadata?.voice_note_group_id}
-										{@const groupId = message.metadata
-											.voice_note_group_id as string}
-										<VoiceNoteGroupPanel
-											{groupId}
-											voiceNotes={voiceNotesByGroupId[groupId] ?? []}
-											onDeleteNote={onDeleteVoiceNote}
-											inline
-										/>
+								{#if hasVisibleUserText(message)}
+									<div
+										class="whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed"
+										class:user-message-content-collapsed={isCollapsibleUserMessage(
+											message
+										) && !isUserMessageExpanded(key)}
+									>
+										{message.content}
+									</div>
+								{/if}
+								<div class="message-footer mt-1">
+									{#if isCollapsibleUserMessage(message)}
+										<button
+											type="button"
+											class="message-expand-button"
+											onclick={() => toggleUserMessageExpansion(key)}
+											aria-expanded={isUserMessageExpanded(key)}
+										>
+											{isUserMessageExpanded(key) ? 'Less' : 'More'}
+										</button>
+									{:else}
+										<span aria-hidden="true"></span>
 									{/if}
+									<div class="message-meta">
+										<span class="message-timestamp text-accent/60">
+											{formatTime(message.timestamp)}
+										</span>
+										{#if message.metadata?.voice_note_group_id}
+											{@const groupId = message.metadata
+												.voice_note_group_id as string}
+											<VoiceNoteGroupPanel
+												{groupId}
+												voiceNotes={voiceNotesByGroupId[groupId] ?? []}
+												onDeleteNote={onDeleteVoiceNote}
+												inline
+											/>
+										{/if}
+									</div>
 								</div>
 							</div>
 						</div>
-					</div>
-				{:else if message.type === 'assistant'}
-					{@const body = assistantBody(message, message.id === streamingMessageId)}
-					{@const editCards = sharedEditCards.get(message.id)}
-					{@const proposals = proposalCards.get(message.id)}
-					<!-- INKPRINT assistant message with Frame texture -->
-					<div
-						data-testid="agent-chat-assistant-message"
-						class="agent-resp-div clarity-zone min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-frame tx-weak sm:p-4"
-					>
-						<!-- BuildOS assistant avatar -->
+					{:else if message.type === 'assistant'}
+						{@const body = assistantBody(message, message.id === streamingMessageId)}
+						{@const editCards = sharedEditCards.get(message.id)}
+						{@const proposals = proposalCards.get(message.id)}
+						<!-- INKPRINT assistant message with Frame texture -->
 						<div
-							class="float-left mt-0.5 mr-3 mb-1 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-card shadow-ink sm:h-9 sm:w-9"
+							data-testid="agent-chat-assistant-message"
+							class="agent-resp-div clarity-zone min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-frame tx-weak sm:p-4"
 						>
-							<img
-								src="/brain-bolt.webp"
-								alt="BuildOS"
-								class="h-full w-full object-cover"
-								loading="lazy"
-							/>
-						</div>
-						<!-- One branch for streaming and finalized text: blocks are keyed by
+							<!-- BuildOS assistant avatar -->
+							<div
+								class="float-left mt-0.5 mr-3 mb-1 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-card shadow-ink sm:h-9 sm:w-9"
+							>
+								<img
+									src="/brain-bolt.webp"
+									alt="BuildOS"
+									class="h-full w-full object-cover"
+									loading="lazy"
+								/>
+							</div>
+							<!-- One branch for streaming and finalized text: blocks are keyed by
 					     position, so a finished turn only re-renders a changed tail. -->
-						{#if body.blocks}
-							<div
-								class="agent-markdown {proseClasses} min-w-0 break-words"
-								class:agent-live-preview={hasLivePreview(message)}
-							>
-								{#each body.blocks as blockHtml, blockIndex (blockIndex)}
-									{@html blockHtml}
-								{/each}
-							</div>
-						{:else}
-							<div
-								class="min-w-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed"
-								class:agent-live-preview={hasLivePreview(message)}
-							>
-								{body.text}
-							</div>
-						{/if}
-						{#if message.metadata?.interrupted}
-							<div
-								class="clear-both mt-1 micro-label font-semibold text-warning"
-								role="status"
-								aria-live="polite"
-							>
-								Response interrupted
-							</div>
-						{:else if message.metadata?.stopped}
-							<div
-								class="clear-both mt-1 micro-label font-semibold text-muted-foreground"
-								role="status"
-								aria-live="polite"
-							>
-								Stopped
-							</div>
-						{/if}
-						<span
-							class="clear-both mt-1 block text-right text-2xs leading-none tabular-nums text-muted-foreground/70"
-						>
-							{formatTime(message.timestamp)}
-						</span>
-					</div>
-					{#if editCards}
-						{@render sharedEditCardGroup(editCards)}
-					{/if}
-					{#if proposals}
-						{@render proposalCardGroup(proposals)}
-					{/if}
-				{:else if message.type === 'agent_peer'}
-					<!-- INKPRINT agent peer: neutral palette + round avatar (amber reserved for warnings) -->
-					<div class="flex min-w-0 gap-2 sm:gap-3">
-						<div
-							class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-muted micro-label font-semibold text-muted-foreground shadow-ink tx tx-thread tx-weak sm:h-9 sm:w-9"
-						>
-							AI↔
-						</div>
-						<div
-							class="max-w-[88%] min-w-0 overflow-hidden rounded-lg border border-border bg-muted/40 p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-thread tx-weak sm:max-w-[85%] sm:p-4"
-						>
-							{#if shouldRenderAsMarkdown(message.content)}
+							{#if body.blocks}
 								<div
-									class="agent-markdown {proseClasses} overflow-x-auto break-words"
+									class="agent-markdown {proseClasses} min-w-0 break-words"
+									class:agent-live-preview={hasLivePreview(message)}
 								>
-									{@html renderAgentMarkdown(message.content)}
+									{#each body.blocks as blockHtml, blockIndex (blockIndex)}
+										{@html blockHtml}
+									{/each}
 								</div>
 							{:else}
 								<div
-									class="whitespace-pre-wrap break-words [overflow-wrap:anywhere]"
+									class="min-w-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed"
+									class:agent-live-preview={hasLivePreview(message)}
 								>
-									{message.content}
+									{body.text}
+								</div>
+							{/if}
+							{#if message.metadata?.interrupted}
+								<div
+									class="clear-both mt-1 micro-label font-semibold text-warning"
+									role="status"
+									aria-live="polite"
+								>
+									Response interrupted
+								</div>
+							{:else if message.metadata?.stopped}
+								<div
+									class="clear-both mt-1 micro-label font-semibold text-muted-foreground"
+									role="status"
+									aria-live="polite"
+								>
+									Stopped
 								</div>
 							{/if}
 							<span
-								class="mt-1 block text-right text-2xs leading-none tabular-nums text-muted-foreground/70"
+								class="clear-both mt-1 block text-right text-2xs leading-none tabular-nums text-muted-foreground/70"
 							>
 								{formatTime(message.timestamp)}
 							</span>
 						</div>
-					</div>
-				{:else if message.type === 'thinking_block'}
-					{@const editCards = sharedEditCards.get(message.id)}
-					{@const proposals = proposalCards.get(message.id)}
-					<ThinkingBlock
-						block={message as ThinkingBlockMessage}
-						onToggleCollapse={onToggleThinkingBlock}
-						{onClientActionComplete}
-					/>
-					{#if editCards}
-						{@render sharedEditCardGroup(editCards)}
-					{/if}
-					{#if proposals}
-						{@render proposalCardGroup(proposals)}
-					{/if}
-				{:else if message.type === 'clarification'}
-					<!-- INKPRINT clarification: accent palette ("your turn" kin to user bubble) -->
-					<div class="flex min-w-0 gap-2 sm:gap-3">
-						<div
-							class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 micro-label font-semibold text-accent shadow-ink tx tx-bloom tx-weak sm:h-9 sm:w-9"
-						>
-							AI
+						{#if editCards}
+							{@render sharedEditCardGroup(editCards)}
+						{/if}
+						{#if proposals}
+							{@render proposalCardGroup(proposals)}
+						{/if}
+					{:else if message.type === 'agent_peer'}
+						<!-- INKPRINT agent peer: neutral palette + round avatar (amber reserved for warnings) -->
+						<div class="flex min-w-0 gap-2 sm:gap-3">
+							<div
+								class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-muted micro-label font-semibold text-muted-foreground shadow-ink tx tx-thread tx-weak sm:h-9 sm:w-9"
+							>
+								AI↔
+							</div>
+							<div
+								class="max-w-[88%] min-w-0 overflow-hidden rounded-lg border border-border bg-muted/40 p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-thread tx-weak sm:max-w-[85%] sm:p-4"
+							>
+								{#if shouldRenderAsMarkdown(message.content)}
+									<div
+										class="agent-markdown {proseClasses} overflow-x-auto break-words"
+									>
+										{@html renderAgentMarkdown(message.content)}
+									</div>
+								{:else}
+									<div
+										class="whitespace-pre-wrap break-words [overflow-wrap:anywhere]"
+									>
+										{message.content}
+									</div>
+								{/if}
+								<span
+									class="mt-1 block text-right text-2xs leading-none tabular-nums text-muted-foreground/70"
+								>
+									{formatTime(message.timestamp)}
+								</span>
+							</div>
 						</div>
-						<div
-							class="max-w-[90%] min-w-0 overflow-hidden rounded-lg border border-accent/20 bg-accent/5 p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-bloom tx-weak sm:max-w-[88%] sm:p-4"
-						>
-							<!-- INKPRINT micro-label heading -->
-							<p class="micro-label font-semibold text-foreground">
-								{message.content}
-							</p>
+					{:else if message.type === 'thinking_block'}
+						{@const editCards = sharedEditCards.get(message.id)}
+						{@const proposals = proposalCards.get(message.id)}
+						<ThinkingBlock
+							block={message as ThinkingBlockMessage}
+							onToggleCollapse={onToggleThinkingBlock}
+							{onClientActionComplete}
+						/>
+						{#if editCards}
+							{@render sharedEditCardGroup(editCards)}
+						{/if}
+						{#if proposals}
+							{@render proposalCardGroup(proposals)}
+						{/if}
+					{:else if message.type === 'clarification'}
+						<!-- INKPRINT clarification: accent palette ("your turn" kin to user bubble) -->
+						<div class="flex min-w-0 gap-2 sm:gap-3">
+							<div
+								class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 micro-label font-semibold text-accent shadow-ink tx tx-bloom tx-weak sm:h-9 sm:w-9"
+							>
+								AI
+							</div>
+							<div
+								class="max-w-[90%] min-w-0 overflow-hidden rounded-lg border border-accent/20 bg-accent/5 p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-bloom tx-weak sm:max-w-[88%] sm:p-4"
+							>
+								<!-- INKPRINT micro-label heading -->
+								<p class="micro-label font-semibold text-foreground">
+									{message.content}
+								</p>
 
-							{#if message.data?.questions?.length}
-								<!-- INKPRINT questions list -->
-								<ol class="mt-3 space-y-2 text-sm text-foreground">
-									{#each message.data.questions as question, i}
-										<li
-											class="flex gap-2 font-medium leading-relaxed sm:gap-2.5"
-										>
-											<!-- INKPRINT number badge -->
-											<span
-												class="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-foreground text-2xs font-bold text-background shadow-ink"
+								{#if message.data?.questions?.length}
+									<!-- INKPRINT questions list -->
+									<ol class="mt-3 space-y-2 text-sm text-foreground">
+										{#each message.data.questions as question, i}
+											<li
+												class="flex gap-2 font-medium leading-relaxed sm:gap-2.5"
 											>
-												{i + 1}
-											</span>
-											<span class="min-w-0 flex-1">{question}</span>
-										</li>
-									{/each}
-								</ol>
-							{/if}
+												<!-- INKPRINT number badge -->
+												<span
+													class="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-foreground text-2xs font-bold text-background shadow-ink"
+												>
+													{i + 1}
+												</span>
+												<span class="min-w-0 flex-1">{question}</span>
+											</li>
+										{/each}
+									</ol>
+								{/if}
 
-							<!-- INKPRINT hint -->
-							<p class="mt-3 micro-label font-semibold text-muted-foreground">
-								Share the answers in your next message to continue
-							</p>
-							<span
-								class="mt-1 block text-right text-2xs leading-none tabular-nums text-accent/60"
+								<!-- INKPRINT hint -->
+								<p class="mt-3 micro-label font-semibold text-muted-foreground">
+									Share the answers in your next message to continue
+								</p>
+								<span
+									class="mt-1 block text-right text-2xs leading-none tabular-nums text-accent/60"
+								>
+									{formatTime(message.timestamp)}
+								</span>
+							</div>
+						</div>
+					{:else if message.type === 'created_entities'}
+						{#if message.data?.entities?.length}
+							<CreatedEntityCards
+								entities={message.data.entities}
+								animateEntrance={playsEntrance(message)}
+							/>
+						{/if}
+					{:else if message.type === 'document_changes'}
+						{#if message.data?.changes?.length}
+							<DocumentChangeCards
+								changes={message.data.changes}
+								animateEntrance={playsEntrance(message)}
+								onUndone={(card, document) =>
+									onDocumentChangeUndone?.(message.id, card, document)}
+							/>
+						{/if}
+					{:else if message.type === 'table_changes'}
+						{#if message.data?.changes?.length}
+							<TableChangeCards
+								changes={message.data.changes}
+								animateEntrance={playsEntrance(message)}
+								onUndone={(card, complete) =>
+									onTableChangeUndone?.(message.id, card, complete)}
+							/>
+						{/if}
+					{:else if message.type === 'freshness_card'}
+						{#if message.data?.card}
+							<FreshnessRadarCard
+								card={message.data.card}
+								{onDraftInChat}
+								onReviewDeeper={message.data.card.projectId === reviewProjectId
+									? onReviewDeeper
+									: undefined}
+								{reviewDisabled}
+							/>
+						{/if}
+					{:else if message.type === 'capture_receipt'}
+						{#if message.data?.receipt}
+							<CaptureReceiptChip receipt={message.data.receipt} />
+						{/if}
+					{:else if message.type === 'activity'}
+						{#if dev}
+							<div
+								class="rounded-lg border border-warning/30 bg-warning/10 px-2.5 py-1.5 micro-label font-semibold text-warning tx tx-static tx-weak"
 							>
+								⚠️ Dev Warning: Legacy activity message
+							</div>
+						{/if}
+						<!-- Legacy activity with INKPRINT styling -->
+						<div class="flex gap-1.5 text-2xs text-muted-foreground">
+							<div class="w-12 shrink-0 pt-1 font-mono uppercase tracking-[0.1em]">
 								{formatTime(message.timestamp)}
-							</span>
+							</div>
+							<div
+								class="max-w-[65%] rounded-lg border border-border bg-muted px-2.5 py-1.5 text-sm font-medium italic leading-tight text-muted-foreground shadow-ink"
+							>
+								<p class="leading-snug">{message.content}</p>
+							</div>
 						</div>
-					</div>
-				{:else if message.type === 'created_entities'}
-					{#if message.data?.entities?.length}
-						<CreatedEntityCards
-							entities={message.data.entities}
-							animateEntrance={playsEntrance(message)}
-						/>
-					{/if}
-				{:else if message.type === 'document_changes'}
-					{#if message.data?.changes?.length}
-						<DocumentChangeCards
-							changes={message.data.changes}
-							animateEntrance={playsEntrance(message)}
-							onUndone={(card, document) =>
-								onDocumentChangeUndone?.(message.id, card, document)}
-						/>
-					{/if}
-				{:else if message.type === 'table_changes'}
-					{#if message.data?.changes?.length}
-						<TableChangeCards
-							changes={message.data.changes}
-							animateEntrance={playsEntrance(message)}
-							onUndone={(card, complete) =>
-								onTableChangeUndone?.(message.id, card, complete)}
-						/>
-					{/if}
-				{:else if message.type === 'freshness_card'}
-					{#if message.data?.card}
-						<FreshnessRadarCard
-							card={message.data.card}
-							{onDraftInChat}
-							onReviewDeeper={message.data.card.projectId === reviewProjectId
-								? onReviewDeeper
-								: undefined}
-							{reviewDisabled}
-						/>
-					{/if}
-				{:else if message.type === 'capture_receipt'}
-					{#if message.data?.receipt}
-						<CaptureReceiptChip receipt={message.data.receipt} />
-					{/if}
-				{:else if message.type === 'activity'}
-					{#if dev}
-						<div
-							class="rounded-lg border border-warning/30 bg-warning/10 px-2.5 py-1.5 micro-label font-semibold text-warning tx tx-static tx-weak"
-						>
-							⚠️ Dev Warning: Legacy activity message
+					{:else}
+						<!-- Default message with INKPRINT styling -->
+						<div class="flex gap-1.5 text-2xs text-muted-foreground">
+							<div class="w-12 shrink-0 pt-1 font-mono uppercase tracking-[0.1em]">
+								{formatTime(message.timestamp)}
+							</div>
+							<div
+								class="max-w-[65%] rounded-lg border border-border bg-muted px-2.5 py-1.5 text-sm font-medium italic leading-tight text-muted-foreground shadow-ink"
+							>
+								<p class="leading-snug">{message.content}</p>
+							</div>
 						</div>
 					{/if}
-					<!-- Legacy activity with INKPRINT styling -->
-					<div class="flex gap-1.5 text-2xs text-muted-foreground">
-						<div class="w-12 shrink-0 pt-1 font-mono uppercase tracking-[0.1em]">
-							{formatTime(message.timestamp)}
-						</div>
-						<div
-							class="max-w-[65%] rounded-lg border border-border bg-muted px-2.5 py-1.5 text-sm font-medium italic leading-tight text-muted-foreground shadow-ink"
-						>
-							<p class="leading-snug">{message.content}</p>
-						</div>
-					</div>
-				{:else}
-					<!-- Default message with INKPRINT styling -->
-					<div class="flex gap-1.5 text-2xs text-muted-foreground">
-						<div class="w-12 shrink-0 pt-1 font-mono uppercase tracking-[0.1em]">
-							{formatTime(message.timestamp)}
-						</div>
-						<div
-							class="max-w-[65%] rounded-lg border border-border bg-muted px-2.5 py-1.5 text-sm font-medium italic leading-tight text-muted-foreground shadow-ink"
-						>
-							<p class="leading-snug">{message.content}</p>
-						</div>
-					</div>
-				{/if}
+				</ErrorBoundary>
 			{/each}
 		{/if}
 		<!-- End of real content: "latest" and the pill measure to here, never the reply room. -->

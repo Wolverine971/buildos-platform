@@ -263,7 +263,7 @@
 				class="grid grid-cols-3 overflow-hidden rounded-md border border-border bg-muted/60 p-0.5"
 				aria-label="Playback speed"
 			>
-				{#each PLAYBACK_SPEEDS as speed}
+				{#each PLAYBACK_SPEEDS as speed (speed)}
 					<button
 						type="button"
 						class="pressable rounded px-2.5 py-1.5 text-xs font-semibold tabular-nums transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring {playbackSpeed ===

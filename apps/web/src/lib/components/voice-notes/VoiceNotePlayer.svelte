@@ -36,7 +36,7 @@
 	let audio: HTMLAudioElement | null = $state(null);
 	let isPlaying = $state(false);
 	let currentTime = $state(0);
-	let duration = $state(0);
+	let duration = $derived(voiceNote.duration_seconds || 0);
 	let playbackSpeed = $state<PlaybackSpeed>(getStoredPlaybackSpeed());
 	let speedIndex = $state(
 		Math.max(0, PLAYBACK_SPEEDS.indexOf(getStoredPlaybackSpeed() as PlaybackSpeed))
@@ -53,10 +53,6 @@
 		formatTime(duration > 0 ? (duration - currentTime) / playbackSpeed : 0)
 	);
 	const progressPercent = $derived(duration > 0 ? (currentTime / duration) * 100 : 0);
-
-	$effect(() => {
-		duration = voiceNote.duration_seconds || 0;
-	});
 
 	function formatTime(seconds: number): string {
 		if (!Number.isFinite(seconds) || seconds <= 0) return '0:00';
@@ -366,7 +362,7 @@
 			<div class="flex flex-wrap items-center gap-1.5 text-2xs text-muted-foreground">
 				<span class="tabular-nums">{formattedRemainingTime} left</span>
 				<div class="hidden sm:flex gap-0.5">
-					{#each PLAYBACK_SPEEDS as speed}
+					{#each PLAYBACK_SPEEDS as speed (speed)}
 						<button
 							type="button"
 							class="rounded px-1.5 py-0.5 text-2xs tabular-nums transition-colors pressable {playbackSpeed ===

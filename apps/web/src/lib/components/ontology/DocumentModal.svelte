@@ -31,7 +31,7 @@
 	import { browser } from '$app/environment';
 	import { onDestroy, tick, untrack } from 'svelte';
 	import { fetchEntityModalData } from '$lib/components/project/entity-modal-data';
-	import { portal } from '$lib/actions/portal';
+	import { portal } from '$lib/attachments/portal';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
@@ -405,8 +405,6 @@
 
 	// Watch for content changes and schedule autosave
 	$effect(() => {
-		if (!browser) return;
-
 		// Read reactive dependencies
 		const _title = title;
 		const _desc = description;
@@ -437,7 +435,11 @@
 		}
 	});
 
-	// Internal document ID state - allows transitioning from create to edit mode after saving
+	// Internal document ID state - allows transitioning from create to edit mode after saving.
+	// Deliberately $state + $effect, not a writable $derived: setting it on the first render
+	// lets the collaboration and linked-entity loads start before the document load marks
+	// `loading`, which fires two extra requests that closing the modal doesn't cancel.
+	// eslint-disable-next-line svelte/prefer-writable-derived -- see above
 	let internalDocumentId = $state<string | null>(null);
 
 	// Sync internal state from prop when it changes
@@ -3842,7 +3844,7 @@
 
 					{#if showExportMenu}
 						<div
-							use:portal
+							{@attach portal()}
 							class="fixed z-[10000] w-64 overflow-hidden rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak"
 							style="top: {exportMenuPos.top}px; right: {exportMenuPos.right}px;"
 							role="menu"
@@ -4000,717 +4002,699 @@
 		</div>
 	{/snippet}
 
-	{#snippet children()}
-		<div class="relative flex-1 flex flex-col min-h-0">
-			{#if loading}
-				<div class="flex items-center justify-center py-12">
-					<Loader class="w-6 h-6 animate-spin text-muted-foreground" />
-				</div>
-			{:else}
-				<form
-					id={documentFormId}
-					class="flex-1 flex flex-col min-h-0"
-					onsubmit={handleSave}
+	<div class="relative flex-1 flex flex-col min-h-0">
+		{#if loading}
+			<div class="flex items-center justify-center py-12">
+				<Loader class="w-6 h-6 animate-spin text-muted-foreground" />
+			</div>
+		{:else}
+			<form id={documentFormId} class="flex-1 flex flex-col min-h-0" onsubmit={handleSave}>
+				<!-- Desktop: content-first with a sliding panel on the right | Mobile: bottom panels -->
+				<div
+					class="relative flex flex-col lg:flex-row-reverse flex-1 min-h-0 lg:overflow-hidden"
 				>
-					<!-- Desktop: content-first with a sliding panel on the right | Mobile: bottom panels -->
+					<!-- Edge tab: the panel's persistent handle stays on the right and
+						 travels with the drawer seam when the panel opens. -->
 					<div
-						class="relative flex flex-col lg:flex-row-reverse flex-1 min-h-0 lg:overflow-hidden"
+						class="pointer-events-none absolute top-1/2 -mt-14 z-20 hidden h-28 w-11 transition-[right] duration-[280ms] ease-out motion-reduce:transition-none lg:block {showDetailsPanel
+							? 'right-64 xl:right-72'
+							: 'right-0'}"
 					>
-						<!-- Edge tab: the panel's persistent handle stays on the right and
-							 travels with the drawer seam when the panel opens. -->
-						<div
-							class="pointer-events-none absolute top-1/2 -mt-14 z-20 hidden h-28 w-11 transition-[right] duration-[280ms] ease-out motion-reduce:transition-none lg:block {showDetailsPanel
-								? 'right-64 xl:right-72'
-								: 'right-0'}"
+						<button
+							id="document-details-panel-toggle"
+							type="button"
+							onclick={toggleDetailsPanel}
+							class="pointer-events-auto group flex h-full w-full flex-col items-center justify-center gap-2 rounded-l-md border border-r-0 px-1 py-2 shadow-ink transition-colors motion-reduce:transition-none pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring {showDetailsPanel
+								? 'border-accent/50 bg-accent/10 text-foreground'
+								: 'border-border-strong bg-muted/95 text-foreground hover:border-accent/50 hover:bg-card'} tx tx-strip tx-weak wt-paper"
+							title={showDetailsPanel ? 'Close details panel' : 'Open details panel'}
+							aria-label={showDetailsPanel
+								? 'Close details panel'
+								: 'Open details panel'}
+							aria-controls="document-details-panel"
+							aria-expanded={showDetailsPanel}
 						>
-							<button
-								id="document-details-panel-toggle"
-								type="button"
-								onclick={toggleDetailsPanel}
-								class="pointer-events-auto group flex h-full w-full flex-col items-center justify-center gap-2 rounded-l-md border border-r-0 px-1 py-2 shadow-ink transition-colors motion-reduce:transition-none pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring {showDetailsPanel
-									? 'border-accent/50 bg-accent/10 text-foreground'
-									: 'border-border-strong bg-muted/95 text-foreground hover:border-accent/50 hover:bg-card'} tx tx-strip tx-weak wt-paper"
-								title={showDetailsPanel
-									? 'Close details panel'
-									: 'Open details panel'}
-								aria-label={showDetailsPanel
-									? 'Close details panel'
-									: 'Open details panel'}
-								aria-controls="document-details-panel"
-								aria-expanded={showDetailsPanel}
-							>
-								{#if showDetailsPanel}
-									<PanelRightClose class="w-4 h-4 shrink-0 text-accent" />
-								{:else}
-									<PanelRightOpen
-										class="w-4 h-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground motion-reduce:transition-none"
-									/>
-								{/if}
-								<span class="micro-label [writing-mode:vertical-rl] rotate-180"
-									>DETAILS</span
-								>
-							</button>
-						</div>
-
-						<!-- Right details panel - desktop only, closed by default -->
-						<aside
-							id="document-details-panel"
-							aria-label="Document details"
-							aria-hidden={!showDetailsPanel}
-							inert={!showDetailsPanel}
-							class="hidden lg:flex lg:h-full lg:min-h-0 lg:w-64 xl:w-72 lg:flex-col flex-shrink-0 lg:border-l border-border bg-muted overflow-hidden shadow-ink-strong transition-[margin-right,transform] duration-[280ms] ease-out motion-reduce:transition-none {showDetailsPanel
-								? 'translate-x-0 mr-0'
-								: 'translate-x-full -mr-64 xl:-mr-72'} tx tx-frame tx-weak"
-						>
-							<div
-								class="shrink-0 border-b border-border/70 bg-muted/95 px-3 py-2 tx tx-strip tx-weak"
-							>
-								<p class="micro-label text-foreground">DETAILS</p>
-							</div>
-							<div
-								id="document-details-content"
-								class="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain p-3 [scrollbar-gutter:stable]"
-							>
-								<!-- Settings: Title / Description / State -->
-								{@render documentDetailsFields('')}
-
-								{#if isEditing && activeDocumentId}
-									<EntityCollaborationAction
-										{projectId}
-										entityType="document"
-										entityId={activeDocumentId}
-										entityTitle={title || 'Document'}
-										disabled={documentControlsLocked ||
-											isArchivedDocument ||
-											sharedEditLocked}
-									/>
-								{/if}
-
-								<!-- Tags + Metadata strip -->
-								{#if isEditing}
-									<div class="space-y-2 border-t border-border pt-2.5">
-										{#if hasTags}
-											<TagsDisplay props={documentProps} />
-										{/if}
-										{@render metadataBlock()}
-									</div>
-								{/if}
-
-								<!-- Public Page (collapsible; auto-expands when live) -->
-								{#if isEditing && activeDocumentId}
-									<div class="border-t border-border pt-2.5">
-										<button
-											type="button"
-											onclick={() => (showPublicPage = !showPublicPage)}
-											class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
-										>
-											<span class="flex items-center gap-2">
-												<span class="micro-label text-foreground"
-													>PUBLIC PAGE</span
-												>
-												{#if isLiveDocument}
-													<span
-														class="inline-flex items-center gap-1 rounded-full px-1.5 h-4 text-2xs font-semibold {liveDocumentNeedsAttention
-															? 'bg-warning/20 text-warning'
-															: 'bg-success/20 text-success'}"
-													>
-														<span
-															class="w-1 h-1 rounded-full {liveDocumentNeedsAttention
-																? 'bg-warning'
-																: 'bg-success'}"
-														></span>
-														{liveDocumentNeedsAttention
-															? 'ATTENTION'
-															: 'LIVE'}
-													</span>
-												{:else if publicPageState?.public_status === 'unpublished'}
-													<span
-														class="inline-flex items-center rounded-full px-1.5 h-4 text-2xs font-semibold bg-muted text-muted-foreground"
-														>UNPUBLISHED</span
-													>
-												{/if}
-											</span>
-											{#if showPublicPage}
-												<ChevronUp
-													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-												/>
-											{:else}
-												<ChevronDown
-													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-												/>
-											{/if}
-										</button>
-										{#if showPublicPage}
-											<div class="pt-2 pb-1 space-y-2">
-												{@render publicPagePanel()}
-											</div>
-										{/if}
-									</div>
-								{/if}
-
-								<!-- Collapsible group: Linked Entities / Images / Version History / Voice Notes / Activity Log -->
-								{#if isEditing && activeDocumentId}
-									<div class="border-t border-border pt-2.5">
-										<div class="divide-y divide-border/50">
-											<!-- Let the linked-entities card own its disclosure so the rail
-												 doesn't repeat the same heading twice. -->
-											<div class="pb-2.5">
-												<LinkedEntities
-													sourceId={activeDocumentId}
-													sourceKind="document"
-													{projectId}
-													initialLinkedEntities={linkedEntities}
-													onLoaded={handleLinkedEntitiesLoaded}
-													onEntityClick={handleLinkedEntityClick}
-													onLinksChanged={handleLinksChanged}
-													collapsible={true}
-													defaultExpanded={false}
-												/>
-											</div>
-
-											<!-- Images -->
-											<div class="py-0.5">
-												<button
-													type="button"
-													onclick={() => (showImages = !showImages)}
-													class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
-												>
-													<span class="micro-label text-foreground"
-														>IMAGES</span
-													>
-													{#if showImages}
-														<ChevronUp
-															class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-														/>
-													{:else}
-														<ChevronDown
-															class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-														/>
-													{/if}
-												</button>
-												{#if showImages}
-													<div class="pt-2 pb-1">
-														<ImageAssetsPanel
-															{projectId}
-															entityKind="document"
-															entityId={activeDocumentId}
-															showTitle={false}
-															compact={true}
-															onChanged={() => onSaved?.()}
-														/>
-													</div>
-												{/if}
-											</div>
-
-											<!-- Version History -->
-											<div class="py-0.5">
-												<button
-													type="button"
-													onclick={toggleVersionHistory}
-													class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
-												>
-													<span class="micro-label text-foreground"
-														>VERSION HISTORY</span
-													>
-													{#if showVersionHistory}
-														<ChevronUp
-															class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-														/>
-													{:else}
-														<ChevronDown
-															class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-														/>
-													{/if}
-												</button>
-												{#if showVersionHistory}
-													<div class="pt-2 pb-1">
-														<DocumentVersionHistoryPanel
-															bind:this={versionHistoryPanelRef}
-															documentId={activeDocumentId}
-															{projectId}
-															isAdmin={isAdminUser}
-															onRestoreRequested={handleRestoreRequested}
-															onCompareRequested={handleEnterComparison}
-														/>
-													</div>
-												{/if}
-											</div>
-
-											<!-- Voice Notes -->
-											<div class="py-0.5">
-												<button
-													type="button"
-													onclick={() =>
-														(showVoiceNotes = !showVoiceNotes)}
-													class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
-												>
-													<span class="micro-label text-foreground"
-														>VOICE NOTES</span
-													>
-													{#if showVoiceNotes}
-														<ChevronUp
-															class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-														/>
-													{:else}
-														<ChevronDown
-															class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-														/>
-													{/if}
-												</button>
-												{#if showVoiceNotes}
-													<div class="pt-2 pb-1">
-														<DocumentVoiceNotesPanel
-															bind:this={voiceNotesPanelRef}
-															documentId={activeDocumentId}
-															{projectId}
-															limit={20}
-														/>
-													</div>
-												{/if}
-											</div>
-
-											<!-- Activity Log -->
-											<div class="py-0.5">
-												<button
-													type="button"
-													onclick={() =>
-														(showActivityLog = !showActivityLog)}
-													class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
-												>
-													<span class="micro-label text-foreground"
-														>ACTIVITY LOG</span
-													>
-													{#if showActivityLog}
-														<ChevronUp
-															class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-														/>
-													{:else}
-														<ChevronDown
-															class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-														/>
-													{/if}
-												</button>
-												{#if showActivityLog}
-													<div class="pt-2 pb-1">
-														<EntityActivityLog
-															entityType="document"
-															entityId={activeDocumentId}
-															autoLoad={!loading}
-															embedded={true}
-														/>
-													</div>
-												{/if}
-											</div>
-										</div>
-									</div>
-
-									<!-- Move to... button -->
-									{#if !isArchivedDocument}
-										<div class="border-t border-border pt-2.5">
-											{@render moveButton()}
-										</div>
-									{/if}
-								{/if}
-							</div>
-						</aside>
-
-						<!-- Main content area -->
-						<div class="flex-1 flex flex-col min-w-0 min-h-0">
-							{@render inheritanceBanner()}
-							{#if comparisonMode && activeDocumentId}
-								<!-- Comparison view replaces the editor -->
-								<DocumentComparisonView
-									documentId={activeDocumentId}
-									{projectId}
-									fromVersionNumber={comparisonFromVersion}
-									toVersionNumber={comparisonToVersion}
-									currentDocument={{
-										title,
-										description,
-										content: body,
-										state_key: stateKey
-									}}
-									latestVersionNumber={comparisonLatestVersion}
-									refreshKey={comparisonRefreshKey}
-									onExit={handleExitComparison}
-									onNavigate={handleComparisonNavigate}
-								/>
-							{:else if isTableDocument && activeDocumentId}
-								<!-- A table's grid is the main surface; it owns its scroll. -->
-								<div class="flex min-h-[60dvh] flex-1 flex-col sm:min-h-[70dvh]">
-									{#if TableWorkspaceComponent}
-										<TableWorkspaceComponent
-											documentId={activeDocumentId}
-											{projectId}
-											layout="panel"
-											readonly={documentMutationLocked ||
-												sharedEditLocked ||
-												isArchivedDocument}
-											onAsk={openChatAbout}
-										/>
-									{:else}
-										<div
-											class="m-2 h-64 animate-pulse rounded-lg bg-muted motion-reduce:animate-none"
-											aria-busy="true"
-											aria-label="Loading table"
-										></div>
-									{/if}
-								</div>
+							{#if showDetailsPanel}
+								<PanelRightClose class="w-4 h-4 shrink-0 text-accent" />
 							{:else}
-								<!-- The editor is the entire main surface; title and metadata live in Details. -->
-								<div class="flex min-h-0 flex-1 flex-col p-1.5 sm:p-2">
-									<div class="flex-1 min-h-0 flex flex-col">
-										<RichMarkdownEditor
-											bind:this={markdownEditorRef}
-											bind:value={body}
-											onSave={handleSave}
-											disabled={documentMutationLocked || sharedEditLocked}
-											maxLength={50000}
-											helpText=""
-											fillHeight={true}
-											bind:isRecording={editorIsRecording}
-											bind:isTranscribing={editorIsTranscribing}
-											onInsertImageRequested={openImageInsertModal}
-											onInsertTableRequested={() =>
-												(showTableInsertPicker = true)}
-											embedProjectId={projectId}
-											onMakeLiveTable={activeDocumentId && !sharedEditLocked
-												? handleMakeLiveTable
-												: undefined}
-											onProposeSelection={activeDocumentId &&
-											!sharedEditLocked
-												? handleDocumentProposalSelection
-												: undefined}
-											voiceNoteSource="document-modal"
-											voiceNoteLinkedEntityType={activeDocumentId
-												? 'document'
-												: ''}
-											voiceNoteLinkedEntityId={activeDocumentId ?? ''}
-											onVoiceNoteSegmentSaved={handleVoiceNoteSegmentSaved}
-											onVoiceNoteSegmentError={handleVoiceNoteSegmentError}
-										/>
-									</div>
-									{#if documentProposalSelection}
-										{@const proposalSelection = documentProposalSelection}
-										{#key proposalSelection}
-											<DocumentProposalReview
-												documentId={proposalSelection.documentId}
-												initialInstruction={documentProposalInstruction}
-												documentTitle={title || 'Untitled Document'}
-												baseContent={proposalSelection.baseContent}
-												selectionFrom={proposalSelection.from}
-												selectionTo={proposalSelection.to}
-												selectedMarkdown={proposalSelection.markdown}
-												onBeforeApply={() =>
-													prepareDocumentProposalApply(proposalSelection)}
-												onApplyStateChange={(applying) => {
-													if (
-														documentProposalSelection ===
-														proposalSelection
-													)
-														documentProposalApplyLocked = applying;
-												}}
-												onVoiceStateChange={(busy) => {
-													if (
-														documentProposalSelection ===
-														proposalSelection
-													)
-														documentProposalVoiceBusy = busy;
-												}}
-												onApplied={(receipt) =>
-													handleDocumentProposalApplied(
-														proposalSelection,
-														receipt
-													)}
-												onReselect={reselectDocumentProposal}
-												onClose={closeDocumentProposal}
+								<PanelRightOpen
+									class="w-4 h-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground motion-reduce:transition-none"
+								/>
+							{/if}
+							<span class="micro-label [writing-mode:vertical-rl] rotate-180"
+								>DETAILS</span
+							>
+						</button>
+					</div>
+
+					<!-- Right details panel - desktop only, closed by default -->
+					<aside
+						id="document-details-panel"
+						aria-label="Document details"
+						aria-hidden={!showDetailsPanel}
+						inert={!showDetailsPanel}
+						class="hidden lg:flex lg:h-full lg:min-h-0 lg:w-64 xl:w-72 lg:flex-col flex-shrink-0 lg:border-l border-border bg-muted overflow-hidden shadow-ink-strong transition-[margin-right,transform] duration-[280ms] ease-out motion-reduce:transition-none {showDetailsPanel
+							? 'translate-x-0 mr-0'
+							: 'translate-x-full -mr-64 xl:-mr-72'} tx tx-frame tx-weak"
+					>
+						<div
+							class="shrink-0 border-b border-border/70 bg-muted/95 px-3 py-2 tx tx-strip tx-weak"
+						>
+							<p class="micro-label text-foreground">DETAILS</p>
+						</div>
+						<div
+							id="document-details-content"
+							class="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain p-3 [scrollbar-gutter:stable]"
+						>
+							<!-- Settings: Title / Description / State -->
+							{@render documentDetailsFields('')}
+
+							{#if isEditing && activeDocumentId}
+								<EntityCollaborationAction
+									{projectId}
+									entityType="document"
+									entityId={activeDocumentId}
+									entityTitle={title || 'Document'}
+									disabled={documentControlsLocked ||
+										isArchivedDocument ||
+										sharedEditLocked}
+								/>
+							{/if}
+
+							<!-- Tags + Metadata strip -->
+							{#if isEditing}
+								<div class="space-y-2 border-t border-border pt-2.5">
+									{#if hasTags}
+										<TagsDisplay props={documentProps} />
+									{/if}
+									{@render metadataBlock()}
+								</div>
+							{/if}
+
+							<!-- Public Page (collapsible; auto-expands when live) -->
+							{#if isEditing && activeDocumentId}
+								<div class="border-t border-border pt-2.5">
+									<button
+										type="button"
+										onclick={() => (showPublicPage = !showPublicPage)}
+										class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
+									>
+										<span class="flex items-center gap-2">
+											<span class="micro-label text-foreground"
+												>PUBLIC PAGE</span
+											>
+											{#if isLiveDocument}
+												<span
+													class="inline-flex items-center gap-1 rounded-full px-1.5 h-4 text-2xs font-semibold {liveDocumentNeedsAttention
+														? 'bg-warning/20 text-warning'
+														: 'bg-success/20 text-success'}"
+												>
+													<span
+														class="w-1 h-1 rounded-full {liveDocumentNeedsAttention
+															? 'bg-warning'
+															: 'bg-success'}"
+													></span>
+													{liveDocumentNeedsAttention
+														? 'ATTENTION'
+														: 'LIVE'}
+												</span>
+											{:else if publicPageState?.public_status === 'unpublished'}
+												<span
+													class="inline-flex items-center rounded-full px-1.5 h-4 text-2xs font-semibold bg-muted text-muted-foreground"
+													>UNPUBLISHED</span
+												>
+											{/if}
+										</span>
+										{#if showPublicPage}
+											<ChevronUp
+												class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
 											/>
-										{/key}
+										{:else}
+											<ChevronDown
+												class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+											/>
+										{/if}
+									</button>
+									{#if showPublicPage}
+										<div class="pt-2 pb-1 space-y-2">
+											{@render publicPagePanel()}
+										</div>
 									{/if}
 								</div>
 							{/if}
 
-							<!-- Mobile: Tabbed bottom panel -->
-							<div
-								class="lg:hidden flex-shrink-0 border-t border-border bg-muted tx tx-strip tx-weak wt-paper"
-							>
-								<!-- Tab bar - always visible; a scroll-edge fade signals the
-									 tabs run past the viewport (Hyperplexed T2-3) -->
-								<div class="relative">
-									<div
-										role="tablist"
-										aria-label="Document panels"
-										class="flex items-center gap-1 px-2 py-1.5 overflow-x-auto scrollbar-hide"
-									>
-										{#each mobileTabs as tab, i (tab.id)}
-											{@const Icon = tab.icon}
+							<!-- Collapsible group: Linked Entities / Images / Version History / Voice Notes / Activity Log -->
+							{#if isEditing && activeDocumentId}
+								<div class="border-t border-border pt-2.5">
+									<div class="divide-y divide-border/50">
+										<!-- Let the linked-entities card own its disclosure so the rail
+											 doesn't repeat the same heading twice. -->
+										<div class="pb-2.5">
+											<LinkedEntities
+												sourceId={activeDocumentId}
+												sourceKind="document"
+												{projectId}
+												initialLinkedEntities={linkedEntities}
+												onLoaded={handleLinkedEntitiesLoaded}
+												onEntityClick={handleLinkedEntityClick}
+												onLinksChanged={handleLinksChanged}
+												collapsible={true}
+												defaultExpanded={false}
+											/>
+										</div>
+
+										<!-- Images -->
+										<div class="py-0.5">
 											<button
-												bind:this={mobileTabButtons[i]}
 												type="button"
-												role="tab"
-												id={`mobile-doc-tab-${tab.id}`}
-												aria-selected={activeMobileTab === tab.id}
-												tabindex={activeMobileTab === tab.id ||
-												(activeMobileTab === null && i === 0)
-													? 0
-													: -1}
-												onclick={() => toggleMobileTab(tab.id)}
-												onkeydown={(event) =>
-													handleMobileTabKeydown(event, i)}
-												class="inline-flex min-h-[36px] items-center gap-1.5 px-2.5 py-1.5 rounded-md text-2xs font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab ===
-												tab.id
-													? 'bg-card shadow-ink text-foreground'
-													: 'text-muted-foreground hover:text-foreground hover:bg-card/50'}"
+												onclick={() => (showImages = !showImages)}
+												class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
 											>
-												<Icon class="w-3.5 h-3.5 shrink-0" />
-												{tab.label}
-												{#if tab.badge > 0}
-													<span
-														class="inline-flex items-center justify-center min-w-[1rem] h-3.5 px-1 text-2xs font-bold bg-accent/20 text-accent rounded-full"
-													>
-														{tab.badge}
-													</span>
+												<span class="micro-label text-foreground"
+													>IMAGES</span
+												>
+												{#if showImages}
+													<ChevronUp
+														class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+													/>
+												{:else}
+													<ChevronDown
+														class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+													/>
 												{/if}
 											</button>
-										{/each}
-									</div>
-									<div
-										aria-hidden="true"
-										class="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-muted to-transparent"
-									></div>
-								</div>
-
-								<!-- Tab content panel -->
-								{#if activeMobileTab}
-									<div
-										role="tabpanel"
-										aria-labelledby={`mobile-doc-tab-${activeMobileTab}`}
-										class="max-h-[40vh] overflow-y-auto border-t border-border/50 p-2.5 space-y-2 tx tx-frame tx-weak"
-									>
-										<!-- Details tab content -->
-										{#if activeMobileTab === 'details'}
-											{@render documentDetailsFields('-mobile')}
-
-											{#if isEditing && activeDocumentId}
-												<EntityCollaborationAction
-													{projectId}
-													entityType="document"
-													entityId={activeDocumentId}
-													entityTitle={title || 'Document'}
-													disabled={documentControlsLocked ||
-														isArchivedDocument ||
-														sharedEditLocked}
-												/>
-											{/if}
-
-											{#if isEditing && activeDocumentId}
-												<div class="pt-2 border-t border-border space-y-2">
-													{@render publicPagePanel()}
-												</div>
-											{/if}
-
-											{#if isEditing}
-												<div class="pt-2 border-t border-border">
-													{@render metadataBlock()}
-												</div>
-
-												<!-- Move to... button -->
-												{#if !isArchivedDocument}
-													<div class="pt-2 border-t border-border">
-														{@render moveButton()}
-													</div>
-												{/if}
-											{/if}
-
-											<!-- Links tab content -->
-										{:else if activeMobileTab === 'links'}
-											{#if isEditing && activeDocumentId}
-												<LinkedEntities
-													sourceId={activeDocumentId}
-													sourceKind="document"
-													{projectId}
-													initialLinkedEntities={linkedEntities}
-													onLoaded={handleLinkedEntitiesLoaded}
-													onEntityClick={handleLinkedEntityClick}
-													onLinksChanged={handleLinksChanged}
-												/>
-											{/if}
-
-											{#if isEditing && hasTags}
-												<div class="pt-2 border-t border-border">
-													<TagsDisplay props={documentProps} />
-												</div>
-											{/if}
-
-											<!-- Media tab content -->
-										{:else if activeMobileTab === 'media'}
-											{#if isEditing && activeDocumentId}
-												<ImageAssetsPanel
-													{projectId}
-													entityKind="document"
-													entityId={activeDocumentId}
-													title="Images"
-													compact={true}
-													onChanged={() => onSaved?.()}
-												/>
-
-												<div class="pt-2 border-t border-border">
-													<DocumentVoiceNotesPanel
-														bind:this={voiceNotesPanelMobileRef}
-														documentId={activeDocumentId}
+											{#if showImages}
+												<div class="pt-2 pb-1">
+													<ImageAssetsPanel
 														{projectId}
-														limit={10}
+														entityKind="document"
+														entityId={activeDocumentId}
+														showTitle={false}
+														compact={true}
+														onChanged={() => onSaved?.()}
 													/>
 												</div>
 											{/if}
+										</div>
 
-											<!-- History tab content -->
-										{:else if activeMobileTab === 'history'}
-											{#if isEditing && activeDocumentId}
-												<DocumentVersionHistoryPanel
-													documentId={activeDocumentId}
-													{projectId}
-													isAdmin={isAdminUser}
-													onRestoreRequested={handleRestoreRequested}
-													onCompareRequested={handleEnterComparison}
-												/>
+										<!-- Version History -->
+										<div class="py-0.5">
+											<button
+												type="button"
+												onclick={toggleVersionHistory}
+												class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
+											>
+												<span class="micro-label text-foreground"
+													>VERSION HISTORY</span
+												>
+												{#if showVersionHistory}
+													<ChevronUp
+														class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+													/>
+												{:else}
+													<ChevronDown
+														class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+													/>
+												{/if}
+											</button>
+											{#if showVersionHistory}
+												<div class="pt-2 pb-1">
+													<DocumentVersionHistoryPanel
+														bind:this={versionHistoryPanelRef}
+														documentId={activeDocumentId}
+														{projectId}
+														isAdmin={isAdminUser}
+														onRestoreRequested={handleRestoreRequested}
+														onCompareRequested={handleEnterComparison}
+													/>
+												</div>
+											{/if}
+										</div>
 
-												<div class="pt-2 border-t border-border">
+										<!-- Voice Notes -->
+										<div class="py-0.5">
+											<button
+												type="button"
+												onclick={() => (showVoiceNotes = !showVoiceNotes)}
+												class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
+											>
+												<span class="micro-label text-foreground"
+													>VOICE NOTES</span
+												>
+												{#if showVoiceNotes}
+													<ChevronUp
+														class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+													/>
+												{:else}
+													<ChevronDown
+														class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+													/>
+												{/if}
+											</button>
+											{#if showVoiceNotes}
+												<div class="pt-2 pb-1">
+													<DocumentVoiceNotesPanel
+														bind:this={voiceNotesPanelRef}
+														documentId={activeDocumentId}
+														{projectId}
+														limit={20}
+													/>
+												</div>
+											{/if}
+										</div>
+
+										<!-- Activity Log -->
+										<div class="py-0.5">
+											<button
+												type="button"
+												onclick={() => (showActivityLog = !showActivityLog)}
+												class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
+											>
+												<span class="micro-label text-foreground"
+													>ACTIVITY LOG</span
+												>
+												{#if showActivityLog}
+													<ChevronUp
+														class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+													/>
+												{:else}
+													<ChevronDown
+														class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+													/>
+												{/if}
+											</button>
+											{#if showActivityLog}
+												<div class="pt-2 pb-1">
 													<EntityActivityLog
 														entityType="document"
 														entityId={activeDocumentId}
 														autoLoad={!loading}
+														embedded={true}
 													/>
 												</div>
 											{/if}
+										</div>
+									</div>
+								</div>
 
-											<!-- Comments tab content -->
-										{:else if activeMobileTab === 'comments'}
-											{#if activeDocumentId}
-												<EntityCommentsSection
-													{projectId}
-													entityType="document"
-													entityId={activeDocumentId}
-													onCountChange={handleCommentsCountChange}
-												/>
-											{/if}
-										{/if}
+								<!-- Move to... button -->
+								{#if !isArchivedDocument}
+									<div class="border-t border-border pt-2.5">
+										{@render moveButton()}
 									</div>
 								{/if}
-							</div>
-						</div>
-					</div>
-
-					{#if saveStatus === 'conflict'}
-						<div
-							class="mx-3 mb-2 flex flex-col sm:flex-row items-start sm:items-center gap-2 px-3 py-2 bg-warning/10 border border-warning/30 rounded-lg tx tx-static tx-weak"
-						>
-							<div class="flex items-center gap-2 flex-1 min-w-0">
-								<AlertTriangle class="w-4 h-4 text-warning shrink-0" />
-								<span class="text-sm text-warning">
-									The saved document changed. Your local edits are preserved;
-									autosave is paused.
-								</span>
-							</div>
-							<div class="flex items-center gap-2 shrink-0">
-								<button
-									type="button"
-									onclick={handleConflictReload}
-									disabled={saving || loading}
-									class="text-xs font-medium px-2.5 py-1 rounded-md bg-warning/15 text-warning hover:bg-warning/25 transition-colors pressable"
-								>
-									Reload latest
-								</button>
-								<button
-									type="button"
-									onclick={handleConflictOverwrite}
-									disabled={saving || loading}
-									class="text-xs font-medium px-2.5 py-1 rounded-md bg-card border border-border text-foreground hover:bg-muted transition-colors pressable"
-								>
-									Overwrite
-								</button>
-							</div>
-						</div>
-					{/if}
-
-					{#if globalFormError}
-						<div
-							class="mx-3 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30 tx tx-static tx-weak wt-card"
-						>
-							<span class="text-sm text-destructive">{globalFormError}</span>
-						</div>
-					{/if}
-				</form>
-
-				{#if activeDocumentId}
-					<!-- Comments section: visible on desktop, hidden on mobile (handled by tab bar) -->
-					<div class="hidden lg:block flex-shrink-0 border-t border-border">
-						<!-- Collapsible comments toggle -->
-						<button
-							type="button"
-							onclick={toggleDesktopComments}
-							class="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-muted/50 transition-colors pressable group"
-						>
-							<span class="flex items-center gap-2">
-								<MessageSquare
-									class="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-colors"
-								/>
-								<span class="micro-label text-foreground">COMMENTS</span>
-								{#if commentsCount > 0}
-									<span
-										class="inline-flex items-center justify-center min-w-[1.25rem] h-4 px-1 text-2xs font-semibold bg-accent/20 text-accent rounded-full"
-									>
-										{commentsCount}
-									</span>
-								{/if}
-							</span>
-							{#if showComments}
-								<ChevronDown
-									class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-								/>
-							{:else}
-								<ChevronRight
-									class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-								/>
 							{/if}
-						</button>
-						{#if showComments}
-							<div
-								class="max-h-[25vh] overflow-hidden transition-[max-height] duration-200"
-							>
-								<div class="overflow-y-auto" style:max-height="25vh">
-									<EntityCommentsSection
+						</div>
+					</aside>
+
+					<!-- Main content area -->
+					<div class="flex-1 flex flex-col min-w-0 min-h-0">
+						{@render inheritanceBanner()}
+						{#if comparisonMode && activeDocumentId}
+							<!-- Comparison view replaces the editor -->
+							<DocumentComparisonView
+								documentId={activeDocumentId}
+								{projectId}
+								fromVersionNumber={comparisonFromVersion}
+								toVersionNumber={comparisonToVersion}
+								currentDocument={{
+									title,
+									description,
+									content: body,
+									state_key: stateKey
+								}}
+								latestVersionNumber={comparisonLatestVersion}
+								refreshKey={comparisonRefreshKey}
+								onExit={handleExitComparison}
+								onNavigate={handleComparisonNavigate}
+							/>
+						{:else if isTableDocument && activeDocumentId}
+							<!-- A table's grid is the main surface; it owns its scroll. -->
+							<div class="flex min-h-[60dvh] flex-1 flex-col sm:min-h-[70dvh]">
+								{#if TableWorkspaceComponent}
+									<TableWorkspaceComponent
+										documentId={activeDocumentId}
 										{projectId}
-										entityType="document"
-										entityId={activeDocumentId}
-										onCountChange={handleCommentsCountChange}
+										layout="panel"
+										readonly={documentMutationLocked ||
+											sharedEditLocked ||
+											isArchivedDocument}
+										onAsk={openChatAbout}
+									/>
+								{:else}
+									<div
+										class="m-2 h-64 animate-pulse rounded-lg bg-muted motion-reduce:animate-none"
+										aria-busy="true"
+										aria-label="Loading table"
+									></div>
+								{/if}
+							</div>
+						{:else}
+							<!-- The editor is the entire main surface; title and metadata live in Details. -->
+							<div class="flex min-h-0 flex-1 flex-col p-1.5 sm:p-2">
+								<div class="flex-1 min-h-0 flex flex-col">
+									<RichMarkdownEditor
+										bind:this={markdownEditorRef}
+										bind:value={body}
+										onSave={handleSave}
+										disabled={documentMutationLocked || sharedEditLocked}
+										maxLength={50000}
+										helpText=""
+										fillHeight={true}
+										bind:isRecording={editorIsRecording}
+										bind:isTranscribing={editorIsTranscribing}
+										onInsertImageRequested={openImageInsertModal}
+										onInsertTableRequested={() =>
+											(showTableInsertPicker = true)}
+										embedProjectId={projectId}
+										onMakeLiveTable={activeDocumentId && !sharedEditLocked
+											? handleMakeLiveTable
+											: undefined}
+										onProposeSelection={activeDocumentId && !sharedEditLocked
+											? handleDocumentProposalSelection
+											: undefined}
+										voiceNoteSource="document-modal"
+										voiceNoteLinkedEntityType={activeDocumentId
+											? 'document'
+											: ''}
+										voiceNoteLinkedEntityId={activeDocumentId ?? ''}
+										onVoiceNoteSegmentSaved={handleVoiceNoteSegmentSaved}
+										onVoiceNoteSegmentError={handleVoiceNoteSegmentError}
 									/>
 								</div>
+								{#if documentProposalSelection}
+									{@const proposalSelection = documentProposalSelection}
+									{#key proposalSelection}
+										<DocumentProposalReview
+											documentId={proposalSelection.documentId}
+											initialInstruction={documentProposalInstruction}
+											documentTitle={title || 'Untitled Document'}
+											baseContent={proposalSelection.baseContent}
+											selectionFrom={proposalSelection.from}
+											selectionTo={proposalSelection.to}
+											selectedMarkdown={proposalSelection.markdown}
+											onBeforeApply={() =>
+												prepareDocumentProposalApply(proposalSelection)}
+											onApplyStateChange={(applying) => {
+												if (documentProposalSelection === proposalSelection)
+													documentProposalApplyLocked = applying;
+											}}
+											onVoiceStateChange={(busy) => {
+												if (documentProposalSelection === proposalSelection)
+													documentProposalVoiceBusy = busy;
+											}}
+											onApplied={(receipt) =>
+												handleDocumentProposalApplied(
+													proposalSelection,
+													receipt
+												)}
+											onReselect={reselectDocumentProposal}
+											onClose={closeDocumentProposal}
+										/>
+									{/key}
+								{/if}
 							</div>
 						{/if}
+
+						<!-- Mobile: Tabbed bottom panel -->
+						<div
+							class="lg:hidden flex-shrink-0 border-t border-border bg-muted tx tx-strip tx-weak wt-paper"
+						>
+							<!-- Tab bar - always visible; a scroll-edge fade signals the
+								 tabs run past the viewport (Hyperplexed T2-3) -->
+							<div class="relative">
+								<div
+									role="tablist"
+									aria-label="Document panels"
+									class="flex items-center gap-1 px-2 py-1.5 overflow-x-auto scrollbar-hide"
+								>
+									{#each mobileTabs as tab, i (tab.id)}
+										{@const Icon = tab.icon}
+										<button
+											bind:this={mobileTabButtons[i]}
+											type="button"
+											role="tab"
+											id={`mobile-doc-tab-${tab.id}`}
+											aria-selected={activeMobileTab === tab.id}
+											tabindex={activeMobileTab === tab.id ||
+											(activeMobileTab === null && i === 0)
+												? 0
+												: -1}
+											onclick={() => toggleMobileTab(tab.id)}
+											onkeydown={(event) => handleMobileTabKeydown(event, i)}
+											class="inline-flex min-h-[36px] items-center gap-1.5 px-2.5 py-1.5 rounded-md text-2xs font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab ===
+											tab.id
+												? 'bg-card shadow-ink text-foreground'
+												: 'text-muted-foreground hover:text-foreground hover:bg-card/50'}"
+										>
+											<Icon class="w-3.5 h-3.5 shrink-0" />
+											{tab.label}
+											{#if tab.badge > 0}
+												<span
+													class="inline-flex items-center justify-center min-w-[1rem] h-3.5 px-1 text-2xs font-bold bg-accent/20 text-accent rounded-full"
+												>
+													{tab.badge}
+												</span>
+											{/if}
+										</button>
+									{/each}
+								</div>
+								<div
+									aria-hidden="true"
+									class="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-muted to-transparent"
+								></div>
+							</div>
+
+							<!-- Tab content panel -->
+							{#if activeMobileTab}
+								<div
+									role="tabpanel"
+									aria-labelledby={`mobile-doc-tab-${activeMobileTab}`}
+									class="max-h-[40vh] overflow-y-auto border-t border-border/50 p-2.5 space-y-2 tx tx-frame tx-weak"
+								>
+									<!-- Details tab content -->
+									{#if activeMobileTab === 'details'}
+										{@render documentDetailsFields('-mobile')}
+
+										{#if isEditing && activeDocumentId}
+											<EntityCollaborationAction
+												{projectId}
+												entityType="document"
+												entityId={activeDocumentId}
+												entityTitle={title || 'Document'}
+												disabled={documentControlsLocked ||
+													isArchivedDocument ||
+													sharedEditLocked}
+											/>
+										{/if}
+
+										{#if isEditing && activeDocumentId}
+											<div class="pt-2 border-t border-border space-y-2">
+												{@render publicPagePanel()}
+											</div>
+										{/if}
+
+										{#if isEditing}
+											<div class="pt-2 border-t border-border">
+												{@render metadataBlock()}
+											</div>
+
+											<!-- Move to... button -->
+											{#if !isArchivedDocument}
+												<div class="pt-2 border-t border-border">
+													{@render moveButton()}
+												</div>
+											{/if}
+										{/if}
+
+										<!-- Links tab content -->
+									{:else if activeMobileTab === 'links'}
+										{#if isEditing && activeDocumentId}
+											<LinkedEntities
+												sourceId={activeDocumentId}
+												sourceKind="document"
+												{projectId}
+												initialLinkedEntities={linkedEntities}
+												onLoaded={handleLinkedEntitiesLoaded}
+												onEntityClick={handleLinkedEntityClick}
+												onLinksChanged={handleLinksChanged}
+											/>
+										{/if}
+
+										{#if isEditing && hasTags}
+											<div class="pt-2 border-t border-border">
+												<TagsDisplay props={documentProps} />
+											</div>
+										{/if}
+
+										<!-- Media tab content -->
+									{:else if activeMobileTab === 'media'}
+										{#if isEditing && activeDocumentId}
+											<ImageAssetsPanel
+												{projectId}
+												entityKind="document"
+												entityId={activeDocumentId}
+												title="Images"
+												compact={true}
+												onChanged={() => onSaved?.()}
+											/>
+
+											<div class="pt-2 border-t border-border">
+												<DocumentVoiceNotesPanel
+													bind:this={voiceNotesPanelMobileRef}
+													documentId={activeDocumentId}
+													{projectId}
+													limit={10}
+												/>
+											</div>
+										{/if}
+
+										<!-- History tab content -->
+									{:else if activeMobileTab === 'history'}
+										{#if isEditing && activeDocumentId}
+											<DocumentVersionHistoryPanel
+												documentId={activeDocumentId}
+												{projectId}
+												isAdmin={isAdminUser}
+												onRestoreRequested={handleRestoreRequested}
+												onCompareRequested={handleEnterComparison}
+											/>
+
+											<div class="pt-2 border-t border-border">
+												<EntityActivityLog
+													entityType="document"
+													entityId={activeDocumentId}
+													autoLoad={!loading}
+												/>
+											</div>
+										{/if}
+
+										<!-- Comments tab content -->
+									{:else if activeMobileTab === 'comments'}
+										{#if activeDocumentId}
+											<EntityCommentsSection
+												{projectId}
+												entityType="document"
+												entityId={activeDocumentId}
+												onCountChange={handleCommentsCountChange}
+											/>
+										{/if}
+									{/if}
+								</div>
+							{/if}
+						</div>
+					</div>
+				</div>
+
+				{#if saveStatus === 'conflict'}
+					<div
+						class="mx-3 mb-2 flex flex-col sm:flex-row items-start sm:items-center gap-2 px-3 py-2 bg-warning/10 border border-warning/30 rounded-lg tx tx-static tx-weak"
+					>
+						<div class="flex items-center gap-2 flex-1 min-w-0">
+							<AlertTriangle class="w-4 h-4 text-warning shrink-0" />
+							<span class="text-sm text-warning">
+								The saved document changed. Your local edits are preserved; autosave
+								is paused.
+							</span>
+						</div>
+						<div class="flex items-center gap-2 shrink-0">
+							<button
+								type="button"
+								onclick={handleConflictReload}
+								disabled={saving || loading}
+								class="text-xs font-medium px-2.5 py-1 rounded-md bg-warning/15 text-warning hover:bg-warning/25 transition-colors pressable"
+							>
+								Reload latest
+							</button>
+							<button
+								type="button"
+								onclick={handleConflictOverwrite}
+								disabled={saving || loading}
+								class="text-xs font-medium px-2.5 py-1 rounded-md bg-card border border-border text-foreground hover:bg-muted transition-colors pressable"
+							>
+								Overwrite
+							</button>
+						</div>
 					</div>
 				{/if}
 
-				{#if activeDocumentId}
-					{#key activeDocumentId}
-						{@const interactSession = documentInteractSession}
-						<DocumentInteractDock
-							bind:isOpen={isDocumentInteractOpen}
-							{projectId}
-							projectName="Project"
-							documentId={activeDocumentId}
-							documentTitle={title || 'Untitled Document'}
-							placement="inline"
-							onDocumentMutation={(event) =>
-								void handleDocumentInteractMutation(interactSession, event)}
-							onClose={(summary) =>
-								void handleDocumentInteractClose(interactSession, summary)}
-						/>
-					{/key}
+				{#if globalFormError}
+					<div
+						class="mx-3 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30 tx tx-static tx-weak wt-card"
+					>
+						<span class="text-sm text-destructive">{globalFormError}</span>
+					</div>
 				{/if}
+			</form>
+
+			{#if activeDocumentId}
+				<!-- Comments section: visible on desktop, hidden on mobile (handled by tab bar) -->
+				<div class="hidden lg:block flex-shrink-0 border-t border-border">
+					<!-- Collapsible comments toggle -->
+					<button
+						type="button"
+						onclick={toggleDesktopComments}
+						class="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-muted/50 transition-colors pressable group"
+					>
+						<span class="flex items-center gap-2">
+							<MessageSquare
+								class="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-colors"
+							/>
+							<span class="micro-label text-foreground">COMMENTS</span>
+							{#if commentsCount > 0}
+								<span
+									class="inline-flex items-center justify-center min-w-[1.25rem] h-4 px-1 text-2xs font-semibold bg-accent/20 text-accent rounded-full"
+								>
+									{commentsCount}
+								</span>
+							{/if}
+						</span>
+						{#if showComments}
+							<ChevronDown
+								class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+							/>
+						{:else}
+							<ChevronRight
+								class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+							/>
+						{/if}
+					</button>
+					{#if showComments}
+						<div
+							class="max-h-[25vh] overflow-hidden transition-[max-height] duration-200"
+						>
+							<div class="overflow-y-auto" style:max-height="25vh">
+								<EntityCommentsSection
+									{projectId}
+									entityType="document"
+									entityId={activeDocumentId}
+									onCountChange={handleCommentsCountChange}
+								/>
+							</div>
+						</div>
+					{/if}
+				</div>
 			{/if}
-		</div>
-	{/snippet}
+
+			{#if activeDocumentId}
+				{#key activeDocumentId}
+					{@const interactSession = documentInteractSession}
+					<DocumentInteractDock
+						bind:isOpen={isDocumentInteractOpen}
+						{projectId}
+						projectName="Project"
+						documentId={activeDocumentId}
+						documentTitle={title || 'Untitled Document'}
+						placement="inline"
+						onDocumentMutation={(event) =>
+							void handleDocumentInteractMutation(interactSession, event)}
+						onClose={(summary) =>
+							void handleDocumentInteractClose(interactSession, summary)}
+					/>
+				{/key}
+			{/if}
+		{/if}
+	</div>
 	{#snippet footer()}
 		<div
 			class="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 border-t border-border bg-muted/50 tx tx-strip tx-weak"
@@ -4891,25 +4875,22 @@
 		size="lg"
 		onClose={() => closeImageInsertModal(modalSession)}
 	>
-		{#snippet children()}
-			<div class="p-3">
-				<p class="text-xs text-muted-foreground mb-2">
-					Choose a project image or upload a new one. It will be inserted as inline
-					markdown.
-				</p>
-				<ImageAssetsPanel
-					{projectId}
-					entityKind="document"
-					entityId={activeDocumentId}
-					showTitle={false}
-					pickerMode={true}
-					filterScope="project"
-					linkRole="inline"
-					selectLabel="Insert"
-					onSelectAsset={(asset) => handleInsertImageAsset(asset, modalSession)}
-				/>
-			</div>
-		{/snippet}
+		<div class="p-3">
+			<p class="text-xs text-muted-foreground mb-2">
+				Choose a project image or upload a new one. It will be inserted as inline markdown.
+			</p>
+			<ImageAssetsPanel
+				{projectId}
+				entityKind="document"
+				entityId={activeDocumentId}
+				showTitle={false}
+				pickerMode={true}
+				filterScope="project"
+				linkRole="inline"
+				selectLabel="Insert"
+				onSelectAsset={(asset) => handleInsertImageAsset(asset, modalSession)}
+			/>
+		</div>
 	</Modal>
 {/if}
 
@@ -4936,213 +4917,201 @@
 		closeOnEscape={!publicPageActionLoading}
 		closeOnBackdrop={!publicPageActionLoading}
 	>
-		{#snippet children()}
-			<div class="p-3 space-y-3">
-				<p class="text-xs text-muted-foreground">
-					Review this preview, then confirm to publish. A content review will run on
-					publish.
-				</p>
-				{#if hasFlaggedPublicPageReview && latestPublicPageReview}
-					<div
-						class="rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1.5 space-y-1 tx tx-grain tx-weak wt-paper"
-					>
-						<p class="micro-label text-destructive">LAST REVIEW WAS FLAGGED</p>
-						{#if latestPublicPageReview.summary}
-							<p class="text-xs text-destructive leading-snug">
-								{latestPublicPageReview.summary}
-							</p>
-						{/if}
-						{#if latestPublicPageReviewReasons.length > 0}
-							<ul class="space-y-0.5 text-xs text-destructive list-disc pl-4">
-								{#each latestPublicPageReviewReasons as reason (reason)}
-									<li>{reason}</li>
-								{/each}
-							</ul>
-						{/if}
-						{#if latestPublicPageReview.admin_decision}
-							<p class="text-xs text-destructive leading-snug">
-								Admin decision:
-								{latestPublicPageReview.admin_decision === 'approved'
-									? 'OK to publish'
-									: 'Not okay'}
-								{#if latestPublicPageReview.admin_decision_at}
-									({formatDate(latestPublicPageReview.admin_decision_at)})
-								{/if}
-							</p>
-						{/if}
-						{#if latestPublicPageReview.admin_decision_reason}
-							<p class="text-xs text-destructive leading-snug">
-								{latestPublicPageReview.admin_decision_reason}
-							</p>
-						{/if}
-						{#if latestPublicPageReviewGuidance}
-							<p class="text-xs text-destructive leading-snug">
-								{latestPublicPageReviewGuidance}
-							</p>
-						{/if}
-					</div>
-				{/if}
-
-				<div class="grid gap-2 sm:grid-cols-2">
-					<FormField
-						label="Public URL"
-						labelFor="public-page-slug-base"
-						uppercase={false}
-					>
-						<div class="space-y-2">
-							<div class="flex items-center gap-2">
-								<span class="text-xs text-muted-foreground shrink-0">/p/</span>
-								{#if draft.slug_prefix}
-									<span
-										class="inline-flex items-center rounded-md border border-border bg-muted px-2 py-1 text-xs font-mono text-foreground"
-									>
-										{draft.slug_prefix}
-									</span>
-									<span class="text-xs text-muted-foreground shrink-0">-</span>
-								{/if}
-								<TextInput
-									id="public-page-slug-base"
-									value={draft.slug_base}
-									oninput={(event) =>
-										updatePublicPageDraft({
-											slug_base: (event.currentTarget as HTMLInputElement)
-												.value
-										})}
-									placeholder="page"
-									disabled={publicPageActionLoading}
-								/>
-							</div>
-							<p class="text-xs text-muted-foreground">
-								The prefix is frozen from the publishing account name.
-							</p>
-							{#if publicPageSlugBaseHelperText}
-								<p class="text-xs text-muted-foreground">
-									{publicPageSlugBaseHelperText}
-								</p>
+		<div class="p-3 space-y-3">
+			<p class="text-xs text-muted-foreground">
+				Review this preview, then confirm to publish. A content review will run on publish.
+			</p>
+			{#if hasFlaggedPublicPageReview && latestPublicPageReview}
+				<div
+					class="rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1.5 space-y-1 tx tx-grain tx-weak wt-paper"
+				>
+					<p class="micro-label text-destructive">LAST REVIEW WAS FLAGGED</p>
+					{#if latestPublicPageReview.summary}
+						<p class="text-xs text-destructive leading-snug">
+							{latestPublicPageReview.summary}
+						</p>
+					{/if}
+					{#if latestPublicPageReviewReasons.length > 0}
+						<ul class="space-y-0.5 text-xs text-destructive list-disc pl-4">
+							{#each latestPublicPageReviewReasons as reason (reason)}
+								<li>{reason}</li>
+							{/each}
+						</ul>
+					{/if}
+					{#if latestPublicPageReview.admin_decision}
+						<p class="text-xs text-destructive leading-snug">
+							Admin decision:
+							{latestPublicPageReview.admin_decision === 'approved'
+								? 'OK to publish'
+								: 'Not okay'}
+							{#if latestPublicPageReview.admin_decision_at}
+								({formatDate(latestPublicPageReview.admin_decision_at)})
 							{/if}
-							{#if preview.slug_was_deduped}
-								<p class="text-xs text-muted-foreground">
-									This page already needed a unique suffix, so the next available
-									URL was suggested.
-								</p>
+						</p>
+					{/if}
+					{#if latestPublicPageReview.admin_decision_reason}
+						<p class="text-xs text-destructive leading-snug">
+							{latestPublicPageReview.admin_decision_reason}
+						</p>
+					{/if}
+					{#if latestPublicPageReviewGuidance}
+						<p class="text-xs text-destructive leading-snug">
+							{latestPublicPageReviewGuidance}
+						</p>
+					{/if}
+				</div>
+			{/if}
+
+			<div class="grid gap-2 sm:grid-cols-2">
+				<FormField label="Public URL" labelFor="public-page-slug-base" uppercase={false}>
+					<div class="space-y-2">
+						<div class="flex items-center gap-2">
+							<span class="text-xs text-muted-foreground shrink-0">/p/</span>
+							{#if draft.slug_prefix}
+								<span
+									class="inline-flex items-center rounded-md border border-border bg-muted px-2 py-1 text-xs font-mono text-foreground"
+								>
+									{draft.slug_prefix}
+								</span>
+								<span class="text-xs text-muted-foreground shrink-0">-</span>
 							{/if}
-						</div>
-					</FormField>
-
-					<FormField label="Public title" labelFor="public-page-title" uppercase={false}>
-						<TextInput
-							id="public-page-title"
-							value={draft.title}
-							oninput={(event) =>
-								updatePublicPageDraft({
-									title: (event.currentTarget as HTMLInputElement).value
-								})}
-							placeholder="Public page title"
-							maxlength={200}
-							disabled={publicPageActionLoading}
-						/>
-					</FormField>
-
-					<div class="sm:col-span-2">
-						<FormField label="Summary" labelFor="public-page-summary" uppercase={false}>
-							<Textarea
-								id="public-page-summary"
-								value={draft.summary}
+							<TextInput
+								id="public-page-slug-base"
+								value={draft.slug_base}
 								oninput={(event) =>
 									updatePublicPageDraft({
-										summary: (event.currentTarget as HTMLTextAreaElement).value
+										slug_base: (event.currentTarget as HTMLInputElement).value
 									})}
-								rows={2}
-								placeholder="Short summary for the public page"
-								maxlength={500}
+								placeholder="page"
 								disabled={publicPageActionLoading}
-								size="sm"
 							/>
-						</FormField>
+						</div>
+						<p class="text-xs text-muted-foreground">
+							The prefix is frozen from the publishing account name.
+						</p>
+						{#if publicPageSlugBaseHelperText}
+							<p class="text-xs text-muted-foreground">
+								{publicPageSlugBaseHelperText}
+							</p>
+						{/if}
+						{#if preview.slug_was_deduped}
+							<p class="text-xs text-muted-foreground">
+								This page already needed a unique suffix, so the next available URL
+								was suggested.
+							</p>
+						{/if}
 					</div>
+				</FormField>
 
-					<FormField
-						label="Visibility"
-						labelFor="public-page-visibility"
-						uppercase={false}
-					>
-						<Select
-							id="public-page-visibility"
-							value={draft.visibility}
-							onchange={(value) =>
+				<FormField label="Public title" labelFor="public-page-title" uppercase={false}>
+					<TextInput
+						id="public-page-title"
+						value={draft.title}
+						oninput={(event) =>
+							updatePublicPageDraft({
+								title: (event.currentTarget as HTMLInputElement).value
+							})}
+						placeholder="Public page title"
+						maxlength={200}
+						disabled={publicPageActionLoading}
+					/>
+				</FormField>
+
+				<div class="sm:col-span-2">
+					<FormField label="Summary" labelFor="public-page-summary" uppercase={false}>
+						<Textarea
+							id="public-page-summary"
+							value={draft.summary}
+							oninput={(event) =>
 								updatePublicPageDraft({
-									visibility: value as PublicPageDraft['visibility']
+									summary: (event.currentTarget as HTMLTextAreaElement).value
 								})}
-							size="sm"
-							class="w-full text-xs"
+							rows={2}
+							placeholder="Short summary for the public page"
+							maxlength={500}
 							disabled={publicPageActionLoading}
-						>
-							<option value="public">Public</option>
-							<option value="unlisted">Unlisted</option>
-						</Select>
+							size="sm"
+						/>
 					</FormField>
-
-					<div class="space-y-1.5 self-end pb-0.5">
-						<label class="flex items-center gap-2 text-xs text-foreground">
-							<input
-								type="checkbox"
-								checked={draft.noindex}
-								onchange={(event) =>
-									updatePublicPageDraft({
-										noindex: (event.currentTarget as HTMLInputElement).checked
-									})}
-								class="h-3.5 w-3.5 rounded border-border"
-								disabled={publicPageActionLoading}
-							/>
-							<span>Hide from search engines (`noindex`)</span>
-						</label>
-						<label class="flex items-center gap-2 text-xs text-foreground">
-							<input
-								type="checkbox"
-								checked={draft.live_sync_enabled}
-								onchange={(event) =>
-									updatePublicPageDraft({
-										live_sync_enabled: (event.currentTarget as HTMLInputElement)
-											.checked
-									})}
-								class="h-3.5 w-3.5 rounded border-border"
-								disabled={publicPageActionLoading}
-							/>
-							<span>Enable live sync on document save</span>
-						</label>
-					</div>
 				</div>
 
-				<div class="rounded-lg border border-border overflow-hidden">
-					<div
-						class="px-3 py-2 border-b border-border bg-muted/60 flex items-center justify-between gap-2"
+				<FormField label="Visibility" labelFor="public-page-visibility" uppercase={false}>
+					<Select
+						id="public-page-visibility"
+						value={draft.visibility}
+						onchange={(value) =>
+							updatePublicPageDraft({
+								visibility: value as PublicPageDraft['visibility']
+							})}
+						size="sm"
+						class="w-full text-xs"
+						disabled={publicPageActionLoading}
 					>
-						<span class="micro-label text-foreground">PUBLIC PREVIEW</span>
-						<span class="text-xs text-muted-foreground truncate">
-							{publicPageDraftUrlPreview ??
-								(preview.slug_prefix && preview.slug_base
-									? `https://build-os.com/p/${preview.slug_prefix}/${preview.slug_base}`
-									: `https://build-os.com/p/${preview.slug}`)}
-						</span>
-					</div>
-					<div class="p-3 max-h-[50vh] overflow-y-auto space-y-2">
-						<div>
-							<h3 class="text-lg font-semibold text-foreground">
-								{draft.title.trim() || preview.title}
-							</h3>
-							{#if draft.summary.trim()}
-								<p class="mt-1 text-sm text-muted-foreground">
-									{draft.summary.trim()}
-								</p>
-							{/if}
-						</div>
-						<article class={getProseClasses('base')}>
-							{@html renderMarkdown(preview.content)}
-						</article>
-					</div>
+						<option value="public">Public</option>
+						<option value="unlisted">Unlisted</option>
+					</Select>
+				</FormField>
+
+				<div class="space-y-1.5 self-end pb-0.5">
+					<label class="flex items-center gap-2 text-xs text-foreground">
+						<input
+							type="checkbox"
+							checked={draft.noindex}
+							onchange={(event) =>
+								updatePublicPageDraft({
+									noindex: (event.currentTarget as HTMLInputElement).checked
+								})}
+							class="h-3.5 w-3.5 rounded border-border"
+							disabled={publicPageActionLoading}
+						/>
+						<span>Hide from search engines (`noindex`)</span>
+					</label>
+					<label class="flex items-center gap-2 text-xs text-foreground">
+						<input
+							type="checkbox"
+							checked={draft.live_sync_enabled}
+							onchange={(event) =>
+								updatePublicPageDraft({
+									live_sync_enabled: (event.currentTarget as HTMLInputElement)
+										.checked
+								})}
+							class="h-3.5 w-3.5 rounded border-border"
+							disabled={publicPageActionLoading}
+						/>
+						<span>Enable live sync on document save</span>
+					</label>
 				</div>
 			</div>
-		{/snippet}
+
+			<div class="rounded-lg border border-border overflow-hidden">
+				<div
+					class="px-3 py-2 border-b border-border bg-muted/60 flex items-center justify-between gap-2"
+				>
+					<span class="micro-label text-foreground">PUBLIC PREVIEW</span>
+					<span class="text-xs text-muted-foreground truncate">
+						{publicPageDraftUrlPreview ??
+							(preview.slug_prefix && preview.slug_base
+								? `https://build-os.com/p/${preview.slug_prefix}/${preview.slug_base}`
+								: `https://build-os.com/p/${preview.slug}`)}
+					</span>
+				</div>
+				<div class="p-3 max-h-[50vh] overflow-y-auto space-y-2">
+					<div>
+						<h3 class="text-lg font-semibold text-foreground">
+							{draft.title.trim() || preview.title}
+						</h3>
+						{#if draft.summary.trim()}
+							<p class="mt-1 text-sm text-muted-foreground">
+								{draft.summary.trim()}
+							</p>
+						{/if}
+					</div>
+					<article class={getProseClasses('base')}>
+						{@html renderMarkdown(preview.content)}
+					</article>
+				</div>
+			</div>
+		</div>
 		{#snippet footer()}
 			<div
 				class="px-3 sm:px-4 py-3 border-t border-border bg-muted/50 flex justify-end gap-2"

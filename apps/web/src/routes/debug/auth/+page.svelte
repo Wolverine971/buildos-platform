@@ -1,6 +1,6 @@
 <!-- apps/web/src/routes/debug/auth/+page.svelte -->
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { createSupabaseBrowser } from '$lib/supabase';
 	import type { PageData } from './$types';
@@ -63,7 +63,7 @@
 	});
 
 	let serverUser = $derived(data?.user);
-	let urlParams = $derived(Object.fromEntries($page.url.searchParams));
+	let urlParams = $derived(Object.fromEntries(page.url.searchParams));
 </script>
 
 <!-- apps/web/src/routes/debug/auth/+page.svelte -->

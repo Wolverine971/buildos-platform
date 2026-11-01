@@ -2,7 +2,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { enhance } from '$app/forms';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { browser } from '$app/environment';
 	import { consumeOneTimeUrlParams } from '$lib/utils/one-time-url-params';
 	import { calendarConnectErrorMessage } from '$lib/utils/calendar-connect-error';
@@ -116,7 +116,7 @@
 	}
 
 	function getCalendarReturnPath() {
-		const returnUrl = new URL($page.url);
+		const returnUrl = new URL(page.url);
 		returnUrl.searchParams.set('tab', 'calendar');
 		returnUrl.searchParams.set('calendar', '1');
 		returnUrl.searchParams.delete('success');

@@ -116,49 +116,47 @@
 				</div>
 			</div>
 		{/snippet}
-		{#snippet children()}
-			<!-- Email Info -->
-			<div class="px-4 sm:px-5 md:px-6 py-4 bg-muted/50 border-b border-border">
-				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-					{#if email.to}
-						<div class="flex items-center gap-2 text-foreground">
-							<User class="w-4 h-4 flex-shrink-0" />
-							<span class="truncate"><strong>To:</strong> {email.to}</span>
-						</div>
-					{/if}
-					{#if email.sent_at || email.created_at}
-						<div class="flex items-center gap-2 text-foreground">
-							<Calendar class="w-4 h-4 flex-shrink-0" />
-							<span>
-								<strong>Sent:</strong>
-								{formatDate(email.sent_at || email.created_at)}
-							</span>
-						</div>
-					{/if}
-				</div>
+		<!-- Email Info -->
+		<div class="px-4 sm:px-5 md:px-6 py-4 bg-muted/50 border-b border-border">
+			<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+				{#if email.to}
+					<div class="flex items-center gap-2 text-foreground">
+						<User class="w-4 h-4 flex-shrink-0" />
+						<span class="truncate"><strong>To:</strong> {email.to}</span>
+					</div>
+				{/if}
+				{#if email.sent_at || email.created_at}
+					<div class="flex items-center gap-2 text-foreground">
+						<Calendar class="w-4 h-4 flex-shrink-0" />
+						<span>
+							<strong>Sent:</strong>
+							{formatDate(email.sent_at || email.created_at)}
+						</span>
+					</div>
+				{/if}
 			</div>
+		</div>
 
-			<!-- Email Content (scrollable) -->
-			<div class="p-4 sm:p-5 md:p-6">
-				<div
-					class="bg-muted/50 rounded-lg p-4 sm:p-5 md:p-6 border border-border prose dark:prose-invert max-w-none"
-				>
-					{#if email.html}
-						<!-- Render sanitized HTML email content -->
-						<div class="break-words">
-							{@html safeEmailHtml}
-						</div>
-					{:else if email.body}
-						<!-- Plain text email content -->
-						<div class="whitespace-pre-wrap text-foreground text-sm">
-							{email.body}
-						</div>
-					{:else}
-						<div class="text-muted-foreground italic">No email content available</div>
-					{/if}
-				</div>
+		<!-- Email Content (scrollable) -->
+		<div class="p-4 sm:p-5 md:p-6">
+			<div
+				class="bg-muted/50 rounded-lg p-4 sm:p-5 md:p-6 border border-border prose dark:prose-invert max-w-none"
+			>
+				{#if email.html}
+					<!-- Render sanitized HTML email content -->
+					<div class="break-words">
+						{@html safeEmailHtml}
+					</div>
+				{:else if email.body}
+					<!-- Plain text email content -->
+					<div class="whitespace-pre-wrap text-foreground text-sm">
+						{email.body}
+					</div>
+				{:else}
+					<div class="text-muted-foreground italic">No email content available</div>
+				{/if}
 			</div>
-		{/snippet}
+		</div>
 		{#snippet footer()}
 			<div
 				class="flex justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border bg-muted/30"

@@ -946,7 +946,7 @@
 						<section>
 							<h3 class="micro-label mb-1.5">All day</h3>
 							<div class="space-y-1">
-								{#each allDayEvents as event}
+								{#each allDayEvents as event (getEventIdentity(event))}
 									{@const markerKind = getTaskMarkerKind(event)}
 									<button
 										onclick={() => handleEventClick(event)}
@@ -997,7 +997,7 @@
 
 					{#if timedEvents.length > 0}
 						<section class="space-y-0.5">
-							{#each timedEvents as event}
+							{#each timedEvents as event (getEventIdentity(event))}
 								{@const markerKind = getTaskMarkerKind(event)}
 								<button
 									onclick={() => handleEventClick(event)}
@@ -1094,7 +1094,7 @@
 				</div>
 
 				<!-- Day columns -->
-				{#each getWeekDates(internalDate) as date}
+				{#each getWeekDates(internalDate) as date (date.getTime())}
 					{@const dayEvents = getEventsForDay(date)}
 					{@const allDayEvents = getAllDayLaneEvents(dayEvents)}
 					{@const timedEvents = getTimedEvents(dayEvents)}
@@ -1119,7 +1119,7 @@
 						<div
 							class="h-[46px] space-y-0.5 overflow-hidden border-t border-border p-1"
 						>
-							{#each allDayEvents.slice(0, 2) as event}
+							{#each allDayEvents.slice(0, 2) as event (getEventIdentity(event))}
 								{@const markerKind = getTaskMarkerKind(event)}
 								<button
 									onclick={() => handleEventClick(event)}
@@ -1205,7 +1205,7 @@
 
 			<!-- Mobile Week View - day list -->
 			<div class="space-y-2 md:hidden">
-				{#each getWeekDates(internalDate) as date}
+				{#each getWeekDates(internalDate) as date (date.getTime())}
 					{@const dayEvents = getEventsForDay(date)}
 					{@const today = isToday(date)}
 					<div
@@ -1219,7 +1219,7 @@
 						</div>
 						{#if dayEvents.length > 0}
 							<div class="space-y-0.5">
-								{#each dayEvents as event}
+								{#each dayEvents as event (getEventIdentity(event))}
 									{@const markerKind = getTaskMarkerKind(event)}
 									<button
 										onclick={() => handleEventClick(event)}
@@ -1271,7 +1271,7 @@
 			<!-- Month View - Desktop: Grid -->
 			<div class="hidden md:block">
 				<div class="grid grid-cols-7 border-b border-border bg-card">
-					{#each dayNames as day}
+					{#each dayNames as day (day)}
 						<div
 							class="px-2 py-1.5 text-2xs font-semibold uppercase tracking-wide text-muted-foreground"
 						>
@@ -1281,7 +1281,7 @@
 				</div>
 
 				<div class="space-y-px bg-border">
-					{#each getMonthWeeks(internalDate) as weekDates}
+					{#each getMonthWeeks(internalDate) as weekDates (weekDates[0]?.getTime())}
 						{@const weekSegments = getMonthWeekSegments(weekDates)}
 						{@const visibleSegments = getVisibleMonthSegments(weekSegments)}
 						{@const laneCount = getMonthLaneCount(weekSegments)}
@@ -1289,7 +1289,7 @@
 							class="relative grid grid-cols-7 gap-px bg-border"
 							style="min-height: {getMonthRowMinHeight(laneCount)}px"
 						>
-							{#each weekDates as date, columnIndex}
+							{#each weekDates as date, columnIndex (date.getTime())}
 								{@const timedEvents = getMonthTimedEventsForDay(date)}
 								{@const hiddenSegments = getHiddenSegmentCountForColumn(
 									weekSegments,
@@ -1327,7 +1327,7 @@
 												+{hiddenSegments} more
 											</button>
 										{/if}
-										{#each timedEvents.slice(0, 2) as event}
+										{#each timedEvents.slice(0, 2) as event (getEventIdentity(event))}
 											{@const markerKind = getTaskMarkerKind(event)}
 											<button
 												onclick={() => handleEventClick(event)}
@@ -1370,7 +1370,7 @@
 								</div>
 							{/each}
 
-							{#each visibleSegments as segment}
+							{#each visibleSegments as segment (segment.id)}
 								{@const markerKind = getTaskMarkerKind(segment.event)}
 								<button
 									onclick={() => handleEventClick(segment.event)}
@@ -1398,7 +1398,7 @@
 			<!-- Mobile Month View - days with events -->
 			<div class="space-y-2 md:hidden">
 				{#if currentMonthEventDates.length > 0}
-					{#each currentMonthEventDates as date}
+					{#each currentMonthEventDates as date (date.getTime())}
 						{@const dayEvents = getEventsForDay(date)}
 						{@const today = isToday(date)}
 						<div
@@ -1411,7 +1411,7 @@
 								<span class="micro-label">{dayNames[date.getDay()]}</span>
 							</div>
 							<div class="space-y-0.5">
-								{#each dayEvents.slice(0, 3) as event}
+								{#each dayEvents.slice(0, 3) as event (getEventIdentity(event))}
 									{@const markerKind = getTaskMarkerKind(event)}
 									<button
 										onclick={() => handleEventClick(event)}

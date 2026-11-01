@@ -1,7 +1,7 @@
 <!-- apps/web/src/routes/briefs/+page.svelte -->
 <script lang="ts">
 	import { onMount, onDestroy, type Component } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { browser } from '$app/environment';
 	import { getSupabaseContext } from '$lib/supabase/context';
 	import { replaceState } from '$app/navigation';
@@ -150,7 +150,6 @@
 	}
 
 	$effect(() => {
-		if (!browser) return;
 		if (selectedView === 'analytics') {
 			void loadBriefAnalyticsDashboard();
 		}
@@ -246,8 +245,8 @@
 				isToday = result.data.isToday;
 
 				// Update URL if needed. Start from the address bar (shallow writes such as
-				// an open chat's ?chat= never reach $page.url) and keep page state.
-				const url = new URL(browser ? window.location.href : $page.url);
+				// an open chat's ?chat= never reach page.url) and keep page state.
+				const url = new URL(browser ? window.location.href : page.url);
 				if (currentDate && currentDate !== url.searchParams.get('date')) {
 					url.searchParams.set('date', currentDate);
 				}
@@ -262,7 +261,7 @@
 
 				// Use replaceState to update URL without navigation
 				if (browser) {
-					replaceState(url.toString(), { ...$page.state });
+					replaceState(url.toString(), { ...page.state });
 				}
 			} else {
 				throw new Error(result.error || 'Failed to load brief data');
@@ -379,7 +378,7 @@
 		userTimezone = getUserTimezone();
 
 		// Parse initial URL params
-		const urlParams = new URLSearchParams($page.url.search);
+		const urlParams = new URLSearchParams(page.url.search);
 		const dateParam = urlParams.get('date');
 		const viewParam = urlParams.get('view');
 		const briefIdParam = urlParams.get('brief_id');
@@ -826,7 +825,7 @@
 						<div class="flex items-center justify-between">
 							<!-- View Tabs -->
 							<div class="flex bg-muted rounded-lg p-1">
-								{#each viewConfigs as view}
+								{#each viewConfigs as view (view.id)}
 									<Button
 										type="button"
 										onclick={() => changeView(view.id)}
@@ -908,7 +907,7 @@
 				<!-- Mobile View Navigation: always-visible segmented control (was a
 				     vertical stack of full-width buttons behind a hamburger) -->
 				<div class="sm:hidden flex bg-muted rounded-lg p-1">
-					{#each viewConfigs as view}
+					{#each viewConfigs as view (view.id)}
 						<Button
 							type="button"
 							onclick={() => changeView(view.id)}
@@ -1191,7 +1190,7 @@
 					</div>
 				{:else if filteredBriefs.length > 0}
 					<div class="space-y-3 sm:space-y-4">
-						{#each filteredBriefs as brief}
+						{#each filteredBriefs as brief (brief.id)}
 							<div
 								class="bg-card rounded-lg shadow-ink hover:shadow-ink-strong transition-all duration-200 border border-border"
 							>

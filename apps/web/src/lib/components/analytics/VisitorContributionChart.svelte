@@ -403,7 +403,7 @@
 					<div class="flex space-x-0.5 sm:space-x-1">
 						{#each weeks as week, weekIndex (week[0]?.date ?? `month-week-${weekIndex}`)}
 							<div class="w-2 sm:w-3 h-3 sm:h-4 relative">
-								{#each monthLabels as month}
+								{#each monthLabels as month (month.name)}
 									{#if month.weekIndex === weekIndex}
 										<div
 											class="absolute -top-1 left-0 text-xs text-muted-foreground dark:!text-muted-foreground whitespace-nowrap"
@@ -424,7 +424,7 @@
 				<div
 					class="flex flex-col justify-between text-xs text-muted-foreground dark:!text-muted-foreground mr-2 sm:mr-3 py-0.5 flex-shrink-0"
 				>
-					{#each dayLabels as label, index}
+					{#each dayLabels as label, index (label)}
 						{#if index % 2 === 1}
 							<!-- Only show Mon, Wed, Fri for space -->
 							<div class="h-2 sm:h-3 flex items-center">{label}</div>
@@ -517,7 +517,7 @@
 
 						<!-- Signups bars -->
 						{#if signupGraphData.length > 0}
-							{#each signupGraphData as point, index}
+							{#each signupGraphData as point, index (point.date)}
 								<rect
 									x={45 + index * (700 / (signupGraphData.length - 1))}
 									y={170 - (point.signup_count / maxValue) * 140}
@@ -567,7 +567,7 @@
 							/>
 
 							<!-- Visitors data points -->
-							{#each graphData as point, index}
+							{#each graphData as point, index (point.date)}
 								<circle
 									cx={50 + index * (700 / (graphData.length - 1))}
 									cy={170 - (point.visitor_count / maxValue) * 140}
@@ -606,7 +606,7 @@
 							{/each}
 
 							<!-- X-axis labels -->
-							{#each graphData as point, index}
+							{#each graphData as point, index (point.date)}
 								{#if index % Math.max(1, Math.floor(graphData.length / 6)) === 0 || index === graphData.length - 1}
 									<text
 										x={50 + index * (700 / (graphData.length - 1))}

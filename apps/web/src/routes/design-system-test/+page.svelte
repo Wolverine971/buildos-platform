@@ -700,22 +700,20 @@
 		</div>
 	{/snippet}
 
-	{#snippet children()}
-		<div class="p-6 space-y-4">
-			<p class="text-muted-foreground">
-				This modal demonstrates the Inkprint design system with proper semantic tokens,
-				texture overlays, and consistent styling.
-			</p>
+	<div class="p-6 space-y-4">
+		<p class="text-muted-foreground">
+			This modal demonstrates the Inkprint design system with proper semantic tokens, texture
+			overlays, and consistent styling.
+		</p>
 
-			<div class="bg-muted rounded-lg border border-border p-4 tx tx-frame tx-weak">
-				<p class="text-sm text-muted-foreground">
-					<strong class="text-foreground">Texture Applied:</strong> This panel uses
-					<code class="code-inline">tx tx-frame tx-weak</code>
-					for a subtle grid pattern.
-				</p>
-			</div>
+		<div class="bg-muted rounded-lg border border-border p-4 tx tx-frame tx-weak">
+			<p class="text-sm text-muted-foreground">
+				<strong class="text-foreground">Texture Applied:</strong> This panel uses
+				<code class="code-inline">tx tx-frame tx-weak</code>
+				for a subtle grid pattern.
+			</p>
 		</div>
-	{/snippet}
+	</div>
 
 	{#snippet footer()}
 		<div

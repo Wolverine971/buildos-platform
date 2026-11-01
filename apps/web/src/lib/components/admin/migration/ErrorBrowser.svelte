@@ -279,7 +279,7 @@
 	<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
 		<div class="flex flex-wrap items-center gap-2">
 			<span class="text-xs font-medium text-muted-foreground">Category:</span>
-			{#each categoryOptions as option}
+			{#each categoryOptions as option (option.label)}
 				<button
 					class="rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {selectedCategory ===
 					option.value
@@ -302,7 +302,7 @@
 				bind:value={selectedEntityType}
 				onchange={() => handleEntityTypeFilter(selectedEntityType)}
 			>
-				{#each entityTypeOptions as option}
+				{#each entityTypeOptions as option (option.label)}
 					<option value={option.value}>{option.label}</option>
 				{/each}
 			</select>
@@ -324,7 +324,7 @@
 	{:else}
 		<!-- Mobile Card View -->
 		<div class="space-y-3 lg:hidden">
-			{#each errors as error}
+			{#each errors as error (error.id)}
 				{@const CategoryIcon = getCategoryIcon(error.errorCategory)}
 				<div class="rounded-lg border border-border bg-card p-4">
 					<div class="flex items-start justify-between gap-3">
@@ -419,7 +419,7 @@
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-border bg-card">
-					{#each errors as error}
+					{#each errors as error (error.id)}
 						{@const CategoryIcon = getCategoryIcon(error.errorCategory)}
 						<tr class="transition-colors hover:bg-muted/30">
 							<td class="px-3 py-3">

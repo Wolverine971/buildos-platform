@@ -135,7 +135,6 @@
 
 	// Load data on mount and when filters change
 	$effect(() => {
-		if (!browser) return;
 		selectedTimeframe;
 		selectedContextType;
 		selectedPlanStatus;
@@ -599,7 +598,7 @@
 
 				<!-- Mobile card list -->
 				<div class="block space-y-2 lg:hidden">
-					{#each timingData.cache_source_performance as source}
+					{#each timingData.cache_source_performance as source (source.cache_source)}
 						<div class="rounded-lg border border-border bg-background p-3">
 							<div class="text-sm font-medium text-foreground">
 								{formatCacheSource(source.cache_source)}
@@ -685,7 +684,7 @@
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-border">
-							{#each timingData.cache_source_performance as source}
+							{#each timingData.cache_source_performance as source (source.cache_source)}
 								<tr
 									class="hover:bg-muted/30 transition-colors motion-reduce:transition-none"
 								>
@@ -740,7 +739,7 @@
 							</h4>
 							{#if timingData.prepared_prompt.miss_reasons.length > 0}
 								<div class="space-y-2">
-									{#each timingData.prepared_prompt.miss_reasons as item}
+									{#each timingData.prepared_prompt.miss_reasons as item (item.value)}
 										<div class="flex items-center justify-between text-sm">
 											<span class="text-foreground"
 												>{formatCacheSource(item.value)}</span
@@ -763,7 +762,7 @@
 							</h4>
 							{#if timingData.prepared_prompt.surface_profiles.length > 0}
 								<div class="space-y-2">
-									{#each timingData.prepared_prompt.surface_profiles as item}
+									{#each timingData.prepared_prompt.surface_profiles as item (item.value)}
 										<div class="flex items-center justify-between text-sm">
 											<span class="text-foreground"
 												>{formatCacheSource(item.value)}</span
@@ -925,7 +924,7 @@
 
 				{#if timingData.trends.length > 0}
 					<div class="space-y-2 max-h-64 overflow-y-auto">
-						{#each timingData.trends as day}
+						{#each timingData.trends as day (day.date)}
 							<div
 								class="flex items-center justify-between text-sm py-1 border-b border-border/50 last:border-0"
 							>
@@ -1008,7 +1007,7 @@
 
 				{#if timingData.context_type_performance.length > 0}
 					<div class="space-y-2 max-h-48 overflow-y-auto">
-						{#each timingData.context_type_performance as ctx}
+						{#each timingData.context_type_performance as ctx (ctx.context_type)}
 							<div
 								class="flex items-center justify-between text-sm py-1 border-b border-border/50 last:border-0"
 							>

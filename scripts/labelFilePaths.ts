@@ -73,15 +73,19 @@ const COMMENT_PATTERNS = {
 	yaml: (filePath: string) => `# ${filePath}`
 };
 
-// Regex patterns to detect existing path comments (must contain path-like pattern: word/word or word.ext)
-// These are more specific to avoid matching markdown headers, frontmatter, etc.
-// Character class includes: word chars, dash, dot, slash, plus, space, brackets (for [slug] paths), parentheses (for route groups like (app)), $ (for SvelteKit files like $types.ts)
+// Regex patterns to detect an older path label (e.g. left behind after a file moved).
+// Kept specific so ordinary comments, markdown headers, and frontmatter don't match.
+// Path characters: word chars, dash, dot, slash, plus, space, brackets ([slug]), parentheses
+// ((app) route groups), $ ($types.ts), comma (Expo groups like (today,workspace)),
+// = (SvelteKit matchers like [handle=at_handle]), @ and ~.
+// The file's own current label is always recognized by exact match, whatever its characters.
+const PATH_CHARS = String.raw`[\w\-./+ \[\]()$,=@~]+`;
 const EXISTING_PATH_COMMENT_PATTERNS = [
-	/^<!--\s*[\w\-./+ \[\]()$]+\.(md|svelte|html|xml)\s*-->/, // HTML-style path comments
-	/^\/\/\s*[\w\-./+ \[\]()$]+\.(ts|js|mjs|jsx|tsx|jsonc)/, // Single-line path comments
-	/^\/\*\s*[\w\-./+ \[\]()$]+\.(css|scss|sass|less)\s*\*\//, // CSS-style path comments
-	/^#\s*[\w\-./+ \[\]()$]+\.(py|sh|bash|yml|yaml)/, // Hash path comments (not markdown headers!)
-	/^--\s*[\w\-./+ \[\]()$]+\.sql/ // SQL path comments
+	new RegExp(String.raw`^<!--\s*${PATH_CHARS}\.(md|svelte|html|xml)\s*-->`), // HTML-style
+	new RegExp(String.raw`^\/\/\s*${PATH_CHARS}\.(ts|js|mjs|jsx|tsx|jsonc)`), // Single-line
+	new RegExp(String.raw`^\/\*\s*${PATH_CHARS}\.(css|scss|sass|less)\s*\*\/`), // CSS-style
+	new RegExp(String.raw`^#\s*${PATH_CHARS}\.(py|sh|bash|yml|yaml)`), // Hash (not markdown headers!)
+	new RegExp(String.raw`^--\s*${PATH_CHARS}\.sql`) // SQL
 ];
 
 function getFileExtension(filePath: string): string {
@@ -149,13 +153,6 @@ function isExistingPathCommentLine(line: string): boolean {
 	return EXISTING_PATH_COMMENT_PATTERNS.some((pattern) => pattern.test(trimmedLine));
 }
 
-function hasExistingPathComment(content: string): boolean {
-	const lines = content.split('\n');
-	if (lines.length === 0) return false;
-
-	return isExistingPathCommentLine(lines[0]);
-}
-
 /**
  * Check if markdown content has YAML frontmatter (starts with ---)
  */
@@ -196,42 +193,40 @@ function addPathToFrontmatter(content: string, relativePath: string): string {
 	}
 }
 
-function addOrUpdatePathCommentInLines(content: string, pathComment: string): string {
-	const lines = content.split('\n');
+function isPathLabel(line: string, pathComment: string): boolean {
+	return line.trim() === pathComment || isExistingPathCommentLine(line);
+}
 
-	if (lines.length > 1 && isExistingPathCommentLine(lines[0]) && isShebangLine(lines[1])) {
-		const shebang = lines[1];
-		const rest = lines.slice(2);
-
-		while (rest.length > 0 && isExistingPathCommentLine(rest[0])) {
-			rest.shift();
-		}
-
-		return [shebang, pathComment, ...rest].join('\n');
+/**
+ * Put the label at lines[index]: replace an existing label there, or insert one.
+ * Also drops exact repeats of the label directly below it (left by earlier runs);
+ * only exact copies go, so a real comment that merely looks like a path survives.
+ */
+function setPathLabelAt(lines: string[], index: number, pathComment: string): string[] {
+	const out = [...lines];
+	if (index >= out.length || !isPathLabel(out[index], pathComment)) {
+		out.splice(index, 0, pathComment);
+		return out;
 	}
 
-	if (isShebangLine(lines[0])) {
-		const rest = lines.slice(1);
+	const repeats = new Set([out[index].trim(), pathComment]);
+	out[index] = pathComment;
+	while (index + 1 < out.length && repeats.has(out[index + 1].trim())) {
+		out.splice(index + 1, 1);
+	}
+	return out;
+}
 
-		if (rest.length > 0 && isExistingPathCommentLine(rest[0])) {
-			rest[0] = pathComment;
+export function addOrUpdatePathCommentInLines(content: string, pathComment: string): string {
+	let lines = content.split('\n');
 
-			while (rest.length > 1 && isExistingPathCommentLine(rest[1])) {
-				rest.splice(1, 1);
-			}
-		} else {
-			rest.unshift(pathComment);
-		}
-
-		return [lines[0], ...rest].join('\n');
+	// A label written above a shebang breaks the script: drop it so the shebang is first again.
+	if (lines.length > 1 && isPathLabel(lines[0], pathComment) && isShebangLine(lines[1])) {
+		lines = lines.slice(1);
 	}
 
-	if (hasExistingPathComment(content)) {
-		lines[0] = pathComment;
-		return lines.join('\n');
-	}
-
-	return pathComment + '\n' + content;
+	const labelIndex = isShebangLine(lines[0]) ? 1 : 0;
+	return setPathLabelAt(lines, labelIndex, pathComment).join('\n');
 }
 
 function addOrUpdatePathComment(filePath: string, rootDir: string): boolean {
@@ -253,17 +248,9 @@ function addOrUpdatePathComment(filePath: string, rootDir: string): boolean {
 				// Add path inside frontmatter - never touch headers or other content
 				newContent = addPathToFrontmatter(content, relativePath);
 			} else {
-				// No frontmatter - prepend HTML comment, NEVER replace existing content
+				// No frontmatter - update or prepend the HTML comment, NEVER replace other content
 				const pathComment = commentFunction(relativePath);
-				if (hasExistingPathComment(content)) {
-					// Already has a path comment, update it
-					const lines = content.split('\n');
-					lines[0] = pathComment;
-					newContent = lines.join('\n');
-				} else {
-					// Prepend the path comment (push existing content down)
-					newContent = pathComment + '\n' + content;
-				}
+				newContent = setPathLabelAt(content.split('\n'), 0, pathComment).join('\n');
 			}
 		} else {
 			// Non-markdown files: use original logic
@@ -393,5 +380,7 @@ function main() {
 	}
 }
 
-// Run the script
-main();
+// Run only when executed directly, so tests can import the helpers.
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+	main();
+}

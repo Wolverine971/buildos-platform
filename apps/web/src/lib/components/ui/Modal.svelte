@@ -88,7 +88,7 @@
 	import { fade } from 'svelte/transition';
 	import { onDestroy, tick, untrack } from 'svelte';
 	import { browser } from '$app/environment';
-	import { portal } from '$lib/actions/portal';
+	import { portal } from '$lib/attachments/portal';
 	import { lockBodyScroll, unlockBodyScroll } from '$lib/utils/body-scroll-lock';
 	import { initKeyboardAvoiding } from '$lib/utils/keyboard-avoiding';
 	import type { Snippet } from 'svelte';
@@ -393,6 +393,7 @@
 	}
 
 	// Svelte action to attach non-passive touch listeners
+	// Attachment: re-runs when `gesturesEnabled` changes (e.g. the device check settles).
 	function touchGesture(node: HTMLElement) {
 		if (!gesturesEnabled) return;
 
@@ -405,12 +406,10 @@
 		node.addEventListener('touchmove', touchMoveHandler, { passive: false });
 		node.addEventListener('touchend', touchEndHandler, { passive: false });
 
-		return {
-			destroy() {
-				node.removeEventListener('touchstart', touchStartHandler);
-				node.removeEventListener('touchmove', touchMoveHandler);
-				node.removeEventListener('touchend', touchEndHandler);
-			}
+		return () => {
+			node.removeEventListener('touchstart', touchStartHandler);
+			node.removeEventListener('touchmove', touchMoveHandler);
+			node.removeEventListener('touchend', touchEndHandler);
 		};
 	}
 
@@ -667,7 +666,7 @@
 	<!-- keepMounted: a parked dialog stays in the DOM (children keep their state)
 	     but is hidden + inert, so it takes no focus, clicks, or scroll lock. -->
 	<div
-		use:portal
+		{@attach portal()}
 		class="modal-root {parked ? 'modal-root--parked' : ''}"
 		hidden={parked}
 		inert={parked}
@@ -710,7 +709,7 @@
 				-->
 				<div
 					bind:this={modalElement}
-					use:touchGesture
+					{@attach touchGesture}
 					class="relative {sizeClasses[size]}
 						wt-plate
 						{variantClasses.modal}

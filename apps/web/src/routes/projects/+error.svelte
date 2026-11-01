@@ -1,14 +1,14 @@
 <!-- apps/web/src/routes/projects/+error.svelte -->
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import { AlertCircle, Home, RefreshCw } from 'lucide-svelte';
 
-	const status = $derived($page.status);
-	const message = $derived($page.error?.message || 'An unexpected error occurred');
+	const status = $derived(page.status);
+	const message = $derived(page.error?.message || 'An unexpected error occurred');
 
 	const errorTitle = $derived.by(() => {
 		switch (status) {
@@ -54,7 +54,7 @@
 
 	function handleLogIn() {
 		// Return to this exact page (and its `?chat=` link) after sign-in.
-		const currentPath = $page.url.pathname + $page.url.search;
+		const currentPath = page.url.pathname + page.url.search;
 		goto(`/auth/login?redirect=${encodeURIComponent(currentPath)}`);
 	}
 </script>

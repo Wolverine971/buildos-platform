@@ -303,352 +303,336 @@
 		</div>
 	{/snippet}
 
-	{#snippet children()}
-		<div class="px-2 py-2 sm:px-6 sm:py-4">
-			<!-- Horizontal Slide Animation Between Views.
-			     Stacked grid cell instead of absolute panes: content stays in
-			     normal flow, so the pane grows with its content and the modal's
-			     own .modal-content scroll applies (no fixed 400px inner scroll). -->
-			<div class="grid overflow-hidden" style="min-height: 400px;">
-				{#key showTemplateSelection}
-					<div
-						in:fly={{ x: slideDirection * 100, duration: 300, easing: cubicOut }}
-						out:fly={{ x: slideDirection * -100, duration: 300, easing: cubicOut }}
-						class="[grid-area:1/1] min-w-0"
-					>
-						{#if showTemplateSelection}
-							<!-- TEMPLATE SELECTION VIEW -->
-							<div class="space-y-3 sm:space-y-4">
-								<!-- Header -->
-								<div class="flex items-center gap-3 pb-4 border-b border-border">
-									<div class="p-2 rounded bg-muted tx tx-bloom tx-weak">
-										<ListChecks class="w-5 h-5 text-accent" />
-									</div>
-									<div>
-										<h3 class="text-lg font-semibold text-foreground">
-											Choose a Task Type
-										</h3>
-										<p class="text-sm text-muted-foreground">
-											Select a task type to get started with the right
-											structure
-										</p>
-									</div>
+	<div class="px-2 py-2 sm:px-6 sm:py-4">
+		<!-- Horizontal Slide Animation Between Views.
+		     Stacked grid cell instead of absolute panes: content stays in
+		     normal flow, so the pane grows with its content and the modal's
+		     own .modal-content scroll applies (no fixed 400px inner scroll). -->
+		<div class="grid overflow-hidden" style="min-height: 400px;">
+			{#key showTemplateSelection}
+				<div
+					in:fly={{ x: slideDirection * 100, duration: 300, easing: cubicOut }}
+					out:fly={{ x: slideDirection * -100, duration: 300, easing: cubicOut }}
+					class="[grid-area:1/1] min-w-0"
+				>
+					{#if showTemplateSelection}
+						<!-- TEMPLATE SELECTION VIEW -->
+						<div class="space-y-3 sm:space-y-4">
+							<!-- Header -->
+							<div class="flex items-center gap-3 pb-4 border-b border-border">
+								<div class="p-2 rounded bg-muted tx tx-bloom tx-weak">
+									<ListChecks class="w-5 h-5 text-accent" />
 								</div>
-
-								<div class="space-y-4 sm:space-y-6">
-									{#each Object.entries(templateCategories) as [category, categoryTemplates] (category)}
-										<div>
-											<h3
-												class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2"
-											>
-												<span class="w-1.5 h-1.5 bg-accent rounded-full"
-												></span>
-												{category}
-											</h3>
-											<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-												{#each categoryTemplates as template (template.id)}
-													<button
-														type="button"
-														onclick={() => selectTemplate(template)}
-														class="bg-card border border-border p-2.5 sm:p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200 pressable tx tx-frame tx-weak"
-													>
-														<div
-															class="flex items-start justify-between mb-2"
-														>
-															<h4
-																class="font-semibold text-foreground group-hover:text-accent transition-colors"
-															>
-																{template.name}
-															</h4>
-															<ChevronRight
-																class="w-5 h-5 text-muted-foreground group-hover:text-accent flex-shrink-0 transition-transform group-hover:translate-x-0.5"
-															/>
-														</div>
-														{#if template.metadata?.description}
-															<p
-																class="text-sm text-muted-foreground line-clamp-2 mb-2"
-															>
-																{template.metadata.description}
-															</p>
-														{/if}
-														{#if template.metadata?.typical_duration}
-															<div
-																class="mt-2 inline-flex items-center gap-1.5 px-2 py-1 bg-muted rounded"
-															>
-																<span
-																	class="text-xs font-semibold text-foreground uppercase tracking-wide"
-																>
-																	{template.metadata
-																		.typical_duration}
-																</span>
-															</div>
-														{/if}
-													</button>
-												{/each}
-											</div>
-										</div>
-									{/each}
+								<div>
+									<h3 class="text-lg font-semibold text-foreground">
+										Choose a Task Type
+									</h3>
+									<p class="text-sm text-muted-foreground">
+										Select a task type to get started with the right structure
+									</p>
 								</div>
 							</div>
-						{:else}
-							<!-- TASK DETAILS FORM -->
-							<form class="space-y-3 sm:space-y-4" onsubmit={handleSubmit}>
-								<!-- Selected Template Badge -->
-								{#if selectedTemplate}
-									<div
-										class="rounded-lg border border-border bg-muted p-2.5 sm:p-4 tx tx-grain tx-weak"
-									>
-										<div class="flex items-center justify-between gap-3">
-											<div class="flex items-center gap-3 flex-1 min-w-0">
-												<div class="p-2 rounded bg-card shadow-ink">
-													<CheckSquare class="w-4 h-4 text-accent" />
-												</div>
-												<div class="flex-1 min-w-0">
-													<h4
-														class="text-sm font-semibold text-foreground"
+
+							<div class="space-y-4 sm:space-y-6">
+								{#each Object.entries(templateCategories) as [category, categoryTemplates] (category)}
+									<div>
+										<h3
+											class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2"
+										>
+											<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
+											{category}
+										</h3>
+										<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+											{#each categoryTemplates as template (template.id)}
+												<button
+													type="button"
+													onclick={() => selectTemplate(template)}
+													class="bg-card border border-border p-2.5 sm:p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200 pressable tx tx-frame tx-weak"
+												>
+													<div
+														class="flex items-start justify-between mb-2"
 													>
-														{selectedTemplate.name}
-													</h4>
-													{#if selectedTemplate.metadata?.description}
-														<p
-															class="text-xs text-muted-foreground truncate"
+														<h4
+															class="font-semibold text-foreground group-hover:text-accent transition-colors"
 														>
-															{selectedTemplate.metadata.description}
+															{template.name}
+														</h4>
+														<ChevronRight
+															class="w-5 h-5 text-muted-foreground group-hover:text-accent flex-shrink-0 transition-transform group-hover:translate-x-0.5"
+														/>
+													</div>
+													{#if template.metadata?.description}
+														<p
+															class="text-sm text-muted-foreground line-clamp-2 mb-2"
+														>
+															{template.metadata.description}
 														</p>
 													{/if}
-												</div>
-											</div>
-											<Button
-												type="button"
-												variant="ghost"
-												size="sm"
-												onclick={handleBack}
-												class="shrink-0"
-											>
-												Change
-											</Button>
-										</div>
-									</div>
-								{/if}
-
-								<!-- Description (shown first to enable title auto-generation) -->
-								<FormField
-									label="Description"
-									labelFor="description"
-									hint="Describe what needs to be done — you can auto-generate the title from this"
-								>
-									<Textarea
-										id="description"
-										bind:value={description}
-										placeholder="Describe the task..."
-										enterkeyhint="next"
-										rows={4}
-										disabled={isSaving}
-										size="md"
-									/>
-								</FormField>
-
-								<!-- Task Title with auto-generate -->
-								<div class="space-y-2">
-									<div class="flex items-end justify-between gap-2 mb-2">
-										<label
-											for="title"
-											class="block text-sm font-semibold uppercase tracking-wider text-foreground"
-										>
-											Task Title
-											<span class="text-destructive ml-0.5">*</span>
-										</label>
-										<button
-											type="button"
-											onclick={generateTitle}
-											disabled={isSaving ||
-												isGeneratingTitle ||
-												!description.trim()}
-											class="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-border bg-card text-xs font-medium text-muted-foreground shadow-ink transition-all pressable hover:border-accent hover:text-accent disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:text-muted-foreground tx tx-grain tx-weak"
-											aria-label="Auto-generate title from description"
-										>
-											{#if isGeneratingTitle}
-												<LoaderCircle class="w-3 h-3 animate-spin" />
-												<span>Generating…</span>
-											{:else}
-												<Sparkles class="w-3 h-3" />
-												<span>Auto-generate</span>
-											{/if}
-										</button>
-									</div>
-									<TextInput
-										id="title"
-										bind:value={title}
-										placeholder="Enter task title or auto-generate from description..."
-										inputmode="text"
-										enterkeyhint="next"
-										required={true}
-										disabled={isSaving || isGeneratingTitle}
-										error={!title.trim() && error ? true : false}
-										size="md"
-									/>
-									<div class="min-h-0 sm:min-h-5 flex items-start">
-										{#if !title.trim() && error}
-											<p class="text-sm text-destructive mt-2">
-												Task title is required
-											</p>
-										{:else if titleGenerationError}
-											<p class="text-sm text-destructive mt-2">
-												{titleGenerationError}
-											</p>
-										{/if}
-									</div>
-								</div>
-
-								<FormField
-									label="Assignees"
-									labelFor="task-assignees"
-									hint="Assign this task to one or more collaborators (max 10)"
-								>
-									<div id="task-assignees">
-										<TaskAssigneeSelector
-											{projectId}
-											bind:selectedActorIds={assigneeActorIds}
-											disabled={isSaving}
-											maxAssignees={10}
-										/>
-									</div>
-								</FormField>
-
-								<!-- Priority & State Grid -->
-								<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-									<FormField label="Priority" labelFor="priority" required={true}>
-										<Select
-											id="priority"
-											bind:value={priority}
-											disabled={isSaving}
-											size="md"
-											placeholder="Select priority"
-										>
-											<option value={1}>P1 - Critical</option>
-											<option value={2}>P2 - High</option>
-											<option value={3}>P3 - Medium</option>
-											<option value={4}>P4 - Low</option>
-											<option value={5}>P5 - Nice to have</option>
-										</Select>
-									</FormField>
-
-									<FormField
-										label="Initial State"
-										labelFor="state"
-										required={true}
-									>
-										<Select
-											id="state"
-											bind:value={stateKey}
-											disabled={isSaving}
-											size="md"
-											placeholder="Select state"
-										>
-											{#each TASK_STATES as state (state)}
-												<option value={state}>
-													{state === 'todo'
-														? 'To Do'
-														: state === 'in_progress'
-															? 'In Progress'
-															: state === 'blocked'
-																? 'Blocked'
-																: state === 'done'
-																	? 'Done'
-																	: state}
-												</option>
+													{#if template.metadata?.typical_duration}
+														<div
+															class="mt-2 inline-flex items-center gap-1.5 px-2 py-1 bg-muted rounded"
+														>
+															<span
+																class="text-xs font-semibold text-foreground uppercase tracking-wide"
+															>
+																{template.metadata.typical_duration}
+															</span>
+														</div>
+													{/if}
+												</button>
 											{/each}
-										</Select>
-									</FormField>
-								</div>
-
-								<!-- Scheduled Section -->
-								<div
-									class="border border-border rounded-lg p-2.5 sm:p-4 bg-muted tx tx-frame tx-weak"
-								>
-									<div class="flex items-center gap-2 mb-3">
-										<span class="text-base">📅</span>
-										<h3 class="text-sm font-semibold text-foreground">
-											Scheduled
-										</h3>
-									</div>
-									<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-										<FormField
-											label="Start Date"
-											labelFor="startAt"
-											hint="When work should begin"
-										>
-											<TextInput
-												id="startAt"
-												type="datetime-local"
-												bind:value={startAt}
-												disabled={isSaving}
-												size="md"
-											/>
-										</FormField>
-										<FormField
-											label="Due Date"
-											labelFor="dueAt"
-											hint="Deadline for this task"
-										>
-											<TextInput
-												id="dueAt"
-												type="datetime-local"
-												bind:value={dueAt}
-												disabled={isSaving}
-												size="md"
-											/>
-										</FormField>
-									</div>
-									{#if startAt || dueAt}
-										<div
-											class="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground"
-										>
-											{#if startAt}
-												<span>
-													Start: {new Date(startAt).toLocaleString(
-														'en-US',
-														{
-															weekday: 'short',
-															month: 'short',
-															day: 'numeric',
-															hour: 'numeric',
-															minute: '2-digit'
-														}
-													)}
-												</span>
-											{/if}
-											{#if dueAt}
-												<span>
-													Due: {new Date(dueAt).toLocaleString('en-US', {
-														weekday: 'short',
-														month: 'short',
-														day: 'numeric',
-														hour: 'numeric',
-														minute: '2-digit'
-													})}
-												</span>
-											{/if}
 										</div>
+									</div>
+								{/each}
+							</div>
+						</div>
+					{:else}
+						<!-- TASK DETAILS FORM -->
+						<form class="space-y-3 sm:space-y-4" onsubmit={handleSubmit}>
+							<!-- Selected Template Badge -->
+							{#if selectedTemplate}
+								<div
+									class="rounded-lg border border-border bg-muted p-2.5 sm:p-4 tx tx-grain tx-weak"
+								>
+									<div class="flex items-center justify-between gap-3">
+										<div class="flex items-center gap-3 flex-1 min-w-0">
+											<div class="p-2 rounded bg-card shadow-ink">
+												<CheckSquare class="w-4 h-4 text-accent" />
+											</div>
+											<div class="flex-1 min-w-0">
+												<h4 class="text-sm font-semibold text-foreground">
+													{selectedTemplate.name}
+												</h4>
+												{#if selectedTemplate.metadata?.description}
+													<p
+														class="text-xs text-muted-foreground truncate"
+													>
+														{selectedTemplate.metadata.description}
+													</p>
+												{/if}
+											</div>
+										</div>
+										<Button
+											type="button"
+											variant="ghost"
+											size="sm"
+											onclick={handleBack}
+											class="shrink-0"
+										>
+											Change
+										</Button>
+									</div>
+								</div>
+							{/if}
+
+							<!-- Description (shown first to enable title auto-generation) -->
+							<FormField
+								label="Description"
+								labelFor="description"
+								hint="Describe what needs to be done — you can auto-generate the title from this"
+							>
+								<Textarea
+									id="description"
+									bind:value={description}
+									placeholder="Describe the task..."
+									enterkeyhint="next"
+									rows={4}
+									disabled={isSaving}
+									size="md"
+								/>
+							</FormField>
+
+							<!-- Task Title with auto-generate -->
+							<div class="space-y-2">
+								<div class="flex items-end justify-between gap-2 mb-2">
+									<label
+										for="title"
+										class="block text-sm font-semibold uppercase tracking-wider text-foreground"
+									>
+										Task Title
+										<span class="text-destructive ml-0.5">*</span>
+									</label>
+									<button
+										type="button"
+										onclick={generateTitle}
+										disabled={isSaving ||
+											isGeneratingTitle ||
+											!description.trim()}
+										class="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-border bg-card text-xs font-medium text-muted-foreground shadow-ink transition-all pressable hover:border-accent hover:text-accent disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:text-muted-foreground tx tx-grain tx-weak"
+										aria-label="Auto-generate title from description"
+									>
+										{#if isGeneratingTitle}
+											<LoaderCircle class="w-3 h-3 animate-spin" />
+											<span>Generating…</span>
+										{:else}
+											<Sparkles class="w-3 h-3" />
+											<span>Auto-generate</span>
+										{/if}
+									</button>
+								</div>
+								<TextInput
+									id="title"
+									bind:value={title}
+									placeholder="Enter task title or auto-generate from description..."
+									inputmode="text"
+									enterkeyhint="next"
+									required={true}
+									disabled={isSaving || isGeneratingTitle}
+									error={!title.trim() && error ? true : false}
+									size="md"
+								/>
+								<div class="min-h-0 sm:min-h-5 flex items-start">
+									{#if !title.trim() && error}
+										<p class="text-sm text-destructive mt-2">
+											Task title is required
+										</p>
+									{:else if titleGenerationError}
+										<p class="text-sm text-destructive mt-2">
+											{titleGenerationError}
+										</p>
 									{/if}
 								</div>
+							</div>
 
-								{#if error}
-									<div
-										class="p-4 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
+							<FormField
+								label="Assignees"
+								labelFor="task-assignees"
+								hint="Assign this task to one or more collaborators (max 10)"
+							>
+								<div id="task-assignees">
+									<TaskAssigneeSelector
+										{projectId}
+										bind:selectedActorIds={assigneeActorIds}
+										disabled={isSaving}
+										maxAssignees={10}
+									/>
+								</div>
+							</FormField>
+
+							<!-- Priority & State Grid -->
+							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+								<FormField label="Priority" labelFor="priority" required={true}>
+									<Select
+										id="priority"
+										bind:value={priority}
+										disabled={isSaving}
+										size="md"
+										placeholder="Select priority"
 									>
-										<p class="text-sm text-destructive">
-											{error}
-										</p>
+										<option value={1}>P1 - Critical</option>
+										<option value={2}>P2 - High</option>
+										<option value={3}>P3 - Medium</option>
+										<option value={4}>P4 - Low</option>
+										<option value={5}>P5 - Nice to have</option>
+									</Select>
+								</FormField>
+
+								<FormField label="Initial State" labelFor="state" required={true}>
+									<Select
+										id="state"
+										bind:value={stateKey}
+										disabled={isSaving}
+										size="md"
+										placeholder="Select state"
+									>
+										{#each TASK_STATES as state (state)}
+											<option value={state}>
+												{state === 'todo'
+													? 'To Do'
+													: state === 'in_progress'
+														? 'In Progress'
+														: state === 'blocked'
+															? 'Blocked'
+															: state === 'done'
+																? 'Done'
+																: state}
+											</option>
+										{/each}
+									</Select>
+								</FormField>
+							</div>
+
+							<!-- Scheduled Section -->
+							<div
+								class="border border-border rounded-lg p-2.5 sm:p-4 bg-muted tx tx-frame tx-weak"
+							>
+								<div class="flex items-center gap-2 mb-3">
+									<span class="text-base">📅</span>
+									<h3 class="text-sm font-semibold text-foreground">Scheduled</h3>
+								</div>
+								<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+									<FormField
+										label="Start Date"
+										labelFor="startAt"
+										hint="When work should begin"
+									>
+										<TextInput
+											id="startAt"
+											type="datetime-local"
+											bind:value={startAt}
+											disabled={isSaving}
+											size="md"
+										/>
+									</FormField>
+									<FormField
+										label="Due Date"
+										labelFor="dueAt"
+										hint="Deadline for this task"
+									>
+										<TextInput
+											id="dueAt"
+											type="datetime-local"
+											bind:value={dueAt}
+											disabled={isSaving}
+											size="md"
+										/>
+									</FormField>
+								</div>
+								{#if startAt || dueAt}
+									<div
+										class="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground"
+									>
+										{#if startAt}
+											<span>
+												Start: {new Date(startAt).toLocaleString('en-US', {
+													weekday: 'short',
+													month: 'short',
+													day: 'numeric',
+													hour: 'numeric',
+													minute: '2-digit'
+												})}
+											</span>
+										{/if}
+										{#if dueAt}
+											<span>
+												Due: {new Date(dueAt).toLocaleString('en-US', {
+													weekday: 'short',
+													month: 'short',
+													day: 'numeric',
+													hour: 'numeric',
+													minute: '2-digit'
+												})}
+											</span>
+										{/if}
 									</div>
 								{/if}
-							</form>
-						{/if}
-					</div>
-				{/key}
-			</div>
+							</div>
+
+							{#if error}
+								<div
+									class="p-4 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
+								>
+									<p class="text-sm text-destructive">
+										{error}
+									</p>
+								</div>
+							{/if}
+						</form>
+					{/if}
+				</div>
+			{/key}
 		</div>
-	{/snippet}
+	</div>
 
 	<!-- Footer Actions - buttons on one row, smaller on mobile -->
 	{#snippet footer()}

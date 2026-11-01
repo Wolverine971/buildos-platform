@@ -288,14 +288,12 @@
 
 	// Load data on mount and when timeframe changes
 	$effect(() => {
-		if (!browser) return;
 		selectedTimeframe;
 		loadDashboard();
 	});
 
 	// Auto-refresh
 	$effect(() => {
-		if (!browser) return;
 		if (autoRefresh) {
 			const interval = setInterval(refreshDashboard, 30000); // 30 seconds
 			return () => clearInterval(interval);
@@ -1155,7 +1153,7 @@
 								>
 									<div class="min-w-0 flex-1">
 										<div class="mb-2 flex flex-wrap items-center gap-2">
-											{#each issue.issue_types as type}
+											{#each issue.issue_types as type (type)}
 												<span
 													class="inline-flex items-center rounded-full border px-2 py-0.5 text-2xs font-medium {skillGateIssueClass(
 														type
@@ -1329,7 +1327,7 @@
 					</h4>
 					{#if mediaUsage.top_projects.length > 0}
 						<div class="space-y-3">
-							{#each mediaUsage.top_projects.slice(0, 5) as project}
+							{#each mediaUsage.top_projects.slice(0, 5) as project (project.project_id)}
 								<div class="flex items-center justify-between gap-3">
 									<div class="min-w-0 flex-1">
 										<div class="text-sm font-medium text-foreground truncate">
@@ -1368,7 +1366,7 @@
 					</h4>
 					{#if mediaUsage.by_event_type.length > 0}
 						<div class="space-y-2">
-							{#each mediaUsage.by_event_type.slice(0, 6) as row}
+							{#each mediaUsage.by_event_type.slice(0, 6) as row (row.event_type)}
 								<div class="flex items-center justify-between gap-2 text-sm">
 									<span class="text-foreground truncate">{row.event_type}</span>
 									<span class="text-muted-foreground shrink-0">
@@ -1393,7 +1391,7 @@
 				<h3 class="text-sm font-semibold text-foreground mb-4">Runtime Routes</h3>
 				{#if runtimeDistribution.first_actions.length > 0}
 					<div class="space-y-4">
-						{#each runtimeDistribution.first_actions.slice(0, 6) as route}
+						{#each runtimeDistribution.first_actions.slice(0, 6) as route (route.label)}
 							<div>
 								<div class="flex items-center justify-between gap-3 mb-2">
 									<div class="min-w-0">
@@ -1441,7 +1439,7 @@
 				<h3 class="text-sm font-semibold text-foreground mb-4">Top Users</h3>
 				{#if topUsers.length > 0}
 					<div class="space-y-3 max-h-48 overflow-y-auto scrollbar-thin">
-						{#each topUsers.slice(0, 5) as user}
+						{#each topUsers.slice(0, 5) as user (user.user_id)}
 							<div class="flex items-center justify-between gap-2">
 								<div class="flex-1 min-w-0">
 									<div class="text-sm font-medium text-foreground truncate">

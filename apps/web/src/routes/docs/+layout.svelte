@@ -1,6 +1,6 @@
 <!-- apps/web/src/routes/docs/+layout.svelte -->
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import type { Snippet } from 'svelte';
 	import DocsLayout from '$lib/components/docs/DocsLayout.svelte';
 	import { listDocSections } from '$lib/utils/docs';
@@ -9,9 +9,9 @@
 
 	const sections = listDocSections();
 
-	let activeSlug = $derived(($page.params as { slug?: string }).slug ?? null);
+	let activeSlug = $derived((page.params as { slug?: string }).slug ?? null);
 
-	let isApiRoute = $derived($page.url.pathname.startsWith('/docs/api'));
+	let isApiRoute = $derived(page.url.pathname.startsWith('/docs/api'));
 </script>
 
 {#if isApiRoute}

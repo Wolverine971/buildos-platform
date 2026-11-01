@@ -13,7 +13,6 @@
 	- onRestoreRequested: Callback when user wants to restore a version
 -->
 <script lang="ts">
-	import { browser } from '$app/environment';
 	import { untrack } from 'svelte';
 	import {
 		History,
@@ -139,7 +138,6 @@
 	// Each document/filter owns one request stream, including its pagination.
 	$effect(() => {
 		const identity = { documentId, projectId, timeFilter };
-		if (!browser) return;
 		untrack(() => {
 			versions = [];
 			total = 0;

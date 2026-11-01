@@ -49,7 +49,7 @@ _layout.tsx                    root Stack: sign-in | (tabs) | reader (form sheet
 (tabs)/(today)/brief.tsx       Your brief     /brief, /brief?date=YYYY-MM-DD (pushed on Today's stack)
 (tabs)/(workspace)/projects.tsx Workspace     /projects
 reader.tsx, sign-in.tsx
-chat.tsx                       chat with BuildOS about the Workspace or one project (Brain Bolt, top-right)
+chat.tsx                       chat with BuildOS: picks its context first (Workspace or a project), as the web does
 ```
 
 A project keeps the tab bar and stays in its tab: links build group-qualified hrefs with
@@ -122,7 +122,8 @@ drops the bounces.
 - **Every API call** sends `Authorization: Bearer <access token>` through `@buildos/api-client`
   (`src/lib/api.ts`). The web server accepts it in `apps/web/src/hooks.server.ts` (bearer path), so
   all existing `/api` routes work for the phone with no per-route changes.
-- **Web pages inside the app** (settings, billing, integrations, account deletion) open through a
+- **Web pages inside the app** (settings, billing, integrations, account deletion; the account
+  key's "Account & data" is the entry, `src/lib/web-pages.ts`) open through a
   session handoff: `POST /api/auth/handoff` → open the returned URL in the in-app browser → the page
   is signed in and renders in app mode (no site navigation).
 - **Capture** (the box at the bottom of Today and Workspace) is offline-first: `src/lib/capture-queue.ts` writes
@@ -138,8 +139,15 @@ drops the bounces.
   deployed with that route, `src/lib/desktop-fallback.ts` builds plain tiles from the project
   list (parents from its `include=hierarchy` read, so nesting shows) and the Workspace read;
   the app rechecks the route every 10 minutes. The fallback list stops at 50 projects.
-- **Chat** (`src/app/chat.tsx`, opened by the Brain Bolt in every nav bar) sends a turn with
-  `api.agent.sendTurn` and gets a JSON admission back; the reply streams over the person's private
+- **Chat** (`src/app/chat.tsx`, opened by the Brain Bolt in every nav bar) opens the way the
+  website's chat modal does: from Today, the brief or the Workspace it first asks what the chat
+  is about (`components/chat/context-picker.tsx`: Workspace chat, or a project from the project
+  list, plus recent Workspace chats); from a project page that project is already chosen; from
+  the reader the task or doc is the focus. The strip under the nav bar always names the context
+  and changes it: before the first message back to the picker, in a project chat the focus sheet
+  (`components/chat/focus-sheet.tsx`: project-wide or one task/doc/goal/plan/milestone/risk,
+  same session). Every send reads the chosen target (`lib/chat/opening.ts` holds the pure
+  rules). It sends a turn with `api.agent.sendTurn` and gets a JSON admission back; the reply streams over the person's private
   Supabase realtime channel. The ordering, gap-filling and reconciliation of those events is the
   web's own code, now shared as `@buildos/agentic-chat-client`; `src/lib/chat/runtime.ts` wires it
   to this device (Supabase client, bearer fetch, AppState) and `src/lib/chat/session-store.ts`
@@ -147,8 +155,19 @@ drops the bounces.
   Stop is `api.agent.cancelTurn`; earlier chats come from `api.chat.recentForProject`. The list is
   inverted (offset 0 = newest row) and the composer docks to the screen's bottom edge and rides
   the keyboard with `useKeyboardOverlap`, so opening the keyboard never hides the conversation.
-  Dev: `/chat?demo=history|streaming|done|live|idle` seeds a scripted store through the same port
-  (no turn is sent); `&autofocus=<any>` opens the keyboard, `&history=1` opens earlier chats.
+  Proposal cards (nest / combine / file / start) are answered with `api.chat.chooseProposal` and
+  undone once with `undoProposal`; the "didn't finish from earlier" strip is re-read after a
+  failed step and dismissed with `dismissPendingChange`. When a turn ends, what it changed sits
+  under the reply (`components/chat/changes-row.tsx`, read from structured tool results by
+  `lib/chat/changes.ts`): chips for what it created (open in the reader, the project page, or the
+  website for kinds the phone has no screen for), a card per edited document ("+4 −1", the diff,
+  Undo via `api.documents.revertChange`) and per changed table ("+3 rows · 7 cells", Undo via
+  `api.tables.revertChange`). `/chat?demo=changes` shows the row in dev. The reader's Brain Bolt opens chat
+  focused on that task or doc.
+  Dev: `/chat?demo=pick|projects|idle|history|streaming|done|live|card|focus` seeds a scripted
+  store through the same port (no turn is sent): `pick`/`projects` are the opening screens,
+  `idle` the empty chat after choosing, `focus` a project chat with the focus sheet open;
+  `&autofocus=<any>` opens the keyboard, `&history=1` opens earlier chats.
 - **Design tokens** come from the web's Inkprint CSS: `pnpm gen:mobile-theme` regenerates
   `src/theme/inkprint.generated.ts`.
 

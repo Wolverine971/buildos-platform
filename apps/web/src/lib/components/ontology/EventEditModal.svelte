@@ -18,7 +18,6 @@
 	- Create Modal: /apps/web/src/lib/components/ontology/EventCreateModal.svelte
 -->
 <script lang="ts">
-	import { browser } from '$app/environment';
 	import { format } from 'date-fns';
 	import {
 		Loader,
@@ -150,7 +149,6 @@
 
 	// Load event data when modal opens
 	$effect(() => {
-		if (!browser) return;
 		if (eventId) {
 			loadEvent();
 		}
@@ -537,433 +535,410 @@
 		/>
 	{/snippet}
 
-	{#snippet children()}
-		<!-- Main content -->
-		<div class="px-2 py-2 sm:px-4 sm:py-4">
-			{#if isLoading}
-				<div class="flex items-center justify-center py-12">
-					<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
-				</div>
-			{:else if !event}
-				<div class="text-center py-8">
-					<p class="text-destructive">Event not found</p>
-				</div>
-			{:else}
-				<div
-					class="relative grid grid-cols-1 gap-y-3 sm:gap-y-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:overflow-x-clip"
-				>
-					<!-- Main Form (Left 2 columns) -->
-					<div class="min-w-0">
-						<form
-							id={detailsFormId}
-							onsubmit={handleSave}
-							class="space-y-3 sm:space-y-4"
-						>
-							<Card variant="elevated" class="wt-paper">
-								<CardBody class="space-y-4">
-									<FormField
-										label="Event Title"
-										labelFor="title"
-										required={true}
-										uppercase={false}
-										showOptional={false}
-										error={!title.trim() && error
-											? 'Event title is required'
-											: ''}
-									>
-										<TextInput
-											id="title"
-											bind:value={title}
-											inputmode="text"
-											enterkeyhint="next"
-											placeholder="Enter event title..."
-											required={true}
-											disabled={isSaving}
-											error={!title.trim() && error ? true : false}
-										/>
-									</FormField>
-
-									<FormField
-										label="Description"
-										labelFor="description"
-										uppercase={false}
-										showOptional={false}
-									>
-										<Textarea
-											id="description"
-											bind:value={description}
-											enterkeyhint="next"
-											placeholder="Describe the event..."
-											rows={3}
-											disabled={isSaving}
-											size="md"
-										/>
-									</FormField>
-
-									<FormField
-										label="Location"
-										labelFor="location"
-										uppercase={false}
-										showOptional={false}
-									>
-										<TextInput
-											id="location"
-											bind:value={location}
-											inputmode="text"
-											enterkeyhint="next"
-											placeholder="Enter location or meeting link..."
-											disabled={isSaving}
-										/>
-									</FormField>
-								</CardBody>
-							</Card>
-
-							<Card variant="default" class="wt-paper">
-								<CardHeader variant="transparent" texture="none">
-									<div
-										class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
-									>
-										<div>
-											<div class="flex items-center gap-2">
-												<Calendar class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
-												>
-													Schedule & Sync
-												</p>
-											</div>
-											<h3 class="mt-1 text-sm font-semibold text-foreground">
-												Time, duration, and calendar options
-											</h3>
-										</div>
-									</div>
-								</CardHeader>
-								<CardBody class="space-y-4">
-									<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-										<FormField
-											label="Start"
-											labelFor="start-date"
-											required={true}
-											uppercase={false}
-											showOptional={false}
-										>
-											<TextInput
-												id="start-date"
-												type="datetime-local"
-												inputmode="numeric"
-												enterkeyhint="next"
-												bind:value={startAt}
-												oninput={handleStartDateChange}
-												disabled={isSaving}
-												size="sm"
-												required={true}
-											/>
-										</FormField>
-
-										<FormField
-											label="End"
-											labelFor="end-date"
-											uppercase={false}
-											showOptional={false}
-										>
-											<TextInput
-												id="end-date"
-												type="datetime-local"
-												inputmode="numeric"
-												enterkeyhint="done"
-												bind:value={endAt}
-												oninput={handleEndDateChange}
-												disabled={isSaving}
-												size="sm"
-											/>
-										</FormField>
-									</div>
-
-									<div class="space-y-2">
-										<label
-											class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer group"
-										>
-											<input
-												type="checkbox"
-												bind:checked={allDay}
-												class="h-4 w-4 rounded border-border text-accent focus:ring-accent/50 focus:ring-offset-0 cursor-pointer"
-											/>
-											<span
-												class="group-hover:text-foreground transition-colors"
-												>All-day event</span
-											>
-										</label>
-
-										<label
-											class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer group"
-										>
-											<input
-												type="checkbox"
-												bind:checked={syncToCalendar}
-												class="h-4 w-4 rounded border-border text-accent focus:ring-accent/50 focus:ring-offset-0 cursor-pointer"
-											/>
-											<span
-												class="group-hover:text-foreground transition-colors"
-											>
-												Sync changes to calendar
-												{#if hasCalendarLink}
-													<span class="text-xs text-accent ml-1"
-														>(linked)</span
-													>
-												{/if}
-											</span>
-										</label>
-									</div>
-								</CardBody>
-							</Card>
-
-							{#if error}
-								<div
-									class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 shadow-ink-inner"
+	<!-- Main content -->
+	<div class="px-2 py-2 sm:px-4 sm:py-4">
+		{#if isLoading}
+			<div class="flex items-center justify-center py-12">
+				<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
+			</div>
+		{:else if !event}
+			<div class="text-center py-8">
+				<p class="text-destructive">Event not found</p>
+			</div>
+		{:else}
+			<div
+				class="relative grid grid-cols-1 gap-y-3 sm:gap-y-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:overflow-x-clip"
+			>
+				<!-- Main Form (Left 2 columns) -->
+				<div class="min-w-0">
+					<form id={detailsFormId} onsubmit={handleSave} class="space-y-3 sm:space-y-4">
+						<Card variant="elevated" class="wt-paper">
+							<CardBody class="space-y-4">
+								<FormField
+									label="Event Title"
+									labelFor="title"
+									required={true}
+									uppercase={false}
+									showOptional={false}
+									error={!title.trim() && error ? 'Event title is required' : ''}
 								>
-									<p class="text-sm text-destructive">{error}</p>
-								</div>
-							{/if}
-						</form>
-					</div>
+									<TextInput
+										id="title"
+										bind:value={title}
+										inputmode="text"
+										enterkeyhint="next"
+										placeholder="Enter event title..."
+										required={true}
+										disabled={isSaving}
+										error={!title.trim() && error ? true : false}
+									/>
+								</FormField>
 
-					<!-- Sidebar (Right column) -->
-					<EntityModalDetailsDrawer panelLabel="Event details">
-						<Card variant="elevated" class="wt-card">
-							<CardHeader variant="muted" texture="strip">
-								<div class="flex items-center justify-between gap-3">
+								<FormField
+									label="Description"
+									labelFor="description"
+									uppercase={false}
+									showOptional={false}
+								>
+									<Textarea
+										id="description"
+										bind:value={description}
+										enterkeyhint="next"
+										placeholder="Describe the event..."
+										rows={3}
+										disabled={isSaving}
+										size="md"
+									/>
+								</FormField>
+
+								<FormField
+									label="Location"
+									labelFor="location"
+									uppercase={false}
+									showOptional={false}
+								>
+									<TextInput
+										id="location"
+										bind:value={location}
+										inputmode="text"
+										enterkeyhint="next"
+										placeholder="Enter location or meeting link..."
+										disabled={isSaving}
+									/>
+								</FormField>
+							</CardBody>
+						</Card>
+
+						<Card variant="default" class="wt-paper">
+							<CardHeader variant="transparent" texture="none">
+								<div
+									class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+								>
 									<div>
-										<p
-											class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
-										>
-											Overview
-										</p>
+										<div class="flex items-center gap-2">
+											<Calendar class="h-4 w-4 text-muted-foreground" />
+											<p
+												class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+											>
+												Schedule & Sync
+											</p>
+										</div>
 										<h3 class="mt-1 text-sm font-semibold text-foreground">
-											Schedule, record, and links
+											Time, duration, and calendar options
 										</h3>
 									</div>
 								</div>
 							</CardHeader>
-							<CardBody padding="none">
-								<div class="divide-y divide-border/70">
-									<!-- Schedule -->
-									<section class="px-3 py-3 sm:px-4">
-										<div class="flex items-center gap-2">
-											<Calendar class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Schedule</p>
-										</div>
-										<div class="mt-2 grid grid-cols-1 gap-1.5 text-xs">
-											<div class="flex items-center justify-between gap-2">
-												<span class="text-muted-foreground">Start</span>
-												<span class="text-right text-foreground">
-													{startAt
-														? new Date(startAt).toLocaleString(
-																'en-US',
-																{
-																	weekday: 'short',
-																	month: 'short',
-																	day: 'numeric',
-																	hour: 'numeric',
-																	minute: '2-digit'
-																}
-															)
-														: 'Not set'}
-												</span>
-											</div>
-											<div class="flex items-center justify-between gap-2">
-												<span class="text-muted-foreground">End</span>
-												<span class="text-right text-foreground">
-													{endAt
-														? new Date(endAt).toLocaleString('en-US', {
-																weekday: 'short',
-																month: 'short',
-																day: 'numeric',
-																hour: 'numeric',
-																minute: '2-digit'
-															})
-														: 'Not set'}
-												</span>
-											</div>
-											{#if location}
-												<div
-													class="flex items-center justify-between gap-2"
+							<CardBody class="space-y-4">
+								<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+									<FormField
+										label="Start"
+										labelFor="start-date"
+										required={true}
+										uppercase={false}
+										showOptional={false}
+									>
+										<TextInput
+											id="start-date"
+											type="datetime-local"
+											inputmode="numeric"
+											enterkeyhint="next"
+											bind:value={startAt}
+											oninput={handleStartDateChange}
+											disabled={isSaving}
+											size="sm"
+											required={true}
+										/>
+									</FormField>
+
+									<FormField
+										label="End"
+										labelFor="end-date"
+										uppercase={false}
+										showOptional={false}
+									>
+										<TextInput
+											id="end-date"
+											type="datetime-local"
+											inputmode="numeric"
+											enterkeyhint="done"
+											bind:value={endAt}
+											oninput={handleEndDateChange}
+											disabled={isSaving}
+											size="sm"
+										/>
+									</FormField>
+								</div>
+
+								<div class="space-y-2">
+									<label
+										class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer group"
+									>
+										<input
+											type="checkbox"
+											bind:checked={allDay}
+											class="h-4 w-4 rounded border-border text-accent focus:ring-accent/50 focus:ring-offset-0 cursor-pointer"
+										/>
+										<span class="group-hover:text-foreground transition-colors"
+											>All-day event</span
+										>
+									</label>
+
+									<label
+										class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer group"
+									>
+										<input
+											type="checkbox"
+											bind:checked={syncToCalendar}
+											class="h-4 w-4 rounded border-border text-accent focus:ring-accent/50 focus:ring-offset-0 cursor-pointer"
+										/>
+										<span class="group-hover:text-foreground transition-colors">
+											Sync changes to calendar
+											{#if hasCalendarLink}
+												<span class="text-xs text-accent ml-1"
+													>(linked)</span
 												>
-													<span class="text-muted-foreground"
-														>Location</span
-													>
-													<span
-														class="text-right text-foreground truncate max-w-[150px]"
-														>{location}</span
-													>
-												</div>
 											{/if}
-										</div>
-									</section>
-
-									<!-- Record -->
-									<section class="px-3 py-3 sm:px-4">
-										<div class="flex items-center gap-2">
-											<Clock class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Record</p>
-										</div>
-										<div class="mt-2 space-y-1.5 text-sm">
-											<div class="flex items-center justify-between gap-3">
-												<span class="text-muted-foreground">Created</span>
-												<span class="text-right text-foreground">
-													{event.created_at
-														? new Date(
-																event.created_at
-															).toLocaleDateString(undefined, {
-																month: 'short',
-																day: 'numeric',
-																year: 'numeric'
-															})
-														: '—'}
-												</span>
-											</div>
-											<div class="flex items-center justify-between gap-3">
-												<span class="text-muted-foreground">Updated</span>
-												<span class="text-right text-foreground">
-													{event.updated_at
-														? new Date(
-																event.updated_at
-															).toLocaleDateString(undefined, {
-																month: 'short',
-																day: 'numeric',
-																year: 'numeric'
-															})
-														: '—'}
-												</span>
-											</div>
-										</div>
-									</section>
-
-									<!-- Tags -->
-									{#if event?.props?.tags?.length}
-										<section class="px-3 py-3 sm:px-4">
-											<div class="flex items-center gap-2 mb-2">
-												<TagIcon class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">Tags</p>
-											</div>
-											<TagsDisplay
-												props={event.props}
-												size="sm"
-												compact={true}
-											/>
-										</section>
-									{/if}
-
-									<!-- Linked Entities (collapsible, default open) -->
-									<section class="px-3 sm:px-4">
-										<button
-											type="button"
-											onclick={() =>
-												(showLinkedEntities = !showLinkedEntities)}
-											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
-											aria-expanded={showLinkedEntities}
-										>
-											<div class="flex items-center gap-2">
-												<LinkIcon class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">
-													Linked Entities
-												</p>
-											</div>
-											<ChevronDown
-												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showLinkedEntities
-													? 'rotate-180'
-													: ''}"
-											/>
-										</button>
-										{#if showLinkedEntities}
-											<div class="pb-3">
-												<LinkedEntities
-													sourceId={eventId}
-													sourceKind="event"
-													{projectId}
-													onEntityClick={handleLinkedEntityClick}
-													onLinksChanged={() =>
-														loadEvent({ preserveEdits: true })}
-												/>
-											</div>
-										{/if}
-									</section>
-
-									<!-- Images (collapsible) -->
-									<section class="px-3 sm:px-4">
-										<button
-											type="button"
-											onclick={() => (showImages = !showImages)}
-											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
-											aria-expanded={showImages}
-										>
-											<div class="flex items-center gap-2">
-												<ImageIcon class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">Images</p>
-											</div>
-											<ChevronDown
-												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showImages
-													? 'rotate-180'
-													: ''}"
-											/>
-										</button>
-										{#if showImages}
-											<div class="pb-3">
-												<ImageAssetsPanel
-													{projectId}
-													entityKind="event"
-													entityId={eventId}
-													showTitle={false}
-													compact={true}
-													onChanged={() => {
-														void loadEvent({ preserveEdits: true });
-														onUpdated?.();
-													}}
-												/>
-											</div>
-										{/if}
-									</section>
-
-									<!-- Activity (collapsible) -->
-									<section class="px-3 sm:px-4">
-										<button
-											type="button"
-											onclick={() => (showActivityLog = !showActivityLog)}
-											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
-											aria-expanded={showActivityLog}
-										>
-											<div class="flex items-center gap-2">
-												<Activity class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">Activity</p>
-											</div>
-											<ChevronDown
-												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showActivityLog
-													? 'rotate-180'
-													: ''}"
-											/>
-										</button>
-										{#if showActivityLog}
-											<div class="pb-3">
-												<EntityActivityLog
-													entityType="event"
-													entityId={eventId}
-													autoLoad={true}
-													embedded={true}
-												/>
-											</div>
-										{/if}
-									</section>
+										</span>
+									</label>
 								</div>
 							</CardBody>
 						</Card>
-					</EntityModalDetailsDrawer>
+
+						{#if error}
+							<div
+								class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 shadow-ink-inner"
+							>
+								<p class="text-sm text-destructive">{error}</p>
+							</div>
+						{/if}
+					</form>
 				</div>
 
-				<div class="mt-4">
-					<EntityCommentsSection {projectId} entityType="event" entityId={eventId} />
-				</div>
-			{/if}
-		</div>
-	{/snippet}
+				<!-- Sidebar (Right column) -->
+				<EntityModalDetailsDrawer panelLabel="Event details">
+					<Card variant="elevated" class="wt-card">
+						<CardHeader variant="muted" texture="strip">
+							<div class="flex items-center justify-between gap-3">
+								<div>
+									<p
+										class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+									>
+										Overview
+									</p>
+									<h3 class="mt-1 text-sm font-semibold text-foreground">
+										Schedule, record, and links
+									</h3>
+								</div>
+							</div>
+						</CardHeader>
+						<CardBody padding="none">
+							<div class="divide-y divide-border/70">
+								<!-- Schedule -->
+								<section class="px-3 py-3 sm:px-4">
+									<div class="flex items-center gap-2">
+										<Calendar class="h-4 w-4 text-muted-foreground" />
+										<p class="micro-label font-semibold">Schedule</p>
+									</div>
+									<div class="mt-2 grid grid-cols-1 gap-1.5 text-xs">
+										<div class="flex items-center justify-between gap-2">
+											<span class="text-muted-foreground">Start</span>
+											<span class="text-right text-foreground">
+												{startAt
+													? new Date(startAt).toLocaleString('en-US', {
+															weekday: 'short',
+															month: 'short',
+															day: 'numeric',
+															hour: 'numeric',
+															minute: '2-digit'
+														})
+													: 'Not set'}
+											</span>
+										</div>
+										<div class="flex items-center justify-between gap-2">
+											<span class="text-muted-foreground">End</span>
+											<span class="text-right text-foreground">
+												{endAt
+													? new Date(endAt).toLocaleString('en-US', {
+															weekday: 'short',
+															month: 'short',
+															day: 'numeric',
+															hour: 'numeric',
+															minute: '2-digit'
+														})
+													: 'Not set'}
+											</span>
+										</div>
+										{#if location}
+											<div class="flex items-center justify-between gap-2">
+												<span class="text-muted-foreground">Location</span>
+												<span
+													class="text-right text-foreground truncate max-w-[150px]"
+													>{location}</span
+												>
+											</div>
+										{/if}
+									</div>
+								</section>
+
+								<!-- Record -->
+								<section class="px-3 py-3 sm:px-4">
+									<div class="flex items-center gap-2">
+										<Clock class="h-4 w-4 text-muted-foreground" />
+										<p class="micro-label font-semibold">Record</p>
+									</div>
+									<div class="mt-2 space-y-1.5 text-sm">
+										<div class="flex items-center justify-between gap-3">
+											<span class="text-muted-foreground">Created</span>
+											<span class="text-right text-foreground">
+												{event.created_at
+													? new Date(event.created_at).toLocaleDateString(
+															undefined,
+															{
+																month: 'short',
+																day: 'numeric',
+																year: 'numeric'
+															}
+														)
+													: '—'}
+											</span>
+										</div>
+										<div class="flex items-center justify-between gap-3">
+											<span class="text-muted-foreground">Updated</span>
+											<span class="text-right text-foreground">
+												{event.updated_at
+													? new Date(event.updated_at).toLocaleDateString(
+															undefined,
+															{
+																month: 'short',
+																day: 'numeric',
+																year: 'numeric'
+															}
+														)
+													: '—'}
+											</span>
+										</div>
+									</div>
+								</section>
+
+								<!-- Tags -->
+								{#if event?.props?.tags?.length}
+									<section class="px-3 py-3 sm:px-4">
+										<div class="flex items-center gap-2 mb-2">
+											<TagIcon class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Tags</p>
+										</div>
+										<TagsDisplay props={event.props} size="sm" compact={true} />
+									</section>
+								{/if}
+
+								<!-- Linked Entities (collapsible, default open) -->
+								<section class="px-3 sm:px-4">
+									<button
+										type="button"
+										onclick={() => (showLinkedEntities = !showLinkedEntities)}
+										class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										aria-expanded={showLinkedEntities}
+									>
+										<div class="flex items-center gap-2">
+											<LinkIcon class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Linked Entities</p>
+										</div>
+										<ChevronDown
+											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showLinkedEntities
+												? 'rotate-180'
+												: ''}"
+										/>
+									</button>
+									{#if showLinkedEntities}
+										<div class="pb-3">
+											<LinkedEntities
+												sourceId={eventId}
+												sourceKind="event"
+												{projectId}
+												onEntityClick={handleLinkedEntityClick}
+												onLinksChanged={() =>
+													loadEvent({ preserveEdits: true })}
+											/>
+										</div>
+									{/if}
+								</section>
+
+								<!-- Images (collapsible) -->
+								<section class="px-3 sm:px-4">
+									<button
+										type="button"
+										onclick={() => (showImages = !showImages)}
+										class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										aria-expanded={showImages}
+									>
+										<div class="flex items-center gap-2">
+											<ImageIcon class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Images</p>
+										</div>
+										<ChevronDown
+											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showImages
+												? 'rotate-180'
+												: ''}"
+										/>
+									</button>
+									{#if showImages}
+										<div class="pb-3">
+											<ImageAssetsPanel
+												{projectId}
+												entityKind="event"
+												entityId={eventId}
+												showTitle={false}
+												compact={true}
+												onChanged={() => {
+													void loadEvent({ preserveEdits: true });
+													onUpdated?.();
+												}}
+											/>
+										</div>
+									{/if}
+								</section>
+
+								<!-- Activity (collapsible) -->
+								<section class="px-3 sm:px-4">
+									<button
+										type="button"
+										onclick={() => (showActivityLog = !showActivityLog)}
+										class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										aria-expanded={showActivityLog}
+									>
+										<div class="flex items-center gap-2">
+											<Activity class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Activity</p>
+										</div>
+										<ChevronDown
+											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showActivityLog
+												? 'rotate-180'
+												: ''}"
+										/>
+									</button>
+									{#if showActivityLog}
+										<div class="pb-3">
+											<EntityActivityLog
+												entityType="event"
+												entityId={eventId}
+												autoLoad={true}
+												embedded={true}
+											/>
+										</div>
+									{/if}
+								</section>
+							</div>
+						</CardBody>
+					</Card>
+				</EntityModalDetailsDrawer>
+			</div>
+
+			<div class="mt-4">
+				<EntityCommentsSection {projectId} entityType="event" entityId={eventId} />
+			</div>
+		{/if}
+	</div>
 
 	<!-- Footer Actions -->
 	{#snippet footer()}

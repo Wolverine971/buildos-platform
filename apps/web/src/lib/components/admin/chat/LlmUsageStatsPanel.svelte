@@ -307,7 +307,6 @@
 	}
 
 	$effect(() => {
-		if (!browser) return;
 		days;
 		refreshKey;
 		void fetchStats();
@@ -585,7 +584,7 @@
 
 				{#if visibleDailyData.length > 0}
 					<div class="space-y-3">
-						{#each visibleDailyData as day}
+						{#each visibleDailyData as day (day.summary_date)}
 							<div
 								class="grid grid-cols-[4.5rem_1fr] gap-3 sm:grid-cols-[5rem_1fr_6rem] sm:items-center"
 							>
@@ -735,7 +734,7 @@
 				<h2 class="text-sm font-semibold text-foreground">Billable Model Share</h2>
 				<p class="mt-1 text-xs text-muted-foreground">Cost share from `llm_usage_logs`</p>
 				<div class="mt-4 space-y-4">
-					{#each topCostModels as model}
+					{#each topCostModels as model (model.model)}
 						<div>
 							<div class="mb-1 flex items-center justify-between gap-3">
 								<div class="min-w-0">
@@ -778,7 +777,7 @@
 					Per-pass telemetry from current agentic chat
 				</p>
 				<div class="mt-4 space-y-4">
-					{#each topAgenticModels as model}
+					{#each topAgenticModels as model (model.model)}
 						<div>
 							<div class="mb-1 flex items-center justify-between gap-3">
 								<div class="min-w-0">
@@ -824,7 +823,7 @@
 				<h2 class="text-sm font-semibold text-foreground">Cost By Operation</h2>
 				<p class="mt-1 text-xs text-muted-foreground">Billable operation types</p>
 				<div class="mt-4 space-y-3">
-					{#each topOperations as operation}
+					{#each topOperations as operation (operation.operation)}
 						<div class="grid grid-cols-[1fr_auto] gap-3">
 							<div class="min-w-0">
 								<div class="flex items-center justify-between gap-3">
@@ -866,7 +865,7 @@
 					First operation, help path, or skill path recorded for each turn
 				</p>
 				<div class="mt-4 space-y-3">
-					{#each topAgenticOperations as operation}
+					{#each topAgenticOperations as operation (operation.operation)}
 						<div>
 							<div class="mb-1 flex items-center justify-between gap-3">
 								<p class="min-w-0 truncate text-sm font-medium text-foreground">
@@ -947,7 +946,7 @@
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-border">
-						{#each stats.modelBreakdown as model}
+						{#each stats.modelBreakdown as model (model.model)}
 							<tr class="hover:bg-muted/30">
 								<td class="max-w-[260px] px-4 py-3">
 									<p class="truncate text-sm font-medium text-foreground">
@@ -1021,7 +1020,7 @@
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-border">
-							{#each stats.topTools as tool}
+							{#each stats.topTools as tool (tool.tool)}
 								<tr class="hover:bg-muted/30">
 									<td
 										class="max-w-[280px] px-4 py-3 text-sm font-medium text-foreground"
@@ -1090,7 +1089,7 @@
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-border">
-							{#each stats.topUsers as user}
+							{#each stats.topUsers as user (user.user_id)}
 								<tr class="hover:bg-muted/30">
 									<td class="max-w-[220px] px-4 py-3">
 										<p class="truncate text-sm font-medium text-foreground">
@@ -1168,7 +1167,7 @@
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-border">
-							{#each stats.recentLogs as log}
+							{#each stats.recentLogs as log (log.id)}
 								<tr class="hover:bg-muted/30">
 									<td
 										class="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground"
@@ -1246,7 +1245,7 @@
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-border">
-							{#each stats.recentAgenticTurns as turn}
+							{#each stats.recentAgenticTurns as turn (turn.id)}
 								<tr class="hover:bg-muted/30">
 									<td
 										class="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground"

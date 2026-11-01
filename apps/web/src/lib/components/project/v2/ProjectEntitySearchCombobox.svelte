@@ -1,6 +1,5 @@
 <!-- apps/web/src/lib/components/project/v2/ProjectEntitySearchCombobox.svelte -->
 <script lang="ts">
-	import { browser } from '$app/environment';
 	import { onDestroy } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import {
@@ -352,7 +351,6 @@
 	}
 
 	$effect(() => {
-		if (!browser) return;
 		const searchQuery = normalizedQuery;
 		const searchProjectId = projectId;
 		const activeSearchTypes = searchTypes;

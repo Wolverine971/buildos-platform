@@ -16,7 +16,7 @@
 		TableColumn,
 		TableSelectChoice
 	} from '@buildos/shared-agent-ops/tables';
-	import { portal } from '$lib/actions/portal';
+	import { portal } from '$lib/attachments/portal';
 	import { Check, Plus, X } from '$lib/icons/lucide';
 	import TableChoiceChip from './TableChoiceChip.svelte';
 	import { cellEditText, choiceColor, selectValues, toDateInputValue } from './table-cell-format';
@@ -274,7 +274,7 @@
 <svelte:window bind:innerHeight={viewportHeight} bind:innerWidth={viewportWidth} />
 
 <div
-	use:portal
+	{@attach portal()}
 	bind:this={root}
 	bind:offsetHeight={editorHeight}
 	class="table-cell-editor fixed z-[10001]"

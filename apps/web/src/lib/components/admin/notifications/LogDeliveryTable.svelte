@@ -186,7 +186,7 @@
 							Timeline
 						</div>
 						<div class="flex items-center space-x-2">
-							{#each Object.entries(delivery.timeline) as [stage, timestamp]}
+							{#each Object.entries(delivery.timeline) as [stage, timestamp] (stage)}
 								{#if stage !== 'created'}
 									{@const GetTimelineIconstage = getTimelineIcon(stage)}
 									<div
@@ -349,7 +349,7 @@
 							</td>
 							<td class="px-3 py-2.5">
 								<div class="flex items-center space-x-2">
-									{#each Object.entries(delivery.timeline) as [stage, timestamp]}
+									{#each Object.entries(delivery.timeline) as [stage, timestamp] (stage)}
 										{#if stage !== 'created'}
 											{@const GetTimelineIconstage = getTimelineIcon(stage)}
 											<div

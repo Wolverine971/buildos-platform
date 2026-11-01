@@ -16,7 +16,6 @@
 -->
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { browser } from '$app/environment';
 	import { Plus, Pencil, Trash2, LoaderCircle, History, Clock, ChevronDown } from 'lucide-svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardHeader from '$lib/components/ui/CardHeader.svelte';
@@ -84,7 +83,7 @@
 	// One effect owns the entity lifecycle: reset, then load. A separate
 	// "load if not loaded" effect fetched the same logs a second time on mount.
 	$effect(() => {
-		if (!browser || !entityType || !entityId) return;
+		if (!entityType || !entityId) return;
 		const shouldLoad = autoLoad;
 		untrack(() => {
 			hasLoaded = false;

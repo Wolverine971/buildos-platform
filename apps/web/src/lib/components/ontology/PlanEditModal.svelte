@@ -534,388 +534,377 @@
 		/>
 	{/snippet}
 
-	{#snippet children()}
-		<!-- Main content -->
-		<div class="px-2 py-2 sm:px-4 sm:py-4">
-			{#if isLoading}
-				<div class="flex items-center justify-center py-12">
-					<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
-				</div>
-			{:else if !plan}
-				<div class="text-center py-8">
-					<p class="text-destructive">Plan not found</p>
-				</div>
-			{:else}
-				<div
-					class="relative grid grid-cols-1 gap-y-3 sm:gap-y-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:overflow-x-clip"
-				>
-					<!-- Main Form (Left 2 columns) -->
-					<div class="min-w-0">
-						<form
-							id={detailsFormId}
-							onsubmit={(e) => {
-								e.preventDefault();
-								handleSave();
-							}}
-							class="space-y-3 sm:space-y-4"
-						>
-							<Card variant="elevated" class="wt-paper">
-								<CardBody class="space-y-4">
-									<FormField
-										label="Name"
-										labelFor="plan-name"
-										required={true}
-										uppercase={false}
-										showOptional={false}
-										error={!name.trim() && error ? 'Required' : ''}
-									>
-										<TextInput
-											id="plan-name"
-											bind:value={name}
-											inputmode="text"
-											enterkeyhint="next"
-											placeholder="Plan name..."
-											required={true}
-											disabled={formDisabled}
-											error={!name.trim() && error ? true : false}
-										/>
-									</FormField>
-
-									<FormField
-										label="Description"
-										labelFor="plan-description"
-										uppercase={false}
-										showOptional={false}
-									>
-										<Textarea
-											id="plan-description"
-											bind:value={description}
-											enterkeyhint="next"
-											rows={3}
-											placeholder="Objectives and target outcomes..."
-											disabled={formDisabled}
-											size="md"
-										/>
-									</FormField>
-
-									<div class="h-[22rem] sm:h-[26rem] lg:h-[30rem]">
-										<RichMarkdownEditor
-											id="plan-details"
-											label="Details"
-											bind:value={planDetails}
-											placeholder="Execution outline, milestones, runbook..."
-											disabled={formDisabled}
-											maxLength={50000}
-											size="base"
-											fillHeight={true}
-											helpText="Markdown supported"
-											onSave={handleSave}
-											voiceNoteSource="plan-edit-modal"
-											voiceNoteLinkedEntityType="plan"
-											voiceNoteLinkedEntityId={planId}
-										/>
-									</div>
-								</CardBody>
-							</Card>
-
-							{#if error}
-								<div
-									class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 shadow-ink-inner"
+	<!-- Main content -->
+	<div class="px-2 py-2 sm:px-4 sm:py-4">
+		{#if isLoading}
+			<div class="flex items-center justify-center py-12">
+				<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
+			</div>
+		{:else if !plan}
+			<div class="text-center py-8">
+				<p class="text-destructive">Plan not found</p>
+			</div>
+		{:else}
+			<div
+				class="relative grid grid-cols-1 gap-y-3 sm:gap-y-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:overflow-x-clip"
+			>
+				<!-- Main Form (Left 2 columns) -->
+				<div class="min-w-0">
+					<form
+						id={detailsFormId}
+						onsubmit={(e) => {
+							e.preventDefault();
+							handleSave();
+						}}
+						class="space-y-3 sm:space-y-4"
+					>
+						<Card variant="elevated" class="wt-paper">
+							<CardBody class="space-y-4">
+								<FormField
+									label="Name"
+									labelFor="plan-name"
+									required={true}
+									uppercase={false}
+									showOptional={false}
+									error={!name.trim() && error ? 'Required' : ''}
 								>
-									<p class="text-sm text-destructive">{error}</p>
-								</div>
-							{/if}
-						</form>
-					</div>
-
-					<!-- Sidebar (Right column) -->
-					<EntityModalDetailsDrawer panelLabel="Plan details" showDesktopHeader={true}>
-						<Card variant="elevated" class="wt-card">
-							<CardBody padding="none">
-								<div class="divide-y divide-border/70">
-									<EntityCollaborationAction
-										{projectId}
-										entityType="plan"
-										entityId={planId}
-										entityTitle={name || plan?.name || 'Plan'}
+									<TextInput
+										id="plan-name"
+										bind:value={name}
+										inputmode="text"
+										enterkeyhint="next"
+										placeholder="Plan name..."
+										required={true}
 										disabled={formDisabled}
+										error={!name.trim() && error ? true : false}
 									/>
+								</FormField>
 
-									<!-- Workflow -->
-									<section
-										class="px-3 py-3 sm:px-4"
-										aria-label="Workflow: {stateMeta.label}"
-									>
-										<div class="flex items-center gap-2">
-											<FileText class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Workflow</p>
-										</div>
+								<FormField
+									label="Description"
+									labelFor="plan-description"
+									uppercase={false}
+									showOptional={false}
+								>
+									<Textarea
+										id="plan-description"
+										bind:value={description}
+										enterkeyhint="next"
+										rows={3}
+										placeholder="Objectives and target outcomes..."
+										disabled={formDisabled}
+										size="md"
+									/>
+								</FormField>
 
-										<div class="mt-2 space-y-2">
-											<div
-												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
-											>
-												<label
-													for="plan-state"
-													class="text-xs font-medium text-muted-foreground"
-												>
-													State
-												</label>
-												<Select
-													id="plan-state"
-													bind:value={stateKey}
-													disabled={formDisabled}
-													size="sm"
-												>
-													{#each PLAN_STATES as state}
-														<option value={state}>
-															{state === 'draft'
-																? 'Draft'
-																: state === 'active'
-																	? 'Active'
-																	: state === 'completed'
-																		? 'Completed'
-																		: state}
-														</option>
-													{/each}
-												</Select>
-											</div>
-
-											<p class="text-xs text-muted-foreground">
-												{stateMeta.note}
-											</p>
-										</div>
-									</section>
-
-									<!-- Timeline -->
-									<section
-										class={dateError
-											? 'px-3 py-3 sm:px-4 tx tx-static tx-weak'
-											: 'px-3 py-3 sm:px-4'}
-										aria-label="Timeline: {timelineSummary}"
-									>
-										<div class="flex items-center justify-between gap-2">
-											<div class="flex items-center gap-2">
-												<CalendarRange
-													class="h-4 w-4 text-muted-foreground"
-												/>
-												<p class="micro-label font-semibold">Timeline</p>
-											</div>
-											{#if timelineMeta}
-												<Badge variant={timelineMeta.variant} size="sm"
-													>{timelineMeta.label}</Badge
-												>
-											{/if}
-										</div>
-
-										{#if dateError}
-											<div
-												class="mt-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2"
-											>
-												<p class="text-xs font-semibold text-destructive">
-													{dateError}
-												</p>
-											</div>
-										{/if}
-
-										<div class="mt-2 grid grid-cols-1 gap-2">
-											<div
-												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
-											>
-												<label
-													for="plan-start"
-													class="text-xs font-medium text-muted-foreground"
-												>
-													Start
-												</label>
-												<TextInput
-													id="plan-start"
-													bind:value={startDate}
-													type="date"
-													inputmode="numeric"
-													enterkeyhint="next"
-													disabled={formDisabled}
-													size="sm"
-												/>
-											</div>
-
-											<div
-												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
-											>
-												<label
-													for="plan-end"
-													class="text-xs font-medium text-muted-foreground"
-												>
-													End
-												</label>
-												<TextInput
-													id="plan-end"
-													bind:value={endDate}
-													type="date"
-													inputmode="numeric"
-													enterkeyhint="done"
-													disabled={formDisabled}
-													size="sm"
-												/>
-											</div>
-										</div>
-									</section>
-
-									<!-- Record -->
-									<section class="px-3 py-3 sm:px-4">
-										<div class="flex items-center gap-2">
-											<Clock class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Record</p>
-										</div>
-										<div class="mt-2 space-y-1.5 text-sm">
-											<div class="flex items-center justify-between gap-3">
-												<span class="text-muted-foreground">Type</span>
-												<span class="text-right text-foreground"
-													>{planTypeLabel}</span
-												>
-											</div>
-											<div class="flex items-center justify-between gap-3">
-												<span class="text-muted-foreground">Created</span>
-												<span class="text-right text-foreground">
-													{formatRecordDate(plan.created_at)}
-												</span>
-											</div>
-											<div class="flex items-center justify-between gap-3">
-												<span class="text-muted-foreground">Updated</span>
-												<span class="text-right text-foreground">
-													{formatRecordDate(plan.updated_at)}
-												</span>
-											</div>
-										</div>
-									</section>
-
-									<!-- Tags -->
-									{#if plan?.props?.tags?.length}
-										<section class="px-3 py-3 sm:px-4">
-											<div class="flex items-center gap-2 mb-2">
-												<TagIcon class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">Tags</p>
-											</div>
-											<TagsDisplay
-												props={plan.props}
-												size="sm"
-												compact={true}
-											/>
-										</section>
-									{/if}
-
-									<!-- Linked Entities (collapsible, default closed for density) -->
-									<section class="px-3 sm:px-4">
-										<button
-											type="button"
-											onclick={() =>
-												(showLinkedEntities = !showLinkedEntities)}
-											class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
-											aria-expanded={showLinkedEntities}
-										>
-											<div class="flex items-center gap-2">
-												<LinkIcon class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">
-													Linked Entities
-												</p>
-											</div>
-											<ChevronDown
-												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showLinkedEntities
-													? 'rotate-180'
-													: ''}"
-											/>
-										</button>
-										{#if showLinkedEntities}
-											<div class="pb-3" transition:slide={slideMotion()}>
-												<LinkedEntities
-													sourceId={planId}
-													sourceKind="plan"
-													{projectId}
-													initialLinkedEntities={linkedEntities}
-													onLoaded={handleLinkedEntitiesLoaded}
-													onEntityClick={handleLinkedEntityClick}
-													onLinksChanged={handleLinksChanged}
-												/>
-											</div>
-										{/if}
-									</section>
-
-									<!-- Images (collapsible) -->
-									<section class="px-3 sm:px-4">
-										<button
-											type="button"
-											onclick={() => (showImages = !showImages)}
-											class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
-											aria-expanded={showImages}
-										>
-											<div class="flex items-center gap-2">
-												<ImageIcon class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">Images</p>
-											</div>
-											<ChevronDown
-												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showImages
-													? 'rotate-180'
-													: ''}"
-											/>
-										</button>
-										{#if showImages}
-											<div class="pb-3" transition:slide={slideMotion()}>
-												<ImageAssetsPanel
-													{projectId}
-													entityKind="plan"
-													entityId={planId}
-													showTitle={false}
-													compact={true}
-													onChanged={() => {
-														void loadPlan({ preserveEdits: true });
-														onUpdated?.();
-													}}
-												/>
-											</div>
-										{/if}
-									</section>
-
-									<!-- Activity (collapsible) -->
-									<section class="px-3 sm:px-4">
-										<button
-											type="button"
-											onclick={() => (showActivityLog = !showActivityLog)}
-											class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
-											aria-expanded={showActivityLog}
-										>
-											<div class="flex items-center gap-2">
-												<Activity class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">Activity</p>
-											</div>
-											<ChevronDown
-												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showActivityLog
-													? 'rotate-180'
-													: ''}"
-											/>
-										</button>
-										{#if showActivityLog}
-											<div class="pb-3" transition:slide={slideMotion()}>
-												<EntityActivityLog
-													entityType="plan"
-													entityId={planId}
-													autoLoad={true}
-													embedded={true}
-												/>
-											</div>
-										{/if}
-									</section>
+								<div class="h-[22rem] sm:h-[26rem] lg:h-[30rem]">
+									<RichMarkdownEditor
+										id="plan-details"
+										label="Details"
+										bind:value={planDetails}
+										placeholder="Execution outline, milestones, runbook..."
+										disabled={formDisabled}
+										maxLength={50000}
+										size="base"
+										fillHeight={true}
+										helpText="Markdown supported"
+										onSave={handleSave}
+										voiceNoteSource="plan-edit-modal"
+										voiceNoteLinkedEntityType="plan"
+										voiceNoteLinkedEntityId={planId}
+									/>
 								</div>
 							</CardBody>
 						</Card>
-					</EntityModalDetailsDrawer>
+
+						{#if error}
+							<div
+								class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 shadow-ink-inner"
+							>
+								<p class="text-sm text-destructive">{error}</p>
+							</div>
+						{/if}
+					</form>
 				</div>
 
-				<div class="mt-4">
-					<EntityCommentsSection {projectId} entityType="plan" entityId={planId} />
-				</div>
-			{/if}
-		</div>
-	{/snippet}
+				<!-- Sidebar (Right column) -->
+				<EntityModalDetailsDrawer panelLabel="Plan details" showDesktopHeader={true}>
+					<Card variant="elevated" class="wt-card">
+						<CardBody padding="none">
+							<div class="divide-y divide-border/70">
+								<EntityCollaborationAction
+									{projectId}
+									entityType="plan"
+									entityId={planId}
+									entityTitle={name || plan?.name || 'Plan'}
+									disabled={formDisabled}
+								/>
+
+								<!-- Workflow -->
+								<section
+									class="px-3 py-3 sm:px-4"
+									aria-label="Workflow: {stateMeta.label}"
+								>
+									<div class="flex items-center gap-2">
+										<FileText class="h-4 w-4 text-muted-foreground" />
+										<p class="micro-label font-semibold">Workflow</p>
+									</div>
+
+									<div class="mt-2 space-y-2">
+										<div
+											class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+										>
+											<label
+												for="plan-state"
+												class="text-xs font-medium text-muted-foreground"
+											>
+												State
+											</label>
+											<Select
+												id="plan-state"
+												bind:value={stateKey}
+												disabled={formDisabled}
+												size="sm"
+											>
+												{#each PLAN_STATES as state (state)}
+													<option value={state}>
+														{state === 'draft'
+															? 'Draft'
+															: state === 'active'
+																? 'Active'
+																: state === 'completed'
+																	? 'Completed'
+																	: state}
+													</option>
+												{/each}
+											</Select>
+										</div>
+
+										<p class="text-xs text-muted-foreground">
+											{stateMeta.note}
+										</p>
+									</div>
+								</section>
+
+								<!-- Timeline -->
+								<section
+									class={dateError
+										? 'px-3 py-3 sm:px-4 tx tx-static tx-weak'
+										: 'px-3 py-3 sm:px-4'}
+									aria-label="Timeline: {timelineSummary}"
+								>
+									<div class="flex items-center justify-between gap-2">
+										<div class="flex items-center gap-2">
+											<CalendarRange class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Timeline</p>
+										</div>
+										{#if timelineMeta}
+											<Badge variant={timelineMeta.variant} size="sm"
+												>{timelineMeta.label}</Badge
+											>
+										{/if}
+									</div>
+
+									{#if dateError}
+										<div
+											class="mt-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2"
+										>
+											<p class="text-xs font-semibold text-destructive">
+												{dateError}
+											</p>
+										</div>
+									{/if}
+
+									<div class="mt-2 grid grid-cols-1 gap-2">
+										<div
+											class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+										>
+											<label
+												for="plan-start"
+												class="text-xs font-medium text-muted-foreground"
+											>
+												Start
+											</label>
+											<TextInput
+												id="plan-start"
+												bind:value={startDate}
+												type="date"
+												inputmode="numeric"
+												enterkeyhint="next"
+												disabled={formDisabled}
+												size="sm"
+											/>
+										</div>
+
+										<div
+											class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+										>
+											<label
+												for="plan-end"
+												class="text-xs font-medium text-muted-foreground"
+											>
+												End
+											</label>
+											<TextInput
+												id="plan-end"
+												bind:value={endDate}
+												type="date"
+												inputmode="numeric"
+												enterkeyhint="done"
+												disabled={formDisabled}
+												size="sm"
+											/>
+										</div>
+									</div>
+								</section>
+
+								<!-- Record -->
+								<section class="px-3 py-3 sm:px-4">
+									<div class="flex items-center gap-2">
+										<Clock class="h-4 w-4 text-muted-foreground" />
+										<p class="micro-label font-semibold">Record</p>
+									</div>
+									<div class="mt-2 space-y-1.5 text-sm">
+										<div class="flex items-center justify-between gap-3">
+											<span class="text-muted-foreground">Type</span>
+											<span class="text-right text-foreground"
+												>{planTypeLabel}</span
+											>
+										</div>
+										<div class="flex items-center justify-between gap-3">
+											<span class="text-muted-foreground">Created</span>
+											<span class="text-right text-foreground">
+												{formatRecordDate(plan.created_at)}
+											</span>
+										</div>
+										<div class="flex items-center justify-between gap-3">
+											<span class="text-muted-foreground">Updated</span>
+											<span class="text-right text-foreground">
+												{formatRecordDate(plan.updated_at)}
+											</span>
+										</div>
+									</div>
+								</section>
+
+								<!-- Tags -->
+								{#if plan?.props?.tags?.length}
+									<section class="px-3 py-3 sm:px-4">
+										<div class="flex items-center gap-2 mb-2">
+											<TagIcon class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Tags</p>
+										</div>
+										<TagsDisplay props={plan.props} size="sm" compact={true} />
+									</section>
+								{/if}
+
+								<!-- Linked Entities (collapsible, default closed for density) -->
+								<section class="px-3 sm:px-4">
+									<button
+										type="button"
+										onclick={() => (showLinkedEntities = !showLinkedEntities)}
+										class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										aria-expanded={showLinkedEntities}
+									>
+										<div class="flex items-center gap-2">
+											<LinkIcon class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Linked Entities</p>
+										</div>
+										<ChevronDown
+											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showLinkedEntities
+												? 'rotate-180'
+												: ''}"
+										/>
+									</button>
+									{#if showLinkedEntities}
+										<div class="pb-3" transition:slide={slideMotion()}>
+											<LinkedEntities
+												sourceId={planId}
+												sourceKind="plan"
+												{projectId}
+												initialLinkedEntities={linkedEntities}
+												onLoaded={handleLinkedEntitiesLoaded}
+												onEntityClick={handleLinkedEntityClick}
+												onLinksChanged={handleLinksChanged}
+											/>
+										</div>
+									{/if}
+								</section>
+
+								<!-- Images (collapsible) -->
+								<section class="px-3 sm:px-4">
+									<button
+										type="button"
+										onclick={() => (showImages = !showImages)}
+										class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										aria-expanded={showImages}
+									>
+										<div class="flex items-center gap-2">
+											<ImageIcon class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Images</p>
+										</div>
+										<ChevronDown
+											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showImages
+												? 'rotate-180'
+												: ''}"
+										/>
+									</button>
+									{#if showImages}
+										<div class="pb-3" transition:slide={slideMotion()}>
+											<ImageAssetsPanel
+												{projectId}
+												entityKind="plan"
+												entityId={planId}
+												showTitle={false}
+												compact={true}
+												onChanged={() => {
+													void loadPlan({ preserveEdits: true });
+													onUpdated?.();
+												}}
+											/>
+										</div>
+									{/if}
+								</section>
+
+								<!-- Activity (collapsible) -->
+								<section class="px-3 sm:px-4">
+									<button
+										type="button"
+										onclick={() => (showActivityLog = !showActivityLog)}
+										class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										aria-expanded={showActivityLog}
+									>
+										<div class="flex items-center gap-2">
+											<Activity class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Activity</p>
+										</div>
+										<ChevronDown
+											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showActivityLog
+												? 'rotate-180'
+												: ''}"
+										/>
+									</button>
+									{#if showActivityLog}
+										<div class="pb-3" transition:slide={slideMotion()}>
+											<EntityActivityLog
+												entityType="plan"
+												entityId={planId}
+												autoLoad={true}
+												embedded={true}
+											/>
+										</div>
+									{/if}
+								</section>
+							</div>
+						</CardBody>
+					</Card>
+				</EntityModalDetailsDrawer>
+			</div>
+
+			<div class="mt-4">
+				<EntityCommentsSection {projectId} entityType="plan" entityId={planId} />
+			</div>
+		{/if}
+	</div>
 
 	<!-- Footer Actions -->
 	{#snippet footer()}

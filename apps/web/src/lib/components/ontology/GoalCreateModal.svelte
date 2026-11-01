@@ -238,280 +238,267 @@
 		</div>
 	{/snippet}
 
-	{#snippet children()}
-		<div class="px-2 py-2 sm:px-6 sm:py-4">
-			<!-- Horizontal Slide Animation Between Views -->
-			<div class="relative overflow-hidden" style="min-height: 400px;">
-				{#key showTemplateSelection}
-					<div
-						in:fly={{ x: slideDirection * 100, duration: 300, easing: cubicOut }}
-						out:fly={{ x: slideDirection * -100, duration: 300, easing: cubicOut }}
-						class="absolute inset-0 overflow-y-auto"
-					>
-						{#if showTemplateSelection}
-							<!-- TEMPLATE SELECTION VIEW -->
-							<div class="space-y-3 sm:space-y-4">
-								<!-- Header -->
-								<div class="flex items-center gap-3 pb-4 border-b border-border">
-									<div class="p-2 rounded bg-muted tx tx-bloom tx-weak">
-										<Target class="w-5 h-5 text-accent" />
-									</div>
-									<div>
-										<h3 class="text-lg font-semibold text-foreground">
-											Choose a Goal Type
-										</h3>
-										<p class="text-sm text-muted-foreground">
-											Select a goal type to define success criteria and
-											tracking
-										</p>
-									</div>
+	<div class="px-2 py-2 sm:px-6 sm:py-4">
+		<!-- Horizontal Slide Animation Between Views -->
+		<div class="relative overflow-hidden" style="min-height: 400px;">
+			{#key showTemplateSelection}
+				<div
+					in:fly={{ x: slideDirection * 100, duration: 300, easing: cubicOut }}
+					out:fly={{ x: slideDirection * -100, duration: 300, easing: cubicOut }}
+					class="absolute inset-0 overflow-y-auto"
+				>
+					{#if showTemplateSelection}
+						<!-- TEMPLATE SELECTION VIEW -->
+						<div class="space-y-3 sm:space-y-4">
+							<!-- Header -->
+							<div class="flex items-center gap-3 pb-4 border-b border-border">
+								<div class="p-2 rounded bg-muted tx tx-bloom tx-weak">
+									<Target class="w-5 h-5 text-accent" />
 								</div>
-
-								<div class="space-y-4 sm:space-y-6">
-									{#each Object.entries(templateCategories) as [category, categoryTemplates]}
-										<div>
-											<h3
-												class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2"
-											>
-												<span class="w-1.5 h-1.5 bg-accent rounded-full"
-												></span>
-												{category}
-											</h3>
-											<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-												{#each categoryTemplates as template}
-													<button
-														type="button"
-														onclick={() => selectTemplate(template)}
-														class="bg-card border border-border p-2.5 sm:p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200 pressable tx tx-frame tx-weak"
-													>
-														<div
-															class="flex items-start justify-between mb-2"
-														>
-															<h4
-																class="font-semibold text-foreground group-hover:text-accent transition-colors"
-															>
-																{template.name}
-															</h4>
-															<ChevronRight
-																class="w-5 h-5 text-muted-foreground group-hover:text-accent flex-shrink-0 transition-transform group-hover:translate-x-0.5"
-															/>
-														</div>
-														{#if template.metadata?.description}
-															<p
-																class="text-sm text-muted-foreground line-clamp-2 mb-2"
-															>
-																{template.metadata.description}
-															</p>
-														{/if}
-														{#if template.metadata?.measurement_type}
-															<div
-																class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 bg-muted rounded"
-															>
-																<Target
-																	class="w-3 h-3 text-accent"
-																/>
-																<span
-																	class="text-xs font-medium text-foreground"
-																>
-																	{template.metadata
-																		.measurement_type}
-																</span>
-															</div>
-														{/if}
-													</button>
-												{/each}
-											</div>
-										</div>
-									{/each}
+								<div>
+									<h3 class="text-lg font-semibold text-foreground">
+										Choose a Goal Type
+									</h3>
+									<p class="text-sm text-muted-foreground">
+										Select a goal type to define success criteria and tracking
+									</p>
 								</div>
 							</div>
-						{:else}
-							<!-- GOAL DETAILS FORM -->
-							<form class="space-y-3 sm:space-y-4" onsubmit={handleSubmit}>
-								<!-- Selected Template Badge -->
-								{#if selectedTemplate}
-									<div
-										class="rounded-lg border border-border bg-muted p-2.5 sm:p-4 tx tx-grain tx-weak"
-									>
-										<div class="flex items-center justify-between gap-3">
-											<div class="flex items-center gap-3 flex-1 min-w-0">
-												<div class="p-2 rounded bg-card shadow-ink">
-													<Target class="w-4 h-4 text-accent" />
-												</div>
-												<div class="flex-1 min-w-0">
-													<h4
-														class="text-sm font-semibold text-foreground"
+
+							<div class="space-y-4 sm:space-y-6">
+								{#each Object.entries(templateCategories) as [category, categoryTemplates] (category)}
+									<div>
+										<h3
+											class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2"
+										>
+											<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
+											{category}
+										</h3>
+										<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+											{#each categoryTemplates as template (template.id)}
+												<button
+													type="button"
+													onclick={() => selectTemplate(template)}
+													class="bg-card border border-border p-2.5 sm:p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200 pressable tx tx-frame tx-weak"
+												>
+													<div
+														class="flex items-start justify-between mb-2"
 													>
-														{selectedTemplate.name}
-													</h4>
-													{#if selectedTemplate.metadata?.description}
-														<p
-															class="text-xs text-muted-foreground truncate"
+														<h4
+															class="font-semibold text-foreground group-hover:text-accent transition-colors"
 														>
-															{selectedTemplate.metadata.description}
+															{template.name}
+														</h4>
+														<ChevronRight
+															class="w-5 h-5 text-muted-foreground group-hover:text-accent flex-shrink-0 transition-transform group-hover:translate-x-0.5"
+														/>
+													</div>
+													{#if template.metadata?.description}
+														<p
+															class="text-sm text-muted-foreground line-clamp-2 mb-2"
+														>
+															{template.metadata.description}
 														</p>
 													{/if}
-												</div>
-											</div>
-											<Button
-												type="button"
-												variant="ghost"
-												size="sm"
-												onclick={handleBack}
-												class="shrink-0"
-											>
-												Change
-											</Button>
+													{#if template.metadata?.measurement_type}
+														<div
+															class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 bg-muted rounded"
+														>
+															<Target class="w-3 h-3 text-accent" />
+															<span
+																class="text-xs font-medium text-foreground"
+															>
+																{template.metadata.measurement_type}
+															</span>
+														</div>
+													{/if}
+												</button>
+											{/each}
 										</div>
 									</div>
-								{/if}
-
-								<!-- Goal Name -->
-								<FormField
-									label="Goal Name"
-									labelFor="name"
-									required={true}
-									error={!name.trim() && error ? 'Goal name is required' : ''}
+								{/each}
+							</div>
+						</div>
+					{:else}
+						<!-- GOAL DETAILS FORM -->
+						<form class="space-y-3 sm:space-y-4" onsubmit={handleSubmit}>
+							<!-- Selected Template Badge -->
+							{#if selectedTemplate}
+								<div
+									class="rounded-lg border border-border bg-muted p-2.5 sm:p-4 tx tx-grain tx-weak"
 								>
-									<TextInput
-										id="name"
-										bind:value={name}
-										placeholder="Enter goal name..."
-										inputmode="text"
-										enterkeyhint="next"
-										required={true}
-										disabled={isSaving}
-										error={!name.trim() && error ? true : false}
-										size="md"
-									/>
-								</FormField>
-
-								<!-- Description -->
-								<FormField
-									label="Description"
-									labelFor="description"
-									hint="Describe what you want to achieve"
-								>
-									<Textarea
-										id="description"
-										bind:value={description}
-										placeholder="Describe what you want to achieve..."
-										enterkeyhint="next"
-										rows={3}
-										disabled={isSaving}
-										size="md"
-									/>
-								</FormField>
-
-								<FormField
-									label="Goal Details"
-									labelFor="goal_details"
-									hint="Optional extended goal statement"
-								>
-									<Textarea
-										id="goal_details"
-										bind:value={goalDetails}
-										placeholder="Add any additional context or structured goal notes..."
-										enterkeyhint="next"
-										rows={3}
-										disabled={isSaving}
-										size="md"
-									/>
-								</FormField>
-
-								<!-- Success Criteria -->
-								<FormField
-									label="Success Criteria"
-									labelFor="measurement_criteria"
-									hint="How will you measure success?"
-								>
-									<Textarea
-										id="measurement_criteria"
-										bind:value={measurementCriteria}
-										placeholder="e.g., 'Complete 5 tasks per week', 'Increase revenue by 20%'"
-										enterkeyhint="next"
-										rows={2}
-										disabled={isSaving}
-										size="md"
-									/>
-								</FormField>
-
-								<!-- Priority & State Grid -->
-								<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-									<FormField label="Priority" labelFor="priority" required={true}>
-										<Select
-											id="priority"
-											bind:value={priority}
-											disabled={isSaving}
-											size="md"
-											placeholder="Select priority"
+									<div class="flex items-center justify-between gap-3">
+										<div class="flex items-center gap-3 flex-1 min-w-0">
+											<div class="p-2 rounded bg-card shadow-ink">
+												<Target class="w-4 h-4 text-accent" />
+											</div>
+											<div class="flex-1 min-w-0">
+												<h4 class="text-sm font-semibold text-foreground">
+													{selectedTemplate.name}
+												</h4>
+												{#if selectedTemplate.metadata?.description}
+													<p
+														class="text-xs text-muted-foreground truncate"
+													>
+														{selectedTemplate.metadata.description}
+													</p>
+												{/if}
+											</div>
+										</div>
+										<Button
+											type="button"
+											variant="ghost"
+											size="sm"
+											onclick={handleBack}
+											class="shrink-0"
 										>
-											<option value="high">High Priority</option>
-											<option value="medium">Medium Priority</option>
-											<option value="low">Low Priority</option>
-										</Select>
-									</FormField>
-
-									<FormField
-										label="Initial State"
-										labelFor="state"
-										required={true}
-									>
-										<Select
-											id="state"
-											bind:value={stateKey}
-											disabled={isSaving}
-											size="md"
-											placeholder="Select state"
-										>
-											{#each GOAL_STATES as state}
-												<option value={state}>
-													{state === 'draft'
-														? 'Draft'
-														: state === 'active'
-															? 'Active'
-															: state === 'achieved'
-																? 'Achieved'
-																: state === 'abandoned'
-																	? 'Abandoned'
-																	: state}
-												</option>
-											{/each}
-										</Select>
-									</FormField>
-								</div>
-
-								<!-- Target Date -->
-								<FormField
-									label="Target Date"
-									labelFor="target_date"
-									hint="Optional deadline for achieving this goal"
-								>
-									<TextInput
-										id="target_date"
-										type="date"
-										bind:value={targetDate}
-										disabled={isSaving}
-										size="md"
-									/>
-								</FormField>
-
-								{#if error}
-									<div
-										class="p-4 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
-									>
-										<p class="text-sm text-destructive">
-											{error}
-										</p>
+											Change
+										</Button>
 									</div>
-								{/if}
-							</form>
-						{/if}
-					</div>
-				{/key}
-			</div>
+								</div>
+							{/if}
+
+							<!-- Goal Name -->
+							<FormField
+								label="Goal Name"
+								labelFor="name"
+								required={true}
+								error={!name.trim() && error ? 'Goal name is required' : ''}
+							>
+								<TextInput
+									id="name"
+									bind:value={name}
+									placeholder="Enter goal name..."
+									inputmode="text"
+									enterkeyhint="next"
+									required={true}
+									disabled={isSaving}
+									error={!name.trim() && error ? true : false}
+									size="md"
+								/>
+							</FormField>
+
+							<!-- Description -->
+							<FormField
+								label="Description"
+								labelFor="description"
+								hint="Describe what you want to achieve"
+							>
+								<Textarea
+									id="description"
+									bind:value={description}
+									placeholder="Describe what you want to achieve..."
+									enterkeyhint="next"
+									rows={3}
+									disabled={isSaving}
+									size="md"
+								/>
+							</FormField>
+
+							<FormField
+								label="Goal Details"
+								labelFor="goal_details"
+								hint="Optional extended goal statement"
+							>
+								<Textarea
+									id="goal_details"
+									bind:value={goalDetails}
+									placeholder="Add any additional context or structured goal notes..."
+									enterkeyhint="next"
+									rows={3}
+									disabled={isSaving}
+									size="md"
+								/>
+							</FormField>
+
+							<!-- Success Criteria -->
+							<FormField
+								label="Success Criteria"
+								labelFor="measurement_criteria"
+								hint="How will you measure success?"
+							>
+								<Textarea
+									id="measurement_criteria"
+									bind:value={measurementCriteria}
+									placeholder="e.g., 'Complete 5 tasks per week', 'Increase revenue by 20%'"
+									enterkeyhint="next"
+									rows={2}
+									disabled={isSaving}
+									size="md"
+								/>
+							</FormField>
+
+							<!-- Priority & State Grid -->
+							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+								<FormField label="Priority" labelFor="priority" required={true}>
+									<Select
+										id="priority"
+										bind:value={priority}
+										disabled={isSaving}
+										size="md"
+										placeholder="Select priority"
+									>
+										<option value="high">High Priority</option>
+										<option value="medium">Medium Priority</option>
+										<option value="low">Low Priority</option>
+									</Select>
+								</FormField>
+
+								<FormField label="Initial State" labelFor="state" required={true}>
+									<Select
+										id="state"
+										bind:value={stateKey}
+										disabled={isSaving}
+										size="md"
+										placeholder="Select state"
+									>
+										{#each GOAL_STATES as state (state)}
+											<option value={state}>
+												{state === 'draft'
+													? 'Draft'
+													: state === 'active'
+														? 'Active'
+														: state === 'achieved'
+															? 'Achieved'
+															: state === 'abandoned'
+																? 'Abandoned'
+																: state}
+											</option>
+										{/each}
+									</Select>
+								</FormField>
+							</div>
+
+							<!-- Target Date -->
+							<FormField
+								label="Target Date"
+								labelFor="target_date"
+								hint="Optional deadline for achieving this goal"
+							>
+								<TextInput
+									id="target_date"
+									type="date"
+									bind:value={targetDate}
+									disabled={isSaving}
+									size="md"
+								/>
+							</FormField>
+
+							{#if error}
+								<div
+									class="p-4 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
+								>
+									<p class="text-sm text-destructive">
+										{error}
+									</p>
+								</div>
+							{/if}
+						</form>
+					{/if}
+				</div>
+			{/key}
 		</div>
-	{/snippet}
+	</div>
 
 	<!-- Footer Actions - buttons on one row, smaller on mobile -->
 	{#snippet footer()}

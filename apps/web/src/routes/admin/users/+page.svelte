@@ -1,7 +1,7 @@
 <!-- apps/web/src/routes/admin/users/+page.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import {
 		Users,
 		Shield,
@@ -243,7 +243,7 @@
 
 	onMount(() => {
 		timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-		searchQuery = $page.url.searchParams.get('search')?.trim() || '';
+		searchQuery = page.url.searchParams.get('search')?.trim() || '';
 		initialFiltersReady = true;
 	});
 

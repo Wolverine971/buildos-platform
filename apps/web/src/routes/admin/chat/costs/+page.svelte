@@ -40,7 +40,6 @@
 
 	// Load data on mount and when timeframe changes
 	$effect(() => {
-		if (!browser) return;
 		selectedTimeframe;
 		loadDashboard();
 	});
@@ -459,7 +458,7 @@
 			>
 				<h3 class="text-sm font-semibold text-foreground mb-4">Cost by Turn Number</h3>
 				<div class="space-y-3">
-					{#each dashboardData.cost_by_turn_index.slice(0, 20) as turnData}
+					{#each dashboardData.cost_by_turn_index.slice(0, 20) as turnData (turnData.turn_index)}
 						<div class="grid grid-cols-[4rem_1fr_auto] items-center gap-3">
 							<div class="text-sm font-semibold text-foreground">
 								Turn {turnData.turn_index}
@@ -500,7 +499,7 @@
 			>
 				<h3 class="text-sm font-semibold text-foreground mb-4">Cost by Model</h3>
 				<div class="space-y-3 max-h-64 overflow-y-auto scrollbar-thin">
-					{#each dashboardData.by_model as modelData}
+					{#each dashboardData.by_model as modelData (modelData.model)}
 						<div class="grid grid-cols-[1fr_auto] gap-3">
 							<div class="flex-1 min-w-0">
 								<div class="text-sm font-medium text-foreground truncate">
@@ -545,7 +544,7 @@
 			</h3>
 			{#if dashboardData.top_turns && dashboardData.top_turns.length > 0}
 				<div class="space-y-3 max-h-96 overflow-y-auto scrollbar-thin">
-					{#each dashboardData.top_turns as turn}
+					{#each dashboardData.top_turns as turn (turn.id)}
 						<a
 							href={turn.details_url || sessionHref(turn.session_id)}
 							class="block rounded-lg bg-muted/50 p-3 transition motion-reduce:transition-none hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -604,7 +603,7 @@
 			<h3 class="text-sm font-semibold text-foreground mb-4">Top Sessions by Cost</h3>
 			{#if dashboardData.top_sessions && dashboardData.top_sessions.length > 0}
 				<div class="space-y-3 max-h-64 overflow-y-auto scrollbar-thin">
-					{#each dashboardData.top_sessions as session}
+					{#each dashboardData.top_sessions as session (session.id)}
 						<a
 							href={session.details_url || sessionHref(session.id)}
 							class="flex items-start justify-between p-3 bg-muted/50 rounded-lg transition motion-reduce:transition-none hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -658,7 +657,7 @@
 			<h3 class="text-sm font-semibold text-foreground mb-4">Top Users by Cost</h3>
 			{#if dashboardData.top_users && dashboardData.top_users.length > 0}
 				<div class="space-y-3 max-h-64 overflow-y-auto scrollbar-thin">
-					{#each dashboardData.top_users as userData}
+					{#each dashboardData.top_users as userData (userData.user_id)}
 						<div class="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
 							<div class="flex-1 min-w-0">
 								<div class="text-sm font-medium text-foreground truncate">

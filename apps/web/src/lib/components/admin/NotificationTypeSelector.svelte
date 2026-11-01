@@ -216,14 +216,14 @@
 				   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-transparent"
 		>
 			<optgroup label="Admin Events" class="text-destructive">
-				{#each adminEvents as event}
+				{#each adminEvents as event (event.value)}
 					<option value={event.value}>
 						🔒 {event.label}
 					</option>
 				{/each}
 			</optgroup>
 			<optgroup label="User Events" class="text-info">
-				{#each userEvents as event}
+				{#each userEvents as event (event.value)}
 					<option value={event.value}>
 						👤 {event.label}
 					</option>

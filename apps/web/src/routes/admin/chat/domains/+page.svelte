@@ -95,13 +95,11 @@
 	let topBacklog = $derived((domainData?.research_backlog ?? []).slice(0, 8));
 
 	$effect(() => {
-		if (!browser) return;
 		selectedTimeframe;
 		loadDomainDemand();
 	});
 
 	$effect(() => {
-		if (!browser) return;
 		selectedStatus;
 		selectedKind;
 		selectedPriority;
@@ -401,7 +399,7 @@
 					size="sm"
 					aria-label="Filter by status"
 				>
-					{#each statusOptions as status}
+					{#each statusOptions as status (status)}
 						<option value={status}
 							>{status === 'all' ? 'All Statuses' : formatLabel(status)}</option
 						>
@@ -413,7 +411,7 @@
 					size="sm"
 					aria-label="Filter by kind"
 				>
-					{#each kindOptions as kind}
+					{#each kindOptions as kind (kind)}
 						<option value={kind}
 							>{kind === 'all' ? 'All Kinds' : formatLabel(kind)}</option
 						>
@@ -425,7 +423,7 @@
 					size="sm"
 					aria-label="Filter by priority"
 				>
-					{#each priorityOptions as priority}
+					{#each priorityOptions as priority (priority)}
 						<option value={priority}
 							>{priority === 'all' ? 'All Priorities' : formatLabel(priority)}</option
 						>
@@ -554,7 +552,7 @@
 			{:else}
 				<!-- Mobile card list -->
 				<div class="block space-y-3 p-4 lg:hidden">
-					{#each queueRows as row}
+					{#each queueRows as row (row.id)}
 						<div class="rounded-lg border border-border bg-background p-3">
 							<div class="flex flex-wrap items-center gap-2">
 								<span class="font-mono text-xs text-muted-foreground break-all"
@@ -704,7 +702,7 @@
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-border">
-							{#each queueRows as row}
+							{#each queueRows as row (row.id)}
 								<tr class="align-top">
 									<td class="max-w-xl px-4 py-4">
 										<div class="flex flex-wrap items-center gap-2">
@@ -884,7 +882,7 @@
 					</p>
 				</div>
 				<div class="divide-y divide-border">
-					{#each topCandidates as candidate}
+					{#each topCandidates as candidate (candidate.queue_key)}
 						<div class="p-4">
 							<div class="flex flex-wrap items-center gap-2">
 								<span class="font-mono text-xs text-muted-foreground break-all"
@@ -924,7 +922,7 @@
 					</p>
 				</div>
 				<div class="divide-y divide-border">
-					{#each topBacklog as backlog}
+					{#each topBacklog as backlog (backlog.id)}
 						<div class="p-4">
 							<div class="flex flex-wrap items-center gap-2">
 								<span class="font-mono text-xs text-muted-foreground break-all"

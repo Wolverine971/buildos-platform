@@ -71,7 +71,7 @@
 		</div>
 	{:else}
 		<div class="flex-1 overflow-y-auto overscroll-contain p-2 space-y-1.5">
-			{#each sessions as session}
+			{#each sessions as session (session.id)}
 				<button
 					class="w-full text-left rounded-lg border p-2.5 transition-all motion-reduce:transition-none pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {selectedSessionId ===
 					session.id

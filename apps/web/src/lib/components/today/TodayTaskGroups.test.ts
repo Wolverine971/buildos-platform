@@ -5,7 +5,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { TodayTask } from '$lib/types/today';
 import TodayTaskGroups from './TodayTaskGroups.svelte';
 
-vi.mock('$lib/actions/preload-entity-modal', () => ({ preloadEntityModal: () => ({}) }));
+vi.mock('$lib/attachments/preload-entity-modal', () => ({
+	preloadEntityModal: () => () => {}
+}));
 afterEach(cleanup);
 
 function task(id: string, overrides: Partial<TodayTask> = {}): TodayTask {

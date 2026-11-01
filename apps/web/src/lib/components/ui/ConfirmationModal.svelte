@@ -90,45 +90,43 @@
 	closeOnEscape={!loading}
 	persistent={loading}
 >
-	{#snippet children()}
-		<div class="px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
-			<div class="sm:flex sm:items-start">
-				<!-- Icon -->
-				{#if IconComponent}
-					<div
-						class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full {iconClasses} sm:mx-0 sm:h-10 sm:w-10"
-					>
-						<IconComponent class="h-6 w-6" />
-					</div>
+	<div class="px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
+		<div class="sm:flex sm:items-start">
+			<!-- Icon -->
+			{#if IconComponent}
+				<div
+					class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full {iconClasses} sm:mx-0 sm:h-10 sm:w-10"
+				>
+					<IconComponent class="h-6 w-6" />
+				</div>
+			{/if}
+
+			<!-- Content -->
+			<div
+				class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left {IconComponent
+					? ''
+					: 'w-full'}"
+			>
+				<!-- Main Content Snippet -->
+				{#if content}
+					{@render content()}
+				{:else if childrenContent}
+					<p class="text-sm text-muted-foreground">
+						{@render childrenContent()}
+					</p>
+				{:else}
+					<p class="text-sm text-muted-foreground">
+						Are you sure you want to proceed with this action?
+					</p>
 				{/if}
 
-				<!-- Content -->
-				<div
-					class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left {IconComponent
-						? ''
-						: 'w-full'}"
-				>
-					<!-- Main Content Snippet -->
-					{#if content}
-						{@render content()}
-					{:else if childrenContent}
-						<p class="text-sm text-muted-foreground">
-							{@render childrenContent()}
-						</p>
-					{:else}
-						<p class="text-sm text-muted-foreground">
-							Are you sure you want to proceed with this action?
-						</p>
-					{/if}
-
-					<!-- Details Snippet -->
-					{#if details}
-						{@render details()}
-					{/if}
-				</div>
+				<!-- Details Snippet -->
+				{#if details}
+					{@render details()}
+				{/if}
 			</div>
 		</div>
-	{/snippet}
+	</div>
 
 	{#snippet footer()}
 		{#if footerContent}

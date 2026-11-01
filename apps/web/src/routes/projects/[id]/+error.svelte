@@ -1,17 +1,17 @@
 <!-- apps/web/src/routes/projects/[id]/+error.svelte -->
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import { AlertCircle, ArrowLeft, FileX, LogOut, RefreshCw } from '$lib/icons/lucide';
 
-	const status = $derived($page.status);
-	const message = $derived($page.error?.message || 'An unexpected error occurred');
-	const projectId = $derived($page.params.id);
+	const status = $derived(page.status);
+	const message = $derived(page.error?.message || 'An unexpected error occurred');
+	const projectId = $derived(page.params.id);
 	const userEmail = $derived(
-		typeof $page.data?.user?.email === 'string' ? $page.data.user.email : ''
+		typeof page.data?.user?.email === 'string' ? page.data.user.email : ''
 	);
 
 	const errorTitle = $derived.by(() => {
@@ -51,7 +51,7 @@
 	}
 
 	function handleSwitchAccount() {
-		const destination = `${$page.url.pathname}${$page.url.search}`;
+		const destination = `${page.url.pathname}${page.url.search}`;
 		const loginUrl = `/auth/login?redirect=${encodeURIComponent(destination)}`;
 		window.location.href = `/auth/logout?redirect=${encodeURIComponent(loginUrl)}`;
 	}

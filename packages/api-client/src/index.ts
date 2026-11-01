@@ -14,6 +14,7 @@ import { createChatEndpoints } from './endpoints/chat';
 import { createDocumentEndpoints } from './endpoints/documents';
 import { createProjectEndpoints } from './endpoints/projects';
 import { createPushEndpoints } from './endpoints/push';
+import { createTableEndpoints } from './endpoints/tables';
 import { createTaskEndpoints } from './endpoints/tasks';
 import { createTodayEndpoints } from './endpoints/today';
 import { createTranscribeEndpoint, createVoiceNoteEndpoints } from './endpoints/voice-notes';
@@ -50,6 +51,7 @@ export type { ChatEndpoints } from './endpoints/chat';
 export type { DocumentEndpoints } from './endpoints/documents';
 export type { ProjectEndpoints } from './endpoints/projects';
 export type { PushEndpoints } from './endpoints/push';
+export type { TableEndpoints } from './endpoints/tables';
 export type { TaskEndpoints } from './endpoints/tasks';
 export type { TodayEndpoints } from './endpoints/today';
 export type { TranscribeEndpoint, VoiceNoteEndpoints } from './endpoints/voice-notes';
@@ -63,6 +65,8 @@ export interface BuildOsClient extends BuildOsHttp {
 	projects: ReturnType<typeof createProjectEndpoints>;
 	tasks: ReturnType<typeof createTaskEndpoints>;
 	documents: ReturnType<typeof createDocumentEndpoints>;
+	/** BuildOS Tables: today only the Undo of an agent table write. */
+	tables: ReturnType<typeof createTableEndpoints>;
 	briefs: ReturnType<typeof createBriefEndpoints>;
 	activity: ReturnType<typeof createActivityEndpoints>;
 	voiceNotes: ReturnType<typeof createVoiceNoteEndpoints>;
@@ -87,6 +91,7 @@ export function createBuildOsClient(options: BuildOsClientOptions): BuildOsClien
 		projects: createProjectEndpoints(http),
 		tasks: createTaskEndpoints(http),
 		documents: createDocumentEndpoints(http),
+		tables: createTableEndpoints(http),
 		briefs: createBriefEndpoints(http),
 		activity: createActivityEndpoints(http),
 		voiceNotes: createVoiceNoteEndpoints(http),

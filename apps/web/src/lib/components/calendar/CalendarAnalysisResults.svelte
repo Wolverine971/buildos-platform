@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/calendar/CalendarAnalysisResults.svelte -->
 <script lang="ts">
-	import { browser } from '$app/environment';
+	import { SvelteSet } from 'svelte/reactivity';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { toastService } from '$lib/stores/toast.store';
@@ -74,10 +74,10 @@
 		embedded = false
 	}: Props = $props();
 
-	let selectedSuggestions = $state(new Set<string>());
+	const selectedSuggestions = new SvelteSet<string>();
 	let processing = $state(false);
 	let analyzing = $state(false);
-	let expandedSuggestions = $state(new Set<string>());
+	const expandedSuggestions = new SvelteSet<string>();
 	let modifiedSuggestions = $state<Map<string, { name?: string; description?: string }>>(
 		new Map()
 	);
@@ -87,7 +87,7 @@
 	let autoSelectProcessed = $state(false); // Track if auto-selection has been done
 
 	// Task management state
-	let tasksExpanded = $state(new Set<string>());
+	const tasksExpanded = new SvelteSet<string>();
 	let enabledTasks = $state<Record<string, boolean>>({});
 	// Task title edits keyed `${suggestionId}-${index}`; sent as taskModifications.
 	let taskTitleEdits = $state<Record<string, string>>({});
@@ -149,7 +149,6 @@
 
 	// Start analysis automatically if requested
 	$effect(() => {
-		if (!browser) return;
 		if (isOpen && autoStart && !analysisId && !analyzing && !analysisTriggered) {
 			analysisTriggered = true; // Prevent re-triggering
 			startAnalysis();
@@ -159,13 +158,13 @@
 	// Auto-select high confidence suggestions, pre-populate modifications, and auto-expand tasks
 	$effect(() => {
 		if (suggestions && suggestions.length > 0 && !autoSelectProcessed) {
-			const newSelected = new Set<string>();
-			const newTasksExpanded = new Set<string>();
+			selectedSuggestions.clear();
+			tasksExpanded.clear();
 			suggestions.forEach((s) => {
 				if (s.confidence_score && s.confidence_score >= 0.7) {
-					newSelected.add(s.id);
+					selectedSuggestions.add(s.id);
 				}
-				newTasksExpanded.add(s.id);
+				tasksExpanded.add(s.id);
 				if (!modifiedSuggestions.has(s.id)) {
 					modifiedSuggestions.set(s.id, {
 						name: s.user_modified_name ?? s.suggested_name ?? undefined,
@@ -174,8 +173,6 @@
 					});
 				}
 			});
-			selectedSuggestions = newSelected;
-			tasksExpanded = newTasksExpanded;
 			modifiedSuggestions = new Map(modifiedSuggestions);
 			autoSelectProcessed = true;
 		}
@@ -214,7 +211,6 @@
 		} else {
 			tasksExpanded.add(suggestionId);
 		}
-		tasksExpanded = new Set(tasksExpanded);
 	}
 
 	function formatDate(dateStr: string | null | undefined): string {
@@ -275,7 +271,6 @@
 		} else {
 			selectedSuggestions.add(id);
 		}
-		selectedSuggestions = new Set(selectedSuggestions);
 	}
 
 	function toggleExpanded(id: string) {
@@ -284,7 +279,6 @@
 		} else {
 			expandedSuggestions.add(id);
 		}
-		expandedSuggestions = new Set(expandedSuggestions);
 	}
 
 	async function handleCreateProjects() {
@@ -405,12 +399,12 @@
 		isOpen = false;
 		onClose?.();
 		// Reset state
-		selectedSuggestions = new Set();
+		selectedSuggestions.clear();
 		modifiedSuggestions = new Map();
-		expandedSuggestions = new Set();
+		expandedSuggestions.clear();
 		analysisTriggered = false; // Reset flag to allow future analyses
 		autoSelectProcessed = false; // Reset auto-select flag
-		tasksExpanded = new Set();
+		tasksExpanded.clear();
 		enabledTasks = {};
 		taskTitleEdits = {};
 	}
@@ -557,7 +551,7 @@
 
 			<!-- Suggestions List -->
 			<div class="space-y-2 max-h-[500px] overflow-y-auto pr-2 -mx-2 px-2">
-				{#each suggestions as suggestion}
+				{#each suggestions as suggestion (suggestion.id)}
 					{@const isSelected = selectedSuggestions.has(suggestion.id)}
 					{@const isExpanded = expandedSuggestions.has(suggestion.id)}
 					{@const confidence = suggestion.confidence_score || 0}

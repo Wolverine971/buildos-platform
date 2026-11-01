@@ -229,160 +229,153 @@
 		</div>
 	{/snippet}
 
-	{#snippet children()}
-		<div class="px-2 py-2 sm:px-6 sm:py-4">
-			<form onsubmit={handleSubmit} class="space-y-4">
-				<!-- Event Title -->
-				<FormField
-					label="Event Title"
-					labelFor="eventTitle"
+	<div class="px-2 py-2 sm:px-6 sm:py-4">
+		<form onsubmit={handleSubmit} class="space-y-4">
+			<!-- Event Title -->
+			<FormField
+				label="Event Title"
+				labelFor="eventTitle"
+				required={true}
+				error={!title.trim() && error ? 'Event title is required' : ''}
+			>
+				<TextInput
+					id="eventTitle"
+					bind:value={title}
+					placeholder="Enter event title..."
+					inputmode="text"
+					enterkeyhint="next"
 					required={true}
-					error={!title.trim() && error ? 'Event title is required' : ''}
-				>
+					disabled={isSaving}
+					error={!title.trim() && error ? true : false}
+					size="md"
+				/>
+			</FormField>
+
+			<!-- Date/Time Grid -->
+			<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+				<FormField label="Start" labelFor="eventStart" required={true}>
 					<TextInput
-						id="eventTitle"
-						bind:value={title}
-						placeholder="Enter event title..."
-						inputmode="text"
+						id="eventStart"
+						type="datetime-local"
+						inputmode="numeric"
 						enterkeyhint="next"
-						required={true}
+						bind:value={startAt}
 						disabled={isSaving}
-						error={!title.trim() && error ? true : false}
 						size="md"
 					/>
+					{#if startAt}
+						<p class="mt-1.5 text-xs text-muted-foreground">
+							{new Date(startAt).toLocaleString('en-US', {
+								weekday: 'short',
+								month: 'short',
+								day: 'numeric',
+								hour: 'numeric',
+								minute: '2-digit'
+							})}
+						</p>
+					{/if}
 				</FormField>
+				<FormField label="End" labelFor="eventEnd">
+					<TextInput
+						id="eventEnd"
+						type="datetime-local"
+						inputmode="numeric"
+						enterkeyhint="next"
+						bind:value={endAt}
+						disabled={isSaving}
+						size="md"
+					/>
+					{#if endAt}
+						<p class="mt-1.5 text-xs text-muted-foreground">
+							{new Date(endAt).toLocaleString('en-US', {
+								weekday: 'short',
+								month: 'short',
+								day: 'numeric',
+								hour: 'numeric',
+								minute: '2-digit'
+							})}
+						</p>
+					{/if}
+				</FormField>
+			</div>
 
-				<!-- Date/Time Grid -->
-				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<FormField label="Start" labelFor="eventStart" required={true}>
-						<TextInput
-							id="eventStart"
-							type="datetime-local"
-							inputmode="numeric"
-							enterkeyhint="next"
-							bind:value={startAt}
-							disabled={isSaving}
-							size="md"
-						/>
-						{#if startAt}
-							<p class="mt-1.5 text-xs text-muted-foreground">
-								{new Date(startAt).toLocaleString('en-US', {
-									weekday: 'short',
-									month: 'short',
-									day: 'numeric',
-									hour: 'numeric',
-									minute: '2-digit'
-								})}
-							</p>
-						{/if}
-					</FormField>
-					<FormField label="End" labelFor="eventEnd">
-						<TextInput
-							id="eventEnd"
-							type="datetime-local"
-							inputmode="numeric"
-							enterkeyhint="next"
-							bind:value={endAt}
-							disabled={isSaving}
-							size="md"
-						/>
-						{#if endAt}
-							<p class="mt-1.5 text-xs text-muted-foreground">
-								{new Date(endAt).toLocaleString('en-US', {
-									weekday: 'short',
-									month: 'short',
-									day: 'numeric',
-									hour: 'numeric',
-									minute: '2-digit'
-								})}
-							</p>
-						{/if}
-					</FormField>
+			<!-- Location -->
+			<FormField label="Location" labelFor="eventLocation">
+				<TextInput
+					id="eventLocation"
+					bind:value={location}
+					placeholder="Enter location or meeting link..."
+					inputmode="text"
+					enterkeyhint="next"
+					disabled={isSaving}
+					size="md"
+				/>
+			</FormField>
+
+			<!-- Description -->
+			<FormField
+				label="Description"
+				labelFor="eventDescription"
+				hint="Provide additional context about this event"
+			>
+				<Textarea
+					id="eventDescription"
+					bind:value={description}
+					placeholder="Describe the event..."
+					enterkeyhint="next"
+					rows={3}
+					disabled={isSaving}
+					size="md"
+				/>
+			</FormField>
+
+			{#if taskOptions.length > 0}
+				<FormField label="Link to Task" labelFor="linkedTask">
+					<Select id="linkedTask" bind:value={linkedTaskId} disabled={isSaving} size="md">
+						<option value="">No linked task</option>
+						{#each taskOptions as task (task.id)}
+							<option value={task.id}>{task.title}</option>
+						{/each}
+					</Select>
+					{#if taskOptionsLoading}
+						<p class="mt-1.5 text-xs text-muted-foreground" aria-live="polite">
+							Loading all project tasks…
+						</p>
+					{:else if taskOptionsError}
+						<p class="mt-1.5 text-xs text-destructive">{taskOptionsError}</p>
+					{/if}
+				</FormField>
+			{:else if taskOptionsLoading}
+				<p class="text-xs text-muted-foreground" aria-live="polite">
+					Loading project task options…
+				</p>
+			{:else if taskOptionsError}
+				<p class="text-xs text-destructive">{taskOptionsError}</p>
+			{/if}
+
+			<!-- Calendar Sync Toggle -->
+			<label
+				class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer group"
+			>
+				<input
+					type="checkbox"
+					bind:checked={syncToCalendar}
+					class="h-4 w-4 rounded border-border text-accent focus:ring-accent/50 focus:ring-offset-0 cursor-pointer"
+				/>
+				<span class="group-hover:text-foreground transition-colors">
+					Sync to project calendar
+				</span>
+			</label>
+
+			{#if error}
+				<div
+					class="p-3 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
+				>
+					<p class="text-sm text-destructive">{error}</p>
 				</div>
-
-				<!-- Location -->
-				<FormField label="Location" labelFor="eventLocation">
-					<TextInput
-						id="eventLocation"
-						bind:value={location}
-						placeholder="Enter location or meeting link..."
-						inputmode="text"
-						enterkeyhint="next"
-						disabled={isSaving}
-						size="md"
-					/>
-				</FormField>
-
-				<!-- Description -->
-				<FormField
-					label="Description"
-					labelFor="eventDescription"
-					hint="Provide additional context about this event"
-				>
-					<Textarea
-						id="eventDescription"
-						bind:value={description}
-						placeholder="Describe the event..."
-						enterkeyhint="next"
-						rows={3}
-						disabled={isSaving}
-						size="md"
-					/>
-				</FormField>
-
-				{#if taskOptions.length > 0}
-					<FormField label="Link to Task" labelFor="linkedTask">
-						<Select
-							id="linkedTask"
-							bind:value={linkedTaskId}
-							disabled={isSaving}
-							size="md"
-						>
-							<option value="">No linked task</option>
-							{#each taskOptions as task (task.id)}
-								<option value={task.id}>{task.title}</option>
-							{/each}
-						</Select>
-						{#if taskOptionsLoading}
-							<p class="mt-1.5 text-xs text-muted-foreground" aria-live="polite">
-								Loading all project tasks…
-							</p>
-						{:else if taskOptionsError}
-							<p class="mt-1.5 text-xs text-destructive">{taskOptionsError}</p>
-						{/if}
-					</FormField>
-				{:else if taskOptionsLoading}
-					<p class="text-xs text-muted-foreground" aria-live="polite">
-						Loading project task options…
-					</p>
-				{:else if taskOptionsError}
-					<p class="text-xs text-destructive">{taskOptionsError}</p>
-				{/if}
-
-				<!-- Calendar Sync Toggle -->
-				<label
-					class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer group"
-				>
-					<input
-						type="checkbox"
-						bind:checked={syncToCalendar}
-						class="h-4 w-4 rounded border-border text-accent focus:ring-accent/50 focus:ring-offset-0 cursor-pointer"
-					/>
-					<span class="group-hover:text-foreground transition-colors">
-						Sync to project calendar
-					</span>
-				</label>
-
-				{#if error}
-					<div
-						class="p-3 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
-					>
-						<p class="text-sm text-destructive">{error}</p>
-					</div>
-				{/if}
-			</form>
-		</div>
-	{/snippet}
+			{/if}
+		</form>
+	</div>
 
 	{#snippet footer()}
 		<div

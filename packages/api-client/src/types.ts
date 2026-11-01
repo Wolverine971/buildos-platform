@@ -1359,6 +1359,90 @@ export type ChatPendingChange = {
 	items: string[];
 };
 
+/** DELETE /api/chat/sessions/[id]/pending-change?key= — the strip's Dismiss. */
+export type ChatPendingChangeDismissResponse = {
+	/** False when the strip was already gone (a newer change replaced it, or it finished). */
+	dismissed: boolean;
+	pendingChange: null;
+};
+
+// ---------------------------------------------------------------------------
+// Proposal cards (apps/web/src/routes/api/chat/proposal-cards/[id]/**)
+//
+// Structural mirrors of packages/shared-agent-ops/src/chat-cards/proposal-card.ts (this
+// package depends only on shared-types). A card arrives inside a `tool_result` event's
+// `result` as a `ProposalCardEnvelopeV1`; the person answers it through these routes.
+// ---------------------------------------------------------------------------
+
+export type ProposalCardKind =
+	| 'project_parent'
+	| 'project_combine'
+	| 'workspace_file'
+	| 'workspace_project';
+
+export type ProposalCardOutcome = 'applied' | 'cancelled' | 'stale' | 'unknown';
+
+export type ProposalCardResolution = {
+	version: 1;
+	card_id: string;
+	kind: ProposalCardKind;
+	choice: string;
+	outcome: ProposalCardOutcome;
+	resolved_at: string;
+	reason_code: string | null;
+	receipt: Record<string, unknown> | null;
+};
+
+export type ProposalCardUndo = {
+	version: 1;
+	card_id: string;
+	kind: ProposalCardKind;
+	outcome: 'undone' | 'stale' | 'unknown';
+	undone_at: string;
+	reason_code: string | null;
+	receipt: Record<string, unknown> | null;
+};
+
+/** One human line about what happened, with an in-app link when there is somewhere to go. */
+export type ProposalCardDescription = { text: string; href: string | null };
+
+/** POST /api/chat/proposal-cards/[id] body. */
+export type ProposalChooseRequest = {
+	/** One of the kind's choices: `apply` | `cancel` for nest/file/start; combine has its own. */
+	choice: string;
+	session_id: string;
+	/** The digest from the preview the person saw; required by kinds with a preview (combine). */
+	seen_digest?: string;
+};
+
+export type ProposalChooseResponse = {
+	resolution: ProposalCardResolution;
+	/** Someone (another device, the web) already answered; `resolution` is theirs. */
+	already_resolved: boolean;
+	description: ProposalCardDescription;
+};
+
+/** POST /api/chat/proposal-cards/[id]/undo body. */
+export type ProposalUndoRequest = {
+	session_id: string;
+	seen_digest?: string;
+};
+
+export type ProposalUndoResponse = {
+	undo: ProposalCardUndo;
+	already_undone: boolean;
+	description: ProposalCardDescription;
+};
+
+/** GET …/preview and …/undo-preview — the kind-specific view plus the digest to echo back. */
+export type ProposalPreviewResponse = {
+	view: unknown;
+	digest: string;
+};
+
+/** Error codes that mean the card can no longer be answered (show it as closed). */
+export const PROPOSAL_CARD_CLOSED_CODES = ['CARD_EXPIRED', 'CARD_NOT_FOUND'] as const;
+
 export type ChatSessionHistoryQuery = {
 	/** Also return the voice-note groups and notes the messages reference. */
 	includeVoiceNotes?: boolean;
@@ -1540,3 +1624,97 @@ export type CaptureUndoResult = {
 	/** Changes that could not be put back. */
 	failed: number;
 };
+
+// ---------------------------------------------------------------------------
+// Change receipts: what an agent write leaves in its tool result, and the one-click
+// Undo routes that take it back. Read structurally from `tool_result.result` (live) or a
+// stored tool execution's `result`; mirrors packages/shared-agent-ops/src/ontology/
+// document-edits.ts (DocumentChangeSummaryV1) and tables/table-types.ts (TableChangeReceipt).
+// ---------------------------------------------------------------------------
+
+export type DocumentChangeLine = { kind: 'add' | 'remove' | 'context'; text: string };
+
+export type DocumentChangeHunk = {
+	old_start: number;
+	new_start: number;
+	lines: DocumentChangeLine[];
+};
+
+/** Opaque inverse patch; send it back to `documents.revertChange` unchanged. */
+export type DocumentRevertPatch = Record<string, unknown>;
+
+/** `document_change` on a successful `update_onto_document` result. */
+export type DocumentChangeReceipt = {
+	version: 1;
+	document_id: string;
+	project_id: string;
+	title: string | null;
+	lines_added: number;
+	lines_removed: number;
+	before_hash: string;
+	after_hash: string;
+	hunks: DocumentChangeHunk[];
+	hunks_truncated: boolean;
+	/** Null when the change was too large to carry one; Undo then needs version history. */
+	revert_patch: DocumentRevertPatch | null;
+};
+
+/** POST /api/onto/documents/[id]/revert-change; patches newest edit first. */
+export type DocumentRevertChangeRequest = {
+	revert_patches: DocumentRevertPatch[];
+	before_hash: string;
+	expected_after_hash: string;
+};
+
+export type DocumentRevertChangeResponse = {
+	document: OntoDocumentRow | null;
+	document_change: DocumentChangeReceipt | null;
+	strategy: string | null;
+	version_warning: string | null;
+	already_undone: boolean;
+};
+
+/** 409 codes from the document Undo route: the text moved on since the edit. */
+export const DOCUMENT_UNDO_CONFLICT_CODES = [
+	'BASE_TEXT_CHANGED',
+	'WRITE_RACE',
+	'MANAGED_REGION_BOUNDARY'
+] as const;
+
+export type TableChangeSample = { row: string; column: string; before: string; after: string };
+
+/** `table_change` on a successful table write. `inverse_ops`/`inverse_schema` are opaque. */
+export type TableChangeReceipt = {
+	kind: 'table_change';
+	document_id: string;
+	project_id: string;
+	title: string;
+	revision: number;
+	rows_added: number;
+	rows_updated: number;
+	rows_deleted: number;
+	cells_changed: number;
+	columns_changed: string[];
+	sample: TableChangeSample[];
+	inverse_ops: unknown[];
+	inverse_schema?: unknown;
+	applied_revision: number;
+};
+
+/** POST /api/onto/tables/[id]/revert-change: one receipt, or several folded newest first. */
+export type TableRevertChangeRequest =
+	| { receipt: TableChangeReceipt }
+	| { receipts: TableChangeReceipt[] };
+
+export type TableRevertChangeResponse = {
+	apply: {
+		revision: number;
+		reverted_revision: number | null;
+		reverted_receipts?: number;
+		reverted_ops: number;
+	};
+	table: unknown;
+};
+
+/** 409 codes from the table Undo route. */
+export const TABLE_UNDO_CONFLICT_CODES = ['TABLE_CONFLICT', 'ROW_NOT_FOUND'] as const;

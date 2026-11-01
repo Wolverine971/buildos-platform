@@ -187,7 +187,7 @@
 			</div>
 
 			<div class="grid md:grid-cols-3 gap-5">
-				{#each steps as s}
+				{#each steps as s (s.label)}
 					<article
 						class={`rounded-3xl border border-border bg-card shadow-ink tx ${s.texture} tx-weak ink-frame p-5`}
 					>

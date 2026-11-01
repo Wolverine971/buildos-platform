@@ -3,7 +3,7 @@
 	import { browser } from '$app/environment';
 	import { tick } from 'svelte';
 	import { Download, X } from '$lib/icons/lucide';
-	import { portal } from '$lib/actions/portal';
+	import { portal } from '$lib/attachments/portal';
 	import { lockBodyScroll, unlockBodyScroll } from '$lib/utils/body-scroll-lock';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ChatEntityChanges from './ChatEntityChanges.svelte';
@@ -154,7 +154,7 @@
 	}
 
 	$effect(() => {
-		if (!browser || !isOpen) return;
+		if (!isOpen) return;
 
 		lockBodyScroll();
 		elementToRestoreFocus =
@@ -184,7 +184,7 @@
 <svelte:window onkeydown={handleWindowKeydown} />
 
 {#if isOpen}
-	<div bind:this={portalRootElement} use:portal class="fixed inset-0 z-50">
+	<div bind:this={portalRootElement} {@attach portal()} class="fixed inset-0 z-50">
 		<button
 			type="button"
 			class="absolute inset-0 bg-background/70 backdrop-blur-sm"

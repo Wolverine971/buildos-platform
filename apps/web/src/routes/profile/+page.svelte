@@ -4,7 +4,7 @@
 	import { slide } from 'svelte/transition';
 	import { slideMotion } from '$lib/components/project/v2/board-a11y';
 	import { userContextStore } from '$lib/stores/userContext';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import {
 		CircleCheck,
@@ -66,7 +66,7 @@
 		cyclesProfileEnabled: data.cyclesProfileEnabled,
 		stripeEnabled: data.stripeEnabled
 	});
-	let activeTab = $derived(resolveProfileTab($page.url.searchParams.get('tab'), tabVisibility));
+	let activeTab = $derived(resolveProfileTab(page.url.searchParams.get('tab'), tabVisibility));
 	let settingsDestinations = $derived(getSettingsDestinations(tabVisibility));
 
 	/**
@@ -112,7 +112,7 @@
 
 		// URL state remains shareable and gets a real history entry so browser
 		// back/forward navigation restores the visible Settings destination.
-		const url = new URL($page.url);
+		const url = new URL(page.url);
 		if (nextTab === 'account') {
 			url.searchParams.delete('tab');
 		} else {
@@ -330,7 +330,7 @@
 				{#if activeTab === 'account'}
 					<AccountTab
 						user={data.user}
-						initialSection={$page.url.searchParams.get('section') === 'delete'
+						initialSection={page.url.searchParams.get('section') === 'delete'
 							? 'danger'
 							: 'profile'}
 						onsuccess={handleComponentSuccess}
@@ -364,7 +364,7 @@
 				{:else if activeTab === 'people'}
 					<PeopleAgentsTab
 						userName={data.user?.name || data.user?.email || 'You'}
-						initialSection={profileTabAliasSection($page.url.searchParams.get('tab'))}
+						initialSection={profileTabAliasSection(page.url.searchParams.get('tab'))}
 						onsuccess={handleComponentSuccess}
 						onerror={handleComponentError}
 					/>

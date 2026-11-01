@@ -2,7 +2,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { Bell, TrendingUp, Send, Eye, MousePointerClick, Calendar } from 'lucide-svelte';
-	import { browser } from '$app/environment';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import MetricCard from '$lib/components/admin/notifications/MetricCard.svelte';
 	import TimeframeSelector from '$lib/components/admin/notifications/TimeframeSelector.svelte';
@@ -76,7 +75,6 @@
 	});
 
 	$effect(() => {
-		if (!browser) return;
 		if (autoRefresh) {
 			if (!refreshInterval) {
 				refreshInterval = setInterval(loadAnalytics, 30000) as any;

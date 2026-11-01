@@ -1,17 +1,17 @@
 <!-- apps/web/src/routes/auth/google/gmail-callback/+page.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { authErrorMessage, authErrorPath } from '$lib/utils/auth-status';
 
-	let error = '';
-	let timeoutReached = false;
+	let error = $state('');
+	let timeoutReached = $state(false);
 
 	onMount(() => {
 		// Check for error in URL params
 		// Fixed copy only: the URL text is never shown.
-		const urlError = authErrorMessage($page.url.searchParams.get('error'));
+		const urlError = authErrorMessage(page.url.searchParams.get('error'));
 		if (urlError) {
 			error = urlError;
 		}

@@ -306,7 +306,7 @@
 			</div>
 
 			<div class="space-y-3">
-				{#each faqs as faq}
+				{#each faqs as faq (faq.question)}
 					<details
 						class="group bg-card rounded-lg border border-border shadow-ink tx tx-frame tx-weak overflow-hidden"
 					>

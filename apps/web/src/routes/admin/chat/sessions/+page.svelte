@@ -4,7 +4,7 @@
 	import { browser } from '$app/environment';
 	import { untrack } from 'svelte';
 	import { replaceState } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import SessionDetailModal from '$lib/components/admin/chat/SessionDetailModal.svelte';
 	import SessionFilters from '$lib/components/admin/chat/SessionFilters.svelte';
@@ -88,17 +88,15 @@
 	let isSessionDetailModalOpen = $state(false);
 
 	function currentSessionIdFromUrl(): string | null {
-		const sourceUrl = browser ? new URL(window.location.href) : new URL($page.url);
+		const sourceUrl = browser ? new URL(window.location.href) : new URL(page.url);
 		return sourceUrl.searchParams.get(CHAT_SESSION_QUERY_PARAM)?.trim() || null;
 	}
 
 	$effect(() => {
-		if (!browser) return;
-
-		// Shallow replaceState updates the address bar without mutating $page.url.
-		// Track the page store so real navigations rerun this effect, but read the
+		// Shallow replaceState updates the address bar without mutating page.url.
+		// Track page.url so real navigations rerun this effect, but read the
 		// browser location so modal state follows the actual visible URL.
-		$page.url.href;
+		page.url.href;
 
 		const urlSessionId = currentSessionIdFromUrl();
 		const currentSessionId = untrack(() => selectedSessionId);
@@ -109,7 +107,6 @@
 	});
 
 	$effect(() => {
-		if (!browser) return;
 		selectedTimeframe;
 		selectedStatus;
 		selectedContextType;
@@ -120,7 +117,6 @@
 	});
 
 	$effect(() => {
-		if (!browser) return;
 		if (!selectedSessionId) {
 			sessionDetailRequestId += 1;
 			isLoadingDetail = false;
@@ -132,7 +128,7 @@
 	});
 
 	$effect(() => {
-		if (!browser || hasLoadedEvalScenarios) return;
+		if (hasLoadedEvalScenarios) return;
 		hasLoadedEvalScenarios = true;
 		loadEvalScenarios();
 	});
@@ -180,7 +176,7 @@
 			totalSessions = result.data.total ?? 0;
 			const requestedSessionId = browser
 				? currentSessionIdFromUrl()
-				: $page.url.searchParams.get(CHAT_SESSION_QUERY_PARAM)?.trim() || null;
+				: page.url.searchParams.get(CHAT_SESSION_QUERY_PARAM)?.trim() || null;
 
 			if (sessions.length === 0) {
 				if (selectedSessionId && selectedSessionId === requestedSessionId) {
@@ -300,7 +296,7 @@
 	}
 
 	function sessionDetailUrl(sessionId: string | null) {
-		const url = browser ? new URL(window.location.href) : new URL($page.url);
+		const url = browser ? new URL(window.location.href) : new URL(page.url);
 		if (sessionId) {
 			url.searchParams.set(CHAT_SESSION_QUERY_PARAM, sessionId);
 		} else {
@@ -314,7 +310,7 @@
 		const currentSessionId = currentSessionIdFromUrl();
 		if (currentSessionId === sessionId) return;
 		try {
-			replaceState(sessionDetailUrl(sessionId), $page.state);
+			replaceState(sessionDetailUrl(sessionId), page.state);
 		} catch (err) {
 			console.error('Failed syncing chat session detail URL', err);
 		}

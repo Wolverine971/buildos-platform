@@ -401,228 +401,90 @@
 		</div>
 	{/snippet}
 
-	{#snippet children()}
-		{#if beforeForm}
-			{@render beforeForm()}
-		{/if}
-		<form id={formId} onsubmit={handleSubmit}>
-			{#if errors.length > 0}
-				<div
-					class="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mx-3 sm:mx-4 mb-3 tx tx-static tx-med"
-				>
-					<div class="flex items-start gap-2">
-						<AlertCircle class="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
-						<div class="text-xs sm:text-sm text-destructive">
-							{#each errors as error}
-								<p>{error}</p>
-							{/each}
-						</div>
+	{#if beforeForm}
+		{@render beforeForm()}
+	{/if}
+	<form id={formId} onsubmit={handleSubmit}>
+		{#if errors.length > 0}
+			<div
+				class="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mx-3 sm:mx-4 mb-3 tx tx-static tx-med"
+			>
+				<div class="flex items-start gap-2">
+					<AlertCircle class="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+					<div class="text-xs sm:text-sm text-destructive">
+						{#each errors as error}
+							<p>{error}</p>
+						{/each}
 					</div>
 				</div>
-			{/if}
+			</div>
+		{/if}
 
-			<!-- Scrolling is owned by the base Modal's .modal-content -->
-			<div class="space-y-4 px-4 py-4 bg-background">
-				{#each Object.entries(formConfig) as [field, config] (field)}
-					{@const FieldIcon = getFieldIcon(field, config)}
-					{@const fieldError = fieldErrors[field]}
-					{@const hasFieldError = Boolean(fieldError)}
+		<!-- Scrolling is owned by the base Modal's .modal-content -->
+		<div class="space-y-4 px-4 py-4 bg-background">
+			{#each Object.entries(formConfig) as [field, config] (field)}
+				{@const FieldIcon = getFieldIcon(field, config)}
+				{@const fieldError = fieldErrors[field]}
+				{@const hasFieldError = Boolean(fieldError)}
 
-					<!-- Inkprint field card - flat design with semantic texture -->
-					<div
-						class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak"
-					>
-						<!-- Compact label with icon -->
-						<div class="flex items-center justify-between mb-2">
-							<div class="flex items-center gap-1.5">
-								<FieldIcon
-									class="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground hidden sm:block"
-								/>
-								<label
-									for={`field-${field}`}
-									class="text-xs sm:text-sm font-semibold text-foreground uppercase tracking-wider"
-								>
-									{config.label}
-									{#if config.required}
-										<span class="text-destructive ml-0.5">*</span>
-									{/if}
-								</label>
-							</div>
-							{#if config.copyButton && field === 'context'}
-								<Button
-									type="button"
-									onclick={() => copyFieldValue(field)}
-									variant="outline"
-									size="sm"
-									class="flex items-center gap-1 text-xs"
-								>
-									<Copy class="w-3 h-3 shrink-0" />
-									<span class="hidden sm:inline">Copy</span>
-								</Button>
-							{/if}
+				<!-- Inkprint field card - flat design with semantic texture -->
+				<div
+					class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak"
+				>
+					<!-- Compact label with icon -->
+					<div class="flex items-center justify-between mb-2">
+						<div class="flex items-center gap-1.5">
+							<FieldIcon
+								class="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground hidden sm:block"
+							/>
+							<label
+								for={`field-${field}`}
+								class="text-xs sm:text-sm font-semibold text-foreground uppercase tracking-wider"
+							>
+								{config.label}
+								{#if config.required}
+									<span class="text-destructive ml-0.5">*</span>
+								{/if}
+							</label>
 						</div>
-						{#if config.description}
-							<p class="text-xs text-muted-foreground mb-2">
-								{config.description}
-							</p>
+						{#if config.copyButton && field === 'context'}
+							<Button
+								type="button"
+								onclick={() => copyFieldValue(field)}
+								variant="outline"
+								size="sm"
+								class="flex items-center gap-1 text-xs"
+							>
+								<Copy class="w-3 h-3 shrink-0" />
+								<span class="hidden sm:inline">Copy</span>
+							</Button>
 						{/if}
+					</div>
+					{#if config.description}
+						<p class="text-xs text-muted-foreground mb-2">
+							{config.description}
+						</p>
+					{/if}
 
-						<!-- Field content without FormField wrapper to avoid duplicate labels -->
-						<div>
-							{#if config.type === 'textarea'}
-								{#if config.markdown}
-									<!-- Markdown textarea (copy button already handled above for context) -->
-									<MarkdownToggleField
-										value={formData[field] || ''}
-										onUpdate={(newValue) =>
-											handleMarkdownUpdate(field, newValue)}
-										placeholder={config.placeholder || ''}
-										rows={config.rows || 3}
-										disabled={isBusy}
-									/>
-								{:else}
-									<!-- Regular textarea -->
-									<Textarea
-										id={`field-${field}`}
-										value={formData[field] || ''}
-										oninput={(e) => handleFieldChange(field, getEventValue(e))}
-										rows={config.rows || 3}
-										disabled={isBusy}
-										placeholder={config.placeholder || ''}
-										error={hasFieldError}
-										errorMessage={fieldError}
-										required={config.required || false}
-										size="md"
-									/>
-								{/if}
-							{:else if config.type === 'select'}
-								<Select
-									id={`field-${field}`}
+					<!-- Field content without FormField wrapper to avoid duplicate labels -->
+					<div>
+						{#if config.type === 'textarea'}
+							{#if config.markdown}
+								<!-- Markdown textarea (copy button already handled above for context) -->
+								<MarkdownToggleField
 									value={formData[field] || ''}
-									onchange={(value) => handleFieldChange(field, value)}
-									disabled={isBusy}
-									error={hasFieldError}
-									errorMessage={fieldError}
-									required={config.required || false}
-									size="md"
-								>
-									<option value="">Select {config.label}</option>
-									{#each config.options || [] as option}
-										{#if typeof option === 'object' && 'value' in option && 'label' in option}
-											<option value={option.value}>
-												{option.label}
-											</option>
-										{:else if typeof option === 'string'}
-											<option value={option}>
-												{option.charAt(0).toUpperCase() +
-													option.slice(1).replace('_', ' ')}
-											</option>
-										{/if}
-									{/each}
-								</Select>
-							{:else if config.type === 'date'}
-								<TextInput
-									id={`field-${field}`}
-									type="date"
-									value={getFieldValue(field)}
-									oninput={(e) => handleFieldChange(field, getEventValue(e))}
-									disabled={isBusy}
-									error={hasFieldError}
-									errorMessage={fieldError}
-									required={config.required || false}
-									size="md"
-								/>
-							{:else if config.type === 'datetime' || config.type === 'datetime-local'}
-								<TextInput
-									id={`field-${field}`}
-									type="datetime-local"
-									value={getFieldValue(field)}
-									oninput={(e) => handleDateTimeChange(field, e)}
-									disabled={isBusy}
-									error={hasFieldError}
-									errorMessage={fieldError}
-									required={config.required || false}
-									size="md"
-								/>
-							{:else if config.type === 'number'}
-								<TextInput
-									id={`field-${field}`}
-									type="number"
-									value={getFieldValue(field)}
-									oninput={(e) => {
-										handleFieldChange(field, getNumberEventValue(e));
-									}}
-									min={config.min}
-									max={config.max}
-									disabled={isBusy}
+									onUpdate={(newValue) => handleMarkdownUpdate(field, newValue)}
 									placeholder={config.placeholder || ''}
-									error={hasFieldError}
-									errorMessage={fieldError}
-									required={config.required || false}
-									size="md"
-								/>
-							{:else if config.type === 'checkbox'}
-								<div class="flex items-center">
-									<input
-										id={`field-${field}`}
-										type="checkbox"
-										checked={formData[field] || false}
-										aria-invalid={hasFieldError}
-										aria-required={config.required || false}
-										aria-describedby={hasFieldError
-											? `field-${field}-error`
-											: config.description
-												? `field-${field}-description`
-												: undefined}
-										onchange={(e) => {
-											const target = e.target as HTMLInputElement | null;
-											handleFieldChange(
-												field,
-												target?.checked ?? target?.value ?? false
-											);
-										}}
-										disabled={isBusy}
-										class="h-4 w-4 text-accent focus:ring-ring border-border rounded bg-card disabled:opacity-50"
-									/>
-									{#if config.description}
-										<label
-											id={`field-${field}-description`}
-											for={`field-${field}`}
-											class="ml-2 text-xs sm:text-sm text-muted-foreground"
-										>
-											{config.description}
-										</label>
-									{/if}
-								</div>
-								{#if hasFieldError}
-									<p
-										id={`field-${field}-error`}
-										class="mt-1 text-xs sm:text-sm text-destructive"
-										role="alert"
-									>
-										{fieldError}
-									</p>
-								{/if}
-							{:else if config.type === 'tags'}
-								<TextInput
-									id={`field-${field}`}
-									type="text"
-									value={getFieldValue(field)}
-									oninput={(e) => handleTagsInput(field, getEventValue(e))}
+									rows={config.rows || 3}
 									disabled={isBusy}
-									placeholder={config.placeholder ||
-										'Enter tags separated by commas'}
-									error={hasFieldError}
-									errorMessage={fieldError}
-									required={config.required || false}
-									size="md"
 								/>
 							{:else}
-								<TextInput
+								<!-- Regular textarea -->
+								<Textarea
 									id={`field-${field}`}
-									type="text"
-									value={getFieldValue(field)}
+									value={formData[field] || ''}
 									oninput={(e) => handleFieldChange(field, getEventValue(e))}
+									rows={config.rows || 3}
 									disabled={isBusy}
 									placeholder={config.placeholder || ''}
 									error={hasFieldError}
@@ -631,17 +493,151 @@
 									size="md"
 								/>
 							{/if}
-						</div>
+						{:else if config.type === 'select'}
+							<Select
+								id={`field-${field}`}
+								value={formData[field] || ''}
+								onchange={(value) => handleFieldChange(field, value)}
+								disabled={isBusy}
+								error={hasFieldError}
+								errorMessage={fieldError}
+								required={config.required || false}
+								size="md"
+							>
+								<option value="">Select {config.label}</option>
+								{#each config.options || [] as option}
+									{#if typeof option === 'object' && 'value' in option && 'label' in option}
+										<option value={option.value}>
+											{option.label}
+										</option>
+									{:else if typeof option === 'string'}
+										<option value={option}>
+											{option.charAt(0).toUpperCase() +
+												option.slice(1).replace('_', ' ')}
+										</option>
+									{/if}
+								{/each}
+							</Select>
+						{:else if config.type === 'date'}
+							<TextInput
+								id={`field-${field}`}
+								type="date"
+								value={getFieldValue(field)}
+								oninput={(e) => handleFieldChange(field, getEventValue(e))}
+								disabled={isBusy}
+								error={hasFieldError}
+								errorMessage={fieldError}
+								required={config.required || false}
+								size="md"
+							/>
+						{:else if config.type === 'datetime' || config.type === 'datetime-local'}
+							<TextInput
+								id={`field-${field}`}
+								type="datetime-local"
+								value={getFieldValue(field)}
+								oninput={(e) => handleDateTimeChange(field, e)}
+								disabled={isBusy}
+								error={hasFieldError}
+								errorMessage={fieldError}
+								required={config.required || false}
+								size="md"
+							/>
+						{:else if config.type === 'number'}
+							<TextInput
+								id={`field-${field}`}
+								type="number"
+								value={getFieldValue(field)}
+								oninput={(e) => {
+									handleFieldChange(field, getNumberEventValue(e));
+								}}
+								min={config.min}
+								max={config.max}
+								disabled={isBusy}
+								placeholder={config.placeholder || ''}
+								error={hasFieldError}
+								errorMessage={fieldError}
+								required={config.required || false}
+								size="md"
+							/>
+						{:else if config.type === 'checkbox'}
+							<div class="flex items-center">
+								<input
+									id={`field-${field}`}
+									type="checkbox"
+									checked={formData[field] || false}
+									aria-invalid={hasFieldError}
+									aria-required={config.required || false}
+									aria-describedby={hasFieldError
+										? `field-${field}-error`
+										: config.description
+											? `field-${field}-description`
+											: undefined}
+									onchange={(e) => {
+										const target = e.target as HTMLInputElement | null;
+										handleFieldChange(
+											field,
+											target?.checked ?? target?.value ?? false
+										);
+									}}
+									disabled={isBusy}
+									class="h-4 w-4 text-accent focus:ring-ring border-border rounded bg-card disabled:opacity-50"
+								/>
+								{#if config.description}
+									<label
+										id={`field-${field}-description`}
+										for={`field-${field}`}
+										class="ml-2 text-xs sm:text-sm text-muted-foreground"
+									>
+										{config.description}
+									</label>
+								{/if}
+							</div>
+							{#if hasFieldError}
+								<p
+									id={`field-${field}-error`}
+									class="mt-1 text-xs sm:text-sm text-destructive"
+									role="alert"
+								>
+									{fieldError}
+								</p>
+							{/if}
+						{:else if config.type === 'tags'}
+							<TextInput
+								id={`field-${field}`}
+								type="text"
+								value={getFieldValue(field)}
+								oninput={(e) => handleTagsInput(field, getEventValue(e))}
+								disabled={isBusy}
+								placeholder={config.placeholder || 'Enter tags separated by commas'}
+								error={hasFieldError}
+								errorMessage={fieldError}
+								required={config.required || false}
+								size="md"
+							/>
+						{:else}
+							<TextInput
+								id={`field-${field}`}
+								type="text"
+								value={getFieldValue(field)}
+								oninput={(e) => handleFieldChange(field, getEventValue(e))}
+								disabled={isBusy}
+								placeholder={config.placeholder || ''}
+								error={hasFieldError}
+								errorMessage={fieldError}
+								required={config.required || false}
+								size="md"
+							/>
+						{/if}
 					</div>
-				{/each}
-			</div>
+				</div>
+			{/each}
+		</div>
 
-			<!-- Add after-form slot here, before the action buttons -->
-			{#if afterForm}
-				{@render afterForm()}
-			{/if}
-		</form>
-	{/snippet}
+		<!-- Add after-form slot here, before the action buttons -->
+		{#if afterForm}
+			{@render afterForm()}
+		{/if}
+	</form>
 
 	{#snippet footer()}
 		<!-- Pinned action bar: lives in the base Modal footer (outside the scroll

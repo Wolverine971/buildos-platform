@@ -358,7 +358,7 @@
 								transition:slide={{ duration: 120 }}
 							>
 								<ul class="divide-y divide-border/80">
-									{#each documents as doc}
+									{#each documents as doc (doc.id)}
 										<li>
 											<button
 												type="button"
@@ -564,7 +564,7 @@
 								transition:slide={{ duration: 120 }}
 							>
 								<ul class="divide-y divide-border/80">
-									{#each goals as goal}
+									{#each goals as goal (goal.id)}
 										<li>
 											<button
 												type="button"
@@ -649,7 +649,7 @@
 								transition:slide={{ duration: 120 }}
 							>
 								<ul class="divide-y divide-border/80">
-									{#each milestones as milestone}
+									{#each milestones as milestone (milestone.id)}
 										<li>
 											<button
 												type="button"
@@ -735,7 +735,7 @@
 								transition:slide={{ duration: 120 }}
 							>
 								<ul class="divide-y divide-border/80">
-									{#each tasks as task}
+									{#each tasks as task (task.id)}
 										{@const visuals = getTaskVisuals(task.state_key)}
 										{@const TaskIcon = visuals.icon}
 										<li>
@@ -830,7 +830,7 @@
 								transition:slide={{ duration: 120 }}
 							>
 								<ul class="divide-y divide-border/80">
-									{#each risks as risk}
+									{#each risks as risk (risk.id)}
 										<li>
 											<button
 												type="button"

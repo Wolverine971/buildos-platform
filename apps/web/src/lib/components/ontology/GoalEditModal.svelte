@@ -571,493 +571,482 @@
 		/>
 	{/snippet}
 
-	{#snippet children()}
-		<!-- Main content -->
-		<div class="px-2 py-2 sm:px-4 sm:py-4">
-			{#if isLoading}
-				<div class="flex items-center justify-center py-12">
-					<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
-				</div>
-			{:else if !goal}
-				<div class="text-center py-8">
-					<p class="text-destructive">Goal not found</p>
-				</div>
-			{:else}
-				<div
-					class="relative grid grid-cols-1 gap-y-3 sm:gap-y-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:overflow-x-clip"
-				>
-					<!-- Main Form (Left 2 columns) -->
-					<div class="min-w-0">
-						<form
-							id={detailsFormId}
-							onsubmit={(e) => {
-								e.preventDefault();
-								handleSave();
-							}}
-							class="space-y-3 sm:space-y-4"
-						>
-							<Card variant="elevated" class="wt-paper">
-								<CardHeader variant="accent" texture="strip">
-									<div class="flex items-center justify-between gap-3">
+	<!-- Main content -->
+	<div class="px-2 py-2 sm:px-4 sm:py-4">
+		{#if isLoading}
+			<div class="flex items-center justify-center py-12">
+				<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
+			</div>
+		{:else if !goal}
+			<div class="text-center py-8">
+				<p class="text-destructive">Goal not found</p>
+			</div>
+		{:else}
+			<div
+				class="relative grid grid-cols-1 gap-y-3 sm:gap-y-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:overflow-x-clip"
+			>
+				<!-- Main Form (Left 2 columns) -->
+				<div class="min-w-0">
+					<form
+						id={detailsFormId}
+						onsubmit={(e) => {
+							e.preventDefault();
+							handleSave();
+						}}
+						class="space-y-3 sm:space-y-4"
+					>
+						<Card variant="elevated" class="wt-paper">
+							<CardHeader variant="accent" texture="strip">
+								<div class="flex items-center justify-between gap-3">
+									<div class="flex items-center gap-2">
+										<Target class="h-4 w-4 text-muted-foreground" />
+										<p
+											class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+										>
+											Goal
+										</p>
+									</div>
+									<div class="flex flex-wrap items-center justify-end gap-1.5">
+										<Badge variant={stateMeta.variant} size="sm"
+											>{stateMeta.label}</Badge
+										>
+										<Badge variant={priorityMeta.variant} size="sm">
+											{priorityMeta.label}
+										</Badge>
+									</div>
+								</div>
+							</CardHeader>
+							<CardBody class="space-y-4">
+								<FormField
+									label="Goal Name"
+									labelFor="name"
+									required={true}
+									uppercase={false}
+									showOptional={false}
+									error={!name.trim() && error ? 'Goal name is required' : ''}
+								>
+									<TextInput
+										id="name"
+										bind:value={name}
+										inputmode="text"
+										enterkeyhint="next"
+										placeholder="Enter goal name..."
+										required={true}
+										disabled={isSaving}
+										error={!name.trim() && error ? true : false}
+									/>
+								</FormField>
+
+								<FormField
+									label="Description"
+									labelFor="description"
+									uppercase={false}
+									showOptional={false}
+								>
+									<Textarea
+										id="description"
+										bind:value={description}
+										enterkeyhint="next"
+										placeholder="Describe what you want to achieve..."
+										rows={3}
+										disabled={isSaving}
+										size="md"
+									/>
+								</FormField>
+
+								<FormField
+									label="Goal Details"
+									labelFor="goal-details"
+									uppercase={false}
+									showOptional={false}
+								>
+									<Textarea
+										id="goal-details"
+										bind:value={goalDetails}
+										enterkeyhint="next"
+										placeholder="Add context or structured goal notes..."
+										rows={2}
+										disabled={isSaving}
+										size="md"
+									/>
+								</FormField>
+							</CardBody>
+						</Card>
+
+						<Card variant="default" class="wt-paper">
+							<CardHeader variant="transparent" texture="none">
+								<div
+									class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+								>
+									<div>
 										<div class="flex items-center gap-2">
-											<Target class="h-4 w-4 text-muted-foreground" />
+											<CalendarRange class="h-4 w-4 text-muted-foreground" />
 											<p
 												class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
 											>
-												Goal
+												Tracking
 											</p>
 										</div>
-										<div
-											class="flex flex-wrap items-center justify-end gap-1.5"
-										>
-											<Badge variant={stateMeta.variant} size="sm"
-												>{stateMeta.label}</Badge
-											>
-											<Badge variant={priorityMeta.variant} size="sm">
-												{priorityMeta.label}
-											</Badge>
-										</div>
+										<h3 class="mt-1 text-sm font-semibold text-foreground">
+											Priority, state, and timeline
+										</h3>
 									</div>
-								</CardHeader>
-								<CardBody class="space-y-4">
+									<p
+										class="text-xs text-muted-foreground sm:max-w-52 sm:text-right"
+									>
+										Keep the operational controls together so the goal's status
+										is obvious at a glance.
+									</p>
+								</div>
+							</CardHeader>
+							<CardBody class="space-y-4">
+								<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 									<FormField
-										label="Goal Name"
-										labelFor="name"
+										label="Priority"
+										labelFor="priority"
 										required={true}
 										uppercase={false}
 										showOptional={false}
-										error={!name.trim() && error ? 'Goal name is required' : ''}
 									>
-										<TextInput
-											id="name"
-											bind:value={name}
-											inputmode="text"
-											enterkeyhint="next"
-											placeholder="Enter goal name..."
-											required={true}
-											disabled={isSaving}
-											error={!name.trim() && error ? true : false}
-										/>
-									</FormField>
-
-									<FormField
-										label="Description"
-										labelFor="description"
-										uppercase={false}
-										showOptional={false}
-									>
-										<Textarea
-											id="description"
-											bind:value={description}
-											enterkeyhint="next"
-											placeholder="Describe what you want to achieve..."
-											rows={3}
-											disabled={isSaving}
-											size="md"
-										/>
-									</FormField>
-
-									<FormField
-										label="Goal Details"
-										labelFor="goal-details"
-										uppercase={false}
-										showOptional={false}
-									>
-										<Textarea
-											id="goal-details"
-											bind:value={goalDetails}
-											enterkeyhint="next"
-											placeholder="Add context or structured goal notes..."
-											rows={2}
-											disabled={isSaving}
-											size="md"
-										/>
-									</FormField>
-								</CardBody>
-							</Card>
-
-							<Card variant="default" class="wt-paper">
-								<CardHeader variant="transparent" texture="none">
-									<div
-										class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
-									>
-										<div>
-											<div class="flex items-center gap-2">
-												<CalendarRange
-													class="h-4 w-4 text-muted-foreground"
-												/>
-												<p
-													class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
-												>
-													Tracking
-												</p>
-											</div>
-											<h3 class="mt-1 text-sm font-semibold text-foreground">
-												Priority, state, and timeline
-											</h3>
-										</div>
-										<p
-											class="text-xs text-muted-foreground sm:max-w-52 sm:text-right"
-										>
-											Keep the operational controls together so the goal's
-											status is obvious at a glance.
-										</p>
-									</div>
-								</CardHeader>
-								<CardBody class="space-y-4">
-									<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-										<FormField
-											label="Priority"
-											labelFor="priority"
-											required={true}
-											uppercase={false}
-											showOptional={false}
-										>
-											<Select
-												id="priority"
-												bind:value={priority}
-												disabled={isSaving}
-												size="sm"
-												placeholder="Priority"
-											>
-												<option value="high">High</option>
-												<option value="medium">Medium</option>
-												<option value="low">Low</option>
-											</Select>
-										</FormField>
-
-										<FormField
-											label="State"
-											labelFor="state"
-											required={true}
-											uppercase={false}
-											showOptional={false}
-										>
-											<Select
-												id="state"
-												bind:value={stateKey}
-												disabled={isSaving}
-												size="sm"
-												placeholder="State"
-											>
-												{#each GOAL_STATES as state}
-													<option value={state}>
-														{state === 'draft'
-															? 'Draft'
-															: state === 'active'
-																? 'Active'
-																: state === 'achieved'
-																	? 'Achieved'
-																	: state === 'abandoned'
-																		? 'Abandoned'
-																		: state}
-													</option>
-												{/each}
-											</Select>
-										</FormField>
-									</div>
-
-									<FormField
-										label="Target Date"
-										labelFor="target-date"
-										uppercase={false}
-										showOptional={false}
-									>
-										<TextInput
-											type="date"
-											inputmode="numeric"
-											enterkeyhint="next"
-											id="target-date"
-											bind:value={targetDate}
+										<Select
+											id="priority"
+											bind:value={priority}
 											disabled={isSaving}
 											size="sm"
-										/>
+											placeholder="Priority"
+										>
+											<option value="high">High</option>
+											<option value="medium">Medium</option>
+											<option value="low">Low</option>
+										</Select>
 									</FormField>
 
 									<FormField
-										label="Success Criteria"
-										labelFor="measurement-criteria"
+										label="State"
+										labelFor="state"
+										required={true}
 										uppercase={false}
 										showOptional={false}
 									>
-										<Textarea
-											id="measurement-criteria"
-											bind:value={measurementCriteria}
-											enterkeyhint="done"
-											placeholder="How will you measure success..."
-											rows={2}
+										<Select
+											id="state"
+											bind:value={stateKey}
 											disabled={isSaving}
-											size="md"
-										/>
+											size="sm"
+											placeholder="State"
+										>
+											{#each GOAL_STATES as state (state)}
+												<option value={state}>
+													{state === 'draft'
+														? 'Draft'
+														: state === 'active'
+															? 'Active'
+															: state === 'achieved'
+																? 'Achieved'
+																: state === 'abandoned'
+																	? 'Abandoned'
+																	: state}
+												</option>
+											{/each}
+										</Select>
 									</FormField>
-								</CardBody>
-							</Card>
+								</div>
 
-							{#if error}
-								<div
-									class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 shadow-ink-inner"
+								<FormField
+									label="Target Date"
+									labelFor="target-date"
+									uppercase={false}
+									showOptional={false}
 								>
-									<p class="text-sm text-destructive">{error}</p>
-								</div>
-							{/if}
-						</form>
-					</div>
-
-					<!-- Sidebar (Right column) -->
-					<EntityModalDetailsDrawer
-						panelLabel="Goal details"
-						showDesktopHeader={true}
-						class="space-y-3"
-					>
-						<!-- Milestones (goal-specific, self-contained card) -->
-						<GoalMilestonesSidebarSection
-							{milestones}
-							loading={!linkedEntities}
-							goalState={stateKey}
-							canEdit={!isSaving && !isDeleting}
-							onAddMilestone={handleAddMilestone}
-							onEditMilestone={handleEditMilestone}
-							onToggleMilestoneComplete={handleToggleMilestoneComplete}
-						/>
-
-						<Card variant="elevated" class="wt-card">
-							<CardBody padding="none">
-								<div class="divide-y divide-border/70">
-									<EntityCollaborationAction
-										{projectId}
-										entityType="goal"
-										entityId={goalId}
-										entityTitle={name || goal?.name || 'Goal'}
-										disabled={isSaving || isDeleting}
+									<TextInput
+										type="date"
+										inputmode="numeric"
+										enterkeyhint="next"
+										id="target-date"
+										bind:value={targetDate}
+										disabled={isSaving}
+										size="sm"
 									/>
+								</FormField>
 
-									<!-- State -->
-									<section
-										class="px-3 py-3 sm:px-4"
-										aria-label="State: {stateMeta.label}"
-									>
-										<div class="flex items-center justify-between gap-2">
-											<div class="flex items-center gap-2">
-												<Target class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">State</p>
-											</div>
-											<Badge variant={stateMeta.variant} size="sm"
-												>{stateMeta.label}</Badge
-											>
-										</div>
-										<p class="mt-2 text-xs text-muted-foreground">
-											{stateMeta.note}
-										</p>
-									</section>
-
-									<!-- Priority -->
-									<section
-										class="px-3 py-3 sm:px-4"
-										aria-label="Priority: {priorityMeta.label}"
-									>
-										<div class="flex items-center justify-between gap-2">
-											<div class="flex items-center gap-2">
-												<Flag class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">Priority</p>
-											</div>
-											<Badge variant={priorityMeta.variant} size="sm"
-												>{priorityMeta.label}</Badge
-											>
-										</div>
-										<p class="mt-2 text-xs text-muted-foreground">
-											{priorityMeta.note}
-										</p>
-									</section>
-
-									<!-- Timeline -->
-									<section class="px-3 py-3 sm:px-4">
-										<div class="flex items-center gap-2">
-											<CalendarRange class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Timeline</p>
-										</div>
-										<div class="mt-2 space-y-1.5 text-sm">
-											<div class="flex items-center justify-between gap-3">
-												<span class="text-muted-foreground">Target</span>
-												<span class="text-right text-foreground">
-													{targetDate
-														? new Date(
-																targetDate + 'T00:00:00'
-															).toLocaleDateString(undefined, {
-																month: 'short',
-																day: 'numeric',
-																year: 'numeric'
-															})
-														: 'No target date'}
-												</span>
-											</div>
-										</div>
-									</section>
-
-									<!-- Record -->
-									<section class="px-3 py-3 sm:px-4">
-										<div class="flex items-center gap-2">
-											<Clock class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Record</p>
-										</div>
-										<div class="mt-2 space-y-1.5 text-sm">
-											<div class="flex items-center justify-between gap-3">
-												<span class="text-muted-foreground">Created</span>
-												<span class="text-right text-foreground">
-													{goal.created_at
-														? new Date(
-																goal.created_at
-															).toLocaleDateString(undefined, {
-																month: 'short',
-																day: 'numeric',
-																year: 'numeric'
-															})
-														: '—'}
-												</span>
-											</div>
-											<div class="flex items-center justify-between gap-3">
-												<span class="text-muted-foreground">Updated</span>
-												<span class="text-right text-foreground">
-													{goal.updated_at
-														? new Date(
-																goal.updated_at
-															).toLocaleDateString(undefined, {
-																month: 'short',
-																day: 'numeric',
-																year: 'numeric'
-															})
-														: '—'}
-												</span>
-											</div>
-										</div>
-									</section>
-
-									<!-- Tags -->
-									{#if goal?.props?.tags?.length}
-										<section class="px-3 py-3 sm:px-4">
-											<div class="flex items-center gap-2 mb-2">
-												<TagIcon class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">Tags</p>
-											</div>
-											<TagsDisplay
-												props={goal.props}
-												size="sm"
-												compact={true}
-											/>
-										</section>
-									{/if}
-
-									<!-- Linked Entities (collapsible, default closed for density) -->
-									<section class="px-3 sm:px-4">
-										<button
-											type="button"
-											onclick={() =>
-												(showLinkedEntities = !showLinkedEntities)}
-											class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
-											aria-expanded={showLinkedEntities}
-										>
-											<div class="flex items-center gap-2">
-												<LinkIcon class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">
-													Linked Entities
-												</p>
-											</div>
-											<ChevronDown
-												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showLinkedEntities
-													? 'rotate-180'
-													: ''}"
-											/>
-										</button>
-										{#if showLinkedEntities}
-											<div class="pb-3" transition:slide={slideMotion()}>
-												<LinkedEntities
-													sourceId={goalId}
-													sourceKind="goal"
-													{projectId}
-													initialLinkedEntities={linkedEntities}
-													onLoaded={handleLinkedEntitiesLoaded}
-													onEntityClick={handleLinkedEntityClick}
-													onLinksChanged={handleLinksChanged}
-												/>
-											</div>
-										{/if}
-									</section>
-
-									<!-- Images (collapsible) -->
-									<section class="px-3 sm:px-4">
-										<button
-											type="button"
-											onclick={() => (showImages = !showImages)}
-											class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
-											aria-expanded={showImages}
-										>
-											<div class="flex items-center gap-2">
-												<ImageIcon class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">Images</p>
-											</div>
-											<ChevronDown
-												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showImages
-													? 'rotate-180'
-													: ''}"
-											/>
-										</button>
-										{#if showImages}
-											<div class="pb-3" transition:slide={slideMotion()}>
-												<ImageAssetsPanel
-													{projectId}
-													entityKind="goal"
-													entityId={goalId}
-													showTitle={false}
-													compact={true}
-													onChanged={() => {
-														void loadGoal({ preserveEdits: true });
-														onUpdated?.();
-													}}
-												/>
-											</div>
-										{/if}
-									</section>
-
-									<!-- Activity (collapsible) -->
-									<section class="px-3 sm:px-4">
-										<button
-											type="button"
-											onclick={() => (showActivityLog = !showActivityLog)}
-											class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
-											aria-expanded={showActivityLog}
-										>
-											<div class="flex items-center gap-2">
-												<Activity class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">Activity</p>
-											</div>
-											<ChevronDown
-												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showActivityLog
-													? 'rotate-180'
-													: ''}"
-											/>
-										</button>
-										{#if showActivityLog}
-											<div class="pb-3" transition:slide={slideMotion()}>
-												<EntityActivityLog
-													entityType="goal"
-													entityId={goalId}
-													autoLoad={true}
-													embedded={true}
-												/>
-											</div>
-										{/if}
-									</section>
-								</div>
+								<FormField
+									label="Success Criteria"
+									labelFor="measurement-criteria"
+									uppercase={false}
+									showOptional={false}
+								>
+									<Textarea
+										id="measurement-criteria"
+										bind:value={measurementCriteria}
+										enterkeyhint="done"
+										placeholder="How will you measure success..."
+										rows={2}
+										disabled={isSaving}
+										size="md"
+									/>
+								</FormField>
 							</CardBody>
 						</Card>
-					</EntityModalDetailsDrawer>
+
+						{#if error}
+							<div
+								class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 shadow-ink-inner"
+							>
+								<p class="text-sm text-destructive">{error}</p>
+							</div>
+						{/if}
+					</form>
 				</div>
 
-				<div class="mt-4">
-					<EntityCommentsSection {projectId} entityType="goal" entityId={goalId} />
-				</div>
-			{/if}
-		</div>
-	{/snippet}
+				<!-- Sidebar (Right column) -->
+				<EntityModalDetailsDrawer
+					panelLabel="Goal details"
+					showDesktopHeader={true}
+					class="space-y-3"
+				>
+					<!-- Milestones (goal-specific, self-contained card) -->
+					<GoalMilestonesSidebarSection
+						{milestones}
+						loading={!linkedEntities}
+						goalState={stateKey}
+						canEdit={!isSaving && !isDeleting}
+						onAddMilestone={handleAddMilestone}
+						onEditMilestone={handleEditMilestone}
+						onToggleMilestoneComplete={handleToggleMilestoneComplete}
+					/>
+
+					<Card variant="elevated" class="wt-card">
+						<CardBody padding="none">
+							<div class="divide-y divide-border/70">
+								<EntityCollaborationAction
+									{projectId}
+									entityType="goal"
+									entityId={goalId}
+									entityTitle={name || goal?.name || 'Goal'}
+									disabled={isSaving || isDeleting}
+								/>
+
+								<!-- State -->
+								<section
+									class="px-3 py-3 sm:px-4"
+									aria-label="State: {stateMeta.label}"
+								>
+									<div class="flex items-center justify-between gap-2">
+										<div class="flex items-center gap-2">
+											<Target class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">State</p>
+										</div>
+										<Badge variant={stateMeta.variant} size="sm"
+											>{stateMeta.label}</Badge
+										>
+									</div>
+									<p class="mt-2 text-xs text-muted-foreground">
+										{stateMeta.note}
+									</p>
+								</section>
+
+								<!-- Priority -->
+								<section
+									class="px-3 py-3 sm:px-4"
+									aria-label="Priority: {priorityMeta.label}"
+								>
+									<div class="flex items-center justify-between gap-2">
+										<div class="flex items-center gap-2">
+											<Flag class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Priority</p>
+										</div>
+										<Badge variant={priorityMeta.variant} size="sm"
+											>{priorityMeta.label}</Badge
+										>
+									</div>
+									<p class="mt-2 text-xs text-muted-foreground">
+										{priorityMeta.note}
+									</p>
+								</section>
+
+								<!-- Timeline -->
+								<section class="px-3 py-3 sm:px-4">
+									<div class="flex items-center gap-2">
+										<CalendarRange class="h-4 w-4 text-muted-foreground" />
+										<p class="micro-label font-semibold">Timeline</p>
+									</div>
+									<div class="mt-2 space-y-1.5 text-sm">
+										<div class="flex items-center justify-between gap-3">
+											<span class="text-muted-foreground">Target</span>
+											<span class="text-right text-foreground">
+												{targetDate
+													? new Date(
+															targetDate + 'T00:00:00'
+														).toLocaleDateString(undefined, {
+															month: 'short',
+															day: 'numeric',
+															year: 'numeric'
+														})
+													: 'No target date'}
+											</span>
+										</div>
+									</div>
+								</section>
+
+								<!-- Record -->
+								<section class="px-3 py-3 sm:px-4">
+									<div class="flex items-center gap-2">
+										<Clock class="h-4 w-4 text-muted-foreground" />
+										<p class="micro-label font-semibold">Record</p>
+									</div>
+									<div class="mt-2 space-y-1.5 text-sm">
+										<div class="flex items-center justify-between gap-3">
+											<span class="text-muted-foreground">Created</span>
+											<span class="text-right text-foreground">
+												{goal.created_at
+													? new Date(goal.created_at).toLocaleDateString(
+															undefined,
+															{
+																month: 'short',
+																day: 'numeric',
+																year: 'numeric'
+															}
+														)
+													: '—'}
+											</span>
+										</div>
+										<div class="flex items-center justify-between gap-3">
+											<span class="text-muted-foreground">Updated</span>
+											<span class="text-right text-foreground">
+												{goal.updated_at
+													? new Date(goal.updated_at).toLocaleDateString(
+															undefined,
+															{
+																month: 'short',
+																day: 'numeric',
+																year: 'numeric'
+															}
+														)
+													: '—'}
+											</span>
+										</div>
+									</div>
+								</section>
+
+								<!-- Tags -->
+								{#if goal?.props?.tags?.length}
+									<section class="px-3 py-3 sm:px-4">
+										<div class="flex items-center gap-2 mb-2">
+											<TagIcon class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Tags</p>
+										</div>
+										<TagsDisplay props={goal.props} size="sm" compact={true} />
+									</section>
+								{/if}
+
+								<!-- Linked Entities (collapsible, default closed for density) -->
+								<section class="px-3 sm:px-4">
+									<button
+										type="button"
+										onclick={() => (showLinkedEntities = !showLinkedEntities)}
+										class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										aria-expanded={showLinkedEntities}
+									>
+										<div class="flex items-center gap-2">
+											<LinkIcon class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Linked Entities</p>
+										</div>
+										<ChevronDown
+											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showLinkedEntities
+												? 'rotate-180'
+												: ''}"
+										/>
+									</button>
+									{#if showLinkedEntities}
+										<div class="pb-3" transition:slide={slideMotion()}>
+											<LinkedEntities
+												sourceId={goalId}
+												sourceKind="goal"
+												{projectId}
+												initialLinkedEntities={linkedEntities}
+												onLoaded={handleLinkedEntitiesLoaded}
+												onEntityClick={handleLinkedEntityClick}
+												onLinksChanged={handleLinksChanged}
+											/>
+										</div>
+									{/if}
+								</section>
+
+								<!-- Images (collapsible) -->
+								<section class="px-3 sm:px-4">
+									<button
+										type="button"
+										onclick={() => (showImages = !showImages)}
+										class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										aria-expanded={showImages}
+									>
+										<div class="flex items-center gap-2">
+											<ImageIcon class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Images</p>
+										</div>
+										<ChevronDown
+											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showImages
+												? 'rotate-180'
+												: ''}"
+										/>
+									</button>
+									{#if showImages}
+										<div class="pb-3" transition:slide={slideMotion()}>
+											<ImageAssetsPanel
+												{projectId}
+												entityKind="goal"
+												entityId={goalId}
+												showTitle={false}
+												compact={true}
+												onChanged={() => {
+													void loadGoal({ preserveEdits: true });
+													onUpdated?.();
+												}}
+											/>
+										</div>
+									{/if}
+								</section>
+
+								<!-- Activity (collapsible) -->
+								<section class="px-3 sm:px-4">
+									<button
+										type="button"
+										onclick={() => (showActivityLog = !showActivityLog)}
+										class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										aria-expanded={showActivityLog}
+									>
+										<div class="flex items-center gap-2">
+											<Activity class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Activity</p>
+										</div>
+										<ChevronDown
+											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showActivityLog
+												? 'rotate-180'
+												: ''}"
+										/>
+									</button>
+									{#if showActivityLog}
+										<div class="pb-3" transition:slide={slideMotion()}>
+											<EntityActivityLog
+												entityType="goal"
+												entityId={goalId}
+												autoLoad={true}
+												embedded={true}
+											/>
+										</div>
+									{/if}
+								</section>
+							</div>
+						</CardBody>
+					</Card>
+				</EntityModalDetailsDrawer>
+			</div>
+
+			<div class="mt-4">
+				<EntityCommentsSection {projectId} entityType="goal" entityId={goalId} />
+			</div>
+		{/if}
+	</div>
 
 	<!-- Footer Actions -->
 	{#snippet footer()}

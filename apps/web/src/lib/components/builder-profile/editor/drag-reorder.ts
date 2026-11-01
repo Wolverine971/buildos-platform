@@ -1,19 +1,26 @@
 // apps/web/src/lib/components/builder-profile/editor/drag-reorder.ts
 //
 // Drag to reorder a list by its grip handle: mouse, touch, or the arrow keys on the
-// focused grip. Put `use:dragHandle={{ index, onmove }}` on the grip button and
-// `data-reorder-item` on each row; rows must share one parent. `onmove(from, to)` is
+// focused grip. Put `{@attach dragHandle(() => ({ index, onmove }))}` on the grip button
+// and `data-reorder-item` on each row; rows must share one parent. `onmove(from, to)` is
 // called live as the pointer crosses a neighbour's middle, so the list itself moves.
+//
+// The params come through a getter so a changing `index` does not re-create the
+// attachment (which would drop a drag in progress); handlers read the latest values.
 
 import { tick } from 'svelte';
+import type { Attachment } from 'svelte/attachments';
 
 export interface DragHandleParams {
 	index: number;
 	onmove: (from: number, to: number) => void;
 }
 
-export function dragHandle(node: HTMLElement, params: DragHandleParams) {
-	let current = params;
+export function dragHandle(params: () => DragHandleParams): Attachment<HTMLElement> {
+	return (node) => attachDragHandle(node, params);
+}
+
+function attachDragHandle(node: HTMLElement, params: () => DragHandleParams) {
 	let dragIndex = -1;
 	let item: HTMLElement | null = null;
 
@@ -31,7 +38,7 @@ export function dragHandle(node: HTMLElement, params: DragHandleParams) {
 		item = node.closest('[data-reorder-item]');
 		if (!item) return;
 		event.preventDefault();
-		dragIndex = current.index;
+		dragIndex = params().index;
 		node.setPointerCapture(event.pointerId);
 		item.dataset.dragging = 'true';
 	}
@@ -48,7 +55,7 @@ export function dragHandle(node: HTMLElement, params: DragHandleParams) {
 			if (i > dragIndex && event.clientY > middle) target = Math.max(target, i);
 		}
 		if (target !== dragIndex) {
-			current.onmove(dragIndex, target);
+			params().onmove(dragIndex, target);
 			dragIndex = target;
 		}
 	}
@@ -65,7 +72,8 @@ export function dragHandle(node: HTMLElement, params: DragHandleParams) {
 		const delta = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
 		if (!delta) return;
 		event.preventDefault();
-		current.onmove(current.index, current.index + delta);
+		const { index, onmove } = params();
+		onmove(index, index + delta);
 		// The row moved in the DOM, which can drop focus; put it back on this grip.
 		await tick();
 		node.focus();
@@ -78,17 +86,11 @@ export function dragHandle(node: HTMLElement, params: DragHandleParams) {
 	node.addEventListener('keydown', onKeyDown);
 	node.style.touchAction = 'none';
 
-	return {
-		update(next: DragHandleParams) {
-			current = next;
-			if (dragIndex >= 0) dragIndex = next.index;
-		},
-		destroy() {
-			node.removeEventListener('pointerdown', onPointerDown);
-			node.removeEventListener('pointermove', onPointerMove);
-			node.removeEventListener('pointerup', end);
-			node.removeEventListener('pointercancel', end);
-			node.removeEventListener('keydown', onKeyDown);
-		}
+	return () => {
+		node.removeEventListener('pointerdown', onPointerDown);
+		node.removeEventListener('pointermove', onPointerMove);
+		node.removeEventListener('pointerup', end);
+		node.removeEventListener('pointercancel', end);
+		node.removeEventListener('keydown', onKeyDown);
 	};
 }

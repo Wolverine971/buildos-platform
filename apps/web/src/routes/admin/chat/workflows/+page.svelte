@@ -8,7 +8,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { replaceState } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { onMount, untrack } from 'svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import ConversationReplay from '$lib/components/admin/chat/ConversationReplay.svelte';
@@ -103,7 +103,7 @@
 	const isPolling = $derived(Boolean(run && !run.is_terminal));
 
 	function readUrl() {
-		const url = browser ? new URL(window.location.href) : new URL($page.url);
+		const url = browser ? new URL(window.location.href) : new URL(page.url);
 		return {
 			session: url.searchParams.get(SESSION_PARAM)?.trim() || null,
 			run: url.searchParams.get(RUN_PARAM)?.trim() || null,
@@ -112,12 +112,11 @@
 		};
 	}
 
-	// URL → state. The page store re-emits after our own shallow replaceState calls (with the
-	// pre-update url), so read the browser location, and act only on what a real navigation
+	// URL → state. Our own shallow replaceState calls leave page.url at the pre-update url,
+	// so read the browser location, and act only on what a real navigation
 	// changes: the session, or a run other than the one this page itself put in the URL.
 	$effect(() => {
-		if (!browser) return;
-		$page.url.href;
+		page.url.href;
 		const current = readUrl();
 		if (current.session !== untrack(() => sessionId)) {
 			sessionId = current.session;
@@ -140,7 +139,7 @@
 	// Load once per session. The deep-linked run rides along for server-side validation only;
 	// changing the selected run afterwards never refetches.
 	$effect(() => {
-		if (!browser || !sessionId) return;
+		if (!sessionId) return;
 		void load(
 			sessionId,
 			untrack(() => requestedRunId)
@@ -163,7 +162,7 @@
 
 	// state → URL (shallow), so a reload or a shared link lands on the same run/view/node.
 	$effect(() => {
-		if (!browser || !routerReady || !sessionId) return;
+		if (!routerReady || !sessionId) return;
 		const url = new URL(window.location.href);
 		url.searchParams.set(SESSION_PARAM, sessionId);
 		const runParam = selectedRunId ?? requestedRunId;
@@ -174,7 +173,7 @@
 		else url.searchParams.delete(NODE_PARAM);
 		if (url.href !== window.location.href) {
 			try {
-				replaceState(url, { ...$page.state });
+				replaceState(url, { ...page.state });
 			} catch {
 				// Router not ready yet; the next state change retries.
 			}
@@ -183,7 +182,7 @@
 
 	// Poll only while the selected workflow is still running; stop at terminal state.
 	$effect(() => {
-		if (!browser || !isPolling || !sessionId) return;
+		if (!isPolling || !sessionId) return;
 		const id = sessionId;
 		const timer = setInterval(() => void load(id, null, true), POLL_MS);
 		return () => clearInterval(timer);
@@ -235,7 +234,7 @@
 		url.searchParams.set(SESSION_PARAM, id);
 		url.searchParams.delete(RUN_PARAM);
 		url.searchParams.delete(NODE_PARAM);
-		replaceState(url, { ...$page.state });
+		replaceState(url, { ...page.state });
 		sessionId = id;
 		payload = null;
 		selectedRunId = null;

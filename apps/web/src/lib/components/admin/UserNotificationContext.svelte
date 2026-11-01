@@ -120,7 +120,7 @@
 					Channel Availability
 				</h4>
 				<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-					{#each context.channels as capability}
+					{#each context.channels as capability (capability.channel)}
 						{@const Icon = getChannelIcon(capability.channel)}
 						<div class="flex items-center space-x-2">
 							{#if capability.available}
@@ -265,7 +265,7 @@
 						Recent Notifications ({context.recent_notifications.length})
 					</h4>
 					<div class="space-y-2">
-						{#each context.recent_notifications as notification}
+						{#each context.recent_notifications as notification (notification.id)}
 							{@const Icon = getChannelIcon(notification.channel)}
 							<div
 								class="flex items-center justify-between text-xs p-2 bg-muted rounded"

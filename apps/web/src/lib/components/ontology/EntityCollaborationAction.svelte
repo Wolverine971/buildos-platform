@@ -1,6 +1,5 @@
 <!-- apps/web/src/lib/components/ontology/EntityCollaborationAction.svelte -->
 <script lang="ts">
-	import { browser } from '$app/environment';
 	import {
 		BellRing,
 		Check,
@@ -139,7 +138,7 @@
 	);
 
 	$effect(() => {
-		if (!browser || !projectId || !entityId || loadedKey === requestKey) return;
+		if (!projectId || !entityId || loadedKey === requestKey) return;
 		void loadCollaboration();
 	});
 
@@ -377,7 +376,7 @@
 						size="sm"
 						disabled={disabled || isSubmitting}
 					>
-						{#each selectableMembers as member}
+						{#each selectableMembers as member (member.actorId)}
 							<option value={member.actorId}>
 								{getDisplayLabel({ ...member, id: member.actorId }, member.actorId)}
 								{member.actorId === currentActorId ? ' (me)' : ''}
@@ -478,39 +477,34 @@
 	title="Email preview"
 	size="sm"
 >
-	{#snippet children()}
-		<div class="space-y-4 p-4 text-sm">
-			<div class="grid gap-3 rounded-md border border-border bg-card p-3 tx tx-frame tx-weak">
-				<div>
-					<p class="micro-label font-semibold">To</p>
-					<p class="mt-1 truncate text-foreground" title={selectedMember?.email ?? ''}>
-						{selectedMemberLabel}
-						{#if selectedMember?.email}
-							<span class="text-muted-foreground">&lt;{selectedMember.email}&gt;</span
-							>
-						{/if}
-					</p>
-				</div>
-				<div>
-					<p class="micro-label font-semibold">Subject</p>
-					<p class="mt-1 text-foreground">{emailPreviewSubject}</p>
-				</div>
+	<div class="space-y-4 p-4 text-sm">
+		<div class="grid gap-3 rounded-md border border-border bg-card p-3 tx tx-frame tx-weak">
+			<div>
+				<p class="micro-label font-semibold">To</p>
+				<p class="mt-1 truncate text-foreground" title={selectedMember?.email ?? ''}>
+					{selectedMemberLabel}
+					{#if selectedMember?.email}
+						<span class="text-muted-foreground">&lt;{selectedMember.email}&gt;</span>
+					{/if}
+				</p>
 			</div>
-
-			<div
-				class="rounded-md border border-border bg-background p-4 leading-relaxed tx tx-frame"
-			>
-				<p>{emailPreviewIntro}</p>
-				<p class="mt-3 font-semibold text-foreground">{entityTitle}</p>
-				<blockquote
-					class="mt-3 border-l-2 border-border pl-3 text-muted-foreground whitespace-pre-wrap"
-				>
-					{emailPreviewMessage}
-				</blockquote>
-				<p class="mt-4 text-sm font-semibold text-accent">Open in BuildOS</p>
+			<div>
+				<p class="micro-label font-semibold">Subject</p>
+				<p class="mt-1 text-foreground">{emailPreviewSubject}</p>
 			</div>
 		</div>
-	{/snippet}
+
+		<div class="rounded-md border border-border bg-background p-4 leading-relaxed tx tx-frame">
+			<p>{emailPreviewIntro}</p>
+			<p class="mt-3 font-semibold text-foreground">{entityTitle}</p>
+			<blockquote
+				class="mt-3 border-l-2 border-border pl-3 text-muted-foreground whitespace-pre-wrap"
+			>
+				{emailPreviewMessage}
+			</blockquote>
+			<p class="mt-4 text-sm font-semibold text-accent">Open in BuildOS</p>
+		</div>
+	</div>
 
 	{#snippet footer()}
 		<div class="flex items-center justify-end gap-2 border-t border-border px-4 py-3">

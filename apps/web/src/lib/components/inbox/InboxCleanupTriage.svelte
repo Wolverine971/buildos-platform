@@ -475,7 +475,7 @@
 </script>
 
 <!-- Keyboard shortcuts live on the region so they work wherever focus sits inside it. -->
-<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
 	bind:this={rootEl}
 	tabindex="-1"

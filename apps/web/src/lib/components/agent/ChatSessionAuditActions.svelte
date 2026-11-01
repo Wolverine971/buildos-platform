@@ -22,8 +22,8 @@
 		MoreHorizontal,
 		Workflow
 	} from '$lib/icons/lucide';
-	import { page } from '$app/stores';
-	import { portal } from '$lib/actions/portal';
+	import { page } from '$app/state';
+	import { portal } from '$lib/attachments/portal';
 	import { toastService } from '$lib/stores/toast.store';
 	import {
 		downloadChatSessionAuditMarkdown,
@@ -67,7 +67,7 @@
 	let exportButtonEl = $state<HTMLButtonElement | undefined>(undefined);
 	let exportMenuPosition = $state({ top: 0, left: 0 });
 
-	const isAdminUser = $derived(Boolean($page.data?.user?.is_admin));
+	const isAdminUser = $derived(Boolean(page.data?.user?.is_admin));
 	const visible = $derived(isAdminUser && Boolean(sessionId));
 	const adminSessionHref = $derived(
 		sessionId ? `/admin/chat/sessions?chat_session_id=${encodeURIComponent(sessionId)}` : null
@@ -263,7 +263,7 @@
 				</button>
 
 				{#if exportMenuOpen}
-					<div use:portal>
+					<div {@attach portal()}>
 						<!-- Click-away backdrop -->
 						<button
 							type="button"

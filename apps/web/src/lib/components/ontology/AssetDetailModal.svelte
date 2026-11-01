@@ -8,7 +8,6 @@
 	deliberately not shown here.
 -->
 <script lang="ts">
-	import { browser } from '$app/environment';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import { toastService } from '$lib/stores/toast.store';
@@ -189,7 +188,7 @@
 	}
 
 	$effect(() => {
-		if (!browser || !isOpen || !currentId) return;
+		if (!isOpen || !currentId) return;
 		if (lastLoadedId !== currentId) {
 			void loadAsset(currentId);
 		}
@@ -197,7 +196,7 @@
 
 	// Warm both neighbors (pixels + details) so the arrows feel instant.
 	$effect(() => {
-		if (!browser || !isOpen || !hasGallery) return;
+		if (!isOpen || !hasGallery) return;
 		const count = gallery.length;
 		const neighbors = new Set([
 			gallery[(galleryIndex + 1) % count],
@@ -865,52 +864,50 @@
 		</div>
 	{/snippet}
 
-	{#snippet children()}
-		{#if formError}
-			<p
-				class="mx-3 mt-3 rounded-lg border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs text-destructive sm:mx-4"
-			>
-				{formError}
-			</p>
-		{/if}
-
-		<!-- A fixed-height stage in gallery mode keeps the arrows still while stepping. -->
-		<div
-			class="relative z-[2] flex items-center justify-center overflow-hidden bg-muted/30 p-3 sm:p-6 {hasGallery
-				? 'h-[min(60dvh,46rem)]'
-				: 'min-h-[16rem]'} {imageLoaded ? '' : 'animate-pulse'}"
-			aria-busy={!imageLoaded}
-			onpointerdown={handleStagePointerDown}
-			onpointerup={handleStagePointerUp}
-			onpointercancel={() => (swipeStart = null)}
-			role="presentation"
+	{#if formError}
+		<p
+			class="mx-3 mt-3 rounded-lg border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs text-destructive sm:mx-4"
 		>
-			{#if currentId}
-				{#key currentId}
-					<!-- Click-to-zoom is a visual aid; keyboard users get the full image already. -->
-					<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
-					<img
-						src={imageSrc(currentId)}
-						alt={shownAsset?.alt_text?.trim() || (shownAsset ? displayName : '')}
-						width={shownAsset?.width ?? undefined}
-						height={shownAsset?.height ?? undefined}
-						draggable="false"
-						onload={() => (loadedImageId = currentId)}
-						onerror={() => (loadedImageId = currentId)}
-						onpointermove={panZoom}
-						onclick={toggleZoom}
-						style:transform={zoomed ? `scale(${zoomScale})` : 'scale(1)'}
-						style:transform-origin={`${zoomOrigin.x}% ${zoomOrigin.y}%`}
-						class="h-auto w-auto max-w-full select-none rounded-md object-contain shadow-ink transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none {hasGallery
-							? 'max-h-full'
-							: 'max-h-[68dvh]'} {zoomed
-							? 'cursor-zoom-out'
-							: 'cursor-zoom-in'} {imageLoaded ? 'opacity-100' : 'opacity-0'}"
-					/>
-				{/key}
-			{/if}
-		</div>
-	{/snippet}
+			{formError}
+		</p>
+	{/if}
+
+	<!-- A fixed-height stage in gallery mode keeps the arrows still while stepping. -->
+	<div
+		class="relative z-[2] flex items-center justify-center overflow-hidden bg-muted/30 p-3 sm:p-6 {hasGallery
+			? 'h-[min(60dvh,46rem)]'
+			: 'min-h-[16rem]'} {imageLoaded ? '' : 'animate-pulse'}"
+		aria-busy={!imageLoaded}
+		onpointerdown={handleStagePointerDown}
+		onpointerup={handleStagePointerUp}
+		onpointercancel={() => (swipeStart = null)}
+		role="presentation"
+	>
+		{#if currentId}
+			{#key currentId}
+				<!-- Click-to-zoom is a visual aid; keyboard users get the full image already. -->
+				<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+				<img
+					src={imageSrc(currentId)}
+					alt={shownAsset?.alt_text?.trim() || (shownAsset ? displayName : '')}
+					width={shownAsset?.width ?? undefined}
+					height={shownAsset?.height ?? undefined}
+					draggable="false"
+					onload={() => (loadedImageId = currentId)}
+					onerror={() => (loadedImageId = currentId)}
+					onpointermove={panZoom}
+					onclick={toggleZoom}
+					style:transform={zoomed ? `scale(${zoomScale})` : 'scale(1)'}
+					style:transform-origin={`${zoomOrigin.x}% ${zoomOrigin.y}%`}
+					class="h-auto w-auto max-w-full select-none rounded-md object-contain shadow-ink transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none {hasGallery
+						? 'max-h-full'
+						: 'max-h-[68dvh]'} {zoomed
+						? 'cursor-zoom-out'
+						: 'cursor-zoom-in'} {imageLoaded ? 'opacity-100' : 'opacity-0'}"
+				/>
+			{/key}
+		{/if}
+	</div>
 </Modal>
 
 <ConfirmationModal

@@ -7,7 +7,7 @@
 -->
 <script lang="ts">
 	import { onMount, tick, type Snippet } from 'svelte';
-	import { portal } from '$lib/actions/portal';
+	import { portal } from '$lib/attachments/portal';
 
 	let {
 		anchor,
@@ -107,7 +107,7 @@
 	onresize={updateRect}
 />
 
-<div use:portal class="table-popover-root">
+<div {@attach portal()} class="table-popover-root">
 	<div
 		class="fixed inset-0 z-[10000] {sheet ? 'bg-foreground/20' : ''}"
 		role="presentation"

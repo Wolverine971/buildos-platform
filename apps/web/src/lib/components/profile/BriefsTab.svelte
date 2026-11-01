@@ -468,7 +468,7 @@
 								bind:value={briefPreferencesForm.day_of_week}
 								size="md"
 							>
-								{#each DAY_OPTIONS as day}
+								{#each DAY_OPTIONS as day (day.value)}
 									<option value={day.value}>{day.label}</option>
 								{/each}
 							</Select>
@@ -639,7 +639,7 @@
 		{:else}
 			<div class="space-y-2">
 				<!-- Upcoming Briefs -->
-				{#each upcomingJobs as job}
+				{#each upcomingJobs as job (job.id)}
 					<div
 						class="flex items-center justify-between gap-3 p-3 bg-accent/10 border border-accent/30 rounded-lg tx tx-grain tx-weak"
 						transition:slide={slideMotion()}
@@ -675,7 +675,7 @@
 				{/each}
 
 				<!-- Recent Briefs -->
-				{#each recentJobs as job}
+				{#each recentJobs as job (job.id)}
 					<div
 						class="flex items-center justify-between gap-3 p-3 bg-muted border border-border rounded-lg"
 						transition:slide={slideMotion()}

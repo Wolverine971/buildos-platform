@@ -712,7 +712,7 @@
 					{/if}
 					{#if lineageStatEntries.length}
 						<div class="mt-3 flex flex-wrap gap-1.5">
-							{#each lineageStatEntries as [key, value]}
+							{#each lineageStatEntries as [key, value] (key)}
 								<span
 									class="inline-flex items-center rounded border border-border bg-background px-2 py-0.5 text-xs text-muted-foreground"
 								>
@@ -752,7 +752,7 @@
 					{#if lineageChannels.length}
 						<p class="mt-2 text-xs">
 							<span class="font-medium text-foreground">YouTube channels:</span>
-							{#each lineageChannels as channel, index}
+							{#each lineageChannels as channel, index (channel.url ?? channel.name)}
 								{#if index > 0}<span>, </span>{/if}
 								{#if channel.url}
 									<a
@@ -920,7 +920,7 @@
 				<h2 class="text-base font-semibold text-foreground mb-4">Related Articles</h2>
 
 				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-					{#each data.relatedPosts as relatedPost}
+					{#each data.relatedPosts as relatedPost (relatedPost.slug)}
 						<a
 							href={getContentPostPath(relatedPost)}
 							class="pressable group block rounded-lg border border-border bg-card p-4 transition-colors hover:border-accent/40 hover:shadow-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"

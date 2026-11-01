@@ -210,7 +210,7 @@
 				image, <span class="text-accent">repeat</span> = tiled pattern.
 			</p>
 			<div class="grid grid-cols-3 sm:grid-cols-6 gap-3">
-				{#each semanticTextures as tex}
+				{#each semanticTextures as tex (tex.id)}
 					<div class="flex flex-col items-center gap-1">
 						<div class="w-16 h-16 border border-border rounded overflow-hidden bg-card">
 							<img
@@ -227,7 +227,7 @@
 				{/each}
 			</div>
 			<div class="grid grid-cols-4 gap-3 mt-4 pt-4 border-t border-border">
-				{#each materialTextures as mat}
+				{#each materialTextures as mat (mat.weight)}
 					<div class="flex flex-col items-center gap-1">
 						<div class="w-16 h-16 border border-border rounded overflow-hidden bg-card">
 							<img
@@ -258,7 +258,7 @@
 						class="px-2 py-1 text-sm bg-background border border-border rounded"
 						bind:value={selectedOpacity}
 					>
-						{#each opacities as op}
+						{#each opacities as op (op.label)}
 							<option value={op.value}>{op.label}</option>
 						{/each}
 					</select>
@@ -285,7 +285,7 @@
 			</p>
 
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-				{#each semanticTextures as texture}
+				{#each semanticTextures as texture (texture.id)}
 					{@const textureFile = showBackup ? texture.backup : texture.file}
 					{@const sizing = getTextureSize(textureFile)}
 					<div
@@ -342,7 +342,7 @@
 			</p>
 
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-				{#each materialTextures as material}
+				{#each materialTextures as material (material.weight)}
 					{@const textureFile = showBackup ? material.backup : material.file}
 					{@const sizing = getTextureSize(textureFile)}
 					<div
@@ -615,7 +615,7 @@
 			</p>
 
 			<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-				{#each additionalTextures as tex}
+				{#each additionalTextures as tex (tex.file)}
 					{@const sizing = getTextureSize(tex.file)}
 					<div
 						class="relative overflow-hidden rounded-lg border border-border bg-card p-3 min-h-[80px]"

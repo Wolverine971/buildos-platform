@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/admin/AdminPageHeader.svelte -->
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { ArrowLeft } from 'lucide-svelte';
 	import type { ComponentType, Snippet } from 'svelte';
 	import {
@@ -29,7 +29,7 @@
 		controls?: Snippet;
 	} = $props();
 
-	let pathname = $derived($page.url.pathname);
+	let pathname = $derived(page.url.pathname);
 	let resolvedBackHref = $derived(
 		backHref ?? (isChatAdminSubpath(pathname) ? CHAT_ADMIN_ROOT : '/admin')
 	);

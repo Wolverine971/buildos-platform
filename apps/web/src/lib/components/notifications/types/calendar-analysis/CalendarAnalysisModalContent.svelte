@@ -77,19 +77,17 @@
 			</div>
 		{/snippet}
 
-		{#snippet children()}
-			<div class="flex flex-col items-center gap-3 px-4 py-6 text-center tx tx-grain tx-weak">
-				<LoaderCircle
-					class="h-8 w-8 animate-spin text-accent motion-reduce:animate-none"
-					aria-hidden="true"
-				/>
-				<p class="text-sm text-foreground" aria-live="polite">{progressMessage}</p>
-				<p class="text-sm text-muted-foreground">
-					You can minimize this window and continue working. We'll keep the results in the
-					notification tray when they're ready.
-				</p>
-			</div>
-		{/snippet}
+		<div class="flex flex-col items-center gap-3 px-4 py-6 text-center tx tx-grain tx-weak">
+			<LoaderCircle
+				class="h-8 w-8 animate-spin text-accent motion-reduce:animate-none"
+				aria-hidden="true"
+			/>
+			<p class="text-sm text-foreground" aria-live="polite">{progressMessage}</p>
+			<p class="text-sm text-muted-foreground">
+				You can minimize this window and continue working. We'll keep the results in the
+				notification tray when they're ready.
+			</p>
+		</div>
 	</Modal>
 {:else}
 	<!-- Results State: Full CalendarAnalysisResults in embedded mode -->
@@ -128,33 +126,28 @@
 			</div>
 		{/snippet}
 
-		{#snippet children()}
-			{#if notification.data.partial}
-				<div
-					class="mx-4 mt-4 flex gap-3 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-foreground"
-					role="status"
-				>
-					<AlertTriangle
-						class="mt-0.5 h-4 w-4 shrink-0 text-warning"
-						aria-hidden="true"
-					/>
-					<p>
-						Analysis completed with partial coverage. {partialWarningCount === 1
-							? 'One calendar was unavailable.'
-							: `${partialWarningCount} calendars were unavailable.`}
-					</p>
-				</div>
-			{/if}
-			<!-- Embedded CalendarAnalysisResults without its own Modal wrapper -->
-			<CalendarAnalysisResults
-				isOpen={true}
-				analysisId={notification.data.analysisId}
-				{suggestions}
-				autoStart={false}
-				onClose={handleClose}
-				{errorMessage}
-				embedded={true}
-			/>
-		{/snippet}
+		{#if notification.data.partial}
+			<div
+				class="mx-4 mt-4 flex gap-3 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-foreground"
+				role="status"
+			>
+				<AlertTriangle class="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+				<p>
+					Analysis completed with partial coverage. {partialWarningCount === 1
+						? 'One calendar was unavailable.'
+						: `${partialWarningCount} calendars were unavailable.`}
+				</p>
+			</div>
+		{/if}
+		<!-- Embedded CalendarAnalysisResults without its own Modal wrapper -->
+		<CalendarAnalysisResults
+			isOpen={true}
+			analysisId={notification.data.analysisId}
+			{suggestions}
+			autoStart={false}
+			onClose={handleClose}
+			{errorMessage}
+			embedded={true}
+		/>
 	</Modal>
 {/if}

@@ -1,6 +1,6 @@
 <!-- apps/web/src/routes/(public)/[handle=at_handle]/[project]/+page.svelte -->
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import BuilderProjectPage from '$lib/components/builder-profile/BuilderProjectPage.svelte';
 	import { projectPaths } from '$lib/builder-profile/project-pages';
@@ -57,7 +57,7 @@
 <BuilderProjectPage
 	data={view}
 	origin={data.origin}
-	askProjectId={$page.url.searchParams.get('ask')}
-	intent={$page.url.searchParams.get('intent')}
-	followProjectId={$page.url.searchParams.get('project')}
+	askProjectId={page.url.searchParams.get('ask')}
+	intent={page.url.searchParams.get('intent')}
+	followProjectId={page.url.searchParams.get('project')}
 />

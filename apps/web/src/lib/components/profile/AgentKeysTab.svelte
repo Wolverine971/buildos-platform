@@ -3,7 +3,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { goto, invalidate } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import {
 		Activity,
 		BarChart3,
@@ -702,7 +702,7 @@
 	}
 
 	function buildosBaseUrl(): string {
-		return browser ? window.location.origin : $page.url.origin;
+		return browser ? window.location.origin : page.url.origin;
 	}
 
 	function mcpEndpointUrl(): string {
@@ -2108,322 +2108,318 @@
 	title={editingCaller ? 'Edit & Rotate Agent Key' : 'Generate BuildOS Key'}
 	size="md"
 >
-	{#snippet children()}
-		{#if showGenerateModal}
-			<div class="p-4 sm:p-6 space-y-5">
-				{#if editingCaller}
-					<div
-						class="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground"
-					>
-						<span class="font-medium text-foreground">Editing rotates the key.</span>
-						BuildOS cannot reveal the existing secret because only the hash is stored. Save
-						changes to generate a fresh key, then copy it from the next screen.
-					</div>
-				{/if}
-
-				<div class="grid gap-4 sm:grid-cols-2">
-					<FormField
-						label="Client Profile"
-						labelFor="agent-provider-mode"
-						hint="Choose where this key will be installed so BuildOS can tailor the storage instructions."
-					>
-						<Select
-							id="agent-provider-mode"
-							bind:value={selectedProfileId}
-							disabled={Boolean(editingCaller)}
-						>
-							{#each AGENT_CLIENT_PROFILES as profile (profile.id)}
-								<option value={profile.id}>{profile.label}</option>
-							{/each}
-						</Select>
-					</FormField>
-
-					<FormField
-						label="Installation Name"
-						labelFor="agent-installation-name"
-						required={true}
-						hint="e.g. Claude Code on my laptop"
-					>
-						<TextInput
-							id="agent-installation-name"
-							bind:value={installationName}
-							placeholder={selectedProfile.installationPlaceholder}
-						/>
-					</FormField>
-				</div>
-
-				{#if selectedProfile.customProvider}
-					<FormField
-						label="Provider Key"
-						labelFor="agent-custom-provider"
-						required={true}
-						hint="Lowercase identifier, e.g. cursor, internal-agent, webhook-worker."
-					>
-						<TextInput
-							id="agent-custom-provider"
-							bind:value={customProvider}
-							placeholder="internal-agent"
-							disabled={Boolean(editingCaller)}
-						/>
-					</FormField>
-				{/if}
-
+	{#if showGenerateModal}
+		<div class="p-4 sm:p-6 space-y-5">
+			{#if editingCaller}
 				<div
-					class="rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground"
+					class="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground"
 				>
-					<span class="font-medium text-foreground">{selectedProfile.label}:</span>
-					{selectedProfile.description}
-					<span class="mt-1 block">
-						Token handling: {selectedProfile.secretHandlingNote}
+					<span class="font-medium text-foreground">Editing rotates the key.</span>
+					BuildOS cannot reveal the existing secret because only the hash is stored. Save changes
+					to generate a fresh key, then copy it from the next screen.
+				</div>
+			{/if}
+
+			<div class="grid gap-4 sm:grid-cols-2">
+				<FormField
+					label="Client Profile"
+					labelFor="agent-provider-mode"
+					hint="Choose where this key will be installed so BuildOS can tailor the storage instructions."
+				>
+					<Select
+						id="agent-provider-mode"
+						bind:value={selectedProfileId}
+						disabled={Boolean(editingCaller)}
+					>
+						{#each AGENT_CLIENT_PROFILES as profile (profile.id)}
+							<option value={profile.id}>{profile.label}</option>
+						{/each}
+					</Select>
+				</FormField>
+
+				<FormField
+					label="Installation Name"
+					labelFor="agent-installation-name"
+					required={true}
+					hint="e.g. Claude Code on my laptop"
+				>
+					<TextInput
+						id="agent-installation-name"
+						bind:value={installationName}
+						placeholder={selectedProfile.installationPlaceholder}
+					/>
+				</FormField>
+			</div>
+
+			{#if selectedProfile.customProvider}
+				<FormField
+					label="Provider Key"
+					labelFor="agent-custom-provider"
+					required={true}
+					hint="Lowercase identifier, e.g. cursor, internal-agent, webhook-worker."
+				>
+					<TextInput
+						id="agent-custom-provider"
+						bind:value={customProvider}
+						placeholder="internal-agent"
+						disabled={Boolean(editingCaller)}
+					/>
+				</FormField>
+			{/if}
+
+			<div
+				class="rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground"
+			>
+				<span class="font-medium text-foreground">{selectedProfile.label}:</span>
+				{selectedProfile.description}
+				<span class="mt-1 block">
+					Token handling: {selectedProfile.secretHandlingNote}
+				</span>
+			</div>
+
+			<div class="space-y-2">
+				<div class="flex items-center justify-between gap-3">
+					<h4 class="text-sm font-semibold text-foreground">Permission Bundle</h4>
+					<span class="text-xs text-muted-foreground">
+						Project, task, document, and search reads are always included.
 					</span>
 				</div>
-
-				<div class="space-y-2">
-					<div class="flex items-center justify-between gap-3">
-						<h4 class="text-sm font-semibold text-foreground">Permission Bundle</h4>
-						<span class="text-xs text-muted-foreground">
-							Project, task, document, and search reads are always included.
-						</span>
-					</div>
-					<div class="grid gap-2">
-						{#each PERMISSION_BUNDLES as bundle (bundle.id)}
-							{@const isActive = activeBundleId === bundle.id}
-							<label
-								class="flex items-start gap-2.5 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors {isActive
-									? 'border-accent bg-accent/5'
-									: 'border-border hover:bg-muted/40'}"
-							>
-								<input
-									type="radio"
-									name="agent-permission-bundle"
-									class="mt-1 h-3.5 w-3.5 border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-									value={bundle.id}
-									checked={isActive}
-									onchange={() => applyBundle(bundle)}
-								/>
-								<div>
-									<div class="text-sm font-medium text-foreground">
-										{bundle.label}
-									</div>
-									<div class="text-xs text-muted-foreground">
-										{bundle.description}
-									</div>
+				<div class="grid gap-2">
+					{#each PERMISSION_BUNDLES as bundle (bundle.id)}
+						{@const isActive = activeBundleId === bundle.id}
+						<label
+							class="flex items-start gap-2.5 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors {isActive
+								? 'border-accent bg-accent/5'
+								: 'border-border hover:bg-muted/40'}"
+						>
+							<input
+								type="radio"
+								name="agent-permission-bundle"
+								class="mt-1 h-3.5 w-3.5 border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+								value={bundle.id}
+								checked={isActive}
+								onchange={() => applyBundle(bundle)}
+							/>
+							<div>
+								<div class="text-sm font-medium text-foreground">
+									{bundle.label}
 								</div>
-							</label>
-						{/each}
-						{#if activeBundleId === 'custom'}
-							<div
-								class="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground"
-							>
-								Custom bundle — configured via Advanced permissions below.
+								<div class="text-xs text-muted-foreground">
+									{bundle.description}
+								</div>
 							</div>
-						{/if}
-					</div>
-				</div>
-
-				<div class="space-y-2">
-					<button
-						type="button"
-						class="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset py-2 min-h-[44px]"
-						onclick={() => (showAdvancedPermissions = !showAdvancedPermissions)}
-					>
-						{#if showAdvancedPermissions}
-							<ChevronDown class="h-3.5 w-3.5" />
-						{:else}
-							<ChevronRight class="h-3.5 w-3.5" />
-						{/if}
-						Advanced permissions ({selectedWriteOps.length} write op{selectedWriteOps.length ===
-						1
-							? ''
-							: 's'} selected)
-					</button>
-					{#if showAdvancedPermissions}
-						<div class="space-y-2 rounded-lg border border-border p-2">
-							<p class="text-xs text-muted-foreground px-2">
-								Fine-tune which write ops the key can perform. Picking any
-								combination here switches the bundle to Custom.
-							</p>
-							<label
-								class="flex items-start gap-2.5 rounded-md px-2.5 py-1.5 cursor-pointer hover:bg-muted/40 transition-colors"
-							>
-								<input
-									type="checkbox"
-									class="mt-0.5 h-3.5 w-3.5 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-									checked={scopeMode === 'read_write'}
-									onchange={() =>
-										(scopeMode =
-											scopeMode === 'read_write'
-												? 'read_only'
-												: 'read_write')}
-								/>
-								<div>
-									<div class="text-sm font-medium text-foreground">
-										Enable write scope
-									</div>
-									<div class="text-xs text-muted-foreground">
-										Required before selecting any individual write op.
-									</div>
-								</div>
-							</label>
-							{#if scopeMode === 'read_write'}
-								{#each WRITE_PERMISSION_OPTIONS as option (option.op)}
-									<label
-										class="flex items-start gap-2.5 rounded-md px-2.5 py-2 cursor-pointer hover:bg-muted/40 transition-colors"
-									>
-										<input
-											type="checkbox"
-											class="mt-0.5 h-3.5 w-3.5 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-											checked={selectedWriteOps.includes(option.op)}
-											onchange={() => toggleWriteOp(option.op)}
-										/>
-										<div>
-											<div class="text-sm font-medium text-foreground">
-												{option.label}
-											</div>
-											<div class="text-xs text-muted-foreground">
-												{option.description}
-											</div>
-										</div>
-									</label>
-								{/each}
-							{/if}
-						</div>
-					{/if}
-				</div>
-
-				<div class="space-y-2">
-					<h4 class="text-sm font-semibold text-foreground">Project access</h4>
-					<div class="grid gap-2 sm:grid-cols-2">
-						<label
-							class="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border p-3 hover:bg-muted/40"
-						>
-							<input
-								type="radio"
-								name="agent-project-scope"
-								value="all_unrestricted"
-								bind:group={projectScopeMode}
-								onchange={pruneInheritedSelections}
-								class="mt-0.5 h-3.5 w-3.5"
-							/>
-							<span>
-								<span class="block text-sm font-medium text-foreground"
-									>All standard projects</span
-								>
-								<span class="block text-xs text-muted-foreground"
-									>Includes owned standard projects you create later. Shared and
-									restricted projects still need an explicit grant.</span
-								>
-							</span>
 						</label>
-						<label
-							class="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border p-3 hover:bg-muted/40"
-						>
-							<input
-								type="radio"
-								name="agent-project-scope"
-								value="selected"
-								bind:group={projectScopeMode}
-								class="mt-0.5 h-3.5 w-3.5"
-							/>
-							<span>
-								<span class="block text-sm font-medium text-foreground"
-									>Only selected projects</span
-								>
-								<span class="block text-xs text-muted-foreground"
-									>Keeps a fixed list. Projects created by this connector are
-									added automatically.</span
-								>
-							</span>
-						</label>
-					</div>
-
-					<div class="flex items-center justify-between gap-3 pt-1">
-						<p class="text-xs text-muted-foreground">
-							{projectScopeMode === 'selected'
-								? 'Choose every project this connector may use.'
-								: 'Optionally add shared or restricted projects explicitly.'}
-						</p>
-						<div class="flex items-center gap-2">
-							{#if projectChoices.length > 0}
-								<Button variant="ghost" size="sm" onclick={toggleAllProjects}>
-									{allProjectsSelected ? 'Deselect All' : 'Select All'}
-								</Button>
-							{/if}
-							{#if selectedProjectIds.length > 0}
-								<Button
-									variant="ghost"
-									size="sm"
-									onclick={() => (selectedProjectIds = [])}
-								>
-									Clear
-								</Button>
-							{/if}
-						</div>
-					</div>
-
-					{#if selectedModeCoversEverything}
+					{/each}
+					{#if activeBundleId === 'custom'}
 						<div
-							class="flex flex-col gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
-							role="status"
+							class="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground"
 						>
-							<span class="text-foreground">
-								This freezes today's list. Projects you create later won't be
-								visible to this agent.
-							</span>
-							<Button
-								variant="secondary"
-								size="sm"
-								onclick={switchToAllStandardProjects}
-								class="shrink-0"
-							>
-								Use All standard projects
-							</Button>
-						</div>
-					{/if}
-
-					{#if editingCaller && unavailableProjectCount(editingCaller) > 0}
-						<div
-							class="rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning"
-						>
-							{projectCountLabel(unavailableProjectCount(editingCaller))} previously scoped
-							to this key are no longer available in your workspace. Rotating the key will
-							keep only currently selected projects.
-						</div>
-					{/if}
-
-					{#if projectChoices.length === 0}
-						<div
-							class="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground"
-						>
-							{projectScopeMode === 'all_unrestricted'
-								? 'No shared or restricted projects need an explicit grant.'
-								: 'No projects found. This connector will start with no project access.'}
-						</div>
-					{:else}
-						<div
-							class="grid gap-2 sm:grid-cols-2 max-h-48 overflow-y-auto rounded-lg border border-border p-2"
-						>
-							{#each projectChoices as project (project.id)}
-								<label
-									class="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 cursor-pointer hover:bg-muted/40 transition-colors"
-								>
-									<input
-										type="checkbox"
-										class="h-3.5 w-3.5 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-										checked={selectedProjectIds.includes(project.id)}
-										onchange={() => toggleProject(project.id)}
-									/>
-									<span class="text-sm text-foreground truncate">
-										{project.name}
-									</span>
-								</label>
-							{/each}
+							Custom bundle — configured via Advanced permissions below.
 						</div>
 					{/if}
 				</div>
 			</div>
-		{/if}
-	{/snippet}
+
+			<div class="space-y-2">
+				<button
+					type="button"
+					class="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset py-2 min-h-[44px]"
+					onclick={() => (showAdvancedPermissions = !showAdvancedPermissions)}
+				>
+					{#if showAdvancedPermissions}
+						<ChevronDown class="h-3.5 w-3.5" />
+					{:else}
+						<ChevronRight class="h-3.5 w-3.5" />
+					{/if}
+					Advanced permissions ({selectedWriteOps.length} write op{selectedWriteOps.length ===
+					1
+						? ''
+						: 's'} selected)
+				</button>
+				{#if showAdvancedPermissions}
+					<div class="space-y-2 rounded-lg border border-border p-2">
+						<p class="text-xs text-muted-foreground px-2">
+							Fine-tune which write ops the key can perform. Picking any combination
+							here switches the bundle to Custom.
+						</p>
+						<label
+							class="flex items-start gap-2.5 rounded-md px-2.5 py-1.5 cursor-pointer hover:bg-muted/40 transition-colors"
+						>
+							<input
+								type="checkbox"
+								class="mt-0.5 h-3.5 w-3.5 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+								checked={scopeMode === 'read_write'}
+								onchange={() =>
+									(scopeMode =
+										scopeMode === 'read_write' ? 'read_only' : 'read_write')}
+							/>
+							<div>
+								<div class="text-sm font-medium text-foreground">
+									Enable write scope
+								</div>
+								<div class="text-xs text-muted-foreground">
+									Required before selecting any individual write op.
+								</div>
+							</div>
+						</label>
+						{#if scopeMode === 'read_write'}
+							{#each WRITE_PERMISSION_OPTIONS as option (option.op)}
+								<label
+									class="flex items-start gap-2.5 rounded-md px-2.5 py-2 cursor-pointer hover:bg-muted/40 transition-colors"
+								>
+									<input
+										type="checkbox"
+										class="mt-0.5 h-3.5 w-3.5 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+										checked={selectedWriteOps.includes(option.op)}
+										onchange={() => toggleWriteOp(option.op)}
+									/>
+									<div>
+										<div class="text-sm font-medium text-foreground">
+											{option.label}
+										</div>
+										<div class="text-xs text-muted-foreground">
+											{option.description}
+										</div>
+									</div>
+								</label>
+							{/each}
+						{/if}
+					</div>
+				{/if}
+			</div>
+
+			<div class="space-y-2">
+				<h4 class="text-sm font-semibold text-foreground">Project access</h4>
+				<div class="grid gap-2 sm:grid-cols-2">
+					<label
+						class="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border p-3 hover:bg-muted/40"
+					>
+						<input
+							type="radio"
+							name="agent-project-scope"
+							value="all_unrestricted"
+							bind:group={projectScopeMode}
+							onchange={pruneInheritedSelections}
+							class="mt-0.5 h-3.5 w-3.5"
+						/>
+						<span>
+							<span class="block text-sm font-medium text-foreground"
+								>All standard projects</span
+							>
+							<span class="block text-xs text-muted-foreground"
+								>Includes owned standard projects you create later. Shared and
+								restricted projects still need an explicit grant.</span
+							>
+						</span>
+					</label>
+					<label
+						class="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border p-3 hover:bg-muted/40"
+					>
+						<input
+							type="radio"
+							name="agent-project-scope"
+							value="selected"
+							bind:group={projectScopeMode}
+							class="mt-0.5 h-3.5 w-3.5"
+						/>
+						<span>
+							<span class="block text-sm font-medium text-foreground"
+								>Only selected projects</span
+							>
+							<span class="block text-xs text-muted-foreground"
+								>Keeps a fixed list. Projects created by this connector are added
+								automatically.</span
+							>
+						</span>
+					</label>
+				</div>
+
+				<div class="flex items-center justify-between gap-3 pt-1">
+					<p class="text-xs text-muted-foreground">
+						{projectScopeMode === 'selected'
+							? 'Choose every project this connector may use.'
+							: 'Optionally add shared or restricted projects explicitly.'}
+					</p>
+					<div class="flex items-center gap-2">
+						{#if projectChoices.length > 0}
+							<Button variant="ghost" size="sm" onclick={toggleAllProjects}>
+								{allProjectsSelected ? 'Deselect All' : 'Select All'}
+							</Button>
+						{/if}
+						{#if selectedProjectIds.length > 0}
+							<Button
+								variant="ghost"
+								size="sm"
+								onclick={() => (selectedProjectIds = [])}
+							>
+								Clear
+							</Button>
+						{/if}
+					</div>
+				</div>
+
+				{#if selectedModeCoversEverything}
+					<div
+						class="flex flex-col gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+						role="status"
+					>
+						<span class="text-foreground">
+							This freezes today's list. Projects you create later won't be visible to
+							this agent.
+						</span>
+						<Button
+							variant="secondary"
+							size="sm"
+							onclick={switchToAllStandardProjects}
+							class="shrink-0"
+						>
+							Use All standard projects
+						</Button>
+					</div>
+				{/if}
+
+				{#if editingCaller && unavailableProjectCount(editingCaller) > 0}
+					<div
+						class="rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning"
+					>
+						{projectCountLabel(unavailableProjectCount(editingCaller))} previously scoped
+						to this key are no longer available in your workspace. Rotating the key will
+						keep only currently selected projects.
+					</div>
+				{/if}
+
+				{#if projectChoices.length === 0}
+					<div
+						class="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground"
+					>
+						{projectScopeMode === 'all_unrestricted'
+							? 'No shared or restricted projects need an explicit grant.'
+							: 'No projects found. This connector will start with no project access.'}
+					</div>
+				{:else}
+					<div
+						class="grid gap-2 sm:grid-cols-2 max-h-48 overflow-y-auto rounded-lg border border-border p-2"
+					>
+						{#each projectChoices as project (project.id)}
+							<label
+								class="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 cursor-pointer hover:bg-muted/40 transition-colors"
+							>
+								<input
+									type="checkbox"
+									class="h-3.5 w-3.5 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+									checked={selectedProjectIds.includes(project.id)}
+									onchange={() => toggleProject(project.id)}
+								/>
+								<span class="text-sm text-foreground truncate">
+									{project.name}
+								</span>
+							</label>
+						{/each}
+					</div>
+				{/if}
+			</div>
+		</div>
+	{/if}
 
 	{#snippet footer()}
 		<div
@@ -2468,272 +2464,260 @@
 	title={editingCaller ? 'Key Rotated' : 'Key Generated'}
 	size="md"
 >
-	{#snippet children()}
-		{#if showKeyCreatedModal && latestProvisioned}
-			<div class="p-4 sm:p-6 space-y-4">
-				<div class="flex items-start gap-3">
-					<div class="p-1.5 rounded-full bg-success/10">
-						<CircleCheck class="w-5 h-5 text-success" />
-					</div>
-					<div>
-						<p class="text-sm font-medium text-foreground">
-							{editingCaller
-								? 'Your updated key is ready.'
-								: 'Your new key is ready.'}
-						</p>
-						<p class="text-xs text-muted-foreground mt-0.5">
-							Copy it now — this secret is shown only once.
-						</p>
-					</div>
+	{#if showKeyCreatedModal && latestProvisioned}
+		<div class="p-4 sm:p-6 space-y-4">
+			<div class="flex items-start gap-3">
+				<div class="p-1.5 rounded-full bg-success/10">
+					<CircleCheck class="w-5 h-5 text-success" />
 				</div>
-
-				<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
-					<div class="text-xs uppercase tracking-wider text-muted-foreground">
-						Granted Permissions
-					</div>
-					<div class="flex flex-wrap gap-1.5">
-						<Badge variant="default">
-							{latestProvisioned.caller.scope_mode === 'read_write'
-								? 'Read & write'
-								: 'Read only'}
-						</Badge>
-						{#each writePermissionLabels(latestProvisioned.caller) as label (label)}
-							<Badge variant="accent">{label}</Badge>
-						{/each}
-					</div>
-				</div>
-
-				<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
-					<div class="text-xs uppercase tracking-wider text-muted-foreground">
-						Full BuildOS Agent Key
-					</div>
-					<p class="text-xs text-muted-foreground">
-						Copy this now. After you close this modal, BuildOS will only show the token
-						prefix.
+				<div>
+					<p class="text-sm font-medium text-foreground">
+						{editingCaller ? 'Your updated key is ready.' : 'Your new key is ready.'}
 					</p>
-					<div class="flex items-center gap-2">
-						<code class="text-sm text-foreground break-all flex-1">
-							{latestProvisioned.credentials.bearer_token}
-						</code>
+					<p class="text-xs text-muted-foreground mt-0.5">
+						Copy it now — this secret is shown only once.
+					</p>
+				</div>
+			</div>
+
+			<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+				<div class="text-xs uppercase tracking-wider text-muted-foreground">
+					Granted Permissions
+				</div>
+				<div class="flex flex-wrap gap-1.5">
+					<Badge variant="default">
+						{latestProvisioned.caller.scope_mode === 'read_write'
+							? 'Read & write'
+							: 'Read only'}
+					</Badge>
+					{#each writePermissionLabels(latestProvisioned.caller) as label (label)}
+						<Badge variant="accent">{label}</Badge>
+					{/each}
+				</div>
+			</div>
+
+			<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+				<div class="text-xs uppercase tracking-wider text-muted-foreground">
+					Full BuildOS Agent Key
+				</div>
+				<p class="text-xs text-muted-foreground">
+					Copy this now. After you close this modal, BuildOS will only show the token
+					prefix.
+				</p>
+				<div class="flex items-center gap-2">
+					<code class="text-sm text-foreground break-all flex-1">
+						{latestProvisioned.credentials.bearer_token}
+					</code>
+					<Button
+						variant="outline"
+						size="sm"
+						icon={copiedId === 'latest-token' ? CircleCheck : Copy}
+						onclick={() =>
+							copyToClipboard(
+								'latest-token',
+								latestProvisioned!.credentials.bearer_token,
+								'Key copied'
+							)}
+					>
+						{copiedId === 'latest-token' ? 'Key Copied' : 'Copy Key'}
+					</Button>
+				</div>
+			</div>
+
+			<!-- Prominent: connect via MCP -->
+			<div class="rounded-lg border border-accent/40 bg-accent/5 p-3 space-y-2">
+				<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+					<div>
+						<div class="text-xs font-semibold uppercase tracking-wider text-foreground">
+							{mcpQuickConnect(latestProvisioned, false).label}
+						</div>
+						<p class="mt-1 text-xs text-muted-foreground">
+							{mcpQuickConnect(latestProvisioned, false).note}
+						</p>
+					</div>
+					<div class="flex flex-wrap gap-2">
 						<Button
 							variant="outline"
 							size="sm"
-							icon={copiedId === 'latest-token' ? CircleCheck : Copy}
+							icon={copiedId === 'mcp-quick-placeholder' ? CircleCheck : Copy}
 							onclick={() =>
 								copyToClipboard(
-									'latest-token',
-									latestProvisioned!.credentials.bearer_token,
-									'Key copied'
+									'mcp-quick-placeholder',
+									mcpQuickConnect(latestProvisioned!, false).value,
+									'Command copied'
 								)}
 						>
-							{copiedId === 'latest-token' ? 'Key Copied' : 'Copy Key'}
+							{copiedId === 'mcp-quick-placeholder' ? 'Copied' : 'Copy'}
 						</Button>
+						{#if mcpQuickConnectIncludesSecret(latestProvisioned)}
+							<Button
+								variant="primary"
+								size="sm"
+								icon={copiedId === 'mcp-quick-key' ? CircleCheck : Copy}
+								onclick={() =>
+									copyToClipboard(
+										'mcp-quick-key',
+										mcpQuickConnect(latestProvisioned!, true).value,
+										'Command with key copied'
+									)}
+							>
+								{copiedId === 'mcp-quick-key' ? 'Copied' : 'Copy with key'}
+							</Button>
+						{/if}
 					</div>
 				</div>
+				<pre
+					class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+						>{mcpQuickConnect(latestProvisioned, false).value}</code
+					></pre>
+			</div>
 
-				<!-- Prominent: connect via MCP -->
-				<div class="rounded-lg border border-accent/40 bg-accent/5 p-3 space-y-2">
-					<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-						<div>
-							<div
-								class="text-xs font-semibold uppercase tracking-wider text-foreground"
+			<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+				<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+					<div>
+						<div class="text-xs uppercase tracking-wider text-muted-foreground">
+							{bootstrapProfile(latestProvisioned).label} Handoff
+							<span class="ml-1 normal-case text-muted-foreground/70"
+								>(advanced / gateway fallback)</span
 							>
-								{mcpQuickConnect(latestProvisioned, false).label}
-							</div>
-							<p class="mt-1 text-xs text-muted-foreground">
-								{mcpQuickConnect(latestProvisioned, false).note}
-							</p>
 						</div>
-						<div class="flex flex-wrap gap-2">
+						<p class="mt-1 text-xs text-muted-foreground">
+							{bootstrapProfile(latestProvisioned).secretHandlingNote}
+						</p>
+					</div>
+					<div class="flex flex-wrap gap-2">
+						<Button
+							variant="ghost"
+							size="sm"
+							icon={copiedId === 'agent-prompt-placeholder' ? CircleCheck : Copy}
+							onclick={() =>
+								copyToClipboard(
+									'agent-prompt-placeholder',
+									agentConnectionPromptForProvisioned(latestProvisioned!, false),
+									'Agent prompt copied'
+								)}
+						>
+							{copiedId === 'agent-prompt-placeholder'
+								? 'Copied'
+								: 'Copy Placeholder'}
+						</Button>
+						{#if bootstrapProfile(latestProvisioned).allowSecretPrompt}
 							<Button
 								variant="outline"
 								size="sm"
-								icon={copiedId === 'mcp-quick-placeholder' ? CircleCheck : Copy}
+								icon={copiedId === 'agent-prompt-with-key' ? CircleCheck : Copy}
 								onclick={() =>
 									copyToClipboard(
-										'mcp-quick-placeholder',
-										mcpQuickConnect(latestProvisioned!, false).value,
-										'Command copied'
-									)}
-							>
-								{copiedId === 'mcp-quick-placeholder' ? 'Copied' : 'Copy'}
-							</Button>
-							{#if mcpQuickConnectIncludesSecret(latestProvisioned)}
-								<Button
-									variant="primary"
-									size="sm"
-									icon={copiedId === 'mcp-quick-key' ? CircleCheck : Copy}
-									onclick={() =>
-										copyToClipboard(
-											'mcp-quick-key',
-											mcpQuickConnect(latestProvisioned!, true).value,
-											'Command with key copied'
-										)}
-								>
-									{copiedId === 'mcp-quick-key' ? 'Copied' : 'Copy with key'}
-								</Button>
-							{/if}
-						</div>
-					</div>
-					<pre
-						class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
-							>{mcpQuickConnect(latestProvisioned, false).value}</code
-						></pre>
-				</div>
-
-				<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
-					<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-						<div>
-							<div class="text-xs uppercase tracking-wider text-muted-foreground">
-								{bootstrapProfile(latestProvisioned).label} Handoff
-								<span class="ml-1 normal-case text-muted-foreground/70"
-									>(advanced / gateway fallback)</span
-								>
-							</div>
-							<p class="mt-1 text-xs text-muted-foreground">
-								{bootstrapProfile(latestProvisioned).secretHandlingNote}
-							</p>
-						</div>
-						<div class="flex flex-wrap gap-2">
-							<Button
-								variant="ghost"
-								size="sm"
-								icon={copiedId === 'agent-prompt-placeholder' ? CircleCheck : Copy}
-								onclick={() =>
-									copyToClipboard(
-										'agent-prompt-placeholder',
+										'agent-prompt-with-key',
 										agentConnectionPromptForProvisioned(
 											latestProvisioned!,
-											false
+											true
 										),
-										'Agent prompt copied'
+										'Agent prompt with key copied'
 									)}
 							>
-								{copiedId === 'agent-prompt-placeholder'
-									? 'Copied'
-									: 'Copy Placeholder'}
+								{copiedId === 'agent-prompt-with-key' ? 'Copied' : 'Copy With Key'}
 							</Button>
-							{#if bootstrapProfile(latestProvisioned).allowSecretPrompt}
-								<Button
-									variant="outline"
-									size="sm"
-									icon={copiedId === 'agent-prompt-with-key' ? CircleCheck : Copy}
-									onclick={() =>
-										copyToClipboard(
-											'agent-prompt-with-key',
-											agentConnectionPromptForProvisioned(
-												latestProvisioned!,
-												true
-											),
-											'Agent prompt with key copied'
-										)}
-								>
-									{copiedId === 'agent-prompt-with-key'
-										? 'Copied'
-										: 'Copy With Key'}
-								</Button>
-							{/if}
-						</div>
+						{/if}
 					</div>
-					<pre
-						class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
-							>{agentConnectionPromptForProvisioned(latestProvisioned, false)}</code
-						></pre>
 				</div>
+				<pre
+					class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+						>{agentConnectionPromptForProvisioned(latestProvisioned, false)}</code
+					></pre>
+			</div>
 
+			<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+				<div class="flex items-center justify-between">
+					<div class="text-xs uppercase tracking-wider text-muted-foreground">
+						Env Configuration
+					</div>
+					<Button
+						variant="ghost"
+						size="sm"
+						icon={copiedId === 'env-snippet' ? CircleCheck : Copy}
+						onclick={() =>
+							copyToClipboard(
+								'env-snippet',
+								envSnippet(latestProvisioned!),
+								'Configuration copied'
+							)}
+					>
+						{copiedId === 'env-snippet' ? 'Copied' : 'Copy'}
+					</Button>
+				</div>
+				<p class="text-xs text-muted-foreground">
+					Use this only in the storage location for {bootstrapProfile(latestProvisioned)
+						.label}.
+				</p>
+				<pre
+					class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+						>{envSnippet(latestProvisioned)}</code
+					></pre>
+			</div>
+
+			{#if bootstrapUrl(latestProvisioned)}
 				<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
 					<div class="flex items-center justify-between">
 						<div class="text-xs uppercase tracking-wider text-muted-foreground">
-							Env Configuration
+							{bootstrapProfile(latestProvisioned).setupUrlLabel}
 						</div>
 						<Button
 							variant="ghost"
 							size="sm"
-							icon={copiedId === 'env-snippet' ? CircleCheck : Copy}
+							icon={copiedId === 'bootstrap-url' ? CircleCheck : Copy}
 							onclick={() =>
 								copyToClipboard(
-									'env-snippet',
-									envSnippet(latestProvisioned!),
-									'Configuration copied'
+									'bootstrap-url',
+									bootstrapUrl(latestProvisioned!) ?? '',
+									'Setup URL copied'
 								)}
 						>
-							{copiedId === 'env-snippet' ? 'Copied' : 'Copy'}
+							{copiedId === 'bootstrap-url' ? 'Copied' : 'Copy'}
 						</Button>
 					</div>
 					<p class="text-xs text-muted-foreground">
-						Use this only in the storage location for {bootstrapProfile(
-							latestProvisioned
-						).label}.
+						{bootstrapProfile(latestProvisioned).setupUrlDescription}
 					</p>
 					<pre
 						class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
-							>{envSnippet(latestProvisioned)}</code
+							>{bootstrapUrl(latestProvisioned)}</code
 						></pre>
 				</div>
+			{/if}
 
-				{#if bootstrapUrl(latestProvisioned)}
-					<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
-						<div class="flex items-center justify-between">
-							<div class="text-xs uppercase tracking-wider text-muted-foreground">
-								{bootstrapProfile(latestProvisioned).setupUrlLabel}
-							</div>
-							<Button
-								variant="ghost"
-								size="sm"
-								icon={copiedId === 'bootstrap-url' ? CircleCheck : Copy}
-								onclick={() =>
-									copyToClipboard(
-										'bootstrap-url',
-										bootstrapUrl(latestProvisioned!) ?? '',
-										'Setup URL copied'
-									)}
-							>
-								{copiedId === 'bootstrap-url' ? 'Copied' : 'Copy'}
-							</Button>
+			{#if bootstrapPrompt(latestProvisioned)}
+				<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+					<div class="flex items-center justify-between">
+						<div class="text-xs uppercase tracking-wider text-muted-foreground">
+							{bootstrapProfile(latestProvisioned).pastePromptLabel}
 						</div>
-						<p class="text-xs text-muted-foreground">
-							{bootstrapProfile(latestProvisioned).setupUrlDescription}
-						</p>
-						<pre
-							class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
-								>{bootstrapUrl(latestProvisioned)}</code
-							></pre>
+						<Button
+							variant="ghost"
+							size="sm"
+							icon={copiedId === 'bootstrap-prompt' ? CircleCheck : Copy}
+							onclick={() =>
+								copyToClipboard(
+									'bootstrap-prompt',
+									bootstrapPrompt(latestProvisioned!) ?? '',
+									`${bootstrapProfile(latestProvisioned!).label} prompt copied`
+								)}
+						>
+							{copiedId === 'bootstrap-prompt' ? 'Copied' : 'Copy'}
+						</Button>
 					</div>
-				{/if}
-
-				{#if bootstrapPrompt(latestProvisioned)}
-					<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
-						<div class="flex items-center justify-between">
-							<div class="text-xs uppercase tracking-wider text-muted-foreground">
-								{bootstrapProfile(latestProvisioned).pastePromptLabel}
-							</div>
-							<Button
-								variant="ghost"
-								size="sm"
-								icon={copiedId === 'bootstrap-prompt' ? CircleCheck : Copy}
-								onclick={() =>
-									copyToClipboard(
-										'bootstrap-prompt',
-										bootstrapPrompt(latestProvisioned!) ?? '',
-										`${bootstrapProfile(latestProvisioned!).label} prompt copied`
-									)}
-							>
-								{copiedId === 'bootstrap-prompt' ? 'Copied' : 'Copy'}
-							</Button>
-						</div>
-						<p class="text-xs text-muted-foreground">
-							This handoff tells the client to fetch the setup URL, use the
-							profile-specific storage path, and then connect to BuildOS.
-						</p>
-						<pre
-							class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
-								>{bootstrapPrompt(latestProvisioned)}</code
-							></pre>
-					</div>
-				{/if}
-			</div>
-		{/if}
-	{/snippet}
+					<p class="text-xs text-muted-foreground">
+						This handoff tells the client to fetch the setup URL, use the
+						profile-specific storage path, and then connect to BuildOS.
+					</p>
+					<pre
+						class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+							>{bootstrapPrompt(latestProvisioned)}</code
+						></pre>
+				</div>
+			{/if}
+		</div>
+	{/if}
 
 	{#snippet footer()}
 		<div class="flex justify-end px-4 sm:px-6 py-3 sm:py-4 border-t border-border bg-muted/30">

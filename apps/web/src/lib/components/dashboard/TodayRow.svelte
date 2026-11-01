@@ -85,7 +85,9 @@
 	const performance = createDashboardPerformanceTracker({ enabled: browser });
 
 	let pendingNavigationHref = $state<string | null>(null);
-	let inviteRows = $state<ProjectInviteRow[]>([]);
+	let inviteRows = $derived<ProjectInviteRow[]>(
+		Array.isArray(pendingInvites) ? [...pendingInvites] : []
+	);
 	let inviteActionId = $state<string | null>(null);
 	let inviteActionError = $state<string | null>(null);
 	let invitesOpen = $state(false);
@@ -107,10 +109,6 @@
 
 	$effect(() => {
 		modalOpen = showBriefModal || showBriefChatModal || showOverdueModal || showInboxModal;
-	});
-
-	$effect(() => {
-		inviteRows = Array.isArray(pendingInvites) ? [...pendingInvites] : [];
 	});
 
 	const inboxCount = $derived($aiInboxCountStore.total);
@@ -145,7 +143,6 @@
 	});
 
 	$effect(() => {
-		if (!browser) return;
 		void loadAiInboxCount();
 	});
 

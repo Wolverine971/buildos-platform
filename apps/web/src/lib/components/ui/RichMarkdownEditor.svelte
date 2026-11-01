@@ -494,7 +494,7 @@
 	}
 
 	$effect(() => {
-		if (!browser || dictation.phase !== 'recording') return;
+		if (dictation.phase !== 'recording') return;
 		document.addEventListener('keydown', handleGlobalKeyDown);
 		return () => document.removeEventListener('keydown', handleGlobalKeyDown);
 	});

@@ -9,7 +9,6 @@
 -->
 <script lang="ts">
 	import { onDestroy, untrack } from 'svelte';
-	import { browser } from '$app/environment';
 	import {
 		ListChecks,
 		Target,
@@ -251,7 +250,7 @@
 	}
 
 	$effect(() => {
-		if (!browser || !projectId) return;
+		if (!projectId) return;
 		const timeoutId = setTimeout(
 			() => void loadEntities(selectedType, searchTerm),
 			normalizeEntitySearch(searchTerm) ? PROJECT_ENTITY_SEARCH_DEBOUNCE_MS : 0
@@ -268,7 +267,7 @@
 
 <!-- Entity type tabs -->
 <div class="mb-3 flex flex-wrap gap-1.5 sm:gap-2">
-	{#each focusTypes as type}
+	{#each focusTypes as type (type.value)}
 		{@const IconComponent = type.icon}
 		{@const isSelected = selectedType === type.value}
 		<button

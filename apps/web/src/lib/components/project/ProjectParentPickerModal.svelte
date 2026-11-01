@@ -8,7 +8,6 @@
 	move this project sees only "Remove from …" (`canMove` false).
 -->
 <script lang="ts">
-	import { browser } from '$app/environment';
 	import { untrack } from 'svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -122,7 +121,7 @@
 
 	// Load while open; searches are debounced, the default list loads at once.
 	$effect(() => {
-		if (!browser || !isOpen || hasSubProjects || !canMove) return;
+		if (!isOpen || hasSubProjects || !canMove) return;
 		const search = normalizedSearch;
 		if (!search) {
 			untrack(() => void loadResults(''));

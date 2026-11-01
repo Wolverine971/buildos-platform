@@ -7,7 +7,6 @@
 	Mobile: status pill + three-dot overflow that opens a bottom sheet.
 -->
 <script lang="ts">
-	import { untrack } from 'svelte';
 	import { ArrowLeft, ExternalLink, Globe, Link, MoreHorizontal, Pencil, X } from 'lucide-svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { buildAbsolutePublicPageUrl, copyTextToClipboard } from '$lib/utils/public-page-url';
@@ -38,11 +37,8 @@
 
 	let mobileSheetOpen = $state(false);
 	let actionLoading = $state(false);
-	let currentPage = $state<OwnerBarPage>(clonePage(untrack(() => page)));
-	// Re-sync when the parent passes new data (e.g. after toggle).
-	$effect(() => {
-		currentPage = clonePage(page);
-	});
+	// Local copy; resets when the parent passes new data (e.g. after toggle).
+	let currentPage = $derived<OwnerBarPage>(clonePage(page));
 
 	const statusLabel = $derived.by(() => {
 		if (currentPage.public_status === 'live') {

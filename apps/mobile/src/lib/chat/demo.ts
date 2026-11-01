@@ -10,9 +10,36 @@ import type { AgentSSEMessage } from '@buildos/shared-types';
 import { newChatId } from './ids';
 import type { SessionStore, WorkerTurnHandle } from './session-store';
 
-export type DemoState = 'idle' | 'history' | 'streaming' | 'done' | 'live';
+export type DemoState =
+	| 'idle'
+	| 'history'
+	| 'streaming'
+	| 'done'
+	| 'live'
+	| 'card'
+	| 'changes'
+	| 'pick'
+	| 'projects'
+	| 'focus';
 
-const DEMO_STATES: ReadonlySet<string> = new Set(['idle', 'history', 'streaming', 'done', 'live']);
+const DEMO_STATES: ReadonlySet<string> = new Set([
+	'idle',
+	'history',
+	'streaming',
+	'done',
+	'live',
+	'card',
+	'changes',
+	// Opening screens: the context picker, its project list, and the focus sheet over a chat.
+	'pick',
+	'projects',
+	'focus'
+]);
+
+/** States that stand for a stored chat (the New chat key is live, history marks it current). */
+export function demoHasSession(state: DemoState): boolean {
+	return state !== 'idle' && state !== 'pick' && state !== 'projects';
+}
 
 export function parseDemoParam(value: string | string[] | undefined): DemoState | null {
 	const one = Array.isArray(value) ? value[0] : value;
@@ -22,6 +49,10 @@ export function parseDemoParam(value: string | string[] | undefined): DemoState 
 }
 
 const SESSION_ID = 'dddddddd-0000-4000-8000-00000000d3e0';
+const PROJECT_ID = 'dddddddd-0000-4000-8000-00000000f001';
+const TASK_ID = 'dddddddd-0000-4000-8000-00000000e001';
+const DOC_ID = 'dddddddd-0000-4000-8000-00000000e002';
+const TABLE_ID = 'dddddddd-0000-4000-8000-00000000e003';
 const RUN_1 = 'dddddddd-0000-4000-8000-00000000a001';
 const RUN_2 = 'dddddddd-0000-4000-8000-00000000a002';
 
@@ -317,9 +348,64 @@ export function seedDemo(
 	} = {}
 ): void {
 	const now = options.now ?? Date.now;
-	if (state === 'idle') return;
+	if (state === 'idle' || state === 'pick' || state === 'projects') return;
 	store.restore(demoHistory(now()));
-	if (state === 'history') return;
+	if (state === 'history' || state === 'focus') return;
+	if (state === 'card') {
+		// A proposal the agent left waiting (file two loose notes into Launch) and a change
+		// that did not finish, so both surfaces can be seen without a paid turn.
+		store.port.applySemanticEvent(
+			semantic(RUN_2, {
+				type: 'tool_result',
+				result: {
+					tool_call_id: 'demo-card-call',
+					success: true,
+					card_rail: 'proposal_v1',
+					status: 'proposal_ready',
+					requires_user_action: true,
+					saved: false,
+					card_id: 'dddddddd-0000-4000-8000-00000000c001',
+					kind: 'workspace_file',
+					message: 'Needs your choice.',
+					model_view: {},
+					client_action: {
+						kind: 'proposal_card',
+						card_kind: 'workspace_file',
+						card_id: 'dddddddd-0000-4000-8000-00000000c001',
+						session_id: SESSION_ID,
+						expires_at: new Date(now() + 60 * 60_000).toISOString(),
+						payload: {
+							version: 1,
+							workspace: { id: 'ws', name: 'Workspace' },
+							target: { id: 'dddddddd-0000-4000-8000-00000000f001', name: 'Launch' },
+							items: [
+								{
+									id: 'i1',
+									title: 'Pricing page: three tiers, annual toggle',
+									kind: 'note'
+								},
+								{ id: 'i2', title: 'Ask Priya for the beta list', kind: 'task' }
+							],
+							nested_documents: 0,
+							suggestion_id: null,
+							reason: 'Both mention the launch and nothing else holds them.',
+							checked_at: new Date(now()).toISOString()
+						}
+					}
+				}
+			})
+		);
+		store.setPendingChange({
+			key: 'demo-pending',
+			createdAt: new Date(now() - 5 * 60_000).toISOString(),
+			items: ['Update task “Beta email” (due date)', 'Create a doc in Launch']
+		});
+		return;
+	}
+	if (state === 'changes') {
+		seedChangesTurn(store, now, options.skew);
+		return;
+	}
 	if (state === 'live') {
 		runDemoTurn(store, 'Plan my morning around the launch.', options);
 		return;
@@ -363,6 +449,132 @@ export function seedDemo(
 		return;
 	}
 	store.port.appendAssistantText({ handle, executionGeneration: 0, text: LIVE_ANSWER });
+	store.port.finishTurn({
+		handle,
+		status: 'completed',
+		finishedReason: 'stop',
+		failureCode: null
+	});
+}
+
+/**
+ * A finished turn that made a task, edited a doc and filled a table, so the changes row (chips,
+ * the diff card with Undo, the table card) can be looked at without a paid turn.
+ */
+function seedChangesTurn(store: SessionStore, now: () => number, skew?: { ms: number }): void {
+	const handle = demoHandle(newChatId('row', now()), newChatId('turn', now()));
+	if (skew) skew.ms = -23_000;
+	store.addUserMessage({
+		clientTurnId: handle.clientTurnId,
+		text: 'Add the screenshots task, put the sizes in the launch checklist, and log the beta testers.'
+	});
+	store.adoptHandle(handle, 'queued');
+	store.port.beginGeneration({ handle, executionGeneration: 0, status: 'running' });
+	const calls: Array<{
+		id: string;
+		name: string;
+		args: Record<string, unknown>;
+		result: Record<string, unknown>;
+	}> = [
+		{
+			id: 'change_1',
+			name: 'create_onto_task',
+			args: { title: 'App Store screenshots', project_id: PROJECT_ID },
+			result: {
+				task: { id: TASK_ID, title: 'App Store screenshots', project_id: PROJECT_ID }
+			}
+		},
+		{
+			id: 'change_2',
+			name: 'update_onto_document',
+			args: { document_id: DOC_ID },
+			result: {
+				document: { id: DOC_ID },
+				document_change: {
+					version: 1,
+					document_id: DOC_ID,
+					project_id: PROJECT_ID,
+					title: 'Launch checklist',
+					lines_added: 4,
+					lines_removed: 1,
+					chars_before: 900,
+					chars_after: 1040,
+					before_hash: 'demo-h0',
+					after_hash: 'demo-h1',
+					hunks: [
+						{
+							old_start: 12,
+							new_start: 12,
+							lines: [
+								{ kind: 'context', text: '## Store listing' },
+								{ kind: 'remove', text: '- Screenshots: TODO' },
+								{
+									kind: 'add',
+									text: '- Screenshots: 6.9", 6.5" and 5.5" sets, light and dark'
+								},
+								{ kind: 'add', text: '- Preview video: optional, 30 s' },
+								{ kind: 'add', text: '- Promo text: 170 characters' },
+								{ kind: 'context', text: '' },
+								{ kind: 'add', text: 'Owner: DJ · due Thu 9:00' }
+							]
+						}
+					],
+					hunks_truncated: false,
+					revert_patch: { ops: [] }
+				}
+			}
+		},
+		{
+			id: 'change_3',
+			name: 'update_onto_table_rows',
+			args: { table_id: TABLE_ID },
+			result: {
+				table_change: {
+					kind: 'table_change',
+					document_id: TABLE_ID,
+					project_id: PROJECT_ID,
+					title: 'Beta testers',
+					revision: 7,
+					rows_added: 3,
+					rows_updated: 1,
+					rows_deleted: 0,
+					cells_changed: 7,
+					columns_changed: [],
+					sample: [
+						{ row: 'Priya', column: 'Status', before: 'Invited', after: 'Active' },
+						{ row: 'Marcus', column: 'Email', before: '', after: 'marcus@example.com' },
+						{ row: 'Lena', column: 'Device', before: '', after: 'iPhone 15' }
+					],
+					inverse_ops: [{ op: 'delete_rows' }],
+					applied_revision: 8
+				}
+			}
+		}
+	];
+	for (const call of calls) {
+		store.port.applySemanticEvent(
+			semantic(handle.turnRunId, {
+				type: 'tool_call',
+				tool_call: {
+					id: call.id,
+					type: 'function',
+					function: { name: call.name, arguments: JSON.stringify(call.args) }
+				}
+			})
+		);
+		store.port.applySemanticEvent(
+			semantic(handle.turnRunId, {
+				type: 'tool_result',
+				result: { tool_call_id: call.id, success: true, result: call.result }
+			})
+		);
+	}
+	if (skew) skew.ms = 0;
+	store.port.appendAssistantText({
+		handle,
+		executionGeneration: 0,
+		text: 'Done, three things:\n\n- **App Store screenshots** is a task under Launch, due Thursday at 9.\n- The **Launch checklist** now lists the three screenshot sizes and the promo text.\n- **Beta testers** has Priya, Marcus and Lena, with Priya marked active.'
+	});
 	store.port.finishTurn({
 		handle,
 		status: 'completed',

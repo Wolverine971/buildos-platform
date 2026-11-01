@@ -272,346 +272,332 @@
 	closeOnBackdrop={!submitting}
 	closeOnEscape={!submitting}
 >
-	{#snippet children()}
-		<form id={formId} onsubmit={handleSubmit} class="space-y-4 px-3 py-3 sm:px-4 sm:py-4">
-			<div class="flex items-start gap-3 rounded-lg border border-border bg-muted/35 p-3">
-				<Bot class="mt-0.5 h-5 w-5 flex-shrink-0 text-foreground" />
-				<div class="min-w-0 flex-1">
-					<label for={`${formId}-goal`} class="text-sm font-semibold text-foreground">
-						What should this automation do?
+	<form id={formId} onsubmit={handleSubmit} class="space-y-4 px-3 py-3 sm:px-4 sm:py-4">
+		<div class="flex items-start gap-3 rounded-lg border border-border bg-muted/35 p-3">
+			<Bot class="mt-0.5 h-5 w-5 flex-shrink-0 text-foreground" />
+			<div class="min-w-0 flex-1">
+				<label for={`${formId}-goal`} class="text-sm font-semibold text-foreground">
+					What should this automation do?
+				</label>
+				<textarea
+					id={`${formId}-goal`}
+					bind:value={goal}
+					rows="3"
+					disabled={submitting}
+					required
+					placeholder="Review this project every week and flag anything blocked…"
+					class="{inputClass()} mt-2 resize-y"
+				></textarea>
+			</div>
+		</div>
+
+		<div class="grid gap-3 sm:grid-cols-2">
+			<div class="space-y-2">
+				<label for={`${formId}-label`} class="text-sm font-medium text-foreground">
+					Name
+				</label>
+				<input
+					id={`${formId}-label`}
+					bind:value={label}
+					disabled={submitting}
+					placeholder="Optional"
+					class={inputClass()}
+				/>
+			</div>
+
+			<div class="space-y-2">
+				<div class="text-sm font-medium text-foreground">Work in</div>
+				<div class="grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1">
+					<button
+						type="button"
+						class={segmentClass(contextType === 'global')}
+						aria-pressed={contextType === 'global'}
+						disabled={submitting}
+						onclick={() => setContextType('global')}
+					>
+						<Globe class="h-4 w-4" />
+						<span>Workspace</span>
+					</button>
+					<button
+						type="button"
+						class={segmentClass(contextType === 'project')}
+						aria-pressed={contextType === 'project'}
+						disabled={submitting}
+						onclick={() => setContextType('project')}
+					>
+						<FolderKanban class="h-4 w-4" />
+						<span>Project</span>
+					</button>
+				</div>
+			</div>
+		</div>
+
+		{#if contextType === 'project'}
+			<div class="space-y-2">
+				<label for={`${formId}-project`} class="text-sm font-medium text-foreground">
+					Project
+				</label>
+				{#if projectsLoading}
+					<div
+						class="flex min-h-11 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground"
+					>
+						<LoaderCircle class="h-4 w-4 animate-spin motion-reduce:animate-none" />
+						<span>Loading projects...</span>
+					</div>
+				{:else if projectsError}
+					<div
+						class="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+					>
+						{projectsError}
+					</div>
+				{:else}
+					<select
+						id={`${formId}-project`}
+						bind:value={projectId}
+						disabled={submitting || projects.length === 0}
+						required={contextType === 'project'}
+						class={inputClass()}
+					>
+						<option value="" disabled>
+							{projects.length ? 'Choose a project' : 'No projects available'}
+						</option>
+						{#each projects as project (project.id)}
+							<option value={project.id}>{project.name}</option>
+						{/each}
+					</select>
+				{/if}
+			</div>
+		{/if}
+
+		<button
+			type="button"
+			class="flex min-h-11 w-full items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-left shadow-ink transition-colors hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+			aria-expanded={showAdvanced}
+			aria-controls={`${formId}-advanced-access ${formId}-advanced-timezone ${formId}-advanced-details`}
+			disabled={submitting}
+			onclick={() => (showAdvanced = !showAdvanced)}
+		>
+			<SlidersHorizontal class="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+			<span class="min-w-0 flex-1">
+				<span class="block text-sm font-medium text-foreground">Automation options</span>
+				<span class="block truncate text-xs text-muted-foreground">{advancedSummary}</span>
+			</span>
+			<ChevronDown
+				class="h-4 w-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none {showAdvanced
+					? 'rotate-180'
+					: ''}"
+				aria-hidden="true"
+			/>
+		</button>
+
+		{#if showAdvanced}
+			<div
+				id={`${formId}-advanced-access`}
+				class="space-y-3 rounded-lg border border-border bg-muted/20 p-3"
+			>
+				<p class="micro-label font-semibold text-muted-foreground">Access policy</p>
+				<div class="grid gap-3 sm:grid-cols-2">
+					<div class="space-y-2">
+						<div class="text-sm font-medium text-foreground">Access</div>
+						<div
+							class="grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1"
+						>
+							<button
+								type="button"
+								class={segmentClass(scopeMode === 'read_only')}
+								aria-pressed={scopeMode === 'read_only'}
+								disabled={submitting}
+								onclick={() => setScopeMode('read_only')}
+							>
+								<Eye class="h-4 w-4" />
+								<span>Review only</span>
+							</button>
+							<button
+								type="button"
+								class={segmentClass(scopeMode === 'read_write')}
+								aria-pressed={scopeMode === 'read_write'}
+								disabled={submitting}
+								onclick={() => setScopeMode('read_write')}
+							>
+								<PencilLine class="h-4 w-4" />
+								<span>Can make changes</span>
+							</button>
+						</div>
+					</div>
+
+					<label
+						class="flex min-h-[78px] items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 shadow-ink {scopeMode ===
+						'read_write'
+							? ''
+							: 'opacity-60'}"
+					>
+						<span class="flex min-w-0 items-center gap-2">
+							<ShieldCheck class="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+							<span class="min-w-0">
+								<span class="block text-sm font-medium text-foreground"
+									>Ask before applying</span
+								>
+								<span class="block text-xs text-muted-foreground"
+									>You approve any changes first</span
+								>
+							</span>
+						</span>
+						<span class="relative inline-flex flex-shrink-0 items-center">
+							<input
+								type="checkbox"
+								bind:checked={review}
+								disabled={scopeMode !== 'read_write' || submitting}
+								class="peer sr-only"
+							/>
+							<span
+								aria-hidden="true"
+								class="h-6 w-11 rounded-full bg-muted transition-colors peer-checked:bg-accent peer-disabled:cursor-not-allowed after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-card after:shadow-ink after:transition-transform peer-checked:after:translate-x-5 motion-reduce:transition-none motion-reduce:after:transition-none"
+							></span>
+						</span>
+					</label>
+				</div>
+			</div>
+		{/if}
+
+		<div class="space-y-3 rounded-lg border border-border bg-muted/35 p-3">
+			<label class="flex items-center justify-between gap-3">
+				<span class="flex min-w-0 items-center gap-2">
+					<CalendarClock class="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+					<span class="text-sm font-medium text-foreground">Schedule</span>
+				</span>
+				<span class="relative inline-flex flex-shrink-0 items-center">
+					<input
+						type="checkbox"
+						bind:checked={scheduleEnabled}
+						disabled={submitting}
+						class="peer sr-only"
+					/>
+					<span
+						aria-hidden="true"
+						class="h-6 w-11 rounded-full bg-muted transition-colors peer-checked:bg-accent peer-disabled:cursor-not-allowed after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-card after:shadow-ink after:transition-transform peer-checked:after:translate-x-5 motion-reduce:transition-none motion-reduce:after:transition-none"
+					></span>
+				</span>
+			</label>
+
+			{#if scheduleEnabled}
+				<div class="grid gap-3 sm:grid-cols-2">
+					<div class="space-y-2">
+						<label
+							for={`${formId}-frequency`}
+							class="text-sm font-medium text-foreground"
+						>
+							Frequency
+						</label>
+						<select
+							id={`${formId}-frequency`}
+							bind:value={scheduleFrequency}
+							disabled={submitting}
+							class={inputClass()}
+						>
+							<option value="daily">Daily</option>
+							<option value="weekly">Weekly</option>
+						</select>
+					</div>
+					<div class="space-y-2">
+						<label for={`${formId}-time`} class="text-sm font-medium text-foreground">
+							Time
+						</label>
+						<input
+							id={`${formId}-time`}
+							type="time"
+							bind:value={scheduleTime}
+							disabled={submitting}
+							required={scheduleEnabled}
+							class={inputClass()}
+						/>
+					</div>
+				</div>
+
+				{#if scheduleFrequency === 'weekly'}
+					<div class="grid grid-cols-7 gap-1">
+						{#each dayOptions as day (day.value)}
+							<button
+								type="button"
+								class={segmentClass(scheduleDay === day.value)}
+								aria-pressed={scheduleDay === day.value}
+								disabled={submitting}
+								onclick={() => (scheduleDay = day.value)}
+							>
+								<span>{day.label}</span>
+							</button>
+						{/each}
+					</div>
+				{/if}
+
+				{#if showAdvanced}
+					<div id={`${formId}-advanced-timezone`} class="space-y-2">
+						<label
+							for={`${formId}-timezone`}
+							class="text-sm font-medium text-foreground"
+						>
+							Timezone
+						</label>
+						<input
+							id={`${formId}-timezone`}
+							bind:value={scheduleTimezone}
+							disabled={submitting}
+							class={inputClass()}
+						/>
+					</div>
+				{:else}
+					<p class="text-xs text-muted-foreground">
+						Times use <span class="font-medium text-foreground">{scheduleTimezone}</span
+						>.
+					</p>
+				{/if}
+			{/if}
+		</div>
+
+		{#if showAdvanced}
+			<div id={`${formId}-advanced-details`} class="grid gap-3 sm:grid-cols-2">
+				<div class="space-y-2">
+					<label
+						for={`${formId}-instructions`}
+						class="text-sm font-medium text-foreground"
+					>
+						Instructions
 					</label>
 					<textarea
-						id={`${formId}-goal`}
-						bind:value={goal}
+						id={`${formId}-instructions`}
+						bind:value={instructions}
 						rows="3"
 						disabled={submitting}
-						required
-						placeholder="Review this project every week and flag anything blocked…"
-						class="{inputClass()} mt-2 resize-y"
+						placeholder="Optional"
+						class="{inputClass()} resize-y"
+					></textarea>
+				</div>
+				<div class="space-y-2">
+					<label
+						for={`${formId}-expected-output`}
+						class="text-sm font-medium text-foreground"
+					>
+						Expected output
+					</label>
+					<textarea
+						id={`${formId}-expected-output`}
+						bind:value={expectedOutput}
+						rows="3"
+						disabled={submitting}
+						placeholder="Optional"
+						class="{inputClass()} resize-y"
 					></textarea>
 				</div>
 			</div>
+		{/if}
 
-			<div class="grid gap-3 sm:grid-cols-2">
-				<div class="space-y-2">
-					<label for={`${formId}-label`} class="text-sm font-medium text-foreground">
-						Name
-					</label>
-					<input
-						id={`${formId}-label`}
-						bind:value={label}
-						disabled={submitting}
-						placeholder="Optional"
-						class={inputClass()}
-					/>
-				</div>
-
-				<div class="space-y-2">
-					<div class="text-sm font-medium text-foreground">Work in</div>
-					<div
-						class="grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1"
-					>
-						<button
-							type="button"
-							class={segmentClass(contextType === 'global')}
-							aria-pressed={contextType === 'global'}
-							disabled={submitting}
-							onclick={() => setContextType('global')}
-						>
-							<Globe class="h-4 w-4" />
-							<span>Workspace</span>
-						</button>
-						<button
-							type="button"
-							class={segmentClass(contextType === 'project')}
-							aria-pressed={contextType === 'project'}
-							disabled={submitting}
-							onclick={() => setContextType('project')}
-						>
-							<FolderKanban class="h-4 w-4" />
-							<span>Project</span>
-						</button>
-					</div>
-				</div>
-			</div>
-
-			{#if contextType === 'project'}
-				<div class="space-y-2">
-					<label for={`${formId}-project`} class="text-sm font-medium text-foreground">
-						Project
-					</label>
-					{#if projectsLoading}
-						<div
-							class="flex min-h-11 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground"
-						>
-							<LoaderCircle class="h-4 w-4 animate-spin motion-reduce:animate-none" />
-							<span>Loading projects...</span>
-						</div>
-					{:else if projectsError}
-						<div
-							class="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
-						>
-							{projectsError}
-						</div>
-					{:else}
-						<select
-							id={`${formId}-project`}
-							bind:value={projectId}
-							disabled={submitting || projects.length === 0}
-							required={contextType === 'project'}
-							class={inputClass()}
-						>
-							<option value="" disabled>
-								{projects.length ? 'Choose a project' : 'No projects available'}
-							</option>
-							{#each projects as project (project.id)}
-								<option value={project.id}>{project.name}</option>
-							{/each}
-						</select>
-					{/if}
-				</div>
-			{/if}
-
-			<button
-				type="button"
-				class="flex min-h-11 w-full items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-left shadow-ink transition-colors hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
-				aria-expanded={showAdvanced}
-				aria-controls={`${formId}-advanced-access ${formId}-advanced-timezone ${formId}-advanced-details`}
-				disabled={submitting}
-				onclick={() => (showAdvanced = !showAdvanced)}
+		{#if formError}
+			<div
+				class="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
 			>
-				<SlidersHorizontal
-					class="h-4 w-4 shrink-0 text-muted-foreground"
-					aria-hidden="true"
-				/>
-				<span class="min-w-0 flex-1">
-					<span class="block text-sm font-medium text-foreground">Automation options</span
-					>
-					<span class="block truncate text-xs text-muted-foreground"
-						>{advancedSummary}</span
-					>
-				</span>
-				<ChevronDown
-					class="h-4 w-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none {showAdvanced
-						? 'rotate-180'
-						: ''}"
-					aria-hidden="true"
-				/>
-			</button>
-
-			{#if showAdvanced}
-				<div
-					id={`${formId}-advanced-access`}
-					class="space-y-3 rounded-lg border border-border bg-muted/20 p-3"
-				>
-					<p class="micro-label font-semibold text-muted-foreground">Access policy</p>
-					<div class="grid gap-3 sm:grid-cols-2">
-						<div class="space-y-2">
-							<div class="text-sm font-medium text-foreground">Access</div>
-							<div
-								class="grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1"
-							>
-								<button
-									type="button"
-									class={segmentClass(scopeMode === 'read_only')}
-									aria-pressed={scopeMode === 'read_only'}
-									disabled={submitting}
-									onclick={() => setScopeMode('read_only')}
-								>
-									<Eye class="h-4 w-4" />
-									<span>Review only</span>
-								</button>
-								<button
-									type="button"
-									class={segmentClass(scopeMode === 'read_write')}
-									aria-pressed={scopeMode === 'read_write'}
-									disabled={submitting}
-									onclick={() => setScopeMode('read_write')}
-								>
-									<PencilLine class="h-4 w-4" />
-									<span>Can make changes</span>
-								</button>
-							</div>
-						</div>
-
-						<label
-							class="flex min-h-[78px] items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 shadow-ink {scopeMode ===
-							'read_write'
-								? ''
-								: 'opacity-60'}"
-						>
-							<span class="flex min-w-0 items-center gap-2">
-								<ShieldCheck class="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-								<span class="min-w-0">
-									<span class="block text-sm font-medium text-foreground"
-										>Ask before applying</span
-									>
-									<span class="block text-xs text-muted-foreground"
-										>You approve any changes first</span
-									>
-								</span>
-							</span>
-							<span class="relative inline-flex flex-shrink-0 items-center">
-								<input
-									type="checkbox"
-									bind:checked={review}
-									disabled={scopeMode !== 'read_write' || submitting}
-									class="peer sr-only"
-								/>
-								<span
-									aria-hidden="true"
-									class="h-6 w-11 rounded-full bg-muted transition-colors peer-checked:bg-accent peer-disabled:cursor-not-allowed after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-card after:shadow-ink after:transition-transform peer-checked:after:translate-x-5 motion-reduce:transition-none motion-reduce:after:transition-none"
-								></span>
-							</span>
-						</label>
-					</div>
-				</div>
-			{/if}
-
-			<div class="space-y-3 rounded-lg border border-border bg-muted/35 p-3">
-				<label class="flex items-center justify-between gap-3">
-					<span class="flex min-w-0 items-center gap-2">
-						<CalendarClock class="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-						<span class="text-sm font-medium text-foreground">Schedule</span>
-					</span>
-					<span class="relative inline-flex flex-shrink-0 items-center">
-						<input
-							type="checkbox"
-							bind:checked={scheduleEnabled}
-							disabled={submitting}
-							class="peer sr-only"
-						/>
-						<span
-							aria-hidden="true"
-							class="h-6 w-11 rounded-full bg-muted transition-colors peer-checked:bg-accent peer-disabled:cursor-not-allowed after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-card after:shadow-ink after:transition-transform peer-checked:after:translate-x-5 motion-reduce:transition-none motion-reduce:after:transition-none"
-						></span>
-					</span>
-				</label>
-
-				{#if scheduleEnabled}
-					<div class="grid gap-3 sm:grid-cols-2">
-						<div class="space-y-2">
-							<label
-								for={`${formId}-frequency`}
-								class="text-sm font-medium text-foreground"
-							>
-								Frequency
-							</label>
-							<select
-								id={`${formId}-frequency`}
-								bind:value={scheduleFrequency}
-								disabled={submitting}
-								class={inputClass()}
-							>
-								<option value="daily">Daily</option>
-								<option value="weekly">Weekly</option>
-							</select>
-						</div>
-						<div class="space-y-2">
-							<label
-								for={`${formId}-time`}
-								class="text-sm font-medium text-foreground"
-							>
-								Time
-							</label>
-							<input
-								id={`${formId}-time`}
-								type="time"
-								bind:value={scheduleTime}
-								disabled={submitting}
-								required={scheduleEnabled}
-								class={inputClass()}
-							/>
-						</div>
-					</div>
-
-					{#if scheduleFrequency === 'weekly'}
-						<div class="grid grid-cols-7 gap-1">
-							{#each dayOptions as day (day.value)}
-								<button
-									type="button"
-									class={segmentClass(scheduleDay === day.value)}
-									aria-pressed={scheduleDay === day.value}
-									disabled={submitting}
-									onclick={() => (scheduleDay = day.value)}
-								>
-									<span>{day.label}</span>
-								</button>
-							{/each}
-						</div>
-					{/if}
-
-					{#if showAdvanced}
-						<div id={`${formId}-advanced-timezone`} class="space-y-2">
-							<label
-								for={`${formId}-timezone`}
-								class="text-sm font-medium text-foreground"
-							>
-								Timezone
-							</label>
-							<input
-								id={`${formId}-timezone`}
-								bind:value={scheduleTimezone}
-								disabled={submitting}
-								class={inputClass()}
-							/>
-						</div>
-					{:else}
-						<p class="text-xs text-muted-foreground">
-							Times use <span class="font-medium text-foreground"
-								>{scheduleTimezone}</span
-							>.
-						</p>
-					{/if}
-				{/if}
+				{formError}
 			</div>
-
-			{#if showAdvanced}
-				<div id={`${formId}-advanced-details`} class="grid gap-3 sm:grid-cols-2">
-					<div class="space-y-2">
-						<label
-							for={`${formId}-instructions`}
-							class="text-sm font-medium text-foreground"
-						>
-							Instructions
-						</label>
-						<textarea
-							id={`${formId}-instructions`}
-							bind:value={instructions}
-							rows="3"
-							disabled={submitting}
-							placeholder="Optional"
-							class="{inputClass()} resize-y"
-						></textarea>
-					</div>
-					<div class="space-y-2">
-						<label
-							for={`${formId}-expected-output`}
-							class="text-sm font-medium text-foreground"
-						>
-							Expected output
-						</label>
-						<textarea
-							id={`${formId}-expected-output`}
-							bind:value={expectedOutput}
-							rows="3"
-							disabled={submitting}
-							placeholder="Optional"
-							class="{inputClass()} resize-y"
-						></textarea>
-					</div>
-				</div>
-			{/if}
-
-			{#if formError}
-				<div
-					class="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
-				>
-					{formError}
-				</div>
-			{/if}
-		</form>
-	{/snippet}
+		{/if}
+	</form>
 
 	{#snippet footer()}
 		<div

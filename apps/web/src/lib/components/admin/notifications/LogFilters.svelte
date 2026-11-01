@@ -171,7 +171,7 @@
 					placeholder="All events"
 				>
 					<option value="">All Events</option>
-					{#each eventTypes as type}
+					{#each eventTypes as type (type)}
 						<option value={type}
 							>{type
 								.replace(/_/g, ' ')
@@ -199,7 +199,7 @@
 					placeholder="All channels"
 				>
 					<option value="">All Channels</option>
-					{#each channels as channel}
+					{#each channels as channel (channel)}
 						<option value={channel}>{channel.toUpperCase()}</option>
 					{/each}
 				</Select>
@@ -223,7 +223,7 @@
 					placeholder="All statuses"
 				>
 					<option value="">All Statuses</option>
-					{#each statusOptions as status}
+					{#each statusOptions as status (status)}
 						<option value={status}
 							>{status
 								.replace(/_/g, ' ')
@@ -251,7 +251,7 @@
 					placeholder="All levels"
 				>
 					<option value="">All Levels</option>
-					{#each logLevels as level}
+					{#each logLevels as level (level)}
 						<option value={level}>{level.toUpperCase()}</option>
 					{/each}
 				</Select>

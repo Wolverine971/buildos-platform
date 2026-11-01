@@ -1,6 +1,5 @@
 <!-- apps/web/src/lib/components/ontology/ProjectImageLibrary.svelte -->
 <script lang="ts">
-	import { browser } from '$app/environment';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { Eye, RefreshCw } from 'lucide-svelte';
@@ -90,7 +89,7 @@
 	}
 
 	$effect(() => {
-		if (!browser || !projectId) return;
+		if (!projectId) return;
 		void loadAssets();
 	});
 </script>
@@ -122,7 +121,7 @@
 		<p class="text-xs text-muted-foreground">{emptyMessage}</p>
 	{:else}
 		<div class="space-y-2">
-			{#each visibleAssets.slice(0, compact && !pickerMode ? 10 : visibleAssets.length) as asset}
+			{#each visibleAssets.slice(0, compact && !pickerMode ? 10 : visibleAssets.length) as asset (asset.id)}
 				<div
 					class="flex items-center justify-between gap-2 rounded border border-border bg-card px-2 py-1.5"
 				>

@@ -75,7 +75,6 @@
 	);
 
 	$effect(() => {
-		if (!browser) return;
 		selectedTimeframe;
 		loadDashboard();
 	});
@@ -428,7 +427,7 @@
 				<h3 class="text-sm font-semibold text-foreground mb-4">First Runtime Actions</h3>
 				{#if firstActions.length > 0}
 					<div class="space-y-4">
-						{#each firstActions.slice(0, 8) as route}
+						{#each firstActions.slice(0, 8) as route (route.label)}
 							<div>
 								<div class="flex items-center justify-between gap-3 mb-2">
 									<div class="min-w-0">
@@ -466,7 +465,7 @@
 				<h3 class="text-sm font-semibold text-foreground mb-4">Context Types</h3>
 				{#if contextTypes.length > 0}
 					<div class="space-y-4">
-						{#each contextTypes.slice(0, 8) as context}
+						{#each contextTypes.slice(0, 8) as context (context.label)}
 							<div>
 								<div class="flex items-center justify-between gap-3 mb-2">
 									<div class="min-w-0">
@@ -506,7 +505,7 @@
 				<h3 class="text-sm font-semibold text-foreground mb-4">Turn Statuses</h3>
 				{#if statuses.length > 0}
 					<div class="space-y-4">
-						{#each statuses as status}
+						{#each statuses as status (status.label)}
 							<div>
 								<div class="flex items-center justify-between gap-3 mb-2">
 									<span class="text-sm font-medium text-foreground truncate">
@@ -536,7 +535,7 @@
 				<h3 class="text-sm font-semibold text-foreground mb-4">Cache Sources</h3>
 				{#if cacheSources.length > 0}
 					<div class="space-y-4">
-						{#each cacheSources as source}
+						{#each cacheSources as source (source.label)}
 							<div>
 								<div class="flex items-center justify-between gap-3 mb-2">
 									<span class="text-sm font-medium text-foreground truncate">

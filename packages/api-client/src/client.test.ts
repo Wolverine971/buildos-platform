@@ -710,6 +710,112 @@ describe('endpoint wrappers', () => {
 		expect(lastCall(fetchMock).url).toBe(base);
 	});
 
+	it('chat pending-change dismiss and proposal card routes carry their keys and bodies', async () => {
+		const sessionId = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+		const cardId = '22222222-3333-4444-8555-666666666666';
+		const fetchMock = vi.fn<typeof fetch>().mockImplementation(async () =>
+			jsonResponse(
+				envelope({
+					dismissed: true,
+					resolution: { outcome: 'applied' },
+					undo: { outcome: 'undone' },
+					view: {},
+					digest: 'd'
+				})
+			)
+		);
+		const api = makeClient(fetchMock);
+
+		await api.chat.dismissPendingChange(sessionId, 'k 1');
+		expect(lastCall(fetchMock).init.method).toBe('DELETE');
+		expect(lastCall(fetchMock).url).toBe(
+			`https://build-os.com/api/chat/sessions/${sessionId}/pending-change?key=k%201`
+		);
+
+		const chosen = await api.chat.chooseProposal(cardId, {
+			choice: 'apply',
+			session_id: sessionId
+		});
+		expect(chosen.resolution.outcome).toBe('applied');
+		expect(lastCall(fetchMock).url).toBe(
+			`https://build-os.com/api/chat/proposal-cards/${cardId}`
+		);
+		expect(lastCall(fetchMock).init.body).toBe(
+			JSON.stringify({ choice: 'apply', session_id: sessionId })
+		);
+
+		await api.chat.undoProposal(cardId, { session_id: sessionId, seen_digest: 'abc' });
+		expect(lastCall(fetchMock).url).toBe(
+			`https://build-os.com/api/chat/proposal-cards/${cardId}/undo`
+		);
+		expect(lastCall(fetchMock).init.method).toBe('POST');
+
+		await api.chat.previewProposal(cardId, sessionId);
+		expect(lastCall(fetchMock).url).toBe(
+			`https://build-os.com/api/chat/proposal-cards/${cardId}/preview?session_id=${sessionId}`
+		);
+		expect(lastCall(fetchMock).init.method).toBe('GET');
+		await api.chat.undoPreviewProposal(cardId, sessionId);
+		expect(lastCall(fetchMock).url).toBe(
+			`https://build-os.com/api/chat/proposal-cards/${cardId}/undo-preview?session_id=${sessionId}`
+		);
+	});
+
+	it('documents.revertChange and tables.revertChange post the receipts to the undo routes', async () => {
+		const fetchMock = vi.fn<typeof fetch>().mockImplementation(async () =>
+			jsonResponse(
+				envelope({
+					document: null,
+					document_change: null,
+					strategy: 'patch',
+					version_warning: null,
+					already_undone: false,
+					apply: { revision: 4, reverted_revision: 3, reverted_ops: 2 },
+					table: {}
+				})
+			)
+		);
+		const api = makeClient(fetchMock);
+
+		const undone = await api.documents.revertChange('doc 1', {
+			revert_patches: [{ ops: [] }],
+			before_hash: 'h0',
+			expected_after_hash: 'h1'
+		});
+		expect(undone.already_undone).toBe(false);
+		expect(lastCall(fetchMock).init.method).toBe('POST');
+		expect(lastCall(fetchMock).url).toBe(
+			'https://build-os.com/api/onto/documents/doc%201/revert-change'
+		);
+		expect(JSON.parse(String(lastCall(fetchMock).init.body))).toEqual({
+			revert_patches: [{ ops: [] }],
+			before_hash: 'h0',
+			expected_after_hash: 'h1'
+		});
+
+		const receipt = {
+			kind: 'table_change' as const,
+			document_id: 't1',
+			project_id: 'p1',
+			title: 'Leads',
+			revision: 3,
+			rows_added: 1,
+			rows_updated: 0,
+			rows_deleted: 0,
+			cells_changed: 2,
+			columns_changed: [],
+			sample: [],
+			inverse_ops: [{ op: 'delete_row' }],
+			applied_revision: 4
+		};
+		const reverted = await api.tables.revertChange('t1', { receipts: [receipt] });
+		expect(reverted.apply.reverted_ops).toBe(2);
+		expect(lastCall(fetchMock).url).toBe(
+			'https://build-os.com/api/onto/tables/t1/revert-change'
+		);
+		expect(JSON.parse(String(lastCall(fetchMock).init.body))).toEqual({ receipts: [receipt] });
+	});
+
 	it('chat.recentForProject passes paging and the workspace include', async () => {
 		const fetchMock = vi
 			.fn<typeof fetch>()

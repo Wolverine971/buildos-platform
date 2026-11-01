@@ -9,7 +9,7 @@
 <script lang="ts">
 	import { fly } from 'svelte/transition';
 	import { prefersReducedMotion } from 'svelte/motion';
-	import { portal } from '$lib/actions/portal';
+	import { portal } from '$lib/attachments/portal';
 	import {
 		clearedPile,
 		isPileEntryActive,
@@ -203,7 +203,7 @@
 
 {#if entries.length}
 	<div
-		use:portal
+		{@attach portal()}
 		bind:this={root}
 		transition:fly={motion()}
 		class="modal-root pointer-events-auto fixed bottom-[calc(0.75rem+var(--app-bottom-dock,0px))] right-3 z-[10002] w-[min(22rem,calc(100vw-1.5rem))] sm:bottom-4 sm:right-4"

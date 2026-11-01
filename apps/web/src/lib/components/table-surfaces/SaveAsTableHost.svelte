@@ -72,39 +72,35 @@
 
 {#if pickerOpen && pendingCsv}
 	<Modal isOpen={true} title="Save as table in…" size="sm" onClose={reset}>
-		{#snippet children()}
-			<div class="grid gap-2 p-3">
-				{#if projectsLoading}
-					<div class="grid gap-1.5" aria-busy="true" aria-label="Loading projects">
-						{#each [0, 1, 2] as index (index)}
-							<div
-								class="h-11 animate-pulse rounded-md bg-muted motion-reduce:animate-none"
-							></div>
-						{/each}
-					</div>
-				{:else if projectsError}
-					<p class="text-sm text-destructive" role="alert">{projectsError}</p>
-				{:else if projects.length === 0}
-					<p class="text-sm text-muted-foreground">
-						Make a project first, then save here.
-					</p>
-				{:else}
-					<ul class="grid max-h-80 gap-1 overflow-y-auto" role="list">
-						{#each projects as project (project.id)}
-							<li>
-								<button
-									type="button"
-									onclick={() => chooseProject(project.id)}
-									class="flex min-h-11 w-full items-center rounded-md px-2.5 text-left text-sm text-foreground transition-colors hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
-								>
-									<span class="truncate">{project.name}</span>
-								</button>
-							</li>
-						{/each}
-					</ul>
-				{/if}
-			</div>
-		{/snippet}
+		<div class="grid gap-2 p-3">
+			{#if projectsLoading}
+				<div class="grid gap-1.5" aria-busy="true" aria-label="Loading projects">
+					{#each [0, 1, 2] as index (index)}
+						<div
+							class="h-11 animate-pulse rounded-md bg-muted motion-reduce:animate-none"
+						></div>
+					{/each}
+				</div>
+			{:else if projectsError}
+				<p class="text-sm text-destructive" role="alert">{projectsError}</p>
+			{:else if projects.length === 0}
+				<p class="text-sm text-muted-foreground">Make a project first, then save here.</p>
+			{:else}
+				<ul class="grid max-h-80 gap-1 overflow-y-auto" role="list">
+					{#each projects as project (project.id)}
+						<li>
+							<button
+								type="button"
+								onclick={() => chooseProject(project.id)}
+								class="flex min-h-11 w-full items-center rounded-md px-2.5 text-left text-sm text-foreground transition-colors hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
+							>
+								<span class="truncate">{project.name}</span>
+							</button>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</div>
 	</Modal>
 {/if}
 

@@ -104,7 +104,9 @@
 	}: Props = $props();
 
 	let textareaComponent = $state<Textarea | null>(null);
-	let textareaElement = $state<HTMLTextAreaElement | null>(null);
+	const textareaElement = $derived<HTMLTextAreaElement | null>(
+		textareaComponent?.getElement() ?? null
+	);
 	let userPlacedCaret = false;
 	let savedRecording: SavedRecording | null = null;
 
@@ -186,10 +188,6 @@
 	});
 
 	$effect(() => {
-		textareaElement = textareaComponent?.getElement() ?? null;
-	});
-
-	$effect(() => {
 		if (enableVoice) scheduleVoiceDraftCleanup();
 	});
 
@@ -255,7 +253,7 @@
 	}
 
 	$effect(() => {
-		if (!browser || dictation.phase !== 'recording') return;
+		if (dictation.phase !== 'recording') return;
 		document.addEventListener('keydown', handleGlobalKeyDown);
 		return () => document.removeEventListener('keydown', handleGlobalKeyDown);
 	});

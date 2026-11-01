@@ -1082,635 +1082,611 @@
 		/>
 	{/snippet}
 
-	{#snippet children()}
-		<!-- Main content -->
-		<div class="px-2 py-2 sm:px-4 sm:py-4">
-			{#if isLoading}
-				<div class="flex items-center justify-center py-12">
-					<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
-				</div>
-			{:else if !task}
-				<div class="text-center py-8">
-					<p class="text-destructive">Task not found</p>
-				</div>
-			{:else}
-				<div
-					class="relative grid grid-cols-1 gap-y-3 sm:gap-y-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:overflow-x-clip"
-				>
-					<!-- Main Form (Left 2 columns) -->
-					<div class="min-w-0 lg:col-start-1 lg:row-start-1">
-						<form
-							id={detailsFormId}
-							onsubmit={(e) => {
-								e.preventDefault();
-								handleSave();
-							}}
-							class="space-y-3 sm:space-y-4"
-						>
-							<Card variant="elevated" class="wt-paper">
-								<CardBody class="space-y-4">
-									<div class="space-y-2">
-										<div class="flex items-end justify-between gap-2 mb-2">
-											<label
-												for={titleInputId}
-												class="block text-sm font-semibold text-foreground"
-											>
-												Title
-												<span class="text-destructive ml-0.5">*</span>
-											</label>
-											<button
-												type="button"
-												onclick={generateTitle}
-												disabled={isSaving ||
-													isGeneratingTitle ||
-													!description.trim()}
-												class="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-border bg-card text-xs font-medium text-muted-foreground shadow-ink transition-all pressable hover:border-accent hover:text-accent disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:text-muted-foreground tx tx-grain tx-weak"
-												aria-label="Auto-generate title from description"
-											>
-												{#if isGeneratingTitle}
-													<LoaderCircle class="w-3 h-3 animate-spin" />
-													<span>Generating…</span>
-												{:else}
-													<Sparkles class="w-3 h-3" />
-													<span>Auto-generate</span>
-												{/if}
-											</button>
-										</div>
-										<TextInput
-											id={titleInputId}
-											bind:value={title}
-											inputmode="text"
-											enterkeyhint="next"
-											placeholder="Task title..."
-											required={true}
-											disabled={isSaving || isGeneratingTitle}
-											error={!title.trim() && error ? true : false}
-										/>
-										<div class="min-h-0 sm:min-h-5 flex items-start">
-											{#if !title.trim() && error}
-												<p class="text-sm text-destructive mt-2">
-													Required
-												</p>
-											{:else if titleGenerationError}
-												<p class="text-sm text-destructive mt-2">
-													{titleGenerationError}
-												</p>
-											{/if}
-										</div>
-									</div>
-
-									{#if task}
-										<TaskKeyDetails chips={taskEntities.keyChips} entities={taskEntities} />
-										<TaskEntityPopover
-											entities={taskEntities}
-											{taskId}
-											canEdit={true}
-										/>
-									{/if}
-
-									<div class="space-y-2">
-										<div class="flex items-center justify-between gap-2">
-											{#if descriptionEditing}
-												<label
-													for={descriptionInputId}
-													class="block text-sm font-semibold text-foreground"
-												>
-													Description
-												</label>
-											{:else}
-												<h3 class="text-sm font-semibold text-foreground">
-													Description
-												</h3>
-											{/if}
-											{#if !descriptionEditing || description.trim()}
-												<button
-													type="button"
-													onclick={toggleDescriptionEditing}
-													disabled={isSaving}
-													class="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground pressable hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 [@media(pointer:fine)]:min-h-7"
-													aria-pressed={!descriptionEditing}
-												>
-													{#if descriptionEditing}
-														<Eye class="h-3.5 w-3.5" />
-														Preview
-													{:else}
-														<Pencil class="h-3.5 w-3.5" />
-														Edit
-													{/if}
-												</button>
-											{/if}
-										</div>
-										{#if descriptionEditing}
-											<Textarea
-												id={descriptionInputId}
-												bind:value={description}
-												enterkeyhint="next"
-												placeholder="Add the context, expected outcome, or handoff notes..."
-												rows={4}
-												autoResize={true}
-												maxRows={16}
-												class="min-h-28"
-												disabled={isSaving}
-												size="md"
-											/>
-										{:else}
-											{@const descriptionHtml =
-												renderTaskMarkdown(description)}
-											<div
-												class="{getProseClasses(
-													'sm'
-												)} max-w-none rounded-lg border border-border/70 bg-card px-3 py-2.5 text-foreground [overflow-wrap:anywhere]"
-												{@attach entityMentions({
-													html: descriptionHtml,
-													targets: taskEntities.targets,
-													onOpen: (id, trigger) =>
-														taskEntities.openCardFor(id, trigger)
-												})}
-											>
-												{@html descriptionHtml}
-											</div>
-										{/if}
-									</div>
-								</CardBody>
-							</Card>
-
-							{#if error}
-								<div
-									class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 shadow-ink-inner"
-								>
-									<p class="text-sm text-destructive">{error}</p>
-								</div>
-							{/if}
-						</form>
-					</div>
-
-					<!-- Sidebar (right column, row 1) -->
-					<EntityModalDetailsDrawer
-						panelLabel="Task details"
-						showDesktopHeader={true}
-						mobileCollapsible={true}
+	<!-- Main content -->
+	<div class="px-2 py-2 sm:px-4 sm:py-4">
+		{#if isLoading}
+			<div class="flex items-center justify-center py-12">
+				<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
+			</div>
+		{:else if !task}
+			<div class="text-center py-8">
+				<p class="text-destructive">Task not found</p>
+			</div>
+		{:else}
+			<div
+				class="relative grid grid-cols-1 gap-y-3 sm:gap-y-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:overflow-x-clip"
+			>
+				<!-- Main Form (Left 2 columns) -->
+				<div class="min-w-0 lg:col-start-1 lg:row-start-1">
+					<form
+						id={detailsFormId}
+						onsubmit={(e) => {
+							e.preventDefault();
+							handleSave();
+						}}
+						class="space-y-3 sm:space-y-4"
 					>
-						{#snippet mobileSummary()}
-							{stateMeta.label} · {priorityMeta.label}{dueMeta
-								? ` · ${dueMeta.note}`
-								: ''}
-						{/snippet}
-						<Card variant="elevated" class="wt-card">
-							<CardBody padding="none">
-								<div class="divide-y divide-border/70">
-									<EntityCollaborationAction
-										{projectId}
-										entityType="task"
-										entityId={taskId}
-										entityTitle={title || task?.title || 'Task'}
-										disabled={isSaving || isLoading}
-									/>
-
-									<section
-										class="px-3 py-3 sm:px-4"
-										aria-label="Workflow: {stateMeta.label}, {priorityMeta.label}, {assigneeSummary}"
-									>
-										<div class="flex items-center gap-2">
-											<SlidersHorizontal
-												class="h-4 w-4 text-muted-foreground"
-											/>
-											<p class="micro-label font-semibold">Workflow</p>
-										</div>
-
-										<div class="mt-2 space-y-2">
-											<div
-												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
-											>
-												<label
-													for="state"
-													class="text-xs font-medium text-muted-foreground"
-												>
-													State
-												</label>
-												<Select
-													id="state"
-													bind:value={stateKey}
-													disabled={isSaving}
-													size="sm"
-													placeholder="State"
-												>
-													{#each TASK_STATES as state (state)}
-														<option value={state}>
-															{state === 'todo'
-																? 'To Do'
-																: state === 'in_progress'
-																	? 'In Progress'
-																	: state === 'blocked'
-																		? 'Blocked'
-																		: state === 'done'
-																			? 'Done'
-																			: state}
-														</option>
-													{/each}
-												</Select>
-											</div>
-
-											<div
-												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
-											>
-												<label
-													for="priority"
-													class="text-xs font-medium text-muted-foreground"
-												>
-													Priority
-												</label>
-												<Select
-													id="priority"
-													value={priority}
-													disabled={isSaving}
-													size="sm"
-													placeholder="Priority"
-													onchange={(val) => (priority = Number(val))}
-												>
-													<option value={1}>P1 - Critical</option>
-													<option value={2}>P2 - High</option>
-													<option value={3}>P3 - Medium</option>
-													<option value={4}>P4 - Low</option>
-													<option value={5}>P5 - Nice to have</option>
-												</Select>
-											</div>
-
-											<div
-												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-start gap-2"
-												aria-label="Assignees: {assigneeSummary}"
-											>
-												<label
-													for={assigneesGroupId}
-													class="pt-3 text-xs font-medium text-muted-foreground"
-												>
-													Assignees
-												</label>
-												<div class="min-w-0" id={assigneesGroupId}>
-													<TaskAssigneeSelector
-														{projectId}
-														bind:selectedActorIds={assigneeActorIds}
-														fallbackAssignees={Array.isArray(
-															task?.assignees
-														)
-															? task.assignees
-															: []}
-														disabled={isSaving || isLoading}
-														maxAssignees={10}
-													/>
-												</div>
-											</div>
-
-											{#if stateKey === 'done' && completedAt}
-												<div
-													class="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-xs text-success"
-												>
-													Completed {format(
-														new Date(completedAt),
-														'PPpp'
-													)}
-												</div>
-											{/if}
-										</div>
-									</section>
-
-									<section
-										class={dueMeta?.variant === 'error'
-											? 'px-3 py-3 sm:px-4 tx tx-static tx-weak'
-											: 'px-3 py-3 sm:px-4'}
-										aria-label="Timeline: {scheduleSummary}"
-									>
-										<div class="flex items-center justify-between gap-2">
-											<div class="flex items-center gap-2">
-												<CalendarRange
-													class="h-4 w-4 text-muted-foreground"
-												/>
-												<p class="micro-label font-semibold">Timeline</p>
-											</div>
-											{#if dueMeta}
-												<Badge variant={dueMeta.variant} size="sm"
-													>{dueMeta.label}</Badge
-												>
-											{/if}
-										</div>
-
-										{#if dueMeta?.variant === 'error'}
-											<div
-												class="mt-2 flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2"
-											>
-												<CircleAlert
-													class="h-3.5 w-3.5 shrink-0 text-destructive"
-												/>
-												<p class="text-xs font-semibold text-destructive">
-													{dueMeta.note}
-												</p>
-											</div>
-										{/if}
-
-										<div class="mt-2 grid grid-cols-1 gap-2">
-											<div
-												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
-											>
-												<label
-													for={startDateInputId}
-													class="text-xs font-medium text-muted-foreground"
-												>
-													Start
-												</label>
-												<TextInput
-													id={startDateInputId}
-													type="datetime-local"
-													enterkeyhint="next"
-													bind:value={startAt}
-													disabled={isSaving}
-													size="sm"
-												/>
-											</div>
-
-											<div
-												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
-											>
-												<label
-													for={dueDateInputId}
-													class="text-xs font-medium text-muted-foreground"
-												>
-													Due
-												</label>
-												<TextInput
-													id={dueDateInputId}
-													type="datetime-local"
-													enterkeyhint="done"
-													bind:value={dueAt}
-													disabled={isSaving}
-													size="sm"
-												/>
-											</div>
-										</div>
-
-										<div
-											class="mt-2 flex items-center justify-between gap-2 border-t border-border/60 pt-2"
+						<Card variant="elevated" class="wt-paper">
+							<CardBody class="space-y-4">
+								<div class="space-y-2">
+									<div class="flex items-end justify-between gap-2 mb-2">
+										<label
+											for={titleInputId}
+											class="block text-sm font-semibold text-foreground"
 										>
-											<div class="flex min-w-0 items-center gap-2">
-												<Repeat
-													class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-												/>
-												<div class="min-w-0">
-													<p
-														class="text-xs font-medium text-muted-foreground"
-													>
-														Repeat
-													</p>
-													<p
-														class="truncate text-sm font-medium text-foreground"
-													>
-														{recurrenceSummary}
-													</p>
-												</div>
-											</div>
-
-											{#if !isSeriesMaster && !isSeriesInstance}
-												<Button
-													size="sm"
-													variant="ghost"
-													class="shrink-0 text-xs pressable"
-													onclick={openSeriesModal}
-												>
-													Set up
-												</Button>
+											Title
+											<span class="text-destructive ml-0.5">*</span>
+										</label>
+										<button
+											type="button"
+											onclick={generateTitle}
+											disabled={isSaving ||
+												isGeneratingTitle ||
+												!description.trim()}
+											class="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-border bg-card text-xs font-medium text-muted-foreground shadow-ink transition-all pressable hover:border-accent hover:text-accent disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:text-muted-foreground tx tx-grain tx-weak"
+											aria-label="Auto-generate title from description"
+										>
+											{#if isGeneratingTitle}
+												<LoaderCircle class="w-3 h-3 animate-spin" />
+												<span>Generating…</span>
 											{:else}
-												<Badge variant="accent" size="sm">Recurring</Badge>
+												<Sparkles class="w-3 h-3" />
+												<span>Auto-generate</span>
 											{/if}
-										</div>
-
-										{#if isSeriesMaster && seriesMeta}
-											<div class="mt-2 space-y-2">
-												{#if seriesActionError}
-													<p class="text-xs text-destructive">
-														{seriesActionError}
-													</p>
-												{/if}
-
-												{#if !showSeriesDeleteConfirm}
-													<Button
-														size="sm"
-														variant="danger"
-														class="w-full"
-														onclick={() =>
-															(showSeriesDeleteConfirm = true)}
-													>
-														Delete Series
-													</Button>
-												{:else}
-													<p class="text-xs text-muted-foreground">
-														Delete this series? Completed instances
-														remain unless you force delete.
-													</p>
-													<div class="mt-1.5 flex flex-wrap gap-1.5">
-														<Button
-															variant="danger"
-															size="sm"
-															disabled={isDeletingSeries}
-															onclick={() =>
-																handleDeleteSeries(false)}
-														>
-															{#if isDeletingSeries}
-																<Loader
-																	class="w-3.5 h-3.5 animate-spin"
-																/>
-																Removing…
-															{:else}
-																Delete Upcoming
-															{/if}
-														</Button>
-														<Button
-															variant="danger"
-															size="sm"
-															disabled={isDeletingSeries}
-															onclick={() => handleDeleteSeries(true)}
-														>
-															{#if isDeletingSeries}
-																<Loader
-																	class="w-3.5 h-3.5 animate-spin"
-																/>
-																Removing…
-															{:else}
-																Force Delete All
-															{/if}
-														</Button>
-														<Button
-															variant="ghost"
-															size="sm"
-															onclick={() => {
-																showSeriesDeleteConfirm = false;
-																seriesActionError = '';
-															}}
-															disabled={isDeletingSeries}
-														>
-															Cancel
-														</Button>
-													</div>
-												{/if}
-											</div>
-										{:else if isSeriesInstance}
-											<p class="mt-2 text-xs text-muted-foreground">
-												Cadence inherited from parent series.
+										</button>
+									</div>
+									<TextInput
+										id={titleInputId}
+										bind:value={title}
+										inputmode="text"
+										enterkeyhint="next"
+										placeholder="Task title..."
+										required={true}
+										disabled={isSaving || isGeneratingTitle}
+										error={!title.trim() && error ? true : false}
+									/>
+									<div class="min-h-0 sm:min-h-5 flex items-start">
+										{#if !title.trim() && error}
+											<p class="text-sm text-destructive mt-2">Required</p>
+										{:else if titleGenerationError}
+											<p class="text-sm text-destructive mt-2">
+												{titleGenerationError}
 											</p>
 										{/if}
-									</section>
+									</div>
+								</div>
 
-									<!-- Tags -->
-									{#if task?.props?.tags?.length}
-										<section class="px-3 py-3 sm:px-4">
-											<div class="flex items-center gap-2 mb-2">
-												<TagIcon class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">Tags</p>
-											</div>
-											<TagsDisplay
-												props={task.props}
-												size="sm"
-												compact={true}
-											/>
-										</section>
+								{#if task}
+									<TaskKeyDetails
+										chips={taskEntities.keyChips}
+										entities={taskEntities}
+									/>
+									<TaskEntityPopover
+										entities={taskEntities}
+										{taskId}
+										canEdit={true}
+									/>
+								{/if}
+
+								<div class="space-y-2">
+									<div class="flex items-center justify-between gap-2">
+										{#if descriptionEditing}
+											<label
+												for={descriptionInputId}
+												class="block text-sm font-semibold text-foreground"
+											>
+												Description
+											</label>
+										{:else}
+											<h3 class="text-sm font-semibold text-foreground">
+												Description
+											</h3>
+										{/if}
+										{#if !descriptionEditing || description.trim()}
+											<button
+												type="button"
+												onclick={toggleDescriptionEditing}
+												disabled={isSaving}
+												class="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground pressable hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 [@media(pointer:fine)]:min-h-7"
+												aria-pressed={!descriptionEditing}
+											>
+												{#if descriptionEditing}
+													<Eye class="h-3.5 w-3.5" />
+													Preview
+												{:else}
+													<Pencil class="h-3.5 w-3.5" />
+													Edit
+												{/if}
+											</button>
+										{/if}
+									</div>
+									{#if descriptionEditing}
+										<Textarea
+											id={descriptionInputId}
+											bind:value={description}
+											enterkeyhint="next"
+											placeholder="Add the context, expected outcome, or handoff notes..."
+											rows={4}
+											autoResize={true}
+											maxRows={16}
+											class="min-h-28"
+											disabled={isSaving}
+											size="md"
+										/>
+									{:else}
+										{@const descriptionHtml = renderTaskMarkdown(description)}
+										<div
+											class="{getProseClasses(
+												'sm'
+											)} max-w-none rounded-lg border border-border/70 bg-card px-3 py-2.5 text-foreground [overflow-wrap:anywhere]"
+											{@attach entityMentions({
+												html: descriptionHtml,
+												targets: taskEntities.targets,
+												onOpen: (id, trigger) =>
+													taskEntities.openCardFor(id, trigger)
+											})}
+										>
+											{@html descriptionHtml}
+										</div>
 									{/if}
-
-									<!-- Linked Entities (collapsible, default closed for density) -->
-									<section class="px-3 sm:px-4">
-										<button
-											type="button"
-											onclick={() =>
-												(showLinkedEntities = !showLinkedEntities)}
-											class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
-											aria-expanded={showLinkedEntities}
-										>
-											<div class="flex items-center gap-2">
-												<LinkIcon class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">
-													Linked Entities
-												</p>
-											</div>
-											<ChevronDown
-												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showLinkedEntities
-													? 'rotate-180'
-													: ''}"
-											/>
-										</button>
-										{#if showLinkedEntities}
-											<div class="pb-3" transition:slide={slideMotion()}>
-												<LinkedEntities
-													sourceId={taskId}
-													sourceKind="task"
-													projectId={task.project_id}
-													onEntityClick={handleLinkedEntityClick}
-													onLinksChanged={handleLinksChanged}
-												/>
-											</div>
-										{/if}
-									</section>
-
-									<!-- Images (collapsible) -->
-									<section class="px-3 sm:px-4">
-										<button
-											type="button"
-											onclick={() => (showImages = !showImages)}
-											class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
-											aria-expanded={showImages}
-										>
-											<div class="flex items-center gap-2">
-												<ImageIcon class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">Images</p>
-											</div>
-											<ChevronDown
-												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showImages
-													? 'rotate-180'
-													: ''}"
-											/>
-										</button>
-										{#if showImages}
-											<div class="pb-3" transition:slide={slideMotion()}>
-												<ImageAssetsPanel
-													{projectId}
-													entityKind="task"
-													entityId={taskId}
-													showTitle={false}
-													compact={true}
-													onChanged={() => {
-														void loadTask();
-														onUpdated?.();
-													}}
-												/>
-											</div>
-										{/if}
-									</section>
-
-									<!-- Activity (collapsible) -->
-									<section class="px-3 sm:px-4">
-										<button
-											type="button"
-											onclick={() => (showActivityLog = !showActivityLog)}
-											class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
-											aria-expanded={showActivityLog}
-										>
-											<div class="flex items-center gap-2">
-												<Activity class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label font-semibold">Activity</p>
-											</div>
-											<ChevronDown
-												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showActivityLog
-													? 'rotate-180'
-													: ''}"
-											/>
-										</button>
-										{#if showActivityLog}
-											<div class="pb-3" transition:slide={slideMotion()}>
-												<EntityActivityLog
-													entityType="task"
-													entityId={taskId}
-													autoLoad={true}
-													embedded={true}
-												/>
-											</div>
-										{/if}
-									</section>
-									<!-- Details (read-only metadata, demoted to subtext) -->
-									<section class="px-3 py-3 sm:px-4">
-										<dl class="space-y-1 text-xs text-muted-foreground">
-											<div class="flex items-center justify-between gap-3">
-												<dt>Type</dt>
-												<dd class="text-right text-foreground/80">
-													{taskTypeLabel}
-												</dd>
-											</div>
-											<div class="flex items-center justify-between gap-3">
-												<dt>Created</dt>
-												<dd class="text-right text-foreground/80">
-													{formatSurfaceDate(
-														task?.created_at,
-														'MMM d, yyyy'
-													)}
-												</dd>
-											</div>
-											<div class="flex items-center justify-between gap-3">
-												<dt>Updated</dt>
-												<dd class="text-right text-foreground/80">
-													{formatSurfaceDate(
-														task?.updated_at,
-														'MMM d, yyyy'
-													)}
-												</dd>
-											</div>
-										</dl>
-									</section>
 								</div>
 							</CardBody>
 						</Card>
-					</EntityModalDetailsDrawer>
-					<!-- Comments (left column, row 2) -->
-					<div class="lg:col-start-1 lg:row-start-2">
-						<EntityCommentsSection {projectId} entityType="task" entityId={taskId} />
-					</div>
+
+						{#if error}
+							<div
+								class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 shadow-ink-inner"
+							>
+								<p class="text-sm text-destructive">{error}</p>
+							</div>
+						{/if}
+					</form>
 				</div>
-			{/if}
-		</div>
-	{/snippet}
+
+				<!-- Sidebar (right column, row 1) -->
+				<EntityModalDetailsDrawer
+					panelLabel="Task details"
+					showDesktopHeader={true}
+					mobileCollapsible={true}
+				>
+					{#snippet mobileSummary()}
+						{stateMeta.label} · {priorityMeta.label}{dueMeta
+							? ` · ${dueMeta.note}`
+							: ''}
+					{/snippet}
+					<Card variant="elevated" class="wt-card">
+						<CardBody padding="none">
+							<div class="divide-y divide-border/70">
+								<EntityCollaborationAction
+									{projectId}
+									entityType="task"
+									entityId={taskId}
+									entityTitle={title || task?.title || 'Task'}
+									disabled={isSaving || isLoading}
+								/>
+
+								<section
+									class="px-3 py-3 sm:px-4"
+									aria-label="Workflow: {stateMeta.label}, {priorityMeta.label}, {assigneeSummary}"
+								>
+									<div class="flex items-center gap-2">
+										<SlidersHorizontal class="h-4 w-4 text-muted-foreground" />
+										<p class="micro-label font-semibold">Workflow</p>
+									</div>
+
+									<div class="mt-2 space-y-2">
+										<div
+											class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+										>
+											<label
+												for="state"
+												class="text-xs font-medium text-muted-foreground"
+											>
+												State
+											</label>
+											<Select
+												id="state"
+												bind:value={stateKey}
+												disabled={isSaving}
+												size="sm"
+												placeholder="State"
+											>
+												{#each TASK_STATES as state (state)}
+													<option value={state}>
+														{state === 'todo'
+															? 'To Do'
+															: state === 'in_progress'
+																? 'In Progress'
+																: state === 'blocked'
+																	? 'Blocked'
+																	: state === 'done'
+																		? 'Done'
+																		: state}
+													</option>
+												{/each}
+											</Select>
+										</div>
+
+										<div
+											class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+										>
+											<label
+												for="priority"
+												class="text-xs font-medium text-muted-foreground"
+											>
+												Priority
+											</label>
+											<Select
+												id="priority"
+												value={priority}
+												disabled={isSaving}
+												size="sm"
+												placeholder="Priority"
+												onchange={(val) => (priority = Number(val))}
+											>
+												<option value={1}>P1 - Critical</option>
+												<option value={2}>P2 - High</option>
+												<option value={3}>P3 - Medium</option>
+												<option value={4}>P4 - Low</option>
+												<option value={5}>P5 - Nice to have</option>
+											</Select>
+										</div>
+
+										<div
+											class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-start gap-2"
+											aria-label="Assignees: {assigneeSummary}"
+										>
+											<label
+												for={assigneesGroupId}
+												class="pt-3 text-xs font-medium text-muted-foreground"
+											>
+												Assignees
+											</label>
+											<div class="min-w-0" id={assigneesGroupId}>
+												<TaskAssigneeSelector
+													{projectId}
+													bind:selectedActorIds={assigneeActorIds}
+													fallbackAssignees={Array.isArray(
+														task?.assignees
+													)
+														? task.assignees
+														: []}
+													disabled={isSaving || isLoading}
+													maxAssignees={10}
+												/>
+											</div>
+										</div>
+
+										{#if stateKey === 'done' && completedAt}
+											<div
+												class="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-xs text-success"
+											>
+												Completed {format(new Date(completedAt), 'PPpp')}
+											</div>
+										{/if}
+									</div>
+								</section>
+
+								<section
+									class={dueMeta?.variant === 'error'
+										? 'px-3 py-3 sm:px-4 tx tx-static tx-weak'
+										: 'px-3 py-3 sm:px-4'}
+									aria-label="Timeline: {scheduleSummary}"
+								>
+									<div class="flex items-center justify-between gap-2">
+										<div class="flex items-center gap-2">
+											<CalendarRange class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Timeline</p>
+										</div>
+										{#if dueMeta}
+											<Badge variant={dueMeta.variant} size="sm"
+												>{dueMeta.label}</Badge
+											>
+										{/if}
+									</div>
+
+									{#if dueMeta?.variant === 'error'}
+										<div
+											class="mt-2 flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2"
+										>
+											<CircleAlert
+												class="h-3.5 w-3.5 shrink-0 text-destructive"
+											/>
+											<p class="text-xs font-semibold text-destructive">
+												{dueMeta.note}
+											</p>
+										</div>
+									{/if}
+
+									<div class="mt-2 grid grid-cols-1 gap-2">
+										<div
+											class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+										>
+											<label
+												for={startDateInputId}
+												class="text-xs font-medium text-muted-foreground"
+											>
+												Start
+											</label>
+											<TextInput
+												id={startDateInputId}
+												type="datetime-local"
+												enterkeyhint="next"
+												bind:value={startAt}
+												disabled={isSaving}
+												size="sm"
+											/>
+										</div>
+
+										<div
+											class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+										>
+											<label
+												for={dueDateInputId}
+												class="text-xs font-medium text-muted-foreground"
+											>
+												Due
+											</label>
+											<TextInput
+												id={dueDateInputId}
+												type="datetime-local"
+												enterkeyhint="done"
+												bind:value={dueAt}
+												disabled={isSaving}
+												size="sm"
+											/>
+										</div>
+									</div>
+
+									<div
+										class="mt-2 flex items-center justify-between gap-2 border-t border-border/60 pt-2"
+									>
+										<div class="flex min-w-0 items-center gap-2">
+											<Repeat
+												class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+											/>
+											<div class="min-w-0">
+												<p
+													class="text-xs font-medium text-muted-foreground"
+												>
+													Repeat
+												</p>
+												<p
+													class="truncate text-sm font-medium text-foreground"
+												>
+													{recurrenceSummary}
+												</p>
+											</div>
+										</div>
+
+										{#if !isSeriesMaster && !isSeriesInstance}
+											<Button
+												size="sm"
+												variant="ghost"
+												class="shrink-0 text-xs pressable"
+												onclick={openSeriesModal}
+											>
+												Set up
+											</Button>
+										{:else}
+											<Badge variant="accent" size="sm">Recurring</Badge>
+										{/if}
+									</div>
+
+									{#if isSeriesMaster && seriesMeta}
+										<div class="mt-2 space-y-2">
+											{#if seriesActionError}
+												<p class="text-xs text-destructive">
+													{seriesActionError}
+												</p>
+											{/if}
+
+											{#if !showSeriesDeleteConfirm}
+												<Button
+													size="sm"
+													variant="danger"
+													class="w-full"
+													onclick={() => (showSeriesDeleteConfirm = true)}
+												>
+													Delete Series
+												</Button>
+											{:else}
+												<p class="text-xs text-muted-foreground">
+													Delete this series? Completed instances remain
+													unless you force delete.
+												</p>
+												<div class="mt-1.5 flex flex-wrap gap-1.5">
+													<Button
+														variant="danger"
+														size="sm"
+														disabled={isDeletingSeries}
+														onclick={() => handleDeleteSeries(false)}
+													>
+														{#if isDeletingSeries}
+															<Loader
+																class="w-3.5 h-3.5 animate-spin"
+															/>
+															Removing…
+														{:else}
+															Delete Upcoming
+														{/if}
+													</Button>
+													<Button
+														variant="danger"
+														size="sm"
+														disabled={isDeletingSeries}
+														onclick={() => handleDeleteSeries(true)}
+													>
+														{#if isDeletingSeries}
+															<Loader
+																class="w-3.5 h-3.5 animate-spin"
+															/>
+															Removing…
+														{:else}
+															Force Delete All
+														{/if}
+													</Button>
+													<Button
+														variant="ghost"
+														size="sm"
+														onclick={() => {
+															showSeriesDeleteConfirm = false;
+															seriesActionError = '';
+														}}
+														disabled={isDeletingSeries}
+													>
+														Cancel
+													</Button>
+												</div>
+											{/if}
+										</div>
+									{:else if isSeriesInstance}
+										<p class="mt-2 text-xs text-muted-foreground">
+											Cadence inherited from parent series.
+										</p>
+									{/if}
+								</section>
+
+								<!-- Tags -->
+								{#if task?.props?.tags?.length}
+									<section class="px-3 py-3 sm:px-4">
+										<div class="flex items-center gap-2 mb-2">
+											<TagIcon class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Tags</p>
+										</div>
+										<TagsDisplay props={task.props} size="sm" compact={true} />
+									</section>
+								{/if}
+
+								<!-- Linked Entities (collapsible, default closed for density) -->
+								<section class="px-3 sm:px-4">
+									<button
+										type="button"
+										onclick={() => (showLinkedEntities = !showLinkedEntities)}
+										class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										aria-expanded={showLinkedEntities}
+									>
+										<div class="flex items-center gap-2">
+											<LinkIcon class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Linked Entities</p>
+										</div>
+										<ChevronDown
+											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showLinkedEntities
+												? 'rotate-180'
+												: ''}"
+										/>
+									</button>
+									{#if showLinkedEntities}
+										<div class="pb-3" transition:slide={slideMotion()}>
+											<LinkedEntities
+												sourceId={taskId}
+												sourceKind="task"
+												projectId={task.project_id}
+												onEntityClick={handleLinkedEntityClick}
+												onLinksChanged={handleLinksChanged}
+											/>
+										</div>
+									{/if}
+								</section>
+
+								<!-- Images (collapsible) -->
+								<section class="px-3 sm:px-4">
+									<button
+										type="button"
+										onclick={() => (showImages = !showImages)}
+										class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										aria-expanded={showImages}
+									>
+										<div class="flex items-center gap-2">
+											<ImageIcon class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Images</p>
+										</div>
+										<ChevronDown
+											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showImages
+												? 'rotate-180'
+												: ''}"
+										/>
+									</button>
+									{#if showImages}
+										<div class="pb-3" transition:slide={slideMotion()}>
+											<ImageAssetsPanel
+												{projectId}
+												entityKind="task"
+												entityId={taskId}
+												showTitle={false}
+												compact={true}
+												onChanged={() => {
+													void loadTask();
+													onUpdated?.();
+												}}
+											/>
+										</div>
+									{/if}
+								</section>
+
+								<!-- Activity (collapsible) -->
+								<section class="px-3 sm:px-4">
+									<button
+										type="button"
+										onclick={() => (showActivityLog = !showActivityLog)}
+										class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										aria-expanded={showActivityLog}
+									>
+										<div class="flex items-center gap-2">
+											<Activity class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label font-semibold">Activity</p>
+										</div>
+										<ChevronDown
+											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showActivityLog
+												? 'rotate-180'
+												: ''}"
+										/>
+									</button>
+									{#if showActivityLog}
+										<div class="pb-3" transition:slide={slideMotion()}>
+											<EntityActivityLog
+												entityType="task"
+												entityId={taskId}
+												autoLoad={true}
+												embedded={true}
+											/>
+										</div>
+									{/if}
+								</section>
+								<!-- Details (read-only metadata, demoted to subtext) -->
+								<section class="px-3 py-3 sm:px-4">
+									<dl class="space-y-1 text-xs text-muted-foreground">
+										<div class="flex items-center justify-between gap-3">
+											<dt>Type</dt>
+											<dd class="text-right text-foreground/80">
+												{taskTypeLabel}
+											</dd>
+										</div>
+										<div class="flex items-center justify-between gap-3">
+											<dt>Created</dt>
+											<dd class="text-right text-foreground/80">
+												{formatSurfaceDate(task?.created_at, 'MMM d, yyyy')}
+											</dd>
+										</div>
+										<div class="flex items-center justify-between gap-3">
+											<dt>Updated</dt>
+											<dd class="text-right text-foreground/80">
+												{formatSurfaceDate(task?.updated_at, 'MMM d, yyyy')}
+											</dd>
+										</div>
+									</dl>
+								</section>
+							</div>
+						</CardBody>
+					</Card>
+				</EntityModalDetailsDrawer>
+				<!-- Comments (left column, row 2) -->
+				<div class="lg:col-start-1 lg:row-start-2">
+					<EntityCommentsSection {projectId} entityType="task" entityId={taskId} />
+				</div>
+			</div>
+		{/if}
+	</div>
 
 	<!-- Footer Actions - delete on left, cancel/save on right -->
 	{#snippet footer()}

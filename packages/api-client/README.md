@@ -41,6 +41,8 @@ that channel with its own Supabase client using `chatUserChannelTopic(userId)`,
 `CHAT_USER_CHANNEL_CONFIG` and `CHAT_REALTIME_EVENTS` from this package; `agent.reconcileTurn`
 replays what a dropped connection missed, `agent.cancelTurn` is Stop, and `chat.history` loads a
 reopened session (messages, tool calls, turn runs, timeline) in one read.
+An agent write leaves a change receipt in its tool result (`DocumentChangeReceipt`,
+`TableChangeReceipt`); `documents.revertChange` and `tables.revertChange` are the one-click Undo.
 
 ## The additive-API rule
 

@@ -89,7 +89,7 @@
 						aria-label="App footer links"
 						class="flex flex-wrap items-center justify-center gap-x-1 gap-y-0 text-sm font-semibold tracking-tight"
 					>
-						{#each SUPPORT_LINKS as link}
+						{#each SUPPORT_LINKS as link (link.href)}
 							<a
 								href={link.href}
 								class="inline-flex min-h-11 items-center rounded-md px-2 text-muted-foreground transition-colors hover:bg-muted hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
@@ -97,7 +97,7 @@
 								{link.label}
 							</a>
 						{/each}
-						{#each LEGAL_LINKS as link}
+						{#each LEGAL_LINKS as link (link.href)}
 							<a
 								href={link.href}
 								class="inline-flex min-h-11 items-center rounded-md px-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
@@ -171,11 +171,11 @@
 						aria-label="Footer navigation"
 						class="grid grid-cols-3 gap-x-3 gap-y-8 text-left sm:gap-x-6"
 					>
-						{#each GUEST_SECTIONS as section}
+						{#each GUEST_SECTIONS as section (section.title)}
 							<div>
 								<p class="micro-label mb-2 text-foreground">{section.title}</p>
 								<ul class="space-y-0.5">
-									{#each section.links as link}
+									{#each section.links as link (link.href)}
 										<li>
 											<a
 												href={link.href}
@@ -211,7 +211,7 @@
 						aria-label="Legal and privacy links"
 						class="flex flex-wrap items-center justify-center gap-x-1 text-sm"
 					>
-						{#each LEGAL_LINKS as link}
+						{#each LEGAL_LINKS as link (link.href)}
 							<a
 								href={link.href}
 								class="inline-flex min-h-11 items-center rounded-md px-2 font-semibold tracking-tight text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
@@ -229,7 +229,7 @@
 					</nav>
 
 					<nav class="flex items-center gap-1" aria-label="BuildOS social links">
-						{#each SOCIAL_LINKS as social}
+						{#each SOCIAL_LINKS as social (social.href)}
 							{@const SocialIcon = social.icon}
 							<a
 								href={social.href}

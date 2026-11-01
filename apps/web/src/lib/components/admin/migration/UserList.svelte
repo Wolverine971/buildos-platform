@@ -143,7 +143,7 @@
 
 		<!-- Status filter pills (desktop) -->
 		<div class="hidden flex-wrap gap-2 sm:flex">
-			{#each statusOptions as option}
+			{#each statusOptions as option (option.label)}
 				<button
 					class="rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {selectedStatus ===
 					option.value
@@ -161,7 +161,7 @@
 	<!-- Mobile filter pills -->
 	{#if showFilters}
 		<div class="flex flex-wrap gap-2 sm:hidden">
-			{#each statusOptions as option}
+			{#each statusOptions as option (option.label)}
 				<button
 					class="rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {selectedStatus ===
 					option.value

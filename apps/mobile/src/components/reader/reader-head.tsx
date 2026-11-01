@@ -41,6 +41,8 @@ export type ReaderHeadProps = {
 	closeLabel?: string;
 	/** A hairline under the head once the body scrolls beneath it. */
 	edge?: boolean;
+	/** A key before Close, e.g. the Brain Bolt that opens chat about this item. */
+	action?: ReactNode;
 };
 
 /**
@@ -56,13 +58,12 @@ export function ReaderHead({
 	onClose,
 	closing = false,
 	closeLabel = 'Close',
-	edge = false
+	edge = false,
+	action
 }: ReaderHeadProps) {
 	const { colors } = useInk();
 	return (
-		<View
-			style={[styles.head, { borderBottomColor: edge ? colors.border : 'transparent' }]}
-		>
+		<View style={[styles.head, { borderBottomColor: edge ? colors.border : 'transparent' }]}>
 			<View
 				style={[styles.glyph, { backgroundColor: colors.muted }]}
 				accessibilityElementsHidden
@@ -110,6 +111,7 @@ export function ReaderHead({
 				) : null}
 			</View>
 
+			{action}
 			<Key
 				icon={X}
 				accessibilityLabel={closeLabel}

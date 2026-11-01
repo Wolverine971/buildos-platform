@@ -6,6 +6,7 @@
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
 	import { ArrowLeft, Check, CircleAlert, Loader2, RefreshCw, Trash2 } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -75,8 +76,8 @@
 	let queueing = $state(false);
 	let testing = $state(false);
 	let busyAction = $state<string | null>(null);
-	let retryingIds = $state(new Set<string>());
-	let pendingIds = $state(new Set<string>());
+	const retryingIds = new SvelteSet<string>();
+	const pendingIds = new SvelteSet<string>();
 	let showDelete = $state(false);
 	let deleting = $state(false);
 
@@ -300,7 +301,7 @@
 	}
 
 	async function toggleIncluded(recipient: CampaignRecipientView, included: boolean) {
-		pendingIds = new Set([...pendingIds, recipient.id]);
+		pendingIds.add(recipient.id);
 		mergeRecipients([{ ...recipient, included }]);
 		try {
 			mergeRecipients([
@@ -310,9 +311,7 @@
 			mergeRecipients([recipient]);
 			toastService.error(errorMessage(error, 'Could not update'));
 		} finally {
-			const next = new Set(pendingIds);
-			next.delete(recipient.id);
-			pendingIds = next;
+			pendingIds.delete(recipient.id);
 		}
 	}
 
@@ -413,7 +412,7 @@
 	}
 
 	async function retry(recipient: CampaignRecipientView) {
-		retryingIds = new Set([...retryingIds, recipient.id]);
+		retryingIds.add(recipient.id);
 		try {
 			mergeRecipients([await campaignApi.retryRecipient(campaignId, recipient.id)]);
 			await refresh();
@@ -421,9 +420,7 @@
 		} catch (error) {
 			toastService.error(errorMessage(error, 'Could not retry'));
 		} finally {
-			const next = new Set(retryingIds);
-			next.delete(recipient.id);
-			retryingIds = next;
+			retryingIds.delete(recipient.id);
 		}
 	}
 

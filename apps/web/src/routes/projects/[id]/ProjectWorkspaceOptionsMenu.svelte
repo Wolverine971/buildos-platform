@@ -2,7 +2,7 @@
 <!-- Project-level controls restored from the original project workspace. -->
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
-	import { portal } from '$lib/actions/portal';
+	import { portal } from '$lib/attachments/portal';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ProjectDeleteConfirmModal from '$lib/components/project/ProjectDeleteConfirmModal.svelte';
 	import {
@@ -271,7 +271,7 @@
 
 {#if showMenu}
 	<button
-		use:portal
+		{@attach portal()}
 		type="button"
 		tabindex="-1"
 		aria-hidden="true"
@@ -280,7 +280,7 @@
 		onclick={() => closeMenu()}
 	></button>
 	<div
-		use:portal
+		{@attach portal()}
 		bind:this={menuRef}
 		role="menu"
 		aria-label="Project options"

@@ -9,6 +9,7 @@ import js from '@eslint/js';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
 import svelteParser from 'svelte-eslint-parser';
+import svelteConfig from './svelte.config.js';
 
 // Re‑use your gitignore helper
 import { includeIgnoreFile } from '@eslint/compat';
@@ -100,6 +101,34 @@ export default [
 		}
 	},
 
+	/* ---------- Svelte plugin: recommended rules ----------
+	 * `svelte.configs.recommended` is an array in eslint-plugin-svelte v3 (plugin setup,
+	 * the .svelte processor, the .svelte.ts parser, then the rules). It must be spread
+	 * into this list; spreading `.recommended.rules` is `undefined` and silently turns
+	 * every Svelte rule off, which is what happened here until 2026-10-31.
+	 * Violations that predate turning the rules on live in eslint-suppressions.json. */
+	...svelte.configs.recommended,
+	{
+		rules: {
+			// Only matters with `kit.paths.base`, which BuildOS does not set.
+			'svelte/no-navigation-without-resolve': 'off',
+			// Flags intentionally non-reactive bookkeeping Sets/Maps and copy-then-reassign
+			// temporaries. "Fixing" those with SvelteSet makes effects that read them re-run.
+			// Use SvelteSet/SvelteMap by choice for reactive collections instead.
+			'svelte/prefer-svelte-reactivity': 'off'
+		}
+	},
+	{
+		files: ['**/*.svelte', '**/*.svelte.ts', '**/*.svelte.js'],
+		languageOptions: {
+			parserOptions: {
+				parser: tsParser,
+				extraFileExtensions: ['.svelte'],
+				svelteConfig
+			}
+		}
+	},
+
 	/* ---------- Svelte with TypeScript ---------- */
 	{
 		files: ['**/*.svelte'],
@@ -113,7 +142,6 @@ export default [
 			globals: { ...globals.browser, ...globals.node }
 		},
 		rules: {
-			...svelte.configs.recommended.rules,
 			// Disable explicit-any rule (codebase uses any extensively)
 			'@typescript-eslint/no-explicit-any': 'off',
 			// Allow @ts- comments

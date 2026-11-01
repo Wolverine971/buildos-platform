@@ -797,7 +797,7 @@
 			{:else}
 				<!-- Mobile Card Fallback (table is too wide for small screens) -->
 				<ul class="divide-y divide-border lg:hidden">
-					{#each signups as signup}
+					{#each signups as signup (signup.id)}
 						<li class="p-4">
 							<div class="flex items-start justify-between gap-3">
 								<div class="min-w-0 flex-1">
@@ -1095,7 +1095,7 @@
 							</tr>
 						</thead>
 						<tbody class="bg-card divide-y divide-border">
-							{#each signups as signup}
+							{#each signups as signup (signup.id)}
 								<tr class="hover:bg-muted">
 									<!-- Contact Info - Sticky Column -->
 									<td
@@ -1621,7 +1621,7 @@
 				<!-- Mobile Cards View -->
 				<div class="sm:hidden">
 					{#if activeTab === 'signups'}
-						{#each signups as signup}
+						{#each signups as signup (signup.id)}
 							<div class="p-4 border-b border-border">
 								<div class="flex items-start justify-between mb-2">
 									<div class="flex items-center flex-1 min-w-0">
@@ -1704,7 +1704,7 @@
 							</div>
 						{/each}
 					{:else}
-						{#each members as member}
+						{#each members as member (member.id)}
 							<div class="p-4 border-b border-border">
 								<div class="flex items-start justify-between mb-2">
 									<div class="flex items-center flex-1 min-w-0">
@@ -1994,7 +1994,7 @@
 						</thead>
 						<tbody class="bg-card divide-y divide-border">
 							{#if activeTab === 'signups'}
-								{#each signups as signup}
+								{#each signups as signup (signup.id)}
 									<tr class="hover:bg-muted">
 										<td class="px-6 py-4 whitespace-nowrap">
 											<div class="flex items-center">
@@ -2107,7 +2107,7 @@
 									</tr>
 								{/each}
 							{:else}
-								{#each members as member}
+								{#each members as member (member.id)}
 									<tr class="hover:bg-muted">
 										<td class="px-6 py-4 whitespace-nowrap">
 											<div class="flex items-center">

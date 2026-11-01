@@ -762,592 +762,583 @@
 		/>
 	{/snippet}
 
-	{#snippet children()}
-		{#if !project}
-			<div class="px-4 sm:px-6 lg:px-8 py-8">
-				<p class="text-muted-foreground">Project data is unavailable.</p>
-			</div>
-		{:else}
+	{#if !project}
+		<div class="px-4 sm:px-6 lg:px-8 py-8">
+			<p class="text-muted-foreground">Project data is unavailable.</p>
+		</div>
+	{:else}
+		<div
+			class="flex min-h-0 flex-1 flex-col space-y-3 overflow-y-auto px-2 py-2 sm:space-y-4 sm:px-4 sm:py-4 lg:px-6"
+		>
+			<!-- Main Content Area -->
 			<div
-				class="flex min-h-0 flex-1 flex-col space-y-3 overflow-y-auto px-2 py-2 sm:space-y-4 sm:px-4 sm:py-4 lg:px-6"
+				class="relative grid min-h-0 flex-1 grid-cols-1 gap-y-3 sm:gap-y-4 lg:min-h-[50vh] lg:grid-cols-[minmax(0,1fr)_auto] lg:overflow-x-clip"
 			>
-				<!-- Main Content Area -->
+				<!-- Content Section (Takes most space) -->
 				<div
-					class="relative grid min-h-0 flex-1 grid-cols-1 gap-y-3 sm:gap-y-4 lg:min-h-[50vh] lg:grid-cols-[minmax(0,1fr)_auto] lg:overflow-x-clip"
+					class="flex h-full min-h-0 min-w-0 flex-col space-y-3 rounded-lg border border-border bg-card shadow-ink transition-all duration-200"
 				>
-					<!-- Content Section (Takes most space) -->
+					<!-- Project Name Header -->
 					<div
-						class="flex h-full min-h-0 min-w-0 flex-col space-y-3 rounded-lg border border-border bg-card shadow-ink transition-all duration-200"
+						class="rounded-t-lg border-b border-border bg-muted p-3 tx tx-frame tx-weak sm:p-4"
 					>
-						<!-- Project Name Header -->
-						<div
-							class="rounded-t-lg border-b border-border bg-muted p-3 tx tx-frame tx-weak sm:p-4"
+						<label
+							for="project-name"
+							class="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5"
 						>
-							<label
-								for="project-name"
-								class="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5"
-							>
-								Project Name <span class="text-destructive ml-0.5">*</span>
-							</label>
-							<TextInput
-								id="project-name"
-								form={projectEditFormId}
-								bind:value={name}
-								placeholder="Enter a clear, memorable project name"
-								size="lg"
-								required
+							Project Name <span class="text-destructive ml-0.5">*</span>
+						</label>
+						<TextInput
+							id="project-name"
+							form={projectEditFormId}
+							bind:value={name}
+							placeholder="Enter a clear, memorable project name"
+							size="lg"
+							required
+							disabled={isSaving}
+							class="font-semibold text-lg"
+						/>
+					</div>
+
+					<!-- Content Body -->
+					<div
+						class="flex-1 flex flex-col space-y-4 px-4 sm:px-5 pb-4 sm:pb-5 overflow-y-auto"
+					>
+						<!-- Description -->
+						<div>
+							<div class="flex items-center justify-between mb-1.5">
+								<span
+									id="project-description-label"
+									class="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+								>
+									Description
+								</span>
+								<button
+									type="button"
+									onclick={() => (descriptionEditMode = !descriptionEditMode)}
+									disabled={isSaving}
+									class="inline-flex items-center gap-1.5 h-7 px-2 text-xs font-medium text-muted-foreground hover:text-foreground rounded-md transition-colors disabled:opacity-50 pressable"
+								>
+									{#if descriptionEditMode}
+										<Eye class="w-3.5 h-3.5" />
+										<span class="hidden sm:inline">Preview</span>
+									{:else}
+										<Edit class="w-3.5 h-3.5" />
+										<span class="hidden sm:inline">Edit</span>
+									{/if}
+								</button>
+							</div>
+							<MarkdownToggleField
+								value={description}
+								onUpdate={(newValue) => (description = newValue)}
 								disabled={isSaving}
-								class="font-semibold text-lg"
+								ariaLabelledby="project-description-label"
+								placeholder="One-line summary of what this project achieves"
+								rows={3}
+								hideToggle
+								bind:isEditMode={descriptionEditMode}
 							/>
 						</div>
 
-						<!-- Content Body -->
-						<div
-							class="flex-1 flex flex-col space-y-4 px-4 sm:px-5 pb-4 sm:pb-5 overflow-y-auto"
-						>
-							<!-- Description -->
-							<div>
-								<div class="flex items-center justify-between mb-1.5">
+						<!-- Next Step Section -->
+						<div class="pt-3 border-t border-border">
+							<div class="flex items-center justify-between mb-2">
+								<div class="flex items-center gap-2">
+									<div
+										class="w-6 h-6 rounded-full bg-accent/15 flex items-center justify-center"
+									>
+										<Zap class="w-3.5 h-3.5 text-accent" />
+									</div>
 									<span
-										id="project-description-label"
 										class="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
 									>
-										Description
+										Next Move
 									</span>
+									{#if nextStepSource && nextStepTimeAgo}
+										<span class="text-2xs text-muted-foreground">
+											{nextStepSource === 'ai' ? 'AI' : 'You'} · {nextStepTimeAgo}
+										</span>
+									{/if}
+								</div>
+								<div class="flex items-center gap-1.5">
+									<!-- Generate/Regenerate button -->
 									<button
 										type="button"
-										onclick={() => (descriptionEditMode = !descriptionEditMode)}
-										disabled={isSaving}
-										class="inline-flex items-center gap-1.5 h-7 px-2 text-xs font-medium text-muted-foreground hover:text-foreground rounded-md transition-colors disabled:opacity-50 pressable"
+										onclick={handleGenerateNextStep}
+										disabled={isGeneratingNextStep || isSaving}
+										class="inline-flex items-center justify-center gap-1.5 h-8 min-w-8 px-2 sm:px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-muted rounded-md transition-colors disabled:opacity-50 pressable"
+										title={hasNextStep
+											? 'Regenerate with AI'
+											: 'Generate with AI'}
 									>
-										{#if descriptionEditMode}
-											<Eye class="w-3.5 h-3.5" />
-											<span class="hidden sm:inline">Preview</span>
+										{#if isGeneratingNextStep}
+											<LoaderCircle
+												class="w-4 h-4 sm:w-3.5 sm:h-3.5 animate-spin shrink-0"
+											/>
+											<span class="hidden sm:inline">Generating...</span>
+										{:else if hasNextStep}
+											<RefreshCw class="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" />
+											<span class="hidden sm:inline">Regenerate</span>
 										{:else}
-											<Edit class="w-3.5 h-3.5" />
-											<span class="hidden sm:inline">Edit</span>
+											<Sparkles class="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" />
+											<span class="hidden sm:inline">Generate</span>
 										{/if}
 									</button>
-								</div>
-								<MarkdownToggleField
-									value={description}
-									onUpdate={(newValue) => (description = newValue)}
-									disabled={isSaving}
-									ariaLabelledby="project-description-label"
-									placeholder="One-line summary of what this project achieves"
-									rows={3}
-									hideToggle
-									bind:isEditMode={descriptionEditMode}
-								/>
-							</div>
-
-							<!-- Next Step Section -->
-							<div class="pt-3 border-t border-border">
-								<div class="flex items-center justify-between mb-2">
-									<div class="flex items-center gap-2">
-										<div
-											class="w-6 h-6 rounded-full bg-accent/15 flex items-center justify-center"
-										>
-											<Zap class="w-3.5 h-3.5 text-accent" />
-										</div>
-										<span
-											class="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
-										>
-											Next Move
-										</span>
-										{#if nextStepSource && nextStepTimeAgo}
-											<span class="text-2xs text-muted-foreground">
-												{nextStepSource === 'ai' ? 'AI' : 'You'} · {nextStepTimeAgo}
-											</span>
-										{/if}
-									</div>
-									<div class="flex items-center gap-1.5">
-										<!-- Generate/Regenerate button -->
+									<!-- Clear button (only when there's content) -->
+									{#if hasNextStep}
 										<button
 											type="button"
-											onclick={handleGenerateNextStep}
-											disabled={isGeneratingNextStep || isSaving}
-											class="inline-flex items-center justify-center gap-1.5 h-8 min-w-8 px-2 sm:px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-muted rounded-md transition-colors disabled:opacity-50 pressable"
-											title={hasNextStep
-												? 'Regenerate with AI'
-												: 'Generate with AI'}
+											onclick={handleClearNextStep}
+											disabled={isSaving}
+											class="inline-flex items-center justify-center h-8 w-8 sm:h-auto sm:w-auto sm:p-1.5 text-muted-foreground hover:text-destructive rounded transition-colors disabled:opacity-50"
+											title="Clear next step"
 										>
-											{#if isGeneratingNextStep}
-												<LoaderCircle
-													class="w-4 h-4 sm:w-3.5 sm:h-3.5 animate-spin shrink-0"
-												/>
-												<span class="hidden sm:inline">Generating...</span>
-											{:else if hasNextStep}
-												<RefreshCw
-													class="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0"
-												/>
-												<span class="hidden sm:inline">Regenerate</span>
-											{:else}
-												<Sparkles
-													class="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0"
-												/>
-												<span class="hidden sm:inline">Generate</span>
-											{/if}
+											<X class="w-4 h-4 sm:w-3.5 sm:h-3.5" />
 										</button>
-										<!-- Clear button (only when there's content) -->
-										{#if hasNextStep}
-											<button
-												type="button"
-												onclick={handleClearNextStep}
-												disabled={isSaving}
-												class="inline-flex items-center justify-center h-8 w-8 sm:h-auto sm:w-auto sm:p-1.5 text-muted-foreground hover:text-destructive rounded transition-colors disabled:opacity-50"
-												title="Clear next step"
-											>
-												<X class="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-											</button>
-										{/if}
-									</div>
-								</div>
-
-								<!-- Short version (headline) -->
-								<div class="space-y-2">
-									<TextInput
-										form={projectEditFormId}
-										bind:value={nextStepShort}
-										placeholder="What's the next concrete action for this project?"
-										disabled={isSaving || isGeneratingNextStep}
-										class="font-medium"
-									/>
-
-									<!-- Long version (details) -->
-									{#if hasNextStep || nextStepLong}
-										<div class="relative">
-											<Textarea
-												form={projectEditFormId}
-												bind:value={nextStepLong}
-												placeholder="Add more context or details about the next step (optional)"
-												rows={2}
-												disabled={isSaving || isGeneratingNextStep}
-												class="text-sm text-muted-foreground resize-none"
-											/>
-										</div>
-
-										<!-- Preview of rendered long content with entity badges -->
-										{#if nextStepLong && hasEntityLinks(nextStepLong)}
-											<div
-												class="mt-2 p-2.5 rounded-md bg-muted border border-border"
-											>
-												<span
-													class="text-2xs font-medium text-muted-foreground uppercase tracking-wider block mb-1.5"
-												>
-													Preview
-												</span>
-												<div
-													class="text-sm text-muted-foreground leading-relaxed"
-												>
-													{@html renderNextStepContent(nextStepLong)}
-												</div>
-											</div>
-										{/if}
 									{/if}
 								</div>
-
-								<!-- Empty state hint -->
-								{#if !hasNextStep && !isGeneratingNextStep}
-									<p class="text-xs text-muted-foreground mt-2 italic">
-										Set a clear next action to keep momentum on this project
-									</p>
-								{/if}
 							</div>
 
-							<!-- Context Document - Main Focus -->
-							{#if contextDocument}
-								<div class="flex-1 flex flex-col pt-3 border-t border-border">
-									<div class="flex items-center justify-between mb-1.5">
-										<div class="flex items-center gap-2">
-											<FileText class="w-4 h-4 text-accent" />
-											<span
-												id="context-document-label"
-												class="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
-											>
-												Context Document
-											</span>
-										</div>
-										<div class="flex items-center gap-1">
-											<button
-												type="button"
-												onclick={() => (contextEditMode = !contextEditMode)}
-												disabled={isSaving}
-												class="inline-flex items-center gap-1.5 h-7 px-2 text-xs font-medium text-muted-foreground hover:text-foreground rounded-md transition-colors disabled:opacity-50 pressable"
-											>
-												{#if contextEditMode}
-													<Eye class="w-3.5 h-3.5" />
-													<span class="hidden sm:inline">Preview</span>
-												{:else}
-													<Edit class="w-3.5 h-3.5" />
-													<span class="hidden sm:inline">Edit</span>
-												{/if}
-											</button>
-											<Button
-												type="button"
-												onclick={copyContext}
-												variant="ghost"
-												size="sm"
-												class="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
-											>
-												<Copy class="w-3.5 h-3.5" />
-												<span class="hidden sm:inline">Copy</span>
-											</Button>
-										</div>
-									</div>
-									<div class="flex-1 flex flex-col">
-										<MarkdownToggleField
-											value={contextDocumentBody}
-											onUpdate={(newValue) =>
-												(contextDocumentBody = newValue)}
-											disabled={isSaving}
-											ariaLabelledby="context-document-label"
-											placeholder="## Background\nWhy this project exists and its importance\n\n## Key Notes\nImportant technical and business context\n\n## Resources\nTools, documentation, and dependencies\n\n## Challenges\nCurrent blockers or areas needing attention"
-											rows={10}
-											hideToggle
-											bind:isEditMode={contextEditMode}
+							<!-- Short version (headline) -->
+							<div class="space-y-2">
+								<TextInput
+									form={projectEditFormId}
+									bind:value={nextStepShort}
+									placeholder="What's the next concrete action for this project?"
+									disabled={isSaving || isGeneratingNextStep}
+									class="font-medium"
+								/>
+
+								<!-- Long version (details) -->
+								{#if hasNextStep || nextStepLong}
+									<div class="relative">
+										<Textarea
+											form={projectEditFormId}
+											bind:value={nextStepLong}
+											placeholder="Add more context or details about the next step (optional)"
+											rows={2}
+											disabled={isSaving || isGeneratingNextStep}
+											class="text-sm text-muted-foreground resize-none"
 										/>
 									</div>
-								</div>
-							{/if}
 
-							<!-- Character Counts -->
-							<div
-								class="flex flex-wrap gap-3 sm:gap-4 text-xs text-muted-foreground pt-2.5 border-t border-border"
-							>
-								{#if description.length > 0}
-									<span class="flex items-center gap-1.5">
-										<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
-										<span class="font-medium"
-											>{description.length.toLocaleString()}</span
-										> description
-									</span>
-								{/if}
-								{#if contextDocumentBody.length > 0}
-									<span class="flex items-center gap-1.5">
-										<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
-										<span class="font-medium"
-											>{contextDocumentBody.length.toLocaleString()}</span
-										> context
-									</span>
-								{/if}
-								{#if !description && !contextDocumentBody}
-									<span class="text-muted-foreground italic text-center flex-1">
-										Add project details to enable better organization
-									</span>
+									<!-- Preview of rendered long content with entity badges -->
+									{#if nextStepLong && hasEntityLinks(nextStepLong)}
+										<div
+											class="mt-2 p-2.5 rounded-md bg-muted border border-border"
+										>
+											<span
+												class="text-2xs font-medium text-muted-foreground uppercase tracking-wider block mb-1.5"
+											>
+												Preview
+											</span>
+											<div
+												class="text-sm text-muted-foreground leading-relaxed"
+											>
+												{@html renderNextStepContent(nextStepLong)}
+											</div>
+										</div>
+									{/if}
 								{/if}
 							</div>
+
+							<!-- Empty state hint -->
+							{#if !hasNextStep && !isGeneratingNextStep}
+								<p class="text-xs text-muted-foreground mt-2 italic">
+									Set a clear next action to keep momentum on this project
+								</p>
+							{/if}
+						</div>
+
+						<!-- Context Document - Main Focus -->
+						{#if contextDocument}
+							<div class="flex-1 flex flex-col pt-3 border-t border-border">
+								<div class="flex items-center justify-between mb-1.5">
+									<div class="flex items-center gap-2">
+										<FileText class="w-4 h-4 text-accent" />
+										<span
+											id="context-document-label"
+											class="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+										>
+											Context Document
+										</span>
+									</div>
+									<div class="flex items-center gap-1">
+										<button
+											type="button"
+											onclick={() => (contextEditMode = !contextEditMode)}
+											disabled={isSaving}
+											class="inline-flex items-center gap-1.5 h-7 px-2 text-xs font-medium text-muted-foreground hover:text-foreground rounded-md transition-colors disabled:opacity-50 pressable"
+										>
+											{#if contextEditMode}
+												<Eye class="w-3.5 h-3.5" />
+												<span class="hidden sm:inline">Preview</span>
+											{:else}
+												<Edit class="w-3.5 h-3.5" />
+												<span class="hidden sm:inline">Edit</span>
+											{/if}
+										</button>
+										<Button
+											type="button"
+											onclick={copyContext}
+											variant="ghost"
+											size="sm"
+											class="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+										>
+											<Copy class="w-3.5 h-3.5" />
+											<span class="hidden sm:inline">Copy</span>
+										</Button>
+									</div>
+								</div>
+								<div class="flex-1 flex flex-col">
+									<MarkdownToggleField
+										value={contextDocumentBody}
+										onUpdate={(newValue) => (contextDocumentBody = newValue)}
+										disabled={isSaving}
+										ariaLabelledby="context-document-label"
+										placeholder="## Background\nWhy this project exists and its importance\n\n## Key Notes\nImportant technical and business context\n\n## Resources\nTools, documentation, and dependencies\n\n## Challenges\nCurrent blockers or areas needing attention"
+										rows={10}
+										hideToggle
+										bind:isEditMode={contextEditMode}
+									/>
+								</div>
+							</div>
+						{/if}
+
+						<!-- Character Counts -->
+						<div
+							class="flex flex-wrap gap-3 sm:gap-4 text-xs text-muted-foreground pt-2.5 border-t border-border"
+						>
+							{#if description.length > 0}
+								<span class="flex items-center gap-1.5">
+									<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
+									<span class="font-medium"
+										>{description.length.toLocaleString()}</span
+									> description
+								</span>
+							{/if}
+							{#if contextDocumentBody.length > 0}
+								<span class="flex items-center gap-1.5">
+									<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
+									<span class="font-medium"
+										>{contextDocumentBody.length.toLocaleString()}</span
+									> context
+								</span>
+							{/if}
+							{#if !description && !contextDocumentBody}
+								<span class="text-muted-foreground italic text-center flex-1">
+									Add project details to enable better organization
+								</span>
+							{/if}
 						</div>
 					</div>
-
-					<!-- Sidebar (Right column) -->
-					<EntityModalDetailsDrawer panelLabel="Project details">
-						<Card variant="elevated" class="wt-card">
-							<CardHeader variant="muted" texture="strip" padding="sm">
-								<h3 class="text-sm font-semibold text-foreground">
-									Project settings
-								</h3>
-							</CardHeader>
-							<CardBody padding="none">
-								<div class="divide-y divide-border/70">
-									<!-- Workflow -->
-									<section class="px-2.5 py-2.5 sm:px-4 sm:py-3">
-										<div class="flex items-center gap-2">
-											<FileText class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label">Workflow</p>
-										</div>
-										<div class="mt-2 space-y-2">
-											<div
-												class="grid min-w-0 grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]"
-											>
-												<label
-													for="project-state"
-													class="text-xs font-medium text-muted-foreground"
-												>
-													Status
-												</label>
-												<div class="min-w-0">
-													<Select
-														id="project-state"
-														form={projectEditFormId}
-														bind:value={stateKey}
-														size="sm"
-														disabled={isSaving}
-														class="min-w-0 max-w-full"
-													>
-														{#each PROJECT_STATES as state (state)}
-															<option value={state}>
-																{formatProjectStateLabel(state)}
-															</option>
-														{/each}
-													</Select>
-												</div>
-											</div>
-										</div>
-									</section>
-
-									<!-- Facets -->
-									<section class="px-2.5 py-2.5 sm:px-4 sm:py-3">
-										<div class="flex items-center gap-2">
-											<Compass class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label">Facets</p>
-										</div>
-										<div class="mt-2 space-y-2">
-											<div
-												class="grid min-w-0 grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]"
-											>
-												<label
-													for="facet-context"
-													class="text-xs font-medium text-muted-foreground"
-												>
-													Context
-												</label>
-												<div class="min-w-0">
-													<Select
-														id="facet-context"
-														form={projectEditFormId}
-														bind:value={facetContext}
-														size="sm"
-														disabled={isSaving}
-														class="min-w-0 max-w-full"
-													>
-														<option value="">Not set</option>
-														{#each FACET_CONTEXT_OPTIONS as option (option)}
-															<option value={option}
-																>{facetLabel(option)}</option
-															>
-														{/each}
-													</Select>
-												</div>
-											</div>
-											<div
-												class="grid min-w-0 grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]"
-											>
-												<label
-													for="facet-scale"
-													class="text-xs font-medium text-muted-foreground"
-												>
-													Scale
-												</label>
-												<div class="min-w-0">
-													<Select
-														id="facet-scale"
-														form={projectEditFormId}
-														bind:value={facetScale}
-														size="sm"
-														disabled={isSaving}
-														class="min-w-0 max-w-full"
-													>
-														<option value="">Not set</option>
-														{#each FACET_SCALE_OPTIONS as option (option)}
-															<option value={option}
-																>{facetLabel(option)}</option
-															>
-														{/each}
-													</Select>
-												</div>
-											</div>
-											<div
-												class="grid min-w-0 grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]"
-											>
-												<label
-													for="facet-stage"
-													class="text-xs font-medium text-muted-foreground"
-												>
-													Stage
-												</label>
-												<div class="min-w-0">
-													<Select
-														id="facet-stage"
-														form={projectEditFormId}
-														bind:value={facetStage}
-														size="sm"
-														disabled={isSaving}
-														class="min-w-0 max-w-full"
-													>
-														<option value="">Not set</option>
-														{#each FACET_STAGE_OPTIONS as option (option)}
-															<option value={option}
-																>{facetLabel(option)}</option
-															>
-														{/each}
-													</Select>
-												</div>
-											</div>
-										</div>
-									</section>
-
-									<!-- Timeline -->
-									<section class="px-2.5 py-2.5 sm:px-4 sm:py-3">
-										<div class="flex items-center gap-2">
-											<CalendarRange class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label">Timeline</p>
-										</div>
-										<div class="mt-2 grid grid-cols-1 gap-2">
-											<div
-												class="grid min-w-0 grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]"
-											>
-												<label
-													for="start-date"
-													class="text-xs font-medium text-muted-foreground"
-												>
-													Start
-												</label>
-												<div
-													class="date-field relative min-w-0 overflow-hidden rounded-lg focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 focus-within:ring-offset-background"
-												>
-													<TextInput
-														id="start-date"
-														form={projectEditFormId}
-														type="date"
-														bind:value={startDate}
-														size="sm"
-														disabled={isSaving}
-														class="min-w-0 max-w-full pr-10 text-base text-transparent caret-transparent sm:text-sm"
-													/>
-													<span
-														class={[
-															'pointer-events-none absolute left-3 top-1/2 z-20 min-w-0 max-w-[calc(100%-3.25rem)] -translate-y-1/2 truncate text-base sm:text-sm',
-															startDate
-																? 'text-foreground'
-																: 'text-muted-foreground',
-															isSaving && 'opacity-50'
-														]}
-														aria-hidden="true"
-													>
-														{formatDateInputLabel(startDate)}
-													</span>
-													<CalendarRange
-														class="pointer-events-none absolute right-3 top-1/2 z-20 h-4 w-4 -translate-y-1/2 text-muted-foreground {isSaving
-															? 'opacity-50'
-															: ''}"
-														aria-hidden="true"
-													/>
-												</div>
-											</div>
-											<div
-												class="grid min-w-0 grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]"
-											>
-												<label
-													for="end-date"
-													class="text-xs font-medium text-muted-foreground"
-												>
-													End
-												</label>
-												<div
-													class="date-field relative min-w-0 overflow-hidden rounded-lg focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 focus-within:ring-offset-background"
-												>
-													<TextInput
-														id="end-date"
-														form={projectEditFormId}
-														type="date"
-														bind:value={endDate}
-														min={startDate}
-														size="sm"
-														disabled={isSaving}
-														class="min-w-0 max-w-full pr-10 text-base text-transparent caret-transparent sm:text-sm"
-													/>
-													<span
-														class={[
-															'pointer-events-none absolute left-3 top-1/2 z-20 min-w-0 max-w-[calc(100%-3.25rem)] -translate-y-1/2 truncate text-base sm:text-sm',
-															endDate
-																? 'text-foreground'
-																: 'text-muted-foreground',
-															isSaving && 'opacity-50'
-														]}
-														aria-hidden="true"
-													>
-														{formatDateInputLabel(endDate)}
-													</span>
-													<CalendarRange
-														class="pointer-events-none absolute right-3 top-1/2 z-20 h-4 w-4 -translate-y-1/2 text-muted-foreground {isSaving
-															? 'opacity-50'
-															: ''}"
-														aria-hidden="true"
-													/>
-												</div>
-											</div>
-										</div>
-									</section>
-
-									<!-- Quiet read-only metadata -->
-									{#if createdDateLong || updatedDateLong}
-										<section class="px-2.5 py-2.5 sm:px-4 sm:py-3">
-											<dl class="grid min-w-0 grid-cols-2 gap-3">
-												{#if createdDateLong && project.created_at}
-													<div class="min-w-0">
-														<dt
-															class="text-2xs font-medium text-muted-foreground"
-														>
-															Created
-														</dt>
-														<dd
-															class="mt-0.5 truncate text-xs text-foreground"
-														>
-															<time datetime={project.created_at}
-																>{createdDateLong}</time
-															>
-														</dd>
-													</div>
-												{/if}
-												{#if updatedDateLong && project.updated_at}
-													<div class="min-w-0">
-														<dt
-															class="text-2xs font-medium text-muted-foreground"
-														>
-															Updated
-														</dt>
-														<dd
-															class="mt-0.5 truncate text-xs text-foreground"
-														>
-															<time datetime={project.updated_at}
-																>{updatedDateLong}</time
-															>
-														</dd>
-													</div>
-												{/if}
-											</dl>
-										</section>
-									{/if}
-
-									<!-- Tags -->
-									{#if hasTags}
-										<section class="px-2.5 py-2.5 sm:px-4 sm:py-3">
-											<div class="flex items-center gap-2 mb-2">
-												<TagIcon class="h-4 w-4 text-muted-foreground" />
-												<p class="micro-label">Tags</p>
-											</div>
-											<TagsDisplay
-												props={project.props}
-												size="sm"
-												compact={true}
-											/>
-										</section>
-									{/if}
-								</div>
-							</CardBody>
-						</Card>
-					</EntityModalDetailsDrawer>
 				</div>
 
-				{#if error}
-					<div
-						class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 tx tx-static tx-med"
-						role="alert"
-						aria-live="polite"
-					>
-						<p class="text-sm text-destructive">{error}</p>
-					</div>
-				{/if}
+				<!-- Sidebar (Right column) -->
+				<EntityModalDetailsDrawer panelLabel="Project details">
+					<Card variant="elevated" class="wt-card">
+						<CardHeader variant="muted" texture="strip" padding="sm">
+							<h3 class="text-sm font-semibold text-foreground">Project settings</h3>
+						</CardHeader>
+						<CardBody padding="none">
+							<div class="divide-y divide-border/70">
+								<!-- Workflow -->
+								<section class="px-2.5 py-2.5 sm:px-4 sm:py-3">
+									<div class="flex items-center gap-2">
+										<FileText class="h-4 w-4 text-muted-foreground" />
+										<p class="micro-label">Workflow</p>
+									</div>
+									<div class="mt-2 space-y-2">
+										<div
+											class="grid min-w-0 grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]"
+										>
+											<label
+												for="project-state"
+												class="text-xs font-medium text-muted-foreground"
+											>
+												Status
+											</label>
+											<div class="min-w-0">
+												<Select
+													id="project-state"
+													form={projectEditFormId}
+													bind:value={stateKey}
+													size="sm"
+													disabled={isSaving}
+													class="min-w-0 max-w-full"
+												>
+													{#each PROJECT_STATES as state (state)}
+														<option value={state}>
+															{formatProjectStateLabel(state)}
+														</option>
+													{/each}
+												</Select>
+											</div>
+										</div>
+									</div>
+								</section>
 
-				<EntityCommentsSection
-					projectId={project.id}
-					entityType="project"
-					entityId={project.id}
-				/>
+								<!-- Facets -->
+								<section class="px-2.5 py-2.5 sm:px-4 sm:py-3">
+									<div class="flex items-center gap-2">
+										<Compass class="h-4 w-4 text-muted-foreground" />
+										<p class="micro-label">Facets</p>
+									</div>
+									<div class="mt-2 space-y-2">
+										<div
+											class="grid min-w-0 grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]"
+										>
+											<label
+												for="facet-context"
+												class="text-xs font-medium text-muted-foreground"
+											>
+												Context
+											</label>
+											<div class="min-w-0">
+												<Select
+													id="facet-context"
+													form={projectEditFormId}
+													bind:value={facetContext}
+													size="sm"
+													disabled={isSaving}
+													class="min-w-0 max-w-full"
+												>
+													<option value="">Not set</option>
+													{#each FACET_CONTEXT_OPTIONS as option (option)}
+														<option value={option}
+															>{facetLabel(option)}</option
+														>
+													{/each}
+												</Select>
+											</div>
+										</div>
+										<div
+											class="grid min-w-0 grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]"
+										>
+											<label
+												for="facet-scale"
+												class="text-xs font-medium text-muted-foreground"
+											>
+												Scale
+											</label>
+											<div class="min-w-0">
+												<Select
+													id="facet-scale"
+													form={projectEditFormId}
+													bind:value={facetScale}
+													size="sm"
+													disabled={isSaving}
+													class="min-w-0 max-w-full"
+												>
+													<option value="">Not set</option>
+													{#each FACET_SCALE_OPTIONS as option (option)}
+														<option value={option}
+															>{facetLabel(option)}</option
+														>
+													{/each}
+												</Select>
+											</div>
+										</div>
+										<div
+											class="grid min-w-0 grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]"
+										>
+											<label
+												for="facet-stage"
+												class="text-xs font-medium text-muted-foreground"
+											>
+												Stage
+											</label>
+											<div class="min-w-0">
+												<Select
+													id="facet-stage"
+													form={projectEditFormId}
+													bind:value={facetStage}
+													size="sm"
+													disabled={isSaving}
+													class="min-w-0 max-w-full"
+												>
+													<option value="">Not set</option>
+													{#each FACET_STAGE_OPTIONS as option (option)}
+														<option value={option}
+															>{facetLabel(option)}</option
+														>
+													{/each}
+												</Select>
+											</div>
+										</div>
+									</div>
+								</section>
+
+								<!-- Timeline -->
+								<section class="px-2.5 py-2.5 sm:px-4 sm:py-3">
+									<div class="flex items-center gap-2">
+										<CalendarRange class="h-4 w-4 text-muted-foreground" />
+										<p class="micro-label">Timeline</p>
+									</div>
+									<div class="mt-2 grid grid-cols-1 gap-2">
+										<div
+											class="grid min-w-0 grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]"
+										>
+											<label
+												for="start-date"
+												class="text-xs font-medium text-muted-foreground"
+											>
+												Start
+											</label>
+											<div
+												class="date-field relative min-w-0 overflow-hidden rounded-lg focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 focus-within:ring-offset-background"
+											>
+												<TextInput
+													id="start-date"
+													form={projectEditFormId}
+													type="date"
+													bind:value={startDate}
+													size="sm"
+													disabled={isSaving}
+													class="min-w-0 max-w-full pr-10 text-base text-transparent caret-transparent sm:text-sm"
+												/>
+												<span
+													class={[
+														'pointer-events-none absolute left-3 top-1/2 z-20 min-w-0 max-w-[calc(100%-3.25rem)] -translate-y-1/2 truncate text-base sm:text-sm',
+														startDate
+															? 'text-foreground'
+															: 'text-muted-foreground',
+														isSaving && 'opacity-50'
+													]}
+													aria-hidden="true"
+												>
+													{formatDateInputLabel(startDate)}
+												</span>
+												<CalendarRange
+													class="pointer-events-none absolute right-3 top-1/2 z-20 h-4 w-4 -translate-y-1/2 text-muted-foreground {isSaving
+														? 'opacity-50'
+														: ''}"
+													aria-hidden="true"
+												/>
+											</div>
+										</div>
+										<div
+											class="grid min-w-0 grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]"
+										>
+											<label
+												for="end-date"
+												class="text-xs font-medium text-muted-foreground"
+											>
+												End
+											</label>
+											<div
+												class="date-field relative min-w-0 overflow-hidden rounded-lg focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 focus-within:ring-offset-background"
+											>
+												<TextInput
+													id="end-date"
+													form={projectEditFormId}
+													type="date"
+													bind:value={endDate}
+													min={startDate}
+													size="sm"
+													disabled={isSaving}
+													class="min-w-0 max-w-full pr-10 text-base text-transparent caret-transparent sm:text-sm"
+												/>
+												<span
+													class={[
+														'pointer-events-none absolute left-3 top-1/2 z-20 min-w-0 max-w-[calc(100%-3.25rem)] -translate-y-1/2 truncate text-base sm:text-sm',
+														endDate
+															? 'text-foreground'
+															: 'text-muted-foreground',
+														isSaving && 'opacity-50'
+													]}
+													aria-hidden="true"
+												>
+													{formatDateInputLabel(endDate)}
+												</span>
+												<CalendarRange
+													class="pointer-events-none absolute right-3 top-1/2 z-20 h-4 w-4 -translate-y-1/2 text-muted-foreground {isSaving
+														? 'opacity-50'
+														: ''}"
+													aria-hidden="true"
+												/>
+											</div>
+										</div>
+									</div>
+								</section>
+
+								<!-- Quiet read-only metadata -->
+								{#if createdDateLong || updatedDateLong}
+									<section class="px-2.5 py-2.5 sm:px-4 sm:py-3">
+										<dl class="grid min-w-0 grid-cols-2 gap-3">
+											{#if createdDateLong && project.created_at}
+												<div class="min-w-0">
+													<dt
+														class="text-2xs font-medium text-muted-foreground"
+													>
+														Created
+													</dt>
+													<dd
+														class="mt-0.5 truncate text-xs text-foreground"
+													>
+														<time datetime={project.created_at}
+															>{createdDateLong}</time
+														>
+													</dd>
+												</div>
+											{/if}
+											{#if updatedDateLong && project.updated_at}
+												<div class="min-w-0">
+													<dt
+														class="text-2xs font-medium text-muted-foreground"
+													>
+														Updated
+													</dt>
+													<dd
+														class="mt-0.5 truncate text-xs text-foreground"
+													>
+														<time datetime={project.updated_at}
+															>{updatedDateLong}</time
+														>
+													</dd>
+												</div>
+											{/if}
+										</dl>
+									</section>
+								{/if}
+
+								<!-- Tags -->
+								{#if hasTags}
+									<section class="px-2.5 py-2.5 sm:px-4 sm:py-3">
+										<div class="flex items-center gap-2 mb-2">
+											<TagIcon class="h-4 w-4 text-muted-foreground" />
+											<p class="micro-label">Tags</p>
+										</div>
+										<TagsDisplay
+											props={project.props}
+											size="sm"
+											compact={true}
+										/>
+									</section>
+								{/if}
+							</div>
+						</CardBody>
+					</Card>
+				</EntityModalDetailsDrawer>
 			</div>
-		{/if}
-	{/snippet}
+
+			{#if error}
+				<div
+					class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 tx tx-static tx-med"
+					role="alert"
+					aria-live="polite"
+				>
+					<p class="text-sm text-destructive">{error}</p>
+				</div>
+			{/if}
+
+			<EntityCommentsSection
+				projectId={project.id}
+				entityType="project"
+				entityId={project.id}
+			/>
+		</div>
+	{/if}
 
 	{#snippet footer()}
 		{#if project}

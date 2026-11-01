@@ -420,7 +420,7 @@
 			</div>
 			<!-- Mobile card list -->
 			<ul class="divide-y divide-border lg:hidden">
-				{#each stats?.stepStats ?? [] as step}
+				{#each stats?.stepStats ?? [] as step (step.step)}
 					<li class="space-y-3 p-4">
 						<div class="font-medium text-foreground">
 							{step.stepNumber}. {step.step}
@@ -466,7 +466,7 @@
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-border">
-						{#each stats?.stepStats ?? [] as step}
+						{#each stats?.stepStats ?? [] as step (step.step)}
 							<tr>
 								<td class="px-4 py-3 font-medium text-foreground">
 									{step.stepNumber}. {step.step}
@@ -493,7 +493,7 @@
 						Enrollment Status
 					</p>
 					<div class="mt-2 space-y-1">
-						{#each entries(stats?.statusCounts ?? {}) as [label, count]}
+						{#each entries(stats?.statusCounts ?? {}) as [label, count] (label)}
 							<div class="flex items-center justify-between text-sm">
 								<span class="text-muted-foreground">{label}</span>
 								<span class="font-medium text-foreground">{count}</span>
@@ -504,7 +504,7 @@
 				<div>
 					<p class="text-xs font-semibold uppercase text-muted-foreground">Email Logs</p>
 					<div class="mt-2 space-y-1">
-						{#each entries(emailLogCounts) as [label, count]}
+						{#each entries(emailLogCounts) as [label, count] (label)}
 							<div class="flex items-center justify-between text-sm">
 								<span class="text-muted-foreground">{label}</span>
 								<span class="font-medium text-foreground">{count}</span>
@@ -515,7 +515,7 @@
 				<div>
 					<p class="text-xs font-semibold uppercase text-muted-foreground">Branches</p>
 					<div class="mt-2 max-h-48 space-y-1 overflow-auto">
-						{#each entries(stats?.branchCounts ?? {}) as [label, count]}
+						{#each entries(stats?.branchCounts ?? {}) as [label, count] (label)}
 							<div class="flex items-center justify-between gap-3 text-sm">
 								<span class="truncate text-muted-foreground">{label}</span>
 								<span class="font-medium text-foreground">{count}</span>
@@ -536,7 +536,7 @@
 		</div>
 		<!-- Mobile card list -->
 		<ul class="divide-y divide-border lg:hidden">
-			{#each steps as step}
+			{#each steps as step (step.step_number)}
 				<li class="space-y-3 p-4">
 					<div class="font-medium text-foreground">
 						{step.step_number}. {step.step_key}
@@ -583,7 +583,7 @@
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-border">
-					{#each steps as step}
+					{#each steps as step (step.step_number)}
 						<tr>
 							<td class="px-4 py-3 font-medium text-foreground">
 								{step.step_number}. {step.step_key}
@@ -621,7 +621,7 @@
 						name="preview_step"
 						class="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
-						{#each ['email_1', 'email_2', 'email_3', 'email_4', 'email_5'] as step}
+						{#each ['email_1', 'email_2', 'email_3', 'email_4', 'email_5'] as step (step)}
 							<option value={step} selected={sandbox.input.step === step}
 								>{step}</option
 							>
@@ -642,7 +642,7 @@
 						name="onboarding_intent"
 						class="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
-						{#each ['plan', 'organize', 'unstuck', 'explore', 'none'] as intent}
+						{#each ['plan', 'organize', 'unstuck', 'explore', 'none'] as intent (intent)}
 							<option
 								value={intent}
 								selected={sandbox.input.onboardingIntent === intent}
@@ -867,7 +867,7 @@
 			</span>
 		</div>
 		<div class="grid gap-4 p-4 lg:grid-cols-2">
-			{#each localPreviews as preview, index}
+			{#each localPreviews as preview, index (preview.label)}
 				{@const previewKey = `variant-${index}`}
 				{@const showHtml = openHtmlPreviews[previewKey] ?? false}
 				<div
@@ -988,7 +988,7 @@
 
 		<!-- Mobile card list -->
 		<ul class="divide-y divide-border lg:hidden">
-			{#each queueRows as row}
+			{#each queueRows as row (row.id)}
 				<li class={`space-y-3 p-4 ${row.status === 'errored' ? 'bg-destructive/5' : ''}`}>
 					<div class="flex items-start justify-between gap-2">
 						<div class="min-w-0">
@@ -1080,7 +1080,7 @@
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-border">
-					{#each queueRows as row}
+					{#each queueRows as row (row.id)}
 						<tr class={row.status === 'errored' ? 'bg-destructive/5' : ''}>
 							<td class="px-4 py-3 align-top">
 								<div class="max-w-[220px] truncate font-medium text-foreground">
@@ -1318,7 +1318,7 @@
 										{row.diffCount} difference{row.diffCount === 1 ? '' : 's'}
 									</div>
 									<div class="space-y-1">
-										{#each row.diffs as diff}
+										{#each row.diffs as diff (diff.field)}
 											<div
 												class="rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground"
 											>
@@ -1417,7 +1417,7 @@
 														: 's'}
 												</div>
 												<div class="space-y-1">
-													{#each row.diffs as diff}
+													{#each row.diffs as diff (diff.field)}
 														<div
 															class="rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground"
 														>

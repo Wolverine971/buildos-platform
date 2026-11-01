@@ -8,7 +8,6 @@
 
 <script lang="ts">
 	import { onDestroy, untrack } from 'svelte';
-	import { browser } from '$app/environment';
 	import {
 		MessagesSquare,
 		FolderPlus,
@@ -147,7 +146,7 @@
 	// project-chat card. Cache short-circuit in loadProjects() keeps this
 	// from re-fetching unnecessarily when switching views.
 	$effect(() => {
-		if (!browser || !active) return;
+		if (!active) return;
 		if (!normalizedProjectSearch) {
 			// The default list needs no debounce: load in the same tick so a warm
 			// cache resolves before first paint (no one-frame skeleton flash).
@@ -165,7 +164,7 @@
 	// (e.g. a project was created in chat meanwhile). No skeleton/spinner, and
 	// fetchProjectSelectionSummaries' short-lived cache absorbs rapid toggles.
 	$effect(() => {
-		if (!browser || !active) return;
+		if (!active) return;
 		untrack(() => {
 			const isStale = Date.now() - lastProjectsLoadedAt > PROJECT_REACTIVATION_REFRESH_MS;
 			if (hasBeenActive && hasLoadedProjects && !isLoadingProjects && isStale) {

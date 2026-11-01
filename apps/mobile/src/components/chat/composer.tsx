@@ -2,7 +2,7 @@
 // The message box at the bottom of a chat: the capture box's shape (card, graph paper, round
 // keys), docked to the screen's bottom edge and riding on top of the keyboard. Type or talk;
 // Send keeps the keyboard up, like Messages; while a reply is in flight the key is Stop.
-import { type ComponentRef, useEffect, useRef, useState } from 'react';
+import { type ReactNode, type ComponentRef, useEffect, useRef, useState } from 'react';
 import {
 	Animated,
 	Easing,
@@ -55,6 +55,8 @@ export type ComposerProps = {
 	placeholder: string;
 	/** Dev screenshots: open the keyboard when this is set; a new value focuses again. */
 	autoFocus?: string | null;
+	/** Rides on the box, above the error line: the "didn't finish" strip. */
+	above?: ReactNode;
 };
 
 export function Composer({
@@ -64,7 +66,8 @@ export function Composer({
 	error,
 	onDismissError,
 	placeholder,
-	autoFocus = null
+	autoFocus = null,
+	above
 }: ComposerProps) {
 	const ink = useInk();
 	const { colors } = ink;
@@ -157,6 +160,7 @@ export function Composer({
 				accessibilityElementsHidden
 				importantForAccessibility="no-hide-descendants"
 			/>
+			{above}
 			{message ? (
 				<View style={styles.status} accessibilityLiveRegion="polite">
 					<Text

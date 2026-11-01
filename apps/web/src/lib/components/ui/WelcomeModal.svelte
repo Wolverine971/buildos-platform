@@ -132,90 +132,88 @@
 		<div class="h-0"></div>
 	{/snippet}
 
-	{#snippet children()}
-		<!-- Content -->
-		<div class="relative p-4 sm:p-5">
-			{#if dismissible && !persistent}
-				<button
-					type="button"
-					onclick={handleDismiss}
-					class="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					aria-label="Close welcome dialog"
-					title="Close welcome dialog"
-				>
-					<X class="h-4 w-4" />
-				</button>
-			{/if}
+	<!-- Content -->
+	<div class="relative p-4 sm:p-5">
+		{#if dismissible && !persistent}
+			<button
+				type="button"
+				onclick={handleDismiss}
+				class="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				aria-label="Close welcome dialog"
+				title="Close welcome dialog"
+			>
+				<X class="h-4 w-4" />
+			</button>
+		{/if}
 
-			<!-- Icon Slot -->
-			<div class="flex justify-center mb-3 sm:mb-4">
-				{@render icon?.()}
-				{#if !icon}
-					<!-- Inkprint default icon - flat design, no blur/gradients -->
-					<div class="bg-accent rounded-full p-3 sm:p-4 shadow-ink tx tx-bloom tx-weak">
-						<div class="w-6 h-6 sm:w-8 sm:h-8 bg-accent-foreground rounded-full"></div>
-					</div>
-				{/if}
-			</div>
-
-			<!-- Title & Description -->
-			<div class="text-center mb-3 sm:mb-4">
-				<h2 class="text-xl font-bold text-foreground mb-2">
-					{title}
-				</h2>
-				{#if subtitle}
-					<p class="text-muted-foreground leading-relaxed">
-						{subtitle}
-					</p>
-				{/if}
-
-				<!-- Content Slot for custom description -->
-				{@render description?.()}
-			</div>
-
-			<!-- Benefits/Features Slot -->
-			{@render features?.()}
-
-			<!-- Actions -->
-			<div class="space-y-3">
-				{@render actions?.()}
-				{#if !actions}
-					<Button
-						onclick={handlePrimary}
-						variant="primary"
-						size="xl"
-						fullWidth={true}
-						btnType="container"
-						class="bg-accent text-accent-foreground shadow-ink pressable"
-					>
-						<span class="flex items-center justify-center space-x-2">
-							<span>{primaryButtonText}</span>
-							{@render primaryIcon?.()}
-						</span>
-					</Button>
-
-					{#if secondaryButtonText}
-						<Button
-							onclick={handleSecondary}
-							variant="ghost"
-							size="xl"
-							fullWidth={true}
-							class="text-muted-foreground hover:text-foreground"
-						>
-							{secondaryButtonText}
-						</Button>
-					{/if}
-				{/if}
-			</div>
-
-			<!-- Time estimate -->
-			{#if showTimeEstimate}
-				<p class="text-center text-xs text-muted-foreground mt-4">
-					{timeEstimate}
-				</p>
+		<!-- Icon Slot -->
+		<div class="flex justify-center mb-3 sm:mb-4">
+			{@render icon?.()}
+			{#if !icon}
+				<!-- Inkprint default icon - flat design, no blur/gradients -->
+				<div class="bg-accent rounded-full p-3 sm:p-4 shadow-ink tx tx-bloom tx-weak">
+					<div class="w-6 h-6 sm:w-8 sm:h-8 bg-accent-foreground rounded-full"></div>
+				</div>
 			{/if}
 		</div>
-	{/snippet}
+
+		<!-- Title & Description -->
+		<div class="text-center mb-3 sm:mb-4">
+			<h2 class="text-xl font-bold text-foreground mb-2">
+				{title}
+			</h2>
+			{#if subtitle}
+				<p class="text-muted-foreground leading-relaxed">
+					{subtitle}
+				</p>
+			{/if}
+
+			<!-- Content Slot for custom description -->
+			{@render description?.()}
+		</div>
+
+		<!-- Benefits/Features Slot -->
+		{@render features?.()}
+
+		<!-- Actions -->
+		<div class="space-y-3">
+			{@render actions?.()}
+			{#if !actions}
+				<Button
+					onclick={handlePrimary}
+					variant="primary"
+					size="xl"
+					fullWidth={true}
+					btnType="container"
+					class="bg-accent text-accent-foreground shadow-ink pressable"
+				>
+					<span class="flex items-center justify-center space-x-2">
+						<span>{primaryButtonText}</span>
+						{@render primaryIcon?.()}
+					</span>
+				</Button>
+
+				{#if secondaryButtonText}
+					<Button
+						onclick={handleSecondary}
+						variant="ghost"
+						size="xl"
+						fullWidth={true}
+						class="text-muted-foreground hover:text-foreground"
+					>
+						{secondaryButtonText}
+					</Button>
+				{/if}
+			{/if}
+		</div>
+
+		<!-- Time estimate -->
+		{#if showTimeEstimate}
+			<p class="text-center text-xs text-muted-foreground mt-4">
+				{timeEstimate}
+			</p>
+		{/if}
+	</div>
 
 	{#snippet footer()}
 		<!-- Footer Slot -->

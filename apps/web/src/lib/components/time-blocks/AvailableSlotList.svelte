@@ -106,7 +106,7 @@
 		<!-- Slots List (collapsible) -->
 		{#if isExpanded}
 			<div class="slots-content">
-				{#each slotsByDay as { date, slots }}
+				{#each slotsByDay as { dateKey, date, slots } (dateKey)}
 					<div class="day-group">
 						<!-- Day Header -->
 						<div class="day-header">
@@ -128,7 +128,7 @@
 
 						<!-- Slots for this day -->
 						<div class="day-slots">
-							{#each slots as slot}
+							{#each slots as slot (slot.id)}
 								<button
 									type="button"
 									class="slot-item group"

@@ -160,7 +160,7 @@
 			</h2>
 
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-				{#each specPatterns as pattern}
+				{#each specPatterns as pattern (pattern.name)}
 					<div
 						class="p-4 bg-card border border-border rounded-lg shadow-ink hover:border-accent/50 transition-colors"
 					>
@@ -378,7 +378,7 @@
 
 				<!-- Table rows -->
 				<div class="divide-y divide-border">
-					{#each entities as entity}
+					{#each entities as entity (entity.id)}
 						<!-- Desktop row -->
 						<div
 							class="hidden sm:block px-4 py-3 hover:bg-muted/30 transition-colors group"
@@ -556,7 +556,7 @@
 					</div>
 
 					<div class="p-4 space-y-3">
-						{#each dependencies as dep}
+						{#each dependencies as dep (`${dep.from}:${dep.to}`)}
 							<div
 								class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 bg-muted/30 rounded-lg border border-border/50"
 							>
@@ -671,7 +671,7 @@
 
 			<div class="bg-card border border-border rounded-lg shadow-ink overflow-hidden">
 				<div class="divide-y divide-border">
-					{#each changelog as release, i}
+					{#each changelog as release, i (release.version)}
 						<div
 							class="px-4 py-4 flex items-start gap-3 sm:gap-4 hover:bg-muted/30 transition-colors"
 						>

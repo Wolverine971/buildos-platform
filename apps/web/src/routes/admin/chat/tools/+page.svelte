@@ -47,7 +47,6 @@
 	let loadRequestId = 0;
 
 	$effect(() => {
-		if (!browser) return;
 		selectedTimeframe;
 		selectedCategory;
 		selectedContextType;
@@ -316,7 +315,7 @@
 					aria-label="Filter by category"
 				>
 					<option value="all">All Categories</option>
-					{#each toolData?.filter_options.categories ?? [] as category}
+					{#each toolData?.filter_options.categories ?? [] as category (category)}
 						<option value={category}>{category}</option>
 					{/each}
 				</Select>
@@ -327,7 +326,7 @@
 					aria-label="Filter by context type"
 				>
 					<option value="all">All Contexts</option>
-					{#each toolData?.filter_options.context_types ?? [] as contextType}
+					{#each toolData?.filter_options.context_types ?? [] as contextType (contextType)}
 						<option value={contextType}>{contextType}</option>
 					{/each}
 				</Select>
@@ -349,7 +348,7 @@
 					aria-label="Filter by gateway op"
 				>
 					<option value="all">All Gateway Ops</option>
-					{#each toolData?.filter_options.gateway_ops ?? [] as gatewayOp}
+					{#each toolData?.filter_options.gateway_ops ?? [] as gatewayOp (gatewayOp)}
 						<option value={gatewayOp}>{gatewayOp}</option>
 					{/each}
 				</Select>
@@ -360,7 +359,7 @@
 					aria-label="Filter by help path"
 				>
 					<option value="all">All Help Paths</option>
-					{#each toolData?.filter_options.help_paths ?? [] as helpPath}
+					{#each toolData?.filter_options.help_paths ?? [] as helpPath (helpPath)}
 						<option value={helpPath}>{helpPath}</option>
 					{/each}
 				</Select>
@@ -526,7 +525,7 @@
 						<BarChart3 class="h-5 w-5 text-muted-foreground" />
 					</div>
 					<div class="space-y-3">
-						{#each toolData.trends as trend}
+						{#each toolData.trends as trend (trend.bucket)}
 							<div
 								class="grid grid-cols-[4.5rem_1fr_4rem] items-center gap-3 text-xs sm:grid-cols-[7rem_1fr_5rem_6rem]"
 							>
@@ -563,7 +562,7 @@
 						<Activity class="h-5 w-5 text-muted-foreground" />
 					</div>
 					<div class="space-y-3">
-						{#each toolData.by_category as category}
+						{#each toolData.by_category as category (category.key)}
 							<div>
 								<div class="mb-1 flex items-center justify-between gap-3">
 									<span
@@ -617,7 +616,7 @@
 				</div>
 				<!-- Mobile card list -->
 				<div class="block space-y-2 p-3 lg:hidden">
-					{#each sortedTools as tool}
+					{#each sortedTools as tool (tool.key)}
 						<div class="rounded-lg border border-border bg-background p-3">
 							<div class="min-w-0">
 								<div class="text-sm font-medium text-foreground line-clamp-2">
@@ -732,7 +731,7 @@
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-border">
-							{#each sortedTools as tool}
+							{#each sortedTools as tool (tool.key)}
 								<tr class="hover:bg-muted/30">
 									<td class="max-w-[22rem] px-4 py-3">
 										<div class="min-w-0">
@@ -812,7 +811,7 @@
 						<Database class="h-5 w-5 text-muted-foreground" />
 					</div>
 					<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-						{#each dimensionSections as section}
+						{#each dimensionSections as section (section.title)}
 							<div class="rounded-lg border border-border bg-muted/20 p-3">
 								<h3 class="mb-2 text-xs font-semibold text-muted-foreground">
 									{section.title}
@@ -821,7 +820,7 @@
 									<p class="text-xs text-muted-foreground">No data</p>
 								{:else}
 									<div class="space-y-2">
-										{#each section.rows.slice(0, 6) as row}
+										{#each section.rows.slice(0, 6) as row (row.key)}
 											<div>
 												<div
 													class="mb-1 flex items-center justify-between gap-3"
@@ -876,7 +875,7 @@
 								</p>
 							{:else}
 								<div class="space-y-2">
-									{#each toolData.most_problematic_tools.slice(0, 6) as tool}
+									{#each toolData.most_problematic_tools.slice(0, 6) as tool (tool.key)}
 										<div class="rounded-lg bg-destructive/10 p-2">
 											<div class="flex items-center justify-between gap-3">
 												<span
@@ -907,7 +906,7 @@
 								<p class="text-xs text-muted-foreground">No error messages</p>
 							{:else}
 								<div class="space-y-2">
-									{#each toolData.reliability.top_errors.slice(0, 5) as errorData}
+									{#each toolData.reliability.top_errors.slice(0, 5) as errorData (errorData.error_message)}
 										<div
 											class="rounded-lg border border-destructive/20 bg-destructive/10 p-2"
 										>

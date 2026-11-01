@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/admin/AdminShell.svelte -->
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
 	import type { Snippet } from 'svelte';
@@ -246,7 +246,7 @@
 
 	// Close mobile menu on navigation
 	$effect(() => {
-		const currentPath = $page.url.pathname;
+		const currentPath = page.url.pathname;
 		if (lastPath && currentPath !== lastPath) {
 			mobileOpen = false;
 		}
@@ -258,7 +258,7 @@
 		mobileOpen = false;
 	}
 
-	let pathname = $derived($page.url.pathname);
+	let pathname = $derived(page.url.pathname);
 	let isWideContentRoute = $derived(
 		wideContentRoutePrefixes.some(
 			(route) => pathname === route || pathname.startsWith(`${route}/`)
@@ -277,8 +277,6 @@
 		'flex h-10 w-10 items-center justify-center rounded-full bg-foreground text-sm font-semibold uppercase text-background';
 
 	onMount(() => {
-		if (!browser) return;
-
 		try {
 			sidebarCollapsed = localStorage.getItem(ADMIN_SIDEBAR_COLLAPSED_KEY) === 'true';
 		} catch (error) {

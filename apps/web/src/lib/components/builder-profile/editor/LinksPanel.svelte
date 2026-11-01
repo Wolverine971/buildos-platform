@@ -98,10 +98,10 @@
 								type="button"
 								class={gripClass}
 								aria-label="Move {name}. Drag, or use the arrow keys."
-								use:dragHandle={{
+								{@attach dragHandle(() => ({
 									index,
 									onmove: (from, to) => editor.moveLink('social', from, to)
-								}}
+								}))}
 							>
 								<GripVertical class="h-4 w-4" aria-hidden="true" />
 							</button>
@@ -182,10 +182,10 @@
 								type="button"
 								class={gripClass}
 								aria-label="Move {name}. Drag, or use the arrow keys."
-								use:dragHandle={{
+								{@attach dragHandle(() => ({
 									index,
 									onmove: (from, to) => editor.moveLink('link', from, to)
-								}}
+								}))}
 							>
 								<GripVertical class="h-4 w-4" aria-hidden="true" />
 							</button>

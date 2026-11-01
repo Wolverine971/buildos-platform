@@ -5,21 +5,16 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/svelte';
 import ChatSessionAuditActions from './ChatSessionAuditActions.svelte';
 
 const {
-	pageStore,
+	appPage,
 	fetchChatSessionAuditPayloadMock,
 	downloadChatSessionAuditMarkdownMock,
 	downloadChatSessionAuditBundleMock
 } = vi.hoisted(() => ({
-	pageStore: {
-		subscribe(callback: (value: { data: { user: { is_admin: boolean } } }) => void) {
-			callback({
-				data: {
-					user: {
-						is_admin: true
-					}
-				}
-			});
-			return () => {};
+	appPage: {
+		data: {
+			user: {
+				is_admin: true
+			}
 		}
 	},
 	fetchChatSessionAuditPayloadMock: vi.fn(),
@@ -27,8 +22,8 @@ const {
 	downloadChatSessionAuditBundleMock: vi.fn()
 }));
 
-vi.mock('$app/stores', () => ({
-	page: pageStore
+vi.mock('$app/state', () => ({
+	page: appPage
 }));
 
 vi.mock('$lib/stores/toast.store', () => ({

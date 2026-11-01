@@ -444,7 +444,7 @@
 							Follow the thread
 						</h2>
 						<div class="mt-5 grid gap-3 md:grid-cols-2">
-							{#each data.relatedSkills as related}
+							{#each data.relatedSkills as related (related.slug)}
 								<a
 									href={getSkillPath(related)}
 									class="group flex min-h-[10rem] flex-col rounded-lg border border-border bg-card p-4 shadow-ink transition-colors hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring tx tx-frame tx-weak"
@@ -666,7 +666,7 @@
 							</h2>
 						</div>
 						<div class="mt-4 space-y-3">
-							{#each data.containingPacks as pack}
+							{#each data.containingPacks as pack (pack.id)}
 								<div class="rounded-md border border-border bg-background p-3">
 									<div class="flex items-start justify-between gap-2">
 										<div class="min-w-0">

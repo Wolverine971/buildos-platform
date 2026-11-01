@@ -154,7 +154,7 @@
 
 		<div class="p-3 space-y-3">
 			<div class="flex flex-wrap gap-x-3 gap-y-1.5">
-				{#each metricConfig as metric}
+				{#each metricConfig as metric (metric.key)}
 					<div class="flex items-center gap-1.5 text-2xs text-muted-foreground">
 						<span class="h-2 w-2 rounded-full {metric.colorClass}"></span>
 						<span>{metric.label}</span>
@@ -163,7 +163,7 @@
 			</div>
 
 			<div class="space-y-2">
-				{#each chartData as project}
+				{#each chartData as project (project.id)}
 					<div
 						class="grid gap-2 sm:grid-cols-[minmax(0,0.9fr)_minmax(180px,1.7fr)_auto] sm:items-center"
 					>
@@ -186,7 +186,7 @@
 							class="flex h-3 min-w-0 overflow-hidden rounded-full bg-muted"
 							aria-label={`${project.fullName} usage distribution`}
 						>
-							{#each project.metrics.filter((metric) => metric.value > 0) as metric}
+							{#each project.metrics.filter((metric) => metric.value > 0) as metric (metric.key)}
 								<div
 									class="h-full min-w-[6px] transition-opacity hover:opacity-80 {metric.colorClass}"
 									style="flex-grow: {metric.value}; flex-basis: 0;"

@@ -144,7 +144,8 @@
 				Scroll horizontally to compare weights <span aria-hidden="true">→</span>
 			</p>
 
-			<!-- svelte-ignore a11y_no_noninteractive_tabindex (scrollable data regions need a keyboard focus target) -->
+			<!-- Scrollable data regions need a keyboard focus target. -->
+			<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 			<div
 				class="matrix-scroll overflow-x-auto rounded-lg border border-border bg-muted/20 p-2"
 				role="region"

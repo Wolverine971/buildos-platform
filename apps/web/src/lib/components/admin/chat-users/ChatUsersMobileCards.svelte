@@ -121,7 +121,7 @@
 
 				{#if user.top_topics.length > 0}
 					<div class="mt-3 flex flex-wrap gap-1">
-						{#each user.top_topics.slice(0, 3) as topic}
+						{#each user.top_topics.slice(0, 3) as topic (topic.topic)}
 							<span
 								class="rounded border border-border bg-muted px-2 py-0.5 text-2xs text-muted-foreground"
 							>

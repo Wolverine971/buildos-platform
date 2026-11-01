@@ -1,6 +1,6 @@
 <!-- apps/web/src/routes/auth/login/+page.svelte -->
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { afterNavigate, goto, preloadCode } from '$app/navigation';
 	import { PUBLIC_GOOGLE_CLIENT_ID } from '$env/static/public';
 	import SEOHead from '$lib/components/SEOHead.svelte';
@@ -18,7 +18,7 @@
 	// already shows it. The URL carries only codes; the copy comes from a fixed table so a
 	// crafted link can't put its own words in a notice. Toasts are not mounted for signed-out
 	// visitors, so these render inline.
-	const initialParams = new URL($page.url).searchParams;
+	const initialParams = new URL(page.url).searchParams;
 	const signedOut = initialParams.has('signed_out');
 
 	let loading = $state(false);
@@ -29,7 +29,7 @@
 	let error = $state(authErrorMessage(initialParams.get('error')) ?? '');
 	let notice = $state(authNoticeMessage(initialParams.get('notice')) ?? '');
 	let emailError = $state('');
-	let redirectParam = $derived(normalizeRedirectPath($page.url.searchParams.get('redirect')));
+	let redirectParam = $derived(normalizeRedirectPath(page.url.searchParams.get('redirect')));
 	let redirectQuery = $derived(
 		redirectParam ? `?redirect=${encodeURIComponent(redirectParam)}` : ''
 	);
@@ -37,7 +37,7 @@
 	let destinationPreloaded = false;
 
 	function resolveRedirectTarget() {
-		return normalizeRedirectPath($page.url.searchParams.get('redirect'));
+		return normalizeRedirectPath(page.url.searchParams.get('redirect'));
 	}
 
 	function encodeOAuthState(redirectPath: string | null) {
@@ -95,7 +95,7 @@
 	function preloadDestination() {
 		if (destinationPreloaded) return;
 		destinationPreloaded = true;
-		const target = new URL(resolveRedirectTarget() ?? '/today', $page.url.origin);
+		const target = new URL(resolveRedirectTarget() ?? '/today', page.url.origin);
 		void preloadCode(target.pathname).catch(() => {});
 	}
 
@@ -268,7 +268,7 @@
 
 		await recordGoogleAcceptanceIntent();
 
-		const redirectUri = `${$page.url.origin}/auth/google/login-callback`;
+		const redirectUri = `${page.url.origin}/auth/google/login-callback`;
 		const state = encodeOAuthState(resolveRedirectTarget());
 
 		const params = new URLSearchParams({
@@ -307,7 +307,7 @@
 	// status already read above stays on screen.
 	const STATUS_PARAMS = ['signed_out', 'notice', 'message', 'error'];
 	afterNavigate(() => {
-		const url = new URL($page.url);
+		const url = new URL(page.url);
 		if (!STATUS_PARAMS.some((key) => url.searchParams.has(key))) return;
 		for (const key of STATUS_PARAMS) url.searchParams.delete(key);
 		// The first afterNavigate runs just before SvelteKit marks its router started; one

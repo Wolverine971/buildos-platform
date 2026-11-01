@@ -142,7 +142,7 @@
 								Status Breakdown
 							</div>
 							<div class="flex flex-wrap gap-1">
-								{#each Object.entries(event.status_breakdown) as [status, count]}
+								{#each Object.entries(event.status_breakdown) as [status, count] (status)}
 									<span
 										class="inline-flex items-center px-2 py-0.5 rounded-md text-xs {getStatusBadgeColor(
 											status
@@ -294,7 +294,7 @@
 							</td>
 							<td class="px-3 py-2.5">
 								<div class="flex flex-wrap gap-1">
-									{#each Object.entries(event.status_breakdown) as [status, count]}
+									{#each Object.entries(event.status_breakdown) as [status, count] (status)}
 										<span
 											class="inline-flex items-center px-2 py-0.5 rounded-md text-xs {getStatusBadgeColor(
 												status
