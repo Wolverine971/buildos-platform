@@ -25,6 +25,16 @@ vi.mock('$lib/stores/toast.store', () => ({
 // every local run.
 vi.mock('$lib/utils/ontology-client-logger', () => ({ logOntologyClientError: vi.fn() }));
 
+// The real chat updates shallow history, but this component test has no Kit router.
+// History navigation itself is covered by agent-chat-history.svelte.test.ts.
+vi.mock('$app/navigation', async (importOriginal) => ({
+	...(await importOriginal<typeof import('$app/navigation')>()),
+	pushState: vi.fn(),
+	replaceState: vi.fn(),
+	beforeNavigate: vi.fn(),
+	afterNavigate: vi.fn()
+}));
+
 // Start the heavy dynamic import during collection so this test's behavioral
 // timeout measures dock interaction/rendering instead of loaded-suite transform contention.
 const agentChatModalModule = import('$lib/components/agent/AgentChatModal.svelte');

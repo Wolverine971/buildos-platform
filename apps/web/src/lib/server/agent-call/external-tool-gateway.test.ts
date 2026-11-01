@@ -3309,6 +3309,7 @@ describe('external tool gateway', () => {
 			'actor-1',
 			expect.objectContaining({ id: state.tasks[0]?.id }),
 			{
+				calendarSyncUserId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
 				activityLog: {
 					changeSource: 'agent_call',
 					actorContext: {

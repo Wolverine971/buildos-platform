@@ -2453,7 +2453,9 @@ describe('audit 2026-09-02 context rendering', () => {
 				expect(location).toContain(
 					'- task "Call back about the gun action" · added yesterday · due 2026-04-17 [id: task-9]'
 				);
-				expect(location).toContain("- …and 1 more (search with the Workspace's project_id for the rest)");
+				expect(location).toContain(
+					"- …and 1 more (search with the Workspace's project_id for the rest)"
+				);
 				expect(location).toContain(
 					'- 1 loose item looks like they belong in Launch Alpha (A launch note) [suggestion: sg-1]'
 				);

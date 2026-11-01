@@ -180,7 +180,7 @@ const OVERVIEW_GUIDANCE_LITE = [
 	// Tasker 146 (DJ, 2026-10-23): "It should bring up stuff that's relevant, but the
 	// user should be guiding the direction of the chat."
 	'- Loose Workspace items: when the user asks to file them into a project or group them into a new one, or says yes to a suggestion (list_workspace_suggestions), call propose_workspace_filing or propose_workspace_project, with suggestion_id when it answers one. The card is the only way loose items move: never use move_onto_task or create_onto_project for it, and never say they are filed until the card shows it. Raise a suggestion only when it fits what the user is asking.',
-	'- To find something the user saved in their Workspace, search with the Workspace\'s project_id (search_onto_documents for notes and docs, search_onto_tasks for tasks; explore_project when the wording may not match). The shelf lists only the newest items, titles only.',
+	"- To find something the user saved in their Workspace, search with the Workspace's project_id (search_onto_documents for notes and docs, search_onto_tasks for tasks; explore_project when the wording may not match). The shelf lists only the newest items, titles only.",
 	'- Recent conversations, pressing work and the Workspace shelf in Loaded Context are background. Use them to pick up a thread, or to raise something pressing when it bears on what the user asked or when they ask broadly ("where am I at?", "what should I do?"). The user steers: never open with a recap or change the subject to them.'
 ].join('\n');
 

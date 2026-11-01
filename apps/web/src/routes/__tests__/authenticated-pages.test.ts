@@ -9,7 +9,9 @@ const mockCreateEmptyDashboard = vi.fn(() => ({
 	attention: { overdueTasks: 0, staleProjects7d: 0, staleProjects30d: 0 }
 }));
 const mockEnsureActorId = vi.fn();
+const mockEnsureWorkspaceProjectId = vi.fn();
 const mockFetchProjectSummaries = vi.fn();
+const mockLoadWorkspaceHome = vi.fn();
 
 vi.mock('$lib/services/dashboard/user-dashboard-analytics.service', () => ({
 	getUserDashboardAnalytics: mockGetUserDashboardAnalytics
@@ -21,7 +23,12 @@ vi.mock('$lib/types/dashboard-analytics', () => ({
 
 vi.mock('$lib/services/ontology/ontology-projects.service', () => ({
 	ensureActorId: mockEnsureActorId,
+	ensureWorkspaceProjectId: mockEnsureWorkspaceProjectId,
 	fetchProjectSummaries: mockFetchProjectSummaries
+}));
+
+vi.mock('$lib/server/workspace/workspace.service', () => ({
+	loadWorkspaceHome: mockLoadWorkspaceHome
 }));
 
 vi.mock('$lib/utils/blog', () => ({
@@ -34,6 +41,13 @@ const mockUser = {
 	onboarding_completed_at: null
 };
 
+const emptyWorkspace = {
+	workspaceId: 'workspace-1',
+	items: [],
+	suggestions: [],
+	totals: { notes: 0, docs: 0, tasks: 0 }
+};
+
 function createCountQuery(count: number) {
 	const query: any = {
 		select: vi.fn(() => query),
@@ -43,7 +57,9 @@ function createCountQuery(count: number) {
 			// Project hierarchy: the list loads visible parent ids.
 			not: vi.fn(() => Promise.resolve({ data: [], error: null }))
 		})),
-		is: vi.fn(() => Promise.resolve({ count, error: null }))
+		is: vi.fn(() => query),
+		then: (resolve: (result: { count: number; error: null }) => unknown) =>
+			Promise.resolve({ count, error: null }).then(resolve)
 	};
 	return query;
 }
@@ -52,6 +68,8 @@ describe('Authenticated Pages', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockEnsureActorId.mockResolvedValue('actor-1');
+		mockEnsureWorkspaceProjectId.mockResolvedValue('workspace-1');
+		mockLoadWorkspaceHome.mockResolvedValue(emptyWorkspace);
 		mockFetchProjectSummaries.mockResolvedValue([{ id: 'proj-1', name: 'Test project' }]);
 		mockLoadBlogPosts.mockResolvedValue([
 			{ slug: 'how-buildos-works', title: 'How BuildOS Works' },
@@ -159,6 +177,10 @@ describe('Authenticated Pages', () => {
 			expect(depends).toHaveBeenCalledWith('ontology:projects');
 			expect(result.actorId).toBe('actor-1');
 			expect(result.projectCount).toBe(3);
+			expect(countQuery.eq).toHaveBeenCalledWith('onto_projects.kind', 'project');
+			expect(result.workspaceId).toBe('workspace-1');
+			expect(await result.workspace).toEqual(emptyWorkspace);
+			expect(mockLoadWorkspaceHome).toHaveBeenCalledWith(supabase, 'workspace-1');
 			expect(await result.projects).toEqual([
 				{
 					id: 'proj-1',

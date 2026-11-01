@@ -15,6 +15,9 @@ vi.mock('$lib/components/ui/RichMarkdownEditor.svelte', async () => ({
 }));
 
 import DesktopReader from './DesktopReader.svelte';
+// Compile the real lazy panel before the interaction timeout starts. Cold Svelte
+// transforms can otherwise consume that timeout during the full verification run.
+import './ReaderDetailsPanel.svelte';
 import { removedIds, undo } from './reader-removals.svelte';
 
 function ok(data: unknown) {
@@ -83,6 +86,7 @@ describe('DesktopReader on Today', () => {
 
 	afterEach(() => {
 		cleanup();
+		localStorage.clear();
 		vi.unstubAllGlobals();
 		vi.clearAllMocks();
 	});
@@ -224,6 +228,5 @@ describe('DesktopReader on Today', () => {
 		await waitFor(() =>
 			expect(screen.queryByRole('complementary', { name: 'Details' })).not.toBeInTheDocument()
 		);
-		localStorage.clear();
 	}, 15000);
 });

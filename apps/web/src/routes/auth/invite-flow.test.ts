@@ -10,13 +10,12 @@ const {
 	toastErrorMock,
 	logAuthClientErrorMock,
 	logOntologyClientErrorMock,
-	pageStore,
+	pageState,
 	setPageUrl
 } = vi.hoisted(() => {
-	let currentPage = {
+	const pageState = {
 		url: new URL('http://localhost/auth/login')
 	};
-	const subscribers = new Set<(value: typeof currentPage) => void>();
 
 	return {
 		gotoMock: vi.fn(),
@@ -25,24 +24,15 @@ const {
 		toastErrorMock: vi.fn(),
 		logAuthClientErrorMock: vi.fn(),
 		logOntologyClientErrorMock: vi.fn(),
-		pageStore: {
-			subscribe(callback: (value: typeof currentPage) => void) {
-				callback(currentPage);
-				subscribers.add(callback);
-				return () => subscribers.delete(callback);
-			}
-		},
+		pageState,
 		setPageUrl(url: string) {
-			currentPage = { url: new URL(url) };
-			for (const subscriber of subscribers) {
-				subscriber(currentPage);
-			}
+			pageState.url = new URL(url);
 		}
 	};
 });
 
-vi.mock('$app/stores', () => ({
-	page: pageStore
+vi.mock('$app/state', () => ({
+	page: pageState
 }));
 
 vi.mock('$app/navigation', () => ({

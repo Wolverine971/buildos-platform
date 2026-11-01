@@ -133,7 +133,7 @@ const PHASE_5_FAILURE_EVIDENCE: readonly FailureEvidence[] = Object.freeze([
 	{
 		id: 'browser_realtime_disconnect',
 		requirement: 'Browser channel loss and rejoin force durable convergence.',
-		file: 'apps/web/src/lib/services/agentic-chat-v2/worker-realtime-channel.test.ts',
+		file: 'packages/agentic-chat-client/src/worker-realtime-channel.test.ts',
 		anchor: 'forces durable convergence across channel loss and rejoin'
 	},
 	{
@@ -145,19 +145,19 @@ const PHASE_5_FAILURE_EVIDENCE: readonly FailureEvidence[] = Object.freeze([
 	{
 		id: 'broadcast_duplicated',
 		requirement: 'Duplicate live events are applied once.',
-		file: 'apps/web/src/lib/services/agentic-chat-v2/worker-realtime-inbox.test.ts',
+		file: 'packages/agentic-chat-client/src/worker-realtime-inbox.test.ts',
 		anchor: 'applies contiguous events once and ignores duplicates and stale generations'
 	},
 	{
 		id: 'sequence_gap_snapshot_reset',
 		requirement: 'A retained event gap can be covered by the authoritative snapshot.',
-		file: 'apps/web/src/lib/services/agentic-chat-v2/worker-realtime-inbox.test.ts',
+		file: 'packages/agentic-chat-client/src/worker-realtime-inbox.test.ts',
 		anchor: 'accepts retained-event gaps covered by the reconciliation snapshot'
 	},
 	{
 		id: 'reconcile_live_generation_race',
 		requirement: 'Future-generation live events wait for reconciliation adoption.',
-		file: 'apps/web/src/lib/services/agentic-chat-v2/worker-realtime-inbox.test.ts',
+		file: 'packages/agentic-chat-client/src/worker-realtime-inbox.test.ts',
 		anchor: 'buffers a future generation until reconciliation adopts it'
 	},
 	{
@@ -211,7 +211,7 @@ const PHASE_5_FAILURE_EVIDENCE: readonly FailureEvidence[] = Object.freeze([
 	{
 		id: 'channel_down_polling_readiness',
 		requirement: 'Persistent Realtime outage converges through authenticated polling.',
-		file: 'apps/web/src/lib/services/agentic-chat-v2/worker-realtime-coordinator.test.ts',
+		file: 'packages/agentic-chat-client/src/worker-realtime-coordinator.test.ts',
 		anchor: 'keeps polling through a persistent Realtime outage and converges to terminal truth'
 	},
 	{
@@ -223,13 +223,13 @@ const PHASE_5_FAILURE_EVIDENCE: readonly FailureEvidence[] = Object.freeze([
 	{
 		id: 'auth_token_refreshed',
 		requirement: 'Mounted Realtime follows token refresh without duplicating channels.',
-		file: 'apps/web/src/lib/services/agentic-chat-v2/worker-realtime-runtime.test.ts',
+		file: 'packages/agentic-chat-client/src/worker-realtime-runtime.test.ts',
 		anchor: 'mounts one authenticated user channel and follows auth identity changes'
 	},
 	{
 		id: 'auth_expired_not_ready',
 		requirement: 'Reconciliation stays paused until authenticated identity exists.',
-		file: 'apps/web/src/lib/services/agentic-chat-v2/worker-realtime-runtime.test.ts',
+		file: 'packages/agentic-chat-client/src/worker-realtime-runtime.test.ts',
 		anchor: 'keeps reconciliation paused until an authenticated user is established'
 	},
 	{
@@ -322,7 +322,7 @@ const PHASE_5_FAILURE_EVIDENCE: readonly FailureEvidence[] = Object.freeze([
 	{
 		id: 'terminal_client_stale_partial',
 		requirement: 'Authoritative terminal snapshot replaces stale client text.',
-		file: 'apps/web/src/lib/components/agent/agent-chat-worker-ui-adapter.test.ts',
+		file: 'packages/agentic-chat-client/src/agent-chat-worker-ui-adapter.test.ts',
 		anchor: 'applies authoritative text before semantic projection and skips reconciled text deltas'
 	},
 	{

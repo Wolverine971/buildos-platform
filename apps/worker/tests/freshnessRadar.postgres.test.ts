@@ -51,6 +51,9 @@ const SQL_FILES = [
 // Column-shaped stubs (database.types.ts shapes) for tables the fixture lacks.
 const ONTOLOGY_STUBS = `
 SET client_min_messages = warning;
+-- The workflow baseline predates 20261023230000_workspace_foundation.sql.
+ALTER TABLE public.onto_projects
+	ADD COLUMN kind text NOT NULL DEFAULT 'project' CHECK (kind IN ('project', 'workspace'));
 CREATE TABLE public.onto_tasks (
 	id uuid PRIMARY KEY DEFAULT gen_random_uuid(), project_id uuid NOT NULL REFERENCES public.onto_projects(id),
 	title text NOT NULL, description text, type_key text NOT NULL DEFAULT 'task.default',

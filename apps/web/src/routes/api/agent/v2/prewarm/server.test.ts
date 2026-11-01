@@ -487,7 +487,10 @@ describe('POST /api/agent/v2/prewarm', () => {
 			expect.objectContaining({
 				session_id: 'session-1',
 				cache_key: 'global:none',
-				context_payload: cachedContext.context,
+				context_payload: {
+					...cachedContext.context,
+					currentSessionId: session.id
+				},
 				conversation_summary: 'fresh session summary',
 				history_for_model_count: expect.any(Number),
 				history_cutoff_at: expect.any(String)

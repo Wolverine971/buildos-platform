@@ -208,7 +208,7 @@ describe('daily brief reactivation email contracts', () => {
 		const source = readRepoFile('apps/worker/src/workers/brief/ontologyBriefDataLoader.ts');
 
 		expect(source).toContain(
-			'id, name, state_key, type_key, description, next_step_short, next_step_long, created_at, updated_at, created_by'
+			'id, name, kind, state_key, type_key, description, next_step_short, next_step_long, created_at, updated_at, created_by'
 		);
 	});
 
