@@ -1172,10 +1172,11 @@
 	<main id="main-content" class={mainContentClasses} tabindex="-1">
 		<!-- Never carry a previous account’s component state into a new session. -->
 		{#key user?.id}
+			<!-- Query strings are unavailable during prerendering; recovery runs in the browser. -->
 			<ErrorBoundary
 				area="page"
 				variant="page"
-				resetKey={page.url.pathname + page.url.search}
+				resetKey={browser ? page.url.pathname + page.url.search : undefined}
 			>
 				{@render children?.()}
 			</ErrorBoundary>
