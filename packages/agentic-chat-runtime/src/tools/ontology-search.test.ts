@@ -177,7 +177,7 @@ describe('shared ontology search', () => {
 				{ now: () => NOW }
 			)
 		).resolves.toMatchObject({
-			search_scope: 'workspace',
+			search_scope: 'all_projects',
 			project_id: null,
 			total_returned: 1,
 			results: [{ type: 'task', id: 'task-1', rank_score: 1.28 }]

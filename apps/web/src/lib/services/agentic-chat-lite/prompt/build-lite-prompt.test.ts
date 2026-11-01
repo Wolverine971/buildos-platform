@@ -2346,7 +2346,7 @@ describe('audit 2026-09-02 context rendering', () => {
 					data
 				}).sections.find((item) => item.id === 'location_loaded_context')?.content;
 			expect(location({ ...projectData, workspace_project_id: 'ws-1' })).toContain(
-				"- The user's Workspace (project_id: ws-1) holds loose notes and tasks outside any project; save there only what the user says is not for this project."
+				"- The user's Workspace (project_id: ws-1) holds loose notes and tasks outside any project. When the user asks about something they saved there, search with this project_id. Save there only what the user says is not for this project."
 			);
 			expect(location(projectData)).not.toContain("The user's Workspace");
 		});
@@ -2453,7 +2453,7 @@ describe('audit 2026-09-02 context rendering', () => {
 				expect(location).toContain(
 					'- task "Call back about the gun action" · added yesterday · due 2026-04-17 [id: task-9]'
 				);
-				expect(location).toContain('- …and 1 more (search the Workspace for the rest)');
+				expect(location).toContain("- …and 1 more (search with the Workspace's project_id for the rest)");
 				expect(location).toContain(
 					'- 1 loose item looks like they belong in Launch Alpha (A launch note) [suggestion: sg-1]'
 				);

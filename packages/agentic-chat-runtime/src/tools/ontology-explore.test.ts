@@ -148,7 +148,7 @@ describe('exploreProject', () => {
 		expect(payload.materialized_tools).toEqual(
 			expect.arrayContaining(['get_onto_document_details', 'get_onto_task_details'])
 		);
-		expect(payload.search_scope).toBe('workspace');
+		expect(payload.search_scope).toBe('all_projects');
 	});
 });
 

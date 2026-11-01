@@ -19,10 +19,11 @@ describe('readAgentChatLaunchRequest', () => {
 		expect(request).toEqual({
 			draft: 'Use the Going Viral skill.\n\nStarting ask: my launch post',
 			skillId: 'going_viral',
-			key: '/projects|going_viral|Use the Going Viral skill.\n\nStarting ask: my launch post'
+			key: '/projects|going_viral|Use the Going Viral skill.\n\nStarting ask: my launch post',
+			stashId: null
 		});
 		// Navigation strips exactly these, leaving unrelated params to their owners.
-		expect([...AGENT_CHAT_LAUNCH_PARAMS]).toEqual(['open', 'skill', 'prompt']);
+		expect([...AGENT_CHAT_LAUNCH_PARAMS]).toEqual(['open', 'skill', 'prompt', 'draft']);
 	});
 
 	it('builds a draft from the skill when the link carries no prompt', () => {
@@ -44,6 +45,19 @@ describe('readAgentChatLaunchRequest', () => {
 				})
 			)
 		).toMatchObject({ draft: 'Help me plan the week', skillId: null });
+	});
+
+	it('reads the id of a stashed long draft and ignores a malformed one', () => {
+		expect(
+			readAgentChatLaunchRequest(
+				launchUrl({ open: 'agent-chat', prompt: 'My novel...', draft: 'a1b2c3d4e5f60718' })
+			)
+		).toMatchObject({ draft: 'My novel...', stashId: 'a1b2c3d4e5f60718' });
+		expect(
+			readAgentChatLaunchRequest(
+				launchUrl({ open: 'agent-chat', prompt: 'My novel...', draft: '../../etc' })
+			)
+		).toMatchObject({ stashId: null });
 	});
 
 	it('caps a long draft', () => {

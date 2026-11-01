@@ -100,7 +100,7 @@ export interface SharedSearchOntologyArgs {
 
 export type OntologySearchPayload = {
 	query: string;
-	search_scope: 'workspace' | 'project';
+	search_scope: 'all_projects' | 'project';
 	project_id: string | null;
 	total_returned: number;
 	maybe_more: boolean;
@@ -510,7 +510,7 @@ export async function searchOntologyEntities(
 				(a.title ?? '').localeCompare(b.title ?? '')
 		)
 		.slice(0, limit);
-	const searchScope = projectId ? 'project' : 'workspace';
+	const searchScope = projectId ? 'project' : 'all_projects';
 	const maybeMore =
 		rawResults.length > limit ||
 		precisionCalibratedRpcResults.length >= candidateLimit ||
@@ -541,7 +541,7 @@ export async function searchOntologyEntities(
 
 async function runAgenticSearch(
 	context: AgenticChatSharedReadContextV1,
-	args: SharedSearchAllProjectsArgs & { scope: 'workspace' | 'project' }
+	args: SharedSearchAllProjectsArgs & { scope: 'all_projects' | 'project' }
 ): Promise<OntologySearchPayload & { materialized_tools: string[] }> {
 	const query = prepareAgenticChatSearchTerm(args.query);
 	if (!query) {
@@ -585,7 +585,7 @@ export async function searchAllProjects(
 ): Promise<OntologySearchPayload & { materialized_tools: string[] }> {
 	return runAgenticSearch(context, {
 		...args,
-		scope: args.project_id ? 'project' : 'workspace'
+		scope: args.project_id ? 'project' : 'all_projects'
 	});
 }
 

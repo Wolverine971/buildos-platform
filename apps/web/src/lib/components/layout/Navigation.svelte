@@ -11,6 +11,7 @@
 	import { waitForChatHistorySettled } from '$lib/components/agent/agent-chat-history.svelte';
 	import { captureEvent } from '$lib/services/posthog';
 	import { consumeOneTimeUrlParams } from '$lib/utils/one-time-url-params';
+	import { takeLaunchDraft } from '$lib/utils/launch-draft-stash';
 	import {
 		AGENT_CHAT_LAUNCH_PARAMS,
 		readAgentChatLaunchRequest
@@ -702,7 +703,9 @@
 		if (!launch) return [];
 		if (handledAgentChatLaunchKey !== launch.key) {
 			handledAgentChatLaunchKey = launch.key;
-			void openAgentChatLaunch(launch.draft, launch.skillId);
+			// A long homepage paste waits in this browser; the URL only carries a preview.
+			const draft = (launch.stashId && takeLaunchDraft(launch.stashId)) || launch.draft;
+			void openAgentChatLaunch(draft, launch.skillId);
 		}
 		return AGENT_CHAT_LAUNCH_PARAMS;
 	});

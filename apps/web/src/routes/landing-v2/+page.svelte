@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { BRAND_TAGLINE, BRAND_DESCRIPTION } from '$lib/constants/brand';
 	import HomepageV2 from '$lib/components/landing/HomepageV2.svelte';
+	import HomeVariantSwitcher from '$lib/components/landing/home-variants/HomeVariantSwitcher.svelte';
 </script>
 
 <svelte:head>
@@ -11,3 +12,4 @@
 </svelte:head>
 
 <HomepageV2 />
+<HomeVariantSwitcher />

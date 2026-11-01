@@ -2,7 +2,7 @@
 //
 // Workspace chat case 6 — a project chat asked to stash something in the Workspace
 // saves it there, not in the open project. Project chats carry the Workspace id with
-// the rule "save there only what the user says is not for this project" (tasker/146,
+// the rule "Save there only what the user says is not for this project" (tasker/146,
 // F6). Scored on the write tool and the rows: one new note in the Workspace with the
 // user's reference code, the project unchanged, no new project.
 import type { Scenario } from '../../harness/types';

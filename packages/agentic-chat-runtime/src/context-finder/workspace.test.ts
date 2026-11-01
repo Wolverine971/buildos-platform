@@ -233,6 +233,20 @@ describe('workspace cards', () => {
 		expect(cards[0]!.packet).not.toHaveProperty('kind');
 		const request = buildWorkspaceFinderRequest({ cards, message: 'hi' });
 		expect(request.state.policy.join(' ')).toContain('kind workspace');
+		// "What's in my Workspace?" is about that card, not all projects.
+		expect(request.state.policy.join(' ')).toContain('concerns that card (scope projects)');
+	});
+
+	// Tasker 146 F9: "workspace" means the user's loose items, so the portfolio choice
+	// never calls all projects "the workspace" (it pulled Workspace questions there).
+	it('words the portfolio scope as all projects, never as the workspace', () => {
+		const request = buildWorkspaceFinderRequest({
+			cards: buildWorkspaceCards([project(1)]),
+			message: 'hi'
+		});
+		const scope = request.questions.scope as { criteria: Record<string, string> };
+		expect(scope.criteria.portfolio).toContain('all of the user');
+		expect(Object.values(scope.criteria).join(' ').toLowerCase()).not.toContain('workspace');
 	});
 });
 
@@ -371,7 +385,8 @@ describe('findWorkspaceContext', () => {
 		});
 		expect(pulse.pulse.map((item) => item.name)).toEqual(['Project 3', 'Project 1']);
 		expect(pulse.pulse[0]!.text).toContain('Shipping v3.');
-		expect(renderWorkspaceContextBlock(pulse)).toContain('WORKSPACE PULSE');
+		expect(renderWorkspaceContextBlock(pulse)).toContain('PORTFOLIO PULSE');
+		expect(renderWorkspaceContextBlock(pulse)).toContain('The request spans all projects');
 
 		const loadProject = vi.fn();
 		const skipped = await findWorkspaceContext({
@@ -406,6 +421,88 @@ describe('findWorkspaceContext', () => {
 		expect(block).toContain(`- document ${id(202)} Notes 2`);
 		expect(block).toContain(`- task ${id(203)} Open task 2 [todo]`);
 		expect(block).not.toContain('Done task 2');
+	});
+
+	// The find path for loose items: hop 1 picks the Workspace card, hop 2 digs inside it,
+	// and the block names it as the Workspace (never "Project: Workspace").
+	it('finds a loose note inside the Workspace and labels it as the Workspace', async () => {
+		const loose: WorkspaceProjectInputV1 = {
+			project: {
+				id: id(9),
+				name: 'Workspace',
+				description: 'Loose notes, docs and tasks.',
+				state_key: 'active',
+				updated_at: '2026-10-30T00:00:00Z',
+				kind: 'workspace'
+			},
+			documents: [
+				{
+					id: id(901),
+					title: 'Pricing idea',
+					type_key: 'document.note',
+					content: 'Charge per seat, $12.',
+					updated_at: '2026-10-30T00:00:00Z'
+				},
+				{
+					id: id(902),
+					title: 'Gift list',
+					type_key: 'document.note',
+					content: 'Socks.',
+					updated_at: '2026-10-29T00:00:00Z'
+				}
+			],
+			tasks: [
+				{
+					id: id(903),
+					title: 'Call the gunsmith back',
+					state_key: 'todo',
+					updated_at: '2026-10-28T00:00:00Z'
+				}
+			],
+			goals: [],
+			plans: [],
+			milestones: [],
+			risks: []
+		};
+		const all = [...projects, loose];
+		const loadProject = vi.fn(async (projectId: string) =>
+			projectId === loose.project.id ? loose : byId.get(projectId)!
+		);
+		const context = await findWorkspaceContext({
+			projects: all,
+			loadProject,
+			decider: fakeDecider({
+				scope: 'projects',
+				projectScores: { Workspace: 0.9 },
+				recordScores: { 'Pricing idea': 0.9 }
+			}),
+			message: 'find that pricing idea I saved'
+		});
+		expect(loadProject).toHaveBeenCalledWith(loose.project.id, undefined);
+		expect(context.zoom).toHaveLength(1);
+		expect(context.zoom[0]).toMatchObject({ hop2: 'ran', workspace: true });
+		const block = renderWorkspaceContextBlock(context)!;
+		expect(block).toContain(
+			`# The user's Workspace: loose notes and tasks, not a project (project_id ${id(9)})`
+		);
+		expect(block).not.toContain('# Project: Workspace');
+		expect(block).toContain(`document ${id(901)} — Pricing idea`);
+		expect(block).toContain('Charge per seat');
+
+		// A portfolio pulse shows what's loose, not the row's boilerplate description.
+		const pulse = await findWorkspaceContext({
+			projects: all,
+			loadProject: vi.fn(),
+			decider: fakeDecider({ scope: 'portfolio', projectScores: { Workspace: 0.8 } }),
+			message: 'where am I at with everything?'
+		});
+		expect(pulse.pulse[0]).toMatchObject({ name: 'Workspace', workspace: true });
+		expect(pulse.pulse[0]!.text).toBe(
+			'3 loose items, newest first: Pricing idea; Gift list; Call the gunsmith back'
+		);
+		expect(renderWorkspaceContextBlock(pulse)).toContain(
+			`## The user's Workspace: loose notes and tasks, not a project (project_id ${id(9)})`
+		);
 	});
 
 	it('falls back to the brief when hop 2 misses its deadline', async () => {

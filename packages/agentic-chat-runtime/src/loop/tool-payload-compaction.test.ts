@@ -998,7 +998,7 @@ describe('buildToolPayloadForModel', () => {
 				toolCall('search_all_projects'),
 				toolResult({
 					query: 'launch',
-					search_scope: 'workspace',
+					search_scope: 'all_projects',
 					project_id: null,
 					total_returned: 12,
 					total: 40,

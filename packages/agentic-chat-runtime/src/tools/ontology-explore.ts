@@ -73,7 +73,7 @@ function normalizeExploreTypes(types?: string[]): string[] | null {
 
 export type ExploreProjectPayload = {
 	theme: string;
-	search_scope: 'workspace' | 'project';
+	search_scope: 'all_projects' | 'project';
 	project_id: string | null;
 	total_returned: number;
 	maybe_more: boolean;
@@ -190,7 +190,7 @@ export async function exploreProject(
 		projectGroups.set(key, group);
 	}
 
-	const searchScope = projectId ? 'project' : 'workspace';
+	const searchScope = projectId ? 'project' : 'all_projects';
 	return {
 		theme,
 		search_scope: searchScope,

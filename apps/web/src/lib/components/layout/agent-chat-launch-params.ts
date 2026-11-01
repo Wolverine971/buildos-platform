@@ -1,11 +1,12 @@
 // apps/web/src/lib/components/layout/agent-chat-launch-params.ts
 import { normalizeLaunchSkillId } from '$lib/utils/agent-chat-launch';
+import { isLaunchDraftStashId } from '$lib/utils/launch-draft-stash';
 
 /**
  * Query params of a chat launch (`/?open=agent-chat&skill=<id>&prompt=<draft>`, the
  * public "Try in BuildOS" link). Navigation consumes them once and strips them all.
  */
-export const AGENT_CHAT_LAUNCH_PARAMS = ['open', 'skill', 'prompt'] as const;
+export const AGENT_CHAT_LAUNCH_PARAMS = ['open', 'skill', 'prompt', 'draft'] as const;
 
 const MAX_LAUNCH_DRAFT_CHARS = 2400;
 
@@ -16,6 +17,11 @@ export type AgentChatLaunchRequest = {
 	skillId: string | null;
 	/** Identity of this launch, so a replayed URL never opens a second chat. */
 	key: string;
+	/**
+	 * Id of the full draft waiting in this browser (`$lib/utils/launch-draft-stash`) when
+	 * `prompt` is only a preview of a long paste; null otherwise.
+	 */
+	stashId: string | null;
 };
 
 /** The launch a URL asks for, or null when it asks for none (nothing to put in the composer). */
@@ -27,7 +33,9 @@ export function readAgentChatLaunchRequest(url: URL): AgentChatLaunchRequest | n
 		normalizeLaunchDraft(params.get('prompt')) ??
 		(skillId ? `Use the ${skillId} skill on my current work.` : null);
 	if (!draft) return null;
-	return { draft, skillId, key: `${url.pathname}|${skillId ?? ''}|${draft}` };
+	const stashedDraft = params.get('draft');
+	const stashId = isLaunchDraftStashId(stashedDraft) ? stashedDraft : null;
+	return { draft, skillId, key: `${url.pathname}|${skillId ?? ''}|${draft}`, stashId };
 }
 
 function normalizeLaunchDraft(value: string | null): string | null {

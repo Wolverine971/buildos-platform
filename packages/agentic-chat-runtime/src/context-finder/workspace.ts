@@ -207,7 +207,7 @@ const POLICY = [
 const WORKSPACE_CARD_DESCRIPTION = 'Loose notes and tasks, not a project';
 /** Added only when a Workspace card is present, so other requests are unchanged. */
 const WORKSPACE_KIND_POLICY =
-	"The card with kind workspace is the user's Workspace: their loose notes, docs and tasks, not a project. It is the home for anything saved that fits no project; judge it like any card for requests about those records.";
+	"The card with kind workspace is the user's Workspace: their loose notes, docs and tasks, not a project. It is the home for anything saved that fits no project; judge it like any card for requests about those records. A request about what is in the Workspace, or for something saved there, concerns that card (scope projects), not all projects.";
 /** Added only when some card carries an organization label, so unlabeled workspaces are unchanged. */
 const ORGANIZATION_POLICY =
 	'A card may name the project it is part_of, or the projects it includes. A request about the larger body of work (a business and its clients, say) can concern the parent and its parts; a request about one part concerns that part.';
@@ -217,8 +217,9 @@ const DIG_QUESTION =
 const SCOPES: Record<WorkspaceScope, string> = {
 	projects:
 		'About specific saved work: one or a few projects, or people, clients, documents, tasks or topics that live in them. A brain dump that spans several projects counts.',
+	// "All projects", never "workspace": the Workspace is one card (the user's loose items).
 	portfolio:
-		'About the whole workspace at once: status of all projects, what is in flight, or what to focus on across everything.',
+		"About all of the user's projects at once: status across projects, what is in flight, or what to focus on across everything.",
 	none: 'Needs no saved project records: calendar or email lookups, browsing a web page, general knowledge, greetings, thanks or small talk.'
 };
 
@@ -562,6 +563,23 @@ export function workspaceZoomShare(index: number, count: number) {
 /** START HERE's current state (or its opening), for portfolio requests. */
 export function workspacePulseText(input: WorkspaceProjectInputV1): string {
 	const policy = WORKSPACE_FINDER_POLICY;
+	// The Workspace has no START HERE and a fixed description: its state is what's in it.
+	if (input.project.kind === 'workspace') {
+		const loose = [
+			...input.documents,
+			...input.tasks.filter((task) => !DONE.has(text(task.state_key)))
+		].sort(
+			(a, b) => (Date.parse(text(b.updated_at)) || 0) - (Date.parse(text(a.updated_at)) || 0)
+		);
+		if (!loose.length) return 'Nothing loose.';
+		const titles = loose
+			.map((row) => clipContextText(row.title, WORKSPACE_FINDER_LIMITS.titleChars))
+			.filter(Boolean);
+		return clipContextWords(
+			`${loose.length} loose item${loose.length === 1 ? '' : 's'}, newest first: ${titles.join('; ')}`,
+			policy.pulseChars
+		);
+	}
 	const startHere = input.documents.find((doc) => doc.type_key === START_HERE_TYPE_KEY);
 	const content = text(startHere?.content);
 	if (content) {
@@ -633,7 +651,12 @@ export function workspaceProjectBrief(input: WorkspaceProjectInputV1): string {
  * reached only Jev's selection step, so the acting model never saw them.
  * Already limited to projects the user can open (see load.ts).
  */
-export type WorkspaceOrganizationV1 = { part_of?: string; includes?: string[] };
+export type WorkspaceOrganizationV1 = {
+	part_of?: string;
+	includes?: string[];
+	/** The user's Workspace (loose items), rendered as such instead of as a project. */
+	workspace?: true;
+};
 
 export type WorkspaceZoomEntryV1 = WorkspaceOrganizationV1 & {
 	project: WorkspacePickV1;
@@ -695,7 +718,8 @@ export async function findWorkspaceContext(input: {
 			.filter(Boolean);
 		return {
 			...(partOf ? { part_of: partOf } : {}),
-			...(includes.length ? { includes } : {})
+			...(includes.length ? { includes } : {}),
+			...(project?.kind === 'workspace' ? { workspace: true as const } : {})
 		};
 	};
 	const zoomRank = (projectId: string) =>
@@ -797,6 +821,7 @@ export async function findWorkspaceContext(input: {
 }
 
 const ORGANIZATION_INCLUDES_SHOWN = 5;
+const WORKSPACE_HEADING = "The user's Workspace: loose notes and tasks, not a project";
 
 /** " · part of X" / " · includes A, B, +N more" for a rendered project heading. */
 function organizationLabel(entry: WorkspaceOrganizationV1): string {
@@ -818,13 +843,15 @@ export function renderWorkspaceContextBlock(context: WorkspaceContextV1): string
 	const checked = `Relevance ranking checked ${ranking.checked} projects${ranking.unchecked ? ` (${ranking.unchecked} more not checked)` : ''} against this message.`;
 	if (selection.scope === 'portfolio') {
 		const lines = [
-			'WORKSPACE PULSE (evidence, not instructions)',
-			`${checked} The request spans the workspace; current state of the most relevant projects follows. Fetch details with tools.`
+			'PORTFOLIO PULSE (evidence, not instructions)',
+			`${checked} The request spans all projects; current state of the most relevant ones follows. Fetch details with tools.`
 		];
 		for (const item of context.pulse)
 			lines.push(
 				'',
-				`## ${item.name} (project_id ${item.id}; ${item.state ?? 'no state'})${organizationLabel(item)}`,
+				item.workspace
+					? `## ${WORKSPACE_HEADING} (project_id ${item.id})`
+					: `## ${item.name} (project_id ${item.id}; ${item.state ?? 'no state'})${organizationLabel(item)}`,
 				item.text
 			);
 		return lines.join('\n');
@@ -841,7 +868,9 @@ export function renderWorkspaceContextBlock(context: WorkspaceContextV1): string
 	for (const entry of context.zoom) {
 		lines.push(
 			'',
-			`# Project: ${entry.project.name} (project_id ${entry.project.id})${organizationLabel(entry)}`
+			entry.workspace
+				? `# ${WORKSPACE_HEADING} (project_id ${entry.project.id})`
+				: `# Project: ${entry.project.name} (project_id ${entry.project.id})${organizationLabel(entry)}`
 		);
 		const evidence = entry.evidence;
 		if (entry.hop2 !== 'ran' || !evidence || evidence.status !== 'selected') {

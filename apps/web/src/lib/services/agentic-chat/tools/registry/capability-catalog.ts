@@ -28,7 +28,7 @@ const ALL_CAPABILITIES: CapabilityDefinition[] = [
 		name: 'Workspace and project overviews',
 		status: 'available',
 		summary:
-			'Get BuildOS-native status snapshots for the whole workspace or one project without assembling generic ontology reads by hand.',
+			'Get BuildOS-native status snapshots across all projects or for one project without assembling generic ontology reads by hand.',
 		whatYouCanDo: [
 			'Summarize what is happening across accessible projects',
 			'Check what is blocked, overdue, or due soon',

@@ -180,6 +180,7 @@ const OVERVIEW_GUIDANCE_LITE = [
 	// Tasker 146 (DJ, 2026-10-23): "It should bring up stuff that's relevant, but the
 	// user should be guiding the direction of the chat."
 	'- Loose Workspace items: when the user asks to file them into a project or group them into a new one, or says yes to a suggestion (list_workspace_suggestions), call propose_workspace_filing or propose_workspace_project, with suggestion_id when it answers one. The card is the only way loose items move: never use move_onto_task or create_onto_project for it, and never say they are filed until the card shows it. Raise a suggestion only when it fits what the user is asking.',
+	'- To find something the user saved in their Workspace, search with the Workspace\'s project_id (search_onto_documents for notes and docs, search_onto_tasks for tasks; explore_project when the wording may not match). The shelf lists only the newest items, titles only.',
 	'- Recent conversations, pressing work and the Workspace shelf in Loaded Context are background. Use them to pick up a thread, or to raise something pressing when it bears on what the user asked or when they ask broadly ("where am I at?", "what should I do?"). The user steers: never open with a recap or change the subject to them.'
 ].join('\n');
 
@@ -1336,7 +1337,7 @@ function buildLayOfTheLandLines(
 			}
 			if (total > items.length) {
 				lines.push(
-					`- …and ${total - items.length} more (search the Workspace for the rest)`
+					`- …and ${total - items.length} more (search with the Workspace's project_id for the rest)`
 				);
 			}
 		}
@@ -1380,7 +1381,7 @@ function projectChatWorkspaceLines(
 	if (!id) return [];
 	if (focus.contextType === 'project' || focus.contextType === 'ontology') {
 		return [
-			`- The user's Workspace (project_id: ${id}) holds loose notes and tasks outside any project; save there only what the user says is not for this project.`
+			`- The user's Workspace (project_id: ${id}) holds loose notes and tasks outside any project. When the user asks about something they saved there, search with this project_id. Save there only what the user says is not for this project.`
 		];
 	}
 	// Calendar and brief chats (tasker 146 F8): a save that names no project goes here.
@@ -2921,7 +2922,7 @@ function describePurpose(focus: LitePromptFocus): string {
 	switch (focus.contextType) {
 		case 'global':
 		case 'general':
-			return 'Work at workspace level: orient across projects and narrow scope when the user asks.';
+			return "Work across all of the user's projects and their Workspace: orient across them and narrow scope when the user asks.";
 		case 'project':
 			return 'Work inside the current project and help move its work forward.';
 		case 'project_create':
@@ -2946,7 +2947,8 @@ function describeScopeLocation(focus: LitePromptFocus): string {
 	if (focus.projectName || focus.projectId) {
 		return `inside ${formatNullableLabel(focus.projectName, focus.projectId)}`;
 	}
-	return 'workspace-level context across accessible projects';
+	// "Workspace" is the user's loose items (its own line), never "all projects" (tasker 146 F9).
+	return 'context across all accessible projects';
 }
 
 function describeTimelineScope(focus: LitePromptFocus): string {
@@ -2959,7 +2961,7 @@ function describeTimelineScope(focus: LitePromptFocus): string {
 	if (focus.contextType === 'calendar') {
 		return 'calendar timeline and scheduling window';
 	}
-	return 'workspace timeline across accessible projects';
+	return 'timeline across all accessible projects';
 }
 
 export function extractProjectIntelligence(

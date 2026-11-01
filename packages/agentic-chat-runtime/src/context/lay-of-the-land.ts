@@ -142,6 +142,8 @@ async function loadWorkspaceShelf(
 			.eq('project_id', workspaceId)
 			.is('deleted_at', null)
 			.is('archived_at', null)
+			// Archived from the doc tree: archived_at stays NULL (same rule as the Workspace home).
+			.neq('state_key', 'archived')
 			.order('created_at', { ascending: false })
 			.limit(LAY_OF_THE_LAND_LIMITS.shelfItems),
 		supabase

@@ -127,7 +127,7 @@ describe('/api/onto/search', () => {
 		expect(payload.success).toBe(true);
 		expect(payload.data).toMatchObject({
 			query: 'Cadre content operations',
-			search_scope: 'workspace',
+			search_scope: 'all_projects',
 			project_id: null,
 			total_returned: 1,
 			maybe_more: false,

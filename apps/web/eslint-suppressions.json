@@ -1,521 +1,521 @@
 {
-  "src/lib/components/admin/ActivityTimelineChart.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/admin/EmailHistoryViewerModal.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 1
-    }
-  },
-  "src/lib/components/admin/UserActivityModal.svelte": {
-    "svelte/require-each-key": {
-      "count": 2
-    }
-  },
-  "src/lib/components/admin/UserContextPanel.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/admin/UserNotificationContext.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/admin/chat-users/ChatRedactedSessionTimeline.svelte": {
-    "svelte/require-each-key": {
-      "count": 3
-    }
-  },
-  "src/lib/components/admin/chat-users/ChatToolsAndErrors.svelte": {
-    "svelte/require-each-key": {
-      "count": 2
-    }
-  },
-  "src/lib/components/admin/chat-users/ChatUserDetailDrawer.svelte": {
-    "svelte/require-each-key": {
-      "count": 2
-    }
-  },
-  "src/lib/components/admin/chat-users/ChatUserSessionsList.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/admin/chat-users/ChatUsersMobileCards.svelte": {
-    "svelte/require-each-key": {
-      "count": 2
-    }
-  },
-  "src/lib/components/admin/chat-users/ChatUsersTable.svelte": {
-    "svelte/require-each-key": {
-      "count": 2
-    }
-  },
-  "src/lib/components/admin/chat/LibriPanel.svelte": {
-    "svelte/require-each-key": {
-      "count": 2
-    }
-  },
-  "src/lib/components/admin/chat/LlmUsageStatsPanel.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/admin/chat/SessionList.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/admin/migration/ConfirmationModal.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/admin/migration/RecentRuns.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/admin/migration/UserList.svelte": {
-    "svelte/require-each-key": {
-      "count": 2
-    }
-  },
-  "src/lib/components/admin/notifications/ChannelPerformanceTable.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/admin/notifications/EventBreakdownTable.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/admin/notifications/FailedDeliveriesTable.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/admin/notifications/LogDeliveryTable.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/admin/notifications/LogEventTable.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/admin/notifications/LogSystemTable.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/admin/notifications/SMSInsightsCard.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/agent/AgentMessageList.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 2
-    },
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/agent/BrainDumpContextPanel.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/agent/CaptureReceiptChip.svelte": {
-    "svelte/no-useless-mustaches": {
-      "count": 1
-    }
-  },
-  "src/lib/components/agent/ProjectEntityList.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/agent/SharedChatMessage.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 1
-    }
-  },
-  "src/lib/components/agent/ThinkingBlock.svelte": {
-    "svelte/no-useless-mustaches": {
-      "count": 1
-    }
-  },
-  "src/lib/components/analytics/BriefAnalyticsDashboard.svelte": {
-    "svelte/require-each-key": {
-      "count": 2
-    }
-  },
-  "src/lib/components/analytics/VisitorContributionChart.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/briefs/BriefChatModal.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 1
-    }
-  },
-  "src/lib/components/briefs/DailyBriefModal.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 1
-    }
-  },
-  "src/lib/components/briefs/ProjectBriefGrid.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/briefs/ProjectBriefModal.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/calendar/CalendarAnalysisResults.svelte": {
-    "svelte/require-each-key": {
-      "count": 4
-    }
-  },
-  "src/lib/components/dashboard/OverdueTaskTriageModal.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/landing/public-project-preview/PublicProjectHeader.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 1
-    }
-  },
-  "src/lib/components/notifications/types/agent-run/AgentRunModalContent.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 2
-    },
-    "svelte/require-each-key": {
-      "count": 2
-    }
-  },
-  "src/lib/components/ontology/DocumentModal.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 1
-    }
-  },
-  "src/lib/components/ontology/DocumentSplitDiffView.svelte": {
-    "svelte/require-each-key": {
-      "count": 2
-    }
-  },
-  "src/lib/components/ontology/EntityActivityLog.svelte": {
-    "svelte/require-each-key": {
-      "count": 2
-    }
-  },
-  "src/lib/components/ontology/EntityCommentThread.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 1
-    }
-  },
-  "src/lib/components/ontology/ImageAssetsPanel.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/ontology/OntologyProjectEditModal.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 1
-    }
-  },
-  "src/lib/components/ontology/TagsDisplay.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/ontology/TaskAssigneeSelector.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/ontology/TaskEditModal.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 1
-    }
-  },
-  "src/lib/components/ontology/doc-tree/DocTreeNode.svelte": {
-    "svelte/no-useless-mustaches": {
-      "count": 1
-    }
-  },
-  "src/lib/components/projects/desktop/DesktopReader.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 3
-    }
-  },
-  "src/lib/components/scheduling/CalendarView.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/skills/SkillExpertCard.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/test/LogoutTest.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/time-blocks/CalendarEventDetailModal.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/time-blocks/TimeBlockDetailModal.svelte": {
-    "svelte/require-each-key": {
-      "count": 2
-    }
-  },
-  "src/lib/components/ui/FormModal.svelte": {
-    "svelte/require-each-key": {
-      "count": 2
-    }
-  },
-  "src/lib/components/ui/MarkdownToggleField.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 1
-    }
-  },
-  "src/lib/components/ui/RichMarkdownEditor.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 2
-    }
-  },
-  "src/lib/components/ui/UnifiedDiffView.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/lib/components/voice-notes/VoiceNoteRecorder.svelte": {
-    "svelte/no-useless-mustaches": {
-      "count": 1
-    }
-  },
-  "src/lib/components/voice/DictationMirror.svelte": {
-    "svelte/no-useless-mustaches": {
-      "count": 1
-    }
-  },
-  "src/routes/(public)/p/[slug]/+page.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 1
-    },
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/routes/+layout.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 1
-    }
-  },
-  "src/routes/admin/beta/+page.svelte": {
-    "svelte/require-each-key": {
-      "count": 3
-    }
-  },
-  "src/routes/admin/chat/+page.svelte": {
-    "svelte/require-each-key": {
-      "count": 3
-    }
-  },
-  "src/routes/admin/chat/agents/+page.svelte": {
-    "svelte/require-each-key": {
-      "count": 3
-    }
-  },
-  "src/routes/admin/chat/costs/+page.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/routes/admin/chat/domains/+page.svelte": {
-    "svelte/require-each-key": {
-      "count": 3
-    }
-  },
-  "src/routes/admin/chat/timing/+page.svelte": {
-    "svelte/require-each-key": {
-      "count": 4
-    }
-  },
-  "src/routes/admin/chat/tools/+page.svelte": {
-    "svelte/require-each-key": {
-      "count": 3
-    }
-  },
-  "src/routes/admin/email-sequences/+page.svelte": {
-    "svelte/require-each-key": {
-      "count": 3
-    }
-  },
-  "src/routes/admin/errors/+page.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/routes/admin/notifications/+page.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/routes/admin/notifications/sms-scheduler/+page.svelte": {
-    "svelte/require-each-key": {
-      "count": 4
-    }
-  },
-  "src/routes/admin/ontology/public-pages/+page.svelte": {
-    "svelte/require-each-key": {
-      "count": 2
-    }
-  },
-  "src/routes/admin/revenue/+page.svelte": {
-    "svelte/require-each-key": {
-      "count": 2
-    }
-  },
-  "src/routes/admin/security/+page.svelte": {
-    "svelte/require-each-key": {
-      "count": 2
-    }
-  },
-  "src/routes/admin/welcome-sequence/+page.svelte": {
-    "svelte/require-each-key": {
-      "count": 3
-    }
-  },
-  "src/routes/agent-skills/+page.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 1
-    },
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/routes/blogs/[category]/[slug]/+page.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 2
-    },
-    "svelte/require-each-key": {
-      "count": 5
-    }
-  },
-  "src/routes/briefs/+page.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 1
-    },
-    "svelte/require-each-key": {
-      "count": 3
-    }
-  },
-  "src/routes/debug/auth/+page.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/routes/design-system/tech-spec-project-v2/+page.svelte": {
-    "svelte/require-each-key": {
-      "count": 2
-    }
-  },
-  "src/routes/design-system/tech-spec-project/+page.svelte": {
-    "svelte/require-each-key": {
-      "count": 2
-    }
-  },
-  "src/routes/design-system/tech-spec/+page.svelte": {
-    "svelte/no-useless-mustaches": {
-      "count": 1
-    }
-  },
-  "src/routes/history/+page.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  },
-  "src/routes/skills/+page.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 1
-    },
-    "svelte/require-each-key": {
-      "count": 8
-    }
-  },
-  "src/routes/skills/[slug]/+page.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 1
-    },
-    "svelte/require-each-key": {
-      "count": 12
-    }
-  },
-  "src/routes/skills/domain/[domain]/+page.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 1
-    },
-    "svelte/require-each-key": {
-      "count": 2
-    }
-  },
-  "src/routes/skills/family/[family]/+page.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 1
-    },
-    "svelte/require-each-key": {
-      "count": 3
-    }
-  },
-  "src/routes/skills/path/[path]/+page.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 1
-    },
-    "svelte/require-each-key": {
-      "count": 2
-    }
-  },
-  "src/routes/skills/people/+page.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 1
-    }
-  },
-  "src/routes/skills/people/[slug]/+page.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 1
-    },
-    "svelte/require-each-key": {
-      "count": 4
-    }
-  },
-  "src/routes/skills/preview/[slug]/+page.svelte": {
-    "svelte/no-at-html-tags": {
-      "count": 1
-    },
-    "svelte/require-each-key": {
-      "count": 5
-    }
-  },
-  "src/routes/test-realtime/+page.svelte": {
-    "svelte/require-each-key": {
-      "count": 1
-    }
-  }
+	"src/lib/components/admin/ActivityTimelineChart.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/admin/EmailHistoryViewerModal.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 1
+		}
+	},
+	"src/lib/components/admin/UserActivityModal.svelte": {
+		"svelte/require-each-key": {
+			"count": 2
+		}
+	},
+	"src/lib/components/admin/UserContextPanel.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/admin/UserNotificationContext.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/admin/chat-users/ChatRedactedSessionTimeline.svelte": {
+		"svelte/require-each-key": {
+			"count": 3
+		}
+	},
+	"src/lib/components/admin/chat-users/ChatToolsAndErrors.svelte": {
+		"svelte/require-each-key": {
+			"count": 2
+		}
+	},
+	"src/lib/components/admin/chat-users/ChatUserDetailDrawer.svelte": {
+		"svelte/require-each-key": {
+			"count": 2
+		}
+	},
+	"src/lib/components/admin/chat-users/ChatUserSessionsList.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/admin/chat-users/ChatUsersMobileCards.svelte": {
+		"svelte/require-each-key": {
+			"count": 2
+		}
+	},
+	"src/lib/components/admin/chat-users/ChatUsersTable.svelte": {
+		"svelte/require-each-key": {
+			"count": 2
+		}
+	},
+	"src/lib/components/admin/chat/LibriPanel.svelte": {
+		"svelte/require-each-key": {
+			"count": 2
+		}
+	},
+	"src/lib/components/admin/chat/LlmUsageStatsPanel.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/admin/chat/SessionList.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/admin/migration/ConfirmationModal.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/admin/migration/RecentRuns.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/admin/migration/UserList.svelte": {
+		"svelte/require-each-key": {
+			"count": 2
+		}
+	},
+	"src/lib/components/admin/notifications/ChannelPerformanceTable.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/admin/notifications/EventBreakdownTable.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/admin/notifications/FailedDeliveriesTable.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/admin/notifications/LogDeliveryTable.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/admin/notifications/LogEventTable.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/admin/notifications/LogSystemTable.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/admin/notifications/SMSInsightsCard.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/agent/AgentMessageList.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 2
+		},
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/agent/BrainDumpContextPanel.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/agent/CaptureReceiptChip.svelte": {
+		"svelte/no-useless-mustaches": {
+			"count": 1
+		}
+	},
+	"src/lib/components/agent/ProjectEntityList.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/agent/SharedChatMessage.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 1
+		}
+	},
+	"src/lib/components/agent/ThinkingBlock.svelte": {
+		"svelte/no-useless-mustaches": {
+			"count": 1
+		}
+	},
+	"src/lib/components/analytics/BriefAnalyticsDashboard.svelte": {
+		"svelte/require-each-key": {
+			"count": 2
+		}
+	},
+	"src/lib/components/analytics/VisitorContributionChart.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/briefs/BriefChatModal.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 1
+		}
+	},
+	"src/lib/components/briefs/DailyBriefModal.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 1
+		}
+	},
+	"src/lib/components/briefs/ProjectBriefGrid.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/briefs/ProjectBriefModal.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/calendar/CalendarAnalysisResults.svelte": {
+		"svelte/require-each-key": {
+			"count": 4
+		}
+	},
+	"src/lib/components/dashboard/OverdueTaskTriageModal.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/landing/public-project-preview/PublicProjectHeader.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 1
+		}
+	},
+	"src/lib/components/notifications/types/agent-run/AgentRunModalContent.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 2
+		},
+		"svelte/require-each-key": {
+			"count": 2
+		}
+	},
+	"src/lib/components/ontology/DocumentModal.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 1
+		}
+	},
+	"src/lib/components/ontology/DocumentSplitDiffView.svelte": {
+		"svelte/require-each-key": {
+			"count": 2
+		}
+	},
+	"src/lib/components/ontology/EntityActivityLog.svelte": {
+		"svelte/require-each-key": {
+			"count": 2
+		}
+	},
+	"src/lib/components/ontology/EntityCommentThread.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 1
+		}
+	},
+	"src/lib/components/ontology/ImageAssetsPanel.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/ontology/OntologyProjectEditModal.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 1
+		}
+	},
+	"src/lib/components/ontology/TagsDisplay.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/ontology/TaskAssigneeSelector.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/ontology/TaskEditModal.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 1
+		}
+	},
+	"src/lib/components/ontology/doc-tree/DocTreeNode.svelte": {
+		"svelte/no-useless-mustaches": {
+			"count": 1
+		}
+	},
+	"src/lib/components/projects/desktop/DesktopReader.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 3
+		}
+	},
+	"src/lib/components/scheduling/CalendarView.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/skills/SkillExpertCard.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/test/LogoutTest.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/time-blocks/CalendarEventDetailModal.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/time-blocks/TimeBlockDetailModal.svelte": {
+		"svelte/require-each-key": {
+			"count": 2
+		}
+	},
+	"src/lib/components/ui/FormModal.svelte": {
+		"svelte/require-each-key": {
+			"count": 2
+		}
+	},
+	"src/lib/components/ui/MarkdownToggleField.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 1
+		}
+	},
+	"src/lib/components/ui/RichMarkdownEditor.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 2
+		}
+	},
+	"src/lib/components/ui/UnifiedDiffView.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/lib/components/voice-notes/VoiceNoteRecorder.svelte": {
+		"svelte/no-useless-mustaches": {
+			"count": 1
+		}
+	},
+	"src/lib/components/voice/DictationMirror.svelte": {
+		"svelte/no-useless-mustaches": {
+			"count": 1
+		}
+	},
+	"src/routes/(public)/p/[slug]/+page.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 1
+		},
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/routes/+layout.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 1
+		}
+	},
+	"src/routes/admin/beta/+page.svelte": {
+		"svelte/require-each-key": {
+			"count": 3
+		}
+	},
+	"src/routes/admin/chat/+page.svelte": {
+		"svelte/require-each-key": {
+			"count": 3
+		}
+	},
+	"src/routes/admin/chat/agents/+page.svelte": {
+		"svelte/require-each-key": {
+			"count": 3
+		}
+	},
+	"src/routes/admin/chat/costs/+page.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/routes/admin/chat/domains/+page.svelte": {
+		"svelte/require-each-key": {
+			"count": 3
+		}
+	},
+	"src/routes/admin/chat/timing/+page.svelte": {
+		"svelte/require-each-key": {
+			"count": 4
+		}
+	},
+	"src/routes/admin/chat/tools/+page.svelte": {
+		"svelte/require-each-key": {
+			"count": 3
+		}
+	},
+	"src/routes/admin/email-sequences/+page.svelte": {
+		"svelte/require-each-key": {
+			"count": 3
+		}
+	},
+	"src/routes/admin/errors/+page.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/routes/admin/notifications/+page.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/routes/admin/notifications/sms-scheduler/+page.svelte": {
+		"svelte/require-each-key": {
+			"count": 4
+		}
+	},
+	"src/routes/admin/ontology/public-pages/+page.svelte": {
+		"svelte/require-each-key": {
+			"count": 2
+		}
+	},
+	"src/routes/admin/revenue/+page.svelte": {
+		"svelte/require-each-key": {
+			"count": 2
+		}
+	},
+	"src/routes/admin/security/+page.svelte": {
+		"svelte/require-each-key": {
+			"count": 2
+		}
+	},
+	"src/routes/admin/welcome-sequence/+page.svelte": {
+		"svelte/require-each-key": {
+			"count": 3
+		}
+	},
+	"src/routes/agent-skills/+page.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 1
+		},
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/routes/blogs/[category]/[slug]/+page.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 2
+		},
+		"svelte/require-each-key": {
+			"count": 5
+		}
+	},
+	"src/routes/briefs/+page.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 1
+		},
+		"svelte/require-each-key": {
+			"count": 3
+		}
+	},
+	"src/routes/debug/auth/+page.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/routes/design-system/tech-spec-project-v2/+page.svelte": {
+		"svelte/require-each-key": {
+			"count": 2
+		}
+	},
+	"src/routes/design-system/tech-spec-project/+page.svelte": {
+		"svelte/require-each-key": {
+			"count": 2
+		}
+	},
+	"src/routes/design-system/tech-spec/+page.svelte": {
+		"svelte/no-useless-mustaches": {
+			"count": 1
+		}
+	},
+	"src/routes/history/+page.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	},
+	"src/routes/skills/+page.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 1
+		},
+		"svelte/require-each-key": {
+			"count": 8
+		}
+	},
+	"src/routes/skills/[slug]/+page.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 1
+		},
+		"svelte/require-each-key": {
+			"count": 12
+		}
+	},
+	"src/routes/skills/domain/[domain]/+page.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 1
+		},
+		"svelte/require-each-key": {
+			"count": 2
+		}
+	},
+	"src/routes/skills/family/[family]/+page.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 1
+		},
+		"svelte/require-each-key": {
+			"count": 3
+		}
+	},
+	"src/routes/skills/path/[path]/+page.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 1
+		},
+		"svelte/require-each-key": {
+			"count": 2
+		}
+	},
+	"src/routes/skills/people/+page.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 1
+		}
+	},
+	"src/routes/skills/people/[slug]/+page.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 1
+		},
+		"svelte/require-each-key": {
+			"count": 4
+		}
+	},
+	"src/routes/skills/preview/[slug]/+page.svelte": {
+		"svelte/no-at-html-tags": {
+			"count": 1
+		},
+		"svelte/require-each-key": {
+			"count": 5
+		}
+	},
+	"src/routes/test-realtime/+page.svelte": {
+		"svelte/require-each-key": {
+			"count": 1
+		}
+	}
 }

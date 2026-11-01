@@ -1703,7 +1703,7 @@ describe('AgenticChatToolExecutionAdapter', () => {
 			)
 		).resolves.toMatchObject({
 			result: {
-				search_scope: 'workspace',
+				search_scope: 'all_projects',
 				total_returned: 1,
 				results: [{ type: 'task', id: 'task-1', title: 'Launch checklist' }],
 				materialized_tools: ['get_onto_task_details', 'list_task_documents']
