@@ -3,12 +3,37 @@
 // One condensed packet per project entity, plus the section index of every document.
 // Production packet shape validated in the 2026-09-22 context evaluation.
 // Stable refs (d0, t3, …) identify entities in context-finder questions.
+//
+// Documents are outline-first (tasker 150): a packet needs only the title, description, type
+// and headings, which come from the stored `onto_documents.outline` cache. Document text loads
+// later, only for the documents a plan picks (`loadContextFinderPlanText`).
+import {
+	extractOutline,
+	type DocOutlineNode
+} from '@buildos/shared-agent-ops/utils/document-outline';
+import { flattenOutlineNodes } from '../loop/document-read-budget';
 
 export type ContextFinderKind = 'document' | 'task' | 'goal' | 'plan' | 'milestone' | 'risk';
 
 type Row = Record<string, unknown>;
 
-/** Raw rows the host loads with its own access check. Order is preserved in refs. */
+/** One document's text, read after a plan picks it. */
+export type ContextFinderDocumentText = { content: string; contentHash: string | null };
+
+/**
+ * Reads the text of the given documents, scoped to the same project and authority as the
+ * loader that made it. Missing ids are documents deleted or moved since the load.
+ */
+export type ContextFinderDocumentTextSource = (
+	ids: readonly string[],
+	signal?: AbortSignal
+) => Promise<Map<string, ContextFinderDocumentText>>;
+
+/**
+ * Raw rows the host loads with its own access check. Order is preserved in refs.
+ * Document rows carry `outline` and `content_hash` (load.ts); `content` only when the stored
+ * outline was missing or stale, or when a test or replay supplies it.
+ */
 export type ContextFinderProjectV1 = {
 	project: { id: string; name: string; description?: string | null };
 	documents: Row[];
@@ -17,14 +42,20 @@ export type ContextFinderProjectV1 = {
 	plans: Row[];
 	milestones: Row[];
 	risks: Row[];
+	/** Loads picked documents' text; absent when every document row already has `content`. */
+	documentText?: ContextFinderDocumentTextSource;
 };
 
 export type ContextFinderSection = {
 	heading: string;
 	level: number;
+	/** Heading slug; `read_document_section` takes it. Absent for legacy parsed sections. */
+	anchor?: string;
 	/** Character offset of the heading line inside the document. */
 	start: number;
-	/** Heading line plus everything until the next heading at the same or a higher level. */
+	/** End offset: the next heading at the same or a higher level, or the end of the text. */
+	end: number;
+	/** Heading line plus everything until `end`; empty until the document text loads. */
 	body: string;
 };
 
@@ -37,8 +68,17 @@ export type ContextFinderEntity = {
 	/** Record version used for citation (updated_at or created_at). */
 	version: string;
 	packet: Record<string, unknown>;
-	/** What loading this entity in full injects: the record, or the whole document body. */
+	/**
+	 * What loading this entity in full injects: the record, or the whole document body.
+	 * Documents: empty until `textLoaded`.
+	 */
 	fullText: string;
+	/** Records: always. Documents: once their text is attached (`withContextFinderText`). */
+	textLoaded: boolean;
+	/** Length of the whole text when known; the outline gives it for a document with headings. */
+	textChars: number | null;
+	/** Hash of the text `sections` were measured against, when known. */
+	textHash: string | null;
 	sections: ContextFinderSection[];
 	/** The headings shown to Jev and asked about; their index is the question index. */
 	packetHeadings: ContextFinderSection[];
@@ -77,11 +117,13 @@ export function parseContextFinderSections(markdown: string): ContextFinderSecti
 				break;
 			}
 		}
+		const body = lines.slice(head.index, end).join('\n');
 		return {
 			heading: head.heading,
 			level: head.level,
 			start: offsets[head.index]!,
-			body: lines.slice(head.index, end).join('\n')
+			end: offsets[head.index]! + body.length,
+			body
 		};
 	});
 }
@@ -100,6 +142,139 @@ export const clipContextWords = (value: unknown, max: number): string => {
 	const space = cut.lastIndexOf(' ');
 	return `${space > max * 0.6 ? cut.slice(0, space) : cut}…`;
 };
+
+/** Headings deeper than H3 stay out of packets and excerpts, as with the markdown parser. */
+const MAX_SECTION_LEVEL = 3;
+
+const NAMED_ENTITIES: Record<string, string> = {
+	amp: '&',
+	lt: '<',
+	gt: '>',
+	quot: '"',
+	apos: "'",
+	nbsp: ' '
+};
+
+/**
+ * The stored outline keeps marked's rendered heading HTML (`<strong>Bold</strong> &amp; x`);
+ * packets want the plain words. HTML is a structured format, so stripping it lexically is fine.
+ */
+export function plainOutlineHeading(html: string): string {
+	return html
+		.replace(/<[^>]*>/g, '')
+		.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (match, name: string) => {
+			if (name[0] !== '#') return NAMED_ENTITIES[name.toLowerCase()] ?? match;
+			const code =
+				name[1] === 'x' || name[1] === 'X'
+					? parseInt(name.slice(2), 16)
+					: parseInt(name.slice(1), 10);
+			return Number.isFinite(code) && code > 0 && code <= 0x10ffff
+				? String.fromCodePoint(code)
+				: match;
+		})
+		.replace(/\s+/g, ' ')
+		.trim();
+}
+
+type StoredOutline = { content_hash: string; nodes: DocOutlineNode[] };
+
+function storedOutline(value: unknown): StoredOutline | null {
+	if (!value || typeof value !== 'object') return null;
+	const outline = value as Record<string, unknown>;
+	return typeof outline.content_hash === 'string' && Array.isArray(outline.nodes)
+		? (outline as unknown as StoredOutline)
+		: null;
+}
+
+function outlineSections(
+	nodes: readonly DocOutlineNode[],
+	content: string | null
+): ContextFinderSection[] {
+	return flattenOutlineNodes(nodes)
+		.filter((node) => node.level <= MAX_SECTION_LEVEL)
+		.map((node) => ({
+			heading: plainOutlineHeading(node.text),
+			level: node.level,
+			anchor: node.anchor,
+			start: node.char_start,
+			end: node.char_end,
+			body: content === null ? '' : content.slice(node.char_start, node.char_end).trimEnd()
+		}))
+		.filter((section) => section.heading.length > 0);
+}
+
+type DocumentTextFields = Pick<
+	ContextFinderEntity,
+	'fullText' | 'textLoaded' | 'textChars' | 'textHash' | 'sections'
+>;
+
+/**
+ * A document's sections from its stored outline when that outline matches the text
+ * (`content_hash`), otherwise from the text itself. Without text, the sections carry offsets
+ * and anchors but no bodies.
+ */
+function documentTextFields(doc: Row): DocumentTextFields {
+	const content = typeof doc.content === 'string' ? doc.content : null;
+	const hash = typeof doc.content_hash === 'string' ? doc.content_hash : null;
+	const stored = storedOutline(doc.outline);
+	if (content === null) {
+		// The loader reads `content` for every document whose outline is missing or stale, so
+		// an outline here matches its text; a host that sends no hash is trusted the same way.
+		const outline = stored && (hash === null || stored.content_hash === hash) ? stored : null;
+		const sections = outline ? outlineSections(outline.nodes, null) : [];
+		const ends = outline ? flattenOutlineNodes(outline.nodes).map((node) => node.char_end) : [];
+		return {
+			fullText: '',
+			textLoaded: false,
+			// A section runs to the next heading or the end, so the last end is the length.
+			textChars: ends.length ? Math.max(...ends) : null,
+			textHash: outline?.content_hash ?? hash,
+			sections
+		};
+	}
+	const outline = stored && hash !== null && stored.content_hash === hash ? stored : null;
+	const nodes = outline?.nodes ?? extractOutline(content).nodes;
+	return {
+		fullText: content,
+		textLoaded: true,
+		textChars: content.length,
+		textHash: hash,
+		sections: outlineSections(nodes, content)
+	};
+}
+
+/**
+ * The entity with its document text attached: section bodies sliced from the stored offsets
+ * when the text is the one they were measured on, otherwise re-measured from the text.
+ */
+export function withContextFinderText(
+	entity: ContextFinderEntity,
+	text: ContextFinderDocumentText
+): ContextFinderEntity {
+	if (entity.kind !== 'document') return entity;
+	const content = text.content;
+	const base = {
+		...entity,
+		fullText: content,
+		textLoaded: true,
+		textChars: content.length,
+		textHash: text.contentHash
+	};
+	// A table's generated body has no headings; its packet lists columns instead.
+	if (entity.packet.table) return base;
+	const same = text.contentHash !== null && text.contentHash === entity.textHash;
+	if (!same)
+		return { ...base, sections: outlineSections(extractOutline(content).nodes, content) };
+	const fill = (section: ContextFinderSection) => ({
+		...section,
+		body: content.slice(section.start, section.end).trimEnd()
+	});
+	return {
+		...base,
+		sections: entity.sections.map(fill),
+		packetHeadings: entity.packetHeadings.map(fill)
+	};
+}
 
 const day = (value: unknown) => (typeof value === 'string' ? value.slice(0, 10) : undefined);
 const text = (value: unknown) => (value === null || value === undefined ? '' : String(value));
@@ -157,6 +332,13 @@ function tablePacketFields(doc: Row): { rows: number; columns: string[] } | null
 	return { rows, columns };
 }
 
+const loadedRecordText = (fullText: string) => ({
+	fullText,
+	textLoaded: true,
+	textChars: fullText.length,
+	textHash: null
+});
+
 export function buildContextFinderEntities(project: ContextFinderProjectV1): ContextFinderEntity[] {
 	const limits = CONTEXT_FINDER_PACKET_LIMITS;
 	const out: ContextFinderEntity[] = [];
@@ -181,14 +363,14 @@ export function buildContextFinderEntities(project: ContextFinderProjectV1): Con
 				},
 				// The body is the row projection (a markdown table); loading it in
 				// full brings in its header and first rows.
-				fullText: text(doc.content),
+				...documentTextFields(doc),
 				sections: [],
 				packetHeadings: []
 			});
 			return;
 		}
-		const sections = parseContextFinderSections(text(doc.content));
-		const packetHeadings = pickPacketHeadings(title, sections);
+		const fields = documentTextFields(doc);
+		const packetHeadings = pickPacketHeadings(title, fields.sections);
 		out.push({
 			ref: `d${i}`,
 			id: text(doc.id),
@@ -205,8 +387,7 @@ export function buildContextFinderEntities(project: ContextFinderProjectV1): Con
 					clipContextText(section.heading, limits.headingChars)
 				)
 			},
-			fullText: text(doc.content),
-			sections,
+			...fields,
 			packetHeadings
 		});
 	});
@@ -226,7 +407,9 @@ export function buildContextFinderEntities(project: ContextFinderProjectV1): Con
 				due: day(task.due_at),
 				description: clipContextText(task.description, limits.textChars) || undefined
 			},
-			fullText: `${title}\n${text(task.state_key)} ${day(task.due_at) ?? ''}\n${text(task.description)}`,
+			...loadedRecordText(
+				`${title}\n${text(task.state_key)} ${day(task.due_at) ?? ''}\n${text(task.description)}`
+			),
 			sections: [],
 			packetHeadings: []
 		});
@@ -255,7 +438,7 @@ export function buildContextFinderEntities(project: ContextFinderProjectV1): Con
 					description: clipContextText(body, limits.textChars) || undefined,
 					...(kind === 'risk' ? { impact: row.impact, probability: row.probability } : {})
 				},
-				fullText: `${title}\n${text(row.state_key)}\n${text(body)}`,
+				...loadedRecordText(`${title}\n${text(row.state_key)}\n${text(body)}`),
 				sections: [],
 				packetHeadings: []
 			});

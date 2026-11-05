@@ -864,7 +864,7 @@
 					<button
 						type="button"
 						onclick={() => (uploadOpen = true)}
-						class="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable"
+						class="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable"
 					>
 						<ImagePlus class="h-3.5 w-3.5" />Add image
 					</button>
@@ -872,13 +872,13 @@
 				<button
 					type="button"
 					onclick={() => openNewTable(null)}
-					class="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable"
+					class="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable"
 				>
 					<Table class="h-3.5 w-3.5" />New table
 				</button>
 			</div>
 			{#if !loading && !error && enrichedTree.length > 0}<span
-					class="doc-tree-updated-head hidden text-2xs text-muted-foreground sm:inline {enableDragDrop
+					class="doc-tree-updated-head hidden text-xs text-muted-foreground sm:inline {enableDragDrop
 						? 'mr-10'
 						: ''}">Updated</span
 				>{/if}
@@ -891,14 +891,12 @@
 	{:else if error}
 		<!-- Error state -->
 		<div class="flex flex-col items-center gap-3 px-4 py-6 text-center">
-			<div class="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
-				<FileText class="w-5 h-5 text-destructive" />
-			</div>
+			<FileText class="h-5 w-5 text-muted-foreground" aria-hidden="true" />
 			<p class="text-sm text-destructive">{error}</p>
 			<button
 				type="button"
 				onclick={() => fetchTree()}
-				class="inline-flex min-h-[44px] items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium text-accent transition-colors hover:bg-accent/10 hover:text-accent/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
+				class="inline-flex min-h-[44px] items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
 			>
 				<RefreshCw class="w-3.5 h-3.5" />
 				Retry
@@ -907,9 +905,7 @@
 	{:else if enrichedTree.length === 0 && unlinked.length === 0 && archived.length === 0}
 		<!-- Empty state -->
 		<div class="flex flex-col items-center gap-3 px-4 py-6 bg-muted/30 tx tx-bloom tx-weak">
-			<div class="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-				<FileText class="w-5 h-5 text-accent" />
-			</div>
+			<FileText class="h-5 w-5 text-muted-foreground" aria-hidden="true" />
 			<div class="text-center">
 				<p class="text-sm text-foreground">No documents yet</p>
 				<p class="text-xs text-muted-foreground">Add notes, research, or drafts</p>
@@ -919,7 +915,7 @@
 					<button
 						type="button"
 						onclick={() => onCreateDocument(null)}
-						class="inline-flex min-h-[44px] items-center gap-1.5 rounded-md bg-accent px-3 py-2 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none pressable"
+						class="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-accent px-3 py-2 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none pressable"
 					>
 						<Plus class="w-3.5 h-3.5" />
 						Create document
@@ -927,7 +923,7 @@
 					<button
 						type="button"
 						onclick={() => openNewTable(null)}
-						class="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-colors hover:border-accent/50 hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none pressable"
+						class="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none pressable"
 					>
 						<Table class="w-3.5 h-3.5" />
 						New table
@@ -938,7 +934,7 @@
 	{:else}
 		{#if !(imagesLoaded && canEdit)}
 			<div
-				class="doc-tree-updated-head hidden justify-end px-4 pt-1 text-2xs text-muted-foreground sm:flex {enableDragDrop
+				class="doc-tree-updated-head hidden justify-end px-4 pt-1 text-xs text-muted-foreground sm:flex {enableDragDrop
 					? 'pr-16'
 					: ''}"
 			>
@@ -990,12 +986,13 @@
 				<button
 					type="button"
 					onclick={() => (archivedExpanded = !archivedExpanded)}
-					class="flex min-h-[44px] w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable"
+					class="flex min-h-[44px] w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable"
 					aria-expanded={archivedExpanded}
 					aria-controls="archived-document-list"
 				>
 					<Archive class="w-3.5 h-3.5" />
-					<span>Archived documents ({archived.length})</span>
+					<span>Archived documents</span>
+					<span class="font-mono text-xs tabular-nums">{archived.length}</span>
 					<ChevronDown
 						class="ml-auto h-3.5 w-3.5 shrink-0 transition-transform motion-reduce:transition-none {archivedExpanded
 							? 'rotate-180'
@@ -1004,12 +1001,12 @@
 				</button>
 
 				{#if archivedExpanded}
-					<div id="archived-document-list" class="mt-1 space-y-0.5 pl-2">
+					<div id="archived-document-list" class="mt-1 space-y-1 pl-2">
 						{#each archived as doc (doc.id)}
 							<button
 								type="button"
 								onclick={() => onOpenDocument(doc.id)}
-								class="flex min-h-[44px] w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent/5 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable"
+								class="flex min-h-[44px] w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable"
 							>
 								<Archive class="w-3.5 h-3.5 text-muted-foreground" />
 								<span class="truncate">{doc.title}</span>
@@ -1052,7 +1049,7 @@
 				role="status"
 				aria-live="polite"
 			>
-				<span>Document moved.</span>
+				<span>Document moved</span>
 				<button
 					type="button"
 					onclick={() => dragDrop?.undo()}

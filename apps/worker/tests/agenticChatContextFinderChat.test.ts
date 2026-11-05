@@ -67,7 +67,7 @@ function fakeClient(fail = false) {
 				? { data: null, error: { message: 'boom' } }
 				: { data: data ?? [], error: null };
 			const builder: Record<string, unknown> = {};
-			for (const method of ['select', 'eq', 'is', 'order', 'limit', 'abortSignal'])
+			for (const method of ['select', 'eq', 'in', 'is', 'order', 'limit', 'abortSignal'])
 				builder[method] = () => builder;
 			builder.maybeSingle = () => Promise.resolve(result);
 			builder.then = (resolve: (value: unknown) => unknown) => resolve(result);

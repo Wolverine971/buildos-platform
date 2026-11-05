@@ -701,7 +701,7 @@ describe('processBriefJob stale daily brief guard', () => {
 		expect(mocks.mockBroadcastUserEvent).toHaveBeenCalledWith(
 			'user-1',
 			'brief_failed',
-			expect.objectContaining({ error: 'still failing' })
+			expect.not.objectContaining({ error: expect.anything() })
 		);
 		expect(mocks.mockRpc).toHaveBeenCalledWith(
 			'emit_notification_event',
@@ -724,7 +724,7 @@ describe('processBriefJob stale daily brief guard', () => {
 		expect(mocks.mockBroadcastUserEvent).toHaveBeenCalledWith(
 			'user-1',
 			'brief_failed',
-			expect.objectContaining({ error: 'cannot succeed' })
+			expect.not.objectContaining({ error: expect.anything() })
 		);
 	});
 

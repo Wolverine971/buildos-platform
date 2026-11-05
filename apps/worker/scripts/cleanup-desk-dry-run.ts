@@ -24,6 +24,8 @@ import { JevClient, SmartLLMService } from '@buildos/smart-llm';
 import type { ProjectCleanupSection } from '@buildos/shared-types';
 import {
 	loadContextFinderProject,
+	startHereIds,
+	withContextFinderDocumentText,
 	type ContextFinderProjectV1
 } from '@buildos/agentic-chat-runtime/context-finder';
 import {
@@ -180,7 +182,9 @@ async function main() {
 	const out = resolve(outDir!);
 	mkdirSync(out, { recursive: true });
 	const signal = new AbortController().signal;
-	const project = await loadContextFinderProject(db as never, projectId!, signal);
+	const loaded = await loadContextFinderProject(db as never, projectId!, signal);
+	// The finder loads outlines; the loop context quotes START HERE.
+	const project = await withContextFinderDocumentText(loaded, startHereIds(loaded), signal);
 	const ctx = loopContext(project);
 	// The owner's recent filing and archiving answers, read like the pass's loadPriorDecisions.
 	const { data: decided } = await db

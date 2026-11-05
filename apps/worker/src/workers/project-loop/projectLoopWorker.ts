@@ -29,6 +29,7 @@ import {
 } from '@buildos/shared-agent-ops/ontology/start-here';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { supabase } from '../../lib/supabase';
+import { projectLoopJobRefusal } from './jobIdentity';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import {
 	PROJECT_LOOPS_ENABLED,
@@ -98,8 +99,8 @@ import type { ProjectCleanupSynthesis } from '@buildos/shared-types';
 import { type CleanupSynthesisResult, buildHeuristicCleanupSynthesis } from './cleanupSynthesis';
 import {
 	type CleanupAutoApplyWriters,
-	describeCleanupAutoApply,
 	cleanupAutoApplyProjectView,
+	describeCleanupAutoApply,
 	runCleanupAutoApply,
 	selectCleanupAutoApplyCandidates
 } from './cleanupAutoApply';
@@ -3221,6 +3222,14 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 	if (!PROJECT_LOOPS_ENABLED) {
 		await job.log('Project loops disabled (ENABLE_PROJECT_LOOPS); skipping.');
 		if (runId) await failRun(runId, 'feature_disabled');
+		return { success: true, skipped: true };
+	}
+
+	// Act only for the queue row owner, on a project and run that owner holds.
+	// A refused job touches nothing: the named run may belong to someone else.
+	const refusal = await projectLoopJobRefusal(supabase, job);
+	if (refusal) {
+		await job.log(`Project loop job skipped: ${refusal}`);
 		return { success: true, skipped: true };
 	}
 

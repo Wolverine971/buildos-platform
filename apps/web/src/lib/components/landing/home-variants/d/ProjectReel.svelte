@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/landing/home-variants/d/ProjectReel.svelte -->
 <!--
 	Home D, under the hero: "See where your ___ stands." cycles through people's projects. Each
 	beat shows that person's Workspace the way /projects draws it (real tiles and task
@@ -198,7 +199,7 @@
 >
 	<h2
 		id="d-reel-heading"
-		class="text-balance text-3xl font-medium leading-[1.1] tracking-[-0.025em] sm:text-[2.75rem]"
+		class="text-balance text-3xl font-medium leading-[1.1] tracking-[-0.025em] sm:text-5xl"
 	>
 		<span class="sr-only"
 			>See where every project stands: a backyard garden, a novel, a kids' soccer team, a

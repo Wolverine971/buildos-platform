@@ -174,6 +174,52 @@ export class CalendarWebhookService {
 			: query.is('calendar_source_id', null);
 	}
 
+	/**
+	 * task_calendar_events.task_id is written by the user, so it does not prove the
+	 * user may edit that task. Returns the task's props only when the calendar's
+	 * user can still write the task's project.
+	 */
+	private async loadWritableOntoTask(
+		userId: string,
+		taskId: string,
+		projectAccessCache: Map<string, boolean> = new Map()
+	): Promise<{ props: Record<string, unknown> } | null> {
+		const { data: task, error } = await this.supabase
+			.from('onto_tasks')
+			.select('project_id, props')
+			.eq('id', taskId)
+			.is('deleted_at', null)
+			.maybeSingle();
+		if (error) throw error;
+		if (!task?.project_id) return null;
+
+		let allowed = projectAccessCache.get(task.project_id);
+		if (allowed === undefined) {
+			allowed = await this.userCanWriteProject(userId, task.project_id);
+			projectAccessCache.set(task.project_id, allowed);
+		}
+		if (!allowed) return null;
+		return { props: (task.props as Record<string, unknown> | null) ?? {} };
+	}
+
+	private async userCanWriteProject(userId: string, projectId: string): Promise<boolean> {
+		const { data: actor, error: actorError } = await this.supabase
+			.from('onto_actors')
+			.select('id')
+			.eq('user_id', userId)
+			.maybeSingle();
+		if (actorError) throw actorError;
+		if (!actor?.id) return false;
+
+		const { data, error } = await this.supabase.rpc('actor_has_project_member_access', {
+			p_actor_id: actor.id,
+			p_project_id: projectId,
+			p_required_access: 'write'
+		});
+		if (error) throw error;
+		return data === true;
+	}
+
 	private tokensMatch(expected: string, received: string): boolean {
 		const expectedBytes = Buffer.from(expected);
 		const receivedBytes = Buffer.from(received);
@@ -1291,6 +1337,7 @@ export class CalendarWebhookService {
 									updated_at: new Date().toISOString()
 								})
 								.eq('task_id', taskEvent.task_id)
+								.eq('user_id', userId)
 								.gte('instance_date', today);
 
 							// Update the task to mark it as cancelled/inactive
@@ -1521,21 +1568,23 @@ export class CalendarWebhookService {
 
 				console.log(`[BATCH_PROCESS] Updating ${uniqueTaskUpdates.length} tasks`);
 				let taskUpdateError: Error | null = null;
+				const projectAccessCache = new Map<string, boolean>();
 				for (const taskUpdate of uniqueTaskUpdates) {
 					try {
-						const { data: existingTask, error: existingError } = await this.supabase
-							.from('onto_tasks')
-							.select('props')
-							.eq('id', taskUpdate.id)
-							.is('deleted_at', null)
-							.maybeSingle();
-
-						if (existingError) {
-							throw existingError;
+						const existingTask = await this.loadWritableOntoTask(
+							userId,
+							taskUpdate.id,
+							projectAccessCache
+						);
+						if (!existingTask) {
+							console.warn(
+								'[BATCH_PROCESS] Skipping task the calendar owner cannot edit',
+								{ taskId: taskUpdate.id }
+							);
+							continue;
 						}
 
-						const existingProps =
-							(existingTask?.props as Record<string, unknown> | null) ?? {};
+						const existingProps = existingTask.props;
 						const nextProps =
 							typeof taskUpdate.duration_minutes === 'number'
 								? {
@@ -1876,7 +1925,7 @@ export class CalendarWebhookService {
 			await this.supabase.from('task_calendar_events').delete().eq('id', taskEvent.id);
 
 			// Optionally update task status or add a note
-			if (taskEvent.task_id) {
+			if (taskEvent.task_id && (await this.loadWritableOntoTask(userId, taskEvent.task_id))) {
 				await this.supabase
 					.from('onto_tasks')
 					.update({
@@ -1945,17 +1994,12 @@ export class CalendarWebhookService {
 				.eq('id', taskEvent.id);
 
 			// Update the task's start_date and duration
-			if (taskEvent.task_id) {
-				const { data: existingTask } = await this.supabase
-					.from('onto_tasks')
-					.select('props')
-					.eq('id', taskEvent.task_id)
-					.is('deleted_at', null)
-					.maybeSingle();
-
-				const existingProps = (existingTask?.props as Record<string, unknown> | null) ?? {};
+			const existingTask = taskEvent.task_id
+				? await this.loadWritableOntoTask(userId, taskEvent.task_id)
+				: null;
+			if (existingTask) {
 				const nextProps = {
-					...existingProps,
+					...existingTask.props,
 					duration_minutes: durationMinutes
 				};
 

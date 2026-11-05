@@ -689,7 +689,6 @@ export async function processBriefJob(
 
 		if (emitFailureEffects) {
 			await broadcastUserEvent(job.data.userId, 'brief_failed', {
-				error: errorMessage,
 				jobId: job.id,
 				message: 'Brief generation failed. Click to retry.'
 			});

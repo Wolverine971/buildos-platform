@@ -66,10 +66,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	try {
-		// Update user preferences with verified phone
-		// Use locals.supabase (RLS-respecting client) since we're only modifying current user's data
-		const supabase = locals.supabase;
-		const { error } = await supabase.from('user_sms_preferences').upsert(
+		// Only the server may mark a phone verified (a DB guard refuses it from user sessions),
+		// so write with the service role, scoped to the session's own user id.
+		const { error } = await createAdminSupabaseClient().from('user_sms_preferences').upsert(
 			{
 				user_id: session.user.id,
 				phone_number: phoneNumber,

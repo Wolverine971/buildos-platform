@@ -22,7 +22,23 @@ const mocks = vi.hoisted(() => {
 				return query;
 			},
 			single: async () => ({
-				data: table === 'sms_messages' ? { id: 'msg-1', attempt_count: 0 } : null,
+				data:
+					table === 'sms_messages'
+						? {
+								id: 'msg-1',
+								user_id: 'user-1',
+								phone_number: '+15551234567',
+								message_content: 'Standup in 15 mins',
+								attempt_count: 0
+							}
+						: null,
+				error: null
+			}),
+			maybeSingle: async () => ({
+				data:
+					table === 'user_sms_preferences'
+						? { phone_number: '+15551234567', phone_verified: true }
+						: null,
 				error: null
 			}),
 			then: (resolve: (value: unknown) => unknown, reject: (reason: unknown) => unknown) =>

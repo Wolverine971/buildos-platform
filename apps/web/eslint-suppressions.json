@@ -192,11 +192,6 @@
 			"count": 1
 		}
 	},
-	"src/lib/components/landing/public-project-preview/PublicProjectHeader.svelte": {
-		"svelte/no-at-html-tags": {
-			"count": 1
-		}
-	},
 	"src/lib/components/notifications/types/agent-run/AgentRunModalContent.svelte": {
 		"svelte/no-at-html-tags": {
 			"count": 2

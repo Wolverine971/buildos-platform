@@ -1,9 +1,9 @@
 # BuildOS Database Schema Reference
 
-Complete column listing for all 294 tables, grouped by domain.
+Complete column listing for all 296 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-10-31T16:38:59.820Z
+**Schema generated:** 2026-11-05T16:29:36.420Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -28,7 +28,7 @@ For enum values, constraints, and RLS, check migrations in `supabase/migrations/
 - [Daily Briefs](#daily-briefs) (5 tables)
 - [Monitoring & Analytics](#monitoring--analytics) (11 tables)
 - [Web & Webhooks](#web--webhooks) (4 tables)
-- [Other](#other) (64 tables)
+- [Other](#other) (66 tables)
 
 ---
 
@@ -1241,6 +1241,14 @@ actor_type `string` · actor_user_id `string?` · category `string` · created_a
 ### time_blocks
 
 ai_suggestions `Json?` · block_type `string` · calendar_event_id `string?` · calendar_event_link `string?` · calendar_source_id `string?` · created_at `string` · duration_minutes `number` · end_time `string` · id `string` · last_synced_at `string?` · project_id `string?` · start_time `string` · suggestions_generated_at `string?` · suggestions_model `string?` · suggestions_state `Json?` · suggestions_summary `string?` · sync_source `string?` · sync_status `string` · timezone `string` · updated_at `string` · user_id `string`
+
+### today_kept_suggestions
+
+created_at `string` · kept_until `string` · task_id `string` · user_id `string`
+
+### today_waiting_items
+
+created_at `string` · direction `string` · id `string` · item_key `string` · last_seen_at `string` · project_id `string?` · resolved_at `string?` · since `string?` · status `string` · task_id `string?` · updated_at `string` · user_id `string` · what `string` · who `string` · who_kind `string`
 
 ### user_behavioral_profiles
 

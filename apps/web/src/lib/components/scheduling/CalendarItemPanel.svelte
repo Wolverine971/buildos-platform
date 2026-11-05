@@ -51,6 +51,7 @@
 		isConnectedGoogleCalendarItem,
 		type DashboardCalendarAttendee
 	} from '$lib/services/dashboard-calendar-items';
+	import { safeHref } from '$lib/components/tables/table-cell-format';
 	import type {
 		CalendarItem,
 		CalendarItemDetail,
@@ -164,13 +165,18 @@
 	let showTomorrow = $derived(!task || offersQuickReschedule(task, 'tomorrow'));
 	let showNextWeek = $derived(!task || offersQuickReschedule(task, 'nextWeek'));
 
+	// Collaborators can set these, so only http(s) links are rendered.
 	let meetingUrl = $derived(
-		typeof item.props?.meeting_url === 'string' ? (item.props.meeting_url as string) : null
+		typeof item.props?.meeting_url === 'string'
+			? safeHref(item.props.meeting_url as string)
+			: null
 	);
 	let externalLink = $derived(
-		(eventData?.external_link as string | undefined) ??
-			(item.props?.external_link as string | undefined) ??
-			null
+		safeHref(
+			(eventData?.external_link as string | undefined) ??
+				(item.props?.external_link as string | undefined) ??
+				null
+		)
 	);
 	let location = $derived(
 		(eventData?.location as string | undefined) ??

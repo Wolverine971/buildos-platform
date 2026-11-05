@@ -4,6 +4,12 @@ import { describe, expect, it, vi } from 'vitest';
 import type { RequestHandler } from './$types';
 import { DELETE } from './+server';
 
+// queue_jobs is server-only: the cancel and the lookup both go through the admin client.
+const adminClient = vi.hoisted(() => ({ current: null as unknown }));
+vi.mock('$lib/supabase/admin', () => ({
+	createAdminSupabaseClient: () => adminClient.current
+}));
+
 function createEvent(job: { user_id: string; status: string } | null) {
 	const fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
 		const url = new URL(String(input));
@@ -31,10 +37,11 @@ function createEvent(job: { user_id: string; status: string } | null) {
 		auth: { persistSession: false, autoRefreshToken: false },
 		global: { fetch }
 	});
+	adminClient.current = supabase;
 	const event = {
 		params: { id: 'queue-1' },
 		locals: {
-			supabase,
+			supabase: {},
 			safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
 		}
 	} as unknown as Parameters<RequestHandler>[0];

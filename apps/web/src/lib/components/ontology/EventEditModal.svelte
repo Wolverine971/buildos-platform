@@ -54,6 +54,7 @@
 	import { changedFormFields } from '$lib/utils/form-patch';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
+	import { safeHref } from '$lib/components/tables/table-cell-format';
 
 	// Lazy-loaded modal components for linked entity navigation
 
@@ -494,9 +495,10 @@
 
 {#snippet headerActions()}
 	<!-- External link if synced to calendar -->
-	{#if hasCalendarLink && event?.props?.external_link}
+	{@const calendarHref = safeHref(event?.props?.external_link as string | undefined)}
+	{#if hasCalendarLink && calendarHref}
 		<a
-			href={event.props.external_link}
+			href={calendarHref}
 			target="_blank"
 			rel="noopener noreferrer"
 			class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring tx tx-grain tx-weak"

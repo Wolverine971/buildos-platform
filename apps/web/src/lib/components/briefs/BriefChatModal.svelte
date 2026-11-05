@@ -19,7 +19,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { X, FileText, MessageCircle } from 'lucide-svelte';
-	import { renderMarkdown } from '$lib/utils/markdown';
+	import { renderAgentMarkdownContent } from '$lib/utils/markdown';
 	import AgentChatModal from '$lib/components/agent/AgentChatModal.svelte';
 	import ChatSessionAuditActions from '$lib/components/agent/ChatSessionAuditActions.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -188,7 +188,7 @@
 										prose-blockquote:border-border prose-code:bg-muted prose-code:text-foreground
 										prose-pre:bg-muted prose-pre:text-foreground prose-hr:border-border"
 				>
-					{@html renderMarkdown(brief.summary_content)}
+					{@html renderAgentMarkdownContent(brief.summary_content)}
 				</div>
 			</div>
 		</div>

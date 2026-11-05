@@ -56,6 +56,7 @@ import {
 	createSupabaseNativeSearchDiscoveryCacheStore
 } from '@buildos/shared-agent-ops/web/native-search';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
+import { PermanentQueueError } from '../../lib/queueErrors';
 import { supabase } from '../../lib/supabase';
 import {
 	DEEPSEEK_V4_FLASH_MODEL,
@@ -396,6 +397,15 @@ async function executeAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>) {
 		};
 	}
 	const initialRun = runData as AgentRunRow;
+	// Every legitimate enqueue uses the run owner as the queue row owner. A job
+	// naming someone else's run must not claim, resume or change it.
+	if (!job.userId || initialRun.user_id !== job.userId) {
+		await job.log?.(`Agent Run ${runId} refused; it does not belong to the queue row owner`);
+		throw new PermanentQueueError(
+			'agent_run_owner_mismatch',
+			'Agent Run does not belong to the queue row owner'
+		);
+	}
 	// Retired trees are cancelled before any model client or cost reservation.
 	const retired = isRetiredResearchRun(initialRun);
 	// Resume/answer jobs are continuations: rebuild transcript

@@ -59,7 +59,8 @@ export async function processWorkspaceSuggestJob(
 	deps: Partial<Deps> = {}
 ): Promise<WorkspaceSuggestResult> {
 	const db = deps.supabase ?? defaultSupabase;
-	const userId = typeof job.data?.userId === 'string' ? job.data.userId : '';
+	// The queue row owner is the person; metadata may only repeat it.
+	const userId = job.userId;
 	const workspaceId =
 		typeof job.data?.workspaceProjectId === 'string' ? job.data.workspaceProjectId : '';
 	if (!userId || !workspaceId)
@@ -69,6 +70,8 @@ export async function processWorkspaceSuggestJob(
 		outcome: WorkspaceSuggestResult['outcome'],
 		extra: Partial<WorkspaceSuggestResult> = {}
 	): WorkspaceSuggestResult => ({ success: outcome !== 'failed', userId, outcome, ...extra });
+	if (job.data?.userId && job.data.userId !== userId)
+		return done('skipped', { reason: 'user mismatch' });
 
 	// The workspace must still be this person's live Workspace.
 	const { data: workspace, error: workspaceError } = await db

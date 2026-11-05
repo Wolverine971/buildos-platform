@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { z } from 'zod';
 import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
 import { parseJsonRequest } from '$lib/utils/request-validation';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 // Default preferences
 // NOTE: Brief preferences control WHEN briefs are generated.
@@ -181,9 +182,10 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		}
 
 		// Cancel existing pending brief generation jobs and let the scheduler reschedule
+		// queue_jobs is server-only (users can read their rows but not write them).
 		if (preferences.is_active) {
-			await supabase
-				.from('queue_jobs') // Updated table name
+			await createAdminSupabaseClient()
+				.from('queue_jobs')
 				.update({
 					status: 'cancelled',
 					error_message: 'Cancelled due to preference change',

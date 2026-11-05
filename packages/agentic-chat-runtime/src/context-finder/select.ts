@@ -18,8 +18,16 @@ export const CONTEXT_FINDER_POLICY = Object.freeze({
 	fullCandidates: 16,
 	maxFull: 10,
 	maxPins: 5,
+	/** Ceiling for any host; drift review uses all of it. */
 	budgetChars: 14_000,
 	sectionsPerDoc: 4,
+	/**
+	 * What an agent gets up front (tasker 150, DJ picked B on 2026-11-05): each picked
+	 * document's card (description, sections with anchors) plus text for its best sections
+	 * within this budget. The agent reads more with read_document_section.
+	 */
+	agentBudgetChars: 5_000,
+	agentSectionsPerDoc: 2,
 	sectionChars: 2_000,
 	sectionFloor: 0.25,
 	/** A document with no scored section loads its opening. */
@@ -101,20 +109,12 @@ export function contextItemExcerpts(
 	});
 	if (entity.kind !== 'document')
 		return done([{ heading: null, text: entity.fullText.slice(0, policy.recordChars) }]);
-	const used = new Set<number>();
-	const picked: ContextExcerptV1[] = [];
-	for (const wanted of sections.slice(0, policy.sectionsPerDoc)) {
-		// Duplicate headings resolve to the first unused match, in document order.
-		const index = entity.sections.findIndex(
-			(section, i) => !used.has(i) && section.heading === wanted.heading
-		);
-		if (index < 0) continue;
-		used.add(index);
-		picked.push({
-			heading: wanted.heading,
-			text: entity.sections[index]!.body.slice(0, policy.sectionChars)
-		});
-	}
+	// The text could not load (deleted since, or the read failed): the document's card.
+	if (!entity.textLoaded) return done(documentCardExcerpts(entity));
+	const picked: ContextExcerptV1[] = pickedSections(entity, sections).map((section) => ({
+		heading: section.heading,
+		text: section.body.slice(0, policy.sectionChars)
+	}));
 	if (!picked.length)
 		return done(
 			options.pinned
@@ -122,6 +122,78 @@ export function contextItemExcerpts(
 				: [{ heading: null, text: entity.fullText.slice(0, policy.openingChars) }]
 		);
 	return done(picked);
+}
+
+/** The entity's sections a plan names, in plan order, at most `sectionsPerDoc`. */
+function pickedSections(
+	entity: ContextFinderEntity,
+	sections: readonly ContextPlanSectionV1[]
+): ContextFinderEntity['sections'] {
+	const used = new Set<number>();
+	const picked: ContextFinderEntity['sections'] = [];
+	for (const wanted of sections.slice(0, CONTEXT_FINDER_POLICY.sectionsPerDoc)) {
+		// Duplicate headings resolve to the first unused match, in document order.
+		const index = entity.sections.findIndex(
+			(section, i) => !used.has(i) && section.heading === wanted.heading
+		);
+		if (index < 0) continue;
+		used.add(index);
+		picked.push(entity.sections[index]!);
+	}
+	return picked;
+}
+
+/** Headings listed on a document card. */
+const CARD_HEADINGS = 12;
+
+/** Title-level facts and the outline with anchors, so the model can read a section itself. */
+function documentCardExcerpts(entity: ContextFinderEntity): ContextExcerptV1[] {
+	const description =
+		typeof entity.packet.description === 'string' ? entity.packet.description : '';
+	const headings = entity.packetHeadings.slice(0, CARD_HEADINGS);
+	const lines = [
+		...(description ? [description] : []),
+		headings.length
+			? 'Text not loaded. Outline (read a section with read_document_section and its anchor):'
+			: 'Text not loaded. Read it with get_onto_document_details.',
+		...headings.map(
+			(section) =>
+				`- ${section.heading}${section.anchor ? ` (anchor: ${section.anchor})` : ''}`
+		),
+		...(entity.packetHeadings.length > headings.length
+			? [`- …and ${entity.packetHeadings.length - headings.length} more headings`]
+			: [])
+	];
+	return [{ heading: null, text: lines.join('\n').slice(0, CONTEXT_FINDER_POLICY.sectionChars) }];
+}
+
+/**
+ * What `contextItemExcerpts` would inject, before the document text loads. Sections come from
+ * the outline's offsets; an opening is bounded by the known length. Never under the real
+ * size of an unpinned item, so a plan budgeted on it fits once the text is in (pins skip the
+ * budget).
+ */
+export function contextItemChars(
+	entity: ContextFinderEntity,
+	sections: readonly ContextPlanSectionV1[],
+	options: { pinned?: boolean } = {}
+): number {
+	if (entity.textLoaded) return contextItemExcerpts(entity, sections, options).chars;
+	const policy = CONTEXT_FINDER_POLICY;
+	const picked = pickedSections(entity, sections);
+	if (picked.length)
+		return (
+			picked.reduce(
+				(n, section) => n + Math.min(section.end - section.start, policy.sectionChars),
+				0
+			) +
+			2 * (picked.length - 1)
+		);
+	const cap = options.pinned ? policy.pinnedOpeningChars : policy.openingChars;
+	const size = Math.min(entity.textChars ?? cap, cap);
+	// A pinned opening splits into pieces joined by a blank line.
+	const pieces = options.pinned ? Math.max(1, Math.ceil(size / policy.sectionChars)) : 1;
+	return size + 2 * (pieces - 1);
 }
 
 /** The document's first `limit` characters in pieces of at most `sectionChars`, each labeled
@@ -159,6 +231,8 @@ export function selectProjectContext(input: {
 	drops?: ReadonlySet<string>;
 	/** A smaller share of the budget when several projects split one prompt (workspace.ts). */
 	budgetChars?: number;
+	/** Fewer sections per document than the policy's ceiling (agents: `agentSectionsPerDoc`). */
+	sectionsPerDoc?: number;
 	maxSummaries?: number;
 	/**
 	 * Raise the bar for loading a record in full (never lower it). A whole-project request
@@ -172,6 +246,10 @@ export function selectProjectContext(input: {
 	const fullFloor = Math.max(floor, input.fullFloor ?? floor);
 	const budgetChars = Math.min(input.budgetChars ?? policy.budgetChars, policy.budgetChars);
 	const maxSummaries = Math.min(input.maxSummaries ?? policy.maxSummaries, policy.maxSummaries);
+	const sectionsPerDoc = Math.min(
+		input.sectionsPerDoc ?? policy.sectionsPerDoc,
+		policy.sectionsPerDoc
+	);
 	const skip = input.skipIds ?? new Set<string>();
 	const drops = input.drops ?? new Set<string>();
 	const pins = input.pins ?? new Set<string>();
@@ -194,8 +272,8 @@ export function selectProjectContext(input: {
 	for (const { entity, p } of candidates) {
 		const isPinned = pins.has(entity.id);
 		if (!isPinned && full.length >= policy.maxFull) break;
-		const sections = scoredSectionsFor(entity, input.scores);
-		const size = contextItemExcerpts(entity, sections, { pinned: isPinned }).chars;
+		const sections = scoredSectionsFor(entity, input.scores, sectionsPerDoc);
+		const size = contextItemChars(entity, sections, { pinned: isPinned });
 		// Skip what doesn't fit and keep packing smaller, lower-ranked items.
 		if (!isPinned && chars + size > budgetChars) continue;
 		chars += size;
@@ -222,7 +300,7 @@ export function selectProjectContext(input: {
 			tier: 'summary',
 			p: round(p),
 			// Kept so a pin in the browser can load this document's best sections.
-			sections: scoredSectionsFor(entity, input.scores)
+			sections: scoredSectionsFor(entity, input.scores, sectionsPerDoc)
 		}));
 	return {
 		version: 'context_plan_v1',

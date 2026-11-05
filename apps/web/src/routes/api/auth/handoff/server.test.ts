@@ -69,12 +69,16 @@ describe('POST /api/auth/handoff', () => {
 		expect(mocks.create).not.toHaveBeenCalled();
 	});
 
-	it.each(['https://evil.example/', '//evil.example', 42])(
-		'rejects an unsafe next value (%s)',
-		async (next) => {
-			const response = await post({ next });
-			expect(response.status).toBe(400);
-			expect(mocks.create).not.toHaveBeenCalled();
-		}
-	);
+	it.each([
+		'https://evil.example/',
+		'//evil.example',
+		42,
+		'/auth/google',
+		'/auth/google?app=1',
+		'/api/auth/handoff'
+	])('rejects an unsafe next value (%s)', async (next) => {
+		const response = await post({ next });
+		expect(response.status).toBe(400);
+		expect(mocks.create).not.toHaveBeenCalled();
+	});
 });

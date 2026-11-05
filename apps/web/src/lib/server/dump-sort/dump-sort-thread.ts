@@ -6,6 +6,7 @@
 import {
 	buildContextFinderEntities,
 	findProjectContext,
+	loadContextFinderPlanText,
 	type ContextFinderDecider,
 	type ContextFinderEntity,
 	type ContextFinderProjectV1
@@ -79,7 +80,7 @@ function toRecord(
 		description,
 		p,
 		tier,
-		...(entity.kind === 'document' && tier === 'full'
+		...(entity.kind === 'document' && tier === 'full' && entity.textLoaded
 			? { body: entity.fullText.slice(0, 800) }
 			: {})
 	};
@@ -131,16 +132,11 @@ export async function runProjectThread(input: {
 		send({ type: 'thread_status', alias, t: t(), stage: 'searching' });
 		const entities = buildContextFinderEntities(project);
 		const byId = new Map(entities.map((entity) => [entity.id, entity]));
-		let picked: ThreadRecord[] | null = null;
+		let chosen: { id: string; p: number | null }[] | null = null;
 		let source: 'jev' | 'recent' = 'recent';
 		if (input.replay) {
 			await wait(input.replay.findMs, signal);
-			picked = input.replay.pick
-				.map(({ id, p }) => {
-					const entity = byId.get(id);
-					return entity ? toRecord(entity, p, 'full') : null;
-				})
-				.filter((record): record is ThreadRecord => !!record);
+			chosen = input.replay.pick;
 			source = 'jev';
 		} else if (input.decider) {
 			const message = input.pieces
@@ -160,22 +156,31 @@ export async function runProjectThread(input: {
 			});
 			if (result.plan && result.evidence.status !== 'unavailable') {
 				source = 'jev';
-				picked = result.plan.items
-					.map((item) => {
-						const entity = byId.get(item.id);
-						return entity ? toRecord(entity, item.p, 'full') : null;
-					})
-					.filter((record): record is ThreadRecord => !!record)
-					.slice(0, FULL_RECORDS);
+				chosen = result.plan.items.map((item) => ({ id: item.id, p: item.p }));
 			}
 		}
-		if (!picked) {
-			// No Jev (off, failed, or timed out): the most recently touched records.
-			picked = [...entities]
+		// No Jev (off, failed, or timed out): the most recently touched records.
+		chosen = (
+			chosen ??
+			[...entities]
 				.sort((a, b) => b.version.localeCompare(a.version))
-				.slice(0, FULL_RECORDS)
-				.map((entity) => toRecord(entity, null, 'full'));
-		}
+				.map((entity) => ({ id: entity.id, p: null }))
+		)
+			.filter((pick) => byId.has(pick.id))
+			.slice(0, FULL_RECORDS);
+		// Documents load outline-first; read the text of the picked ones only.
+		const loaded = new Map(
+			(
+				await loadContextFinderPlanText({
+					project,
+					entities,
+					plan: null,
+					extraIds: chosen.map((pick) => pick.id),
+					signal
+				})
+			).map((entity) => [entity.id, entity])
+		);
+		const picked = chosen.map((pick) => toRecord(loaded.get(pick.id)!, pick.p, 'full'));
 		const pickedIds = new Set(picked.map((record) => record.id));
 		const others = [...entities]
 			.filter((entity) => !pickedIds.has(entity.id))

@@ -17,7 +17,7 @@ import {
 	unavailableContextEvidence,
 	type ContextEvidenceV1
 } from './evidence';
-import { START_HERE_TYPE_KEY } from './finder';
+import { loadContextFinderPlanText, START_HERE_TYPE_KEY } from './finder';
 import {
 	buildContextFinderEntities,
 	clipContextText,
@@ -32,7 +32,7 @@ import {
 	type ContextFinderRankStageV1,
 	type ContextFinderRankingV1
 } from './rank';
-import { selectProjectContext, type ContextPlanV1 } from './select';
+import { CONTEXT_FINDER_POLICY, selectProjectContext, type ContextPlanV1 } from './select';
 
 type Row = Record<string, unknown>;
 
@@ -105,8 +105,9 @@ export const WORKSPACE_FINDER_POLICY = Object.freeze({
 	/** Project brief: START HERE excerpt and record index when hop 2 does not run or land. */
 	briefStateChars: 900,
 	briefRecords: 14,
-	/** Hop 2 budget shares by zoom count; one project gets the project finder's full budget. */
-	budgets: [[14_000], [9_000, 6_000], [7_000, 5_000, 4_000]] as const,
+	/** Hop 2 budget shares by zoom count; one project gets the project finder's agent budget. */
+	// Scaled to the agent budget (tasker 150, B): cards plus best sections, the agent reads more.
+	budgets: [[5_000], [3_000, 2_500], [2_500, 2_000, 1_500]] as const,
 	summaries: [[20], [12, 8], [10, 6, 4]] as const
 });
 
@@ -531,11 +532,15 @@ export async function rankWorkspaceZoom(input: {
 	return { project: input.project, entities, ranking };
 }
 
-/** Plan and load one zoomed project with its share of the budget; no Jev call. */
-export function planWorkspaceZoom(
+/**
+ * Plan and load one zoomed project with its share of the budget; no Jev call. Only the
+ * picked documents' text is read (outline-first, tasker 150).
+ */
+export async function planWorkspaceZoom(
 	zoom: WorkspaceZoomRankingV1,
-	share: { budgetChars: number; maxSummaries: number }
-): { plan: ContextPlanV1 | null; evidence: ContextEvidenceV1 } {
+	share: { budgetChars: number; maxSummaries: number },
+	signal?: AbortSignal
+): Promise<{ plan: ContextPlanV1 | null; evidence: ContextEvidenceV1 }> {
 	const ranker = rankerSummary(zoom.ranking);
 	if (zoom.ranking.status === 'unavailable')
 		return { plan: null, evidence: unavailableContextEvidence(ranker) };
@@ -546,9 +551,24 @@ export function planWorkspaceZoom(
 		checked: zoom.ranking.checked,
 		unchecked: zoom.ranking.unchecked,
 		skipIds: new Set(),
+		sectionsPerDoc: CONTEXT_FINDER_POLICY.agentSectionsPerDoc,
 		...share
 	});
-	return { plan, evidence: materializeContextPlan({ plan, entities: zoom.entities, ranker }) };
+	const entities = await loadContextFinderPlanText({
+		project: zoom.project,
+		entities: zoom.entities,
+		plan,
+		signal
+	});
+	return {
+		plan,
+		evidence: materializeContextPlan({
+			plan,
+			entities,
+			ranker,
+			budgetChars: share.budgetChars
+		})
+	};
 }
 
 export function workspaceZoomShare(index: number, count: number) {
@@ -771,9 +791,10 @@ export async function findWorkspaceContext(input: {
 				const work = speculative.get(pick.id) ?? zoomRank(pick.id);
 				work.catch(() => undefined);
 				const ranked = await (deadline ? Promise.race([work, deadline]) : work);
-				const planned = planWorkspaceZoom(
+				const planned = await planWorkspaceZoom(
 					ranked,
-					workspaceZoomShare(i, selection.zoom.length)
+					workspaceZoomShare(i, selection.zoom.length),
+					input.signal
 				);
 				return { ...base, ...planned, hop2: 'ran' };
 			} catch (error) {

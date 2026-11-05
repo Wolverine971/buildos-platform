@@ -10,6 +10,10 @@ export function resolveNotificationActionUrl(
 		if (resolved.protocol !== 'http:' && resolved.protocol !== 'https:') {
 			return null;
 		}
+		// Notification links point into BuildOS. A foreign origin is never a real action.
+		if (resolved.origin !== new URL(baseUrl).origin) {
+			return null;
+		}
 		return resolved.toString();
 	} catch {
 		return null;

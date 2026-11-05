@@ -540,10 +540,17 @@ async function shortenUrlsInMessage(
 
 		let result = message;
 		let shortenedCount = 0;
+		const baseUrl = (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim();
+		const appOrigin = new URL(baseUrl).origin;
 
 		// Process each URL
 		for (const url of urls) {
 			try {
+				// /l/<code> only redirects into BuildOS, so other sites stay as plain links.
+				if (new URL(url).origin !== appOrigin) {
+					continue;
+				}
+
 				// Call database function to create tracking link
 				const { data: shortCode, error } = await supabase.rpc('create_tracking_link', {
 					p_delivery_id: deliveryId,
@@ -568,7 +575,6 @@ async function shortenUrlsInMessage(
 				}
 
 				// Replace URL with shortened version
-				const baseUrl = (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim();
 				const shortUrl = `${baseUrl}/l/${shortCode}`;
 				result = result.replace(url, shortUrl);
 				shortenedCount++;

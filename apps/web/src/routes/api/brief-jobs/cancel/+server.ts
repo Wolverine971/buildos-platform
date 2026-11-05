@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { z } from 'zod';
 import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
 import { parseJsonRequest } from '$lib/utils/request-validation';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 const cancelBriefJobsSchema = z
 	.object({
@@ -11,7 +12,7 @@ const cancelBriefJobsSchema = z
 	})
 	.strict();
 
-export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
+export const POST: RequestHandler = async ({ request, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
@@ -56,8 +57,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			`Cancelling jobs for ${startOfDay.toISOString()} to ${startOfNextDay.toISOString()}`
 		);
 
-		// Update any pending/processing jobs for this date to cancelled
-		const { data, error } = await supabase
+		// Update any pending/processing jobs for this date to cancelled. queue_jobs is
+		// server-only, so this uses the service role, scoped to the caller's user_id.
+		const { data, error } = await createAdminSupabaseClient()
 			.from('queue_jobs')
 			.update({
 				status: 'cancelled',

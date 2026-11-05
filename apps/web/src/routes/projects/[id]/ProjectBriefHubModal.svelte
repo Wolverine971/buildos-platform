@@ -11,7 +11,7 @@
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { handleRovingTabKeydown } from '$lib/components/project/v2/board-a11y';
-	import { renderMarkdown } from '$lib/utils/markdown';
+	import { renderMarkdown, renderAgentMarkdownContent } from '$lib/utils/markdown';
 	import type { Document } from '$lib/types/onto';
 	import { BookOpen, CalendarDays, FileText, LoaderCircle } from '$lib/icons/lucide';
 
@@ -207,7 +207,7 @@
 							class="brief-prose prose prose-sm max-w-none overflow-x-auto break-words"
 						>
 							<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-							{@html renderMarkdown(latestBrief.brief_content)}
+							{@html renderAgentMarkdownContent(latestBrief.brief_content)}
 						</div>
 					</div>
 				{:else}

@@ -13,13 +13,22 @@ describe('resolveNotificationActionUrl', () => {
 		).toBe('https://build-os.com/projects/project-1/documents/document-1');
 	});
 
-	it('preserves valid absolute destinations', () => {
+	it('preserves absolute destinations on the app origin', () => {
 		expect(
 			resolveNotificationActionUrl(
 				'https://build-os.com',
-				'https://app.build-os.com/projects/project-1'
+				'https://build-os.com/projects/project-1'
 			)
-		).toBe('https://app.build-os.com/projects/project-1');
+		).toBe('https://build-os.com/projects/project-1');
+	});
+
+	it('rejects destinations on another origin', () => {
+		expect(
+			resolveNotificationActionUrl('https://build-os.com', 'https://evil.example/login')
+		).toBeNull();
+		expect(
+			resolveNotificationActionUrl('https://build-os.com', '//evil.example/login')
+		).toBeNull();
 	});
 
 	it('rejects non-web protocols', () => {

@@ -8,6 +8,8 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 
 const USERNAME_SHAPE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+// The database enforces the same list for direct writes (guard_user_identity_columns,
+// migration 20261105120100). Change both together.
 const RESERVED = new Set([
 	'admin',
 	'api',

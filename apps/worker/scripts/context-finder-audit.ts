@@ -29,7 +29,7 @@ function dumpClient(data: Record<string, unknown>): ContextFinderReadClient {
 			const value = data[table];
 			const result = { data: value ?? [], error: null };
 			const builder: Record<string, unknown> = {};
-			for (const method of ['select', 'eq', 'is', 'order', 'limit', 'abortSignal'])
+			for (const method of ['select', 'eq', 'in', 'is', 'order', 'limit', 'abortSignal'])
 				builder[method] = () => builder;
 			builder.maybeSingle = () => Promise.resolve(result);
 			builder.then = (resolve: (v: unknown) => unknown) => resolve(result);

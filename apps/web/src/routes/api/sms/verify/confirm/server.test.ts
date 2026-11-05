@@ -1,11 +1,18 @@
 // apps/web/src/routes/api/sms/verify/confirm/server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { checkVerificationMock, smsEnv, adminRpcMock } = vi.hoisted(() => ({
-	checkVerificationMock: vi.fn(),
-	smsEnv: { PRIVATE_SMS_SENDING_ENABLED: 'false' },
-	adminRpcMock: vi.fn(async () => ({ data: null, error: null }))
-}));
+const { checkVerificationMock, smsEnv, adminRpcMock, adminUpsertMock, adminFromMock } = vi.hoisted(
+	() => {
+		const adminUpsertMock = vi.fn(async () => ({ error: null }));
+		return {
+			checkVerificationMock: vi.fn(),
+			smsEnv: { PRIVATE_SMS_SENDING_ENABLED: 'false' },
+			adminRpcMock: vi.fn(async () => ({ data: null, error: null })),
+			adminUpsertMock,
+			adminFromMock: vi.fn(() => ({ upsert: adminUpsertMock }))
+		};
+	}
+);
 
 vi.mock('$env/static/private', () => ({
 	PRIVATE_TWILIO_ACCOUNT_SID: 'AC-test',
@@ -16,7 +23,7 @@ vi.mock('$env/static/private', () => ({
 
 vi.mock('$env/dynamic/private', () => ({ env: smsEnv }));
 vi.mock('$lib/supabase/admin', () => ({
-	createAdminSupabaseClient: () => ({ rpc: adminRpcMock })
+	createAdminSupabaseClient: () => ({ rpc: adminRpcMock, from: adminFromMock })
 }));
 
 vi.mock('@buildos/twilio-service', () => ({
@@ -62,6 +69,7 @@ describe('POST /api/sms/verify/confirm', () => {
 			'That code is invalid or has expired. Request a new code and try again.'
 		);
 		expect(upsert).not.toHaveBeenCalled();
+		expect(adminUpsertMock).not.toHaveBeenCalled();
 	});
 
 	it('answers a Twilio outage with a retryable 503 and never leaks its message', async () => {
@@ -77,17 +85,25 @@ describe('POST /api/sms/verify/confirm', () => {
 		expect(payload.code).toBe('SERVICE_UNAVAILABLE');
 		expect(JSON.stringify(payload)).not.toContain('20003');
 		expect(upsert).not.toHaveBeenCalled();
+		expect(adminUpsertMock).not.toHaveBeenCalled();
 	});
 
-	it('marks the phone verified when the code is approved', async () => {
+	it('marks the phone verified through the service client for the session user', async () => {
+		// A DB guard refuses phone_verified = true from user sessions.
 		checkVerificationMock.mockResolvedValue(true);
 		const { event, upsert } = createEvent();
 
 		const response = await POST(event);
 
 		expect(response.status).toBe(200);
-		expect(upsert).toHaveBeenCalledWith(
-			expect.objectContaining({ user_id: 'user-1', phone_verified: true }),
+		expect(upsert).not.toHaveBeenCalled();
+		expect(adminFromMock).toHaveBeenCalledWith('user_sms_preferences');
+		expect(adminUpsertMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				user_id: 'user-1',
+				phone_number: '+15555550100',
+				phone_verified: true
+			}),
 			{ onConflict: 'user_id' }
 		);
 	});

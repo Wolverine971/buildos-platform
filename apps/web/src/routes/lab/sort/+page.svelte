@@ -45,7 +45,8 @@
 		doc: 'Doc',
 		risk: 'Risk',
 		update: 'Update',
-		ask: 'Question'
+		ask: 'Question',
+		work: 'Work'
 	};
 	const KIND_TONE: Record<DumpKind, string> = {
 		project: 'bg-foreground/15',
@@ -56,7 +57,8 @@
 		doc: 'bg-warning/25',
 		risk: 'bg-destructive/25',
 		update: 'bg-success/35',
-		ask: 'bg-info/35'
+		ask: 'bg-info/35',
+		work: 'bg-accent/35'
 	};
 	const OP_LABEL: Record<Op, string> = {
 		update: 'updates',
@@ -568,7 +570,7 @@
 							>{#if pending(piece.item)}<span class="ml-1"
 									>{@render spinner('h-3 w-3')}</span
 								>{:else if change}<span
-									class="op-in ml-1 rounded px-1 align-[1px] text-[10px] font-medium {OP_TONE[
+									class="op-in ml-1 rounded px-1 align-[1px] text-2xs font-medium {OP_TONE[
 										change.op
 									]}">{OP_LABEL[change.op]}</span
 								>{/if}{:else}{piece.text}{/if}{/each}
@@ -668,7 +670,7 @@
 											>
 											{#if change}
 												<span
-													class="op-in shrink-0 rounded px-1 text-[10px] font-medium {OP_TONE[
+													class="op-in shrink-0 rounded px-1 text-2xs font-medium {OP_TONE[
 														change.op
 													]}">{OP_LABEL[change.op]}</span
 												>
@@ -701,13 +703,12 @@
 														? 'border-accent bg-accent/10 text-foreground'
 														: 'border-border bg-background text-muted-foreground'}"
 												>
-													<span class="font-mono text-[10px] opacity-70"
+													<span class="font-mono text-2xs opacity-70"
 														>{RECORD_LETTER[record.kind]}</span
 													>
 													<span class="truncate">{record.title}</span>
 													{#if record.p !== null}
-														<span
-															class="font-mono text-[10px] opacity-60"
+														<span class="font-mono text-2xs opacity-60"
 															>{Math.round(record.p * 100)}%</span
 														>
 													{/if}

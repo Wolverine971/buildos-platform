@@ -9,12 +9,12 @@ vi.mock('../../lib/services/smart-llm-service.js', () => ({
 }));
 
 import {
+	type TodayWaitingInputs,
+	type WaitingTaskInput,
 	buildRefMaps,
 	refreshTodayWaitingItems,
 	selectWaitingTasks,
-	validateWaitingResponse,
-	type TodayWaitingInputs,
-	type WaitingTaskInput
+	validateWaitingResponse
 } from './todayWaitingItems';
 
 type Row = Record<string, any>;
@@ -51,9 +51,9 @@ function fakeDb(tables: Tables) {
 			or: () => builder,
 			order: () => builder,
 			limit: (n: number) => ((limitN = n), builder),
-			maybeSingle: async () => ({ data: run()[0] ?? null, error: null }),
+			maybeSingle: () => Promise.resolve({ data: run()[0] ?? null, error: null }),
 			update: (p: Row) => ((mode = 'update'), (patch = p), builder),
-			upsert: async (payload: Row[]) => {
+			upsert: (payload: Row[]) => {
 				writes.push({ table, op: 'upsert', payload });
 				for (const item of payload) {
 					const hit = rows.find(
@@ -62,7 +62,7 @@ function fakeDb(tables: Tables) {
 					if (hit) Object.assign(hit, item);
 					else rows.push({ status: 'open', ...item });
 				}
-				return { error: null };
+				return Promise.resolve({ error: null });
 			},
 			then: (resolve: (value: unknown) => void) => resolve({ data: run(), error: null })
 		};
@@ -110,7 +110,7 @@ function baseTables(extra: Tables = {}): Tables {
 }
 
 const llmReturning = (response: unknown) => ({
-	getJSONResponse: vi.fn(async () => response)
+	getJSONResponse: vi.fn().mockResolvedValue(response)
 });
 
 const inputs: TodayWaitingInputs = {

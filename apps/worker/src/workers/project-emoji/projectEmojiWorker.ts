@@ -26,7 +26,8 @@ export async function processPickProjectEmojiJob(
 ): Promise<PickProjectEmojiResult> {
 	const db = deps.supabase ?? defaultSupabase;
 	const projectId = typeof job.data?.projectId === 'string' ? job.data.projectId : '';
-	const userId = typeof job.data?.userId === 'string' ? job.data.userId : '';
+	// The queue row owner is the user; metadata may only repeat it.
+	const userId = job.userId;
 	if (!projectId || !userId) throw new Error('pick_project_emoji needs projectId and userId');
 	const skipped = (reason: string): PickProjectEmojiResult => ({
 		success: true,
@@ -34,15 +35,25 @@ export async function processPickProjectEmojiJob(
 		outcome: 'skipped',
 		reason
 	});
+	if (job.data?.userId && job.data.userId !== userId) return skipped('user mismatch');
 
 	const { data: project, error: projectError } = await db
 		.from('onto_projects')
-		.select('id, name, description, deleted_at, icon_emoji')
+		.select('id, name, description, deleted_at, icon_emoji, created_by')
 		.eq('id', projectId)
 		.maybeSingle();
 	if (projectError) throw new Error(`Could not load project: ${projectError.message}`);
 	if (!project || project.deleted_at) return skipped('project deleted');
 	if (project.icon_emoji) return skipped('project already has emoji');
+
+	// The trigger queues this under the project creator; never act for anyone else.
+	const { data: owner, error: ownerError } = await db
+		.from('onto_actors')
+		.select('user_id')
+		.eq('id', project.created_by)
+		.maybeSingle();
+	if (ownerError) throw new Error(`Could not load project owner: ${ownerError.message}`);
+	if (!owner || owner.user_id !== userId) return skipped('not the project owner');
 
 	const { data: startHere, error: startHereError } = await db
 		.from('onto_documents')

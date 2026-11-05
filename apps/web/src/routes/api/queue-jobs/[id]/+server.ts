@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/queue-jobs/[id]/+server.ts
 import { ApiResponse, HttpStatus } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -30,15 +31,17 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 	}
 };
 
-export const DELETE: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
+export const DELETE: RequestHandler = async ({ params, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	try {
-		// Only allow cancelling pending jobs
-		const { data: cancelledJob, error } = await supabase
+		// Only allow cancelling pending jobs. queue_jobs is server-only, so the cancel uses
+		// the service role, scoped to the caller's user_id.
+		const admin = createAdminSupabaseClient();
+		const { data: cancelledJob, error } = await admin
 			.from('queue_jobs')
 			.update({
 				status: 'cancelled',
@@ -58,7 +61,7 @@ export const DELETE: RequestHandler = async ({ params, locals: { supabase, safeG
 		if (!cancelledJob) {
 			// A worker may have claimed the job before the conditional update.
 			// Only look up the current user's row when cancellation did not occur.
-			const { data: existingJob, error: lookupError } = await supabase
+			const { data: existingJob, error: lookupError } = await admin
 				.from('queue_jobs')
 				.select('id')
 				.eq('queue_job_id', params.id)

@@ -199,8 +199,10 @@ export async function loadYesterdayPlanContinuity(
 	});
 }
 
+// User-written text (titles, names, requirement text) is escaped as markdown text, including
+// angle brackets so no inline HTML reaches the brief or the brief email.
 function escapeMarkdownLinkLabel(label: string): string {
-	return label.replace(/([\\[\]*])/g, '\\$1');
+	return label.replace(/([\\[\]*<>])/g, '\\$1');
 }
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
@@ -889,7 +891,7 @@ function generateMainBriefMarkdown(
 	if (recentlyPausedProjects.length > 0) {
 		mainBrief += `## Recently Paused\n\n`;
 		for (const project of recentlyPausedProjects.slice(0, 5)) {
-			mainBrief += `- [${project.projectName}](/projects/${project.projectId}) was paused recently and is excluded from active brief sections.\n`;
+			mainBrief += `- [${escapeMarkdownLinkLabel(project.projectName)}](/projects/${project.projectId}) was paused recently and is excluded from active brief sections.\n`;
 		}
 		if (recentlyPausedProjects.length > 5) {
 			mainBrief += `- ... and ${recentlyPausedProjects.length - 5} more\n`;
@@ -907,7 +909,7 @@ function generateMainBriefMarkdown(
 		for (const goal of activeGoals) {
 			const projectName = projectNameMap.get(goal.goal.project_id) || '';
 			const projectLink = projectName
-				? `[${projectName}](/projects/${goal.goal.project_id})`
+				? `[${escapeMarkdownLinkLabel(projectName)}](/projects/${goal.goal.project_id})`
 				: '';
 			const targetSummary = formatGoalTargetSummary(goal);
 			const statusEmoji =
@@ -957,7 +959,7 @@ function generateMainBriefMarkdown(
 			for (const risk of briefData.risks.slice(0, 3)) {
 				const projectName = projectNameMap.get(risk.project_id) || '';
 				const projectSuffix = projectName
-					? ` — [${projectName}](/projects/${risk.project_id})`
+					? ` — [${escapeMarkdownLinkLabel(projectName)}](/projects/${risk.project_id})`
 					: '';
 				const riskLink = buildProjectEntityHref(risk.project_id, 'risk', risk.id);
 				mainBrief += `- **[${escapeMarkdownLinkLabel(risk.title)}](${riskLink})** (Impact: ${risk.impact})${projectSuffix}\n`;
@@ -973,9 +975,9 @@ function generateMainBriefMarkdown(
 			for (const requirement of sortedRequirements.slice(0, 5)) {
 				const projectName = projectNameMap.get(requirement.project_id) || '';
 				const projectSuffix = projectName
-					? ` — [${projectName}](/projects/${requirement.project_id})`
+					? ` — [${escapeMarkdownLinkLabel(projectName)}](/projects/${requirement.project_id})`
 					: '';
-				mainBrief += `- ${requirement.text}${projectSuffix}\n`;
+				mainBrief += `- ${escapeMarkdownLinkLabel(requirement.text)}${projectSuffix}\n`;
 			}
 			mainBrief += '\n';
 		}
@@ -1027,7 +1029,7 @@ function generateMainBriefMarkdown(
 		mainBrief += `**${completedTasks.length} task${completedTasks.length > 1 ? 's' : ''} completed** in the last 24h:\n`;
 		for (const task of completedTasks.slice(0, 5)) {
 			const projectName = projectNameMap.get(task.project_id) || 'Unknown';
-			mainBrief += `- ✅ [${task.title}](/projects/${task.project_id}/tasks/${task.id}) — [${projectName}](${projectHref(task.project_id)})\n`;
+			mainBrief += `- ✅ [${escapeMarkdownLinkLabel(task.title)}](/projects/${task.project_id}/tasks/${task.id}) — [${escapeMarkdownLinkLabel(projectName)}](${projectHref(task.project_id)})\n`;
 		}
 		if (completedTasks.length > 5) {
 			mainBrief += `- ... and ${completedTasks.length - 5} more\n`;

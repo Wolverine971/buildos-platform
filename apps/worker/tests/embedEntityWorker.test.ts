@@ -78,11 +78,19 @@ function database(
 	return state;
 }
 
-function job(): Parameters<typeof processEmbedOntoEntity>[0] {
+function job(
+	data: Partial<Parameters<typeof processEmbedOntoEntity>[0]['data']> = {}
+): Parameters<typeof processEmbedOntoEntity>[0] {
 	return {
 		id: 'job-1',
 		signal: new AbortController().signal,
-		data: { entityType: 'task', entityId: 'task-1', projectId: 'project-1', userId: 'user-1' },
+		data: {
+			entityType: 'task',
+			entityId: 'task-1',
+			projectId: 'project-1',
+			userId: 'user-1',
+			...data
+		},
 		opts: {},
 		timestamp: 0,
 		attemptsMade: 0,
@@ -140,5 +148,31 @@ describe('embedding deletion races', () => {
 			deleteError: true
 		});
 		await expect(processEmbedOntoEntity(job())).rejects.toThrow('delete unavailable');
+	});
+});
+
+describe('metadata cannot delete or re-scope embeddings', () => {
+	it('ignores deleted: true when the source row is live', async () => {
+		const state = database();
+		state.chunks.push({ entity_type: 'task', entity_id: 'task-1', id: 'mine', chunk_index: 0 });
+		const result = await processEmbedOntoEntity(job({ deleted: true }));
+		expect(result.chunksDeleted).toBe(0);
+		expect(state.chunks.some((row) => row.id === 'mine')).toBe(true);
+	});
+
+	it('scopes chunks to the source row project, not metadata projectId', async () => {
+		const state = database();
+		await processEmbedOntoEntity(job({ projectId: 'someone-elses-project' }));
+		const written = state.chunks.find((row) => row.content_text !== undefined);
+		expect(written?.project_id).toBe('project-1');
+	});
+
+	it('never falls back to metadata projectId for an unscoped row', async () => {
+		const state = database();
+		state.entity = { ...state.entity, project_id: null };
+		const result = await processEmbedOntoEntity(job({ projectId: 'someone-elses-project' }));
+		expect(embed).not.toHaveBeenCalled();
+		expect(result.chunksWritten).toBe(0);
+		expect(state.chunks.some((row) => row.project_id === 'someone-elses-project')).toBe(false);
 	});
 });

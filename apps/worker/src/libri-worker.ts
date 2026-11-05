@@ -27,9 +27,10 @@ import { LibriUploadMaintenanceConsumer } from './workers/libri/uploadMaintenanc
 import { createLibriUploadMaintenanceTransport } from './workers/libri/uploadMaintenanceTransport';
 import { createLibriOcrProcessor } from './workers/libri/ocrProcessor';
 import { createOpenRouterLibriOcrProvider } from './workers/libri/ocrProvider';
-import { logRuntimeVersions } from './lib/runtimeVersions';
+import { enforceSafeNodeRuntime, logRuntimeVersions } from './lib/runtimeVersions';
 
 logRuntimeVersions('libri-worker');
+enforceSafeNodeRuntime('libri-worker');
 
 const PROCESS_SHUTDOWN_TIMEOUT_MS = 28_000;
 

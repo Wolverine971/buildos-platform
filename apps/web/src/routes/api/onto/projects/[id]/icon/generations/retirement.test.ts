@@ -20,7 +20,7 @@ describe('project icon generation retirement', () => {
 		).toBe(false);
 	});
 
-	it('still renders an existing stored SVG in the public project header', () => {
+	it('still shows an existing stored SVG icon in the public project header', () => {
 		const view = render(PublicProjectHeader, {
 			props: {
 				project: {
@@ -36,6 +36,9 @@ describe('project icon generation retirement', () => {
 				}
 			}
 		});
-		expect(view.container.querySelector('svg [data-existing-icon="true"]')).not.toBeNull();
+		// Drawn as an image mask (security audit 2026-11-05), never as live markup.
+		expect(view.container.querySelector('svg [data-existing-icon="true"]')).toBeNull();
+		const mask = view.container.querySelector<HTMLElement>('.icon-mask');
+		expect(mask?.style.getPropertyValue('--icon-mask')).toContain('data:image/svg+xml');
 	});
 });

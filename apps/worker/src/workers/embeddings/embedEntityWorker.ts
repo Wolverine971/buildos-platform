@@ -51,7 +51,9 @@ async function deleteEntityEmbeddings(entityType: string, entityId: string): Pro
 export async function processEmbedOntoEntity(
 	job: LegacyJob<EmbedOntoEntityJobMetadata>
 ): Promise<EmbedOntoEntityResult> {
-	const { entityType, entityId, projectId, deleted } = job.data;
+	// Only the entity key comes from metadata. Deletion and project scope are read
+	// from the source row, so a bad payload cannot remove or re-scope embeddings.
+	const { entityType, entityId } = job.data;
 	if (!isOntoEmbeddingEntityType(entityType)) {
 		throw new Error(`Unknown embedding entity type: ${entityType}`);
 	}
@@ -63,11 +65,6 @@ export async function processEmbedOntoEntity(
 		chunksDeleted: 0,
 		skippedUnchanged: false
 	};
-
-	if (deleted) {
-		result.chunksDeleted = await deleteEntityEmbeddings(entityType, entityId);
-		return result;
-	}
 
 	const source = ONTO_EMBEDDING_SOURCES[entityType];
 	const { data: row, error: fetchError } = await supabase
@@ -85,7 +82,7 @@ export async function processEmbedOntoEntity(
 	}
 
 	const resolvedProjectId =
-		entityType === 'project' ? entityId : ((row.project_id as string | null) ?? projectId);
+		entityType === 'project' ? entityId : ((row.project_id as string | null) ?? null);
 	if (!resolvedProjectId) {
 		// Unscoped entities are not discoverable by the membership-scoped RPC.
 		result.chunksDeleted = await deleteEntityEmbeddings(entityType, entityId);

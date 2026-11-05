@@ -116,6 +116,7 @@ beforeEach(() => {
 			id: 'sms-1',
 			user_id: 'user-1',
 			phone_number: '+12125550139',
+			message_content: 'Ready',
 			status: 'queued',
 			attempt_count: 0,
 			twilio_sid: null,
@@ -340,5 +341,49 @@ describe('notification SMS final dispatch', () => {
 		await processSMSJob(job());
 		expect(mocks.sendSMS).toHaveBeenCalledOnce();
 		expect(mocks.from).not.toHaveBeenCalledWith('notification_deliveries');
+	});
+
+	it('sends to the stored recipient and body, not queue metadata', async () => {
+		mocks.state.rows.sms_messages!.notification_delivery_id = null;
+		mocks.state.rows.sms_messages!.metadata = {};
+		const forged = job();
+		forged.data.phone_number = '+19998887777';
+		forged.data.message = 'Not from BuildOS';
+		await processSMSJob(forged);
+		expect(mocks.sendSMS).toHaveBeenCalledOnce();
+		expect(mocks.sendSMS.mock.calls[0]![0]).toMatchObject({
+			to: '+12125550139',
+			body: 'Ready'
+		});
+	});
+
+	it('refuses a message row that belongs to another user, without sending or writing', async () => {
+		mocks.state.rows.sms_messages!.user_id = 'user-2';
+		await expect(processSMSJob(job())).rejects.toMatchObject({ code: 'sms_owner_mismatch' });
+		expect(mocks.sendSMS).not.toHaveBeenCalled();
+		expect(mocks.writes).toHaveLength(0);
+	});
+
+	it('refuses a scheduled SMS id that belongs to another user, without writing', async () => {
+		mocks.state.rows.scheduled_sms_messages = { id: 'sched-1', user_id: 'user-2' };
+		const queued = job();
+		queued.data.scheduled_sms_id = 'sched-1';
+		await expect(processSMSJob(queued)).rejects.toMatchObject({ code: 'sms_owner_mismatch' });
+		expect(mocks.sendSMS).not.toHaveBeenCalled();
+		expect(mocks.writes).toHaveLength(0);
+	});
+
+	it.each([
+		['unverified', { phone_verified: false }],
+		['a different number', { phone_number: '+12125550999' }]
+	])('refuses a direct SMS when the owner phone is %s', async (_label, change) => {
+		mocks.state.rows.sms_messages!.notification_delivery_id = null;
+		mocks.state.rows.sms_messages!.metadata = {};
+		Object.assign(mocks.state.rows.user_sms_preferences!, change);
+		await expect(processSMSJob(job())).rejects.toMatchObject({
+			code: 'sms_recipient_not_verified'
+		});
+		expect(mocks.sendSMS).not.toHaveBeenCalled();
+		expect(mocks.state.rows.sms_messages?.status).toBe('queued');
 	});
 });

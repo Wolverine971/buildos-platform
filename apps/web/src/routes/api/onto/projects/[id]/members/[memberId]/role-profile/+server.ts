@@ -36,6 +36,7 @@ function validateRoleDescription(value: string | null): string | null {
 type TargetMemberRow = {
 	id: string;
 	actor_id: string;
+	role_key?: string | null;
 	role_name: string | null;
 	role_description: string | null;
 	removed_at: string | null;
@@ -126,7 +127,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		const { data: member, error: memberError } = await supabase
 			.from('onto_project_members')
-			.select('id, actor_id, role_name, role_description, removed_at')
+			.select('id, actor_id, role_key, role_name, role_description, removed_at')
 			.eq('id', memberId)
 			.eq('project_id', projectId)
 			.maybeSingle();
@@ -150,6 +151,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		if (member.removed_at) return ApiResponse.badRequest('Member has already been removed');
 
 		const target = member as TargetMemberRow;
+		// The database refuses edits to the owner's row by anyone but the owner.
+		if (target.role_key === 'owner' && target.actor_id !== actorId) {
+			return ApiResponse.forbidden('Only the owner can change their own role');
+		}
 		const nextRoleName =
 			roleName === undefined ? normalizeNullableString(target.role_name) : roleName;
 		const nextRoleDescription =

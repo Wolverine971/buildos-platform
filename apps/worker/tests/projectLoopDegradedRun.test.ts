@@ -245,6 +245,11 @@ const mocks = vi.hoisted(() => {
 	};
 });
 
+// Owner/access gate has its own test (projectLoopJobIdentity.test.ts).
+vi.mock('../src/workers/project-loop/jobIdentity', () => ({
+	projectLoopJobRefusal: vi.fn(async () => null)
+}));
+
 vi.mock('../src/config/projectLoops', () => ({
 	PROJECT_LOOPS_ENABLED: true
 }));

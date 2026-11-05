@@ -1245,16 +1245,16 @@
 						<div class="min-w-0 flex-1">
 							<ProjectBreadcrumb parent={family?.parent ?? null} />
 							<h1
-								class="min-w-0 flex-1 truncate text-xl font-semibold leading-tight tracking-tight text-foreground sm:text-2xl"
+								class="min-w-0 flex-1 truncate text-xl font-medium leading-tight text-foreground sm:text-2xl"
 								style:view-transition-name="project-title-{project.id}"
 								style:view-transition-class="project-title"
 							>
 								{project.name || 'Untitled project'}
 							</h1>
 							<p
-								class="mt-0.5 hidden max-w-3xl truncate text-sm text-muted-foreground sm:block"
+								class="mt-1 hidden max-w-3xl truncate text-sm text-muted-foreground sm:block"
 							>
-								{project.description || 'No project description yet.'}
+								{project.description || 'No description yet'}
 							</p>
 						</div>
 					</div>
@@ -1262,10 +1262,10 @@
 
 				<div class="flex shrink-0 items-center gap-1" aria-label="Project actions">
 					<Button
-						variant="outline"
+						variant="ghost"
 						size="sm"
 						icon={BookOpen}
-						class="rounded-md shadow-none"
+						class="rounded-lg"
 						aria-label="Open Brief / Start Here"
 						title="Open Brief / Start Here"
 						onclick={openProjectBrief}
@@ -1277,7 +1277,7 @@
 						variant="ghost"
 						size="sm"
 						icon={Network}
-						class="rounded-md"
+						class="rounded-lg"
 						title="Open project graph"
 						onclick={() => (showGraphModal = true)}
 					>
@@ -1290,7 +1290,7 @@
 							variant="outline"
 							size="sm"
 							icon={access.canAdmin ? UserPlus : Users}
-							class="rounded-md shadow-none"
+							class="rounded-lg shadow-none"
 							title={access.canAdmin
 								? 'Share this project'
 								: 'People in this project'}
@@ -1412,7 +1412,7 @@
 				<div class="flex items-start gap-3">
 					<AlertTriangle class="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
 					<div>
-						<p class="font-semibold text-foreground">
+						<p class="font-medium text-foreground">
 							The workspace did not finish loading
 						</p>
 						<p class="mt-1 text-sm text-muted-foreground">{hydrationError}</p>
@@ -1455,8 +1455,8 @@
 							scope={activeTab}
 							variant="toolbar"
 							placeholder={activeTab === 'overview'
-								? 'Search goals, plans, milestones...'
-								: 'Search documents...'}
+								? 'Search goals, plans, milestones'
+								: 'Search documents'}
 							onSelectEntity={(type, id) => openEntity(type, id)}
 						/>
 					</div>
@@ -1559,7 +1559,7 @@
 													projectId={project.id}
 													scope="work"
 													variant="toolbar"
-													placeholder="Search tasks..."
+													placeholder="Search tasks"
 													onSelectEntity={(type, id) =>
 														openEntity(type, id)}
 												/>
@@ -1655,23 +1655,15 @@
 												<header class="overview-section-header">
 													<div class="flex min-w-0 items-center gap-2">
 														<Target
-															class="h-4 w-4 shrink-0 text-warning"
+															class="h-4 w-4 shrink-0 text-muted-foreground"
 														/>
 														<h2
 															id="overview-direction-title"
-															class="text-sm font-semibold"
+															class="text-sm font-medium"
 														>
 															Direction
 														</h2>
 													</div>
-													{#if activeGoals.length > 0 || activePlans.length > 0}
-														<span
-															class="shrink-0 text-2xs font-medium text-muted-foreground"
-														>
-															{activeGoals.length} goals · {activePlans.length}
-															plans
-														</span>
-													{/if}
 												</header>
 												{#if activeGoals.length === 0 && activePlans.length === 0}
 													<div class="section-empty-state">
@@ -1679,14 +1671,14 @@
 															class="h-5 w-5 shrink-0 text-muted-foreground"
 														/>
 														<div class="min-w-0 flex-1">
-															<p class="text-sm font-semibold">
+															<p class="text-sm font-medium">
 																No direction set yet
 															</p>
 															<p
 																class="text-xs text-muted-foreground"
 															>
 																Add a goal or plan when the path
-																becomes clear.
+																becomes clear
 															</p>
 														</div>
 														{#if canEdit}
@@ -1721,7 +1713,11 @@
 														class="grid gap-0 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0"
 													>
 														<div class="p-3 sm:p-4">
-															<p class="micro-label mb-2">GOALS</p>
+															<p class="sub-label">
+																Goals <span class="count"
+																	>{activeGoals.length}</span
+																>
+															</p>
 															<div class="space-y-2">
 																{#each visibleGoals as goal (goal.id)}
 																	{@const goalMilestones =
@@ -1749,7 +1745,7 @@
 																	>
 																		<div class="min-w-0 flex-1">
 																			<p
-																				class="truncate text-sm font-semibold"
+																				class="truncate text-sm font-medium"
 																			>
 																				{goal.name}
 																			</p>
@@ -1805,14 +1801,18 @@
 																				'goal'
 																			)}
 																	>
-																		<Plus class="h-3.5 w-3.5" />
+																		<Plus class="h-4 w-4" />
 																		Add goal
 																	</button>
 																{/if}
 															</div>
 														</div>
 														<div class="p-3 sm:p-4">
-															<p class="micro-label mb-2">PLANS</p>
+															<p class="sub-label">
+																Plans <span class="count"
+																	>{activePlans.length}</span
+																>
+															</p>
 															<div class="space-y-2">
 																{#each visiblePlans as plan (plan.id)}
 																	<button
@@ -1826,7 +1826,7 @@
 																	>
 																		<div class="min-w-0 flex-1">
 																			<p
-																				class="truncate text-sm font-semibold"
+																				class="truncate text-sm font-medium"
 																			>
 																				{plan.name}
 																			</p>
@@ -1874,7 +1874,7 @@
 																				'plan'
 																			)}
 																	>
-																		<Plus class="h-3.5 w-3.5" />
+																		<Plus class="h-4 w-4" />
 																		Add plan
 																	</button>
 																{/if}
@@ -1893,18 +1893,18 @@
 												<header class="overview-section-header">
 													<div class="flex min-w-0 items-center gap-2">
 														<Flag
-															class="h-4 w-4 shrink-0 text-accent"
+															class="h-4 w-4 shrink-0 text-muted-foreground"
 														/>
 														<h2
 															id="overview-milestones-title"
-															class="text-sm font-semibold"
+															class="text-sm font-medium"
 														>
 															Milestones
 														</h2>
 													</div>
 													{#if upcomingMilestones.length > 0}
 														<span
-															class="text-2xs font-medium text-muted-foreground"
+															class="text-xs tabular-nums text-muted-foreground"
 														>
 															{upcomingMilestones.length} upcoming
 														</span>
@@ -1922,16 +1922,12 @@
 																		milestone.id
 																	)}
 															>
-																<div
-																	class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent/10"
-																>
-																	<Flag
-																		class="h-3.5 w-3.5 text-accent"
-																	/>
-																</div>
+																<Flag
+																	class="h-4 w-4 shrink-0 text-muted-foreground"
+																/>
 																<div class="min-w-0 flex-1">
 																	<p
-																		class="truncate text-sm font-semibold"
+																		class="truncate text-sm font-medium"
 																	>
 																		{milestone.title}
 																	</p>
@@ -1971,7 +1967,7 @@
 																		'milestone'
 																	)}
 															>
-																<Plus class="h-3.5 w-3.5" />
+																<Plus class="h-4 w-4" />
 																Add milestone
 															</button>
 														{/if}
@@ -1981,14 +1977,14 @@
 																class="h-5 w-5 shrink-0 text-muted-foreground"
 															/>
 															<div class="min-w-0 flex-1">
-																<p class="text-sm font-semibold">
+																<p class="text-sm font-medium">
 																	No milestones yet
 																</p>
 																<p
 																	class="text-xs text-muted-foreground"
 																>
 																	Add key commitments when dates
-																	matter.
+																	matter
 																</p>
 															</div>
 															{#if canEdit}
@@ -2015,18 +2011,18 @@
 												<header class="overview-section-header">
 													<div class="flex min-w-0 items-center gap-2">
 														<AlertTriangle
-															class="h-4 w-4 shrink-0 text-destructive"
+															class="h-4 w-4 shrink-0 text-muted-foreground"
 														/>
 														<h2
 															id="overview-risks-title"
-															class="text-sm font-semibold"
+															class="text-sm font-medium"
 														>
 															Risks
 														</h2>
 													</div>
 													{#if openRisks.length > 0}
 														<span
-															class="text-2xs font-medium text-muted-foreground"
+															class="text-xs tabular-nums text-muted-foreground"
 														>
 															{openRisks.length} open
 														</span>
@@ -2043,7 +2039,7 @@
 															>
 																<div class="min-w-0 flex-1">
 																	<p
-																		class="truncate text-sm font-semibold"
+																		class="truncate text-sm font-medium"
 																	>
 																		{risk.title}
 																	</p>
@@ -2060,8 +2056,12 @@
 																	</p>
 																</div>
 																<span
-																	class="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-2xs font-semibold text-destructive"
+																	class="inline-flex shrink-0 items-center gap-2 text-xs text-muted-foreground"
 																>
+																	<span
+																		class="h-1.5 w-1.5 rounded-full bg-destructive"
+																		aria-hidden="true"
+																	></span>
 																	{humanize(risk.state_key)}
 																</span>
 															</button>
@@ -2086,7 +2086,7 @@
 																onclick={() =>
 																	createWorkspaceEntity('risk')}
 															>
-																<Plus class="h-3.5 w-3.5" />
+																<Plus class="h-4 w-4" />
 																Add risk
 															</button>
 														{/if}
@@ -2095,16 +2095,11 @@
 															<AlertTriangle
 																class="h-5 w-5 shrink-0 text-muted-foreground"
 															/>
-															<div class="min-w-0 flex-1">
-																<p class="text-sm font-semibold">
-																	No open risks
-																</p>
-																<p
-																	class="text-xs text-muted-foreground"
-																>
-																	Nothing is currently flagged.
-																</p>
-															</div>
+															<p
+																class="min-w-0 flex-1 text-sm text-muted-foreground"
+															>
+																No open risks
+															</p>
 															{#if canEdit}
 																<button
 																	type="button"
@@ -2393,20 +2388,18 @@
 		min-height: 48px;
 		align-items: center;
 		gap: 0.5rem;
-		border-bottom: 3px solid transparent;
-		padding: 0.75rem 0.875rem;
+		border-bottom: 2px solid transparent;
+		padding: 12px;
 		color: hsl(var(--muted-foreground));
 		font-size: 0.875rem;
-		font-weight: 600;
+		font-weight: 500;
 		transition:
-			color 150ms ease,
-			border-color 150ms ease,
-			background-color 150ms ease;
+			color 150ms cubic-bezier(0.22, 1, 0.36, 1),
+			border-color 150ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 
 	.workspace-tab:hover {
 		color: hsl(var(--foreground));
-		background: hsl(var(--muted) / 0.45);
 	}
 
 	.workspace-tab:focus-visible {
@@ -2417,7 +2410,6 @@
 
 	.workspace-tab-active {
 		border-bottom-color: hsl(var(--accent));
-		background: hsl(var(--card) / 0.72);
 		color: hsl(var(--foreground));
 	}
 
@@ -2433,9 +2425,19 @@
 		outline-offset: -2px;
 	}
 
-	.micro-label {
+	.sub-label {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin-bottom: 8px;
+		padding: 0 12px;
 		color: hsl(var(--muted-foreground));
-		font-weight: 600;
+		font-size: 0.75rem;
+	}
+
+	.sub-label .count {
+		font-family: var(--font-mono, ui-monospace, monospace);
+		font-variant-numeric: tabular-nums;
 	}
 
 	.overview-section {
@@ -2449,8 +2451,8 @@
 		min-width: 0;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.75rem;
-		padding: 0 0.25rem 0.75rem;
+		gap: 12px;
+		padding: 0 4px 12px;
 	}
 
 	.entity-row {
@@ -2459,17 +2461,15 @@
 		min-width: 0;
 		min-height: 44px;
 		align-items: center;
-		gap: 0.625rem;
-		border-radius: 0.5rem;
-		padding: 0.5rem 0.625rem;
+		gap: 12px;
+		border-radius: 8px;
+		padding: 8px 12px;
 		text-align: left;
-		transition:
-			background-color 120ms ease,
-			color 120ms ease;
+		transition: background-color 120ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 
 	.entity-row:hover {
-		background: hsl(var(--muted) / 0.6);
+		background: hsl(var(--muted) / 0.5);
 	}
 
 	.entity-row:focus-visible {
@@ -2482,19 +2482,20 @@
 		min-height: 44px;
 		width: 100%;
 		align-items: center;
-		justify-content: center;
-		border-radius: 0.5rem;
-		padding: 0.5rem 0.625rem;
-		color: hsl(var(--accent));
+		justify-content: flex-start;
+		border-radius: 8px;
+		padding: 8px 12px;
+		color: hsl(var(--muted-foreground));
 		font-size: 0.75rem;
-		font-weight: 600;
+		font-weight: 500;
 		transition:
-			background-color 120ms ease,
-			color 120ms ease;
+			background-color 120ms cubic-bezier(0.22, 1, 0.36, 1),
+			color 120ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 
 	.view-all-row:hover {
-		background: hsl(var(--accent) / 0.08);
+		background: hsl(var(--muted) / 0.5);
+		color: hsl(var(--foreground));
 	}
 
 	.entity-create-row {
@@ -2502,24 +2503,21 @@
 		min-height: 44px;
 		width: 100%;
 		align-items: center;
-		justify-content: center;
-		gap: 0.375rem;
-		border: 1px dashed hsl(var(--border));
-		border-radius: 0.5rem;
-		padding: 0.5rem 0.625rem;
+		justify-content: flex-start;
+		gap: 12px;
+		border-radius: 8px;
+		padding: 8px 12px;
 		color: hsl(var(--muted-foreground));
 		font-size: 0.75rem;
-		font-weight: 600;
+		font-weight: 500;
 		transition:
-			border-color 120ms ease,
-			background-color 120ms ease,
-			color 120ms ease;
+			background-color 120ms cubic-bezier(0.22, 1, 0.36, 1),
+			color 120ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 
 	.entity-create-row:hover {
-		border-color: hsl(var(--accent) / 0.45);
-		background: hsl(var(--accent) / 0.06);
-		color: hsl(var(--accent));
+		background: hsl(var(--muted) / 0.5);
+		color: hsl(var(--foreground));
 	}
 
 	.entity-create-row:focus-visible {
@@ -2531,8 +2529,8 @@
 		display: flex;
 		min-height: 44px;
 		align-items: center;
-		gap: 0.5rem;
-		padding: 0.5rem 0.625rem;
+		gap: 12px;
+		padding: 8px 12px;
 		color: hsl(var(--muted-foreground));
 		font-size: 0.75rem;
 	}
@@ -2543,8 +2541,8 @@
 		min-height: 52px;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.625rem;
-		padding: 0.5rem 0.625rem;
+		gap: 12px;
+		padding: 8px 12px;
 	}
 
 	.section-empty-action {
@@ -2552,18 +2550,16 @@
 		min-height: 44px;
 		align-items: center;
 		justify-content: center;
-		border-radius: 0.5rem;
-		padding: 0 0.625rem;
-		color: hsl(var(--accent));
+		border-radius: 8px;
+		padding: 0 12px;
+		color: hsl(var(--foreground));
 		font-size: 0.75rem;
-		font-weight: 600;
-		transition:
-			background-color 120ms ease,
-			color 120ms ease;
+		font-weight: 500;
+		transition: background-color 120ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 
 	.section-empty-action:hover {
-		background: hsl(var(--accent) / 0.08);
+		background: hsl(var(--muted) / 0.5);
 	}
 
 	.section-empty-action:focus-visible {
@@ -2590,7 +2586,7 @@
 			min-height: 420px;
 			overflow: hidden;
 			border: 1px solid hsl(var(--border));
-			border-radius: 14px;
+			border-radius: 16px;
 			background: hsl(var(--card));
 			box-shadow: var(--shadow-ink);
 		}
@@ -2629,8 +2625,8 @@
 		}
 
 		.workspace-tab {
-			gap: 0.375rem;
-			padding-inline: 0.625rem;
+			gap: 4px;
+			padding-inline: 8px;
 			font-size: 0.8125rem;
 		}
 	}
@@ -2648,7 +2644,7 @@
 
 	@media (prefers-reduced-motion: no-preference) {
 		.workspace-panel {
-			animation: workspace-panel-in 180ms cubic-bezier(0.4, 0, 0.2, 1);
+			animation: workspace-panel-in 180ms cubic-bezier(0.22, 1, 0.36, 1);
 		}
 	}
 

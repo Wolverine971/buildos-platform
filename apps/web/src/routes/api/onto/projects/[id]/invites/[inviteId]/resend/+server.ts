@@ -5,12 +5,16 @@
  */
 
 import type { RequestHandler } from './$types';
-import { ApiResponse } from '$lib/utils/api-response';
+import { ApiResponse, HttpStatus } from '$lib/utils/api-response';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import { logOntologyApiError } from '../../../../../shared/error-logging';
 import { EmailService } from '$lib/services/email-service';
 import { appBaseUrl } from '$lib/server/people/invite-links';
 import { buildProjectInviteEmail } from '$lib/server/people/people-emails';
+import {
+	checkInviteDailyQuota,
+	checkInviteResendCooldown
+} from '$lib/server/people/invite-send-quota';
 import { createHash, randomBytes } from 'crypto';
 
 const INVITE_EXPIRY_DAYS = 7;
@@ -61,7 +65,9 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 
 		const { data: invite, error: inviteError } = await supabase
 			.from('onto_project_invites')
-			.select('id, invitee_email, invitee_handle, role_key, access, agent_access, status')
+			.select(
+				'id, invitee_email, invitee_handle, role_key, access, agent_access, status, expires_at'
+			)
 			.eq('id', inviteId)
 			.eq('project_id', projectId)
 			.maybeSingle();
@@ -91,6 +97,14 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 
 		if (invite.status === 'revoked') {
 			return ApiResponse.badRequest('Invite has been revoked');
+		}
+
+		const sendLimit = checkInviteResendCooldown(invite.expires_at);
+		const quota = sendLimit.ok ? await checkInviteDailyQuota(supabase, actorId) : sendLimit;
+		if (!quota.ok) {
+			return ApiResponse.error(quota.message, HttpStatus.TOO_MANY_REQUESTS, 'RATE_LIMITED', {
+				retry_after_seconds: quota.retryAfterSeconds
+			});
 		}
 
 		const token = randomBytes(32).toString('hex');

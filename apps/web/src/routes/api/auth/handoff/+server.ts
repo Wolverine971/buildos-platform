@@ -38,6 +38,11 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
 			if (!next) {
 				return ApiResponse.badRequest('next must be a same-origin path');
 			}
+			// A handoff lands on a page, never on a sign-in or API route (e.g. /auth/google,
+			// which would start Google consent for the code's owner in someone else's browser).
+			if (/^\/(auth|api)(\/|$|\?)/.test(next)) {
+				return ApiResponse.badRequest('next must be an app page');
+			}
 		}
 	} catch (error) {
 		return ApiResponse.badRequest(error instanceof Error ? error.message : 'Invalid body');

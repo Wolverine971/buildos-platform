@@ -28,6 +28,7 @@ import { processChatClassificationJob } from './workers/chat/chatSessionClassifi
 import type { ChatClassificationJobData } from './workers/shared/queueUtils';
 import { processVoiceNoteTranscriptionJob } from './workers/voice-notes/voiceNoteTranscriptionWorker';
 import { processAssetOcrJob } from './workers/assets/assetOcrWorker';
+import { refreshDocumentOutline } from './workers/embeddings/documentOutlineRefresh';
 import { processEmbedOntoEntity } from './workers/embeddings/embedEntityWorker';
 import { processAgentRunJob } from './workers/agent-run/agentRunWorker';
 import { processProjectContextSnapshotJob } from './workers/ontology/projectContextSnapshotWorker';
@@ -278,6 +279,10 @@ async function processAssetOcr(job: ProcessingJob<AssetOcrJobMetadata>) {
  */
 async function processEmbedEntity(job: ProcessingJob<EmbedOntoEntityJobMetadata>) {
 	try {
+		// Every document content change lands here, whoever wrote it; keep its heading
+		// outline fresh for the context finder (tasker 150). Best effort, never throws.
+		if (job.data.entityType === 'document')
+			await refreshDocumentOutline(supabase as never, job.data.entityId);
 		const legacyJob = createLegacyJob<EmbedOntoEntityJobMetadata>(job);
 		return await processEmbedOntoEntity(legacyJob);
 	} catch (error) {

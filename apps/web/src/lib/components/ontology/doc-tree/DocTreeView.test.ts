@@ -165,7 +165,7 @@ describe('DocTreeView progressive disclosure', () => {
 			archived: [archived]
 		});
 
-		const toggle = screen.getByRole('button', { name: 'Archived documents (1)' });
+		const toggle = screen.getByRole('button', { name: /^Archived documents\s*1$/ });
 		expect(toggle).toHaveAttribute('aria-expanded', 'false');
 		expect(screen.queryByText('Archived launch plan')).not.toBeInTheDocument();
 
@@ -201,6 +201,8 @@ describe('DocTreeView progressive disclosure', () => {
 		expect(screen.getByText('Pricing notes')).toBeInTheDocument();
 		// Only reachable through the collapsed Archived section.
 		expect(screen.queryByText('Archived launch plan')).not.toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'Archived documents (1)' })).toBeInTheDocument();
+		expect(
+			screen.getByRole('button', { name: /^Archived documents\s*1$/ })
+		).toBeInTheDocument();
 	});
 });

@@ -100,9 +100,8 @@ if (
 export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 	// These checks and policy writes are outside the provider failure handler:
 	// no provider attempt has happened, so an outage must not spend one.
-	const validatedData = validateSMSJobData(job.data, job.data.userId);
-	const { message_id, phone_number, message, priority, scheduled_sms_id, user_id } =
-		validatedData;
+	const jobData = validateSMSJobData(job.data, job.data.userId);
+	const { message_id, priority, scheduled_sms_id, user_id } = jobData;
 	const { data: smsMessage, error: messageError } = await supabase
 		.from('sms_messages')
 		.select('*')
@@ -110,6 +109,32 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 		.single();
 	if (messageError || !smsMessage)
 		throw new Error(`SMS message not found: ${messageError?.message ?? message_id}`);
+	// Identity, recipient and body come from the stored message, never from queue
+	// metadata. Every legitimate enqueue copies them from this row.
+	if (smsMessage.user_id !== user_id) {
+		throw new PermanentQueueError(
+			'sms_owner_mismatch',
+			`SMS ${message_id} does not belong to the queue row owner`
+		);
+	}
+	const phone_number = smsMessage.phone_number;
+	const message = smsMessage.message_content;
+	const validatedData: SMSJobData = { ...jobData, phone_number, message };
+	if (scheduled_sms_id) {
+		const { data: scheduledOwner, error: scheduledOwnerError } = await supabase
+			.from('scheduled_sms_messages')
+			.select('user_id')
+			.eq('id', scheduled_sms_id)
+			.maybeSingle();
+		if (scheduledOwnerError)
+			throw new Error(`Failed to load scheduled SMS: ${scheduledOwnerError.message}`);
+		if (scheduledOwner && scheduledOwner.user_id !== user_id) {
+			throw new PermanentQueueError(
+				'sms_owner_mismatch',
+				`Scheduled SMS ${scheduled_sms_id} does not belong to the queue row owner`
+			);
+		}
+	}
 	// A queued provider receipt is already an accepted send. Replaying the job
 	// must not submit it again or rewrite its delivery history as cancelled.
 	if (
@@ -236,6 +261,22 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 		throw new Error(errorMessage);
 	}
 
+	if (!decision.notificationDeliveryId) {
+		// Direct and calendar SMS: send only to the owner's verified number.
+		// (The notification path checks this in checkNotificationSmsDispatch.)
+		const { data: smsPrefs, error: prefsError } = await supabase
+			.from('user_sms_preferences')
+			.select('phone_number, phone_verified')
+			.eq('user_id', user_id)
+			.maybeSingle();
+		if (prefsError) throw new Error(`Failed to read SMS preferences: ${prefsError.message}`);
+		if (smsPrefs?.phone_verified !== true || smsPrefs.phone_number !== phone_number) {
+			throw new PermanentQueueError(
+				'sms_recipient_not_verified',
+				`SMS ${message_id} recipient is not the owner's verified number`
+			);
+		}
+	}
 	if (decision.notificationDeliveryId) {
 		// Claim the existing message before dispatch. Duplicate queue jobs cannot
 		// both send; a process crash leaves 'sending' for reconciliation, not replay.
@@ -540,7 +581,6 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 		// Notify user of successful send (optional)
 		await broadcastUserEvent(user_id, 'sms_sent', {
 			message_id,
-			phone_number,
 			scheduled_sms_id
 		});
 

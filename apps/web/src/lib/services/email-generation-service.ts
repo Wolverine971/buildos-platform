@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { SmartLLMService } from './smart-llm-service';
 import type { Database } from '@buildos/shared-types';
 import { ActivityLogger } from '$lib/utils/activityLogger';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 export interface UserBasicInfo {
 	id: string;
@@ -137,10 +138,12 @@ export class EmailGenerationService {
 	constructor(supabase: SupabaseClient<Database>) {
 		this.supabase = supabase;
 		this.activityLogger = new ActivityLogger(supabase);
+		// Usage is logged under the email's target user, not the signed-in admin, and a
+		// user-scoped client may only log its own usage, so the logger uses the service role.
 		this.llmService = new SmartLLMService({
 			httpReferer: 'https://build-os.com',
 			appName: 'BuildOS Email Service',
-			supabase
+			supabase: createAdminSupabaseClient()
 		});
 	}
 

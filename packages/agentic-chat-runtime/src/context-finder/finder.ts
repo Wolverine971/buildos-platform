@@ -10,6 +10,7 @@ import {
 } from './evidence';
 import {
 	buildContextFinderEntities,
+	withContextFinderText,
 	type ContextFinderEntity,
 	type ContextFinderKind,
 	type ContextFinderProjectV1
@@ -22,7 +23,7 @@ import {
 	type ContextFinderDecider,
 	type ContextFinderRankingV1
 } from './rank';
-import { selectProjectContext, type ContextPlanV1 } from './select';
+import { CONTEXT_FINDER_POLICY, selectProjectContext, type ContextPlanV1 } from './select';
 
 /** START HERE is already in every project prompt; ranking it again only repeats it. */
 export const START_HERE_TYPE_KEY = 'document.context.project';
@@ -82,14 +83,27 @@ export async function findProjectContext(input: {
 	/** Also ask Jev whether the request is about the project as a whole (rank.ts). */
 	askBroad?: boolean;
 }): Promise<ContextFinderResultV1> {
-	const entities = buildContextFinderEntities(input.project);
-	if (input.plan)
+	// Agents get cards plus their best sections up front and read the rest (tasker 150, B).
+	const budgetChars = Math.min(
+		input.budgetChars ?? CONTEXT_FINDER_POLICY.agentBudgetChars,
+		CONTEXT_FINDER_POLICY.agentBudgetChars
+	);
+	const outlined = buildContextFinderEntities(input.project);
+	if (input.plan) {
+		const entities = await loadContextFinderPlanText({
+			project: input.project,
+			entities: outlined,
+			plan: input.plan,
+			signal: input.signal
+		});
 		return {
-			evidence: materializeContextPlan({ plan: input.plan, entities }),
+			evidence: materializeContextPlan({ plan: input.plan, entities, budgetChars }),
 			plan: input.plan,
 			ranking: null,
 			entities
 		};
+	}
+	const entities = outlined;
 	if (!input.decider)
 		return { evidence: unavailableContextEvidence(null), plan: null, ranking: null, entities };
 	const skip = input.skipIds ?? startHereIds(input.project);
@@ -126,7 +140,8 @@ export async function findProjectContext(input: {
 		checked: ranking.checked,
 		unchecked: ranking.unchecked,
 		skipIds: skip,
-		budgetChars: input.budgetChars,
+		budgetChars,
+		sectionsPerDoc: CONTEXT_FINDER_POLICY.agentSectionsPerDoc,
 		maxSummaries: input.maxSummaries,
 		...(scope === 'broad'
 			? {
@@ -138,13 +153,59 @@ export async function findProjectContext(input: {
 				}
 			: {})
 	});
+	const loaded = await loadContextFinderPlanText({
+		project: input.project,
+		entities,
+		plan,
+		signal: input.signal
+	});
 	return {
-		evidence: materializeContextPlan({ plan, entities, ranker }),
+		evidence: materializeContextPlan({ plan, entities: loaded, ranker, budgetChars }),
 		plan,
 		ranking,
-		entities,
+		entities: loaded,
 		...(input.askBroad ? { scope } : {})
 	};
+}
+
+/**
+ * Attaches text to the documents a plan loads in full (and any `extraIds`), read in one query
+ * through the project's text source. Everything else stays an outline. A failed read leaves
+ * those documents as cards (title, description, outline) rather than failing the turn; an
+ * aborted one throws.
+ */
+export async function loadContextFinderPlanText(input: {
+	project: ContextFinderProjectV1;
+	entities: readonly ContextFinderEntity[];
+	plan: ContextPlanV1 | null;
+	extraIds?: readonly string[];
+	signal?: AbortSignal;
+}): Promise<ContextFinderEntity[]> {
+	const wanted = new Set([
+		...(input.plan?.items ?? [])
+			.filter((item) => item.tier === 'full' && item.kind === 'document')
+			.map((item) => item.id),
+		...(input.extraIds ?? [])
+	]);
+	const ids = input.entities
+		.filter(
+			(entity) => entity.kind === 'document' && !entity.textLoaded && wanted.has(entity.id)
+		)
+		.map((entity) => entity.id);
+	const source = input.project.documentText;
+	if (!ids.length || !source) return [...input.entities];
+	let texts: Map<string, { content: string; contentHash: string | null }>;
+	try {
+		texts = await source(ids, input.signal);
+	} catch (error) {
+		input.signal?.throwIfAborted();
+		console.warn('[context-finder] document text read failed; using outlines', error);
+		return [...input.entities];
+	}
+	return input.entities.map((entity) => {
+		const text = entity.kind === 'document' ? texts.get(entity.id) : undefined;
+		return text ? withContextFinderText(entity, text) : entity;
+	});
 }
 
 /** Everything that was ranked, best first, so a person can add what Jev missed. */

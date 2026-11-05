@@ -8,7 +8,7 @@ import type { CalendarTarget } from '$lib/server/google-calendar-target.service'
 type QueryResult = { data: any; error: any };
 
 // `results` is keyed by table, or by `table:action` to give writes their own result.
-function createDatabase(results: Record<string, QueryResult>) {
+function createDatabase(results: Record<string, QueryResult>, rpcResult?: QueryResult) {
 	const operations: Array<{
 		table: string;
 		action: string;
@@ -75,7 +75,10 @@ function createDatabase(results: Record<string, QueryResult>) {
 	}
 
 	return {
-		database: { from: vi.fn(query) } as any,
+		database: {
+			from: vi.fn(query),
+			rpc: vi.fn().mockResolvedValue(rpcResult ?? { data: null, error: null })
+		} as any,
 		operations
 	};
 }
@@ -110,8 +113,8 @@ function channel(overrides: Partial<WebhookChannel> = {}): WebhookChannel {
 	};
 }
 
-function setup(results: Record<string, QueryResult>) {
-	const { database, operations } = createDatabase(results);
+function setup(results: Record<string, QueryResult>, rpcResult?: QueryResult) {
+	const { database, operations } = createDatabase(results, rpcResult);
 	const connectionService = {
 		getAuthenticatedClient: vi.fn().mockResolvedValue({ connection: 'b' })
 	};
@@ -134,7 +137,7 @@ function setup(results: Record<string, QueryResult>) {
 		targetService,
 		createCalendarApi: () => api as any
 	});
-	return { service, operations, connectionService, targetService, api };
+	return { service, operations, connectionService, targetService, api, database };
 }
 
 describe('CalendarWebhookService source routing', () => {
@@ -486,6 +489,84 @@ describe('CalendarWebhookService source routing', () => {
 					operation.table === 'scheduled_sms_messages' && operation.action === 'select'
 			);
 			expect(smsLookup?.filters).toContainEqual(['calendar_event_id', ['event-b']]);
+		});
+
+		describe('a linked task', () => {
+			const linkedRow = {
+				id: 'row-uuid-1',
+				task_id: 'task-1',
+				user_id: 'user-1',
+				calendar_event_id: 'event-b',
+				calendar_source_id: 'source-b',
+				sync_source: 'google',
+				is_master_event: false
+			};
+			const movedEvent = {
+				id: 'event-b',
+				status: 'confirmed',
+				summary: 'Renamed in Google',
+				start: { dateTime: '2026-09-22T16:00:00.000Z' },
+				end: { dateTime: '2026-09-22T17:00:00.000Z' }
+			};
+
+			function linkedSetup(canWrite: boolean) {
+				const result = setup(
+					{
+						calendar_webhook_channels: { data: channel(), error: null },
+						users: { data: { created_at: '2026-01-01T00:00:00.000Z' }, error: null },
+						task_calendar_events: { data: [linkedRow], error: null },
+						time_blocks: { data: [], error: null },
+						onto_tasks: {
+							data: { project_id: 'project-1', props: { keep: true } },
+							error: null
+						},
+						onto_actors: { data: { id: 'actor-1' }, error: null }
+					},
+					{ data: canWrite, error: null }
+				);
+				result.api.events.list.mockResolvedValue({
+					data: { items: [movedEvent], nextSyncToken: 'sync-after-notification' }
+				});
+				return result;
+			}
+
+			it('updates the task when the calendar owner can write its project', async () => {
+				const { service, operations, database } = linkedSetup(true);
+
+				await notify(service);
+
+				expect(database.rpc).toHaveBeenCalledWith('actor_has_project_member_access', {
+					p_actor_id: 'actor-1',
+					p_project_id: 'project-1',
+					p_required_access: 'write'
+				});
+				const update = operations.find(
+					(operation) => operation.table === 'onto_tasks' && operation.action === 'update'
+				);
+				expect(update?.filters).toContainEqual(['id', 'task-1']);
+				expect(update?.payload).toEqual(
+					expect.objectContaining({
+						title: 'Renamed in Google',
+						start_at: '2026-09-22T16:00:00.000Z',
+						props: { keep: true, duration_minutes: 60 }
+					})
+				);
+			});
+
+			it("never rewrites a task in a project the calendar owner can't write", async () => {
+				const { service, operations } = linkedSetup(false);
+
+				await notify(service);
+
+				expect(
+					operations.some(
+						(operation) =>
+							operation.table === 'onto_tasks' && operation.action === 'update'
+					)
+				).toBe(false);
+				// The skip is not a failure, so the sync cursor still moves on.
+				expect(storedSyncToken(operations)).toBeDefined();
+			});
 		});
 	});
 

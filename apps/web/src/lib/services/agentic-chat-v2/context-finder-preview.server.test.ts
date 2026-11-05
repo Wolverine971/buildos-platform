@@ -21,6 +21,7 @@ function client(
 		const query: any = {
 			select: () => query,
 			eq: (column: string, value: unknown) => (calls.push([table, column, value]), query),
+			in: () => query,
 			is: () => query,
 			order: () => query,
 			limit: () => query,

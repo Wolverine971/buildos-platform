@@ -4,6 +4,7 @@ import { logWorkerError } from '../../lib/errorLogger';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { supabase } from '../../lib/supabase';
 import type { LegacyJob } from '../shared/jobAdapter';
+import { isOwnVoiceNoteObject } from './voiceNoteStorage';
 
 type VoiceNoteRecord = Pick<
 	Database['public']['Tables']['voice_notes']['Row'],
@@ -116,6 +117,10 @@ export async function processVoiceNoteTranscriptionJob(
 				reason: 'already_transcribed',
 				transcriptLength: voiceNote.transcript.length
 			};
+		}
+
+		if (!isOwnVoiceNoteObject(userId, voiceNote.storage_bucket, voiceNote.storage_path)) {
+			throw new Error('Voice note audio is not in the owner storage folder');
 		}
 
 		stage = 'download';

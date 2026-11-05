@@ -74,7 +74,9 @@
 
 <section class="recent-chats-section" aria-labelledby="recent-project-chats-title">
 	<header class="flex min-h-11 items-center justify-between gap-2">
-		<h2 id="recent-project-chats-title" class="text-sm font-semibold">Recent chats</h2>
+		<h2 id="recent-project-chats-title" class="text-sm font-medium text-foreground">
+			Recent chats
+		</h2>
 		{#if !loading && !error && chats.length > 0}
 			<Button
 				variant="ghost"
@@ -88,7 +90,7 @@
 	</header>
 	{#if loading}
 		<div
-			class="h-11 animate-pulse rounded-md bg-muted/40 motion-reduce:animate-none"
+			class="h-11 animate-pulse rounded-lg bg-muted/40 motion-reduce:animate-none"
 			aria-label="Loading recent project chats"
 		></div>
 	{:else if error}
@@ -99,7 +101,7 @@
 			<Button variant="ghost" size="sm" onclick={() => void loadChats()}>Retry</Button>
 		</div>
 	{:else if chats.length === 0}
-		<p class="py-2 text-sm text-muted-foreground">No project chats yet.</p>
+		<p class="py-2 text-sm text-muted-foreground">No project chats yet</p>
 	{:else}
 		<div
 			id="recent-project-chat-list"
@@ -115,9 +117,10 @@
 				>
 					<div class="flex min-w-0 items-center gap-2">
 						<MessageSquare class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-						<span class="min-w-0 flex-1 truncate text-sm font-medium">{chat.title}</span
+						<span class="min-w-0 flex-1 truncate text-sm font-medium text-foreground"
+							>{chat.title}</span
 						>
-						<span class="stamp shrink-0 text-2xs text-muted-foreground"
+						<span class="stamp shrink-0 text-xs text-muted-foreground"
 							>{formatActivityDate(chat.last_activity_at)}</span
 						>
 						<ArrowUpRight class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -128,8 +131,8 @@
 						>
 							{chat.summary ??
 								(chat.message_count > 0
-									? `${chat.message_count} messages in this conversation.`
-									: 'Continue this project conversation.')}
+									? `${chat.message_count} ${chat.message_count === 1 ? 'message' : 'messages'} in this conversation`
+									: 'Continue this project conversation')}
 						</p>
 						{#if chat.focus_label || chat.chat_topics.length > 0}
 							<p class="mt-1 truncate pl-5 text-2xs text-muted-foreground">
@@ -170,13 +173,13 @@
 		min-height: 44px;
 		min-width: 0;
 		width: 100%;
-		border-radius: 0.375rem;
-		padding: 0.625rem;
+		border-radius: 0.5rem;
+		padding: 0.75rem;
 		text-align: left;
-		transition: background-color 120ms ease;
+		transition: background-color 120ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.recent-chat-row:hover {
-		background: hsl(var(--muted) / 0.42);
+		background: hsl(var(--muted) / 0.5);
 	}
 	.recent-chat-row:focus-visible {
 		outline: 2px solid hsl(var(--ring));

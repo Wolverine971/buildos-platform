@@ -14,7 +14,7 @@
  */
 
 import type { RequestHandler } from './$types';
-import { ApiResponse } from '$lib/utils/api-response';
+import { ApiResponse, HttpStatus } from '$lib/utils/api-response';
 import { EmailService } from '$lib/services/email-service';
 import { logOntologyApiError } from '../../../shared/error-logging';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
@@ -31,6 +31,7 @@ import {
 } from '$lib/components/people/people-copy';
 import { appBaseUrl } from '$lib/server/people/invite-links';
 import { buildProjectInviteEmail } from '$lib/server/people/people-emails';
+import { checkInviteDailyQuota } from '$lib/server/people/invite-send-quota';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { createHash, randomBytes } from 'crypto';
 
@@ -440,6 +441,13 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			if (existingMember?.id) {
 				return ApiResponse.badRequest('That user is already a member of this project');
 			}
+		}
+
+		const quota = await checkInviteDailyQuota(supabase, actorId);
+		if (!quota.ok) {
+			return ApiResponse.error(quota.message, HttpStatus.TOO_MANY_REQUESTS, 'RATE_LIMITED', {
+				retry_after_seconds: quota.retryAfterSeconds
+			});
 		}
 
 		const token = randomBytes(32).toString('hex');

@@ -2,7 +2,8 @@
 <!--
 	A doc's or task's own page: the reader at full width, the project's docs or
 	tasks as a rail beside it (hide it with the list toggle or F), and chat beside
-	the reader. It is the same reader as the Projects card and the project page,
+	the reader. The reader's own brain bolt is the one way into chat here; the chat
+	pane switches between this item and the whole project. It is the same reader as the Projects card and the project page,
 	at its deepest. Walking to another item swaps it in place and rewrites the
 	URL, so the address always names what is open. On phones the item opens as a
 	full sheet over the project's list.
@@ -24,14 +25,13 @@
 	import ReaderTaskList from './ReaderTaskList.svelte';
 	import { treeWithoutRemoved, withoutRemoved } from './reader-removals.svelte';
 	import { groupTasksForReader, taskReaderOrder } from './reader-task-groups';
-	import type { ChatScope, ReaderItem, ReaderKind } from './reader-model';
+	import type { ReaderItem, ReaderKind } from './reader-model';
 
 	let { data }: { data: ProjectItemPageData } = $props();
 
 	type RailTab = 'docs' | 'tasks';
 	type PanesApi = {
 		open: (item: ReaderItem) => void;
-		openChat: (scope: ChatScope) => void;
 		handleKey: (event: KeyboardEvent) => boolean;
 	};
 
@@ -47,8 +47,6 @@
 	let railTab = $state<RailTab>(untrack(() => (data.item.kind === 'task' ? 'tasks' : 'docs')));
 	let showDone = $state(false);
 	let reloadKey = $state(0);
-	let chatOpen = $state(false);
-	let chatScope = $state<ChatScope>('project');
 	let panes = $state<PanesApi | null>(null);
 
 	const projectHref = $derived(resolve('/projects/[id]', { id: data.projectId }));
@@ -192,23 +190,11 @@
 			<span aria-hidden="true">/</span>
 			<span class="here">{title}</span>
 		</nav>
-		<button
-			type="button"
-			class="bolt"
-			onclick={() => panes?.openChat('project')}
-			aria-pressed={chatOpen && chatScope === 'project'}
-			title="Chat about this project"
-			aria-label="Chat about {projectName}"
-		>
-			<img src="/brain-bolt.webp" alt="" class="h-6 w-6 rounded object-cover" />
-		</button>
 	</header>
 
 	<div class="host" bind:this={host} style:--host-top="{hostTop}px">
 		<ReaderPanes
 			bind:this={panes}
-			bind:chatOpen
-			bind:chatScope
 			projectId={data.projectId}
 			{projectName}
 			{canWrite}
@@ -284,8 +270,7 @@
 		background: hsl(var(--card));
 		padding: 6px 12px;
 	}
-	.back,
-	.bolt {
+	.back {
 		display: grid;
 		flex: none;
 		place-items: center;
@@ -294,16 +279,11 @@
 		border-radius: 9px;
 		color: hsl(var(--muted-foreground));
 	}
-	.back:hover,
-	.bolt:hover {
+	.back:hover {
 		background: hsl(var(--muted));
 		color: hsl(var(--foreground));
 	}
-	.bolt[aria-pressed='true'] {
-		background: hsl(var(--accent) / 0.14);
-	}
 	.back:focus-visible,
-	.bolt:focus-visible,
 	.crumb:focus-visible,
 	.rail-tabs button:focus-visible {
 		outline: 2px solid hsl(var(--ring));

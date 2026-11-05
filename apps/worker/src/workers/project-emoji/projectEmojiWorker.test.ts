@@ -8,6 +8,8 @@ import { processPickProjectEmojiJob } from './projectEmojiWorker';
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
 const USER_ID = '22222222-2222-4222-8222-222222222222';
+const OTHER_USER_ID = '33333333-3333-4333-8333-333333333333';
+const ACTOR_ID = '44444444-4444-4444-8444-444444444444';
 
 type Project = {
 	name: string;
@@ -17,7 +19,10 @@ type Project = {
 };
 
 /** A tiny onto_projects / onto_documents stand-in that records the update it receives. */
-function fakeDb(project: Project | null, opts: { startHere?: string; written?: boolean } = {}) {
+function fakeDb(
+	project: Project | null,
+	opts: { startHere?: string; written?: boolean; ownerUserId?: string } = {}
+) {
 	const updates: unknown[] = [];
 	const chain = (result: unknown) => {
 		const node: Record<string, unknown> = {};
@@ -28,6 +33,9 @@ function fakeDb(project: Project | null, opts: { startHere?: string; written?: b
 	};
 	const db = {
 		from: (table: string) => {
+			if (table === 'onto_actors') {
+				return chain({ data: { user_id: opts.ownerUserId ?? USER_ID }, error: null });
+			}
 			if (table === 'onto_documents') {
 				return chain({
 					data: opts.startHere ? { content: opts.startHere } : null,
@@ -35,7 +43,10 @@ function fakeDb(project: Project | null, opts: { startHere?: string; written?: b
 				});
 			}
 			return {
-				...chain({ data: project ? { id: PROJECT_ID, ...project } : null, error: null }),
+				...chain({
+					data: project ? { id: PROJECT_ID, created_by: ACTOR_ID, ...project } : null,
+					error: null
+				}),
 				update: (values: unknown) => {
 					updates.push(values);
 					return chain({
@@ -49,11 +60,11 @@ function fakeDb(project: Project | null, opts: { startHere?: string; written?: b
 	return { db: db as never, updates };
 }
 
-const job = () =>
+const job = (userId = USER_ID, metadataUserId = userId) =>
 	({
 		id: 'job-1',
-		userId: USER_ID,
-		data: { projectId: PROJECT_ID, userId: USER_ID },
+		userId,
+		data: { projectId: PROJECT_ID, userId: metadataUserId },
 		attempts: 0,
 		signal: new AbortController().signal,
 		log: vi.fn(),
@@ -124,5 +135,24 @@ describe('processPickProjectEmojiJob', () => {
 		});
 		expect(result.outcome).toBe('failed');
 		expect(updates).toEqual([]);
+	});
+
+	it('skips a job whose queue owner does not own the project, without a model call or write', async () => {
+		const project = { name: 'A', description: null, deleted_at: null, icon_emoji: null };
+		for (const [queueUser, metadataUser] of [
+			[OTHER_USER_ID, OTHER_USER_ID],
+			[OTHER_USER_ID, USER_ID],
+			[USER_ID, OTHER_USER_ID]
+		]) {
+			const { db, updates } = fakeDb(project);
+			const model = llm(good);
+			const result = await processPickProjectEmojiJob(job(queueUser, metadataUser), {
+				supabase: db,
+				llm: model
+			});
+			expect(result.outcome).toBe('skipped');
+			expect(model.getJSONResponse).not.toHaveBeenCalled();
+			expect(updates).toEqual([]);
+		}
 	});
 });

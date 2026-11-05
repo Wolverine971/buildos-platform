@@ -71,6 +71,18 @@
 							for <span class="font-medium text-foreground">{data.userEmail}</span>
 						</p>
 					{/if}
+					<p class="mt-1 text-sm text-muted-foreground">
+						Approving sends you to
+						<span class="break-all font-medium text-foreground"
+							>{data.authorization.redirect_host}</span
+						>
+					</p>
+					{#if !data.authorization.name_verified}
+						<p class="mt-2 text-xs text-warning">
+							This app named itself. BuildOS hasn't verified who runs it, so only
+							approve if you just started connecting it from that site.
+						</p>
+					{/if}
 				</div>
 				{#if data.authorization.client_uri}
 					<a

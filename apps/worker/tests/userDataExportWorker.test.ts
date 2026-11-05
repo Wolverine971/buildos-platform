@@ -594,6 +594,31 @@ describe('user data export worker', () => {
 		expect(tables.user_data_exports?.[0]?.status).toBe('ready');
 	});
 
+	it("never copies a Storage object a voice note row points at outside the user's folder", async () => {
+		const tables = seed();
+		tables.voice_notes!.push({
+			id: 'v3000000-0000',
+			user_id: USER,
+			transcript: 'Pointer row',
+			storage_bucket: 'onto-assets',
+			storage_path: `projects/${PROJECT}/a1.png`,
+			mime_type: 'audio/webm',
+			created_at: '2026-09-22T10:00:00Z',
+			deleted_at: null
+		});
+		const { db, uploads } = fakeDb(tables);
+
+		await processUserDataExportJob(job(), { db });
+
+		const files = unzipAll(uploads);
+		expect(
+			[...files.keys()].some((name) => name.startsWith('voice-notes/2026-09-22-v3000000.'))
+		).toBe(true);
+		expect(files.has('voice-notes/2026-09-22-v3000000.webm')).toBe(false);
+		expect(files.has('voice-notes/2026-09-22-v3000000.png')).toBe(false);
+		expect(files.get('voice-notes/2026-09-22-v3000000.md')).toContain('Audio: not available');
+	});
+
 	it('splits a large export into complete zip parts with stable names', async () => {
 		const { db, uploads, rpcCalls } = fakeDb(seed());
 

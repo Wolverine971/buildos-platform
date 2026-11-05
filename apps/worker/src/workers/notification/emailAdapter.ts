@@ -286,11 +286,27 @@ export interface DeliveryResult {
 	error?: string;
 }
 
+function payloadText(value: unknown): string {
+	return typeof value === 'string' ? value : '';
+}
+
+// Only http(s) image links; anything else is dropped.
+function resolveEmailImageUrl(value: unknown): string | null {
+	if (typeof value !== 'string' || !value.trim()) return null;
+	try {
+		const url = new URL(value.trim());
+		return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : null;
+	} catch {
+		return null;
+	}
+}
+
 /**
- * Format notification payload as email HTML
- * Note: payload should have title and body from enrichDeliveryPayload, but we validate for safety
+ * Format notification payload as email HTML.
+ * Every payload value is plain text and is escaped here: the delivery payload is
+ * stored data, not trusted HTML. Action links must stay on the app origin.
  */
-function formatEmailTemplate(delivery: NotificationDelivery): {
+export function formatEmailTemplate(delivery: NotificationDelivery): {
 	html: string;
 	text: string;
 } {
@@ -298,10 +314,15 @@ function formatEmailTemplate(delivery: NotificationDelivery): {
 	const baseUrl = (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim();
 
 	// Defensive validation - ensure required fields exist
-	const title = payload.title || 'Notification';
-	const body = payload.body || '';
+	const title = payloadText(payload.title) || 'Notification';
+	const body = payloadText(payload.body);
 	const actionUrl = resolveNotificationActionUrl(baseUrl, payload.action_url);
-	const imageUrl = payload.image_url || null;
+	const imageUrl = resolveEmailImageUrl(payload.image_url);
+
+	const titleHtml = escapeHtml(title);
+	const bodyHtml = escapeHtml(body).replace(/\r?\n/g, '<br>');
+	const actionUrlHtml = actionUrl ? escapeHtml(actionUrl) : null;
+	const imageUrlHtml = imageUrl ? escapeHtml(imageUrl) : null;
 
 	// Inkprint Design System colors
 	const inkprint = {
@@ -321,26 +342,26 @@ function formatEmailTemplate(delivery: NotificationDelivery): {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
+  <title>${titleHtml}</title>
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: ${inkprint.foreground}; background-color: ${inkprint.background}; margin: 0; padding: 20px;">
   <div style="max-width: 600px; margin: 0 auto; background-color: ${inkprint.card}; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(26, 26, 29, 0.08);">
     <!-- Header -->
     <div style="background-color: ${inkprint.foreground}; padding: 24px 32px; text-align: center;">
-      <h1 style="color: ${inkprint.background}; margin: 0; font-size: 20px; font-weight: 600;">${title}</h1>
+      <h1 style="color: ${inkprint.background}; margin: 0; font-size: 20px; font-weight: 600;">${titleHtml}</h1>
     </div>
 
     <!-- Content -->
     <div style="padding: 32px;">
       <div style="font-size: 16px; color: ${inkprint.mutedForeground}; margin-bottom: 20px; line-height: 1.6;">
-        ${body}
+        ${bodyHtml}
       </div>
 
       ${
-			actionUrl
+			actionUrlHtml
 				? `
       <div style="text-align: center; margin: 32px 0;">
-        <a href="${actionUrl}"
+        <a href="${actionUrlHtml}"
            style="background-color: ${inkprint.accent};
                   color: ${inkprint.background};
                   padding: 12px 30px;
@@ -357,10 +378,10 @@ function formatEmailTemplate(delivery: NotificationDelivery): {
 		}
 
       ${
-			imageUrl
+			imageUrlHtml
 				? `
       <div style="margin: 20px 0;">
-        <img src="${imageUrl}" alt="" style="max-width: 100%; height: auto; border-radius: 6px;">
+        <img src="${imageUrlHtml}" alt="" style="max-width: 100%; height: auto; border-radius: 6px;">
       </div>
       `
 				: ''

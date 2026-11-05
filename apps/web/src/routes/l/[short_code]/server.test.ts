@@ -58,11 +58,12 @@ describe('/l/[short_code]', () => {
 
 		await expect(
 			GET({
-				params: { short_code: 'abc123' }
+				params: { short_code: 'abc123' },
+				url: new URL('https://build-os.com/l/abc123')
 			} as any)
 		).rejects.toMatchObject({
 			status: 302,
-			location: 'https://build-os.com/onboarding'
+			location: '/onboarding'
 		});
 
 		expect(updateQuery.update).toHaveBeenCalledWith(
@@ -73,5 +74,49 @@ describe('/l/[short_code]', () => {
 			})
 		);
 		expect(loggerMock.error).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		'https://evil.example/login',
+		'https://build-os.com.evil.example/x',
+		'javascript:alert(1)',
+		'https://build-os.com//evil.example/x'
+	])('never redirects off the app origin (%s)', async (destinationUrl) => {
+		const link = {
+			id: 'link-2',
+			short_code: 'xyz789',
+			destination_url: destinationUrl,
+			delivery_id: null,
+			first_clicked_at: null,
+			click_count: 0
+		};
+		const lookupQuery: any = {
+			select: vi.fn(() => lookupQuery),
+			eq: vi.fn(() => lookupQuery),
+			maybeSingle: vi.fn().mockResolvedValue({ data: link, error: null })
+		};
+		const updateQuery: any = {
+			update: vi.fn(() => updateQuery),
+			eq: vi.fn().mockResolvedValue({ error: null })
+		};
+		createAdminSupabaseClientMock.mockReturnValue({
+			from: vi.fn().mockReturnValueOnce(lookupQuery).mockReturnValueOnce(updateQuery)
+		});
+
+		const result = await Promise.resolve(
+			GET({
+				params: { short_code: 'xyz789' },
+				url: new URL('https://build-os.com/l/xyz789')
+			} as any)
+		).catch((error: unknown) => error);
+
+		expect(result).toMatchObject({ status: 302 });
+		const location = (result as { location: string }).location;
+		expect(location.startsWith('/')).toBe(true);
+		expect(location.startsWith('//')).toBe(false);
+		expect(location).not.toContain('evil.example/login');
+		if (!destinationUrl.startsWith('https://build-os.com//')) {
+			expect(location).toBe('/');
+		}
 	});
 });

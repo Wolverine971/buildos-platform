@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/landing/home-variants/d/Capabilities.svelte -->
 <!--
 	Home D: a quieter, text-led break after the two big demos. Six things BuildOS does once
 	a project exists, each with a small drawn example that reuses the hero reel's people and
@@ -89,7 +90,7 @@
 					</div>
 				{:else if item.id === 'calendar'}
 					<div
-						class="grid grid-cols-7 gap-1 text-center font-mono text-[11px] text-muted-foreground"
+						class="grid grid-cols-7 gap-1 text-center font-mono text-2xs text-muted-foreground"
 					>
 						{#each WEEK as day, i (i)}<span>{day}</span>{/each}
 					</div>

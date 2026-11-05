@@ -214,6 +214,7 @@ const create = {
 function job(extra: any = {}, signal = new AbortController().signal) {
 	return {
 		id: 'job-1',
+		userId: 'user-1',
 		data: { run_id: 'run-1', ...extra.data },
 		attempts: 0,
 		signal,
@@ -284,6 +285,29 @@ it('control: stages a proposal when the worker is uninterrupted', async () => {
 	const result = await processAgentRunJob(job());
 	expect(result.status).toBe('proposal_ready');
 	expect(state.run.change_set.changes).toHaveLength(1);
+});
+
+it('refuses a job whose queue owner does not own the run and leaves the run unchanged', async () => {
+	state.run.status = 'paused';
+	const before = structuredClone(state.run);
+	state.turns = [done];
+	await expect(
+		processAgentRunJob(
+			job({ userId: 'user-2', data: { run_id: 'run-1', continuation_from: 'paused' } })
+		)
+	).rejects.toMatchObject({ kind: 'permanent', code: 'agent_run_owner_mismatch' });
+	expect(state.run).toEqual(before);
+	expect(state.prompts).toHaveLength(0);
+	expect(state.opCalls).toHaveLength(0);
+});
+
+it('refuses a running-run retry resume from another user', async () => {
+	state.run.status = 'running';
+	const before = structuredClone(state.run);
+	await expect(processAgentRunJob(job({ userId: 'user-2', attempts: 1 }))).rejects.toMatchObject({
+		code: 'agent_run_owner_mismatch'
+	});
+	expect(state.run).toEqual(before);
 });
 
 it('preserves staged changes through pause and resume', async () => {

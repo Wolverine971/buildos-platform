@@ -359,27 +359,6 @@
 		}
 	}
 
-	function entityAccent(kind: ProjectLogEntityType | UpcomingKind): string {
-		switch (kind) {
-			case 'task':
-				return 'text-info';
-			case 'milestone':
-				return 'text-warning';
-			case 'goal':
-				return 'text-accent';
-			case 'plan':
-				return 'text-accent';
-			case 'event':
-				return 'text-info';
-			case 'document':
-			case 'note':
-			case 'requirement':
-				return 'text-success';
-			default:
-				return 'text-muted-foreground';
-		}
-	}
-
 	function actionVerb(action: string): string {
 		switch (action) {
 			case 'created':
@@ -418,7 +397,7 @@
 <section
 	class="overflow-hidden sm:hidden {mode === 'workspace'
 		? 'activity-workspace-mobile border-y border-border'
-		: 'rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak'}"
+		: 'rounded-xl border border-border bg-card shadow-ink tx tx-frame tx-weak'}"
 	aria-label={surfaceLabel}
 >
 	<div role="tablist" aria-label={viewsLabel} class="flex border-b border-border/60">
@@ -432,7 +411,7 @@
 			tabindex={mobileTab === 'recent' ? 0 : -1}
 			onclick={() => (mobileTab = 'recent')}
 			onkeydown={(e) => onMobileTabKeydown(e, 0)}
-			class="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable {mobileTab ===
+			class="flex min-h-11 flex-1 items-center justify-center gap-2 px-3 py-2 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable {mobileTab ===
 			'recent'
 				? 'text-foreground bg-muted/40 border-b-2 border-accent -mb-px'
 				: 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border-b-2 border-transparent'}"
@@ -444,8 +423,8 @@
 			/>
 			<span>{mode === 'workspace' ? 'History' : 'Recent'}</span>
 			{#if mode !== 'workspace' && !logsLoading && recentTiles.length > 0}
-				<span class="text-2xs text-muted-foreground/80">
-					({recentTiles.length})
+				<span class="font-mono text-xs tabular-nums text-muted-foreground">
+					{recentTiles.length}
 				</span>
 			{/if}
 		</button>
@@ -459,7 +438,7 @@
 			tabindex={mobileTab === 'next' ? 0 : -1}
 			onclick={() => (mobileTab = 'next')}
 			onkeydown={(e) => onMobileTabKeydown(e, 1)}
-			class="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable {mobileTab ===
+			class="flex min-h-11 flex-1 items-center justify-center gap-2 px-3 py-2 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable {mobileTab ===
 			'next'
 				? 'text-foreground bg-muted/40 border-b-2 border-accent -mb-px'
 				: 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border-b-2 border-transparent'}"
@@ -471,8 +450,8 @@
 			/>
 			<span>Schedule</span>
 			{#if mode !== 'workspace' && upcomingItems.length > 0}
-				<span class="text-2xs text-muted-foreground/80">
-					({upcomingItems.length})
+				<span class="font-mono text-xs tabular-nums text-muted-foreground">
+					{upcomingItems.length}
 				</span>
 			{/if}
 		</button>
@@ -483,11 +462,11 @@
 			id="pulse-panel-next"
 			role="tabpanel"
 			aria-labelledby="pulse-tab-next"
-			class={mode === 'workspace' ? 'activity-workspace-list' : 'space-y-1.5 p-2'}
+			class={mode === 'workspace' ? 'activity-workspace-list' : 'space-y-2 p-2'}
 		>
 			{#if upcomingItems.length === 0}
-				<p class="text-xs text-muted-foreground px-2 py-4 text-center italic">
-					No scheduled work yet.
+				<p class="text-xs text-muted-foreground px-2 py-4 text-center">
+					No scheduled work yet
 				</p>
 			{:else}
 				{#each upcomingItems as item, index (`${item.kind}:${item.id}`)}
@@ -503,10 +482,10 @@
 						onclick={() => onOpenEntity(item.kind, item.id)}
 						class={mode === 'workspace'
 							? 'activity-upcoming-row group'
-							: 'min-h-[44px] w-full rounded-md border border-border/60 bg-background px-3 py-2.5 text-left transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:bg-muted motion-reduce:transition-none pressable'}
+							: 'min-h-11 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-left transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:bg-muted motion-reduce:transition-none pressable'}
 					>
-						<div class="flex items-start gap-2.5 min-w-0">
-							<Icon class="w-4 h-4 mt-0.5 shrink-0 {entityAccent(item.kind)}" />
+						<div class="flex items-start gap-2 min-w-0">
+							<Icon class="w-4 h-4 mt-0.5 shrink-0 text-muted-foreground" />
 							<div class="min-w-0 flex-1">
 								<div class="flex min-w-0 items-baseline justify-between gap-2">
 									<p class="line-clamp-1 text-sm font-medium text-foreground">
@@ -514,7 +493,7 @@
 									</p>
 									{#if mode === 'workspace'}
 										<span
-											class="shrink-0 text-2xs {future.isOverdue
+											class="stamp shrink-0 text-2xs {future.isOverdue
 												? 'font-medium text-destructive'
 												: 'text-muted-foreground'}"
 										>
@@ -522,13 +501,13 @@
 										</span>
 									{/if}
 								</div>
-								<p class="mt-0.5 flex flex-wrap items-center gap-1.5 text-2xs">
+								<p class="mt-1 flex flex-wrap items-center gap-1 text-2xs">
 									<span class="capitalize text-muted-foreground">{item.kind}</span
 									>
 									{#if mode !== 'workspace'}
 										<span class="text-muted-foreground/50">·</span>
 										<span
-											class="inline-flex items-center gap-1 {future.isOverdue
+											class="stamp inline-flex items-center gap-1 {future.isOverdue
 												? 'text-destructive font-medium'
 												: 'text-muted-foreground'}"
 										>
@@ -538,7 +517,7 @@
 									{/if}
 									{#if item.kind === 'task' && item.state === 'in_progress'}
 										<span class="text-muted-foreground/50">·</span>
-										<span class="text-info font-medium">in progress</span>
+										<span class="text-muted-foreground">in progress</span>
 									{:else if item.kind === 'task' && item.state === 'blocked'}
 										<span class="text-muted-foreground/50">·</span>
 										<span class="text-destructive font-medium">blocked</span>
@@ -569,19 +548,19 @@
 			aria-labelledby="pulse-tab-recent"
 			class={mode === 'workspace'
 				? 'activity-timeline-list activity-workspace-list'
-				: 'space-y-1.5 p-2'}
+				: 'space-y-2 p-2'}
 		>
 			{#if logsLoading}
 				{#each Array(3) as _, i (i)}
 					<div
-						class="h-14 animate-status-pulse rounded-md border border-border/60 bg-muted/40 motion-reduce:animate-none"
+						class="h-14 animate-status-pulse rounded-lg border border-border/60 bg-muted/40 motion-reduce:animate-none"
 					></div>
 				{/each}
 			{:else if logsError}
 				<p class="text-xs text-destructive px-2 py-3">{logsError}</p>
 			{:else if recentTiles.length === 0}
-				<p class="text-xs text-muted-foreground px-2 py-4 text-center italic">
-					Nothing logged yet. As you work, recent edits show up here.
+				<p class="text-xs text-muted-foreground px-2 py-4 text-center">
+					Nothing logged yet
 				</p>
 			{:else}
 				{#each recentTiles as tile, index (tile.key)}
@@ -594,10 +573,10 @@
 						onclick={() => onOpenEntity(tile.entityType, tile.entityId)}
 						class={mode === 'workspace'
 							? 'activity-timeline-row group'
-							: 'min-h-[44px] w-full rounded-md border border-border/60 bg-background px-3 py-2.5 text-left transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:bg-muted motion-reduce:transition-none pressable'}
+							: 'min-h-11 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-left transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:bg-muted motion-reduce:transition-none pressable'}
 					>
-						<div class="flex items-start gap-2.5 min-w-0">
-							<Icon class="w-4 h-4 mt-0.5 shrink-0 {entityAccent(tile.entityType)}" />
+						<div class="flex items-start gap-2 min-w-0">
+							<Icon class="w-4 h-4 mt-0.5 shrink-0 text-muted-foreground" />
 							<div class="min-w-0 flex-1">
 								<div class="flex min-w-0 items-baseline justify-between gap-2">
 									<p class="line-clamp-1 text-sm font-medium text-foreground">
@@ -612,7 +591,7 @@
 										</time>
 									{/if}
 								</div>
-								<p class="mt-0.5 line-clamp-1 text-2xs text-muted-foreground">
+								<p class="mt-1 line-clamp-1 text-2xs text-muted-foreground">
 									<span>{activityActorPhrase(tile)}</span>
 									<span
 										class={mode === 'workspace'
@@ -664,7 +643,7 @@
 	<div
 		class={mode === 'workspace'
 			? 'activity-workspace-section min-w-0'
-			: 'overflow-hidden rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak'}
+			: 'overflow-hidden rounded-xl border border-border bg-card shadow-ink tx tx-frame tx-weak'}
 	>
 		<header
 			class="flex items-center justify-between gap-2 border-b border-border/60 {mode ===
@@ -673,20 +652,13 @@
 				: 'px-3 py-2 sm:px-4 sm:py-3'}"
 		>
 			<div class="flex items-center gap-2">
-				<div class="w-7 h-7 rounded-md bg-muted/60 flex items-center justify-center">
-					<History class="w-3.5 h-3.5 text-muted-foreground" />
-				</div>
-				<div>
-					<p class="text-xs sm:text-sm font-semibold text-foreground">
-						{mode === 'workspace' ? 'Change history' : 'Recent activity'}
-					</p>
-					{#if mode !== 'workspace'}<p class="text-2xs text-muted-foreground sm:text-xs">
-							What's moved in the last few days
-						</p>{/if}
-				</div>
+				<History class="w-4 h-4 shrink-0 text-muted-foreground" />
+				<p class="text-xs sm:text-sm font-medium text-foreground">
+					{mode === 'workspace' ? 'Change history' : 'Recent activity'}
+				</p>
 			</div>
 			{#if mode !== 'workspace' && !logsLoading}
-				<span class="shrink-0 text-2xs font-medium text-muted-foreground">
+				<span class="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
 					{recentTiles.length}
 				</span>
 			{/if}
@@ -695,20 +667,18 @@
 		<div
 			class={mode === 'workspace'
 				? 'activity-timeline-list activity-workspace-list'
-				: 'space-y-1.5 p-2 sm:p-3'}
+				: 'space-y-2 p-2 sm:p-3'}
 		>
 			{#if logsLoading}
 				{#each Array(3) as _, i (i)}
 					<div
-						class="h-12 animate-status-pulse rounded-md border border-border/60 bg-muted/40 motion-reduce:animate-none"
+						class="h-12 animate-status-pulse rounded-lg border border-border/60 bg-muted/40 motion-reduce:animate-none"
 					></div>
 				{/each}
 			{:else if logsError}
 				<p class="text-xs text-destructive px-1 py-2">{logsError}</p>
 			{:else if recentTiles.length === 0}
-				<p class="text-xs text-muted-foreground px-1 py-3 italic">
-					Nothing logged yet. As you work, recent edits show up here.
-				</p>
+				<p class="text-xs text-muted-foreground px-1 py-3">Nothing logged yet</p>
 			{:else}
 				{#each recentTiles as tile, index (tile.key)}
 					{#if mode === 'workspace' && (index === 0 || historyDay(tile.when) !== historyDay(recentTiles[index - 1]!.when))}
@@ -720,12 +690,10 @@
 						onclick={() => onOpenEntity(tile.entityType, tile.entityId)}
 						class={mode === 'workspace'
 							? 'activity-timeline-row group'
-							: 'group min-h-[44px] w-full rounded-md border border-border/60 bg-background px-2.5 py-2 text-left transition-colors hover:border-border hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable'}
+							: 'group min-h-11 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-left transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable'}
 					>
 						<div class="flex items-start gap-2 min-w-0">
-							<Icon
-								class="w-3.5 h-3.5 mt-0.5 shrink-0 {entityAccent(tile.entityType)}"
-							/>
+							<Icon class="w-3.5 h-3.5 mt-0.5 shrink-0 text-muted-foreground" />
 							<div class="min-w-0 flex-1">
 								<div class="flex min-w-0 items-baseline justify-between gap-2">
 									<p
@@ -743,7 +711,7 @@
 									{/if}
 								</div>
 								<p
-									class="mt-0.5 line-clamp-1 text-2xs text-muted-foreground sm:text-xs"
+									class="mt-1 line-clamp-1 text-2xs text-muted-foreground sm:text-xs"
 								>
 									<span>{activityActorPhrase(tile)}</span>
 									<span
@@ -760,9 +728,7 @@
 									{/if}
 									{#if tile.source && sourceLabel(tile.source)}
 										<span class="mx-1 text-muted-foreground/50">·</span>
-										<span class="text-muted-foreground/80"
-											>via {sourceLabel(tile.source)}</span
-										>
+										<span>via {sourceLabel(tile.source)}</span>
 									{/if}
 								</p>
 							</div>
@@ -789,7 +755,7 @@
 	<div
 		class={mode === 'workspace'
 			? 'activity-workspace-section min-w-0'
-			: 'overflow-hidden rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak'}
+			: 'overflow-hidden rounded-xl border border-border bg-card shadow-ink tx tx-frame tx-weak'}
 	>
 		<header
 			class="flex items-center justify-between gap-2 border-b border-border/60 {mode ===
@@ -798,23 +764,19 @@
 				: 'px-3 py-2 sm:px-4 sm:py-3'}"
 		>
 			<div class="flex items-center gap-2">
-				<div class="w-7 h-7 rounded-md bg-warning/10 flex items-center justify-center">
-					<Calendar class="w-3.5 h-3.5 text-warning" />
-				</div>
-				<div>
-					<p class="text-xs sm:text-sm font-semibold text-foreground">Schedule</p>
-				</div>
+				<Calendar class="w-4 h-4 shrink-0 text-muted-foreground" />
+				<p class="text-xs sm:text-sm font-medium text-foreground">Schedule</p>
 			</div>
 			{#if mode !== 'workspace' && upcomingItems.length > 0}
-				<span class="shrink-0 text-2xs font-medium text-muted-foreground">
+				<span class="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
 					{upcomingItems.length}
 				</span>
 			{/if}
 		</header>
 
-		<div class={mode === 'workspace' ? 'activity-workspace-list' : 'space-y-1.5 p-2 sm:p-3'}>
+		<div class={mode === 'workspace' ? 'activity-workspace-list' : 'space-y-2 p-2 sm:p-3'}>
 			{#if upcomingItems.length === 0}
-				<p class="text-xs text-muted-foreground px-1 py-3 italic">No scheduled work yet.</p>
+				<p class="text-xs text-muted-foreground px-1 py-3">No scheduled work yet</p>
 			{:else}
 				{#each upcomingItems as item, index (`${item.kind}:${item.id}`)}
 					{#if mode === 'workspace' && (index === 0 || item.isOverdue !== upcomingItems[index - 1]!.isOverdue)}
@@ -829,10 +791,10 @@
 						onclick={() => onOpenEntity(item.kind, item.id)}
 						class={mode === 'workspace'
 							? 'activity-upcoming-row group'
-							: 'group min-h-[44px] w-full rounded-md border border-border/60 bg-background px-2.5 py-2 text-left transition-colors hover:border-border hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable'}
+							: 'group min-h-11 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-left transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable'}
 					>
 						<div class="flex items-start gap-2 min-w-0">
-							<Icon class="w-3.5 h-3.5 mt-0.5 shrink-0 {entityAccent(item.kind)}" />
+							<Icon class="w-3.5 h-3.5 mt-0.5 shrink-0 text-muted-foreground" />
 							<div class="min-w-0 flex-1">
 								<div class="flex min-w-0 items-baseline justify-between gap-2">
 									<p
@@ -842,7 +804,7 @@
 									</p>
 									{#if mode === 'workspace'}
 										<span
-											class="shrink-0 text-2xs {future.isOverdue
+											class="stamp shrink-0 text-2xs {future.isOverdue
 												? 'font-medium text-destructive'
 												: 'text-muted-foreground'}"
 										>
@@ -850,7 +812,7 @@
 										</span>
 									{/if}
 								</div>
-								<p class="mt-0.5 flex items-center gap-1.5 text-2xs sm:text-xs">
+								<p class="mt-1 flex items-center gap-1 text-2xs sm:text-xs">
 									<span class="capitalize text-muted-foreground">{item.kind}</span
 									>
 									{#if mode !== 'workspace'}
@@ -861,16 +823,16 @@
 												: 'text-muted-foreground'}"
 										/>
 										<span
-											class={future.isOverdue
+											class="stamp {future.isOverdue
 												? 'text-destructive font-medium'
-												: 'text-muted-foreground'}
+												: 'text-muted-foreground'}"
 										>
 											{future.label}
 										</span>
 									{/if}
 									{#if item.kind === 'task' && item.state === 'in_progress'}
 										<span class="text-muted-foreground/50">·</span>
-										<span class="text-info font-medium">in progress</span>
+										<span class="text-muted-foreground">in progress</span>
 									{:else if item.kind === 'task' && item.state === 'blocked'}
 										<span class="text-muted-foreground/50">·</span>
 										<span class="text-destructive font-medium">blocked</span>
@@ -913,9 +875,9 @@
 
 	.activity-group-label {
 		margin: 0;
-		padding: 0.75rem 0.625rem 0.25rem;
+		padding: 0.75rem 0.75rem 0.25rem;
 		font-size: 0.75rem;
-		font-weight: 600;
+		font-weight: 400;
 		color: hsl(var(--muted-foreground));
 	}
 
@@ -927,30 +889,22 @@
 		width: 100%;
 		min-width: 0;
 		border-radius: 0.5rem;
-		padding: 0.625rem;
+		padding: 0.75rem;
 		text-align: left;
 		transition:
-			background-color 120ms ease,
-			color 120ms ease;
+			background-color 120ms cubic-bezier(0.22, 1, 0.36, 1),
+			color 120ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 
 	.activity-timeline-row:hover,
 	.activity-upcoming-row:hover {
-		background: hsl(var(--muted) / 0.55);
+		background: hsl(var(--muted) / 0.5);
 	}
 
 	.activity-timeline-row:focus-visible,
 	.activity-upcoming-row:focus-visible {
 		outline: 2px solid hsl(var(--ring));
 		outline-offset: -2px;
-	}
-
-	.activity-timeline-row > div > :global(svg) {
-		position: relative;
-		z-index: 1;
-		border-radius: 999px;
-		background: hsl(var(--background));
-		box-shadow: 0 0 0 5px hsl(var(--background));
 	}
 
 	.activity-upcoming-row {
@@ -970,16 +924,17 @@
 		justify-content: center;
 		border-radius: 0.5rem;
 		padding: 0.5rem 0.75rem;
-		color: hsl(var(--accent));
+		color: hsl(var(--muted-foreground));
 		font-size: 0.75rem;
-		font-weight: 600;
+		font-weight: 500;
 		transition:
-			background-color 120ms ease,
-			color 120ms ease;
+			background-color 120ms cubic-bezier(0.22, 1, 0.36, 1),
+			color 120ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 
 	.workspace-list-action:hover:not(:disabled) {
-		background: hsl(var(--accent) / 0.08);
+		background: hsl(var(--muted) / 0.5);
+		color: hsl(var(--foreground));
 	}
 
 	.workspace-list-action:focus-visible {

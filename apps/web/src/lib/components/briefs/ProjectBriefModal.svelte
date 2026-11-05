@@ -14,7 +14,7 @@
 	import { ExternalLink, Calendar, Target, CircleCheck } from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import type { ProjectDailyBrief } from '$lib/types/daily-brief';
-	import { renderMarkdown } from '$lib/utils/markdown';
+	import { renderAgentMarkdownContent } from '$lib/utils/markdown';
 
 	interface Props {
 		brief: ProjectDailyBrief | null;
@@ -71,7 +71,7 @@
 					prose-hr:border-border"
 			>
 				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-				{@html renderMarkdown(brief.brief_content)}
+				{@html renderAgentMarkdownContent(brief.brief_content)}
 			</div>
 
 			<!-- Key Insights -->

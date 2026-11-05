@@ -3,9 +3,9 @@
 	import {
 		CalendarRange,
 		CheckCircle2,
+		ChevronRight,
 		CircleAlert,
 		Flag,
-		ListChecks,
 		TrendingUp
 	} from '$lib/icons/lucide';
 	import type { Milestone, Project, Risk } from '$lib/types/onto';
@@ -116,7 +116,7 @@
 		if (project.state_key === 'completed' || (taskTotal > 0 && doneCount === taskTotal)) {
 			return {
 				label: 'Completed',
-				detail: 'All tracked tasks are complete.',
+				detail: 'All tracked tasks are complete',
 				tone: 'success' as const
 			};
 		}
@@ -148,14 +148,14 @@
 		if (taskTotal === 0) {
 			return {
 				label: 'Planning',
-				detail: 'No tasks are tracked yet.',
+				detail: 'No tasks tracked yet',
 				tone: 'neutral' as const
 			};
 		}
 
 		return {
 			label: 'No blockers flagged',
-			detail: `${tasksCoverage.buckets.in_progress.total} in progress · ${openRisks.length} open risks`,
+			detail: `${tasksCoverage.buckets.in_progress.total} in progress · ${openRisks.length} open ${openRisks.length === 1 ? 'risk' : 'risks'}`,
 			tone: 'clear' as const
 		};
 	});
@@ -217,6 +217,11 @@
 		});
 	}
 
+	function isLate(point: TimelinePoint): boolean {
+		if (point.kind !== 'milestone' || point.state === 'completed') return false;
+		return point.state === 'missed' || point.date.getTime() < snapshotMs;
+	}
+
 	function timelineDotClass(point: TimelinePoint): string {
 		if (point.kind === 'today') return 'timeline-dot-today';
 		if (point.kind === 'project-start' || point.kind === 'project-target') {
@@ -244,15 +249,7 @@
 <section class="trajectory-surface" aria-labelledby="project-progress-title">
 	<header class="trajectory-header">
 		<div class="trajectory-status">
-			<div
-				class={[
-					'trajectory-icon',
-					trajectory.tone === 'success' && 'bg-success/10 text-success',
-					trajectory.tone === 'attention' && 'bg-warning/10 text-warning',
-					trajectory.tone === 'clear' && 'bg-info/10 text-info',
-					trajectory.tone === 'neutral' && 'bg-muted text-muted-foreground'
-				]}
-			>
+			<span class="trajectory-icon" aria-hidden="true">
 				{#if trajectory.tone === 'success'}
 					<CheckCircle2 class="h-4 w-4" />
 				{:else if trajectory.tone === 'attention'}
@@ -260,11 +257,11 @@
 				{:else}
 					<TrendingUp class="h-4 w-4" />
 				{/if}
-			</div>
+			</span>
 			<div class="min-w-0">
-				<h2 id="project-progress-title" class="text-base font-semibold">Progress</h2>
+				<h2 id="project-progress-title" class="text-base font-medium">Progress</h2>
 				<p class="trajectory-detail">
-					<span class="font-semibold text-foreground">{trajectory.label}</span>
+					<span class="font-medium text-foreground">{trajectory.label}</span>
 					<span aria-hidden="true"> · </span>
 					{trajectory.detail}
 				</p>
@@ -276,7 +273,7 @@
 		<button
 			type="button"
 			class="completion-summary pressable"
-			aria-label={`Open Tasks. ${completionPercent}% complete, ${doneCount} of ${taskTotal} tasks.`}
+			aria-label={`Open tasks. ${completionPercent}% complete, ${doneCount} of ${taskTotal} tasks.`}
 			onclick={onOpenTasks}
 		>
 			<div
@@ -290,27 +287,24 @@
 				</div>
 			</div>
 			<div class="min-w-0 text-left">
-				<div class="flex items-center gap-2">
-					<ListChecks class="h-4 w-4 shrink-0 text-success" />
-					<p class="text-sm font-semibold">Task completion</p>
-				</div>
+				<p class="text-sm font-medium">Task completion</p>
 				<p class="mt-1 text-xs text-muted-foreground">
-					{doneCount} of {taskTotal} tracked tasks are done.
+					{doneCount} of {taskTotal} tracked tasks are done
 				</p>
-				<span class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-accent">
-					Open Tasks
-					<span aria-hidden="true">→</span>
+				<span
+					class="mt-2 inline-flex items-center gap-1 text-xs font-medium text-foreground"
+				>
+					Open tasks
+					<ChevronRight class="h-3 w-3 text-muted-foreground" aria-hidden="true" />
 				</span>
 			</div>
 		</button>
 
 		<div class="task-mix" aria-label="Task distribution">
-			<div class="flex items-end justify-between gap-3">
-				<div>
-					<p class="micro-label">TASK MIX</p>
-					<p class="mt-1 text-sm font-semibold">Where the work sits</p>
-				</div>
-				<span class="text-2xs text-muted-foreground">{taskTotal} total</span>
+			<div class="flex items-baseline justify-between gap-3">
+				<p class="text-sm font-medium">Task mix</p>
+				<span class="font-mono text-xs tabular-nums text-muted-foreground">{taskTotal}</span
+				>
 			</div>
 
 			<div
@@ -335,12 +329,12 @@
 
 			<div class="task-legend">
 				{#each visibleTaskSegments as segment (segment.key)}
-					<div class="flex min-w-0 items-center gap-1.5">
+					<div class="flex min-w-0 items-center gap-2">
 						<span class={['h-2 w-2 shrink-0 rounded-full', segment.colorClass]}></span>
-						<span class="truncate text-2xs text-muted-foreground">{segment.label}</span>
-						<strong class="ml-auto text-2xs tabular-nums text-foreground">
+						<span class="truncate text-xs text-muted-foreground">{segment.label}</span>
+						<span class="ml-auto font-mono text-xs tabular-nums text-muted-foreground">
 							{segment.count}
-						</strong>
+						</span>
 					</div>
 				{:else}
 					<p class="col-span-full text-xs text-muted-foreground">No tasks yet</p>
@@ -352,15 +346,10 @@
 	<div class="timeline-section">
 		<div class="flex flex-wrap items-end justify-between gap-2 px-1">
 			<div class="flex min-w-0 items-center gap-2">
-				<CalendarRange class="h-4 w-4 shrink-0 text-accent" />
-				<div>
-					<h3 class="text-sm font-semibold">Milestone timeline</h3>
-					<p class="text-xs text-muted-foreground">
-						Where today sits between commitments
-					</p>
-				</div>
+				<CalendarRange class="h-4 w-4 shrink-0 text-muted-foreground" />
+				<h3 class="text-sm font-medium">Milestone timeline</h3>
 			</div>
-			<p class="text-2xs text-muted-foreground">
+			<p class="text-xs tabular-nums text-muted-foreground">
 				{formatDate(project.start_at)} → {formatDate(project.end_at)}
 			</p>
 		</div>
@@ -380,10 +369,15 @@
 							<span class={['timeline-dot', timelineDotClass(point)]}>
 								<Flag class="h-3 w-3" />
 							</span>
-							<span class="line-clamp-2 text-xs font-semibold text-foreground">
+							<span class="line-clamp-2 text-xs font-medium text-foreground">
 								{point.label}
 							</span>
-							<span class="text-2xs text-muted-foreground">
+							<span
+								class={[
+									'text-2xs tabular-nums',
+									isLate(point) ? 'text-destructive' : 'text-muted-foreground'
+								]}
+							>
 								{timelineState(point)} · {formatDate(point.date)}
 							</span>
 							{#if gauge}
@@ -393,10 +387,10 @@
 					{:else}
 						<div class="timeline-point">
 							<span class={['timeline-dot', timelineDotClass(point)]}></span>
-							<span class="line-clamp-2 text-xs font-semibold text-foreground">
+							<span class="line-clamp-2 text-xs font-medium text-foreground">
 								{point.label}
 							</span>
-							<span class="text-2xs text-muted-foreground">
+							<span class="text-2xs tabular-nums text-muted-foreground">
 								{timelineState(point)} · {formatDate(point.date)}
 							</span>
 						</div>
@@ -410,12 +404,10 @@
 <style>
 	.trajectory-icon {
 		display: flex;
-		height: 2.25rem;
-		width: 2.25rem;
 		flex-shrink: 0;
-		align-items: center;
-		justify-content: center;
-		border-radius: 0.5rem;
+		align-self: flex-start;
+		margin-top: 0.25rem;
+		color: hsl(var(--muted-foreground));
 	}
 
 	.trajectory-surface {
@@ -433,11 +425,11 @@
 		display: flex;
 		min-width: 0;
 		align-items: center;
-		gap: 0.625rem;
+		gap: 0.5rem;
 	}
 
 	.trajectory-detail {
-		margin-top: 0.125rem;
+		margin-top: 0.25rem;
 		max-width: 48rem;
 		font-size: 0.75rem;
 		line-height: 1.4;
@@ -464,12 +456,12 @@
 		min-height: 9rem;
 		align-items: center;
 		gap: 1rem;
-		border-radius: 0.5rem;
+		border-radius: 0.75rem;
 		text-align: left;
 	}
 
 	.completion-summary:hover {
-		background: hsl(var(--muted) / 0.35);
+		background: hsl(var(--muted) / 0.5);
 	}
 
 	.completion-summary:focus-visible,
@@ -480,8 +472,8 @@
 
 	.completion-dial {
 		display: grid;
-		height: 6.5rem;
-		width: 6.5rem;
+		height: 6rem;
+		width: 6rem;
 		flex-shrink: 0;
 		place-items: center;
 		border-radius: 9999px;
@@ -493,8 +485,8 @@
 
 	.completion-dial-center {
 		display: flex;
-		height: 4.9rem;
-		width: 4.9rem;
+		height: 5rem;
+		width: 5rem;
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
@@ -504,6 +496,7 @@
 
 	.completion-dial-center strong {
 		font-size: 1.25rem;
+		font-weight: 500;
 		line-height: 1.4;
 		font-variant-numeric: tabular-nums;
 	}
@@ -515,15 +508,15 @@
 
 	.task-mix-bar {
 		display: flex;
-		height: 0.75rem;
+		height: 0.5rem;
 		overflow: hidden;
 		border-radius: 9999px;
 		background: hsl(var(--muted));
-		margin-top: 0.875rem;
+		margin-top: 1rem;
 	}
 
 	.task-segment {
-		min-width: 3px;
+		min-width: 4px;
 		flex-basis: 0;
 		border-right: 1px solid hsl(var(--background) / 0.75);
 	}
@@ -535,8 +528,8 @@
 	.task-legend {
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 0.4rem 0.75rem;
-		margin-top: 0.875rem;
+		gap: 0.5rem 0.75rem;
+		margin-top: 1rem;
 	}
 
 	.timeline-section {
@@ -558,12 +551,12 @@
 		display: grid;
 		min-width: 100%;
 		grid-auto-flow: column;
-		grid-auto-columns: minmax(8.75rem, 1fr);
+		grid-auto-columns: minmax(9rem, 1fr);
 	}
 
 	.timeline-line {
 		position: absolute;
-		top: 1.05rem;
+		top: 1rem;
 		left: 4.25rem;
 		right: 4.25rem;
 		height: 1px;
@@ -579,56 +572,51 @@
 		scroll-snap-align: start;
 		flex-direction: column;
 		align-items: center;
-		gap: 0.3rem;
+		gap: 0.25rem;
 		border-radius: 0.5rem;
 		padding: 0.25rem 0.5rem;
 		text-align: center;
 	}
 
 	.timeline-button:hover {
-		background: hsl(var(--muted) / 0.42);
+		background: hsl(var(--muted) / 0.5);
 	}
 
 	.timeline-dot {
 		display: flex;
-		height: 1.65rem;
-		width: 1.65rem;
+		height: 1.5rem;
+		width: 1.5rem;
 		align-items: center;
 		justify-content: center;
-		border: 2px solid hsl(var(--background));
+		border: 1px solid hsl(var(--border-strong));
 		border-radius: 9999px;
-		box-shadow: 0 0 0 1px hsl(var(--border-strong));
+		background: hsl(var(--card));
+		color: hsl(var(--muted-foreground));
 	}
 
+	/* "You are here": the one accent on this surface. Flat, no glow ring. */
 	.timeline-dot-today {
+		border-color: hsl(var(--accent));
 		background: hsl(var(--accent));
-		box-shadow:
-			0 0 0 2px hsl(var(--background)),
-			0 0 0 4px hsl(var(--accent) / 0.4);
 	}
 
 	.timeline-dot-project {
-		background: hsl(var(--foreground));
+		border-color: hsl(var(--muted-foreground));
+		background: hsl(var(--muted-foreground));
 	}
 
 	.timeline-dot-complete {
-		background: hsl(var(--success));
-		color: hsl(var(--success-foreground));
+		background: hsl(var(--muted));
 	}
 
 	.timeline-dot-active {
-		background: hsl(var(--info));
-		color: hsl(var(--info-foreground));
+		color: hsl(var(--foreground));
 	}
 
+	/* Late: a quiet destructive outline, not a filled warning node. */
 	.timeline-dot-attention {
-		background: hsl(var(--warning));
-		color: hsl(var(--warning-foreground));
-	}
-
-	.timeline-dot-upcoming {
-		background: hsl(var(--card));
-		color: hsl(var(--muted-foreground));
+		border-color: hsl(var(--destructive) / 0.6);
+		color: hsl(var(--destructive));
 	}
 
 	@media (min-width: 640px) {

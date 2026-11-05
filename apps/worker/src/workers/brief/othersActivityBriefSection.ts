@@ -408,8 +408,10 @@ export function resolveOthersActivityWindow(
 // FORMATTING
 // ============================================================================
 
+// Titles and names here are written by other people. Escape them as text: markdown
+// punctuation plus angle brackets, so no inline HTML survives into the brief or email.
 function escapeMarkdownLinkLabel(label: string): string {
-	return label.replace(/([\\[\]*_`])/g, '\\$1');
+	return label.replace(/([\\[\]*_`~<>])/g, '\\$1');
 }
 
 function itemHref(projectId: string, item: OthersActivityItem): string {

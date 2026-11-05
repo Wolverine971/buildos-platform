@@ -2,6 +2,7 @@
 import type { Database, Json, OntoProjectEventSyncJobMetadata } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { guestTaskCalendarUserId, enqueueGuestTaskCalendarSync } from './guest-task-calendar';
+import { filterToActiveProjectMembers } from './project-member-targets';
 import { logCreateAsync, logDeleteAsync, logUpdateAsync } from '../ops/async-activity-logger';
 import {
 	TaskEventSyncCoordinator,
@@ -245,8 +246,10 @@ export class WorkerTaskEventMutationPort implements TaskEventMutationPort {
 			.eq('project_id', projectId)
 			.or('sync_enabled.is.null,sync_enabled.eq.true');
 		if (error) throw new Error(error.message);
-		const targetUserIds = Array.from(
-			new Set((mappings ?? []).map((mapping) => mapping.user_id).filter(Boolean))
+		const targetUserIds = await filterToActiveProjectMembers(
+			this.admin,
+			projectId,
+			(mappings ?? []).map((mapping) => mapping.user_id)
 		);
 		return targetUserIds.length > 0 ? targetUserIds : [triggeredByUserId];
 	}

@@ -25,7 +25,9 @@ export type DumpKind =
 	| 'doc'
 	| 'risk'
 	| 'update'
-	| 'ask';
+	| 'ask'
+	/** Chat lab only: a bigger job for a thread (research what a project holds, draft a plan). */
+	| 'work';
 
 export const DUMP_KINDS: readonly DumpKind[] = [
 	'project',
@@ -36,7 +38,8 @@ export const DUMP_KINDS: readonly DumpKind[] = [
 	'doc',
 	'risk',
 	'update',
-	'ask'
+	'ask',
+	'work'
 ];
 
 export type DumpMatch = 'exact' | 'close' | 'fuzzy' | 'sentence' | 'none';

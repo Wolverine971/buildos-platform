@@ -1,15 +1,65 @@
 // apps/worker/src/lib/utils/markdown.ts
-import { marked } from 'marked';
+import { Marked } from 'marked';
 import sanitizeHtml from 'sanitize-html';
 
-// Configure marked with useful options
-marked.setOptions({
+// The worker renders markdown only for outgoing email (the daily brief). That markdown mixes
+// model output with text other people wrote (shared-project titles, names), so it is treated
+// as untrusted: raw inline HTML renders as text, images are dropped (no remote loads from the
+// mail client), and links stay live only for BuildOS pages and Google Calendar event links.
+const emailMarked = new Marked({
 	breaks: true, // Convert line breaks to <br>
-	gfm: true // Enable GitHub Flavored Markdown
+	gfm: true, // Enable GitHub Flavored Markdown
+	async: false,
+	renderer: {
+		html({ text }) {
+			return escapeHtml(text);
+		}
+	}
 });
 
-// Safe HTML sanitization options
-const sanitizeOptions = {
+const DEFAULT_APP_ORIGIN = 'https://build-os.com';
+
+function appOrigins(): Set<string> {
+	const origins = new Set<string>([DEFAULT_APP_ORIGIN, 'https://www.build-os.com']);
+	const configured = process.env.PUBLIC_APP_URL?.trim();
+	if (configured) {
+		try {
+			origins.add(new URL(configured).origin);
+		} catch {
+			// Ignore a malformed env value; the default origin still applies.
+		}
+	}
+	return origins;
+}
+
+const GOOGLE_CALENDAR_HOSTS = new Set(['calendar.google.com', 'www.google.com']);
+
+/** True for hrefs the brief email may keep clickable. */
+export function isAllowedEmailLinkHref(href: string | undefined | null): boolean {
+	const value = href?.trim();
+	if (!value) return false;
+	// Relative app paths (not protocol-relative "//host" or "/\\host").
+	if (value.startsWith('/')) return !value.startsWith('//') && !value.startsWith('/\\');
+	if (value.startsWith('#')) return true;
+	if (value.toLowerCase().startsWith('mailto:')) return true;
+
+	let url: URL;
+	try {
+		url = new URL(value);
+	} catch {
+		return false;
+	}
+	if (url.protocol !== 'https:' && url.protocol !== 'http:') return false;
+	if (appOrigins().has(url.origin)) return true;
+	// Google Calendar event links from the brief's calendar section.
+	return (
+		url.protocol === 'https:' &&
+		GOOGLE_CALENDAR_HOSTS.has(url.hostname) &&
+		(url.hostname === 'calendar.google.com' || url.pathname.startsWith('/calendar/'))
+	);
+}
+
+const sanitizeOptions: sanitizeHtml.IOptions = {
 	allowedTags: [
 		'h1',
 		'h2',
@@ -31,7 +81,9 @@ const sanitizeOptions = {
 		'code',
 		'pre',
 		'a',
-		'img',
+		// Unlinked anchors become attribute-less spans. Transforming into a discarded tag
+		// trips a sanitize-html 2.17 bug that swallows the rest of the text.
+		'span',
 		'hr',
 		'table',
 		'thead',
@@ -42,7 +94,6 @@ const sanitizeOptions = {
 	],
 	allowedAttributes: {
 		a: ['href', 'title', 'target', 'rel'],
-		img: ['src', 'alt', 'title', 'width', 'height'],
 		code: ['class'],
 		pre: ['class']
 	},
@@ -50,8 +101,13 @@ const sanitizeOptions = {
 		code: ['language-*'],
 		pre: ['language-*']
 	},
+	allowedSchemes: ['http', 'https', 'mailto'],
+	allowProtocolRelative: false,
 	transformTags: {
 		a: (tagName: string, attribs: sanitizeHtml.Attributes) => {
+			if (!isAllowedEmailLinkHref(attribs.href)) {
+				return { tagName: 'span', attribs: {} };
+			}
 			// Make external links open in new tab
 			if (
 				attribs.href &&
@@ -66,14 +122,13 @@ const sanitizeOptions = {
 };
 
 /**
- * Convert markdown to safe HTML
+ * Convert untrusted markdown to HTML that is safe to embed in an email.
  */
 export function renderMarkdown(text: string | null | undefined): string {
 	if (!text || typeof text !== 'string') return '';
 
 	try {
-		// marked v14 returns string when async is false (which is the default)
-		const html = marked.parse(text.trim()) as string;
+		const html = emailMarked.parse(text.trim()) as string;
 		return sanitizeHtml(html, sanitizeOptions);
 	} catch (error) {
 		console.error('Error rendering markdown:', error);

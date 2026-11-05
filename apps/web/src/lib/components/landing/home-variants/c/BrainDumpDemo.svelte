@@ -736,10 +736,10 @@
 		{#if !wide && stageW}
 			<!-- Phone: invisible copies of both dumps, finished, to size the composer boxes -->
 			<div class="invisible absolute top-0 left-0" style:width="{stageW - 26}px">
-				<p bind:offsetHeight={textOneH} class="px-3 py-2 text-[0.8125rem] leading-snug">
+				<p bind:offsetHeight={textOneH} class="px-3 py-2 text-sm leading-snug">
 					{#each PIECES_ONE as piece (piece.key)}{piece.text}{/each}
 				</p>
-				<p bind:offsetHeight={textTwoH} class="px-3 py-2 text-[0.8125rem] leading-snug">
+				<p bind:offsetHeight={textTwoH} class="px-3 py-2 text-sm leading-snug">
 					{#each PIECES_TWO as piece (piece.key)}{piece.text}{#if piece.mark}<span
 								class="ml-1 inline-block px-1 text-2xs font-semibold leading-4"
 								>→ {routedProject(piece.mark)}</span
@@ -840,7 +840,7 @@
 				<p
 					class="flex-1 overflow-hidden px-3 py-2 text-foreground {wide
 						? 'text-base leading-relaxed'
-						: 'text-[0.8125rem] leading-snug'}"
+						: 'text-sm leading-snug'}"
 				>
 					{#if composer === 'one'}
 						{@render dumpText(PIECES_ONE, typedOne, false)}{#if typedOne < LEN_ONE}<span
@@ -880,7 +880,7 @@
 					<span
 						class="max-w-72 rounded-md border border-border-strong bg-card px-1 py-0.5 font-medium text-foreground shadow-ink-strong {wide
 							? 'text-base'
-							: 'text-[0.8125rem]'}"
+							: 'text-sm'}"
 					>
 						<span class="rounded-sm px-0.5 {KIND_TONE[flyer.mark.kind]}"
 							>{flyer.mark.text}</span

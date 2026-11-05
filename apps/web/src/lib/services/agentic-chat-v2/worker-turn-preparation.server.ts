@@ -1240,6 +1240,7 @@ async function loadOwnedWorkerHistory(params: {
 	const attachmentRowsRead = observed(
 		loadHistoryAttachmentRows({
 			serviceClient: params.serviceClient,
+			userId: params.userId,
 			sessionId: params.sessionId,
 			messageIds: ids,
 			limit: params.limit
@@ -1482,6 +1483,7 @@ function applyWorkerPromptOverlayToPreparedSurface(params: {
 
 async function loadHistoryAttachmentRows(params: {
 	serviceClient: FastChatSupabaseClient;
+	userId: string;
 	sessionId: string;
 	messageIds: string[];
 	limit: number;
@@ -1501,7 +1503,71 @@ async function loadHistoryAttachmentRows(params: {
 	if (attachmentError || !Array.isArray(loadedAttachmentRows)) {
 		throw databaseError('Worker history attachment lookup failed');
 	}
-	return loadedAttachmentRows as ChatHistorySnapshot['attachments'];
+	return dropUnreadableHistoryAssets({
+		serviceClient: params.serviceClient,
+		userId: params.userId,
+		rows: loadedAttachmentRows as ChatHistorySnapshot['attachments']
+	});
+}
+
+/**
+ * Attachment rows are written by the user, so their asset_id is not proof the
+ * user can read that asset. The service client joins any asset, so keep only
+ * assets whose project the chat's user can still read (owner or active member).
+ */
+async function dropUnreadableHistoryAssets(params: {
+	serviceClient: FastChatSupabaseClient;
+	userId: string;
+	rows: ChatHistorySnapshot['attachments'];
+}): Promise<ChatHistorySnapshot['attachments']> {
+	const assetProjectId = (row: unknown): string | null => {
+		const asset = (row as { asset?: unknown }).asset;
+		const value = Array.isArray(asset) ? asset[0] : asset;
+		const projectId = isRecord(value) ? value.project_id : null;
+		return typeof projectId === 'string' ? projectId : null;
+	};
+	const hasAsset = (row: unknown): boolean => {
+		const asset = (row as { asset?: unknown }).asset;
+		return Array.isArray(asset) ? asset.length > 0 : asset != null;
+	};
+	if (!params.rows.some(hasAsset)) return params.rows;
+	const projectIds = Array.from(
+		new Set(params.rows.map(assetProjectId).filter((id): id is string => id !== null))
+	);
+
+	const readable = new Set<string>();
+	if (projectIds.length > 0) {
+		const { data: actor, error: actorError } = await (params.serviceClient as any)
+			.from('onto_actors')
+			.select('id')
+			.eq('user_id', params.userId)
+			.maybeSingle();
+		if (actorError) throw databaseError('Worker history attachment access lookup failed');
+		if (actor?.id) {
+			const checks = await Promise.all(
+				projectIds.map(async (projectId) => {
+					const { data, error } = await (params.serviceClient as any).rpc(
+						'actor_has_project_member_access',
+						{
+							p_actor_id: actor.id,
+							p_project_id: projectId,
+							p_required_access: 'read'
+						}
+					);
+					if (error) {
+						throw databaseError('Worker history attachment access lookup failed');
+					}
+					return data === true ? projectId : null;
+				})
+			);
+			for (const projectId of checks) if (projectId) readable.add(projectId);
+		}
+	}
+	return params.rows.filter((row) => {
+		if (!hasAsset(row)) return true;
+		const projectId = assetProjectId(row);
+		return projectId !== null && readable.has(projectId);
+	});
 }
 
 async function loadHistoryToolExecutions(params: {

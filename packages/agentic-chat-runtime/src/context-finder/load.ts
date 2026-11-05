@@ -2,7 +2,11 @@
 //
 // One loader for every host. The caller supplies the authority: the web passes the user's
 // RLS-scoped client; the worker passes its service client after the workflow access check.
-import type { ContextFinderProjectV1 } from './packets';
+import type {
+	ContextFinderDocumentText,
+	ContextFinderDocumentTextSource,
+	ContextFinderProjectV1
+} from './packets';
 import { START_HERE_TYPE_KEY } from './finder';
 import type { WorkspaceProjectInputV1 } from './workspace';
 import { isArchivedOrDeletedRecord } from '../tools/record-scope';
@@ -43,8 +47,10 @@ const FAMILIES = [
 	[
 		'documents',
 		'onto_documents',
+		// Outline-first (tasker 150): headings from the stored outline, never the body. The
+		// generated content_hash says whether that outline still matches the text.
 		// table: only the props.table schema, null for ordinary documents (BuildOS Tables).
-		'id,title,description,type_key,state_key,content,updated_at,created_at,table:props->table'
+		'id,title,description,type_key,state_key,outline,content_hash,updated_at,created_at,table:props->table'
 	],
 	['tasks', 'onto_tasks', 'id,title,state_key,priority,due_at,description,updated_at,created_at'],
 	['goals', 'onto_goals', 'id,name,state_key,target_date,description,updated_at,created_at'],
@@ -98,10 +104,109 @@ export async function loadContextFinderProject(
 				throw new ContextFinderLoadError(table);
 			return [key, currentRows(key, result.data as Record<string, unknown>[])];
 		})
-	) as Omit<ContextFinderProjectV1, 'project'>;
+	) as Omit<ContextFinderProjectV1, 'project' | 'documentText'>;
+	const documentText = documentTextSource(client, projectId);
+	// A missing or stale outline (older documents, writers that skip the outline refresh)
+	// needs the text to find its headings; everything else stays an outline.
+	const stale = loaded.documents.filter((doc) => !hasFreshOutline(doc));
+	if (stale.length) {
+		const texts = await documentText(
+			stale.map((doc) => String(doc.id)),
+			signal
+		);
+		for (const doc of stale) {
+			const text = texts.get(String(doc.id));
+			if (!text) continue;
+			// The hash of the text read, which may be newer than the listing's.
+			doc.content = text.content;
+			doc.content_hash = text.contentHash;
+		}
+	}
 	return {
 		project: { id: row.id, name: String(row.name ?? ''), description: row.description ?? null },
-		...loaded
+		...loaded,
+		documentText
+	};
+}
+
+/**
+ * The project with `content` on the given document rows, for hosts that quote or diff
+ * specific documents (drift, replays). Rows that already carry text are left alone; the
+ * project comes back unchanged when the read fails, and an aborted read throws.
+ */
+export async function withContextFinderDocumentText(
+	project: ContextFinderProjectV1,
+	ids: Iterable<string>,
+	signal?: AbortSignal
+): Promise<ContextFinderProjectV1> {
+	const wanted = new Set(ids);
+	const missing = project.documents
+		.filter((doc) => wanted.has(String(doc.id)) && typeof doc.content !== 'string')
+		.map((doc) => String(doc.id));
+	if (!missing.length || !project.documentText) return project;
+	let texts: Map<string, ContextFinderDocumentText>;
+	try {
+		texts = await project.documentText(missing, signal);
+	} catch {
+		signal?.throwIfAborted();
+		return project;
+	}
+	return {
+		...project,
+		documents: project.documents.map((doc) => {
+			const text = texts.get(String(doc.id));
+			return text ? { ...doc, content: text.content, content_hash: text.contentHash } : doc;
+		})
+	};
+}
+
+/** True when the row's stored outline was built from its current text. */
+export function hasFreshOutline(doc: Record<string, unknown>): boolean {
+	const outline = doc.outline as { content_hash?: unknown; nodes?: unknown } | null | undefined;
+	return (
+		!!outline &&
+		typeof outline.content_hash === 'string' &&
+		Array.isArray(outline.nodes) &&
+		outline.content_hash === doc.content_hash
+	);
+}
+
+/** Ids per `in` filter; keeps the request URL well under PostgREST's limit. */
+const TEXT_READ_CHUNK = 100;
+
+/** Document text for ids in this project, read with the loader's client and authority. */
+function documentTextSource(
+	client: ContextFinderReadClient,
+	projectId: string
+): ContextFinderDocumentTextSource {
+	return async (ids, signal) => {
+		const out = new Map<string, ContextFinderDocumentText>();
+		const unique = [...new Set(ids)];
+		const chunks: string[][] = [];
+		for (let i = 0; i < unique.length; i += TEXT_READ_CHUNK)
+			chunks.push(unique.slice(i, i + TEXT_READ_CHUNK));
+		const results = await Promise.all(
+			chunks.map((chunk) => {
+				let query = client
+					.from('onto_documents')
+					.select('id,content,content_hash')
+					.eq('project_id', projectId)
+					.in('id', chunk)
+					.is('deleted_at', null);
+				if (signal) query = query.abortSignal(signal);
+				return query;
+			})
+		);
+		for (const result of results) {
+			if (result.error || !Array.isArray(result.data))
+				throw new ContextFinderLoadError('onto_documents');
+			for (const row of result.data as Record<string, unknown>[])
+				out.set(String(row.id), {
+					content: typeof row.content === 'string' ? row.content : '',
+					contentHash: typeof row.content_hash === 'string' ? row.content_hash : null
+				});
+		}
+		return out;
 	};
 }
 

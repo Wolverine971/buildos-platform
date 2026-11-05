@@ -5,6 +5,26 @@ import { isRedirect, redirect } from '@sveltejs/kit';
 import { createLogger } from '@buildos/shared-utils';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
+const KNOWN_APP_ORIGINS = ['https://build-os.com', 'https://www.build-os.com'];
+
+/**
+ * Short links only lead into BuildOS. Returns a same-site path for a destination on the
+ * app origin, or null for anything else (other sites, non-http schemes, junk).
+ */
+function resolveShortLinkDestination(destination: unknown, requestOrigin: string): string | null {
+	if (typeof destination !== 'string' || !destination.trim()) return null;
+	try {
+		const url = new URL(destination.trim(), requestOrigin);
+		if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+		if (url.origin !== requestOrigin && !KNOWN_APP_ORIGINS.includes(url.origin)) return null;
+		// A leading '//' would be read by the browser as another host.
+		const path = url.pathname.replace(/^\/+/, '/');
+		return `${path}${url.search}${url.hash}`;
+	} catch {
+		return null;
+	}
+}
+
 /**
  * Link Shortener Redirect Endpoint
  *
@@ -21,7 +41,7 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
  *
  * Usage: https://build-os.com/l/abc123 → https://build-os.com/app/briefs/today
  */
-export const GET: RequestHandler = async ({ params }) => {
+export const GET: RequestHandler = async ({ params, url }) => {
 	const { short_code } = params;
 	// The short code is the public capability. Keep the tracking tables themselves
 	// inaccessible through PostgREST and perform the narrow lookup/update here.
@@ -158,8 +178,15 @@ export const GET: RequestHandler = async ({ params }) => {
 			totalClicks: (link.click_count || 0) + 1
 		});
 
-		// Redirect to destination URL
-		throw redirect(302, link.destination_url);
+		const destination = resolveShortLinkDestination(link.destination_url, url.origin);
+		if (!destination) {
+			logger.warn('Short link destination is not on the app origin; sending home', {
+				linkId: link.id
+			});
+			throw redirect(302, '/');
+		}
+
+		throw redirect(302, destination);
 	} catch (error) {
 		// If it's a redirect, let it through
 		if (isRedirect(error)) {

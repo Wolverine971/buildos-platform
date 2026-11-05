@@ -460,6 +460,107 @@ describe('Agentic Chat worker turn preparation', () => {
 		expect(note).not.toContain('C < D');
 	});
 
+	describe('history image attachments', () => {
+		const messageId = 'f1000000-0000-4000-8000-000000000011';
+		const ownProject = 'f1000000-0000-4000-8000-000000000021';
+		const foreignProject = 'f1000000-0000-4000-8000-000000000022';
+		const asset = (id: string, projectId: string, text: string) => ({
+			id,
+			project_id: projectId,
+			storage_bucket: 'onto-assets',
+			storage_path: `${projectId}/${id}.png`,
+			original_filename: `${text}.png`,
+			content_type: 'image/png',
+			file_size_bytes: 10,
+			width: 1,
+			height: 1,
+			checksum_sha256: null,
+			ocr_status: 'complete',
+			extraction_summary: null,
+			extracted_text: text
+		});
+		const attachment = (assetRow: ReturnType<typeof asset>, order: number) => ({
+			message_id: messageId,
+			session_id: SESSION_ID,
+			asset_id: assetRow.id,
+			project_id: assetRow.project_id,
+			attachment_kind: 'onto_asset',
+			media_type: 'image',
+			role: 'attachment',
+			display_order: order,
+			metadata: {},
+			asset: assetRow
+		});
+
+		it("drops an attached asset from a project the chat's user cannot read", async () => {
+			const serviceClient = serviceClientWithTables({
+				chat_sessions: [
+					{
+						id: SESSION_ID,
+						user_id: USER_ID,
+						context_type: 'global',
+						entity_id: null,
+						summary: null,
+						agent_metadata: {}
+					}
+				],
+				chat_messages: [
+					{
+						id: messageId,
+						session_id: SESSION_ID,
+						user_id: USER_ID,
+						role: 'user',
+						content: 'Look at these',
+						metadata: null,
+						created_at: '2026-08-03T10:01:00.000Z'
+					}
+				],
+				chat_message_attachments: [
+					attachment(
+						asset('f1000000-0000-4000-8000-000000000031', ownProject, 'OWN-TEXT'),
+						0
+					),
+					attachment(
+						asset(
+							'f1000000-0000-4000-8000-000000000032',
+							foreignProject,
+							'FOREIGN-TEXT'
+						),
+						1
+					)
+				],
+				chat_tool_executions: [],
+				onto_actors: [{ id: 'actor-1', user_id: USER_ID }]
+			});
+			serviceClient.rpc.mockImplementation(async (name: string, args: any) => {
+				if (name !== 'actor_has_project_member_access') return { data: null, error: null };
+				return { data: args.p_project_id === ownProject, error: null };
+			});
+
+			const result = await prepareAgenticChatWorkerAdmission({
+				userClient: {} as never,
+				serviceClient: serviceClient as never,
+				userId: USER_ID,
+				command: command({ sessionId: SESSION_ID, message: 'And now?' }) as never,
+				lease: {
+					decisionId: DECISION_ID,
+					mode: 'worker_realtime',
+					contractVersion: 'agentic_chat_worker_v1'
+				},
+				dependencies: dependencies()
+			});
+
+			const history = JSON.stringify(result.args.p_artifact_history);
+			expect(history).toContain('OWN-TEXT');
+			expect(history).not.toContain('FOREIGN-TEXT');
+			expect(serviceClient.rpc).toHaveBeenCalledWith('actor_has_project_member_access', {
+				p_actor_id: 'actor-1',
+				p_project_id: foreignProject,
+				p_required_access: 'read'
+			});
+		});
+	});
+
 	it('builds an inline-session RPC value with empty history, null lineage, exact hashes, and server ids', async () => {
 		const result = await prepareAgenticChatWorkerAdmission({
 			userClient: {} as never,

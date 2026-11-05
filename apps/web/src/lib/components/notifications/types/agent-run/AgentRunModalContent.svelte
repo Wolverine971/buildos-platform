@@ -33,7 +33,7 @@
 		agentRunStatusLabel,
 		agentRunTriggerLabel
 	} from '$lib/services/agent-run-notification-data';
-	import { renderMarkdown, getProseClasses } from '$lib/utils/markdown';
+	import { getProseClasses, renderAgentMarkdownContent } from '$lib/utils/markdown';
 	import AgentRunSteerControl from './AgentRunSteerControl.svelte';
 	import ChangeSetFailureSummary from './ChangeSetFailureSummary.svelte';
 	import ChangeSetReview from './ChangeSetReview.svelte';
@@ -573,7 +573,7 @@
 							<div>
 								<div class="micro-label text-muted-foreground">Summary</div>
 								<div class="agent-run-prose {proseClasses} mt-0.5 break-words">
-									{@html renderMarkdown(result.summary)}
+									{@html renderAgentMarkdownContent(result.summary)}
 								</div>
 							</div>
 						{/if}
@@ -581,7 +581,7 @@
 							<div>
 								<div class="micro-label text-muted-foreground">Answer</div>
 								<div class="agent-run-prose {proseClasses} mt-0.5 break-words">
-									{@html renderMarkdown(result.answer)}
+									{@html renderAgentMarkdownContent(result.answer)}
 								</div>
 							</div>
 						{/if}

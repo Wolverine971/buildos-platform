@@ -46,6 +46,7 @@ import {
 } from './project-calendar-read.service';
 import { ProjectCalendarService } from './project-calendar.service';
 import { guestTaskCalendarUserId, enqueueGuestTaskCalendarSync } from './guest-task-calendar';
+import { filterToActiveProjectMembers } from './project-member-targets';
 export { guestTaskCalendarUserId, enqueueGuestTaskCalendarSync } from './guest-task-calendar';
 
 type OntoEventRow = Database['public']['Tables']['onto_events']['Row'];
@@ -1666,8 +1667,10 @@ export class OntoEventSyncService extends OntoEventReadService {
 			throw new Error(error.message);
 		}
 
-		const targetUserIds = Array.from(
-			new Set((mappings ?? []).map((mapping) => mapping.user_id).filter(Boolean))
+		const targetUserIds = await filterToActiveProjectMembers(
+			this.supabase,
+			projectId,
+			(mappings ?? []).map((mapping) => mapping.user_id)
 		);
 
 		return {

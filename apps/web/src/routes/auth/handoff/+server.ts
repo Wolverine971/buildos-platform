@@ -16,8 +16,18 @@ import {
  *
  * The response is a redirect with no-store caching (set for every /auth/ path by the server
  * hook), so the code does not linger in a rendered page.
+ *
+ * Login CSRF guard: the app opens this URL itself, so the browser reports the navigation as
+ * Sec-Fetch-Site "none". A link planted on another site arrives as "cross-site" (or
+ * "same-site" from a sibling subdomain); those are refused before the code is spent, so a
+ * stranger's code can't sign this browser into their account.
  */
-export const GET: RequestHandler = async ({ url, locals: { supabase } }) => {
+export const GET: RequestHandler = async ({ url, request, locals: { supabase } }) => {
+	const fetchSite = request.headers.get('sec-fetch-site');
+	if (fetchSite === 'cross-site' || fetchSite === 'same-site') {
+		throw redirect(303, '/auth/login?error=handoff_failed');
+	}
+
 	const code = url.searchParams.get('code');
 	const admin = createAdminSupabaseClient();
 

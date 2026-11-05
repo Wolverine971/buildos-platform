@@ -90,8 +90,6 @@
 	type ColumnDef = {
 		key: ColumnKey;
 		label: string;
-		accent: string;
-		bg: string;
 		icon: typeof Circle;
 		/** What kind of drop this column accepts */
 		dropAction: 'state' | 'archive';
@@ -103,8 +101,6 @@
 		{
 			key: 'backlog',
 			label: 'Backlog',
-			accent: 'text-muted-foreground',
-			bg: 'bg-muted/40',
 			icon: Circle,
 			dropAction: 'state',
 			targetState: 'todo'
@@ -112,8 +108,6 @@
 		{
 			key: 'in_progress',
 			label: 'In progress',
-			accent: 'text-info',
-			bg: 'bg-info/10',
 			icon: Flame,
 			dropAction: 'state',
 			targetState: 'in_progress'
@@ -121,8 +115,6 @@
 		{
 			key: 'blocked',
 			label: 'Blocked',
-			accent: 'text-warning',
-			bg: 'bg-warning/10',
 			icon: PauseCircle,
 			dropAction: 'state',
 			targetState: 'blocked'
@@ -130,8 +122,6 @@
 		{
 			key: 'done',
 			label: 'Done',
-			accent: 'text-success',
-			bg: 'bg-success/10',
 			icon: CheckCircle2,
 			dropAction: 'state',
 			targetState: 'done'
@@ -141,8 +131,6 @@
 	const ARCHIVED_COLUMN: ColumnDef = {
 		key: 'archived',
 		label: 'Archived',
-		accent: 'text-muted-foreground',
-		bg: 'bg-muted/40',
 		icon: Archive,
 		dropAction: 'archive'
 	};
@@ -657,9 +645,9 @@
 		className: string;
 	} | null {
 		if (typeof p !== 'number') return null;
-		if (p <= 1) return { label: 'P1', className: 'text-destructive' };
-		if (p === 2) return { label: 'P2', className: 'text-warning' };
-		if (p === 3) return { label: 'P3', className: 'text-info' };
+		if (p <= 1) return { label: 'P1', className: 'text-muted-foreground' };
+		if (p === 2) return { label: 'P2', className: 'text-muted-foreground' };
+		if (p === 3) return { label: 'P3', className: 'text-muted-foreground' };
 		return null;
 	}
 
@@ -711,7 +699,7 @@
 		{#if search}
 			<div class="min-w-0 basis-full sm:basis-0 sm:flex-1">{@render search()}</div>
 		{/if}
-		<div class="flex w-full items-center gap-1.5 sm:w-auto">
+		<div class="flex w-full items-center gap-1 sm:w-auto">
 			<button
 				type="button"
 				onclick={() => (showFilters = !showFilters)}
@@ -720,10 +708,10 @@
 				aria-label={activeDueFilters.size > 0
 					? `Filters, ${activeDueFilters.size} active`
 					: 'Filters'}
-				class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none pressable
+				class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none pressable
 					{showFilters || activeDueFilters.size > 0
 					? 'bg-accent/10 text-accent'
-					: 'text-muted-foreground hover:bg-muted hover:text-foreground'}"
+					: 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}"
 			>
 				<Filter class="h-3.5 w-3.5" />
 				Filters
@@ -741,15 +729,17 @@
 				aria-controls="task-bucket-archived"
 				aria-expanded={showArchived}
 				aria-label={showArchived ? 'Hide archived tasks' : 'Show archived tasks'}
-				class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none pressable
+				class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none pressable
 					{showArchived
 					? 'bg-muted text-foreground'
-					: 'text-muted-foreground hover:bg-muted hover:text-foreground'}"
+					: 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}"
 			>
 				<Archive class="h-3.5 w-3.5" />
 				<span>Archived</span>
 				{#if archivedLoaded && archivedTotal > 0}
-					<span class="text-2xs text-muted-foreground">{archivedTotal}</span>
+					<span class="font-mono text-2xs tabular-nums text-muted-foreground"
+						>{archivedTotal}</span
+					>
 				{/if}
 			</button>
 			{#if createAction}<div class="ml-auto sm:ml-1">{@render createAction()}</div>{/if}
@@ -767,7 +757,7 @@
 				role="group"
 				aria-label="Due date filters"
 			>
-				<span class="micro-label mr-1 text-muted-foreground">Due date</span>
+				<span class="mr-1 text-xs text-muted-foreground">Due date</span>
 				{#each DUE_FILTERS as filter (filter.key)}
 					{@const isActive = activeDueFilters.has(filter.key)}
 					<button
@@ -775,18 +765,18 @@
 						onclick={() => toggleDueFilter(filter.key)}
 						aria-pressed={isActive}
 						aria-label="Filter by {filter.label.toLowerCase()} tasks"
-						class="inline-flex min-h-[44px] items-center gap-2 rounded-md border px-3 py-2 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable
+						class="inline-flex min-h-[44px] items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable
 							{isActive
 							? 'border-accent/40 bg-accent/10 text-foreground'
-							: 'border-border/70 bg-card text-muted-foreground hover:border-foreground/20 hover:text-foreground'}"
+							: 'border-border/70 bg-card text-muted-foreground hover:bg-muted/50 hover:text-foreground'}"
 					>
 						<filter.icon
 							class="h-3.5 w-3.5 {filter.key === 'overdue'
 								? 'text-destructive'
-								: 'text-accent'}"
+								: 'text-muted-foreground'}"
 						/>
 						<span>{filter.label}</span>
-						<span class="text-2xs text-muted-foreground"
+						<span class="font-mono text-2xs tabular-nums text-muted-foreground"
 							>{dueFilterCount(filter.key)}</span
 						>
 					</button>
@@ -797,7 +787,7 @@
 
 	{#if selectedDueFilters.length > 0}
 		<div
-			class="flex flex-wrap items-center gap-1.5 border-b border-border/50 px-3 py-2"
+			class="flex flex-wrap items-center gap-2 border-b border-border/50 px-3 py-2"
 			aria-label="Active task filters"
 		>
 			{#each selectedDueFilters as filter (filter.key)}
@@ -805,7 +795,7 @@
 					type="button"
 					onclick={() => toggleDueFilter(filter.key)}
 					aria-label="Remove {filter.label.toLowerCase()} filter"
-					class="inline-flex min-h-[32px] items-center gap-1.5 rounded-md bg-accent/10 px-2 text-xs font-medium text-foreground transition-colors hover:bg-accent/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+					class="inline-flex min-h-[32px] items-center gap-1 rounded-lg bg-accent/10 px-2 text-xs font-medium text-foreground transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 				>
 					{filter.label}
 					<X class="h-3 w-3 text-muted-foreground" />
@@ -814,7 +804,7 @@
 			<button
 				type="button"
 				onclick={clearDueFilters}
-				class="min-h-[32px] rounded-md px-2 text-xs text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+				class="min-h-[32px] rounded-lg px-2 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 			>
 				Clear filters
 			</button>
@@ -829,7 +819,7 @@
 			id="task-bucket-{col.key}"
 			data-column-key={col.key}
 			tabindex="-1"
-			class="kanban-column flex min-h-[220px] flex-col rounded-md border bg-card/45 transition-colors
+			class="kanban-column flex min-h-[220px] flex-col rounded-xl border bg-card/45 transition-colors
 				{isOver
 				? 'border-foreground/60 bg-foreground/[0.06] ring-1 ring-foreground/20'
 				: 'border-border/60'}"
@@ -840,18 +830,17 @@
 			aria-label="{col.label} column"
 		>
 			<div
-				class="flex items-center justify-between px-3 py-2.5 gap-2 border-b border-border/40"
+				class="flex items-center justify-between gap-2 border-b border-border/40 px-3 py-3"
 			>
-				<div class="flex items-center gap-2 min-w-0">
-					<span
-						class="w-6 h-6 rounded-md {col.bg} flex items-center justify-center shrink-0"
-					>
-						<col.icon class="w-3.5 h-3.5 {col.accent}" />
-					</span>
-					<span class="text-sm font-semibold text-foreground truncate">
+				<div class="flex min-w-0 items-center gap-2">
+					<col.icon
+						class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+						aria-hidden="true"
+					/>
+					<span class="truncate text-sm font-medium text-foreground">
 						{col.label}
 					</span>
-					<span class="text-2xs shrink-0 text-muted-foreground">
+					<span class="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
 						{isArchive && archivedLoaded ? archivedTotal : items.length}
 					</span>
 				</div>
@@ -864,7 +853,7 @@
 						type="button"
 						onclick={() => void loadArchived()}
 						disabled={archivedLoading}
-						class="inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2 py-1.5 text-2xs font-medium text-foreground/80 transition-colors hover:bg-muted/60 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:opacity-50 motion-reduce:transition-none pressable"
+						class="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-2 py-2 text-2xs font-medium text-foreground/80 transition-colors hover:bg-muted/60 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:opacity-50 motion-reduce:transition-none pressable"
 					>
 						{#if archivedLoading}
 							<LoaderCircle
@@ -880,10 +869,10 @@
 				</div>
 			{/if}
 
-			<div class="flex-1 p-2 sm:p-2.5 space-y-2 overflow-y-auto max-h-[520px]">
+			<div class="max-h-[520px] flex-1 space-y-2 overflow-y-auto p-2">
 				{#if items.length === 0}
 					<div
-						class="rounded-md border border-dashed border-border/60 px-3 py-6 text-center text-xs text-muted-foreground/70 italic"
+						class="rounded-lg border border-dashed border-border/60 px-3 py-6 text-center text-xs text-muted-foreground/70"
 					>
 						{#if isArchive}
 							{archivedLoaded
@@ -919,8 +908,8 @@
 								title={isArchivedCard
 									? 'Drag to a state column to restore'
 									: undefined}
-								class="group min-h-[44px] w-full rounded-md border border-border bg-card px-2.5 py-2 text-left shadow-none transition-all hover:border-foreground/20 hover:shadow-ink focus:outline-none focus-visible:shadow-ink-strong focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable
-								{isDragging ? 'opacity-40 shadow-ink-strong' : ''}
+								class="group min-h-[44px] w-full rounded-lg border border-border bg-card px-3 py-2 text-left shadow-none transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable
+								{isDragging ? 'opacity-40' : ''}
 								{isPending ? 'opacity-70' : ''}
 								{isArchivedCard ? 'opacity-70' : ''}
 								{justCreated ? 'entity-just-created' : ''}
@@ -936,30 +925,27 @@
 								</p>
 								{#if task.description && col.key !== 'done'}
 									<p
-										class="mt-0.5 line-clamp-1 text-xs leading-snug text-muted-foreground"
+										class="mt-1 line-clamp-1 text-xs leading-snug text-muted-foreground"
 									>
 										{task.description}
 									</p>
 								{/if}
 								{#if prio || due || assignee || archivedAt}
-									<div class="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+									<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
 										{#if prio && !isArchivedCard}
 											<span
-												class="text-2xs font-medium {col.key === 'done'
-													? 'text-muted-foreground'
-													: prio.className}">{prio.label}</span
+												class="font-mono text-2xs tabular-nums {prio.className}"
+												>{prio.label}</span
 											>
 										{/if}
 										{#if due}
 											<span
-												class="inline-flex items-center gap-1 text-2xs font-medium {due.isOverdue
+												class="inline-flex items-center gap-1 text-2xs {due.isOverdue
 													? 'text-destructive'
 													: 'text-muted-foreground'}"
 											>
-												{#if due.isOverdue}
-													<AlertTriangle class="w-3 h-3" />
-												{:else}
-													<Clock class="w-3 h-3" />
+												{#if !due.isOverdue}
+													<Clock class="h-3 w-3" />
 												{/if}
 												{due.label}
 											</span>
@@ -968,13 +954,13 @@
 											<span
 												class="inline-flex items-center gap-1 text-2xs text-muted-foreground"
 											>
-												<User class="w-3 h-3" />
+												<User class="h-3 w-3" />
 												{assignee}
 											</span>
 										{/if}
 										{#if archivedAt}
 											<span
-												class="inline-flex items-center gap-1 text-2xs italic text-muted-foreground/80"
+												class="inline-flex items-center gap-1 text-2xs text-muted-foreground/80"
 											>
 												<Clock class="w-3 h-3" />
 												{archivedAt}
@@ -988,7 +974,7 @@
 									kind="task"
 									id={task.id}
 									flag={freshFlag}
-									class="absolute bottom-2 left-2.5 z-10"
+									class="absolute bottom-2 left-3 z-10"
 								/>
 							{/if}
 							{#if canDeleteArchived}
@@ -997,7 +983,7 @@
 									onclick={() => (deleteCandidate = task)}
 									disabled={isPending}
 									aria-label="Delete {task.title}"
-									class="absolute bottom-2 right-2.5 z-10 inline-flex min-h-6 items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-2xs font-medium text-muted-foreground transition-colors hover:border-destructive/40 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 motion-reduce:transition-none"
+									class="absolute bottom-2 right-3 z-10 inline-flex min-h-6 items-center gap-1 rounded-lg border border-border bg-muted/60 px-2 py-1 text-2xs font-medium text-muted-foreground transition-colors hover:border-destructive/40 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 motion-reduce:transition-none"
 								>
 									<Trash2 class="h-3 w-3" />
 									Delete
@@ -1012,7 +998,7 @@
 						type="button"
 						onclick={() => void loadArchived(true)}
 						disabled={archivedLoading}
-						class="inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2 py-2 text-2xs font-medium text-foreground/80 transition-colors hover:bg-muted/60 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:opacity-50 motion-reduce:transition-none pressable"
+						class="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-2 py-2 text-2xs font-medium text-foreground/80 transition-colors hover:bg-muted/60 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:opacity-50 motion-reduce:transition-none pressable"
 					>
 						{#if archivedLoading}
 							<LoaderCircle
@@ -1069,7 +1055,7 @@
 				onclick={() => void loadMoreVisibleTasks()}
 				disabled={loadingTaskBuckets.size > 0}
 				aria-label="Load more tasks ({visibleTaskCoverage.returned}/{visibleTaskCoverage.total})"
-				class="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 motion-reduce:transition-none pressable"
+				class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 motion-reduce:transition-none pressable"
 			>
 				{#if loadingTaskBuckets.size > 0}
 					<LoaderCircle class="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />

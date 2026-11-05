@@ -99,39 +99,23 @@ export async function updateJobStatus(
 	}
 }
 
-// Send notification to user via Supabase Realtime
+// Former per-user Realtime broadcast. It sent on the public topic `user:<id>`, which any
+// holder of the anon key could join, and no BuildOS client listens to it (the web brief
+// listener uses `user-brief-notifications:<id>` plus queue_jobs changes). Kept as a no-op so
+// callers stay simple; do not send user data on a non-private topic.
 export async function broadcastUserEvent(
-	userId: string,
-	event:
+	_userId: string,
+	_event:
 		| string
 		| {
 				type: string;
 				emailId?: string;
 				briefId?: string;
 				briefDate?: string;
-				error?: string;
 				trackingId?: string;
 		  },
-	payload?: unknown
-) {
-	try {
-		// Handle both old and new notification formats
-		const actualEvent = typeof event === 'string' ? event : event.type;
-		const actualPayload = typeof event === 'string' ? payload : event;
-
-		// Send realtime notification
-		const channel = supabase.channel(`user:${userId}`);
-		await channel.send({
-			type: 'broadcast',
-			event: actualEvent,
-			payload: actualPayload
-		});
-
-		console.log(`📢 Sent notification to user ${userId}: ${actualEvent}`);
-	} catch (error) {
-		console.error('Failed to send notification:', error);
-	}
-}
+	_payload?: unknown
+): Promise<void> {}
 
 /**
  * Validate BriefJobData and throw if invalid

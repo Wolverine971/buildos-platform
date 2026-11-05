@@ -16,7 +16,7 @@
 		type MergeDraftView
 	} from '@buildos/shared-agent-ops/consolidation';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { getProseClasses, renderMarkdown } from '$lib/utils/markdown';
+	import { getProseClasses, renderAgentMarkdownContent } from '$lib/utils/markdown';
 	import { LoaderCircle } from '$lib/icons/lucide';
 
 	let {
@@ -207,8 +207,8 @@
 		{#if showDraft}
 			<div class="draft {prose} text-foreground">
 				<h3>{merge.title}</h3>
-				<!-- eslint-disable-next-line svelte/no-at-html-tags -- renderMarkdown sanitizes -->
-				{@html renderMarkdown(merge.markdown)}
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -- renderAgentMarkdownContent sanitizes -->
+				{@html renderAgentMarkdownContent(merge.markdown)}
 			</div>
 		{/if}
 		{#if showFacts}

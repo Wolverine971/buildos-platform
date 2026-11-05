@@ -228,6 +228,10 @@ export function buildExternalToolDescription(entry: RegistryOp): string {
 		return `${entry.description} ${scopeNotice}`;
 	}
 
+	if (entry.op === 'cal.project.set') {
+		return `${entry.description} Agents can create a dedicated project calendar or change its settings, but cannot link an existing calendar (calendar_id); the user does that in the BuildOS app. ${scopeNotice}`;
+	}
+
 	return `${entry.description} External callers must scope calendar access to an allowed project_id or task_id; broad user calendar access is not exposed through the BuildOS call gateway. ${scopeNotice}`;
 }
 

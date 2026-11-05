@@ -8,6 +8,7 @@
 	import { GitBranch, Sparkles } from 'lucide-svelte';
 	import type { PublicProjectInfo, ViewportMode } from './lib/public-project-types';
 	import { formatTimelineYearRange, getCommander } from './lib/public-project-types';
+	import { svgIconMaskImage } from '$lib/utils/svg-icon-mask';
 
 	let {
 		project,
@@ -20,12 +21,8 @@
 	const commander = $derived(getCommander(project.id, project.props));
 	const timeline = $derived(formatTimelineYearRange(project.start_at, project.end_at));
 
-	const safeSvg = $derived.by(() => {
-		const raw = project.icon_svg?.trim();
-		if (!raw || !raw.startsWith('<svg') || !raw.endsWith('</svg>')) return null;
-		const blocked = /<script|<foreignObject|on[a-z]+\s*=|javascript:/i;
-		return blocked.test(raw) ? null : raw;
-	});
+	// icon_svg is user-writable: draw it as a CSS mask (an image, never live markup).
+	const iconMask = $derived(svgIconMaskImage(project.icon_svg));
 
 	const stateLabel = $derived.by(() => {
 		const key = project.state_key;
@@ -44,12 +41,14 @@
 	class:sm:p-4={!isCompact}
 >
 	<div class="flex items-start gap-2.5 sm:gap-3 min-w-0">
-		{#if safeSvg}
+		{#if iconMask}
 			<div
 				class="inline-flex items-center justify-center shrink-0 overflow-hidden border border-border/70 bg-muted/30 text-foreground/90 rounded-lg h-9 w-9 sm:h-10 sm:w-10"
 				aria-hidden="true"
 			>
-				<span class="block w-full h-full p-1">{@html safeSvg}</span>
+				<span class="block w-full h-full p-1">
+					<span class="icon-mask block w-full h-full" style:--icon-mask={iconMask}></span>
+				</span>
 			</div>
 		{:else}
 			<div
@@ -117,3 +116,11 @@
 		</div>
 	{/if}
 </header>
+
+<style>
+	.icon-mask {
+		background-color: currentColor;
+		-webkit-mask: var(--icon-mask) center / contain no-repeat;
+		mask: var(--icon-mask) center / contain no-repeat;
+	}
+</style>

@@ -16,11 +16,10 @@
 		<!-- The ::after area enlarges the touch target without growing the header. -->
 		<a
 			href={resolve('/projects/[id]', { id: parent.id })}
-			class="group relative inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-sm text-muted-foreground transition-colors after:absolute after:inset-x-0 after:-bottom-1 after:-top-2 after:content-[''] hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+			class="group relative inline-flex max-w-full min-w-0 items-center gap-1 rounded-sm text-muted-foreground transition-colors after:absolute after:inset-x-0 after:-bottom-1 after:-top-2 after:content-[''] hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 		>
-			<span class="micro-label shrink-0">Part of</span>
-			<span
-				class="min-w-0 truncate text-xs font-semibold text-foreground group-hover:text-accent"
+			<span class="shrink-0 text-xs">Part of</span>
+			<span class="min-w-0 truncate text-xs font-medium text-foreground"
 				>{parent.name || 'Untitled project'}</span
 			>
 			<ChevronRight class="h-3 w-3 shrink-0" aria-hidden="true" />

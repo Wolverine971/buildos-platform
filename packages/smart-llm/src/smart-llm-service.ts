@@ -2369,6 +2369,9 @@ export class SmartLLMService {
 		clientTurnId?: string;
 		signal?: AbortSignal;
 		operationType: string;
+		/** OpenRouter reasoning config. Defaults to low effort with tools, provider default
+		 * without. Pass `{ enabled: false }` for fast structured answers. */
+		reasoning?: unknown;
 		// Context tracking for usage logging
 		contextType?: string; // e.g., 'project', 'general', 'project_create', 'ontology'
 		entityId?: string; // Optional entity ID for additional tracking
@@ -2486,7 +2489,9 @@ export class SmartLLMService {
 					max_tokens: options.maxTokens ?? 2000,
 					stream: true,
 					models: routingModels,
-					reasoning: needsToolSupport ? OPENROUTER_TOOL_STREAM_REASONING : undefined,
+					reasoning:
+						options.reasoning ??
+						(needsToolSupport ? OPENROUTER_TOOL_STREAM_REASONING : undefined),
 					transforms,
 					stream_options: { include_usage: true },
 					session_id: cacheAffinityKey,

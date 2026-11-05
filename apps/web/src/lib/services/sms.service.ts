@@ -140,33 +140,11 @@ export class SMSService extends ApiService {
 		code: string
 	): Promise<ServiceResponse<{ verified: boolean }>> {
 		try {
-			const supabase = this.getSupabase();
-			const response = await this.post('/api/sms/verify/confirm', {
+			// The confirm route saves the verified phone server-side; the browser cannot.
+			return await this.post('/api/sms/verify/confirm', {
 				phoneNumber,
 				code
 			});
-
-			if (response.success) {
-				// Update user preferences
-				const {
-					data: { user }
-				} = await supabase.auth.getUser();
-				if (user) {
-					await supabase.from('user_sms_preferences').upsert(
-						{
-							user_id: user.id,
-							phone_number: phoneNumber,
-							phone_verified: true,
-							phone_verified_at: new Date().toISOString()
-						},
-						{
-							onConflict: 'user_id'
-						}
-					);
-				}
-			}
-
-			return response;
 		} catch (error: any) {
 			await this.getErrorLogger().logAPIError(
 				error,

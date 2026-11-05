@@ -37,6 +37,14 @@ function authorizationUrlFromForm(form: FormData, origin: string): URL {
 	return authUrl;
 }
 
+function redirectHost(redirectUri: string): string {
+	try {
+		return new URL(redirectUri).host;
+	} catch {
+		return redirectUri;
+	}
+}
+
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user) {
@@ -59,6 +67,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				client_uri: authorizationRequest.client.client_uri,
 				logo_uri: authorizationRequest.client.logo_uri,
 				redirect_uri: authorizationRequest.redirectUri,
+				// Shown on the consent screen: the name is self-chosen for self-registered
+				// clients, so the person also sees where the approval code will be sent.
+				redirect_host: redirectHost(authorizationRequest.redirectUri),
+				name_verified: ['static', 'admin', 'anthropic_held'].includes(
+					String(authorizationRequest.client.registration_source)
+				),
 				response_type: authorizationRequest.responseType,
 				scope: authorizationRequest.scope,
 				state: authorizationRequest.state,

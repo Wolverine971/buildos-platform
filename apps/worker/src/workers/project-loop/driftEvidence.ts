@@ -19,10 +19,12 @@ import {
 	type ContextFinderProjectV1,
 	type ContextPlanV1,
 	buildContextFinderEntities,
+	loadContextFinderPlanText,
 	loadContextFinderProject,
 	rankProjectContext,
 	rankerSummary,
-	selectProjectContext
+	selectProjectContext,
+	withContextFinderDocumentText
 } from '@buildos/agentic-chat-runtime/context-finder';
 import {
 	START_HERE_DOCUMENT_TYPE_KEY,
@@ -265,6 +267,26 @@ export function buildDriftFinderRequest(changes: readonly DriftChange[], since: 
 	].join('\n');
 }
 
+/** Documents whose text drift reads before ranking: recent changes, START HERE, fallbacks. */
+function driftTextIds(project: ContextFinderProjectV1, since: string): string[] {
+	const limits = DRIFT_EVIDENCE_LIMITS;
+	const sinceMs = time(since);
+	const newest = [...project.documents].sort((a, b) => time(b.updated_at) - time(a.updated_at));
+	return [
+		...new Set([
+			...newest
+				.filter((doc) => time(doc.updated_at) >= sinceMs)
+				.slice(0, limits.maxChangedDocuments)
+				.map((doc) => String(doc.id)),
+			...project.documents
+				.filter((doc) => doc.type_key === START_HERE_DOCUMENT_TYPE_KEY)
+				.map((doc) => String(doc.id)),
+			// One spare per fallback slot: START HERE or an empty document may take one.
+			...newest.slice(0, limits.fallbackDocuments + 2).map((doc) => String(doc.id))
+		])
+	];
+}
+
 function fallbackRelated(project: ContextFinderProjectV1): DriftRelatedItem[] {
 	const limits = DRIFT_EVIDENCE_LIMITS;
 	const items: DriftRelatedItem[] = [];
@@ -407,6 +429,13 @@ export async function loadProjectDriftEvidence(input: {
 		input.signal.throwIfAborted();
 		return null;
 	}
+	// The finder loads outlines, not text (tasker 150). Drift diffs and quotes the recently
+	// changed documents, START HERE and the fallback openings, so read just those.
+	project = await withContextFinderDocumentText(
+		project,
+		driftTextIds(project, since),
+		input.signal
+	);
 	let changes: DriftChange[] = [];
 	try {
 		changes = await loadRecentDocumentChanges({
@@ -418,16 +447,25 @@ export async function loadProjectDriftEvidence(input: {
 	} catch {
 		input.signal.throwIfAborted();
 	}
-	const shownDocuments = (related: DriftRelatedItem[]) => {
+	const shownDocuments = (
+		related: DriftRelatedItem[],
+		loaded: readonly ContextFinderEntity[] = []
+	) => {
 		const ids = new Set([
 			...changes.map((change) => change.documentId),
 			...related.filter((item) => item.kind === 'document').map((item) => item.id)
 		]);
+		const texts = new Map(
+			loaded
+				.filter((entity) => entity.kind === 'document' && entity.textLoaded)
+				.map((entity) => [entity.id, entity.fullText])
+		);
 		const documents: ProjectDriftEvidence['documents'] = {};
 		for (const doc of project.documents) {
 			const id = String(doc.id);
-			if (ids.has(id) && typeof doc.content === 'string')
-				documents[id] = { title: String(doc.title ?? 'Untitled'), content: doc.content };
+			const content = typeof doc.content === 'string' ? doc.content : texts.get(id);
+			if (ids.has(id) && typeof content === 'string')
+				documents[id] = { title: String(doc.title ?? 'Untitled'), content };
 		}
 		return documents;
 	};
@@ -471,7 +509,13 @@ export async function loadProjectDriftEvidence(input: {
 			skipIds: new Set(),
 			maxSummaries: 0
 		});
-		const related = materializeDriftRelated(plan, entities);
+		const loaded = await loadContextFinderPlanText({
+			project,
+			entities,
+			plan,
+			signal: input.signal
+		});
+		const related = materializeDriftRelated(plan, loaded);
 		if (!related.length) return fallback('jev_empty');
 		return {
 			since,
@@ -480,7 +524,7 @@ export async function loadProjectDriftEvidence(input: {
 			source: 'jev',
 			ranker: rankerSummary(ranking),
 			fallbackReason: null,
-			documents: shownDocuments(related)
+			documents: shownDocuments(related, loaded)
 		};
 	} catch {
 		input.signal.throwIfAborted();

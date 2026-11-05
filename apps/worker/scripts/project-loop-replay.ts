@@ -24,6 +24,8 @@ import { JevClient, SmartLLMService } from '@buildos/smart-llm';
 import type { ProposedSuggestion } from '@buildos/shared-types';
 import {
 	loadContextFinderProject,
+	startHereIds,
+	withContextFinderDocumentText,
 	type ContextFinderProjectV1
 } from '@buildos/agentic-chat-runtime/context-finder';
 import {
@@ -174,7 +176,9 @@ async function main() {
 	const out = resolve(outDir!);
 	mkdirSync(out, { recursive: true });
 	const signal = new AbortController().signal;
-	const project = await loadContextFinderProject(client, projectId!, signal);
+	const loaded = await loadContextFinderProject(client, projectId!, signal);
+	// The finder loads outlines; the loop context quotes START HERE.
+	const project = await withContextFinderDocumentText(loaded, startHereIds(loaded), signal);
 	const ctx = loopContext(project);
 	const { data: concernRows } = await (db as unknown as { from: (t: string) => any })
 		.from('freshness_concerns')

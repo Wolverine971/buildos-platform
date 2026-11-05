@@ -107,7 +107,7 @@
 					<li class="flex min-w-0 items-center gap-2">
 						<button
 							type="button"
-							class="inline-flex min-h-11 min-w-0 items-center gap-2 rounded-md text-left text-sm font-medium text-foreground hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							class="-ml-2 inline-flex min-h-11 min-w-0 items-center gap-2 rounded-lg px-2 text-left text-sm font-medium text-foreground hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							onclick={() => onOpenDocument(document.id)}
 						>
 							<FileText
@@ -161,7 +161,7 @@
 	{@attach preloadEntityModal('document')}
 	class="overflow-hidden {variant === 'workspace'
 		? 'border-y border-border bg-card/40'
-		: 'rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak'}"
+		: 'rounded-xl border border-border bg-card shadow-ink tx tx-frame tx-weak'}"
 	aria-label={variant === 'workspace' ? 'Project document tree' : undefined}
 >
 	{#if variant === 'collapsible'}
@@ -169,16 +169,12 @@
 			<button
 				type="button"
 				onclick={onToggleExpanded}
-				class="flex min-h-[44px] flex-1 items-center gap-2 rounded-md px-1 text-left transition-colors hover:bg-muted/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable"
+				class="flex min-h-[44px] flex-1 items-center gap-2 rounded-lg px-1 text-left transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable"
 			>
-				<div
-					class="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/10 sm:h-9 sm:w-9"
-				>
-					<FileText class="h-3.5 w-3.5 text-accent sm:h-4 sm:w-4" />
-				</div>
+				<FileText class="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
 				<div>
-					<p class="text-xs font-semibold text-foreground sm:text-sm">Documents</p>
-					<p class="text-2xs text-muted-foreground sm:text-xs">
+					<p class="text-sm font-medium text-foreground">Documents</p>
+					<p class="text-xs text-muted-foreground">
 						{documents.length}
 						{documents.length === 1 ? 'document' : 'documents'}
 					</p>
@@ -189,7 +185,7 @@
 					<button
 						type="button"
 						onclick={() => onCreateDocument(null)}
-						class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md transition-colors hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable"
+						class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable"
 						aria-label="Add document"
 					>
 						<Plus class="h-3.5 w-3.5 text-muted-foreground sm:h-4 sm:w-4" />
@@ -198,7 +194,7 @@
 				<button
 					type="button"
 					onclick={onToggleExpanded}
-					class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md transition-colors hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable"
+					class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable"
 					aria-label={documentsExpanded ? 'Collapse documents' : 'Expand documents'}
 				>
 					<ChevronDown

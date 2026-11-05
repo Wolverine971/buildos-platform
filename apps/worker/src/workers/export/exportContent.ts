@@ -6,6 +6,7 @@
 // llm_usage_logs, OAuth tokens, connection credentials, calendar or email content.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
+import { isOwnVoiceNoteObject } from '../voice-notes/voiceNoteStorage';
 
 export type ExportDb = SupabaseClient<Database>;
 
@@ -712,7 +713,9 @@ export async function buildUserDataExport(params: {
 			const when = note.recorded_at ?? note.created_at;
 			const stem = voicePaths.claim(`voice-notes/${day(when)}-${note.id.slice(0, 8)}`, '');
 			const audioName = `${stem}.${extensionOf(note.storage_path, note.mime_type)}`;
-			const audio = await download(db, note.storage_bucket, note.storage_path);
+			const audio = isOwnVoiceNoteObject(userId, note.storage_bucket, note.storage_path)
+				? await download(db, note.storage_bucket, note.storage_path)
+				: null;
 			if (audio) {
 				await addFile(audioName, audio, { compress: false });
 				counts.audioFiles += 1;

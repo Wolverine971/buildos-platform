@@ -84,7 +84,7 @@ describe('ProjectProgressOverview', () => {
 		});
 
 		expect(screen.getByText('40%')).toBeInTheDocument();
-		expect(screen.getByText('4 of 10 tracked tasks are done.')).toBeInTheDocument();
+		expect(screen.getByText('4 of 10 tracked tasks are done')).toBeInTheDocument();
 		expect(screen.getAllByText('Needs attention').length).toBeGreaterThan(0);
 		expect(screen.getByText('1 overdue · 1 blocked · 1 high-impact risk')).toBeInTheDocument();
 		expect(
@@ -95,7 +95,7 @@ describe('ProjectProgressOverview', () => {
 
 		await fireEvent.click(
 			screen.getByRole('button', {
-				name: 'Open Tasks. 40% complete, 4 of 10 tasks.'
+				name: 'Open tasks. 40% complete, 4 of 10 tasks.'
 			})
 		);
 		expect(onOpenTasks).toHaveBeenCalledOnce();

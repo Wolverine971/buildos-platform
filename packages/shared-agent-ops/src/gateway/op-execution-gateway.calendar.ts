@@ -311,12 +311,62 @@ export async function getProjectCalendar(
 		: { calendar: result };
 }
 
+/**
+ * Agents may create a dedicated BuildOS calendar for a project or change its settings, but
+ * may not point a project at an existing calendar (calendar_id). Project-scoped calendar
+ * reads use the linked calendar, so linking the user's personal calendar would let a
+ * project-scoped key read all of it. Linking an existing calendar stays a signed-in, in-app
+ * action. Repeating the calendar the project already uses is allowed.
+ */
 export async function setProjectCalendar(
 	context: ToolExecutionContext,
 	args: Record<string, unknown>
 ) {
 	const scopedArgs = await resolveExternalCalendarProjectArgs(context, args, 'write');
-	return runCalendarTool(context, scopedArgs, (executor, toolArgs) =>
+	const {
+		calendar_id: rawCalendarId,
+		calendarId: rawCalendarIdAlias,
+		...forwardArgs
+	} = scopedArgs;
+	const hasCalendarIdArg =
+		(rawCalendarId !== undefined && rawCalendarId !== null && rawCalendarId !== '') ||
+		(rawCalendarIdAlias !== undefined &&
+			rawCalendarIdAlias !== null &&
+			rawCalendarIdAlias !== '');
+	if (hasCalendarIdArg) {
+		const requestedCalendarId = getStringArg(rawCalendarId, rawCalendarIdAlias);
+		const currentCalendarId = await loadLinkedProjectCalendarId(
+			context,
+			forwardArgs.project_id as string
+		);
+		if (!requestedCalendarId || requestedCalendarId !== currentCalendarId) {
+			throw new ExternalToolGatewayError(
+				'FORBIDDEN',
+				'Agents cannot link an existing calendar to a project. Omit calendar_id to create a dedicated project calendar; the user can link an existing calendar in the BuildOS app.'
+			);
+		}
+	}
+	return runCalendarTool(context, forwardArgs, (executor, toolArgs) =>
 		executor.setProjectCalendar(toolArgs as any)
 	);
+}
+
+async function loadLinkedProjectCalendarId(
+	context: ToolExecutionContext,
+	projectId: string
+): Promise<string | null> {
+	const { data, error } = await context.admin
+		.from('project_calendars')
+		.select('calendar_id')
+		.eq('project_id', projectId)
+		.eq('user_id', context.userId)
+		.maybeSingle();
+	if (error) {
+		throw new ExternalToolGatewayError(
+			'INTERNAL',
+			error.message || 'Failed to load project calendar'
+		);
+	}
+	const calendarId = (data as { calendar_id?: unknown } | null)?.calendar_id;
+	return typeof calendarId === 'string' ? calendarId : null;
 }

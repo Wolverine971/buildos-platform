@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-11-01T19:46:52.519Z
+// Generated on: 2026-11-05T17:17:12.926Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -4498,6 +4498,29 @@ export type DatabaseSchema = {
 		updated_at: string;
 		user_id: string;
 	};
+	today_kept_suggestions: {
+		created_at: string;
+		kept_until: string;
+		task_id: string;
+		user_id: string;
+	};
+	today_waiting_items: {
+		created_at: string;
+		direction: string;
+		id: string;
+		item_key: string;
+		last_seen_at: string;
+		project_id: string | null;
+		resolved_at: string | null;
+		since: string | null;
+		status: string;
+		task_id: string | null;
+		updated_at: string;
+		user_id: string;
+		what: string;
+		who: string;
+		who_kind: string;
+	};
 	trial_reminders: {
 		created_at: string | null;
 		id: string;
@@ -5358,6 +5381,8 @@ export const tableNames = [
 	'tasks',
 	'time_blocks',
 	'timing_metrics',
+	'today_kept_suggestions',
+	'today_waiting_items',
 	'trial_reminders',
 	'user_activity_logs',
 	'user_behavioral_profiles',

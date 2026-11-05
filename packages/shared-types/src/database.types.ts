@@ -22492,6 +22492,118 @@ export type Database = {
           },
         ]
       }
+      today_kept_suggestions: {
+        Row: {
+          created_at: string
+          kept_until: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          kept_until: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          kept_until?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "today_kept_suggestions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "onto_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "today_kept_suggestions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      today_waiting_items: {
+        Row: {
+          created_at: string
+          direction: string
+          id: string
+          item_key: string
+          last_seen_at: string
+          project_id: string | null
+          resolved_at: string | null
+          since: string | null
+          status: string
+          task_id: string | null
+          updated_at: string
+          user_id: string
+          what: string
+          who: string
+          who_kind: string
+        }
+        Insert: {
+          created_at?: string
+          direction: string
+          id?: string
+          item_key: string
+          last_seen_at?: string
+          project_id?: string | null
+          resolved_at?: string | null
+          since?: string | null
+          status?: string
+          task_id?: string | null
+          updated_at?: string
+          user_id: string
+          what: string
+          who: string
+          who_kind?: string
+        }
+        Update: {
+          created_at?: string
+          direction?: string
+          id?: string
+          item_key?: string
+          last_seen_at?: string
+          project_id?: string | null
+          resolved_at?: string | null
+          since?: string | null
+          status?: string
+          task_id?: string | null
+          updated_at?: string
+          user_id?: string
+          what?: string
+          who?: string
+          who_kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "today_waiting_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "today_waiting_items_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "onto_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "today_waiting_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trial_reminders: {
         Row: {
           created_at: string | null

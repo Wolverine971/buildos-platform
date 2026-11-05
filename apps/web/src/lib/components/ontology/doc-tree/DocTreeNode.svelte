@@ -306,8 +306,8 @@
 		onpointerup={handlePointerEnd}
 		onpointercancel={handlePointerEnd}
 		onpointerleave={handlePointerEnd}
-		class="doc-tree-node-row w-full flex items-center rounded-md transition-colors
-			{isSelected ? 'bg-accent/15 text-foreground' : 'hover:bg-accent/5 text-foreground'}
+		class="doc-tree-node-row flex w-full items-center rounded-lg transition-colors
+			{isSelected ? 'bg-accent/15 text-foreground' : 'text-foreground hover:bg-muted/50'}
 			{isDragging ? 'opacity-40' : ''}
 			{isCut ? 'opacity-50 border border-dashed border-muted-foreground' : ''}
 			{isValidDropTarget ? 'bg-accent/10 outline outline-2 outline-dashed outline-accent' : ''}
@@ -324,7 +324,7 @@
 				ontouchstart={handleDragHandleTouchStart}
 				class="doc-tree-drag-handle order-last flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-md transition-colors motion-reduce:transition-none
 					{dragState?.isDragging ? 'cursor-grabbing' : 'cursor-grab'}
-					hover:bg-accent/10"
+					hover:bg-muted"
 				aria-label="Drag to reorder"
 				draggable="false"
 			>
@@ -336,7 +336,7 @@
 		{#if isExpandable}
 			<button
 				type="button"
-				class="doc-tree-chevron flex min-h-[44px] min-w-[44px] flex-shrink-0 touch-manipulation items-center justify-center rounded-md transition-colors hover:bg-accent/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
+				class="doc-tree-chevron flex min-h-[44px] min-w-[44px] flex-shrink-0 touch-manipulation items-center justify-center rounded-md transition-colors hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
 				aria-label={isExpanded ? `Collapse ${node.title}` : `Expand ${node.title}`}
 				aria-expanded={isExpanded}
 				onclick={handleChevronClick}
@@ -357,21 +357,21 @@
 			onclick={handleClick}
 			onkeydown={handleContentKeydown}
 			onfocus={() => onFocus?.(node.id)}
-			class="doc-tree-node-button flex min-h-[44px] min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-md pr-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset pressable"
+			class="doc-tree-node-button flex min-h-[44px] min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-lg pr-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset pressable"
 			draggable="false"
 		>
 			<!-- Icon -->
 			<span class="flex h-4 w-4 flex-shrink-0 items-center justify-center">
 				{#if isTable}
-					<Table class="w-4 h-4 text-accent" aria-hidden="true" />
+					<Table class="h-4 w-4 text-muted-foreground" aria-hidden="true" />
 				{:else if isFolder}
 					{#if isExpanded}
-						<FolderOpen class="w-4 h-4 text-accent" />
+						<FolderOpen class="h-4 w-4 text-muted-foreground" />
 					{:else}
-						<Folder class="w-4 h-4 text-accent" />
+						<Folder class="h-4 w-4 text-muted-foreground" />
 					{/if}
 				{:else}
-					<FileText class="w-4 h-4 text-muted-foreground" />
+					<FileText class="h-4 w-4 text-muted-foreground" />
 				{/if}
 			</span>
 
@@ -385,7 +385,7 @@
 			<!-- Tables show how many rows they hold without loading them. -->
 			{#if tableRowCount !== null}
 				<span
-					class="inline-flex shrink-0 items-center rounded-md bg-muted px-1.5 py-0.5 text-2xs font-medium tabular-nums text-muted-foreground"
+					class="shrink-0 font-mono text-xs tabular-nums text-muted-foreground"
 					aria-label={formatRowCount(tableRowCount)}
 					title={formatRowCount(tableRowCount)}
 				>
@@ -396,7 +396,7 @@
 			<!-- Collapsed documents still show that they hold images. -->
 			{#if images.length > 0 && !isExpanded}
 				<span
-					class="inline-flex shrink-0 items-center gap-1 rounded-md bg-accent/10 px-1.5 py-0.5 text-2xs font-medium tabular-nums text-accent"
+					class="inline-flex shrink-0 items-center gap-1 font-mono text-xs tabular-nums text-muted-foreground"
 					aria-label={`${images.length} ${images.length === 1 ? 'image' : 'images'}`}
 				>
 					<ImageIcon class="h-3 w-3" aria-hidden="true" />
@@ -425,7 +425,7 @@
 				onclick={handleCopyPublicLink}
 				onmousedown={(e) => e.stopPropagation()}
 				ontouchstart={(e) => e.stopPropagation()}
-				class="mr-1 inline-flex min-h-[44px] flex-shrink-0 items-center gap-1 rounded-md bg-success/10 px-2 py-1 text-2xs font-semibold text-success transition-colors hover:bg-success/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
+				class="mr-1 inline-flex min-h-[44px] flex-shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-2xs font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
 				aria-label={node.public_slug
 					? `Copy public link for ${node.title}`
 					: 'Copy public link'}
@@ -436,7 +436,7 @@
 						: 'Copy public link'}
 				draggable="false"
 			>
-				<Globe class="w-2.5 h-2.5" />
+				<Globe class="h-3 w-3" />
 				Public
 			</button>
 		{/if}
@@ -444,10 +444,10 @@
 		<!-- Shared-with-sub-projects folder: same pill shape as Public, informational only -->
 		{#if isSharedFolder}
 			<span
-				class="mr-1 inline-flex flex-shrink-0 items-center gap-1 rounded-md bg-info/10 px-2 py-1 text-2xs font-semibold text-info"
+				class="mr-1 inline-flex flex-shrink-0 items-center gap-1 px-2 py-1 text-2xs font-medium text-muted-foreground"
 				title={sharedTitle}
 			>
-				<Share2 class="w-2.5 h-2.5" aria-hidden="true" />
+				<Share2 class="h-3 w-3" aria-hidden="true" />
 				<span aria-hidden="true">Shared · {sharedCount}</span>
 				<span class="sr-only">{sharedTitle}</span>
 			</span>
@@ -462,7 +462,7 @@
 	<!-- Empty shared folder: where shared docs go (a drop target while dragging) -->
 	{#if showShareGhost}
 		<div
-			class="doc-tree-share-ghost mb-1 mr-2 flex min-h-11 items-center gap-2 rounded-md border border-dashed px-3 py-2 text-xs transition-colors motion-reduce:transition-none {isGhostDropTarget
+			class="doc-tree-share-ghost mb-1 mr-2 flex min-h-11 items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-xs transition-colors motion-reduce:transition-none {isGhostDropTarget
 				? 'border-accent bg-accent/10 text-accent'
 				: 'border-border-strong/60 bg-muted/30 text-muted-foreground'}"
 			style="margin-left: {indent + indentPx + 4}px"
@@ -518,7 +518,7 @@
 					<button
 						type="button"
 						onclick={() => onOpenImage?.(image.id, node.id)}
-						class="doc-tree-image-row flex min-h-[44px] w-full items-center gap-2 rounded-md pr-2 text-left text-foreground transition-colors hover:bg-accent/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable"
+						class="doc-tree-image-row flex min-h-[44px] w-full items-center gap-2 rounded-lg pr-2 text-left text-foreground transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable"
 						style="padding-left: {indent + indentPx + 4 + 44}px"
 						aria-label={`Open image ${title}`}
 					>

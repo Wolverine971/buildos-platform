@@ -49,6 +49,15 @@ const WORKSPACE_MUTATION_PREFIXES_WHEN_FROZEN = [
 	'/api/calendar/'
 ];
 
+// Agent runs, operatives and cycles: only the calls that start or continue paid work.
+// Cancel, pause, commit and settings stay open so a frozen account can still stop things.
+const AI_MUTATION_PATTERNS_WHEN_FROZEN = [
+	/^\/api\/agent-runs\/?$/,
+	/^\/api\/agent-runs\/[^/]+\/(answer|resume|steer)\/?$/,
+	/^\/api\/agent-operatives\/[^/]+\/run\/?$/,
+	/^\/api\/cycles\/[^/]+\/run\/?$/
+];
+
 export type FrozenMutationCapability = 'ai_compute' | 'workspace_write' | 'other_mutation';
 
 function matchesPrefix(pathname: string, prefix: string): boolean {
@@ -62,6 +71,9 @@ function matchesPrefix(pathname: string, prefix: string): boolean {
 export function classifyFrozenMutationCapability(pathname: string): FrozenMutationCapability {
 	for (const prefix of AI_MUTATION_PREFIXES_WHEN_FROZEN) {
 		if (matchesPrefix(pathname, prefix)) return 'ai_compute';
+	}
+	if (AI_MUTATION_PATTERNS_WHEN_FROZEN.some((pattern) => pattern.test(pathname))) {
+		return 'ai_compute';
 	}
 	for (const prefix of WORKSPACE_MUTATION_PREFIXES_WHEN_FROZEN) {
 		if (matchesPrefix(pathname, prefix)) return 'workspace_write';

@@ -73,12 +73,12 @@
 	<section class="min-w-0 border-t border-border pt-4" aria-labelledby="overview-children-title">
 		<header class="flex min-w-0 items-center justify-between gap-3 px-1 pb-3">
 			<div class="flex min-w-0 items-center gap-2">
-				<FolderKanban class="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
-				<h2 id="overview-children-title" class="text-sm font-semibold text-foreground">
-					Inside this project
+				<FolderKanban class="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+				<h2 id="overview-children-title" class="text-sm font-medium text-foreground">
+					Nested projects
 				</h2>
 			</div>
-			<span class="stamp shrink-0 text-2xs font-medium text-muted-foreground">
+			<span class="stamp shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
 				{subProjects.length}
 			</span>
 		</header>
@@ -91,10 +91,10 @@
 				<li class="min-w-0">
 					<a
 						href={resolve('/projects/[id]', { id: child.id })}
-						class="flex min-h-11 w-full min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable"
+						class="flex min-h-11 w-full min-w-0 items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable"
 					>
 						<div class="min-w-0 flex-1">
-							<p class="truncate text-sm font-semibold text-foreground">
+							<p class="truncate text-sm font-medium text-foreground">
 								{child.name || 'Untitled project'}
 							</p>
 							<p
@@ -113,7 +113,7 @@
 						/>
 					</a>
 					{#if (projectId && canEdit) || child.can_detach}
-						<div class="ml-2.5 flex min-w-0 flex-wrap items-center gap-x-3">
+						<div class="ml-2 flex min-w-0 flex-wrap items-center gap-x-3">
 							{#if projectId && canEdit}
 								<a
 									href={`${resolve('/projects/[id]/organize', { id: projectId })}?with=${child.id}`}
@@ -138,8 +138,8 @@
 		</ul>
 
 		{#if hiddenCount > 0}
-			<p class="px-2.5 pt-1 text-xs text-muted-foreground">
-				{hiddenCount} more you don't have access to.
+			<p class="px-3 pt-1 text-xs text-muted-foreground">
+				{hiddenCount} more you don't have access to
 			</p>
 		{/if}
 	</section>

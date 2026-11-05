@@ -731,7 +731,9 @@ describe('ProjectWorkspace edge states', () => {
 			);
 		});
 
-		await fireEvent.click(within(memory).getByRole('button', { name: 'Open Start Here' }));
+		await fireEvent.click(
+			within(memory).getByRole('button', { name: 'Open doc (Start Here)' })
+		);
 		expect(mocks.trackLoopEvent).toHaveBeenCalledWith(
 			'start_here_opened',
 			'project',
@@ -753,7 +755,7 @@ describe('ProjectWorkspace edge states', () => {
 
 		await waitFor(() => {
 			expect(
-				within(memory).getByRole('button', { name: 'Open Start Here' })
+				within(memory).getByRole('button', { name: 'Open doc (Start Here)' })
 			).toBeInTheDocument();
 		});
 		expect(
@@ -860,7 +862,11 @@ describe('ProjectWorkspace edge states', () => {
 		});
 
 		await waitFor(() => {
-			expect(screen.getByText('12 goals · 8 plans')).toBeInTheDocument();
+			expect(
+				[...document.querySelectorAll('.sub-label')].map((el) =>
+					el.textContent?.replace(/\s+/g, ' ').trim()
+				)
+			).toEqual(['Goals 12', 'Plans 8']);
 		});
 
 		expect(

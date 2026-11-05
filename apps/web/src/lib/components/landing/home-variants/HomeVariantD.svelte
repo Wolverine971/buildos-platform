@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/landing/home-variants/HomeVariantD.svelte -->
 <!-- Home D: real product screens, Home C's animated story, and a place to start. -->
 <script lang="ts">
 	import { page } from '$app/state';
@@ -128,7 +129,7 @@
 			<div class="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center lg:gap-16">
 				<h1
 					id="d-hero-heading"
-					class="text-balance text-[2.5rem] font-medium leading-[1.04] tracking-[-0.03em] sm:text-6xl lg:text-[4.5rem]"
+					class="text-balance text-4xl font-medium leading-[1.04] tracking-[-0.03em] sm:text-6xl lg:text-7xl"
 				>
 					Turn messy thinking into structured work
 				</h1>

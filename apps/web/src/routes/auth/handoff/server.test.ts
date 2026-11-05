@@ -15,12 +15,15 @@ vi.mock('$lib/server/auth-handoff.service', async (importOriginal) => ({
 
 import { GET } from './+server';
 
-async function run(code: string | null) {
+async function run(code: string | null, fetchSite: string | null = 'none') {
 	const url = new URL('https://build-os.com/auth/handoff');
 	if (code) url.searchParams.set('code', code);
 	const supabase = { auth: {} };
+	const headers = new Headers();
+	if (fetchSite) headers.set('sec-fetch-site', fetchSite);
+	const request = new Request(url, { headers });
 	try {
-		return await GET({ url, locals: { supabase } } as any);
+		return await GET({ url, request, locals: { supabase } } as any);
 	} catch (thrown) {
 		return thrown;
 	}
@@ -39,6 +42,25 @@ describe('GET /auth/handoff', () => {
 		expect(result).toMatchObject({ status: 303, location: '/billing?app=1' });
 		expect(mocks.consume).toHaveBeenCalledWith(mocks.admin, code);
 		expect(mocks.mint).toHaveBeenCalledWith(mocks.admin, expect.anything(), 'user-1');
+	});
+
+	it.each(['cross-site', 'same-site'])(
+		'refuses a %s navigation without spending the code (login CSRF)',
+		async (fetchSite) => {
+			const result = await run('E'.repeat(43), fetchSite);
+			expect(result).toMatchObject({
+				status: 303,
+				location: '/auth/login?error=handoff_failed'
+			});
+			expect(mocks.consume).not.toHaveBeenCalled();
+			expect(mocks.mint).not.toHaveBeenCalled();
+		}
+	);
+
+	it('accepts browsers that send no Sec-Fetch-Site header', async () => {
+		mocks.consume.mockResolvedValue({ userId: 'user-1', nextPath: '/billing' });
+		mocks.mint.mockResolvedValue(true);
+		expect(await run('F'.repeat(43), null)).toMatchObject({ location: '/billing?app=1' });
 	});
 
 	it('defaults to the profile page', async () => {

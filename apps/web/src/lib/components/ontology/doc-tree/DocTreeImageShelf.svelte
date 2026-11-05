@@ -26,16 +26,16 @@
 
 <section class="border-b border-border px-1 pb-2 pt-1" aria-label="Project images">
 	<div class="flex min-h-[44px] items-center gap-2 px-2">
-		<Images class="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden="true" />
-		<h3 class="micro-label text-muted-foreground">Images</h3>
+		<Images class="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+		<h3 class="text-xs font-medium text-muted-foreground">Images</h3>
 		{#if totalCount > 0}
-			<span class="text-2xs tabular-nums text-muted-foreground">{totalCount}</span>
+			<span class="font-mono text-xs tabular-nums text-muted-foreground">{totalCount}</span>
 		{/if}
 		{#if canEdit}
 			<button
 				type="button"
 				onclick={onAddImage}
-				class="ml-auto inline-flex min-h-[44px] items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
+				class="ml-auto inline-flex min-h-[44px] items-center gap-2 rounded-lg px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
 			>
 				<ImagePlus class="h-3.5 w-3.5" aria-hidden="true" />
 				Add image
@@ -56,7 +56,7 @@
 						{title}
 					>
 						<span
-							class="block aspect-square overflow-hidden rounded-lg border border-border bg-muted/40 p-1 shadow-ink transition-colors group-hover:border-accent/60 motion-reduce:transition-none"
+							class="block aspect-square overflow-hidden rounded-lg border border-border bg-muted/40 p-1 transition-colors group-hover:border-foreground/20 motion-reduce:transition-none"
 						>
 							<img
 								src={treeImageThumbnailUrl(image.id, 192)}
@@ -67,7 +67,7 @@
 							/>
 						</span>
 						<span
-							class="mt-1 block truncate px-0.5 text-2xs text-muted-foreground group-hover:text-foreground"
+							class="mt-1 block truncate px-1 text-2xs text-muted-foreground group-hover:text-foreground"
 						>
 							{title}
 						</span>
@@ -78,8 +78,8 @@
 	{:else}
 		<p class="px-2 pb-1 text-xs text-muted-foreground">
 			{filedCount > 0
-				? 'Every image is filed under a document below.'
-				: 'Images you attach in chat land here.'}
+				? 'Every image is filed under a document below'
+				: 'Images you attach in chat land here'}
 		</p>
 	{/if}
 </section>

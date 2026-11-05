@@ -21,6 +21,10 @@ vi.mock('../../../../../shared/error-logging', () => ({
 	logOntologyApiError: vi.fn()
 }));
 
+vi.mock('$lib/server/people/invite-send-quota', () => ({
+	checkInviteDailyQuota: vi.fn(async () => ({ ok: true })),
+	checkInviteResendCooldown: vi.fn(() => ({ ok: true }))
+}));
 vi.mock('$env/static/public', () => ({
 	PUBLIC_APP_URL: 'http://localhost:5173'
 }));

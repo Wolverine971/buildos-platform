@@ -34,7 +34,7 @@
 		briefGenerationCompleted
 	} from '$lib/services/briefClient.service';
 	import type { DailyBrief, StreamingBriefData, StreamingStatus } from '$lib/types/daily-brief';
-	import { renderMarkdown } from '$lib/utils/markdown';
+	import { renderAgentMarkdownContent } from '$lib/utils/markdown';
 	import ProjectBriefGrid from '$lib/components/briefs/ProjectBriefGrid.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import { toastService } from '$lib/stores/toast.store';
@@ -1429,7 +1429,7 @@
 							prose-p:text-sm sm:prose-p:text-base
 							prose-li:text-sm sm:prose-li:text-base"
 						>
-							{@html renderMarkdown(displayDailyBrief.summary_content)}
+							{@html renderAgentMarkdownContent(displayDailyBrief.summary_content)}
 						</div>
 
 						{#if displayDailyBrief.priority_actions?.length}
