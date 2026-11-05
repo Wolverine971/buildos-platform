@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/layout/Navigation.svelte -->
 <script lang="ts">
 	import BuildOSLogo from './BuildOSLogo.svelte';
-	import { START_PROJECT_CTA } from '$lib/constants/brand';
+	import { publicStartCta } from '$lib/constants/brand';
 	import { page } from '$app/state';
 	import { afterNavigate, goto, replaceState } from '$app/navigation';
 	import { createChatResumeLinkHandler } from './agent-chat-resume-link';
@@ -165,6 +165,7 @@
 					{ href: '/#agents', label: 'Agent context' }
 				]
 	);
+	const startCta = $derived(publicStartCta(currentPath));
 	const projectDetailMatch = $derived(
 		currentPath.match(/^\/projects\/([^/]+)(?:\/organize)?\/?$/)
 	);
@@ -1371,10 +1372,14 @@
 							Log in
 						</a>
 						<a
-							href="/auth/register"
+							href={startCta.href}
+							onclick={(event) => {
+								if (startCta.href.startsWith('#'))
+									void handlePublicNavClick(event, startCta.href);
+							}}
 							class="px-4 py-2 text-xs font-medium text-accent-foreground bg-accent rounded-lg shadow-ink hover:bg-accent/90 pressable tx tx-bloom tx-weak {navMotion}"
 						>
-							{START_PROJECT_CTA}
+							{startCta.label}
 						</a>
 					</div>
 
@@ -1682,11 +1687,11 @@
 						Log in
 					</a>
 					<a
-						href="/auth/register"
-						onclick={() => handleMenuItemClick('/auth/register')}
+						href={startCta.href}
+						onclick={(event) => handlePublicNavClick(event, startCta.href)}
 						class="block px-3 py-2 mt-2 text-sm font-medium text-center text-accent-foreground bg-accent hover:bg-accent/90 rounded-lg shadow-ink pressable tx tx-bloom tx-weak {navMotion}"
 					>
-						{START_PROJECT_CTA}
+						{startCta.label}
 					</a>
 				</div>
 			{/if}

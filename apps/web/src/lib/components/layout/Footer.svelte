@@ -1,13 +1,15 @@
 <!-- apps/web/src/lib/components/layout/Footer.svelte -->
 <script lang="ts">
-	import { BRAND_TAGLINE, START_PROJECT_CTA } from '$lib/constants/brand';
-	import { BookOpen, Brain, Heart, Linkedin, Shield, Twitter } from '$lib/icons/lucide';
+	import { page } from '$app/state';
+	import { publicStartCta } from '$lib/constants/brand';
+	import { Linkedin, Shield, Twitter } from '$lib/icons/lucide';
 	import { DEFAULT_APP_ICON_URL } from '$lib/constants/seo';
 	import { requestTrackingPreferences } from '$lib/services/tracking-consent';
 
 	let { user = null }: { user: any | null } = $props();
 
 	const CURRENT_YEAR = new Date().getFullYear();
+	const startCta = $derived(publicStartCta(page.url.pathname));
 
 	const SUPPORT_LINKS = [
 		{ href: '/help', label: 'Help' },
@@ -28,6 +30,7 @@
 			title: 'Resources',
 			links: [
 				{ href: '/blogs', label: 'Blog' },
+				{ href: '/docs', label: 'Docs' },
 				{ href: '/skills', label: 'Skill Gallery' },
 				{ href: '/marketing-assets', label: 'Marketing assets' },
 				{ href: '/help', label: 'Help' }
@@ -138,7 +141,7 @@
 							/>
 							<span
 								id="footer-brand-heading"
-								class="text-xl font-bold text-foreground"
+								class="text-lg font-semibold tracking-tight text-foreground"
 							>
 								BuildOS
 							</span>
@@ -146,25 +149,15 @@
 						<p
 							class="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground lg:mx-0"
 						>
-							{BRAND_TAGLINE}
+							A thinking environment for people making complex things
 						</p>
 
-						<div class="mx-auto mt-5 flex max-w-sm flex-col gap-3 sm:flex-row lg:mx-0">
-							<a
-								href="/auth/register"
-								class="pressable inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-lg border border-accent bg-accent px-5 py-3 text-sm font-semibold tracking-tight text-accent-foreground shadow-ink transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
-							>
-								<Brain class="h-4 w-4 shrink-0" aria-hidden="true" />
-								{START_PROJECT_CTA}
-							</a>
-							<a
-								href="/docs"
-								class="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-lg border border-border bg-card px-5 py-3 text-sm font-semibold tracking-tight text-foreground shadow-ink transition-colors hover:border-accent hover:bg-muted hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
-							>
-								<BookOpen class="h-4 w-4 shrink-0" aria-hidden="true" />
-								Read docs
-							</a>
-						</div>
+						<a
+							href={startCta.href}
+							class="mt-6 inline-flex min-h-11 items-center justify-center rounded-lg bg-accent px-5 text-sm font-medium text-accent-foreground shadow-ink transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
+						>
+							{startCta.label}
+						</a>
 					</section>
 
 					<nav
@@ -181,7 +174,7 @@
 										<li>
 											<a
 												href={link.href}
-												class="inline-flex min-h-11 items-center rounded-md px-1 text-sm text-muted-foreground transition-colors hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none lg:min-h-0 lg:py-1"
+												class="inline-flex min-h-11 items-center rounded-md px-1 text-sm text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none lg:min-h-0 lg:py-1"
 											>
 												{link.label}
 											</a>
@@ -196,18 +189,7 @@
 				<div
 					class="mt-8 flex flex-col items-center gap-4 border-t border-border pt-6 sm:flex-row sm:justify-between"
 				>
-					<p
-						class="flex items-center gap-1 text-xs font-semibold tracking-tight text-muted-foreground"
-					>
-						<span>© {CURRENT_YEAR} BuildOS</span>
-						<span aria-hidden="true">•</span>
-						<span>Made with</span>
-						<Heart
-							class="h-3 w-3 fill-destructive text-destructive"
-							aria-hidden="true"
-						/>
-						<span>for builders</span>
-					</p>
+					<p class="text-xs text-muted-foreground">© {CURRENT_YEAR} BuildOS</p>
 
 					<nav
 						aria-label="Legal and privacy links"
@@ -216,7 +198,7 @@
 						{#each LEGAL_LINKS as link (link.href)}
 							<a
 								href={link.href}
-								class="inline-flex min-h-11 items-center rounded-md px-2 font-semibold tracking-tight text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+								class="inline-flex min-h-11 items-center rounded-md px-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 							>
 								{link.label}
 							</a>
@@ -224,7 +206,7 @@
 						<button
 							type="button"
 							onclick={requestTrackingPreferences}
-							class="inline-flex min-h-11 items-center rounded-md px-2 font-semibold tracking-tight text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+							class="inline-flex min-h-11 items-center rounded-md px-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 						>
 							Privacy choices
 						</button>
@@ -237,7 +219,7 @@
 								href={social.href}
 								target="_blank"
 								rel="noopener noreferrer"
-								class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+								class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 								aria-label="{social.label} (opens in new tab)"
 							>
 								<SocialIcon class="h-5 w-5" aria-hidden="true" />

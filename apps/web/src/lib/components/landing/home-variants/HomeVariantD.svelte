@@ -11,14 +11,15 @@
 		LockKeyhole,
 		Play
 	} from '$lib/icons/lucide';
+	import { START_WITH_NOTES_CTA } from '$lib/constants/brand';
 	import HomeDraftBox from './HomeDraftBox.svelte';
 	import Capabilities from './d/Capabilities.svelte';
 	import AnimatedDemo from './d/AnimatedDemo.svelte';
 	import ProjectReel from './d/ProjectReel.svelte';
 	import { storyAt } from './d/project-reel';
 
-	/** The one action on this page. Every start button says the same thing. */
-	const START_CTA = 'Start with my notes';
+	/** The one action on this page. Every start button says the same thing, the nav's too. */
+	const START_CTA = START_WITH_NOTES_CTA;
 	let draftBox = $state<ReturnType<typeof HomeDraftBox> | null>(null);
 	/** The hero example on screen; the paste box placeholder follows it. */
 	let reelIndex = $state(0);
