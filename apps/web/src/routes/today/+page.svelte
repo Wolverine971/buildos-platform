@@ -13,7 +13,7 @@
 		type ActivationPacket
 	} from '$lib/utils/onboarding-state';
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
-	import { formatInTimeZone } from 'date-fns-tz';
+	import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 	import type { ChatContextType, ProjectFocus } from '@buildos/shared-types';
 	import type { PageData } from './$types';
 
@@ -24,6 +24,18 @@
 	import type { CaptureSortResult } from '$lib/components/workspace/workspace-model';
 	import TodayTaskGroups from '$lib/components/today/TodayTaskGroups.svelte';
 	import WhatChangedSection from '$lib/components/today/WhatChangedSection.svelte';
+	import TodayPickCard from '$lib/components/today/TodayPickCard.svelte';
+	import TodayWaitingSection from '$lib/components/today/TodayWaitingSection.svelte';
+	import TodayCloseOut from '$lib/components/today/TodayCloseOut.svelte';
+	import TodayRepeatedSuggestions from '$lib/components/today/TodayRepeatedSuggestions.svelte';
+	import {
+		dueWords,
+		pickTodayFocus,
+		timeOfDay,
+		type CloseOutAnswer,
+		type RepeatedChoice,
+		type TodayPick
+	} from '$lib/components/today/today-picks';
 	import DashboardBriefWidget from '$lib/components/dashboard/DashboardBriefWidget.svelte';
 	import { ensureTodaysBrief } from '$lib/services/ensure-today-brief';
 	import { briefChatSessionStore } from '$lib/stores/briefChatSession.store';
@@ -46,6 +58,7 @@
 		ArrowUpRight,
 		Calendar,
 		Inbox,
+		LayoutGrid,
 		MessageCircle,
 		RefreshCcw,
 		Send,
@@ -59,7 +72,15 @@
 	import { trackLoopEvent } from '$lib/services/loop-telemetry';
 	import { toastService } from '$lib/stores/toast.store';
 	import type { CalendarItem } from '$lib/types/calendar-items';
-	import type { TodayFeed, TodayTask, WhatChangedEntry, WhatChangedFeed } from '$lib/types/today';
+	import type {
+		TodayAttention,
+		TodayFeed,
+		TodayRepeatedSuggestion,
+		TodayTask,
+		TodayWaitingItem,
+		WhatChangedEntry,
+		WhatChangedFeed
+	} from '$lib/types/today';
 
 	let { data }: { data: PageData } = $props();
 
@@ -67,6 +88,8 @@
 	// afterwards.
 	// svelte-ignore state_referenced_locally
 	let feed = $state<TodayFeed | null>(data.feed);
+	// svelte-ignore state_referenced_locally
+	let attention = $state<TodayAttention | null>(data.attention ?? null);
 	let refreshing = $state(false);
 	let inboxCount = $state(0);
 	let changesFeed = $state<WhatChangedFeed | null>(null);
@@ -382,10 +405,18 @@
 
 		schedule.sort((a, b) => a.sortMs - b.sortMs);
 
-		const bucketOrder = { due_today: 0, starts_today: 1, in_progress: 2 } as const;
+		const bucketOrder = {
+			due_today: 0,
+			starts_today: 1,
+			due_soon: 2,
+			new: 3,
+			in_progress: 4
+		} as const;
 		anytime.sort((a, b) => {
 			const byBucket = bucketOrder[a.bucket] - bucketOrder[b.bucket];
 			if (byBucket !== 0) return byBucket;
+			const byDue = (a.due_in_days ?? 99) - (b.due_in_days ?? 99);
+			if (byDue !== 0) return byDue;
 			return a.title.localeCompare(b.title);
 		});
 
@@ -459,16 +490,355 @@
 			.slice(0, 6)
 	);
 
+	// ── Time-aware top of the page: one pick, the evening close-out, and the asks lists. ──
+	const dayPart = $derived(timeOfDay(Number(formatInTimeZone(new Date(nowMs), timezone, 'H'))));
+
+	/** Short weekday of a due date in the person's timezone ("Fri"). */
+	function dueWeekday(dueAt: string): string | null {
+		const dateOnly = getDateOnlyCalendarDate(dueAt, 'end', timezone);
+		const instant = dateOnly ? new Date(`${dateOnly}T12:00:00Z`) : new Date(dueAt);
+		if (Number.isNaN(instant.getTime())) return null;
+		return formatInTimeZone(instant, dateOnly ? 'UTC' : timezone, 'EEE');
+	}
+
+	function taskMeta(task: TodayTask): string | null {
+		if (task.bucket === 'due_soon' && task.due_in_days != null && task.due_at)
+			return dueWords(task.due_in_days, dueWeekday(task.due_at));
+		if (task.bucket === 'new')
+			return task.created_by_you ? 'You added this' : 'Added by one of your agents';
+		return null;
+	}
+
+	// Asks marked done or removed this visit leave the picks at once.
+	let settledWaiting = $state<Set<string>>(new Set());
+	const waitingItems = $derived(
+		(attention?.waiting ?? []).filter((item) => !settledWaiting.has(item.id))
+	);
+	const picks = $derived(
+		feed
+			? pickTodayFocus({
+					tasks: withoutRemoved(feed.tasks),
+					waiting: waitingItems,
+					doneIds,
+					weekdayOf: dueWeekday
+				})
+			: []
+	);
+	let lastPickDone = $state<string | null>(null);
+
+	// "Today went sideways" and a hidden close-out last for the day (this browser only).
+	const dayKey = (name: string) => `buildos:today:${name}:${feed?.date ?? ''}`;
+	function readDayFlag(name: string): boolean {
+		try {
+			return localStorage.getItem(dayKey(name)) === '1';
+		} catch {
+			return false;
+		}
+	}
+	function writeDayFlag(name: string, on: boolean) {
+		try {
+			if (on) localStorage.setItem(dayKey(name), '1');
+			else localStorage.removeItem(dayKey(name));
+		} catch {
+			// Storage unavailable: the choice lasts until reload.
+		}
+	}
+	let sideways = $state(false);
+	let closeHidden = $state(false);
+	let closeOpen = $state(false);
+	let closePicks = $state<TodayPick[]>([]);
+	let seenYou = $state<number | null>(null);
+	let seenAgents = $state<string[]>([]);
+	let layoutOpen = $state(false);
+	onMount(() => {
+		sideways = readDayFlag('sideways');
+		closeHidden = readDayFlag('closeout-hidden');
+	});
+
+	function setSideways(on: boolean) {
+		sideways = on;
+		writeDayFlag('sideways', on);
+		trackLoopEvent('loop_decision_made', 'today', {
+			source_type: 'day',
+			action: on ? 'sideways' : 'sideways_undo'
+		});
+	}
+
+	function openPick(pick: TodayPick) {
+		if (pick.task) openTask(pick.task);
+		else if (pick.waiting) openWaiting(pick.waiting);
+	}
+
+	async function completePick(pick: TodayPick) {
+		lastPickDone = pick.title;
+		if (pick.task && !doneIds.has(pick.task.id)) await toggleDone(pick.task);
+		if (pick.waiting) await setWaitingStatus(pick.waiting, 'resolved');
+	}
+
+	async function setWaitingStatus(
+		item: TodayWaitingItem,
+		status: 'open' | 'resolved' | 'dismissed'
+	): Promise<boolean> {
+		const next = new Set(settledWaiting);
+		if (status === 'open') next.delete(item.id);
+		else next.add(item.id);
+		settledWaiting = next;
+		try {
+			const response = await fetch(`/api/today/waiting/${item.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ status })
+			});
+			if (!response.ok) throw new Error(`Waiting update failed (${response.status})`);
+			trackLoopEvent('loop_decision_made', 'today', {
+				source_type: 'waiting_item',
+				action: status,
+				source_ref_id: item.id,
+				direction: item.direction
+			});
+			return true;
+		} catch {
+			const undo = new Set(settledWaiting);
+			if (status === 'open') undo.add(item.id);
+			else undo.delete(item.id);
+			settledWaiting = undo;
+			toastService.error('Could not update that');
+			return false;
+		}
+	}
+
+	function openWaiting(item: TodayWaitingItem) {
+		const task = item.task_id
+			? (seenTasks.get(item.task_id) ?? feed?.tasks.find((t) => t.id === item.task_id))
+			: undefined;
+		if (task) {
+			openTask(task);
+		} else if (item.task_id && item.project_id) {
+			readerProjectId = item.project_id;
+			prepareEntityModalData('task', item.task_id, { withTaskDocuments: true });
+			panes?.open({ kind: 'task', id: item.task_id });
+		} else if (item.project_id) {
+			void goto(`/projects/${item.project_id}`);
+		}
+	}
+
+	async function nudgeWaiting(item: TodayWaitingItem) {
+		await ensureChatModal();
+		const draft = `Help me follow up with ${item.who}. I'm waiting on: ${item.what}`;
+		chatConfig = item.project_id
+			? { contextType: 'project', entityId: item.project_id, draft }
+			: { contextType: 'general', draft };
+		chatOpen = true;
+		trackLoopEvent('loop_chat_opened', 'today', {
+			chat_source: 'waiting_nudge',
+			source_ref_id: item.id,
+			project_id: item.project_id
+		});
+	}
+
+	async function openCloseOut() {
+		closePicks = picks.length > 0 ? picks : closePicks;
+		closeOpen = true;
+		seenYou = null;
+		seenAgents = [];
+		trackLoopEvent('loop_surface_opened', 'today', { source_type: 'close_out' });
+		if (!feed) return;
+		try {
+			const response = await fetch(
+				`/api/today/changes?since=${encodeURIComponent(feed.dayStart)}`
+			);
+			const result = await requireApiData<{ feed: WhatChangedFeed }>(response);
+			const entries = result.feed.entries;
+			// BuildOS chat is the person talking; connected agents (Claude Code, Codex) are not.
+			seenYou = entries.filter(
+				(entry) => entry.actor_kind === 'you' || entry.actor_kind === 'agent'
+			).length;
+			const byAgent = new Map<string, { count: number; projects: Set<string> }>();
+			for (const entry of entries) {
+				if (entry.actor_kind !== 'external_agent' && entry.actor_kind !== 'member')
+					continue;
+				const row = byAgent.get(entry.actor_label) ?? { count: 0, projects: new Set() };
+				row.count += 1;
+				row.projects.add(entry.project_name);
+				byAgent.set(entry.actor_label, row);
+			}
+			seenAgents = [...byAgent].map(
+				([label, row]) =>
+					`${label}: ${row.count} change${row.count === 1 ? '' : 's'} in ${[...row.projects].slice(0, 3).join(', ')}`
+			);
+		} catch {
+			seenYou = 0;
+		}
+	}
+
+	function hideCloseOut() {
+		closeOpen = false;
+		closeHidden = true;
+		writeDayFlag('closeout-hidden', true);
+	}
+
+	async function patchTask(taskId: string, body: Record<string, unknown>): Promise<boolean> {
+		try {
+			const response = await fetch(`/api/onto/tasks/${taskId}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(body)
+			});
+			return response.ok;
+		} catch {
+			return false;
+		}
+	}
+
+	async function archiveTask(taskId: string): Promise<boolean> {
+		try {
+			const response = await fetch(`/api/onto/tasks/${taskId}`, {
+				method: 'DELETE',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ archive: true })
+			});
+			return response.ok;
+		} catch {
+			return false;
+		}
+	}
+
+	async function restoreTask(taskId: string): Promise<boolean> {
+		try {
+			const response = await fetch(`/api/onto/tasks/${taskId}/restore`, { method: 'POST' });
+			return response.ok;
+		} catch {
+			return false;
+		}
+	}
+
+	async function applyCloseOut(
+		answers: { pick: TodayPick; answer: CloseOutAnswer }[]
+	): Promise<number> {
+		let saved = 0;
+		for (const { pick, answer } of answers) {
+			let ok = false;
+			if (answer === 'not_today') continue;
+			if (answer === 'done') {
+				if (pick.task) {
+					ok =
+						doneIds.has(pick.task.id) ||
+						(await patchTask(pick.task.id, { state_key: 'done' }));
+					if (ok) doneIds = new Set(doneIds).add(pick.task.id);
+				}
+				if (pick.waiting) ok = (await setWaitingStatus(pick.waiting, 'resolved')) || ok;
+			} else if (answer === 'progress') {
+				if (pick.task) ok = await patchTask(pick.task.id, { state_key: 'in_progress' });
+			} else if (answer === 'let_go') {
+				if (pick.task) ok = await archiveTask(pick.task.id);
+				else if (pick.waiting) ok = await setWaitingStatus(pick.waiting, 'dismissed');
+			}
+			if (ok) saved += 1;
+		}
+		trackLoopEvent('loop_decision_made', 'today', {
+			source_type: 'close_out',
+			action: 'apply',
+			answered_count: answers.length,
+			saved_count: saved
+		});
+		if (saved < answers.filter((entry) => entry.answer !== 'not_today').length)
+			toastService.error('Some changes didn’t save. Try those again.');
+		void refresh();
+		void loadChanges();
+		return saved;
+	}
+
+	async function talkCloseOut(text: string) {
+		await ensureChatModal();
+		chatConfig = {
+			contextType: 'general',
+			draft: `Closing out my day. Here's what happened:\n${text}`,
+			autoSend: true
+		};
+		chatOpen = true;
+		trackLoopEvent('loop_chat_opened', 'today', { chat_source: 'close_out' });
+	}
+
+	// Suggestions the brief repeats every morning.
+	const repeated = $derived(attention?.repeated ?? []);
+
+	function snoozeDueAt(): string | null {
+		if (!feed) return null;
+		const date = new Date(Date.parse(`${feed.date}T00:00:00Z`) + 30 * 24 * 60 * 60 * 1000)
+			.toISOString()
+			.slice(0, 10);
+		return fromZonedTime(`${date}T23:59:59`, timezone).toISOString();
+	}
+
+	async function chooseRepeated(
+		item: TodayRepeatedSuggestion,
+		choice: RepeatedChoice
+	): Promise<boolean> {
+		let ok = false;
+		if (choice === 'keep') {
+			try {
+				const response = await fetch('/api/today/suggestions/keep', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ task_id: item.task_id })
+				});
+				ok = response.ok;
+			} catch {
+				ok = false;
+			}
+		} else if (choice === 'snooze') {
+			const dueAt = snoozeDueAt();
+			ok = dueAt ? await patchTask(item.task_id, { due_at: dueAt }) : false;
+		} else {
+			ok = await archiveTask(item.task_id);
+		}
+		if (!ok) toastService.error('Could not save that');
+		trackLoopEvent('loop_decision_made', 'today', {
+			source_type: 'repeated_suggestion',
+			action: choice,
+			source_ref_id: item.task_id,
+			project_id: item.project_id,
+			streak_days: item.days
+		});
+		return ok;
+	}
+
+	async function undoRepeated(
+		item: TodayRepeatedSuggestion,
+		choice: RepeatedChoice
+	): Promise<boolean> {
+		let ok = false;
+		if (choice === 'keep') {
+			try {
+				const response = await fetch('/api/today/suggestions/keep', {
+					method: 'DELETE',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ task_id: item.task_id })
+				});
+				ok = response.ok;
+			} catch {
+				ok = false;
+			}
+		} else if (choice === 'snooze') {
+			ok = await patchTask(item.task_id, { due_at: item.due_at });
+		} else {
+			ok = await restoreTask(item.task_id);
+		}
+		if (!ok) toastService.error('Could not undo that');
+		return ok;
+	}
+
 	async function refresh() {
 		if (refreshing) return;
 		refreshing = true;
 		try {
 			const response = await fetch('/api/today');
-			const result = await requireApiData<{ feed: TodayFeed }>(
+			const result = await requireApiData<{ feed: TodayFeed; attention?: TodayAttention }>(
 				response,
 				'Failed to refresh your day'
 			);
 			feed = result.feed;
+			if (result.attention) attention = result.attention;
 		} catch {
 			toastService.error('Could not refresh your day');
 		} finally {
@@ -1283,6 +1653,47 @@
 					</div>
 				</section>
 			{:else if hasProjects && !activationProject}
+				{#if dayPart === 'evening' && !closeOpen && !closeHidden}
+					<div
+						class="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-accent/50 bg-accent/5 px-4 py-2.5"
+					>
+						<p class="text-sm text-foreground">
+							<span class="font-semibold">Close out the day?</span> Say what happened.
+							About 30 seconds.
+						</p>
+						<div class="flex gap-2">
+							<Button variant="accent" size="sm" onclick={openCloseOut}
+								>Close out</Button
+							>
+							<Button variant="ghost" size="sm" onclick={hideCloseOut}>Not now</Button
+							>
+						</div>
+					</div>
+				{/if}
+				{#if closeOpen}
+					<ErrorBoundary area="today-close-out">
+						<TodayCloseOut
+							picks={closePicks}
+							{seenYou}
+							{seenAgents}
+							onApply={applyCloseOut}
+							onTalk={(text) => void talkCloseOut(text)}
+							onHide={hideCloseOut}
+						/>
+					</ErrorBoundary>
+				{/if}
+				<ErrorBoundary area="today-pick">
+					<TodayPickCard
+						{picks}
+						time={dayPart}
+						{sideways}
+						lastDone={lastPickDone}
+						onOpen={openPick}
+						onDone={(pick) => void completePick(pick)}
+						onSideways={() => setSideways(true)}
+						onBack={() => setSideways(false)}
+					/>
+				</ErrorBoundary>
 				<!-- One capture box, same as the Workspace: it saves instantly and BuildOS sorts
 				     it (tasks, notes, or a done/rescheduled task in a project), with Undo. -->
 				<section class="mt-3" aria-label="Capture">
@@ -1356,6 +1767,11 @@
 				>
 					{#snippet list()}
 						<div class="today-list">
+							{#if hasProjects && agenda.allDay.length === 0 && agenda.schedule.length === 0 && !hasIncompleteFeed}
+								<p class="micro-label mt-5 text-muted-foreground">
+									Calendar · nothing booked
+								</p>
+							{/if}
 							{#if agenda.allDay.length > 0}
 								<section class="mt-4" aria-label="All-day events">
 									<h2
@@ -1491,12 +1907,12 @@
 							{/if}
 
 							{#if agenda.anytime.length > 0}
-								<section class="mt-4" aria-label="Tasks without a set time">
+								<section class="mt-4" aria-label="Due this week and new">
 									<div class="mb-1.5 flex items-center gap-2">
 										<h2
 											class="text-sm font-semibold tracking-tight text-foreground"
 										>
-											Anytime today
+											Due this week and new
 										</h2>
 										<span class="text-xs stamp text-muted-foreground"
 											>{agenda.anytime.length}</span
@@ -1512,9 +1928,21 @@
 											onChat={openTaskChat}
 											onOpenTask={openTask}
 											onToggleDone={toggleDone}
+											metaOf={taskMeta}
 										/>
 									</ErrorBoundary>
 								</section>
+							{/if}
+
+							{#if !sideways}
+								<ErrorBoundary area="today-waiting">
+									<TodayWaitingSection
+										items={waitingItems}
+										onOpen={openWaiting}
+										onNudge={(item) => void nudgeWaiting(item)}
+										onSetStatus={setWaitingStatus}
+									/>
+								</ErrorBoundary>
 							{/if}
 
 							{#if isClearDay && hasProjects && !activationProject}
@@ -1530,7 +1958,7 @@
 												<h2
 													class="text-sm font-semibold tracking-tight text-foreground"
 												>
-													Here's what's waiting
+													Your projects' next moves
 												</h2>
 											</div>
 											<ul class="flex flex-col gap-1">
@@ -1626,6 +2054,58 @@
 		{#if changesFeed && !readingWide}
 			<ErrorBoundary area="today-what-changed">
 				<WhatChangedSection feed={changesFeed} onChatAboutEntry={openReceiptChat} />
+			</ErrorBoundary>
+		{/if}
+		{#if feed && hasProjects && !readingWide && !activationProject}
+			<nav
+				class="mt-6 flex flex-wrap items-center gap-2 border-t border-border/70 pt-4"
+				aria-label="More ways in"
+			>
+				<Button
+					variant="outline"
+					size="sm"
+					icon={LayoutGrid}
+					aria-pressed={layoutOpen}
+					onclick={() => (layoutOpen = !layoutOpen)}>Lay it out</Button
+				>
+				<Button variant="outline" size="sm" icon={MessageCircle} onclick={openDayChat}
+					>Talk it through</Button
+				>
+				{#if dayPart !== 'morning' && !closeOpen}
+					<Button variant="outline" size="sm" onclick={openCloseOut}
+						>Close out the day</Button
+					>
+				{/if}
+			</nav>
+			{#if layoutOpen}
+				<section class="mt-3" aria-label="Every project's next move">
+					<h2 class="micro-label text-muted-foreground">Every project's next move</h2>
+					<ul class="mt-1 rounded-lg border border-border bg-card">
+						{#each (feed?.projects ?? []).filter((project) => project.kind !== 'workspace' && isActiveFacing(project.state_key) && project.next_step_short) as project (project.id)}
+							<li class="border-t border-border/70 first:border-t-0">
+								<a
+									href={`/projects/${project.id}`}
+									class="block min-h-11 px-3 py-2.5 hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								>
+									<span class="block text-sm font-medium text-foreground"
+										>{project.name}</span
+									>
+									<span
+										class="block text-xs text-muted-foreground [overflow-wrap:anywhere]"
+										>{project.next_step_short}</span
+									>
+								</a>
+							</li>
+						{/each}
+					</ul>
+				</section>
+			{/if}
+			<ErrorBoundary area="today-repeated">
+				<TodayRepeatedSuggestions
+					items={repeated}
+					onChoose={chooseRepeated}
+					onUndo={undoRepeated}
+				/>
 			</ErrorBoundary>
 		{/if}
 	</main>

@@ -6,6 +6,10 @@ const { getFeed, needsOnboarding } = vi.hoisted(() => ({
 }));
 vi.mock('$lib/server/today-feed.service', () => ({ getTodayFeed: getFeed }));
 vi.mock('$lib/server/project-visibility', () => ({ needsOnboarding }));
+vi.mock('$lib/server/today-attention.service', () => ({
+	activeProjectNames: () => ({}),
+	getTodayAttention: vi.fn().mockResolvedValue({ waiting: [], repeated: [] })
+}));
 import { _CHAT_LAUNCH_GRACE_COOKIE, load } from './+page.server';
 
 function fakeCookies(initial: Record<string, string> = {}) {

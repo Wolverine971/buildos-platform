@@ -8,7 +8,7 @@ const ontologyMocks = vi.hoisted(() => ({
 
 vi.mock('$lib/services/ontology/ontology-projects.service', () => ontologyMocks);
 
-import { getTodayFeed, resolveTodayTaskBucket } from './today-feed.service';
+import { getTodayFeed, resolveTodayTaskBucket, resolveTodayWeekBucket } from './today-feed.service';
 
 function makeQuery(result: { data?: unknown; count?: number | null; error?: unknown }) {
 	const builder: Record<string, ReturnType<typeof vi.fn>> & {
@@ -205,5 +205,43 @@ describe('getTodayFeed', () => {
 			views: false,
 			legacy: true
 		});
+	});
+});
+
+describe('resolveTodayWeekBucket', () => {
+	const day = {
+		start: Date.parse('2026-11-05T05:00:00Z'),
+		end: Date.parse('2026-11-06T05:00:00Z')
+	};
+	const now = Date.parse('2026-11-05T14:00:00Z');
+	const base = {
+		start_at: null,
+		state_key: 'todo',
+		created_at: '2026-10-01T00:00:00Z',
+		updated_at: '2026-10-01T00:00:00Z'
+	};
+	const bucket = (over: Partial<typeof base> & { due_at?: string | null }) =>
+		resolveTodayWeekBucket(
+			{ due_at: null, ...base, ...over },
+			'2026-11-05',
+			day.start,
+			day.end,
+			'America/New_York',
+			now
+		);
+
+	it('puts yesterday through next week under due this week, and today under due today', () => {
+		expect(bucket({ due_at: '2026-11-07T04:59:59Z' })).toBe('due_soon'); // Fri Nov 6 end of day ET
+		expect(bucket({ due_at: '2026-11-05T04:59:59Z' })).toBe('due_soon'); // yesterday
+		expect(bucket({ due_at: '2026-11-06T04:59:59Z' })).toBe('due_today');
+		expect(bucket({ due_at: '2026-11-20T04:59:59Z' })).toBeNull();
+	});
+
+	it('shows recent additions as new and drops in-progress work nobody touched for weeks', () => {
+		expect(bucket({ created_at: '2026-11-04T20:00:00Z' })).toBe('new');
+		expect(bucket({ state_key: 'in_progress' })).toBeNull();
+		expect(bucket({ state_key: 'in_progress', updated_at: '2026-11-01T00:00:00Z' })).toBe(
+			'in_progress'
+		);
 	});
 });

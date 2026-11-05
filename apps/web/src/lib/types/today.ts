@@ -2,7 +2,11 @@
 // Shared shapes for the /today agenda feed (server service + client view).
 import type { CalendarItem } from '$lib/types/calendar-items';
 
-export type TodayTaskBucket = 'due_today' | 'starts_today' | 'in_progress';
+/**
+ * Why a task is on Today. `due_soon` = due yesterday through the next 7 days (not today);
+ * `new` = added in the last 3 days with no date this week.
+ */
+export type TodayTaskBucket = 'due_today' | 'starts_today' | 'due_soon' | 'new' | 'in_progress';
 export type TodayFeedDegradedSection = 'events' | 'tasks' | 'overdue';
 
 export interface TodayTask {
@@ -17,6 +21,12 @@ export interface TodayTask {
 	priority: number | null;
 	updated_at: string;
 	bucket: TodayTaskBucket;
+	/** When the task was added (optional for older callers). */
+	created_at?: string | null;
+	/** True when the person added it themselves (by hand or through chat), not an agent. */
+	created_by_you?: boolean;
+	/** Calendar days from today to the due date (−1 = yesterday), when it has one. */
+	due_in_days?: number | null;
 }
 
 export interface TodayProject {
@@ -47,6 +57,37 @@ export interface TodayFeed {
 	projectNames: Record<string, string>;
 	/** Projects the user can see — drives the readiness-aware empty states */
 	projects: TodayProject[];
+}
+
+/** One open ask on the Today page: who is waiting on whom, written by the morning brief job. */
+export interface TodayWaitingItem {
+	id: string;
+	/** on_you: someone is waiting on the person. on_them: the person is waiting on someone. */
+	direction: 'on_you' | 'on_them';
+	who: string;
+	who_kind: 'person' | 'agent' | 'organization';
+	what: string;
+	project_id: string | null;
+	project_name: string | null;
+	task_id: string | null;
+	/** YYYY-MM-DD the ask started, when known. */
+	since: string | null;
+}
+
+/** A task the daily brief has put in "Start here" every morning for days. */
+export interface TodayRepeatedSuggestion {
+	task_id: string;
+	project_id: string;
+	project_name: string;
+	title: string;
+	/** Consecutive briefs that suggested it, ending with the latest one. */
+	days: number;
+	due_at: string | null;
+}
+
+export interface TodayAttention {
+	waiting: TodayWaitingItem[];
+	repeated: TodayRepeatedSuggestion[];
 }
 
 export type WhatChangedActorKind = 'you' | 'member' | 'external_agent' | 'agent' | 'system';

@@ -3,6 +3,7 @@ import { redirectToLogin } from '$lib/server/auth-redirects';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getTodayFeed } from '$lib/server/today-feed.service';
+import { activeProjectNames, getTodayAttention } from '$lib/server/today-attention.service';
 import { needsOnboarding } from '$lib/server/project-visibility';
 import { readChatResumeSessionId } from '$lib/utils/agent-chat-resume';
 import { isAgentChatLaunch } from '$lib/utils/agent-chat-launch';
@@ -85,16 +86,24 @@ export const load: PageServerLoad = async ({
 			timezone: user.timezone,
 			timing: serverTiming
 		});
+		const attention = await getTodayAttention({
+			supabase,
+			userId: user.id,
+			date: feed.date,
+			projectNames: activeProjectNames(feed),
+			timing: serverTiming
+		});
 		const activatedProjectId = url.searchParams.get('activated_project');
 		return {
 			user,
 			feed,
+			attention,
 			activatedProjectId: feed.projects.some((project) => project.id === activatedProjectId)
 				? activatedProjectId
 				: null
 		};
 	} catch (error) {
 		console.error('[Today] Failed to load today feed:', error);
-		return { user, feed: null, activatedProjectId: null };
+		return { user, feed: null, attention: null, activatedProjectId: null };
 	}
 };

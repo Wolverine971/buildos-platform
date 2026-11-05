@@ -48,6 +48,7 @@ import type {
 	ProjectRecentChange
 } from './ontologyBriefTypes.js';
 import type { YesterdayPlanItem } from './ontologyPrompts.js';
+import { refreshTodayWaitingItems } from './todayWaitingItems.js';
 
 // ============================================================================
 // TYPES
@@ -103,6 +104,7 @@ const EXECUTIVE_SUMMARY_MAX_TOKENS = 1_500;
 const REENGAGEMENT_MAX_TOKENS = 2_500;
 const ANALYSIS_MAX_TOKENS = 3_000;
 const BRIEF_ENTITY_RECORDING_TIMEOUT_MS = 5_000;
+const TODAY_WAITING_ITEMS_TIMEOUT_MS = 45_000;
 const PROJECT_BRIEF_GENERATION_CONCURRENCY = 3;
 const ACTIVE_PROJECT_STATES = ['planning', 'active'] as const;
 
@@ -1510,6 +1512,26 @@ export async function generateOntologyDailyBrief(
 		}
 
 		await updateProgress(dailyBrief.id, { step: 'completed', progress: 100 }, jobId);
+
+		// Step 10: Refresh the Today page's "waiting on you / you're waiting on" asks. The
+		// brief is already saved and marked completed, so this can never fail or hold it.
+		try {
+			const waiting = await withTimeout(
+				refreshTodayWaitingItems({
+					supabase,
+					userId,
+					actorId,
+					timezone: userTimezone,
+					briefDate: briefDateInUserTz,
+					signal
+				}),
+				TODAY_WAITING_ITEMS_TIMEOUT_MS,
+				'Refreshing Today waiting items'
+			);
+			console.log(`[OntologyBrief] Today waiting items: ${JSON.stringify(waiting)}`);
+		} catch (waitingError) {
+			console.warn('[OntologyBrief] Today waiting items skipped:', waitingError);
+		}
 
 		console.log(`[OntologyBrief] Successfully generated brief for user ${userId}`);
 

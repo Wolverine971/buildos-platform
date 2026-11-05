@@ -11,7 +11,8 @@
 		selectedId = null,
 		onOpenTask,
 		onToggleDone,
-		onChat
+		onChat,
+		metaOf = () => null
 	}: {
 		tasks: TodayTask[];
 		doneIds: Set<string>;
@@ -20,6 +21,8 @@
 		onOpenTask: (task: TodayTask) => void;
 		onToggleDone: (task: TodayTask) => void;
 		onChat: (task: TodayTask) => void;
+		/** A short second line for a task, e.g. "Due Fri" or "Added by your agent". */
+		metaOf?: (task: TodayTask) => string | null;
 	} = $props();
 
 	const groups = $derived(groupTodayTasks(tasks));
@@ -55,6 +58,7 @@
 										rowId={task.id}
 										selected={task.id === selectedId}
 										stateKey={task.state_key}
+										metaLabel={metaOf(task)}
 										showProgressState={bucket.key !== 'in_progress'}
 										done={doneIds.has(task.id)}
 										onChat={() => onChat(task)}

@@ -5,6 +5,8 @@ import type { TodayTask, TodayTaskBucket } from '$lib/types/today';
 export const TODAY_TASK_BUCKETS: { key: TodayTaskBucket; label: string }[] = [
 	{ key: 'due_today', label: 'Due today' },
 	{ key: 'starts_today', label: 'Starting today' },
+	{ key: 'due_soon', label: 'Due this week' },
+	{ key: 'new', label: 'New' },
 	{ key: 'in_progress', label: 'In progress' }
 ];
 
