@@ -143,7 +143,7 @@
 	bind:this={panel}
 	bind:offsetWidth={width}
 	bind:offsetHeight={height}
-	class="fixed z-[71] grid gap-2.5 border border-border bg-card p-4 shadow-ink-strong tx tx-frame tx-weak
+	class="fixed z-[71] grid gap-3 border border-border bg-card p-4 shadow-ink-strong tx tx-frame tx-weak
 		{sheet
 		? 'inset-x-0 bottom-0 rounded-t-2xl pb-[calc(1rem+env(safe-area-inset-bottom,0px))]'
 		: 'w-[22rem] max-w-[calc(100vw-2rem)] rounded-xl'}"
@@ -154,7 +154,7 @@
 	aria-labelledby="desktop-move-title"
 	tabindex="-1"
 >
-	<h2 id="desktop-move-title" class="text-base font-semibold leading-snug text-foreground">
+	<h2 id="desktop-move-title" class="text-base font-medium leading-snug text-foreground">
 		{view.title}
 	</h2>
 	{#if view.mode === 'confirm'}
@@ -172,22 +172,24 @@
 		{/if}
 		{#each view.blockers as blocker (blocker)}
 			<p
-				class="rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-1.5 text-xs text-foreground"
+				class="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-foreground"
 			>
 				{blocker}
 			</p>
 		{/each}
 		{#if view.error}
 			<p
-				class="rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-1.5 text-xs text-foreground"
+				class="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-foreground"
 				role="alert"
 			>
 				{view.error}
 			</p>
 		{/if}
 		<div class="mt-1 flex items-center justify-end gap-2">
-			<span class="mr-auto hidden font-mono text-2xs text-muted-foreground sm:inline">
-				Enter · Esc
+			<span
+				class="mr-auto hidden items-center gap-1 text-xs text-muted-foreground sm:inline-flex"
+			>
+				<kbd>Enter</kbd><kbd>Esc</kbd>
 			</span>
 			<button
 				type="button"
@@ -199,7 +201,7 @@
 			<button
 				type="button"
 				data-primary
-				class="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-accent bg-accent px-3 text-sm font-semibold text-accent-foreground pressable disabled:cursor-not-allowed disabled:opacity-50"
+				class="inline-flex min-h-9 items-center gap-2 rounded-lg border border-accent bg-accent px-3 text-sm font-medium text-accent-foreground pressable disabled:cursor-not-allowed disabled:opacity-50"
 				disabled={!canConfirm}
 				onclick={onConfirm}
 			>
@@ -215,7 +217,7 @@
 				<button
 					type="button"
 					data-option
-					class="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-muted disabled:cursor-not-allowed disabled:opacity-55 {option.indent
+					class="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none {option.indent
 						? 'pl-8'
 						: ''}"
 					disabled={Boolean(option.reason)}
@@ -241,3 +243,15 @@
 		</div>
 	{/if}
 </div>
+
+<style>
+	kbd {
+		border-radius: 4px;
+		border: 1px solid hsl(var(--border-strong));
+		padding: 0 4px;
+		font-family: var(--font-mono, ui-monospace, monospace);
+		font-size: 11px;
+		line-height: 16px;
+		color: hsl(var(--muted-foreground));
+	}
+</style>

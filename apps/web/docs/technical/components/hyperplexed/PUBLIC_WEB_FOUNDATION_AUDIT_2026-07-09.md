@@ -339,3 +339,12 @@ request work rather than a universal server-rendering failure.
 - ✅ Live checks at 390×844 and 1440×1000 confirm zero horizontal overflow, correct light/dark
   screenshot selection, readable mobile stacking, and keyboard-accessible screenshot expansion.
   Prettier, the Svelte autofixer, `pnpm check`, and `git diff --check` pass.
+
+
+## 2026-11-03 — homepage variant comparison and D refinement
+
+The [homepage variants review](../../../design/home-page-design-review.md#homepage-variants-audit--2026-11-03)
+grades A–D and records the authorized D implementation: readable initial proof, a nearby notes
+form, a deferred scripted walkthrough, aligned sections, and corrected screenshot/privacy
+claims (P3/P4/P6/P8/P9/P11/P13/P19/P20). The live root and shared public shell were not changed.
+See that review for local verification and deferred A–C work.

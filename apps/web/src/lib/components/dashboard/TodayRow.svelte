@@ -18,7 +18,7 @@
 		ArrowRight,
 		CheckCircle2,
 		Inbox,
-		Sparkles,
+		Plug,
 		UserPlus,
 		XCircle
 	} from '$lib/icons/lucide';
@@ -467,7 +467,6 @@
 		{:else if inboxCount > 0}
 			<TodayChip
 				icon={Inbox}
-				iconClass="text-accent"
 				label="{inboxCount} to review"
 				title="AI Inbox: {inboxSummary}"
 				onclick={openInbox}
@@ -479,7 +478,6 @@
 		{#if actionableInvites.length > 0}
 			<TodayChip
 				icon={UserPlus}
-				iconClass="text-accent"
 				label="{actionableInvites.length} {actionableInvites.length === 1
 					? 'invite'
 					: 'invites'}"
@@ -492,7 +490,7 @@
 
 		{#if showAgentConnectionCta}
 			<TodayChip
-				icon={Sparkles}
+				icon={Plug}
 				tone="quiet"
 				label="Connect other AI surfaces"
 				trailingIcon={ArrowRight}

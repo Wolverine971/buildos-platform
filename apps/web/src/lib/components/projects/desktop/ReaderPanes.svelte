@@ -474,7 +474,7 @@
 			min-height: 0;
 			grid-template-rows: minmax(0, 1fr);
 			grid-template-columns: minmax(0, 1fr) 0px 0px;
-			transition: grid-template-columns 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+			transition: grid-template-columns 300ms cubic-bezier(0.22, 1, 0.36, 1);
 		}
 		.mode-peek {
 			grid-template-columns: var(--list-w, 340px) minmax(0, 1fr) 0px;
@@ -560,12 +560,12 @@
 		flex-direction: column;
 		overflow: hidden;
 		border-top: 1px solid hsl(var(--border));
-		border-radius: 18px 18px 0 0;
+		border-radius: 16px 16px 0 0;
 		background: hsl(var(--background));
-		box-shadow: 0 -12px 40px -16px hsl(0 0% 0% / 0.5);
+		box-shadow: 0 -8px 24px hsl(0 0% 0% / 0.12);
 		transition:
-			top 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
-			border-radius 280ms ease;
+			top 300ms cubic-bezier(0.22, 1, 0.36, 1),
+			border-radius 300ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.sheet.dragging {
 		transition: none;

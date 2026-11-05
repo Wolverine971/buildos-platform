@@ -58,27 +58,29 @@
 <div
 	bind:offsetWidth={width}
 	bind:offsetHeight={height}
-	class="pointer-events-none fixed z-[60] grid w-[19rem] max-w-[calc(100vw-2rem)] gap-2 rounded-xl border border-border bg-card p-3.5 shadow-ink-strong tx tx-frame tx-weak"
+	class="pointer-events-none fixed z-[60] grid w-[19rem] max-w-[calc(100vw-2rem)] gap-2 rounded-xl border border-border bg-card p-4 shadow-ink-strong tx tx-frame tx-weak"
 	style:left="{position.left}px"
 	style:top="{position.top}px"
 	style:visibility={width ? 'visible' : 'hidden'}
 	aria-hidden="true"
 >
-	<div class="flex items-start justify-between gap-2.5">
-		<span class="text-sm font-semibold leading-snug text-foreground text-balance">
+	<div class="flex items-start justify-between gap-3">
+		<span class="text-sm font-medium leading-snug text-foreground text-balance">
 			{project.name}
 		</span>
 		{#if look?.pulse}
-			<span class="pulse pulse-{look.pulse}">{PULSE_META[look.pulse].label}</span>
+			<span class="pulse pulse-{look.pulse}"
+				><i class="pulse-dot"></i>{PULSE_META[look.pulse].label}</span
+			>
 		{/if}
 	</div>
 	{#if look?.pulse}
-		<p class="-mt-1 text-xs text-muted-foreground">{look.reason}.</p>
+		<p class="-mt-1 text-xs text-muted-foreground">{look.reason}</p>
 	{/if}
 	{#if look}
 		<DesktopTaskMix mix={look.mix} />
 	{/if}
-	<p class="font-mono text-2xs text-muted-foreground">
+	<p class="font-mono text-xs tabular-nums text-muted-foreground">
 		{project.document_count}
 		{project.document_count === 1 ? 'doc' : 'docs'} · status {PROJECT_STATE_META[
 			projectState
@@ -87,7 +89,7 @@
 	</p>
 	{#if nextStep}
 		<div class="grid gap-0.5">
-			<span class="micro-label text-accent">NEXT STEP</span>
+			<span class="text-xs text-muted-foreground">Next step</span>
 			<p class="line-clamp-3 text-sm text-foreground">{nextStep}</p>
 		</div>
 	{/if}
@@ -96,7 +98,7 @@
 	{/if}
 	{#if inside.length}
 		<p class="text-sm text-foreground">
-			<span class="micro-label text-muted-foreground">INSIDE</span>
+			<span class="mr-1 text-xs text-muted-foreground">Inside</span>
 			{inside.map((child) => shortName(child.name, 28)).join(', ')}
 		</p>
 	{:else if parentName}
@@ -108,17 +110,21 @@
 </div>
 
 <style>
+	/* The pulse is quiet text behind a dot in the tile's frame color. */
 	.pulse {
+		display: inline-flex;
 		flex: none;
+		align-items: center;
+		gap: 6px;
+		font-size: 12px;
+		line-height: 20px;
+		color: hsl(var(--muted-foreground));
+	}
+	.pulse-dot {
+		width: 8px;
+		height: 8px;
 		border-radius: 99px;
-		border: 1px solid hsl(var(--c) / 0.5);
-		background: hsl(var(--c) / 0.14);
-		padding: 2px 7px;
-		font-size: 10.5px;
-		font-weight: 600;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
-		color: color-mix(in oklab, hsl(var(--c)) 80%, hsl(var(--foreground)));
+		background: hsl(var(--c));
 	}
 	.pulse-moving {
 		--c: var(--desk-moving);

@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/layout/Navigation.svelte -->
 <script lang="ts">
-	import { BRAND_TAGLINE, START_PROJECT_CTA } from '$lib/constants/brand';
+	import BuildOSLogo from './BuildOSLogo.svelte';
+	import { START_PROJECT_CTA } from '$lib/constants/brand';
 	import { page } from '$app/state';
 	import { afterNavigate, goto, replaceState } from '$app/navigation';
 	import { createChatResumeLinkHandler } from './agent-chat-resume-link';
@@ -25,11 +26,11 @@
 		Menu,
 		X,
 		Shield,
-		Sparkles,
 		AlertCircle,
 		ChevronRight,
 		LoaderCircle,
-		Zap,
+		ListChecks,
+		Plug,
 		Sun,
 		Moon,
 		Activity,
@@ -41,7 +42,6 @@
 		Users
 	} from '$lib/icons/lucide';
 	import { toggleMode } from 'mode-watcher';
-	import BuildOSLogo from './BuildOSLogo.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { logout } from '$lib/utils/auth';
 	import { lockBodyScroll, unlockBodyScroll } from '$lib/utils/body-scroll-lock';
@@ -153,6 +153,18 @@
 	let navHidden = $state(false);
 
 	const currentPath: string = $derived(page.url.pathname);
+	// Preview D has its own workflow and proof sections; other public routes keep the live-home links.
+	const publicNavItems = $derived(
+		currentPath === '/home-d'
+			? [
+					{ href: '#d-how', label: 'How it works' },
+					{ href: '#d-proof', label: 'What it does' }
+				]
+			: [
+					{ href: '/#loop', label: 'How it works' },
+					{ href: '/#agents', label: 'Agent context' }
+				]
+	);
 	const projectDetailMatch = $derived(
 		currentPath.match(/^\/projects\/([^/]+)(?:\/organize)?\/?$/)
 	);
@@ -253,8 +265,10 @@
 			: baseNavItems
 	);
 
-	const loadingAccentClass =
-		'animate-pulse-accent motion-reduce:animate-none ring-1 ring-accent/60 shadow-ink-strong';
+	const loadingAccentClass = 'animate-pulse motion-reduce:animate-none';
+	// One easing for every hover/press in the bar; named properties only (unslop pass).
+	const navMotion =
+		'transition-[color,background-color,border-color,opacity] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none';
 
 	const needsOnboarding = $derived(user && (!completedOnboarding || onboardingProgress < 100));
 	const onboardingUrgent = $derived(user && onboardingProgress < 50);
@@ -430,6 +444,23 @@
 
 		closeAllMenus();
 		return true;
+	}
+
+	async function handlePublicNavClick(event: MouseEvent, href: string) {
+		if (!href.startsWith('#')) {
+			handleMenuItemClick(href);
+			return;
+		}
+		if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+			return;
+		event.preventDefault();
+		closeAllMenus();
+		// Let the mobile drawer release its scroll lock and restore focus before moving to the section.
+		await tick();
+		await goto(href, { noScroll: true, keepFocus: true });
+		const target = document.getElementById(href.slice(1));
+		target?.focus({ preventScroll: true });
+		target?.scrollIntoView({ behavior: 'instant', block: 'start' });
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -849,12 +880,12 @@
 	aria-label="Main navigation"
 	data-fixed-element
 	bind:this={element}
-	class="sticky top-0 z-[100] bg-bench bench-grain transition-all duration-200 motion-reduce:transition-none {navHidden
+	class="sticky top-0 z-[100] bg-bench bench-grain transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none {navHidden
 		? '-translate-y-full'
 		: 'translate-y-0'}"
 >
 	<div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
-		<div class="flex justify-between items-center h-16 gap-2.5">
+		<div class="flex justify-between items-center h-16 gap-2">
 			<!-- Left side - Logo and Navigation -->
 			<div class="flex items-center min-w-0">
 				<!-- Logo - different styles for authenticated vs unauthenticated -->
@@ -887,22 +918,15 @@
 						>
 							<img
 								src={DEFAULT_APP_ICON_URL}
-								alt="BuildOS"
+								alt=""
 								class="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover"
 								width="40"
 								height="40"
 								decoding="async"
 							/>
-							<div>
-								<div
-									class="text-2xs uppercase tracking-[0.22em] text-muted-foreground"
-								>
-									BuildOS
-								</div>
-								<div class="text-xs text-muted-foreground">
-									{BRAND_TAGLINE}
-								</div>
-							</div>
+							<span class="text-base font-semibold tracking-tight text-foreground"
+								>BuildOS</span
+							>
 						</a>
 					{/if}
 				</div>
@@ -923,16 +947,16 @@
 								href={item.href}
 								onclick={() => handleMenuItemClick(item.href)}
 								title={item.label}
-								class="relative inline-flex items-center px-2 xl:px-3 py-1.5 md:py-2 text-xs md:text-sm font-bold tracking-tight rounded-md transition-all duration-200 whitespace-nowrap
+								class="relative inline-flex items-center px-2 xl:px-3 py-1.5 md:py-2 text-xs md:text-sm font-medium rounded-lg whitespace-nowrap {navMotion}
 								{currentPath === item.href
-									? 'text-accent bench-well'
+									? 'text-foreground bg-foreground/[0.06]'
 									: 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'}
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 								{loadingLink === item.href ? 'animate-pulse motion-reduce:animate-none' : ''}"
 							>
-								<!-- The active route sits down in the bench (bench-well). -->
+								<!-- Active route: one small surface step, accent on the icon only. -->
 								<Icon
-									class="w-4 h-4 lg:mr-1 xl:mr-1.5 flex-shrink-0 {currentPath ===
+									class="w-4 h-4 lg:mr-1 xl:mr-2 flex-shrink-0 {currentPath ===
 									item.href
 										? 'text-accent'
 										: 'text-muted-foreground'}"
@@ -949,26 +973,39 @@
 				<div
 					class="hidden md:flex items-center justify-center flex-1 gap-6 text-xs text-muted-foreground"
 				>
-					<a class="hover:text-foreground transition" href="/#loop">How it works</a>
-					<a class="hover:text-foreground transition" href="/#agents">Agent context</a>
+					{#each publicNavItems as item (item.href)}
+						<a
+							class="hover:text-foreground {navMotion}"
+							href={item.href}
+							onclick={(event) => handlePublicNavClick(event, item.href)}
+							>{item.label}</a
+						>
+					{/each}
 				</div>
 			{/if}
 			<!-- Right side -->
-			<div class="flex items-center gap-1.5 sm:gap-2 lg:gap-2 xl:gap-3 flex-shrink-0">
+			<div class="flex items-center gap-2 flex-shrink-0">
 				{#if user}
 					<!-- Agent Work: persistent run history/control. Kept separate from
 					     AI Inbox, which owns pending mutation reviews. -->
 					<button
 						type="button"
 						onclick={openAgentWork}
-						class="relative hidden h-9 w-9 items-center justify-center rounded-md border bg-card shadow-ink transition-all duration-200 hover:border-accent hover:bg-accent/10 hover:text-accent md:flex {$agentWorkAttentionCount >
+						class="relative hidden h-9 w-9 items-center justify-center rounded-lg border border-border bg-card shadow-ink hover:bg-muted hover:text-foreground md:flex {navMotion} {$agentWorkAttentionCount >
 						0
-							? 'border-accent/50 text-accent'
-							: 'border-border text-muted-foreground'}"
+							? 'text-foreground'
+							: 'text-muted-foreground'}"
 						aria-label={workAriaLabel}
 						title="Agent Work"
 					>
 						<Bot class="h-4 w-4" />
+						{#if $agentWorkAttentionCount > 0}
+							<!-- Live runs: a small static dot instead of an accent-tinted button. -->
+							<span
+								class="pointer-events-none absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-accent"
+								aria-hidden="true"
+							></span>
+						{/if}
 					</button>
 
 					<!-- AI Inbox: the durable queue for proposals and other reviewable changes. -->
@@ -976,10 +1013,10 @@
 						<a
 							href="/admin/gmail-relevance/review"
 							onclick={() => handleMenuItemClick('/admin/gmail-relevance/review')}
-							class="relative flex h-9 w-9 items-center justify-center rounded-md border bg-card text-muted-foreground shadow-ink transition-all duration-200 hover:border-accent hover:bg-accent/10 hover:text-accent {currentPath ===
+							class="relative flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card shadow-ink hover:bg-muted hover:text-foreground {navMotion} {currentPath ===
 							'/admin/gmail-relevance/review'
-								? 'border-accent/50 text-accent'
-								: 'border-border'}"
+								? 'bg-muted text-accent'
+								: 'text-muted-foreground'}"
 							aria-label="Review email suggestions"
 							title="Email suggestions"
 						>
@@ -994,10 +1031,10 @@
 						onpointerdown={preloadAiInboxModal}
 						onfocus={preloadAiInboxModal}
 						disabled={isOpeningAiInbox}
-						class="relative flex h-9 w-9 items-center justify-center rounded-md border bg-card shadow-ink transition-all duration-200 hover:border-accent hover:bg-accent/10 hover:text-accent disabled:cursor-wait disabled:opacity-70 {$aiInboxCountStore.total >
+						class="relative flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-card text-muted-foreground shadow-ink hover:bg-muted hover:text-foreground disabled:cursor-wait disabled:opacity-70 {navMotion} {$aiInboxCountStore.total >
 						0
-							? 'border-accent/50 text-accent'
-							: 'border-border text-muted-foreground'}"
+							? 'px-2.5'
+							: 'px-0'}"
 						aria-label={$aiInboxCountStore.total > 0
 							? `Open AI Inbox — ${$aiInboxCountStore.total} pending review item${$aiInboxCountStore.total === 1 ? '' : 's'}`
 							: 'Open AI Inbox'}
@@ -1009,8 +1046,9 @@
 							<Inbox class="h-4 w-4" />
 						{/if}
 						{#if $aiInboxCountStore.total > 0}
+							<!-- Count sits inline as quiet mono text (aria-label carries it). -->
 							<span
-								class="pointer-events-none absolute -right-1.5 -top-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-2xs font-black leading-none text-accent-foreground shadow-ink"
+								class="pointer-events-none font-mono text-xs leading-none tabular-nums text-foreground"
 								aria-hidden="true"
 							>
 								{aiInboxBadgeLabel}
@@ -1026,35 +1064,16 @@
 						onpointerenter={warmAgentChatModal}
 						onpointerdown={warmAgentChatModal}
 						onfocus={warmAgentChatModal}
-						class={`relative flex items-center gap-2 px-1.5 xl:px-3 h-9 rounded-md font-bold tracking-tight text-xs md:text-sm transition-all duration-200 group pressable border tx tx-grain tx-weak ${showChatModal ? 'text-accent-foreground bg-accent border-accent shadow-ink' : 'text-muted-foreground bg-card border-border hover:border-accent hover:bg-accent/10 hover:text-accent shadow-ink'}`}
+						class={`relative flex items-center justify-center gap-2 h-9 min-h-9 min-w-9 px-1.5 xl:px-3 rounded-lg font-medium text-xs md:text-sm group border border-border tx tx-grain tx-weak shadow-ink hover:border-border ${navMotion} ${showChatModal ? 'text-foreground bg-muted hover:bg-muted hover:text-foreground' : 'text-muted-foreground bg-card hover:bg-muted hover:text-foreground'}`}
 						aria-label={$workingAgentRunCount > 0 && !showChatModal
 							? `Open ${chatLabel}. ${$workingAgentRunCount} agent${$workingAgentRunCount === 1 ? '' : 's'} working in the background`
 							: `Open ${chatLabel}`}
 						title={chatLabel}
 						btnType="container"
 					>
-						<div class="relative flex items-center justify-center">
-							<!-- Full button height: the brain fills ~60% of the frame, so smaller reads tiny. -->
-							<BuildOSLogo class="w-11" />
-							<!-- Overlay icon - changes based on modal state -->
-							{#if showChatModal}
-								<!-- Zap icon when modal is open - centered on brain-bolt -->
-								<div
-									class="absolute inset-0 flex items-center justify-center pointer-events-none"
-								>
-									<div class="relative">
-										<!-- Glow effect for zap -->
-										<div
-											class="absolute inset-0 bg-accent rounded-full blur-md opacity-60 animate-status-pulse motion-reduce:animate-none"
-											style="transform: scale(2.5);"
-										></div>
-										<Zap
-											class="w-4 h-5 sm:w-5 sm:h-6 text-accent relative z-10 drop-shadow-lg"
-										/>
-									</div>
-								</div>
-							{/if}
-						</div>
+						<!-- The brain bolt is the BuildOS mark for "chat about what you're looking at".
+							     Full button height: the brain fills ~60% of the frame, so smaller reads tiny. -->
+						<BuildOSLogo class="w-11" />
 						<!-- Text - Hidden on smaller screens, shown on larger -->
 						<span class="hidden xl:inline-block leading-none">{chatLabel}</span>
 						<!-- "N agents working" badge (Agent Work UI-P4): shown while
@@ -1062,10 +1081,11 @@
 							     flow so it doesn't clip against the nav edge or neighboring controls. -->
 						{#if $workingAgentRunCount > 0 && !showChatModal}
 							<span
-								class="pointer-events-none inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-accent px-1.5 text-2xs font-black leading-none text-accent-foreground shadow-ink"
+								class="pointer-events-none inline-flex shrink-0 items-center gap-1 font-mono text-xs leading-none tabular-nums text-foreground"
 								aria-hidden="true"
 								title={`${$workingAgentRunCount} agent${$workingAgentRunCount === 1 ? '' : 's'} working in the background`}
 							>
+								<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
 								{$workingAgentRunCount}
 							</span>
 						{/if}
@@ -1080,38 +1100,32 @@
 								href="/onboarding"
 								data-onboarding-link
 								onclick={() => handleMenuItemClick('/onboarding')}
-								class="inline-flex items-center px-2 md:px-3 lg:px-3.5 xl:px-4 py-1.5 md:py-2 lg:py-2.5 text-xs md:text-sm lg:text-sm font-bold tracking-tight rounded-lg shadow-ink pressable transition-all duration-200 whitespace-nowrap tx tx-bloom tx-weak
+								class="inline-flex items-center h-9 px-3 xl:px-4 text-xs md:text-sm font-medium rounded-lg shadow-ink pressable whitespace-nowrap tx tx-bloom tx-weak {navMotion}
 								bg-accent text-accent-foreground hover:bg-accent/90 border border-accent/20
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 								{loadingLink === '/onboarding' ? loadingAccentClass : ''}"
 							>
 								{#if isOnOnboarding}
 									<LoaderCircle
-										class="w-3.5 h-3.5 md:w-4 md:h-4 lg:w-4 lg:h-4 mr-1 md:mr-1.5 lg:mr-2 flex-shrink-0 animate-spin motion-reduce:animate-none"
+										class="w-4 h-4 mr-2 flex-shrink-0 animate-spin motion-reduce:animate-none"
 									/>
-									<span class="hidden lg:inline">Setup in Progress...</span>
-									<span class="lg:hidden">In Progress</span>
+									<span class="hidden lg:inline">Setting up</span>
+									<span class="lg:hidden">In progress</span>
 								{:else if onboardingUrgent}
-									<AlertCircle
-										class="w-3.5 h-3.5 md:w-4 md:h-4 lg:w-4 lg:h-4 mr-1 md:mr-1.5 lg:mr-2 flex-shrink-0"
-									/>
-									<span class="hidden lg:inline">Complete Setup</span>
+									<AlertCircle class="w-4 h-4 mr-2 flex-shrink-0" />
+									<span class="hidden lg:inline">Complete setup</span>
 									<span class="lg:hidden">Setup</span>
 								{:else}
-									<Sparkles
-										class="w-3.5 h-3.5 md:w-4 md:h-4 lg:w-4 lg:h-4 mr-1 md:mr-1.5 lg:mr-2 flex-shrink-0"
-									/>
+									<ListChecks class="w-4 h-4 mr-2 flex-shrink-0" />
 									<span class="hidden xl:inline"
-										>Finish Setup ({onboardingProgress}%)</span
+										>Finish setup ({onboardingProgress}%)</span
 									>
 									<span class="xl:hidden hidden lg:inline"
 										>Setup ({onboardingProgress}%)</span
 									>
 									<span class="lg:hidden">Setup</span>
 								{/if}
-								<ChevronRight
-									class="w-3 md:w-3.5 h-3 md:h-3.5 ml-1 md:ml-1.5 lg:ml-2 flex-shrink-0"
-								/>
+								<ChevronRight class="w-4 h-4 ml-1 flex-shrink-0" />
 							</a>
 						</div>
 					{/if}
@@ -1124,23 +1138,23 @@
 						variant="outline"
 						size="sm"
 						btnType="container"
-						class="md:hidden relative flex items-center justify-center px-3 h-9 rounded-md border border-border bg-card shadow-ink hover:border-accent hover:bg-accent/10 pressable transition-all duration-200 tx tx-grain tx-weak group !overflow-visible"
+						class="md:hidden relative flex items-center justify-center h-9 min-h-9 w-9 min-w-9 px-0 rounded-lg border border-border bg-card shadow-ink hover:border-border hover:bg-muted {navMotion} tx tx-grain tx-weak group !overflow-visible"
 						aria-expanded={showMobileMenu}
 						aria-label="Toggle mobile menu"
 					>
 						{#if showMobileMenu}
 							<X
-								class="w-7 h-7 text-muted-foreground group-hover:text-accent transition-colors"
+								class="w-4 h-4 text-muted-foreground group-hover:text-foreground {navMotion}"
 							/>
 						{:else}
 							<Menu
-								class="w-7 h-7 text-muted-foreground group-hover:text-accent transition-colors"
+								class="w-4 h-4 text-muted-foreground group-hover:text-foreground {navMotion}"
 							/>
 						{/if}
 						{#if needsOnboarding && !showMobileMenu}
 							<!-- Mobile onboarding cue: percentage chip (far more visible than a 10px dot) -->
 							<span
-								class="absolute -top-1.5 -right-1.5 inline-flex min-w-[1.125rem] items-center justify-center rounded-full bg-accent px-1 py-0.5 text-2xs font-black leading-none tracking-tight text-accent-foreground shadow-ink"
+								class="absolute -top-1.5 -right-1.5 inline-flex min-w-5 items-center justify-center rounded bg-accent px-1 py-0.5 font-mono text-2xs font-medium leading-none tabular-nums text-accent-foreground"
 								aria-hidden="true"
 							>
 								{onboardingProgress}%
@@ -1156,7 +1170,7 @@
 							variant="outline"
 							size="sm"
 							btnType="container"
-							class="flex items-center gap-1.5 px-3 h-9 text-xs md:text-sm rounded-md font-bold tracking-tight text-muted-foreground border border-border bg-card shadow-ink hover:border-accent hover:bg-accent/10 hover:text-accent pressable transition-all duration-100"
+							class="flex items-center gap-2 px-3 h-9 min-h-9 text-xs md:text-sm rounded-lg font-medium text-muted-foreground border border-border bg-card shadow-ink hover:border-border hover:bg-muted hover:text-foreground {navMotion}"
 							aria-expanded={showUserMenu}
 							aria-haspopup="true"
 							aria-label="User menu"
@@ -1166,23 +1180,23 @@
 								>{userName}</span
 							>
 							{#if user?.is_admin}
-								<Shield class="w-4 h-4 text-destructive" />
+								<Shield class="w-4 h-4 text-muted-foreground" />
 							{/if}
 						</Button>
 
 						<!-- User dropdown -->
 						{#if showUserMenu}
 							<div
-								class="absolute right-0 mt-2 w-56 bg-card rounded-lg border border-border shadow-ink-strong z-50 tx tx-frame tx-weak ink-frame animate-ink-in motion-reduce:animate-none"
+								class="absolute right-0 mt-2 w-56 overflow-hidden bg-card rounded-xl border border-border shadow-ink-strong z-50 tx tx-frame tx-weak ink-frame animate-ink-in motion-reduce:animate-none"
 							>
 								<div class="pt-1">
 									<!-- User info -->
 									<div class="px-4 py-3 text-sm border-b border-border">
-										<div class="font-bold text-foreground flex items-center">
+										<div class="font-medium text-foreground flex items-center">
 											{user?.name || 'User'}
 											{#if user?.is_admin}
 												<span
-													class="ml-2 px-2 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full font-bold"
+													class="ml-2 text-xs font-normal text-muted-foreground"
 												>
 													Admin
 												</span>
@@ -1193,11 +1207,11 @@
 										</div>
 										{#if needsOnboarding}
 											<div
-												class="mt-2 text-xs text-accent flex items-center font-bold"
+												class="mt-2 text-xs text-accent flex items-center gap-1"
 											>
-												<AlertCircle class="w-3 h-3 mr-1" />
+												<AlertCircle class="w-3.5 h-3.5" />
 												{isOnOnboarding
-													? 'Setting up...'
+													? 'Setting up'
 													: `Setup ${onboardingProgress}% complete`}
 											</div>
 										{/if}
@@ -1206,7 +1220,7 @@
 									<a
 										href="/profile"
 										onclick={() => handleMenuItemClick('/profile')}
-										class="flex items-center w-full px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors
+										class="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted {navMotion}
 										{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 									>
 										<User class="w-4 h-4 mr-3" />
@@ -1216,7 +1230,7 @@
 									<a
 										href="/notifications"
 										onclick={() => handleMenuItemClick('/notifications')}
-										class="flex items-center w-full px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors
+										class="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted {navMotion}
 										{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 									>
 										<Activity class="w-4 h-4 mr-3" />
@@ -1226,7 +1240,7 @@
 									<a
 										href="/profile?tab=people"
 										onclick={() => handleMenuItemClick('/profile?tab=people')}
-										class="flex items-center w-full px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors
+										class="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted {navMotion}
 										{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 									>
 										<Users class="w-4 h-4 mr-3" />
@@ -1234,34 +1248,28 @@
 									</a>
 
 									{#if showAgentConnectionCta}
-										<div class="px-2 py-1">
-											<a
-												href="/profile?tab=people#agents"
-												onclick={() =>
-													handleMenuItemClick(
-														'/profile?tab=people#agents'
-													)}
-												class="flex items-center gap-2 rounded-md border border-accent/30 bg-accent/10 px-2.5 py-2 text-sm font-bold text-accent shadow-ink transition-colors hover:bg-accent/15 hover:text-accent
-												{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
-											>
-												<Sparkles class="h-4 w-4 flex-shrink-0" />
-												<span class="min-w-0"
-													>Connect other AI surfaces</span
-												>
-											</a>
-										</div>
+										<a
+											href="/profile?tab=people#agents"
+											onclick={() =>
+												handleMenuItemClick('/profile?tab=people#agents')}
+											class="flex items-center w-full px-4 py-2 text-sm text-foreground hover:bg-muted {navMotion}
+											{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
+										>
+											<Plug class="w-4 h-4 mr-3 flex-shrink-0 text-accent" />
+											<span class="min-w-0">Connect other AI surfaces</span>
+										</a>
 									{/if}
 
 									{#if hasPendingInvites}
 										<a
 											href="/invites"
 											onclick={() => handleMenuItemClick('/invites')}
-											class="flex items-center w-full px-4 py-1.5 text-xs font-semibold text-accent hover:text-accent/90 hover:bg-muted transition-colors
+											class="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted {navMotion}
 											{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 										>
 											<span class="ml-7">Project invites</span>
 											<span
-												class="ml-auto inline-flex items-center rounded-full bg-accent/10 px-2 py-0.5 text-2xs font-bold text-accent"
+												class="ml-auto font-mono text-xs tabular-nums text-accent"
 											>
 												{pendingInviteCount}
 											</span>
@@ -1279,7 +1287,7 @@
 														? '/profile?tab=billing'
 														: '/pricing'
 												)}
-											class="flex items-center w-full px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors
+											class="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted {navMotion}
 											{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 										>
 											<CreditCard class="w-4 h-4 mr-3" />
@@ -1293,27 +1301,27 @@
 										<a
 											href="/admin"
 											onclick={() => handleMenuItemClick('/admin')}
-											class="flex items-center w-full px-4 py-2 text-sm font-bold text-destructive hover:bg-destructive/10 transition-colors
+											class="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted {navMotion}
 											{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 										>
 											<Shield class="w-4 h-4 mr-3" />
-											Admin Dashboard
+											Admin dashboard
 										</a>
 									{/if}
 
 									<button
 										onclick={toggleMode}
-										class="flex items-center w-full px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors
+										class="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted {navMotion}
 										{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 										disabled={loggingOut}
 										aria-label="Toggle theme"
 									>
 										{#if isDark}
 											<Sun class="w-4 h-4 mr-3" />
-											Light Mode
+											Light mode
 										{:else}
 											<Moon class="w-4 h-4 mr-3" />
-											Dark Mode
+											Dark mode
 										{/if}
 									</button>
 
@@ -1325,13 +1333,13 @@
 										fullWidth
 										btnType="container"
 										loading={loggingOut}
-										class="justify-start w-full px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-muted min-h-0 transition-colors rounded-none font-bold"
+										class="justify-start w-full px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-muted hover:border-transparent min-h-0 rounded-none font-normal {navMotion}"
 									>
 										{#if loggingOut}
 											<LoaderCircle
 												class="w-4 h-4 mr-3 animate-spin motion-reduce:animate-none"
 											/>
-											Signing out...
+											Signing out
 										{:else}
 											<LogOut class="w-4 h-4 mr-3" />
 											Sign out
@@ -1347,7 +1355,7 @@
 						<!-- Theme toggle button -->
 						<button
 							onclick={toggleMode}
-							class="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors pressable"
+							class="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted pressable {navMotion}"
 							aria-label="Toggle theme"
 						>
 							{#if isDark}
@@ -1358,13 +1366,13 @@
 						</button>
 						<a
 							href="/auth/login"
-							class="px-3.5 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground rounded-lg border border-border bg-card shadow-ink hover:bg-muted hover:border-accent/50 transition-colors pressable"
+							class="px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted {navMotion}"
 						>
 							Log in
 						</a>
 						<a
 							href="/auth/register"
-							class="px-4 py-1.5 text-xs font-bold text-accent-foreground bg-accent rounded-lg shadow-ink hover:bg-accent/90 transition-colors pressable tx tx-bloom tx-weak"
+							class="px-4 py-2 text-xs font-medium text-accent-foreground bg-accent rounded-lg shadow-ink hover:bg-accent/90 pressable tx tx-bloom tx-weak {navMotion}"
 						>
 							{START_PROJECT_CTA}
 						</a>
@@ -1377,17 +1385,17 @@
 						variant="outline"
 						size="sm"
 						btnType="container"
-						class="md:hidden flex items-center justify-center px-3 h-9 rounded-md border border-border bg-card shadow-ink hover:border-accent hover:bg-accent/10 pressable transition-all duration-200 tx tx-grain tx-weak group"
+						class="md:hidden flex items-center justify-center h-9 min-h-9 w-9 min-w-9 px-0 rounded-lg border border-border bg-card shadow-ink hover:border-border hover:bg-muted {navMotion} tx tx-grain tx-weak group"
 						aria-expanded={showMobileMenu}
 						aria-label="Toggle mobile menu"
 					>
 						{#if showMobileMenu}
 							<X
-								class="w-7 h-7 text-muted-foreground group-hover:text-accent transition-colors"
+								class="w-4 h-4 text-muted-foreground group-hover:text-foreground {navMotion}"
 							/>
 						{:else}
 							<Menu
-								class="w-7 h-7 text-muted-foreground group-hover:text-accent transition-colors"
+								class="w-4 h-4 text-muted-foreground group-hover:text-foreground {navMotion}"
 							/>
 						{/if}
 					</Button>
@@ -1410,27 +1418,27 @@
 		>
 			{#if user}
 				<!-- Mobile Navigation -->
-				<div class="px-2 pt-1.5 pb-2 space-y-1">
+				<div class="px-2 pt-2 pb-2 space-y-1">
 					{#if needsOnboarding}
 						<a
 							href="/onboarding"
 							onclick={() => handleMenuItemClick('/onboarding')}
-							class="flex items-center px-3 py-2.5 text-base font-bold tracking-tight rounded-lg shadow-ink pressable transition-all duration-200 tx tx-bloom tx-weak
+							class="flex items-center px-3 py-2 text-base font-medium rounded-lg shadow-ink pressable tx tx-bloom tx-weak {navMotion}
 							bg-accent text-accent-foreground hover:bg-accent/90 border border-accent/20
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 							{loadingLink === '/onboarding' ? loadingAccentClass : ''}"
 						>
 							{#if isOnOnboarding}
 								<LoaderCircle
-									class="w-5 h-5 mr-3 animate-spin motion-reduce:animate-none"
+									class="w-4 h-4 mr-3 animate-spin motion-reduce:animate-none"
 								/>
-								Setup in Progress ({onboardingProgress}%)
+								Setting up ({onboardingProgress}%)
 							{:else if onboardingUrgent}
-								<AlertCircle class="w-5 h-5 mr-3" />
-								Complete Setup ({onboardingProgress}%)
+								<AlertCircle class="w-4 h-4 mr-3" />
+								Complete setup ({onboardingProgress}%)
 							{:else}
-								<Sparkles class="w-5 h-5 mr-3" />
-								Finish Setup ({onboardingProgress}%)
+								<ListChecks class="w-4 h-4 mr-3" />
+								Finish setup ({onboardingProgress}%)
 							{/if}
 							<ChevronRight class="w-4 h-4 ml-auto" />
 						</a>
@@ -1442,21 +1450,16 @@
 							data-sveltekit-preload-data="tap"
 							href={item.href}
 							onclick={() => handleMenuItemClick(item.href)}
-							class="relative flex items-center px-3 py-2 text-base font-bold rounded-md transition-colors
+							class="relative flex items-center px-3 py-2 text-base font-medium rounded-lg {navMotion}
 							{currentPath === item.href
-								? 'text-accent bg-muted'
+								? 'text-foreground bg-foreground/[0.06]'
 								: 'text-muted-foreground hover:text-foreground hover:bg-muted'}
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 							{loadingLink === item.href ? 'animate-pulse motion-reduce:animate-none' : ''}"
 						>
-							<!-- Underline indicator for active route -->
-							{#if currentPath === item.href}
-								<div
-									class="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-accent"
-								></div>
-							{/if}
+							<!-- Active route: surface step + accent icon (no underline bar). -->
 							<Icon
-								class="w-5 h-5 mr-3 {currentPath === item.href
+								class="w-4 h-4 mr-3 {currentPath === item.href
 									? 'text-accent'
 									: 'text-muted-foreground'}"
 							/>
@@ -1467,30 +1470,26 @@
 
 				<!-- Mobile User Section -->
 				<div class="pt-3 pb-3 border-t border-border">
-					<div class="px-3 mb-2.5">
+					<div class="px-3 mb-3">
 						<div class="text-base font-medium text-foreground flex items-center">
 							{user?.name || 'User'}
 							{#if user?.is_admin}
-								<span
-									class="ml-2 px-2 py-0.5 text-xs bg-destructive/15 text-destructive rounded-full font-semibold"
-								>
+								<span class="ml-2 text-xs font-normal text-muted-foreground">
 									Admin
 								</span>
 							{/if}
 							{#if needsOnboarding}
-								<div
-									class="ml-2 w-2 h-2 bg-accent rounded-full animate-status-pulse"
-								></div>
+								<div class="ml-2 w-2 h-2 bg-accent rounded-full"></div>
 							{/if}
 						</div>
 						<div class="text-sm text-muted-foreground truncate">
 							{user.email}
 						</div>
 						{#if needsOnboarding}
-							<div class="mt-1 text-xs text-accent flex items-center">
-								<AlertCircle class="w-3 h-3 mr-1" />
+							<div class="mt-1 text-xs text-accent flex items-center gap-1">
+								<AlertCircle class="w-3.5 h-3.5" />
 								{isOnOnboarding
-									? 'Setting up...'
+									? 'Setting up'
 									: `Setup ${onboardingProgress}% complete`}
 							</div>
 						{/if}
@@ -1500,43 +1499,43 @@
 						<a
 							href="/profile"
 							onclick={() => handleMenuItemClick('/profile')}
-							class="flex items-center px-3 py-1.5 text-base font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors
+							class="flex items-center px-3 py-1.5 text-base text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg {navMotion}
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 						>
-							<User class="w-5 h-5 mr-3" />
+							<User class="w-4 h-4 mr-3" />
 							Settings
 						</a>
 
 						<a
 							href="/notifications"
 							onclick={() => handleMenuItemClick('/notifications')}
-							class="flex items-center px-3 py-1.5 text-base font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors
+							class="flex items-center px-3 py-1.5 text-base text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg {navMotion}
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 						>
-							<Activity class="w-5 h-5 mr-3" />
+							<Activity class="w-4 h-4 mr-3" />
 							Activity
 						</a>
 
 						<a
 							href="/profile?tab=people"
 							onclick={() => handleMenuItemClick('/profile?tab=people')}
-							class="flex items-center px-3 py-1.5 text-base font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors
+							class="flex items-center px-3 py-1.5 text-base text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg {navMotion}
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 						>
-							<Users class="w-5 h-5 mr-3" />
+							<Users class="w-4 h-4 mr-3" />
 							People &amp; agents
 						</a>
 
 						<button
 							type="button"
 							onclick={openAgentWork}
-							class="flex w-full items-center rounded-md px-3 py-1.5 text-base font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+							class="flex w-full items-center rounded-lg px-3 py-1.5 text-base text-muted-foreground hover:bg-muted hover:text-foreground {navMotion}"
 						>
-							<Bot class="mr-3 h-5 w-5" />
+							<Bot class="mr-3 h-4 w-4" />
 							<span>Agent Work</span>
 							{#if $agentWorkAttentionCount > 0}
 								<span
-									class="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-accent/10 px-1.5 py-0.5 text-2xs font-bold text-accent"
+									class="ml-auto font-mono text-xs tabular-nums text-foreground"
 								>
 									{$agentWorkAttentionCount}
 								</span>
@@ -1547,9 +1546,9 @@
 							<a
 								href="/admin/gmail-relevance/review"
 								onclick={() => handleMenuItemClick('/admin/gmail-relevance/review')}
-								class="flex items-center rounded-md px-3 py-1.5 text-base font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+								class="flex items-center rounded-lg px-3 py-1.5 text-base text-muted-foreground hover:bg-muted hover:text-foreground {navMotion}"
 							>
-								<Mail class="mr-3 h-5 w-5" />
+								<Mail class="mr-3 h-4 w-4" />
 								Email suggestions
 							</a>
 						{/if}
@@ -1558,10 +1557,10 @@
 							<a
 								href="/profile?tab=people#agents"
 								onclick={() => handleMenuItemClick('/profile?tab=people#agents')}
-								class="flex items-center gap-3 rounded-md border border-accent/30 bg-accent/10 px-3 py-2 text-base font-bold text-accent shadow-ink transition-colors hover:bg-accent/15
+								class="flex items-center px-3 py-1.5 text-base text-foreground hover:bg-muted rounded-lg {navMotion}
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 							>
-								<Sparkles class="h-5 w-5 flex-shrink-0" />
+								<Plug class="w-4 h-4 mr-3 flex-shrink-0 text-accent" />
 								Connect other AI surfaces
 							</a>
 						{/if}
@@ -1570,13 +1569,11 @@
 							<a
 								href="/invites"
 								onclick={() => handleMenuItemClick('/invites')}
-								class="flex items-center px-3 py-1 text-sm font-semibold text-accent hover:text-accent/90 hover:bg-muted rounded-md transition-colors
+								class="flex items-center px-3 py-1.5 text-base text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg {navMotion}
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 							>
-								<span class="ml-8">Project invites</span>
-								<span
-									class="ml-auto inline-flex items-center rounded-full bg-accent/10 px-2 py-0.5 text-2xs font-bold text-accent"
-								>
+								<span class="ml-7">Project invites</span>
+								<span class="ml-auto font-mono text-xs tabular-nums text-accent">
 									{pendingInviteCount}
 								</span>
 							</a>
@@ -1593,10 +1590,10 @@
 											? '/profile?tab=billing'
 											: '/pricing'
 									)}
-								class="flex items-center px-3 py-1.5 text-base font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors
+								class="flex items-center px-3 py-1.5 text-base text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg {navMotion}
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 							>
-								<CreditCard class="w-5 h-5 mr-3" />
+								<CreditCard class="w-4 h-4 mr-3" />
 								{subscription?.hasActiveSubscription ? 'Billing' : 'Upgrade to Pro'}
 							</a>
 						{/if}
@@ -1605,27 +1602,27 @@
 							<a
 								href="/admin"
 								onclick={() => handleMenuItemClick('/admin')}
-								class="flex items-center px-3 py-1.5 text-base font-bold text-destructive hover:text-destructive/80 hover:bg-destructive/10 rounded-md transition-colors
+								class="flex items-center px-3 py-1.5 text-base text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg {navMotion}
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 							>
-								<Shield class="w-5 h-5 mr-3" />
-								Admin Dashboard
+								<Shield class="w-4 h-4 mr-3" />
+								Admin dashboard
 							</a>
 						{/if}
 
 						<button
 							onclick={toggleMode}
-							class="flex items-center px-3 py-1.5 text-base font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors w-full
+							class="flex items-center px-3 py-1.5 text-base text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg w-full {navMotion}
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 							disabled={loggingOut}
 							aria-label="Toggle theme"
 						>
 							{#if isDark}
-								<Sun class="w-5 h-5 mr-3" />
-								Light Mode
+								<Sun class="w-4 h-4 mr-3" />
+								Light mode
 							{:else}
-								<Moon class="w-5 h-5 mr-3" />
-								Dark Mode
+								<Moon class="w-4 h-4 mr-3" />
+								Dark mode
 							{/if}
 						</button>
 
@@ -1635,57 +1632,59 @@
 							variant="ghost"
 							size="md"
 							fullWidth
-							icon={loggingOut ? LoaderCircle : LogOut}
-							iconPosition="left"
+							btnType="container"
 							loading={loggingOut}
-							class="justify-start px-3 py-1.5 text-muted-foreground hover:bg-muted min-h-0 font-bold"
+							class="justify-start px-3 py-1.5 text-muted-foreground hover:bg-muted hover:border-transparent min-h-0 rounded-lg font-normal {navMotion}"
 						>
-							{loggingOut ? 'Signing out...' : 'Sign out'}
+							{#if loggingOut}
+								<LoaderCircle
+									class="w-4 h-4 mr-3 animate-spin motion-reduce:animate-none"
+								/>
+								Signing out
+							{:else}
+								<LogOut class="w-4 h-4 mr-3" />
+								Sign out
+							{/if}
 						</Button>
 					</div>
 				</div>
 			{:else}
 				<!-- Mobile auth menu for non-authenticated users -->
-				<div class="px-2 pt-1.5 pb-3 space-y-1">
-					<a
-						href="/#loop"
-						onclick={() => handleMenuItemClick('/#loop')}
-						class="block px-3 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-					>
-						How it works
-					</a>
-					<a
-						href="/#agents"
-						onclick={() => handleMenuItemClick('/#agents')}
-						class="block px-3 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-					>
-						Agent context
-					</a>
+				<div class="px-2 pt-2 pb-3 space-y-1">
+					{#each publicNavItems as item (item.href)}
+						<a
+							href={item.href}
+							onclick={(event) => handlePublicNavClick(event, item.href)}
+							class="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg {navMotion}"
+						>
+							{item.label}
+						</a>
+					{/each}
 					<div class="border-t border-border my-2"></div>
 					<button
 						onclick={toggleMode}
-						class="flex items-center w-full px-3 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+						class="flex items-center w-full px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg {navMotion}"
 						aria-label="Toggle theme"
 					>
 						{#if isDark}
 							<Sun class="w-4 h-4 mr-2" />
-							Light Mode
+							Light mode
 						{:else}
 							<Moon class="w-4 h-4 mr-2" />
-							Dark Mode
+							Dark mode
 						{/if}
 					</button>
 					<a
 						href="/auth/login"
 						onclick={() => handleMenuItemClick('/auth/login')}
-						class="block px-3 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+						class="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg {navMotion}"
 					>
 						Log in
 					</a>
 					<a
 						href="/auth/register"
 						onclick={() => handleMenuItemClick('/auth/register')}
-						class="block px-3 py-2.5 mt-2 text-sm font-bold text-center text-accent-foreground bg-accent hover:bg-accent/90 rounded-lg shadow-ink pressable tx tx-bloom tx-weak transition-colors"
+						class="block px-3 py-2 mt-2 text-sm font-medium text-center text-accent-foreground bg-accent hover:bg-accent/90 rounded-lg shadow-ink pressable tx tx-bloom tx-weak {navMotion}"
 					>
 						{START_PROJECT_CTA}
 					</a>
@@ -1739,7 +1738,7 @@
 	button:focus-visible {
 		outline: 2px solid hsl(var(--ring));
 		outline-offset: 2px;
-		border-radius: 0.375rem;
+		border-radius: 0.5rem;
 	}
 
 	/* BuildOS Logo - Bloom effect on OS */

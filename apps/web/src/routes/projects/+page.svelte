@@ -105,7 +105,7 @@
 	function handleChatClose(summary?: DataMutationSummary) {
 		showChatModal = false;
 		if (summary?.hasChanges && summary.affectedProjectIds.length > 0) {
-			toastService.success('Project created! It’s on your Workspace.', {
+			toastService.success('Project created. It’s on your Workspace', {
 				duration: TOAST_DURATION.LONG
 			});
 			invalidateAll();
@@ -946,7 +946,7 @@
 	onRefresh={handlePullRefresh}
 	disabled={isPullRefreshing || showChatModal || todayModalOpen || projectsLoading}
 >
-	<div class="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6 py-3 sm:py-4 space-y-3">
+	<div class="mx-auto max-w-7xl space-y-4 px-4 py-4 lg:px-6 lg:py-6">
 		<!-- Title, the Today row (brief / overdue / AI inbox chips), then Calendar + New project.
 		     One line on wide screens; on phones the chips wrap onto their own row. -->
 		<header
@@ -954,12 +954,12 @@
 		>
 			<div class="min-w-0 space-y-1">
 				<div class="flex items-center gap-2.5">
-					<h1 class="text-2xl font-semibold tracking-tight text-foreground">
+					<h1 class="text-2xl font-medium text-foreground">
 						{activeTab === 'overview' ? 'Workspace' : 'Ontology graph'}
 					</h1>
 					{#if activeTab === 'overview' && projectsLoading}
 						<LoaderCircle
-							class="h-5 w-5 animate-spin text-accent motion-reduce:animate-none"
+							class="h-4 w-4 animate-spin text-muted-foreground motion-reduce:animate-none"
 						/>
 					{/if}
 				</div>
@@ -1055,9 +1055,9 @@
 					<!-- Fallback loading state when projectCount is 0 or unknown. -->
 					{@render tileSkeleton(6)}
 				{:else if projectsError}
-					<div class="wt-card p-6 text-center tx tx-static tx-weak">
-						<h2 class="text-base font-semibold text-foreground">
-							Unable to load ontology projects
+					<div class="wt-card p-6 text-center">
+						<h2 class="text-base font-medium text-foreground">
+							Could not load your projects
 						</h2>
 						<p class="mt-2 text-sm text-muted-foreground">
 							{projectsError}
@@ -1082,8 +1082,8 @@
 								<input
 									type="search"
 									aria-label="Search projects"
-									class="min-h-11 w-full rounded-lg border border-border bg-card py-2 pl-9 pr-10 text-base text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring sm:text-sm [&::-webkit-search-cancel-button]:appearance-none [@media(pointer:fine)]:min-h-9 [@media(pointer:fine)]:py-1.5"
-									placeholder="Search your Workspace…"
+									class="min-h-11 w-full rounded-lg border border-border bg-card py-2 pl-9 pr-10 text-base text-foreground placeholder:text-muted-foreground focus:border-foreground/30 focus:outline-none focus:ring-2 focus:ring-ring sm:text-sm [&::-webkit-search-cancel-button]:appearance-none [@media(pointer:fine)]:min-h-9 [@media(pointer:fine)]:py-1.5"
+									placeholder="Search"
 									bind:value={searchQuery}
 								/>
 								{#if searchQuery}
@@ -1109,7 +1109,7 @@
 								Filters
 								{#if activeFilterCount > 0}
 									<span
-										class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-xs font-bold text-accent-foreground"
+										class="font-mono text-xs font-normal tabular-nums text-muted-foreground"
 									>
 										{activeFilterCount}
 									</span>
@@ -1125,10 +1125,10 @@
 						{#if filtersExpanded}
 							<div
 								id="filter-panel-content"
-								class="space-y-3 rounded-lg border border-border bg-card p-3"
+								class="space-y-4 rounded-xl border border-border bg-card p-4"
 							>
 								<div class="space-y-1.5">
-									<p class="micro-label text-muted-foreground">STATUS</p>
+									<p class="text-xs text-muted-foreground">Status</p>
 									<div class="flex flex-wrap gap-1.5">
 										{#each PROJECT_LIST_SCOPE_OPTIONS as scope (scope)}
 											{@const scopeCount =
@@ -1139,12 +1139,12 @@
 														: stateCounts[scope]}
 											<button
 												type="button"
-												class="inline-flex min-h-11 items-center gap-1.5 rounded-md border px-2.5 py-2 text-xs font-semibold pressable [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-default {selectedScope ===
+												class="inline-flex min-h-11 items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-medium pressable [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-default {selectedScope ===
 												scope
-													? 'border-accent/40 bg-accent/15 text-accent'
+													? 'border-foreground/20 bg-muted text-foreground'
 													: scopeCount === 0
 														? 'border-border text-muted-foreground/60'
-														: 'border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground'}"
+														: 'border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground'}"
 												onclick={() => setProjectScope(scope)}
 												title={scope === 'current'
 													? 'Planning and active projects'
@@ -1154,16 +1154,19 @@
 													selectedScope !== scope}
 											>
 												<span>{getProjectListScopeLabel(scope)}</span>
-												<span class="text-xs font-bold">{scopeCount}</span>
+												<span
+													class="font-mono text-xs tabular-nums text-muted-foreground"
+													>{scopeCount}</span
+												>
 											</button>
 										{/each}
 									</div>
 								</div>
 
 								<div class="space-y-1.5">
-									<p class="micro-label text-muted-foreground">OWNERSHIP</p>
+									<p class="text-xs text-muted-foreground">Ownership</p>
 									<div
-										class="inline-flex rounded-md bg-muted p-0.5 text-xs font-semibold"
+										class="inline-flex rounded-lg bg-muted p-0.5 text-xs font-medium"
 									>
 										{#each OWNERSHIP_FILTER_OPTIONS as option (option)}
 											<button
@@ -1188,7 +1191,7 @@
 								{#if isAdmin && hasFilterOptions}
 									<details class="group/advanced border-t border-border pt-1">
 										<summary
-											class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-md text-xs font-semibold text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden [@media(pointer:fine)]:min-h-8"
+											class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden [@media(pointer:fine)]:min-h-8"
 										>
 											Advanced filters
 											<ChevronDown
@@ -1233,7 +1236,7 @@
 
 								{#if hasFilters}
 									<Button variant="ghost" size="sm" onclick={clearFilters}>
-										Clear all filters
+										Clear filters
 									</Button>
 								{/if}
 							</div>
@@ -1247,7 +1250,7 @@
 								{#if selectedScope !== 'current'}
 									<button
 										type="button"
-										class="inline-flex min-h-11 items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2 py-1 text-xs font-medium text-accent pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-7"
+										class="inline-flex min-h-11 items-center gap-1 rounded-lg border border-border bg-muted px-2 py-1 text-xs font-medium text-foreground pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-7"
 										onclick={() => setProjectScope('current')}
 										aria-label="Clear status filter: {getProjectListScopeLabel(
 											selectedScope
@@ -1260,7 +1263,7 @@
 								{#if selectedOwnership !== 'all'}
 									<button
 										type="button"
-										class="inline-flex min-h-11 items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2 py-1 text-xs font-medium text-accent pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-7"
+										class="inline-flex min-h-11 items-center gap-1 rounded-lg border border-border bg-muted px-2 py-1 text-xs font-medium text-foreground pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-7"
 										onclick={() => (selectedOwnership = 'all')}
 										aria-label="Clear ownership filter"
 									>
@@ -1271,7 +1274,7 @@
 								{#each selectedContexts as value (value)}
 									<button
 										type="button"
-										class="inline-flex min-h-11 items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2 py-1 text-xs font-medium text-accent pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-7"
+										class="inline-flex min-h-11 items-center gap-1 rounded-lg border border-border bg-muted px-2 py-1 text-xs font-medium text-foreground pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-7"
 										onclick={() =>
 											(selectedContexts = toggleValue(
 												selectedContexts,
@@ -1286,7 +1289,7 @@
 								{#each selectedScales as value (value)}
 									<button
 										type="button"
-										class="inline-flex min-h-11 items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2 py-1 text-xs font-medium text-accent pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-7"
+										class="inline-flex min-h-11 items-center gap-1 rounded-lg border border-border bg-muted px-2 py-1 text-xs font-medium text-foreground pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-7"
 										onclick={() =>
 											(selectedScales = toggleValue(selectedScales, value))}
 										aria-label="Clear scale filter: {value}"
@@ -1298,7 +1301,7 @@
 								{#each selectedStages as value (value)}
 									<button
 										type="button"
-										class="inline-flex min-h-11 items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2 py-1 text-xs font-medium text-accent pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-7"
+										class="inline-flex min-h-11 items-center gap-1 rounded-lg border border-border bg-muted px-2 py-1 text-xs font-medium text-foreground pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-7"
 										onclick={() =>
 											(selectedStages = toggleValue(selectedStages, value))}
 										aria-label="Clear stage filter: {value}"
@@ -1492,13 +1495,9 @@
 
 {#snippet tilesEmpty()}
 	{#if realProjects.length === 0}
-		<div class="wt-paper border-dashed px-4 py-8 text-center tx tx-thread tx-weak sm:px-6">
-			<div
-				class="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent"
-			>
-				<Folder class="h-5 w-5" />
-			</div>
-			<h2 class="text-base font-bold text-foreground">No projects yet</h2>
+		<div class="wt-paper border-dashed px-4 py-8 text-center sm:px-6">
+			<Folder class="mx-auto mb-4 h-5 w-5 text-muted-foreground" />
+			<h2 class="text-base font-medium text-foreground">No projects yet</h2>
 			<p class="mx-auto mt-1.5 max-w-md text-sm text-muted-foreground">
 				Jot anything above and it waits here. When a few notes add up to a real effort,
 				start a project from them, or start one now.
@@ -1510,16 +1509,16 @@
 			</div>
 		</div>
 	{:else}
-		<div class="wt-paper border-dashed px-4 py-8 text-center tx tx-thread tx-weak">
-			<p class="text-sm font-semibold text-foreground">
+		<div class="wt-paper border-dashed px-4 py-8 text-center">
+			<p class="text-sm font-medium text-foreground">
 				{selectedScope === 'current' && !searchQuery.trim()
 					? 'No current projects'
 					: 'No matching projects'}
 			</p>
 			<p class="mt-1 text-xs text-muted-foreground">
 				{selectedScope === 'current' && !searchQuery.trim()
-					? 'Planning and active projects will appear here.'
-					: 'Adjust your search or clear filters to explore more.'}
+					? 'Planning and active projects show up here'
+					: 'Try another search or clear the filters'}
 			</p>
 			{#if hasFilters}
 				<div class="mt-4 flex justify-center">

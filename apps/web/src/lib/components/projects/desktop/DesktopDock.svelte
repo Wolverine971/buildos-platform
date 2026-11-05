@@ -39,7 +39,7 @@
 </script>
 
 <aside class="dock" data-dock data-autoscroll aria-label="Other projects. Drop things here.">
-	<span class="micro-label dock-label text-muted-foreground">DROP ON</span>
+	<span class="dock-label text-xs text-muted-foreground">Drop on</span>
 	<button
 		type="button"
 		class="dock-item slot {dropClass('desktop')}"
@@ -47,7 +47,7 @@
 		title="Workspace: drop a doc or task here to make it loose, or a sub-project to take it out to the top level"
 		onclick={onDesktop}
 	>
-		<span class="slot-tile"><LayoutGrid class="h-[18px] w-[18px]" /></span>
+		<span class="slot-tile"><LayoutGrid class="h-4 w-4" /></span>
 		<span class="d-label">Workspace</span>
 	</button>
 	<span class="sep" aria-hidden="true"></span>
@@ -81,7 +81,7 @@
 					aria-label="{open ? 'Hide' : 'Show'} projects inside {project.name}"
 					onclick={() => onToggleSpring(project.id)}
 				>
-					<ChevronRight class="h-3 w-3" />
+					<ChevronRight class="h-3.5 w-3.5" />
 				</button>
 			{/if}
 		</div>
@@ -121,7 +121,7 @@
 		max-height: calc(100dvh - 1.5rem);
 		overflow-y: auto;
 		overscroll-behavior: contain;
-		padding: 8px 6px 10px;
+		padding: 8px 4px;
 		border-radius: 16px;
 		border: 1px solid hsl(var(--border));
 		background: hsl(var(--card));
@@ -130,30 +130,31 @@
 	}
 	.dock-label {
 		text-align: center;
-		padding: 2px 0 6px;
+		padding: 0 0 4px;
 	}
 	.cell {
 		position: relative;
 		flex: none;
-		border-radius: 10px;
+		border-radius: 12px;
 		-webkit-user-select: none;
 		user-select: none;
 		-webkit-touch-callout: none;
 		touch-action: pan-y;
 		transition:
-			background-color 120ms ease,
-			opacity 120ms ease;
+			background-color 140ms cubic-bezier(0.22, 1, 0.36, 1),
+			opacity 140ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.dock-item {
 		display: flex;
 		width: 100%;
 		flex-direction: column;
 		align-items: center;
-		gap: 5px;
-		padding: 7px 3px 6px;
-		border-radius: 10px;
+		gap: 4px;
+		padding: 8px 4px;
+		border-radius: 12px;
 		color: hsl(var(--foreground));
 		-webkit-touch-callout: none;
+		transition: background-color 140ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.dock-item:hover {
 		background: hsl(var(--muted));
@@ -164,9 +165,9 @@
 		outline-offset: 1px;
 	}
 	.d-label {
-		max-width: 80px;
-		font-size: 10.5px;
-		line-height: 1.2;
+		max-width: 100%;
+		font-size: 11px;
+		line-height: 14px;
 		text-align: center;
 		overflow-wrap: anywhere;
 		display: -webkit-box;
@@ -185,27 +186,30 @@
 		color: hsl(var(--muted-foreground));
 	}
 	.child {
-		margin-left: 10px;
+		margin-left: 8px;
 		border-left: 1px solid hsl(var(--border-strong));
-		border-radius: 0 10px 10px 0;
+		border-radius: 0 12px 12px 0;
 	}
 	.spring {
 		position: absolute;
-		right: 2px;
+		right: 4px;
 		top: 4px;
 		display: grid;
 		place-items: center;
 		width: 20px;
 		height: 20px;
-		border-radius: 5px;
+		border-radius: 6px;
 		color: hsl(var(--muted-foreground));
+		transition:
+			background-color 140ms cubic-bezier(0.22, 1, 0.36, 1),
+			color 140ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.spring:hover {
 		background: hsl(var(--border));
 		color: hsl(var(--foreground));
 	}
 	.spring :global(svg) {
-		transition: transform 120ms ease;
+		transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.spring[aria-expanded='true'] :global(svg) {
 		transform: rotate(90deg);
@@ -213,7 +217,7 @@
 	.sep {
 		flex: none;
 		height: 1px;
-		margin: 4px 6px;
+		margin: 4px 8px;
 		background: hsl(var(--border));
 	}
 	.drop-ok,
@@ -238,34 +242,36 @@
 			overflow-y: hidden;
 			border-radius: 16px 16px 0 0;
 			border-bottom: 0;
-			padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+			padding: 8px 12px calc(12px + env(safe-area-inset-bottom, 0px));
 			box-shadow: var(--shadow-ink-strong);
 		}
 		.dock-label {
 			align-self: center;
-			padding: 0 2px;
+			padding: 0 4px;
 			writing-mode: vertical-rl;
 			transform: rotate(180deg);
 		}
 		.cell,
 		.slot {
-			width: 70px;
+			width: 72px;
 			flex: none;
 		}
 		.child {
 			margin-left: 0;
 			border-left: 0;
 			border-bottom: 2px solid hsl(var(--border-strong));
-			border-radius: 10px 10px 0 0;
+			border-radius: 12px 12px 0 0;
 		}
 		.sep {
 			width: 1px;
 			height: auto;
-			margin: 6px 2px;
+			margin: 8px 4px;
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.cell,
+		.dock-item,
+		.spring,
 		.spring :global(svg) {
 			transition: none;
 		}

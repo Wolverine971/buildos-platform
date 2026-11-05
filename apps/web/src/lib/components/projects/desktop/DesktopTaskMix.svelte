@@ -14,7 +14,7 @@
 	const shown = $derived(TASK_BUCKETS.filter((bucket) => mix[bucket] > 0));
 </script>
 
-<div class="grid gap-1.5">
+<div class="grid gap-2">
 	<div class="bar" aria-hidden="true">
 		{#each shown as bucket (bucket)}
 			<span class="seg {bucket}" style:width="{(mix[bucket] / open) * 100}%"></span>
@@ -27,7 +27,7 @@
 			{#each shown as bucket (bucket)}
 				<span class="inline-flex items-center gap-1.5">
 					<i class="dot {bucket}"></i>
-					<span class="font-semibold tabular-nums text-foreground">{mix[bucket]}</span>
+					<span class="font-mono tabular-nums text-foreground">{mix[bucket]}</span>
 					{TASK_BUCKET_LABEL[bucket].toLowerCase()}
 				</span>
 			{/each}
@@ -38,7 +38,7 @@
 <style>
 	.bar {
 		display: flex;
-		height: 6px;
+		height: 4px;
 		border-radius: 99px;
 		overflow: hidden;
 		background: hsl(var(--foreground) / 0.1);

@@ -7,7 +7,7 @@
 	Select mode makes the same thing possible from any items the person picks.
 -->
 <script lang="ts">
-	import { Layers, Sparkles, X } from '$lib/icons/lucide';
+	import { FolderInput, Layers, X } from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import type { ProjectListSummary } from '$lib/components/projects/project-list';
 	import LooseCard from './LooseCard.svelte';
@@ -144,9 +144,9 @@
 			{#each groupings as suggestion (suggestion.id)}
 				{@const members = liveSuggestionItems(suggestion, byRef)}
 				{@const busy = busyIds.has(suggestion.id)}
-				<article class="grouping wt-ghost tx tx-bloom tx-weak">
-					<p class="micro-label text-accent">
-						<Sparkles class="h-3 w-3" /> LOOKS LIKE A PROJECT
+				<article class="grouping wt-paper">
+					<p class="eyebrow">
+						<Layers class="h-3.5 w-3.5" /> Looks like a project
 					</p>
 					<h3 class="name">{suggestion.proposed_name}</h3>
 					{#if suggestion.reason}
@@ -188,8 +188,8 @@
 	{/if}
 
 	<header class="head">
-		<h2 class="micro-label text-muted-foreground">
-			LOOSE · {loading && !home ? '…' : items.length}
+		<h2 class="section-title">
+			Loose <span class="section-count">{loading && !home ? '…' : items.length}</span>
 		</h2>
 		{#if items.length && !selecting}
 			<div class="filters" role="group" aria-label="Show">
@@ -237,7 +237,7 @@
 						onclick={onRefreshSuggestions}
 						title="Ask BuildOS to look for groupings and homes"
 					>
-						<Sparkles class="h-3.5 w-3.5" />
+						<FolderInput class="h-3.5 w-3.5" />
 						<span class="hidden sm:inline"
 							>{refreshing ? 'Looking…' : 'Suggest homes'}</span
 						>
@@ -299,36 +299,50 @@
 <style>
 	.shelf {
 		display: grid;
-		gap: 0.6rem;
+		gap: 12px;
 	}
 	.head {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.5rem 0.75rem;
+		gap: 8px 12px;
+	}
+	.section-title {
+		font-size: 14px;
+		font-weight: 500;
+		line-height: 20px;
+		color: hsl(var(--foreground));
+	}
+	.section-count {
+		margin-left: 4px;
+		font-family: var(--font-mono, ui-monospace, monospace);
+		font-size: 12px;
+		font-weight: 400;
+		font-variant-numeric: tabular-nums;
+		color: hsl(var(--muted-foreground));
 	}
 	.tools {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.35rem;
+		gap: 4px;
 		margin-left: auto;
 	}
 	.tool {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.3rem;
-		min-height: 2.25rem;
-		min-width: 2.25rem;
+		gap: 4px;
+		min-height: 36px;
+		min-width: 36px;
 		justify-content: center;
-		padding: 0 0.5rem;
-		border-radius: 0.4rem;
-		font-size: 0.75rem;
-		font-weight: 600;
+		padding: 0 8px;
+		border-radius: 8px;
+		font-size: 12px;
+		font-weight: 500;
 		color: hsl(var(--muted-foreground));
 	}
 	@media (pointer: fine) {
 		.tool {
-			min-height: 1.75rem;
+			min-height: 28px;
 		}
 	}
 	.tool:hover:not(:disabled) {
@@ -344,24 +358,24 @@
 	}
 	.filters {
 		display: inline-flex;
-		border-radius: 0.45rem;
+		border-radius: 8px;
 		background: hsl(var(--muted));
 		padding: 2px;
 	}
 	.filters button {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.3rem;
-		min-height: 2.25rem;
-		padding: 0 0.6rem;
-		border-radius: 0.35rem;
-		font-size: 0.75rem;
-		font-weight: 600;
+		gap: 4px;
+		min-height: 36px;
+		padding: 0 10px;
+		border-radius: 6px;
+		font-size: 12px;
+		font-weight: 500;
 		color: hsl(var(--muted-foreground));
 	}
 	@media (pointer: fine) {
 		.filters button {
-			min-height: 1.75rem;
+			min-height: 28px;
 		}
 	}
 	.filters button.on {
@@ -374,12 +388,14 @@
 	}
 	.n {
 		font-family: var(--font-mono, ui-monospace, monospace);
-		font-size: 10px;
+		font-size: 11px;
+		font-variant-numeric: tabular-nums;
+		color: hsl(var(--muted-foreground));
 	}
 	.grid-cards {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-		gap: 0.5rem;
+		gap: 8px;
 	}
 	@media (max-width: 639px) {
 		.grid-cards {
@@ -387,50 +403,53 @@
 		}
 	}
 	.empty {
-		padding: 0.25rem 0 0.25rem;
-		font-size: 0.8rem;
+		padding: 4px 0;
+		font-size: 13px;
 		color: hsl(var(--muted-foreground));
 	}
 	.more-btn {
 		justify-self: start;
-		min-height: 2.25rem;
-		padding: 0 0.5rem;
-		border-radius: 0.4rem;
-		font-size: 0.75rem;
-		font-weight: 600;
+		min-height: 36px;
+		padding: 0 8px;
+		border-radius: 8px;
+		font-size: 12px;
+		font-weight: 500;
 		color: hsl(var(--accent));
 	}
 	.groupings {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-		gap: 0.6rem;
+		gap: 8px;
 	}
 	.grouping {
 		display: grid;
-		gap: 0.4rem;
+		gap: 8px;
 		align-content: start;
-		padding: 0.85rem 0.95rem;
-		border-radius: 0.8rem;
+		padding: 16px;
+		border-radius: 12px;
 	}
-	.grouping .micro-label {
+	.eyebrow {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.3rem;
+		gap: 6px;
+		font-size: 12px;
+		line-height: 16px;
+		color: hsl(var(--muted-foreground));
 	}
 	.name {
-		font-size: 1rem;
-		font-weight: 600;
+		font-size: 16px;
+		font-weight: 500;
 		line-height: 1.25;
 		color: hsl(var(--foreground));
 	}
 	.why {
-		font-size: 0.8rem;
+		font-size: 13px;
 		color: hsl(var(--muted-foreground));
 	}
 	.members {
 		display: grid;
-		gap: 0.1rem;
-		margin: 0.1rem 0 0.25rem;
+		gap: 0;
+		margin: 0 0 4px;
 	}
 	.member {
 		max-width: 100%;
@@ -438,9 +457,9 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		text-align: left;
-		font-size: 0.8rem;
+		font-size: 13px;
 		color: hsl(var(--foreground));
-		min-height: 1.6rem;
+		min-height: 28px;
 	}
 	.member::before {
 		content: '· ';
@@ -450,7 +469,7 @@
 		color: hsl(var(--accent));
 	}
 	.more {
-		font-size: 0.75rem;
+		font-size: 12px;
 		color: hsl(var(--muted-foreground));
 	}
 </style>

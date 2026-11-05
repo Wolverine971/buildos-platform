@@ -1,5 +1,8 @@
 <!-- apps/web/src/lib/components/projects/desktop/DesktopTile.svelte -->
 <!--
+	Unslop pass: one bar per tile (open tasks, split by state) instead of D and T bars
+	plus a red count. Softer pulse tint.
+
 	A project drawn as a printed tile. Its color is its pulse (moving, being
 	shaped, gone quiet, parked: see desktop-signals.ts). At full size it also
 	carries two bars, D for documents and T for open tasks split into overdue,
@@ -36,7 +39,6 @@
 	const look = $derived(given ?? lookUp(project.id));
 	const folder = $derived(inside.length > 0);
 	const full = $derived(size === 'lg' && Boolean(look));
-	const overdue = $derived(full ? (look?.mix.overdue ?? 0) : 0);
 	/** Two emojis read at tile sizes; the dock and pickers have room for one. */
 	const glyphs = $derived.by(() => {
 		const emoji = project.emoji;
@@ -60,39 +62,25 @@
 		<span class="mono">{monogram(project.name)}</span>
 	{/if}
 	{#if full && look}
-		<span class="meters">
-			<span class="meter">
-				<em>D</em>
-				<span class="track">
-					<span class="fill" style:width="{look.docs * 100}%">
-						<span class="seg docs" style:width="100%"></span>
-					</span>
-				</span>
-			</span>
-			<span class="meter">
-				<em>T</em>
-				<span class="track">
-					<span class="fill" style:width="{look.tasks * 100}%">
-						{#each TASK_BUCKETS as bucket (bucket)}
-							{#if look.mix[bucket] > 0}
-								<span
-									class="seg {bucket}"
-									style:width="{(look.mix[bucket] / look.open) * 100}%"
-								></span>
-							{/if}
-						{/each}
-					</span>
-				</span>
+		<span class="track">
+			<span class="fill" style:width="{look.tasks * 100}%">
+				{#each TASK_BUCKETS as bucket (bucket)}
+					{#if look.mix[bucket] > 0}
+						<span
+							class="seg {bucket}"
+							style:width="{(look.mix[bucket] / look.open) * 100}%"
+						></span>
+					{/if}
+				{/each}
 			</span>
 		</span>
 	{/if}
-	{#if overdue > 0}<span class="badge">{overdue > 99 ? '99+' : overdue}</span>{/if}
 </span>
 
 <style>
 	.tile {
 		--c: var(--border-strong);
-		--tint: 0.16;
+		--tint: 0.12;
 		position: relative;
 		flex: none;
 		display: grid;
@@ -104,23 +92,23 @@
 		background-color: hsl(var(--card));
 		/* A tint of the pulse color with a faint halftone, like ink pressed into paper. */
 		background-image:
-			radial-gradient(hsl(var(--c) / 0.16) 0.7px, transparent 0.9px),
+			radial-gradient(hsl(var(--c) / 0.12) 0.7px, transparent 0.9px),
 			linear-gradient(hsl(var(--c) / var(--tint)), hsl(var(--c) / var(--tint)));
 		background-size:
 			4px 4px,
 			auto;
-		border: 1px solid hsl(var(--c) / 0.5);
+		border: 1px solid hsl(var(--c) / 0.36);
 		box-shadow:
 			inset 0 1px 0 hsl(0 0% 100% / 0.5),
-			var(--shadow-ink);
+			0 1px 2px rgb(0 0 0 / 0.05);
 		font-size: calc(var(--size) * 0.34);
-		font-weight: 600;
+		font-weight: 500;
 		line-height: 1;
-		letter-spacing: -0.03em;
+		letter-spacing: 0;
 		transition:
-			transform 140ms ease,
-			background-color 200ms ease,
-			border-color 200ms ease;
+			transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
+			background-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+			border-color 160ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.pulse-moving {
 		--c: var(--desk-moving);
@@ -143,7 +131,7 @@
 	.full {
 		grid-template-rows: minmax(0, 1fr) auto;
 		place-items: stretch;
-		padding: calc(var(--size) * 0.1) calc(var(--size) * 0.11) calc(var(--size) * 0.12);
+		padding: calc(var(--size) * 0.1) calc(var(--size) * 0.14) calc(var(--size) * 0.16);
 		font-size: calc(var(--size) * 0.25);
 	}
 	.mono {
@@ -162,7 +150,7 @@
 		font-size: calc(var(--size) * 0.33);
 	}
 	.full .emoji.pair {
-		font-size: calc(var(--size) * 0.31);
+		font-size: calc(var(--size) * 0.33);
 	}
 	/* Parked work fades, emoji included, so the pulse still reads at a glance. */
 	.pulse-parked .emoji {
@@ -171,33 +159,14 @@
 	}
 	/* Dark glyphs (🔚 🦇 🕴️) vanish on dark tiles without a faint light edge. */
 	:global(.dark) .emoji {
-		filter: drop-shadow(0 0 1.5px hsl(0 0% 100% / 0.35));
+		filter: drop-shadow(0 0 1px hsl(0 0% 100% / 0.2));
 	}
 	:global(.dark) .pulse-parked .emoji {
-		filter: saturate(0.5) drop-shadow(0 0 1.5px hsl(0 0% 100% / 0.3));
-	}
-	.meters {
-		display: grid;
-		gap: calc(var(--size) * 0.045);
-	}
-	.meter {
-		display: grid;
-		grid-template-columns: auto minmax(0, 1fr);
-		align-items: center;
-		gap: calc(var(--size) * 0.05);
-	}
-	.meter em {
-		width: 0.75em;
-		font-style: normal;
-		font-size: max(7.5px, calc(var(--size) * 0.12));
-		font-weight: 600;
-		line-height: 1;
-		text-align: center;
-		color: hsl(var(--muted-foreground));
+		filter: saturate(0.5) drop-shadow(0 0 1px hsl(0 0% 100% / 0.18));
 	}
 	.track {
 		display: block;
-		height: max(4px, calc(var(--size) * 0.07));
+		height: 4px;
 		border-radius: 99px;
 		background: hsl(var(--foreground) / 0.1);
 		overflow: hidden;
@@ -212,9 +181,6 @@
 		display: block;
 		height: 100%;
 	}
-	.seg.docs {
-		background: hsl(var(--desk-docs) / 0.75);
-	}
 	.seg.overdue {
 		background: hsl(var(--desk-overdue));
 	}
@@ -227,23 +193,6 @@
 	.seg.backlog {
 		background: hsl(var(--desk-backlog));
 	}
-	.badge {
-		position: absolute;
-		left: -6px;
-		top: -7px;
-		min-width: 18px;
-		height: 17px;
-		padding: 0 4px;
-		border-radius: 9px;
-		border: 2px solid hsl(var(--background));
-		background: hsl(var(--desk-overdue));
-		color: hsl(0 0% 100%);
-		font-size: 10px;
-		font-weight: 600;
-		line-height: 13px;
-		letter-spacing: 0;
-		text-align: center;
-	}
 	.folder::before {
 		content: '';
 		position: absolute;
@@ -251,11 +200,11 @@
 		top: calc(var(--size) * -0.11);
 		width: 40%;
 		height: calc(var(--size) * 0.12);
-		border: 1px solid hsl(var(--c) / 0.5);
+		border: 1px solid hsl(var(--c) / 0.36);
 		border-bottom: 0;
 		border-radius: 5px 5px 0 0;
 		background: hsl(var(--card));
-		background-image: linear-gradient(hsl(var(--c) / 0.22), hsl(var(--c) / 0.22));
+		background-image: linear-gradient(hsl(var(--c) / 0.16), hsl(var(--c) / 0.16));
 	}
 	:global(.dark) .tile {
 		box-shadow:

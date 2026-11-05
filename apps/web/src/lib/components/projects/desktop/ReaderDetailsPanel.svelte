@@ -162,7 +162,7 @@
 
 <aside class="panel" aria-label="Details">
 	<header class="panel-head">
-		<span class="micro">Details</span>
+		<h2 class="title">Details</h2>
 		<button
 			type="button"
 			class="ib"
@@ -247,7 +247,9 @@
 			onclick={() => toggle('comments')}
 		>
 			<MessageSquare class="h-3.5 w-3.5" />
-			<span>Comments{commentCount ? ` (${commentCount})` : ''}</span>
+			<span
+				>Comments{#if commentCount}<span class="count">{commentCount}</span>{/if}</span
+			>
 			<ChevronDown class="chev h-3.5 w-3.5 {open.comments ? 'rotate-180' : ''}" />
 		</button>
 		{#if open.comments}
@@ -351,22 +353,23 @@
 		justify-content: space-between;
 		border-bottom: 1px solid hsl(var(--border));
 		background: hsl(var(--background));
-		padding: 6px 6px 6px 14px;
+		padding: 4px 4px 4px 16px;
 	}
-	.micro {
-		font-size: 11px;
-		font-weight: 600;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: hsl(var(--muted-foreground));
+	.title {
+		font-size: 14px;
+		font-weight: 500;
+		color: hsl(var(--foreground));
 	}
 	.ib {
 		display: inline-grid;
 		place-items: center;
-		width: 30px;
-		height: 30px;
-		border-radius: 7px;
+		width: 32px;
+		height: 32px;
+		border-radius: 8px;
 		color: hsl(var(--muted-foreground));
+		transition:
+			background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),
+			color 150ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.ib:hover {
 		background: hsl(var(--muted));
@@ -385,12 +388,12 @@
 		display: grid;
 		gap: 2px;
 		border-bottom: 1px solid hsl(var(--border));
-		padding-bottom: 6px;
+		padding-bottom: 8px;
 	}
 	.row {
 		display: grid;
-		gap: 6px;
-		padding: 8px 14px;
+		gap: 8px;
+		padding: 8px 16px;
 	}
 	.row.inline {
 		display: flex;
@@ -401,15 +404,14 @@
 		display: inline-flex;
 		flex: none;
 		align-items: center;
-		gap: 6px;
+		gap: 8px;
 		font-size: 12px;
-		font-weight: 600;
 		color: hsl(var(--muted-foreground));
 	}
 	.value {
 		min-width: 0;
 		flex: 1;
-		font-size: 12.5px;
+		font-size: 13px;
 		color: hsl(var(--foreground));
 	}
 	.link,
@@ -419,6 +421,7 @@
 		text-decoration: underline;
 		text-decoration-color: hsl(var(--border-strong));
 		text-underline-offset: 3px;
+		transition: color 150ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.link:hover,
 	.all:hover {
@@ -433,26 +436,35 @@
 		min-height: 40px;
 		align-items: center;
 		gap: 8px;
-		padding: 0 14px;
-		font-size: 12.5px;
-		font-weight: 600;
+		padding: 0 16px;
+		font-size: 13px;
+		font-weight: 500;
 		color: hsl(var(--foreground));
+		transition: background-color 150ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.sec-head:hover {
 		background: hsl(var(--muted) / 0.6);
 	}
+	.count {
+		margin-left: 4px;
+		font-family: var(--font-mono, ui-monospace, monospace);
+		font-size: 12px;
+		font-weight: 400;
+		font-variant-numeric: tabular-nums;
+		color: hsl(var(--muted-foreground));
+	}
 	.sec-head :global(.chev) {
 		margin-left: auto;
 		color: hsl(var(--muted-foreground));
-		transition: transform 150ms ease;
+		transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.sec-body {
-		padding: 0 14px 12px;
+		padding: 0 16px 12px;
 	}
 	.meta {
 		display: grid;
 		gap: 4px;
-		padding: 12px 14px 4px;
+		padding: 12px 16px 4px;
 		font-size: 12px;
 		color: hsl(var(--muted-foreground));
 	}
@@ -462,11 +474,13 @@
 		gap: 12px;
 	}
 	.meta dd {
+		font-family: var(--font-mono, ui-monospace, monospace);
+		font-variant-numeric: tabular-nums;
 		color: hsl(var(--foreground) / 0.8);
 	}
 	.all {
 		align-self: flex-start;
-		margin: 8px 14px 16px;
+		margin: 8px 16px 16px;
 	}
 	.ib:focus-visible,
 	.sec-head:focus-visible,
@@ -476,6 +490,10 @@
 		outline-offset: -2px;
 	}
 	@media (prefers-reduced-motion: reduce) {
+		.ib,
+		.link,
+		.all,
+		.sec-head,
 		.sec-head :global(.chev) {
 			transition: none;
 		}

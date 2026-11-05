@@ -761,7 +761,7 @@
 			});
 			const result = await response.json().catch(() => null);
 			if (!response.ok) throw new Error(result?.error || 'Could not update this task.');
-			if (next === 'done') toastService.success('Marked done.');
+			if (next === 'done') toastService.success('Marked done');
 			if (onTaskState) onTaskState(task.id, next, previous);
 			else onChanged();
 		} catch (cause) {
@@ -1227,7 +1227,7 @@
 							<Pencil class="h-3.5 w-3.5" /> This doc is empty. Start writing
 						</button>
 					{:else}
-						<p class="muted">This doc is empty.</p>
+						<p class="muted">This doc is empty</p>
 					{/if}
 				{/snippet}
 				{@render textFrame(true, docText)}
@@ -1347,14 +1347,17 @@
 							<Pencil class="h-3.5 w-3.5" /> Add a description
 						</button>
 					{:else}
-						<p class="muted">No description.</p>
+						<p class="muted">No description</p>
 					{/if}
 				{/snippet}
 				{@render textFrame(false, taskText)}
 				<section class="task-docs" aria-label="Docs for this task">
 					<div class="task-docs-head">
-						<span class="micro">Docs for this task</span>
-						{#if taskDocList.length}<span class="count">{taskDocList.length}</span>{/if}
+						<h4 class="sec-title">
+							Docs for this task{#if taskDocList.length}<span class="count"
+									>{taskDocList.length}</span
+								>{/if}
+						</h4>
 						{#if canWrite}
 							<button
 								type="button"
@@ -1478,7 +1481,7 @@
 							<Pencil class="h-3.5 w-3.5" /> Add a description
 						</button>
 					{:else}
-						<p class="muted">No description.</p>
+						<p class="muted">No description</p>
 					{/if}
 				{/snippet}
 				{@render textFrame(false, goalText)}
@@ -1645,7 +1648,7 @@
 						role="tab"
 						aria-label="Edit"
 						aria-selected="false"
-						class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground"
+						class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-muted-foreground transition-colors hover:text-foreground motion-reduce:transition-none"
 						onpointerenter={preloadEditor}
 						onfocus={preloadEditor}
 						onclick={() => void startEdit()}
@@ -1833,14 +1836,14 @@
 		display: grid;
 		flex: none;
 		place-items: center;
-		height: 22px;
+		height: 24px;
 		touch-action: none;
 		cursor: grab;
 	}
 	.grab span {
 		width: 40px;
-		height: 5px;
-		border-radius: 3px;
+		height: 4px;
+		border-radius: 2px;
 		background: hsl(var(--border-strong));
 	}
 	.head {
@@ -1849,21 +1852,20 @@
 		align-items: center;
 		gap: 8px;
 		min-height: 52px;
-		padding: 8px 10px 8px 12px;
+		padding: 8px 8px 8px 12px;
 		border-bottom: 1px solid hsl(var(--border));
 	}
 	.phone .head {
 		align-items: flex-start;
-		padding: 0 8px 10px 16px;
+		padding: 0 8px 12px 16px;
 		touch-action: none;
 	}
 	.title {
 		margin: 0;
 		overflow: hidden;
 		font-size: 15px;
-		font-weight: 600;
+		font-weight: 500;
 		line-height: 1.3;
-		letter-spacing: -0.01em;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		color: hsl(var(--foreground));
@@ -1882,7 +1884,8 @@
 		align-items: center;
 		gap: 2px 8px;
 		margin-top: 2px;
-		font-size: 11.5px;
+		font-size: 12px;
+		font-variant-numeric: tabular-nums;
 		color: hsl(var(--muted-foreground));
 	}
 	.due-late {
@@ -1894,26 +1897,26 @@
 		place-items: center;
 		width: 28px;
 		height: 28px;
-		border-radius: 7px;
+		border-radius: 8px;
 		background: hsl(var(--muted));
 		color: hsl(var(--muted-foreground));
-	}
-	.glyph.goal {
-		color: hsl(var(--accent));
 	}
 	.tools {
 		display: flex;
 		flex: none;
 		align-items: center;
-		gap: 1px;
+		gap: 2px;
 	}
 	.ib {
 		display: inline-grid;
 		place-items: center;
-		width: 34px;
-		height: 34px;
+		width: 32px;
+		height: 32px;
 		border-radius: 8px;
 		color: hsl(var(--muted-foreground));
+		transition:
+			background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),
+			color 150ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.phone .ib {
 		width: 44px;
@@ -1923,9 +1926,11 @@
 		background: hsl(var(--muted));
 		color: hsl(var(--foreground));
 	}
+	/* On: a quiet surface step (the list toggle is on most of the time). */
 	.ib[aria-pressed='true'] {
-		background: hsl(var(--accent) / 0.13);
-		color: hsl(var(--accent));
+		background: hsl(var(--muted));
+		color: hsl(var(--foreground));
+		box-shadow: inset 0 0 0 1px hsl(var(--border));
 	}
 	.ib:disabled {
 		opacity: 0.35;
@@ -1942,7 +1947,8 @@
 		min-width: 44px;
 		text-align: center;
 		font-family: var(--font-mono, ui-monospace, monospace);
-		font-size: 11px;
+		font-size: 12px;
+		font-variant-numeric: tabular-nums;
 		color: hsl(var(--muted-foreground));
 	}
 	.sep {
@@ -1971,7 +1977,7 @@
 			inset: 0 0 0 auto;
 			z-index: 6;
 			width: min(320px, 100%);
-			box-shadow: -12px 0 32px hsl(0 0% 0% / 0.22);
+			box-shadow: -8px 0 24px hsl(0 0% 0% / 0.12);
 		}
 	}
 	@container (max-width: 480px) {
@@ -1988,10 +1994,10 @@
 		overflow-y: auto;
 		overscroll-behavior: contain;
 		padding: 20px 28px 40px;
-		animation: rise 180ms ease-out;
+		animation: rise 180ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.phone .body {
-		padding: 16px 18px 24px;
+		padding: 16px 16px 24px;
 	}
 	.body > :global(*) {
 		max-width: 72ch;
@@ -2010,10 +2016,10 @@
 	}
 	/* Archive: the item slides off, the next one rises in. */
 	.body.leaving {
-		animation: leave 160ms ease-in forwards;
+		animation: leave 160ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 	}
 	.body.arriving {
-		animation: arrive 200ms ease-out;
+		animation: arrive 200ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	@keyframes leave {
 		to {
@@ -2065,12 +2071,15 @@
 	.add-words {
 		display: inline-flex;
 		align-items: center;
-		gap: 6px;
+		gap: 8px;
 		border-radius: 8px;
 		padding: 6px 8px;
 		margin-left: -8px;
-		font-size: 13.5px;
+		font-size: 14px;
 		color: hsl(var(--muted-foreground));
+		transition:
+			background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),
+			color 150ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.add-words:hover {
 		background: hsl(var(--muted));
@@ -2084,9 +2093,9 @@
 		display: grid;
 		gap: 8px;
 		margin-bottom: 12px;
-		border: 1px solid hsl(var(--destructive) / 0.45);
-		border-radius: 10px;
-		padding: 10px 12px;
+		border: 1px solid hsl(var(--destructive) / 0.35);
+		border-radius: 12px;
+		padding: 12px;
 		font-size: 13px;
 		color: hsl(var(--foreground));
 	}
@@ -2094,20 +2103,22 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 6px;
-		min-height: 30px;
+		min-height: 32px;
 		border-radius: 8px;
 		border: 1px solid hsl(var(--border-strong));
 		background: hsl(var(--card));
-		padding: 0 10px;
-		font-size: 12.5px;
+		padding: 0 12px;
+		font-size: 12px;
 		font-weight: 500;
 		color: hsl(var(--foreground));
+		transition: background-color 150ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
-	.act:hover {
+	.act:hover,
+	.act[aria-pressed='true'] {
 		background: hsl(var(--muted));
 	}
 	.muted {
-		font-size: 13.5px;
+		font-size: 14px;
 		color: hsl(var(--muted-foreground));
 	}
 	/* Reading across the whole width: the text keeps its measure, centered. */
@@ -2119,6 +2130,7 @@
 		text-decoration: underline;
 		text-decoration-color: hsl(var(--border-strong));
 		text-underline-offset: 3px;
+		transition: color 150ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.meta-link:hover {
 		color: hsl(var(--foreground));
@@ -2135,7 +2147,7 @@
 		gap: 8px;
 		margin-top: 24px;
 		border-top: 1px solid hsl(var(--border));
-		padding-top: 14px;
+		padding-top: 16px;
 	}
 	.task-docs-head {
 		display: flex;
@@ -2145,16 +2157,18 @@
 	.task-docs-head .act {
 		margin-left: auto;
 	}
-	.micro {
-		font-size: 11px;
-		font-weight: 600;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: hsl(var(--muted-foreground));
+	.sec-title {
+		margin: 0;
+		font-size: 14px;
+		font-weight: 500;
+		color: hsl(var(--foreground));
 	}
 	.count {
+		margin-left: 4px;
 		font-family: var(--font-mono, ui-monospace, monospace);
-		font-size: 11px;
+		font-size: 12px;
+		font-weight: 400;
+		font-variant-numeric: tabular-nums;
 		color: hsl(var(--muted-foreground));
 	}
 	.task-docs ul {
@@ -2170,8 +2184,9 @@
 		border-radius: 8px;
 		padding: 6px 8px;
 		text-align: left;
-		font-size: 13.5px;
+		font-size: 14px;
 		color: hsl(var(--foreground));
+		transition: background-color 150ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.task-docs li button:hover {
 		background: hsl(var(--muted));
@@ -2202,13 +2217,13 @@
 		margin-bottom: 0;
 	}
 	.facts.lead {
-		gap: 6px;
+		gap: 8px;
 		margin-bottom: 16px;
 	}
 	.edit-slot {
 		display: inline-flex;
 		align-items: center;
-		gap: 10px;
+		gap: 8px;
 		margin-left: auto;
 	}
 	.title-row {
@@ -2228,6 +2243,9 @@
 		height: 24px;
 		border-radius: 6px;
 		color: hsl(var(--muted-foreground) / 0.7);
+		transition:
+			background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),
+			color 150ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.phone .title-pencil {
 		width: 36px;
@@ -2247,7 +2265,7 @@
 	.sheet-head {
 		display: flex;
 		align-items: center;
-		padding: 6px 8px;
+		padding: 8px;
 	}
 	.sheet-body {
 		padding: 16px;
@@ -2264,13 +2282,17 @@
 	.states button {
 		display: inline-flex;
 		align-items: center;
-		gap: 5px;
+		gap: 6px;
 		min-height: 32px;
 		border-radius: 8px;
-		padding: 0 11px;
-		font-size: 12.5px;
-		font-weight: 600;
+		padding: 0 12px;
+		font-size: 12px;
+		font-weight: 500;
 		color: hsl(var(--muted-foreground));
+		transition:
+			background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),
+			color 150ms cubic-bezier(0.22, 1, 0.36, 1),
+			box-shadow 150ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.phone .states button {
 		min-height: 40px;
@@ -2281,7 +2303,8 @@
 	.states button:disabled {
 		cursor: default;
 	}
-	/* The current status takes its color, so it reads at a glance in light and dark. */
+	/* The current status takes its color (text and a hairline, on a raised segment),
+	   so it reads at a glance in light and dark without shouting. */
 	.states button {
 		--tone: var(--foreground);
 	}
@@ -2293,29 +2316,27 @@
 		--tone: var(--destructive);
 	}
 	.states button[aria-pressed='true'] {
-		background: hsl(var(--tone) / 0.16);
+		background: hsl(var(--card));
 		color: hsl(var(--tone));
-		font-weight: 700;
-		box-shadow: inset 0 0 0 1.5px hsl(var(--tone) / 0.6);
+		box-shadow:
+			0 1px 2px hsl(0 0% 0% / 0.06),
+			inset 0 0 0 1px hsl(var(--tone) / 0.3);
 	}
 	.states .state-done[aria-pressed='true'] {
-		background: hsl(var(--success));
-		color: hsl(var(--success-foreground));
-		box-shadow: none;
+		background: hsl(var(--success) / 0.14);
 	}
 	.facts {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 6px;
+		gap: 8px;
 		margin-bottom: 16px;
 	}
+	/* Meta (Updated Nov 3, a doc's state): quiet mono text, not a pill. */
 	.tag {
-		border-radius: 6px;
-		border: 1px solid hsl(var(--border));
-		padding: 2px 6px;
 		font-family: var(--font-mono, ui-monospace, monospace);
-		font-size: 11px;
+		font-size: 12px;
+		font-variant-numeric: tabular-nums;
 		white-space: nowrap;
 		color: hsl(var(--muted-foreground));
 	}
@@ -2323,17 +2344,17 @@
 		display: flex;
 		flex: none;
 		align-items: center;
-		gap: 4px 14px;
+		gap: 4px 16px;
 		border-top: 1px solid hsl(var(--border));
-		padding: 5px 14px 5px 8px;
-		font-size: 11.5px;
+		padding: 4px 16px 4px 8px;
+		font-size: 12px;
 		color: hsl(var(--muted-foreground));
 	}
 	.hints {
 		display: flex;
 		flex-wrap: wrap;
 		justify-content: flex-end;
-		gap: 4px 14px;
+		gap: 4px 16px;
 		margin-left: auto;
 	}
 	.keys .remove {
@@ -2342,14 +2363,18 @@
 		align-items: center;
 		gap: 6px;
 		min-height: 28px;
-		border-radius: 7px;
+		border-radius: 8px;
 		padding: 0 8px;
 		font-size: 12px;
 		font-weight: 500;
 		color: hsl(var(--muted-foreground));
+		transition:
+			background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),
+			color 150ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
+	/* Neutral surface on hover; the red text alone says it removes. */
 	.keys .remove:hover:not(:disabled) {
-		background: hsl(var(--destructive) / 0.1);
+		background: hsl(var(--muted));
 		color: hsl(var(--destructive));
 	}
 	.keys .remove:focus-visible {
@@ -2361,7 +2386,7 @@
 		border: 1px solid hsl(var(--border-strong));
 		padding: 0 4px;
 		font-family: var(--font-mono, ui-monospace, monospace);
-		font-size: 10.5px;
+		font-size: 11px;
 		color: hsl(var(--foreground));
 	}
 	.bar {
@@ -2371,17 +2396,17 @@
 		gap: 4px;
 		border-top: 1px solid hsl(var(--border));
 		background: hsl(var(--background));
-		padding: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+		padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
 	}
 	.bar > * {
 		display: grid;
 		min-height: 52px;
 		align-content: center;
 		justify-items: center;
-		gap: 3px;
+		gap: 4px;
 		border-radius: 10px;
 		font-size: 11px;
-		font-weight: 600;
+		font-weight: 500;
 		color: hsl(var(--muted-foreground));
 	}
 	.bar > :active:not(:disabled) {
@@ -2408,6 +2433,16 @@
 		.body.leaving,
 		.body.arriving {
 			animation: none;
+		}
+		.ib,
+		.act,
+		.add-words,
+		.meta-link,
+		.title-pencil,
+		.states button,
+		.task-docs li button,
+		.keys .remove {
+			transition: none;
 		}
 	}
 </style>

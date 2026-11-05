@@ -6,12 +6,15 @@
  *
  * Dump 1 builds "Fading Crown" from nothing; every item name matches the live example project.
  * Dump 2 is a voice note about a different project, plus one line about the book, so the demo
- * shows a single ramble landing in two projects. The other three projects reuse homepage B's
- * illustrative examples.
+ * shows a single ramble landing in two projects. The other three projects match Home D's hero
+ * reel (d/project-reel.ts), so the page tells one story.
  */
 import type { ExampleTaskState } from '../fading-crown';
 
-export type DemoProjectId = 'fc' | 'channel' | 'bakery' | 'kitchen';
+export type DemoProjectId = 'fc' | 'soccer' | 'garden' | 'channel';
+
+/** The project the voice note (dump 2) is mostly about; the camera ends there. */
+export const DUMP_TWO_PROJECT: DemoProjectId = 'soccer';
 
 export type DemoMarkKind =
 	| 'project'
@@ -73,7 +76,7 @@ export const KIND_LABEL: Record<DemoMarkKind, string> = {
 const m = (mark: DemoMark): DemoMark => mark;
 
 export const DUMP_ONE: DemoSegment[] = [
-	'ok so the novel. ',
+	'ok the novel, ',
 	m({
 		id: 'fc-name',
 		text: 'Fading Crown',
@@ -91,7 +94,7 @@ export const DUMP_ONE: DemoSegment[] = [
 		slot: 'fc-summary',
 		title: 'Fantasy novel. Queen Isolde is losing her magic as the wards that protect her kingdom fail.'
 	}),
-	", that's the spine. I need to ",
+	'. need to ',
 	m({
 		id: 'fc-goal',
 		text: 'finish the draft',
@@ -100,10 +103,10 @@ export const DUMP_ONE: DemoSegment[] = [
 		slot: 'fc-goal',
 		title: 'Complete first draft'
 	}),
-	' and get it to ',
+	', ',
 	m({
 		id: 'fc-ms-beta',
-		text: 'beta readers by mid-Sept',
+		text: 'beta readers next month',
 		kind: 'milestone',
 		project: 'fc',
 		slot: 'fc-ms-beta',
@@ -112,7 +115,7 @@ export const DUMP_ONE: DemoSegment[] = [
 	'. ',
 	m({
 		id: 'fc-ms-act1',
-		text: 'Act I is basically locked',
+		text: 'Act I is locked',
 		kind: 'milestone',
 		project: 'fc',
 		slot: 'fc-ms-act1',
@@ -128,17 +131,17 @@ export const DUMP_ONE: DemoSegment[] = [
 		title: 'Rewrite Ch. 12 opening',
 		state: 'done'
 	}),
-	' last week. ',
+	'. ',
 	m({
 		id: 'fc-t-maya',
-		text: "Maya's motivation in act II still doesn't track",
+		text: "Maya's motive in act II still doesn't track",
 		kind: 'task',
 		project: 'fc',
 		slot: 'fc-t-maya',
 		title: "Reconcile Maya's motivation in Act II",
 		state: 'in_progress'
 	}),
-	', she needs a real reason to betray her sister. ',
+	'. ',
 	m({
 		id: 'fc-doc-magic',
 		text: 'magic rules v2',
@@ -147,10 +150,10 @@ export const DUMP_ONE: DemoSegment[] = [
 		slot: 'fc-doc-magic',
 		title: 'Magic system rules v2'
 	}),
-	' are written but ',
+	' done but ',
 	m({
 		id: 'fc-risk',
-		text: 'I think they break some early scenes??',
+		text: 'they might break early scenes??',
 		kind: 'risk',
 		project: 'fc',
 		slot: 'fc-risk',
@@ -159,7 +162,7 @@ export const DUMP_ONE: DemoSegment[] = [
 	' ',
 	m({
 		id: 'fc-next',
-		text: 'ch 13 is next, start at the ferry scene',
+		text: 'ch 13 next, start at the ferry scene',
 		kind: 'next',
 		project: 'fc',
 		slot: 'fc-next',
@@ -168,13 +171,13 @@ export const DUMP_ONE: DemoSegment[] = [
 	', ',
 	m({
 		id: 'fc-doc-beats',
-		text: 'beats are in my notes',
+		text: 'beats in my notes',
 		kind: 'doc',
 		project: 'fc',
 		slot: 'fc-doc-beats',
 		title: 'Ch. 13 beats'
 	}),
-	'. at some point: ',
+	'. someday: ',
 	m({
 		id: 'fc-t-query',
 		text: 'query letter',
@@ -187,7 +190,7 @@ export const DUMP_ONE: DemoSegment[] = [
 	', ',
 	m({
 		id: 'fc-t-agents',
-		text: 'a list of agents',
+		text: 'agent list',
 		kind: 'task',
 		project: 'fc',
 		slot: 'fc-t-agents',
@@ -208,36 +211,36 @@ export const DUMP_ONE: DemoSegment[] = [
 ];
 
 export const DUMP_TWO: DemoSegment[] = [
-	'ok channel stuff while I walk the dog. ',
+	'soccer stuff, walking the dog. ',
 	m({
-		id: 'ch-t-thumb',
-		text: 'need to redo the hand plane thumbnail',
+		id: 'sc-t-time',
+		text: 'practice moves to thursday 5:30',
 		kind: 'task',
-		project: 'channel',
-		slot: 'ch-t-thumb',
-		title: 'Redo the hand plane thumbnail',
+		project: 'soccer',
+		slot: 'sc-t-time',
+		title: 'Text parents: practice moves to Thursday 5:30',
 		state: 'todo'
 	}),
-	", it's way too dark. ",
+	', the field lights are out. ',
 	m({
-		id: 'ch-t-film',
-		text: 'film the chisel video saturday morning',
+		id: 'sc-t-snack',
+		text: 'still need two snack parents',
 		kind: 'task',
-		project: 'channel',
-		slot: 'ch-t-film',
-		title: 'Film the chisel sharpening video',
+		project: 'soccer',
+		slot: 'sc-t-snack',
+		title: 'Find 2 more snack parents',
+		state: 'todo'
+	}),
+	'. ',
+	m({
+		id: 'sc-t-photo',
+		text: 'picture day is saturday at 9',
+		kind: 'task',
+		project: 'soccer',
+		slot: 'sc-t-photo',
+		title: 'Send the picture-day reminder',
 		state: 'todo',
 		when: 'Sat, 9 AM'
-	}),
-	'. and ',
-	m({
-		id: 'ch-t-sponsor',
-		text: 'email Marcus about the sponsor read',
-		kind: 'task',
-		project: 'channel',
-		slot: 'ch-t-sponsor',
-		title: 'Email Marcus about the sponsor read',
-		state: 'todo'
 	}),
 	'. oh and for the book, ',
 	m({
@@ -281,73 +284,73 @@ export const PROJECTS: Record<DemoProjectId, DemoProject> = {
 		risk: null,
 		next: null
 	},
-	channel: {
-		id: 'channel',
-		name: 'Hand Tool Restoration Channel',
-		short: 'Channel',
-		summary: 'A YouTube channel restoring old hand tools. Posting every other Friday.',
-		goal: 'Post every other Friday through spring',
-		milestones: ['First four videos published', '1,000 subscribers'],
+	soccer: {
+		id: 'soccer',
+		name: 'Hornets U10 soccer',
+		short: 'Soccer',
+		summary: '12 kids, two practices a week, games on Saturdays.',
+		goal: 'Every kid plays every position this season',
+		milestones: ['Midseason parent meeting', 'End-of-season party'],
 		tasks: [
-			{ id: 'ch-b1', title: 'Finish the hand plane edit', state: 'in_progress' },
-			{ id: 'ch-b2', title: 'Script the chisel sharpening video', state: 'done' },
-			{ id: 'ch-b3', title: 'Pick one thumbnail template', state: 'todo' },
-			{ id: 'ch-b4', title: 'Rank the nine video ideas', state: 'todo' }
-		],
-		taskTotal: 8,
-		docs: [
-			{ id: 'ch-d1', title: 'Video idea bank' },
-			{ id: 'ch-d2', title: 'Thumbnail style guide' }
-		],
-		risk: null,
-		next: 'Finish the last 20% of the hand plane edit and publish it Friday.'
-	},
-	bakery: {
-		id: 'bakery',
-		name: 'Bakery website launch',
-		short: 'Bakery launch',
-		summary: 'New site for a bakery client, launching on the 15th.',
-		goal: 'Launch the new site on the 15th',
-		milestones: ['All content in', 'Site live and launch email sent'],
-		tasks: [
-			{ id: 'bk-1', title: 'Send a change order for online ordering', state: 'todo' },
-			{ id: 'bk-2', title: 'Write the catering page', state: 'in_progress' },
-			{ id: 'bk-3', title: 'Get photos from the photographer', state: 'blocked' },
-			{ id: 'bk-4', title: 'Get DNS access from the client', state: 'todo' }
+			{ id: 'sc-b1', title: "Plan Thursday's passing drills", state: 'in_progress' },
+			{ id: 'sc-b2', title: 'Make the carpool sheet', state: 'done' },
+			{ id: 'sc-b3', title: 'Collect medical forms (3 missing)', state: 'todo' },
+			{ id: 'sc-b4', title: 'Order end-of-season trophies', state: 'todo' }
 		],
 		taskTotal: 9,
 		docs: [
-			{ id: 'bk-d1', title: 'Launch plan' },
-			{ id: 'bk-d2', title: 'Copy deck' }
+			{ id: 'sc-d1', title: 'Practice plans' },
+			{ id: 'sc-d2', title: 'Parent contact list' }
 		],
-		risk: 'Photos are two weeks late',
-		next: 'Send the change order before any work starts on ordering.'
+		risk: 'Three medical forms still missing',
+		next: "Plan Thursday's passing drills."
 	},
-	kitchen: {
-		id: 'kitchen',
-		name: 'Kitchen renovation',
-		short: 'Kitchen',
-		summary: 'Kitchen remodel on a $28k budget. Contractor starts February 3.',
-		goal: 'Finish the kitchen under $28k',
-		milestones: ['Cabinets ordered', 'Demo starts Feb 3'],
+	garden: {
+		id: 'garden',
+		name: 'Backyard garden',
+		short: 'Garden',
+		summary: 'Turning the side yard into four raised beds.',
+		goal: 'Tomatoes, peppers, and herbs by midsummer',
+		milestones: ['Beds 1 and 2 built', 'First planting'],
 		tasks: [
-			{ id: 'kt-1', title: 'Ask the city about moving the sink', state: 'todo' },
-			{ id: 'kt-2', title: 'Choose cabinets', state: 'in_progress' },
-			{ id: 'kt-3', title: 'Decide quartz or butcher block', state: 'todo' },
-			{ id: 'kt-4', title: 'Chase the electrician quote', state: 'blocked' }
+			{ id: 'gd-1', title: 'Get soil test results back', state: 'in_progress' },
+			{ id: 'gd-2', title: 'Build raised beds 3 and 4', state: 'todo' },
+			{ id: 'gd-3', title: 'Fix the drip line timer', state: 'blocked' },
+			{ id: 'gd-4', title: 'Pick seeds for the first planting', state: 'done' }
 		],
-		taskTotal: 7,
+		taskTotal: 8,
 		docs: [
-			{ id: 'kt-d1', title: 'Budget' },
-			{ id: 'kt-d2', title: 'Contractor notes' }
+			{ id: 'gd-d1', title: 'Bed layout' },
+			{ id: 'gd-d2', title: 'Seed list' }
 		],
-		risk: 'Budget is already tight',
-		next: 'Pick cabinets by mid-January so demo can start Feb 3.'
+		risk: null,
+		next: 'Build raised beds 3 and 4 on Saturday.'
+	},
+	channel: {
+		id: 'channel',
+		name: 'Noodle night channel',
+		short: 'Channel',
+		summary: 'Weeknight noodle recipes in under 20 minutes.',
+		goal: 'One video a week for 12 weeks',
+		milestones: ['First four episodes up', '1,000 subscribers'],
+		tasks: [
+			{ id: 'ch-b1', title: 'Edit episode 4: dan dan noodles', state: 'in_progress' },
+			{ id: 'ch-b2', title: 'Script episode 5', state: 'done' },
+			{ id: 'ch-b3', title: 'Batch-film episodes 5 and 6', state: 'todo' },
+			{ id: 'ch-b4', title: 'Thumbnails for episodes 5 and 6', state: 'todo' }
+		],
+		taskTotal: 8,
+		docs: [
+			{ id: 'ch-d1', title: 'Recipe list' },
+			{ id: 'ch-d2', title: 'Thumbnail style' }
+		],
+		risk: null,
+		next: 'Edit episode 4 and post it Friday.'
 	}
 };
 
 /** Workspace order: Fading Crown top-left, so zooming out reveals the rest around it. */
-export const PROJECT_ORDER: DemoProjectId[] = ['fc', 'channel', 'bakery', 'kitchen'];
+export const PROJECT_ORDER: DemoProjectId[] = ['fc', 'soccer', 'garden', 'channel'];
 
 export const CHAPTERS = [
 	{

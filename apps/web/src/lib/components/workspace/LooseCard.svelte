@@ -6,7 +6,15 @@
 	× keeps it here. In select mode the card toggles instead, for "start a project".
 -->
 <script lang="ts">
-	import { Check, Circle, FileText, FolderOpen, StickyNote, X } from '$lib/icons/lucide';
+	import {
+		Check,
+		Circle,
+		FileText,
+		FolderInput,
+		FolderOpen,
+		StickyNote,
+		X
+	} from '$lib/icons/lucide';
 	import { relativeDay, shortName } from '$lib/components/projects/desktop/desktop-model';
 	import type { LooseItem, WorkspaceSuggestion } from './workspace-model';
 
@@ -90,7 +98,7 @@
 			: `Open ${label.toLowerCase()} ${item.title}`}
 		onclick={activate}
 	>
-		<span class="kind micro-label">
+		<span class="kind">
 			{#if selecting}
 				<span class="tick" class:on={selected} aria-hidden="true">
 					{#if selected}<Check class="h-3 w-3" />{/if}
@@ -104,7 +112,9 @@
 			{:else}
 				<FileText class="h-3 w-3" />
 			{/if}
-			{label.toUpperCase()}{#if item.children}&nbsp;· {item.children} INSIDE{/if}
+			{label}{#if item.children}<span class="count">{item.children} inside</span>{/if}<span
+				class="count stamp">{stamp}</span
+			>
 		</span>
 		<span class="title">{item.title}</span>
 		{#if item.excerpt}
@@ -113,12 +123,11 @@
 	</button>
 
 	<div class="foot">
-		<span class="stamp text-muted-foreground">{stamp}</span>
 		{#if sorting}
-			<span class="sorting-label micro-label" role="status">Sorting…</span>
+			<span class="sorting-label" role="status">Sorting…</span>
 		{:else if !selecting}
 			{#if filing && filingName}
-				<span class="chip wt-ghost tx tx-bloom tx-weak" title={filing.reason}>
+				<span class="chip" title={filing.reason}>
 					<button
 						type="button"
 						class="go"
@@ -127,7 +136,8 @@
 						onclick={() => onFile(filing)}
 						aria-label="Move {item.title} to {filingName}"
 					>
-						→ {shortName(filingName, 22)}?
+						<FolderInput class="h-3.5 w-3.5 shrink-0" />
+						<span class="truncate">{shortName(filingName, 22)}</span>
 					</button>
 					<button
 						type="button"
@@ -173,7 +183,9 @@
 
 <style>
 	.sorting-label {
-		color: hsl(var(--accent));
+		padding-left: 8px;
+		font-size: 12px;
+		color: hsl(var(--muted-foreground));
 		animation: sorting-pulse 1.4s ease-in-out infinite;
 	}
 	.card.sorting {
@@ -198,8 +210,8 @@
 		display: grid;
 		grid-template-rows: 1fr auto;
 		min-width: 0;
-		min-height: 7.25rem;
-		border-radius: 0.7rem;
+		min-height: 116px;
+		border-radius: 12px;
 		-webkit-user-select: none;
 		user-select: none;
 		-webkit-touch-callout: none;
@@ -210,7 +222,7 @@
 			border-color 120ms ease;
 	}
 	.card:hover {
-		border-color: hsl(var(--accent) / 0.45);
+		border-color: hsl(var(--foreground) / 0.2);
 	}
 	.card.selected {
 		border-color: hsl(var(--accent));
@@ -222,11 +234,11 @@
 	.main {
 		display: grid;
 		align-content: start;
-		gap: 0.3rem;
+		gap: 4px;
 		min-width: 0;
-		padding: 0.7rem 0.8rem 0.35rem;
+		padding: 12px 12px 4px;
 		text-align: left;
-		border-radius: 0.7rem 0.7rem 0 0;
+		border-radius: 12px 12px 0 0;
 	}
 	.main:focus-visible {
 		outline: 2px solid hsl(var(--ring));
@@ -235,13 +247,19 @@
 	.kind {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.3rem;
+		gap: 4px;
+		font-size: 12px;
+		line-height: 16px;
 		color: hsl(var(--muted-foreground));
 	}
+	.count::before {
+		content: '·';
+		margin: 0 4px;
+	}
 	.title {
-		font-size: 0.875rem;
-		font-weight: 600;
-		line-height: 1.3;
+		font-size: 14px;
+		font-weight: 500;
+		line-height: 20px;
 		color: hsl(var(--foreground));
 		overflow-wrap: anywhere;
 		display: -webkit-box;
@@ -251,8 +269,8 @@
 		overflow: hidden;
 	}
 	.excerpt {
-		font-size: 0.8rem;
-		line-height: 1.35;
+		font-size: 13px;
+		line-height: 18px;
 		color: hsl(var(--muted-foreground));
 		overflow-wrap: anywhere;
 		display: -webkit-box;
@@ -265,17 +283,20 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.4rem;
-		min-height: 2.25rem;
-		padding: 0 0.45rem 0.4rem 0.8rem;
+		gap: 8px;
+		min-width: 0;
+		min-height: 36px;
+		padding: 0 4px 4px 4px;
 	}
 	.stamp {
-		font-size: 11px;
+		font-size: 12px;
+		font-variant-numeric: tabular-nums;
 		white-space: nowrap;
 	}
 	.actions {
 		display: inline-flex;
-		gap: 0.15rem;
+		margin-left: auto;
+		gap: 4px;
 		opacity: 0;
 		transition: opacity 120ms ease;
 	}
@@ -291,12 +312,12 @@
 	.mini {
 		display: inline-grid;
 		place-items: center;
-		min-width: 2rem;
-		min-height: 2rem;
-		padding: 0 0.4rem;
-		border-radius: 0.4rem;
-		font-size: 0.75rem;
-		font-weight: 600;
+		min-width: 32px;
+		min-height: 32px;
+		padding: 0 8px;
+		border-radius: 8px;
+		font-size: 12px;
+		font-weight: 500;
 		color: hsl(var(--muted-foreground));
 	}
 	.mini:hover {
@@ -311,26 +332,33 @@
 	.chip {
 		display: inline-flex;
 		align-items: center;
+		flex: 0 1 auto;
 		min-width: 0;
-		border-radius: 999px;
-		font-size: 0.75rem;
-		font-weight: 600;
+		border-radius: 8px;
+		font-size: 12px;
+		font-weight: 500;
 		color: hsl(var(--accent));
 	}
 	.chip .go {
-		min-height: 1.9rem;
-		padding: 0 0.15rem 0 0.6rem;
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		min-width: 0;
+		min-height: 32px;
+		padding: 0 4px 0 8px;
+		border-radius: 8px;
 		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		max-width: 11rem;
+	}
+	.chip .go:hover:not(:disabled) {
+		background: hsl(var(--accent) / 0.08);
 	}
 	.chip .keep {
 		display: inline-grid;
+		flex: none;
 		place-items: center;
-		min-width: 1.9rem;
-		min-height: 1.9rem;
-		border-radius: 999px;
+		min-width: 32px;
+		min-height: 32px;
+		border-radius: 8px;
 		color: hsl(var(--muted-foreground));
 	}
 	.chip .keep:hover {

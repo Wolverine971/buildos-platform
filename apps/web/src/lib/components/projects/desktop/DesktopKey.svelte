@@ -1,7 +1,8 @@
 <!-- apps/web/src/lib/components/projects/desktop/DesktopKey.svelte -->
 <!--
-	What the tile colors and bars mean, in one strip above the desktop. Each item's
-	tooltip gives the rule behind it.
+	What the tile colors and the bar mean, in one quiet strip above the desktop. Each
+	item's tooltip gives the rule behind it. Unslop pass: the D bar and the red count left
+	the tiles, so they leave the key too.
 -->
 <script lang="ts">
 	import './desktop-colors.css';
@@ -9,7 +10,7 @@
 </script>
 
 <div
-	class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground"
+	class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground"
 	aria-label="What the colors mean"
 	role="group"
 >
@@ -23,19 +24,12 @@
 			</span>
 		{/each}
 	</span>
+	<span class="divider" aria-hidden="true"></span>
 	<span
-		class="inline-flex items-center gap-1.5"
-		title="D: documents, longer than your other projects' means more"
+		class="flex flex-wrap items-center gap-x-3 gap-y-1"
+		title="The bar is open tasks, longer means more than your other projects"
 	>
-		<em class="letter">D</em><i class="bar docs"></i>Docs
-	</span>
-	<span class="flex flex-wrap items-center gap-x-3 gap-y-1">
-		<span
-			class="inline-flex items-center gap-1.5"
-			title="T: open tasks, longer means more than your other projects"
-		>
-			<em class="letter">T</em>Tasks:
-		</span>
+		<span>Tasks</span>
 		{#each TASK_BUCKETS as bucket (bucket)}
 			<span
 				class="inline-flex items-center gap-1.5"
@@ -47,9 +41,6 @@
 			</span>
 		{/each}
 	</span>
-	<span class="inline-flex items-center gap-1.5" title="Red count: overdue tasks">
-		<i class="badge">3</i>overdue count
-	</span>
 </div>
 
 <style>
@@ -57,10 +48,10 @@
 		display: inline-block;
 		width: 12px;
 		height: 12px;
-		border-radius: 3px;
-		border: 1px solid hsl(var(--c) / 0.6);
+		border-radius: 4px;
+		border: 1px solid hsl(var(--c) / 0.5);
 		background: hsl(var(--card));
-		background-image: linear-gradient(hsl(var(--c) / 0.3), hsl(var(--c) / 0.3));
+		background-image: linear-gradient(hsl(var(--c) / 0.24), hsl(var(--c) / 0.24));
 	}
 	.pulse-moving {
 		--c: var(--desk-moving);
@@ -74,20 +65,16 @@
 	.pulse-parked {
 		--c: var(--desk-parked);
 	}
-	.letter {
-		font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-		font-style: normal;
-		font-weight: 600;
-		font-size: 10px;
+	.divider {
+		width: 1px;
+		height: 12px;
+		background: hsl(var(--foreground) / 0.12);
 	}
 	.bar {
 		display: inline-block;
-		width: 16px;
-		height: 5px;
-		border-radius: 99px;
-	}
-	.docs {
-		background: hsl(var(--desk-docs) / 0.75);
+		width: 12px;
+		height: 4px;
+		border-radius: 2px;
 	}
 	.overdue {
 		background: hsl(var(--desk-overdue));
@@ -101,17 +88,9 @@
 	.backlog {
 		background: hsl(var(--desk-backlog));
 	}
-	.badge {
-		display: inline-grid;
-		place-items: center;
-		min-width: 15px;
-		height: 14px;
-		padding: 0 3px;
-		border-radius: 7px;
-		background: hsl(var(--desk-overdue));
-		color: hsl(0 0% 100%);
-		font-size: 9px;
-		font-style: normal;
-		font-weight: 600;
+	@media (max-width: 639px) {
+		.divider {
+			display: none;
+		}
 	}
 </style>

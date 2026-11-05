@@ -64,29 +64,29 @@
 	}: Props = $props();
 
 	const toneClass: Record<Tone, string> = {
-		default: 'border-border bg-card text-foreground shadow-ink',
-		warning: 'border-warning/35 bg-warning/10 text-foreground shadow-ink',
-		danger: 'border-destructive/35 bg-destructive/5 text-foreground shadow-ink',
-		dashed: 'border-dashed border-accent/50 bg-transparent text-accent',
-		quiet: 'border-dashed border-border bg-transparent text-muted-foreground'
+		default: 'border-border bg-card text-foreground',
+		warning: 'border-border bg-card text-foreground',
+		danger: 'border-border bg-card text-foreground',
+		dashed: 'border-border bg-transparent text-foreground',
+		quiet: 'border-transparent bg-transparent text-muted-foreground'
 	};
 	const interactiveToneClass: Record<Tone, string> = {
-		default: 'hover:border-accent/40 hover:bg-muted/60',
-		warning: 'hover:border-warning/60 hover:bg-warning/15',
-		danger: 'hover:border-destructive/60 hover:bg-destructive/10',
-		dashed: 'hover:border-accent hover:bg-accent/10',
-		quiet: 'hover:border-accent/40 hover:text-accent'
+		default: 'hover:bg-muted',
+		warning: 'hover:bg-muted',
+		danger: 'hover:bg-muted',
+		dashed: 'hover:bg-muted',
+		quiet: 'hover:bg-muted hover:text-foreground'
 	};
 	const iconToneClass: Record<Tone, string> = {
 		default: 'text-muted-foreground',
-		warning: 'text-warning',
+		warning: 'text-destructive',
 		danger: 'text-destructive',
-		dashed: 'text-accent',
-		quiet: ''
+		dashed: 'text-muted-foreground',
+		quiet: 'text-muted-foreground'
 	};
 
 	const baseClass =
-		'group inline-flex min-h-11 [@media(pointer:fine)]:min-h-8 max-w-full shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold whitespace-nowrap transition-colors';
+		'group inline-flex min-h-11 [@media(pointer:fine)]:min-h-8 max-w-full shrink-0 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium whitespace-nowrap transition-colors';
 	const interactiveClass =
 		'pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-60 disabled:pointer-events-none';
 

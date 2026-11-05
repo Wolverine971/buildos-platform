@@ -352,6 +352,12 @@
 			? ''
 			: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 	}
+
+	/** A goal's stored state (`draft`, `in_progress`) as a label: "Draft", "In progress". */
+	function stateWord(value: string | null | undefined): string {
+		const word = (value ?? '').replaceAll('_', ' ');
+		return word ? word.charAt(0).toUpperCase() + word.slice(1) : '';
+	}
 </script>
 
 <article
@@ -361,9 +367,9 @@
 	data-drop-id={project.id}
 	aria-label={project.name}
 >
-	<header class="grid gap-3 border-b border-border px-4 pb-3.5 pt-4 sm:px-5">
+	<header class="grid gap-3 border-b border-border px-4 py-4 sm:px-5">
 		<nav
-			class="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"
+			class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
 			aria-label="Where this project lives"
 		>
 			<button type="button" class="crumb" onclick={onCollapse}>Workspace</button>
@@ -376,16 +382,16 @@
 			{/if}
 			<span class="truncate">{workspace ? 'Loose items' : shortName(project.name)}</span>
 		</nav>
-		<div class="flex items-start gap-3.5">
+		<div class="flex items-start gap-3">
 			<DesktopTile {project} inside={canHold ? inside : []} size="md" />
 			<div class="min-w-0 flex-1">
 				<h2
 					tabindex="-1"
-					class="text-xl font-semibold outline-none leading-tight tracking-tight text-foreground text-balance"
+					class="text-xl font-medium outline-none leading-tight text-foreground text-balance"
 				>
 					{workspace ? 'Loose items' : project.name}
 				</h2>
-				<div class="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+				<div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
 					{#if workspace}
 						<span
 							>Notes, docs and tasks that aren't in a project yet. Drag one onto a
@@ -393,19 +399,20 @@
 						>
 					{:else if look?.pulse}
 						<span class="pulse pulse-{look.pulse}" title={look.reason}>
-							{PULSE_META[look.pulse].label}
+							<i class="pulse-dot" aria-hidden="true"></i>{PULSE_META[look.pulse]
+								.label}
 						</span>
 						<span>{look.reason}</span>
 					{:else}
 						<span>Updated {relativeDay(new Date(updatedAt).toISOString())}</span>
 					{/if}
-					{#if !workspace}
-						<span>· Status {PROJECT_STATE_META[projectState].label.toLowerCase()}</span>
+					{#if !workspace && projectState !== 'active'}
+						<span>· {PROJECT_STATE_META[projectState].label}</span>
 					{/if}
 					{#if parent}<span>· Part of {shortName(parent.name)}</span>{/if}
 				</div>
 			</div>
-			<div class="flex shrink-0 flex-wrap justify-end gap-1.5">
+			<div class="flex shrink-0 flex-wrap justify-end gap-2">
 				{#if parent && canTakeOut}
 					<button
 						type="button"
@@ -450,9 +457,9 @@
 		</div>
 		{#if !workspace}
 			<div class="grid gap-0.5">
-				<span class="micro-label text-accent">NEXT STEP</span>
+				<span class="text-xs text-muted-foreground">Next step</span>
 				<p class="next max-w-[72ch] text-sm text-foreground">
-					{nextStep || 'No next step yet.'}
+					{nextStep || 'No next step yet'}
 				</p>
 			</div>
 		{/if}
@@ -518,10 +525,7 @@
 			<div class="body">
 				{#if tab === 'inside'}
 					{#if inside.length}
-						<p class="hint">
-							Drag a nested project onto Projects in the dock to take it out, or onto
-							another project to move it there.
-						</p>
+						<p class="hint">Drag one onto the dock to take it out or move it</p>
 					{/if}
 					{#each inside as child (child.id)}
 						{@const cue =
@@ -547,7 +551,7 @@
 									>{child.name}</span
 								>
 								<span class="block truncate text-xs text-muted-foreground">
-									{cue || 'No next step yet.'}
+									{cue || 'No next step yet'}
 								</span>
 							</button>
 							<button
@@ -560,22 +564,24 @@
 							</button>
 						</div>
 					{/each}
-					<div class="empty-drop">
-						Drag a project from the dock into this card to nest it in {shortName(
-							project.name
-						)}.
-					</div>
+					{#if !inside.length || lifted?.startsWith('project:')}
+						<div class="empty-drop">
+							Drag a project from the dock here to nest it in {shortName(
+								project.name
+							)}
+						</div>
+					{/if}
 				{:else if tab === 'chats'}
 					{#if chats.status === 'error'}
 						<div class="empty-drop grid justify-items-center gap-2" role="alert">
 							<span>{chats.error}</span>
 							<button type="button" class="action" onclick={chats.retry}>
-								<RefreshCw class="h-3.5 w-3.5" /> Try again
+								<RefreshCw class="h-4 w-4" /> Try again
 							</button>
 						</div>
 					{:else if chats.status !== 'ready'}
 						<div
-							class="grid gap-1.5 px-2 py-1"
+							class="grid gap-2 px-2 py-1"
 							aria-busy="true"
 							aria-label="Loading chats"
 						>
@@ -586,7 +592,6 @@
 							{/each}
 						</div>
 					{:else if chats.rows.length}
-						<p class="hint">Click a chat to pick it up where it left off.</p>
 						{#each chats.rows as chat (chat.id)}
 							{@render chatRow(chat)}
 						{/each}
@@ -606,8 +611,8 @@
 						<div class="empty-drop grid justify-items-center gap-2">
 							<span
 								>{workspace
-									? 'No Workspace chats yet.'
-									: `No chats about ${shortName(project.name)} yet.`}</span
+									? 'No Workspace chats yet'
+									: `No chats about ${shortName(project.name)} yet`}</span
 							>
 							<button
 								type="button"
@@ -623,11 +628,11 @@
 						<div class="empty-drop grid justify-items-center gap-2" role="alert">
 							<span>{error}</span>
 							<button type="button" class="action" onclick={onRetry}>
-								<RefreshCw class="h-3.5 w-3.5" /> Try again
+								<RefreshCw class="h-4 w-4" /> Try again
 							</button>
 						</div>
 					{:else}
-						<div class="grid gap-1.5 px-2 py-1" aria-busy="true" aria-label="Loading">
+						<div class="grid gap-2 px-2 py-1" aria-busy="true" aria-label="Loading">
 							{#each [0, 1, 2, 3] as index (index)}
 								<div
 									class="h-9 animate-pulse rounded-lg bg-muted motion-reduce:animate-none"
@@ -637,11 +642,12 @@
 					{/if}
 				{:else if tab === 'docs'}
 					{#if tree.length}
-						<p class="hint">
-							Click a doc to open it.{canWrite
-								? ' Drag it onto a project in the dock to move it, with any docs nested under it.'
-								: ''}
-						</p>
+						{#if canWrite}
+							<p class="hint">
+								Drag a doc onto a project in the dock to move it with its nested
+								docs
+							</p>
+						{/if}
 						{@render docRows(tree, 0)}
 						{#if canWrite}
 							<div class="flex justify-start px-2 pb-1 pt-2">
@@ -650,20 +656,20 @@
 									class="action quiet"
 									onclick={() => (newTableOpen = true)}
 								>
-									<Table class="h-3.5 w-3.5" /> New table
+									<Table class="h-4 w-4" /> New table
 								</button>
 							</div>
 						{/if}
 					{:else}
 						<div class="empty-drop grid justify-items-center gap-2">
-							<span>No docs yet.</span>
+							<span>No docs yet</span>
 							{#if canWrite}
 								<button
 									type="button"
 									class="action"
 									onclick={() => (newTableOpen = true)}
 								>
-									<Table class="h-3.5 w-3.5" /> New table
+									<Table class="h-4 w-4" /> New table
 								</button>
 							{/if}
 						</div>
@@ -671,18 +677,20 @@
 				{:else if tab === 'tasks'}
 					{#if tasks.length}
 						<div class="px-2 pb-2 pt-1"><DesktopTaskMix mix={taskMix} /></div>
-						<p class="hint">
-							Click a task to open it.{canWrite
-								? ` Drag it onto a project in the dock to move it.${SCHEDULED_TASK_MOVES_ENABLED ? '' : ' Dated tasks stay put for now.'}`
-								: ''}
-						</p>
+						{#if canWrite}
+							<p class="hint">
+								Drag a task onto a project in the dock to move it{SCHEDULED_TASK_MOVES_ENABLED
+									? ''
+									: '. Dated tasks stay put for now'}
+							</p>
+						{/if}
 						{#each openTasks as task (task.id)}
 							{@render taskRow(task)}
 						{/each}
 						{#if doneTasks.length}
 							<button
 								type="button"
-								class="mt-1 flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-left text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+								class="mt-1 flex min-h-9 items-center gap-2 rounded-lg px-2 text-left text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground motion-reduce:transition-none"
 								aria-expanded={showDone}
 								onclick={() => (showDone = !showDone)}
 							>
@@ -691,7 +699,11 @@
 										? 'rotate-90'
 										: ''}"
 								/>
-								Done · {doneTasks.length}
+								<span
+									>Done<span class="ml-1 font-mono font-normal tabular-nums"
+										>{doneTasks.length}</span
+									></span
+								>
 							</button>
 							{#if showDone}
 								{#each doneTasks as task (task.id)}
@@ -700,12 +712,9 @@
 							{/if}
 						{/if}
 					{:else}
-						<div class="empty-drop">No tasks yet.</div>
+						<div class="empty-drop">No tasks yet</div>
 					{/if}
 				{:else if goals.length}
-					<p class="hint">
-						Click a goal to open it. Goals stay with their project for now.
-					</p>
 					{#each goals as goal (goal.id)}
 						{@const selected = reader?.kind === 'goal' && reader.id === goal.id}
 						<div
@@ -715,7 +724,7 @@
 							out:slide={{ duration: prefersReducedMotion.current ? 0 : 160 }}
 						>
 							<span></span>
-							<Target class="h-4 w-4 text-accent" />
+							<span class="glyph"><Target class="h-4 w-4" /></span>
 							<button
 								type="button"
 								class="open truncate text-sm text-foreground"
@@ -725,12 +734,14 @@
 								{goal.name}
 							</button>
 							<span class="chip">
-								{goal.target_date ? shortDate(goal.target_date) : goal.state_key}
+								{goal.target_date
+									? shortDate(goal.target_date)
+									: stateWord(goal.state_key)}
 							</span>
 						</div>
 					{/each}
 				{:else}
-					<div class="empty-drop">No goals yet.</div>
+					<div class="empty-drop">No goals yet</div>
 				{/if}
 			</div>
 		{/snippet}
@@ -808,7 +819,7 @@
 			</span>
 			{#if pinned}
 				<span class="chip inline-flex items-center gap-1" title={pinned}>
-					<Lock class="h-3 w-3" /> Stays
+					<Lock class="h-3.5 w-3.5" /> Stays
 				</span>
 			{:else if movable}
 				<button
@@ -889,26 +900,33 @@
 			aria-current={selected ? 'true' : undefined}
 			onclick={() => openItem('task', task.id)}>{task.title}</button
 		>
-		{#if locked}
-			<span
-				class="chip date-{bucket} inline-flex items-center gap-1"
-				title="{bucket === 'overdue'
-					? 'Overdue. '
-					: ''}Dated tasks can't move yet: calendar moves are off."
-			>
-				<Lock class="h-3 w-3" />
-				{shortDate(task.due_at ?? task.start_at ?? '')}
+		{#if dated || movable}
+			<span class="tail">
+				{#if dated}
+					<span
+						class="chip date-{bucket} inline-flex items-center gap-1"
+						title={locked
+							? `${bucket === 'overdue' ? 'Overdue. ' : ''}Dated tasks can't move yet: calendar moves are off.`
+							: bucket === 'overdue'
+								? 'Overdue'
+								: undefined}
+					>
+						{#if locked}<Lock class="h-3.5 w-3.5" />{/if}
+						{shortDate(task.due_at ?? task.start_at ?? '')}
+					</span>
+				{/if}
+				{#if movable}
+					<button
+						type="button"
+						class="mv"
+						data-nodrag
+						onclick={(event) =>
+							move(event, { kind: 'task', id: task.id, projectId: project.id })}
+					>
+						Move
+					</button>
+				{/if}
 			</span>
-		{:else if movable}
-			<button
-				type="button"
-				class="mv"
-				data-nodrag
-				onclick={(event) =>
-					move(event, { kind: 'task', id: task.id, projectId: project.id })}
-			>
-				Move
-			</button>
 		{:else}
 			<span></span>
 		{/if}
@@ -924,7 +942,7 @@
 		border: 1px solid hsl(var(--border));
 		background: hsl(var(--card));
 		box-shadow: var(--shadow-ink);
-		animation: grow 180ms ease-out;
+		animation: grow 180ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	@media (min-width: 768px) {
 		.card {
@@ -964,6 +982,9 @@
 		text-decoration-color: hsl(var(--border-strong));
 		text-underline-offset: 3px;
 	}
+	.crumb {
+		transition: color 140ms cubic-bezier(0.22, 1, 0.36, 1);
+	}
 	.crumb:hover {
 		color: hsl(var(--foreground));
 	}
@@ -971,15 +992,18 @@
 		display: inline-flex;
 		min-height: 2.25rem;
 		align-items: center;
-		gap: 6px;
-		border-radius: 9px;
+		gap: 8px;
+		border-radius: 8px;
 		border: 1px solid hsl(var(--border-strong));
 		background: hsl(var(--card));
-		padding: 0 10px;
+		padding: 0 12px;
 		font-size: 13px;
 		font-weight: 500;
 		color: hsl(var(--foreground));
 		white-space: nowrap;
+		transition:
+			background-color 140ms cubic-bezier(0.22, 1, 0.36, 1),
+			color 140ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.action:hover {
 		background: hsl(var(--muted));
@@ -1001,7 +1025,7 @@
 	.tabs {
 		display: flex;
 		flex: none;
-		gap: 2px;
+		gap: 4px;
 		overflow-x: auto;
 		border-bottom: 1px solid hsl(var(--border));
 		padding: 0 12px;
@@ -1010,11 +1034,17 @@
 	.tabs button {
 		margin-bottom: -1px;
 		border-bottom: 2px solid transparent;
-		padding: 11px 10px 10px;
-		font-size: 13.5px;
+		padding: 10px 8px;
+		font-size: 14px;
 		font-weight: 500;
 		white-space: nowrap;
 		color: hsl(var(--muted-foreground));
+		transition:
+			color 140ms cubic-bezier(0.22, 1, 0.36, 1),
+			border-color 140ms cubic-bezier(0.22, 1, 0.36, 1);
+	}
+	.tabs button:hover {
+		color: hsl(var(--foreground));
 	}
 	.tabs button[aria-selected='true'] {
 		border-bottom-color: hsl(var(--accent));
@@ -1025,9 +1055,11 @@
 		outline-offset: -2px;
 	}
 	.count {
-		margin-left: 5px;
+		margin-left: 4px;
 		font-family: var(--font-mono, ui-monospace, monospace);
-		font-size: 11px;
+		font-size: 12px;
+		font-weight: 400;
+		font-variant-numeric: tabular-nums;
 		color: hsl(var(--muted-foreground));
 	}
 	.body {
@@ -1035,29 +1067,29 @@
 		align-content: start;
 		gap: 2px;
 		min-height: 12rem;
-		padding: 10px 10px 16px;
+		padding: 8px 8px 16px;
 	}
 	.hint {
-		padding: 2px 8px 8px;
-		font-size: 12.5px;
+		padding: 4px 8px 8px;
+		font-size: 12px;
 		color: hsl(var(--muted-foreground));
 	}
 	.row {
 		display: grid;
-		grid-template-columns: 22px auto minmax(0, 1fr) auto;
+		grid-template-columns: 24px auto minmax(0, 1fr) auto;
 		align-items: center;
-		gap: 10px;
+		gap: 8px;
 		min-height: 44px;
-		padding: 6px 8px;
-		padding-left: calc(6px + var(--depth, 0) * 20px);
-		border-radius: 9px;
+		padding: 4px 8px;
+		padding-left: calc(8px + var(--depth, 0) * 20px);
+		border-radius: 8px;
 		-webkit-user-select: none;
 		user-select: none;
 		-webkit-touch-callout: none;
 		touch-action: pan-y;
 		transition:
-			background-color 100ms ease,
-			opacity 120ms ease;
+			background-color 140ms cubic-bezier(0.22, 1, 0.36, 1),
+			opacity 140ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.row:hover {
 		background: hsl(var(--muted));
@@ -1067,7 +1099,7 @@
 	}
 	.row.sel .open {
 		color: hsl(var(--accent));
-		font-weight: 600;
+		font-weight: 500;
 	}
 	.row[data-drag-kind] {
 		cursor: grab;
@@ -1076,7 +1108,7 @@
 		color: hsl(var(--border-strong));
 		opacity: 0;
 		justify-self: center;
-		transition: opacity 100ms ease;
+		transition: opacity 140ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.row:hover :global(.grip),
 	.row:focus-within :global(.grip) {
@@ -1110,8 +1142,8 @@
 	.row.talk {
 		position: relative;
 		align-items: start;
-		padding-top: 9px;
-		padding-bottom: 9px;
+		padding-top: 8px;
+		padding-bottom: 8px;
 	}
 	.pick {
 		display: grid;
@@ -1123,7 +1155,7 @@
 		content: '';
 		position: absolute;
 		inset: 0;
-		border-radius: 9px;
+		border-radius: 8px;
 	}
 	.pick:focus-visible {
 		outline: none;
@@ -1134,7 +1166,7 @@
 	}
 	.row.sel .pick .name {
 		color: hsl(var(--accent));
-		font-weight: 600;
+		font-weight: 500;
 	}
 	.gist,
 	.note {
@@ -1150,15 +1182,13 @@
 		}
 	}
 	.note {
-		font-size: 11.5px;
+		font-size: 12px;
 	}
 	.glyph {
 		display: grid;
 		place-items: center;
-		width: 26px;
-		height: 26px;
-		border-radius: 7px;
-		background: hsl(var(--muted));
+		width: 28px;
+		height: 28px;
 		color: hsl(var(--muted-foreground));
 	}
 	/* Task colors match the tile's T bar (desktop-colors.css). */
@@ -1171,24 +1201,22 @@
 	.bucket-scheduled {
 		color: hsl(var(--desk-scheduled));
 	}
+	/* Only an overdue date keeps its color; the glyph already says the rest. */
 	.chip.date-overdue {
-		border-color: hsl(var(--desk-overdue) / 0.5);
 		color: hsl(var(--desk-overdue));
 	}
-	.chip.date-scheduled {
-		border-color: hsl(var(--desk-scheduled) / 0.5);
-		color: hsl(var(--desk-scheduled));
-	}
+	/* The pulse is quiet text behind a dot in the tile's frame color. */
 	.pulse {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		color: hsl(var(--foreground));
+	}
+	.pulse-dot {
+		width: 8px;
+		height: 8px;
 		border-radius: 99px;
-		border: 1px solid hsl(var(--c) / 0.5);
-		background: hsl(var(--c) / 0.14);
-		padding: 2px 7px;
-		font-size: 10.5px;
-		font-weight: 600;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
-		color: color-mix(in oklab, hsl(var(--c)) 80%, hsl(var(--foreground)));
+		background: hsl(var(--c));
 	}
 	.pulse-moving {
 		--c: var(--desk-moving);
@@ -1205,38 +1233,49 @@
 	.toggle {
 		display: grid;
 		place-items: center;
-		width: 22px;
-		height: 22px;
-		border-radius: 5px;
+		width: 24px;
+		height: 24px;
+		border-radius: 6px;
 		color: hsl(var(--muted-foreground));
+		transition:
+			background-color 140ms cubic-bezier(0.22, 1, 0.36, 1),
+			color 140ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.toggle:hover {
 		background: hsl(var(--border));
 		color: hsl(var(--foreground));
 	}
 	.toggle :global(svg) {
-		transition: transform 120ms ease;
+		transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.toggle[aria-expanded='true'] :global(svg) {
 		transform: rotate(90deg);
 	}
+	/* Dates and states read as quiet meta, not boxed chips. */
+	.tail {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+	}
 	.chip {
-		border-radius: 6px;
-		border: 1px solid hsl(var(--border));
-		padding: 2px 6px;
 		font-family: var(--font-mono, ui-monospace, monospace);
-		font-size: 11px;
+		font-size: 12px;
+		font-variant-numeric: tabular-nums;
 		white-space: nowrap;
 		color: hsl(var(--muted-foreground));
 	}
 	.mv {
-		border-radius: 7px;
+		border-radius: 8px;
 		border: 1px solid hsl(var(--border));
 		background: hsl(var(--card));
-		padding: 3px 9px;
+		padding: 4px 8px;
 		font-size: 12px;
 		color: hsl(var(--muted-foreground));
 		opacity: 0;
+		transition:
+			opacity 140ms cubic-bezier(0.22, 1, 0.36, 1),
+			border-color 140ms cubic-bezier(0.22, 1, 0.36, 1),
+			color 140ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.row:hover .mv,
 	.row:focus-within .mv,
@@ -1254,10 +1293,10 @@
 		}
 	}
 	.empty-drop {
-		margin: 6px 4px;
-		padding: 22px 16px;
-		border-radius: 12px;
-		border: 1.5px dashed hsl(var(--border-strong));
+		margin: 8px 4px;
+		padding: 24px 16px;
+		border-radius: 8px;
+		border: 1px dashed hsl(var(--border-strong));
 		text-align: center;
 		font-size: 13px;
 		color: hsl(var(--muted-foreground));
@@ -1267,6 +1306,11 @@
 			animation: none;
 		}
 		.row,
+		.action,
+		.crumb,
+		.tabs button,
+		.toggle,
+		.mv,
 		.toggle :global(svg),
 		.row :global(.grip) {
 			transition: none;

@@ -343,8 +343,9 @@ describe('ProjectDesktop', () => {
 		const nine = screen.getByRole('link', {
 			name: '9takes, being shaped, 11 overdue, 34 open tasks, 0 docs'
 		});
-		// The red overdue count sits on the tile.
-		expect(nine.querySelector('.badge')?.textContent).toBe('11');
+		// Overdue lives in the tile's task bar and its label, not a red count bubble.
+		expect(nine.querySelector('.badge')).toBeNull();
+		expect(nine.querySelector('.seg.overdue')).toBeTruthy();
 		expect(screen.getByRole('group', { name: 'What the colors mean' })).toBeTruthy();
 		expect(screen.queryByRole('link', { name: /^Redline/ })).toBeNull();
 	});
@@ -388,7 +389,7 @@ describe('ProjectDesktop', () => {
 		const headings = screen
 			.getAllByRole('heading', { level: 2 })
 			.map((h) => h.textContent?.trim());
-		expect(headings).toEqual(['MOVING · 1', 'BEING SHAPED · 1', 'NO HISTORY YET · 1']);
+		expect(headings).toEqual(['Moving 1', 'Being shaped 1', 'No history yet 1']);
 	});
 
 	it('explains why a project that holds others cannot go inside one', async () => {

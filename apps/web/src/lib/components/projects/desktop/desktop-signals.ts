@@ -151,7 +151,7 @@ export function projectPulse(
 	if (days <= RECENT_DAYS)
 		return {
 			pulse: 'shaping',
-			reason: `Worked on ${days === 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`}, nothing finished yet`
+			reason: `Last change ${days === 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`}, nothing finished yet`
 		};
 	return { pulse: 'quiet', reason: `Last change ${days} days ago` };
 }

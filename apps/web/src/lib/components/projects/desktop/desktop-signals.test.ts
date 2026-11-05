@@ -53,7 +53,7 @@ describe('projectPulse', () => {
 		});
 		expect(pulse('active', { last_touch_at: at(-3) })).toEqual({
 			pulse: 'shaping',
-			reason: 'Worked on 3 days ago, nothing finished yet'
+			reason: 'Last change 3 days ago, nothing finished yet'
 		});
 		expect(pulse('active', { last_touch_at: at(-20) })).toEqual({
 			pulse: 'quiet',

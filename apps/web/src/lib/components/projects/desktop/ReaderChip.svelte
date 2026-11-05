@@ -98,14 +98,19 @@
 		max-width: 100%;
 		align-items: center;
 		gap: 4px;
-		min-height: 26px;
-		border-radius: 6px;
+		min-height: 28px;
+		border-radius: 8px;
 		border: 1px solid hsl(var(--border));
-		padding: 2px 6px 2px 7px;
+		padding: 2px 6px 2px 8px;
 		font-family: var(--font-mono, ui-monospace, monospace);
-		font-size: 11px;
+		font-size: 12px;
+		font-variant-numeric: tabular-nums;
 		white-space: nowrap;
 		color: hsl(var(--muted-foreground));
+		transition:
+			background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),
+			border-color 150ms cubic-bezier(0.22, 1, 0.36, 1),
+			color 150ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	button.chip:hover:not(:disabled),
 	button.chip[aria-expanded='true'] {
@@ -126,6 +131,11 @@
 	.chip.late {
 		color: hsl(var(--destructive));
 	}
+	@media (prefers-reduced-motion: reduce) {
+		.chip {
+			transition: none;
+		}
+	}
 	.pop {
 		position: absolute;
 		top: calc(100% + 4px);
@@ -135,17 +145,17 @@
 		gap: 2px;
 		min-width: 200px;
 		max-width: min(280px, calc(100vw - 32px));
-		border-radius: 10px;
+		border-radius: 12px;
 		border: 1px solid hsl(var(--border-strong));
 		background: hsl(var(--card));
 		padding: 4px;
-		box-shadow: 0 8px 24px hsl(0 0% 0% / 0.18);
-		animation: pop 120ms ease-out;
+		box-shadow: 0 8px 24px hsl(0 0% 0% / 0.12);
+		animation: pop 160ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	@keyframes pop {
 		from {
 			opacity: 0;
-			transform: translateY(-3px);
+			transform: translateY(-4px);
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
@@ -160,7 +170,7 @@
 		min-height: 32px;
 		align-items: center;
 		gap: 8px;
-		border-radius: 7px;
+		border-radius: 8px;
 		padding: 4px 8px;
 		text-align: left;
 		font-size: 13px;
@@ -172,11 +182,11 @@
 		outline: none;
 	}
 	.pop :global(.opt[aria-pressed='true']) {
-		font-weight: 600;
+		font-weight: 500;
 	}
 	.pop :global(.opt .opt-note) {
 		margin-left: auto;
-		font-size: 11.5px;
+		font-size: 12px;
 		color: hsl(var(--muted-foreground));
 	}
 	.pop :global(.opt.clear) {
@@ -184,7 +194,7 @@
 	}
 	.pop :global(.sep) {
 		height: 1px;
-		margin: 3px 4px;
+		margin: 4px;
 		background: hsl(var(--border));
 	}
 	.pop :global(.pick-day) {
@@ -195,11 +205,11 @@
 	.pop :global(.pick-day .set) {
 		flex: none;
 		min-height: 32px;
-		border-radius: 7px;
+		border-radius: 8px;
 		border: 1px solid hsl(var(--border-strong));
-		padding: 0 10px;
-		font-size: 12.5px;
-		font-weight: 600;
+		padding: 0 12px;
+		font-size: 12px;
+		font-weight: 500;
 		color: hsl(var(--foreground));
 	}
 	.pop :global(.pick-day .set:hover) {
@@ -209,7 +219,7 @@
 		min-width: 0;
 		flex: 1;
 		min-height: 32px;
-		border-radius: 7px;
+		border-radius: 8px;
 		border: 1px solid hsl(var(--border));
 		background: hsl(var(--background));
 		padding: 2px 8px;

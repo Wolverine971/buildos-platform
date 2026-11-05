@@ -187,12 +187,18 @@
 		min-width: 0;
 		overflow: hidden;
 		border-radius: 6px;
-		padding: 0 9px;
+		padding: 0 8px;
 		font-size: 12px;
-		font-weight: 600;
+		font-weight: 500;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		color: hsl(var(--muted-foreground));
+		transition:
+			background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),
+			color 150ms cubic-bezier(0.22, 1, 0.36, 1);
+	}
+	.scope button:hover:not([aria-pressed='true']) {
+		color: hsl(var(--foreground));
 	}
 	.scope button.item {
 		flex: none;
@@ -206,7 +212,7 @@
 		flex: 1;
 		overflow: hidden;
 		font-size: 13px;
-		font-weight: 600;
+		font-weight: 500;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		color: hsl(var(--foreground));
@@ -219,11 +225,12 @@
 		gap: 4px;
 		border-radius: 8px;
 		border: 1px solid hsl(var(--border-strong));
-		padding: 0 9px;
+		padding: 0 8px;
 		font-size: 12px;
-		font-weight: 600;
+		font-weight: 500;
 		white-space: nowrap;
 		color: hsl(var(--foreground));
+		transition: background-color 150ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.new:hover {
 		background: hsl(var(--muted));
@@ -236,11 +243,14 @@
 		display: inline-grid;
 		margin-left: auto;
 		place-items: center;
-		width: 34px;
-		height: 34px;
+		width: 32px;
+		height: 32px;
 		flex: none;
 		border-radius: 8px;
 		color: hsl(var(--muted-foreground));
+		transition:
+			background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),
+			color 150ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.phone .ib {
 		width: 44px;
@@ -260,6 +270,13 @@
 		flex: 1;
 		min-height: 0;
 		overflow: hidden;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.scope button,
+		.new,
+		.ib {
+			transition: none;
+		}
 	}
 	.loading {
 		display: grid;

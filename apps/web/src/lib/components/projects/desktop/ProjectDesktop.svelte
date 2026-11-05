@@ -1015,7 +1015,7 @@
 		{/if}
 		{#if emptyTiles && !tiles.length && !completedTiles.length}
 			{#if loose}
-				<h2 class="micro-label -mb-3 text-muted-foreground">PROJECTS</h2>
+				<h2 class="section-title -mb-3">Projects</h2>
 			{/if}
 			{@render emptyTiles()}
 		{:else}
@@ -1027,13 +1027,13 @@
 			{/if}
 			<div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
 				{#if loose}
-					<h2 class="micro-label self-center text-muted-foreground">
-						PROJECTS · {tiles.length}
+					<h2 class="section-title self-center">
+						Projects <span class="section-count">{tiles.length}</span>
 					</h2>
 				{/if}
 				<DesktopKey />
 				<div
-					class="inline-flex rounded-md bg-muted p-0.5 text-xs font-semibold"
+					class="inline-flex rounded-lg bg-muted p-0.5 text-xs font-medium"
 					role="group"
 					aria-label="Arrange projects"
 				>
@@ -1059,8 +1059,8 @@
 					aria-label={sort === 'activity' ? group.label : 'Projects'}
 				>
 					{#if sort === 'activity'}
-						<h2 class="micro-label text-muted-foreground">
-							{group.label.toUpperCase()} · {group.projects.length}
+						<h2 class="section-title">
+							{group.label} <span class="section-count">{group.projects.length}</span>
 						</h2>
 					{/if}
 					<div class="grid-tiles">
@@ -1075,7 +1075,7 @@
 				<section class="grid gap-2">
 					<button
 						type="button"
-						class="flex min-h-9 items-center gap-1.5 self-start rounded-md px-1 text-left micro-label text-muted-foreground hover:text-foreground"
+						class="section-title flex min-h-9 items-center gap-1.5 self-start rounded-md px-1 text-left !text-muted-foreground transition-colors hover:!text-foreground"
 						aria-expanded={completedOpen}
 						onclick={() => (completedOpen = !completedOpen)}
 					>
@@ -1084,7 +1084,7 @@
 								? 'rotate-90'
 								: ''}"
 						/>
-						COMPLETED · {completedTiles.length}
+						Completed <span class="section-count">{completedTiles.length}</span>
 					</button>
 					{#if completedOpen}
 						<div class="grid-tiles">
@@ -1120,10 +1120,11 @@
 	>
 		<DesktopTile {project} {inside} />
 		<span class="label">{project.name}</span>
-		{#if inside.length}
-			<span class="sub">{inside.length} nested</span>
-		{:else if parent}
-			<span class="where">in {shortName(parent.name, 24)}</span>
+		{#if inside.length || parent}
+			<span class="meta">
+				{#if inside.length}<span>{inside.length} nested</span>{/if}
+				{#if parent && !inside.length}<span>in {shortName(parent.name, 24)}</span>{/if}
+			</span>
 		{/if}
 	</a>
 {/snippet}
@@ -1190,17 +1191,31 @@
 <style>
 	.desktop {
 		display: grid;
-		gap: 22px;
+		gap: 24px;
+	}
+	.section-title {
+		font-size: 14px;
+		font-weight: 500;
+		line-height: 20px;
+		color: hsl(var(--foreground));
+	}
+	.section-count {
+		margin-left: 4px;
+		font-family: var(--font-mono, ui-monospace, monospace);
+		font-size: 12px;
+		font-weight: 400;
+		font-variant-numeric: tabular-nums;
+		color: hsl(var(--muted-foreground));
 	}
 	.grid-tiles {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
-		gap: 6px 4px;
+		gap: 8px 4px;
 	}
 	@media (max-width: 639px) {
 		.grid-tiles {
 			grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-			gap: 4px 2px;
+			gap: 4px;
 		}
 	}
 	.tile-link {
@@ -1208,8 +1223,8 @@
 		min-width: 0;
 		flex-direction: column;
 		align-items: center;
-		gap: 7px;
-		padding: 10px 4px 8px;
+		gap: 8px;
+		padding: 12px 4px 8px;
 		border-radius: 12px;
 		border: 1px solid transparent;
 		color: hsl(var(--foreground));
@@ -1218,11 +1233,11 @@
 		-webkit-touch-callout: none;
 		touch-action: pan-y;
 		transition:
-			background-color 120ms ease,
-			opacity 120ms ease;
+			background-color 140ms cubic-bezier(0.22, 1, 0.36, 1),
+			opacity 140ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.tile-link:hover {
-		background: hsl(var(--accent) / 0.08);
+		background: hsl(var(--foreground) / 0.05);
 	}
 	.tile-link:focus-visible {
 		outline: 2px solid hsl(var(--ring));
@@ -1230,8 +1245,8 @@
 	}
 	.label {
 		max-width: 100%;
-		font-size: 12.5px;
-		line-height: 1.25;
+		font-size: 12px;
+		line-height: 16px;
 		text-align: center;
 		overflow-wrap: anywhere;
 		display: -webkit-box;
@@ -1240,18 +1255,15 @@
 		-webkit-box-orient: vertical;
 		overflow: hidden;
 	}
-	.sub {
-		margin-top: -3px;
-		font-family: var(--font-mono, ui-monospace, monospace);
-		font-size: 10px;
-		font-weight: 500;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: hsl(var(--accent));
-	}
-	.where {
-		margin-top: -3px;
+	.meta {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 0 6px;
+		margin-top: -4px;
 		font-size: 11px;
+		line-height: 16px;
+		font-variant-numeric: tabular-nums;
 		color: hsl(var(--muted-foreground));
 	}
 	.drop-ok :global(.tile) {
@@ -1290,7 +1302,7 @@
 		gap: 4px;
 		max-width: 280px;
 		padding: 6px 12px 6px 6px;
-		border-radius: 11px;
+		border-radius: 12px;
 		border: 1px solid hsl(var(--border-strong));
 		background: hsl(var(--card));
 		box-shadow: var(--shadow-ink-strong);

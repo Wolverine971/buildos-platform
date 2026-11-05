@@ -87,17 +87,16 @@
 		tabindex="-1"
 		aria-label={showDetails ? undefined : 'Privacy choices'}
 		aria-labelledby={showDetails ? 'tracking-preferences-title' : undefined}
-		class="fixed inset-x-2 bottom-2 z-[10002] mx-auto max-h-[calc(100dvh-1rem)] max-w-3xl overflow-y-auto rounded-lg border border-border-strong bg-card shadow-ink-strong tx tx-frame tx-weak sm:inset-x-4 sm:bottom-4 {showDetails
-			? 'p-4 sm:p-5'
-			: 'px-3 pt-3 sm:px-4'}"
+		class="fixed inset-x-2 bottom-2 z-[10002] mx-auto max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-lg border border-border-strong bg-card shadow-ink-strong tx tx-frame tx-weak sm:inset-x-4 sm:bottom-4 {showDetails
+			? 'max-w-3xl p-4 sm:p-5'
+			: 'max-w-3xl px-3 pt-3 sm:right-auto sm:mx-0 sm:max-w-sm sm:px-4'}"
 		style:padding-bottom={showDetails
 			? 'max(1rem, env(safe-area-inset-bottom))'
 			: 'max(0.75rem, env(safe-area-inset-bottom))'}
 	>
 		{#if !showDetails}
-			<div
-				class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-			>
+			<!-- A small corner card on wider screens, so it never covers the page's main content. -->
+			<div class="flex flex-col gap-2">
 				<p class="text-sm leading-snug text-muted-foreground">
 					Optional analytics and ad measurement stay off until you choose.
 					<a

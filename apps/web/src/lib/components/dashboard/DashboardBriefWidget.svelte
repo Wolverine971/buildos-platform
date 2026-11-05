@@ -10,7 +10,7 @@
   - Brief data deferred - doesn't block initial page render
 -->
 <script lang="ts">
-	import { Sparkles, LoaderCircle, AlertCircle, Sun, Volume2 } from '$lib/icons/lucide';
+	import { LoaderCircle, AlertCircle, Sun, Volume2 } from '$lib/icons/lucide';
 	import TodayChip from './TodayChip.svelte';
 	import { browser } from '$app/environment';
 	import { onDestroy, onMount } from 'svelte';
@@ -221,14 +221,13 @@
 <!-- One chip in the dashboard Today row; the brief itself opens in the brief modal. -->
 {#if isLoading}
 	<span
-		class="inline-flex h-11 [@media(pointer:fine)]:h-8 w-36 shrink-0 animate-pulse rounded-full bg-muted motion-reduce:animate-none"
+		class="inline-flex h-11 [@media(pointer:fine)]:h-8 w-36 shrink-0 animate-pulse rounded-lg bg-muted motion-reduce:animate-none"
 		aria-hidden="true"
 	></span>
 {:else if isGenerating}
 	<TodayChip
 		icon={LoaderCircle}
 		spin
-		iconClass="text-accent"
 		label="Generating brief"
 		detail="{progress}%"
 		title={statusMessage}
@@ -246,7 +245,6 @@
 	{@const priorityCount = brief.priority_actions?.length ?? 0}
 	<TodayChip
 		icon={Sun}
-		iconClass="text-warning"
 		label="Today's brief"
 		detail={priorityCount > 0
 			? `${priorityCount} ${priorityCount === 1 ? 'priority' : 'priorities'}`
@@ -261,7 +259,7 @@
 	/>
 {:else}
 	<TodayChip
-		icon={Sparkles}
+		icon={Sun}
 		tone="dashed"
 		label="Generate brief"
 		title="See what matters today — so nothing slips"

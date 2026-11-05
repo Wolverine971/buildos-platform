@@ -184,12 +184,12 @@
 	<!-- Activity feed (2/3 width on desktop) -->
 	<section class="min-w-0 lg:col-span-2">
 		<div class="mb-2 flex items-center justify-between gap-2">
-			<h2 class="text-sm font-semibold text-foreground sm:text-base">Recent activity</h2>
+			<h2 class="text-sm font-medium text-foreground">Recent activity</h2>
 			<a
 				href="/notifications"
 				onclick={(event) => handleAnchorClick(event, '/notifications')}
 				aria-busy={pendingNavigationHref === '/notifications'}
-				class="shrink-0 text-sm text-muted-foreground transition-colors hover:text-accent {pendingClass(
+				class="shrink-0 text-xs text-muted-foreground transition-colors hover:text-foreground {pendingClass(
 					'/notifications'
 				)}">All activity &rarr;</a
 			>
@@ -286,11 +286,13 @@
 						</div>
 
 						<div class="flex shrink-0 items-center gap-1">
-							<span class="stamp whitespace-nowrap text-2xs text-muted-foreground">
+							<span
+								class="stamp whitespace-nowrap font-mono text-2xs tabular-nums text-muted-foreground"
+							>
 								{formatRelativeTime(item.updated_at)}
 							</span>
 							<ArrowRight
-								class="hidden h-3 w-3 text-accent opacity-0 transition-opacity group-hover:opacity-100 motion-reduce:transition-none sm:block"
+								class="hidden h-3 w-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 motion-reduce:transition-none sm:block"
 							/>
 						</div>
 					</a>
@@ -302,14 +304,12 @@
 	<!-- Recent chats (1/3 width on desktop) -->
 	<section class="min-w-0">
 		<div class="mb-2 flex min-w-0 items-center justify-between gap-2">
-			<h2 class="min-w-0 truncate text-sm font-semibold text-foreground sm:text-base">
-				Recent chats
-			</h2>
+			<h2 class="min-w-0 truncate text-sm font-medium text-foreground">Recent chats</h2>
 			<a
 				href="/history?type=chats"
 				onclick={(event) => handleAnchorClick(event, '/history?type=chats')}
 				aria-busy={pendingNavigationHref === '/history?type=chats'}
-				class="shrink-0 text-sm text-muted-foreground transition-colors hover:text-accent {pendingClass(
+				class="shrink-0 text-xs text-muted-foreground transition-colors hover:text-foreground {pendingClass(
 					'/history?type=chats'
 				)}"
 			>
@@ -338,7 +338,9 @@
 					>
 						<div class="flex min-w-0 items-start justify-between gap-2">
 							<div class="flex min-w-0 flex-1 items-start gap-2">
-								<MessageSquare class="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" />
+								<MessageSquare
+									class="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground"
+								/>
 								<div class="min-w-0 flex-1">
 									<p class="truncate text-sm font-medium text-foreground">
 										{chat.title}
@@ -350,12 +352,12 @@
 							</div>
 							<div class="flex shrink-0 items-center gap-1">
 								<span
-									class="stamp whitespace-nowrap text-2xs text-muted-foreground"
+									class="stamp whitespace-nowrap font-mono text-2xs tabular-nums text-muted-foreground"
 								>
 									{formatRelativeTime(session.last_activity_at)}
 								</span>
 								<ArrowRight
-									class="hidden h-3 w-3 text-accent opacity-0 transition-opacity group-hover:opacity-100 motion-reduce:transition-none sm:block"
+									class="hidden h-3 w-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 motion-reduce:transition-none sm:block"
 								/>
 							</div>
 						</div>

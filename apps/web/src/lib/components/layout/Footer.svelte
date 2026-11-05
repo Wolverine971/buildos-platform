@@ -173,7 +173,9 @@
 					>
 						{#each GUEST_SECTIONS as section (section.title)}
 							<div>
-								<p class="micro-label mb-2 text-foreground">{section.title}</p>
+								<p class="mb-2 text-sm font-semibold text-foreground">
+									{section.title}
+								</p>
 								<ul class="space-y-0.5">
 									{#each section.links as link (link.href)}
 										<li>

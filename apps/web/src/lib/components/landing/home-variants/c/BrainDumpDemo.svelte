@@ -4,7 +4,7 @@
   1. a messy note types in; 2. BuildOS highlights each piece and it flies out of the text to
   the item it becomes on the project; 3. the camera zooms out to the workspace, where that
   project sits beside three others; 4. a voice note about another project comes in; 5. its
-  pieces fly to the right projects, one back to the book, and the camera lands on the channel.
+  pieces fly to the right projects, one back to the book, and the camera lands on that project.
 
   Mechanics: the four project cards live on one "world" layer that a CSS transform moves like
   a camera. Flying chips sit on an unscaled overlay and animate (Web Animations API) from the
@@ -24,6 +24,7 @@
 		DUMP_ONE_MARKS,
 		DUMP_TWO,
 		DUMP_TWO_MARKS,
+		DUMP_TWO_PROJECT,
 		KIND_LABEL,
 		KIND_TONE,
 		PROJECTS,
@@ -34,11 +35,20 @@
 		type DemoSegment
 	} from './dump-demo';
 
-	let { onyourturn }: { onyourturn?: () => void } = $props();
+	let { onyourturn, ctaLabel = 'Your turn' }: { onyourturn?: () => void; ctaLabel?: string } =
+		$props();
 
 	type Rect = { x: number; y: number; w: number; h: number };
 	type Piece = { key: string; start: number; text: string; mark: DemoMark | null };
-	type Flyer = { key: number; mark: DemoMark; from: Rect; to: Rect; routed: boolean };
+	type Flyer = {
+		key: number;
+		mark: DemoMark;
+		from: Rect;
+		to: Rect;
+		routed: boolean;
+		ms: number;
+	};
+	type Camera = { x: number; y: number; s: number };
 	type Label = { id: DemoProjectId; x: number; y: number; w: number };
 
 	const LEN_ONE = dumpLength(DUMP_ONE);
@@ -67,9 +77,13 @@
 
 	const BAR = 40;
 	/** Composer heights: phone strip for each dump, desktop bottom strip for the voice note. */
-	const PHONE_COMPOSER_H = { one: 214, two: 132 } as const;
+	/** Phone composer: header + status line + borders around the measured dump text. */
+	const COMPOSER_CHROME = 67;
 	const WIDE_STRIP_H = 132;
+	const PHONE_CARD_H = 480;
 	const CAMERA_MS = 1000;
+	/** Screen-space breathing room around the zoomed-out row of projects. */
+	const OVERVIEW_MARGIN = 8;
 
 	const reducedMotion = new MediaQuery('(prefers-reduced-motion: reduce)');
 	const wideQuery = new MediaQuery('(min-width: 768px)');
@@ -80,6 +94,13 @@
 	let composerEl = $state<HTMLElement | null>(null);
 	let stageW = $state(0);
 	let stageH = $state(0);
+	/** Phone: each dump's full text height at the current width, so the box fits it exactly. */
+	let textOneH = $state(0);
+	let textTwoH = $state(0);
+	const phoneComposerH = $derived({
+		one: textOneH ? textOneH + COMPOSER_CHROME : 230,
+		two: textTwoH ? textTwoH + COMPOSER_CHROME : 192
+	});
 
 	let chapter = $state(0);
 	let progress = $state(0);
@@ -96,6 +117,8 @@
 	let showLabels = $state(false);
 	let snapCamera = $state(true);
 	let cameraTransform = $state('translate(0px, 0px) scale(1)');
+	let aimed: Camera | null = null;
+	let cameraMove: Animation | null = null;
 
 	const marked = new SvelteSet<string>();
 	const taken = new SvelteSet<string>();
@@ -131,7 +154,7 @@
 			};
 			beside = { x: pad, y: top, w: stageW - pad * 2, h: composerBox.y - top - pad };
 		} else {
-			composerBox = { x: pad, y: top, w: stageW - pad * 2, h: PHONE_COMPOSER_H[which] };
+			composerBox = { x: pad, y: top, w: stageW - pad * 2, h: phoneComposerH[which] };
 			beside = {
 				x: pad,
 				y: top + composerBox.h + pad,
@@ -140,12 +163,20 @@
 			};
 		}
 		const full: Rect = { x: pad, y: top, w: stageW - pad * 2, h: stageH - top - pad };
+		// Phone: shape the card to the space under the first dump so it fills that frame.
+		const phoneRegionH = stageH - top - phoneComposerH.one - pad * 2;
+		const phoneCardW = Math.round(
+			Math.min(
+				460,
+				Math.max(300, (PHONE_CARD_H * (stageW - pad * 2)) / Math.max(phoneRegionH, 1))
+			)
+		);
 		return {
 			composerBox,
 			beside,
 			full,
-			cardW: wide ? 540 : Math.max(280, stageW - pad * 2),
-			cardH: wide ? 600 : 500,
+			cardW: wide ? 540 : phoneCardW,
+			cardH: wide ? 600 : PHONE_CARD_H,
 			columns: wide ? 4 : 2
 		};
 	});
@@ -251,7 +282,7 @@
 	}
 
 	/** Lifts the phrase out of the dump and sends it to its spot on a card. */
-	async function fly(mark: DemoMark, g: number, routed: boolean) {
+	async function fly(mark: DemoMark, g: number, routed: boolean, ms: number) {
 		if (mark.kind !== 'update') incoming.add(mark.id);
 		await tick();
 		if (g !== gen || !stageEl) return;
@@ -269,7 +300,8 @@
 			mark,
 			from: relative(source),
 			to: relative(target),
-			routed
+			routed,
+			ms
 		});
 	}
 
@@ -299,7 +331,7 @@
 						offset: 1
 					}
 				],
-				{ duration: 1050, easing: 'cubic-bezier(0.45, 0, 0.2, 1)', fill: 'forwards' }
+				{ duration: flyer.ms, easing: 'cubic-bezier(0.45, 0, 0.2, 1)', fill: 'forwards' }
 			);
 			animation.onfinish = () => {
 				flyers = flyers.filter((item) => item.key !== flyer.key);
@@ -307,6 +339,15 @@
 			};
 			return () => animation.cancel();
 		};
+	}
+
+	/** Pins the crisp project names once the overview camera has settled. */
+	async function labelAfterSettle(g: number) {
+		await wait(CAMERA_MS + 80, g);
+		if (camera === 'all') {
+			placeLabels();
+			showLabels = true;
+		}
 	}
 
 	/** Moves the camera, waits for it to settle, then pins the overview labels. */
@@ -318,61 +359,65 @@
 		showLabels = false;
 		camera = nextCamera;
 		composer = nextComposer;
-		await wait(CAMERA_MS + 80, g);
-		if (nextCamera === 'all') {
-			placeLabels();
-			showLabels = true;
-		}
+		await labelAfterSettle(g);
 	}
 
+	/*
+	 * Pacing (playing time from the demo coming into view): pieces start flying at ~3.6 s,
+	 * the overview at ~7.6 s, the voice note at ~10 s, routing at ~13.6 s, done at ~24 s.
+	 */
 	async function runChapter(index: number, g: number) {
 		progress = 0;
 		if (index === 0) {
-			await wait(500, g);
-			await typeOut('one', 4600, 0.9, g);
-			await wait(600, g);
+			await wait(200, g);
+			await typeOut('one', 2500, 0.95, g);
+			await wait(150, g);
 		} else if (index === 1) {
 			const count = DUMP_ONE_MARKS.length;
 			for (const [i, mark] of DUMP_ONE_MARKS.entries()) {
 				marked.add(mark.id);
-				progress = ((i + 1) / count) * 0.3;
-				await wait(140, g);
+				progress = ((i + 1) / count) * 0.2;
+				await wait(30, g);
 			}
-			await wait(700, g);
+			await wait(120, g);
 			for (const [i, mark] of DUMP_ONE_MARKS.entries()) {
-				void fly(mark, g, false);
-				progress = 0.3 + ((i + 1) / count) * 0.6;
-				await wait(420, g);
+				void fly(mark, g, false, 850);
+				progress = 0.2 + ((i + 1) / count) * 0.7;
+				await wait(170, g);
 			}
-			await wait(2600, g);
+			await wait(1500, g);
 		} else if (index === 2) {
 			await shoot('all', 'none', g);
 			progress = 0.5;
-			await wait(2600, g);
+			await wait(1400, g);
 		} else if (index === 3) {
-			await shoot('all', 'two', g);
-			progress = 0.2;
-			await typeOut('two', 3600, 0.6, g);
-			progress = 0.8;
-			await wait(400, g);
-			for (const mark of DUMP_TWO_MARKS) {
+			// The voice note slides in while the camera makes room for it.
+			showLabels = false;
+			composer = 'two';
+			const relabel = labelAfterSettle(g).catch(() => {});
+			await wait(300, g);
+			await typeOut('two', 1900, 0.6, g);
+			await wait(150, g);
+			for (const [i, mark] of DUMP_TWO_MARKS.entries()) {
 				marked.add(mark.id);
-				await wait(320, g);
+				progress = 0.6 + ((i + 1) / DUMP_TWO_MARKS.length) * 0.3;
+				await wait(200, g);
 			}
-			await wait(1300, g);
+			await relabel;
+			await wait(250, g);
 		} else if (index === 4) {
 			for (const [i, mark] of DUMP_TWO_MARKS.entries()) {
 				pulsing.add(mark.project);
-				void fly(mark, g, true);
+				void fly(mark, g, true, 1000);
 				progress = ((i + 1) / DUMP_TWO_MARKS.length) * 0.5;
-				await wait(650, g);
+				await wait(900, g);
 			}
-			await wait(1500, g);
+			await wait(1400, g);
 			pulsing.clear();
-			await wait(500, g);
-			await shoot('channel', 'none', g);
+			await wait(300, g);
+			await shoot(DUMP_TWO_PROJECT, 'none', g);
 			progress = 0.8;
-			await wait(2600, g);
+			await wait(3900, g);
 		}
 		progress = 1;
 	}
@@ -415,7 +460,7 @@
 				landed.add(mark.id);
 			}
 			composer = 'none';
-			camera = 'channel';
+			camera = DUMP_TWO_PROJECT;
 			finished = true;
 		}
 	}
@@ -485,26 +530,89 @@
 
 	// ─── Camera ──────────────────────────────────────────────────────────────
 
-	function computeCamera() {
-		if (!worldEl || !stageW || !stageH) return;
+	/** Where the camera should sit for the current shot and frame. */
+	function aim(): Camera | null {
+		if (!worldEl || !stageW || !stageH) return null;
 		const region = composer === 'none' ? layout.full : layout.beside;
-		let target: Rect;
-		if (camera === 'all') {
-			target = { x: 0, y: 0, w: worldEl.offsetWidth, h: worldEl.offsetHeight };
-		} else {
-			const card = worldEl.querySelector<HTMLElement>(`[data-project="${camera}"]`);
-			if (!card) return;
-			target = {
-				x: card.offsetLeft,
-				y: card.offsetTop,
-				w: card.offsetWidth,
-				h: card.offsetHeight
-			};
+		const cards = [...worldEl.querySelectorAll<HTMLElement>('[data-project]')].filter(
+			(card) => camera === 'all' || card.dataset.project === camera
+		);
+		if (!cards.length) return null;
+		// Frame the cards themselves, not the world's padding, so the overview fills the stage.
+		const left = Math.min(...cards.map((card) => card.offsetLeft));
+		const top = Math.min(...cards.map((card) => card.offsetTop));
+		const right = Math.max(...cards.map((card) => card.offsetLeft + card.offsetWidth));
+		const bottom = Math.max(...cards.map((card) => card.offsetTop + card.offsetHeight));
+		const margin = camera === 'all' ? OVERVIEW_MARGIN : 0;
+		const w = right - left;
+		const h = bottom - top;
+		const s = Math.min((region.w - margin * 2) / w, (region.h - margin * 2) / h, 1.1);
+		return {
+			x: region.x + (region.w - w * s) / 2 - left * s,
+			y: region.y + (region.h - h * s) / 2 - top * s,
+			s
+		};
+	}
+
+	const toTransform = (c: Camera) => `translate(${c.x}px, ${c.y}px) scale(${c.s})`;
+
+	/** Where the camera is right now, mid-move included. */
+	function currentCamera(): Camera | null {
+		if (!cameraMove || cameraMove.playState === 'finished' || !worldEl) return aimed;
+		const matrix = new DOMMatrixReadOnly(getComputedStyle(worldEl).transform);
+		return { x: matrix.e, y: matrix.f, s: matrix.a };
+	}
+
+	const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+
+	/**
+	 * Keyframes for a camera move. Translate and scale tweened separately make the world swing
+	 * sideways mid-zoom (half the stage goes empty); instead the point at the stage's centre
+	 * glides in a straight line while the scale changes geometrically.
+	 */
+	function sweep(from: Camera, to: Camera): Keyframe[] {
+		const cx = stageW / 2;
+		const cy = stageH / 2;
+		const fromX = (cx - from.x) / from.s;
+		const fromY = (cy - from.y) / from.s;
+		const toX = (cx - to.x) / to.s;
+		const toY = (cy - to.y) / to.s;
+		const steps = 32;
+		return Array.from({ length: steps + 1 }, (_, i) => {
+			const e = easeInOut(i / steps);
+			const s = from.s * (to.s / from.s) ** e;
+			const x = fromX + (toX - fromX) * e;
+			const y = fromY + (toY - fromY) * e;
+			return { transform: toTransform({ x: cx - x * s, y: cy - y * s, s }) };
+		});
+	}
+
+	function computeCamera() {
+		const next = aim();
+		if (!next || !worldEl) return;
+		const unchanged =
+			aimed &&
+			Math.abs(aimed.x - next.x) < 0.5 &&
+			Math.abs(aimed.y - next.y) < 0.5 &&
+			Math.abs(aimed.s - next.s) < 0.001;
+		// Already there or already heading there: let a running move finish.
+		if (unchanged && !(snapCamera && cameraMove)) return;
+		const from = currentCamera();
+		cameraMove?.cancel();
+		cameraMove = null;
+		aimed = next;
+		cameraTransform = toTransform(next);
+		if (snapCamera || reducedMotion.current || !from) return;
+		const move = worldEl.animate(sweep(from, next), { duration: CAMERA_MS, easing: 'linear' });
+		cameraMove = move;
+		move.onfinish = () => {
+			if (cameraMove === move) cameraMove = null;
+		};
+		// A move that starts while paused waits for Play like everything else.
+		if (!running) {
+			move.pause();
+			pausedAnimations.push(move);
 		}
-		const scale = Math.min(region.w / target.w, region.h / target.h, 1.1);
-		const x = region.x + (region.w - target.w * scale) / 2 - target.x * scale;
-		const y = region.y + (region.h - target.h * scale) / 2 - target.y * scale;
-		cameraTransform = `translate(${x}px, ${y}px) scale(${scale})`;
 	}
 
 	function placeLabels() {
@@ -622,22 +730,41 @@
 	<div
 		bind:this={stageEl}
 		{@attach watchStage}
-		class="relative h-[680px] overflow-hidden rounded-xl border border-border bg-background shadow-ink-strong md:h-[640px]"
+		class="relative h-[650px] overflow-hidden rounded-xl border border-border bg-background shadow-ink-strong md:h-[640px]"
 		aria-hidden="true"
 	>
+		{#if !wide && stageW}
+			<!-- Phone: invisible copies of both dumps, finished, to size the composer boxes -->
+			<div class="invisible absolute top-0 left-0" style:width="{stageW - 26}px">
+				<p bind:offsetHeight={textOneH} class="px-3 py-2 text-[0.8125rem] leading-snug">
+					{#each PIECES_ONE as piece (piece.key)}{piece.text}{/each}
+				</p>
+				<p bind:offsetHeight={textTwoH} class="px-3 py-2 text-[0.8125rem] leading-snug">
+					{#each PIECES_TWO as piece (piece.key)}{piece.text}{#if piece.mark}<span
+								class="ml-1 inline-block px-1 text-2xs font-semibold leading-4"
+								>→ {routedProject(piece.mark)}</span
+							>{/if}{/each}
+				</p>
+			</div>
+		{/if}
+
 		<!-- World: four projects, moved like a camera -->
 		<div
 			bind:this={worldEl}
-			class={[
-				'world absolute top-0 left-0 grid gap-10 p-10',
-				{ 'world-snap': snapCamera || reducedMotion.current }
-			]}
+			class="world absolute top-0 left-0 grid gap-10 p-10"
 			style:transform={cameraTransform}
 			style:grid-template-columns="repeat({layout.columns}, {layout.cardW}px)"
 			style:grid-auto-rows="{layout.cardH}px"
 		>
 			{#each PROJECT_ORDER as id (id)}
-				<div data-project={id} class="h-full">
+				<!-- Neighbours stay hidden while the camera holds one project. -->
+				<div
+					data-project={id}
+					class="h-full transition-opacity duration-700 motion-reduce:transition-none {camera ===
+						'all' || camera === id
+						? 'opacity-100'
+						: 'opacity-0'}"
+				>
 					<DemoCard
 						project={PROJECTS[id]}
 						marks={PROJECT_MARKS[id]}
@@ -711,9 +838,9 @@
 					{/if}
 				</div>
 				<p
-					class="flex-1 overflow-hidden px-3 py-2 font-notes text-foreground {wide
+					class="flex-1 overflow-hidden px-3 py-2 text-foreground {wide
 						? 'text-base leading-relaxed'
-						: 'text-2xs leading-snug'}"
+						: 'text-[0.8125rem] leading-snug'}"
 				>
 					{#if composer === 'one'}
 						{@render dumpText(PIECES_ONE, typedOne, false)}{#if typedOne < LEN_ONE}<span
@@ -751,9 +878,9 @@
 							: ''}
 					</span>
 					<span
-						class="max-w-72 rounded-md border border-border-strong bg-card px-1 py-0.5 font-notes font-medium text-foreground shadow-ink-strong {wide
+						class="max-w-72 rounded-md border border-border-strong bg-card px-1 py-0.5 font-medium text-foreground shadow-ink-strong {wide
 							? 'text-base'
-							: 'text-2xs'}"
+							: 'text-[0.8125rem]'}"
 					>
 						<span class="rounded-sm px-0.5 {KIND_TONE[flyer.mark.kind]}"
 							>{flyer.mark.text}</span
@@ -764,11 +891,16 @@
 		</div>
 	</div>
 
-	<!-- Controls -->
-	<div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start">
-		<ol class="grid flex-1 grid-cols-5 gap-1.5" aria-label="Demo chapters">
+	<!-- Controls. Phone: numbered segments, and only the current one is named and widens. -->
+	<div class="mt-3 flex flex-col gap-2 sm:mt-4 sm:flex-row sm:items-start sm:gap-3">
+		<ol class="flex flex-1 gap-1.5" aria-label="Demo chapters">
 			{#each CHAPTERS as item, i (item.id)}
-				<li>
+				<li
+					class="min-w-0 transition-[flex-grow] duration-300 motion-reduce:transition-none sm:flex-1 {i ===
+					chapter
+						? 'flex-[3]'
+						: 'flex-1'}"
+				>
 					<button
 						type="button"
 						onclick={() => showChapter(i)}
@@ -776,12 +908,15 @@
 						class="group flex min-h-11 w-full flex-col justify-between gap-1.5 rounded-md px-1.5 pt-1.5 pb-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
 						<span
-							class="text-2xs leading-tight font-semibold sm:text-xs {i === chapter
+							class="block truncate text-xs leading-tight font-semibold sm:whitespace-normal {i ===
+							chapter
 								? 'text-foreground'
 								: 'text-muted-foreground group-hover:text-foreground'}"
 						>
 							<span class="stamp">{i + 1}</span>
-							{item.label}
+							<span class={i === chapter ? '' : 'sr-only sm:not-sr-only'}
+								>{item.label}</span
+							>
 						</span>
 						<span class="block h-1 overflow-hidden rounded-full bg-muted">
 							<span
@@ -797,7 +932,7 @@
 			<button
 				type="button"
 				onclick={togglePlay}
-				class="inline-flex min-h-11 items-center gap-2 rounded-md border border-border-strong bg-card px-4 text-sm font-semibold text-foreground hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md border border-border-strong bg-card px-4 text-sm font-semibold text-foreground hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 			>
 				{#if finished || reducedMotion.current}
 					<RotateCcw class="h-4 w-4" /> Replay
@@ -811,9 +946,10 @@
 				<button
 					type="button"
 					onclick={onyourturn}
-					class="tx-button tx-button-accent inline-flex min-h-11 items-center gap-2 rounded-md bg-accent px-4 text-sm font-semibold text-accent-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+					class="tx-button tx-button-accent inline-flex min-h-11 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-accent px-4 sm:flex-none text-sm font-semibold text-accent-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 				>
-					Your turn <ArrowDown class="h-4 w-4" />
+					{ctaLabel}
+					<ArrowDown class="h-4 w-4" />
 				</button>
 			{/if}
 		</div>
@@ -822,21 +958,16 @@
 	<p class="sr-only">
 		Demo: a messy note about a novel called Fading Crown is typed in. BuildOS highlights each
 		piece and files it on the project as a goal, two milestones, five tasks, two documents, a
-		risk, and a next step. Zooming out shows Fading Crown beside three other projects. A later
-		voice note about a YouTube channel adds three tasks to the channel project and updates the
-		novel's chapter 13 beats document.
+		risk, and a next step. Zooming out shows Fading Crown beside three other projects: a kids'
+		soccer team, a backyard garden, and a YouTube channel. A later voice note about the soccer
+		team adds three tasks to that project and updates the novel's chapter 13 beats document.
 	</p>
 </div>
 
 <style>
 	.world {
 		transform-origin: 0 0;
-		transition: transform 1000ms cubic-bezier(0.65, 0, 0.35, 1);
 		will-change: transform;
-	}
-
-	.world-snap {
-		transition: none;
 	}
 
 	.caret {
