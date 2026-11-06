@@ -7,6 +7,7 @@ import {
 	buildTurnWorkingSetV1,
 	buildWorkingSet,
 	carriedBlock,
+	carriedText,
 	planRehydrate,
 	planTurnCarry,
 	readTurnWorkingSetV1,
@@ -183,6 +184,66 @@ describe('a finished real-chat turn', () => {
 		expect(set?.carry.find((item) => item.id === 't1')?.version).toBeNull();
 	});
 
+	// Shapes copied from a live turn (2026-11-06): asking for a section and one nested inside it
+	// comes back as a single section; two separate sections come back as `sections[]`.
+	it('reads every shape the section tool answers in', () => {
+		const single = exec(
+			'read_document_section',
+			{ document_id: 'd1', anchors: ['revised-scan', 'freshly-inspected-leads'] },
+			{
+				document_id: 'd1',
+				project_id: P,
+				title: 'Graphics cards',
+				found: true,
+				anchor: 'revised-scan',
+				heading: 'Revised scan',
+				level: 1,
+				content: '# Revised scan…',
+				offset: 0,
+				total_chars: 3841,
+				truncated: false
+			}
+		);
+		const several = exec(
+			'read_document_section',
+			{ document_id: 'd2', anchors: ['leads', 'gaps'] },
+			{
+				document_id: 'd2',
+				project_id: P,
+				title: 'Lawn edger',
+				found: true,
+				sections: [
+					{ anchor: 'leads', heading: 'Leads', level: 2, chars: 900 },
+					{ anchor: 'gaps', heading: 'Gaps', level: 2, chars: 300 }
+				],
+				content: '…',
+				offset: 0,
+				total_chars: 1202,
+				truncated: false
+			}
+		);
+		const body = exec(
+			'read_document_section',
+			{ document_id: 'd3' },
+			{
+				document_id: 'd3',
+				project_id: P,
+				title: 'Short note',
+				found: true,
+				content: 'Call the seller Friday.',
+				offset: 0,
+				total_chars: 23,
+				truncated: false
+			}
+		);
+		const set = buildTurnWorkingSetV1({ projectId: P, executions: [single, several, body] });
+		expect(set?.carry.map((entry) => [entry.id, entry.anchors, entry.chars])).toEqual([
+			['d1', ['revised-scan'], 3841],
+			['d2', ['leads', 'gaps'], 1200],
+			['d3', [], 23]
+		]);
+	});
+
 	it('stores nothing for a turn that only searched', () => {
 		expect(
 			buildTurnWorkingSetV1({
@@ -275,6 +336,54 @@ describe('the next real-chat turn reloads the carry', () => {
 		expect(out.block).toContain(`↺ task ${TASK}`);
 		expect(out.loaded.map((entry) => entry.id)).toEqual([DOC, TASK]);
 		expect(out.carryIn.carry.map((entry) => entry.id)).toEqual([DOC, TASK]);
+	});
+
+	it('sends a section once when it sits inside another carried section', () => {
+		const doc = entities.find((entity) => entity.id === DOC)!;
+		const top = doc.sections.find((section) => section.level === 1)!.anchor!;
+		const text = carriedText(item({ id: DOC, anchors: [top, funding] }), doc);
+		expect(text.match(/Budget is \$300K/g)).toHaveLength(1);
+	});
+
+	it('keeps this turn’s sections when adding the carried ones would overflow', () => {
+		const set = buildTurnWorkingSetV1({
+			projectId: P,
+			executions: [
+				{
+					toolName: 'read_document_section',
+					arguments: '{}',
+					result: {
+						result: {
+							document_id: DOC,
+							project_id: P,
+							title: 'Questions for Mom',
+							found: true,
+							anchor: funding,
+							heading: 'Funding & Operations',
+							content: '…',
+							total_chars: 5000
+						}
+					},
+					success: true
+				}
+			],
+			carriedIn: [item({ id: DOC, anchors: ['team'], chars: 7000, version: null })]
+		});
+		expect(set?.carry.map((entry) => entry.anchors)).toEqual([[funding]]);
+	});
+
+	it('drops a carried document whose sections are gone instead of loading all of it', () => {
+		const set = {
+			version: 1 as const,
+			project_id: P,
+			carry: [item({ id: DOC, anchors: ['renamed-away'], version: null })],
+			scanned: [],
+			scanned_count: 0
+		};
+		const { plan, textIds } = planTurnCarry({ set, entities });
+		expect(plan.load).toEqual([]);
+		expect(plan.gone.map((entry) => entry.id)).toEqual([DOC]);
+		expect(textIds).toEqual([]);
 	});
 
 	it('fades carried items the next turn did not touch, and keeps them while in use', () => {

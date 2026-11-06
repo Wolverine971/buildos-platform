@@ -251,11 +251,16 @@ export function buildWorkingSet(input: {
 			anchors.push(anchor);
 			headings.push(item.headings[index] ?? anchor);
 		});
+		const added = anchors.length - existing.anchors.length;
+		const chars =
+			existing.chars + Math.round((item.chars * added) / Math.max(1, item.anchors.length));
+		// Too much together: keep what was put first (this turn's reads) rather than lose both.
+		if (chars > CARRY_MAX_CHARS) return;
 		next.set(item.id, {
 			...existing,
 			anchors,
 			headings,
-			chars: existing.chars + item.chars,
+			chars,
 			idle: Math.min(existing.idle, item.idle)
 		});
 	};
@@ -420,6 +425,16 @@ export function buildTurnWorkingSetV1(input: {
 			const id = text(payload.document_id) ?? text(args.document_id);
 			if (!id || text(payload.project_id) !== input.projectId || payload.found === false)
 				continue;
+			// The tool answers in three shapes (`readDocumentSection` in tools/ontology-reads.ts):
+			// several sections as `sections[]`, one section as top-level `anchor`/`heading`
+			// (also when the other requested anchors sat inside it), or the body with neither.
+			const totalChars =
+				typeof payload.total_chars === 'number'
+					? payload.total_chars
+					: typeof payload.content === 'string'
+						? payload.content.length
+						: 0;
+			const single = text(payload.anchor);
 			const sections = Array.isArray(payload.sections)
 				? payload.sections.flatMap((entry) => {
 						const section = asRecord(entry);
@@ -434,8 +449,16 @@ export function buildTurnWorkingSetV1(input: {
 								]
 							: [];
 					})
-				: [];
-			const bodyChars = typeof payload.text === 'string' ? payload.text.length : 0;
+				: single
+					? [
+							{
+								anchor: single,
+								heading: text(payload.heading) ?? single,
+								chars: totalChars
+							}
+						]
+					: [];
+			const bodyChars = totalChars;
 			reads.push({
 				id,
 				kind: 'document',
@@ -584,9 +607,19 @@ export function planTurnCarry(input: {
 			}
 		};
 	};
-	plan.load = plan.load.map(trust);
-	plan.changed = plan.changed.map(trust);
-	plan.over = plan.over.map(trust);
+	// A carried section that no longer exists drops the item; it never widens to the whole doc.
+	const lost = (entry: { item: CarryItem }) =>
+		entry.item.kind === 'document' &&
+		entry.item.anchors.length > 0 &&
+		!byId
+			.get(entry.item.id)
+			?.sections.some(
+				(section) => section.anchor && entry.item.anchors.includes(section.anchor)
+			);
+	for (const key of ['load', 'changed', 'over'] as const) {
+		plan.gone.push(...plan[key].filter(lost).map((entry) => entry.item));
+		plan[key] = plan[key].filter((entry) => !lost(entry)).map(trust);
+	}
 	return {
 		plan,
 		textIds: plan.load
@@ -600,8 +633,21 @@ export function carriedText(item: CarryItem, entity: ContextFinderEntity): strin
 	if (entity.kind !== 'document') return entity.fullText.trim();
 	if (!entity.textLoaded) return '';
 	if (!item.anchors.length) return entity.fullText.trim();
-	return entity.sections
-		.filter((section) => section.anchor && item.anchors.includes(section.anchor))
+	const picked = entity.sections.filter(
+		(section) => section.anchor && item.anchors.includes(section.anchor)
+	);
+	// A section includes its subsections: skip one that sits inside another picked section.
+	return picked
+		.filter(
+			(section) =>
+				!picked.some(
+					(other) =>
+						other !== section &&
+						other.start <= section.start &&
+						section.end <= other.end &&
+						(other.start < section.start || section.end < other.end)
+				)
+		)
 		.map((section) => entity.fullText.slice(section.start, section.end).trim())
 		.filter(Boolean)
 		.join('\n\n');
