@@ -19,6 +19,8 @@ export type ContextSelectionChipV1 = {
 	sections: string[];
 	/** Global turns: the project this record belongs to. */
 	project_id: string | null;
+	/** Carried from last turn's working set (tasker 153); loaded without a new search. */
+	carried?: boolean;
 };
 
 /** Global turns: a project the message is about, and whether hop 2 looked inside it. */
@@ -102,7 +104,8 @@ export function parseContextSelectionEventV1(value: unknown): ContextSelectionEv
 			sections: Array.isArray(raw.sections)
 				? raw.sections.filter((s): s is string => typeof s === 'string').slice(0, 8)
 				: [],
-			project_id: typeof raw.project_id === 'string' ? raw.project_id : null
+			project_id: typeof raw.project_id === 'string' ? raw.project_id : null,
+			...(raw.carried === true ? { carried: true } : {})
 		});
 	}
 	const projects: ContextSelectionProjectV1[] = [];

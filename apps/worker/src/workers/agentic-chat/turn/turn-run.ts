@@ -7,6 +7,7 @@
 // The UI projection is what a reconnecting browser replays mid-turn. It holds
 // compact copies of the durable events, bounded by count and by bytes (audit
 // S7/B4): bulky tool output is trimmed to a summary in the projection only.
+import type { TurnWorkingSetV1 } from '@buildos/agentic-chat-runtime/working-set';
 import type {
 	AgentStreamEventV1,
 	ChatToolCall,
@@ -105,6 +106,11 @@ export type TerminalContextState = {
 	/** Provider rounds that completed at least one tool execution. */
 	toolRoundCount: number;
 	permanentMutationFailures: PermanentMutationFailureLedger;
+	/**
+	 * What the context finder carried in from the last turn (tasker 153): pointers only. The
+	 * finalizer fades the items this turn didn't touch.
+	 */
+	carriedIn?: TurnWorkingSetV1 | null;
 };
 
 export type AgenticChatExecutableToolStepV1 = Extract<

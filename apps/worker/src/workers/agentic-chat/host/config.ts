@@ -180,6 +180,12 @@ type AgenticChatBaseConfig = {
 	 * picks the projects a message is about. Ids, or 'all' (env value `*`); empty ranks nobody.
 	 */
 	contextFinderChatUserIds?: string[] | 'all';
+	/**
+	 * AGENTIC_CHAT_CARRY_USER_IDS (tasker 153): users whose project-chat follow-ups start with
+	 * what the last turn used, already loaded ("Carried from last turn"). Ids, or 'all' (`*`);
+	 * empty carries for nobody. Needs the context finder on for the same users.
+	 */
+	carryUserIds?: string[] | 'all';
 	liveVisionEnabled: boolean;
 	consumptionBillingEnabled: boolean;
 	consumer: AgenticChatConsumerConfig;
@@ -286,6 +292,10 @@ export function loadAgenticChatConfig(
 			: parseChatWorkflowPrototypeUsers(
 					environment.AGENTIC_CHAT_CONTEXT_FINDER_CHAT_USER_IDS
 				);
+	const carryUserIds: string[] | 'all' =
+		environment.AGENTIC_CHAT_CARRY_USER_IDS?.trim() === '*'
+			? 'all'
+			: parseChatWorkflowPrototypeUsers(environment.AGENTIC_CHAT_CARRY_USER_IDS);
 	const specialistWorkflowsEnabled = parseBoolean(
 		environment.AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED,
 		false,
@@ -392,6 +402,7 @@ export function loadAgenticChatConfig(
 		contextFinderEnabled,
 		workflowReasoning,
 		contextFinderChatUserIds,
+		carryUserIds,
 		liveVisionEnabled,
 		consumptionBillingEnabled,
 		consumer,

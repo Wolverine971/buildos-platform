@@ -776,8 +776,12 @@ function buildTerminalLastTurnContext(
 	// Project chat (tasker 153): what this turn used, so the next turn starts with it loaded.
 	// A turn that moved to another project starts fresh there.
 	if (contextType !== 'project' || !entityId || terminalContext.contextShift) return draft;
+	const carriedIn =
+		terminalContext.carriedIn?.project_id === entityId ? terminalContext.carriedIn : null;
 	const workingSet = buildTurnWorkingSetV1({
 		projectId: entityId,
+		carriedIn: carriedIn?.carry ?? [],
+		previousScanned: carriedIn?.scanned ?? [],
 		executions: terminalContext.toolExecutions.map((execution) => ({
 			toolName: String(execution.toolCall.function?.name ?? ''),
 			arguments: execution.toolCall.function?.arguments,

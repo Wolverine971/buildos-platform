@@ -1,4 +1,5 @@
 // apps/worker/src/workers/agentic-chat/turn/turn-executor.ts
+import { readTurnWorkingSetV1 } from '@buildos/agentic-chat-runtime/working-set';
 import { workerSourceProvenance } from '../../../lib/sourceProvenance';
 import { hasSuccessfulDurableEffects } from '@buildos/agentic-chat-runtime/loop';
 import {
@@ -562,6 +563,16 @@ export class AgenticChatTurnExecutor {
 							combined.signal
 						);
 						terminalContext.contextShift = contextShift ?? terminalContext.contextShift;
+						// Carry (tasker 153): what the finder loaded from last turn, for the finalizer.
+						if (step.eventType === 'context_selection') {
+							const payload = step.eventPayload as Record<string, unknown>;
+							if (typeof payload.project_id === 'string') {
+								terminalContext.carriedIn =
+									readTurnWorkingSetV1(payload.carry_in, payload.project_id) ??
+									terminalContext.carriedIn ??
+									null;
+							}
+						}
 						if (isSemanticReviewStart(step)) {
 							captureRuntimeTiming(runtimeTiming, (timing) =>
 								timing.markSemanticReviewStarted()

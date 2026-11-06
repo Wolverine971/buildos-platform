@@ -189,6 +189,82 @@ describe('ChatContextFinder', () => {
 			expect(payload).not.toHaveProperty(key);
 	});
 
+	it('starts a follow-up with what the last turn used, loaded and not ranked again', async () => {
+		const load = vi.fn(async () => ({
+			version: 1,
+			project_id: PROJECT_ID,
+			carry: [
+				{
+					id: DOC,
+					kind: 'document',
+					title: 'stale title',
+					anchors: ['budget'],
+					headings: ['Budget'],
+					version: null,
+					chars: 30,
+					idle: 0
+				},
+				{
+					id: TASK,
+					kind: 'task',
+					title: 'Develop initial budget',
+					anchors: [],
+					headings: [],
+					version: null,
+					chars: 80,
+					idle: 1
+				}
+			],
+			scanned: [],
+			scanned_count: 0
+		}));
+		const finder = new ChatContextFinder({
+			userIds: [USER_ID],
+			client: fakeClient(),
+			decider: fakeDecider(scores).decider,
+			carry: { userIds: [USER_ID], load }
+		});
+		const found = (await finder.find(request()))!;
+		expect(load).toHaveBeenCalledWith({
+			sessionId: '20000000-0000-4000-8000-000000000002',
+			userId: USER_ID
+		});
+		expect(found.injection).toContain('Carried from last turn');
+		expect(found.injection).toContain(`↺ document ${DOC} · Founder Call Parse › Budget`);
+		expect(found.injection).toContain('$300,000 for land.');
+		expect(found.injection).not.toContain('stale title');
+		const payload = found.step.eventPayload as Record<string, any>;
+		const carried = payload.items.filter((item: { carried?: boolean }) => item.carried);
+		expect(carried.map((item: { id: string }) => item.id)).toEqual([DOC, TASK]);
+		// Carried records are not ranked again.
+		expect(
+			payload.items.filter((item: { id: string; carried?: boolean }) => item.id === DOC)
+		).toHaveLength(1);
+		expect(payload.carry_in.carry.map((item: { id: string }) => item.id)).toEqual([DOC, TASK]);
+		expect(JSON.stringify(payload)).not.toContain('$300,000');
+	});
+
+	it('ignores a carry for another project, and users outside the carry list', async () => {
+		const load = vi.fn(async () => ({
+			version: 1,
+			project_id: 'other-project',
+			carry: [],
+			scanned: [],
+			scanned_count: 0
+		}));
+		const finder = new ChatContextFinder({
+			userIds: 'all',
+			client: fakeClient(),
+			decider: fakeDecider(scores).decider,
+			carry: { userIds: [USER_ID], load }
+		});
+		const mine = (await finder.find(request()))!;
+		expect(mine.injection).not.toContain('Carried from last turn');
+		expect(mine.step.eventPayload).not.toHaveProperty('carry_in');
+		await finder.find(request({ userId: OTHER_USER }));
+		expect(load).toHaveBeenCalledTimes(1);
+	});
+
 	it('fails open when the project cannot be loaded', async () => {
 		const finder = new ChatContextFinder({
 			userIds: [USER_ID],

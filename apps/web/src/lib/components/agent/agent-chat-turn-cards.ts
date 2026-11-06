@@ -25,6 +25,8 @@ export type TurnCard = {
 	key: string;
 	projectId: string | null;
 	name: string;
+	/** Loaded from last turn's working set without a new search (tasker 153, phase B). */
+	carried: string[] | null;
 	pulled: TurnCardPulled | null;
 	/** Ids of the step activities on this card, in turn order. */
 	stepIds: string[];
@@ -177,6 +179,7 @@ export function deriveTurnCards(input: {
 				key,
 				projectId,
 				name: projectId ? (names.get(projectId) ?? 'Another project') : 'Across projects',
+				carried: null,
 				pulled: null,
 				stepIds: []
 			};
@@ -189,9 +192,18 @@ export function deriveTurnCards(input: {
 	if (sessionProject) cardFor(sessionProject.id);
 	if (selection && injected) {
 		if (selection.project_id) {
-			// Project chat: the finder looked inside this one project.
-			cardFor(selection.project_id).pulled = pulledFrom(
-				selection.items,
+			// Project chat: the finder looked inside this one project. Carried items came from
+			// last turn; the rest the finder pulled in this turn.
+			const card = cardFor(selection.project_id);
+			const carried = selection.items.filter((item) => item.carried);
+			if (carried.length)
+				card.carried = carried.map((item) =>
+					item.sections.length
+						? `${item.label} › ${item.sections.join(', ')}`
+						: item.label
+				);
+			card.pulled = pulledFrom(
+				selection.items.filter((item) => !item.carried),
 				selection.counts.checked
 			);
 		} else {
@@ -222,7 +234,7 @@ export function deriveTurnCards(input: {
 	}
 
 	const ordered = [...cards.values()].filter(
-		(card) => card.stepIds.length > 0 || card.pulled !== null
+		(card) => card.stepIds.length > 0 || card.pulled !== null || card.carried !== null
 	);
 	// The "Across projects" group always sits last.
 	ordered.sort((a, b) => Number(a.key === ACROSS_KEY) - Number(b.key === ACROSS_KEY));

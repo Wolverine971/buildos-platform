@@ -18,12 +18,22 @@ import {
 	type ContextFinderReadClient,
 	type ContextFinderResultV1,
 	type ContextPlanV1,
+	buildContextFinderEntities,
 	findProjectContext,
+	loadContextFinderPlanText,
 	loadContextFinderProject,
 	renderContextEvidenceBlock,
 	renderProjectSnapshotBlock,
+	startHereIds,
 	unavailableContextEvidence
 } from '@buildos/agentic-chat-runtime/context-finder';
+import {
+	type CarryItem,
+	type TurnWorkingSetV1,
+	planTurnCarry,
+	readTurnWorkingSetV1,
+	renderTurnCarry
+} from '@buildos/agentic-chat-runtime/working-set';
 import { runWithAbortableDeadline, throwIfAborted } from '../shared/abortable-deadline';
 import { stableUuidFromSeed } from '../shared/identity-hash';
 import type { AgenticChatProviderStepV1, AgenticChatTurnProviderRequestV1 } from './contracts';
@@ -46,11 +56,12 @@ export type AgenticChatContextFinderPort = {
 };
 
 /**
- * Load + two-stage ranking must fit inside the tool-selection wait or cost little more.
- * Eval (2026-09-22): two-stage p50 552 ms, p95 985 ms. Past the deadline the turn keeps
- * today's context and the chips say so.
+ * Load + two-stage ranking (+ reloading last turn's carry) should fit inside the tool-selection
+ * wait or cost little more. Eval (2026-09-22): two-stage p50 552 ms, p95 985 ms. Raised from
+ * 2.5 s to 4 s on 2026-11-05 (DJ): the carry rides inside it, and a slow turn losing its
+ * context costs more than a second of waiting. Past the deadline the turn keeps today's context.
  */
-export const CHAT_CONTEXT_FINDER_DEADLINE_MS = 2_500;
+export const CHAT_CONTEXT_FINDER_DEADLINE_MS = 4_000;
 export const CHAT_CONTEXT_FINDER_JEV_TIMEOUT_MS = 1_500;
 /** Send a duplicate Jev request when the first has not answered by then (JevClient hedge). */
 export const CHAT_CONTEXT_FINDER_HEDGE_MS = 700;
@@ -67,6 +78,14 @@ const CLEANUP_DEADLINE_MARGIN_MS = 150;
 export type ChatContextFinderCleanupLoader = (projectId: string) => Promise<unknown>;
 /** The user's IANA timezone (`users.timezone`), or null. */
 export type ChatContextFinderTimezoneLoader = (userId: string) => Promise<string | null>;
+/** The session's latest `last_turn_context.working_set` (tasker 153), or null. */
+export type ChatContextFinderWorkingSetLoader = (input: {
+	sessionId: string;
+	userId: string;
+}) => Promise<unknown>;
+
+/** What the turn carried in from the last one: loaded items, and the set for the finalizer. */
+export type ChatTurnCarry = { loaded: CarryItem[]; carryIn: TurnWorkingSetV1 };
 
 export class ChatContextFinder implements AgenticChatContextFinderPort {
 	constructor(
@@ -79,6 +98,11 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 			loadCleanup?: ChatContextFinderCleanupLoader;
 			/** Shows the snapshot's dates in the user's zone. */
 			loadTimezone?: ChatContextFinderTimezoneLoader;
+			/**
+			 * Carry (tasker 153): users whose follow-ups start with what the last turn used,
+			 * already loaded. Ids or 'all'; absent or empty carries for nobody.
+			 */
+			carry?: { userIds: readonly string[] | 'all'; load: ChatContextFinderWorkingSetLoader };
 			deadlineMs?: number;
 			jevTimeoutMs?: number;
 			now?: () => number;
@@ -99,8 +123,40 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 		let plan: ContextPlanV1 | null = null;
 		let result: ContextFinderResultV1 | null = null;
 		let snapshot: { block: string; cleanup: boolean } | null = null;
+		let carried: (ChatTurnCarry & { block: string }) | null = null;
+		const carryOption = this.options.carry;
+		// Read beside the project load; a failed read only means this turn starts fresh.
+		const priorSet =
+			carryOption &&
+			request.sessionId &&
+			allowsContextFinderUser(carryOption.userIds, request.userId)
+				? carryOption
+						.load({ sessionId: request.sessionId, userId: request.userId })
+						.catch(() => null)
+				: null;
 		const outcome = await withFinderDeadline(request, deadlineMs, async (signal) => {
 			const project = await loadContextFinderProject(this.options.client, projectId, signal);
+			// Last turn's working set: ids checked against this project's index, text reloaded
+			// from the database (never trusted from the stored set), loaded beside the ranking.
+			const set = priorSet ? readTurnWorkingSetV1(await priorSet, projectId) : null;
+			const carryEntities = set ? buildContextFinderEntities(project) : null;
+			const carryPlan =
+				set && carryEntities ? planTurnCarry({ set, entities: carryEntities }) : null;
+			const carriedIds = new Set((carryPlan?.plan.load ?? []).map(({ item }) => item.id));
+			const carryText =
+				carryPlan && carryEntities
+					? loadContextFinderPlanText({
+							project,
+							entities: carryEntities,
+							plan: null,
+							extraIds: carryPlan.textIds,
+							signal
+						})
+					: null;
+			const finishCarry = async () =>
+				set && carryPlan && carryText
+					? renderTurnCarry({ set, plan: carryPlan.plan, entities: await carryText })
+					: null;
 			// Started once the project is in, beside the ranking, so a broad request rarely
 			// waits for them; both are dropped when the request turns out to be specific.
 			const cleanup = this.options.loadCleanup
@@ -124,6 +180,10 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 				timeoutMs: this.options.jevTimeoutMs ?? CHAT_CONTEXT_FINDER_JEV_TIMEOUT_MS,
 				// The off-ramp (rank.ts): is this about the project as a whole?
 				askBroad: true,
+				// Carried records are already in the prompt; don't rank them again.
+				...(carriedIds.size
+					? { skipIds: new Set([...startHereIds(project), ...carriedIds]) }
+					: {}),
 				usage: {
 					operationType: 'agentic_chat_context_finder_chat',
 					userId: request.userId,
@@ -131,7 +191,8 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 					chatSessionId: request.sessionId
 				}
 			});
-			if (found.scope !== 'broad') return { found, snapshot: null };
+			const carry = await finishCarry();
+			if (found.scope !== 'broad') return { found, snapshot: null, carry };
 			const graceMs = Math.min(
 				CHAT_CONTEXT_FINDER_CLEANUP_GRACE_MS,
 				deadlineMs - (now() - started) - CLEANUP_DEADLINE_MARGIN_MS
@@ -142,6 +203,7 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 			]);
 			return {
 				found,
+				carry,
 				snapshot: {
 					block: renderProjectSnapshotBlock({
 						project,
@@ -159,16 +221,17 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 			evidence = result.evidence;
 			plan = result.plan;
 			snapshot = outcome.value.snapshot;
+			const carry = outcome.value.carry;
+			if (carry?.block) carried = carry;
 		} else evidence = unavailableContextEvidence(null);
 
 		const selected = evidence.status === 'selected';
-		const injection = snapshot
-			? [snapshot.block, ...(selected ? [renderContextEvidenceBlock(evidence)] : [])].join(
-					'\n\n'
-				)
-			: selected
-				? renderContextEvidenceBlock(evidence)
-				: null;
+		const parts = [
+			...(carried ? [carried.block] : []),
+			...(snapshot ? [snapshot.block] : []),
+			...(selected ? [renderContextEvidenceBlock(evidence)] : [])
+		];
+		const injection = parts.length ? parts.join('\n\n') : null;
 		const payload = buildContextSelectionPayload({
 			request,
 			evidence,
@@ -178,7 +241,8 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 			elapsedMs: now() - started,
 			scope: result?.scope ?? null,
 			broadP: result?.ranking?.broadP ?? null,
-			snapshot: snapshot ? { chars: snapshot.block.length, cleanup: snapshot.cleanup } : null
+			snapshot: snapshot ? { chars: snapshot.block.length, cleanup: snapshot.cleanup } : null,
+			carried
 		});
 		return {
 			step: {
@@ -289,10 +353,22 @@ export function buildContextSelectionPayload(input: {
 	broadP?: number | null;
 	/** Size of the injected whole-project snapshot, when one went out. */
 	snapshot?: { chars: number; cleanup: boolean } | null;
+	/** What the turn carried in from the last one (tasker 153). */
+	carried?: ChatTurnCarry | null;
 }): Extract<AgenticChatProviderStepV1, { type: 'semantic' }>['eventPayload'] {
 	const { request, evidence, plan } = input;
 	const loaded = new Set(evidence.full.map((item) => item.id));
-	const items = (plan?.items ?? []).slice(0, MAX_CHIPS).map((item) => ({
+	const carriedChips = (input.carried?.loaded ?? []).map((item) => ({
+		kind: item.kind,
+		id: item.id,
+		label: item.title,
+		tier: 'full' as const,
+		p: null,
+		pinned: false,
+		sections: item.headings,
+		carried: true
+	}));
+	const ranked = (plan?.items ?? []).slice(0, MAX_CHIPS).map((item) => ({
 		kind: item.kind,
 		id: item.id,
 		label: item.title,
@@ -301,6 +377,7 @@ export function buildContextSelectionPayload(input: {
 		pinned: item.pinned === true,
 		sections: item.sections.map((section) => section.heading)
 	}));
+	const items = [...carriedChips, ...ranked].slice(0, MAX_CHIPS);
 	return {
 		type: 'context_selection',
 		version: 1,
@@ -331,7 +408,9 @@ export function buildContextSelectionPayload(input: {
 		elapsed_ms: input.elapsedMs,
 		scope: input.scope ?? null,
 		broad_p: input.broadP ?? null,
-		snapshot: input.snapshot ?? null
+		snapshot: input.snapshot ?? null,
+		// Pointers only: the finalizer fades what this turn carried in but didn't use.
+		...(input.carried ? { carry_in: input.carried.carryIn } : {})
 	};
 }
 

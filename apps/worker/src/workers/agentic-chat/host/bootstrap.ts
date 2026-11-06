@@ -608,6 +608,7 @@ function createDefaultComposition(
 	// Global chat: Jev picks the projects first, then digs (JEV_GLOBAL_CONTEXT_2026-09-23.md).
 	// Both run for the allowlisted users only (AGENTIC_CHAT_CONTEXT_FINDER_CHAT_USER_IDS).
 	const contextFinderUserIds = input.config.contextFinderChatUserIds ?? [];
+	const carryUserIds = input.config.carryUserIds ?? [];
 	const contextFinderJev =
 		contextFinderUserIds === 'all' || contextFinderUserIds.length > 0
 			? new JevClient({
@@ -634,6 +635,17 @@ function createDefaultComposition(
 					client: input.client as unknown as ContextFinderReadClient,
 					decider: contextFinderJev,
 					loadTimezone: (userId) => resolveUserCivilTimezone(input.client, userId),
+					// Carry (tasker 153): last turn's working set, from its committed
+					// `last_turn_context` event (the same row web reads for continuity).
+					...(carryUserIds === 'all' || carryUserIds.length > 0
+						? {
+								carry: {
+									userIds: carryUserIds,
+									load: ({ sessionId, userId }) =>
+										loadSessionWorkingSet(input.client, sessionId, userId)
+								}
+							}
+						: {}),
 					// A broad request's snapshot carries the open cleanup set, sized to
 					// fit it (get_project_cleanup's projection, at the snapshot budget).
 					loadCleanup: async (projectId) =>
@@ -890,4 +902,27 @@ export function buildAgenticChatSemanticReviewerRoutes(
 function canonicalError(error: unknown): string {
 	const message = error instanceof Error ? error.message : String(error ?? '');
 	return message.trim().slice(0, 1_000) || 'Agentic Chat bootstrap failed';
+}
+
+/**
+ * The session's latest committed `last_turn_context.working_set` (tasker 153), or null. Scoped
+ * by session and user; the finder then checks every id against the project's own index.
+ */
+async function loadSessionWorkingSet(
+	client: SupabaseClient<Database>,
+	sessionId: string,
+	userId: string
+): Promise<unknown> {
+	const { data, error } = await client
+		.from('chat_turn_events')
+		.select('payload')
+		.eq('session_id', sessionId)
+		.eq('user_id', userId)
+		.eq('event_type', 'last_turn_context')
+		.order('created_at', { ascending: false })
+		.limit(1)
+		.maybeSingle();
+	if (error || !data) return null;
+	const payload = data.payload as { context?: { working_set?: unknown } } | null;
+	return payload?.context?.working_set ?? null;
 }

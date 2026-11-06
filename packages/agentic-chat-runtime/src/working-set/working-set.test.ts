@@ -1,6 +1,6 @@
 // packages/agentic-chat-runtime/src/working-set/working-set.test.ts
 import { describe, expect, it } from 'vitest';
-import type { ContextFinderEntity } from '../context-finder/packets';
+import { buildContextFinderEntities, type ContextFinderEntity } from '../context-finder/packets';
 import {
 	CARRY_IDLE_TURNS,
 	CARRY_MAX_CHARS,
@@ -8,7 +8,9 @@ import {
 	buildWorkingSet,
 	carriedBlock,
 	planRehydrate,
+	planTurnCarry,
 	readTurnWorkingSetV1,
+	renderTurnCarry,
 	type CarryItem,
 	type ReadTrace
 } from './working-set';
@@ -177,7 +179,8 @@ describe('a finished real-chat turn', () => {
 			['t1', 'task', []],
 			['g1', 'goal', []]
 		]);
-		expect(set?.carry.find((item) => item.id === 't1')?.version).toBe('v7');
+		// Carried text reloads from the current index, so no version is kept.
+		expect(set?.carry.find((item) => item.id === 't1')?.version).toBeNull();
 	});
 
 	it('stores nothing for a turn that only searched', () => {
@@ -205,5 +208,95 @@ describe('a finished real-chat turn', () => {
 		);
 		expect(readTurnWorkingSetV1(stored, 'p-other')).toBeNull();
 		expect(readTurnWorkingSetV1({ version: 2 }, P)).toBeNull();
+	});
+});
+
+describe('the next real-chat turn reloads the carry', () => {
+	const P = '00000000-0000-4000-8000-000000000099';
+	const DOC = '00000000-0000-4000-8000-000000000001';
+	const TASK = '00000000-0000-4000-8000-000000000004';
+	const entities = buildContextFinderEntities({
+		project: { id: P, name: 'School launch', description: '' },
+		documents: [
+			{
+				id: DOC,
+				title: 'Questions for Mom',
+				type_key: 'document.knowledge',
+				content: [
+					'# Questions for Mom',
+					'## Funding & Operations',
+					'Budget is $300K.',
+					'## Team & Support',
+					'Board: grandmother, pastor.'
+				].join('\n')
+			}
+		],
+		tasks: [
+			{
+				id: TASK,
+				title: 'Call the pastor',
+				state_key: 'todo',
+				description: 'Ask about Sunday.'
+			}
+		],
+		goals: [],
+		plans: [],
+		milestones: [],
+		risks: []
+	} as never);
+	const funding = entities
+		.find((entity) => entity.id === DOC)!
+		.sections.find((section) => section.heading.startsWith('Funding'))!.anchor!;
+
+	it('loads carried sections and records by id, titles from the index, ids it lost dropped', () => {
+		const set = {
+			version: 1 as const,
+			project_id: P,
+			carry: [
+				item({
+					id: DOC,
+					title: 'forged title',
+					anchors: [funding, 'not-a-section'],
+					version: null
+				}),
+				item({ id: TASK, kind: 'task', anchors: [], headings: [], version: null }),
+				item({ id: 'gone', version: null })
+			],
+			scanned: [],
+			scanned_count: 0
+		};
+		const { plan } = planTurnCarry({ set, entities });
+		expect(plan.gone.map((entry) => entry.id)).toEqual(['gone']);
+		const out = renderTurnCarry({ set, plan, entities });
+		expect(out.block).toContain(`↺ document ${DOC} · Questions for Mom › Funding & Operations`);
+		expect(out.block).toContain('Budget is $300K.');
+		expect(out.block).not.toContain('Board: grandmother');
+		expect(out.block).not.toContain('forged title');
+		expect(out.block).toContain(`↺ task ${TASK}`);
+		expect(out.loaded.map((entry) => entry.id)).toEqual([DOC, TASK]);
+		expect(out.carryIn.carry.map((entry) => entry.id)).toEqual([DOC, TASK]);
+	});
+
+	it('fades carried items the next turn did not touch, and keeps them while in use', () => {
+		const carriedIn = [
+			item({ id: TASK, kind: 'task', anchors: [], headings: [], version: null })
+		];
+		const untouched = buildTurnWorkingSetV1({ projectId: P, executions: [], carriedIn });
+		expect(untouched?.carry[0]?.idle).toBe(1);
+		const reread = buildTurnWorkingSetV1({
+			projectId: P,
+			executions: [
+				{
+					toolName: 'update_onto_task',
+					arguments: '{}',
+					result: {
+						result: { task: { id: TASK, title: 'Call the pastor', project_id: P } }
+					},
+					success: true
+				}
+			],
+			carriedIn
+		});
+		expect(reread?.carry[0]?.idle).toBe(0);
 	});
 });

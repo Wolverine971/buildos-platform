@@ -532,6 +532,25 @@
 										role="log"
 										aria-label="Steps for {card.name}"
 									>
+										{#if card.carried}
+											<div
+												class="flex items-start gap-1.5 py-0.5 leading-snug"
+											>
+												<span class="thinking-step-icon" aria-hidden="true">
+													<RefreshCw class="h-3 w-3 text-accent" />
+												</span>
+												<span
+													class="min-w-0 flex-1 break-words [overflow-wrap:anywhere]"
+												>
+													<span class="text-foreground"
+														>Carried from last turn</span
+													>{@render sep()}<span
+														class="thinking-step-target"
+														>{card.carried.join(' · ')}</span
+													>
+												</span>
+											</div>
+										{/if}
 										{#if card.pulled}
 											{@const pulled = describePulled(card.pulled)}
 											<div

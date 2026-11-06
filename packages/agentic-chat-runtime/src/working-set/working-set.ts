@@ -161,7 +161,7 @@ export function carriedBlock(input: {
 	if (seen.length) {
 		const hidden = Math.max(0, input.scannedCount - input.scanned.length);
 		lines.push(
-			`Looked at before, not loaded (read one if a piece needs it): ${seen.join(' · ')}${hidden ? ` (+${hidden} more)` : ''}`
+			`Looked at before, not loaded (read one if you need it): ${seen.join(' · ')}${hidden ? ` (+${hidden} more)` : ''}`
 		);
 	}
 	return lines.join('\n');
@@ -469,7 +469,9 @@ export function buildTurnWorkingSetV1(input: {
 			title: text(found.row.title) ?? text(found.row.name) ?? found.kind,
 			anchors: [],
 			headings: [],
-			version: text(found.row.updated_at),
+			// Carried text always reloads from the current index, so it is never stale; the
+			// version only marks "changed since", which real chat doesn't need yet.
+			version: null,
 			chars:
 				found.kind === 'document'
 					? content.length
@@ -546,5 +548,113 @@ export function readTurnWorkingSetV1(value: unknown, projectId: string): TurnWor
 		carry: carry.slice(0, MAX_TURN_CARRY_ITEMS),
 		scanned: scanned.slice(0, SCANNED_SHOWN),
 		scanned_count: typeof raw.scanned_count === 'number' ? raw.scanned_count : scanned.length
+	};
+}
+
+// ---------------------------------------------------------------------------
+// Real chat: the next turn reloads what the last one used
+// ---------------------------------------------------------------------------
+
+/**
+ * Step 1, before any text loads: which carried items still exist in this project (titles and
+ * section anchors taken from the current index, never from the stored set), and which documents
+ * need their text read.
+ */
+export function planTurnCarry(input: {
+	set: TurnWorkingSetV1;
+	entities: readonly ContextFinderEntity[];
+}): { plan: RehydratePlan; textIds: string[] } {
+	const byId = new Map(input.entities.map((entity) => [entity.id, entity]));
+	const plan = planRehydrate(input.set.carry, byId);
+	const trust = (entry: { item: CarryItem; entity: ContextFinderEntity }) => {
+		const anchors = entry.item.anchors.filter((anchor) =>
+			entry.entity.sections.some((section) => section.anchor === anchor)
+		);
+		return {
+			entity: entry.entity,
+			item: {
+				...entry.item,
+				title: entry.entity.title,
+				anchors,
+				headings: anchors.map(
+					(anchor) =>
+						entry.entity.sections.find((section) => section.anchor === anchor)
+							?.heading ?? anchor
+				)
+			}
+		};
+	};
+	plan.load = plan.load.map(trust);
+	plan.changed = plan.changed.map(trust);
+	plan.over = plan.over.map(trust);
+	return {
+		plan,
+		textIds: plan.load
+			.filter(({ entity }) => entity.kind === 'document' && !entity.textLoaded)
+			.map(({ entity }) => entity.id)
+	};
+}
+
+/** The carried text of one item: its sections, a short document whole, or the record. */
+export function carriedText(item: CarryItem, entity: ContextFinderEntity): string {
+	if (entity.kind !== 'document') return entity.fullText.trim();
+	if (!entity.textLoaded) return '';
+	if (!item.anchors.length) return entity.fullText.trim();
+	return entity.sections
+		.filter((section) => section.anchor && item.anchors.includes(section.anchor))
+		.map((section) => entity.fullText.slice(section.start, section.end).trim())
+		.filter(Boolean)
+		.join('\n\n');
+}
+
+/**
+ * Step 2, once document text is in: the "Carried from last turn" block for the prompt, the
+ * items it loaded, and `carryIn` (everything still valid) for the end of the turn to fade.
+ * Real chat cites records by id, so the block shows ids where the lab showed refs.
+ */
+export function renderTurnCarry(input: {
+	set: TurnWorkingSetV1;
+	plan: RehydratePlan;
+	entities: readonly ContextFinderEntity[];
+}): { block: string; loaded: CarryItem[]; carryIn: TurnWorkingSetV1 } {
+	const byId = new Map(input.entities.map((entity) => [entity.id, entity]));
+	const loaded: { item: CarryItem; text: string }[] = [];
+	const over = [...input.plan.over];
+	let room = CARRY_MAX_CHARS;
+	for (const { item, entity: planned } of input.plan.load) {
+		const entity = byId.get(item.id) ?? planned;
+		const body = carriedText(item, entity);
+		if (!body) continue;
+		if (body.length > room) {
+			over.push({ item, entity });
+			continue;
+		}
+		room -= body.length;
+		loaded.push({ item: { ...item, chars: body.length }, text: body });
+	}
+	const ref = (item: CarryItem) => `${item.kind} ${item.id}`;
+	const scanned = input.set.scanned.filter((entry) => byId.has(entry.id));
+	const block = carriedBlock({
+		loaded: loaded.map(({ item, text: body }) => ({ item, ref: ref(item), text: body })),
+		changed: input.plan.changed.map(({ item }) => ({ item, ref: ref(item) })),
+		over: over.map(({ item }) => ({ item, ref: ref(item) })),
+		scanned: scanned.map((entry) => ({ ref: `${entry.kind} ${entry.id}`, title: entry.title })),
+		scannedCount:
+			scanned.length + Math.max(0, input.set.scanned_count - input.set.scanned.length)
+	});
+	return {
+		block,
+		loaded: loaded.map(({ item }) => item),
+		carryIn: {
+			version: 1,
+			project_id: input.set.project_id,
+			carry: [
+				...loaded.map(({ item }) => item),
+				...over.map(({ item }) => item),
+				...input.plan.changed.map(({ item }) => item)
+			],
+			scanned,
+			scanned_count: input.set.scanned_count
+		}
 	};
 }

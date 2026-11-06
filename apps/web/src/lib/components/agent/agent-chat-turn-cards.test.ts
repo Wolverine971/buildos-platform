@@ -205,3 +205,28 @@ describe('continueInProjectTarget', () => {
 		expect(continueInProjectTarget([])).toBeNull();
 	});
 });
+
+describe('carried from last turn', () => {
+	it('shows carried items apart from what the finder pulled in this turn', () => {
+		const activities = [
+			selectionActivity({
+				project_id: WAYNE.id,
+				items: [
+					{
+						kind: 'document',
+						id: 'd1',
+						label: 'Worklist',
+						tier: 'full',
+						sections: ['Group 1'],
+						carried: true
+					},
+					{ kind: 'task', id: 't1', label: 'Griffin', tier: 'full', sections: [] }
+				],
+				counts: { full: 2, summary: 0, checked: 7 }
+			})
+		];
+		const [card] = deriveTurnCards({ activities, sessionProject: WAYNE }).cards;
+		expect(card?.carried).toEqual(['Worklist › Group 1']);
+		expect(card?.pulled).toEqual({ count: 1, checked: 7, labels: ['Griffin'] });
+	});
+});
