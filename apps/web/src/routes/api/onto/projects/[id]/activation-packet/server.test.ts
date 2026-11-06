@@ -14,32 +14,68 @@ import { GET } from './+server';
 
 type QueryResult = { data?: unknown; count?: number | null; error?: unknown };
 
-// Chainable, awaitable supabase query builder stub.
-function queryBuilder(result: QueryResult) {
+type RecordedQuery = { table: string; select: string; eq: Array<[string, unknown]> };
+
+// Chainable, awaitable supabase query builder stub. The result is resolved when
+// the query runs, so one table can answer differently per filter: a
+// `type_key` filter on onto_documents reads the `onto_documents:start_here` key.
+function queryBuilder(
+	table: string,
+	resultsByTable: Record<string, QueryResult>,
+	recorded: RecordedQuery[]
+) {
+	const query: RecordedQuery = { table, select: '', eq: [] };
+	recorded.push(query);
+	const resolveResult = (): QueryResult => {
+		const isStartHere =
+			table === 'onto_documents' && query.eq.some(([column]) => column === 'type_key');
+		const key = isStartHere ? 'onto_documents:start_here' : table;
+		return resultsByTable[key] ?? { data: [], count: 0 };
+	};
 	const builder: Record<string, unknown> = {};
-	for (const method of ['select', 'eq', 'is', 'order', 'limit']) {
+	builder.select = vi.fn((columns: string) => {
+		query.select = columns;
+		return builder;
+	});
+	builder.eq = vi.fn((column: string, value: unknown) => {
+		query.eq.push([column, value]);
+		return builder;
+	});
+	for (const method of ['is', 'order', 'limit']) {
 		builder[method] = vi.fn(() => builder);
 	}
-	builder.maybeSingle = vi.fn(() => Promise.resolve(result));
+	builder.maybeSingle = vi.fn(() => Promise.resolve(resolveResult()));
 	builder.then = (
 		resolve: (value: QueryResult) => unknown,
 		reject?: (reason: unknown) => unknown
-	) => Promise.resolve(result).then(resolve, reject);
+	) => Promise.resolve(resolveResult()).then(resolve, reject);
 	return builder;
 }
 
-const createEvent = (resultsByTable: Record<string, QueryResult>): RequestEvent => {
+const createEvent = (
+	resultsByTable: Record<string, QueryResult>,
+	recorded: RecordedQuery[] = []
+): RequestEvent => {
 	return {
 		params: { id: 'project-1' },
 		locals: {
 			supabase: {
-				from: vi.fn((table: string) =>
-					queryBuilder(resultsByTable[table] ?? { data: [], count: 0 })
-				)
+				from: vi.fn((table: string) => queryBuilder(table, resultsByTable, recorded))
 			},
 			safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
 		}
 	} as unknown as RequestEvent;
+};
+
+const PROJECT_ROW = {
+	data: {
+		id: 'project-1',
+		name: 'Launch the newsletter',
+		description: 'Weekly essay pipeline',
+		next_step_short: 'Draft issue one',
+		created_at: '2026-07-10T00:00:00Z'
+	},
+	error: null
 };
 
 describe('GET /api/onto/projects/[id]/activation-packet', () => {
@@ -65,53 +101,74 @@ describe('GET /api/onto/projects/[id]/activation-packet', () => {
 		expect(response.status).toBe(404);
 	});
 
-	it('assembles project, counts, Start Here excerpt, and sample entities', async () => {
+	it('assembles project, counts, Start Here orientation, and sample entities', async () => {
+		const recorded: RecordedQuery[] = [];
 		const response = await GET(
-			createEvent({
-				onto_projects: {
-					data: {
-						id: 'project-1',
-						name: 'Launch the newsletter',
-						description: 'Weekly essay pipeline',
-						next_step_short: 'Draft issue one',
-						created_at: '2026-07-10T00:00:00Z'
+			createEvent(
+				{
+					onto_projects: PROJECT_ROW,
+					onto_tasks: {
+						data: [
+							{ id: 't1', title: 'Outline the first essay' },
+							{ id: 't2', title: 'Pick a platform' }
+						],
+						count: 6
 					},
-					error: null
+					onto_goals: { data: [{ id: 'g1', name: 'Publish weekly' }], count: 1 },
+					// The list query returns no bodies.
+					onto_documents: {
+						data: [
+							{
+								id: 'd1',
+								title: 'Start Here',
+								type_key: 'document.context.project',
+								props: { origin: 'start_here_template' },
+								created_at: '2026-07-10T00:00:00Z',
+								updated_at: '2026-07-10T00:00:00Z'
+							},
+							{
+								id: 'd2',
+								title: 'Research notes',
+								type_key: 'document.note',
+								props: {},
+								created_at: '2026-07-10T00:01:00Z',
+								updated_at: '2026-07-10T00:01:00Z'
+							}
+						],
+						count: 2
+					},
+					'onto_documents:start_here': {
+						data: [
+							{
+								id: 'd1',
+								title: 'Start Here',
+								content: [
+									'# Start here',
+									'',
+									'<!-- managed:status v=1 -->',
+									'**State:** Unknown',
+									'<!-- /managed:status -->',
+									'',
+									'## What this is',
+									'A newsletter project.',
+									'',
+									'## Non-goals',
+									'> _Capture target: what this project is deliberately not doing._',
+									'',
+									'## Current state',
+									'Issue one is drafted.'
+								].join('\n'),
+								props: { origin: 'start_here_template' },
+								created_at: '2026-07-10T00:00:00Z',
+								updated_at: '2026-07-10T00:00:00Z'
+							}
+						]
+					},
+					onto_plans: { count: 1 },
+					onto_milestones: { count: 0 }
 				},
-				onto_tasks: {
-					data: [
-						{ id: 't1', title: 'Outline the first essay' },
-						{ id: 't2', title: 'Pick a platform' }
-					],
-					count: 6
-				},
-				onto_goals: { data: [{ id: 'g1', name: 'Publish weekly' }], count: 1 },
-				onto_documents: {
-					data: [
-						{
-							id: 'd1',
-							title: 'Start Here',
-							content: '# Start here\n\n## What this is\nA newsletter project.',
-							type_key: 'document.context.project',
-							props: { origin: 'start_here_template' },
-							created_at: '2026-07-10T00:00:00Z',
-							updated_at: '2026-07-10T00:00:00Z'
-						},
-						{
-							id: 'd2',
-							title: 'Research notes',
-							content: 'notes',
-							type_key: 'document.note',
-							props: {},
-							created_at: '2026-07-10T00:01:00Z',
-							updated_at: '2026-07-10T00:01:00Z'
-						}
-					],
-					count: 2
-				},
-				onto_plans: { count: 1 },
-				onto_milestones: { count: 0 }
-			})
+				recorded
+			)
 		);
 
 		expect(response.status).toBe(200);
@@ -130,8 +187,13 @@ describe('GET /api/onto/projects/[id]/activation-packet', () => {
 			plans: 1,
 			milestones: 0
 		});
-		expect(packet.start_here).toMatchObject({ id: 'd1', truncated: false });
-		expect(packet.start_here.excerpt).toContain('What this is');
+		// Only the orientation paragraph: no headings, markers, or other sections.
+		expect(packet.start_here).toEqual({
+			id: 'd1',
+			title: 'Start Here',
+			excerpt: 'A newsletter project.',
+			truncated: false
+		});
 		// The Start Here doc itself is excluded from the recognizable-entities sample.
 		expect(packet.sample_entities).toEqual([
 			{ kind: 'task', id: 't1', name: 'Outline the first essay' },
@@ -139,5 +201,87 @@ describe('GET /api/onto/projects/[id]/activation-packet', () => {
 			{ kind: 'goal', id: 'g1', name: 'Publish weekly' },
 			{ kind: 'document', id: 'd2', name: 'Research notes' }
 		]);
+
+		// Bodies are read only for Start Here candidates.
+		const documentQueries = recorded.filter((query) => query.table === 'onto_documents');
+		expect(documentQueries).toHaveLength(2);
+		const [listQuery, startHereQuery] = documentQueries;
+		expect(listQuery.select).not.toContain('content');
+		expect(startHereQuery.select).toContain('content');
+		expect(startHereQuery.eq).toContainEqual(['type_key', 'document.context.project']);
+	});
+
+	it('finds Start Here outside the first 25 documents', async () => {
+		const response = await GET(
+			createEvent({
+				onto_projects: PROJECT_ROW,
+				onto_documents: {
+					data: [
+						{
+							id: 'd2',
+							title: 'Research notes',
+							type_key: 'document.note',
+							props: {},
+							created_at: '2026-07-10T00:01:00Z',
+							updated_at: '2026-07-10T00:01:00Z'
+						}
+					],
+					count: 40
+				},
+				'onto_documents:start_here': {
+					data: [
+						{
+							id: 'd40',
+							title: 'START HERE - Newsletter',
+							content: '## Vision & Summary\n\nShip a weekly essay.',
+							props: {},
+							created_at: '2026-07-11T00:00:00Z',
+							updated_at: '2026-07-11T00:00:00Z'
+						}
+					]
+				}
+			})
+		);
+
+		const payload = await response.json();
+		const packet = payload.data ?? payload;
+		expect(packet.start_here).toMatchObject({ id: 'd40', excerpt: 'Ship a weekly essay.' });
+	});
+
+	it('returns no excerpt for an unfilled Start Here template', async () => {
+		const response = await GET(
+			createEvent({
+				onto_projects: PROJECT_ROW,
+				'onto_documents:start_here': {
+					data: [
+						{
+							id: 'd1',
+							title: 'START HERE - Newsletter',
+							content: [
+								'# START HERE - Newsletter',
+								'',
+								'## What this is',
+								'> _Capture target: one paragraph on what this project is._',
+								'',
+								'## Current state',
+								'> _Capture target: what just happened._'
+							].join('\n'),
+							props: { origin: 'start_here_template' },
+							created_at: '2026-07-10T00:00:00Z',
+							updated_at: '2026-07-10T00:00:00Z'
+						}
+					]
+				}
+			})
+		);
+
+		const payload = await response.json();
+		const packet = payload.data ?? payload;
+		expect(packet.start_here).toEqual({
+			id: 'd1',
+			title: 'START HERE - Newsletter',
+			excerpt: null,
+			truncated: false
+		});
 	});
 });

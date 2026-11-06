@@ -1,6 +1,8 @@
 // apps/worker/src/workers/agentic-chat/host/config.ts
 import { parseChatWorkflowPrototypeUsers } from '@buildos/shared-types';
 import {
+	DEEPSEEK_V4_FLASH_MODEL,
+	DEEPSEEK_V4_FLASH_ZDR_PROVIDER_IGNORE,
 	DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER,
 	GLM_53_MODEL,
 	PARETO_MODEL,
@@ -54,12 +56,28 @@ const PARETO_RESPONSE_HEADERS_TIMEOUT_MS = 10_000;
 // Alibaba, and StreamLake are not on it; NextBit (p50 7.8 s above),
 // Open Inference, and Parasail are. DeepInfra, NextBit, and Open Inference
 // support tool_choice=required; Parasail does not.
+// 2026-11-05 (tasker 151): NextBit and Open Inference stopped serving V4 Flash, so
+// the shared order (model-config.ts, evidence there) is now Relace, Parasail,
+// DeepInfra, Fireworks, Venice, and V4 Flash also ignores SiliconFlow, Mancer,
+// Wafer and DigitalOcean. Production chat acts on V4.1 Flash (below), so
+// this order applies when AGENTIC_CHAT_OPENROUTER_MODEL is V4 Flash (local dev).
 const DEFAULT_OPENROUTER_PROVIDER_POOL = DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER;
 const DEFAULT_OPENROUTER_PROVIDER_IGNORE = Object.freeze(['azure']);
 const DEFAULT_OPENROUTER_PROVIDER_ROUTING = Object.freeze({
 	allow_fallbacks: true,
 	order: DEFAULT_OPENROUTER_PROVIDER_POOL,
 	ignore: DEFAULT_OPENROUTER_PROVIDER_IGNORE
+});
+// Provider evidence is per model: the V4 Flash ignore list is measured on V4 Flash
+// and must not hide hosts from another model's pool.
+const DEEPSEEK_V4_FLASH_PROVIDER_IGNORE = Object.freeze([
+	...DEFAULT_OPENROUTER_PROVIDER_IGNORE,
+	...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_IGNORE
+]);
+const DEEPSEEK_V4_FLASH_PROVIDER_ROUTING = Object.freeze({
+	allow_fallbacks: true,
+	order: DEFAULT_OPENROUTER_PROVIDER_POOL,
+	ignore: DEEPSEEK_V4_FLASH_PROVIDER_IGNORE
 });
 
 // Explicit route experiments keep model-specific measurements out of unrelated defaults.
@@ -78,9 +96,12 @@ function resolveProviderRouting(
 	// on another short answer in the Sep 11 QA runs. Other fallbacks stay open.
 	// Sep 13: Modal opened promptly but took 58.1s to generate 1,253 tokens.
 	// A header timeout cannot catch that outlier. Keep other fallbacks available.
+	const isV4Flash = environment.AGENTIC_CHAT_OPENROUTER_MODEL?.trim() === DEEPSEEK_V4_FLASH_MODEL;
 	const ignoredProviders = isV41
 		? ['azure', 'morph', 'modal']
-		: DEFAULT_OPENROUTER_PROVIDER_IGNORE;
+		: isV4Flash
+			? DEEPSEEK_V4_FLASH_PROVIDER_IGNORE
+			: DEFAULT_OPENROUTER_PROVIDER_IGNORE;
 	const order = environment.AGENTIC_CHAT_OPENROUTER_PROVIDER_ORDER?.trim();
 	const sort = environment.AGENTIC_CHAT_OPENROUTER_PROVIDER_SORT?.trim();
 	if (order && sort) throw new Error('Choose a provider order or sort, not both');
@@ -121,7 +142,7 @@ function resolveProviderRouting(
 	) {
 		return { allow_fallbacks: true, require_parameters: true };
 	}
-	return DEFAULT_OPENROUTER_PROVIDER_ROUTING;
+	return isV4Flash ? DEEPSEEK_V4_FLASH_PROVIDER_ROUTING : DEFAULT_OPENROUTER_PROVIDER_ROUTING;
 }
 
 export type AgenticChatProviderConfig = {

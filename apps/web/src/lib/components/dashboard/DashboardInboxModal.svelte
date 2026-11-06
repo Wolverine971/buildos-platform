@@ -220,9 +220,11 @@
 	// Tasker 149: changes applied without asking this week, across projects.
 	let doneForYou = $state.raw<DoneForYouEntry[]>([]);
 	// A project whose cleanup card is open shows its own "Done for you"; list the rest here.
+	// Google Calendar changes (undo_url) are never on a cleanup card, so they always list here.
 	const doneForYouElsewhere = $derived(
 		doneForYou.filter(
 			(entry) =>
+				Boolean(entry.undo_url) ||
 				!items.some(
 					(item) =>
 						item.source_type === 'project_cleanup' &&

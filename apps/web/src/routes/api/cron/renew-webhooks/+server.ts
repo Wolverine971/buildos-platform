@@ -30,26 +30,39 @@ const run: RequestHandler = async ({ request, url }) => {
 	const rotateAll = url.searchParams.get('rotate_all') === 'true';
 
 	try {
+		// Project calendars first (tasker 154): this may turn a source's sync on, which the
+		// reconciliation below would otherwise race to watch without the first-time backfill.
+		const projectCalendars = await webhookService.ensureProjectCalendarsWatched(webhookUrl);
 		const [legacyRepair, reconciliation, renewal] = await Promise.all([
 			batchCheckAndRegisterWebhooks(supabase, `${protocol}//${host}`, 25),
 			webhookService.reconcileSourceWebhooks(webhookUrl),
 			webhookService.renewExpiringWebhooks(webhookUrl, { rotateAll })
 		]);
+		// Catch-up for notifications Google dropped.
+		const sweep = await webhookService.sweepQuietChannels();
 		const hasWarnings =
 			legacyRepair.failures > 0 ||
 			reconciliation.failed > 0 ||
 			renewal.failed > 0 ||
+			projectCalendars.failed > 0 ||
+			sweep.failed > 0 ||
 			reconciliation.hasMore ||
 			renewal.hasMore;
 		const { error: logError } = await supabase.from('cron_logs').insert({
 			job_name: 'calendar_webhook_renewal',
 			status: hasWarnings ? 'warning' : 'success',
-			message: `Calendar webhooks: legacy_checked=${legacyRepair.total}, legacy_registered=${legacyRepair.registered}, legacy_failed=${legacyRepair.failures}, missing_attempted=${reconciliation.attempted}, registered=${reconciliation.registered}, missing_failed=${reconciliation.failed}, renewal_attempted=${renewal.attempted}, renewed=${renewal.renewed}, renewal_failed=${renewal.failed}, has_more=${reconciliation.hasMore || renewal.hasMore}.`,
+			message: `Calendar webhooks: legacy_checked=${legacyRepair.total}, legacy_registered=${legacyRepair.registered}, legacy_failed=${legacyRepair.failures}, missing_attempted=${reconciliation.attempted}, registered=${reconciliation.registered}, missing_failed=${reconciliation.failed}, renewal_attempted=${renewal.attempted}, renewed=${renewal.renewed}, renewal_failed=${renewal.failed}, project_calendars_checked=${projectCalendars.checked}, project_calendars_enabled=${projectCalendars.enabled}, project_calendars_registered=${projectCalendars.registered}, project_calendars_failed=${projectCalendars.failed}, swept=${sweep.swept}, sweep_failed=${sweep.failed}, has_more=${reconciliation.hasMore || renewal.hasMore}.`,
 			executed_at: new Date().toISOString()
 		});
 		if (logError) console.error('Failed to persist Calendar webhook cron summary:', logError);
 
-		return ApiResponse.success({ legacyRepair, reconciliation, renewal });
+		return ApiResponse.success({
+			legacyRepair,
+			reconciliation,
+			renewal,
+			projectCalendars,
+			sweep
+		});
 	} catch (error) {
 		console.error('Calendar webhook cron failed:', error);
 		const { error: logError } = await supabase.from('cron_logs').insert({

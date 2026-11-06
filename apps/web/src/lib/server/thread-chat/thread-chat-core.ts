@@ -16,7 +16,18 @@
 // apply-or-ask rule, and the compact report each turn keeps for follow-ups. The model decides
 // what words mean through structured fields (op, sure, confirmed), never keyword rules.
 import type { ContextFinderEntity } from '@buildos/agentic-chat-runtime/context-finder';
+import {
+	DEEPSEEK_V4_FLASH_ZDR_PROVIDER_IGNORE,
+	DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER
+} from '@buildos/smart-llm';
 import { clip, type DumpItem, type DumpProject } from '../dump-sort/dump-sort-core';
+import {
+	EMPTY_WORKING_SET,
+	workingOnLine,
+	type CarryItem,
+	type ScannedItem,
+	type WorkingSet
+} from './thread-chat-carry';
 import {
 	readThreadLine,
 	type ThreadChange,
@@ -30,10 +41,19 @@ export const CHAT_FINDER_OPERATION = 'thread_chat_lab_finder';
 export const CHAT_ANSWER_OPERATION = 'thread_chat_lab_answer';
 export const CHAT_MAX_CHARS = 4000;
 
-/** Reads one thread may make across all its rounds. */
-export const THREAD_MAX_READS = 4;
-/** Model rounds that may call tools; the round after them must write decisions. */
-export const THREAD_TOOL_ROUNDS = 2;
+/**
+ * Where the lab's DeepSeek V4 Flash calls run: the same ZDR host order and ignore list as
+ * real chat's V4 Flash route (`DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER` in smart-llm's
+ * model-config, with the measurements). Every request already requires zero data retention
+ * (the request builder writes that policy last). A fixed order also keeps a turn's rounds on
+ * one host, so rounds 2+ hit its prompt cache. The last thread round asks for decisions in
+ * words instead of `tool_choice: none`, which Relace, Parasail and DeepInfra don't serve.
+ */
+export const LAB_PROVIDER_ROUTING = Object.freeze({
+	order: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER],
+	ignore: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_IGNORE],
+	allow_fallbacks: true
+});
 
 // ---------------------------------------------------------------------------
 // Conversation memory
@@ -51,6 +71,14 @@ export type ThreadReport = {
 	answers: string[];
 	covered: string[];
 	failed: string | null;
+	/** Pieces the thread never decided (out of time, or skipped twice). Tasker 152. */
+	unfinished?: string[];
+	/** Pieces the thread says belong to another project, with what to search for. Tasker 152. */
+	elsewhere?: ElsewhereLine[];
+	/** Pointers the next turn on this project loads (tasker 151). */
+	carry: CarryItem[];
+	scanned: ScannedItem[];
+	scannedCount: number;
 };
 
 export type ChatHistoryTurn = { user: string; answer: string; threads: ThreadReport[] };
@@ -68,7 +96,10 @@ export function historyBlock(history: readonly ChatHistoryTurn[]): string {
 			const parts = [
 				report.saved.length ? `saved: ${report.saved.join('; ')}` : '',
 				report.asked.length ? `asked: ${report.asked.join(' ')}` : '',
-				report.answers.length ? `answered: ${report.answers.join(' ')}` : ''
+				report.answers.length ? `answered: ${report.answers.join(' ')}` : '',
+				report.unfinished?.length ? `didn't get to: ${report.unfinished.join('; ')}` : '',
+				report.failed ? `couldn't be checked` : '',
+				workingOnLine(report)
 			].filter(Boolean);
 			lines.push(
 				`  ${report.alias} ${report.project}: ${clip(parts.join(' | ') || 'no changes', 500)}`
@@ -92,7 +123,10 @@ export function projectHistory(
 		lines.push(`Person said: ${clip(turn.user, 240)}`);
 		if (report.saved.length) lines.push(`  You saved: ${report.saved.join('; ')}`);
 		if (report.asked.length) lines.push(`  You asked: ${report.asked.join(' ')}`);
-		if (report.answers.length) lines.push(`  You answered: ${report.answers.join(' ')}`);
+		// Clipped: the person saw the whole answer; later prompts only need its gist (whole
+		// answers here grew every thread prompt by up to 12k per turn).
+		if (report.answers.length)
+			lines.push(`  You answered: ${clip(report.answers.join(' '), 600)}`);
 	}
 	return lines.length ? ['Earlier in this chat, for this project:', ...lines].join('\n') : '';
 }
@@ -120,11 +154,13 @@ Then one line per piece, in message order:
   work: a bigger job: research what the project holds, compare, review, or draft a plan or document.
   goal, milestone, doc, risk: a new outcome, checkpoint, idea worth keeping, or worry.
   context: a fact about what the project is.
-- to: P#, N#, or "W" (the person's Workspace, for loose items).
+- to: P#, N#, or "W" (the person's Workspace, for loose items). When the person names a project, use the project with that exact name, not one whose name only contains it ("For BuildOS" means "BuildOS", not "BuildOS Demo Video Campaign").
 - title: the piece written out in full so it reads alone, at most 100 characters. For a reply to an earlier question, say what was agreed, e.g. "Yes: archive Design new channel banner".
-- due (optional): "YYYY-MM-DD" only when the message states or clearly implies a date.
+- due (optional): "YYYY-MM-DD" only when this piece's own words state or clearly imply a date. A date said about one piece never carries to its neighbors.
+- cont (optional): true when the piece continues what that project's thread was working on last turn (the "working on" records below): a follow-up question, a reply to its question, more on the same thing. Leave it out for anything new.
 
 Follow-ups: when the message refers to earlier turns ("yes", "the second one", "do the same for the channel", "it"), use the earlier turns below to decide the project, and route it there.
+Redirects: when the person says earlier pieces went to the wrong project ("those were for X", "wrong project"), write each of those earlier pieces again, one line each, to the right project, with the kind, title and due the person first asked for (not what the wrong project did with it). These lines may share the same s and q.
 Rules: skip greetings and thanks (no line). One phrase becomes at most one piece. Use only listed aliases or ones you declared in "new". Don't guess what exists inside a project; the worker checks.`;
 
 export function buildPlanPrompt(input: {
@@ -155,24 +191,32 @@ export function buildPlanPrompt(input: {
 export const CHAT_THREAD_SYSTEM_PROMPT = `You are one worker thread in a BuildOS chat. You handle one project. The chat routed you the numbered pieces of the person's message that belong to this project.
 
 You start with the project's index: each task, goal, milestone, risk and plan as one line, and each document as a card (title, description, size, and its headings). Refs name records: t3 = task, g0 = goal, m1 = milestone, d2 = document, r0 = risk, p0 = plan. ★ marks the records most related to these pieces.
+On a follow-up you may also get "Carried from last turn": the text of the records and sections the last turn used, already loaded (↺ in the index). Don't read those again. "Looked at before" (·seen in the index) lists records it looked at but didn't load; read one when a piece needs it.
 
 Tools, only when the index is not enough:
 - read_doc(ref, sections): the text under the named headings of a document. Name sections exactly as the card shows them. Leave sections out only for a short document.
 - read_record(ref): one task, goal, milestone, risk or plan in full.
-Most pieces need no reads. Read before you answer a question the index can't answer, before you add to a document, and for "work" pieces. At most ${THREAD_MAX_READS} reads; read several at once when you can.
+Most pieces need no reads. Read before you answer a question the index can't answer, before you add to a document, and for "work" pieces. Reading has a budget: a few reads at first, and more when your reads keep finding what you need. Read several at once when you can.
 
+Don't write decision lines while you are still calling tools; write them all once, in your last round.
 When you know enough, stop calling tools and write your decisions as JSON Lines: one object per line, no prose, no code fences. One line per piece, in piece order.
 - update: {"piece":4,"op":"update","ref":"t3","set":{"due":"2026-11-07"},"why":"same task, new date","sure":true}
   set keys, only the ones that change: title (a new name), state (todo, in_progress, blocked, done for tasks; achieved for goals and milestones), due (YYYY-MM-DD), add (new detail for its description or document, in the person's words).
 - create: {"piece":5,"op":"create","kind":"task","title":"Plan a behind-the-scenes series","description":"","due":null,"why":"new idea","sure":true}
   kind: task, goal, milestone, doc, risk, or note. For a doc you drafted, put the markdown in "body" (under 350 words).
+  A "work" piece that asks you to draft, plan, write or outline something: read what it needs, then create kind "doc" with the full draft in "body". Never answer it with an empty note or a question about what to write.
 - answer: {"piece":6,"op":"answer","text":"Every other Tuesday at 9 AM.","refs":["d0"]} Answer from what you read, one to four sentences; refs = records you used. If the project doesn't say, answer that it doesn't say yet.
 - covered: {"piece":7,"op":"covered","ref":"t2","why":"already on the list"}
 - archive: {"piece":8,"op":"archive","ref":"t5","why":"the person says it's dropped","sure":true}
+- elsewhere: {"piece":9,"op":"elsewhere","look_for":"AI Founders Club brief","why":"nothing here mentions it"} The piece was routed here by mistake: it asks about or changes a specific named thing (a document, person, company, client, task) that this project has nothing on, and it would fit another project better. look_for: 2 to 6 words naming that thing, used to search the person's other projects. Don't use it for a new thing to do that simply needs a home; create that here. Never answer "this project doesn't have that"; write elsewhere instead.
 
 sure: false when you are guessing: the piece is vague, two records could match, or the change would overwrite what the person wrote. Then add "ask": one short yes/no question for the person.
 confirmed: true only when the person plainly asked for this exact change, or said yes to it earlier. Archives and renames are saved only when confirmed; otherwise the person is asked.
-Prefer update over create when a record is about the same thing; a duplicate is worse than an update. Only use refs from the index. why: under 12 words.`;
+Prefer update over create when a record is about the same thing; a duplicate is worse than an update. An "update" piece is about something the person thinks exists: if this project has nothing like it, don't quietly create it; write a create with "sure":false and ask whether to add it here.
+Only use refs from the index. Never write a ref (t3, d0) or an id in why, text or ask; name the record by its title. why: under 12 words.
+
+Last line, always: what the next message about this project will most likely need, from what you read or carried. Name document sections, not whole long documents. [] when nothing.
+{"op":"keep","items":[{"ref":"d1","sections":["Group 1"]},{"ref":"p0"}]}`;
 
 /** The two tools a thread may call. Refs keep ids out of the prompt; the host resolves them. */
 export const THREAD_TOOLS = [
@@ -262,7 +306,9 @@ function size(chars: number | null): string {
  */
 export function buildProjectIndex(
 	entities: readonly ContextFinderEntity[],
-	related: ReadonlyMap<string, number>
+	related: ReadonlyMap<string, number>,
+	/** ↺ = carried from last turn, ·seen = looked at before (by id). */
+	marks: ReadonlyMap<string, '↺' | '·seen'> = new Map()
 ): { text: string; shown: number; hidden: number } {
 	const ordered = [
 		...entities
@@ -273,15 +319,21 @@ export function buildProjectIndex(
 			.sort((a, b) => b.version.localeCompare(a.version))
 	];
 	const shown = ordered.slice(0, Math.max(INDEX_MAX_RECORDS, related.size));
-	const lines = shown.map((entity) => indexLine(entity, related.has(entity.id)));
+	const lines = shown.map((entity) =>
+		indexLine(entity, related.has(entity.id), marks.get(entity.id) ?? null)
+	);
 	return { text: lines.join('\n'), shown: shown.length, hidden: ordered.length - shown.length };
 }
 
-function indexLine(entity: ContextFinderEntity, isRelated: boolean): string {
+function indexLine(
+	entity: ContextFinderEntity,
+	isRelated: boolean,
+	mark: '↺' | '·seen' | null
+): string {
 	const record = entityRecord(entity, null);
 	const meta = [record.state, record.due ? `due ${record.due}` : null].filter(Boolean).join(', ');
 	const star = isRelated ? '★ ' : '';
-	let line = `${star}${entity.ref} · ${KIND_WORD[record.kind]} · ${clip(entity.title, 90)}${meta ? ` [${meta}]` : ''}`;
+	let line = `${star}${entity.ref}${mark ? ` ${mark}` : ''} · ${KIND_WORD[record.kind]} · ${clip(entity.title, 90)}${meta ? ` [${meta}]` : ''}`;
 	const about = record.description ? clip(record.description, isRelated ? 200 : 90) : '';
 	if (entity.kind === 'document') {
 		const chars = size(documentChars(entity));
@@ -308,12 +360,14 @@ export function buildThreadPrompt(input: {
 	index: string;
 	hidden: number;
 	history: string;
+	carried?: string;
 }): string {
 	const lines: string[] = [
 		`Project: ${input.projectName}${input.projectDescription ? ` (${clip(input.projectDescription, 200)})` : ''}`,
 		`Today is ${input.today}.`
 	];
 	if (input.history) lines.push('', input.history);
+	if (input.carried) lines.push('', input.carried);
 	lines.push('', 'Pieces:');
 	for (const piece of input.pieces) {
 		const due = piece.due ? ` · date ${piece.due}` : '';
@@ -371,7 +425,24 @@ export type ChatChange = ThreadChange & {
 	qn?: number;
 	/** A drafted document's text (create, kind doc). */
 	body?: string;
+	/** One decision per piece and target; a later line with the same key replaces it. */
+	key?: string;
 };
+
+/**
+ * Identity of a decision: the piece, what it does, and to which record (or new title).
+ * Models sometimes write their decisions while still reading, then again at the end; the
+ * second copy must replace the first, not repeat it (live run 2026-11-05).
+ */
+export function changeKey(change: ThreadChange): string {
+	const target =
+		change.op === 'create'
+			? `${change.kind}:${change.title.trim().toLowerCase()}`
+			: change.op === 'answer'
+				? 'answer'
+				: change.record.id;
+	return `${change.piece}|${change.op}|${target}`;
+}
 
 export type ChatThreadLine =
 	| { type: 'change'; change: ChatChange }
@@ -409,6 +480,29 @@ function defaultQuestion(change: ThreadChange): string {
 		default:
 			return 'Go ahead?';
 	}
+}
+
+/** A thread's "this belongs in another project" line. */
+export type ElsewhereLine = { piece: number; lookFor: string; why: string };
+
+export function readElsewhereLine(line: string, pieces: Set<number>): ElsewhereLine | null {
+	const trimmed = line.trim().replace(/,$/, '');
+	if (!trimmed.startsWith('{') || !trimmed.includes('"elsewhere"')) return null;
+	let raw: Record<string, unknown>;
+	try {
+		raw = JSON.parse(trimmed) as Record<string, unknown>;
+	} catch {
+		return null;
+	}
+	if (raw.op !== 'elsewhere') return null;
+	const piece = Number(raw.piece);
+	const lookFor = typeof raw.look_for === 'string' ? raw.look_for.trim().slice(0, 80) : '';
+	if (!pieces.has(piece) || !lookFor) return null;
+	return {
+		piece,
+		lookFor,
+		why: typeof raw.why === 'string' ? raw.why.trim().slice(0, 160) : ''
+	};
 }
 
 export function readChatThreadLine(
@@ -471,7 +565,11 @@ export function buildReport(input: {
 	read: string[];
 	changes: ChatChange[];
 	failed: string | null;
+	unfinished?: string[];
+	elsewhere?: ElsewhereLine[];
+	workingSet?: WorkingSet;
 }): ThreadReport {
+	const set = input.workingSet ?? EMPTY_WORKING_SET;
 	const report: ThreadReport = {
 		alias: input.alias,
 		projectId: input.projectId,
@@ -481,10 +579,16 @@ export function buildReport(input: {
 		asked: [],
 		answers: [],
 		covered: [],
-		failed: input.failed
+		failed: input.failed,
+		unfinished: input.unfinished ?? [],
+		elsewhere: input.elsewhere ?? [],
+		carry: [...set.carry],
+		scanned: [...set.scanned],
+		scannedCount: set.scannedCount
 	};
 	for (const change of input.changes) {
-		if (change.op === 'answer') report.answers.push(clip(change.text, 400));
+		// Whole answers: a clipped one made the reply step invent the missing half (2026-11-05).
+		if (change.op === 'answer') report.answers.push(change.text);
 		else if (change.op === 'covered') report.covered.push(describeChange(change));
 		else if (change.status === 'ask') {
 			report.asked.push(
@@ -502,17 +606,19 @@ export function buildReport(input: {
 export const CHAT_ANSWER_SYSTEM_PROMPT = `You are BuildOS chat, replying to the person. Their message was split into worker threads, one per project. The threads have finished; their reports are below. "Saved" changes are done. "Needs the person" items are questions, numbered.
 
 Write the reply:
-- First, the answers to anything they asked, in plain words.
+- First, the answers to anything they asked: copy each thread's answer word for word. Never reword, merge, shorten or reinterpret an answer; the thread read the records and you didn't.
 - Then what changed, one short line per project ("YouTube channel: marked the sampler video done.").
-- Then the numbered questions, keeping their numbers, so they can reply "yes to 1".
+- Then the numbered questions: only the ones under "Needs the person", word for word, keeping their numbers, so they can reply "yes to 1". Never add questions of your own. If there are none, end after the changes; never write "No questions".
 - If two threads touched related things or disagree, say so in one line.
-Rules: under 140 words. No headings, no tables, no bold. Never claim a change or a fact that is not in a report. If a thread failed, say that project couldn't be checked. If there were no threads, just reply briefly.`;
+Rules: report only this message's changes; what earlier replies already said is not news. Call each project by the exact thread name. Under 140 words, not counting the copied answers. No headings, no tables, no bold. Never claim a change or a fact that is not in a report. If a thread failed, say that project couldn't be checked. If a thread didn't get to some pieces, name them in one line so the person can send them again. If there were no threads, just reply briefly.`;
 
 export function buildAnswerPrompt(input: {
 	message: string;
 	history: readonly ChatHistoryTurn[];
 	reports: ThreadReport[];
 	newProjects: string[];
+	/** Projects past the per-message thread limit, with the pieces they held. */
+	deferred?: string[];
 }): string {
 	const lines: string[] = [];
 	const last = input.history.at(-1);
@@ -527,8 +633,143 @@ export function buildAnswerPrompt(input: {
 		if (report.asked.length) lines.push(`  Needs the person: ${report.asked.join(' ')}`);
 		if (report.answers.length) lines.push(`  Answers: ${report.answers.join(' ')}`);
 		if (report.covered.length) lines.push(`  Already there: ${report.covered.join('; ')}`);
+		if (report.unfinished?.length)
+			lines.push(
+				`  Didn't get to (say so; they can send it again): ${report.unfinished.join('; ')}`
+			);
 	}
+	if (input.deferred?.length)
+		lines.push(
+			'',
+			`Not looked at this time (say so in one line; they can send these again): ${input.deferred.join('; ')}`
+		);
 	if (input.newProjects.length)
 		lines.push('', `New projects started: ${input.newProjects.join(', ')}`);
 	return lines.join('\n');
+}
+
+/**
+ * One project, no reply call: the thread's own words, then what changed, then its numbered
+ * questions. The reply step paraphrased a correct answer into a wrong one (2026-11-05), and a
+ * single thread has nothing to merge.
+ */
+export function composeThreadReply(input: {
+	project: string;
+	changes: readonly ChatChange[];
+	failed: string | null;
+	unfinished?: readonly string[];
+}): string {
+	if (input.failed) return `${input.project}: couldn't be checked (${input.failed}).`;
+	const parts: string[] = [];
+	const answers = input.changes.flatMap((change) =>
+		change.op === 'answer' ? [change.text.trim()] : []
+	);
+	if (answers.length) parts.push(answers.join('\n\n'));
+	const done = input.changes.flatMap((change) =>
+		change.status === 'applied' ? [plainChange(change)] : []
+	);
+	if (done.length) parts.push(`${input.project}: ${done.join('; ')}.`);
+	const covered = input.changes.flatMap((change) =>
+		change.op === 'covered' ? [`"${clip(change.record.title, 60)}" already covers it`] : []
+	);
+	if (covered.length) parts.push(`Already there: ${covered.join('; ')}.`);
+	const asks = input.changes.flatMap((change) =>
+		change.status === 'ask' && change.question
+			? [`${change.qn ?? '?'}. ${change.question}`]
+			: []
+	);
+	if (asks.length) parts.push(asks.join('\n'));
+	if (input.unfinished?.length)
+		parts.push(
+			`Didn't get to: ${input.unfinished.map((title) => `"${clip(title, 80)}"`).join('; ')}. Send ${input.unfinished.length === 1 ? 'it' : 'them'} again and I'll pick up there.`
+		);
+	return parts.join('\n\n') || `${input.project}: nothing to change.`;
+}
+
+/**
+ * The turn's reply, built from the threads' own decision lines with no model call: answers
+ * word for word (labeled by project when there are several), one line of changes per project,
+ * then the numbered questions the threads asked. The reply model invented questions and
+ * paraphrased answers wrong three times on 2026-11-05; the threads' words are the truth.
+ */
+export function composeTurnReply(input: {
+	threads: {
+		project: string;
+		changes: readonly ChatChange[];
+		failed: string | null;
+		unfinished?: readonly string[];
+	}[];
+	deferred?: readonly string[];
+}): string {
+	const deferred = input.deferred?.length
+		? `I didn't get to: ${input.deferred.join('; ')}. Send ${input.deferred.length === 1 ? 'that' : 'those'} again.`
+		: '';
+	if (input.threads.length === 1) {
+		const only = input.threads[0]!;
+		return [composeThreadReply(only), deferred].filter(Boolean).join('\n\n');
+	}
+	const parts: string[] = [];
+	const answers = input.threads.flatMap((thread) =>
+		thread.changes.flatMap((change) =>
+			change.op === 'answer' ? [`${thread.project}: ${change.text.trim()}`] : []
+		)
+	);
+	if (answers.length) parts.push(answers.join('\n\n'));
+	const lines: string[] = [];
+	for (const thread of input.threads) {
+		if (thread.failed) {
+			lines.push(`${thread.project}: couldn't be checked (${thread.failed}).`);
+			continue;
+		}
+		const done = thread.changes.flatMap((change) =>
+			change.status === 'applied' && change.op !== 'answer' ? [plainChange(change)] : []
+		);
+		const covered = thread.changes.flatMap((change) =>
+			change.op === 'covered' ? [`"${clip(change.record.title, 60)}" already covers it`] : []
+		);
+		const said = [...done, ...covered];
+		if (said.length) lines.push(`${thread.project}: ${said.join('; ')}.`);
+		if (thread.unfinished?.length)
+			lines.push(
+				`${thread.project}: didn't get to ${thread.unfinished.map((title) => `"${clip(title, 70)}"`).join('; ')}.`
+			);
+	}
+	if (lines.length) parts.push(lines.join('\n'));
+	const asks = input.threads
+		.flatMap((thread) =>
+			thread.changes.flatMap((change) =>
+				change.status === 'ask' && change.question
+					? [{ qn: change.qn ?? 0, text: `${change.qn ?? '?'}. ${change.question}` }]
+					: []
+			)
+		)
+		.sort((a, b) => a.qn - b.qn)
+		.map((ask) => ask.text);
+	if (asks.length) parts.push(asks.join('\n'));
+	if (deferred) parts.push(deferred);
+	return parts.join('\n\n') || 'Nothing to change.';
+}
+
+/** A saved change in plain words: "marked X done", "moved X to 2026-11-06". */
+function plainChange(change: ChatChange): string {
+	switch (change.op) {
+		case 'update': {
+			const title = `"${clip(change.record.title, 60)}"`;
+			return change.fields
+				.map((field) => {
+					if (field.field === 'state')
+						return `marked ${title} ${field.after.replace(/_/g, ' ')}`;
+					if (field.field === 'due') return `moved ${title} to ${field.after}`;
+					if (field.field === 'title') return `renamed ${title} to "${field.after}"`;
+					return `added to ${title}: "${clip(field.after, 80)}"`;
+				})
+				.join(', ');
+		}
+		case 'create':
+			return `added ${change.kind} "${clip(change.title, 70)}"${change.due ? ` due ${change.due}` : ''}`;
+		case 'archive':
+			return `archived "${clip(change.record.title, 60)}"`;
+		default:
+			return describeChange(change);
+	}
 }

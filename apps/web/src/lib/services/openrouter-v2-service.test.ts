@@ -5,6 +5,7 @@ import {
 	AGENT_STATE_RECONCILIATION_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL,
 	DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER,
+	DEEPSEEK_V4_FLASH_ZDR_PROVIDER_IGNORE,
 	GEMINI_31_FLASH_LITE_MODEL,
 	GLM_53_FLASH_MODEL,
 	GPT_6_LUNA_MODEL,
@@ -263,7 +264,8 @@ describe('OpenRouterV2Service model routing', () => {
 			require_parameters: true,
 			data_collection: 'deny',
 			zdr: true,
-			order: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER]
+			order: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER],
+			ignore: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_IGNORE]
 		});
 		expect(requestBodies[1]?.model).toBe(OPENROUTER_V2_JSON_MODELS[1]);
 		expect(requestBodies[1]?.models).toEqual(OPENROUTER_V2_JSON_MODELS.slice(2, 5));
@@ -338,7 +340,8 @@ describe('OpenRouterV2Service model routing', () => {
 			require_parameters: true,
 			data_collection: 'deny',
 			zdr: true,
-			order: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER]
+			order: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER],
+			ignore: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_IGNORE]
 		});
 	});
 
@@ -381,7 +384,9 @@ describe('OpenRouterV2Service model routing', () => {
 				require_parameters: true,
 				data_collection: 'deny',
 				zdr: true,
-				order: ['baidu', 'gmicloud']
+				order: ['baidu', 'gmicloud'],
+				// The block list stays with an env order; only "off" drops it.
+				ignore: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_IGNORE]
 			});
 		} finally {
 			vi.unstubAllEnvs();
@@ -496,7 +501,8 @@ describe('OpenRouterV2Service model routing', () => {
 			require_parameters: true,
 			data_collection: 'deny',
 			zdr: true,
-			order: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER]
+			order: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER],
+			ignore: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_IGNORE]
 		});
 	});
 
@@ -1568,7 +1574,8 @@ describe('OpenRouterV2Service visible text filtering', () => {
 			require_parameters: true,
 			data_collection: 'deny',
 			zdr: true,
-			order: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER]
+			order: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER],
+			ignore: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_IGNORE]
 		});
 	});
 
@@ -1625,8 +1632,9 @@ describe('OpenRouterV2Service visible text filtering', () => {
 				allow_fallbacks: true,
 				data_collection: 'deny',
 				zdr: true,
+				// V4 Flash's default block list is merged with the request's ignore list.
 				order: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER],
-				ignore: ['digitalocean']
+				ignore: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_IGNORE]
 			}
 		});
 		expect(events.find((event) => event.type === 'done')).toMatchObject({

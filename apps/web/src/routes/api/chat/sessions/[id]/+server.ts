@@ -1,7 +1,11 @@
 // apps/web/src/routes/api/chat/sessions/[id]/+server.ts
 import type { RequestHandler } from './$types';
 import { z } from 'zod';
-import type { ProjectFocus } from '@buildos/shared-types';
+import {
+	parseContextSelectionEventV1,
+	type ContextSelectionEventV1,
+	type ProjectFocus
+} from '@buildos/shared-types';
 import {
 	buildProjectWideFocus,
 	isProjectScopedContext,
@@ -193,6 +197,14 @@ export const GET: RequestHandler = async ({
 		]);
 	if (voice.error) return ApiResponse.databaseError(voice.error);
 
+	// Turn cards (tasker 153): what the context finder put in front of the model, per turn,
+	// so a reloaded chat still shows "Pulled in 3 of 9". Turn events last 7 days.
+	const contextSelections: ContextSelectionEventV1[] = (turnEvents || []).flatMap((event) => {
+		if (event.event_type !== 'context_selection') return [];
+		const selection = parseContextSelectionEventV1(event.payload);
+		return selection?.visible && selection.injected ? [selection] : [];
+	});
+
 	return ApiResponse.success({
 		session: projectFocus
 			? { ...session, agent_metadata: { focus: projectFocus } }
@@ -201,6 +213,7 @@ export const GET: RequestHandler = async ({
 		toolExecutions: toolExecutions || [],
 		turnRuns: turnRuns || [],
 		timelineItems,
+		contextSelections,
 		voiceNoteGroups: voice.voiceNoteGroups,
 		voiceNotes: voice.voiceNotes,
 		truncated,

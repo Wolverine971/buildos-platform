@@ -101,9 +101,7 @@
 				{/if}
 				<span class="tab-label">{tab.label}</span>
 				{#if !tab.hideCount && tab.count !== undefined}
-					<span
-						class="tab-badge {activeTab === tab.id ? 'badge-active' : 'badge-inactive'}"
-					>
+					<span class="tab-badge">
 						{tab.count}
 					</span>
 				{/if}
@@ -142,7 +140,7 @@
 	.tab-button {
 		@apply inline-flex items-center justify-center;
 		@apply gap-2;
-		@apply px-4 py-3;
+		@apply px-3 py-3;
 		@apply border-none border-b-2 border-transparent;
 		@apply bg-transparent;
 		@apply text-sm font-medium leading-5;
@@ -154,9 +152,7 @@
 
 	/* Active tab - Inkprint accent, flat background */
 	.tab-active {
-		@apply border-b-accent text-accent bg-accent/5;
-		@apply font-semibold;
-		letter-spacing: -0.01em;
+		@apply border-b-accent text-foreground;
 	}
 
 	/* Inactive tab - muted foreground */
@@ -166,7 +162,7 @@
 
 	/* Hover state - subtle preview */
 	.tab-inactive:hover {
-		@apply text-foreground border-b-border bg-muted/50;
+		@apply text-foreground;
 	}
 
 	/* Focus state for keyboard navigation - Inkprint ring */
@@ -194,27 +190,8 @@
 
 	/* Count badge - Inkprint styling */
 	.tab-badge {
-		@apply inline-flex items-center justify-center;
-		@apply px-2 py-0.5 text-xs font-semibold leading-4;
-		@apply rounded-full;
-		@apply transition-colors duration-200;
-		@apply min-w-[1.5rem];
+		@apply font-mono text-xs font-normal leading-4 text-muted-foreground;
 		font-variant-numeric: tabular-nums;
-	}
-
-	/* Active badge - accent variant */
-	.badge-active {
-		@apply bg-accent/15 text-accent;
-	}
-
-	/* Inactive badge - muted variant */
-	.badge-inactive {
-		@apply bg-muted text-muted-foreground;
-	}
-
-	/* Hover state for inactive badge */
-	.tab-inactive:hover .badge-inactive {
-		@apply bg-muted text-foreground;
 	}
 
 	/* Reduce motion for accessibility */

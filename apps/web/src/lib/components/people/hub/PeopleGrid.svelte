@@ -102,7 +102,7 @@
 				: `${pickedPeople.length} people`;
 		void run(
 			async () => (await runAll(tasks)).message,
-			`${who}: agents ${agentAccessLabel(bulkAccess)} in ${tasks.length} ${tasks.length === 1 ? 'project' : 'projects'}`
+			`${who}: agents ${agentAccessLabel(bulkAccess).toLowerCase()} in ${tasks.length} ${tasks.length === 1 ? 'project' : 'projects'}`
 		);
 	}
 
@@ -129,7 +129,7 @@
 	<div class="flex flex-wrap items-center gap-2">
 		<span class="mr-auto text-xs text-muted-foreground">
 			{pickedPeople.length === 0
-				? 'Pick people to change their agents in every project at once.'
+				? 'Pick people to change their agents in every project at once'
 				: `${pickedPeople.length} picked`}
 		</span>
 		<label class="flex items-center gap-2 text-xs text-muted-foreground">
@@ -161,10 +161,8 @@
 			<caption class="sr-only">People in your projects, by project</caption>
 			<thead>
 				<tr class="border-b border-border bg-muted/30">
-					<th scope="col" class="w-56 px-3 py-2.5">
-						<label
-							class="flex items-center gap-2 text-xs font-semibold text-foreground"
-						>
+					<th scope="col" class="w-56 px-3 py-3">
+						<label class="flex items-center gap-2 text-xs font-medium text-foreground">
 							<input
 								type="checkbox"
 								class="h-4 w-4 accent-accent"
@@ -177,10 +175,12 @@
 					{#each columns as column (column.id)}
 						<th
 							scope="col"
-							class="px-2 py-2.5 text-xs font-semibold text-foreground"
+							class="px-2 py-3 text-xs font-medium text-foreground"
 							title={column.name}
 						>
-							<a href="/projects/{column.id}" class="line-clamp-2 hover:text-accent"
+							<a
+								href="/projects/{column.id}"
+								class="line-clamp-2 underline-offset-2 hover:underline"
 								>{column.name}</a
 							>
 							{#if column.editor_agents_write}
@@ -208,8 +208,7 @@
 										})}
 								/>
 								<span class="min-w-0">
-									<span
-										class="block truncate text-sm font-semibold text-foreground"
+									<span class="block truncate text-sm font-medium text-foreground"
 										>{person.name}</span
 									>
 									<span class="block truncate text-xs text-muted-foreground">
@@ -225,7 +224,7 @@
 							<td class="px-2 py-2 align-top">
 								{#if m}
 									<div
-										class="flex min-w-[8.5rem] flex-col gap-1.5 rounded-md border border-border bg-background p-2"
+										class="flex min-w-[8.5rem] flex-col gap-2 rounded-lg border border-border bg-background p-2"
 									>
 										<Select
 											id="grid-role-{m.member_id}"
@@ -252,7 +251,7 @@
 											<option value="editor">Editor</option>
 											<option value="viewer">Viewer</option>
 										</Select>
-										<span class="micro-label">Agents</span>
+										<span class="text-xs text-muted-foreground">Agents</span>
 										<Select
 											id="grid-agents-{m.member_id}"
 											size="sm"
@@ -285,13 +284,13 @@
 									</div>
 								{:else if invitedTo(person, column.id)}
 									<p
-										class="flex min-h-[4.5rem] items-center justify-center rounded-md border border-dashed border-border px-2 text-xs text-muted-foreground"
+										class="flex min-h-[4.5rem] items-center justify-center rounded-lg border border-dashed border-border px-2 text-xs text-muted-foreground"
 									>
 										Invited
 									</p>
 								{:else if adding?.actorId === person.actor_id && adding.projectId === column.id}
 									<div
-										class="flex min-w-[8.5rem] flex-col gap-1.5 rounded-md border border-accent/40 bg-background p-2"
+										class="flex min-w-[8.5rem] flex-col gap-2 rounded-lg border border-border-strong bg-background p-2"
 									>
 										<Select
 											id="grid-add-role-{person.actor_id}-{column.id}"
@@ -308,8 +307,8 @@
 													};
 											}}
 										>
-											<option value="viewer">As Viewer</option>
-											<option value="editor">As Editor</option>
+											<option value="viewer">As viewer</option>
+											<option value="editor">As editor</option>
 										</Select>
 										<div class="flex gap-1">
 											<Button
@@ -328,7 +327,7 @@
 								{:else}
 									<button
 										type="button"
-										class="flex min-h-[4.5rem] w-full items-center justify-center gap-1 rounded-md border border-dashed border-border-strong/60 text-xs text-muted-foreground hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+										class="flex min-h-[4.5rem] w-full items-center justify-center gap-1 rounded-lg border border-dashed border-border-strong/60 text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 										disabled={busy || !person.email}
 										title={person.email
 											? `Invite ${person.name} to ${column.name}`
@@ -351,6 +350,6 @@
 		</table>
 	</div>
 	<p class="text-xs text-muted-foreground">
-		"+ Add" sends them an invite with their agents on Read. They join when they accept.
+		"Add" sends them an invite with their agents on Read. They join when they accept.
 	</p>
 </div>

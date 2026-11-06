@@ -15,19 +15,17 @@
 		Save,
 		X,
 		RotateCcw,
-		ExternalLink,
 		XCircle,
 		RefreshCw,
 		CircleAlert,
 		Mail,
 		Volume2,
 		Check
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
-	import Badge from '$lib/components/ui/Badge.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import TabHeader from './_shared/TabHeader.svelte';
 	import SettingsCard from './_shared/SettingsCard.svelte';
@@ -240,6 +238,30 @@
 		variant: 'success' | 'warning' | 'error' | 'info' | 'default';
 	};
 
+	const STATUS_DOT: Record<StatusInfo['variant'], string> = {
+		success: 'bg-success',
+		warning: 'bg-warning',
+		error: 'bg-destructive',
+		info: 'bg-muted-foreground',
+		default: 'bg-muted-foreground'
+	};
+
+	// Job types are machine keys (e.g. generate_daily_brief); show plain words.
+	const JOB_TYPE_LABELS: Record<string, string> = {
+		generate_daily_brief: 'Daily brief',
+		generate_weekly_brief: 'Weekly brief',
+		daily_brief: 'Daily brief',
+		weekly_brief: 'Weekly brief'
+	};
+
+	function formatJobType(jobType: string | null | undefined): string {
+		if (!jobType) return 'Daily brief';
+		const known = JOB_TYPE_LABELS[jobType];
+		if (known) return known;
+		const words = jobType.replace(/_/g, ' ').trim();
+		return words ? words.charAt(0).toUpperCase() + words.slice(1) : 'Daily brief';
+	}
+
 	function formatJobStatus(status: string): StatusInfo {
 		const statusMap: Record<string, StatusInfo> = {
 			pending: { text: 'Pending', variant: 'warning' },
@@ -248,7 +270,7 @@
 			failed: { text: 'Failed', variant: 'error' },
 			cancelled: { text: 'Cancelled', variant: 'default' }
 		};
-		return statusMap[status] || { text: status, variant: 'default' };
+		return statusMap[status] || { text: formatJobType(status), variant: 'default' };
 	}
 
 	function formatDateTime(dateString: string) {
@@ -301,14 +323,14 @@
 <div class="space-y-4 sm:space-y-5">
 	<TabHeader
 		icon={Coffee}
-		title="Brief Settings"
-		description="Configure when and how you receive daily briefs."
+		title="Brief settings"
+		description="When and how you get your daily brief"
 	/>
 
 	<!-- Brief Preferences -->
 	<SettingsCard
-		title="Brief Preferences"
-		description="Configure when you receive briefs"
+		title="Brief preferences"
+		description="When your brief arrives"
 		icon={Bell}
 		labelledById="brief-preferences-heading"
 	>
@@ -316,7 +338,7 @@
 			{#if !editingBriefPreferences}
 				<Button
 					onclick={() => startEditingBriefPreferences()}
-					variant="primary"
+					variant="outline"
 					size="sm"
 					icon={Edit3}
 				>
@@ -355,9 +377,9 @@
 		{#if briefPreferencesState.isLoading}
 			<div class="text-center py-8">
 				<div
-					class="animate-spin motion-reduce:animate-none rounded-full h-8 w-8 border-b-2 border-accent mx-auto"
+					class="animate-spin motion-reduce:animate-none rounded-full h-8 w-8 border-b-2 border-muted-foreground mx-auto"
 				></div>
-				<p class="text-sm text-muted-foreground mt-4">Loading preferences...</p>
+				<p class="text-sm text-muted-foreground mt-4">Loading preferences</p>
 			</div>
 		{:else if briefPreferencesState.error}
 			<div class="text-center py-8">
@@ -368,7 +390,7 @@
 					variant="primary"
 					size="sm"
 					icon={RefreshCw}
-					class="shadow-ink pressable"
+					class="pressable"
 				>
 					Retry
 				</Button>
@@ -385,7 +407,7 @@
 
 				{#if briefPreferences.frequency === 'weekly'}
 					<div>
-						<p class="block text-sm font-medium text-foreground mb-2">Day of Week</p>
+						<p class="block text-sm font-medium text-foreground mb-2">Day of week</p>
 						<div
 							class="px-3 py-2 bg-muted text-foreground rounded-lg border border-border"
 						>
@@ -406,12 +428,15 @@
 					<p class="block text-sm font-medium text-foreground mb-2">Status</p>
 					<div class="space-y-2">
 						<div class="flex flex-col sm:flex-row sm:items-center gap-2">
-							<Badge
-								variant={briefPreferences.is_active ? 'success' : 'default'}
-								size="sm"
-							>
-								{briefPreferences.is_active ? 'Active' : 'Inactive'}
-							</Badge>
+							<span class="inline-flex items-center gap-2 text-sm text-foreground">
+								<span
+									class="h-1.5 w-1.5 rounded-full {briefPreferences.is_active
+										? 'bg-success'
+										: 'bg-muted-foreground'}"
+									aria-hidden="true"
+								></span>
+								{briefPreferences.is_active ? 'Active' : 'Paused'}
+							</span>
 							{#if briefPreferencesState.nextScheduledBrief}
 								<span class="text-xs sm:text-sm text-muted-foreground">
 									Next: {formatDateTime(
@@ -427,17 +452,13 @@
 								at all and there is no route to the control.
 							-->
 							<div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-								<Mail
-									class="w-4 h-4 {hasEmailOptIn
-										? 'text-accent'
-										: 'text-muted-foreground'}"
-								/>
+								<Mail class="w-4 h-4 text-muted-foreground" />
 								<span class="text-sm text-muted-foreground">
 									Email delivery {hasEmailOptIn ? 'enabled' : 'off'}
 								</span>
 								<a
 									href="/profile?tab=notifications"
-									class="rounded text-sm font-medium text-accent underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									class="rounded text-sm font-medium text-foreground underline underline-offset-2 decoration-border hover:decoration-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								>
 									Change
 								</a>
@@ -450,7 +471,12 @@
 			<!-- Edit Mode -->
 			<div class="space-y-4">
 				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<FormField label="Frequency" labelFor="brief-frequency">
+					<FormField
+						label="Frequency"
+						labelFor="brief-frequency"
+						uppercase={false}
+						showOptional={false}
+					>
 						<Select
 							id="brief-frequency"
 							bind:value={briefPreferencesForm.frequency}
@@ -462,7 +488,12 @@
 					</FormField>
 
 					{#if briefPreferencesForm.frequency === 'weekly'}
-						<FormField label="Day of Week" labelFor="brief-day-of-week">
+						<FormField
+							label="Day of week"
+							labelFor="brief-day-of-week"
+							uppercase={false}
+							showOptional={false}
+						>
 							<Select
 								id="brief-day-of-week"
 								bind:value={briefPreferencesForm.day_of_week}
@@ -475,7 +506,13 @@
 						</FormField>
 					{/if}
 
-					<FormField label="Time" labelFor="briefTime" size="md">
+					<FormField
+						label="Time"
+						labelFor="briefTime"
+						size="md"
+						uppercase={false}
+						showOptional={false}
+					>
 						<TextInput
 							id="briefTime"
 							type="time"
@@ -494,13 +531,13 @@
 						/>
 
 						{#if briefPreferencesForm.is_active}
-							<div class="p-3 bg-accent/10 border border-accent/30 rounded-lg">
+							<div class="p-3 bg-muted/50 border border-border rounded-lg">
 								<p class="text-xs text-muted-foreground">
-									<strong class="text-foreground">Note:</strong> To receive briefs
-									via email or SMS, visit the
+									To get briefs by email or SMS, open the
 									<a
 										href="/profile?tab=notifications"
-										class="text-accent hover:underline">Notifications</a
+										class="text-foreground underline underline-offset-2 decoration-border hover:decoration-foreground"
+										>Notifications</a
 									> tab.
 								</p>
 							</div>
@@ -509,20 +546,17 @@
 				</div>
 
 				{#if briefPreferencesForm.is_active}
-					<div
-						class="bg-accent/10 border border-accent/30 rounded-lg p-4 tx tx-grain tx-weak"
-					>
-						<div class="flex items-center">
-							<Clock class="w-5 h-5 text-accent mr-2 flex-shrink-0" />
-							<p class="text-sm text-foreground min-w-0">
-								<strong>Preview:</strong> Next brief will be scheduled for {briefPreferencesForm.frequency ===
-								'daily'
+					<div class="bg-muted/50 border border-border rounded-lg p-4">
+						<div class="flex items-center gap-2">
+							<Clock class="w-4 h-4 text-muted-foreground flex-shrink-0" />
+							<p class="text-sm text-muted-foreground min-w-0">
+								Scheduled {briefPreferencesForm.frequency === 'daily'
 									? 'daily'
 									: DAY_OPTIONS.find(
 											(d) => d.value === briefPreferencesForm.day_of_week
 										)?.label} at {convertTimeToHHMM(
 									briefPreferencesForm.time_of_day
-								)} (in your timezone)
+								)} in your timezone
 							</p>
 						</div>
 					</div>
@@ -533,27 +567,31 @@
 
 	<!-- Voice Narration -->
 	<SettingsCard
-		title="Voice Narration"
-		description="Generate playable audio for future daily briefs"
+		title="Voice narration"
+		description="Playable audio for future daily briefs"
 		icon={Volume2}
 		labelledById="voice-narration-heading"
 	>
 		{#snippet actions()}
-			<Badge variant={voiceNarrationEnabled ? 'success' : 'default'} size="sm">
-				{voiceNarrationEnabled ? 'Enabled' : 'Off'}
-			</Badge>
+			<span class="inline-flex items-center gap-2 text-xs text-muted-foreground">
+				<span
+					class="h-1.5 w-1.5 rounded-full {voiceNarrationEnabled
+						? 'bg-success'
+						: 'bg-muted-foreground'}"
+					aria-hidden="true"
+				></span>
+				{voiceNarrationEnabled ? 'On' : 'Off'}
+			</span>
 		{/snippet}
 
 		{#if !isAdmin}
 			<div class="p-3 bg-muted border border-border rounded-lg">
-				<p class="text-sm text-muted-foreground">
-					Voice narration is currently in admin-only alpha.
-				</p>
+				<p class="text-sm text-muted-foreground">Voice narration is in admin-only alpha.</p>
 			</div>
 		{:else}
 			<div class="space-y-3">
 				<label
-					class="flex items-start gap-3 p-3 rounded-lg border border-border bg-card hover:border-accent/40 hover:bg-muted/30 cursor-pointer transition-colors duration-200 motion-reduce:transition-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-inset {voiceNarrationSaving
+					class="flex items-start gap-3 p-3 rounded-lg border border-border bg-card hover:bg-muted/50 cursor-pointer transition-colors duration-200 motion-reduce:transition-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-inset {voiceNarrationSaving
 						? 'opacity-70 cursor-wait'
 						: ''}"
 				>
@@ -584,7 +622,7 @@
 				</label>
 
 				{#if voiceNarrationSaving}
-					<p class="text-xs text-muted-foreground">Saving narration preference...</p>
+					<p class="text-xs text-muted-foreground">Saving</p>
 				{/if}
 			</div>
 		{/if}
@@ -592,7 +630,7 @@
 
 	<!-- Scheduled Briefs -->
 	<SettingsCard
-		title="Scheduled Briefs"
+		title="Scheduled briefs"
 		description="Upcoming and recent jobs"
 		icon={Calendar}
 		labelledById="scheduled-briefs-heading"
@@ -612,53 +650,59 @@
 			</Button>
 			<a
 				href="/briefs?view=list"
-				class="inline-flex items-center px-3 py-1.5 text-xs sm:text-sm text-accent hover:text-accent/80 font-medium rounded-md hover:bg-accent/10 transition-colors motion-reduce:transition-none pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset min-h-[44px]"
+				class="inline-flex items-center px-3 py-2 text-xs sm:text-sm text-muted-foreground hover:text-foreground font-medium rounded-lg hover:bg-muted/50 transition-colors motion-reduce:transition-none pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset min-h-[44px]"
 			>
-				View All
-				<ExternalLink class="w-3.5 h-3.5 ml-1" />
+				View all
 			</a>
 		{/snippet}
 
 		{#if briefPreferencesState.isLoading}
 			<div class="text-center py-8">
 				<div
-					class="animate-spin motion-reduce:animate-none rounded-full h-8 w-8 border-b-2 border-accent mx-auto"
+					class="animate-spin motion-reduce:animate-none rounded-full h-8 w-8 border-b-2 border-muted-foreground mx-auto"
 				></div>
-				<p class="text-sm sm:text-base text-muted-foreground mt-4">
-					Loading scheduled briefs...
-				</p>
+				<p class="text-sm text-muted-foreground mt-4">Loading scheduled briefs</p>
 			</div>
 		{:else if briefPreferencesState.jobs.length === 0}
-			<div class="text-center py-8 tx tx-bloom tx-weak rounded-lg">
-				<Calendar class="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-				<p class="text-sm text-muted-foreground mb-1">No scheduled briefs found</p>
-				<p class="text-xs text-muted-foreground/70">
-					Enable brief preferences above to start scheduling
+			<div class="text-center py-8">
+				<Calendar class="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+				<p class="text-sm text-muted-foreground mb-1">No scheduled briefs</p>
+				<p class="text-xs text-muted-foreground">
+					Turn on briefs above to start scheduling
 				</p>
 			</div>
 		{:else}
 			<div class="space-y-2">
 				<!-- Upcoming Briefs -->
 				{#each upcomingJobs as job (job.id)}
+					{@const statusInfo = formatJobStatus(job.status)}
 					<div
-						class="flex items-center justify-between gap-3 p-3 bg-accent/10 border border-accent/30 rounded-lg tx tx-grain tx-weak"
+						class="flex items-center justify-between gap-3 p-3 bg-card border border-border rounded-lg"
 						transition:slide={slideMotion()}
 					>
-						<div class="flex items-center gap-2.5 min-w-0">
-							<Clock class="w-4 h-4 text-accent flex-shrink-0" />
+						<div class="flex items-center gap-3 min-w-0">
+							<Clock class="w-4 h-4 text-muted-foreground flex-shrink-0" />
 							<div class="min-w-0">
 								<p class="text-xs sm:text-sm font-medium text-foreground truncate">
 									{formatDateTime(job.scheduled_for)}
 								</p>
 								<p class="text-xs text-muted-foreground">
-									{job.job_type || 'Daily Brief'}
+									{formatJobType(job.job_type)}
 								</p>
 							</div>
 						</div>
 						<div class="flex items-center gap-2 flex-shrink-0">
-							<Badge variant={formatJobStatus(job.status).variant} size="sm">
-								{formatJobStatus(job.status).text}
-							</Badge>
+							<span
+								class="inline-flex items-center gap-2 text-xs text-muted-foreground"
+							>
+								<span
+									class="h-1.5 w-1.5 rounded-full {STATUS_DOT[
+										statusInfo.variant
+									]}"
+									aria-hidden="true"
+								></span>
+								{statusInfo.text}
+							</span>
 							{#if job.status === 'pending'}
 								<Button
 									onclick={() => (cancelJobTarget = job)}
@@ -676,25 +720,34 @@
 
 				<!-- Recent Briefs -->
 				{#each recentJobs as job (job.id)}
+					{@const statusInfo = formatJobStatus(job.status)}
 					<div
-						class="flex items-center justify-between gap-3 p-3 bg-muted border border-border rounded-lg"
+						class="flex items-center justify-between gap-3 p-3 bg-muted/50 border border-border rounded-lg"
 						transition:slide={slideMotion()}
 					>
-						<div class="flex items-center gap-2.5 min-w-0">
+						<div class="flex items-center gap-3 min-w-0">
 							<Calendar class="w-4 h-4 text-muted-foreground flex-shrink-0" />
 							<div class="min-w-0">
 								<p class="text-xs sm:text-sm font-medium text-foreground truncate">
 									{formatDateTime(job.scheduled_for)}
 								</p>
 								<p class="text-xs text-muted-foreground">
-									{job.job_type || 'Daily Brief'}
+									{formatJobType(job.job_type)}
 								</p>
 							</div>
 						</div>
 						<div class="flex items-center gap-2 flex-shrink-0">
-							<Badge variant={formatJobStatus(job.status).variant} size="sm">
-								{formatJobStatus(job.status).text}
-							</Badge>
+							<span
+								class="inline-flex items-center gap-2 text-xs text-muted-foreground"
+							>
+								<span
+									class="h-1.5 w-1.5 rounded-full {STATUS_DOT[
+										statusInfo.variant
+									]}"
+									aria-hidden="true"
+								></span>
+								{statusInfo.text}
+							</span>
 							{#if job.error_message}
 								<span
 									class="text-xs text-destructive truncate max-w-[8rem]"
@@ -714,8 +767,8 @@
 <!-- Reset Preferences Confirmation -->
 <ConfirmationModal
 	isOpen={showResetConfirmation}
-	title="Reset Brief Preferences"
-	confirmText="Reset to Defaults"
+	title="Reset brief preferences"
+	confirmText="Reset to defaults"
 	cancelText="Cancel"
 	confirmVariant="danger"
 	icon="warning"
@@ -729,9 +782,9 @@
 <!-- Cancel Job Confirmation -->
 <ConfirmationModal
 	isOpen={cancelJobTarget !== null}
-	title="Cancel Scheduled Brief"
-	confirmText="Cancel Brief"
-	cancelText="Keep It"
+	title="Cancel scheduled brief"
+	confirmText="Cancel brief"
+	cancelText="Keep it"
 	confirmVariant="danger"
 	icon="warning"
 	onconfirm={confirmCancelBriefJob}

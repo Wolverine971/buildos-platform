@@ -25,7 +25,7 @@ describe('SettingsNavigation', () => {
 		const desktop = screen.getByRole('navigation', { name: 'Settings sections' });
 		expect(within(desktop).getByText('Your BuildOS')).toBeTruthy();
 		expect(within(desktop).getByText('Connections')).toBeTruthy();
-		expect(within(desktop).getByText('Data & Plan')).toBeTruthy();
+		expect(within(desktop).getByText('Data & plan')).toBeTruthy();
 		expect(within(desktop).getByRole('link', { name: /Cycles/ })).toBeTruthy();
 		expect(within(desktop).getByRole('link', { name: /Billing/ })).toBeTruthy();
 		expect(
@@ -75,7 +75,7 @@ describe('SettingsNavigation', () => {
 		expect(document.activeElement).toBe(account);
 
 		await fireEvent.keyDown(account, { key: 'ArrowDown' });
-		const briefs = within(menu).getByRole('menuitemradio', { name: /Brief Settings/ });
+		const briefs = within(menu).getByRole('menuitemradio', { name: /Brief settings/ });
 		expect(document.activeElement).toBe(briefs);
 
 		await fireEvent.click(briefs);

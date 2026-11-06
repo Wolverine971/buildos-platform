@@ -67,7 +67,7 @@
 				/>
 			{:else}
 				<span
-					class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-foreground text-sm font-semibold text-background"
+					class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-foreground text-sm font-medium text-background"
 					aria-hidden="true"
 					>{view ? initialsOf(view.profile.name, view.profile.handle) : '@'}</span
 				>
@@ -75,17 +75,22 @@
 			<div class="min-w-0 flex-1">
 				{#if view}
 					<div class="flex items-center gap-2">
-						<p class="truncate text-sm font-semibold text-foreground">{address}</p>
+						<p class="truncate text-sm font-medium text-foreground">{address}</p>
 						<span
-							class="inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-px text-2xs font-semibold {live
-								? 'border-success/50 text-success'
-								: 'border-border-strong text-muted-foreground'}"
-							>{live ? 'Live' : 'Draft'}</span
+							class="inline-flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground"
+							><span
+								class="h-1.5 w-1.5 rounded-full {live
+									? 'bg-success'
+									: 'bg-muted-foreground/60'}"
+								aria-hidden="true"
+							></span>{live ? 'Live' : 'Draft'}</span
 						>
 					</div>
-					<p class="mt-0.5 truncate text-xs text-muted-foreground">{summary}</p>
+					<p class="mt-1 truncate text-xs tabular-nums text-muted-foreground">
+						{summary}
+					</p>
 				{:else}
-					<p class="text-sm font-semibold text-foreground">Make your page</p>
+					<p class="text-sm font-medium text-foreground">Make your page</p>
 					<p class="mt-0.5 text-xs text-muted-foreground">
 						Your links, socials and the projects you choose, at build-os.com/@you.
 					</p>
@@ -94,7 +99,7 @@
 			<div class="flex w-full items-center gap-2 sm:w-auto">
 				<a
 					href="/profile/page"
-					class="tx-button tx-button-accent inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-md px-3.5 text-sm font-semibold sm:flex-none"
+					class="tx-button tx-button-accent inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium sm:flex-none"
 					><Pencil class="h-4 w-4" aria-hidden="true" />{view
 						? 'Edit page'
 						: 'Set it up'}</a
@@ -104,7 +109,7 @@
 						href="/@{view.profile.handle}"
 						target="_blank"
 						rel="noopener"
-						class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border-strong bg-background text-foreground hover:bg-muted"
+						class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border-strong bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						aria-label="Open your page in a new tab"
 						><ExternalLink class="h-4 w-4" aria-hidden="true" /></a
 					>

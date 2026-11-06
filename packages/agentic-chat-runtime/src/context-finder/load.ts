@@ -50,7 +50,8 @@ const FAMILIES = [
 		// Outline-first (tasker 150): headings from the stored outline, never the body. The
 		// generated content_hash says whether that outline still matches the text.
 		// table: only the props.table schema, null for ordinary documents (BuildOS Tables).
-		'id,title,description,type_key,state_key,outline,content_hash,updated_at,created_at,table:props->table'
+		// digest: the AI summary for documents without a description (tasker 152).
+		'id,title,description,type_key,state_key,outline,content_hash,digest,updated_at,created_at,table:props->table'
 	],
 	['tasks', 'onto_tasks', 'id,title,state_key,priority,due_at,description,updated_at,created_at'],
 	['goals', 'onto_goals', 'id,name,state_key,target_date,description,updated_at,created_at'],

@@ -43,7 +43,7 @@ describe('history display helpers', () => {
 		expect(needsChatClassification(session)).toBe(true);
 		expect(state.displayStatus).toBe('recent');
 		expect(resolveChatTitle(session, state)).toBe('Recent chat');
-		expect(resolveChatPreview(session, state)).toContain('recent chat may still be open');
+		expect(resolveChatPreview(session, state)).toBe('A summary appears once this chat closes');
 	});
 
 	it('surfaces failed classification jobs as retryable summary failures', () => {
@@ -63,11 +63,9 @@ describe('history display helpers', () => {
 
 		expect(state.displayStatus).toBe('failed');
 		expect(state.statusLabel).toBe('Summary failed');
-		expect(state.previewFallback).toBe(
-			'BuildOS could not summarize this chat. You can retry it.'
-		);
+		expect(state.previewFallback).toBe('Couldn’t summarize this chat');
 		expect(state.canQueueSummary).toBe(true);
-		expect(resolveChatTitle(session, state)).toBe('Untitled Chat');
+		expect(resolveChatTitle(session, state)).toBe('Untitled chat');
 	});
 
 	it('keeps classified chats marked done with the generated summary', () => {

@@ -486,6 +486,49 @@ describe('SmartLLMService streamText tool handling', () => {
 		expect(requestBody.prompt_cache_key).toBe('chat-usage');
 	});
 
+	it('sends provider steering on the streaming body without relaxing ZDR', async () => {
+		const fetchMock = vi.fn(async () =>
+			buildSSE([
+				JSON.stringify({
+					id: 'chatcmpl-routing',
+					object: 'chat.completion.chunk',
+					created: 0,
+					model: ACTIVE_EXPERIMENT_MODEL,
+					choices: [{ index: 0, delta: { content: 'Hi' }, finish_reason: 'stop' }],
+					usage: null
+				}),
+				'[DONE]'
+			])
+		);
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+		for await (const event of llm.streamText({
+			messages: [{ role: 'user', content: 'Say hi.' }],
+			userId: 'user-routing',
+			operationType: 'test_stream',
+			// A caller trying to relax privacy: the request builder must win.
+			providerRouting: {
+				order: ['relace'],
+				ignore: ['siliconflow'],
+				allow_fallbacks: true,
+				zdr: false,
+				data_collection: 'allow'
+			} as never
+		})) {
+			if (event.type === 'done' || event.type === 'error') break;
+		}
+		const requestBody = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+		expect(requestBody.provider).toMatchObject({
+			order: ['relace'],
+			ignore: ['siliconflow'],
+			allow_fallbacks: true,
+			zdr: true,
+			data_collection: 'deny'
+		});
+	});
+
 	it('omits cache-affinity keys from the streaming body when no session id is supplied', async () => {
 		const fetchMock = vi.fn(async () =>
 			buildSSE([

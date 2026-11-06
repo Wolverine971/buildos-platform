@@ -56,12 +56,14 @@
 	import WorkspaceCapture from '$lib/components/workspace/WorkspaceCapture.svelte';
 	import WorkspaceShelf from '$lib/components/workspace/WorkspaceShelf.svelte';
 	import GraduateDialog from '$lib/components/workspace/GraduateDialog.svelte';
-	import type {
-		CaptureSortResult,
-		CaptureUndoResult,
-		LooseItem,
-		WorkspaceHome,
-		WorkspaceSuggestion
+	import {
+		AUTO_FILE_CONFIDENCE,
+		type AutoFiled,
+		type CaptureSortResult,
+		type CaptureUndoResult,
+		type LooseItem,
+		type WorkspaceHome,
+		type WorkspaceSuggestion
 	} from '$lib/components/workspace/workspace-model';
 	import {
 		normalizeProjectState,
@@ -288,6 +290,7 @@
 				if (currentVersion !== workspaceStreamVersion) return;
 				if (result) workspaceHome = result;
 				workspaceLoading = false;
+				if (result) void autoFileConfident(result);
 			})
 			.catch(() => {
 				if (currentVersion === workspaceStreamVersion) workspaceLoading = false;
@@ -433,6 +436,61 @@
 			toastService.error(err instanceof Error ? err.message : 'Could not move those items.');
 		} finally {
 			markBusy(suggestion.id, false);
+		}
+	}
+
+	// The agent's confident filings run when the Workspace opens, each with Undo (tasker 152).
+	let autoFiling = false;
+	async function autoFileConfident(home: WorkspaceHome) {
+		const loose = new Set(home.items.map((item) => item.id));
+		const due = home.suggestions.some(
+			(suggestion) =>
+				suggestion.kind === 'file' &&
+				(suggestion.confidence ?? 0) >= AUTO_FILE_CONFIDENCE &&
+				suggestion.items.every((ref) => ref.entity === 'document' && loose.has(ref.id))
+		);
+		if (!due || autoFiling) return;
+		autoFiling = true;
+		try {
+			const { filed } = await workspaceRequest<{ filed: AutoFiled[] }>(
+				'/api/workspace/suggestions/auto-file',
+				{}
+			);
+			if (!filed.length) return;
+			removeLoose(filed.flatMap((entry) => entry.item_ids));
+			void invalidate('ontology:projects');
+			for (const entry of filed) {
+				const name = projectsById.get(entry.project_id)?.name ?? 'a project';
+				const what =
+					entry.titles.length === 1
+						? `“${entry.titles[0]}”`
+						: `${entry.titles.length} notes`;
+				const toastId: string = toastService.add({
+					type: 'success',
+					message: `Filed ${what} into ${name}.`,
+					duration: TOAST_DURATION.STANDARD,
+					action: {
+						label: 'Undo',
+						onClick: () => {
+							toastService.remove(toastId);
+							void undoFiling(entry.batch_id);
+							// Don't let the agent file it there again.
+							void workspaceRequest(
+								`/api/workspace/suggestions/${entry.suggestion_id}`,
+								{
+									action: 'forget'
+								}
+							).catch(() => {});
+						}
+					}
+				});
+			}
+			void refreshWorkspace();
+		} catch (err) {
+			// Nothing moved that the person can't see; the chips stay.
+			console.warn('[Workspace] auto-file failed', err);
+		} finally {
+			autoFiling = false;
 		}
 	}
 

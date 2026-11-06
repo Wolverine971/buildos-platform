@@ -2,6 +2,7 @@
 //
 // The shared entry point: chat turns, Workflow Lab previews and research specialists all
 // build packets, rank with Jev, select with one policy and materialize the same evidence.
+import { cardNeedsText } from './card';
 import {
 	materializeContextPlan,
 	rankerSummary,
@@ -83,7 +84,8 @@ export async function findProjectContext(input: {
 	/** Also ask Jev whether the request is about the project as a whole (rank.ts). */
 	askBroad?: boolean;
 }): Promise<ContextFinderResultV1> {
-	// Agents get cards plus their best sections up front and read the rest (tasker 150, B).
+	// Agents get document cards (summary, sections by anchor, Jev's flags) and read the text
+	// themselves (tasker 152); the budget still caps how many cards and records fit.
 	const budgetChars = Math.min(
 		input.budgetChars ?? CONTEXT_FINDER_POLICY.agentBudgetChars,
 		CONTEXT_FINDER_POLICY.agentBudgetChars
@@ -94,10 +96,16 @@ export async function findProjectContext(input: {
 			project: input.project,
 			entities: outlined,
 			plan: input.plan,
-			signal: input.signal
+			signal: input.signal,
+			cards: true
 		});
 		return {
-			evidence: materializeContextPlan({ plan: input.plan, entities, budgetChars }),
+			evidence: materializeContextPlan({
+				plan: input.plan,
+				entities,
+				budgetChars,
+				documents: 'card'
+			}),
 			plan: input.plan,
 			ranking: null,
 			entities
@@ -142,6 +150,7 @@ export async function findProjectContext(input: {
 		skipIds: skip,
 		budgetChars,
 		sectionsPerDoc: CONTEXT_FINDER_POLICY.agentSectionsPerDoc,
+		documents: 'card',
 		maxSummaries: input.maxSummaries,
 		...(scope === 'broad'
 			? {
@@ -157,10 +166,17 @@ export async function findProjectContext(input: {
 		project: input.project,
 		entities,
 		plan,
-		signal: input.signal
+		signal: input.signal,
+		cards: true
 	});
 	return {
-		evidence: materializeContextPlan({ plan, entities: loaded, ranker, budgetChars }),
+		evidence: materializeContextPlan({
+			plan,
+			entities: loaded,
+			ranker,
+			budgetChars,
+			documents: 'card'
+		}),
 		plan,
 		ranking,
 		entities: loaded,
@@ -180,10 +196,19 @@ export async function loadContextFinderPlanText(input: {
 	plan: ContextPlanV1 | null;
 	extraIds?: readonly string[];
 	signal?: AbortSignal;
+	/** Card mode: plan documents need text only when pinned or when they have no headings and
+	 * no summary (short notes, shown whole). */
+	cards?: boolean;
 }): Promise<ContextFinderEntity[]> {
+	const byId = new Map(input.entities.map((entity) => [entity.id, entity]));
 	const wanted = new Set([
 		...(input.plan?.items ?? [])
 			.filter((item) => item.tier === 'full' && item.kind === 'document')
+			.filter((item) => {
+				if (!input.cards || item.pinned) return true;
+				const entity = byId.get(item.id);
+				return entity ? cardNeedsText(entity) : false;
+			})
 			.map((item) => item.id),
 		...(input.extraIds ?? [])
 	]);

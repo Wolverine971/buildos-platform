@@ -25,14 +25,25 @@
 		collectGmailConnectionClientActions,
 		type AgentClientActionCompletion
 	} from './agent-chat-client-actions';
+	import {
+		deriveTurnCards,
+		describePulled,
+		type TurnCard,
+		type TurnCardProject
+	} from './agent-chat-turn-cards';
 
 	interface Props {
 		block: ThinkingBlockMessage;
 		onToggleCollapse: (blockId: string) => void;
 		onClientActionComplete?: (completion: AgentClientActionCompletion) => void | Promise<void>;
+		/**
+		 * Turn cards (tasker 153): group the steps into one card per project. Null keeps the
+		 * single step log. `sessionProject` is the chat's own project (null in global chat).
+		 */
+		turnCards?: { sessionProject: TurnCardProject | null } | null;
 	}
 
-	let { block, onToggleCollapse, onClientActionComplete }: Props = $props();
+	let { block, onToggleCollapse, onClientActionComplete, turnCards = null }: Props = $props();
 
 	type StepTone = 'pending' | 'done' | 'failed' | 'awaiting' | 'stopped';
 
@@ -146,7 +157,39 @@
 	});
 	const stepCount = $derived(steps.length);
 	const hasSteps = $derived(stepCount > 0);
-	const stepSummary = $derived(`${stepCount} ${stepCount === 1 ? 'step' : 'steps'}`);
+
+	// Turn cards: the same rows, one card per project, plus what the finder pulled in.
+	const cards = $derived(
+		turnCards
+			? deriveTurnCards({
+					activities: block.activities,
+					sessionProject: turnCards.sessionProject
+				})
+			: null
+	);
+	const showCards = $derived(cards !== null && cards.cards.length > 0);
+	const stepById = $derived(new Map(steps.map((step) => [step.activity.id, step])));
+	// A card with only "Pulled in" still has something to open.
+	const hasBody = $derived(hasSteps || showCards);
+	const projectCount = $derived(
+		showCards ? cards!.cards.filter((card) => card.projectId !== null).length : 0
+	);
+	const stepSummary = $derived(
+		(projectCount > 1 ? `${projectCount} projects · ` : '') +
+			`${stepCount} ${stepCount === 1 ? 'step' : 'steps'}`
+	);
+
+	// Long cards show 6 rows: the newest while the turn runs, the first once it ends.
+	const CARD_ROWS = 6;
+	let openCards = $state<Record<string, boolean>>({});
+	function cardRows(card: TurnCard): { rows: StepRow[]; hidden: number } {
+		const rows = card.stepIds
+			.map((id) => stepById.get(id))
+			.filter((step): step is StepRow => step !== undefined);
+		if (openCards[card.key] || rows.length <= CARD_ROWS) return { rows, hidden: 0 };
+		const hidden = rows.length - CARD_ROWS;
+		return { rows: isRunning ? rows.slice(-CARD_ROWS) : rows.slice(0, CARD_ROWS), hidden };
+	}
 	const clientActions = $derived(collectGmailConnectionClientActions(block.activities));
 
 	// ---------------------------------------------------------------------
@@ -289,6 +332,75 @@
 	});
 </script>
 
+{#snippet sep()}<span class="thinking-step-sep" aria-hidden="true">{' · '}</span>{/snippet}
+
+{#snippet stepRow(step: StepRow)}
+	{@const trail = readToolProgressSteps(step.activity.metadata?.progressSteps)}
+	<div class="py-0.5" data-step-tone={step.tone}>
+		<div class="flex items-start gap-1.5 leading-snug">
+			<span class="thinking-step-icon" aria-hidden="true">
+				{#if step.tone === 'pending'}
+					<Loader class="h-3 w-3 animate-spin text-muted-foreground" />
+				{:else if step.tone === 'failed'}
+					<X class="h-3 w-3 text-destructive" />
+				{:else if step.tone === 'awaiting'}
+					<CircleDot class="h-3 w-3 text-accent" />
+				{:else if step.tone === 'stopped'}
+					<CircleDot class="h-3 w-3 text-muted-foreground" />
+				{:else}
+					<Check class="h-3 w-3 text-success" />
+				{/if}
+			</span>
+			{#if STEP_TONE_LABELS[step.tone]}
+				<span class="sr-only">{STEP_TONE_LABELS[step.tone]}:</span>
+			{/if}
+
+			<span class="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">
+				<span
+					class={step.tone === 'failed'
+						? 'text-destructive'
+						: step.tone === 'stopped'
+							? 'text-muted-foreground'
+							: 'text-foreground'}>{step.verb}</span
+				>{#if step.target}{@render sep()}<span class="thinking-step-target"
+						>{step.quoted ? `“${step.target}”` : step.target}</span
+					>{/if}
+			</span>
+
+			{#if step.outcome}
+				<span class="thinking-step-outcome">{step.outcome}</span>
+			{/if}
+		</div>
+		{#if step.error}
+			<p class="thinking-step-error">{step.error}</p>
+		{/if}
+		{#if trail.length > 0}
+			<ol class="tool-trail" aria-label="Steps for this action">
+				{#each trail as trailStep, trailIndex (trailStep.index)}
+					{@const trailStyle = getTrailStyle(trailStep)}
+					{@const TrailIcon = trailStyle.icon}
+					{@const live = step.tone === 'pending' && trailIndex === trail.length - 1}
+					<li class="tool-trail-step" class:tool-trail-step-live={live}>
+						<TrailIcon
+							class="mt-px h-2.5 w-2.5 shrink-0 {trailStyle.color}"
+							aria-hidden="true"
+						/>
+						<span class="min-w-0 flex-1 break-words [overflow-wrap:anywhere]"
+							>{trailStep.message}</span
+						>
+						{#if live}
+							<Loader
+								class="h-2.5 w-2.5 shrink-0 animate-spin text-muted-foreground"
+								aria-hidden="true"
+							/>
+						{/if}
+					</li>
+				{/each}
+			</ol>
+		{/if}
+	</div>
+{/snippet}
+
 <!-- INKPRINT thinking block card with Thread texture -->
 <div class="thinking-block-wrap">
 	{#if workflow}
@@ -296,10 +408,10 @@
 	{:else}
 		<div
 			class="thinking-block overflow-hidden border border-border bg-card shadow-ink tx tx-thread tx-weak"
-			class:thinking-block-compact={!hasSteps}
-			class:thinking-block-with-activity={hasSteps}
+			class:thinking-block-compact={!hasBody}
+			class:thinking-block-with-activity={hasBody}
 			class:thinking-block-active={isRunning}
-			class:thinking-block-complete={block.status === 'completed' && !hasSteps}
+			class:thinking-block-complete={block.status === 'completed' && !hasBody}
 			class:thinking-block-error={block.status === 'error'}
 		>
 			<!-- No live region on the container: role="status" is implicitly atomic,
@@ -308,19 +420,19 @@
 			<button
 				type="button"
 				onclick={() => {
-					if (hasSteps) onToggleCollapse(block.id);
+					if (hasBody) onToggleCollapse(block.id);
 				}}
-				disabled={!hasSteps}
+				disabled={!hasBody}
 				class="thinking-header"
-				aria-expanded={hasSteps ? !block.isCollapsed : undefined}
-				aria-label={hasSteps
+				aria-expanded={hasBody ? !block.isCollapsed : undefined}
+				aria-label={hasBody
 					? block.isCollapsed
 						? 'Expand BuildOS thinking log'
 						: 'Collapse BuildOS thinking log'
 					: undefined}
 			>
 				<div class="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
-					{#if hasSteps}
+					{#if hasBody}
 						{#if block.isCollapsed}
 							<ChevronRight
 								class="h-3 w-3 shrink-0 text-muted-foreground"
@@ -374,7 +486,7 @@
 						{/if}
 					{/if}
 				</div>
-				{#if elapsedLabel || hasSteps}
+				{#if elapsedLabel || hasBody}
 					<div class="flex shrink-0 items-center gap-1.5">
 						{#if elapsedLabel}
 							<span class="thinking-elapsed" aria-hidden="true">{elapsedLabel}</span>
@@ -387,128 +499,115 @@
 			</button>
 
 			<!-- INKPRINT activity log panel -->
-			<div class="thinking-body" class:thinking-body-open={hasSteps && !block.isCollapsed}>
+			<div class="thinking-body" class:thinking-body-open={hasBody && !block.isCollapsed}>
 				<div class="thinking-body-inner">
-					<div class="p-2 sm:p-2.5">
-						<div
-							bind:this={logContainer}
-							onscroll={handleLogScroll}
-							class="thinking-log thinking-log-height space-y-0.5 overflow-y-auto rounded-md bg-background/55 p-1.5 font-mono text-2xs shadow-ink-inner sm:text-2xs"
-							class:thinking-log-expanded={isExpanded}
-							role="log"
-							aria-label="BuildOS thinking log"
-						>
-							{#each steps as step (step.activity.id)}
-								{@const trail = readToolProgressSteps(
-									step.activity.metadata?.progressSteps
-								)}
-								<div class="py-0.5" data-step-tone={step.tone}>
-									<div class="flex items-start gap-1.5 leading-snug">
-										<span class="thinking-step-icon" aria-hidden="true">
-											{#if step.tone === 'pending'}
-												<Loader
-													class="h-3 w-3 animate-spin text-muted-foreground"
-												/>
-											{:else if step.tone === 'failed'}
-												<X class="h-3 w-3 text-destructive" />
-											{:else if step.tone === 'awaiting'}
-												<CircleDot class="h-3 w-3 text-accent" />
-											{:else if step.tone === 'stopped'}
-												<CircleDot class="h-3 w-3 text-muted-foreground" />
-											{:else}
-												<Check class="h-3 w-3 text-success" />
-											{/if}
-										</span>
-										{#if STEP_TONE_LABELS[step.tone]}
-											<span class="sr-only"
-												>{STEP_TONE_LABELS[step.tone]}:</span
-											>
-										{/if}
-
+					{#if showCards && cards}
+						<div class="turn-cards p-2 sm:p-2.5" data-testid="turn-cards">
+							{#if cards.picked}
+								<p class="turn-cards-note">
+									Checked {cards.picked.checked}
+									{cards.picked.checked === 1 ? 'project' : 'projects'}, picked
+									{cards.picked.picked}
+								</p>
+							{/if}
+							{#each cards.cards as card (card.key)}
+								{@const view = cardRows(card)}
+								<section class="turn-card" aria-label={card.name}>
+									<header class="turn-card-header">
 										<span
-											class="min-w-0 flex-1 break-words [overflow-wrap:anywhere]"
-										>
-											<span
-												class={step.tone === 'failed'
-													? 'text-destructive'
-													: step.tone === 'stopped'
-														? 'text-muted-foreground'
-														: 'text-foreground'}>{step.verb}</span
-											>{#if step.target}<span
-													class="thinking-step-sep"
-													aria-hidden="true">{' · '}</span
-												><span class="thinking-step-target"
-													>{step.quoted
-														? `“${step.target}”`
-														: step.target}</span
-												>{/if}
-										</span>
-
-										{#if step.outcome}
-											<span class="thinking-step-outcome">{step.outcome}</span
+											class="turn-card-dot"
+											class:turn-card-dot-across={card.projectId === null}
+											aria-hidden="true"
+										></span>
+										<h4 class="turn-card-name">{card.name}</h4>
+										{#if card.stepIds.length}
+											<span class="turn-card-count"
+												>{card.stepIds.length}
+												{card.stepIds.length === 1 ? 'step' : 'steps'}</span
 											>
 										{/if}
-									</div>
-									{#if step.error}
-										<p class="thinking-step-error">{step.error}</p>
-									{/if}
-									{#if trail.length > 0}
-										<ol class="tool-trail" aria-label="Steps for this action">
-											{#each trail as trailStep, trailIndex (trailStep.index)}
-												{@const trailStyle = getTrailStyle(trailStep)}
-												{@const TrailIcon = trailStyle.icon}
-												{@const live =
-													step.tone === 'pending' &&
-													trailIndex === trail.length - 1}
-												<li
-													class="tool-trail-step"
-													class:tool-trail-step-live={live}
+									</header>
+									<div
+										class="turn-card-rows space-y-0.5 font-mono text-2xs"
+										role="log"
+										aria-label="Steps for {card.name}"
+									>
+										{#if card.pulled}
+											{@const pulled = describePulled(card.pulled)}
+											<div
+												class="flex items-start gap-1.5 py-0.5 leading-snug"
+											>
+												<span class="thinking-step-icon" aria-hidden="true">
+													<Sparkles class="h-3 w-3 text-accent" />
+												</span>
+												<span
+													class="min-w-0 flex-1 break-words [overflow-wrap:anywhere]"
 												>
-													<TrailIcon
-														class="mt-px h-2.5 w-2.5 shrink-0 {trailStyle.color}"
-														aria-hidden="true"
-													/>
-													<span
-														class="min-w-0 flex-1 break-words [overflow-wrap:anywhere]"
-														>{trailStep.message}</span
-													>
-													{#if live}
-														<Loader
-															class="h-2.5 w-2.5 shrink-0 animate-spin text-muted-foreground"
-															aria-hidden="true"
-														/>
-													{/if}
-												</li>
-											{/each}
-										</ol>
+													<span class="text-foreground"
+														>{pulled.label}</span
+													>{#if pulled.detail}{@render sep()}<span
+															class="thinking-step-target"
+															>{pulled.detail}</span
+														>{/if}
+												</span>
+											</div>
+										{/if}
+										{#each view.rows as step (step.activity.id)}
+											{@render stepRow(step)}
+										{/each}
+									</div>
+									{#if view.hidden > 0}
+										<button
+											type="button"
+											class="turn-card-more"
+											onclick={() =>
+												(openCards = { ...openCards, [card.key]: true })}
+										>
+											Show {view.hidden} more
+										</button>
 									{/if}
-								</div>
+								</section>
 							{/each}
 						</div>
-						<!-- Expand/collapse toggle for the log height -->
-						{#if stepCount > 3}
-							<button
-								type="button"
-								onclick={toggleExpand}
-								class="mt-1 flex w-full items-center justify-center gap-1 text-center micro-label font-semibold text-muted-foreground transition-colors hover:text-foreground"
-								aria-label={isExpanded
-									? 'Show less activity'
-									: 'Show more activity'}
-								aria-expanded={isExpanded}
+					{:else}
+						<div class="p-2 sm:p-2.5">
+							<div
+								bind:this={logContainer}
+								onscroll={handleLogScroll}
+								class="thinking-log thinking-log-height space-y-0.5 overflow-y-auto rounded-md bg-background/55 p-1.5 font-mono text-2xs shadow-ink-inner sm:text-2xs"
+								class:thinking-log-expanded={isExpanded}
+								role="log"
+								aria-label="BuildOS thinking log"
 							>
-								<!-- Scoped styles can't reach inside the icon component, so the
-								     rotating chevron sits in a span this file can style. -->
-								<span
-									class="thinking-log-chevron"
-									class:thinking-log-chevron-expanded={isExpanded}
-									aria-hidden="true"
+								{#each steps as step (step.activity.id)}
+									{@render stepRow(step)}
+								{/each}
+							</div>
+							<!-- Expand/collapse toggle for the log height -->
+							{#if stepCount > 3}
+								<button
+									type="button"
+									onclick={toggleExpand}
+									class="mt-1 flex w-full items-center justify-center gap-1 text-center micro-label font-semibold text-muted-foreground transition-colors hover:text-foreground"
+									aria-label={isExpanded
+										? 'Show less activity'
+										: 'Show more activity'}
+									aria-expanded={isExpanded}
 								>
-									<ChevronDown class="h-3 w-3" />
-								</span>
-								{isExpanded ? 'Show less' : 'Show more'}
-							</button>
-						{/if}
-					</div>
+									<!-- Scoped styles can't reach inside the icon component, so the
+								     rotating chevron sits in a span this file can style. -->
+									<span
+										class="thinking-log-chevron"
+										class:thinking-log-chevron-expanded={isExpanded}
+										aria-hidden="true"
+									>
+										<ChevronDown class="h-3 w-3" />
+									</span>
+									{isExpanded ? 'Show less' : 'Show more'}
+								</button>
+							{/if}
+						</div>
+					{/if}
 				</div>
 			</div>
 		</div>
@@ -520,6 +619,80 @@
 {/each}
 
 <style>
+	.turn-cards {
+		display: flex;
+		flex-direction: column;
+		gap: 0.375rem;
+	}
+
+	.turn-cards-note {
+		color: hsl(var(--muted-foreground));
+		font-size: 0.68rem;
+	}
+
+	.turn-card {
+		border: 1px solid hsl(var(--border));
+		border-radius: 0.375rem;
+		background: hsl(var(--background) / 0.55);
+		padding: 0.375rem 0.5rem;
+	}
+
+	.turn-card-header {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+	}
+
+	.turn-card-dot {
+		height: 0.45rem;
+		width: 0.45rem;
+		flex: 0 0 auto;
+		border-radius: 999px;
+		background: hsl(var(--accent));
+	}
+
+	.turn-card-dot-across {
+		background: hsl(var(--muted-foreground) / 0.6);
+	}
+
+	.turn-card-name {
+		min-width: 0;
+		flex: 1 1 auto;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		color: hsl(var(--foreground));
+		font-size: 0.72rem;
+		font-weight: 600;
+	}
+
+	.turn-card-count {
+		flex: 0 0 auto;
+		font-family:
+			ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+			monospace;
+		font-size: 0.62rem;
+		font-variant-numeric: tabular-nums;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.turn-card-rows {
+		margin-top: 0.25rem;
+		border-left: 1px solid hsl(var(--border));
+		padding-left: 0.5rem;
+	}
+
+	.turn-card-more {
+		margin-top: 0.25rem;
+		color: hsl(var(--muted-foreground));
+		font-size: 0.62rem;
+		font-weight: 600;
+	}
+
+	.turn-card-more:hover {
+		color: hsl(var(--foreground));
+	}
+
 	.tool-trail {
 		margin: 0.125rem 0 0.25rem 0.3rem;
 		padding-left: 0.6rem;

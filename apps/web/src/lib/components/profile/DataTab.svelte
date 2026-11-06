@@ -51,7 +51,7 @@
 	const EXPORT_POLL_MS = 5_000;
 	const W = RETENTION_WINDOWS;
 	const manageLinkClass =
-		'inline-flex min-h-[44px] items-center rounded-md px-2 text-xs font-semibold text-accent underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+		'inline-flex min-h-[44px] items-center rounded-lg px-2 text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
 	let summary = $state.raw<DataSummary | null>(null);
 	let exportView = $state.raw<UserDataExportView | null>(null);
@@ -259,15 +259,15 @@
 		<div aria-live="polite">
 			{#if exportActive}
 				<div
-					class="flex items-start gap-3 rounded-lg border border-border bg-card p-3 sm:p-4 shadow-ink tx tx-grain tx-weak"
+					class="flex items-start gap-3 rounded-xl border border-border bg-card p-4 tx tx-grain tx-weak"
 					role="status"
 				>
 					<LoaderCircle
-						class="mt-0.5 h-4 w-4 flex-shrink-0 animate-spin text-accent motion-reduce:animate-none"
+						class="mt-0.5 h-4 w-4 flex-shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none"
 						aria-hidden="true"
 					/>
 					<div class="min-w-0">
-						<p class="text-sm font-semibold text-foreground">
+						<p class="text-sm font-medium text-foreground">
 							{exportView.status === 'queued'
 								? 'Your export is in line…'
 								: 'Packing your data…'}
@@ -279,16 +279,14 @@
 					</div>
 				</div>
 			{:else if exportView.status === 'ready'}
-				<div
-					class="rounded-lg border border-success/30 bg-success/10 p-3 sm:p-4 shadow-ink tx tx-grain tx-weak"
-				>
+				<div class="rounded-xl border border-border bg-card p-4 tx tx-grain tx-weak">
 					<div class="flex items-start gap-3">
 						<CircleCheck
 							class="mt-0.5 h-4 w-4 flex-shrink-0 text-success"
 							aria-hidden="true"
 						/>
 						<div class="min-w-0 flex-1">
-							<p class="text-sm font-semibold text-foreground">
+							<p class="text-sm font-medium text-foreground">
 								Your export is ready{exportView.byteSize !== null
 									? ` · ${formatBytes(exportView.byteSize)}`
 									: ''}
@@ -307,7 +305,7 @@
 										href={path}
 										data-sveltekit-reload
 										rel="nofollow"
-										class="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground shadow-ink pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										class="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground pressable hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 									>
 										<Download class="h-4 w-4" aria-hidden="true" />
 										{exportView.downloadPaths.length > 1
@@ -321,7 +319,7 @@
 				</div>
 			{:else if exportView.status === 'failed'}
 				<div
-					class="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 sm:p-4 shadow-ink tx tx-static tx-weak"
+					class="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 tx tx-static tx-weak"
 				>
 					<AlertCircle
 						class="mt-0.5 h-4 w-4 flex-shrink-0 text-destructive"
@@ -341,24 +339,24 @@
 
 	{#if loading}
 		<div
-			class="flex min-h-48 items-center justify-center rounded-lg border border-border bg-card p-6 text-center shadow-ink"
+			class="flex min-h-48 items-center justify-center rounded-xl border border-border bg-card p-6 text-center"
 			role="status"
 			aria-live="polite"
 		>
 			<div>
 				<RefreshCw
-					class="mx-auto h-6 w-6 animate-spin text-accent motion-reduce:animate-none"
+					class="mx-auto h-5 w-5 animate-spin text-muted-foreground motion-reduce:animate-none"
 					aria-hidden="true"
 				/>
-				<p class="mt-3 text-sm font-medium text-foreground">Counting your data…</p>
+				<p class="mt-3 text-sm text-muted-foreground">Counting your data…</p>
 			</div>
 		</div>
 	{:else if loadError || !summary}
 		<div
-			class="rounded-lg border border-destructive/30 bg-destructive/10 p-5 text-center shadow-ink tx tx-static tx-weak"
+			class="rounded-xl border border-destructive/30 bg-destructive/10 p-6 text-center tx tx-static tx-weak"
 		>
 			<AlertCircle class="mx-auto h-6 w-6 text-destructive" aria-hidden="true" />
-			<p class="mt-2 text-sm font-semibold text-foreground">{loadError}</p>
+			<p class="mt-2 text-sm font-medium text-foreground">{loadError}</p>
 			<Button class="mt-4" variant="outline" size="sm" icon={RefreshCw} onclick={loadPanel}>
 				Retry
 			</Button>
@@ -369,17 +367,17 @@
 
 		<!-- What BuildOS keeps -->
 		<section
-			class="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-ink tx tx-frame tx-weak"
+			class="rounded-xl border border-border bg-card p-4 sm:p-6 tx tx-frame tx-weak"
 			aria-labelledby="data-keeps-heading"
 		>
 			<div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-				<h3 id="data-keeps-heading" class="micro-label font-semibold text-accent">
+				<h3 id="data-keeps-heading" class="text-sm font-medium text-foreground">
 					What BuildOS keeps
 				</h3>
-				<p class="text-xs text-muted-foreground">Yours until you delete it.</p>
+				<p class="text-xs text-muted-foreground">Yours until you delete it</p>
 			</div>
 			<ul class="mt-3 space-y-2 text-sm text-foreground">
-				<li class="flex items-start gap-2.5">
+				<li class="flex items-start gap-2">
 					<FolderKanban
 						class="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground"
 						aria-hidden="true"
@@ -392,7 +390,7 @@
 						)} · {plural(workspace.tasks, 'task', 'tasks')}
 					</span>
 				</li>
-				<li class="flex items-start gap-2.5">
+				<li class="flex items-start gap-2">
 					<MessageSquare
 						class="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground"
 						aria-hidden="true"
@@ -405,7 +403,7 @@
 						)}
 					</span>
 				</li>
-				<li class="flex items-start gap-2.5">
+				<li class="flex items-start gap-2">
 					<Mic
 						class="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground"
 						aria-hidden="true"
@@ -415,7 +413,7 @@
 						<span class="text-muted-foreground">(audio + transcript)</span>
 					</span>
 				</li>
-				<li class="flex items-start gap-2.5">
+				<li class="flex items-start gap-2">
 					<Coffee
 						class="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground"
 						aria-hidden="true"
@@ -423,7 +421,7 @@
 					<span>{plural(workspace.dailyBriefs, 'daily brief', 'daily briefs')}</span>
 				</li>
 				{#if workspace.uploads > 0}
-					<li class="flex items-start gap-2.5">
+					<li class="flex items-start gap-2">
 						<Image
 							class="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground"
 							aria-hidden="true"
@@ -441,15 +439,15 @@
 
 		<!-- What BuildOS reads but doesn't keep -->
 		<section
-			class="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-ink tx tx-thread tx-weak"
+			class="rounded-xl border border-border bg-card p-4 sm:p-6 tx tx-thread tx-weak"
 			aria-labelledby="data-reads-heading"
 		>
-			<h3 id="data-reads-heading" class="micro-label font-semibold text-accent">
+			<h3 id="data-reads-heading" class="text-sm font-medium text-foreground">
 				What BuildOS reads but doesn’t keep
 			</h3>
 			<dl class="mt-3 space-y-3 text-sm">
 				<div class="grid gap-1 sm:grid-cols-[7rem_minmax(0,1fr)] sm:gap-3">
-					<dt class="flex items-center gap-2 font-semibold text-foreground">
+					<dt class="flex items-center gap-2 font-medium text-foreground">
 						<Mail class="h-4 w-4 text-muted-foreground" aria-hidden="true" />Gmail
 					</dt>
 					<dd class="text-muted-foreground">
@@ -465,7 +463,7 @@
 					</dd>
 				</div>
 				<div class="grid gap-1 sm:grid-cols-[7rem_minmax(0,1fr)] sm:gap-3">
-					<dt class="flex items-center gap-2 font-semibold text-foreground">
+					<dt class="flex items-center gap-2 font-medium text-foreground">
 						<Calendar
 							class="h-4 w-4 text-muted-foreground"
 							aria-hidden="true"
@@ -484,7 +482,7 @@
 					</dd>
 				</div>
 				<div class="grid gap-1 sm:grid-cols-[7rem_minmax(0,1fr)] sm:gap-3">
-					<dt class="flex items-center gap-2 font-semibold text-foreground">
+					<dt class="flex items-center gap-2 font-medium text-foreground">
 						<Globe class="h-4 w-4 text-muted-foreground" aria-hidden="true" />Web pages
 					</dt>
 					<dd class="text-muted-foreground">
@@ -501,14 +499,14 @@
 		</section>
 
 		<!-- Short-lived traces -->
-		<section class="wt-ghost p-4 sm:p-5" aria-labelledby="data-traces-heading">
+		<section class="wt-ghost p-4 sm:p-6" aria-labelledby="data-traces-heading">
 			<div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-				<h3 id="data-traces-heading" class="micro-label font-semibold text-accent">
+				<h3 id="data-traces-heading" class="text-sm font-medium text-foreground">
 					Short-lived traces
 				</h3>
-				<p class="text-xs text-muted-foreground">Deleted automatically.</p>
+				<p class="text-xs text-muted-foreground">Deleted automatically</p>
 			</div>
-			<ul class="mt-3 space-y-2.5 text-sm">
+			<ul class="mt-3 space-y-3 text-sm">
 				{#each traceRows as trace (trace.one)}
 					<li class="flex items-start justify-between gap-3">
 						<div class="min-w-0">
@@ -518,7 +516,7 @@
 							<p class="text-xs text-muted-foreground">{trace.detail}</p>
 						</div>
 						<span
-							class="flex-shrink-0 rounded-full border border-border bg-muted px-2 py-0.5 text-2xs font-medium text-muted-foreground"
+							class="flex-shrink-0 font-mono text-xs tabular-nums text-muted-foreground"
 						>
 							{trace.window}
 						</span>
@@ -528,12 +526,10 @@
 		</section>
 
 		<!-- AI -->
-		<div
-			class="flex items-start gap-3 rounded-lg border border-info/30 bg-info/10 p-3 sm:p-4 shadow-ink"
-		>
-			<Cpu class="mt-0.5 h-4 w-4 flex-shrink-0 text-info" aria-hidden="true" />
+		<div class="flex items-start gap-3 rounded-xl border border-border bg-card p-4">
+			<Cpu class="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
 			<div class="min-w-0 text-sm">
-				<p class="font-semibold text-foreground">
+				<p class="font-medium text-foreground">
 					AI: every model call is zero-retention, except voice.
 				</p>
 				<p class="mt-0.5 text-xs leading-relaxed text-muted-foreground">
@@ -546,14 +542,14 @@
 
 		<!-- Connected -->
 		<section
-			class="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-ink"
+			class="rounded-xl border border-border bg-card p-4 sm:p-6"
 			aria-labelledby="data-connected-heading"
 		>
-			<h3 id="data-connected-heading" class="micro-label font-semibold text-accent">
+			<h3 id="data-connected-heading" class="text-sm font-medium text-foreground">
 				Connected
 			</h3>
 			<ul class="mt-2 divide-y divide-border text-sm">
-				<li class="flex items-center justify-between gap-3 py-1.5">
+				<li class="flex items-center justify-between gap-3 py-2">
 					<span class="flex min-w-0 items-center gap-2">
 						<Mail
 							class="h-4 w-4 flex-shrink-0 text-muted-foreground"
@@ -572,7 +568,7 @@
 					</span>
 					<a href="/profile?tab=email" class={manageLinkClass}>Manage</a>
 				</li>
-				<li class="flex items-center justify-between gap-3 py-1.5">
+				<li class="flex items-center justify-between gap-3 py-2">
 					<span class="flex min-w-0 items-center gap-2">
 						<Calendar
 							class="h-4 w-4 flex-shrink-0 text-muted-foreground"
@@ -590,7 +586,7 @@
 					<a href="/profile?tab=calendar" class={manageLinkClass}>Manage</a>
 				</li>
 				{#each connections.agents as agent (agent.id)}
-					<li class="flex items-center justify-between gap-3 py-1.5">
+					<li class="flex items-center justify-between gap-3 py-2">
 						<span class="flex min-w-0 items-center gap-2">
 							<Bot
 								class="h-4 w-4 flex-shrink-0 text-muted-foreground"
@@ -608,7 +604,7 @@
 						<a href="/profile?tab=people#agents" class={manageLinkClass}>Manage</a>
 					</li>
 				{:else}
-					<li class="flex items-center justify-between gap-3 py-1.5">
+					<li class="flex items-center justify-between gap-3 py-2">
 						<span class="flex min-w-0 items-center gap-2">
 							<Bot
 								class="h-4 w-4 flex-shrink-0 text-muted-foreground"
@@ -624,11 +620,11 @@
 
 		<!-- Delete -->
 		<div
-			class="flex flex-col gap-3 rounded-lg border border-destructive/30 bg-card p-4 sm:flex-row sm:items-center sm:p-5 shadow-ink tx tx-static tx-weak"
+			class="flex flex-col gap-3 rounded-xl border border-destructive/30 bg-card p-4 sm:flex-row sm:items-center sm:p-6 tx tx-static tx-weak"
 		>
 			<a
 				href="/profile?section=delete"
-				class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-destructive px-3 text-sm font-semibold text-destructive shadow-ink pressable hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
+				class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-destructive/40 px-3 text-sm font-medium text-destructive pressable hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
 			>
 				<Trash2 class="h-4 w-4" aria-hidden="true" />
 				Delete my account

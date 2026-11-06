@@ -16262,6 +16262,7 @@ export type Database = {
           created_by: string
           deleted_at: string | null
           description: string | null
+          digest: Json | null
           id: string
           outline: Json | null
           project_id: string
@@ -16281,6 +16282,7 @@ export type Database = {
           created_by: string
           deleted_at?: string | null
           description?: string | null
+          digest?: Json | null
           id?: string
           outline?: Json | null
           project_id: string
@@ -16300,6 +16302,7 @@ export type Database = {
           created_by?: string
           deleted_at?: string | null
           description?: string | null
+          digest?: Json | null
           id?: string
           outline?: Json | null
           project_id?: string

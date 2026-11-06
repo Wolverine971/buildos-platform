@@ -65,6 +65,11 @@ export interface LastTurnContext {
 	data_accessed: string[];
 	/** Prior partial cleanup scope and receipts. Recall only, never write authority. */
 	cleanup?: Json;
+	/**
+	 * Project chat: what this turn used, as pointers (ids, section anchors, versions), so the
+	 * next turn starts with it loaded (tasker 153). Read with `readTurnWorkingSetV1`.
+	 */
+	working_set?: Json;
 
 	// Strategy used in last turn
 	strategy_used?: 'planner_stream' | 'ask_clarifying_questions' | 'project_creation';

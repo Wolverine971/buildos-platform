@@ -15,15 +15,45 @@ export const GROK_47_MODEL = 'x-ai/grok-4.7' as const;
 export const DEEPSEEK_V4_FLASH_MODEL = 'deepseek/deepseek-v4-flash' as const;
 export const DEEPSEEK_V41_FLASH_MODEL = 'deepseek/deepseek-v4.1-flash' as const;
 /**
- * V4 Flash hosts on OpenRouter's /endpoints/zdr list (2026-09-24), fastest
- * measured first. Every request already requires ZDR; a non-ZDR host in an
- * `order` would only be a dead preference.
+ * V4 Flash hosts on OpenRouter's /endpoints/zdr list, fastest measured first.
+ * Every request already requires ZDR; a non-ZDR host in an `order` would only be
+ * a dead preference. A fixed order also keeps a turn's rounds on one host, so
+ * rounds 2+ hit its prompt cache (54-89% cached vs 0 when rounds hop hosts).
+ *
+ * 2026-11-05 (tasker 151), 30 days of our V4 Flash calls in `llm_usage_logs`,
+ * output tok/s p50 / p10 on calls with >=200 output tokens:
+ *   Relace 133 / 65 (fp4; cheapest input $0.045/M, $0.45/M out)
+ *   Parasail 74 / 40 ($0.14 / $0.28)
+ *   DeepInfra 38 / 26 ($0.09 / $0.18; cheapest overall)
+ *   Fireworks: no calls yet ($0.105 / $0.21). Added unmeasured because it is the
+ *     only ZDR host here besides Venice that serves `tool_choice: none`; recheck
+ *     its tok/s after a week of traffic.
+ *   Venice 30 / 20 (slow; last resort). DigitalOcean 26 / 16: ignored, see below.
+ * Dropped: NextBit (last served 2026-09-27) and Open Inference (2026-10-19) no
+ * longer list V4 Flash at all. Novita (104 / 74) and Crusoe (203 / 110) were fast
+ * but no longer list V4 Flash either; re-add them if they come back on the ZDR list.
+ * `tool_choice: none` is served only by Fireworks, Venice, SiliconFlow, Wafer and
+ * Azure, so a tool-free pass that sends it skips Relace/Parasail/DeepInfra.
  */
 export const DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER: readonly string[] = Object.freeze([
+	'relace',
+	'parasail',
 	'deepinfra',
-	'nextbit',
-	'open-inference',
-	'parasail'
+	'fireworks',
+	'venice'
+]);
+/**
+ * ZDR V4 Flash hosts we never want, even as a fallback (2026-11-05):
+ * SiliconFlow's slowest tenth runs at 15-25 tok/s (31 s decide rounds in the lab);
+ * Mancer has no prompt cache and was a 2026-08 timeout host; Wafer charges $0.60/M
+ * input (13x Relace) and its continuations missed the cache in QA. DigitalOcean
+ * was a 2026-08-22 project-loop timeout host and is the slowest left (16 tok/s p10).
+ */
+export const DEEPSEEK_V4_FLASH_ZDR_PROVIDER_IGNORE: readonly string[] = Object.freeze([
+	'siliconflow',
+	'mancer',
+	'wafer',
+	'digitalocean'
 ]);
 export const DEEPSEEK_V4_PRO_MODEL = 'deepseek/deepseek-v4-pro' as const;
 export const MINIMAX_M3_MODEL = 'minimax/minimax-m3' as const;

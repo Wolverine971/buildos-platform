@@ -10,6 +10,7 @@
 import type { Database, Json } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ensureWorkspaceProjectId } from '@buildos/shared-agent-ops/ontology/ontology-projects.service';
+import { documentCard } from '@buildos/shared-agent-ops/utils/document-card';
 import { instantiateProject } from '$lib/services/ontology/instantiation.service';
 import { addDocumentToTree } from '$lib/services/ontology/doc-structure.service';
 import {
@@ -36,6 +37,8 @@ import {
 	NOTE_TYPE_KEY,
 	excerptOf,
 	noteTitleFromText,
+	AUTO_FILE_CONFIDENCE,
+	type AutoFiled,
 	type LooseEntity,
 	type LooseItem,
 	type WorkspaceHome,
@@ -48,6 +51,8 @@ type Client = SupabaseClient<Database>;
 const LOOSE_DOC_LIMIT = 120;
 const LOOSE_TASK_LIMIT = 120;
 const SUGGESTION_LIMIT = 24;
+/** Topic chips on a loose doc card. */
+const LOOSE_CARD_TOPICS = 3;
 /** A graduated project takes at most this many items in one step (Organize's batch cap
  * is 200 moves including nested docs). */
 export const GRADUATE_MAX_ITEMS = 60;
@@ -74,11 +79,19 @@ type DocRow = {
 	id: string;
 	title: string | null;
 	type_key: string | null;
-	content: string | null;
+	/** Only when already in hand (capture) or read for a short note; never bulk-loaded. */
+	content?: string | null;
 	description: string | null;
+	digest?: unknown;
+	outline?: unknown;
+	content_hash?: string | null;
 	created_at: string;
 	updated_at: string;
 };
+
+/** The Workspace list reads cards, not bodies (tasker 152). */
+const LOOSE_DOC_COLUMNS =
+	'id, title, type_key, description, digest, outline, content_hash, created_at, updated_at';
 type TaskRow = {
 	id: string;
 	title: string;
@@ -119,17 +132,32 @@ export function treeFacts(structure: unknown): {
 	return { nested, children };
 }
 
+/** True when a doc's card has no line of its own yet (no description, no fresh summary):
+ * its text is read, which for a loose note is short. */
+function looseDocNeedsText(row: DocRow): boolean {
+	return !documentCard(row).summary;
+}
+
+/**
+ * A loose doc as a card: a short note shows its own text; otherwise the description or AI
+ * summary plus its headings as topics. A long doc that has no summary yet shows its opening
+ * paragraph until the summary sweep writes one (a few minutes after it goes quiet).
+ */
 export function toLooseDoc(row: DocRow, children = 0): LooseItem {
 	const title = row.title?.trim() || 'Untitled note';
 	const isNote = row.type_key === NOTE_TYPE_KEY;
+	const card = documentCard({ ...row, content: row.content ?? null });
+	const opening = row.content?.trim().split(/\n\s*\n/)[0] ?? null;
+	const topics = card.topics.slice(0, LOOSE_CARD_TOPICS);
 	return {
 		id: row.id,
 		entity: 'document',
 		kind: isNote ? 'note' : 'doc',
 		title,
-		excerpt: excerptOf(row.content ?? row.description, title),
+		excerpt: excerptOf(card.text ?? card.summary ?? opening, title),
 		created_at: row.created_at,
 		updated_at: row.updated_at,
+		...(topics.length ? { topics } : {}),
 		...(children ? { children } : {})
 	};
 }
@@ -187,9 +215,7 @@ export async function loadWorkspaceHome(
 		session.from('onto_projects').select('doc_structure').eq('id', workspaceId).maybeSingle(),
 		session
 			.from('onto_documents')
-			.select('id, title, type_key, content, description, created_at, updated_at', {
-				count: 'exact'
-			})
+			.select(LOOSE_DOC_COLUMNS, { count: 'exact' })
 			.eq('project_id', workspaceId)
 			.is('deleted_at', null)
 			.is('archived_at', null)
@@ -220,9 +246,20 @@ export async function loadWorkspaceHome(
 
 	const { nested, children } = treeFacts(project.data?.doc_structure);
 	// A doc missing from the tree is shown at the top level, as the tree reader does.
-	const looseDocs = ((docs.data ?? []) as DocRow[])
-		.filter((row) => !nested.has(row.id))
-		.map((row) => toLooseDoc(row, children.get(row.id) ?? 0));
+	const looseRows = ((docs.data ?? []) as DocRow[]).filter((row) => !nested.has(row.id));
+	// Text only for cards with no line of their own (short notes, docs not yet summarized).
+	const needText = looseRows.filter(looseDocNeedsText).map((row) => row.id);
+	if (needText.length) {
+		const { data: texts, error: textError } = await session
+			.from('onto_documents')
+			.select('id, content')
+			.eq('project_id', workspaceId)
+			.in('id', needText);
+		if (textError) console.error('[Workspace] note text:', textError);
+		const byId = new Map((texts ?? []).map((row) => [row.id, row.content]));
+		for (const row of looseRows) if (byId.has(row.id)) row.content = byId.get(row.id) ?? null;
+	}
+	const looseDocs = looseRows.map((row) => toLooseDoc(row, children.get(row.id) ?? 0));
 	const looseTasks = ((tasks.data ?? []) as TaskRow[]).map(toLooseTask);
 
 	const items = [...looseDocs, ...looseTasks].sort(
@@ -744,6 +781,77 @@ export function suggestionProposal(row: SuggestionRow): {
 		type_key: typeof proposal?.type_key === 'string' ? proposal.type_key : null,
 		description: typeof proposal?.description === 'string' ? proposal.description : null
 	};
+}
+
+/**
+ * Carries out the agent's confident "file this into …" suggestions (confidence at least
+ * AUTO_FILE_CONFIDENCE) for notes and docs still loose in the Workspace, each as its own
+ * undoable Organize batch, as the person. Runs when they open their Workspace, so every move
+ * shows up with Undo (tasker 152). Tasks and new-project groups stay suggestions. A move that
+ * fails (edit access lost, item gone) leaves the suggestion open as a chip.
+ */
+export async function autoFileConfident(input: {
+	session: Client;
+	admin: Client;
+	userId: string;
+	workspaceId: string;
+}): Promise<AutoFiled[]> {
+	const { session, admin, userId, workspaceId } = input;
+	const { data, error } = await admin
+		.from('workspace_suggestions')
+		.select('*')
+		.eq('user_id', userId)
+		.eq('workspace_project_id', workspaceId)
+		.eq('status', 'open')
+		.eq('kind', 'file')
+		.gte('confidence', AUTO_FILE_CONFIDENCE)
+		.order('confidence', { ascending: false })
+		.limit(SUGGESTION_LIMIT);
+	if (error) throw new WorkspaceError('Could not load suggestions.', 500);
+	const filed: AutoFiled[] = [];
+	const moved = new Set<string>();
+	for (const row of (data ?? []) as SuggestionRow[]) {
+		const suggestion = toSuggestion(row);
+		if (!suggestion?.target_project_id || !suggestion.items.length) continue;
+		if (suggestion.items.some((ref) => ref.entity !== 'document' || moved.has(ref.id)))
+			continue;
+		const ids = suggestion.items.map((ref) => ref.id);
+		// Only items still loose here: a stale suggestion never moves anything.
+		const { data: docs } = await session
+			.from('onto_documents')
+			.select('id, title')
+			.eq('project_id', workspaceId)
+			.is('deleted_at', null)
+			.in('id', ids);
+		if ((docs ?? []).length !== ids.length) continue;
+		try {
+			const receipt = await moveItems({
+				session,
+				admin,
+				userId,
+				sourceId: workspaceId,
+				destinationId: suggestion.target_project_id,
+				items: suggestion.items
+			});
+			await markSuggestion(admin, userId, row.id, 'accepted', {
+				project_id: suggestion.target_project_id,
+				batch_id: receipt.batch_id,
+				moved: receipt.moved,
+				auto: true
+			});
+			for (const id of ids) moved.add(id);
+			filed.push({
+				suggestion_id: row.id,
+				project_id: suggestion.target_project_id,
+				batch_id: receipt.batch_id,
+				item_ids: ids,
+				titles: (docs ?? []).map((doc) => doc.title?.trim() || 'Untitled note')
+			});
+		} catch (err) {
+			console.warn('[Workspace] auto-file skipped a suggestion:', row.id, err);
+		}
+	}
+	return filed;
 }
 
 /** Queue a fresh look now (the person asked). One pending run per person. */

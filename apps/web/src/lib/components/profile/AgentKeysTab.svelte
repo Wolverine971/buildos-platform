@@ -6,6 +6,7 @@
 	import { page } from '$app/state';
 	import {
 		Activity,
+		AlertTriangle,
 		BarChart3,
 		ChevronDown,
 		ChevronRight,
@@ -17,7 +18,7 @@
 		RefreshCw,
 		ShieldCheck,
 		Trash2
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import type {
 		BuildosAgentAllowedOp,
 		BuildosAgentAvailableProject,
@@ -36,7 +37,6 @@
 		BUILDOS_AGENT_WRITE_OPS,
 		OPENCLAW_DEFAULT_WRITE_OPS
 	} from '@buildos/shared-types';
-	import Badge from '$lib/components/ui/Badge.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -1236,17 +1236,34 @@
 		}
 	}
 
-	function statusVariant(status: string): 'success' | 'warning' | 'error' {
-		if (status === 'trusted') return 'success';
-		if (status === 'pending') return 'warning';
-		return 'error';
+	/** Display-only: turn a structured key like `read_write` into "Read write". */
+	function humanizeKey(value: string): string {
+		const text = value.replace(/[_.-]+/g, ' ').trim();
+		return text ? text.charAt(0).toUpperCase() + text.slice(1) : value;
 	}
 
-	function activityStatusVariant(status: string): 'success' | 'warning' | 'error' | 'info' {
-		if (status === 'succeeded') return 'success';
-		if (status === 'pending') return 'warning';
-		if (status === 'failed') return 'error';
-		return 'info';
+	function statusLabel(status: string): string {
+		if (status === 'trusted') return 'Active';
+		return humanizeKey(status);
+	}
+
+	function statusDotClass(status: string): string {
+		if (status === 'trusted') return 'bg-success';
+		if (status === 'pending') return 'bg-warning';
+		if (status === 'revoked') return 'bg-muted-foreground/50';
+		return 'bg-destructive';
+	}
+
+	function activityStatusDotClass(status: string): string {
+		if (status === 'failed') return 'bg-destructive';
+		if (status === 'pending') return 'bg-warning';
+		return 'bg-muted-foreground/50';
+	}
+
+	function opLabel(op: string): string {
+		return (
+			WRITE_PERMISSION_OPTIONS.find((option) => option.op === op)?.label ?? humanizeKey(op)
+		);
 	}
 
 	function usageTrend(caller: BuildosAgentCallerSummary, period: BuildosAgentUsagePeriod) {
@@ -1300,11 +1317,14 @@
 	function eventMetaLabel(event: BuildosAgentUsageEvent): string {
 		const parts = [
 			event.project_name,
-			event.entity_kind,
-			event.op,
+			event.op
+				? opLabel(event.op)
+				: event.entity_kind
+					? humanizeKey(event.entity_kind)
+					: null,
 			formatRelativeTimestamp(event.occurred_at)
 		].filter(Boolean);
-		return parts.join(' | ');
+		return parts.join(' · ');
 	}
 
 	function openUsageDetail(caller: BuildosAgentCallerSummary) {
@@ -1315,11 +1335,8 @@
 <div class="space-y-4 sm:space-y-5">
 	<div class="flex flex-wrap items-start gap-3">
 		<div class="min-w-0 flex-1">
-			<h3 class="flex items-center gap-2 text-sm font-semibold text-foreground sm:text-base">
-				<Key class="h-4 w-4 text-accent" aria-hidden="true" />
-				Agents
-			</h3>
-			<p class="mt-0.5 text-xs text-muted-foreground">
+			<h3 class="text-sm font-medium text-foreground sm:text-base">Agents</h3>
+			<p class="mt-1 text-xs text-muted-foreground">
 				Your connections, what each one reaches, and what it can do there. One key per tool;
 				rotate or revoke any time.
 			</p>
@@ -1341,18 +1358,16 @@
 	</div>
 
 	{#snippet setupGuide()}
-		<div class="overflow-hidden rounded-lg border border-border bg-card shadow-ink">
+		<div class="overflow-hidden rounded-xl border border-border bg-card">
 			<div
 				class="flex flex-col gap-3 border-b border-border px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5"
 			>
 				<div class="space-y-1">
-					<h3 class="text-sm font-semibold text-foreground">
-						Connect an agent to BuildOS
-					</h3>
+					<h3 class="text-sm font-medium text-foreground">Connect an agent to BuildOS</h3>
 					<p class="max-w-3xl text-xs leading-relaxed text-muted-foreground sm:text-sm">
-						Generate a BuildOS Agent Key, store it in the client config, then
+						Generate a BuildOS agent key, store it in the client config, then
 						authenticate with
-						<code class="rounded-md bg-muted px-1 py-0.5 text-xs text-foreground"
+						<code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground"
 							>Authorization: Bearer &lt;BUILDOS_AGENT_TOKEN&gt;</code
 						>. Use one key per tool so you can rotate or revoke access without touching
 						other agents.
@@ -1360,7 +1375,7 @@
 				</div>
 				<a
 					href="/docs/connect-agents"
-					class="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-accent rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+					class="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 				>
 					Full setup docs
 					<ExternalLink class="h-3.5 w-3.5" />
@@ -1371,15 +1386,13 @@
 				class="grid divide-y divide-border text-xs text-muted-foreground lg:grid-cols-3 lg:divide-x lg:divide-y-0"
 			>
 				<div class="space-y-2 px-4 py-4 sm:px-5">
-					<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
-						Claude Code
-					</div>
+					<div class="text-sm font-medium text-foreground">Claude Code</div>
 					<p class="leading-relaxed">
 						Add BuildOS as an HTTP MCP server. After generating a key, the confirmation
 						modal can copy this command with the key filled in.
 					</p>
 					<pre
-						class="overflow-x-auto rounded-md border border-border bg-muted/30 p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+						class="overflow-x-auto rounded-lg border border-border bg-muted/30 p-3 text-xs text-foreground whitespace-pre-wrap"><code
 							>{claudeCodeAuthSnippet()}</code
 						></pre>
 					<div class="flex justify-end">
@@ -1400,15 +1413,13 @@
 				</div>
 
 				<div class="space-y-2 px-4 py-4 sm:px-5">
-					<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
-						OpenClaw
-					</div>
+					<div class="text-sm font-medium text-foreground">OpenClaw</div>
 					<p class="leading-relaxed">
 						Store the BuildOS values in OpenClaw env, SecretRef, or plugin config. The
 						connector uses the token against the MCP endpoint or JSON-RPC gateway.
 					</p>
 					<pre
-						class="overflow-x-auto rounded-md border border-border bg-muted/30 p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+						class="overflow-x-auto rounded-lg border border-border bg-muted/30 p-3 text-xs text-foreground whitespace-pre-wrap"><code
 							>{openClawAuthSnippet()}</code
 						></pre>
 					<div class="flex justify-end">
@@ -1429,16 +1440,14 @@
 				</div>
 
 				<div class="space-y-2 px-4 py-4 sm:px-5">
-					<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
-						Browser or remote clients
-					</div>
+					<div class="text-sm font-medium text-foreground">Browser or remote clients</div>
 					<p class="leading-relaxed">
 						Use OAuth for Claude.ai, ChatGPT MCP, or other cloud-hosted clients. Add the
 						remote connector URL and approve BuildOS in the browser instead of pasting a
 						bearer token into chat.
 					</p>
 					<pre
-						class="overflow-x-auto rounded-md border border-border bg-muted/30 p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+						class="overflow-x-auto rounded-lg border border-border bg-muted/30 p-3 text-xs text-foreground whitespace-pre-wrap"><code
 							>{mcpEndpointUrl()}</code
 						></pre>
 					<div class="flex justify-end">
@@ -1462,7 +1471,7 @@
 			<div class="border-t border-border px-4 py-3 text-xs text-muted-foreground sm:px-5">
 				<span class="font-medium text-foreground">Connection check:</span>
 				Ask the agent to connect to BuildOS, list your projects, and call
-				<code class="rounded-md bg-muted px-1 py-0.5 text-xs text-foreground"
+				<code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground"
 					>get_onto_project_status</code
 				>
 				before changing an existing project.
@@ -1470,16 +1479,11 @@
 		</div>
 
 		<!-- What is this? -->
-		<details
-			class="group tx tx-bloom tx-weak overflow-hidden rounded-lg border border-border bg-card shadow-ink"
-		>
+		<details class="group overflow-hidden rounded-xl border border-border bg-card">
 			<summary
-				class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 sm:px-5 py-3 text-sm font-semibold text-foreground hover:bg-muted/30"
+				class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 sm:px-5 py-3 text-sm font-medium text-foreground hover:bg-muted/50"
 			>
-				<span class="flex items-center gap-2">
-					<Key class="w-4 h-4 text-accent" />
-					What is this?
-				</span>
+				<span>What is this?</span>
 				<ChevronDown
 					class="h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none group-open:rotate-180"
 				/>
@@ -1488,36 +1492,28 @@
 				class="grid gap-3 border-t border-border px-4 sm:px-5 py-4 sm:grid-cols-2 text-xs sm:text-sm text-muted-foreground"
 			>
 				<div>
-					<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
-						What
-					</div>
+					<div class="font-medium text-foreground">What</div>
 					<p class="mt-1 leading-relaxed">
 						A scoped read/write connection between BuildOS and any AI tool that can call
 						HTTP.
 					</p>
 				</div>
 				<div>
-					<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
-						Why
-					</div>
+					<div class="font-medium text-foreground">Why</div>
 					<p class="mt-1 leading-relaxed">
 						Your projects live in BuildOS. Your AI tools should read off the same sheet
 						of paper instead of starting from zero each session.
 					</p>
 				</div>
 				<div>
-					<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
-						How
-					</div>
+					<div class="font-medium text-foreground">How</div>
 					<p class="mt-1 leading-relaxed">
 						Generate a key, paste it into your tool's config, then tell the agent
 						"connect to BuildOS, list my projects."
 					</p>
 				</div>
 				<div>
-					<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
-						Safety
-					</div>
+					<div class="font-medium text-foreground">Safety</div>
 					<p class="mt-1 leading-relaxed">
 						Per-project scope. Per-op write whitelist. Audit log. Rotate or revoke any
 						time. BuildOS stores only a hash; the full key is shown once on generate.
@@ -1527,9 +1523,9 @@
 		</details>
 	{/snippet}
 	{#if callers.length > 0}
-		<details class="group rounded-lg border border-border bg-card shadow-ink">
+		<details class="group rounded-xl border border-border bg-card">
 			<summary
-				class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-foreground hover:bg-muted/30 sm:px-5"
+				class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/50 sm:px-5"
 			>
 				How to connect another agent
 				<ChevronDown
@@ -1547,20 +1543,12 @@
 	<!-- Agent Handle -->
 	{#if buildosAgent}
 		<div
-			class="flex flex-col gap-2 rounded-lg border border-border bg-card px-3 py-2.5 shadow-ink sm:flex-row sm:items-center sm:justify-between"
+			class="flex flex-col gap-2 rounded-xl border border-border bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
 		>
-			<div class="flex min-w-0 items-center gap-2.5">
-				<div
-					class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
-				>
-					<Key class="h-3.5 w-3.5" />
-				</div>
+			<div class="flex min-w-0 items-center gap-3">
+				<Key class="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
 				<div class="min-w-0">
-					<div
-						class="text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
-					>
-						Your agent handle
-					</div>
+					<div class="text-xs text-muted-foreground">Your agent handle</div>
 					<code class="block truncate text-xs text-foreground">{buildosAgent.handle}</code
 					>
 				</div>
@@ -1579,24 +1567,24 @@
 
 	<!-- Connected Agents -->
 	<SettingsCard
-		title="Connected Agents"
+		title="Connected agents"
 		icon={Key}
 		labelledById="connected-agents-heading"
 		bodyClass="space-y-3"
 	>
 		{#snippet actions()}
-			<Badge variant="info">
+			<span class="font-mono text-xs tabular-nums text-muted-foreground">
 				{callers.length} key{callers.length === 1 ? '' : 's'}
-			</Badge>
+			</span>
 		{/snippet}
 		<div
-			class="flex items-start gap-2.5 rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground"
+			class="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground"
 		>
-			<ShieldCheck class="mt-0.5 h-4 w-4 shrink-0 text-foreground/60" />
+			<ShieldCheck class="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
 			<p>
 				<span class="font-medium text-foreground">Need the full key?</span>
-				For security, BuildOS stores only a hash. Use Rotate + Copy to reissue the key, then
-				copy the full BuildOS Agent Key from the confirmation modal.
+				For security, BuildOS stores only a hash. Use Rotate and copy to reissue the key, then
+				copy the full key from the confirmation window.
 			</p>
 		</div>
 
@@ -1604,15 +1592,11 @@
 			<div
 				class="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground text-center"
 			>
-				Loading...
+				Loading
 			</div>
 		{:else if callers.length === 0}
-			<div class="rounded-lg border border-dashed border-border bg-muted/20 p-8 text-center">
-				<div
-					class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card shadow-ink"
-				>
-					<Key class="h-5 w-5 text-muted-foreground" />
-				</div>
+			<div class="rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center">
+				<Key class="mx-auto mb-3 h-5 w-5 text-muted-foreground" aria-hidden="true" />
 				<p class="mx-auto max-w-md text-sm text-muted-foreground">
 					No agents connected yet. Generate a key for the AI tool you use most — Claude
 					Code, Codex, ChatGPT, OpenClaw, Cursor, or anything that can call HTTP.
@@ -1626,29 +1610,37 @@
 		{:else}
 			{#snippet callerRow(caller: BuildosAgentCallerSummary)}
 				<details
-					class="group min-w-0 overflow-hidden rounded-lg border border-border bg-muted/30"
+					class="group min-w-0 overflow-hidden rounded-xl border border-border bg-muted/30"
 				>
 					<summary class="list-none cursor-pointer p-3 sm:p-4">
 						<div
 							class="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
 						>
-							<div class="flex min-w-0 items-start gap-2.5">
+							<div class="flex min-w-0 items-start gap-3">
 								<ChevronDown
 									class="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none group-open:rotate-180"
 								/>
-								<div class="min-w-0 space-y-1.5">
-									<div class="flex flex-wrap items-center gap-2">
+								<div class="min-w-0 space-y-1">
+									<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
 										<h4
-											class="min-w-0 max-w-full break-words text-sm font-semibold text-foreground"
+											class="min-w-0 max-w-full break-words text-sm font-medium text-foreground"
 										>
 											{installationDisplayName(caller)}
 										</h4>
-										<Badge variant={statusVariant(caller.status)}>
-											{caller.status}
-										</Badge>
-										<Badge variant="default">
+										<span
+											class="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+										>
+											<span
+												class="h-1.5 w-1.5 shrink-0 rounded-full {statusDotClass(
+													caller.status
+												)}"
+												aria-hidden="true"
+											></span>
+											{statusLabel(caller.status)}
+										</span>
+										<span class="text-xs text-muted-foreground">
 											{displayProvider(caller.provider)}
-										</Badge>
+										</span>
 									</div>
 									<div
 										class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground"
@@ -1665,17 +1657,11 @@
 								</div>
 							</div>
 							<div
-								class="flex min-w-0 flex-wrap gap-1.5 sm:max-w-[48%] sm:justify-end"
+								class="flex min-w-0 flex-wrap gap-x-3 gap-y-1 font-mono text-xs tabular-nums text-muted-foreground sm:max-w-[48%] sm:justify-end"
 							>
-								<Badge variant="default" size="sm">
-									{recentSessionCount(caller, 'week')} sessions / 7d
-								</Badge>
-								<Badge variant="default" size="sm">
-									{recentWriteCount(caller, 'week')} writes / 7d
-								</Badge>
-								<Badge variant="default" size="sm">
-									{caller.usage?.project_count ?? 0} projects touched
-								</Badge>
+								<span>{recentSessionCount(caller, 'week')} sessions / 7d</span>
+								<span>{recentWriteCount(caller, 'week')} writes / 7d</span>
+								<span>{caller.usage?.project_count ?? 0} projects touched</span>
 							</div>
 						</div>
 					</summary>
@@ -1713,22 +1699,18 @@
 										: 'border-border-strong bg-muted'}"
 								>
 									<span
-										class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-background shadow-ink transition-transform motion-reduce:transition-none {caller.include_shared_projects
+										class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-background transition-transform motion-reduce:transition-none {caller.include_shared_projects
 											? 'translate-x-5'
 											: 'translate-x-0'}"
 									></span>
 								</button>
 							</div>
-							<div
-								class="rounded-lg border border-accent/40 bg-accent/5 p-3 space-y-2"
-							>
+							<div class="rounded-lg border border-border bg-card p-3 space-y-2">
 								<div
 									class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
 								>
 									<div>
-										<div
-											class="text-xs font-semibold uppercase tracking-wider text-foreground"
-										>
+										<div class="text-sm font-medium text-foreground">
 											{mcpQuickConnectForCaller(caller).label}
 										</div>
 										<p class="mt-1 text-xs text-muted-foreground">
@@ -1736,7 +1718,7 @@
 										</p>
 									</div>
 									<Button
-										variant="primary"
+										variant="outline"
 										size="sm"
 										icon={copiedId === `mcp-cmd-${caller.id}`
 											? CircleCheck
@@ -1753,7 +1735,7 @@
 									</Button>
 								</div>
 								<pre
-									class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+									class="overflow-x-auto rounded-lg border border-border bg-muted/30 p-3 text-xs text-foreground whitespace-pre-wrap"><code
 										>{mcpQuickConnectForCaller(caller).value}</code
 									></pre>
 							</div>
@@ -1778,7 +1760,7 @@
 									>
 										{copiedId === `agent-prompt-${caller.id}`
 											? 'Copied'
-											: 'Copy Prompt'}
+											: 'Copy prompt'}
 									</Button>
 								{/if}
 							{/if}
@@ -1802,8 +1784,8 @@
 									onclick={() => rotateAndShowKey(caller)}
 								>
 									{caller.status === 'revoked'
-										? 'Reissue + Copy'
-										: 'Rotate + Copy'}
+										? 'Reissue and copy'
+										: 'Rotate and copy'}
 								</Button>
 								<Button
 									variant="outline"
@@ -1813,7 +1795,7 @@
 									disabled={saving || rotatingCallerId !== null}
 									onclick={() => openEditModal(caller)}
 								>
-									{caller.status === 'revoked' ? 'Reissue Key' : 'Edit'}
+									{caller.status === 'revoked' ? 'Reissue key' : 'Edit'}
 								</Button>
 							{/if}
 							{#if isOAuthConnectorCaller(caller) && caller.status === 'trusted'}
@@ -1843,10 +1825,10 @@
 
 						<div class="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
 							<div class="min-w-0 space-y-2 text-xs text-muted-foreground">
-								<div class="text-xs uppercase tracking-wider text-muted-foreground">
+								<div class="text-sm font-medium text-foreground">
 									{isOAuthConnectorCaller(caller)
-										? 'Connector Details'
-										: 'Key Details'}
+										? 'Connector details'
+										: 'Key details'}
 								</div>
 								<p class="min-w-0">
 									<span class="font-medium text-foreground"
@@ -1882,46 +1864,51 @@
 
 							<div class="min-w-0 space-y-2">
 								<div
-									class="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground"
+									class="flex items-center gap-2 text-sm font-medium text-foreground"
 								>
-									<Activity class="h-3.5 w-3.5" />
+									<Activity
+										class="h-4 w-4 text-muted-foreground"
+										aria-hidden="true"
+									/>
 									Usage
 								</div>
 								<div class="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
 									{#each USAGE_PERIODS as period (period)}
 										{@const trend = usageTrend(caller, period)}
 										<div
-											class="min-w-0 rounded-md border border-border bg-card/70 p-2"
+											class="min-w-0 rounded-lg border border-border bg-card/70 p-2"
 										>
-											<div class="text-xs font-semibold text-foreground">
+											<div class="text-xs font-medium text-foreground">
 												{periodLabel(period)}
 											</div>
-											<div class="mt-1 text-2xs text-muted-foreground">
+											<div
+												class="mt-1 font-mono text-xs tabular-nums text-muted-foreground"
+											>
 												{trend?.session_count ?? 0} sessions
 											</div>
-											<div class="text-2xs text-muted-foreground">
+											<div
+												class="font-mono text-xs tabular-nums text-muted-foreground"
+											>
 												{trend?.write_count ?? 0} writes
 											</div>
 										</div>
 									{/each}
 								</div>
 								<p class="text-xs text-muted-foreground">
-									{caller.usage?.total_write_count ?? 0} total tracked writes,
+									{caller.usage?.total_write_count ?? 0} tracked writes,
 									{caller.usage?.successful_write_count ?? 0} succeeded,
-									{caller.usage?.failed_write_count ?? 0} failed.
+									{caller.usage?.failed_write_count ?? 0} failed
 								</p>
 							</div>
 						</div>
 
 						<div class="space-y-2">
-							<div class="text-xs uppercase tracking-wider text-muted-foreground">
-								Recent Activity
-							</div>
+							<div class="text-sm font-medium text-foreground">Recent activity</div>
 							{#if caller.usage?.recent_activity?.length}
 								<div class="min-w-0 space-y-2">
 									{#each caller.usage.recent_activity as event (event.id)}
 										<div
-											class="min-w-0 rounded-md border border-border bg-card/70 px-3 py-2"
+											class="min-w-0 rounded-lg border border-border bg-card/70 px-3 py-2"
 										>
 											<div
 												class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
@@ -1938,19 +1925,24 @@
 														{eventMetaLabel(event)}
 													</p>
 												</div>
-												<Badge
-													variant={activityStatusVariant(event.status)}
-													size="sm"
+												<span
+													class="inline-flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground"
 												>
-													{event.status}
-												</Badge>
+													<span
+														class="h-1.5 w-1.5 shrink-0 rounded-full {activityStatusDotClass(
+															event.status
+														)}"
+														aria-hidden="true"
+													></span>
+													{humanizeKey(event.status)}
+												</span>
 											</div>
 										</div>
 									{/each}
 								</div>
 							{:else}
 								<div
-									class="rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground"
+									class="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground"
 								>
 									No tracked write activity yet. Reads and connection pings are
 									reflected in usage counts as agents start sessions.
@@ -1960,27 +1952,29 @@
 
 						<details class="border-t border-border pt-3">
 							<summary
-								class="flex cursor-pointer list-none items-center justify-between gap-3 text-xs uppercase tracking-wider text-muted-foreground min-h-[44px] py-2"
+								class="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-foreground min-h-[44px] py-2"
 							>
-								<span>Project Scope</span>
-								<span class="text-2xs normal-case tracking-normal">
+								<span>Project scope</span>
+								<span class="text-xs font-normal text-muted-foreground">
 									{scopeLabel(caller)}
 								</span>
 							</summary>
 							{#if (caller.allowed_project_ids && caller.allowed_project_ids.length > 0) || unavailableProjectCount(caller) > 0}
-								<div class="mt-2 flex flex-wrap gap-1.5">
+								<div class="mt-2 flex flex-wrap gap-2">
 									{#if caller.allowed_project_ids && caller.allowed_project_ids.length > 0}
 										{#each caller.allowed_project_ids as projectId (projectId)}
-											<Badge variant="accent">
+											<span
+												class="rounded-lg border border-border bg-card px-2 py-1 text-xs text-foreground"
+											>
 												{projectName(projectId)}
-											</Badge>
+											</span>
 										{/each}
 									{/if}
 									{#if unavailableProjectCount(caller) > 0}
-										<Badge variant="warning">
+										<span class="px-2 py-1 text-xs text-warning">
 											{projectCountLabel(unavailableProjectCount(caller))}
 											unavailable
-										</Badge>
+										</span>
 									{/if}
 								</div>
 							{:else}
@@ -1992,10 +1986,12 @@
 
 						<details class="border-t border-border pt-3">
 							<summary
-								class="flex cursor-pointer list-none items-center justify-between gap-3 text-xs uppercase tracking-wider text-muted-foreground min-h-[44px] py-2"
+								class="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-foreground min-h-[44px] py-2"
 							>
-								<span>Write Permissions</span>
-								<span class="text-2xs normal-case tracking-normal">
+								<span>Write permissions</span>
+								<span
+									class="font-mono text-xs font-normal tabular-nums text-muted-foreground"
+								>
 									{writePermissionLabels(caller).length} write op{writePermissionLabels(
 										caller
 									).length === 1
@@ -2004,9 +2000,12 @@
 								</span>
 							</summary>
 							{#if writePermissionLabels(caller).length > 0}
-								<div class="mt-2 flex flex-wrap gap-1.5">
+								<div class="mt-2 flex flex-wrap gap-2">
 									{#each writePermissionLabels(caller) as label (label)}
-										<Badge variant="accent">{label}</Badge>
+										<span
+											class="rounded-lg border border-border bg-card px-2 py-1 text-xs text-foreground"
+											>{label}</span
+										>
 									{/each}
 								</div>
 							{:else}
@@ -2032,13 +2031,13 @@
 				{/if}
 			</div>
 			{#if idleCallers.length > 0}
-				<details class="group rounded-lg border border-border bg-muted/20">
-					<summary class="flex cursor-pointer list-none items-start gap-2.5 p-3 sm:p-4">
+				<details class="group rounded-xl border border-border bg-muted/20">
+					<summary class="flex cursor-pointer list-none items-start gap-3 p-3 sm:p-4">
 						<ChevronDown
 							class="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none group-open:rotate-180"
 						/>
 						<span class="min-w-0">
-							<span class="block text-sm font-semibold text-foreground">
+							<span class="block text-sm font-medium text-foreground">
 								{idleCallers.length}
 								{idleCallers.length === 1 ? 'connection' : 'connections'} unused for
 								3 months or more
@@ -2068,9 +2067,9 @@
 				</details>
 			{/if}
 			{#if revokedCallers.length > 0}
-				<details class="group rounded-lg border border-border bg-muted/10">
+				<details class="group rounded-xl border border-border bg-muted/10">
 					<summary
-						class="flex cursor-pointer list-none items-center gap-2.5 p-3 text-sm text-muted-foreground sm:p-4"
+						class="flex cursor-pointer list-none items-center gap-3 p-3 text-sm text-muted-foreground sm:p-4"
 					>
 						<ChevronDown
 							class="h-4 w-4 flex-shrink-0 transition-transform motion-reduce:transition-none group-open:rotate-180"
@@ -2089,7 +2088,7 @@
 		<div class="pt-2 border-t border-border">
 			<a
 				href="/integrations"
-				class="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-accent transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+				class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 			>
 				Integration docs
 				<ExternalLink class="w-3.5 h-3.5" />
@@ -2105,7 +2104,7 @@
 		showGenerateModal = false;
 		clearForm();
 	}}
-	title={editingCaller ? 'Edit & Rotate Agent Key' : 'Generate BuildOS Key'}
+	title={editingCaller ? 'Edit and rotate agent key' : 'Generate a BuildOS key'}
 	size="md"
 >
 	{#if showGenerateModal}
@@ -2122,9 +2121,11 @@
 
 			<div class="grid gap-4 sm:grid-cols-2">
 				<FormField
-					label="Client Profile"
+					label="Client profile"
 					labelFor="agent-provider-mode"
-					hint="Choose where this key will be installed so BuildOS can tailor the storage instructions."
+					uppercase={false}
+					showOptional={false}
+					hint="Where this key will live, so BuildOS can tailor the storage steps"
 				>
 					<Select
 						id="agent-provider-mode"
@@ -2138,9 +2139,11 @@
 				</FormField>
 
 				<FormField
-					label="Installation Name"
+					label="Installation name"
 					labelFor="agent-installation-name"
 					required={true}
+					uppercase={false}
+					showOptional={false}
 					hint="e.g. Claude Code on my laptop"
 				>
 					<TextInput
@@ -2153,10 +2156,12 @@
 
 			{#if selectedProfile.customProvider}
 				<FormField
-					label="Provider Key"
+					label="Provider ID"
 					labelFor="agent-custom-provider"
 					required={true}
-					hint="Lowercase identifier, e.g. cursor, internal-agent, webhook-worker."
+					uppercase={false}
+					showOptional={false}
+					hint="Lowercase identifier, e.g. cursor, internal-agent, webhook-worker"
 				>
 					<TextInput
 						id="agent-custom-provider"
@@ -2179,18 +2184,18 @@
 
 			<div class="space-y-2">
 				<div class="flex items-center justify-between gap-3">
-					<h4 class="text-sm font-semibold text-foreground">Permission Bundle</h4>
+					<h4 class="text-sm font-medium text-foreground">Permissions</h4>
 					<span class="text-xs text-muted-foreground">
-						Project, task, document, and search reads are always included.
+						Project, task, document, and search reads are always included
 					</span>
 				</div>
 				<div class="grid gap-2">
 					{#each PERMISSION_BUNDLES as bundle (bundle.id)}
 						{@const isActive = activeBundleId === bundle.id}
 						<label
-							class="flex items-start gap-2.5 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors {isActive
-								? 'border-accent bg-accent/5'
-								: 'border-border hover:bg-muted/40'}"
+							class="flex items-start gap-3 rounded-lg border px-3 py-2 cursor-pointer transition-colors {isActive
+								? 'border-accent'
+								: 'border-border hover:bg-muted/50'}"
 						>
 							<input
 								type="radio"
@@ -2214,7 +2219,7 @@
 						<div
 							class="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground"
 						>
-							Custom bundle — configured via Advanced permissions below.
+							Custom set, chosen under Advanced permissions below
 						</div>
 					{/if}
 				</div>
@@ -2223,7 +2228,7 @@
 			<div class="space-y-2">
 				<button
 					type="button"
-					class="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset py-2 min-h-[44px]"
+					class="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset py-2 min-h-[44px]"
 					onclick={() => (showAdvancedPermissions = !showAdvancedPermissions)}
 				>
 					{#if showAdvancedPermissions}
@@ -2231,19 +2236,19 @@
 					{:else}
 						<ChevronRight class="h-3.5 w-3.5" />
 					{/if}
-					Advanced permissions ({selectedWriteOps.length} write op{selectedWriteOps.length ===
-					1
-						? ''
-						: 's'} selected)
+					Advanced permissions
+					<span class="font-mono font-normal tabular-nums"
+						>{selectedWriteOps.length} selected</span
+					>
 				</button>
 				{#if showAdvancedPermissions}
 					<div class="space-y-2 rounded-lg border border-border p-2">
 						<p class="text-xs text-muted-foreground px-2">
-							Fine-tune which write ops the key can perform. Picking any combination
-							here switches the bundle to Custom.
+							Fine-tune which writes the key can make. Any change here switches the
+							permissions to Custom.
 						</p>
 						<label
-							class="flex items-start gap-2.5 rounded-md px-2.5 py-1.5 cursor-pointer hover:bg-muted/40 transition-colors"
+							class="flex items-start gap-3 rounded-lg px-3 py-2 cursor-pointer hover:bg-muted/50 transition-colors"
 						>
 							<input
 								type="checkbox"
@@ -2258,14 +2263,14 @@
 									Enable write scope
 								</div>
 								<div class="text-xs text-muted-foreground">
-									Required before selecting any individual write op.
+									Required before choosing any write below
 								</div>
 							</div>
 						</label>
 						{#if scopeMode === 'read_write'}
 							{#each WRITE_PERMISSION_OPTIONS as option (option.op)}
 								<label
-									class="flex items-start gap-2.5 rounded-md px-2.5 py-2 cursor-pointer hover:bg-muted/40 transition-colors"
+									class="flex items-start gap-3 rounded-lg px-3 py-2 cursor-pointer hover:bg-muted/50 transition-colors"
 								>
 									<input
 										type="checkbox"
@@ -2289,10 +2294,10 @@
 			</div>
 
 			<div class="space-y-2">
-				<h4 class="text-sm font-semibold text-foreground">Project access</h4>
+				<h4 class="text-sm font-medium text-foreground">Project access</h4>
 				<div class="grid gap-2 sm:grid-cols-2">
 					<label
-						class="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border p-3 hover:bg-muted/40"
+						class="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 hover:bg-muted/50"
 					>
 						<input
 							type="radio"
@@ -2313,7 +2318,7 @@
 						</span>
 					</label>
 					<label
-						class="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border p-3 hover:bg-muted/40"
+						class="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 hover:bg-muted/50"
 					>
 						<input
 							type="radio"
@@ -2343,7 +2348,7 @@
 					<div class="flex items-center gap-2">
 						{#if projectChoices.length > 0}
 							<Button variant="ghost" size="sm" onclick={toggleAllProjects}>
-								{allProjectsSelected ? 'Deselect All' : 'Select All'}
+								{allProjectsSelected ? 'Deselect all' : 'Select all'}
 							</Button>
 						{/if}
 						{#if selectedProjectIds.length > 0}
@@ -2360,7 +2365,7 @@
 
 				{#if selectedModeCoversEverything}
 					<div
-						class="flex flex-col gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+						class="flex flex-col gap-2 rounded-lg border border-warning/30 bg-warning/5 p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
 						role="status"
 					>
 						<span class="text-foreground">
@@ -2373,14 +2378,14 @@
 							onclick={switchToAllStandardProjects}
 							class="shrink-0"
 						>
-							Use All standard projects
+							Use all standard projects
 						</Button>
 					</div>
 				{/if}
 
 				{#if editingCaller && unavailableProjectCount(editingCaller) > 0}
 					<div
-						class="rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning"
+						class="rounded-lg border border-warning/30 bg-warning/5 p-3 text-sm text-foreground"
 					>
 						{projectCountLabel(unavailableProjectCount(editingCaller))} previously scoped
 						to this key are no longer available in your workspace. Rotating the key will
@@ -2402,7 +2407,7 @@
 					>
 						{#each projectChoices as project (project.id)}
 							<label
-								class="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 cursor-pointer hover:bg-muted/40 transition-colors"
+								class="flex items-center gap-3 rounded-lg px-3 py-2 cursor-pointer hover:bg-muted/50 transition-colors"
 							>
 								<input
 									type="checkbox"
@@ -2448,7 +2453,7 @@
 				onclick={provisionCaller}
 				class="w-full sm:w-auto"
 			>
-				{editingCaller ? 'Save + Show New Key' : 'Generate Key'}
+				{editingCaller ? 'Save and show new key' : 'Generate key'}
 			</Button>
 		</div>
 	{/snippet}
@@ -2461,47 +2466,50 @@
 		showKeyCreatedModal = false;
 		editingCaller = null;
 	}}
-	title={editingCaller ? 'Key Rotated' : 'Key Generated'}
+	title={editingCaller ? 'Key rotated' : 'Key generated'}
 	size="md"
 >
 	{#if showKeyCreatedModal && latestProvisioned}
 		<div class="p-4 sm:p-6 space-y-4">
 			<div class="flex items-start gap-3">
-				<div class="p-1.5 rounded-full bg-success/10">
-					<CircleCheck class="w-5 h-5 text-success" />
-				</div>
+				<CircleCheck
+					class="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
+					aria-hidden="true"
+				/>
 				<div>
 					<p class="text-sm font-medium text-foreground">
-						{editingCaller ? 'Your updated key is ready.' : 'Your new key is ready.'}
+						{editingCaller ? 'Your updated key is ready' : 'Your new key is ready'}
 					</p>
-					<p class="text-xs text-muted-foreground mt-0.5">
-						Copy it now — this secret is shown only once.
+					<p class="mt-1 flex items-center gap-1.5 text-xs text-warning">
+						<AlertTriangle class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+						Copy it now. This secret is shown only once.
 					</p>
 				</div>
 			</div>
 
 			<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
-				<div class="text-xs uppercase tracking-wider text-muted-foreground">
-					Granted Permissions
-				</div>
-				<div class="flex flex-wrap gap-1.5">
-					<Badge variant="default">
+				<div class="text-sm font-medium text-foreground">Granted permissions</div>
+				<div class="flex flex-wrap gap-2">
+					<span
+						class="rounded-lg border border-border bg-card px-2 py-1 text-xs text-foreground"
+					>
 						{latestProvisioned.caller.scope_mode === 'read_write'
 							? 'Read & write'
 							: 'Read only'}
-					</Badge>
+					</span>
 					{#each writePermissionLabels(latestProvisioned.caller) as label (label)}
-						<Badge variant="accent">{label}</Badge>
+						<span
+							class="rounded-lg border border-border bg-card px-2 py-1 text-xs text-foreground"
+							>{label}</span
+						>
 					{/each}
 				</div>
 			</div>
 
 			<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
-				<div class="text-xs uppercase tracking-wider text-muted-foreground">
-					Full BuildOS Agent Key
-				</div>
+				<div class="text-sm font-medium text-foreground">Full BuildOS agent key</div>
 				<p class="text-xs text-muted-foreground">
-					Copy this now. After you close this modal, BuildOS will only show the token
+					Copy this now. After you close this window, BuildOS will only show the token
 					prefix.
 				</p>
 				<div class="flex items-center gap-2">
@@ -2509,7 +2517,7 @@
 						{latestProvisioned.credentials.bearer_token}
 					</code>
 					<Button
-						variant="outline"
+						variant="primary"
 						size="sm"
 						icon={copiedId === 'latest-token' ? CircleCheck : Copy}
 						onclick={() =>
@@ -2519,16 +2527,16 @@
 								'Key copied'
 							)}
 					>
-						{copiedId === 'latest-token' ? 'Key Copied' : 'Copy Key'}
+						{copiedId === 'latest-token' ? 'Key copied' : 'Copy key'}
 					</Button>
 				</div>
 			</div>
 
 			<!-- Prominent: connect via MCP -->
-			<div class="rounded-lg border border-accent/40 bg-accent/5 p-3 space-y-2">
+			<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
 				<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 					<div>
-						<div class="text-xs font-semibold uppercase tracking-wider text-foreground">
+						<div class="text-sm font-medium text-foreground">
 							{mcpQuickConnect(latestProvisioned, false).label}
 						</div>
 						<p class="mt-1 text-xs text-muted-foreground">
@@ -2551,7 +2559,7 @@
 						</Button>
 						{#if mcpQuickConnectIncludesSecret(latestProvisioned)}
 							<Button
-								variant="primary"
+								variant="outline"
 								size="sm"
 								icon={copiedId === 'mcp-quick-key' ? CircleCheck : Copy}
 								onclick={() =>
@@ -2567,7 +2575,7 @@
 					</div>
 				</div>
 				<pre
-					class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+					class="overflow-x-auto rounded-lg border border-border bg-card p-3 text-xs text-foreground whitespace-pre-wrap"><code
 						>{mcpQuickConnect(latestProvisioned, false).value}</code
 					></pre>
 			</div>
@@ -2575,9 +2583,9 @@
 			<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
 				<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 					<div>
-						<div class="text-xs uppercase tracking-wider text-muted-foreground">
-							{bootstrapProfile(latestProvisioned).label} Handoff
-							<span class="ml-1 normal-case text-muted-foreground/70"
+						<div class="text-sm font-medium text-foreground">
+							{bootstrapProfile(latestProvisioned).label} handoff
+							<span class="ml-1 font-normal text-muted-foreground"
 								>(advanced / gateway fallback)</span
 							>
 						</div>
@@ -2599,7 +2607,7 @@
 						>
 							{copiedId === 'agent-prompt-placeholder'
 								? 'Copied'
-								: 'Copy Placeholder'}
+								: 'Copy placeholder'}
 						</Button>
 						{#if bootstrapProfile(latestProvisioned).allowSecretPrompt}
 							<Button
@@ -2616,22 +2624,20 @@
 										'Agent prompt with key copied'
 									)}
 							>
-								{copiedId === 'agent-prompt-with-key' ? 'Copied' : 'Copy With Key'}
+								{copiedId === 'agent-prompt-with-key' ? 'Copied' : 'Copy with key'}
 							</Button>
 						{/if}
 					</div>
 				</div>
 				<pre
-					class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+					class="overflow-x-auto rounded-lg border border-border bg-card p-3 text-xs text-foreground whitespace-pre-wrap"><code
 						>{agentConnectionPromptForProvisioned(latestProvisioned, false)}</code
 					></pre>
 			</div>
 
 			<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
 				<div class="flex items-center justify-between">
-					<div class="text-xs uppercase tracking-wider text-muted-foreground">
-						Env Configuration
-					</div>
+					<div class="text-sm font-medium text-foreground">Env configuration</div>
 					<Button
 						variant="ghost"
 						size="sm"
@@ -2651,7 +2657,7 @@
 						.label}.
 				</p>
 				<pre
-					class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+					class="overflow-x-auto rounded-lg border border-border bg-card p-3 text-xs text-foreground whitespace-pre-wrap"><code
 						>{envSnippet(latestProvisioned)}</code
 					></pre>
 			</div>
@@ -2659,7 +2665,7 @@
 			{#if bootstrapUrl(latestProvisioned)}
 				<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
 					<div class="flex items-center justify-between">
-						<div class="text-xs uppercase tracking-wider text-muted-foreground">
+						<div class="text-sm font-medium text-foreground">
 							{bootstrapProfile(latestProvisioned).setupUrlLabel}
 						</div>
 						<Button
@@ -2680,7 +2686,7 @@
 						{bootstrapProfile(latestProvisioned).setupUrlDescription}
 					</p>
 					<pre
-						class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+						class="overflow-x-auto rounded-lg border border-border bg-card p-3 text-xs text-foreground whitespace-pre-wrap"><code
 							>{bootstrapUrl(latestProvisioned)}</code
 						></pre>
 				</div>
@@ -2689,7 +2695,7 @@
 			{#if bootstrapPrompt(latestProvisioned)}
 				<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
 					<div class="flex items-center justify-between">
-						<div class="text-xs uppercase tracking-wider text-muted-foreground">
+						<div class="text-sm font-medium text-foreground">
 							{bootstrapProfile(latestProvisioned).pastePromptLabel}
 						</div>
 						<Button
@@ -2711,7 +2717,7 @@
 						profile-specific storage path, and then connect to BuildOS.
 					</p>
 					<pre
-						class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+						class="overflow-x-auto rounded-lg border border-border bg-card p-3 text-xs text-foreground whitespace-pre-wrap"><code
 							>{bootstrapPrompt(latestProvisioned)}</code
 						></pre>
 				</div>
@@ -2722,7 +2728,7 @@
 	{#snippet footer()}
 		<div class="flex justify-end px-4 sm:px-6 py-3 sm:py-4 border-t border-border bg-muted/30">
 			<Button
-				variant="primary"
+				variant="secondary"
 				size="md"
 				onclick={() => {
 					showKeyCreatedModal = false;
@@ -2743,7 +2749,7 @@
 	cancelText="Keep them"
 	confirmVariant="danger"
 	loading={bulkRevoking}
-	loadingText="Disconnecting..."
+	loadingText="Disconnecting"
 	icon="danger"
 	onconfirm={revokeIdleCallers}
 	oncancel={() => (pendingBulkRevoke = null)}
@@ -2759,12 +2765,12 @@
 <!-- Revoke Confirmation -->
 <ConfirmationModal
 	isOpen={pendingRevokeCaller !== null}
-	title="Revoke Agent Key?"
-	confirmText="Revoke Key"
-	cancelText="Keep Active"
+	title="Revoke agent key?"
+	confirmText="Revoke key"
+	cancelText="Keep active"
 	confirmVariant="danger"
 	loading={pendingRevokeCaller !== null && revokingCallerId === pendingRevokeCaller.id}
-	loadingText="Revoking..."
+	loadingText="Revoking"
 	icon="danger"
 	onconfirm={revokeCaller}
 	oncancel={() => (pendingRevokeCaller = null)}
@@ -2773,7 +2779,7 @@
 		<p class="text-sm text-muted-foreground">
 			{#if pendingRevokeCaller}
 				Revoke the key for
-				<span class="font-semibold text-foreground">
+				<span class="font-medium text-foreground">
 					{installationDisplayName(pendingRevokeCaller)}
 				</span>? The caller won't be able to reach your BuildOS agent until you generate a
 				new key.

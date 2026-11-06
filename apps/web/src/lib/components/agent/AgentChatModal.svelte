@@ -134,6 +134,7 @@
 	import { initKeyboardAvoiding } from '$lib/utils/keyboard-avoiding';
 	import { notifyDataMutation } from '$lib/stores/projectDataMutations';
 	import {
+		buildProjectWideFocus,
 		deriveSessionTitle,
 		type AgentChatSessionSnapshot,
 		isProjectContext,
@@ -2356,6 +2357,40 @@
 		attachments.remove(attachmentId);
 	}
 
+	// "Continue in Wayne Strategies" (tasker 153): move this workspace chat into the one project
+	// its last turn was about. The session keeps its messages; the next turn runs as a project
+	// chat. Mirrors what a worker context shift does to the session and the shell.
+	async function handleContinueInProject(project: { id: string; name: string }) {
+		const session = currentSession;
+		if (!session?.id || stream.isStreaming) return;
+		let response: Response;
+		try {
+			response = await fetch(`/api/chat/sessions/${session.id}/move-to-project`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ project_id: project.id })
+			});
+		} catch {
+			toastService.error('Could not move this chat. Try again.');
+			return;
+		}
+		if (!response.ok) {
+			const body = await response.json().catch(() => null);
+			toastService.error(body?.error ?? 'Could not move this chat. Try again.');
+			return;
+		}
+		const { shiftedToNewProject } = shellRouter.setSelectedContext({
+			contextType: 'project',
+			entityId: project.id,
+			label: project.name
+		});
+		if (shiftedToNewProject) contextShiftPulse += 1;
+		shellRouter.projectFocus = buildProjectWideFocus(project.id, project.name);
+		shellRouter.showFocusSelector = false;
+		shellRouter.showProjectActionSelector = false;
+		currentSession = { ...session, context_type: 'project', entity_id: project.id };
+	}
+
 	function handleSelectSuggestion(text: string) {
 		if (stream.isStreaming || isLoadingSession) return;
 		inputValue = text;
@@ -3058,6 +3093,7 @@
 		voiceNotesByGroupId={voice.notesByGroupId}
 		onDeleteVoiceNote={voice.removeNoteFromGroup.bind(voice)}
 		onSelectSuggestion={handleSelectSuggestion}
+		onContinueInProject={handleContinueInProject}
 		onClientActionComplete={handleClientActionComplete}
 		onDraftInChat={handleFreshnessDraftInChat}
 		onDocumentChangeUndone={handleDocumentChangeUndone}

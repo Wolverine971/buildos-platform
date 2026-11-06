@@ -1,5 +1,7 @@
 // apps/web/src/lib/components/agent/agent-chat-sse-handler.ts
 import type { ToolProgressStep } from './agent-chat-tool-progress';
+import { parseContextSelectionEventV1 } from '@buildos/shared-types';
+import { CONTEXT_SELECTION_METADATA_KEY } from './agent-chat-turn-cards';
 import {
 	readAgentChatWorkflowProgress,
 	readDurableChatWorkflowProgress,
@@ -896,10 +898,17 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 				}
 				return;
 
-			// The worker's context-finder receipt. It is not rendered (the "Working from" chips
-			// were removed 2026-09-25); it stays in chat_turn_events for measurement.
-			case 'context_selection':
+			// The worker's context-finder receipt. Kept on the turn as a hidden activity: turn
+			// cards (tasker 153) show it as "Pulled in 3 of 9"; the step log never lists it.
+			case 'context_selection': {
+				const selection = parseContextSelectionEventV1(event);
+				if (selection?.visible && selection.injected) {
+					thinking.addActivity('Context picked', 'ontology_loaded', {
+						[CONTEXT_SELECTION_METADATA_KEY]: selection
+					});
+				}
 				return;
+			}
 
 			case 'context_shift':
 				if (event.context_shift) {

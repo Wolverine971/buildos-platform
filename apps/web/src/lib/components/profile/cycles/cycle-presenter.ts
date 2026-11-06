@@ -30,19 +30,19 @@ export interface CyclePresenterOptions {
 
 const KIND_PRESENTATIONS: Record<CycleKind, CycleKindPresentation> = {
 	daily_brief: {
-		label: 'Daily Brief',
+		label: 'Daily brief',
 		purpose: 'A daily orientation across your active projects.'
 	},
 	project_audit: {
-		label: 'Project Audit',
+		label: 'Project audit',
 		purpose: 'Checks a project for stale state, risks, and missing structure.'
 	},
 	project_review: {
-		label: 'Project Review',
+		label: 'Project review',
 		purpose: 'Summarizes progress and prepares the next project review.'
 	},
 	task_review: {
-		label: 'Task Review',
+		label: 'Task review',
 		purpose: 'Reviews tasks that may need attention or a clear next move.'
 	}
 };

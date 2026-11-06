@@ -19,11 +19,41 @@ export const READ_RESULT_MAX_CHARS = 9_000;
 
 export type ReadResult = { text: string; chars: number; tool: string };
 
+/** One record a cross-project search found. */
+export type SearchHit = {
+	projectId: string;
+	projectName: string;
+	title: string;
+	type: string;
+	score: number;
+};
+
 export type ThreadReadPort = {
 	/** anchors empty = the document's details (whole if short, otherwise preview + index). */
 	readDoc(entity: ContextFinderEntity, anchors: string[]): Promise<ReadResult>;
 	readRecord(entity: ContextFinderEntity): Promise<ReadResult>;
+	/** Searches all of the person's projects; used to re-route a piece a thread handed back. */
+	search(query: string): Promise<SearchHit[]>;
 };
+
+function searchHits(payload: unknown): SearchHit[] {
+	const results = (payload as { results?: unknown[] } | null)?.results;
+	if (!Array.isArray(results)) return [];
+	return results.flatMap((raw) => {
+		const row = raw as Record<string, unknown>;
+		const projectId = typeof row.project_id === 'string' ? row.project_id : null;
+		if (!projectId || row.type === 'project') return [];
+		return [
+			{
+				projectId,
+				projectName: typeof row.project_name === 'string' ? row.project_name : '',
+				title: typeof row.title === 'string' ? row.title : '',
+				type: typeof row.type === 'string' ? row.type : '',
+				score: Number(row.rank_score ?? row.score) || 0
+			}
+		];
+	});
+}
 
 const DETAIL_TOOL = {
 	task: ['get_onto_task_details', 'task_id'],
@@ -86,13 +116,39 @@ export function liveReadPort(input: {
 				arguments: { [key]: entity.id }
 			});
 			return result(toolName, payload);
+		},
+		async search(query) {
+			const payload = await executeAgenticChatSharedReadToolV1({
+				toolName: 'search_ontology',
+				context,
+				arguments: { query, limit: 10 }
+			});
+			return searchHits(payload);
 		}
 	};
 }
 
 /** Replay: answers from the replay rows the entities were built from. */
-export function replayReadPort(): ThreadReadPort {
+export function replayReadPort(
+	/** Replay search: project id → name and record titles. Words in the query must all appear. */
+	catalog: { projectId: string; projectName: string; titles: string[] }[] = []
+): ThreadReadPort {
 	return {
+		async search(query) {
+			await new Promise((resolve) => setTimeout(resolve, 120));
+			const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+			return catalog.flatMap((project) =>
+				project.titles
+					.filter((title) => words.every((word) => title.toLowerCase().includes(word)))
+					.map((title) => ({
+						projectId: project.projectId,
+						projectName: project.projectName,
+						title,
+						type: 'task',
+						score: 1
+					}))
+			);
+		},
 		async readDoc(entity, anchors) {
 			await new Promise((resolve) => setTimeout(resolve, 160));
 			if (!anchors.length) return result('get_onto_document_details', entity.fullText);

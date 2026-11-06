@@ -12,6 +12,7 @@ import {
 	contextItemChars,
 	contextItemExcerpts,
 	findProjectContext,
+	loadContextFinderPlanText,
 	loadContextFinderProject,
 	materializeContextPlan,
 	plainOutlineHeading,
@@ -153,6 +154,17 @@ function decider(scores: (key: string) => number) {
 
 const signal = () => new AbortController().signal;
 
+/** The text-mode path hosts like /lab/sort use: plan, read picked text, materialize. */
+async function textModePlan(
+	project: Awaited<ReturnType<typeof loadContextFinderProject>>,
+	scores: Record<string, number>
+) {
+	const entities = buildContextFinderEntities(project);
+	const plan = selectProjectContext({ entities, scores, sectionsPerDoc: 2 });
+	const loaded = await loadContextFinderPlanText({ project, entities, plan });
+	return { evidence: materializeContextPlan({ plan, entities: loaded }), loaded };
+}
+
 describe('outline-first loading', () => {
 	it('never selects document text in bulk; reads it only for a stale outline', async () => {
 		const { client, calls, textReads } = fakeClient();
@@ -187,16 +199,13 @@ describe('outline-first loading', () => {
 		expect(stale!.packet.headings).toEqual(['Old notes', 'Contacts']);
 	});
 
-	it('reads text only for the documents the plan loads in full', async () => {
+	it('reads text only for the documents a text-mode plan loads in full', async () => {
 		const { client, textReads } = fakeClient();
 		const project = await loadContextFinderProject(client, PROJECT, signal());
-		const { decider: d } = decider((k) =>
-			k === 'e_d0' ? 0.9 : k === 'h_d0_0' ? 0.8 : k.startsWith('e_') ? 0.1 : 0
-		);
-		const result = await findProjectContext({ project, message: 'Budget?', decider: d });
+		const { evidence, loaded } = await textModePlan(project, { e_d0: 0.9, h_d0_0: 0.8 });
 		expect(textReads()).toEqual([[STALE], [FRESH]]);
-		expect(result.evidence.full).toHaveLength(1);
-		expect(result.evidence.full[0]).toMatchObject({
+		expect(evidence.full).toHaveLength(1);
+		expect(evidence.full[0]).toMatchObject({
 			id: FRESH,
 			partial: true,
 			excerpts: [
@@ -206,8 +215,7 @@ describe('outline-first loading', () => {
 				}
 			]
 		});
-		const other = result.entities.find((entity) => entity.id === OTHER)!;
-		expect(other.textLoaded).toBe(false);
+		expect(loaded.find((entity) => entity.id === OTHER)!.textLoaded).toBe(false);
 	});
 
 	it('re-measures sections when the text changed after the outline load', async () => {
@@ -215,9 +223,8 @@ describe('outline-first loading', () => {
 		const { client } = fakeClient({ textOverride: { [FRESH]: edited } });
 		const project = await loadContextFinderProject(client, PROJECT, signal());
 		expect(project.documents[0]!.content).toBeUndefined();
-		const { decider: d } = decider((k) => (k === 'e_d0' ? 0.9 : k === 'h_d0_2' ? 0.8 : 0));
-		const result = await findProjectContext({ project, message: 'Team?', decider: d });
-		expect(result.evidence.full[0]!.excerpts).toEqual([
+		const { evidence } = await textModePlan(project, { e_d0: 0.9, h_d0_2: 0.8 });
+		expect(evidence.full[0]!.excerpts).toEqual([
 			{ heading: 'Team', text: '## Team\nBoard: grandmother, pastor.' }
 		]);
 	});
@@ -229,10 +236,9 @@ describe('outline-first loading', () => {
 			throw new Error('network');
 		};
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-		const { decider: d } = decider((k) => (k === 'e_d0' ? 0.9 : 0));
-		const result = await findProjectContext({ project, message: 'Plan?', decider: d });
+		const { evidence } = await textModePlan(project, { e_d0: 0.9 });
 		warn.mockRestore();
-		const [item] = result.evidence.full;
+		const [item] = evidence.full;
 		expect(item!.partial).toBe(true);
 		expect(item!.excerpts[0]!.text).toContain('Launch plan description');
 		expect(item!.excerpts[0]!.text).toContain('- Budget & money (anchor: budget--money)');
@@ -267,18 +273,20 @@ describe('outline-first loading', () => {
 	});
 });
 
-describe('what an agent gets up front (option B)', () => {
-	it('gives each picked document its card and at most two sections within 5k', async () => {
-		const { client } = fakeClient();
+describe('what an agent gets up front (cards, tasker 152)', () => {
+	it("gives each picked document a card with Jev's flagged sections and no text", async () => {
+		const { client, textReads } = fakeClient();
 		const project = await loadContextFinderProject(client, PROJECT, signal());
-		// Jev likes every heading of the launch plan.
 		const { decider: d } = decider((k) =>
-			k === 'e_d0' ? 0.9 : k.startsWith('h_d0_') ? 0.8 : 0
+			k === 'e_d0' ? 0.9 : k === 'h_d0_0' ? 0.8 : k === 'h_d0_2' ? 0.7 : 0
 		);
 		const result = await findProjectContext({ project, message: 'Plan?', decider: d });
+		// Only the stale outline's text is read; the picked document stays a card.
+		expect(textReads()).toEqual([[STALE]]);
 		const [item] = result.evidence.full;
 		expect(result.evidence.coverage.budgetChars).toBe(CONTEXT_FINDER_POLICY.agentBudgetChars);
-		expect(item!.excerpts.length).toBeLessThanOrEqual(2);
+		expect(item!.excerpts).toEqual([]);
+		expect(item!.partial).toBe(true);
 		expect(item!.card).toEqual({
 			description: 'Launch plan description',
 			sections: [
@@ -286,13 +294,55 @@ describe('what an agent gets up front (option B)', () => {
 				{ heading: 'Land', anchor: 'land' },
 				{ heading: 'Team', anchor: 'team' }
 			],
-			more: 0
+			more: 0,
+			flagged: [
+				{ heading: 'Budget & money', anchor: 'budget--money' },
+				{ heading: 'Team', anchor: 'team' }
+			]
 		});
 		const block = renderContextEvidenceBlock(result.evidence);
+		expect(block).toContain(
+			'Flagged for this question: Budget & money (budget--money) · Team (team)'
+		);
 		expect(block).toContain(
 			'Sections (anchor): Budget & money (budget--money) · Land (land) · Team (team)'
 		);
 		expect(block).toContain('read_document_section');
+		expect(block).not.toContain('Budget is $300K');
+		expect(result.evidence.coverage.fullChars).toBeLessThan(400);
+	});
+
+	it('uses the AI summary when there is no description, only while it matches the text', async () => {
+		const { client } = fakeClient();
+		const project = await loadContextFinderProject(client, PROJECT, signal());
+		const doc = project.documents.find((row) => row.id === FRESH)!;
+		doc.description = null;
+		doc.digest = { summary: 'Launch budget and board.', content_hash: doc.content_hash };
+		const fresh = buildContextFinderEntities(project).find((e) => e.id === FRESH)!;
+		expect(fresh.summary).toBe('Launch budget and board.');
+		doc.digest = { summary: 'Old summary.', content_hash: 'stale' };
+		expect(buildContextFinderEntities(project).find((e) => e.id === FRESH)!.summary).toBeNull();
+	});
+
+	it('shows a short heading-less note whole', async () => {
+		const { client } = fakeClient();
+		const project = await loadContextFinderProject(client, PROJECT, signal());
+		const note = 'Call Sam about the venue deposit.';
+		project.documents.push({
+			id: id(4),
+			title: 'Venue',
+			description: null,
+			type_key: 'document.note',
+			updated_at: '2026-11-01T00:00:00Z',
+			outline: extractOutline(note),
+			content_hash: hashDocumentContent(note)
+		});
+		project.documentText = async () =>
+			new Map([[id(4), { content: note, contentHash: hashDocumentContent(note) }]]);
+		const { decider: d } = decider((k) => (k === 'e_d3' ? 0.9 : 0));
+		const result = await findProjectContext({ project, message: 'Venue?', decider: d });
+		expect(result.evidence.full[0]!.card!.text).toBe(note);
+		expect(renderContextEvidenceBlock(result.evidence)).toContain(note);
 	});
 
 	it('leaves the full budget to hosts that select directly (drift review)', async () => {

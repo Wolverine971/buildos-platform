@@ -17,7 +17,7 @@ import type { ProfileTabId, ProfileTabVisibility } from './profile-tabs';
 export const SETTINGS_GROUPS = [
 	{ id: 'your-buildos', label: 'Your BuildOS' },
 	{ id: 'connections', label: 'Connections' },
-	{ id: 'data-plan', label: 'Data & Plan' }
+	{ id: 'data-plan', label: 'Data & plan' }
 ] as const;
 
 export type SettingsGroupId = (typeof SETTINGS_GROUPS)[number]['id'];
@@ -39,7 +39,7 @@ const SETTINGS_DESTINATIONS: readonly SettingsDestination[] = [
 		group: 'your-buildos',
 		isVisible: ({ cyclesProfileEnabled }) => cyclesProfileEnabled
 	},
-	{ id: 'briefs', label: 'Brief Settings', icon: Coffee, group: 'your-buildos' },
+	{ id: 'briefs', label: 'Brief settings', icon: Coffee, group: 'your-buildos' },
 	{ id: 'notifications', label: 'Notifications', icon: Bell, group: 'your-buildos' },
 	{ id: 'people', label: 'People & agents', icon: Users, group: 'connections' },
 	{ id: 'calendar', label: 'Calendar', icon: Calendar, group: 'connections' },

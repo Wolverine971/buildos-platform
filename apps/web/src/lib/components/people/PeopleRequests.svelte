@@ -361,11 +361,11 @@
 		);
 	}
 
-	/** "Now: Viewer · agents Off", from what the member has in the project today. */
+	/** "Now: Viewer · agents off", from what the member has in the project today. */
 	function upgradeNow(item: UpgradeRequestItem): string | null {
 		const parts = [
 			item.role ? roleLabel(item.role) : null,
-			item.agent_access ? `agents ${agentAccessLabel(item.agent_access)}` : null
+			item.agent_access ? `agents ${agentAccessLabel(item.agent_access).toLowerCase()}` : null
 		].filter(Boolean);
 		return parts.length > 0 ? `Now: ${parts.join(' · ')}` : null;
 	}
@@ -495,7 +495,7 @@
 		return `Expires in ${days} days`;
 	}
 
-	const cardClass = 'rounded-xl border border-border bg-card p-4 shadow-ink sm:p-5';
+	const cardClass = 'rounded-xl border border-border bg-card p-4 sm:p-5';
 </script>
 
 {#snippet upgradeAsk(item: UpgradeRequestItem)}
@@ -512,7 +512,7 @@
 	<section class={cardClass} aria-labelledby="find-heading">
 		<div class="flex items-center gap-2">
 			<Search class="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-			<h2 id="find-heading" class="text-base font-semibold text-foreground">Find someone</h2>
+			<h2 id="find-heading" class="text-base font-medium text-foreground">Find someone</h2>
 		</div>
 		<p class="mt-1 text-sm text-muted-foreground">
 			Type their exact handle. You’ll see their name, handle, and bio, never their email.
@@ -564,18 +564,16 @@
 
 		{#if person}
 			{@const name = personName(person)}
-			<div
-				class="mt-4 rounded-lg border border-border bg-background p-3 shadow-ink-inner sm:p-4"
-			>
+			<div class="mt-4 rounded-lg border border-border bg-background p-3 sm:p-4">
 				<div class="flex items-start gap-3">
 					<div
-						class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/10 text-sm font-semibold text-accent"
+						class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-foreground"
 						aria-hidden="true"
 					>
 						{name.replace(/^@/, '').charAt(0).toUpperCase()}
 					</div>
 					<div class="min-w-0 flex-1">
-						<p class="truncate text-sm font-semibold text-foreground">
+						<p class="truncate text-sm font-medium text-foreground">
 							{person.name ?? `@${person.handle}`}
 						</p>
 						<p class="stamp text-xs text-muted-foreground">@{person.handle}</p>
@@ -611,7 +609,7 @@
 					>
 						<div class="space-y-1">
 							<label for="ask-hint" class="text-xs font-medium text-muted-foreground">
-								What do you want to see? <span class="font-normal">(optional)</span>
+								What do you want to see?
 							</label>
 							<TextInput
 								id="ask-hint"
@@ -624,7 +622,7 @@
 						</div>
 						<div class="space-y-1">
 							<label for="ask-note" class="text-xs font-medium text-muted-foreground">
-								Note <span class="font-normal">(optional)</span>
+								Note
 							</label>
 							<Textarea
 								id="ask-note"
@@ -708,13 +706,9 @@
 	<section class={cardClass} aria-labelledby="incoming-heading">
 		<div class="flex items-center gap-2">
 			<Inbox class="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-			<h2 id="incoming-heading" class="text-base font-semibold text-foreground">
-				Asking you
-			</h2>
+			<h2 id="incoming-heading" class="text-base font-medium text-foreground">Asking you</h2>
 			{#if incoming.length > 0}
-				<span
-					class="stamp rounded-full bg-accent/10 px-2 py-0.5 text-2xs font-medium text-accent"
-				>
+				<span class="font-mono text-xs tabular-nums text-muted-foreground">
 					{incoming.length}
 				</span>
 			{/if}
@@ -737,7 +731,7 @@
 					<li class="rounded-lg border border-border bg-background p-3 sm:p-4">
 						<div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
 							<div class="min-w-0">
-								<p class="truncate text-sm font-semibold text-foreground">{name}</p>
+								<p class="truncate text-sm font-medium text-foreground">{name}</p>
 								<p class="stamp truncate text-xs text-muted-foreground">
 									{request.from.handle
 										? `@${request.from.handle}`
@@ -786,9 +780,9 @@
 									>
 										{#each request.items as item (item.project_id)}
 											{@const now = upgradeNow(item)}
-											<li class="px-2.5 py-1.5 sm:py-2">
+											<li class="px-3 py-2">
 												<label
-													class="flex min-h-11 cursor-pointer items-center gap-2.5 sm:min-h-0"
+													class="flex min-h-11 cursor-pointer items-center gap-3 sm:min-h-0"
 												>
 													<input
 														type="checkbox"
@@ -866,7 +860,7 @@
 
 						{#if sheetOpen}
 							<form
-								class="mt-3 space-y-3 rounded-lg border border-border bg-card p-3 shadow-ink-inner"
+								class="mt-3 space-y-3 rounded-lg border border-border bg-card p-3"
 								aria-labelledby="share-heading-{request.id}"
 								onsubmit={(event) => {
 									event.preventDefault();
@@ -877,7 +871,7 @@
 									<h3
 										id="share-heading-{request.id}"
 										tabindex="-1"
-										class="text-sm font-semibold text-foreground focus:outline-none"
+										class="text-sm font-medium text-foreground focus:outline-none"
 									>
 										Choose what to share with {name}
 									</h3>
@@ -898,9 +892,9 @@
 									>
 										{#each ownedProjects as project (project.id)}
 											{@const selection = selections[project.id]}
-											<li class="space-y-2 p-2.5">
+											<li class="space-y-2 p-3">
 												<label
-													class="flex min-h-11 cursor-pointer items-center gap-2.5 sm:min-h-0"
+													class="flex min-h-11 cursor-pointer items-center gap-3 sm:min-h-0"
 												>
 													<input
 														type="checkbox"
@@ -919,7 +913,7 @@
 													>
 													{#if hintMatches.has(project.id)}
 														<span
-															class="micro-label shrink-0 text-accent"
+															class="shrink-0 text-xs text-muted-foreground"
 															>Asked for</span
 														>
 													{/if}
@@ -1042,7 +1036,7 @@
 							</form>
 						{:else if pendingConfirm}
 							<div
-								class="mt-3 space-y-2 rounded-lg border border-border bg-card p-3 shadow-ink-inner"
+								class="mt-3 space-y-2 rounded-lg border border-border bg-card p-3"
 								role="group"
 								aria-labelledby="confirm-heading-{request.id}"
 							>
@@ -1125,7 +1119,7 @@
 								{#if candidates.length > 0}
 									<div>
 										<label
-											class="flex min-h-11 cursor-pointer items-center gap-2.5 sm:min-h-0"
+											class="flex min-h-11 cursor-pointer items-center gap-3 sm:min-h-0"
 										>
 											<input
 												type="checkbox"
@@ -1234,7 +1228,7 @@
 		<section class={cardClass} aria-labelledby="outgoing-heading">
 			<div class="flex items-center gap-2">
 				<Send class="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-				<h2 id="outgoing-heading" class="text-base font-semibold text-foreground">
+				<h2 id="outgoing-heading" class="text-base font-medium text-foreground">
 					You asked
 				</h2>
 			</div>
@@ -1246,7 +1240,7 @@
 				<ul class="mt-3 divide-y divide-border">
 					{#each outgoing as request (request.id)}
 						<li
-							class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2.5"
+							class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-3"
 						>
 							<div class="min-w-0">
 								<p class="truncate text-sm font-medium text-foreground">
@@ -1269,13 +1263,16 @@
 								</p>
 							</div>
 							<span
-								class="shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium {request.status ===
-								'approved'
-									? 'border-success/30 bg-success/10 text-success'
-									: request.status === 'pending'
-										? 'border-border-strong bg-muted text-muted-foreground'
-										: 'border-border bg-muted/50 text-muted-foreground'}"
+								class="inline-flex shrink-0 items-center gap-2 text-xs text-muted-foreground"
 							>
+								<span
+									class="h-1.5 w-1.5 rounded-full {request.status === 'approved'
+										? 'bg-success'
+										: request.status === 'pending'
+											? 'bg-warning'
+											: 'bg-muted-foreground/60'}"
+									aria-hidden="true"
+								></span>
 								{outgoingStatusLabel(request.status, request.settled_elsewhere)}
 							</span>
 							{#if (request.status === 'approved' || request.settled_elsewhere) && request.projects.length > 0}
@@ -1292,7 +1289,7 @@
 														? 'already_member'
 														: project.status
 												)}
-												class="inline-flex min-h-[44px] items-center gap-2 text-sm font-semibold text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+												class="inline-flex min-h-[44px] items-center gap-2 text-sm font-medium text-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 											>
 												<FolderOpen
 													class="h-4 w-4"

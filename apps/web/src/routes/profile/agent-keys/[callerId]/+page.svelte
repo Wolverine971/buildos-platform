@@ -7,13 +7,12 @@
 		ArrowLeft,
 		BarChart3,
 		Clock,
-		Key,
 		Layers,
 		ListChecks,
 		ShieldAlert,
 		Terminal,
 		Zap
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import type {
 		BuildosAgentCallerSummary,
 		BuildosAgentCallerUsageDetailResponse,
@@ -23,10 +22,17 @@
 		BuildosAgentUsageTimeBucket
 	} from '@buildos/shared-types';
 	import type { PageData } from './$types';
-	import Badge from '$lib/components/ui/Badge.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
-	type BadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'accent';
+	/** Dot tone for a status: success = healthy/on, warning = pending/attention, destructive = failed. */
+	type Tone = 'success' | 'warning' | 'destructive' | 'muted';
+
+	const TONE_DOT: Record<Tone, string> = {
+		success: 'bg-success',
+		warning: 'bg-warning',
+		destructive: 'bg-destructive',
+		muted: 'bg-muted-foreground/50'
+	};
 
 	let { data }: { data: PageData } = $props();
 
@@ -78,25 +84,41 @@
 			.join(' ');
 	}
 
-	function statusVariant(status: string): BadgeVariant {
+	/** Display-only: turn a structured key like `read_write` into "Read write". */
+	function humanizeKey(value: string | null | undefined): string {
+		if (!value) return '';
+		const text = value.replace(/[_.-]+/g, ' ').trim();
+		return text ? text.charAt(0).toUpperCase() + text.slice(1) : value;
+	}
+
+	/** Display-only: `onto.task.create` -> "Task create". */
+	function opLabel(op: string): string {
+		return humanizeKey(op.replace(/^onto\./, ''));
+	}
+
+	function statusLabel(status: string): string {
+		if (status === 'trusted') return 'Active';
+		return humanizeKey(status);
+	}
+
+	function statusTone(status: string): Tone {
 		if (status === 'trusted') return 'success';
 		if (status === 'pending') return 'warning';
-		return 'error';
+		if (status === 'revoked') return 'muted';
+		return 'destructive';
 	}
 
-	function activityStatusVariant(status: string): BadgeVariant {
-		if (status === 'succeeded') return 'success';
+	function activityStatusTone(status: string): Tone {
 		if (status === 'pending') return 'warning';
-		if (status === 'failed') return 'error';
-		return 'info';
+		if (status === 'failed') return 'destructive';
+		return 'muted';
 	}
 
-	function securityVariant(event: BuildosAgentSecurityEventSummary): BadgeVariant {
-		if (event.severity === 'critical' || event.severity === 'high') return 'error';
+	function securityTone(event: BuildosAgentSecurityEventSummary): Tone {
+		if (event.severity === 'critical' || event.severity === 'high') return 'destructive';
 		if (event.outcome === 'denied' || event.outcome === 'blocked') return 'warning';
-		if (event.outcome === 'failure') return 'error';
-		if (event.outcome === 'success') return 'success';
-		return 'default';
+		if (event.outcome === 'failure') return 'destructive';
+		return 'muted';
 	}
 
 	function formatNumber(value: number): string {
@@ -160,12 +182,11 @@
 	function eventMetaLabel(event: BuildosAgentUsageEvent): string {
 		return [
 			event.project_name,
-			event.entity_kind,
-			event.op,
+			event.op ? opLabel(event.op) : humanizeKey(event.entity_kind),
 			formatRelativeTimestamp(event.occurred_at)
 		]
 			.filter(Boolean)
-			.join(' | ');
+			.join(' · ');
 	}
 
 	function rangeHref(key: BuildosAgentUsageRangeKey): string {
@@ -174,53 +195,51 @@
 
 	function getUsageSignal(payload: BuildosAgentCallerUsageDetailResponse): {
 		label: string;
-		variant: BadgeVariant;
+		tone: Tone;
 	} {
 		const callsPerDay = payload.totals.tool_call_count / Math.max(payload.range.days, 1);
 		const sessionsPerDay = payload.totals.session_count / Math.max(payload.range.days, 1);
 
 		if (callsPerDay >= 50 || sessionsPerDay >= 8) {
-			return { label: 'High usage', variant: 'accent' };
+			return { label: 'High usage', tone: 'muted' };
 		}
 		if (callsPerDay >= 5 || sessionsPerDay >= 1) {
-			return { label: 'Active', variant: 'success' };
+			return { label: 'Regular usage', tone: 'muted' };
 		}
 		if (payload.totals.session_count > 0) {
-			return { label: 'Light usage', variant: 'info' };
+			return { label: 'Light usage', tone: 'muted' };
 		}
-		return { label: 'Quiet', variant: 'default' };
+		return { label: 'Quiet', tone: 'muted' };
 	}
 
 	function getHealthSignal(payload: BuildosAgentCallerUsageDetailResponse): {
 		label: string;
-		variant: BadgeVariant;
+		tone: Tone;
 	} {
 		if (payload.totals.denied_count > 0 || failureRate >= 10) {
-			return { label: 'Needs review', variant: 'warning' };
+			return { label: 'Needs review', tone: 'warning' };
 		}
 		if (payload.totals.error_count > 0) {
-			return { label: 'Errors seen', variant: 'warning' };
+			return { label: 'Errors seen', tone: 'warning' };
 		}
-		return { label: 'No errors', variant: 'success' };
+		return { label: 'No errors', tone: 'success' };
 	}
 </script>
 
-<div class="mx-auto flex max-w-6xl flex-wrap gap-x-4 gap-y-1 px-4 pt-4">
-	<a class="text-sm underline" href={`/profile/agent-keys/${caller.id}/grant`}
-		>Project access and shared projects</a
-	>
-	<a class="text-sm underline" href={`/profile/agent-keys/${caller.id}/requests`}
-		>Requests and ongoing permissions</a
-	>
-</div>
+{#snippet dot(tone: Tone, label: string)}
+	<span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+		<span class="h-1.5 w-1.5 shrink-0 rounded-full {TONE_DOT[tone]}" aria-hidden="true"></span>
+		{label}
+	</span>
+{/snippet}
 
 <svelte:head>
-	<title>{installationDisplayName(caller)} Agent Usage - BuildOS</title>
+	<title>{installationDisplayName(caller)} usage · BuildOS</title>
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
 <div class="min-h-screen overflow-x-hidden bg-background text-foreground">
-	<div class="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 md:px-6 md:py-8 lg:px-8">
+	<div class="mx-auto max-w-7xl px-4 py-4 sm:py-6 md:px-6 md:py-8 lg:px-8">
 		<div
 			class="mb-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
 		>
@@ -235,15 +254,16 @@
 			</Button>
 
 			<div
-				class="flex w-full flex-wrap self-start rounded-lg border border-border bg-card p-1 shadow-ink sm:w-auto"
+				class="flex w-full flex-wrap self-start rounded-lg border border-border bg-card p-1 sm:w-auto"
 			>
 				{#each RANGE_OPTIONS as option (option.key)}
 					<a
 						href={rangeHref(option.key)}
-						class="flex-1 rounded-md px-3 py-1.5 text-center text-sm font-semibold transition-colors sm:flex-none {detail
+						aria-current={detail.range.key === option.key ? 'page' : undefined}
+						class="flex-1 rounded-md px-3 py-1 text-center font-mono text-sm tabular-nums transition-colors sm:flex-none {detail
 							.range.key === option.key
 							? 'bg-accent text-accent-foreground'
-							: 'text-muted-foreground hover:bg-muted hover:text-foreground'}"
+							: 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}"
 					>
 						{option.label}
 					</a>
@@ -251,200 +271,134 @@
 			</div>
 		</div>
 
-		<section
-			class="tx tx-frame tx-weak mb-5 min-w-0 rounded-lg border border-border bg-card p-4 shadow-ink sm:p-5"
-		>
-			<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-				<div class="min-w-0 flex-1">
-					<div class="flex flex-wrap items-start gap-3">
-						<div
-							class="tx tx-bloom tx-weak flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-accent shadow-ink"
-						>
-							<Key class="h-5 w-5 text-accent-foreground" />
-						</div>
-						<div class="min-w-0 flex-1">
-							<div
-								class="text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
-							>
-								Connector
-							</div>
-							<h1
-								class="mt-0.5 min-w-0 max-w-full break-words text-xl font-bold text-foreground sm:text-2xl"
-							>
-								{installationDisplayName(caller)}
-							</h1>
-							<div class="mt-2 flex flex-wrap items-center gap-1.5">
-								<Badge variant={statusVariant(caller.status)}>{caller.status}</Badge
-								>
-								<Badge variant="default">{displayProvider(caller.provider)}</Badge>
-								<Badge variant={usageSignal.variant}>{usageSignal.label}</Badge>
-								<Badge variant={healthSignal.variant}>{healthSignal.label}</Badge>
-							</div>
-						</div>
-					</div>
-
-					<div
-						class="mt-4 grid min-w-0 gap-3 border-t border-border pt-4 sm:grid-cols-2 lg:grid-cols-4"
+		<section class="mb-6 min-w-0 rounded-xl border border-border bg-card p-4 sm:p-6">
+			<div class="min-w-0">
+				<h1
+					class="min-w-0 max-w-full break-words text-xl font-medium text-foreground sm:text-2xl"
+				>
+					{installationDisplayName(caller)}
+				</h1>
+				<div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+					{@render dot(statusTone(caller.status), statusLabel(caller.status))}
+					<span class="text-xs text-muted-foreground">
+						{displayProvider(caller.provider)}
+					</span>
+					{@render dot(usageSignal.tone, usageSignal.label)}
+					{@render dot(healthSignal.tone, healthSignal.label)}
+				</div>
+				<div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+					<a
+						class="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+						href={`/profile/agent-keys/${caller.id}/grant`}
+						>Project access and shared projects</a
 					>
-						<div class="min-w-0">
-							<div
-								class="text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
-							>
-								Caller key
-							</div>
-							<code class="mt-1 block break-all text-xs text-foreground"
-								>{caller.caller_key}</code
-							>
-						</div>
-						<div class="min-w-0">
-							<div
-								class="text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
-							>
-								Prefix
-							</div>
-							<code class="mt-1 block break-all text-xs text-foreground"
-								>{caller.token_prefix}</code
-							>
-						</div>
-						<div class="min-w-0">
-							<div
-								class="text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
-							>
-								Last activity
-							</div>
-							<p class="mt-1 text-xs text-foreground">
-								{formatRelativeTimestamp(detail.totals.last_activity_at)}
-							</p>
-						</div>
-						<div class="min-w-0">
-							<div
-								class="text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
-							>
-								Range
-							</div>
-							<p class="mt-1 text-xs text-foreground">
-								{new Date(detail.range.start_at).toLocaleDateString()} – {new Date(
-									detail.range.end_at
-								).toLocaleDateString()}
-							</p>
-						</div>
-					</div>
+					<a
+						class="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+						href={`/profile/agent-keys/${caller.id}/requests`}
+						>Requests and ongoing permissions</a
+					>
+				</div>
+			</div>
+
+			<div
+				class="mt-4 grid min-w-0 gap-4 border-t border-border pt-4 sm:grid-cols-2 lg:grid-cols-4"
+			>
+				<div class="min-w-0">
+					<div class="text-xs text-muted-foreground">Caller key</div>
+					<code class="mt-1 block break-all text-xs text-foreground"
+						>{caller.caller_key}</code
+					>
+				</div>
+				<div class="min-w-0">
+					<div class="text-xs text-muted-foreground">Prefix</div>
+					<code class="mt-1 block break-all text-xs text-foreground"
+						>{caller.token_prefix}</code
+					>
+				</div>
+				<div class="min-w-0">
+					<div class="text-xs text-muted-foreground">Last activity</div>
+					<p class="mt-1 text-xs text-foreground">
+						{formatRelativeTimestamp(detail.totals.last_activity_at)}
+					</p>
+				</div>
+				<div class="min-w-0">
+					<div class="text-xs text-muted-foreground">Range</div>
+					<p class="mt-1 text-xs text-foreground">
+						{new Date(detail.range.start_at).toLocaleDateString()} – {new Date(
+							detail.range.end_at
+						).toLocaleDateString()}
+					</p>
 				</div>
 			</div>
 		</section>
 
-		<section class="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-			<div
-				class="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 shadow-ink"
-			>
-				<div
-					class="flex min-w-0 items-center gap-1.5 text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
-				>
-					<Activity class="h-3.5 w-3.5" />
-					Sessions
+		{#snippet stat(Icon: typeof Activity, label: string, value: string, note: string)}
+			<div class="min-w-0 overflow-hidden rounded-xl border border-border bg-card p-4">
+				<div class="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+					<Icon class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+					{label}
 				</div>
-				<div class="mt-2 truncate text-2xl font-bold">
-					{formatNumber(detail.totals.session_count)}
+				<div class="mt-2 truncate font-mono text-2xl font-medium tabular-nums">
+					{value}
 				</div>
-				<p class="mt-1 text-xs text-muted-foreground">
-					{detail.totals.active_session_count} active, {detail.totals
-						.rejected_session_count}
-					rejected
-				</p>
+				<p class="mt-1 text-xs text-muted-foreground">{note}</p>
 			</div>
-			<div
-				class="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 shadow-ink"
-			>
-				<div
-					class="flex min-w-0 items-center gap-1.5 text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
-				>
-					<Terminal class="h-3.5 w-3.5" />
-					Tool Calls
-				</div>
-				<div class="mt-2 truncate text-2xl font-bold">
-					{formatNumber(detail.totals.tool_call_count)}
-				</div>
-				<p class="mt-1 text-xs text-muted-foreground">
-					{formatNumber(detail.totals.successful_tool_call_count)} succeeded
-				</p>
-			</div>
-			<div
-				class="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 shadow-ink"
-			>
-				<div
-					class="flex min-w-0 items-center gap-1.5 text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
-				>
-					<Zap class="h-3.5 w-3.5" />
-					Writes
-				</div>
-				<div class="mt-2 truncate text-2xl font-bold">
-					{formatNumber(detail.totals.write_count)}
-				</div>
-				<p class="mt-1 text-xs text-muted-foreground">
-					{formatNumber(detail.totals.failed_write_count)} failed
-				</p>
-			</div>
-			<div
-				class="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 shadow-ink"
-			>
-				<div
-					class="flex min-w-0 items-center gap-1.5 text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
-				>
-					<AlertTriangle class="h-3.5 w-3.5" />
-					Errors
-				</div>
-				<div class="mt-2 truncate text-2xl font-bold">
-					{formatNumber(detail.totals.error_count)}
-				</div>
-				<p class="mt-1 text-xs text-muted-foreground">
-					{formatPercent(failureRate)} tool failure rate
-				</p>
-			</div>
-			<div
-				class="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 shadow-ink"
-			>
-				<div
-					class="flex min-w-0 items-center gap-1.5 text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
-				>
-					<ShieldAlert class="h-3.5 w-3.5" />
-					Denied
-				</div>
-				<div class="mt-2 truncate text-2xl font-bold">
-					{formatNumber(detail.totals.denied_count)}
-				</div>
-				<p class="mt-1 text-xs text-muted-foreground">
-					{formatNumber(detail.totals.auth_failure_count)} auth failures
-				</p>
-			</div>
-			<div
-				class="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 shadow-ink"
-			>
-				<div
-					class="flex min-w-0 items-center gap-1.5 text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
-				>
-					<Clock class="h-3.5 w-3.5" />
-					Latency
-				</div>
-				<div class="mt-2 truncate text-2xl font-bold">
-					{formatDuration(detail.totals.avg_tool_latency_ms)}
-				</div>
-				<p class="mt-1 text-xs text-muted-foreground">
-					{formatDuration(detail.totals.avg_session_duration_ms)} avg session
-				</p>
-			</div>
+		{/snippet}
+
+		<section class="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+			{@render stat(
+				Activity,
+				'Sessions',
+				formatNumber(detail.totals.session_count),
+				`${detail.totals.active_session_count} active, ${detail.totals.rejected_session_count} rejected`
+			)}
+			{@render stat(
+				Terminal,
+				'Tool calls',
+				formatNumber(detail.totals.tool_call_count),
+				`${formatNumber(detail.totals.successful_tool_call_count)} succeeded`
+			)}
+			{@render stat(
+				Zap,
+				'Writes',
+				formatNumber(detail.totals.write_count),
+				`${formatNumber(detail.totals.failed_write_count)} failed`
+			)}
+			{@render stat(
+				AlertTriangle,
+				'Errors',
+				formatNumber(detail.totals.error_count),
+				`${formatPercent(failureRate)} tool failure rate`
+			)}
+			{@render stat(
+				ShieldAlert,
+				'Denied',
+				formatNumber(detail.totals.denied_count),
+				`${formatNumber(detail.totals.auth_failure_count)} auth failures`
+			)}
+			{@render stat(
+				Clock,
+				'Latency',
+				formatDuration(detail.totals.avg_tool_latency_ms),
+				`${formatDuration(detail.totals.avg_session_duration_ms)} avg session`
+			)}
 		</section>
 
-		<div class="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-			<section class="min-w-0 rounded-lg border border-border bg-card p-4 shadow-ink">
-				<div class="mb-4 flex items-center justify-between gap-3">
-					<h2
-						class="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground"
-					>
-						<BarChart3 class="h-4 w-4 text-accent" />
-						Activity Over Time
-					</h2>
-					<Badge variant="default" size="sm">{detail.range.key}</Badge>
-				</div>
+		{#snippet sectionHeading(Icon: typeof Activity, title: string, meta: string)}
+			<div class="mb-4 flex items-center justify-between gap-3">
+				<h2 class="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground">
+					<Icon class="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+					{title}
+				</h2>
+				<span class="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+					{meta}
+				</span>
+			</div>
+		{/snippet}
+
+		<div class="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+			<section class="min-w-0 rounded-xl border border-border bg-card p-4">
+				{@render sectionHeading(BarChart3, 'Activity over time', detail.range.key)}
 
 				<div class="h-44 max-w-full overflow-x-auto">
 					<div class="flex h-full min-w-[560px] items-end gap-1 sm:min-w-[720px]">
@@ -454,7 +408,7 @@
 									class="relative flex h-36 items-end rounded-md bg-muted/50 px-1"
 								>
 									<div
-										class="w-full rounded-t bg-accent/75"
+										class="w-full rounded-t bg-foreground/25"
 										style="height: {heightPercent(
 											bucket.tool_call_count,
 											maxDailyActivity
@@ -463,7 +417,7 @@
 									></div>
 									{#if bucket.write_count > 0}
 										<div
-											class="absolute bottom-0 left-1 right-1 rounded-t bg-success/80"
+											class="absolute bottom-0 left-1 right-1 rounded-t bg-foreground/60"
 											style="height: {heightPercent(
 												bucket.write_count,
 												maxDailyActivity,
@@ -494,10 +448,10 @@
 				</div>
 				<div class="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
 					<span class="inline-flex items-center gap-1">
-						<span class="h-2 w-2 rounded-sm bg-accent/75"></span>Tool calls
+						<span class="h-2 w-2 rounded-sm bg-foreground/25"></span>Tool calls
 					</span>
 					<span class="inline-flex items-center gap-1">
-						<span class="h-2 w-2 rounded-sm bg-success/80"></span>Writes
+						<span class="h-2 w-2 rounded-sm bg-foreground/60"></span>Writes
 					</span>
 					<span class="inline-flex items-center gap-1">
 						<span class="h-2 w-2 rounded-sm bg-destructive/85"></span>Errors / denied
@@ -505,32 +459,31 @@
 				</div>
 			</section>
 
-			<section class="min-w-0 rounded-lg border border-border bg-card p-4 shadow-ink">
-				<div class="mb-4 flex items-center justify-between gap-3">
-					<h2
-						class="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground"
-					>
-						<ListChecks class="h-4 w-4 text-accent" />
-						Operation Mix
-					</h2>
-					<Badge variant="info" size="sm">{detail.operation_breakdown.length} ops</Badge>
-				</div>
+			<section class="min-w-0 rounded-xl border border-border bg-card p-4">
+				{@render sectionHeading(
+					ListChecks,
+					'Operation mix',
+					`${detail.operation_breakdown.length} ${detail.operation_breakdown.length === 1 ? 'op' : 'ops'}`
+				)}
 
 				{#if detail.operation_breakdown.length > 0}
 					<div class="space-y-3">
 						{#each detail.operation_breakdown.slice(0, 8) as op (op.op)}
 							<div class="min-w-0">
 								<div class="mb-1 flex items-center justify-between gap-3 text-xs">
-									<code class="min-w-0 flex-1 truncate text-foreground"
-										>{op.op}</code
+									<span
+										class="min-w-0 flex-1 truncate text-foreground"
+										title={op.op}>{opLabel(op.op)}</span
 									>
-									<span class="shrink-0 text-muted-foreground">
+									<span
+										class="shrink-0 font-mono tabular-nums text-muted-foreground"
+									>
 										{formatNumber(op.tool_call_count)} calls
 									</span>
 								</div>
 								<div class="h-2 overflow-hidden rounded-full bg-muted">
 									<div
-										class="h-full rounded-full bg-accent"
+										class="h-full rounded-full bg-foreground/40"
 										style="width: {widthPercent(
 											op.tool_call_count,
 											maxOperationCount
@@ -538,7 +491,7 @@
 									></div>
 								</div>
 								<div
-									class="mt-1 flex flex-wrap gap-2 text-2xs text-muted-foreground"
+									class="mt-1 flex flex-wrap gap-2 font-mono text-2xs tabular-nums text-muted-foreground"
 								>
 									<span>{formatNumber(op.write_count)} writes</span>
 									<span>{formatNumber(op.failed_count)} failed</span>
@@ -549,25 +502,21 @@
 					</div>
 				{:else}
 					<div
-						class="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground"
+						class="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground"
 					>
-						No tracked tool calls in this range.
+						No tracked tool calls in this range
 					</div>
 				{/if}
 			</section>
 		</div>
 
-		<div class="mt-5 grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-			<section class="min-w-0 rounded-lg border border-border bg-card p-4 shadow-ink">
-				<div class="mb-4 flex items-center justify-between gap-3">
-					<h2
-						class="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground"
-					>
-						<Layers class="h-4 w-4 text-accent" />
-						Project Impact
-					</h2>
-					<Badge variant="default" size="sm">{detail.totals.project_count} touched</Badge>
-				</div>
+		<div class="mt-6 grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+			<section class="min-w-0 rounded-xl border border-border bg-card p-4">
+				{@render sectionHeading(
+					Layers,
+					'Project impact',
+					`${detail.totals.project_count} touched`
+				)}
 
 				{#if detail.project_breakdown.length > 0}
 					<div class="space-y-3">
@@ -579,13 +528,15 @@
 									>
 										{project.project_name ?? 'Workspace'}
 									</span>
-									<span class="shrink-0 text-muted-foreground">
+									<span
+										class="shrink-0 font-mono tabular-nums text-muted-foreground"
+									>
 										{formatNumber(project.tool_call_count)} calls
 									</span>
 								</div>
 								<div class="h-2 overflow-hidden rounded-full bg-muted">
 									<div
-										class="h-full rounded-full bg-success"
+										class="h-full rounded-full bg-foreground/40"
 										style="width: {widthPercent(
 											project.tool_call_count,
 											maxProjectCount
@@ -593,7 +544,7 @@
 									></div>
 								</div>
 								<div
-									class="mt-1 flex flex-wrap gap-2 text-2xs text-muted-foreground"
+									class="mt-1 flex flex-wrap gap-2 font-mono text-2xs tabular-nums text-muted-foreground"
 								>
 									<span>{formatNumber(project.write_count)} writes</span>
 									<span>{formatNumber(project.failed_count)} failed</span>
@@ -604,22 +555,23 @@
 					</div>
 				{:else}
 					<div
-						class="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground"
+						class="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground"
 					>
-						No project-level activity in this range.
+						No project-level activity in this range
 					</div>
 				{/if}
 			</section>
 
-			<section class="min-w-0 rounded-lg border border-border bg-card p-4 shadow-ink">
+			<section class="min-w-0 rounded-xl border border-border bg-card p-4">
 				<div class="mb-4 flex items-center justify-between gap-3">
-					<h2
-						class="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground"
-					>
-						<ShieldAlert class="h-4 w-4 text-accent" />
-						Error And Access Signals
+					<h2 class="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground">
+						<ShieldAlert
+							class="h-4 w-4 shrink-0 text-muted-foreground"
+							aria-hidden="true"
+						/>
+						Errors and access
 					</h2>
-					<Badge variant={healthSignal.variant} size="sm">{healthSignal.label}</Badge>
+					{@render dot(healthSignal.tone, healthSignal.label)}
 				</div>
 
 				{#if detail.security_events.length > 0}
@@ -634,16 +586,21 @@
 											{event.message}
 										</p>
 										<p class="mt-1 text-xs text-muted-foreground">
-											{event.event_type} | {formatRelativeTimestamp(
+											{humanizeKey(event.event_type)} · {formatRelativeTimestamp(
 												event.created_at
 											)}
 										</p>
 									</div>
-									<div class="flex flex-wrap gap-1.5">
-										<Badge variant={securityVariant(event)} size="sm">
-											{event.outcome}
-										</Badge>
-										<Badge variant="default" size="sm">{event.severity}</Badge>
+									<div
+										class="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1"
+									>
+										{@render dot(
+											securityTone(event),
+											humanizeKey(event.outcome)
+										)}
+										<span class="text-xs text-muted-foreground">
+											{humanizeKey(event.severity)}
+										</span>
 									</div>
 								</div>
 							</div>
@@ -651,25 +608,21 @@
 					</div>
 				{:else}
 					<div
-						class="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground"
+						class="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground"
 					>
-						No security or access events in this range.
+						No security or access events in this range
 					</div>
 				{/if}
 			</section>
 		</div>
 
-		<div class="mt-5 grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-			<section class="min-w-0 rounded-lg border border-border bg-card p-4 shadow-ink">
-				<div class="mb-4 flex items-center justify-between gap-3">
-					<h2
-						class="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground"
-					>
-						<Terminal class="h-4 w-4 text-accent" />
-						Recent Tool Activity
-					</h2>
-					<Badge variant="info" size="sm">{detail.events.length} rows</Badge>
-				</div>
+		<div class="mt-6 grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+			<section class="min-w-0 rounded-xl border border-border bg-card p-4">
+				{@render sectionHeading(
+					Terminal,
+					'Recent tool activity',
+					`${detail.events.length} ${detail.events.length === 1 ? 'row' : 'rows'}`
+				)}
 
 				{#if detail.events.length > 0}
 					<div class="max-h-[520px] space-y-2 overflow-y-auto pr-1">
@@ -691,44 +644,39 @@
 											</p>
 										{/if}
 									</div>
-									<Badge variant={activityStatusVariant(event.status)} size="sm">
-										{event.status}
-									</Badge>
+									<span class="shrink-0">
+										{@render dot(
+											activityStatusTone(event.status),
+											humanizeKey(event.status)
+										)}
+									</span>
 								</div>
 							</div>
 						{/each}
 					</div>
 				{:else}
 					<div
-						class="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground"
+						class="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground"
 					>
-						No tracked direct tool activity in this range.
+						No tracked direct tool activity in this range
 					</div>
 				{/if}
 			</section>
 
-			<section class="min-w-0 rounded-lg border border-border bg-card p-4 shadow-ink">
-				<div class="mb-4 flex items-center justify-between gap-3">
-					<h2
-						class="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground"
-					>
-						<Activity class="h-4 w-4 text-accent" />
-						Sessions
-					</h2>
-					<Badge variant="default" size="sm">{detail.sessions.length} recent</Badge>
-				</div>
+			<section class="min-w-0 rounded-xl border border-border bg-card p-4">
+				{@render sectionHeading(Activity, 'Sessions', `${detail.sessions.length} recent`)}
 
 				{#if detail.sessions.length > 0}
 					<div class="max-w-full overflow-x-auto">
 						<table class="w-full min-w-[520px] text-left text-xs sm:min-w-[560px]">
 							<thead class="border-b border-border text-muted-foreground">
 								<tr>
-									<th class="py-2 pr-3 font-semibold">Started</th>
-									<th class="py-2 pr-3 font-semibold">Status</th>
-									<th class="py-2 pr-3 font-semibold">Scope</th>
-									<th class="py-2 pr-3 font-semibold text-right">Calls</th>
-									<th class="py-2 pr-3 font-semibold text-right">Writes</th>
-									<th class="py-2 font-semibold text-right">Duration</th>
+									<th class="py-2 pr-3 font-medium">Started</th>
+									<th class="py-2 pr-3 font-medium">Status</th>
+									<th class="py-2 pr-3 font-medium">Scope</th>
+									<th class="py-2 pr-3 font-medium text-right">Calls</th>
+									<th class="py-2 pr-3 font-medium text-right">Writes</th>
+									<th class="py-2 font-medium text-right">Duration</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -738,27 +686,30 @@
 											{formatTimestamp(session.started_at)}
 										</td>
 										<td class="py-2 pr-3">
-											<Badge
-												variant={session.status === 'rejected'
-													? 'warning'
-													: 'default'}
-												size="sm"
-											>
-												{session.status}
-											</Badge>
+											{@render dot(
+												session.status === 'rejected' ? 'warning' : 'muted',
+												humanizeKey(session.status)
+											)}
 										</td>
 										<td class="py-2 pr-3 text-muted-foreground">
-											{session.granted_scope_mode ??
-												session.requested_scope_mode ??
-												'--'}
+											{humanizeKey(
+												session.granted_scope_mode ??
+													session.requested_scope_mode
+											) || '--'}
 										</td>
-										<td class="py-2 pr-3 text-right text-foreground">
+										<td
+											class="py-2 pr-3 text-right font-mono tabular-nums text-foreground"
+										>
 											{formatNumber(session.tool_call_count)}
 										</td>
-										<td class="py-2 pr-3 text-right text-foreground">
+										<td
+											class="py-2 pr-3 text-right font-mono tabular-nums text-foreground"
+										>
 											{formatNumber(session.write_count)}
 										</td>
-										<td class="py-2 text-right text-muted-foreground">
+										<td
+											class="py-2 text-right font-mono tabular-nums text-muted-foreground"
+										>
 											{formatDuration(session.duration_ms)}
 										</td>
 									</tr>
@@ -768,9 +719,9 @@
 					</div>
 				{:else}
 					<div
-						class="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground"
+						class="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground"
 					>
-						No sessions in this range.
+						No sessions in this range
 					</div>
 				{/if}
 			</section>

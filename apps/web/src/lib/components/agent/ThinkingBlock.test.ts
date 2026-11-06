@@ -329,4 +329,85 @@ describe('ThinkingBlock', () => {
 		expect(reducedMotion).toContain('.thinking-hammer');
 		expect(reducedMotion).toContain('transition: none');
 	});
+
+	it('groups steps into project cards with what the finder pulled in', () => {
+		const tool = (id: string, args: Record<string, unknown>): ActivityEntry => ({
+			id,
+			content: `Ran ${id}`,
+			timestamp: new Date('2026-11-05T12:00:01.000Z'),
+			activityType: 'tool_call',
+			status: 'completed',
+			metadata: {
+				toolName: id,
+				arguments: args,
+				line: { verb: `Ran ${id}`, tone: 'done', text: id }
+			}
+		});
+		const block: ThinkingBlockMessage = {
+			id: 'thinking-cards',
+			type: 'thinking_block',
+			content: 'Complete',
+			timestamp: new Date('2026-11-05T12:00:00.000Z'),
+			completedAt: new Date('2026-11-05T12:00:06.000Z'),
+			status: 'completed',
+			isCollapsed: false,
+			activities: [
+				{
+					id: 'selection',
+					content: 'Context picked',
+					timestamp: new Date('2026-11-05T12:00:00.500Z'),
+					activityType: 'ontology_loaded',
+					metadata: {
+						contextSelection: {
+							type: 'context_selection',
+							version: 1,
+							mode: 'on',
+							visible: true,
+							injected: true,
+							status: 'selected',
+							failure: null,
+							client_turn_id: 'c',
+							turn_run_id: 't',
+							project_id: 'p-wayne',
+							workspace: null,
+							projects: [],
+							items: [
+								{
+									kind: 'document',
+									id: 'd',
+									label: 'Worklist',
+									tier: 'full',
+									sections: []
+								},
+								{
+									kind: 'task',
+									id: 'g',
+									label: 'Griffin',
+									tier: 'summary',
+									sections: []
+								}
+							],
+							counts: { full: 1, summary: 1, checked: 5 },
+							elapsed_ms: 300
+						}
+					}
+				},
+				tool('search_tasks', { project_id: 'p-wayne', query: 'Cutlass' }),
+				tool('list_goals', { project_id: 'p-other' })
+			]
+		};
+		render(ThinkingBlock, {
+			block,
+			onToggleCollapse: vi.fn(),
+			turnCards: { sessionProject: { id: 'p-wayne', name: 'Wayne Strategies' } }
+		});
+
+		const cards = screen.getByTestId('turn-cards');
+		expect(cards.textContent).toContain('Wayne Strategies');
+		expect(cards.textContent).toContain('Pulled in 2 of 5');
+		expect(cards.textContent).toContain('Worklist, Griffin');
+		expect(cards.textContent).toContain('Another project');
+		expect(screen.getByText('2 projects · 2 steps')).toBeTruthy();
+		expect(screen.queryByRole('log', { name: 'BuildOS thinking log' })).toBeNull();
+	});
 });

@@ -290,7 +290,7 @@ describe('PeopleRequests: upgrade requests', () => {
 		render(PeopleRequests, { props: page([upgrade]) });
 
 		expect(screen.getByText(/Wants their agents to make changes in/)).toBeInTheDocument();
-		expect(screen.getByText('Now: Editor · agents Read')).toBeInTheDocument();
+		expect(screen.getByText('Now: Editor · agents read')).toBeInTheDocument();
 		expect(
 			screen.getByText(
 				/Their agents only add tasks and documents, and change what Sam Rivera/
@@ -394,7 +394,7 @@ describe('PeopleRequests: upgrade requests', () => {
 		});
 		expect(garden).toBeChecked();
 		expect(
-			screen.getByText('Now: Viewer · agents Off', {
+			screen.getByText('Now: Viewer · agents off', {
 				selector: '#upgrade-now-req-3-project-2'
 			})
 		).toBeInTheDocument();

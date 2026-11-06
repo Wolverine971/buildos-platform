@@ -12,8 +12,11 @@ import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 import { addDays, differenceInDays, parseISO, subDays, subHours } from 'date-fns';
 import {
 	START_HERE_DOCUMENT_TYPE_KEY,
-	buildStartHerePromptExcerpt,
-	pickProjectStartHereDocument
+	extractStartHereOrientation,
+	parseStartHereStatusRegion,
+	pickProjectStartHereDocument,
+	readStartHereAuthoredSections,
+	stripStartHereScaffolding
 } from '@buildos/shared-agent-ops/ontology/start-here';
 
 // ============================================================================
@@ -61,6 +64,7 @@ import type {
 	ProjectPauseNotice,
 	ProjectRecentChange,
 	ProjectRecentChangeKind,
+	ProjectStartHereContext,
 	RecentUpdates,
 	UnblockingTask
 } from './ontologyBriefTypes.js';
@@ -75,6 +79,167 @@ import {
 	fetchOthersActivityBriefSection,
 	formatAgentLabel
 } from './othersActivityBriefSection.js';
+
+// ============================================================================
+// START HERE ORIENTATION (tasker 152)
+// ============================================================================
+
+/** Total budget for the START HERE parts injected into one project's brief prompt. */
+export const START_HERE_BRIEF_MAX_CHARS = 1200;
+const START_HERE_BRIEF_STATUS_MAX_CHARS = 300;
+/** Orientation share when Current state also needs room. */
+const START_HERE_BRIEF_ORIENTATION_MAX_CHARS = 500;
+
+let sentenceSegmenter: Intl.Segmenter | null = null;
+
+function splitSentences(text: string): string[] {
+	sentenceSegmenter ??= new Intl.Segmenter('en', { granularity: 'sentence' });
+	return Array.from(sentenceSegmenter.segment(text), (part) => part.segment);
+}
+
+/**
+ * Fit text into `maxChars` by dropping whole trailing paragraphs, then whole
+ * trailing sentences (a line break also ends a sentence, so list items drop one
+ * at a time). Only a single sentence longer than the budget is cut, and then at
+ * a word boundary with an ellipsis.
+ */
+export function trimToWholeUnits(
+	text: string,
+	maxChars: number
+): { text: string; truncated: boolean } {
+	const normalized = text.trim();
+	if (normalized.length <= maxChars) return { text: normalized, truncated: false };
+	if (maxChars <= 1) return { text: '', truncated: true };
+
+	const kept: string[] = [];
+	let used = 0;
+	for (const paragraph of normalized.split(/\n{2,}/)) {
+		const separator = kept.length > 0 ? 2 : 0;
+		if (used + separator + paragraph.length <= maxChars) {
+			kept.push(paragraph);
+			used += separator + paragraph.length;
+			continue;
+		}
+		const room = maxChars - used - separator;
+		let partial = '';
+		for (const sentence of splitSentences(paragraph)) {
+			if ((partial + sentence).trimEnd().length > room) break;
+			partial += sentence;
+		}
+		partial = partial.trimEnd();
+		if (partial) kept.push(partial);
+		break;
+	}
+
+	if (kept.length > 0) return { text: kept.join('\n\n'), truncated: true };
+
+	const slice = normalized.slice(0, maxChars - 1);
+	const lastBreak = slice.search(/\s\S*$/);
+	const cut = (lastBreak > 0 ? slice.slice(0, lastBreak) : slice).trimEnd();
+	return { text: cut ? `${cut}…` : '', truncated: true };
+}
+
+function flattenWhitespace(value: string): string {
+	return value.replace(/\s+/g, ' ').trim();
+}
+
+/** The rendered `managed:status` region as one line, or null while it is still template copy. */
+function formatStartHereStatusLine(content: string): string | null {
+	const status = parseStartHereStatusRegion(content);
+	if (!status?.rendered) return null;
+	const parts = [
+		status.state ? `State: ${status.state}` : null,
+		status.scale ? `Scale: ${status.scale}` : null,
+		status.stage ? `Stage: ${status.stage}` : null,
+		status.now ? `Now: ${status.now}` : null,
+		status.nextStep ? `Next step: ${status.nextStep}` : null
+	].filter((part): part is string => Boolean(part));
+	if (parts.length === 0) return null;
+	const line = parts.join(' · ');
+	return status.refreshedAt ? `${line} (refreshed ${status.refreshedAt})` : line;
+}
+
+/**
+ * Brief context from one START HERE doc: the orientation paragraph, the authored
+ * "Current state" section when real text was written, and the rendered status
+ * region, each trimmed by whole units to share `maxChars`. Returns null when
+ * nothing real was written (an unfilled template), so the prompt never carries
+ * template scaffolding.
+ */
+export function buildBriefStartHereContext(
+	row: {
+		id: string;
+		title: string | null;
+		content: string | null;
+		updated_at: string | null;
+	},
+	maxChars = START_HERE_BRIEF_MAX_CHARS
+): ProjectStartHereContext | null {
+	const content = row.content ?? '';
+	if (!content.trim()) return null;
+
+	let orientation = extractStartHereOrientation(content, Number.POSITIVE_INFINITY);
+	const currentStateSection = readStartHereAuthoredSections(content)['Current state'];
+	const currentState = currentStateSection
+		? stripStartHereScaffolding(currentStateSection) || null
+		: null;
+
+	// When "What this is" is unfilled, the orientation falls back to the first
+	// real paragraph, which can be the Current state text itself. Show it once.
+	if (
+		orientation &&
+		currentState &&
+		flattenWhitespace(currentState).startsWith(flattenWhitespace(orientation))
+	) {
+		orientation = null;
+	}
+	if (!orientation && !currentState) return null;
+
+	let remaining = maxChars;
+	let truncated = false;
+
+	const statusLine = formatStartHereStatusLine(content);
+	let status: string | null = null;
+	if (statusLine) {
+		const trimmed = trimToWholeUnits(
+			statusLine,
+			Math.min(START_HERE_BRIEF_STATUS_MAX_CHARS, remaining)
+		);
+		status = trimmed.text || null;
+		truncated ||= trimmed.truncated;
+		remaining -= trimmed.text.length;
+	}
+
+	let orientationText: string | null = null;
+	if (orientation) {
+		const budget = currentState
+			? Math.min(START_HERE_BRIEF_ORIENTATION_MAX_CHARS, remaining)
+			: remaining;
+		const trimmed = trimToWholeUnits(orientation, budget);
+		orientationText = trimmed.text || null;
+		truncated ||= trimmed.truncated;
+		remaining -= trimmed.text.length;
+	}
+
+	let currentStateText: string | null = null;
+	if (currentState) {
+		const trimmed = trimToWholeUnits(currentState, remaining);
+		currentStateText = trimmed.text || null;
+		truncated ||= trimmed.truncated;
+	}
+
+	if (!orientationText && !currentStateText) return null;
+
+	return {
+		documentId: row.id,
+		title: row.title ?? 'START HERE',
+		orientation: orientationText,
+		currentState: currentStateText,
+		status,
+		updatedAt: row.updated_at,
+		truncated
+	};
+}
 
 export const CALENDAR_BRIEF_CAPS = {
 	TODAY: 8,
@@ -1937,9 +2102,11 @@ export class OntologyBriefDataLoader {
 				.in('project_id', projectIds)
 				.is('deleted_at', null)
 				.is('archived_at', null),
+			// START HERE candidates without bodies: one body per project is read
+			// below, after the pick.
 			this.supabase
 				.from('onto_documents')
-				.select('id, project_id, title, content, props, created_at, updated_at')
+				.select('id, project_id, title, props, created_at, updated_at')
 				.in('project_id', projectIds)
 				.eq('type_key', START_HERE_DOCUMENT_TYPE_KEY)
 				.is('deleted_at', null)
@@ -1994,43 +2161,13 @@ export class OntologyBriefDataLoader {
 			id: string;
 			project_id: string;
 			title: string | null;
-			content: string | null;
 			props: unknown;
 			created_at: string | null;
 			updated_at: string | null;
 		}>;
 		const requirements = (requirementsResult.data || []) as OntoRequirement[];
 		const edges = (edgesResult.data || []) as OntoEdge[];
-		const startHereByProject = new Map<
-			string,
-			{
-				documentId: string;
-				title: string;
-				excerpt: string;
-				updatedAt: string | null;
-				truncated: boolean;
-			}
-		>();
-		const startHereRowsByProject = new Map<string, typeof startHereRows>();
-		for (const row of startHereRows) {
-			if (!row.project_id) continue;
-			const rows = startHereRowsByProject.get(row.project_id) ?? [];
-			rows.push(row);
-			startHereRowsByProject.set(row.project_id, rows);
-		}
-		for (const [projectId, rows] of startHereRowsByProject.entries()) {
-			const row = pickProjectStartHereDocument(rows);
-			if (!row) continue;
-			const excerpt = buildStartHerePromptExcerpt(row.content ?? '', 1200);
-			if (!excerpt.content.trim()) continue;
-			startHereByProject.set(projectId, {
-				documentId: row.id,
-				title: row.title ?? 'START HERE',
-				excerpt: excerpt.content,
-				updatedAt: row.updated_at,
-				truncated: excerpt.truncated
-			});
-		}
+		const startHereByProject = await this.loadStartHereContexts(startHereRows);
 
 		console.log('[OntologyBriefDataLoader] Loaded entities:', {
 			projects: projects.length,
@@ -2105,6 +2242,70 @@ export class OntologyBriefDataLoader {
 				recentUpdates
 			};
 		});
+	}
+
+	/**
+	 * Pick one START HERE per project from body-less candidates, then read only
+	 * the picked bodies in one query.
+	 *
+	 * The pick runs without `content`, so `isExplicitStartHereDocument` sees only
+	 * `props.origin` and the title, not a `# START HERE` first line; anything
+	 * else falls back to the newest candidate. Only a handful of prod projects
+	 * (6 on 2026-11-05) have more than one candidate, so that is acceptable.
+	 */
+	private async loadStartHereContexts(
+		candidates: Array<{
+			id: string;
+			project_id: string;
+			title: string | null;
+			props: unknown;
+			created_at: string | null;
+			updated_at: string | null;
+		}>
+	): Promise<Map<string, ProjectStartHereContext>> {
+		const byProject = new Map<string, typeof candidates>();
+		for (const row of candidates) {
+			if (!row.project_id) continue;
+			const rows = byProject.get(row.project_id) ?? [];
+			rows.push(row);
+			byProject.set(row.project_id, rows);
+		}
+		const picked: typeof candidates = [];
+		for (const rows of byProject.values()) {
+			const row = pickProjectStartHereDocument(rows);
+			if (row) picked.push(row);
+		}
+
+		const contexts = new Map<string, ProjectStartHereContext>();
+		if (picked.length === 0) return contexts;
+
+		const { data, error } = await this.supabase
+			.from('onto_documents')
+			.select('id, content')
+			.in(
+				'id',
+				picked.map((row) => row.id)
+			);
+		if (error) {
+			// Same rule as the entity queries: never write a brief from partial data.
+			throw new Error(
+				`Failed to load ontology entities for the brief: start_here_content (${error.message})`
+			);
+		}
+		const contentById = new Map(
+			(data ?? []).map((row) => [row.id, row.content as string | null])
+		);
+
+		for (const row of picked) {
+			const context = buildBriefStartHereContext({
+				id: row.id,
+				title: row.title,
+				content: contentById.get(row.id) ?? null,
+				updated_at: row.updated_at
+			});
+			if (context) contexts.set(row.project_id, context);
+		}
+		return contexts;
 	}
 
 	async loadRecentlyPausedProjects(

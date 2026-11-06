@@ -375,12 +375,12 @@
 	<TabHeader
 		icon={Users}
 		title="Contacts"
-		description="Manage your personal contact memory. Sensitive values stay masked by default."
+		description="People BuildOS remembers for you. Phone numbers and emails stay masked"
 	/>
 
 	<!-- Add/Edit Contact -->
 	<SettingsCard
-		title={editingContactId ? 'Edit Contact' : 'Add Contact'}
+		title={editingContactId ? 'Edit contact' : 'Add contact'}
 		icon={Pencil}
 		labelledById="contacts-form-heading"
 	>
@@ -392,71 +392,113 @@
 
 		<form class="space-y-4" onsubmit={submitContactForm}>
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-				<FormField label="Display name" labelFor="contact-display-name" required={true}>
+				<FormField
+					uppercase={false}
+					showOptional={false}
+					label="Display name"
+					labelFor="contact-display-name"
+					required={true}
+				>
 					<TextInput
 						id="contact-display-name"
 						bind:value={formState.display_name}
-						placeholder="Display name"
+						placeholder=""
 						required
 					/>
 				</FormField>
-				<FormField label="Relationship" labelFor="contact-relationship">
+				<FormField
+					uppercase={false}
+					showOptional={false}
+					label="Relationship"
+					labelFor="contact-relationship"
+				>
 					<TextInput
 						id="contact-relationship"
 						bind:value={formState.relationship_label}
 						placeholder="e.g. teammate, client"
 					/>
 				</FormField>
-				<FormField label="Given name" labelFor="contact-given-name">
+				<FormField
+					uppercase={false}
+					showOptional={false}
+					label="Given name"
+					labelFor="contact-given-name"
+				>
 					<TextInput
 						id="contact-given-name"
 						bind:value={formState.given_name}
-						placeholder="Given name"
+						placeholder=""
 					/>
 				</FormField>
-				<FormField label="Family name" labelFor="contact-family-name">
+				<FormField
+					uppercase={false}
+					showOptional={false}
+					label="Family name"
+					labelFor="contact-family-name"
+				>
 					<TextInput
 						id="contact-family-name"
 						bind:value={formState.family_name}
-						placeholder="Family name"
+						placeholder=""
 					/>
 				</FormField>
-				<FormField label="Organization" labelFor="contact-organization">
+				<FormField
+					uppercase={false}
+					showOptional={false}
+					label="Organization"
+					labelFor="contact-organization"
+				>
 					<TextInput
 						id="contact-organization"
 						bind:value={formState.organization}
-						placeholder="Organization"
+						placeholder=""
 					/>
 				</FormField>
-				<FormField label="Title" labelFor="contact-title">
-					<TextInput
-						id="contact-title"
-						bind:value={formState.title}
-						placeholder="Title"
-					/>
+				<FormField
+					uppercase={false}
+					showOptional={false}
+					label="Title"
+					labelFor="contact-title"
+				>
+					<TextInput id="contact-title" bind:value={formState.title} placeholder="" />
 				</FormField>
-				<FormField label="Phone" labelFor="contact-phone">
+				<FormField
+					uppercase={false}
+					showOptional={false}
+					label="Phone"
+					labelFor="contact-phone"
+				>
 					<TextInput
 						id="contact-phone"
 						bind:value={formState.phone}
 						type="tel"
-						placeholder="Phone (optional)"
+						placeholder=""
 					/>
 				</FormField>
-				<FormField label="Email" labelFor="contact-email">
+				<FormField
+					uppercase={false}
+					showOptional={false}
+					label="Email"
+					labelFor="contact-email"
+				>
 					<TextInput
 						id="contact-email"
 						bind:value={formState.email}
 						type="email"
-						placeholder="Email (optional)"
+						placeholder=""
 					/>
 				</FormField>
 			</div>
-			<FormField label="Notes" labelFor="contact-notes">
+			<FormField
+				uppercase={false}
+				showOptional={false}
+				label="Notes"
+				labelFor="contact-notes"
+			>
 				<Textarea
 					id="contact-notes"
 					bind:value={formState.notes}
-					placeholder="Notes (optional)"
+					placeholder=""
 					rows={3}
 					autoResize
 				/>
@@ -482,11 +524,7 @@
 	</SettingsCard>
 
 	<!-- Bulk Upload -->
-	<SettingsCard
-		title="Bulk Upload (CSV)"
-		icon={Upload}
-		labelledById="contacts-bulk-upload-heading"
-	>
+	<SettingsCard title="Import from CSV" icon={Upload} labelledById="contacts-bulk-upload-heading">
 		{#snippet actions()}
 			<Button variant="outline" size="sm" onclick={downloadCsvTemplate} icon={Download}>
 				Download template
@@ -494,13 +532,18 @@
 		{/snippet}
 
 		<div class="space-y-4">
-			<FormField label="CSV File" labelFor="contacts-csv-input">
+			<FormField
+				uppercase={false}
+				showOptional={false}
+				label="CSV file"
+				labelFor="contacts-csv-input"
+			>
 				<input
 					id="contacts-csv-input"
 					type="file"
 					accept=".csv,text/csv"
 					onchange={handleFileSelection}
-					class="block w-full text-sm text-foreground rounded-md file:mr-3 file:py-2.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-accent file:text-accent-foreground hover:file:bg-accent/90 file:cursor-pointer file:transition-colors file:shadow-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+					class="block w-full text-sm text-foreground rounded-md file:mr-3 file:py-2.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-muted file:text-foreground hover:file:bg-muted/70 file:cursor-pointer file:transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 				/>
 			</FormField>
 
@@ -553,8 +596,8 @@
 
 	<!-- Saved Contacts -->
 	<SettingsCard
-		title="Saved Contacts"
-		description="{contacts.length} total"
+		title="Saved contacts"
+		description="{contacts.length} {contacts.length === 1 ? 'contact' : 'contacts'}"
 		icon={Users}
 		labelledById="contacts-saved-heading"
 	>
@@ -565,25 +608,26 @@
 		{/snippet}
 
 		{#if loadingContacts}
-			<p class="text-sm text-muted-foreground">Loading contacts...</p>
+			<p class="text-sm text-muted-foreground">Loading contacts…</p>
 		{:else if contacts.length === 0}
 			<p class="text-sm text-muted-foreground">
-				No contacts yet. Add one manually or upload a CSV file.
+				No contacts yet. Add one above or import a CSV.
 			</p>
 		{:else}
 			<div class="space-y-2">
 				{#each contacts as contact (contact.id)}
 					<div
-						class="border border-border rounded-md p-3 hover:border-accent/50 transition-colors"
+						class="border border-border rounded-lg p-3 hover:bg-muted/50 transition-colors"
 					>
 						<div class="flex flex-wrap items-start justify-between gap-3">
 							<div class="min-w-0">
-								<p class="font-semibold text-sm text-foreground truncate">
+								<p class="font-medium text-sm text-foreground truncate">
 									{contact.display_name}
 								</p>
 								<p class="text-xs text-muted-foreground mt-0.5 truncate">
-									{contact.relationship_label || 'No relationship'} · {contact.organization ||
-										'No org'}
+									{[contact.relationship_label, contact.organization]
+										.filter(Boolean)
+										.join(' · ') || 'No details yet'}
 								</p>
 								<p class="text-xs text-muted-foreground mt-0.5 truncate">
 									{formatMethods(contact)}
@@ -602,9 +646,10 @@
 									Edit
 								</Button>
 								<Button
-									variant="danger"
+									variant="ghost"
 									size="sm"
 									icon={Trash2}
+									class="text-muted-foreground hover:text-destructive"
 									onclick={() => requestArchiveContact(contact)}
 								>
 									Archive
@@ -621,7 +666,7 @@
 <!-- Archive Confirmation Modal -->
 <ConfirmationModal
 	isOpen={showDeleteContactConfirmation}
-	title="Delete contact"
+	title="Delete contact?"
 	confirmText="Delete"
 	cancelText="Cancel"
 	confirmVariant="danger"

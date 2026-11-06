@@ -16,15 +16,13 @@
 		CalendarCheck,
 		Timer,
 		ChevronRight,
-		Sun,
 		LoaderCircle,
 		CircleAlert,
 		RefreshCw,
 		Brain,
 		Sparkles,
-		FolderOpen,
-		ExternalLink
-	} from 'lucide-svelte';
+		FolderOpen
+	} from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
@@ -481,15 +479,15 @@
 	<TabHeader
 		icon={Calendar}
 		title="Calendar"
-		description="Connect Google Calendar and configure scheduling preferences."
+		description="Connect Google Calendar and set how tasks get scheduled"
 	/>
 
 	{#if loadingCalendar}
 		<div class="text-center py-12">
 			<LoaderCircle
-				class="w-8 h-8 animate-spin motion-reduce:animate-none text-accent mx-auto mb-4"
+				class="w-8 h-8 animate-spin motion-reduce:animate-none text-muted-foreground mx-auto mb-4"
 			/>
-			<p class="text-sm text-muted-foreground">Loading calendar settings...</p>
+			<p class="text-sm text-muted-foreground">Loading calendar settings</p>
 		</div>
 	{:else if calendarData}
 		<!-- Google Calendar Integration -->
@@ -503,22 +501,21 @@
 			<SettingsCard
 				icon={Calendar}
 				title={calendarConnected
-					? calendarData.calendarStatus?.google_email || 'Calendar Connected'
+					? calendarData.calendarStatus?.google_email || 'Calendar connected'
 					: 'Google Calendar'}
-				description={calendarConnected ? '' : 'Connect to schedule tasks automatically'}
+				description={calendarConnected ? '' : 'Connect to schedule tasks on your calendar'}
 				labelledById="calendar-integration-heading"
 				bodyClass="bg-muted/50"
 			>
 				{#snippet actions()}
 					{#if calendarConnected}
-						<div class="flex items-center gap-1.5 text-xs">
-							<CircleCheck class="w-3.5 h-3.5 text-success" />
-							<span class="font-medium text-success">Connected</span>
+						<div class="flex items-center gap-2 text-xs text-muted-foreground">
+							<span class="h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true"
+							></span>
+							<span>Connected</span>
 							{#if calendarData.calendarStatus?.lastSync}
-								<span class="text-muted-foreground">
-									· Last sync {formatLastSync(
-										calendarData.calendarStatus.lastSync
-									)}
+								<span>
+									· Synced {formatLastSync(calendarData.calendarStatus.lastSync)}
 								</span>
 							{/if}
 						</div>
@@ -536,7 +533,8 @@
 
 						<Button
 							onclick={handleDisconnectClick}
-							variant="danger"
+							variant="ghost"
+							class="text-destructive hover:text-destructive"
 							size="sm"
 							icon={Unlink}
 							disabled={checkingDependencies || disconnecting}
@@ -550,25 +548,21 @@
 							variant="primary"
 							size="sm"
 							icon={Link}
-							class="shadow-ink pressable"
+							class="pressable"
 						>
-							Connect Calendar
+							Connect calendar
 						</Button>
 					{/if}
 				{/snippet}
 
 				<!-- Features List -->
-				<h4
-					class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2"
-				>
-					Calendar Features
-				</h4>
-				<div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+				<h4 class="text-xs text-muted-foreground mb-2">What it does</h4>
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 					<div class="flex items-start gap-2">
-						<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
+						<CircleCheck class="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
 						<div class="min-w-0">
 							<p class="text-xs sm:text-sm font-medium text-foreground">
-								Automatic Task Scheduling
+								Automatic scheduling
 							</p>
 							<p class="text-xs text-muted-foreground">
 								Schedule tasks directly to your calendar
@@ -576,10 +570,10 @@
 						</div>
 					</div>
 					<div class="flex items-start gap-2">
-						<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
+						<CircleCheck class="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
 						<div class="min-w-0">
 							<p class="text-xs sm:text-sm font-medium text-foreground">
-								Smart Time Slots
+								Smart time slots
 							</p>
 							<p class="text-xs text-muted-foreground">
 								Find slots based on your preferences
@@ -587,10 +581,10 @@
 						</div>
 					</div>
 					<div class="flex items-start gap-2">
-						<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
+						<CircleCheck class="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
 						<div class="min-w-0">
 							<p class="text-xs sm:text-sm font-medium text-foreground">
-								Two-way Sync
+								Two-way sync
 							</p>
 							<p class="text-xs text-muted-foreground">
 								Tasks and calendar events stay in sync
@@ -598,10 +592,10 @@
 						</div>
 					</div>
 					<div class="flex items-start gap-2">
-						<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
+						<CircleCheck class="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
 						<div class="min-w-0">
 							<p class="text-xs sm:text-sm font-medium text-foreground">
-								Holiday Awareness
+								Holiday aware
 							</p>
 							<p class="text-xs text-muted-foreground">
 								Avoid scheduling on holidays
@@ -616,8 +610,8 @@
 		{#if calendarConnected && calendarPreferences}
 			<SettingsCard
 				icon={Clock}
-				title="Calendar Preferences"
-				description="Customize how tasks are scheduled"
+				title="Calendar preferences"
+				description="How tasks get scheduled"
 				labelledById="calendar-preferences-heading"
 				bodyClass="p-0"
 			>
@@ -640,7 +634,9 @@
 						<!-- Working Hours -->
 						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 							<FormField
-								label="Work Start Time"
+								label="Work start time"
+								uppercase={false}
+								showOptional={false}
 								labelFor="workStartTime"
 								required
 								size="md"
@@ -655,7 +651,9 @@
 								/>
 							</FormField>
 							<FormField
-								label="Work End Time"
+								label="Work end time"
+								uppercase={false}
+								showOptional={false}
 								labelFor="workEndTime"
 								required
 								size="md"
@@ -674,12 +672,12 @@
 						<!-- Working Days -->
 						<fieldset class="space-y-2">
 							<legend class="block text-sm font-medium text-foreground">
-								Working Days
+								Working days
 							</legend>
 							<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
 								{#each DAY_NAMES as day, index (day)}
 									<label
-										class="flex items-center space-x-2 cursor-pointer min-h-[44px] py-1"
+										class="flex items-center gap-2 cursor-pointer min-h-[44px] py-1"
 									>
 										<input
 											type="checkbox"
@@ -699,7 +697,9 @@
 						<!-- Task Duration Settings -->
 						<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 							<FormField
-								label="Default Duration (minutes)"
+								label="Default duration (minutes)"
+								uppercase={false}
+								showOptional={false}
 								labelFor="defaultTaskDuration"
 								required
 								size="md"
@@ -716,7 +716,9 @@
 								/>
 							</FormField>
 							<FormField
-								label="Minimum Duration (minutes)"
+								label="Minimum duration (minutes)"
+								uppercase={false}
+								showOptional={false}
 								labelFor="minTaskDuration"
 								required
 								size="md"
@@ -733,7 +735,9 @@
 								/>
 							</FormField>
 							<FormField
-								label="Maximum Duration (minutes)"
+								label="Maximum duration (minutes)"
+								uppercase={false}
+								showOptional={false}
 								labelFor="maxTaskDuration"
 								required
 								size="md"
@@ -756,6 +760,8 @@
 							<FormField
 								required
 								size="md"
+								uppercase={false}
+								showOptional={false}
 								label="Timezone"
 								labelFor="calendarTimezone"
 							>
@@ -772,7 +778,9 @@
 								</Select>
 							</FormField>
 							<FormField
-								label="Holiday Country Code"
+								label="Holiday country code"
+								uppercase={false}
+								showOptional={false}
 								labelFor="holidayCountryCode"
 								size="md"
 							>
@@ -795,7 +803,7 @@
 								bind:checked={calendarPreferences.exclude_holidays}
 								name="exclude_holidays"
 								label="Exclude holidays from scheduling"
-								description="Prevents tasks from being scheduled on national holidays"
+								description="Keeps tasks off national holidays"
 								disabled={isSavingCalendar}
 							/>
 
@@ -805,16 +813,9 @@
 								}
 								name="prefer_morning_for_important_tasks"
 								label="Schedule important tasks in the morning"
-								description="Prioritizes morning time slots for high-priority tasks"
+								description="Prioritizes morning slots for high-priority tasks"
 								disabled={isSavingCalendar}
-							>
-								{#snippet labelHtml()}
-									<span class="flex items-center">
-										<Sun class="w-4 h-4 mr-1 text-accent" />
-										Schedule important tasks in the morning
-									</span>
-								{/snippet}
-							</CheckboxField>
+							/>
 						</div>
 
 						<!-- Save Button -->
@@ -826,9 +827,9 @@
 								variant="primary"
 								size="sm"
 								icon={Save}
-								class="shadow-ink pressable"
+								class="pressable"
 							>
-								{isSavingCalendar ? 'Saving...' : 'Save Preferences'}
+								{isSavingCalendar ? 'Saving' : 'Save preferences'}
 							</Button>
 						</div>
 					</div>
@@ -839,14 +840,14 @@
 			{#if calendarData.scheduledTasks && calendarData.scheduledTasks.length > 0}
 				<SettingsCard
 					icon={CalendarCheck}
-					title="Scheduled Tasks"
+					title="Scheduled tasks"
 					description="Tasks on your calendar"
 					labelledById="scheduled-tasks-heading"
 					bodyClass="p-0"
 				>
 					<div class="divide-y divide-border">
 						{#each scheduledTasksPreview as task (task.id)}
-							<div class="px-4 sm:px-5 py-3 hover:bg-muted/60 transition-colors">
+							<div class="px-4 sm:px-5 py-3 hover:bg-muted/50 transition-colors">
 								<div class="flex items-center justify-between gap-3">
 									<div class="flex-1 min-w-0">
 										<h4 class="text-sm font-medium text-foreground truncate">
@@ -859,9 +860,9 @@
 										{/if}
 										{#if task.task_calendar_events?.[0]}
 											<p
-												class="text-xs text-muted-foreground mt-0.5 flex items-center"
+												class="text-xs text-muted-foreground mt-1 flex items-center gap-1"
 											>
-												<Timer class="w-3 h-3 mr-1" />
+												<Timer class="w-3 h-3" />
 												{formatEventDate(
 													task.task_calendar_events[0].event_start
 												)}
@@ -888,7 +889,11 @@
 							class="px-4 sm:px-5 py-2 bg-muted/50 text-center border-t border-border"
 						>
 							<p class="text-xs text-muted-foreground">
-								And {calendarData.scheduledTasks.length - 10} more scheduled tasks
+								<span class="font-mono tabular-nums"
+									>{calendarData.scheduledTasks.length - 10}</span
+								>
+								more scheduled
+								{calendarData.scheduledTasks.length - 10 === 1 ? 'task' : 'tasks'}
 							</p>
 						</div>
 					{/if}
@@ -899,25 +904,23 @@
 			{#if calendarConnected}
 				<SettingsCard
 					icon={Brain}
-					title="Calendar Intelligence"
-					description="Discover projects from calendar"
+					title="Calendar intelligence"
+					description="Find projects hiding in your calendar"
 					labelledById="calendar-intelligence-heading"
 				>
 					<!-- Analysis Button -->
-					<div
-						class="bg-accent/10 border border-accent/30 rounded-lg p-3 tx tx-grain tx-weak"
-					>
+					<div class="bg-muted/50 border border-border rounded-lg p-3">
 						<div
 							class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
 						>
 							<div class="flex-1 min-w-0">
 								<h4
-									class="text-sm font-semibold text-foreground flex items-center gap-1.5"
+									class="text-sm font-medium text-foreground flex items-center gap-2"
 								>
-									<Sparkles class="w-4 h-4 text-accent" />
-									Analyze Your Calendar
+									<Sparkles class="w-4 h-4 text-muted-foreground" />
+									Analyze your calendar
 								</h4>
-								<p class="text-xs text-muted-foreground mt-0.5">
+								<p class="text-xs text-muted-foreground mt-1">
 									Find projects in your calendar
 								</p>
 							</div>
@@ -928,9 +931,9 @@
 								disabled={analysisInProgress}
 								loading={analysisInProgress}
 								icon={Brain}
-								class="flex-shrink-0 shadow-ink pressable"
+								class="flex-shrink-0 pressable"
 							>
-								{analysisInProgress ? 'Analyzing...' : 'Analyze'}
+								{analysisInProgress ? 'Analyzing' : 'Analyze'}
 							</Button>
 						</div>
 
@@ -938,7 +941,8 @@
 							{@const lastAnalysis = calendarAnalysisHistory[0]}
 							<div class="mt-2 text-xs text-muted-foreground">
 								Last analyzed {formatRelativeTime(lastAnalysis.completed_at)}
-								· {lastAnalysis.projects_created} projects created
+								· {lastAnalysis.projects_created}
+								{lastAnalysis.projects_created === 1 ? 'project' : 'projects'} created
 							</div>
 						{/if}
 					</div>
@@ -947,23 +951,24 @@
 					{#if calendarProjects.length > 0}
 						<div class="mt-4">
 							<div class="flex items-center justify-between mb-2">
-								<h4
-									class="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"
-								>
+								<h4 class="text-xs text-muted-foreground flex items-center gap-2">
 									<FolderOpen class="w-3.5 h-3.5" />
-									From Calendar ({calendarProjects.length})
+									From your calendar
+									<span class="font-mono tabular-nums"
+										>{calendarProjects.length}</span
+									>
 								</h4>
 							</div>
 							<div class="space-y-2">
 								{#each calendarProjects.slice(0, 5) as project (project.id)}
 									<a
 										href="/projects/{project.id}"
-										class="block p-3 bg-card border border-border rounded-lg hover:shadow-ink transition-all motion-reduce:transition-none hover:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset pressable"
+										class="block p-3 bg-card border border-border rounded-lg transition-colors motion-reduce:transition-none hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset pressable"
 									>
 										<div class="flex items-center justify-between gap-3">
 											<div class="flex-1 min-w-0">
 												<h5
-													class="text-sm font-semibold text-foreground truncate"
+													class="text-sm font-medium text-foreground truncate"
 												>
 													{project.name}
 												</h5>
@@ -974,7 +979,7 @@
 														{project.description}
 													</p>
 												{/if}
-												<p class="text-xs text-muted-foreground/80 mt-0.5">
+												<p class="text-xs text-muted-foreground mt-1">
 													Created {formatRelativeTime(project.created_at)}
 													{#if project.task_count > 0}
 														· {project.task_count} task{project.task_count !==
@@ -984,7 +989,7 @@
 													{/if}
 												</p>
 											</div>
-											<ExternalLink
+											<ChevronRight
 												class="w-4 h-4 text-muted-foreground flex-shrink-0"
 											/>
 										</div>
@@ -1010,17 +1015,15 @@
 			{/if}
 		{/if}
 	{:else}
-		<div class="text-center py-12 tx tx-bloom tx-weak rounded-lg">
-			<CircleAlert class="w-10 h-10 text-destructive mx-auto mb-3" />
-			<p class="text-sm text-muted-foreground mb-4">
-				Failed to load calendar settings. Please try again.
-			</p>
+		<div class="text-center py-12">
+			<CircleAlert class="w-8 h-8 text-destructive mx-auto mb-3" />
+			<p class="text-sm text-muted-foreground mb-4">Couldn't load calendar settings</p>
 			<Button
 				onclick={loadCalendarData}
-				variant="primary"
+				variant="outline"
 				size="sm"
 				icon={RefreshCw}
-				class="shadow-ink pressable"
+				class="pressable"
 			>
 				Retry
 			</Button>

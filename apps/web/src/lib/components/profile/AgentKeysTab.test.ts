@@ -70,14 +70,14 @@ async function openLimitedProjectPicker() {
 }
 
 describe('AgentKeysTab project scope', () => {
-	it('warns that Select All in limited mode freezes the list, and offers All standard projects', async () => {
+	it('warns that Select all in limited mode freezes the list, and offers All standard projects', async () => {
 		await openLimitedProjectPicker();
 		expect(screen.queryByText(FREEZE_WARNING)).toBeNull();
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Select All' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Select all' }));
 		expect(await screen.findByText(FREEZE_WARNING)).toBeTruthy();
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Use All standard projects' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Use all standard projects' }));
 		await waitFor(() => expect(screen.queryByText(FREEZE_WARNING)).toBeNull());
 		expect((screen.getByLabelText(/All standard projects/) as HTMLInputElement).checked).toBe(
 			true

@@ -6,6 +6,8 @@
 //
 // Policy "safe_v1" is the eval's winner (docs/research/jev-context-ranker-2026-09-22):
 // Jev's scores are not calibrated, so the rule is rank-relative with an absolute floor.
+import { DOCUMENT_CARD_TEXT_MAX_CHARS } from '@buildos/shared-agent-ops/utils/document-card';
+import { cardNeedsText, documentCard, documentCardChars } from './card';
 import type { ContextFinderEntity, ContextFinderKind } from './packets';
 import { entityScoreKey, headingScoreKey, type ContextFinderScores } from './rank';
 
@@ -240,6 +242,8 @@ export function selectProjectContext(input: {
 	 * request misread as broad still names its likely records (finder.ts).
 	 */
 	fullFloor?: number;
+	/** card: unpinned documents are budgeted as cards, not section text (tasker 152). */
+	documents?: 'text' | 'card';
 }): ContextPlanV1 {
 	const policy = CONTEXT_FINDER_POLICY;
 	const floor = policy.floor;
@@ -273,7 +277,11 @@ export function selectProjectContext(input: {
 		const isPinned = pins.has(entity.id);
 		if (!isPinned && full.length >= policy.maxFull) break;
 		const sections = scoredSectionsFor(entity, input.scores, sectionsPerDoc);
-		const size = contextItemChars(entity, sections, { pinned: isPinned });
+		const size =
+			input.documents === 'card' && entity.kind === 'document' && !isPinned
+				? documentCardChars(documentCard(entity, sections)) +
+					(cardNeedsText(entity) ? DOCUMENT_CARD_TEXT_MAX_CHARS : 0)
+				: contextItemChars(entity, sections, { pinned: isPinned });
 		// Skip what doesn't fit and keep packing smaller, lower-ranked items.
 		if (!isPinned && chars + size > budgetChars) continue;
 		chars += size;

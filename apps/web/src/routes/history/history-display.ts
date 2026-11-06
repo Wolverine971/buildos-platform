@@ -131,7 +131,7 @@ export function resolveChatDisplayState(
 		return {
 			displayStatus: 'processing',
 			statusLabel: 'Summarizing',
-			previewFallback: 'BuildOS is generating a summary and tags.',
+			previewFallback: 'Writing a summary',
 			canQueueSummary: false
 		};
 	}
@@ -140,7 +140,7 @@ export function resolveChatDisplayState(
 		return {
 			displayStatus: 'failed',
 			statusLabel: 'Summary failed',
-			previewFallback: 'BuildOS could not summarize this chat. You can retry it.',
+			previewFallback: 'Couldn’t summarize this chat',
 			canQueueSummary: true
 		};
 	}
@@ -149,8 +149,7 @@ export function resolveChatDisplayState(
 		return {
 			displayStatus: 'recent',
 			statusLabel: 'Recent',
-			previewFallback:
-				'This recent chat may still be open. A summary will appear after it closes or finishes processing.',
+			previewFallback: 'A summary appears once this chat closes',
 			canQueueSummary: false
 		};
 	}
@@ -158,7 +157,7 @@ export function resolveChatDisplayState(
 	return {
 		displayStatus: 'needs_summary',
 		statusLabel: 'Needs summary',
-		previewFallback: 'No summary has been generated yet.',
+		previewFallback: 'No summary yet',
 		canQueueSummary: true
 	};
 }
@@ -182,7 +181,8 @@ export function resolveChatTitle(
 		return 'Recent chat';
 	}
 
-	return rawTitle ?? 'Untitled Chat';
+	if (!rawTitle || rawTitle.toLowerCase() === 'untitled chat') return 'Untitled chat';
+	return rawTitle;
 }
 
 export function resolveChatPreview(

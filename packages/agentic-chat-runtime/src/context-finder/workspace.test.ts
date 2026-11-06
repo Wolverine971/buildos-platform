@@ -331,9 +331,13 @@ describe('findWorkspaceContext', () => {
 		expect(context.status).toBe('selected');
 		const full = context.zoom[0]!.evidence!.full;
 		expect(full.map((item) => item.title)).toEqual(['Notes 2', 'START HERE 2']);
-		expect(full[0]!.excerpts[0]!.heading).toBe('People');
+		// Documents arrive as cards: Jev's flagged section by anchor, no section text.
+		expect(full[0]!.excerpts).toEqual([]);
+		expect(full[0]!.card!.flagged![0]!.heading).toBe('People');
 		const block = renderWorkspaceContextBlock(context)!;
 		expect(block).toContain(`# Project: Project 2 (project_id ${id(2)})`);
+		// A document this short is its own card: shown whole.
+		expect(full[0]!.card!.text).toContain('Logan runs it.');
 		expect(block).toContain('Logan runs it.');
 		expect(context.costUsd).toBeGreaterThan(0);
 	});

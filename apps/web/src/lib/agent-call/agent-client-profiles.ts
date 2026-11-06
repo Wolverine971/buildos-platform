@@ -75,8 +75,8 @@ export const AGENT_CLIENT_PROFILES: AgentClientProfile[] = [
 		requiresOAuth: false,
 		allowSecretPrompt: true,
 		secretHandlingNote: 'Store this in OpenClaw env or secret config, not OpenClaw chat.',
-		setupUrlLabel: 'OpenClaw Setup URL',
-		pastePromptLabel: 'Paste Into OpenClaw',
+		setupUrlLabel: 'OpenClaw setup URL',
+		pastePromptLabel: 'Paste into OpenClaw',
 		setupUrlDescription:
 			'Paste the prompt below into OpenClaw after the connector can fetch the setup URL and write secure config values.'
 	},
@@ -93,8 +93,8 @@ export const AGENT_CLIENT_PROFILES: AgentClientProfile[] = [
 		requiresOAuth: false,
 		allowSecretPrompt: true,
 		secretHandlingNote: 'Store this in local MCP config or env, not a Claude conversation.',
-		setupUrlLabel: 'Claude Code Setup URL',
-		pastePromptLabel: 'Paste Into Claude Code',
+		setupUrlLabel: 'Claude Code setup URL',
+		pastePromptLabel: 'Paste into Claude Code',
 		setupUrlDescription:
 			'Use this handoff when Claude Code can edit local config or run shell commands for the adapter setup.'
 	},
@@ -112,8 +112,8 @@ export const AGENT_CLIENT_PROFILES: AgentClientProfile[] = [
 		allowSecretPrompt: false,
 		secretHandlingNote:
 			'Do not paste this bearer token into Claude.ai chat. Use it only behind a connector you control until OAuth is available.',
-		setupUrlLabel: 'Claude Connector Setup URL',
-		pastePromptLabel: 'Connector Admin Prompt',
+		setupUrlLabel: 'Claude connector setup URL',
+		pastePromptLabel: 'Connector admin prompt',
 		setupUrlDescription:
 			'Claude browser cannot read local env. Use this as implementation guidance for a remote MCP/OAuth connector.'
 	},
@@ -132,8 +132,8 @@ export const AGENT_CLIENT_PROFILES: AgentClientProfile[] = [
 		allowSecretPrompt: false,
 		secretHandlingNote:
 			'Put the token into the GPT Action authentication field, not normal ChatGPT chat.',
-		setupUrlLabel: 'ChatGPT Action Setup URL',
-		pastePromptLabel: 'Action Builder Prompt',
+		setupUrlLabel: 'ChatGPT action setup URL',
+		pastePromptLabel: 'Action builder prompt',
 		setupUrlDescription:
 			'Use the OpenAPI artifact and set Action authentication to API key bearer for a private GPT.'
 	},
@@ -151,8 +151,8 @@ export const AGENT_CLIENT_PROFILES: AgentClientProfile[] = [
 		allowSecretPrompt: false,
 		secretHandlingNote:
 			'Do not paste this bearer token into ChatGPT. Use OAuth for the remote MCP connector.',
-		setupUrlLabel: 'ChatGPT MCP Setup URL',
-		pastePromptLabel: 'Connector Builder Prompt',
+		setupUrlLabel: 'ChatGPT MCP setup URL',
+		pastePromptLabel: 'Connector builder prompt',
 		setupUrlDescription:
 			'Developer Mode expects a remote MCP server. Use this as connector implementation guidance.'
 	},
@@ -170,8 +170,8 @@ export const AGENT_CLIENT_PROFILES: AgentClientProfile[] = [
 		allowSecretPrompt: true,
 		secretHandlingNote:
 			'Store this in a local env var or secret-backed MCP config, not AGENTS.md.',
-		setupUrlLabel: 'Codex Setup URL',
-		pastePromptLabel: 'Paste Into Codex',
+		setupUrlLabel: 'Codex setup URL',
+		pastePromptLabel: 'Paste into Codex',
 		setupUrlDescription:
 			'Use this handoff when Codex can update local config or use a BuildOS adapter.'
 	},
@@ -189,8 +189,8 @@ export const AGENT_CLIENT_PROFILES: AgentClientProfile[] = [
 		customProvider: true,
 		allowSecretPrompt: true,
 		secretHandlingNote: 'Store this in your service secret manager or env, not prompt text.',
-		setupUrlLabel: 'HTTP Setup URL',
-		pastePromptLabel: 'HTTP Client Prompt',
+		setupUrlLabel: 'HTTP setup URL',
+		pastePromptLabel: 'HTTP client prompt',
 		setupUrlDescription:
 			'Use this handoff for clients that can store env vars and call the BuildOS gateway directly.'
 	}

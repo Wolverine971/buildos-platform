@@ -55,6 +55,7 @@ export type ThreadLine =
 	| { type: 'change'; change: ThreadChange }
 	| { type: 'skip'; reason: string };
 
+export const ANSWER_MAX_CHARS = 4000;
 const CREATE_KINDS = new Set(['task', 'goal', 'milestone', 'doc', 'risk', 'note']);
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -161,7 +162,8 @@ export function readThreadLine(
 			};
 		}
 		case 'answer': {
-			const text = typeof raw.text === 'string' ? clip(raw.text, 600) : '';
+			// A safety cap only: the person sees the whole answer (DJ, 2026-11-05).
+			const text = typeof raw.text === 'string' ? clip(raw.text, ANSWER_MAX_CHARS) : '';
 			if (!text) return { type: 'skip', reason: 'empty answer' };
 			const refs = Array.isArray(raw.refs) ? raw.refs : [];
 			const records = refs

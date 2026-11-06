@@ -2369,6 +2369,11 @@ export class SmartLLMService {
 		clientTurnId?: string;
 		signal?: AbortSignal;
 		operationType: string;
+		/**
+		 * OpenRouter provider steering (order / ignore / allow_fallbacks). The
+		 * request builder writes the ZDR policy last, so this can't relax it.
+		 */
+		providerRouting?: JSONRequestOptions['providerRouting'];
 		/** OpenRouter reasoning config. Defaults to low effort with tools, provider default
 		 * without. Pass `{ enabled: false }` for fast structured answers. */
 		reasoning?: unknown;
@@ -2496,6 +2501,7 @@ export class SmartLLMService {
 					stream_options: { include_usage: true },
 					session_id: cacheAffinityKey,
 					prompt_cache_key: cacheAffinityKey,
+					provider: options.providerRouting,
 					privacy: this.openRouterPrivacy
 				});
 

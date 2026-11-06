@@ -6,6 +6,7 @@ import {
 	analyzeComplexity,
 	DEEPSEEK_V4_FLASH_MODEL,
 	DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER,
+	DEEPSEEK_V4_FLASH_ZDR_PROVIDER_IGNORE,
 	estimateResponseLength,
 	GLM_53_FLASH_MODEL,
 	LAST_RESORT_MODEL,
@@ -95,6 +96,11 @@ function parseOpenRouterProviderOrder(value: string | undefined): string[] {
 const DEFAULT_PROVIDER_ORDER_BY_MODEL: Record<string, string[]> = {
 	[DEEPSEEK_V4_FLASH_MODEL]: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER],
 	[GLM_53_FLASH_MODEL]: ['z-ai']
+};
+// Hosts a model never falls back to (same list as the worker and the chat lab; evidence in
+// model-config.ts). Dropped with the order when PRIVATE_OPENROUTER_PROVIDER_ORDER is "off".
+const DEFAULT_PROVIDER_IGNORE_BY_MODEL: Record<string, string[]> = {
+	[DEEPSEEK_V4_FLASH_MODEL]: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_IGNORE]
 };
 
 // Keep the dev evaluation on Z.AI's launch-discount endpoint. If that endpoint
@@ -676,12 +682,20 @@ export class OpenRouterV2Service extends SmartLLMService {
 		// Provider steering keyed off the request's primary model — see
 		// DEFAULT_PROVIDER_ORDER_BY_MODEL. The env var remains a global
 		// override / kill switch; unset means the per-model defaults apply.
-		const providerOrder = resolveProviderOrderForModel(
-			readPrivateEnv('PRIVATE_OPENROUTER_PROVIDER_ORDER'),
-			model
-		);
+		const orderEnv = readPrivateEnv('PRIVATE_OPENROUTER_PROVIDER_ORDER');
+		const providerOrder = resolveProviderOrderForModel(orderEnv, model);
 		if (providerOrder.length > 0) {
 			config.order = providerOrder;
+		}
+		const steeringOff = PROVIDER_ORDER_DISABLED_VALUES.has(
+			orderEnv?.trim().toLowerCase() ?? ''
+		);
+		const defaultIgnore =
+			model && !steeringOff
+				? DEFAULT_PROVIDER_IGNORE_BY_MODEL[model.trim().toLowerCase()]
+				: null;
+		if (defaultIgnore?.length) {
+			config.ignore = [...defaultIgnore];
 		}
 
 		return mergeOpenRouterRequestProviderRouting(config, requestRouting);

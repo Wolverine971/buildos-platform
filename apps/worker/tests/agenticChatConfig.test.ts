@@ -58,18 +58,36 @@ describe('Agentic Chat acting provider routing defaults', () => {
 	// DeepInfra and Alibaba p50 5.3 s, StreamLake 7.3 s, Azure 21.5 s at 112 ms
 	// per output token; DeepSeek and Cloudflare no longer list the model.
 	// 2026-09-24 (tasker 103): the order names only V4 Flash ZDR hosts.
-	it('prefers ZDR endpoints, keeps fallbacks, and ignores Azure', () => {
+	// 2026-11-05 (tasker 151): fastest measured ZDR hosts first; NextBit and Open
+	// Inference stopped serving V4 Flash; slow, uncached or overpriced hosts ignored.
+	it('prefers ZDR endpoints, keeps fallbacks, and ignores Azure and the measured slow hosts', () => {
 		const config = loadAgenticChatConfig(DEDICATED_PROVIDER_ENV);
 		expect(config.provider.responseHeadersTimeoutMs).toBe(5_000);
 		expect(config.provider.routes).toHaveLength(1);
 		expect(config.provider.routes[0]?.providerRouting).toEqual({
 			allow_fallbacks: true,
-			order: ['deepinfra', 'nextbit', 'open-inference', 'parasail'],
-			ignore: ['azure']
+			order: ['relace', 'parasail', 'deepinfra', 'fireworks', 'venice'],
+			ignore: ['azure', 'siliconflow', 'mancer', 'wafer', 'digitalocean']
 		});
-		for (const nonZdrHost of ['gmicloud', 'alibaba', 'streamlake', 'baidu', 'atlas-cloud']) {
-			expect(config.provider.routes[0]?.providerRouting?.order).not.toContain(nonZdrHost);
+		for (const host of [
+			'gmicloud',
+			'alibaba',
+			'streamlake',
+			'baidu',
+			'atlas-cloud',
+			'nextbit',
+			'open-inference'
+		]) {
+			expect(config.provider.routes[0]?.providerRouting?.order).not.toContain(host);
 		}
+	});
+
+	it('keeps the V4 Flash ignore list off other models', () => {
+		const routing = loadAgenticChatConfig({
+			...DEDICATED_PROVIDER_ENV,
+			AGENTIC_CHAT_OPENROUTER_MODEL: 'provider/other'
+		}).provider.routes[0]?.providerRouting;
+		expect(routing?.ignore).toEqual(['azure']);
 	});
 
 	it('never constrains the acting route with an allowlist', () => {
@@ -120,13 +138,21 @@ it('supports explicit measured provider experiments without changing the default
 			...DEDICATED_PROVIDER_ENV,
 			AGENTIC_CHAT_OPENROUTER_PROVIDER_SORT: 'latency'
 		}).provider.routes[0]?.providerRouting
-	).toEqual({ allow_fallbacks: true, ignore: ['azure'], sort: 'latency' });
+	).toEqual({
+		allow_fallbacks: true,
+		ignore: ['azure', 'siliconflow', 'mancer', 'wafer', 'digitalocean'],
+		sort: 'latency'
+	});
 	expect(
 		loadAgenticChatConfig({
 			...DEDICATED_PROVIDER_ENV,
 			AGENTIC_CHAT_OPENROUTER_PROVIDER_ORDER: 'gmicloud,deepinfra'
 		}).provider.routes[0]?.providerRouting
-	).toEqual({ allow_fallbacks: true, ignore: ['azure'], order: ['gmicloud', 'deepinfra'] });
+	).toEqual({
+		allow_fallbacks: true,
+		ignore: ['azure', 'siliconflow', 'mancer', 'wafer', 'digitalocean'],
+		order: ['gmicloud', 'deepinfra']
+	});
 	expect(() =>
 		loadAgenticChatConfig({
 			...DEDICATED_PROVIDER_ENV,

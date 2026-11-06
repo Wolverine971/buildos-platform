@@ -162,7 +162,7 @@ describe('Cycle presenter', () => {
 	});
 
 	it('has user-facing names for known kinds and a defensive fallback', () => {
-		expect(presentCycleKind('project_audit').label).toBe('Project Audit');
+		expect(presentCycleKind('project_audit').label).toBe('Project audit');
 		expect(presentCycleKind('future_kind').label).toBe('Recurring work');
 	});
 });

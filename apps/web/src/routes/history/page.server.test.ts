@@ -4,6 +4,23 @@ import { actions, load } from './+page.server';
 
 const USER_ID = '11111111-1111-4111-8111-111111111111';
 
+const CHAT_PROJECT_TABLES = new Set([
+	'chat_sessions',
+	'chat_sessions_projects',
+	'onto_project_logs',
+	'llm_usage_logs',
+	'onto_projects'
+]);
+
+function emptyQuery() {
+	const query: any = {};
+	for (const method of ['select', 'in', 'not', 'like', 'limit', 'is']) {
+		query[method] = () => query;
+	}
+	query.then = (resolve: (value: unknown) => unknown) => resolve({ data: [], error: null });
+	return query;
+}
+
 async function loadHistoryPage(event: Parameters<typeof load>[0]) {
 	const result = await load(event);
 	if (!result) throw new Error('Expected history page data');
@@ -38,8 +55,12 @@ function createLoadEvent(options: {
 			args
 		};
 	});
+	// Only the chat-project label lookup may touch tables; it is bounded to the page's ids.
 	const from = vi.fn((table: string) => {
-		throw new Error(`Unexpected table requested: ${table}`);
+		if (!CHAT_PROJECT_TABLES.has(table)) {
+			throw new Error(`Unexpected table requested: ${table}`);
+		}
+		return emptyQuery();
 	});
 	const safeGetSession = vi.fn(async () => ({
 		user: { id: USER_ID, email: 'test@example.com' }
@@ -113,7 +134,7 @@ describe('history +page.server load', () => {
 			selectedId: null,
 			selectedType: 'chat_session'
 		});
-		expect(from).not.toHaveBeenCalled();
+		expect(from.mock.calls.every(([table]) => CHAT_PROJECT_TABLES.has(table))).toBe(true);
 
 		const historyData = await result.historyData;
 
@@ -127,14 +148,16 @@ describe('history +page.server load', () => {
 			p_selected_id: null,
 			p_selected_type: 'chat_session'
 		});
-		expect(from).not.toHaveBeenCalled();
+		expect(from.mock.calls.every(([table]) => CHAT_PROJECT_TABLES.has(table))).toBe(true);
 		expect(historyData.items).toHaveLength(1);
 		expect(historyData.items[0]).toMatchObject({
 			id: '22222222-2222-4222-8222-222222222222',
 			type: 'chat_session',
 			title: 'Launch strategy',
 			preview: 'The conversation covered launch planning.',
-			messageCount: 5
+			messageCount: 5,
+			projects: [],
+			scopeLabel: 'Workspace chat'
 		});
 		expect(historyData.totalItems).toBe(1);
 		expect(historyData.totalItemsExact).toBe(false);

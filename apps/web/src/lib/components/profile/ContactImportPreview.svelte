@@ -54,12 +54,10 @@
 		return 'text-muted-foreground';
 	}
 
-	function statusBadgeClass(status: ContactImportPreviewRow['status']): string {
-		if (status === 'ready') return 'border-success/30 bg-success/10 text-success';
-		if (status === 'error') {
-			return 'border-destructive/30 bg-destructive/10 text-destructive';
-		}
-		return 'border-border bg-muted text-muted-foreground';
+	function statusDotClass(status: ContactImportPreviewRow['status']): string {
+		if (status === 'ready') return 'bg-success';
+		if (status === 'error') return 'bg-destructive';
+		return 'bg-muted-foreground/60';
 	}
 
 	function rowReason(row: ContactImportPreviewRow): string {
@@ -80,19 +78,17 @@
 	{#each rows as row (`mobile-import-preview-${row.row_number}`)}
 		{@const contactName = row.normalized_input?.display_name ?? 'Unknown'}
 		<article
-			class="min-w-0 rounded-md border border-border bg-card p-2.5 shadow-ink tx tx-frame tx-weak"
+			class="min-w-0 rounded-lg border border-border bg-card p-3"
 			role="listitem"
 			aria-label={`Import row ${row.row_number}: ${contactName}`}
 		>
 			<div class="flex min-w-0 items-start gap-2">
-				<span
-					class="shrink-0 rounded-md border border-border bg-muted px-1.5 py-0.5 text-2xs font-semibold tabular-nums text-muted-foreground"
-				>
+				<span class="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
 					#{row.row_number}
 				</span>
 				<div class="min-w-0 flex-1">
 					<h4
-						class="line-clamp-2 break-words text-sm font-semibold leading-snug text-foreground [overflow-wrap:anywhere]"
+						class="line-clamp-2 break-words text-sm font-medium leading-snug text-foreground [overflow-wrap:anywhere]"
 					>
 						{contactName}
 					</h4>
@@ -102,11 +98,11 @@
 						{formatMethods(row)}
 					</p>
 				</div>
-				<span
-					class="shrink-0 rounded-full border px-1.5 py-0.5 text-2xs font-semibold {statusBadgeClass(
-						row.status
-					)}"
-				>
+				<span class="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+					<span
+						class="h-1.5 w-1.5 rounded-full {statusDotClass(row.status)}"
+						aria-hidden="true"
+					></span>
 					{formatLabel(row.status)}
 				</span>
 			</div>
@@ -114,11 +110,11 @@
 			<dl
 				class="mt-2 grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-1 border-t border-border pt-2 text-xs"
 			>
-				<dt class="micro-label font-semibold text-muted-foreground">Action</dt>
+				<dt class="text-muted-foreground">Action</dt>
 				<dd class="min-w-0 truncate text-foreground" title={formatLabel(row.action)}>
 					{formatLabel(row.action)}
 				</dd>
-				<dt class="micro-label font-semibold text-muted-foreground">Reason</dt>
+				<dt class="text-muted-foreground">Reason</dt>
 				<dd
 					class="min-w-0 line-clamp-2 break-words text-muted-foreground [overflow-wrap:anywhere]"
 					title={rowReason(row)}

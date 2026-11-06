@@ -442,11 +442,6 @@
 			"count": 1
 		}
 	},
-	"src/routes/history/+page.svelte": {
-		"svelte/require-each-key": {
-			"count": 1
-		}
-	},
 	"src/routes/skills/+page.svelte": {
 		"svelte/no-at-html-tags": {
 			"count": 1

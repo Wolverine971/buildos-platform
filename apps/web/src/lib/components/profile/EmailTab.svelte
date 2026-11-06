@@ -12,8 +12,7 @@
 		RefreshCw,
 		ShieldCheck,
 		Trash2
-	} from 'lucide-svelte';
-	import Badge from '$lib/components/ui/Badge.svelte';
+	} from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
@@ -214,15 +213,15 @@
 
 	function statusBadge(connection: GmailConnectionSummary): {
 		label: string;
-		variant: 'success' | 'warning' | 'error';
+		dotClass: string;
 	} {
 		if (connection.status === 'active' && connection.readEnabled) {
-			return { label: 'Read only', variant: 'success' };
+			return { label: 'Read only', dotClass: 'bg-success' };
 		}
 		if (connection.status === 'reconnect_required') {
-			return { label: 'Reconnect required', variant: 'warning' };
+			return { label: 'Needs reconnect', dotClass: 'bg-warning' };
 		}
-		return { label: 'Unavailable', variant: 'error' };
+		return { label: 'Unavailable', dotClass: 'bg-destructive' };
 	}
 
 	function formatDate(value: string | null): string {
@@ -258,17 +257,14 @@
 	<TabHeader
 		icon={Mail}
 		title="Email"
-		description="Connect multiple Gmail accounts as read-only context for BuildOS."
+		description="Connect Gmail accounts as read-only context for BuildOS"
 	/>
 
-	<div
-		class="rounded-lg border border-info/30 bg-info/5 p-4 shadow-ink tx tx-static tx-weak"
-		role="note"
-	>
+	<div class="rounded-xl border border-border bg-muted/50 p-4" role="note">
 		<div class="flex items-start gap-3">
-			<ShieldCheck class="mt-0.5 h-5 w-5 flex-shrink-0 text-info" />
+			<ShieldCheck class="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
 			<div class="min-w-0">
-				<h3 class="text-sm font-semibold text-foreground">Read-only by default</h3>
+				<h3 class="text-sm font-medium text-foreground">Read-only by default</h3>
 				<p class="mt-1 text-sm text-muted-foreground">
 					This connection cannot send, draft, delete, archive, label, or mark email as
 					read. Future email actions require separate account permission and confirmation
@@ -280,14 +276,14 @@
 
 	<SettingsCard
 		title="Connected Gmail accounts"
-		description="Each Google account has its own connection and permissions."
+		description="Each Google account has its own connection and permissions"
 		icon={Mail}
 		bodyClass="space-y-4"
 	>
 		{#snippet actions()}
 			<Button
 				onclick={() => startConnection()}
-				variant="primary"
+				variant="outline"
 				size="sm"
 				icon={Plus}
 				loading={connecting}
@@ -299,16 +295,14 @@
 
 		{#if loading && !gmailData}
 			<div class="py-10 text-center text-sm text-muted-foreground" aria-live="polite">
-				Loading Gmail connections…
+				Loading Gmail connections
 			</div>
 		{:else if gmailData && !gmailData.available}
-			<div class="rounded-lg border border-warning/30 bg-warning/5 p-4">
+			<div class="rounded-lg border border-border bg-muted/50 p-4">
 				<div class="flex items-start gap-3">
-					<CircleAlert class="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" />
+					<CircleAlert class="mt-0.5 h-4 w-4 flex-shrink-0 text-warning" />
 					<div>
-						<p class="text-sm font-semibold text-foreground">
-							Gmail setup is not configured
-						</p>
+						<p class="text-sm font-medium text-foreground">Gmail isn't set up yet</p>
 						<p class="mt-1 text-sm text-muted-foreground">
 							The dedicated read-only Google OAuth client and token key must be
 							configured before accounts can connect.
@@ -318,12 +312,8 @@
 			</div>
 		{:else if connections.length === 0}
 			<div class="rounded-lg border border-dashed border-border px-4 py-10 text-center">
-				<div
-					class="mx-auto flex h-11 w-11 items-center justify-center rounded-lg bg-muted text-muted-foreground"
-				>
-					<Mail class="h-5 w-5" />
-				</div>
-				<h3 class="mt-3 text-sm font-semibold text-foreground">
+				<Mail class="mx-auto h-6 w-6 text-muted-foreground" />
+				<h3 class="mt-3 text-sm font-medium text-foreground">
 					No Gmail accounts connected
 				</h3>
 				<p class="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
@@ -345,16 +335,12 @@
 			<div class="space-y-3">
 				{#each connections as connection (connection.id)}
 					{@const status = statusBadge(connection)}
-					<article class="rounded-lg border border-border bg-card p-4 shadow-ink">
+					<article class="rounded-lg border border-border bg-card p-4">
 						<div
 							class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
 						>
 							<div class="flex min-w-0 items-start gap-3">
-								<div
-									class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent"
-								>
-									<Mail class="h-5 w-5" />
-								</div>
+								<Mail class="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
 								<div class="min-w-0 flex-1">
 									{#if editingId === connection.id}
 										<div class="flex max-w-md flex-col gap-2 sm:flex-row">
@@ -385,13 +371,19 @@
 									{:else}
 										<div class="flex flex-wrap items-center gap-2">
 											<h3
-												class="truncate text-sm font-semibold text-foreground"
+												class="truncate text-sm font-medium text-foreground"
 											>
 												{connection.accountLabel}
 											</h3>
-											<Badge variant={status.variant} size="sm"
-												>{status.label}</Badge
+											<span
+												class="inline-flex items-center gap-2 text-xs text-muted-foreground"
 											>
+												<span
+													class="h-1.5 w-1.5 rounded-full {status.dotClass}"
+													aria-hidden="true"
+												></span>
+												{status.label}
+											</span>
 										</div>
 									{/if}
 									<p class="mt-1 truncate text-sm text-muted-foreground">
@@ -440,24 +432,22 @@
 
 						<div class="mt-4 grid gap-2 border-t border-border pt-4 sm:grid-cols-3">
 							<div
-								class="flex items-center gap-2 rounded-md bg-success/5 px-3 py-2 text-xs"
+								class="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-xs"
 							>
-								<ShieldCheck class="h-4 w-4 text-success" />
-								<span class="font-medium text-foreground">Reading enabled</span>
+								<ShieldCheck class="h-4 w-4 text-muted-foreground" />
+								<span class="text-foreground">Reading on</span>
 							</div>
 							<div
-								class="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-xs"
+								class="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-xs"
 							>
 								<LockKeyhole class="h-4 w-4 text-muted-foreground" />
-								<span class="font-medium text-muted-foreground">Sending off</span>
+								<span class="text-muted-foreground">Sending off</span>
 							</div>
 							<div
-								class="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-xs"
+								class="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-xs"
 							>
 								<LockKeyhole class="h-4 w-4 text-muted-foreground" />
-								<span class="font-medium text-muted-foreground"
-									>Message changes off</span
-								>
+								<span class="text-muted-foreground">Message changes off</span>
 							</div>
 						</div>
 					</article>
@@ -466,7 +456,7 @@
 
 			{#if connections.length >= (gmailData?.maxConnections ?? 5)}
 				<p class="text-xs text-muted-foreground">
-					You have reached the current limit of {gmailData?.maxConnections ?? 5} Gmail accounts.
+					You've reached the limit of {gmailData?.maxConnections ?? 5} Gmail accounts
 				</p>
 			{/if}
 		{/if}
@@ -484,7 +474,7 @@
 	confirmVariant="danger"
 	icon="warning"
 	loading={disconnecting}
-	loadingText="Disconnecting…"
+	loadingText="Disconnecting"
 	onconfirm={disconnectConnection}
 	oncancel={() => {
 		if (!disconnecting) pendingDisconnect = null;

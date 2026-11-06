@@ -222,10 +222,6 @@ export interface FreshnessDataPort {
 	): Promise<{ turns: FreshnessTurnRow[]; workflowTurnIds: Set<string> }>;
 	/** Open-and-closed tasks (facts need done tasks), goals, milestones, documents. */
 	loadProjectEntities(projectId: string): Promise<FreshnessOpenEntities>;
-	loadDocumentContentHeads(
-		documentIds: readonly string[],
-		chars: number
-	): Promise<Map<string, string>>;
 	/** Full markdown bodies (clipped at `maxChars`), for the section dig and roll-up checks. */
 	loadDocumentBodies(
 		documentIds: readonly string[],
@@ -458,24 +454,6 @@ export class SupabaseFreshnessDataPort implements FreshnessDataPort {
 			milestones: unwrap<FreshnessMilestoneRow[]>(milestones, 'onto_milestones'),
 			documents: unwrap<FreshnessDocumentRow[]>(documents, 'onto_documents')
 		};
-	}
-
-	async loadDocumentContentHeads(
-		documentIds: readonly string[],
-		chars: number
-	): Promise<Map<string, string>> {
-		const ids = uniq(documentIds);
-		const heads = new Map<string, string>();
-		if (!ids.length) return heads;
-		const rows = unwrap<Array<{ id: string; content: string | null }>>(
-			await this.db.from('onto_documents').select('id, content').in('id', ids),
-			'onto_documents'
-		);
-		for (const row of rows) {
-			const text = (row.content ?? '').replace(/\s+/g, ' ').trim();
-			if (text) heads.set(row.id, text.slice(0, chars));
-		}
-		return heads;
 	}
 
 	async loadDocumentBodies(

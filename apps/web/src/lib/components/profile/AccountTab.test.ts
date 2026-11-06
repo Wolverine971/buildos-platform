@@ -85,7 +85,7 @@ describe('AccountTab profile draft ownership', () => {
 
 		await fireEvent.input(nameInput, { target: { value: '  Dana Builder  ' } });
 		await fireEvent.input(emailInput, { target: { value: '  dana@example.com  ' } });
-		await fireEvent.click(screen.getByRole('button', { name: 'Update Profile' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
 		await waitFor(() => {
 			expect(onsuccess).toHaveBeenCalledWith({ message: 'Account updated successfully' });
@@ -105,7 +105,7 @@ describe('AccountTab profile draft ownership', () => {
 
 	it('opens straight to account deletion when linked from Your data', () => {
 		render(AccountTab, { props: { user: accountUser(), initialSection: 'danger' } });
-		expect(screen.getByRole('button', { name: 'Delete My Account' })).toBeTruthy();
+		expect(screen.getByRole('button', { name: 'Delete my account' })).toBeTruthy();
 		expect(screen.queryByRole('textbox', { name: /full name/i })).toBeNull();
 	});
 });
@@ -194,10 +194,10 @@ describe('AccountTab shared projects before account deletion', () => {
 
 	it('goes straight to the final confirmation when no shared projects are owned', async () => {
 		render(AccountTab, { props: { user: accountUser(), initialSection: 'danger' } });
-		await fireEvent.click(screen.getByRole('button', { name: 'Delete My Account' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Delete my account' }));
 
 		await fireEvent.click(
-			await screen.findByRole('button', { name: 'Yes, Delete My Account' })
+			await screen.findByRole('button', { name: 'Yes, delete my account' })
 		);
 		await waitFor(() => expect(deleteBodies()).toHaveLength(1));
 		expect(screen.queryByRole('heading', { name: 'Shared projects' })).toBeNull();
@@ -207,7 +207,7 @@ describe('AccountTab shared projects before account deletion', () => {
 	it('hands each shared project to the chosen member before deleting', async () => {
 		sharedProjects = [{ project_id: 'p-1', project_name: 'Garden plan', members: [sam, lee] }];
 		render(AccountTab, { props: { user: accountUser(), initialSection: 'danger' } });
-		await fireEvent.click(screen.getByRole('button', { name: 'Delete My Account' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Delete my account' }));
 
 		expect(await screen.findByRole('heading', { name: 'Shared projects' })).toBeTruthy();
 		expect(
@@ -222,7 +222,7 @@ describe('AccountTab shared projects before account deletion', () => {
 		await fireEvent.change(ownerSelect, { target: { value: 'm-2' } });
 		await fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 		await fireEvent.click(
-			await screen.findByRole('button', { name: 'Yes, Delete My Account' })
+			await screen.findByRole('button', { name: 'Yes, delete my account' })
 		);
 
 		await waitFor(() => expect(deleteBodies()).toHaveLength(1));
@@ -250,7 +250,7 @@ describe('AccountTab shared projects before account deletion', () => {
 			}
 		];
 		render(AccountTab, { props: { user: accountUser(), initialSection: 'danger' } });
-		await fireEvent.click(screen.getByRole('button', { name: 'Delete My Account' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Delete my account' }));
 		await fireEvent.click(
 			await screen.findByRole('radio', {
 				name: /Delete it for everyone — 1 person loses access/
@@ -258,7 +258,7 @@ describe('AccountTab shared projects before account deletion', () => {
 		);
 		await fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 		await fireEvent.click(
-			await screen.findByRole('button', { name: 'Yes, Delete My Account' })
+			await screen.findByRole('button', { name: 'Yes, delete my account' })
 		);
 
 		expect(
@@ -271,7 +271,7 @@ describe('AccountTab shared projects before account deletion', () => {
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 		await fireEvent.click(
-			await screen.findByRole('button', { name: 'Yes, Delete My Account' })
+			await screen.findByRole('button', { name: 'Yes, delete my account' })
 		);
 		await waitFor(() => expect(deleteBodies()).toHaveLength(2));
 		expect(deleteBodies()[1]).toEqual({

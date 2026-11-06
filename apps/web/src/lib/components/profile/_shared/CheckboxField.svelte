@@ -23,7 +23,7 @@
 </script>
 
 <label
-	class="flex items-start gap-3 p-3 rounded-lg border border-border bg-card hover:border-accent/40 hover:bg-muted/30 cursor-pointer transition-colors duration-200 {disabled
+	class="flex items-start gap-3 p-3 rounded-lg border border-border bg-card hover:bg-muted/50 cursor-pointer transition-colors duration-200 {disabled
 		? 'opacity-60 cursor-not-allowed pointer-events-none'
 		: ''}"
 >
@@ -49,7 +49,7 @@
 			{/if}
 		</span>
 		{#if description}
-			<span class="block text-xs text-muted-foreground mt-0.5 leading-relaxed">
+			<span class="block text-xs text-muted-foreground mt-1 leading-relaxed">
 				{description}
 			</span>
 		{/if}

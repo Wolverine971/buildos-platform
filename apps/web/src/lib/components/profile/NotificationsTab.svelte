@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/profile/NotificationsTab.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Bell } from 'lucide-svelte';
+	import { Bell } from '$lib/icons/lucide';
 	import NotificationPreferences from '$lib/components/settings/NotificationPreferences.svelte';
 	import SMSPreferences from '$lib/components/settings/SMSPreferences.svelte';
 	import ScheduledSMSList from '$lib/components/profile/ScheduledSMSList.svelte';
@@ -73,7 +73,7 @@
 	{#if !loadingSmsPreferences && smsPreferences?.event_reminders_enabled}
 		<SettingsCard
 			title="Scheduled SMS"
-			description="Upcoming and recent SMS jobs."
+			description="Upcoming and recent event reminders"
 			labelledById="scheduled-sms-heading"
 		>
 			<ScheduledSMSList timezone={userTimezone} />

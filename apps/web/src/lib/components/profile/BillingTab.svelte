@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/profile/BillingTab.svelte -->
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { CreditCard, CircleCheck, Settings, Rocket, Sparkles } from 'lucide-svelte';
+	import { CreditCard, CircleCheck, Settings } from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TabHeader from './_shared/TabHeader.svelte';
 	import SettingsCard from './_shared/SettingsCard.svelte';
@@ -14,6 +14,13 @@
 	}
 
 	let { subscriptionDetails }: Props = $props();
+
+	// Stripe statuses arrive as keys like `past_due`; show them as plain words.
+	function formatStatus(status: string | null | undefined): string {
+		if (!status) return 'Unknown';
+		const words = status.replace(/_/g, ' ');
+		return words.charAt(0).toUpperCase() + words.slice(1);
+	}
 
 	async function downloadInvoice(invoiceId: string) {
 		try {
@@ -42,14 +49,14 @@
 	{#if subscriptionDetails?.subscription}
 		<!-- Active Subscription -->
 		<SettingsCard
-			title={subscriptionDetails.subscription.subscription_plans?.name || 'Pro Plan'}
+			title={subscriptionDetails.subscription.subscription_plans?.name || 'Pro plan'}
 			description="Active subscription"
 			icon={CircleCheck}
 			labelledById="active-subscription-heading"
 		>
 			<div class="space-y-4">
 				<div>
-					<p class="text-2xl font-bold text-foreground">
+					<p class="text-2xl font-medium tabular-nums text-foreground">
 						${(
 							(subscriptionDetails.subscription.subscription_plans?.price_cents ??
 								0) / 100
@@ -58,7 +65,7 @@
 								?.billing_interval}</span
 						>
 					</p>
-					<p class="text-xs text-muted-foreground mt-0.5">
+					<p class="text-xs text-muted-foreground mt-1">
 						Next billing: {subscriptionDetails.subscription.current_period_end
 							? new Date(
 									subscriptionDetails.subscription.current_period_end
@@ -69,15 +76,20 @@
 
 				<dl class="grid grid-cols-2 gap-4 pt-3 border-t border-border">
 					<div>
-						<dt class="text-xs font-medium text-muted-foreground mb-0.5">Status</dt>
-						<dd class="text-sm text-foreground capitalize">
-							{subscriptionDetails.subscription.status}
+						<dt class="text-xs text-muted-foreground mb-1">Status</dt>
+						<dd class="flex items-center gap-2 text-sm text-foreground">
+							<span
+								class="h-1.5 w-1.5 rounded-full {subscriptionDetails.subscription
+									.status === 'active'
+									? 'bg-success'
+									: 'bg-muted-foreground/60'}"
+								aria-hidden="true"
+							></span>
+							{formatStatus(subscriptionDetails.subscription.status)}
 						</dd>
 					</div>
 					<div>
-						<dt class="text-xs font-medium text-muted-foreground mb-0.5">
-							Member Since
-						</dt>
+						<dt class="text-xs text-muted-foreground mb-1">Member since</dt>
 						<dd class="text-sm text-foreground">
 							{subscriptionDetails.subscription.created_at
 								? new Date(
@@ -93,10 +105,10 @@
 						type="submit"
 						variant="secondary"
 						size="sm"
-						class="shadow-ink pressable"
+						class="pressable"
 						icon={Settings}
 					>
-						Manage Subscription
+						Manage subscription
 					</Button>
 				</form>
 			</div>
@@ -104,30 +116,30 @@
 
 		<!-- Invoice Info -->
 		<SettingsCard
-			title="Invoice Information"
+			title="Invoices"
 			description="How we deliver your billing documents."
 			labelledById="invoice-information-heading"
 		>
-			<ul class="text-xs text-muted-foreground space-y-1">
-				<li>• Invoices are emailed automatically</li>
-				<li>• Tax ID and business details can be updated in the billing portal</li>
-				<li>• All invoices include applicable taxes</li>
+			<ul class="text-xs text-muted-foreground space-y-1 list-disc pl-4">
+				<li>Invoices are emailed automatically</li>
+				<li>Tax ID and business details can be updated in the billing portal</li>
+				<li>All invoices include applicable taxes</li>
 			</ul>
 		</SettingsCard>
 
 		<!-- Payment History -->
 		{#if subscriptionDetails.invoices.length > 0}
 			<SettingsCard
-				title="Payment History"
+				title="Payment history"
 				description="Recent invoices on this account."
 				labelledById="payment-history-heading"
 				bodyClass="p-0 sm:p-0"
 			>
 				<div class="divide-y divide-border">
 					{#each subscriptionDetails.invoices as invoice (invoice.id)}
-						<div class="flex items-center justify-between gap-3 px-4 sm:px-5 py-2.5">
+						<div class="flex items-center justify-between gap-3 px-4 py-3">
 							<div class="min-w-0">
-								<p class="text-sm font-medium text-foreground">
+								<p class="text-sm font-medium tabular-nums text-foreground">
 									${(invoice.amount_paid / 100).toFixed(2)}
 								</p>
 								<p class="text-xs text-muted-foreground">
@@ -137,15 +149,15 @@
 								</p>
 							</div>
 							<div class="text-right flex-shrink-0">
-								<p class="text-xs font-medium capitalize text-foreground">
-									{invoice.status}
+								<p class="text-xs text-muted-foreground">
+									{formatStatus(invoice.status)}
 								</p>
 								{#if invoice.invoice_pdf}
 									<a
 										href={invoice.invoice_pdf}
 										target="_blank"
 										rel="noopener noreferrer"
-										class="inline-flex items-center rounded-md px-2 py-1.5 text-xs font-medium text-accent hover:text-accent/80 hover:bg-accent/10 transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset min-h-[44px]"
+										class="inline-flex items-center rounded-lg px-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset min-h-[44px]"
 									>
 										Download PDF
 									</a>
@@ -153,7 +165,7 @@
 									<button
 										type="button"
 										onclick={() => downloadInvoice(invoice.stripe_invoice_id)}
-										class="inline-flex items-center rounded-md px-2 py-1.5 text-xs font-medium text-accent hover:text-accent/80 hover:bg-accent/10 transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset min-h-[44px]"
+										class="inline-flex items-center rounded-lg px-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset min-h-[44px]"
 									>
 										Generate PDF
 									</button>
@@ -166,15 +178,10 @@
 		{/if}
 	{:else}
 		<!-- No Subscription -->
-		<div class="bg-card rounded-lg shadow-ink border border-border tx tx-bloom tx-weak">
-			<div class="p-5 sm:p-6 text-center">
+		<div class="bg-card rounded-xl border border-border tx tx-bloom tx-weak">
+			<div class="p-6 text-center">
 				<div class="max-w-md mx-auto">
-					<div
-						class="p-2.5 bg-accent/10 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center"
-					>
-						<Sparkles class="w-6 h-6 text-accent" />
-					</div>
-					<h3 class="text-lg sm:text-xl font-bold text-foreground mb-1">
+					<h3 class="text-lg sm:text-xl font-medium text-foreground mb-1">
 						Upgrade to Pro
 					</h3>
 					<p class="text-sm text-muted-foreground mb-5">
@@ -182,25 +189,33 @@
 					</p>
 					<div class="space-y-2 text-left max-w-sm mx-auto mb-5">
 						<div class="flex items-start gap-2">
-							<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
+							<CircleCheck
+								class="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0"
+							/>
 							<p class="text-sm text-foreground">
 								Google Calendar integration for automatic task scheduling
 							</p>
 						</div>
 						<div class="flex items-start gap-2">
-							<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
+							<CircleCheck
+								class="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0"
+							/>
 							<p class="text-sm text-foreground">
 								AI-powered daily briefs to keep you on track
 							</p>
 						</div>
 						<div class="flex items-start gap-2">
-							<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
+							<CircleCheck
+								class="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0"
+							/>
 							<p class="text-sm text-foreground">
 								Advanced project phases and timeline management
 							</p>
 						</div>
 						<div class="flex items-start gap-2">
-							<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
+							<CircleCheck
+								class="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0"
+							/>
 							<p class="text-sm text-foreground">
 								Priority support and early access to new features
 							</p>
@@ -208,13 +223,18 @@
 					</div>
 					<a
 						href="/pricing"
-						class="inline-flex items-center px-5 py-2.5 bg-accent hover:bg-accent/90 text-accent-foreground font-medium text-sm rounded-lg shadow-ink pressable transition-all duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+						class="upgrade-link inline-flex items-center min-h-[44px] px-6 bg-accent hover:bg-accent/90 text-accent-foreground font-medium text-sm rounded-lg pressable transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
 					>
-						<Rocket class="w-4 h-4 mr-2" />
-						Get Started — $20/month
+						Get started · $20/month
 					</a>
 				</div>
 			</div>
 		</div>
 	{/if}
 </div>
+
+<style>
+	.upgrade-link {
+		transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+	}
+</style>

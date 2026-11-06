@@ -1246,7 +1246,10 @@ export class OntoEventSyncService extends OntoEventReadService {
 						description,
 						location: event.location ?? undefined,
 						...googleEventPatchTimes(event),
-						recurrence: providerRecurrenceRules(event.recurrence)
+						recurrence: providerRecurrenceRules(event.recurrence),
+						// A live BuildOS event is live in Google too. This also restores a
+						// Google-side delete when the user undoes it (calendar change ingest).
+						status: 'confirmed'
 					}
 				});
 			} else {
@@ -2081,7 +2084,8 @@ export class OntoEventSyncService extends OntoEventReadService {
 						summary: event.title,
 						description,
 						location: event.location ?? undefined,
-						...googleEventPatchTimes(event)
+						...googleEventPatchTimes(event),
+						status: 'confirmed'
 					}
 				});
 			} else {

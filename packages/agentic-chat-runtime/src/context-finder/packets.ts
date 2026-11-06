@@ -12,6 +12,10 @@ import {
 	type DocOutlineNode
 } from '@buildos/shared-agent-ops/utils/document-outline';
 import { flattenOutlineNodes } from '../loop/document-read-budget';
+import {
+	freshDigestSummary,
+	plainOutlineHeading
+} from '@buildos/shared-agent-ops/utils/document-card';
 
 export type ContextFinderKind = 'document' | 'task' | 'goal' | 'plan' | 'milestone' | 'risk';
 
@@ -82,6 +86,8 @@ export type ContextFinderEntity = {
 	sections: ContextFinderSection[];
 	/** The headings shown to Jev and asked about; their index is the question index. */
 	packetHeadings: ContextFinderSection[];
+	/** Documents: the description, else the fresh AI summary (`digest`), for cards (tasker 152). */
+	summary?: string | null;
 };
 
 export const CONTEXT_FINDER_PACKET_LIMITS = Object.freeze({
@@ -146,35 +152,8 @@ export const clipContextWords = (value: unknown, max: number): string => {
 /** Headings deeper than H3 stay out of packets and excerpts, as with the markdown parser. */
 const MAX_SECTION_LEVEL = 3;
 
-const NAMED_ENTITIES: Record<string, string> = {
-	amp: '&',
-	lt: '<',
-	gt: '>',
-	quot: '"',
-	apos: "'",
-	nbsp: ' '
-};
-
-/**
- * The stored outline keeps marked's rendered heading HTML (`<strong>Bold</strong> &amp; x`);
- * packets want the plain words. HTML is a structured format, so stripping it lexically is fine.
- */
-export function plainOutlineHeading(html: string): string {
-	return html
-		.replace(/<[^>]*>/g, '')
-		.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (match, name: string) => {
-			if (name[0] !== '#') return NAMED_ENTITIES[name.toLowerCase()] ?? match;
-			const code =
-				name[1] === 'x' || name[1] === 'X'
-					? parseInt(name.slice(2), 16)
-					: parseInt(name.slice(1), 10);
-			return Number.isFinite(code) && code > 0 && code <= 0x10ffff
-				? String.fromCodePoint(code)
-				: match;
-		})
-		.replace(/\s+/g, ' ')
-		.trim();
-}
+// Heading HTML → plain words; shared with the document cards (tasker 152).
+export { plainOutlineHeading };
 
 type StoredOutline = { content_hash: string; nodes: DocOutlineNode[] };
 
@@ -339,6 +318,17 @@ const loadedRecordText = (fullText: string) => ({
 	textHash: null
 });
 
+/** What a document card says it is: its own description, else the AI summary while it matches
+ * the text. Jev's packet keeps the plain description. */
+function documentSummary(doc: Record<string, unknown>): string | null {
+	const description = typeof doc.description === 'string' ? doc.description.trim() : '';
+	if (description) return description;
+	return freshDigestSummary(
+		doc.digest,
+		typeof doc.content_hash === 'string' ? doc.content_hash : null
+	);
+}
+
 export function buildContextFinderEntities(project: ContextFinderProjectV1): ContextFinderEntity[] {
 	const limits = CONTEXT_FINDER_PACKET_LIMITS;
 	const out: ContextFinderEntity[] = [];
@@ -365,7 +355,8 @@ export function buildContextFinderEntities(project: ContextFinderProjectV1): Con
 				// full brings in its header and first rows.
 				...documentTextFields(doc),
 				sections: [],
-				packetHeadings: []
+				packetHeadings: [],
+				summary: documentSummary(doc)
 			});
 			return;
 		}
@@ -388,7 +379,8 @@ export function buildContextFinderEntities(project: ContextFinderProjectV1): Con
 				)
 			},
 			...fields,
-			packetHeadings
+			packetHeadings,
+			summary: documentSummary(doc)
 		});
 	});
 	project.tasks.forEach((task, i) => {

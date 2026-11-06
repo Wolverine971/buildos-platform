@@ -93,8 +93,10 @@
 		void goto(`/projects/${encodeURIComponent(shareProjectId)}?share=1`);
 	}
 
-	const chipClass =
-		'inline-flex min-h-[32px] items-center gap-1.5 rounded-full border border-border bg-background px-3 text-xs font-medium text-foreground hover:border-border-strong hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+	const linkBase =
+		'inline-flex min-h-[32px] items-center gap-2 rounded-lg text-sm transition-colors duration-150 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none';
+	const linkClass = `${linkBase} text-muted-foreground`;
+	const countClass = 'font-mono text-xs tabular-nums text-muted-foreground';
 </script>
 
 <div class="space-y-4 sm:space-y-5">
@@ -104,17 +106,20 @@
 		description="Who you share with, and what agents can reach. Each project's Share window changes the same settings."
 	/>
 
-	<nav aria-label="People and agents sections" class="flex flex-wrap gap-2">
-		<a href="#you" class={chipClass}>You</a>
-		<a href="#your-page" class={chipClass}>Your page</a>
+	<nav aria-label="People and agents sections" class="flex flex-wrap gap-x-6 gap-y-1">
+		<a href="#you" class={linkClass}>You</a>
+		<a href="#your-page" class={linkClass}>Your page</a>
 		{#if incomingCount > 0}
-			<a href="#requests" class="{chipClass} border-accent/50 text-accent"
-				>Waiting on you · {incomingCount}</a
+			<a href="#requests" class="{linkBase} text-foreground"
+				><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-warning" aria-hidden="true"
+				></span>Waiting on you <span class={countClass}>{incomingCount}</span></a
 			>
 		{/if}
-		<a href="#people" class={chipClass}>People{hub ? ` · ${hub.people.length}` : ''}</a>
-		<a href="#agents" class={chipClass}>Agents</a>
-		<a href="#history" class={chipClass}>History</a>
+		<a href="#people" class={linkClass}
+			>People{#if hub}<span class={countClass}>{hub.people.length}</span>{/if}</a
+		>
+		<a href="#agents" class={linkClass}>Agents</a>
+		<a href="#history" class={linkClass}>History</a>
 	</nav>
 
 	{#if loadFailed || hub?.loadError}
@@ -158,9 +163,9 @@
 
 	{#if loading && !hub}
 		<div
-			class="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground"
+			class="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground"
 		>
-			Loading people…
+			Loading people
 		</div>
 	{:else if hub}
 		<PeopleSection
@@ -175,7 +180,7 @@
 		/>
 		{#if sharePicking}
 			<div
-				class="-mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-3 shadow-ink sm:-mt-3"
+				class="-mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3 sm:-mt-3"
 			>
 				<label for="hub-share-project" class="text-sm font-medium text-foreground"
 					>Share which project?</label

@@ -7,7 +7,6 @@
 		CheckCircle2,
 		Eye,
 		FolderOpen,
-		Key,
 		Layers,
 		Pencil,
 		RefreshCw,
@@ -88,7 +87,7 @@
 </script>
 
 <svelte:head>
-	<title>Share projects with {connectorName} - BuildOS</title>
+	<title>Share projects with {connectorName} · BuildOS</title>
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
@@ -149,23 +148,16 @@
 	<div class="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-10">
 		<a
 			href="/profile?tab=people#agents"
-			class="mb-5 inline-flex min-h-[44px] items-center gap-1.5 rounded-md text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+			class="mb-4 inline-flex min-h-[44px] items-center gap-2 rounded-lg text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 		>
 			<ArrowLeft class="h-4 w-4" />
-			Agent keys
+			Agents
 		</a>
 
-		<div class="mb-6 flex items-center gap-3">
-			<div
-				class="tx tx-bloom tx-weak flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-accent shadow-ink"
-			>
-				<Key class="h-5 w-5 text-accent-foreground" />
-			</div>
+		<div class="mb-6">
 			<div class="min-w-0">
-				<p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-					Connector access
-				</p>
-				<h1 class="truncate text-xl font-bold text-foreground sm:text-2xl">
+				<p class="text-xs text-muted-foreground">Connector access</p>
+				<h1 class="truncate text-xl font-medium text-foreground sm:text-2xl">
 					{connectorName}
 				</h1>
 				{#if installationName}
@@ -191,14 +183,11 @@
 		{/if}
 
 		{#if outcome}
-			<section
-				class="tx tx-grain tx-weak rounded-lg border border-border bg-card p-5 shadow-ink"
-				aria-live="polite"
-			>
+			<section class="rounded-xl border border-border bg-card p-6" aria-live="polite">
 				<div class="flex items-start gap-3">
-					<CheckCircle2 class="mt-0.5 h-5 w-5 shrink-0 text-success" />
+					<CheckCircle2 class="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
 					<div class="min-w-0">
-						<h2 class="text-lg font-semibold text-foreground">
+						<h2 class="text-lg font-medium text-foreground">
 							{#if outcome === 'switched'}
 								{connectorName} can now see all your projects
 							{:else if outcome === 'writes_allowed'}
@@ -206,7 +195,7 @@
 									? ` in ${grant.project.name}`
 									: ''}
 							{:else if outcome === 'asked'}
-								{ASK_MESSAGES[askStatus ?? ''] ?? 'Request sent.'}
+								{ASK_MESSAGES[askStatus ?? ''] ?? 'Request sent'}
 							{:else if outcome === 'shared_on'}
 								{connectorName} can now open projects people share with you
 							{:else if outcome === 'shared_off'}
@@ -236,13 +225,11 @@
 			</section>
 		{:else if grant.project && grant.project_blocked}
 			<!-- Wall 3: the owner turned this person's agents off. A grant can't help. -->
-			<section
-				class="tx tx-frame tx-weak rounded-lg border border-border bg-card p-5 shadow-ink"
-			>
+			<section class="rounded-xl border border-border bg-card p-6">
 				<div class="flex items-start gap-3">
 					<ShieldOff class="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
 					<div class="min-w-0">
-						<h2 class="text-lg font-semibold text-foreground">
+						<h2 class="text-lg font-medium text-foreground">
 							{ownerLabel} turned off agents for you in
 							<span class="break-words">{grant.project.name}</span>
 						</h2>
@@ -260,14 +247,12 @@
 		{:else if grant.write && data.need === 'write'}
 			<!-- Wall 2 (or an owner wall reached from a write link). No project in the link
 			     means the whole connection is read-only. -->
-			<section
-				class="tx tx-frame tx-weak rounded-lg border border-border bg-card p-5 shadow-ink"
-			>
+			<section class="rounded-xl border border-border bg-card p-6">
 				{#if grant.write.status === 'allowed'}
 					<div class="flex items-start gap-3">
-						<CheckCircle2 class="mt-0.5 h-5 w-5 shrink-0 text-success" />
+						<CheckCircle2 class="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
 						<div class="min-w-0">
-							<h2 class="text-lg font-semibold text-foreground">
+							<h2 class="text-lg font-medium text-foreground">
 								{connectorName} can already make changes{grant.project
 									? ` in ${grant.project.name}`
 									: ''}
@@ -279,7 +264,7 @@
 						</div>
 					</div>
 				{:else if grant.write.status === 'allow_here'}
-					<h2 class="text-lg font-semibold text-foreground">
+					<h2 class="text-lg font-medium text-foreground">
 						{#if grant.project}
 							Let {connectorName} make changes in
 							<span class="break-words">{grant.project.name}</span>?
@@ -330,7 +315,7 @@
 					<div class="flex items-start gap-3">
 						<RefreshCw class="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
 						<div class="min-w-0">
-							<h2 class="text-lg font-semibold text-foreground">
+							<h2 class="text-lg font-medium text-foreground">
 								Reconnect {connectorName} to allow changes
 							</h2>
 							<p class="mt-1 text-sm text-muted-foreground">
@@ -345,7 +330,7 @@
 					<div class="flex items-start gap-3">
 						<Users class="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
 						<div class="min-w-0">
-							<h2 class="text-lg font-semibold text-foreground">
+							<h2 class="text-lg font-medium text-foreground">
 								{#if grant.write.owner_reason === 'viewer'}
 									You're a viewer in <span class="break-words"
 										>{grant.project.name}</span
@@ -366,14 +351,12 @@
 				{/if}
 			</section>
 		{:else if grant.project}
-			<section
-				class="tx tx-frame tx-weak rounded-lg border border-border bg-card p-5 shadow-ink"
-			>
+			<section class="rounded-xl border border-border bg-card p-6">
 				{#if grant.project_already_granted}
 					<div class="flex items-start gap-3">
-						<CheckCircle2 class="mt-0.5 h-5 w-5 shrink-0 text-success" />
+						<CheckCircle2 class="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
 						<div class="min-w-0">
-							<h2 class="text-lg font-semibold text-foreground">
+							<h2 class="text-lg font-medium text-foreground">
 								{connectorName} already has access to {grant.project.name}
 							</h2>
 							<p class="mt-1 text-sm text-muted-foreground">
@@ -383,7 +366,7 @@
 						</div>
 					</div>
 				{:else}
-					<h2 class="text-lg font-semibold text-foreground">
+					<h2 class="text-lg font-medium text-foreground">
 						Let {connectorName} work on
 						<span class="break-words">{grant.project.name}</span>?
 					</h2>
@@ -397,7 +380,7 @@
 					</p>
 					{#if grant.project.description}
 						<p
-							class="mt-3 line-clamp-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
+							class="mt-3 line-clamp-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
 						>
 							{grant.project.description}
 						</p>
@@ -408,7 +391,7 @@
 						<input type="hidden" name="project_id" value={grant.project.id} />
 						{#if grant.project.shared_by && !caller.include_shared_projects}
 							<label
-								class="mt-4 flex min-h-[44px] cursor-pointer items-start gap-3 rounded-md p-2 transition-colors hover:bg-muted/60"
+								class="mt-4 flex min-h-[44px] cursor-pointer items-start gap-3 rounded-lg p-2 transition-colors hover:bg-muted/50"
 							>
 								<input
 									type="checkbox"
@@ -450,9 +433,9 @@
 		{:else}
 			{#if requestedMissing}
 				<div
-					class="mb-4 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning"
+					class="mb-4 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/5 p-3 text-sm text-foreground"
 				>
-					<AlertTriangle class="mt-0.5 h-4 w-4 shrink-0" />
+					<AlertTriangle class="mt-0.5 h-4 w-4 shrink-0 text-warning" />
 					<span
 						>The project in this link isn't in your workspace. It may have been deleted,
 						or it belongs to someone else.</span
@@ -460,14 +443,12 @@
 				</div>
 			{/if}
 
-			<section
-				class="tx tx-frame tx-weak rounded-lg border border-border bg-card p-5 shadow-ink"
-			>
+			<section class="rounded-xl border border-border bg-card p-6">
 				{#if grant.ungranted_projects.length === 0}
 					<div class="flex items-start gap-3">
-						<CheckCircle2 class="mt-0.5 h-5 w-5 shrink-0 text-success" />
+						<CheckCircle2 class="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
 						<div class="min-w-0">
-							<h2 class="text-lg font-semibold text-foreground">
+							<h2 class="text-lg font-medium text-foreground">
 								{connectorName} can already see every project in your workspace
 							</h2>
 							{#if !isSelectedMode}
@@ -478,7 +459,7 @@
 						</div>
 					</div>
 				{:else}
-					<h2 class="text-lg font-semibold text-foreground">
+					<h2 class="text-lg font-medium text-foreground">
 						{grant.ungranted_projects.length} project{grant.ungranted_projects
 							.length === 1
 							? ''
@@ -504,7 +485,7 @@
 							{#each grant.ungranted_projects as project (project.id)}
 								<li>
 									<label
-										class="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-md p-2.5 transition-colors hover:bg-muted/60"
+										class="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-lg p-3 transition-colors hover:bg-muted/50"
 									>
 										<input
 											type="checkbox"
@@ -558,14 +539,14 @@
 
 		{#if grant.shared_projects.count > 0 || caller.include_shared_projects}
 			<section
-				class="mt-4 rounded-lg border border-border bg-card p-5 shadow-ink"
+				class="mt-4 rounded-xl border border-border bg-card p-6"
 				aria-labelledby="shared-projects-heading"
 			>
 				<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 					<div class="min-w-0">
 						<h2
 							id="shared-projects-heading"
-							class="text-base font-semibold text-foreground"
+							class="text-base font-medium text-foreground"
 						>
 							Projects people share with you
 						</h2>

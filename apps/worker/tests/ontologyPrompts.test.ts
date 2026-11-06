@@ -407,3 +407,79 @@ describe('OntologyProjectBriefPrompt', () => {
 		expect(prompt.toLowerCase()).not.toContain('timeblock');
 	});
 });
+
+describe('OntologyProjectBriefPrompt Start Here block', () => {
+	const baseProject = {
+		project: {
+			id: 'project-1',
+			name: 'Newsletter',
+			state_key: 'active',
+			type_key: 'project.creative',
+			description: null,
+			updated_at: '2026-11-04T12:00:00.000Z'
+		},
+		isShared: false,
+		activityLogs: [],
+		recentChanges: [],
+		goals: [],
+		plans: [],
+		requirements: [],
+		documents: [],
+		nextSteps: [],
+		nextMilestone: null,
+		activePlan: null,
+		calendarToday: [],
+		calendarUpcoming: [],
+		todaysTasks: [],
+		overdueTasks: [],
+		thisWeekTasks: [],
+		blockedTasks: [],
+		unblockingTasks: [],
+		recentlyUpdatedTasks: [],
+		upcomingTasks: []
+	};
+
+	it('labels each Start Here part', () => {
+		const prompt = OntologyProjectBriefPrompt.buildUserPrompt({
+			date: '2026-11-05',
+			timezone: 'America/New_York',
+			project: {
+				...baseProject,
+				startHere: {
+					documentId: 'doc-sh',
+					title: 'START HERE - Newsletter',
+					orientation: 'A weekly essay newsletter for indie founders.',
+					currentState: 'Issue one is drafted.',
+					status: 'State: active · Next step: Send issue one.',
+					updatedAt: '2026-11-04T12:00:00Z',
+					truncated: false
+				}
+			} as any
+		});
+
+		expect(prompt).toContain(
+			[
+				'## Project Start Here',
+				'Document: START HERE - Newsletter [id: doc-sh]',
+				'Updated: 2026-11-04T12:00:00Z',
+				'',
+				'What this is: A weekly essay newsletter for indie founders.',
+				'',
+				'Current state:',
+				'Issue one is drafted.',
+				'',
+				'Status: State: active · Next step: Send issue one.'
+			].join('\n')
+		);
+		expect(prompt).not.toContain('Trimmed to fit');
+	});
+
+	it('leaves the block out when there is no Start Here context', () => {
+		const prompt = OntologyProjectBriefPrompt.buildUserPrompt({
+			date: '2026-11-05',
+			timezone: 'America/New_York',
+			project: { ...baseProject, startHere: null } as any
+		});
+		expect(prompt).not.toContain('## Project Start Here');
+	});
+});

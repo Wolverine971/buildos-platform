@@ -10,7 +10,6 @@
 		Repeat,
 		type Icon
 	} from '$lib/icons/lucide';
-	import Badge from '$lib/components/ui/Badge.svelte';
 	import { presentCycle, type CycleExecutionAuthority } from './cycle-presenter';
 
 	interface Props {
@@ -31,32 +30,36 @@
 
 	let presentation = $derived(presentCycle(cycle, { authority, locale, displayTimeZone }));
 	let KindIcon = $derived(KIND_ICONS[cycle.kind] ?? Repeat);
+
+	// Dot color only where it carries meaning: on/healthy or needs attention.
+	const STATUS_DOTS: Record<string, string> = {
+		active: 'bg-success',
+		attention: 'bg-destructive'
+	};
+	let statusDot = $derived(STATUS_DOTS[presentation.status.key] ?? 'bg-muted-foreground/60');
 </script>
 
 <article
-	class="min-w-0 rounded-lg border border-border bg-card p-4 shadow-ink sm:p-5"
+	class="min-w-0 rounded-xl border border-border bg-card p-4 sm:p-6"
 	aria-label={`${cycle.label}, ${presentation.status.label}`}
 >
 	<div class="flex min-w-0 items-start gap-3">
-		<div
-			class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-accent shadow-ink-inner"
-		>
-			<KindIcon class="h-5 w-5" aria-hidden="true" />
-		</div>
+		<KindIcon class="mt-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
 
 		<div class="min-w-0 flex-1">
 			<div class="flex min-w-0 flex-wrap items-start justify-between gap-2">
 				<div class="min-w-0 flex-1">
-					<h3 class="break-words text-base font-semibold leading-snug text-foreground">
+					<h3 class="break-words text-base font-medium leading-snug text-foreground">
 						{cycle.label || presentation.kind.label}
 					</h3>
-					<p class="mt-0.5 text-xs font-medium text-muted-foreground">
+					<p class="mt-1 text-xs text-muted-foreground">
 						{presentation.kind.label}
 					</p>
 				</div>
-				<Badge size="sm" variant={presentation.status.badgeVariant}>
-					{presentation.status.label}
-				</Badge>
+				<span class="inline-flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+					<span class="h-1.5 w-1.5 rounded-full {statusDot}" aria-hidden="true"></span>
+					<span>{presentation.status.label}</span>
+				</span>
 			</div>
 
 			<p class="mt-2 break-words text-sm leading-relaxed text-muted-foreground">

@@ -16,7 +16,7 @@ type Unlisted<T extends keyof Database['public']['Tables'], S extends string> = 
 type Complete<Missing> = [Missing] extends [never] ? true : { missing: Missing };
 
 export const DOCUMENT_DETAIL_COLUMNS =
-	'id, project_id, title, description, content, content_hash, outline, children, props, state_key, type_key, created_at, created_by, updated_at, archived_at, deleted_at' as const;
+	'id, project_id, title, description, content, content_hash, outline, digest, children, props, state_key, type_key, created_at, created_by, updated_at, archived_at, deleted_at' as const;
 
 export const TASK_DETAIL_COLUMNS =
 	'id, project_id, title, description, state_key, type_key, priority, start_at, due_at, completed_at, facet_scale, idempotency_key, props, created_at, created_by, updated_at, archived_at, deleted_at' as const;

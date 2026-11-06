@@ -146,11 +146,11 @@
 	}
 
 	const switchClass = (on: boolean) =>
-		`relative mt-0.5 h-7 w-12 shrink-0 rounded-full border transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${
+		`relative mt-0.5 h-7 w-12 shrink-0 rounded-full border transition-colors duration-200 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${
 			on ? 'border-accent bg-accent' : 'border-border-strong bg-muted'
 		}`;
 	const knobClass = (on: boolean) =>
-		`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-background shadow-ink transition-transform motion-reduce:transition-none ${
+		`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-background transition-transform duration-200 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
 			on ? 'translate-x-5' : 'translate-x-0'
 		}`;
 </script>
@@ -166,12 +166,14 @@
 			<FormField
 				label="Handle"
 				labelFor="hub-handle"
+				uppercase={false}
+				showOptional={false}
 				hint="People add you to projects with it. Your page lives at build-os.com/@{usernameValue ||
 					derivedFallback}."
 			>
 				<div class="flex flex-col gap-2 sm:flex-row">
 					<div
-						class="flex min-w-0 flex-1 items-stretch overflow-hidden rounded-md border border-border-strong bg-background focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
+						class="flex min-w-0 flex-1 items-stretch overflow-hidden rounded-lg border border-border-strong bg-background focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
 					>
 						<span
 							class="inline-flex items-center border-r border-border bg-muted/40 px-3 font-mono text-sm text-muted-foreground"
@@ -200,7 +202,7 @@
 						variant="primary"
 						size="sm"
 						loading={usernameLoading}
-						class="shadow-ink pressable sm:self-stretch"
+						class="pressable sm:self-stretch"
 					>
 						{usernameValue ? 'Save' : 'Claim handle'}
 					</Button>
@@ -269,16 +271,16 @@
 		</div>
 
 		<div
-			class="w-full shrink-0 space-y-2 rounded-lg border border-dashed border-border-strong bg-background p-3.5 lg:w-64"
+			class="w-full shrink-0 space-y-2 rounded-xl border border-dashed border-border-strong bg-background p-4 lg:w-64"
 		>
-			<p class="micro-label">What people see</p>
-			<div class="flex items-center gap-2.5">
+			<p class="text-xs text-muted-foreground">What people see</p>
+			<div class="flex items-center gap-3">
 				<span
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground"
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-foreground"
 					aria-hidden="true">{initials}</span
 				>
 				<div class="min-w-0">
-					<p class="truncate text-sm font-semibold text-foreground">{name}</p>
+					<p class="truncate text-sm font-medium text-foreground">{name}</p>
 					<p class="truncate font-mono text-xs text-muted-foreground">
 						{usernameValue ? `@${usernameValue}` : 'No handle yet'}
 					</p>

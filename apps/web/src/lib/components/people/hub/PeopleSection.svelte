@@ -182,26 +182,37 @@
 	}
 
 	const linkClass =
-		'rounded-sm font-medium text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+		'rounded-sm text-foreground underline underline-offset-2 hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+	const segmentClass = (active: boolean) =>
+		`inline-flex min-h-[36px] items-center gap-2 px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+			active
+				? 'bg-muted text-foreground'
+				: 'bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+		}`;
+	/** "agents write": the per-project agent access, lowercase so it reads as part of the line. */
+	function agentsPhrase(projectId: string, role: PersonRole, access: AgentAccess): string {
+		const label = liftedToWrite(projectId, role, access) ? 'Write' : agentAccessLabel(access);
+		return `agents ${label.toLowerCase()}`;
+	}
 </script>
 
 <section
 	id="people"
-	class="scroll-mt-4 overflow-hidden rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak"
+	class="scroll-mt-4 overflow-hidden rounded-xl border border-border bg-card tx tx-frame tx-weak"
 	aria-labelledby="hub-people-heading"
 >
 	<div class="flex flex-wrap items-start gap-3 border-b border-border px-4 py-3 sm:px-5">
 		<div class="min-w-0 flex-1">
 			<h3
 				id="hub-people-heading"
-				class="flex items-center gap-2 text-sm font-semibold text-foreground sm:text-base"
+				class="flex items-center gap-2 text-sm font-medium text-foreground sm:text-base"
 			>
-				<Users class="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+				<Users class="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
 				People
 			</h3>
-			<p class="mt-0.5 text-xs text-muted-foreground">
+			<p class="mt-1 text-xs text-muted-foreground">
 				{#if people.length === 0}
-					Nobody else is in your projects yet.
+					Nobody else is in your projects yet
 				{:else}
 					{people.length}
 					{people.length === 1 ? 'person' : 'people'} in {projectCount} of your projects. Open
@@ -212,16 +223,13 @@
 		<div class="flex flex-wrap items-center gap-2">
 			{#if people.length > 0}
 				<div
-					class="inline-flex overflow-hidden rounded-md border border-border-strong"
+					class="inline-flex overflow-hidden rounded-lg border border-border-strong"
 					role="group"
 					aria-label="View"
 				>
 					<button
 						type="button"
-						class="inline-flex min-h-[36px] items-center gap-1.5 px-2.5 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring {view ===
-						'list'
-							? 'bg-accent text-accent-foreground'
-							: 'bg-background text-muted-foreground hover:text-foreground'}"
+						class={segmentClass(view === 'list')}
 						aria-pressed={view === 'list'}
 						onclick={() => (view = 'list')}
 					>
@@ -229,10 +237,7 @@
 					</button>
 					<button
 						type="button"
-						class="inline-flex min-h-[36px] items-center gap-1.5 border-l border-border-strong px-2.5 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring {view ===
-						'grid'
-							? 'bg-accent text-accent-foreground'
-							: 'bg-background text-muted-foreground hover:text-foreground'}"
+						class="{segmentClass(view === 'grid')} border-l border-border-strong"
 						aria-pressed={view === 'grid'}
 						onclick={() => (view = 'grid')}
 					>
@@ -266,11 +271,11 @@
 							onclick={() => (openActorId = open ? null : person.actor_id)}
 						>
 							<span
-								class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground"
+								class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-foreground"
 								aria-hidden="true">{initials(person.name)}</span
 							>
 							<span class="min-w-0">
-								<span class="block truncate text-sm font-semibold text-foreground"
+								<span class="block truncate text-sm font-medium text-foreground"
 									>{person.name}</span
 								>
 								<span class="block truncate text-xs text-muted-foreground">
@@ -282,24 +287,22 @@
 								</span>
 							</span>
 						</button>
-						<div class="flex min-w-0 flex-wrap justify-end gap-1.5">
+						<div class="flex min-w-0 flex-col items-end gap-1">
 							{#each person.memberships as m (m.member_id)}
-								<span
-									class="inline-flex items-center rounded-full border border-border bg-background px-2.5 py-0.5 text-xs text-foreground"
-									title={m.project_name}
-								>
-									{projectShort(m.project_name)} · {roleLabel(m.role)} · agents {liftedToWrite(
+								<span class="text-xs text-muted-foreground" title={m.project_name}>
+									<span class="text-foreground"
+										>{projectShort(m.project_name)}</span
+									>
+									· {roleLabel(m.role)} · {agentsPhrase(
 										m.project_id,
 										m.role,
 										m.agent_access
-									)
-										? 'Write'
-										: agentAccessLabel(m.agent_access)}
+									)}
 								</span>
 							{/each}
 						</div>
 						<ChevronDown
-							class="h-4 w-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none {open
+							class="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none {open
 								? 'rotate-180'
 								: ''}"
 							aria-hidden="true"
@@ -313,11 +316,11 @@
 						>
 							<ul class="divide-y divide-border">
 								{#each person.memberships as m (m.member_id)}
-									<li class="flex flex-wrap items-center gap-3 px-3.5 py-3">
+									<li class="flex flex-wrap items-center gap-3 px-4 py-3">
 										<div class="min-w-0 flex-1 basis-48">
 											<a
 												href="/projects/{m.project_id}"
-												class="block truncate text-sm font-medium text-foreground hover:text-accent"
+												class="block truncate text-sm font-medium text-foreground underline-offset-2 hover:underline"
 												>{m.project_name}</a
 											>
 											<p class="text-xs text-muted-foreground">
@@ -371,7 +374,7 @@
 											</Select>
 										</label>
 										{#if confirmRemove?.actorId === person.actor_id && confirmRemove.memberId === m.member_id}
-											<span class="flex items-center gap-1.5">
+											<span class="flex items-center gap-2">
 												<Button
 													variant="danger"
 													size="sm"
@@ -402,7 +405,7 @@
 								{/each}
 							</ul>
 							<div
-								class="flex flex-wrap items-center gap-3 border-t border-border bg-muted/30 px-3.5 py-3"
+								class="flex flex-wrap items-center gap-3 border-t border-border bg-muted/30 px-4 py-3"
 							>
 								{#if person.memberships.length > 1}
 									<label
@@ -412,7 +415,7 @@
 										<Select
 											id="hub-agents-all-{person.actor_id}"
 											size="sm"
-											placeholder="Change all…"
+											placeholder="Change all"
 											value={null}
 											disabled={busyKey !== null}
 											onchange={(value) =>
@@ -425,11 +428,11 @@
 									</label>
 								{/if}
 								<span class="flex-1 text-xs text-muted-foreground">
-									Their agents never get more than they have.
+									Their agents never get more than they have
 								</span>
 								{#if person.memberships.length > 1}
 									{#if confirmRemove?.actorId === person.actor_id && confirmRemove.memberId === 'all'}
-										<span class="flex items-center gap-1.5">
+										<span class="flex items-center gap-2">
 											<Button
 												variant="danger"
 												size="sm"
@@ -470,14 +473,14 @@
 			<div class="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
 				<button
 					type="button"
-					class="flex min-w-0 flex-1 basis-56 items-center gap-2.5 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					class="flex min-w-0 flex-1 basis-56 items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					aria-expanded={showInvites}
 					aria-controls="hub-invites"
 					onclick={() => (showInvites = !showInvites)}
 				>
 					<MailX class="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
 					<span class="min-w-0">
-						<span class="block text-sm font-semibold text-foreground">
+						<span class="block text-sm font-medium text-foreground">
 							{#if expiredInvites.length > 0}
 								{expiredInvites.length}
 								{expiredInvites.length === 1 ? 'invite' : 'invites'} nobody answered
@@ -488,16 +491,16 @@
 						</span>
 						<span class="block text-xs text-muted-foreground">
 							{#if expiredInvites.length > 0 && expiredInvites.length < invites.length}
-								Plus {invites.length - expiredInvites.length} still waiting.
+								Plus {invites.length - expiredInvites.length} still waiting
 							{:else if expiredInvites.length > 0}
 								All expired. Resend one, or clear them.
 							{:else}
-								Waiting for an answer.
+								Waiting for an answer
 							{/if}
 						</span>
 					</span>
 					<ChevronDown
-						class="ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none {showInvites
+						class="ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none {showInvites
 							? 'rotate-180'
 							: ''}"
 						aria-hidden="true"
@@ -519,7 +522,7 @@
 					class="divide-y divide-border border-t border-border px-4 sm:px-5"
 				>
 					{#each invites as invite (invite.id)}
-						<li class="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5">
+						<li class="flex flex-wrap items-center gap-x-3 gap-y-1 py-3">
 							<span class="min-w-0 flex-1 basis-48 truncate text-sm text-foreground"
 								>{inviteLabel(invite)}</span
 							>
@@ -527,10 +530,15 @@
 								>{invite.project_name} · {roleLabel(invite.role)}</span
 							>
 							<span
-								class="text-xs {invite.effective_status === 'expired'
-									? 'text-warning'
-									: 'text-muted-foreground'}"
+								class="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
 							>
+								<span
+									class="h-1.5 w-1.5 rounded-full {invite.effective_status ===
+									'expired'
+										? 'bg-warning'
+										: 'bg-muted-foreground/60'}"
+									aria-hidden="true"
+								></span>
 								{invite.effective_status === 'expired'
 									? `Expired ${shortDate(invite.expires_at)}`
 									: `Sent ${formatRelativeTime(invite.created_at)}`}
@@ -566,31 +574,31 @@
 		</div>
 	{/if}
 
-	<div class="border-t border-border px-4 py-3.5 sm:px-5">
-		<p class="micro-label flex items-center gap-1.5">
+	<div class="border-t border-border px-4 py-4 sm:px-5">
+		<p class="flex items-center gap-2 text-xs text-muted-foreground">
 			<FolderOpen class="h-3.5 w-3.5" aria-hidden="true" /> Shared with you
 		</p>
 		{#if sharedWithYou.length === 0}
-			<p class="mt-1.5 text-sm text-muted-foreground">
+			<p class="mt-2 text-sm text-muted-foreground">
 				Nobody has shared a project with you yet. When they do, it shows here with what you
 				and your agents can do in it.
 			</p>
 		{:else}
 			<ul class="mt-2 divide-y divide-border">
 				{#each sharedWithYou as project (project.id)}
-					<li class="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5">
+					<li class="flex flex-wrap items-center gap-x-3 gap-y-1 py-3">
 						<a
 							href="/projects/{project.id}"
-							class="min-w-0 flex-1 basis-48 truncate text-sm font-medium text-foreground hover:text-accent"
+							class="min-w-0 flex-1 basis-48 truncate text-sm font-medium text-foreground underline-offset-2 hover:underline"
 							>{project.name}</a
 						>
 						<span class="text-xs text-muted-foreground">
 							{project.owner_name ? `${project.owner_name}'s` : 'Shared'} · you're {project.role ===
 							'editor'
 								? 'an Editor'
-								: 'a Viewer'} · your agents: {agentAccessLabel(
+								: 'a Viewer'} · your agents {agentAccessLabel(
 								project.agent_access
-							)}
+							).toLowerCase()}
 						</span>
 					</li>
 				{/each}

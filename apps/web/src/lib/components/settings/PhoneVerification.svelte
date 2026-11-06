@@ -5,7 +5,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
-	import { Phone, Check, Loader } from 'lucide-svelte';
+	import { Phone, Check } from '$lib/icons/lucide';
 
 	interface Props {
 		onVerified?: () => void;
@@ -115,18 +115,20 @@
 
 <div class="space-y-4">
 	{#if !verificationSent}
-		<div class="dither-soft rounded-lg p-3 sm:p-4 border border-info/30">
+		<div>
 			<FormField
-				label="Phone Number"
+				label="Phone number"
 				labelFor="phone"
-				hint="Enter your phone number to receive SMS notifications"
+				hint="We'll text you a code to confirm it"
+				uppercase={false}
+				showOptional={false}
 			>
 				<!-- Twilio Consent Language -->
-				<div class="mb-3 p-2.5 bg-card rounded-md border border-info/30">
-					<p class="text-xs sm:text-sm text-foreground">
+				<div class="mb-3 p-3 bg-muted/50 rounded-lg border border-border">
+					<p class="text-xs text-muted-foreground">
 						By providing your phone number, you agree to receive SMS reminders and
-						notifications from BuildOS. Message & data rates may apply. Reply <strong
-							>STOP</strong
+						notifications from BuildOS. Message & data rates may apply. Reply <span
+							class="font-medium text-foreground">STOP</span
 						> to unsubscribe at any time.
 					</p>
 				</div>
@@ -152,26 +154,25 @@
 						disabled={isLoading || !phoneNumber}
 						variant="primary"
 						loading={isLoading}
-						icon={isLoading ? Loader : undefined}
 					>
-						{isLoading ? 'Sending...' : 'Send Code'}
+						{isLoading ? 'Sending…' : 'Send code'}
 					</Button>
 				</div>
 			</FormField>
 		</div>
 	{:else}
-		<div class="dither-soft rounded-lg p-3 sm:p-4 border border-success/30">
-			<div class="mb-3">
-				<div class="flex items-center gap-2 text-success mb-2">
-					<Check class="w-5 h-5" />
-					<span class="font-semibold">Code sent to {phoneNumber}</span>
-				</div>
+		<div>
+			<div class="mb-3 flex items-center gap-2 text-sm text-foreground">
+				<Check class="w-4 h-4 text-success flex-shrink-0" />
+				<span class="font-medium">Code sent to {phoneNumber}</span>
 			</div>
 
 			<FormField
-				label="Verification Code"
+				label="Verification code"
 				labelFor="code"
-				hint="Enter the 6-digit code from your SMS"
+				hint="Enter the 6-digit code from the text"
+				uppercase={false}
+				showOptional={false}
 			>
 				<div class="flex gap-2">
 					<TextInput
@@ -189,22 +190,21 @@
 					<Button
 						onclick={confirmVerification}
 						disabled={isVerifying || !verificationCode}
-						variant="success"
+						variant="primary"
 						loading={isVerifying}
-						icon={isVerifying ? Loader : Check}
 					>
-						{isVerifying ? 'Verifying...' : 'Verify'}
+						{isVerifying ? 'Verifying…' : 'Verify'}
 					</Button>
 				</div>
 			</FormField>
 
-			<div class="mt-4 pt-4 border-t border-success/30">
+			<div class="mt-4 pt-4 border-t border-border">
 				<button
 					onclick={resetVerification}
-					class="text-sm text-muted-foreground hover:text-foreground dark:hover:text-muted-foreground transition-colors"
+					class="text-sm text-muted-foreground hover:text-foreground transition-colors"
 					type="button"
 				>
-					← Use a different number
+					Use a different number
 				</button>
 			</div>
 		</div>

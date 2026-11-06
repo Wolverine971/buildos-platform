@@ -2,20 +2,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fade, slide } from 'svelte/transition';
-	import {
-		MessageSquare,
-		Calendar,
-		Clock,
-		X,
-		RefreshCw,
-		AlertCircle,
-		CheckCircle
-	} from 'lucide-svelte';
+	import { MessageSquare, Calendar, Clock, X, RefreshCw, AlertCircle } from '$lib/icons/lucide';
 	import { format, parseISO, isFuture } from 'date-fns';
 	import { formatInTimeZone } from 'date-fns-tz';
 	import Button from '$lib/components/ui/Button.svelte';
-	import TabNav from '$lib/components/ui/TabNav.svelte';
-	import type { Tab as TabNavTab } from '$lib/components/ui/TabNav.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import { slideMotion, fadeMotion } from '$lib/components/project/v2/board-a11y';
 	import { requireApiData, requireApiSuccess } from '$lib/utils/api-client-helpers';
@@ -54,7 +44,7 @@
 	let cancelling = $state<Set<string>>(new Set());
 	let cancelTargetId = $state<string | null>(null);
 
-	const smsFilterTabs: TabNavTab[] = [
+	const smsFilterTabs: { id: SmsFilter; label: string }[] = [
 		{ id: 'all', label: 'All' },
 		{ id: 'scheduled', label: 'Scheduled' },
 		{ id: 'sent', label: 'Sent' },
@@ -81,6 +71,8 @@
 			(msg) => msg.status === 'scheduled' && isFuture(parseISO(msg.scheduled_for))
 		).length
 	);
+
+	let upcomingNoun = $derived(upcomingCount === 1 ? 'message' : 'messages');
 
 	onMount(() => {
 		loadScheduledMessages();
@@ -151,54 +143,38 @@
 		}
 	}
 
-	function getStatusColor(status: string): string {
+	function getStatusDot(status: string): string {
 		switch (status) {
 			case 'scheduled':
 			case 'pending':
-				return 'text-info bg-info/10 border border-info/30';
+				return 'bg-warning';
 			case 'sent':
 			case 'delivered':
-				return 'text-success bg-success/10 border border-success/30';
+				return 'bg-success';
 			case 'failed':
-				return 'text-destructive bg-destructive/10 border border-destructive/30';
-			case 'cancelled':
-				return 'text-muted-foreground bg-muted border border-border';
+				return 'bg-destructive';
 			default:
-				return 'text-muted-foreground bg-muted border border-border';
+				return 'bg-muted-foreground/60';
 		}
 	}
 
-	function getStatusIcon(status: string) {
-		switch (status) {
-			case 'scheduled':
-			case 'pending':
-				return Clock;
-			case 'sent':
-			case 'delivered':
-				return CheckCircle;
-			case 'failed':
-				return AlertCircle;
-			case 'cancelled':
-				return X;
-			default:
-				return MessageSquare;
-		}
+	function formatStatus(status: string): string {
+		const words = status.replace(/_/g, ' ');
+		return words.charAt(0).toUpperCase() + words.slice(1);
 	}
 </script>
 
 <div class="space-y-4">
 	<!-- Header -->
 	<div class="flex items-center justify-between gap-3">
-		<div class="min-w-0">
-			<h3 class="text-lg font-semibold text-foreground">Scheduled Event Reminders</h3>
-			<p class="text-sm text-muted-foreground mt-1">
-				{#if upcomingCount > 0}
-					{upcomingCount} upcoming {upcomingCount === 1 ? 'message' : 'messages'}
-				{:else}
-					No upcoming messages
-				{/if}
-			</p>
-		</div>
+		<p class="min-w-0 text-sm text-muted-foreground">
+			{#if upcomingCount > 0}
+				<span class="font-mono tabular-nums">{upcomingCount}</span>
+				upcoming {upcomingNoun}
+			{:else}
+				No upcoming messages
+			{/if}
+		</p>
 		<Button
 			variant="ghost"
 			size="sm"
@@ -211,26 +187,35 @@
 		</Button>
 	</div>
 
-	<!-- Filter Tabs -->
-	<TabNav
-		tabs={smsFilterTabs}
-		activeTab={filterStatus}
-		onchange={(id) => (filterStatus = id as SmsFilter)}
-		ariaLabel="Filter scheduled messages"
-	/>
+	<!-- Filter -->
+	<div class="flex flex-wrap gap-1" role="group" aria-label="Filter scheduled messages">
+		{#each smsFilterTabs as tab (tab.id)}
+			<button
+				type="button"
+				aria-pressed={filterStatus === tab.id}
+				onclick={() => (filterStatus = tab.id)}
+				class="filter-button min-h-[44px] sm:min-h-[36px] rounded-lg px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {filterStatus ===
+				tab.id
+					? 'bg-muted font-medium text-foreground'
+					: 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}"
+			>
+				{tab.label}
+			</button>
+		{/each}
+	</div>
 
 	<!-- Loading State -->
 	{#if loading}
 		<div class="text-center py-12" transition:fade={fadeMotion()}>
 			<RefreshCw
-				class="w-8 h-8 mx-auto text-muted-foreground animate-spin motion-reduce:animate-none"
+				class="w-5 h-5 mx-auto text-muted-foreground animate-spin motion-reduce:animate-none"
 			/>
-			<p class="text-sm text-muted-foreground mt-2">Loading messages...</p>
+			<p class="text-sm text-muted-foreground mt-2">Loading messages…</p>
 		</div>
 	{:else if error}
 		<!-- Error State -->
 		<div
-			class="bg-destructive/10 border border-destructive/30 rounded-lg p-4 shadow-ink tx tx-static tx-weak"
+			class="bg-destructive/10 border border-destructive/30 rounded-lg p-4 tx tx-static tx-weak"
 			transition:slide={slideMotion()}
 		>
 			<div class="flex items-start gap-3">
@@ -251,12 +236,9 @@
 		</div>
 	{:else if filteredMessages.length === 0}
 		<!-- Empty State -->
-		<div
-			class="text-center py-12 bg-muted rounded-lg tx tx-bloom tx-weak"
-			transition:fade={fadeMotion()}
-		>
-			<MessageSquare class="w-12 h-12 mx-auto text-muted-foreground" />
-			<p class="text-sm text-muted-foreground mt-3">
+		<div class="text-center py-8 bg-muted/50 rounded-lg" transition:fade={fadeMotion()}>
+			<MessageSquare class="w-6 h-6 mx-auto text-muted-foreground" />
+			<p class="text-sm text-muted-foreground mt-2">
 				{#if filterStatus === 'all'}
 					No scheduled SMS messages yet
 				{:else}
@@ -271,29 +253,25 @@
 		<!-- Messages List -->
 		<div class="space-y-3">
 			{#each filteredMessages as message (message.id)}
-				{@const StatusIcon = getStatusIcon(message.status)}
 				<div
-					class="bg-card border border-border rounded-lg p-4 hover:border-accent/50 transition-colors motion-reduce:transition-none shadow-ink tx tx-frame tx-weak"
+					class="bg-card border border-border rounded-lg p-4"
 					transition:slide={slideMotion()}
 				>
 					<div class="flex items-start justify-between gap-4">
 						<div class="flex-1 min-w-0">
-							<!-- Status Badge -->
-							<div class="flex items-center gap-2 mb-2">
-								<span
-									class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium {getStatusColor(
-										message.status
-									)}"
-								>
-									<StatusIcon class="w-3 h-3 flex-shrink-0" />
-									{message.status}
+							<!-- Status -->
+							<div class="flex items-center gap-3 mb-2 text-xs text-muted-foreground">
+								<span class="inline-flex items-center gap-2">
+									<span
+										class="h-1.5 w-1.5 rounded-full flex-shrink-0 {getStatusDot(
+											message.status
+										)}"
+										aria-hidden="true"
+									></span>
+									{formatStatus(message.status)}
 								</span>
 								{#if message.generated_via === 'llm'}
-									<span
-										class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-accent/10 text-accent border border-accent/30"
-									>
-										AI-generated
-									</span>
+									<span>AI-written</span>
 								{/if}
 							</div>
 
@@ -309,7 +287,7 @@
 
 							<!-- Message Content -->
 							<p
-								class="text-sm text-foreground bg-muted rounded-md p-2.5 mt-2 font-mono border border-border line-clamp-3 break-words"
+								class="text-sm text-foreground bg-muted/50 rounded-lg p-3 mt-2 line-clamp-3 break-words"
 							>
 								{message.message_content}
 							</p>
@@ -318,7 +296,7 @@
 							<div
 								class="flex items-center gap-4 mt-3 text-xs text-muted-foreground flex-wrap"
 							>
-								<div class="flex items-center gap-1.5">
+								<div class="flex items-center gap-2">
 									<Clock class="w-3.5 h-3.5 flex-shrink-0" />
 									<span>
 										{#if message.status === 'scheduled' || message.status === 'pending'}
@@ -333,7 +311,7 @@
 									</span>
 								</div>
 								{#if message.event_start}
-									<div class="flex items-center gap-1.5">
+									<div class="flex items-center gap-2">
 										<Calendar class="w-3.5 h-3.5 flex-shrink-0" />
 										<span>Event: {formatSendTime(message.event_start)}</span>
 									</div>
@@ -342,7 +320,7 @@
 
 							<!-- Cancellation Reason -->
 							{#if message.status === 'cancelled' && message.cancellation_reason}
-								<p class="text-xs text-muted-foreground/70 mt-2 italic">
+								<p class="text-xs text-muted-foreground mt-2">
 									Cancelled: {message.cancellation_reason.replace(/_/g, ' ')}
 								</p>
 							{/if}
@@ -364,7 +342,7 @@
 								{:else}
 									<X class="w-4 h-4" />
 								{/if}
-								<span class="ml-1.5">Cancel</span>
+								<span class="ml-2">Cancel</span>
 							</Button>
 						{/if}
 					</div>
@@ -385,3 +363,9 @@
 >
 	Are you sure you want to cancel this scheduled SMS? This can't be undone.
 </ConfirmationModal>
+
+<style>
+	.filter-button {
+		transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+	}
+</style>

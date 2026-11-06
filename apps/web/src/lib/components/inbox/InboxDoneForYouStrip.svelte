@@ -2,7 +2,7 @@
 <!--
 	Tasker 149: what the review pass applied without asking this week, across projects whose
 	cleanup card is not in the inbox (a card that is shows its own "Done for you"). Collapsed to
-	one line; each change has Undo.
+	one line; each change has Undo. Tasker 154 adds edits made in a project's Google Calendar.
 -->
 <script lang="ts">
 	import { ChevronDown, CircleCheck, Undo2 } from '$lib/icons/lucide';
@@ -13,6 +13,8 @@
 	export type DoneForYouEntry = ProjectCleanupAutoApplied & {
 		project_id: string;
 		project_name: string | null;
+		/** Own Undo endpoint (Google Calendar changes); cleanup changes use the project route. */
+		undo_url?: string;
 	};
 
 	let {
@@ -40,14 +42,16 @@
 		nextErrors.delete(entry.suggestion_id);
 		errors = nextErrors;
 		try {
-			const res = await fetch(
-				`/api/onto/projects/${encodeURIComponent(entry.project_id)}/cleanup/undo`,
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ suggestion_id: entry.suggestion_id })
-				}
-			);
+			const res = entry.undo_url
+				? await fetch(entry.undo_url, { method: 'POST' })
+				: await fetch(
+						`/api/onto/projects/${encodeURIComponent(entry.project_id)}/cleanup/undo`,
+						{
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({ suggestion_id: entry.suggestion_id })
+						}
+					);
 			const json = await res.json().catch(() => null);
 			if (!res.ok || json?.data?.ok === false) {
 				throw new Error(json?.data?.message ?? json?.error ?? 'Could not undo this');

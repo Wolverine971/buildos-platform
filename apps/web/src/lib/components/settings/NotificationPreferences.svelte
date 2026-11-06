@@ -16,11 +16,10 @@
 		Mail,
 		Smartphone,
 		MessageSquare,
-		Check,
 		Loader,
 		Moon,
 		AlertCircle
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import type { UserNotificationPreferences } from '@buildos/shared-types';
 
 	interface Props {
@@ -302,19 +301,17 @@
 <div class="space-y-6">
 	{#if isLoading}
 		<div class="flex flex-col items-center justify-center py-8 gap-2">
-			<Loader class="animate-spin motion-reduce:animate-none h-6 w-6 text-accent" />
-			<p class="text-sm text-muted-foreground">Loading notification preferences...</p>
+			<Loader class="animate-spin motion-reduce:animate-none h-5 w-5 text-muted-foreground" />
+			<p class="text-sm text-muted-foreground">Loading notification preferences…</p>
 		</div>
 	{:else if loadError}
-		<div
-			class="bg-card rounded-lg border border-destructive/30 shadow-ink tx tx-static tx-weak"
-		>
+		<div class="bg-card rounded-xl border border-destructive/30 tx tx-static tx-weak">
 			<div class="p-4">
 				<div class="flex items-start gap-3">
 					<AlertCircle class="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
 					<div class="flex-1">
-						<h3 class="text-base font-semibold text-foreground mb-1">
-							Unable to Load Preferences
+						<h3 class="text-base font-medium text-foreground mb-1">
+							Couldn't load preferences
 						</h3>
 						<p class="text-sm text-muted-foreground mb-3">
 							{loadError}
@@ -325,7 +322,7 @@
 							size="sm"
 							class="pressable"
 						>
-							Try Again
+							Try again
 						</Button>
 					</div>
 				</div>
@@ -333,36 +330,34 @@
 		</div>
 	{:else}
 		<!-- Daily Brief Notification Settings (User-Level Preferences) -->
-		<div class="bg-card rounded-lg border border-border shadow-ink tx tx-frame tx-weak">
+		<div class="bg-card rounded-xl border border-border tx tx-frame tx-weak">
 			<div class="px-4 py-3 border-b border-border">
-				<div class="flex items-center gap-3">
-					<Bell class="w-5 h-5 text-accent" />
-					<div>
-						<h3 class="text-base font-semibold text-foreground">
-							Daily Brief Notifications
-						</h3>
-						<p class="text-sm text-muted-foreground">
-							Choose how you want to be notified when your daily brief is ready
-						</p>
-					</div>
-				</div>
+				<h3
+					class="text-sm sm:text-base font-medium text-foreground flex items-center gap-2"
+				>
+					<Bell class="w-4 h-4 text-muted-foreground flex-shrink-0" />
+					Daily brief
+				</h3>
+				<p class="text-xs text-muted-foreground mt-1">
+					How you hear that your daily brief is ready
+				</p>
 			</div>
 			<div class="p-4 space-y-3">
 				<!-- Daily Brief Email -->
 				<div
-					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
 				>
 					<div class="flex items-start gap-3">
-						<Mail class="w-5 h-5 text-info mt-0.5" />
+						<Mail class="w-4 h-4 text-muted-foreground mt-1" />
 						<div>
 							<label
 								for="daily-brief-email"
 								class="font-medium text-foreground cursor-pointer"
 							>
-								Email Daily Brief
+								Email
 							</label>
 							<p class="text-sm text-muted-foreground mt-0.5">
-								Get your daily brief via email when it's ready
+								Get your daily brief by email when it's ready
 							</p>
 						</div>
 					</div>
@@ -386,19 +381,19 @@
 
 				<!-- Daily Brief SMS -->
 				<div
-					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
 				>
 					<div class="flex items-start gap-3">
-						<MessageSquare class="w-5 h-5 text-accent mt-0.5" />
+						<MessageSquare class="w-4 h-4 text-muted-foreground mt-1" />
 						<div class="flex-1">
 							<label
 								for="daily-brief-sms"
 								class="font-medium text-foreground cursor-pointer"
 							>
-								SMS Daily Brief
+								SMS
 							</label>
 							<p class="text-sm text-muted-foreground mt-0.5">
-								Receive text messages when your brief is ready
+								Get a text when your brief is ready
 							</p>
 							{#if smsPreferencesLoading}
 								<div
@@ -445,33 +440,31 @@
 		</div>
 
 		<!-- Additional Notification Channels -->
-		<div class="bg-card rounded-lg border border-border shadow-ink tx tx-frame tx-weak">
+		<div class="bg-card rounded-xl border border-border tx tx-frame tx-weak">
 			<div class="px-4 py-3 border-b border-border">
-				<div class="flex items-center gap-3">
-					<Bell class="w-5 h-5 text-accent" />
-					<div>
-						<h3 class="text-base font-semibold text-foreground">
-							Additional Notification Channels
-						</h3>
-						<p class="text-sm text-muted-foreground">
-							Configure push and in-app notifications for your daily briefs
-						</p>
-					</div>
-				</div>
+				<h3
+					class="text-sm sm:text-base font-medium text-foreground flex items-center gap-2"
+				>
+					<Smartphone class="w-4 h-4 text-muted-foreground flex-shrink-0" />
+					Push and in-app
+				</h3>
+				<p class="text-xs text-muted-foreground mt-1">
+					Push and in-app notifications for your daily briefs
+				</p>
 			</div>
 			<div class="p-4 space-y-4">
 				<!-- Push Notifications -->
 				<div
-					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
 				>
 					<div class="flex items-start gap-3">
-						<Smartphone class="w-5 h-5 text-success mt-0.5" />
+						<Smartphone class="w-4 h-4 text-muted-foreground mt-1" />
 						<div class="flex-1">
 							<label
 								for="push-notifications"
 								class="font-medium text-foreground cursor-pointer"
 							>
-								Push Notifications
+								Push notifications
 							</label>
 							<p class="text-sm text-muted-foreground mt-0.5">
 								Get instant browser notifications
@@ -504,13 +497,21 @@
 									<span>Browser permission required</span>
 								</div>
 							{:else if pushEnabled && pushSubscribed}
-								<div class="mt-1 text-xs text-success">✓ Active subscription</div>
+								<div
+									class="mt-1 flex items-center gap-2 text-xs text-muted-foreground"
+								>
+									<span
+										class="h-1.5 w-1.5 rounded-full bg-success"
+										aria-hidden="true"
+									></span>
+									Active subscription
+								</div>
 							{:else if pushPermissionStatus === 'denied'}
 								<div
 									class="mt-1.5 flex items-center gap-1.5 text-xs text-destructive"
 								>
 									<AlertCircle class="w-3.5 h-3.5" />
-									<span>Permission denied - check browser settings</span>
+									<span>Permission denied. Check browser settings</span>
 								</div>
 							{/if}
 							{#if pushSubscriptionError}
@@ -542,18 +543,18 @@
 					</label>
 				</div>
 
-				<!-- In-App Notifications -->
+				<!-- In-app notifications -->
 				<div
-					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
 				>
 					<div class="flex items-start gap-3">
-						<Bell class="w-5 h-5 text-accent mt-0.5" />
+						<Bell class="w-4 h-4 text-muted-foreground mt-1" />
 						<div>
 							<label
 								for="in-app-notifications"
 								class="font-medium text-foreground cursor-pointer"
 							>
-								In-App Notifications
+								In-app notifications
 							</label>
 							<p class="text-sm text-muted-foreground mt-0.5">
 								See notifications within the BuildOS app
@@ -577,9 +578,9 @@
 
 				{#if !hasAnyChannelEnabled}
 					<div
-						class="flex items-start gap-3 p-3 bg-warning/10 rounded-lg border border-warning/30"
+						class="flex items-start gap-3 p-3 bg-muted/50 rounded-lg border border-border"
 					>
-						<Moon class="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
+						<AlertCircle class="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
 						<p class="text-sm text-foreground">
 							All notification channels are disabled. Enable at least one channel
 							above to receive daily brief notifications.
@@ -590,11 +591,11 @@
 				<!-- Quiet Hours -->
 				<div class="border-t border-border pt-4">
 					<div class="flex items-start gap-3 mb-3">
-						<Moon class="w-5 h-5 text-info mt-0.5" />
+						<Moon class="w-4 h-4 text-muted-foreground mt-1" />
 						<div class="flex-1">
 							<div class="flex items-center justify-between">
 								<div>
-									<h4 class="font-medium text-foreground">Quiet Hours</h4>
+									<h4 class="font-medium text-foreground">Quiet hours</h4>
 									<p class="text-sm text-muted-foreground mt-0.5">
 										Don't send push notifications during these hours
 									</p>
@@ -617,14 +618,24 @@
 					</div>
 					{#if quietHoursEnabled}
 						<div class="grid grid-cols-2 gap-3 ml-8">
-							<FormField label="Start Time" labelFor="nf-quiet-start">
+							<FormField
+								label="Start time"
+								labelFor="nf-quiet-start"
+								uppercase={false}
+								showOptional={false}
+							>
 								<TextInput
 									id="nf-quiet-start"
 									type="time"
 									bind:value={quietHoursStart}
 								/>
 							</FormField>
-							<FormField label="End Time" labelFor="nf-quiet-end">
+							<FormField
+								label="End time"
+								labelFor="nf-quiet-end"
+								uppercase={false}
+								showOptional={false}
+							>
 								<TextInput
 									id="nf-quiet-end"
 									type="time"
@@ -642,10 +653,9 @@
 						disabled={isSaving}
 						variant="primary"
 						loading={isSaving}
-						icon={isSaving ? Loader : Check}
-						class="shadow-ink pressable"
+						class="pressable"
 					>
-						{isSaving ? 'Saving...' : 'Save Preferences'}
+						{isSaving ? 'Saving…' : 'Save preferences'}
 					</Button>
 				</div>
 			</div>

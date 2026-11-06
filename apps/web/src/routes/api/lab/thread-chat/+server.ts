@@ -12,9 +12,50 @@ import {
 	type ThreadReport
 } from '$lib/server/thread-chat/thread-chat-core';
 import { streamChatTurn } from '$lib/server/thread-chat/thread-chat.service';
+import type { CarryItem, ScannedItem } from '$lib/server/thread-chat/thread-chat-carry';
 
 const MAX_TURNS = 6;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Record ids: uuids live, short slugs in replay. The thread only loads ids in its own index. */
+const RECORD_ID = /^[\w-]{1,64}$/;
+const KINDS = new Set(['document', 'task', 'goal', 'plan', 'milestone', 'risk']);
+
+function readScanned(value: unknown): ScannedItem | null {
+	if (!value || typeof value !== 'object') return null;
+	const raw = value as Record<string, unknown>;
+	if (typeof raw.id !== 'string' || !RECORD_ID.test(raw.id)) return null;
+	if (typeof raw.kind !== 'string' || !KINDS.has(raw.kind)) return null;
+	return {
+		id: raw.id,
+		kind: raw.kind as ScannedItem['kind'],
+		title: typeof raw.title === 'string' ? raw.title.slice(0, 120) : ''
+	};
+}
+
+function readCarry(value: unknown): CarryItem | null {
+	const base = readScanned(value);
+	if (!base) return null;
+	const raw = value as Record<string, unknown>;
+	const anchors = strings(raw.anchors, 120).slice(0, 8);
+	const headings = strings(raw.headings, 120).slice(0, anchors.length);
+	const chars = Number(raw.chars);
+	const idle = Number(raw.idle);
+	return {
+		...base,
+		anchors,
+		headings,
+		version: typeof raw.version === 'string' ? raw.version.slice(0, 64) : null,
+		chars: Number.isFinite(chars) ? Math.max(0, Math.min(chars, 50_000)) : 0,
+		idle: Number.isInteger(idle) ? Math.max(0, Math.min(idle, 5)) : 0
+	};
+}
+
+const list = <T>(value: unknown, read: (entry: unknown) => T | null, max: number): T[] =>
+	(Array.isArray(value) ? value : [])
+		.slice(0, max)
+		.map(read)
+		.filter((entry): entry is T => entry !== null);
 
 const strings = (value: unknown, max: number): string[] =>
 	Array.isArray(value)
@@ -40,9 +81,13 @@ function readReport(value: unknown): ThreadReport | null {
 		read: strings(raw.read, 200),
 		saved: strings(raw.saved, 300),
 		asked: strings(raw.asked, 300),
-		answers: strings(raw.answers, 500),
+		answers: strings(raw.answers, 4000),
 		covered: strings(raw.covered, 200),
-		failed: typeof raw.failed === 'string' ? raw.failed.slice(0, 200) : null
+		unfinished: strings(raw.unfinished, 200).slice(0, 12),
+		failed: typeof raw.failed === 'string' ? raw.failed.slice(0, 200) : null,
+		carry: list(raw.carry, readCarry, 12),
+		scanned: list(raw.scanned, readScanned, 12),
+		scannedCount: Math.max(0, Math.min(Number(raw.scannedCount) || 0, 500))
 	};
 }
 

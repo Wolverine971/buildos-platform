@@ -1,5 +1,5 @@
 // apps/web/src/routes/api/workspace/suggestions/[id]/+server.ts
-// POST { action: 'accept' | 'dismiss' }. Accepting a "file" suggestion moves its items into
+// POST { action: 'accept' | 'dismiss' | 'forget' }. Accepting a "file" suggestion moves its items into
 // the suggested project (one undoable batch). "Start a project" suggestions are accepted
 // through /api/workspace/graduate, after the person confirms the name and items.
 import type { RequestHandler } from './$types';
@@ -23,6 +23,14 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const admin = createAdminSupabaseClient();
 	try {
 		const row = await loadOwnSuggestion(admin, user.id, params.id);
+		if (parsed.data.action === 'forget') {
+			// Undoing an automatic filing: dismissed suggestions are never proposed again.
+			const accepted = (row.result as { accepted?: { auto?: unknown } } | null)?.accepted;
+			if (row.status !== 'accepted' || accepted?.auto !== true)
+				return ApiResponse.conflict('Only an automatic filing can be undone this way.');
+			await markSuggestion(admin, user.id, row.id, 'dismissed');
+			return ApiResponse.success({ status: 'dismissed' });
+		}
 		if (row.status !== 'open')
 			return ApiResponse.conflict('That suggestion was already answered.');
 		if (parsed.data.action === 'dismiss') {

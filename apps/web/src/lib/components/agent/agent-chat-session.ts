@@ -47,6 +47,8 @@ import {
 	type ToolActivityLine
 } from './agent-chat-tool-presenter';
 import { describeToolOutcome } from './agent-chat-tool-outcome';
+import { parseContextSelectionEventV1, type ContextSelectionEventV1 } from '@buildos/shared-types';
+import { CONTEXT_SELECTION_METADATA_KEY } from './agent-chat-turn-cards';
 import { isInternalAgenticControlToolName } from './agent-chat.constants';
 import { formatElapsedDuration } from './agent-chat-formatters';
 import { timelineItemsFromMessages, restoreTimelineToolDetails } from './agent-chat-timeline';
@@ -110,6 +112,8 @@ type LoadedChatSessionPayload = {
 	toolExecutions?: LoadedChatToolExecution[];
 	turnRuns?: LoadedChatTurnRun[];
 	timelineItems?: AgentTimelineItem[];
+	/** Turn cards: the context finder's picks per turn (turn events, kept 7 days). */
+	contextSelections?: unknown[];
 	truncated?: boolean;
 	historyWindow?: Partial<Pick<RestoreHistoryWindow, 'toolsTruncated' | 'eventsTruncated'>>;
 	voiceNotes?: VoiceNote[];
@@ -752,6 +756,8 @@ function buildRestoredToolBlock(params: {
 	turnRunId?: string | null;
 	/** Name-aware presenter for the whole chat (see createRestoredNamePresenter). */
 	presenter?: ReturnType<typeof createToolPresenter>;
+	/** The turn's context-finder receipt, kept as a hidden activity for turn cards. */
+	contextSelection?: ContextSelectionEventV1 | null;
 }): ThinkingBlockMessage | null {
 	const sortedSources = uniqueToolSources(params.sources).sort(sortRestoredToolSources);
 	if (sortedSources.length === 0) return null;
@@ -792,8 +798,18 @@ function buildRestoredToolBlock(params: {
 			}
 		};
 	});
+	if (params.contextSelection) {
+		activities.unshift({
+			id: `restored-selection-${params.idSuffix}`,
+			content: 'Context picked',
+			timestamp: new Date(params.timestamp ?? sortedSources[0]?.createdAt ?? Date.now()),
+			activityType: 'ontology_loaded',
+			metadata: { restored: true, [CONTEXT_SELECTION_METADATA_KEY]: params.contextSelection }
+		});
+	}
 	const timestamp = params.timestamp ?? sortedSources[0]?.createdAt ?? new Date().toISOString();
 	const failedCount = activities.filter((activity) => activity.status === 'failed').length;
+	const toolCount = activities.filter((activity) => activity.activityType === 'tool_call').length;
 
 	return {
 		id: `restored-tools-${params.idSuffix}`,
@@ -801,8 +817,8 @@ function buildRestoredToolBlock(params: {
 		role: 'system' as ChatRole,
 		content:
 			failedCount > 0
-				? `Restored ${activities.length} tool call${activities.length === 1 ? '' : 's'} with ${failedCount} failure${failedCount === 1 ? '' : 's'}`
-				: `Restored ${activities.length} tool call${activities.length === 1 ? '' : 's'}`,
+				? `Restored ${toolCount} tool call${toolCount === 1 ? '' : 's'} with ${failedCount} failure${failedCount === 1 ? '' : 's'}`
+				: `Restored ${toolCount} tool call${toolCount === 1 ? '' : 's'}`,
 		timestamp: new Date(timestamp),
 		created_at: timestamp,
 		...(params.turnRunId ? { metadata: { turn_run_id: params.turnRunId } } : {}),
@@ -905,8 +921,14 @@ function createRestoredTurnRunResolver(
 function mapLoadedMessagesToUI(
 	loadedMessages: LoadedChatMessage[] | undefined,
 	toolExecutions: LoadedChatToolExecution[] | undefined,
-	turnRuns: LoadedChatTurnRun[] = []
+	turnRuns: LoadedChatTurnRun[] = [],
+	contextSelections: unknown[] = []
 ): UIMessage[] {
+	const selectionByTurn = new Map<string, ContextSelectionEventV1>();
+	for (const raw of contextSelections) {
+		const selection = parseContextSelectionEventV1(raw);
+		if (selection) selectionByTurn.set(selection.turn_run_id, selection);
+	}
 	const messages = (loadedMessages ?? []).filter(
 		(msg) => msg.role === 'user' || msg.role === 'assistant'
 	);
@@ -968,12 +990,14 @@ function mapLoadedMessagesToUI(
 				for (const source of blockSources) {
 					usedSourceIds.add(`${source.source}:${source.id}`);
 				}
+				const turnRunId = restoredTurnRunId(msg, blockSources);
 				const restoredBlock = buildRestoredToolBlock({
 					idSuffix: msg.id,
 					timestamp: msg.created_at,
 					sources: blockSources,
-					turnRunId: restoredTurnRunId(msg, blockSources),
-					presenter: toolLinePresenter
+					turnRunId,
+					presenter: toolLinePresenter,
+					contextSelection: turnRunId ? selectionByTurn.get(turnRunId) : null
 				});
 				if (restoredBlock) {
 					uiMessages.push(restoredBlock);
@@ -1186,6 +1210,7 @@ export function buildAgentChatSessionSnapshot(
 		toolExecutions,
 		turnRuns: loadedTurnRuns = [],
 		timelineItems: loadedTimelineItems,
+		contextSelections = [],
 		truncated,
 		historyWindow,
 		voiceNotes = [],
@@ -1210,7 +1235,12 @@ export function buildAgentChatSessionSnapshot(
 		}
 	}
 
-	let messages = mapLoadedMessagesToUI(loadedMessages, toolExecutions, turnRuns);
+	let messages = mapLoadedMessagesToUI(
+		loadedMessages,
+		toolExecutions,
+		turnRuns,
+		Array.isArray(contextSelections) ? contextSelections : []
+	);
 	const timelineItems = Array.isArray(loadedTimelineItems)
 		? restoreTimelineToolDetails(loadedTimelineItems, toolExecutions ?? [])
 		: timelineItemsFromMessages(session.id, messages);

@@ -126,7 +126,10 @@ describe('follow-up memory', () => {
 					asked: ['1. Archive "Design new channel banner"?'],
 					answers: [],
 					covered: [],
-					failed: null
+					failed: null,
+					carry: [],
+					scanned: [],
+					scannedCount: 0
 				}
 			]
 		}

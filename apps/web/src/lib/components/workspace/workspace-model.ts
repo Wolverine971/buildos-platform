@@ -13,8 +13,11 @@ export type LooseItem = {
 	entity: LooseEntity;
 	kind: LooseKind;
 	title: string;
-	/** A few lines of the body (notes, docs) or description (tasks), whitespace folded. */
+	/** Notes and docs: a short note's own text, else its description or AI summary (never a
+	 * cut of the body; tasker 152). Tasks: the description. Whitespace folded. */
 	excerpt: string | null;
+	/** Docs: the topics it covers (its headings), when it has any. */
+	topics?: string[];
 	created_at: string;
 	updated_at: string;
 	/** Tasks. */
@@ -26,6 +29,19 @@ export type LooseItem = {
 };
 
 export type SuggestionKind = 'file' | 'graduate' | 'fold';
+
+/** A "file this into …" suggestion at least this sure is carried out when the person opens
+ * their Workspace, with Undo (tasker 152). Below it, it stays a one-tap chip. */
+export const AUTO_FILE_CONFIDENCE = 0.85;
+
+/** What auto-filing moved, for the toast and its Undo. */
+export type AutoFiled = {
+	suggestion_id: string;
+	project_id: string;
+	batch_id: string;
+	item_ids: string[];
+	titles: string[];
+};
 
 export type WorkspaceSuggestion = {
 	id: string;

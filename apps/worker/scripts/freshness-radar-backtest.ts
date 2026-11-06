@@ -1078,20 +1078,6 @@ export class AsOfFreshnessDataPort implements FreshnessDataPort {
 		};
 	}
 
-	async loadDocumentContentHeads(
-		documentIds: readonly string[],
-		chars: number
-	): Promise<Map<string, string>> {
-		const wanted = new Set(documentIds);
-		const heads = new Map<string, string>();
-		for (const document of this.dataset.documents) {
-			if (!wanted.has(document.id)) continue;
-			const text = (document.content ?? '').replace(/\s+/g, ' ').trim();
-			if (text) heads.set(document.id, text.slice(0, chars));
-		}
-		return heads;
-	}
-
 	async loadDocumentBodies(
 		documentIds: readonly string[],
 		maxChars: number

@@ -8,11 +8,12 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
 import {
 	START_HERE_DOCUMENT_TYPE_KEY,
-	buildStartHerePromptExcerpt,
+	extractStartHereOrientation,
 	pickProjectStartHereDocument
 } from '@buildos/shared-agent-ops/ontology/start-here';
 
 const RECEIPT_EXCERPT_MAX_CHARS = 1200;
+const START_HERE_CANDIDATE_LIMIT = 5;
 const SAMPLE_ENTITY_LIMIT = 3;
 
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -27,66 +28,83 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	const supabase = locals.supabase;
 
 	try {
-		const [projectRes, tasksRes, goalsRes, docsRes, planCountRes, milestoneCountRes] =
-			await Promise.all([
-				supabase
-					.from('onto_projects')
-					.select('id, name, description, next_step_short, created_at')
-					.eq('id', projectId)
-					.is('deleted_at', null)
-					.maybeSingle(),
-				supabase
-					.from('onto_tasks')
-					.select('id, title', { count: 'exact' })
-					.eq('project_id', projectId)
-					.is('deleted_at', null)
-					.order('created_at', { ascending: true })
-					.limit(SAMPLE_ENTITY_LIMIT),
-				supabase
-					.from('onto_goals')
-					.select('id, name', { count: 'exact' })
-					.eq('project_id', projectId)
-					.is('deleted_at', null)
-					.order('created_at', { ascending: true })
-					.limit(SAMPLE_ENTITY_LIMIT),
-				// Instantiation inserts the Start Here context doc first, so ascending
-				// order keeps it inside the window even on document-heavy projects.
-				supabase
-					.from('onto_documents')
-					.select('id, title, content, type_key, props, created_at, updated_at', {
-						count: 'exact'
-					})
-					.eq('project_id', projectId)
-					.is('deleted_at', null)
-					.order('created_at', { ascending: true })
-					.limit(25),
-				supabase
-					.from('onto_plans')
-					.select('id', { count: 'exact', head: true })
-					.eq('project_id', projectId)
-					.is('deleted_at', null),
-				supabase
-					.from('onto_milestones')
-					.select('id', { count: 'exact', head: true })
-					.eq('project_id', projectId)
-					.is('deleted_at', null)
-			]);
+		const [
+			projectRes,
+			tasksRes,
+			goalsRes,
+			docsRes,
+			startHereRes,
+			planCountRes,
+			milestoneCountRes
+		] = await Promise.all([
+			supabase
+				.from('onto_projects')
+				.select('id, name, description, next_step_short, created_at')
+				.eq('id', projectId)
+				.is('deleted_at', null)
+				.maybeSingle(),
+			supabase
+				.from('onto_tasks')
+				.select('id, title', { count: 'exact' })
+				.eq('project_id', projectId)
+				.is('deleted_at', null)
+				.order('created_at', { ascending: true })
+				.limit(SAMPLE_ENTITY_LIMIT),
+			supabase
+				.from('onto_goals')
+				.select('id, name', { count: 'exact' })
+				.eq('project_id', projectId)
+				.is('deleted_at', null)
+				.order('created_at', { ascending: true })
+				.limit(SAMPLE_ENTITY_LIMIT),
+			// Counts and sample names only: no bodies.
+			supabase
+				.from('onto_documents')
+				.select('id, title, type_key, props, created_at, updated_at', {
+					count: 'exact'
+				})
+				.eq('project_id', projectId)
+				.is('deleted_at', null)
+				.order('created_at', { ascending: true })
+				.limit(25),
+			// Start Here on its own, so it is found even outside the first 25 docs.
+			supabase
+				.from('onto_documents')
+				.select('id, title, content, props, created_at, updated_at')
+				.eq('project_id', projectId)
+				.eq('type_key', START_HERE_DOCUMENT_TYPE_KEY)
+				.is('deleted_at', null)
+				.order('updated_at', { ascending: false })
+				.limit(START_HERE_CANDIDATE_LIMIT),
+			supabase
+				.from('onto_plans')
+				.select('id', { count: 'exact', head: true })
+				.eq('project_id', projectId)
+				.is('deleted_at', null),
+			supabase
+				.from('onto_milestones')
+				.select('id', { count: 'exact', head: true })
+				.eq('project_id', projectId)
+				.is('deleted_at', null)
+		]);
 
 		if (projectRes.error) return ApiResponse.databaseError(projectRes.error);
 		if (!projectRes.data) return ApiResponse.notFound('Project');
 
 		const documents = docsRes.data ?? [];
-		const startHereCandidates = documents.filter(
-			(doc) => doc.type_key === START_HERE_DOCUMENT_TYPE_KEY
-		);
-		const startHereDoc = pickProjectStartHereDocument(startHereCandidates);
-		const excerpt = startHereDoc?.content
-			? buildStartHerePromptExcerpt(startHereDoc.content, RECEIPT_EXCERPT_MAX_CHARS)
+		if (startHereRes.error) {
+			console.warn('[activation-packet] Start Here read failed:', startHereRes.error);
+		}
+		const startHereDoc = pickProjectStartHereDocument(startHereRes.data ?? []);
+		// The receipt shows what the project is (the orientation paragraph), not a
+		// prefix of the whole document. An unfilled template has none.
+		const orientation = startHereDoc?.content
+			? extractStartHereOrientation(startHereDoc.content, Number.POSITIVE_INFINITY)
 			: null;
-		// The excerpt keeps managed-region HTML comment markers (prompt consumers
-		// want them); the receipt renders plain text, so drop marker-only lines.
-		const excerptForDisplay = excerpt
-			? excerpt.content
+		const receiptExcerpt = orientation ? fitReceiptExcerpt(orientation) : null;
+		// The receipt renders plain text, so drop any comment-marker-only lines.
+		const excerptForDisplay = receiptExcerpt
+			? receiptExcerpt.text
 					.split('\n')
 					.filter((line) => !/^\s*<!--.*-->\s*$/.test(line))
 					.join('\n')
@@ -123,7 +141,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 						id: startHereDoc.id,
 						title: startHereDoc.title,
 						excerpt: excerptForDisplay || null,
-						truncated: excerpt?.truncated ?? false
+						truncated: receiptExcerpt?.truncated ?? false
 					}
 				: null,
 			counts: {
@@ -140,3 +158,12 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		return ApiResponse.internalError(error, 'Failed to load project summary');
 	}
 };
+
+/** Bound a very long orientation paragraph at a word boundary, never mid-word. */
+function fitReceiptExcerpt(text: string): { text: string; truncated: boolean } {
+	if (text.length <= RECEIPT_EXCERPT_MAX_CHARS) return { text, truncated: false };
+	const slice = text.slice(0, RECEIPT_EXCERPT_MAX_CHARS - 1);
+	const lastBreak = slice.search(/\s\S*$/);
+	const cut = (lastBreak > 0 ? slice.slice(0, lastBreak) : slice).trimEnd();
+	return { text: `${cut}…`, truncated: true };
+}

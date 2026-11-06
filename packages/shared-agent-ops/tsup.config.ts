@@ -54,6 +54,7 @@ export default defineConfig({
 		'src/calendar/onto-event-read.service.ts',
 		'src/calendar/onto-event.service.ts',
 		'src/calendar/onto-event-sync.service.ts',
+		'src/calendar/calendar-change-ingest.ts',
 		'src/calendar/calendar-colors.ts',
 		'src/calendar/project-calendar-read.service.ts',
 		'src/calendar/project-calendar.service.ts',
@@ -89,6 +90,7 @@ export default defineConfig({
 		'src/utils/entity-reference-parser.ts',
 		'src/utils/validation-utils.ts',
 		'src/utils/document-outline.ts',
+		'src/utils/document-card.ts',
 		'src/embeddings/entity-embedding.ts',
 		'src/embeddings/openai-embeddings.ts',
 		// Tables: index for server/worker, browser for client bundles (no node:crypto).

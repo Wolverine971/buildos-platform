@@ -9,6 +9,9 @@ import { GOOGLE_CALENDAR_COLORS, type GoogleColorId } from '$lib/config/calendar
 import type { ProjectCalendarSyncMode } from '$lib/services/project-calendar.service';
 import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
+import { CalendarWebhookService } from '$lib/services/calendar-webhook-service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { runAfterResponse } from '$lib/server/background';
 
 type ProjectAccessResult =
 	| {
@@ -49,7 +52,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	return service.getProjectCalendar(projectId, access.userId);
 };
 
-export const POST: RequestHandler = async ({ params, request, locals }) => {
+export const POST: RequestHandler = async ({ params, request, locals, url }) => {
 	const projectId = params.id;
 	if (!projectId) {
 		return ApiResponse.badRequest('Project ID required');
@@ -101,7 +104,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	const service = createProjectCalendarRuntimeService(locals.supabase, access.userId);
-	return service.createProjectCalendar({
+	const response = await service.createProjectCalendar({
 		projectId,
 		userId: access.userId,
 		name,
@@ -112,6 +115,19 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		calendarSourceId,
 		connectionId
 	});
+	// Tasker 154: watch the new project calendar now instead of at the next hourly run, so
+	// edits made in Google flow back. Google only accepts https webhook URLs.
+	if (response.ok && url.protocol === 'https:') {
+		runAfterResponse(
+			new CalendarWebhookService(
+				createAdminSupabaseClient() as any
+			).ensureProjectCalendarsWatched(`${url.origin}/webhooks/calendar-events`, {
+				userId: access.userId
+			}),
+			'project calendar watch'
+		);
+	}
+	return response;
 };
 
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {

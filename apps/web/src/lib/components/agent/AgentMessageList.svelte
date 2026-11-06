@@ -5,6 +5,7 @@
 	import { onDestroy, untrack } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import { prefersReducedMotion } from 'svelte/motion';
+	import { page } from '$app/state';
 	import ThinkingBlock from './ThinkingBlock.svelte';
 	import CreatedEntityCards from './CreatedEntityCards.svelte';
 	import DocumentChangeCards from './DocumentChangeCards.svelte';
@@ -23,7 +24,8 @@
 		type ProposalCardPlacement,
 		type ProposalCardResolvedEvent
 	} from './proposal-cards';
-	import { ArrowDown } from '$lib/icons/lucide';
+	import { ArrowDown, ArrowRight } from '$lib/icons/lucide';
+	import { continueInProjectTarget, type TurnCardProject } from './agent-chat-turn-cards';
 	import { getProseClasses } from '$lib/utils/markdown';
 	import {
 		AgentMarkdownStreamRenderer,
@@ -100,6 +102,8 @@
 		livePreview?: { turnRunId: string; text: string } | null;
 		/** Reduce empty-state and message chrome for constrained embedded conversations. */
 		compact?: boolean;
+		/** Workspace chat: move the chat into the one project the last turn was about. */
+		onContinueInProject?: (project: TurnCardProject) => void | Promise<void>;
 	}
 
 	let {
@@ -124,10 +128,52 @@
 		resolvedProjectFocus = null,
 		streamingMessageId = null,
 		livePreview = null,
-		compact = false
+		compact = false,
+		onContinueInProject
 	}: Props = $props();
 
 	const proseClasses = getProseClasses('sm');
+
+	// Turn cards (tasker 153): steps grouped into one card per project. Admins first; the
+	// single step log stays for everyone else.
+	// "Continue in Wayne Strategies": a workspace chat whose last turn was about one project.
+	let continuing = $state(false);
+	const continueTarget = $derived.by((): TurnCardProject | null => {
+		if (!turnCards || !onContinueInProject || selectedContextType !== 'global') return null;
+		if (streamingMessageId) return null;
+		for (let i = messages.length - 1; i >= 0; i--) {
+			const message = messages[i];
+			if (message?.type === 'user') return null;
+			if (message?.type === 'thinking_block') {
+				const block = message as ThinkingBlockMessage;
+				return block.status === 'completed'
+					? continueInProjectTarget(block.activities)
+					: null;
+			}
+		}
+		return null;
+	});
+
+	async function continueInProject(project: TurnCardProject) {
+		if (!onContinueInProject || continuing) return;
+		continuing = true;
+		try {
+			await onContinueInProject(project);
+		} finally {
+			continuing = false;
+		}
+	}
+
+	const turnCards = $derived.by(() => {
+		if (page.data?.user?.is_admin !== true) return null;
+		const focus = resolvedProjectFocus;
+		return {
+			sessionProject:
+				focus?.projectId && focus.projectName
+					? { id: focus.projectId, name: focus.projectName }
+					: null
+		};
+	});
 	const rowKey = messageRenderKey;
 	let saveAsTableHost = $state<{
 		open: (data: { headers: string[]; rows: string[][] }) => void;
@@ -1078,6 +1124,7 @@
 							block={message as ThinkingBlockMessage}
 							onToggleCollapse={onToggleThinkingBlock}
 							{onClientActionComplete}
+							{turnCards}
 						/>
 						{#if editCards}
 							{@render sharedEditCardGroup(editCards)}
@@ -1205,6 +1252,20 @@
 					{/if}
 				</ErrorBoundary>
 			{/each}
+			{#if continueTarget}
+				{@const target = continueTarget}
+				<div class="flex justify-start">
+					<button
+						type="button"
+						class="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-foreground shadow-ink transition-colors hover:bg-muted disabled:opacity-60"
+						disabled={continuing}
+						onclick={() => continueInProject(target)}
+					>
+						Continue in {target.name}
+						<ArrowRight class="h-3 w-3" aria-hidden="true" />
+					</button>
+				</div>
+			{/if}
 		{/if}
 		<!-- End of real content: "latest" and the pill measure to here, never the reply room. -->
 		<div

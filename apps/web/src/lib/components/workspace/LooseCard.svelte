@@ -120,6 +120,13 @@
 		{#if item.excerpt}
 			<span class="excerpt">{item.excerpt}</span>
 		{/if}
+		{#if item.topics?.length}
+			<span class="topics" aria-label="Covers">
+				{#each item.topics as topic (topic)}
+					<span class="topic">{topic}</span>
+				{/each}
+			</span>
+		{/if}
 	</button>
 
 	<div class="foot">
@@ -278,6 +285,26 @@
 		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
+	}
+	.topics {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
+		min-width: 0;
+		max-height: 22px;
+		overflow: hidden;
+	}
+	.topic {
+		max-width: 100%;
+		padding: 0 6px;
+		border: 1px solid hsl(var(--border));
+		border-radius: 4px;
+		font-size: 11px;
+		line-height: 18px;
+		color: hsl(var(--muted-foreground));
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 	.foot {
 		display: flex;

@@ -58,6 +58,8 @@ import { getDailyBriefEligibleUserIds } from './workers/brief/dailyBriefEligibil
 import { checkAndScheduleAgentOperatives } from './scheduler/agentOperatives';
 import { runPrivacyRetention } from './scheduler/privacyRetention';
 import { chatCaptureEnabled, sweepChatCheckpoints } from './workers/chat/checkpoint/checkpointJob';
+import { runDocumentDigestSweep } from './workers/document-digest/documentDigest';
+import { SmartLLMService } from './lib/services/smart-llm-service';
 
 export {
 	calculateNextOperativeRunTime,
@@ -405,6 +407,29 @@ export function startScheduler() {
 			console.error('🔁 Project loop reclaim failed:', error);
 		}
 	});
+
+	// Document summaries (tasker 152): documents without a description get a short AI summary
+	// once they have been quiet for 3 minutes. Set DOCUMENT_DIGEST_SWEEP_ENABLED=false to stop.
+	if (process.env.DOCUMENT_DIGEST_SWEEP_ENABLED !== 'false') {
+		let digestLlm: SmartLLMService | null = null;
+		let digestRunning = false;
+		cron.schedule('*/5 * * * *', async () => {
+			if (digestRunning) return;
+			digestRunning = true;
+			try {
+				const { candidates, outcomes } = await runDocumentDigestSweep({
+					db: supabase as never,
+					llm: (digestLlm ??= new SmartLLMService())
+				});
+				if (candidates) console.log('📝 Document summaries:', { candidates, ...outcomes });
+			} catch (error) {
+				console.error('📝 Document summary sweep failed:', error);
+			} finally {
+				digestRunning = false;
+			}
+		});
+		console.log('📝 Document summary sweep scheduled (every 5 minutes)');
+	}
 
 	// Saved Operatives: enqueue due Agent Runs through the normal agent_run queue.
 	cron.schedule('*/5 * * * *', async () => {

@@ -6,15 +6,7 @@
 	import { userContextStore } from '$lib/stores/userContext';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import {
-		CircleCheck,
-		Sparkles,
-		Calendar,
-		Mail,
-		AlertCircle,
-		XCircle,
-		Settings as SettingsIcon
-	} from '$lib/icons/lucide';
+	import { CircleCheck, AlertCircle, XCircle } from '$lib/icons/lucide';
 	import type { PageData } from './$types';
 	import { browser } from '$app/environment';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -190,17 +182,17 @@
 </svelte:head>
 
 <div class="min-h-screen bg-background">
-	<div class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 space-y-3 sm:space-y-4">
+	<div class="mx-auto max-w-7xl space-y-4 px-4 py-4 lg:px-6 lg:py-6">
 		<!-- Success Banner -->
 		{#if showOnboardingComplete}
 			<div
-				class="mb-4 p-3 bg-success/10 border border-success/30 rounded-lg shadow-ink tx tx-grain tx-weak"
+				class="p-3 bg-card border border-border rounded-lg"
 				transition:slide={slideMotion()}
 			>
 				<div class="flex items-center gap-2">
-					<CircleCheck class="w-4 h-4 text-success flex-shrink-0" />
+					<CircleCheck class="w-4 h-4 text-muted-foreground flex-shrink-0" />
 					<p class="text-sm text-foreground font-medium">
-						Setup complete! BuildOS is now personalized to your workflow.
+						Setup complete. BuildOS now fits how you work.
 					</p>
 				</div>
 			</div>
@@ -208,12 +200,12 @@
 
 		{#if saveSuccess}
 			<div
-				class="mb-4 p-3 bg-success/10 border border-success/30 rounded-lg shadow-ink tx tx-grain tx-weak"
+				class="p-3 bg-card border border-border rounded-lg"
 				transition:slide={slideMotion()}
 			>
 				<div class="flex items-center justify-between gap-2">
 					<div class="flex items-center gap-2">
-						<CircleCheck class="w-4 h-4 text-success flex-shrink-0" />
+						<CircleCheck class="w-4 h-4 text-muted-foreground flex-shrink-0" />
 						<p class="text-sm text-foreground font-medium">
 							{successMessage}
 						</p>
@@ -222,7 +214,7 @@
 						onclick={() => (saveSuccess = false)}
 						variant="ghost"
 						size="sm"
-						class="p-1 text-success hover:text-success/80"
+						class="p-1 text-muted-foreground hover:text-foreground"
 						icon={XCircle}
 					></Button>
 				</div>
@@ -231,89 +223,62 @@
 
 		{#if saveError}
 			<div
-				class="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-lg shadow-ink tx tx-static tx-weak"
+				class="p-3 bg-card border border-destructive/30 rounded-lg"
 				transition:slide={slideMotion()}
 			>
 				<div class="flex items-center justify-between gap-2">
 					<div class="flex items-center gap-2">
 						<AlertCircle class="w-4 h-4 text-destructive flex-shrink-0" />
 						<p class="text-sm text-foreground font-medium">
-							{errorMessage || 'An error occurred'}
+							{errorMessage || 'Something went wrong'}
 						</p>
 					</div>
 					<Button
 						onclick={() => (saveError = false)}
 						variant="ghost"
 						size="sm"
-						class="p-1 text-destructive hover:text-destructive/80"
+						class="p-1 text-muted-foreground hover:text-foreground"
 						icon={XCircle}
 					></Button>
 				</div>
 			</div>
 		{/if}
 
-		<!-- Settings Header -->
-		<div
-			class="bg-card rounded-lg shadow-ink border border-border p-3 sm:p-4 mb-4 tx tx-frame tx-weak"
-		>
-			<div class="flex items-center justify-between gap-3">
-				<div class="flex min-w-0 flex-1 items-center gap-3">
-					<div
-						class="w-10 h-10 sm:w-12 sm:h-12 bg-accent rounded-full flex items-center justify-center flex-shrink-0 shadow-ink"
+		<header class="flex items-center justify-between gap-3">
+			<div class="min-w-0">
+				<h1 class="text-2xl font-medium text-foreground">Settings</h1>
+				<p class="mt-1 truncate text-xs text-muted-foreground">
+					<span class="text-foreground"
+						>{data.user?.user_metadata?.name || data.user?.name || 'Your account'}</span
 					>
-						<SettingsIcon class="w-5 h-5 sm:w-6 sm:h-6 text-accent-foreground" />
-					</div>
-					<div class="min-w-0">
-						<h1 class="text-xl sm:text-2xl font-bold text-foreground truncate">
-							Settings
-						</h1>
-						<p class="hidden text-xs text-muted-foreground sm:block">
-							Manage how BuildOS works for you.
-						</p>
-						<div
-							class="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground mt-0.5"
+					<span aria-hidden="true"> · </span>{data.user?.email}
+					{#if data.userContext?.created_at}
+						<span class="hidden sm:inline"
+							><span aria-hidden="true"> · </span>Member since {new Date(
+								data.userContext.created_at
+							).toLocaleDateString([], { month: 'short', year: 'numeric' })}</span
 						>
-							<span class="min-w-0 truncate font-medium text-foreground">
-								{data.user?.user_metadata?.name ||
-									data.user?.name ||
-									'Your account'}
-							</span>
-							<span class="flex items-center gap-1 min-w-0">
-								<Mail class="w-3 h-3 flex-shrink-0" />
-								<span class="truncate">{data.user?.email}</span>
-							</span>
-							{#if data.userContext?.created_at}
-								<span class="hidden items-center gap-1 sm:flex">
-									<Calendar class="w-3 h-3 flex-shrink-0" />
-									Member since {new Date(
-										data.userContext.created_at
-									).toLocaleDateString()}
-								</span>
-							{/if}
-						</div>
-					</div>
-				</div>
-
-				{#if !data.completedOnboarding}
-					<Button
-						onclick={() => goto('/onboarding')}
-						variant="primary"
-						size="sm"
-						class="bg-accent hover:bg-accent/90 shadow-ink pressable flex-shrink-0"
-					>
-						{#if missingRequiredFields.length > 0}
-							<AlertCircle class="w-3.5 h-3.5 mr-1" />
-							<span class="hidden sm:inline">Complete Onboarding</span>
-							<span class="sm:hidden">Setup</span>
-						{:else}
-							<Sparkles class="w-3.5 h-3.5 mr-1" />
-							<span class="hidden sm:inline">Start Onboarding</span>
-							<span class="sm:hidden">Start</span>
-						{/if}
-					</Button>
-				{/if}
+					{/if}
+				</p>
 			</div>
-		</div>
+
+			{#if !data.completedOnboarding}
+				<Button
+					onclick={() => goto('/onboarding')}
+					variant="primary"
+					size="sm"
+					class="pressable flex-shrink-0"
+				>
+					{#if missingRequiredFields.length > 0}
+						<span class="hidden sm:inline">Finish setup</span>
+						<span class="sm:hidden">Setup</span>
+					{:else}
+						<span class="hidden sm:inline">Start setup</span>
+						<span class="sm:hidden">Start</span>
+					{/if}
+				</Button>
+			{/if}
+		</header>
 
 		<div
 			class="min-w-0 space-y-4 md:grid md:grid-cols-[14rem_minmax(0,1fr)] md:items-start md:gap-5 md:space-y-0"

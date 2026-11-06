@@ -24,17 +24,17 @@
 
 	const containerClass = $derived(
 		variant === 'danger'
-			? 'bg-card border border-destructive/30 rounded-lg shadow-ink tx tx-static tx-weak overflow-hidden'
-			: 'bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden'
+			? 'bg-card border border-destructive/30 rounded-xl tx tx-static tx-weak overflow-hidden'
+			: 'bg-card border border-border rounded-xl tx tx-frame tx-weak overflow-hidden'
 	);
 
 	const stripClass = $derived(
 		variant === 'danger'
-			? 'px-4 sm:px-5 py-3 border-b border-destructive/30 bg-destructive/5'
-			: 'px-4 sm:px-5 py-3 border-b border-border'
+			? 'px-4 py-3 border-b border-destructive/30'
+			: 'px-4 py-3 border-b border-border'
 	);
 
-	const iconClass = $derived(variant === 'danger' ? 'text-destructive' : 'text-accent');
+	const iconClass = $derived(variant === 'danger' ? 'text-destructive' : 'text-muted-foreground');
 </script>
 
 <section class={containerClass} aria-labelledby={labelledById || undefined}>
@@ -43,7 +43,7 @@
 			<div class="flex-1 min-w-0">
 				<h3
 					id={labelledById || undefined}
-					class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2 min-w-0"
+					class="text-sm sm:text-base font-medium text-foreground flex items-center gap-2 min-w-0"
 				>
 					{#if Icon}
 						<Icon class="w-4 h-4 {iconClass} flex-shrink-0" />
@@ -51,7 +51,7 @@
 					<span class="truncate">{title}</span>
 				</h3>
 				{#if description}
-					<p class="text-xs text-muted-foreground mt-0.5">{description}</p>
+					<p class="text-xs text-muted-foreground mt-1">{description}</p>
 				{/if}
 			</div>
 			{#if actions}
@@ -61,7 +61,7 @@
 			{/if}
 		</div>
 	</div>
-	<div class="p-4 sm:p-5 {bodyClass}">
+	<div class="p-4 {bodyClass}">
 		{@render children()}
 	</div>
 </section>

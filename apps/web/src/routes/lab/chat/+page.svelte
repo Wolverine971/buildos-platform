@@ -123,6 +123,9 @@
 		if (!value) return '$0';
 		return value < 0.01 ? `$${value.toFixed(4)}` : `$${value.toFixed(3)}`;
 	}
+	function kilo(value: number): string {
+		return value >= 1000 ? `${(value / 1000).toFixed(1)}k` : String(value);
+	}
 	function chars(value: number | undefined): string {
 		if (value === undefined) return '';
 		return value >= 1000 ? `${(value / 1000).toFixed(1)}k chars` : `${value} chars`;
@@ -132,6 +135,18 @@
 		const order =
 			index >= 0 ? index : [...new Set(turn.items.map((item) => item.to))].indexOf(alias);
 		return TONES[Math.max(0, order) % TONES.length]!;
+	}
+
+	/** One chip per piece; pieces that quote the same words show their title instead. */
+	function pieceChips(turn: Turn, pieces: number[]) {
+		const seen = new Set<string>();
+		return pieces.flatMap((n) => {
+			const item = turn.items.find((entry) => entry.n === n);
+			if (!item) return [];
+			const quote = item.quote && !seen.has(item.quote) ? item.quote : '';
+			if (quote) seen.add(quote);
+			return [{ n, title: item.title, label: quote ? `“${quote}”` : item.title }];
+		});
 	}
 
 	/** The message split into plain text and the pieces the plan placed. */
@@ -267,6 +282,13 @@
 					thread.pieces = planned.pieces;
 				}
 				break;
+			case 'rerouted':
+				for (const moved of event.threads) {
+					const thread = threadFor(turn, moved.alias);
+					thread.name = `${moved.name} · handed over`;
+					thread.pieces = moved.pieces;
+				}
+				break;
 			case 'thread_status': {
 				const thread = threadFor(turn, event.alias);
 				thread.stage = event.stage;
@@ -285,7 +307,14 @@
 				break;
 			case 'thread_change':
 				turn.clock.firstChange ??= now();
-				threadFor(turn, event.alias).changes.push(event.change);
+				{
+					const changes = threadFor(turn, event.alias).changes;
+					const at = event.replaces
+						? changes.findIndex((change) => change.key === event.replaces)
+						: -1;
+					if (at >= 0) changes[at] = event.change;
+					else changes.push(event.change);
+				}
 				break;
 			case 'thread_done': {
 				const thread = threadFor(turn, event.alias);
@@ -509,16 +538,13 @@
 		</header>
 		{#if thread.pieces.length}
 			<ul class="flex flex-wrap gap-1">
-				{#each thread.pieces as n (n)}
-					{@const item = turn.items.find((entry) => entry.n === n)}
-					{#if item}
-						<li
-							class="rounded px-1.5 py-0.5 text-xs text-foreground {color.mark}"
-							title={item.title}
-						>
-							“{item.quote || item.title}”
-						</li>
-					{/if}
+				{#each pieceChips(turn, thread.pieces) as chip (chip.n)}
+					<li
+						class="rounded px-1.5 py-0.5 text-xs text-foreground {color.mark}"
+						title={chip.title}
+					>
+						{chip.label}
+					</li>
 				{/each}
 			</ul>
 		{/if}
@@ -529,7 +555,12 @@
 			<ol class="space-y-1 border-l border-border pl-2.5">
 				{#each thread.steps as step (step.id)}
 					<li class="flex items-start gap-2 text-xs">
-						<span class="mt-0.5">{@render stepIcon(step.state)}</span>
+						<span class="mt-0.5"
+							>{#if (step.kind === 'carry' || step.kind === 'keep') && step.state === 'done'}<span
+									class="w-3 text-center text-xs text-accent"
+									aria-hidden="true">↺</span
+								>{:else}{@render stepIcon(step.state)}{/if}</span
+						>
 						<span class="min-w-0 flex-1">
 							<span class="font-medium text-foreground">{step.label}</span>
 							{#if step.detail}<span class="text-muted-foreground">
@@ -537,10 +568,12 @@
 								>{/if}
 						</span>
 						<span class="shrink-0 font-mono tabular-nums text-muted-foreground">
-							{step.chars !== undefined ? `${chars(step.chars)} · ` : ''}{step.ms !==
-							undefined
-								? `${(step.ms / 1000).toFixed(1)} s`
-								: ''}
+							{[
+								step.chars !== undefined ? chars(step.chars) : '',
+								step.ms !== undefined ? `${(step.ms / 1000).toFixed(1)} s` : ''
+							]
+								.filter(Boolean)
+								.join(' · ')}
 						</span>
 					</li>
 				{/each}
@@ -732,17 +765,34 @@
 
 					{#if turn.totals}
 						<p class="font-mono text-xs tabular-nums text-muted-foreground">
-							{turn.mode === 'replay' ? 'replay · ' : ''}first change {seconds(
-								turn.clock.firstChange
-							)} · reply started {seconds(turn.clock.answerStart)} · done {seconds(
-								turn.clock.done
-							)}
+							{turn.mode === 'replay' ? 'replay · ' : ''}server: projects {seconds(
+								turn.totals.projectsMs
+							)} · first plan token {seconds(turn.totals.firstPlanTokenMs)} · plan done
+							{seconds(turn.totals.planMs)}{turn.totals.rerouted
+								? ` · ${turn.totals.rerouted} handed over`
+								: ''}
+							· first change {seconds(turn.clock.firstChange)} · reply started {seconds(
+								turn.clock.answerStart
+							)} · done {seconds(turn.clock.done)}
 							· {turn.totals.threads} thread{turn.totals.threads === 1 ? '' : 's'}
 							{#if turn.totals.threads > 1}({seconds(turn.totals.threadMsSum)} of thread
 								work in {seconds(turn.totals.slowestThreadMs)}){/if}
-							· {turn.totals.calls} calls · {money(turn.totals.cost)} · {Math.round(
-								turn.totals.promptChars / 1000
-							)}k prompt chars
+							· {turn.totals.calls} calls · {money(turn.totals.cost)} ·
+							{#if turn.totals.promptTokens}{kilo(turn.totals.promptTokens)} prompt tokens{turn
+									.totals.cachedTokens
+									? ` (${kilo(turn.totals.cachedTokens)} cached)`
+									: ''}{:else}{kilo(turn.totals.promptChars)} prompt chars{/if}
+							{#if turn.totals.carriedChars}· carried {chars(
+									turn.totals.carriedChars
+								)}{/if}
+							{#if turn.totals.rereadsSkipped}· {turn.totals.rereadsSkipped} reread{turn
+									.totals.rereadsSkipped === 1
+									? ''
+									: 's'} skipped{/if}
+							{#if turn.totals.searchesSkipped}· {turn.totals.searchesSkipped} search{turn
+									.totals.searchesSkipped === 1
+									? ''
+									: 'es'} skipped{/if}
 							{#if turn.planModel && turn.mode === 'live'}· {turn.planModel}{/if}
 						</p>
 					{/if}

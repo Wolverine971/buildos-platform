@@ -178,7 +178,7 @@
 	{:else}
 		<ol class="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
 			{#each events as event (event.id)}
-				<li class="flex items-baseline gap-3 px-4 py-2.5">
+				<li class="flex items-baseline gap-3 px-4 py-3">
 					<time
 						class="stamp w-16 shrink-0 text-xs text-muted-foreground"
 						datetime={event.occurred_at}

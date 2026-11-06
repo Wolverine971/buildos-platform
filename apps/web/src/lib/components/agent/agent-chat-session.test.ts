@@ -640,6 +640,54 @@ describe('agent-chat-session helpers', () => {
 		expect(blocks.map((block) => block.metadata?.turn_run_id)).toEqual([turnOne, turnTwo]);
 	});
 
+	it('puts each turn context-finder picks back on its restored block for turn cards', () => {
+		const turnId = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
+		const selection = {
+			type: 'context_selection',
+			version: 1,
+			mode: 'on',
+			visible: true,
+			injected: true,
+			status: 'selected',
+			failure: null,
+			client_turn_id: 'turn-1',
+			turn_run_id: turnId,
+			project_id: 'p1',
+			items: [{ kind: 'document', id: 'd', label: 'Worklist', tier: 'full', sections: [] }],
+			counts: { full: 1, summary: 0, checked: 6 }
+		};
+		const snapshot = buildAgentChatSessionSnapshot({
+			session: makeSession(),
+			messages: [
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: 'Done.',
+					created_at: '2026-11-05T10:01:00.000Z'
+				}
+			] as any,
+			toolExecutions: [
+				{
+					id: 'exec-1',
+					message_id: 'assistant-1',
+					tool_name: 'list_onto_tasks',
+					sequence_index: 1,
+					arguments: { project_id: 'p1' },
+					result: { tasks: [] },
+					success: true,
+					created_at: '2026-11-05T10:00:30.000Z'
+				}
+			] as any,
+			turnRuns: [{ id: turnId, status: 'completed', assistant_message_id: 'assistant-1' }],
+			contextSelections: [selection]
+		});
+
+		const block = snapshot.messages.find((message) => message.type === 'thinking_block') as any;
+		expect(block.content).toBe('Restored 1 tool call');
+		expect(block.activities[0].activityType).toBe('ontology_loaded');
+		expect(block.activities[0].metadata.contextSelection.counts.checked).toBe(6);
+	});
+
 	it('buildAgentChatSessionSnapshot exposes active turn runs for restore polling', () => {
 		const snapshot = buildAgentChatSessionSnapshot({
 			session: makeSession(),

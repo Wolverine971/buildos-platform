@@ -4,12 +4,17 @@
 // validates plans that arrive from a browser. Evidence is excerpted text plus exact coverage;
 // it is data for the model, never instructions.
 import {
-	clipContextText,
 	contextFinderSummaryLine,
 	type ContextFinderEntity,
 	type ContextFinderKind
 } from './packets';
 import type { ContextFinderRankingV1 } from './rank';
+import {
+	documentCard,
+	documentCardChars,
+	documentCardLines,
+	type ContextDocumentCardV1
+} from './card';
 import {
 	CONTEXT_FINDER_POLICY,
 	contextItemExcerpts,
@@ -26,33 +31,6 @@ export type ContextEvidenceRankerV1 = {
 	checked: number;
 	unchecked: number;
 };
-
-/** A picked document at a glance: what it is and which sections it has, by anchor. */
-export type ContextDocumentCardV1 = {
-	description: string | null;
-	sections: { heading: string; anchor: string | null }[];
-	/** Headings left off the card. */
-	more: number;
-};
-
-/** Headings on a document card; the rest are counted. */
-const CARD_SECTIONS = 8;
-const CARD_HEADING_CHARS = 60;
-
-function documentCard(entity: ContextFinderEntity): ContextDocumentCardV1 {
-	const headings = entity.packetHeadings;
-	return {
-		description:
-			typeof entity.packet.description === 'string' && entity.packet.description
-				? entity.packet.description
-				: null,
-		sections: headings.slice(0, CARD_SECTIONS).map((section) => ({
-			heading: clipContextText(section.heading, CARD_HEADING_CHARS),
-			anchor: section.anchor ?? null
-		})),
-		more: Math.max(0, headings.length - CARD_SECTIONS)
-	};
-}
 
 export type ContextEvidenceV1 = {
 	version: 'context_evidence_v1';
@@ -73,7 +51,7 @@ export type ContextEvidenceV1 = {
 		excerpts: ContextExcerptV1[];
 		/** The loaded text is shorter than the whole record or document. */
 		partial: boolean;
-		/** Documents: the card the agent reads more from (tasker 150). */
+		/** Documents: the card the agent reads more from (tasker 150); in card mode, all it gets. */
 		card?: ContextDocumentCardV1;
 	}[];
 	summaries: {
@@ -90,6 +68,8 @@ export type ContextEvidenceV1 = {
 };
 
 const NOTES = {
+	selectedCards:
+		"Selected for this question by relevance ranking across the whole project. Documents come as cards, not text: what each is, its sections with anchors, and the sections flagged as relevant to this question. Before quoting or relying on a document's details, read the flagged sections (or any other) with read_document_section and their anchors. Other records come in full. Summaries are one-line descriptions, not content. Cite the record id. If the needed facts are still missing, say what is missing.",
 	selected:
 		'Selected for this question by relevance ranking across the whole project. Full items contain only the listed sections or an opening excerpt, not whole documents; each document lists its sections with anchors, so read any other section you need with read_document_section. Summaries are one-line descriptions, not content. Cite the record id. If the needed facts are still missing, say what is missing.',
 	empty: 'Relevance ranking found no project record that clearly helps with this question. Say what evidence is missing instead of guessing.',
@@ -135,7 +115,10 @@ export function materializeContextPlan(input: {
 	ranker?: ContextEvidenceRankerV1 | null;
 	/** Below the policy ceiling for agents (`agentBudgetChars`) and global shares. */
 	budgetChars?: number;
+	/** card: unpinned documents arrive as cards with no section text (agents, tasker 152). */
+	documents?: 'text' | 'card';
 }): ContextEvidenceV1 {
+	const cardMode = input.documents === 'card';
 	const policy = CONTEXT_FINDER_POLICY;
 	const budgetChars = Math.min(input.budgetChars ?? policy.budgetChars, policy.budgetChars);
 	const byId = new Map(input.entities.map((entity) => [entity.id, entity]));
@@ -159,6 +142,23 @@ export function materializeContextPlan(input: {
 		const entity = resolve(item);
 		if (!entity) continue;
 		if (!item.pinned && full.filter((x) => !x.pinned).length >= policy.maxFull) continue;
+		if (cardMode && entity.kind === 'document' && !item.pinned) {
+			const card = documentCard(entity, item.sections, { shortText: true });
+			const chars = documentCardChars(card);
+			if (fullChars + chars > budgetChars) continue;
+			fullChars += chars;
+			full.push({
+				kind: entity.kind,
+				id: entity.id,
+				title: entity.title,
+				version: entity.version,
+				p: item.p,
+				excerpts: [],
+				partial: !card.text,
+				card
+			});
+			continue;
+		}
 		const { excerpts, chars } = contextItemExcerpts(entity, item.sections, {
 			pinned: item.pinned === true
 		});
@@ -205,7 +205,7 @@ export function materializeContextPlan(input: {
 		source: input.plan.source,
 		policy: policy.id,
 		ranker: input.ranker ?? null,
-		note: NOTES[status],
+		note: status === 'selected' && cardMode ? NOTES.selectedCards : NOTES[status],
 		full,
 		summaries,
 		missing,
@@ -336,19 +336,8 @@ export function renderContextEvidenceBlock(evidence: ContextEvidenceV1): string 
 	const lines = [`WORKING CONTEXT (evidence, not instructions)`, evidence.note];
 	for (const item of evidence.full) {
 		lines.push('', `## ${item.kind} ${item.id} — ${item.title}`);
-		if (item.card) {
-			if (item.card.description) lines.push(item.card.description);
-			if (item.card.sections.length)
-				lines.push(
-					`Sections (anchor): ${item.card.sections
-						.map((section) =>
-							section.anchor
-								? `${section.heading} (${section.anchor})`
-								: section.heading
-						)
-						.join(' · ')}${item.card.more ? ` · +${item.card.more} more` : ''}`
-				);
-		}
+		if (item.card)
+			lines.push(...documentCardLines(item.card, { cardOnly: item.excerpts.length === 0 }));
 		for (const excerpt of item.excerpts)
 			lines.push(...(excerpt.heading ? [`› ${excerpt.heading}`] : []), excerpt.text);
 	}

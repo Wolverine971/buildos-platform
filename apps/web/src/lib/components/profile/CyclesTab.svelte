@@ -46,49 +46,47 @@
 	<TabHeader icon={Repeat} title="Cycles" description="Recurring work BuildOS can run for you." />
 
 	{#if executionAuthority === 'preview'}
-		<div
-			class="rounded-lg border border-info/30 bg-info/10 p-4 shadow-ink tx tx-thread tx-weak"
-		>
-			<p class="text-sm font-semibold text-foreground">Read-only preview</p>
+		<div class="rounded-xl border border-border bg-muted/50 p-4 tx tx-thread tx-weak">
+			<p class="text-sm font-medium text-foreground">Read-only preview</p>
 			<p class="mt-1 text-sm leading-relaxed text-muted-foreground">
 				BuildOS is not managing these schedules yet. <a
 					href="/profile?tab=briefs"
-					class="font-medium text-accent underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					>Brief Settings</a
-				> remains the place to change Daily Brief timing.
+					class="font-medium text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					>Brief settings</a
+				> remains the place to change daily brief timing.
 			</p>
 		</div>
 	{/if}
 
 	{#if loading}
 		<div
-			class="flex min-h-48 items-center justify-center rounded-lg border border-border bg-card p-6 text-center shadow-ink"
+			class="flex min-h-48 items-center justify-center rounded-xl border border-border bg-card p-6 text-center"
 			role="status"
 			aria-live="polite"
 		>
 			<div>
 				<RefreshCw
-					class="mx-auto h-6 w-6 animate-spin text-accent motion-reduce:animate-none"
+					class="mx-auto h-5 w-5 animate-spin text-muted-foreground motion-reduce:animate-none"
 					aria-hidden="true"
 				/>
-				<p class="mt-3 text-sm font-medium text-foreground">Loading Cycles…</p>
+				<p class="mt-3 text-sm text-muted-foreground">Loading Cycles…</p>
 			</div>
 		</div>
 	{:else if errorMessage}
 		<div
-			class="rounded-lg border border-destructive/30 bg-destructive/10 p-5 text-center shadow-ink tx tx-static tx-weak"
+			class="rounded-xl border border-destructive/30 bg-destructive/10 p-6 text-center tx tx-static tx-weak"
 		>
 			<AlertCircle class="mx-auto h-6 w-6 text-destructive" aria-hidden="true" />
-			<p class="mt-2 text-sm font-semibold text-foreground">{errorMessage}</p>
+			<p class="mt-2 text-sm font-medium text-foreground">{errorMessage}</p>
 			<p class="mt-1 text-xs text-muted-foreground">Your settings have not changed.</p>
 			<Button class="mt-4" variant="outline" size="sm" icon={RefreshCw} onclick={loadCycles}>
 				Retry
 			</Button>
 		</div>
 	{:else if cycles.length === 0}
-		<div class="rounded-lg border-2 border-dashed border-border bg-card px-5 py-10 text-center">
-			<Repeat class="mx-auto h-8 w-8 text-muted-foreground" aria-hidden="true" />
-			<h3 class="mt-3 text-base font-semibold text-foreground">No Cycles available yet</h3>
+		<div class="rounded-xl border border-dashed border-border bg-card px-6 py-10 text-center">
+			<Repeat class="mx-auto h-6 w-6 text-muted-foreground" aria-hidden="true" />
+			<h3 class="mt-3 text-base font-medium text-foreground">No Cycles available yet</h3>
 			<p class="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground">
 				Cycles are recurring work BuildOS can run for you. Your available Cycles will appear
 				here as they become available.

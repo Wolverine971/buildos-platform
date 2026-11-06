@@ -112,14 +112,14 @@
 
 <!-- Desktop: compact, grouped rail. -->
 <nav
-	class="hidden rounded-lg border border-border bg-card p-2 shadow-ink tx tx-frame tx-weak md:block"
+	class="hidden rounded-xl border border-border bg-card p-2 tx tx-frame tx-weak md:block"
 	aria-label="Settings sections"
 >
 	{#each SETTINGS_GROUPS as group (group.id)}
 		{@const groupDestinations = destinationsForGroup(group.id)}
 		{#if groupDestinations.length > 0}
 			<div class="py-2 first:pt-1 last:pb-1">
-				<p class="micro-label px-2 pb-1.5 text-muted-foreground">{group.label}</p>
+				<p class="px-3 pb-1 text-xs text-muted-foreground">{group.label}</p>
 				<ul class="space-y-1">
 					{#each groupDestinations as destination (destination.id)}
 						{@const Icon = destination.icon}
@@ -129,17 +129,18 @@
 								onclick={(event) => handleDesktopSelection(event, destination)}
 								aria-current={destination.id === activeId ? 'page' : undefined}
 								class={[
-									'group flex min-h-11 min-w-0 items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+									'group flex min-h-10 min-w-0 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
 									destination.id === activeId
-										? 'bg-accent/10 text-accent'
-										: 'text-muted-foreground hover:bg-muted hover:text-foreground'
+										? 'bg-muted text-foreground'
+										: 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
 								]}
 							>
-								<span
-									class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-background"
-								>
-									<Icon class="h-4 w-4" aria-hidden="true" />
-								</span>
+								<Icon
+									class="h-4 w-4 shrink-0 {destination.id === activeId
+										? 'text-accent'
+										: ''}"
+									aria-hidden="true"
+								/>
 								<span class="min-w-0 break-words">{destination.label}</span>
 							</a>
 						</li>
@@ -152,26 +153,22 @@
 
 <!-- Mobile: one labeled disclosure instead of a horizontal tab scroller. -->
 <div class="relative min-w-0 md:hidden">
-	<p class="micro-label mb-1.5 text-muted-foreground">Settings section</p>
+	<p class="mb-1 text-xs text-muted-foreground">Settings section</p>
 	<button
 		bind:this={mobileTrigger}
 		type="button"
 		onclick={() => (mobileOpen ? closeMobileMenu() : void openMobileMenu())}
 		onkeydown={handleTriggerKeydown}
-		class="pressable flex min-h-11 w-full min-w-0 items-center gap-3 rounded-lg border border-border-strong bg-card px-3 py-2 text-left shadow-ink transition-colors hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		class="pressable flex min-h-11 w-full min-w-0 items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 		aria-haspopup="menu"
 		aria-expanded={mobileOpen}
 		aria-label={`Settings section, ${activeDestination?.label ?? 'Account'}`}
 	>
 		{#if activeDestination}
 			{@const ActiveIcon = activeDestination.icon}
-			<span
-				class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-accent"
-			>
-				<ActiveIcon class="h-4 w-4" aria-hidden="true" />
-			</span>
+			<ActiveIcon class="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
 			<span class="min-w-0 flex-1">
-				<span class="block truncate text-sm font-semibold text-foreground">
+				<span class="block truncate text-sm font-medium text-foreground">
 					{activeDestination.label}
 				</span>
 				<span class="block truncate text-xs text-muted-foreground">{activeGroupLabel}</span>
@@ -193,7 +190,7 @@
 		></button>
 		<div
 			bind:this={mobileMenu}
-			class="absolute inset-x-0 top-[calc(100%+0.5rem)] z-50 max-h-[min(70vh,34rem)] overflow-y-auto rounded-lg border border-border bg-card p-2 shadow-ink-strong tx tx-frame tx-weak"
+			class="absolute inset-x-0 top-[calc(100%+0.5rem)] z-50 max-h-[min(70vh,34rem)] overflow-y-auto rounded-xl border border-border bg-card p-2 shadow-ink-strong tx tx-frame tx-weak"
 			role="menu"
 			aria-label="Settings sections"
 			tabindex="-1"
@@ -202,8 +199,8 @@
 			{#each SETTINGS_GROUPS as group (group.id)}
 				{@const groupDestinations = destinationsForGroup(group.id)}
 				{#if groupDestinations.length > 0}
-					<div class="py-1.5 first:pt-0 last:pb-0">
-						<p class="micro-label px-2 pb-1 text-muted-foreground">{group.label}</p>
+					<div class="py-2 first:pt-0 last:pb-0">
+						<p class="px-3 pb-1 text-xs text-muted-foreground">{group.label}</p>
 						{#each groupDestinations as destination (destination.id)}
 							{@const Icon = destination.icon}
 							<a
@@ -215,13 +212,12 @@
 									event.preventDefault();
 									void selectDestination(destination);
 								}}
-								class="flex min-h-11 min-w-0 items-center gap-3 rounded-md px-2.5 py-2 text-sm text-foreground transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								class="flex min-h-11 min-w-0 items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted/50 focus-visible:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							>
-								<span
-									class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground"
-								>
-									<Icon class="h-4 w-4" aria-hidden="true" />
-								</span>
+								<Icon
+									class="h-4 w-4 shrink-0 text-muted-foreground"
+									aria-hidden="true"
+								/>
 								<span class="min-w-0 flex-1 break-words font-medium"
 									>{destination.label}</span
 								>

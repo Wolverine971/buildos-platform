@@ -70,7 +70,10 @@ export const captureSortUndoRequest = z
 	})
 	.strict();
 
-export const suggestionActionRequest = z.object({ action: z.enum(['accept', 'dismiss']) }).strict();
+// forget: the person undid an automatic filing; never propose that move again (tasker 152).
+export const suggestionActionRequest = z
+	.object({ action: z.enum(['accept', 'dismiss', 'forget']) })
+	.strict();
 
 export function workspaceFailure(error: unknown) {
 	const { status, message } = errorStatus(error);

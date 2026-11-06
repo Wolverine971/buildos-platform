@@ -22,23 +22,22 @@
 	import {
 		Lightbulb,
 		Search,
-		Filter,
-		Clock,
-		CheckCircle,
 		AlertCircle,
 		LoaderCircle,
 		MessageSquare,
-		ChevronRight,
 		X,
 		MessagesSquare,
-		Sparkles
-	} from 'lucide-svelte';
+		FileText,
+		Folder,
+		FolderOpen,
+		RotateCw,
+		Trash2
+	} from '$lib/icons/lucide';
 	// Lazy: the chat chunk stays out of this page's bundle. Navigation warms the
 	// shared loader on idle, so opening a session is still instant in practice.
 	import { loadAgentChatModal } from '$lib/components/agent/load-agent-chat-modal';
 	import HistoryListSkeleton from '$lib/components/history/HistoryListSkeleton.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
-	import { Trash2 } from '$lib/icons/lucide';
 	import { toastService } from '$lib/stores/toast.store';
 	import type {
 		AgentBrainDumpContext,
@@ -268,71 +267,22 @@
 	// Show skeletons while loading if we have items to show
 	const showSkeletons = $derived(viewLoading && itemCount > 0);
 
-	function getStatusIcon(status: string) {
+	/** Dot colour for statuses that need a look; done items stay quiet (null). */
+	function getStatusDot(status: string): string | null {
 		switch (status) {
 			case 'processed':
 			case 'completed':
 			case 'done':
-				return CheckCircle;
+				return null;
 			case 'processing':
-				return LoaderCircle;
-			case 'queued':
-			case 'recent':
-			case 'needs_summary':
-			case 'pending':
-				return Clock;
-			case 'failed':
-				return AlertCircle;
-			case 'active':
-				return Clock;
-			default:
-				return Clock;
-		}
-	}
-
-	function getStatusColor(status: string) {
-		switch (status) {
-			case 'processed':
-			case 'completed':
-			case 'done':
-				return 'text-success';
-			case 'processing':
-				return 'text-accent animate-spin motion-reduce:animate-none';
-			case 'queued':
-				return 'text-warning';
-			case 'recent':
-				return 'text-info';
-			case 'needs_summary':
-				return 'text-muted-foreground';
-			case 'pending':
-				return 'text-warning';
-			case 'failed':
-				return 'text-destructive';
-			case 'active':
-				return 'text-muted-foreground';
-			default:
-				return 'text-muted-foreground';
-		}
-	}
-
-	function getStatusBadgeClass(status: string) {
-		switch (status) {
-			case 'processed':
-			case 'completed':
-			case 'done':
-				return 'border-success/25 bg-success/10 text-success';
-			case 'processing':
-				return 'border-accent/25 bg-accent/10 text-accent';
+				return 'bg-muted-foreground animate-pulse motion-reduce:animate-none';
 			case 'queued':
 			case 'pending':
-				return 'border-warning/25 bg-warning/10 text-warning';
-			case 'recent':
-				return 'border-info/25 bg-info/10 text-info';
+				return 'bg-warning';
 			case 'failed':
-				return 'border-destructive/25 bg-destructive/10 text-destructive';
-			case 'needs_summary':
+				return 'bg-destructive';
 			default:
-				return 'border-border bg-muted/60 text-muted-foreground';
+				return 'bg-muted-foreground/60';
 		}
 	}
 
@@ -369,14 +319,6 @@
 		if (item.type !== 'chat_session' || !item.needsClassification) return false;
 		if (classifyStatus === 'loading' || classifyStatus === 'queued') return false;
 		return item.canQueueSummary || classifyStatus === 'error';
-	}
-
-	function getTypeIcon(type: HistoryItem['type']) {
-		return type === 'chat_session' ? MessagesSquare : Lightbulb;
-	}
-
-	function getTypeColor(type: HistoryItem['type']) {
-		return type === 'chat_session' ? 'bg-accent/15 text-accent' : 'bg-info/15 text-info';
 	}
 
 	function formatDate(dateStr: string) {
@@ -604,182 +546,67 @@
 </svelte:head>
 
 <div class="min-h-screen bg-background">
-	<div class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 space-y-3 sm:space-y-4">
-		<!-- Page Header - Inkprint design with micro-label pattern -->
-		<header class="flex flex-col gap-2 sm:gap-1.5">
-			<p class="micro-label text-accent">YOUR ARCHIVE</p>
-			<div class="flex items-center gap-2.5">
-				<h1 class="text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground">
-					History
-				</h1>
-				{#if viewLoading}
-					<LoaderCircle
-						class="h-4 w-4 sm:h-5 sm:w-5 text-accent animate-spin motion-reduce:animate-none"
-					/>
-				{/if}
-			</div>
-			<p class="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-				Your captures and chat conversations
-			</p>
+	<div class="mx-auto max-w-7xl space-y-4 px-4 py-4 lg:px-6 lg:py-6">
+		<header class="flex items-center gap-3">
+			<h1 class="text-2xl font-medium text-foreground">History</h1>
+			{#if viewLoading}
+				<LoaderCircle
+					class="h-4 w-4 animate-spin text-muted-foreground motion-reduce:animate-none"
+				/>
+			{/if}
 		</header>
 
-		<!-- Main content -->
 		<div>
-			<!-- Stats cards - compact on mobile -->
-			<div class="mb-3 grid grid-cols-4 gap-1.5 sm:mb-6 sm:gap-4">
-				<div
-					class="min-w-0 rounded-lg border border-border bg-card p-2 shadow-ink tx tx-frame tx-weak sm:p-4"
-				>
-					<div class="flex min-w-0 items-center gap-1 sm:gap-2">
-						<span
-							class="min-w-0 truncate text-base font-bold tabular-nums text-foreground sm:text-2xl"
-							title={String(stats.totalBraindumps + stats.totalChatSessions)}
-						>
-							{compactHistoryCount(
-								stats.totalBraindumps + stats.totalChatSessions,
-								999
-							)}
-						</span>
-					</div>
-					<div class="truncate text-2xs text-muted-foreground sm:text-sm">Total</div>
-				</div>
-				<div
-					class="min-w-0 rounded-lg border border-border bg-card p-2 shadow-ink tx tx-frame tx-weak sm:p-4"
-				>
-					<div class="flex min-w-0 items-center gap-1 sm:gap-2">
-						<Lightbulb class="h-3 w-3 sm:h-5 sm:w-5 text-info hidden sm:block" />
-						<span
-							class="min-w-0 truncate text-base font-bold tabular-nums text-foreground sm:text-2xl"
-							title={String(stats.totalBraindumps)}
-						>
-							{compactHistoryCount(stats.totalBraindumps, 999)}
-						</span>
-					</div>
-					<div class="truncate text-2xs text-muted-foreground sm:text-sm">Captures</div>
-				</div>
-				<div
-					class="min-w-0 rounded-lg border border-border bg-card p-2 shadow-ink tx tx-frame tx-weak sm:p-4"
-				>
-					<div class="flex min-w-0 items-center gap-1 sm:gap-2">
-						<MessagesSquare class="h-3 w-3 sm:h-5 sm:w-5 text-accent hidden sm:block" />
-						<span
-							class="min-w-0 truncate text-base font-bold tabular-nums text-foreground sm:text-2xl"
-							title={String(stats.totalChatSessions)}
-						>
-							{compactHistoryCount(stats.totalChatSessions, 999)}
-						</span>
-					</div>
-					<div class="truncate text-2xs text-muted-foreground sm:text-sm">Chats</div>
-				</div>
-				<div
-					class="min-w-0 rounded-lg border border-border bg-card p-2 shadow-ink tx tx-frame tx-weak sm:p-4"
-				>
-					<div class="flex min-w-0 items-center gap-1 sm:gap-2">
-						<span
-							class="min-w-0 truncate text-base font-bold tabular-nums text-foreground sm:text-2xl"
-							title={String(
-								stats.processedBraindumps + stats.chatSessionsWithSummary
-							)}
-						>
-							{compactHistoryCount(
-								stats.processedBraindumps + stats.chatSessionsWithSummary,
-								999
-							)}
-						</span>
-					</div>
-					<div class="truncate text-2xs text-muted-foreground sm:text-sm">Done</div>
-				</div>
-			</div>
-
 			<!-- Type filters use three fixed mobile columns; no hidden horizontal scroll. -->
-			<div
-				class="mb-2 grid grid-cols-3 gap-0.5 border-b border-border sm:mb-4 sm:flex sm:gap-2"
-			>
-				<button
-					onclick={() => setTypeFilter('all')}
-					aria-pressed={typeFilter === 'all'}
-					aria-label={`All history, ${stats.totalBraindumps + stats.totalChatSessions} entries`}
-					class="relative inline-flex min-w-0 items-center justify-center gap-1 px-1 py-1.5 text-xs font-medium transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:px-4 sm:py-2 sm:text-sm {typeFilter ===
-					'all'
-						? 'text-foreground'
-						: 'text-muted-foreground hover:text-foreground'}"
-				>
-					<span class="min-w-0 truncate">All</span>
-					<span
-						class="shrink-0 rounded-full bg-muted px-1 py-0.5 text-2xs text-muted-foreground sm:px-1.5 sm:text-xs"
+			<div class="mb-4 grid grid-cols-3 border-b border-border sm:flex sm:gap-2">
+				{#each [{ key: 'all', label: 'All', count: stats.totalBraindumps + stats.totalChatSessions, Icon: null, aria: 'All history' }, { key: 'braindumps', label: 'Captures', count: stats.totalBraindumps, Icon: Lightbulb, aria: 'Captures' }, { key: 'chats', label: 'Chats', count: stats.totalChatSessions, Icon: MessagesSquare, aria: 'Chats' }] as tab (tab.key)}
+					{@const active = typeFilter === tab.key}
+					<button
+						onclick={() => setTypeFilter(tab.key as 'all' | 'braindumps' | 'chats')}
+						aria-pressed={active}
+						aria-label={`${tab.aria}, ${tab.count} entries`}
+						class="relative inline-flex min-w-0 items-center justify-center gap-2 px-2 py-2 text-sm font-medium transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:px-3 {active
+							? 'text-foreground'
+							: 'text-muted-foreground hover:text-foreground'}"
 					>
-						{compactHistoryCount(stats.totalBraindumps + stats.totalChatSessions)}
-					</span>
-					{#if typeFilter === 'all'}
-						<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"></span>
-					{/if}
-				</button>
-				<button
-					onclick={() => setTypeFilter('braindumps')}
-					aria-pressed={typeFilter === 'braindumps'}
-					aria-label={`Captures, ${stats.totalBraindumps} entries`}
-					class="relative inline-flex min-w-0 items-center justify-center gap-1 px-1 py-1.5 text-xs font-medium transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:gap-1.5 sm:px-4 sm:py-2 sm:text-sm {typeFilter ===
-					'braindumps'
-						? 'text-foreground'
-						: 'text-muted-foreground hover:text-foreground'}"
-				>
-					<Lightbulb class="hidden h-3 w-3 shrink-0 sm:block sm:h-4 sm:w-4" />
-					<span class="min-w-0 truncate">Captures</span>
-					<span
-						class="shrink-0 rounded-full bg-info/15 px-1 py-0.5 text-2xs text-info sm:px-1.5 sm:text-xs"
-					>
-						{compactHistoryCount(stats.totalBraindumps)}
-					</span>
-					{#if typeFilter === 'braindumps'}
-						<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"></span>
-					{/if}
-				</button>
-				<button
-					onclick={() => setTypeFilter('chats')}
-					aria-pressed={typeFilter === 'chats'}
-					aria-label={`Chats, ${stats.totalChatSessions} entries`}
-					class="relative inline-flex min-w-0 items-center justify-center gap-1 px-1 py-1.5 text-xs font-medium transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:gap-1.5 sm:px-4 sm:py-2 sm:text-sm {typeFilter ===
-					'chats'
-						? 'text-foreground'
-						: 'text-muted-foreground hover:text-foreground'}"
-				>
-					<MessagesSquare class="hidden h-3 w-3 shrink-0 sm:block sm:h-4 sm:w-4" />
-					<span class="min-w-0 truncate">Chats</span>
-					<span
-						class="shrink-0 rounded-full bg-accent/15 px-1 py-0.5 text-2xs text-accent sm:px-1.5 sm:text-xs"
-					>
-						{compactHistoryCount(stats.totalChatSessions)}
-					</span>
-					{#if typeFilter === 'chats'}
-						<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"></span>
-					{/if}
-				</button>
+						{#if tab.Icon}
+							<tab.Icon class="hidden h-4 w-4 shrink-0 sm:block" />
+						{/if}
+						<span class="min-w-0 truncate">{tab.label}</span>
+						<span
+							class="shrink-0 font-mono text-xs font-normal tabular-nums text-muted-foreground"
+						>
+							{compactHistoryCount(tab.count, 9999)}
+						</span>
+						{#if active}
+							<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"></span>
+						{/if}
+					</button>
+				{/each}
 			</div>
 
-			<!-- Search and filters - compact on mobile -->
-			<div class="mb-3 sm:mb-6 flex flex-col gap-2 sm:gap-4 sm:flex-row sm:items-center">
+			<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
 				<div class="relative flex-1">
 					<Search
-						class="absolute left-2.5 sm:left-3 top-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 -translate-y-1/2 text-muted-foreground"
+						class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
 					/>
 					<input
 						type="text"
-						placeholder="Search..."
+						placeholder="Search history"
+						aria-label="Search history"
 						maxlength={MAX_SEARCH_LENGTH}
 						bind:value={searchInput}
 						oninput={onSearchInput}
 						onkeydown={handleKeydown}
-						class="w-full rounded-lg border border-border bg-background py-1.5 sm:py-2 pl-8 sm:pl-10 pr-3 sm:pr-4 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+						class="w-full rounded-lg border border-border bg-background py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
 					/>
 				</div>
-				<div class="flex items-center gap-1.5 sm:gap-2">
-					<Filter
-						class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground hidden sm:block"
-					/>
+				<div class="flex items-center gap-2">
 					<select
 						bind:value={statusFilter}
 						onchange={applyFilters}
-						class="flex-1 sm:flex-none rounded-lg border border-border bg-background px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+						aria-label="Status"
+						class="flex-1 rounded-lg border border-border bg-background py-2 pl-3 pr-8 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20 sm:flex-none"
 					>
 						<option value="">Any status</option>
 						<option value="processed">Done</option>
@@ -791,48 +618,47 @@
 						<button
 							onclick={clearFilters}
 							aria-label="Clear filters"
-							class="rounded-lg border border-border px-2 py-1.5 sm:px-3 sm:py-2 text-sm text-muted-foreground hover:bg-muted pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+							class="rounded-lg border border-border p-2 text-muted-foreground hover:bg-muted/50 hover:text-foreground pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 						>
-							<X class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+							<X class="h-4 w-4" />
 						</button>
 					{/if}
 				</div>
 			</div>
 
-			<!-- History items list -->
 			{#if showSkeletons}
 				<!-- Show a bounded skeleton set while streamed history data resolves. -->
 				<HistoryListSkeleton count={itemCount} />
 			{:else if viewError}
-				<!-- Error state -->
 				<div
-					class="flex flex-col items-center justify-center rounded-lg border border-dashed border-destructive/30 bg-destructive/5 py-16 tx tx-static tx-weak"
+					class="flex flex-col items-center justify-center rounded-xl border border-border bg-card py-16 text-center"
 				>
-					<AlertCircle class="mb-4 h-12 w-12 text-destructive" />
-					<h3 class="mb-2 text-lg font-medium text-foreground">Failed to load history</h3>
-					<p class="mb-4 text-center text-sm text-muted-foreground">{viewError}</p>
+					<AlertCircle class="mb-3 h-6 w-6 text-destructive" />
+					<h3 class="mb-1 text-base font-medium text-foreground">
+						Couldn't load your history
+					</h3>
+					<p class="mb-4 text-sm text-muted-foreground">{viewError}</p>
 					<button
 						onclick={() => location.reload()}
-						class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent/90 shadow-ink pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+						class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent/90 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
 					>
-						Retry
+						Try again
 					</button>
 				</div>
 			{:else if items.length === 0}
-				<div
-					class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/50 py-16 tx tx-bloom tx-weak"
-				>
-					<Lightbulb class="mb-4 h-12 w-12 text-muted-foreground" />
-					<h3 class="mb-2 text-lg font-medium text-foreground">No history found</h3>
-					<p class="mb-4 text-center text-sm text-muted-foreground">
-						{#if typeFilter === 'braindumps'}
-							You haven't captured anything yet.<br />
-							Start a conversation with BuildOS to get started.
+				<div class="flex flex-col items-center justify-center py-16 text-center">
+					<h3 class="mb-1 text-base font-medium text-foreground">
+						{searchInput || statusFilter ? 'Nothing matches' : 'Nothing here yet'}
+					</h3>
+					<p class="text-sm text-muted-foreground">
+						{#if searchInput || statusFilter}
+							Try a different search or status
+						{:else if typeFilter === 'braindumps'}
+							Things you capture show up here
 						{:else if typeFilter === 'chats'}
-							You haven't had any chat sessions yet.<br />
-							Start a conversation with BuildOS to see it here.
+							Your chats with BuildOS show up here
 						{:else}
-							Your captures and chat sessions will appear here.
+							Your captures and chats show up here
 						{/if}
 					</p>
 				</div>
@@ -840,13 +666,13 @@
 				<!-- Responsive grid: 2 cols mobile for density, 2 cols tablet, 3 cols desktop -->
 				<div class="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3">
 					{#each items as item (item.id)}
-						{@const TypeIcon = getTypeIcon(item.type)}
 						{@const classifyStatus = chatClassificationState[item.id] ?? 'idle'}
 						{@const displayStatus = getEffectiveDisplayStatus(item, classifyStatus)}
 						{@const statusLabel = getEffectiveStatusLabel(item, classifyStatus)}
-						{@const StatusIcon = getStatusIcon(displayStatus)}
+						{@const canSummarize = canQueueChatSummary(item, classifyStatus)}
+						{@const dot = getStatusDot(displayStatus)}
 						<div
-							class={`group relative flex h-full flex-col rounded-lg border border-border bg-card p-2 text-left shadow-ink transition-all hover:border-accent/50 hover:shadow-ink-strong focus-within:border-accent/50 tx tx-frame tx-weak pressable sm:p-4 ${
+							class={`group relative flex h-full flex-col rounded-xl border border-border bg-card p-3 text-left transition-colors hover:border-foreground/20 focus-within:border-foreground/20 tx tx-frame tx-weak pressable sm:p-4 ${
 								openingBraindumpId === item.id || deletingBraindumpId === item.id
 									? 'pointer-events-none opacity-70'
 									: ''
@@ -860,154 +686,180 @@
 								onclick={() => openItem(item)}
 								aria-busy={openingBraindumpId === item.id}
 								aria-label={`Open ${item.title}`}
-								class="absolute inset-0 z-0 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+								class="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 							></button>
 
 							<!-- Content sits above the stretched button but is itself
 							     pointer-events-none so taps fall through to it; interactive
 							     children (Summarize) re-enable pointer events + raise z. -->
 							<div class="pointer-events-none relative z-[1] flex flex-1 flex-col">
-								<!-- Header: Type badge and status -->
-								<div class="mb-1 sm:mb-2 flex items-center justify-between">
-									<span
-										class="inline-flex items-center gap-0.5 sm:gap-1 rounded-full px-1.5 sm:px-2 py-0.5 text-2xs sm:text-xs font-medium {getTypeColor(
-											item.type
-										)}"
-									>
-										<TypeIcon class="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-										<span class="hidden sm:inline"
-											>{item.type === 'chat_session'
-												? 'Chat'
-												: 'Capture'}</span
+								<!-- Where it lived on the left (a chat's projects, or Workspace);
+								     anything that needs attention on the right. -->
+								<div class="mb-2 flex min-h-6 items-center justify-between gap-2">
+									{#if item.type === 'chat_session' && item.projects?.length}
+										{@const projects = item.projects}
+										{@const shown = projects.slice(0, 3)}
+										<!-- Phone: first project + count. Wider: up to three, each
+										     shrinking with its own ellipsis, then +N. -->
+										<span
+											class="inline-flex min-w-0 items-center gap-1 text-xs text-muted-foreground"
 										>
-									</span>
-									<div class="flex items-center gap-1 sm:gap-2">
-										{#if canQueueChatSummary(item, classifyStatus)}
+											<Folder class="h-3 w-3 shrink-0" />
+											{#each shown as project, index (project.id)}
+												{#if index > 0}
+													<span
+														class="hidden shrink-0 text-muted-foreground/60 sm:inline"
+														aria-hidden="true">·</span
+													>
+												{/if}
+												<span
+													class={`min-w-0 truncate ${index > 0 ? 'hidden sm:inline' : ''}`}
+													>{project.name}</span
+												>
+											{/each}
+											{#if projects.length > 1}
+												<span
+													class="shrink-0 font-mono tabular-nums sm:hidden"
+													>+{projects.length - 1}</span
+												>
+											{/if}
+											{#if projects.length > 3}
+												<span
+													class="hidden shrink-0 font-mono tabular-nums sm:inline"
+													>+{projects.length - 3}</span
+												>
+											{/if}
+										</span>
+									{:else if item.type === 'chat_session'}
+										<span
+											class="inline-flex min-w-0 items-center gap-1 text-xs text-muted-foreground"
+										>
+											<FolderOpen class="h-3 w-3 shrink-0" />
+											<span class="truncate"
+												>{item.scopeLabel ?? 'Workspace chat'}</span
+											>
+										</span>
+									{:else}
+										<span
+											class="inline-flex items-center gap-1 text-xs text-muted-foreground"
+										>
+											<Lightbulb class="h-3 w-3 shrink-0" />
+											<span class="hidden sm:inline">Capture</span>
+										</span>
+									{/if}
+									<div class="flex shrink-0 items-center gap-2">
+										{#if dot && !(canSummarize && displayStatus === 'needs_summary')}
+											<span
+												class="inline-flex items-center gap-1 text-xs text-muted-foreground"
+												title={statusLabel}
+											>
+												<span
+													class="h-1.5 w-1.5 shrink-0 rounded-full {dot}"
+												></span>
+												<span class="hidden whitespace-nowrap sm:inline"
+													>{statusLabel}</span
+												>
+												<span class="sr-only sm:hidden">{statusLabel}</span>
+											</span>
+										{/if}
+										{#if canSummarize}
 											<button
 												type="button"
 												onclick={() => classifyChatSession(item)}
 												disabled={classifyStatus === 'loading' ||
 													classifyStatus === 'queued'}
-												class="pointer-events-auto relative z-[2] inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wide text-muted-foreground transition pressable hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-70"
-												aria-label="Summarize chat session"
+												class="pointer-events-auto relative z-[2] inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs font-medium text-muted-foreground transition-colors pressable hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-70"
+												aria-label={classifyStatus === 'error'
+													? 'Retry summary'
+													: 'Summarize chat session'}
 											>
 												{#if classifyStatus === 'error'}
-													<Sparkles
-														class="h-2.5 w-2.5 text-destructive"
-													/>
+													<RotateCw class="h-3 w-3" />
 													<span class="hidden sm:inline">Retry</span>
 												{:else}
-													<Sparkles class="h-2.5 w-2.5" />
+													<FileText class="h-3 w-3" />
 													<span class="hidden sm:inline">Summarize</span>
 												{/if}
 											</button>
 										{/if}
-										<span
-											class="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-2xs font-medium {getStatusBadgeClass(
-												displayStatus
-											)}"
-										>
-											<StatusIcon
-												class="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0 {getStatusColor(
-													displayStatus
-												)}"
-											/>
-											<span class="hidden sm:inline whitespace-nowrap"
-												>{statusLabel}</span
-											>
-										</span>
 										{#if item.type === 'braindump'}
 											<button
 												type="button"
 												onclick={() => (pendingDeleteItem = item)}
-												class="pointer-events-auto relative z-[2] inline-flex items-center justify-center rounded-full border border-border bg-muted/60 p-1 text-muted-foreground transition pressable hover:border-destructive/40 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+												class="pointer-events-auto relative z-[2] inline-flex items-center justify-center rounded-lg p-1 text-muted-foreground transition-colors pressable hover:bg-muted/50 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 												aria-label={`Delete ${item.title}`}
 												title="Delete capture"
 											>
-												<Trash2 class="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+												<Trash2 class="h-3 w-3 sm:h-4 sm:w-4" />
 											</button>
 										{/if}
 									</div>
 								</div>
 
-								<!-- Title -->
 								<h3
-									class="mb-1 sm:mb-2 line-clamp-2 text-xs sm:text-base font-medium text-foreground"
+									class="mb-1 line-clamp-2 text-sm font-medium text-foreground sm:mb-2 sm:text-base"
 								>
 									{item.title}
 								</h3>
 
 								<!-- Preview / Summary - clamped to one line on mobile (compact,
-							     don't hide: this is the card's most informative field) -->
+								     don't hide: this is the card's most informative field) -->
 								<p
-									class="mb-1.5 sm:mb-3 line-clamp-1 sm:line-clamp-3 flex-1 text-2xs sm:text-sm text-muted-foreground"
+									class="mb-2 line-clamp-1 flex-1 text-xs text-muted-foreground sm:mb-3 sm:line-clamp-3 sm:text-sm"
 								>
 									{item.preview}
 								</p>
 
-								<!-- Topics (compact) - show fewer on mobile -->
 								{#if item.topics && item.topics.length > 0}
-									<div class="mb-1.5 sm:mb-3 flex flex-wrap gap-0.5 sm:gap-1">
-										{#each item.topics.slice(0, 2) as topic}
-											<span
-												class="inline-flex items-center rounded-full bg-muted px-1 sm:px-1.5 py-0.5 text-2xs text-muted-foreground truncate max-w-[60px] sm:max-w-none"
+									<p
+										class="mb-2 truncate text-xs text-muted-foreground/80 sm:mb-3"
+									>
+										{item.topics.slice(0, 3).join(' · ')}
+										{#if item.topics.length > 3}
+											<span class="ml-1 font-mono tabular-nums"
+												>+{item.topics.length - 3}</span
 											>
-												{topic}
-											</span>
-										{/each}
-										{#if item.topics.length > 2}
-											<span class="text-2xs text-muted-foreground">
-												+{item.topics.length - 2}
-											</span>
 										{/if}
-									</div>
+									</p>
 								{/if}
 
-								<!-- Footer: Metadata - compact on mobile -->
 								<div
-									class="mt-auto flex items-center justify-between border-t border-border pt-1.5 text-2xs text-muted-foreground sm:pt-3 sm:text-xs"
+									class="mt-auto flex items-center justify-between gap-2 text-xs text-muted-foreground"
 								>
-									<span class="flex items-center gap-0.5 sm:gap-1 truncate">
-										<Clock class="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" />
-										<span class="truncate">{formatDate(item.createdAt)}</span>
-									</span>
-									<div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-										{#if item.type === 'chat_session' && item.messageCount}
-											<span class="flex items-center gap-0.5">
-												<MessageSquare class="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-												{item.messageCount}
-											</span>
-										{/if}
-										<ChevronRight
-											class="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground transition-colors group-hover:text-accent group-focus-within:text-accent"
-										/>
-									</div>
+									<span class="truncate">{formatDate(item.createdAt)}</span>
+									{#if item.type === 'chat_session' && item.messageCount}
+										<span
+											class="flex shrink-0 items-center gap-1 font-mono tabular-nums"
+											title={`${item.messageCount} messages`}
+										>
+											<MessageSquare class="h-3 w-3" />
+											{item.messageCount}
+										</span>
+									{/if}
 								</div>
 							</div>
 						</div>
 					{/each}
 				</div>
 
-				<!-- Load more -->
 				{#if hasMore}
 					<div class="mt-6 flex justify-center">
 						<button
 							onclick={loadMore}
-							class="rounded-lg border border-border px-6 py-2 text-sm font-medium text-foreground hover:bg-muted pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+							class="rounded-lg border border-border px-6 py-2 text-sm font-medium text-foreground hover:bg-muted/50 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 						>
 							Load more
 						</button>
 					</div>
 				{/if}
 
-				<!-- Results info -->
-				<div class="mt-4 text-center text-sm text-muted-foreground">
+				<div class="mt-4 text-center text-xs text-muted-foreground">
 					{#if totalItemsExact}
-						Showing {Math.min(visibleItemCount, totalItems)} of {totalItems} items
+						Showing {Math.min(visibleItemCount, totalItems)} of {totalItems}
 					{:else if hasMore}
-						Showing {visibleItemCount}+ matching items
+						Showing {visibleItemCount}+
 					{:else}
-						Showing {visibleItemCount} matching items
+						Showing {visibleItemCount}
 					{/if}
 				</div>
 			{/if}
@@ -1022,13 +874,13 @@
 	confirmVariant="danger"
 	icon="danger"
 	loading={deletingBraindumpId !== null}
-	loadingText="Deleting..."
+	loadingText="Deleting…"
 	onconfirm={deletePendingBraindump}
 	oncancel={() => (pendingDeleteItem = null)}
 >
 	{#snippet content()}
 		<p class="text-sm text-muted-foreground">
-			<span class="font-semibold text-foreground">"{pendingDeleteItem?.title}"</span>
+			<span class="font-medium text-foreground">"{pendingDeleteItem?.title}"</span>
 			leaves your history now and is erased for good after 30 days. Chats you started from it stay
 			until you delete them.
 		</p>

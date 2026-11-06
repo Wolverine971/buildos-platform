@@ -23,6 +23,12 @@ import {
 	resolveChatTitle,
 	type HistoryDisplayStatus
 } from './history-display';
+import {
+	chatScopeFallbackLabel,
+	loadChatProjects,
+	type ChatProjectRef,
+	type ChatProjects
+} from './history-chat-projects';
 
 /** Braindump from onto_braindumps table */
 interface OntoBraindump {
@@ -83,6 +89,10 @@ export interface HistoryItem {
 	messageCount?: number;
 	contextType?: string;
 	entityId?: string | null;
+	/** Chats: projects the chat was about, most relevant first */
+	projects?: ChatProjectRef[];
+	/** Chats: label when there are no projects ("Workspace chat", "Daily brief", …) */
+	scopeLabel?: string;
 	needsClassification?: boolean;
 	canQueueSummary?: boolean;
 	originalData: OntoBraindump | ChatSession;
@@ -250,17 +260,20 @@ async function loadHistoryData(
 					)
 				: [])
 		];
-		const classificationJobsBySessionId = await loadChatClassificationJobs(
-			supabase,
-			userId,
-			chatSessions.filter(needsChatClassification).map((session) => session.id)
-		);
+		const [classificationJobsBySessionId, projectsBySessionId] = await Promise.all([
+			loadChatClassificationJobs(
+				supabase,
+				userId,
+				chatSessions.filter(needsChatClassification).map((session) => session.id)
+			),
+			loadChatProjects(supabase, chatSessions)
+		]);
 
 		const items = rows
-			.map((row) => toHistoryItem(row, classificationJobsBySessionId))
+			.map((row) => toHistoryItem(row, classificationJobsBySessionId, projectsBySessionId))
 			.filter((item): item is HistoryItem => Boolean(item));
 		const selectedItem = selectedRow
-			? toHistoryItem(selectedRow, classificationJobsBySessionId)
+			? toHistoryItem(selectedRow, classificationJobsBySessionId, projectsBySessionId)
 			: null;
 		const totalItems = asNumber(payload.totalItems, items.length);
 		const stats = normalizeHistoryStats(payload.stats);
@@ -298,7 +311,8 @@ async function loadHistoryData(
 
 function toHistoryItem(
 	row: HistoryRpcRow,
-	classificationJobsBySessionId: Map<string, ChatClassificationJob>
+	classificationJobsBySessionId: Map<string, ChatClassificationJob>,
+	projectsBySessionId: Map<string, ChatProjects> = new Map()
 ): HistoryItem | null {
 	if (row.type === 'braindump') {
 		const braindump = normalizeBraindump(row.data);
@@ -307,7 +321,11 @@ function toHistoryItem(
 
 	const session = normalizeChatSession(row.data);
 	return session
-		? toChatHistoryItem(session, classificationJobsBySessionId.get(session.id))
+		? toChatHistoryItem(
+				session,
+				classificationJobsBySessionId.get(session.id),
+				projectsBySessionId.get(session.id)
+			)
 		: null;
 }
 
@@ -330,9 +348,11 @@ function toBraindumpHistoryItem(braindump: OntoBraindump): HistoryItem {
 
 function toChatHistoryItem(
 	session: ChatSession,
-	classificationJob?: ChatClassificationJob | null
+	classificationJob?: ChatClassificationJob | null,
+	chatProjects?: ChatProjects
 ): HistoryItem {
 	const displayState = resolveChatDisplayState(session, classificationJob);
+	const projects = chatProjects?.projects ?? [];
 
 	return {
 		id: session.id,
@@ -347,6 +367,8 @@ function toChatHistoryItem(
 		messageCount: session.message_count || 0,
 		contextType: session.context_type,
 		entityId: session.entity_id,
+		projects,
+		scopeLabel: chatScopeFallbackLabel(session.context_type, chatProjects?.workspace),
 		needsClassification: needsChatClassification(session),
 		canQueueSummary: displayState.canQueueSummary,
 		originalData: session

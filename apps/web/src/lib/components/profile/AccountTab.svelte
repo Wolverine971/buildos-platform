@@ -431,11 +431,9 @@
 
 	<!-- Success Message -->
 	{#if successMessage}
-		<div
-			class="bg-success/10 border border-success/30 rounded-lg p-3 shadow-ink tx tx-grain tx-weak"
-		>
+		<div class="bg-card border border-border rounded-lg p-3">
 			<div class="flex items-center gap-2">
-				<CircleCheck class="w-4 h-4 text-success flex-shrink-0" />
+				<CircleCheck class="w-4 h-4 text-muted-foreground flex-shrink-0" />
 				<p class="text-sm text-foreground">{successMessage}</p>
 			</div>
 		</div>
@@ -443,9 +441,7 @@
 
 	<!-- Error Messages -->
 	{#if errors.length > 0}
-		<div
-			class="bg-destructive/10 border border-destructive/30 rounded-lg p-3 shadow-ink tx tx-static tx-weak"
-		>
+		<div class="bg-card border border-destructive/30 rounded-lg p-3">
 			<div class="flex items-start gap-2">
 				<TriangleAlert class="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
 				<div class="text-sm text-foreground">
@@ -468,27 +464,29 @@
 	<!-- Profile Section: two stacked cards -->
 	{#if activeSection === 'profile'}
 		<SettingsCard
-			title="Profile Information"
-			description="Update your name and email."
+			title="Profile"
+			description="Your name and email"
 			labelledById="profile-info-heading"
 		>
 			<div class="space-y-4">
-				<FormField label="Full Name" labelFor="name">
+				<FormField label="Full name" labelFor="name" uppercase={false} showOptional={false}>
 					<TextInput
 						id="name"
 						bind:value={profileForm.name}
 						type="text"
 						inputmode="text"
 						enterkeyhint="next"
-						placeholder="Enter your full name"
+						placeholder="Your name"
 						disabled={loading}
 						size="md"
 					/>
 				</FormField>
 
 				<FormField
-					label="Email Address"
+					label="Email address"
 					labelFor="email"
+					uppercase={false}
+					showOptional={false}
 					hint="Changing your email will require confirmation"
 				>
 					<TextInput
@@ -497,7 +495,7 @@
 						type="email"
 						inputmode="email"
 						enterkeyhint="done"
-						placeholder="Enter your email address"
+						placeholder="you@example.com"
 						disabled={loading}
 						size="md"
 					/>
@@ -510,9 +508,9 @@
 						variant="primary"
 						size="sm"
 						{loading}
-						class="shadow-ink pressable"
+						class="pressable"
 					>
-						{loading ? 'Updating...' : 'Update Profile'}
+						{loading ? 'Saving…' : 'Save'}
 					</Button>
 				</div>
 			</div>
@@ -520,14 +518,14 @@
 
 		<SettingsCard
 			title="Your handle"
-			description="Your @handle is also your public URL for published docs."
+			description="Your @handle is also your public URL for published docs"
 			labelledById="handle-pointer-heading"
 		>
 			<p class="text-sm text-muted-foreground">
 				Your handle, who can find you, and who you share with now live in
 				<a
 					href="/profile?tab=people#you"
-					class="font-medium text-accent underline-offset-2 hover:underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					class="font-medium text-foreground underline underline-offset-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>People &amp; agents</a
 				>.
 			</p>
@@ -537,15 +535,16 @@
 	<!-- Password Section -->
 	{#if activeSection === 'password'}
 		<SettingsCard
-			title="Change Password"
-			description="Update your password to keep your account secure."
+			title="Password"
+			description="Change the password you sign in with"
 			labelledById="change-password-heading"
 		>
 			<div class="space-y-4">
 				<FormField
-					label="Current Password"
+					label="Current password"
 					labelFor="currentPassword"
-					hint="Enter your current password to confirm your identity"
+					hint="Confirms it’s you"
+					uppercase={false}
 					required={true}
 				>
 					<div class="relative">
@@ -555,7 +554,7 @@
 							type={showCurrentPassword ? 'text' : 'password'}
 							autocomplete="current-password"
 							enterkeyhint="next"
-							placeholder="Enter current password"
+							placeholder=""
 							disabled={loading}
 							size="md"
 							class="pr-10"
@@ -578,9 +577,10 @@
 				</FormField>
 
 				<FormField
-					label="New Password"
+					label="New password"
 					labelFor="newPassword"
-					hint="Must be at least 6 characters long"
+					hint="At least 6 characters"
+					uppercase={false}
 					required={true}
 				>
 					<div class="relative">
@@ -590,7 +590,7 @@
 							type={showNewPassword ? 'text' : 'password'}
 							autocomplete="new-password"
 							enterkeyhint="next"
-							placeholder="Enter new password"
+							placeholder=""
 							disabled={loading}
 							size="md"
 							class="pr-10"
@@ -610,7 +610,12 @@
 					</div>
 				</FormField>
 
-				<FormField label="Confirm New Password" labelFor="confirmPassword" required={true}>
+				<FormField
+					label="Confirm new password"
+					labelFor="confirmPassword"
+					required={true}
+					uppercase={false}
+				>
 					<div class="relative">
 						<TextInput
 							id="confirmPassword"
@@ -618,7 +623,7 @@
 							type={showConfirmPassword ? 'text' : 'password'}
 							autocomplete="new-password"
 							enterkeyhint="done"
-							placeholder="Confirm new password"
+							placeholder=""
 							disabled={loading}
 							size="md"
 							class="pr-10"
@@ -647,9 +652,9 @@
 						variant="primary"
 						size="sm"
 						{loading}
-						class="shadow-ink pressable"
+						class="pressable"
 					>
-						{loading ? 'Updating...' : 'Update Password'}
+						{loading ? 'Saving…' : 'Change password'}
 					</Button>
 				</div>
 			</div>
@@ -659,15 +664,15 @@
 	<!-- Danger Zone Section -->
 	{#if activeSection === 'danger'}
 		<SettingsCard
-			title="Delete Account"
-			description="Disable access now and permanently delete account data within 30 days."
+			title="Delete account"
+			description="Access ends now; your data is deleted within 30 days"
 			icon={Trash2}
 			variant="danger"
 			labelledById="delete-account-heading"
 		>
 			<div class="space-y-4">
 				<div class="bg-card rounded-lg p-3 border border-destructive/30">
-					<div class="flex items-start gap-2.5">
+					<div class="flex items-start gap-3">
 						<TriangleAlert class="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
 						<div class="text-xs sm:text-sm">
 							<p class="text-foreground font-medium mb-1">
@@ -700,7 +705,7 @@
 								id="shared-projects-heading"
 								bind:this={sharedProjectsHeading}
 								tabindex="-1"
-								class="text-sm font-semibold text-foreground focus:outline-none"
+								class="text-sm font-medium text-foreground focus:outline-none"
 							>
 								Shared projects
 							</h4>
@@ -723,9 +728,7 @@
 						{#each sharedProjects as project (project.project_id)}
 							{@const choice = sharedProjectChoices[project.project_id]}
 							{@const radioName = `shared-project-${project.project_id}`}
-							<div
-								class="min-w-0 rounded-lg border border-border bg-card p-3 shadow-ink tx tx-thread tx-weak"
-							>
+							<div class="min-w-0 rounded-lg border border-border bg-card p-3">
 								<fieldset class="m-0 min-w-0 space-y-2.5 border-0 p-0">
 									<legend
 										class="mb-0.5 w-full truncate p-0 text-sm font-medium text-foreground"
@@ -819,7 +822,7 @@
 								size="sm"
 								disabled={loading || !sharedProjectsReady}
 								onclick={continueToFinalConfirmation}
-								class="text-destructive hover:text-destructive-foreground hover:bg-destructive border-destructive shadow-ink pressable"
+								class="text-destructive hover:text-destructive-foreground hover:bg-destructive border-destructive pressable"
 							>
 								Continue
 							</Button>
@@ -834,10 +837,10 @@
 							loading={checkingSharedProjects}
 							variant="outline"
 							size="sm"
-							class="text-destructive hover:text-destructive-foreground hover:bg-destructive border-destructive shadow-ink pressable"
+							class="text-destructive hover:text-destructive-foreground hover:bg-destructive border-destructive pressable"
 							icon={Trash2}
 						>
-							Delete My Account
+							Delete my account
 						</Button>
 					</div>
 				{/if}
@@ -849,12 +852,12 @@
 <!-- Delete Confirmation Modal -->
 <ConfirmationModal
 	isOpen={showDeleteConfirmation}
-	title="Delete Account"
-	confirmText="Yes, Delete My Account"
+	title="Delete account?"
+	confirmText="Yes, delete my account"
 	cancelText="Cancel"
 	confirmVariant="danger"
 	{loading}
-	loadingText="Deleting Account..."
+	loadingText="Deleting…"
 	onconfirm={deleteAccount}
 	oncancel={() => (showDeleteConfirmation = false)}
 >

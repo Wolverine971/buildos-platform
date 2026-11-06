@@ -1,9 +1,10 @@
 // apps/web/src/lib/server/thread-chat/thread-chat-replay.ts
 //
-// A free three-message conversation for the chat lab, over the /lab/sort replay projects.
+// A free four-message conversation for the chat lab, over the /lab/sort replay projects.
 // Scripted: the plan lines, Jev's picks, which reads each thread asks for, its decision
 // lines, and the reply. Real: the line readers, the apply-or-ask rule, ref and heading
-// resolution, the reads themselves (against the replay rows), reports, and follow-up memory.
+// resolution, the reads themselves (against the replay rows), reports, follow-up memory, and
+// the carried context (turn 2 starts with turn 1's Schedule section and skips rereading it).
 import type { ChatThreadReplay } from './thread-chat-thread';
 
 export type ReplayChatTurn = {
@@ -84,7 +85,8 @@ export const REPLAY_CHAT_TURNS: ReplayChatTurn[] = [
 								why: 'you think the redesign is dead',
 								sure: true,
 								ask: 'Archive "Design new channel banner"?'
-							}
+							},
+							{ op: 'keep', items: [{ ref: 'd0', sections: ['Schedule'] }] }
 						)
 					}
 				]
@@ -97,15 +99,18 @@ export const REPLAY_CHAT_TURNS: ReplayChatTurn[] = [
 				],
 				rounds: [
 					{
-						answer: lines({
-							piece: 2,
-							op: 'update',
-							ref: 't1',
-							set: { due: '2026-11-06' },
-							why: 'same task, moved to Friday',
-							sure: true,
-							confirmed: true
-						})
+						answer: lines(
+							{
+								piece: 2,
+								op: 'update',
+								ref: 't1',
+								set: { due: '2026-11-06' },
+								why: 'same task, moved to Friday',
+								sure: true,
+								confirmed: true
+							},
+							{ op: 'keep', items: [] }
+						)
 					}
 				]
 			}
@@ -122,7 +127,8 @@ export const REPLAY_CHAT_TURNS: ReplayChatTurn[] = [
 				q: 'yes archive it',
 				kind: 'update',
 				to: 'P2',
-				title: 'Yes: archive Design new channel banner'
+				title: 'Yes: archive Design new channel banner',
+				cont: true
 			},
 			{
 				s: 2,
@@ -143,7 +149,11 @@ export const REPLAY_CHAT_TURNS: ReplayChatTurn[] = [
 				rounds: [
 					{
 						reads: [
-							{ tool: 'read_doc', args: { ref: 'd0' } },
+							// Schedule came over from turn 1, so only Formats is read.
+							{
+								tool: 'read_doc',
+								args: { ref: 'd0', sections: ['Schedule', 'Formats'] }
+							},
 							{ tool: 'read_record', args: { ref: 't2' } }
 						]
 					},
@@ -167,6 +177,13 @@ export const REPLAY_CHAT_TURNS: ReplayChatTurn[] = [
 								due: null,
 								why: 'drafted from the channel plan',
 								sure: true
+							},
+							{
+								op: 'keep',
+								items: [
+									{ ref: 'd0', sections: ['Schedule', 'Formats'] },
+									{ ref: 't2' }
+								]
 							}
 						)
 					}
@@ -227,6 +244,59 @@ export const REPLAY_CHAT_TURNS: ReplayChatTurn[] = [
 			}
 		},
 		answer: "Mostly on track. The goal is a full first draft by Jan 31. Act I is locked and you're revising chapter 13, in the middle of Act II. The beta-reader milestone has no date yet.\n\n1. Set the beta-reader milestone to Dec 15?"
+	},
+	{
+		// Re-routing (tasker 152): the plan sends this to the channel because of "film"; the
+		// channel thread hands it back, a search finds "Act II outline" in Fading Crown, and a
+		// second thread answers there.
+		message:
+			'Before I film the next channel video, what does the Act II outline say about chapters 9 to 16?',
+		plan: lines(
+			{ focus: ['P2'], new: [] },
+			{
+				s: 1,
+				q: 'what does the Act II outline say about chapters 9 to 16',
+				kind: 'ask',
+				to: 'P2',
+				title: 'What the Act II outline says about chapters 9 to 16'
+			}
+		),
+		threads: {
+			'replay-yt': {
+				findMs: 300,
+				pick: [{ id: 'yt-d0', p: 0.3 }],
+				rounds: [
+					{
+						answer: lines({
+							piece: 1,
+							op: 'elsewhere',
+							look_for: 'Act II outline',
+							why: 'the channel has no Act II outline'
+						})
+					}
+				]
+			},
+			'replay-fc#rerouted': {
+				findMs: 350,
+				pick: [{ id: 'fc-d1', p: 0.95 }],
+				rounds: [
+					{
+						reads: [
+							{ tool: 'read_doc', args: { ref: 'd1', sections: ['Ch. 9 to 16'] } }
+						]
+					},
+					{
+						answer: lines({
+							piece: 1,
+							op: 'answer',
+							text: 'Chapters 9 to 16 are the siege, the bargain, and the fall of the east ward.',
+							refs: ['d1']
+						})
+					}
+				]
+			}
+		},
+		answer: ''
 	}
 ];
 

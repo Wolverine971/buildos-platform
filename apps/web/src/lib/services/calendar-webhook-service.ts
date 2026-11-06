@@ -11,6 +11,18 @@ import {
 	GoogleCalendarTargetService,
 	type CalendarTarget
 } from '$lib/server/google-calendar-target.service';
+import {
+	ingestProjectCalendarChanges,
+	type CalendarIngestEventWriter,
+	type CalendarIngestOrigin
+} from '@buildos/shared-agent-ops/calendar/calendar-change-ingest';
+import { ensureActorId } from '@buildos/shared-agent-ops/ontology/ontology-projects.service';
+import { OntoEventSyncService } from '$lib/services/ontology/onto-event-sync.service';
+
+/** Days of upcoming events copied in when a project calendar is first watched. */
+const PROJECT_CALENDAR_BACKFILL_DAYS = 90;
+/** Google drops some push notifications; a channel this quiet gets a catch-up sync. */
+const SWEEP_QUIET_HOURS = 6;
 
 export interface WebhookChannel {
 	id: string;
@@ -82,6 +94,8 @@ type CalendarWebhookServiceOptions = {
 	connectionService?: Pick<GoogleCalendarConnectionService, 'getAuthenticatedClient'>;
 	targetService?: Pick<GoogleCalendarTargetService, 'resolveExplicitSource'>;
 	createCalendarApi?: (auth: unknown) => CalendarApi;
+	/** Event writer for project calendar ingest (tasker 154). Tests inject a fake. */
+	createIngestWriter?: () => CalendarIngestEventWriter;
 };
 
 type CalendarRuntime = {
@@ -99,6 +113,7 @@ export class CalendarWebhookService {
 	private connectionService: Pick<GoogleCalendarConnectionService, 'getAuthenticatedClient'>;
 	private targetService: Pick<GoogleCalendarTargetService, 'resolveExplicitSource'>;
 	private createCalendarApi: (auth: unknown) => CalendarApi;
+	private createIngestWriter: () => CalendarIngestEventWriter;
 	private readonly retryConfig: RetryConfig = {
 		maxRetries: 5,
 		initialDelay: 1000, // 1 second
@@ -122,6 +137,60 @@ export class CalendarWebhookService {
 		this.createCalendarApi =
 			options.createCalendarApi ??
 			((auth) => google.calendar({ version: 'v3', auth: auth as any }));
+		this.createIngestWriter =
+			options.createIngestWriter ?? (() => new OntoEventSyncService(supabase as any));
+	}
+
+	/**
+	 * Tasker 154: apply changes on a project calendar to its BuildOS events. Never throws:
+	 * the legacy task/time-block sync and the sync cursor must not depend on it.
+	 */
+	private async ingestProjectChanges(params: {
+		userId: string;
+		calendarId: string;
+		calendarSourceId: string | null | undefined;
+		events: calendar_v3.Schema$Event[];
+		origin: CalendarIngestOrigin;
+		fullListing: boolean;
+		timezone: string | null | undefined;
+	}): Promise<void> {
+		if (!params.events.length) return;
+		try {
+			const result = await ingestProjectCalendarChanges({
+				supabase: this.supabase as any,
+				writer: this.createIngestWriter(),
+				userId: params.userId,
+				providerCalendarId: params.calendarId,
+				calendarSourceId: params.calendarSourceId ?? null,
+				events: params.events,
+				origin: params.origin,
+				fullListing: params.fullListing,
+				userTimezone: params.timezone ?? null,
+				resolveActorId: (userId) => ensureActorId(this.supabase as any, userId)
+			});
+			if (!result.notProjectCalendar) {
+				console.log('[INGEST] Project calendar changes:', {
+					userId: params.userId,
+					origin: params.origin,
+					applied: result.applied,
+					skipped: result.skipped,
+					failed: result.failed
+				});
+			}
+		} catch (error) {
+			await this.errorLogger.logCalendarError(
+				error,
+				'sync',
+				params.calendarId,
+				params.userId,
+				{
+					operation: 'ingestProjectCalendarChanges',
+					errorType: 'calendar_project_ingest_failure',
+					calendarId: params.calendarId,
+					origin: params.origin
+				}
+			);
+		}
 	}
 
 	private async resolveCalendarRuntime(
@@ -552,6 +621,15 @@ export class CalendarWebhookService {
 				calendarSourceId,
 				userData?.timezone
 			);
+			await this.ingestProjectChanges({
+				userId,
+				calendarId,
+				calendarSourceId,
+				events: allEvents,
+				origin: 'sweep',
+				fullListing: true,
+				timezone: userData?.timezone
+			});
 			const skippedCount = allEvents.length - processedCount;
 
 			console.log('[RESYNC] Processing complete:', {
@@ -798,7 +876,8 @@ export class CalendarWebhookService {
 		calendarId: string,
 		syncToken: string | null,
 		isRetry: boolean = false,
-		calendarSourceId?: string | null
+		calendarSourceId?: string | null,
+		origin: CalendarIngestOrigin = 'live'
 	): Promise<number> {
 		// Validate inputs
 		if (!userId || typeof userId !== 'string') {
@@ -960,6 +1039,16 @@ export class CalendarWebhookService {
 				calendarSourceId,
 				userData?.timezone
 			);
+			await this.ingestProjectChanges({
+				userId,
+				calendarId,
+				calendarSourceId,
+				events: relevantChanges,
+				origin,
+				// No sync token means this was a fresh listing, not a delta.
+				fullListing: !syncToken,
+				timezone: userData?.timezone
+			});
 
 			// Update sync token. A failed write keeps the old cursor so the same
 			// changes are fetched and applied again on the next notification.
@@ -2040,6 +2129,273 @@ export class CalendarWebhookService {
 	/**
 	 * Unregister webhook
 	 */
+	/**
+	 * Tasker 154: every project calendar is watched, so edits made in Google flow back.
+	 * The first time a project calendar is seen (inbound_backfilled_at is null) its source gets
+	 * read + sync turned on, it is watched, and its upcoming events are copied into the
+	 * project. After that the user's calendar settings win: a source they turn off stays off.
+	 */
+	async ensureProjectCalendarsWatched(
+		webhookUrl: string,
+		options: { userId?: string; limit?: number } = {}
+	): Promise<{ checked: number; enabled: number; registered: number; failed: number }> {
+		const summary = { checked: 0, enabled: 0, registered: 0, failed: 0 };
+		let query = this.supabase
+			.from('project_calendars')
+			.select('id, user_id, calendar_id, calendar_source_id, inbound_backfilled_at')
+			.eq('sync_enabled', true)
+			.order('created_at', { ascending: true })
+			.limit(Math.max(1, Math.min(options.limit ?? 200, 500)));
+		if (options.userId) query = query.eq('user_id', options.userId);
+		const { data: projectCalendars, error } = await query;
+		if (error) throw error;
+		const rows = (projectCalendars ?? []) as Array<{
+			id: string;
+			user_id: string;
+			calendar_id: string;
+			calendar_source_id: string | null;
+			inbound_backfilled_at: string | null;
+		}>;
+		if (!rows.length) return summary;
+
+		const userIds = [...new Set(rows.map((row) => row.user_id))];
+		const [{ data: sources, error: sourceError }, { data: channels, error: channelError }] =
+			await Promise.all([
+				this.supabase
+					.from('user_calendar_sources')
+					.select('id, user_id, provider_calendar_id, sync_enabled, access_role')
+					.in('user_id', userIds)
+					.is('deleted_at', null)
+					.is('provider_deleted_at', null),
+				this.supabase
+					.from('calendar_webhook_channels')
+					.select('user_id, calendar_id, calendar_source_id')
+					.in('user_id', userIds)
+			]);
+		if (sourceError) throw sourceError;
+		if (channelError) throw channelError;
+		const sourceRows = (sources ?? []) as Array<{
+			id: string;
+			user_id: string;
+			provider_calendar_id: string;
+			sync_enabled: boolean;
+			access_role: string;
+		}>;
+		const watchedSources = new Set(
+			(channels ?? []).map((channel: any) => channel.calendar_source_id).filter(Boolean)
+		);
+		const watchedLegacy = new Set(
+			(channels ?? [])
+				.filter((channel: any) => !channel.calendar_source_id)
+				.map((channel: any) => `${channel.user_id}:${channel.calendar_id}`)
+		);
+		const usersWithSources = new Set(sourceRows.map((source) => source.user_id));
+		const seen = new Set<string>();
+
+		for (const row of rows) {
+			const source =
+				sourceRows.find((candidate) => candidate.id === row.calendar_source_id) ??
+				sourceRows.find(
+					(candidate) =>
+						candidate.user_id === row.user_id &&
+						candidate.provider_calendar_id === row.calendar_id
+				);
+			const key = source ? `source:${source.id}` : `legacy:${row.user_id}:${row.calendar_id}`;
+			const firstTime = !row.inbound_backfilled_at;
+			if (seen.has(key)) {
+				if (firstTime) await this.markProjectCalendarBackfilled(row.id);
+				continue;
+			}
+			seen.add(key);
+			summary.checked += 1;
+
+			try {
+				if (source) {
+					if (!source.sync_enabled) {
+						if (
+							!firstTime ||
+							!['owner', 'writer', 'writerWithoutPrivateAccess'].includes(
+								source.access_role
+							)
+						) {
+							continue;
+						}
+						const { error: prefError } = await this.supabase.rpc(
+							'set_calendar_source_preferences',
+							{
+								p_user_id: source.user_id,
+								p_calendar_source_id: source.id,
+								p_read_enabled: true,
+								p_sync_enabled: true
+							}
+						);
+						if (prefError) throw prefError;
+						summary.enabled += 1;
+					}
+					if (!watchedSources.has(source.id)) {
+						const result = await this.registerWebhook(
+							source.user_id,
+							webhookUrl,
+							source.provider_calendar_id,
+							source.id
+						);
+						if (!result.success) throw new Error(result.error ?? 'watch failed');
+						summary.registered += 1;
+					}
+					if (
+						firstTime &&
+						(await this.backfillProjectCalendar(
+							source.user_id,
+							source.provider_calendar_id,
+							source.id
+						))
+					) {
+						await this.markProjectCalendarBackfilled(row.id);
+					}
+				} else {
+					// Multi-account users always have sources; a missing one is a stale link.
+					if (usersWithSources.has(row.user_id)) continue;
+					if (!watchedLegacy.has(`${row.user_id}:${row.calendar_id}`)) {
+						const result = await this.registerWebhook(
+							row.user_id,
+							webhookUrl,
+							row.calendar_id,
+							null
+						);
+						if (!result.success) throw new Error(result.error ?? 'watch failed');
+						summary.registered += 1;
+					}
+					if (
+						firstTime &&
+						(await this.backfillProjectCalendar(row.user_id, row.calendar_id, null))
+					) {
+						await this.markProjectCalendarBackfilled(row.id);
+					}
+				}
+			} catch (error) {
+				summary.failed += 1;
+				console.error('[PROJECT_CALENDAR_WATCH] Failed to watch a project calendar:', {
+					projectCalendarId: row.id,
+					userId: row.user_id,
+					error: error instanceof Error ? error.message : String(error)
+				});
+			}
+		}
+		return summary;
+	}
+
+	private async markProjectCalendarBackfilled(projectCalendarId: string): Promise<void> {
+		const { error } = await this.supabase
+			.from('project_calendars')
+			.update({ inbound_backfilled_at: new Date().toISOString() } as any)
+			.eq('id', projectCalendarId);
+		if (error) console.error('[PROJECT_CALENDAR_WATCH] Failed to mark backfill:', error);
+	}
+
+	/** Copy a newly watched project calendar's upcoming events into its project. */
+	async backfillProjectCalendar(
+		userId: string,
+		calendarId: string,
+		calendarSourceId: string | null
+	): Promise<boolean> {
+		try {
+			const runtime = await this.resolveCalendarRuntime(userId, calendarId, calendarSourceId);
+			const now = new Date();
+			const timeMax = new Date(now.getTime() + PROJECT_CALENDAR_BACKFILL_DAYS * 86_400_000);
+			const events: calendar_v3.Schema$Event[] = [];
+			let pageToken: string | undefined;
+			let pages = 0;
+			do {
+				pages += 1;
+				const response = await this.executeWithBackoff(() =>
+					runtime.calendar.events.list({
+						calendarId: runtime.providerCalendarId,
+						timeMin: now.toISOString(),
+						timeMax: timeMax.toISOString(),
+						singleEvents: false,
+						showDeleted: false,
+						maxResults: 250,
+						pageToken
+					})
+				);
+				events.push(...(response.data.items ?? []));
+				pageToken = response.data.nextPageToken ?? undefined;
+			} while (pageToken && pages < 10);
+
+			const { data: userData } = await this.supabase
+				.from('users')
+				.select('timezone')
+				.eq('id', userId)
+				.maybeSingle();
+			await this.ingestProjectChanges({
+				userId,
+				calendarId: runtime.providerCalendarId,
+				calendarSourceId: runtime.calendarSourceId,
+				events,
+				origin: 'backfill',
+				fullListing: false,
+				timezone: (userData as { timezone?: string | null } | null)?.timezone
+			});
+			return true;
+		} catch (error) {
+			console.error('[PROJECT_CALENDAR_WATCH] Backfill failed:', {
+				userId,
+				calendarId,
+				error: error instanceof Error ? error.message : String(error)
+			});
+			return false;
+		}
+	}
+
+	/**
+	 * Google says some push notifications are dropped. Channels that have been quiet for a
+	 * while get the same incremental sync a notification would trigger.
+	 */
+	async sweepQuietChannels(
+		options: { quietHours?: number; limit?: number } = {}
+	): Promise<{ swept: number; failed: number }> {
+		const quietSince = new Date(
+			Date.now() - (options.quietHours ?? SWEEP_QUIET_HOURS) * 3_600_000
+		).toISOString();
+		const { data, error } = await this.supabase
+			.from('calendar_webhook_channels')
+			.select('user_id, calendar_id, calendar_source_id, sync_token, expiration')
+			.lt('updated_at', quietSince)
+			.gt('expiration', Date.now())
+			.not('sync_token', 'is', null)
+			.order('updated_at', { ascending: true })
+			.limit(Math.max(1, Math.min(options.limit ?? 25, 100)));
+		if (error) throw error;
+		let swept = 0;
+		let failed = 0;
+		for (const channel of (data ?? []) as Array<{
+			user_id: string;
+			calendar_id: string;
+			calendar_source_id: string | null;
+			sync_token: string | null;
+		}>) {
+			try {
+				await this.syncCalendarChanges(
+					channel.user_id,
+					channel.calendar_id,
+					channel.sync_token,
+					false,
+					channel.calendar_source_id,
+					'sweep'
+				);
+				swept += 1;
+			} catch (sweepError) {
+				failed += 1;
+				console.error('[SWEEP] Calendar catch-up sync failed:', {
+					userId: channel.user_id,
+					calendarId: channel.calendar_id,
+					error: sweepError instanceof Error ? sweepError.message : String(sweepError)
+				});
+			}
+		}
+		return { swept, failed };
+	}
+
 	async unregisterWebhook(
 		userId: string,
 		calendarId: string = 'primary',

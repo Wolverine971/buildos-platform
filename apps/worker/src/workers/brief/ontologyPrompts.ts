@@ -723,9 +723,17 @@ ${project.project.description ? `- Description: ${project.project.description}` 
 				prompt += `Updated: ${project.startHere.updatedAt}\n`;
 			}
 			if (project.startHere.truncated) {
-				prompt += `Excerpt is truncated; use it for orientation only.\n`;
+				prompt += `Trimmed to fit; use it for orientation only.\n`;
 			}
-			prompt += `\n${project.startHere.excerpt}\n`;
+			if (project.startHere.orientation) {
+				prompt += `\nWhat this is: ${project.startHere.orientation}\n`;
+			}
+			if (project.startHere.currentState) {
+				prompt += `\nCurrent state:\n${project.startHere.currentState}\n`;
+			}
+			if (project.startHere.status) {
+				prompt += `\nStatus: ${project.startHere.status}\n`;
+			}
 		}
 
 		prompt += `\n## Calendar Today (${project.calendarToday.length})\n`;

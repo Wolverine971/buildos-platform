@@ -1,7 +1,6 @@
 <!-- apps/web/src/lib/components/profile/GmailReadPanel.svelte -->
 <script lang="ts">
 	import { CircleAlert, Mail, Search, ShieldCheck } from '$lib/icons/lucide';
-	import Badge from '$lib/components/ui/Badge.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import type {
@@ -246,13 +245,13 @@
 
 <SettingsCard
 	title="Read Gmail"
-	description="Search selected accounts on demand. BuildOS fetches only the messages you choose to open."
+	description="Search selected accounts on demand. BuildOS fetches only the messages you open."
 	icon={Mail}
 	bodyClass="space-y-4"
 >
-	<div class="rounded-lg border border-info/30 bg-info/5 p-3" role="note">
+	<div class="rounded-lg border border-border bg-muted/50 p-3" role="note">
 		<div class="flex items-start gap-2">
-			<ShieldCheck class="mt-0.5 h-4 w-4 flex-shrink-0 text-info" />
+			<ShieldCheck class="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
 			<p class="text-xs text-muted-foreground">
 				Read-only preview. This surface cannot send, draft, archive, label, delete, or mark
 				messages as read. Attachments and remote images are not loaded.
@@ -262,11 +261,9 @@
 
 	{#if readableConnections.length === 0}
 		<div class="rounded-lg border border-dashed border-border px-4 py-8 text-center">
-			<p class="text-sm font-medium text-foreground">
-				No readable Gmail account is available
-			</p>
+			<p class="text-sm font-medium text-foreground">No readable Gmail account</p>
 			<p class="mt-1 text-sm text-muted-foreground">
-				Connect or reconnect a Gmail account above to use read-only search.
+				Connect or reconnect a Gmail account above to search it
 			</p>
 		</div>
 	{:else}
@@ -276,7 +273,7 @@
 				<div class="flex gap-2">
 					<button
 						type="button"
-						class="text-xs font-medium text-accent hover:underline"
+						class="text-xs font-medium text-muted-foreground hover:text-foreground"
 						onclick={selectAllAccounts}>Select all</button
 					>
 					<button
@@ -289,7 +286,7 @@
 			<div class="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 				{#each readableConnections as connection (connection.id)}
 					<label
-						class="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-card px-3 py-2.5 hover:border-accent/40"
+						class="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:bg-muted/50"
 					>
 						<input
 							type="checkbox"
@@ -314,7 +311,7 @@
 			<div class="min-w-0 flex-1">
 				<TextInput
 					bind:value={query}
-					placeholder="Search Gmail, for example: newer_than:7d from:client@example.com"
+					placeholder="e.g. newer_than:7d from:client@example.com"
 					maxlength={300}
 					aria-label="Gmail search query"
 				/>
@@ -326,12 +323,12 @@
 				loading={searching}
 				disabled={!canSearch}
 			>
-				Search selected accounts
+				Search
 			</Button>
 		</form>
 
 		{#if selectedReadableIds.length === 0}
-			<p class="text-xs text-muted-foreground">Select at least one account to search.</p>
+			<p class="text-xs text-muted-foreground">Select at least one account to search</p>
 		{/if}
 
 		{#if searchError}
@@ -352,10 +349,9 @@
 			)}
 			<div class="space-y-3" aria-live="polite">
 				<div class="flex flex-wrap items-center justify-between gap-2">
-					<p class="text-sm font-medium text-foreground">
-						{searchResult.messages.length} message{searchResult.messages.length === 1
-							? ''
-							: 's'}
+					<p class="text-xs text-muted-foreground">
+						<span class="font-mono tabular-nums">{searchResult.messages.length}</span>
+						{searchResult.messages.length === 1 ? 'message' : 'messages'}
 					</p>
 					<p class="text-xs text-muted-foreground">
 						Fetched {formatDate(searchResult.fetchedAt)}
@@ -363,12 +359,16 @@
 				</div>
 
 				{#if unavailableAccounts.length > 0}
-					<div class="rounded-lg border border-warning/30 bg-warning/5 p-3">
-						<p class="text-xs text-muted-foreground">
-							Some accounts could not be searched:
-							{unavailableAccounts.map((account) => account.accountLabel).join(', ')}.
-							Reconnect them above if the issue continues.
-						</p>
+					<div class="rounded-lg border border-border bg-muted/50 p-3">
+						<div class="flex items-start gap-2">
+							<CircleAlert class="mt-0.5 h-4 w-4 flex-shrink-0 text-warning" />
+							<p class="text-xs text-muted-foreground">
+								Some accounts could not be searched:
+								{unavailableAccounts
+									.map((account) => account.accountLabel)
+									.join(', ')}. Reconnect them above if the issue continues.
+							</p>
+						</div>
 					</div>
 				{/if}
 
@@ -378,7 +378,7 @@
 					>
 						<p class="text-sm font-medium text-foreground">No matching messages</p>
 						<p class="mt-1 text-sm text-muted-foreground">
-							Try a broader Gmail search query or another selected account.
+							Try a broader search or another account
 						</p>
 					</div>
 				{:else}
@@ -393,7 +393,9 @@
 								onclick={() => openMessage(message)}
 							>
 								<div class="flex flex-wrap items-center gap-2">
-									<Badge variant="info" size="sm">{message.accountLabel}</Badge>
+									<span class="text-xs text-muted-foreground"
+										>{message.accountLabel}</span
+									>
 									<span class="truncate text-sm font-medium text-foreground">
 										{message.from}
 									</span>
@@ -401,7 +403,7 @@
 										{formatDate(message.internalDate)}
 									</span>
 								</div>
-								<p class="mt-1 truncate text-sm font-semibold text-foreground">
+								<p class="mt-1 truncate text-sm font-medium text-foreground">
 									{message.subject}
 								</p>
 								<p class="mt-1 line-clamp-2 text-xs text-muted-foreground">
@@ -425,12 +427,12 @@
 						{#each pageableAccounts as account (account.connectionId)}
 							<button
 								type="button"
-								class="rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground hover:border-accent/40 hover:bg-muted/50 disabled:cursor-wait disabled:opacity-60"
+								class="rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted/50 disabled:cursor-wait disabled:opacity-60"
 								disabled={loadingMoreConnectionId !== null || searching}
 								onclick={() => loadMore(account)}
 							>
 								{loadingMoreConnectionId === account.connectionId
-									? `Loading more from ${account.accountLabel}…`
+									? `Loading more from ${account.accountLabel}`
 									: `Load more from ${account.accountLabel}`}
 							</button>
 						{/each}
@@ -452,15 +454,16 @@
 		{/if}
 
 		{#if selectedMessage}
-			<article class="rounded-lg border border-border bg-card p-4 shadow-ink">
+			<article class="rounded-lg border border-border bg-card p-4">
 				<div class="flex flex-wrap items-center gap-2">
-					<Badge variant="info" size="sm">{selectedMessage.accountLabel}</Badge>
-					<Badge variant="success" size="sm">Read only</Badge>
+					<span class="text-xs text-muted-foreground"
+						>{selectedMessage.accountLabel} · Read only</span
+					>
 					<span class="ml-auto text-xs text-muted-foreground">
 						Fetched {formatDate(selectedMessage.fetchedAt)}
 					</span>
 				</div>
-				<h3 class="mt-3 text-base font-semibold text-foreground">
+				<h3 class="mt-3 text-base font-medium text-foreground">
 					{selectedMessage.subject}
 				</h3>
 				<dl class="mt-3 grid gap-2 text-xs sm:grid-cols-[5rem_1fr]">
@@ -482,12 +485,14 @@
 
 				<div class="mt-4 border-t border-border pt-4">
 					<p class="whitespace-pre-wrap break-words text-sm leading-6 text-foreground">
-						{selectedMessage.bodyText || 'No supported text body was available.'}
+						{selectedMessage.bodyText || 'No supported text body'}
 					</p>
 				</div>
 
 				{#if selectedMessage.bodyTruncated || selectedMessage.hasUnsupportedAttachments}
-					<div class="mt-4 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+					<div
+						class="mt-4 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground"
+					>
 						{#if selectedMessage.bodyTruncated}
 							The displayed body was shortened to the safe preview limit.
 						{/if}

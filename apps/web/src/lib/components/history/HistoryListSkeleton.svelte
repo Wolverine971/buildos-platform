@@ -21,17 +21,14 @@
 <div class="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3">
 	{#each Array(count) as _, i (i)}
 		<div
-			class="group flex h-full flex-col rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-pulse tx-weak animate-pulse"
+			class="group flex h-full flex-col rounded-xl border border-border bg-card p-3 sm:p-4 tx tx-pulse tx-weak animate-pulse"
 			aria-hidden="true"
 			style="animation-delay: {i * 50}ms"
 		>
 			<!-- Header: Type badge and status -->
-			<div class="mb-1 sm:mb-2 flex items-center justify-between">
+			<div class="mb-2 flex min-h-6 items-center justify-between">
 				<!-- Type badge skeleton - icon only on mobile -->
-				<div class="h-4 w-6 sm:h-5 sm:w-16 rounded-full bg-muted"></div>
-				<!-- Status pill skeleton - icon-only pill on mobile, labeled on desktop
-				     (matches the real bordered status badge, not a bare dot) -->
-				<div class="h-4 w-6 sm:h-5 sm:w-16 rounded-full bg-muted"></div>
+				<div class="h-3 w-4 sm:w-12 rounded bg-muted"></div>
 			</div>
 
 			<!-- Title skeleton -->
@@ -48,23 +45,15 @@
 				<div class="hidden sm:block h-4 w-3/4 rounded bg-muted"></div>
 			</div>
 
-			<!-- Topics skeleton - compact on mobile -->
-			<div class="mb-1.5 sm:mb-3 flex flex-wrap gap-0.5 sm:gap-1">
-				<div class="h-3 sm:h-4 w-10 sm:w-12 rounded-full bg-muted"></div>
-				<div class="h-3 sm:h-4 w-8 sm:w-16 rounded-full bg-muted"></div>
-			</div>
+			<!-- Topics skeleton: one muted line -->
+			<div class="mb-2 h-3 w-2/3 rounded bg-muted sm:mb-3"></div>
 
 			<!-- Footer: Metadata skeleton - compact on mobile -->
-			<div
-				class="mt-auto flex items-center justify-between border-t border-border pt-1.5 sm:pt-3"
-			>
+			<div class="mt-auto flex items-center justify-between">
 				<!-- Date skeleton -->
 				<div class="h-2.5 sm:h-3 w-14 sm:w-24 rounded bg-muted"></div>
-				<!-- Message count + chevron skeleton -->
-				<div class="flex items-center gap-1 sm:gap-2">
-					<div class="h-2.5 sm:h-3 w-5 sm:w-8 rounded bg-muted"></div>
-					<div class="h-3 w-3 sm:h-4 sm:w-4 rounded bg-muted"></div>
-				</div>
+				<!-- Message count skeleton -->
+				<div class="h-3 w-6 rounded bg-muted"></div>
 			</div>
 		</div>
 	{/each}

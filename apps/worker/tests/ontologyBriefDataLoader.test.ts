@@ -17,8 +17,11 @@ import {
 	selectCalendarBriefItems,
 	createEmptyCalendarBriefSection,
 	resolveCalendarBriefSource,
+	buildBriefStartHereContext,
+	trimToWholeUnits,
 	OntologyBriefDataLoader
 } from '../src/workers/brief/ontologyBriefDataLoader';
+import { buildStartHereTemplate } from '@buildos/shared-agent-ops/ontology/start-here';
 import type {
 	OntoTask,
 	OntoGoal,
@@ -1241,5 +1244,241 @@ describe('findUnblockingTasks', () => {
 		const result = findUnblockingTasks(tasks, edges);
 
 		expect(result).toHaveLength(0);
+	});
+});
+
+// ============================================================================
+// START HERE ORIENTATION (tasker 152)
+// ============================================================================
+
+const RENDERED_STATUS = [
+	'<!-- managed:status v=1 -->',
+	'**State:** active · **Stage:** build',
+	'**Now:** 4 open tasks · 1 overdue',
+	'**Next step:** Send issue one to the editor.',
+	'_Last refreshed 2026-11-04 from project snapshot._',
+	'<!-- /managed:status -->'
+].join('\n');
+
+function startHereRow(content: string | null) {
+	return {
+		id: 'doc-sh',
+		title: 'START HERE - Newsletter',
+		content,
+		updated_at: '2026-11-04T12:00:00Z'
+	};
+}
+
+describe('buildBriefStartHereContext', () => {
+	it('labels orientation, written Current state, and the rendered status', () => {
+		const content = [
+			'# START HERE - Newsletter',
+			'',
+			RENDERED_STATUS,
+			'',
+			'## What this is',
+			'A weekly essay newsletter for indie founders. Done means 12 issues shipped.',
+			'',
+			'## Non-goals',
+			'> _Capture target: what this project is deliberately not doing, and why._',
+			'',
+			'## Current state',
+			'Issue one is drafted and waiting on edits.',
+			'> _Capture target: what just happened, what is in progress, and what is blocked._',
+			'',
+			'## Decisions',
+			'- **Substack** - fastest to start. _(2026-10-01)_'
+		].join('\n');
+
+		const context = buildBriefStartHereContext(startHereRow(content));
+
+		expect(context).toEqual({
+			documentId: 'doc-sh',
+			title: 'START HERE - Newsletter',
+			orientation:
+				'A weekly essay newsletter for indie founders. Done means 12 issues shipped.',
+			currentState: 'Issue one is drafted and waiting on edits.',
+			status: 'State: active · Stage: build · Now: 4 open tasks · 1 overdue · Next step: Send issue one to the editor. (refreshed 2026-11-04)',
+			updatedAt: '2026-11-04T12:00:00Z',
+			truncated: false
+		});
+	});
+
+	it('skips an unfilled template entirely', () => {
+		const template = buildStartHereTemplate({ projectName: 'Newsletter' });
+		expect(buildBriefStartHereContext(startHereRow(template))).toBeNull();
+		expect(buildBriefStartHereContext(startHereRow(null))).toBeNull();
+	});
+
+	it('does not count a rendered status alone as written content', () => {
+		const template = buildStartHereTemplate({ projectName: 'Newsletter' }).replace(
+			/<!-- managed:status v=1 -->[\s\S]*?<!-- \/managed:status -->/,
+			RENDERED_STATUS
+		);
+		expect(buildBriefStartHereContext(startHereRow(template))).toBeNull();
+	});
+
+	it('omits the never-rendered status template copy', () => {
+		const content = buildStartHereTemplate({
+			projectName: 'Newsletter',
+			projectDescription: 'A weekly essay newsletter.'
+		});
+		const context = buildBriefStartHereContext(startHereRow(content));
+		expect(context?.orientation).toBe('A weekly essay newsletter.');
+		expect(context?.currentState).toBeNull();
+		expect(context?.status).toBeNull();
+	});
+
+	it('reads the older Vision & Summary dialect', () => {
+		const content = [
+			'# Herb Garden Context Document',
+			'',
+			'## Vision & Summary',
+			'',
+			'Set up a small balcony herb garden by end of July.',
+			'',
+			'## Initial Tasks / Threads',
+			'- Buy pots · todo'
+		].join('\n');
+		const context = buildBriefStartHereContext(startHereRow(content));
+		expect(context?.orientation).toBe('Set up a small balcony herb garden by end of July.');
+		expect(context?.currentState).toBeNull();
+	});
+
+	it('shows Current state once when it is also the fallback orientation', () => {
+		const content = [
+			'# START HERE - Newsletter',
+			'',
+			'## What this is',
+			'> _Capture target: one paragraph on what this project is._',
+			'',
+			'## Current state',
+			'Issue one is drafted.'
+		].join('\n');
+		const context = buildBriefStartHereContext(startHereRow(content));
+		expect(context?.orientation).toBeNull();
+		expect(context?.currentState).toBe('Issue one is drafted.');
+	});
+
+	it('stays within budget by dropping whole sentences, never mid-word', () => {
+		const sentence = 'The essay pipeline keeps moving every single week. ';
+		const content = [
+			'## What this is',
+			sentence.repeat(20).trim(),
+			'',
+			'## Current state',
+			Array.from({ length: 40 }, (_, index) => `- Item ${index + 1} is in progress.`).join(
+				'\n'
+			)
+		].join('\n');
+
+		const context = buildBriefStartHereContext(startHereRow(content), 1200);
+		expect(context?.truncated).toBe(true);
+		const total = (context?.orientation ?? '').length + (context?.currentState ?? '').length;
+		expect(total).toBeLessThanOrEqual(1200);
+		expect(context?.orientation?.endsWith('week.')).toBe(true);
+		expect(context?.currentState?.split('\n').every((line) => line.endsWith('progress.'))).toBe(
+			true
+		);
+	});
+});
+
+describe('trimToWholeUnits', () => {
+	it('returns short text untouched', () => {
+		expect(trimToWholeUnits('  Short.  ', 100)).toEqual({ text: 'Short.', truncated: false });
+	});
+
+	it('keeps whole paragraphs, then whole sentences', () => {
+		const text = 'First paragraph.\n\nSecond one here. And another sentence.';
+		expect(trimToWholeUnits(text, 40)).toEqual({
+			text: 'First paragraph.\n\nSecond one here.',
+			truncated: true
+		});
+	});
+
+	it('cuts one over-long sentence at a word boundary', () => {
+		const result = trimToWholeUnits('alpha beta gamma delta epsilon', 14);
+		expect(result).toEqual({ text: 'alpha beta…', truncated: true });
+	});
+});
+
+describe('OntologyBriefDataLoader START HERE reads', () => {
+	it('reads bodies only for the one picked doc per project', async () => {
+		const inCalls: Array<{ column: string; ids: string[] }> = [];
+		const supabase = {
+			from: vi.fn(() => ({
+				select: vi.fn((columns: string) => {
+					expect(columns).toBe('id, content');
+					return {
+						in: vi.fn(async (column: string, ids: string[]) => {
+							inCalls.push({ column, ids });
+							return {
+								data: [
+									{ id: 'sh-a-new', content: '## What this is\nProject A.' },
+									{
+										id: 'sh-b',
+										content: buildStartHereTemplate({ projectName: 'B' })
+									}
+								],
+								error: null
+							};
+						})
+					};
+				})
+			}))
+		};
+		const loader = new OntologyBriefDataLoader(supabase as never);
+		const contexts = await (
+			loader as unknown as {
+				loadStartHereContexts: (
+					rows: Array<Record<string, unknown>>
+				) => Promise<Map<string, { documentId: string; orientation: string | null }>>;
+			}
+		).loadStartHereContexts([
+			{
+				id: 'sh-a-old',
+				project_id: 'project-a',
+				title: 'START HERE - A',
+				props: {},
+				created_at: '2026-10-01T00:00:00Z',
+				updated_at: '2026-10-01T00:00:00Z'
+			},
+			{
+				id: 'sh-a-new',
+				project_id: 'project-a',
+				title: 'START HERE - A',
+				props: {},
+				created_at: '2026-10-02T00:00:00Z',
+				updated_at: '2026-11-01T00:00:00Z'
+			},
+			{
+				id: 'sh-b',
+				project_id: 'project-b',
+				title: 'START HERE - B',
+				props: { origin: 'start_here_template' },
+				created_at: '2026-10-02T00:00:00Z',
+				updated_at: '2026-10-02T00:00:00Z'
+			}
+		]);
+
+		expect(inCalls).toEqual([{ column: 'id', ids: ['sh-a-new', 'sh-b'] }]);
+		expect(contexts.get('project-a')).toMatchObject({
+			documentId: 'sh-a-new',
+			orientation: 'Project A.'
+		});
+		// Project B is still an unfilled template: no block.
+		expect(contexts.has('project-b')).toBe(false);
+	});
+
+	it('skips the body read when there are no candidates', async () => {
+		const supabase = { from: vi.fn() };
+		const loader = new OntologyBriefDataLoader(supabase as never);
+		const contexts = await (
+			loader as unknown as {
+				loadStartHereContexts: (rows: unknown[]) => Promise<Map<string, unknown>>;
+			}
+		).loadStartHereContexts([]);
+		expect(contexts.size).toBe(0);
+		expect(supabase.from).not.toHaveBeenCalled();
 	});
 });

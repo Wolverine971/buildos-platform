@@ -4,6 +4,8 @@ import {
 	ACTIVE_RUNTIME_MODEL_IDS,
 	DEEPSEEK_V41_FLASH_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL,
+	DEEPSEEK_V4_FLASH_ZDR_PROVIDER_IGNORE,
+	DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER,
 	DEEPSEEK_V4_PRO_MODEL,
 	GLM_52_MODEL,
 	GLM_53_MODEL,
@@ -232,5 +234,44 @@ describe('resolveModelPricingProfile', () => {
 		]);
 
 		expect(result?.modelId).toBe(DEEPSEEK_V4_FLASH_MODEL);
+	});
+});
+
+describe('DeepSeek V4 Flash ZDR provider lists', () => {
+	// 2026-11-05 snapshot of OpenRouter's /endpoints/zdr list for V4 Flash. A host
+	// missing from it is a dead preference (every request requires ZDR).
+	const ZDR_HOSTS_2026_11_05 = [
+		'azure',
+		'deepinfra',
+		'digitalocean',
+		'fireworks',
+		'mancer',
+		'parasail',
+		'relace',
+		'siliconflow',
+		'venice',
+		'wafer'
+	];
+
+	it('names only ZDR hosts, fastest measured first, and never a host it also ignores', () => {
+		expect(DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER[0]).toBe('relace');
+		for (const host of [
+			...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER,
+			...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_IGNORE
+		]) {
+			expect(ZDR_HOSTS_2026_11_05).toContain(host);
+		}
+		for (const host of DEEPSEEK_V4_FLASH_ZDR_PROVIDER_IGNORE) {
+			expect(DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER).not.toContain(host);
+		}
+		expect(new Set(DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER).size).toBe(
+			DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER.length
+		);
+	});
+
+	it('drops hosts that stopped serving V4 Flash', () => {
+		for (const gone of ['nextbit', 'open-inference', 'novita', 'crusoe']) {
+			expect(DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER).not.toContain(gone);
+		}
 	});
 });

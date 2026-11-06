@@ -239,11 +239,22 @@ export interface OntoProjectWithRelations {
 	recentUpdates: RecentUpdates;
 }
 
+/**
+ * What the brief reads from a project's START HERE doc: labelled parts, never a
+ * raw prefix of the body. At least one of `orientation` / `currentState` is set;
+ * a project whose START HERE is still an unfilled template gets no context.
+ */
 export interface ProjectStartHereContext {
 	documentId: string;
 	title: string;
-	excerpt: string;
+	/** "What this is" paragraph (or the older "Vision & Summary" dialect). */
+	orientation: string | null;
+	/** Authored "Current state" section, only when real text was written. */
+	currentState: string | null;
+	/** One-line rendering of the machine-owned `managed:status` region. */
+	status: string | null;
 	updatedAt: string | null;
+	/** True when a part lost whole paragraphs or sentences to the size budget. */
 	truncated: boolean;
 }
 

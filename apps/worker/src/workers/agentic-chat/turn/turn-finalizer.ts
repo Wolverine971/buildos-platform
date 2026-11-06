@@ -15,6 +15,7 @@ import {
 	buildAgenticChatCompletionReceiptV1,
 	resolveRequestExpectationOutcome
 } from '@buildos/agentic-chat-runtime/loop';
+import { buildTurnWorkingSetV1 } from '@buildos/agentic-chat-runtime/working-set';
 import { contractSha256 } from '../provider/validation';
 import { resolveReviewedTurnContractFromExecutions } from './reviewed-turn-contract';
 import {
@@ -23,6 +24,7 @@ import {
 	type AgenticChatTerminalFinalizeRpcResultV1,
 	type ChatContextType,
 	type ChatTurnTerminalStatusV1,
+	type Json,
 	type JsonObject
 } from '@buildos/shared-types';
 import type {
@@ -758,15 +760,30 @@ function buildTerminalLastTurnContext(
 	terminalContext: TerminalContextState
 ) {
 	const requestContext = executionInput.requestPayload.context as JsonObject;
-	return buildLastTurnContextDraftV1({
+	const contextType =
+		typeof requestContext.type === 'string'
+			? (requestContext.type as ChatContextType)
+			: 'global';
+	const entityId = typeof requestContext.entityId === 'string' ? requestContext.entityId : null;
+	const draft = buildLastTurnContextDraftV1({
 		assistantText,
 		userMessage: String(executionInput.requestPayload.message),
-		contextType:
-			typeof requestContext.type === 'string'
-				? (requestContext.type as ChatContextType)
-				: 'global',
-		entityId: typeof requestContext.entityId === 'string' ? requestContext.entityId : null,
+		contextType,
+		entityId,
 		contextShift: terminalContext.contextShift,
 		toolExecutions: terminalContext.toolExecutions
 	});
+	// Project chat (tasker 153): what this turn used, so the next turn starts with it loaded.
+	// A turn that moved to another project starts fresh there.
+	if (contextType !== 'project' || !entityId || terminalContext.contextShift) return draft;
+	const workingSet = buildTurnWorkingSetV1({
+		projectId: entityId,
+		executions: terminalContext.toolExecutions.map((execution) => ({
+			toolName: String(execution.toolCall.function?.name ?? ''),
+			arguments: execution.toolCall.function?.arguments,
+			result: execution.result,
+			success: execution.result?.success === true
+		}))
+	});
+	return workingSet ? { ...draft, working_set: workingSet as unknown as Json } : draft;
 }

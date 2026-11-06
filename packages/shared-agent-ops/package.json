@@ -252,6 +252,11 @@
 			"import": "./dist/calendar/onto-event-sync.service.mjs",
 			"require": "./dist/calendar/onto-event-sync.service.js"
 		},
+		"./calendar/calendar-change-ingest": {
+			"types": "./dist/calendar/calendar-change-ingest.d.ts",
+			"import": "./dist/calendar/calendar-change-ingest.mjs",
+			"require": "./dist/calendar/calendar-change-ingest.js"
+		},
 		"./calendar/calendar-colors": {
 			"types": "./dist/calendar/calendar-colors.d.ts",
 			"import": "./dist/calendar/calendar-colors.mjs",
@@ -406,6 +411,11 @@
 			"types": "./dist/utils/document-outline.d.ts",
 			"import": "./dist/utils/document-outline.mjs",
 			"require": "./dist/utils/document-outline.js"
+		},
+		"./utils/document-card": {
+			"types": "./dist/utils/document-card.d.ts",
+			"import": "./dist/utils/document-card.mjs",
+			"require": "./dist/utils/document-card.js"
 		},
 		"./policy": {
 			"types": "./dist/policy.d.ts",
