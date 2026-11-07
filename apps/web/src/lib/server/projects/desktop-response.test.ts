@@ -108,7 +108,7 @@ describe('buildDesktopResponse', () => {
 		});
 		expect(projects.b).toMatchObject({
 			pulse: 'shaping',
-			pulse_reason: 'Worked on 3 days ago, nothing finished yet',
+			pulse_reason: 'Last change 3 days ago, nothing finished yet',
 			open_tasks: 6,
 			emoji: null
 		});

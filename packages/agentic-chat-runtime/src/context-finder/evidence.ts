@@ -71,7 +71,7 @@ const NOTES = {
 	selectedCards:
 		"Selected for this question by relevance ranking across the whole project. Documents come as cards, not text: what each is, its sections with anchors, and the sections flagged as relevant to this question. Before quoting or relying on a document's details, read the flagged sections (or any other) with read_document_section and their anchors. Other records come in full. Summaries are one-line descriptions, not content. Cite the record id. If the needed facts are still missing, say what is missing.",
 	selected:
-		'Selected for this question by relevance ranking across the whole project. Full items contain only the listed sections or an opening excerpt, not whole documents; each document lists its sections with anchors, so read any other section you need with read_document_section. Summaries are one-line descriptions, not content. Cite the record id. If the needed facts are still missing, say what is missing.',
+		'Selected for this question by relevance ranking across the whole project. Full items contain the listed sections or an opening excerpt. Summaries are one-line descriptions. Cite the record id. If the needed facts are still missing, say what is missing.',
 	empty: 'Relevance ranking found no project record that clearly helps with this question. Say what evidence is missing instead of guessing.',
 	unavailable:
 		'Relevance ranking was unavailable for this question. Rely on the other project context and say what evidence is missing.'

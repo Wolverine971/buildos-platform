@@ -134,11 +134,12 @@
 
 	const proseClasses = getProseClasses('sm');
 
-	// Turn cards (tasker 153): steps grouped into one card per project. Admins first; the
-	// single step log stays for everyone else.
+	// Turn cards (tasker 153): steps grouped into one card per project, for everyone.
 	// "Continue in Wayne Strategies": a workspace chat whose last turn was about one project.
+	// Still admins only.
 	let continuing = $state(false);
 	const continueTarget = $derived.by((): TurnCardProject | null => {
+		if (page.data?.user?.is_admin !== true) return null;
 		if (!turnCards || !onContinueInProject || selectedContextType !== 'global') return null;
 		if (streamingMessageId) return null;
 		for (let i = messages.length - 1; i >= 0; i--) {
@@ -165,7 +166,6 @@
 	}
 
 	const turnCards = $derived.by(() => {
-		if (page.data?.user?.is_admin !== true) return null;
 		const focus = resolvedProjectFocus;
 		return {
 			sessionProject:

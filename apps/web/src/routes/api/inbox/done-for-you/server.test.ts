@@ -5,29 +5,19 @@ vi.mock('$lib/config/project-loops', () => ({ PROJECT_LOOPS_ENABLED: true }));
 
 import { GET } from './+server';
 
-function supabaseReturning(rows: unknown[]) {
-	const calls: Array<[string, unknown[]]> = [];
-	const query: any = new Proxy(
-		{},
-		{
-			get(_target, prop: string) {
-				if (prop === 'then') {
-					return (resolve: (value: unknown) => void) =>
-						resolve({ data: rows, error: null });
-				}
-				return (...args: unknown[]) => {
-					calls.push([prop, args]);
-					return query;
-				};
-			}
-		}
-	);
-	return { supabase: { from: vi.fn(() => query) }, calls };
+function queryReturning(rows: unknown[]) {
+	return Object.assign(Promise.resolve({ data: rows, error: null }), {
+		select: vi.fn().mockReturnThis(),
+		eq: vi.fn().mockReturnThis(),
+		gte: vi.fn().mockReturnThis(),
+		order: vi.fn().mockReturnThis(),
+		limit: vi.fn().mockReturnThis()
+	});
 }
 
 describe('GET /api/inbox/done-for-you', () => {
-	it('lists recent auto-applied changes with their project, skipping undone ones', async () => {
-		const { supabase, calls } = supabaseReturning([
+	it('lists cleanup and calendar changes newest first, skipping undone suggestions', async () => {
+		const cleanup = queryReturning([
 			{
 				id: 's1',
 				project_id: 'p1',
@@ -51,6 +41,17 @@ describe('GET /api/inbox/done-for-you', () => {
 				result: { applied_via: 'auto', undone_at: '2026-10-29T09:30:00Z' }
 			}
 		]);
+		const calendar = queryReturning([
+			{
+				id: 'cal-1',
+				project_id: 'p2',
+				project: { name: 'Events' },
+				title: 'Rescheduled kickoff',
+				applied_at: '2026-10-29T11:00:00Z'
+			}
+		]);
+		const tables = { project_suggestions: cleanup, calendar_ingest_changes: calendar };
+		const supabase = { from: (table: keyof typeof tables) => tables[table] };
 		const response = await GET({
 			locals: {
 				supabase,
@@ -61,18 +62,24 @@ describe('GET /api/inbox/done-for-you', () => {
 		expect(response.status).toBe(200);
 		expect(json.data.items).toEqual([
 			expect.objectContaining({
+				suggestion_id: 'cal-1',
+				title: 'Rescheduled kickoff',
+				project_id: 'p2',
+				project_name: 'Events',
+				undoable: true,
+				undo_url: '/api/calendar/changes/cal-1/undo'
+			}),
+			expect.objectContaining({
 				suggestion_id: 's1',
 				title: 'Move "Brief" under "Client Work"',
 				project_id: 'p1',
 				project_name: 'Wayne Strategies'
 			})
 		]);
-		expect(calls).toEqual(
-			expect.arrayContaining([
-				['eq', ['status', 'applied']],
-				['eq', ['result->>applied_via', 'auto']]
-			])
-		);
+		expect(cleanup.eq).toHaveBeenCalledWith('status', 'applied');
+		expect(cleanup.eq).toHaveBeenCalledWith('result->>applied_via', 'auto');
+		expect(calendar.eq).toHaveBeenCalledWith('user_id', 'u1');
+		expect(calendar.eq).toHaveBeenCalledWith('status', 'applied');
 	});
 
 	it('requires a signed-in user', async () => {

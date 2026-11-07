@@ -26,6 +26,7 @@ import {
 	type JevToolSelectionReceipt,
 	buildJevToolSelectionBody,
 	commissionedWriteToolNamesFrom,
+	mountToolPins,
 	selectJevToolDefinitions
 } from '../src/workers/agentic-chat/provider/jev-tool-selector';
 import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/provider/provider-capacity';
@@ -212,6 +213,40 @@ describe('selectJevToolDefinitions', () => {
 			'search_onto_assets',
 			'update_onto_asset'
 		]);
+	});
+});
+
+describe('mountToolPins', () => {
+	const surface = [
+		'get_project_overview',
+		'get_document_outline',
+		'read_document_section',
+		'update_onto_document'
+	].map(tool);
+	const pins = ['get_document_outline', 'read_document_section'];
+
+	it('puts back the readers a document card needs, in surface order, and says so', () => {
+		const selected = request({ tools: [tool('get_project_overview')] });
+		const next = mountToolPins(selected, surface, pins);
+		expect(next.tools.map((t) => t.function.name)).toEqual([
+			'get_project_overview',
+			'get_document_outline',
+			'read_document_section'
+		]);
+		expect(next.messages.at(-1)?.content).toContain(
+			'Also callable this pass: get_document_outline, read_document_section.'
+		);
+	});
+
+	it('leaves the request alone when nothing is missing, no pins, or a tool is held', () => {
+		const full = request({ tools: surface });
+		expect(mountToolPins(full, surface, pins)).toBe(full);
+		const selected = request({ tools: [tool('get_project_overview')] });
+		expect(mountToolPins(selected, surface, undefined)).toBe(selected);
+		const held = request({ tools: [], heldWriteToolNames: ['update_onto_document'] });
+		expect(
+			mountToolPins(held, surface, ['update_onto_document']).tools.map((t) => t.function.name)
+		).toEqual([]);
 	});
 });
 
@@ -636,6 +671,50 @@ describe('Jev selection inside a turn', () => {
 		expect(client.stream).toHaveBeenCalledTimes(2);
 		expect(names(client.stream.mock.calls[0])).toEqual(['get_project_overview']);
 		expect(names(client.stream.mock.calls[1])).toEqual(['get_project_overview']);
+	});
+
+	it('mounts the tools the found context needs, after selection narrowed the surface', async () => {
+		const client = clientWithRounds([
+			[
+				{ type: 'text', content: 'From the card.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const contextFinder = {
+			find: vi.fn(async () => ({
+				step: {
+					type: 'semantic' as const,
+					transitionId: 'context-1',
+					phase: 'stream' as const,
+					eventType: 'context_selection',
+					currentActivity: 'Finding relevant project context...',
+					eventPayload: { type: 'context_selection' }
+				},
+				injection: 'WORKING CONTEXT: a document card',
+				toolPins: ['list_onto_tasks']
+			}))
+		};
+		const invocation = await new AgenticChatTurnProviderAdapter({
+			client,
+			capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 }),
+			toolSelector: new JevToolSelector({
+				apiKey: 'provider-secret',
+				mode: 'on',
+				fetchImpl: vi.fn(async () => jevResponse(OVERVIEW_ONLY)) as unknown as typeof fetch
+			}),
+			contextFinder
+		} as unknown as ConstructorParameters<typeof AgenticChatTurnProviderAdapter>[0]).prepare({
+			executionInput: executionInput(),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await collect(invocation.stream());
+
+		expect(names(client.stream.mock.calls[0])).toEqual([
+			'get_project_overview',
+			'list_onto_tasks'
+		]);
 	});
 
 	it('restores the admitted surface once when the model reaches for an omitted tool', async () => {

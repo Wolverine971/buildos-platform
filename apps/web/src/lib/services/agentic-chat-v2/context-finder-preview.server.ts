@@ -68,6 +68,7 @@ export async function previewProjectContext(input: {
 	const result = await findProjectContext({
 		project,
 		message: question,
+		documents: 'text',
 		decider: input.decider,
 		signal: input.signal,
 		timeoutMs: input.timeoutMs,

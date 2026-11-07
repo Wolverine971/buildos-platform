@@ -1,7 +1,8 @@
 // apps/web/src/lib/components/agent/AgentMessageList.continue.test.ts
 // @vitest-environment jsdom
-// Turn cards are admin-only, so this file signs in an admin; the main list tests run without one.
+// The Continue chip is admin-only, so this file signs in an admin; the main list tests run without one.
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { page } from '$app/state';
 import { cleanup, fireEvent, render, screen } from '@testing-library/svelte';
 import AgentMessageList from './AgentMessageList.svelte';
 import type { UIMessage } from './agent-chat.types';
@@ -85,5 +86,19 @@ describe('Continue in project', () => {
 			)
 		);
 		expect(screen.queryByRole('button', { name: /Continue in/ })).toBeNull();
+	});
+
+	it('stays hidden for someone who is not an admin', () => {
+		const user = (page.data as { user: { is_admin: boolean } }).user;
+		user.is_admin = false;
+		try {
+			render(
+				AgentMessageList,
+				props(globalTurn([{ id: 'p-wayne', name: 'Wayne Strategies', p: 0.9 }]))
+			);
+			expect(screen.queryByRole('button', { name: /Continue in/ })).toBeNull();
+		} finally {
+			user.is_admin = true;
+		}
 	});
 });

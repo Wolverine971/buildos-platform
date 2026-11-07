@@ -168,6 +168,8 @@ describe('ChatContextFinder', () => {
 		const found = (await finder.find(request()))!;
 		expect(found.injection).toContain('WORKING CONTEXT');
 		expect(found.injection).toContain('$300,000');
+		// A document card is read with these, whatever tool selection kept.
+		expect(found.toolPins).toEqual(['get_document_outline', 'read_document_section']);
 		expect(found.step.eventType).toBe('context_selection');
 		const payload = found.step.eventPayload as Record<string, any>;
 		expect(payload).toMatchObject({
@@ -273,6 +275,7 @@ describe('ChatContextFinder', () => {
 		});
 		const found = (await finder.find(request()))!;
 		expect(found.injection).toBeNull();
+		expect(found.toolPins).toBeUndefined();
 		expect(found.step.eventPayload).toMatchObject({
 			status: 'unavailable',
 			failure: 'load_or_rank_failed',

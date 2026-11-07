@@ -7,6 +7,7 @@
 	Chats tab opens here with its messages, ready to continue.
 	On the Workspace, the whole-project scope is Workspace chat (the global
 	context, no project focus), not a project chat about the Workspace row.
+	Windowed, the same chat opens as the full chat window over the page instead.
 -->
 <script lang="ts">
 	import { LoaderCircle, Plus, X } from '$lib/icons/lucide';
@@ -28,7 +29,8 @@
 		onScope,
 		onNewChat,
 		onClose,
-		onDocumentChanged
+		onDocumentChanged,
+		windowed = false
 	}: {
 		projectId: string;
 		projectName: string;
@@ -46,6 +48,8 @@
 		onClose: () => void;
 		/** The chat edited a doc: the reader reloads it. */
 		onDocumentChanged: () => void;
+		/** Open as the full chat window over the page, not a pane beside the reader. */
+		windowed?: boolean;
 	} = $props();
 
 	let Chat = $state<ChatComponent | null>(null);
@@ -94,64 +98,82 @@
 	);
 </script>
 
-<section class="chat" class:phone aria-label="Chat">
-	<header class="head">
-		<img src="/brain-bolt.webp" alt="" class="h-6 w-6 shrink-0 rounded object-cover" />
-		{#if session}
-			<p class="earlier" title={session.title}>{session.title}</p>
-			<button type="button" class="new" onclick={() => onNewChat?.()}>
-				<Plus class="h-3.5 w-3.5" /> New chat
-			</button>
-		{:else}
-			<div class="scope" role="group" aria-label="Chat about">
-				{#if item}
+{#if windowed}
+	{#if Chat}
+		{#key focusKey}
+			<Chat
+				isOpen={true}
+				contextType={workspaceChat ? 'general' : undefined}
+				initialChatSessionId={session?.id ?? null}
+				initialProjectFocus={session || workspaceChat ? null : focus}
+				composerPlaceholder={placeholder}
+				onDocumentMutation={onDocumentChanged}
+				{onClose}
+			/>
+		{/key}
+	{:else if loadError}
+		<p class="sr-only" role="alert">{loadError}</p>
+	{/if}
+{:else}
+	<section class="chat" class:phone aria-label="Chat">
+		<header class="head">
+			<img src="/brain-bolt.webp" alt="" class="h-6 w-6 shrink-0 rounded object-cover" />
+			{#if session}
+				<p class="earlier" title={session.title}>{session.title}</p>
+				<button type="button" class="new" onclick={() => onNewChat?.()}>
+					<Plus class="h-3.5 w-3.5" /> New chat
+				</button>
+			{:else}
+				<div class="scope" role="group" aria-label="Chat about">
+					{#if item}
+						<button
+							type="button"
+							class="item"
+							aria-pressed={aboutItem}
+							title={itemTitle}
+							onclick={() => onScope('item')}
+						>
+							This {KIND_WORD[item.kind]}
+						</button>
+					{/if}
 					<button
 						type="button"
-						class="item"
-						aria-pressed={aboutItem}
-						title={itemTitle}
-						onclick={() => onScope('item')}
+						aria-pressed={!aboutItem}
+						title={workspace ? undefined : projectName}
+						onclick={() => onScope('project')}
 					>
-						This {KIND_WORD[item.kind]}
+						{workspace ? 'Workspace chat' : `All of ${shortName(projectName, 28)}`}
 					</button>
-				{/if}
-				<button
-					type="button"
-					aria-pressed={!aboutItem}
-					title={workspace ? undefined : projectName}
-					onclick={() => onScope('project')}
-				>
-					{workspace ? 'Workspace chat' : `All of ${shortName(projectName, 28)}`}
-				</button>
-			</div>
-		{/if}
-		<button type="button" class="ib" onclick={onClose} aria-label="Close chat">
-			<X class="h-4 w-4" />
-		</button>
-	</header>
-	<div class="body">
-		{#if Chat}
-			{#key focusKey}
-				<Chat
-					isOpen={true}
-					embedded={true}
-					contextType={workspaceChat ? 'general' : undefined}
-					initialChatSessionId={session?.id ?? null}
-					initialProjectFocus={session || workspaceChat ? null : focus}
-					composerPlaceholder={placeholder}
-					onDocumentMutation={onDocumentChanged}
-					{onClose}
-				/>
-			{/key}
-		{:else}
-			<div class="loading" role={loadError ? 'alert' : undefined}>
-				{#if loadError}{loadError}{:else}<LoaderCircle
-						class="h-5 w-5 animate-spin motion-reduce:animate-none"
-					/>{/if}
-			</div>
-		{/if}
-	</div>
-</section>
+				</div>
+			{/if}
+			<button type="button" class="ib" onclick={onClose} aria-label="Close chat">
+				<X class="h-4 w-4" />
+			</button>
+		</header>
+		<div class="body">
+			{#if Chat}
+				{#key focusKey}
+					<Chat
+						isOpen={true}
+						embedded={true}
+						contextType={workspaceChat ? 'general' : undefined}
+						initialChatSessionId={session?.id ?? null}
+						initialProjectFocus={session || workspaceChat ? null : focus}
+						composerPlaceholder={placeholder}
+						onDocumentMutation={onDocumentChanged}
+						{onClose}
+					/>
+				{/key}
+			{:else}
+				<div class="loading" role={loadError ? 'alert' : undefined}>
+					{#if loadError}{loadError}{:else}<LoaderCircle
+							class="h-5 w-5 animate-spin motion-reduce:animate-none"
+						/>{/if}
+				</div>
+			{/if}
+		</div>
+	</section>
+{/if}
 
 <style>
 	.chat {

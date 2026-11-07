@@ -21,6 +21,7 @@ import {
 import {
 	type AgenticChatContextFinderPort,
 	type ChatContextFinding,
+	DOCUMENT_READ_TOOL_PINS,
 	allowsContextFinderUser,
 	contextSelectionTransitionId,
 	turnConversation,
@@ -110,7 +111,13 @@ export class ChatWorkspaceFinder implements AgenticChatContextFinderPort {
 				currentActivity: 'Finding which projects this is about...',
 				eventPayload: payload
 			},
-			injection: block
+			injection: block,
+			...(block &&
+			context?.zoom?.some((entry) =>
+				entry.evidence?.full.some((item) => item.kind === 'document')
+			)
+				? { toolPins: DOCUMENT_READ_TOOL_PINS }
+				: {})
 		};
 	}
 }

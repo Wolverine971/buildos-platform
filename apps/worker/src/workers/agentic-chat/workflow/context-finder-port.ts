@@ -39,6 +39,7 @@ export function createWorkflowContextFinder(input: {
 		const result = await findProjectContext({
 			project,
 			message: question,
+			documents: 'text',
 			decider: request.mode === 'auto' ? input.decider : undefined,
 			plan: request.mode === 'curated' ? request.plan : undefined,
 			signal,

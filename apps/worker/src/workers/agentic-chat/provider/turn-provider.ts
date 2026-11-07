@@ -41,7 +41,7 @@ import {
 	previewDocumentEditCalls
 } from './document-edit-preview';
 import { type AgenticChatTableEditPreviewPort, previewTableEditCalls } from './table-edit-preview';
-import type { AgenticChatToolSelectorPort } from './jev-tool-selector';
+import { mountToolPins, type AgenticChatToolSelectorPort } from './jev-tool-selector';
 import type { AgenticChatExecutionObservationPortV1 } from '../effects/execution-observation';
 import { enqueueReviewTelemetryObservation } from './review/review-telemetry';
 import { appendTurnRules } from './turn-rules';
@@ -414,6 +414,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				// If an earlier step throws, the finding is abandoned; never leave it unhandled.
 				finding?.catch(() => undefined);
 				request = await this.resolveLiveVision(request);
+				const surface = request.tools;
 				if (this.ports.toolSelector)
 					request = await this.ports.toolSelector.select(request);
 				state.writeCommission.recordSelection(request);
@@ -427,6 +428,8 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				request = appendWebResearchRules(request);
 				const found = finding ? await finding : null;
 				if (found?.injection) request = appendSystemInstruction(request, found.injection);
+				// Selection ran before the context existed; keep what its cards are read with.
+				request = mountToolPins(request, surface, found?.toolPins);
 				state.setCurrentRequest(request);
 				if (found) {
 					// The opening request goes out while the executor persists the

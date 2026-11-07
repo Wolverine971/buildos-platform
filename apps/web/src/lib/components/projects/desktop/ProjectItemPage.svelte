@@ -1,9 +1,9 @@
 <!-- apps/web/src/lib/components/projects/desktop/ProjectItemPage.svelte -->
 <!--
 	A doc's or task's own page: the reader at full width, the project's docs or
-	tasks as a rail beside it (hide it with the list toggle or F), and chat beside
-	the reader. The reader's own brain bolt is the one way into chat here; the chat
-	pane switches between this item and the whole project. It is the same reader as the Projects card and the project page,
+	tasks as a rail beside it (hide it with the list toggle or F). The reader's
+	brain bolt opens chat for the item. On tasks the header's chat button also
+	opens with that task in focus. It is the same reader as the Projects card and the project page,
 	at its deepest. Walking to another item swaps it in place and rewrites the
 	URL, so the address always names what is open. On phones the item opens as a
 	full sheet over the project's list.
@@ -14,6 +14,7 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { ArrowLeft } from '$lib/icons/lucide';
+	import { getReaderChatContext } from '$lib/components/layout/reader-chat-context';
 	import { onReturnAfterAway } from '$lib/utils/return-refresh';
 	import { isTableTypeKey } from '@buildos/shared-agent-ops/tables';
 	import { visibleDocumentTree } from '$lib/components/organize/organize-plan';
@@ -99,6 +100,19 @@
 	}
 
 	const title = $derived(titleOf(item) || data.itemTitle || 'Untitled');
+	const readerChat = getReaderChatContext();
+	onMount(() => {
+		const readItem = () => ({
+			item,
+			itemTitle: titleOf(item),
+			projectId: data.projectId,
+			projectName
+		});
+		readerChat.readItem = readItem;
+		return () => {
+			if (readerChat.readItem === readItem) delete readerChat.readItem;
+		};
+	});
 
 	function hrefFor(target: ReaderItem): string | null {
 		if (target.kind === 'document') {

@@ -2,6 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AGENTIC_CHAT_TURN_LEASE_POLICY_V1 } from '@buildos/shared-types';
+import { DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER } from '@buildos/smart-llm';
 import { SupabaseQueue, type ProcessingJob } from '../src/lib/supabaseQueue';
 import {
 	DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG,
@@ -293,6 +294,7 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			publishedSpecialistsEnabled: false,
 			contextFinderEnabled: false,
 			contextFinderChatUserIds: [],
+			carryUserIds: [],
 			documentReadToolsEnabled: false,
 			documentEvidenceHandoffEnabled: false,
 			liveVisionEnabled: false,
@@ -331,7 +333,7 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 						fallbackModels: ['provider/fallback-1', 'provider/fallback-2'],
 						providerRouting: {
 							allow_fallbacks: true,
-							order: ['deepinfra', 'nextbit', 'open-inference', 'parasail'],
+							order: DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER,
 							ignore: ['azure']
 						}
 					}

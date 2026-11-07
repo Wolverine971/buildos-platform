@@ -228,7 +228,7 @@
 		onDocumentMutation?: (event: DocumentMutationEvent) => void;
 		/** Provided by launch surfaces that can host a hidden keep-alive
 		 * instance (Navigation). When set, minimize parks without teardown. */
-		onParked?: (sessionId: string) => void;
+		onParked?: (sessionId: string, focus: ProjectFocus | null) => void;
 		autoInitProject?: AutoInitProjectConfig | null;
 		initialChatSessionId?: string | null;
 		initialBrainDumpContext?: AgentBrainDumpContext | null;
@@ -2268,7 +2268,7 @@
 			});
 			if (summary.hasChanges) notifyDataMutation(summary);
 			presenter.resetMutationTracking();
-			onParked(session.id);
+			onParked(session.id, resolvedProjectFocus);
 			return;
 		}
 		hardParkAndClose();

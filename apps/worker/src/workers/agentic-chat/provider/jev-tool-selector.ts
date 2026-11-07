@@ -211,6 +211,34 @@ export function selectJevToolDefinitions(
 }
 
 /** Admitted mutation tools Jev judged needed for the current message (structured, never text). */
+/**
+ * Put back tools that context found after selection needs (document cards are read with
+ * read_document_section). Only reads from the turn's own surface; held writes stay held.
+ */
+export function mountToolPins(
+	request: AgenticChatTurnProviderRequestV1,
+	surface: readonly AgenticChatTurnProviderToolV1[],
+	pins: readonly string[] | undefined
+): AgenticChatTurnProviderRequestV1 {
+	if (!pins?.length) return request;
+	const mounted = new Set(request.tools.map((t) => t.function.name));
+	const held = new Set(request.heldWriteToolNames ?? []);
+	const added = surface
+		.map((t) => t.function.name)
+		.filter((name) => pins.includes(name) && !mounted.has(name) && !held.has(name));
+	if (!added.length) return request;
+	for (const name of added) mounted.add(name);
+	return appendSystemInstruction(
+		{
+			...request,
+			// Canonical order, as selection keeps it, for stable prompts and cache prefixes.
+			tools: surface.filter((t) => mounted.has(t.function.name)),
+			toolChoice: 'auto'
+		},
+		`Also callable this pass: ${added.join(', ')}. The document cards in the project context are read with them.`
+	);
+}
+
 export function commissionedWriteToolNamesFrom(
 	tools: readonly AgenticChatTurnProviderToolV1[],
 	probabilities: Readonly<Record<string, number>>,

@@ -4,6 +4,8 @@
 	import { publicStartCta } from '$lib/constants/brand';
 	import { page } from '$app/state';
 	import { afterNavigate, goto, replaceState } from '$app/navigation';
+	import { getReaderChatContext } from './reader-chat-context';
+	import type { AutoInitProjectConfig } from '$lib/components/agent/agent-chat-shell-router.svelte';
 	import { createChatResumeLinkHandler } from './agent-chat-resume-link';
 	import {
 		getChatUrlSessionId,
@@ -118,14 +120,18 @@
 	let loadedInboxUserId = '';
 	let proposalReadyFingerprint = '';
 	let hasProposalReadySnapshot = false;
-	let chatOpenedWithContext = $state<ChatContextType | null>(null);
+	type ChatLaunchContext = {
+		contextType: ChatContextType;
+		entityId?: string;
+		initialProjectFocus?: ProjectFocus;
+		autoInitProject?: AutoInitProjectConfig;
+	};
+	// Launch props belong to this chat even if the page changes while it is minimized.
+	let chatLaunch = $state.raw<ChatLaunchContext>({ contextType: 'global' });
 	let chatInitialSessionId = $state<string | null>(null);
 	let chatInitialBrainDumpContext = $state<AgentBrainDumpContext | null>(null);
 	let chatInitialDraft = $state<string | null>(null);
 	let chatInitialSkillId = $state<string | null>(null);
-	let chatOverrideContextType = $state<ChatContextType | null>(null);
-	let chatOverrideEntityId = $state<string | undefined>(undefined);
-	let chatUsePageFocus = $state(true);
 	let isOpeningBrainDumpChat = $state(false);
 	let handledAgentChatLaunchKey = $state('');
 	// Imperative handle + live session id for the mounted chat modal, so an
@@ -141,7 +147,7 @@
 	// route changes since Navigation lives in the layout). Reopening the same
 	// session is a seamless unhide; anything else tears the instance down
 	// first via hardParkAndClose (that chat then resumes from the DB).
-	let parkedChatSessionId = $state<string | null>(null);
+	let parkedChat = $state.raw<{ sessionId: string; focus: ProjectFocus | null } | null>(null);
 
 	// Mobile-menu accessibility: drawer ref for the focus trap, and the element to restore
 	// focus to when the drawer closes (the hamburger button the user came from).
@@ -169,73 +175,31 @@
 	const projectDetailMatch = $derived(
 		currentPath.match(/^\/projects\/([^/]+)(?:\/organize)?\/?$/)
 	);
-	const projectTaskMatch = $derived(
-		currentPath.match(/^\/projects\/([^/]+)\/tasks\/([^/]+)\/?$/)
-	);
-
-	// Context-aware chat configuration based on current page
-	const chatContextType = $derived.by((): ChatContextType => {
-		// Project detail page or task focus page
-		if ((projectDetailMatch || projectTaskMatch) && page.data?.project) {
-			return 'project';
-		}
-		// Default: global context
-		return 'global';
-	});
-
-	const chatEntityId = $derived.by((): string | undefined => {
-		// Project detail page or task focus page: return project ID
-		if ((projectDetailMatch || projectTaskMatch) && page.data?.project) {
-			return page.data.project.id ?? projectDetailMatch?.[1] ?? projectTaskMatch?.[1];
-		}
-		// No entity
-		return undefined;
-	});
-
-	const chatAutoInitProject = $derived.by(() => {
-		if (projectDetailMatch && page.data?.project) {
-			return {
-				projectId: page.data.project.id,
-				projectName: page.data.project.name ?? 'Project',
-				showActionSelector: false
-			};
-		}
-		return null;
-	});
-
-	const chatInitialProjectFocus = $derived.by((): ProjectFocus | null => {
-		if (!projectTaskMatch || !page.data?.project || !page.data?.task) {
-			return null;
-		}
-
-		const projectId = page.data.project.id ?? projectTaskMatch[1];
-		const taskId = page.data.task.id ?? projectTaskMatch[2];
-		if (!projectId || !taskId) return null;
-
+	const readerChat = getReaderChatContext();
+	const taskFocus = $derived.by((): ProjectFocus | null => {
+		const { item, itemTitle, projectId, projectName } = readerChat.readItem?.() ?? page.data;
+		if (item?.kind !== 'task' || !item.id || !projectId) return null;
 		return {
 			focusType: 'task',
-			focusEntityId: taskId,
-			focusEntityName: page.data.task.title ?? 'Untitled Task',
+			focusEntityId: item.id,
+			focusEntityName: itemTitle || 'Untitled Task',
 			projectId,
-			projectName: page.data.project.name ?? 'Project'
+			projectName: projectName || 'Project'
 		};
 	});
-
-	const effectiveChatInitialProjectFocus = $derived(
-		chatUsePageFocus ? chatInitialProjectFocus : null
-	);
-	const chatModalContextType = $derived.by(
-		(): ChatContextType =>
-			effectiveChatInitialProjectFocus
-				? 'global'
-				: (chatOverrideContextType ?? chatContextType)
-	);
-	const chatModalEntityId = $derived.by(() =>
-		effectiveChatInitialProjectFocus ? undefined : (chatOverrideEntityId ?? chatEntityId)
-	);
-	const chatModalAutoInitProject = $derived.by(() =>
-		effectiveChatInitialProjectFocus || chatOverrideContextType ? null : chatAutoInitProject
-	);
+	const projectChat = $derived.by((): ChatLaunchContext => {
+		if (!projectDetailMatch || !page.data.project) return { contextType: 'global' };
+		const projectId = page.data.project.id ?? projectDetailMatch[1];
+		return {
+			contextType: 'project',
+			entityId: projectId,
+			autoInitProject: {
+				projectId,
+				projectName: page.data.project.name ?? 'Project',
+				showActionSelector: false
+			}
+		};
+	});
 	const selectedHistoryBrainDumpId = $derived.by(() => {
 		if (currentPath !== '/history') return null;
 		if (page.url.searchParams.get('itemType') !== 'braindump') return null;
@@ -246,7 +210,7 @@
 	// Context-aware label for the chat launcher button. The global context is
 	// "Workspace chat" for users (tasker 146: relabel, the internal type stays global).
 	const chatLabel = $derived.by((): string => {
-		if (projectTaskMatch) return 'Task chat';
+		if (taskFocus) return 'Task chat';
 		if (projectDetailMatch) return 'Project chat';
 		if (currentPath.startsWith('/briefs')) return 'Brief chat';
 		if (currentPath.startsWith('/dashboard/calendar')) return 'Calendar chat';
@@ -535,16 +499,16 @@
 	 * a stack card first — nothing is lost, it resumes from the DB.
 	 */
 	async function ensureFreshChatSurface(): Promise<void> {
-		if (!showChatModal && parkedChatSessionId === null) return;
+		if (!showChatModal && parkedChat === null) return;
 		agentChatModalRef?.hardParkAndClose();
 		showChatModal = false;
-		parkedChatSessionId = null;
+		parkedChat = null;
 		await tick();
 		await waitForChatHistorySettled();
 	}
 
-	function handleChatParked(sessionId: string) {
-		parkedChatSessionId = sessionId;
+	function handleChatParked(sessionId: string, focus: ProjectFocus | null) {
+		parkedChat = { sessionId, focus };
 		showChatModal = false;
 	}
 
@@ -553,9 +517,9 @@
 	// mark it finalized first to skip a duplicate close on teardown.
 	function handleChatSessionDismissedEvent(event: Event) {
 		const sessionId = (event as CustomEvent<{ sessionId?: string }>).detail?.sessionId;
-		if (!sessionId || sessionId !== parkedChatSessionId) return;
+		if (!sessionId || sessionId !== parkedChat?.sessionId) return;
 		agentChatModalRef?.markSessionFinalized();
-		parkedChatSessionId = null;
+		parkedChat = null;
 	}
 
 	async function openSelectedHistoryBrainDumpChat(braindumpId: string): Promise<boolean> {
@@ -572,7 +536,7 @@
 			}
 			chatInitialSessionId = result.data.chat_session_id;
 			chatInitialBrainDumpContext = result.data.braindump as AgentBrainDumpContext;
-			chatOpenedWithContext = 'global';
+			chatLaunch = { contextType: 'global' };
 			showChatModal = true;
 			return true;
 		} catch (error) {
@@ -584,30 +548,34 @@
 		}
 	}
 
-	function handleOpenChat() {
+	async function handleOpenChat() {
 		closeAllMenus();
-		// A parked keep-alive chat exists: the chat button brings it back
-		// exactly where it left off instead of starting over.
-		if (parkedChatSessionId) {
-			parkedChatSessionId = null;
-			showChatModal = true;
-			return;
+		const focus = taskFocus;
+		if (parkedChat) {
+			const parkedFocus = parkedChat.focus;
+			if (
+				!focus ||
+				(parkedFocus?.focusType === 'task' &&
+					parkedFocus.projectId === focus.projectId &&
+					parkedFocus.focusEntityId === focus.focusEntityId)
+			) {
+				parkedChat = null;
+				showChatModal = true;
+				return;
+			}
+			// Keep the other session in the stack and open the task the user clicked from.
+			await ensureFreshChatSurface();
 		}
 		chatInitialSessionId = null;
 		chatInitialBrainDumpContext = null;
 		chatInitialDraft = null;
 		chatInitialSkillId = null;
-		chatOverrideContextType = null;
-		chatOverrideEntityId = undefined;
-		chatUsePageFocus = true;
 		if (selectedHistoryBrainDumpId) {
 			void openSelectedHistoryBrainDumpChat(selectedHistoryBrainDumpId);
 			return;
 		}
-		chatOpenedWithContext = chatContextType;
+		chatLaunch = focus ? { contextType: 'global', initialProjectFocus: focus } : projectChat;
 		showChatModal = true;
-		// TODO: Pass projectId and chatType to AgentChatModal when needed
-		// If detailOrEvent has projectId, it's the detail object we need
 	}
 
 	async function handleOpenAgentChatEvent(event: Event) {
@@ -630,9 +598,9 @@
 		}
 		// The requested session is parked keep-alive: seamless resume — just
 		// unhide the still-live instance (stream, tool calls, and all).
-		if (requestedSessionId && requestedSessionId === parkedChatSessionId) {
+		if (requestedSessionId && requestedSessionId === parkedChat?.sessionId) {
 			closeAllMenus();
-			parkedChatSessionId = null;
+			parkedChat = null;
 			showChatModal = true;
 			return true;
 		}
@@ -647,16 +615,18 @@
 			typeof detail?.initialDraft === 'string' && detail.initialDraft.trim()
 				? detail.initialDraft.trim()
 				: null;
-		chatUsePageFocus = false;
 		chatInitialSessionId = requestedSessionId;
-		chatOverrideContextType = detail?.contextType ?? null;
-		chatOverrideEntityId =
+		const entityId =
 			typeof detail?.entityId === 'string' && detail.entityId.trim()
 				? detail.entityId.trim()
 				: typeof detail?.projectId === 'string' && detail.projectId.trim()
 					? detail.projectId.trim()
-					: undefined;
-		chatOpenedWithContext = chatOverrideContextType ?? chatContextType;
+					: projectChat.entityId;
+		chatLaunch = {
+			contextType: detail?.contextType ?? projectChat.contextType,
+			entityId,
+			autoInitProject: detail?.contextType ? undefined : projectChat.autoInitProject
+		};
 		showChatModal = true;
 		return false;
 	}
@@ -668,10 +638,7 @@
 		chatInitialBrainDumpContext = null;
 		chatInitialDraft = draft;
 		chatInitialSkillId = skillId;
-		chatUsePageFocus = false;
-		chatOverrideContextType = 'global';
-		chatOverrideEntityId = undefined;
-		chatOpenedWithContext = 'global';
+		chatLaunch = { contextType: 'global' };
 		showChatModal = true;
 	}
 
@@ -770,18 +737,15 @@
 
 	function handleChatClose(summary?: DataMutationSummary) {
 		resumeLinks.cancel(activeChatSessionId ?? chatInitialSessionId);
-		const wasProjectCreate = chatOpenedWithContext === 'project_create';
+		const wasProjectCreate = chatLaunch.contextType === 'project_create';
 		showChatModal = false;
-		parkedChatSessionId = null;
+		parkedChat = null;
 		activeChatSessionId = null;
-		chatOpenedWithContext = null;
+		chatLaunch = { contextType: 'global' };
 		chatInitialSessionId = null;
 		chatInitialBrainDumpContext = null;
 		chatInitialDraft = null;
 		chatInitialSkillId = null;
-		chatOverrideContextType = null;
-		chatOverrideEntityId = undefined;
-		chatUsePageFocus = true;
 
 		if (summary?.hasChanges && summary.affectedProjectIds.length > 0) {
 			if (wasProjectCreate) {
@@ -1701,18 +1665,18 @@
 
 <!-- Agent Chat Modal — stays mounted (hidden) while parked keep-alive so the
      live stream keeps rendering and reopen is a seamless unhide. -->
-{#if showChatModal || parkedChatSessionId !== null}
+{#if showChatModal || parkedChat !== null}
 	{#await loadAgentChatModal() then { default: AgentChatModal }}
 		<AgentChatModal
 			bind:this={agentChatModalRef}
-			isOpen={showChatModal || parkedChatSessionId !== null}
+			isOpen={showChatModal || parkedChat !== null}
 			hidden={!showChatModal}
-			contextType={chatModalContextType}
-			entityId={chatModalEntityId}
-			autoInitProject={chatModalAutoInitProject}
+			contextType={chatLaunch.contextType}
+			entityId={chatLaunch.entityId}
+			autoInitProject={chatLaunch.autoInitProject}
 			initialChatSessionId={chatInitialSessionId}
 			initialBrainDumpContext={chatInitialBrainDumpContext}
-			initialProjectFocus={effectiveChatInitialProjectFocus}
+			initialProjectFocus={chatLaunch.initialProjectFocus}
 			initialDraft={chatInitialDraft}
 			initialSkillId={chatInitialSkillId}
 			onClose={handleChatClose}

@@ -544,6 +544,7 @@ type RunTimeline = {
 									const preview = await findProjectContext({
 										project,
 										message: scenario.message,
+										documents: 'text',
 										decider: {
 											decide: async (
 												...args: Parameters<JevClient['decide']>
@@ -577,6 +578,7 @@ type RunTimeline = {
 								const preview = await findProjectContext({
 									project,
 									message: scenario.message,
+									documents: 'text',
 									decider: {
 										decide: async (
 											...args: Parameters<JevClient['decide']>

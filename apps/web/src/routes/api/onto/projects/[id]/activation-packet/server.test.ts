@@ -1,5 +1,5 @@
 // apps/web/src/routes/api/onto/projects/[id]/activation-packet/server.test.ts
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { assert, describe, expect, it, vi, beforeEach } from 'vitest';
 import type { RequestEvent } from './$types';
 
 const { requireProjectMemberAccessMock } = vi.hoisted(() => ({
@@ -206,6 +206,8 @@ describe('GET /api/onto/projects/[id]/activation-packet', () => {
 		const documentQueries = recorded.filter((query) => query.table === 'onto_documents');
 		expect(documentQueries).toHaveLength(2);
 		const [listQuery, startHereQuery] = documentQueries;
+		assert.isDefined(listQuery);
+		assert.isDefined(startHereQuery);
 		expect(listQuery.select).not.toContain('content');
 		expect(startHereQuery.select).toContain('content');
 		expect(startHereQuery.eq).toContainEqual(['type_key', 'document.context.project']);

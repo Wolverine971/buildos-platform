@@ -49,7 +49,15 @@ export type ChatContextFinding = {
 	step: Extract<AgenticChatProviderStepV1, { type: 'semantic' }>;
 	/** Evidence block to append to the opening request; null when nothing was found. */
 	injection: string | null;
+	/**
+	 * Tools the injection needs mounted. Documents arrive as cards that say "read the flagged
+	 * sections", and tool selection runs before the cards exist, so it can drop the reader.
+	 */
+	toolPins?: readonly string[];
 };
+
+/** The tools a document card is read with. */
+export const DOCUMENT_READ_TOOL_PINS = ['get_document_outline', 'read_document_section'] as const;
 
 export type AgenticChatContextFinderPort = {
 	find(request: AgenticChatTurnProviderRequestV1): Promise<ChatContextFinding | null>;
@@ -253,7 +261,12 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 				currentActivity: 'Finding relevant project context...',
 				eventPayload: payload
 			},
-			injection
+			injection,
+			...(injection &&
+			(carried?.loaded.some((item) => item.kind === 'document') ||
+				(selected && evidence.full.some((item) => item.kind === 'document')))
+				? { toolPins: DOCUMENT_READ_TOOL_PINS }
+				: {})
 		};
 	}
 }

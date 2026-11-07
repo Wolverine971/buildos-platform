@@ -511,13 +511,16 @@ describe('ProjectDesktop', () => {
 		);
 		await waitFor(() => expect(onDataChanged).toHaveBeenCalled());
 
-		// The reader's brain bolt chats about the task, beside it.
+		// The reader's brain bolt opens the full chat window about the task.
 		await fireEvent.click(screen.getByRole('button', { name: 'Chat about this task' }));
-		expect(await screen.findByRole('region', { name: 'chat task in ws' })).toBeTruthy();
-
-		// Esc backs out one step at a time: chat, then the reader.
-		await fireEvent.keyDown(window, { key: 'Escape' });
+		const chat = await screen.findByRole('dialog', { name: 'chat task in ws' });
 		expect(screen.queryByRole('region', { name: 'chat task in ws' })).toBeNull();
+
+		// The window keeps its own keys: Esc under it leaves the reader open.
+		await fireEvent.keyDown(window, { key: 'Escape' });
+		expect(back).not.toHaveBeenCalled();
+		await fireEvent.click(within(chat).getByRole('button', { name: 'Close' }));
+		expect(screen.queryByRole('dialog', { name: 'chat task in ws' })).toBeNull();
 		await fireEvent.keyDown(window, { key: 'Escape' });
 		await waitFor(() => expect(back).toHaveBeenCalledTimes(1));
 	});
@@ -544,21 +547,17 @@ describe('ProjectDesktop', () => {
 		await fireEvent.click(screen.getByRole('tab', { name: /Chats/ }));
 		expect(chatReads()).toBe(1);
 
-		// The chat opens beside the list with its messages, not as a new chat.
+		// The chat opens in the chat window with its messages, not as a new chat.
 		await fireEvent.click(screen.getByRole('button', { name: /Pricing page rewrite/ }));
-		expect(await screen.findByRole('region', { name: 'earlier chat chat-1' })).toBeTruthy();
+		const chat = await screen.findByRole('dialog', { name: 'earlier chat chat-1' });
 		expect(
 			screen
 				.getByRole('button', { name: /Pricing page rewrite/ })
 				.getAttribute('aria-current')
 		).toBe('true');
 
-		// New chat leaves it for a fresh one about the project.
-		await fireEvent.click(screen.getByRole('button', { name: 'New chat' }));
-		expect(await screen.findByRole('region', { name: 'chat project-wide in ws' })).toBeTruthy();
-
 		// Closing the chat re-reads the list, so a new chat shows up in it.
-		await fireEvent.keyDown(window, { key: 'Escape' });
+		await fireEvent.click(within(chat).getByRole('button', { name: 'Close' }));
 		await waitFor(() => expect(chatReads()).toBe(2));
 	});
 
@@ -581,9 +580,9 @@ describe('ProjectDesktop', () => {
 		await screen.findByRole('heading', { name: 'Loose items' });
 		await fireEvent.click(screen.getByRole('button', { name: 'Open Workspace chat' }));
 		// Workspace chat itself: the selector-free global context, no project focus.
-		expect(await screen.findByRole('region', { name: 'Workspace chat' })).toBeTruthy();
-		expect(screen.getByRole('button', { name: 'Workspace chat' })).toBeTruthy();
+		const chat = await screen.findByRole('dialog', { name: 'Workspace chat' });
 		expect(screen.queryByText(/All of Workspace/)).toBeNull();
+		await fireEvent.click(within(chat).getByRole('button', { name: 'Close' }));
 
 		await fireEvent.click(screen.getByRole('tab', { name: 'Chats' }));
 		await screen.findByRole('button', { name: /Pricing page rewrite/ });

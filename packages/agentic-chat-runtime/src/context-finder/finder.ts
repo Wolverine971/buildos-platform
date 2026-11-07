@@ -78,14 +78,15 @@ export async function findProjectContext(input: {
 	/** Budget share when several projects split one prompt (workspace.ts). */
 	budgetChars?: number;
 	maxSummaries?: number;
+	/** Chat can read sections from cards. Specialist workflows need the selected text up front. */
+	documents?: 'card' | 'text';
 	signal?: AbortSignal;
 	timeoutMs?: number;
 	usage?: { operationType: string; userId?: string; projectId?: string; chatSessionId?: string };
 	/** Also ask Jev whether the request is about the project as a whole (rank.ts). */
 	askBroad?: boolean;
 }): Promise<ContextFinderResultV1> {
-	// Agents get document cards (summary, sections by anchor, Jev's flags) and read the text
-	// themselves (tasker 152); the budget still caps how many cards and records fit.
+	const documents = input.documents ?? 'card';
 	const budgetChars = Math.min(
 		input.budgetChars ?? CONTEXT_FINDER_POLICY.agentBudgetChars,
 		CONTEXT_FINDER_POLICY.agentBudgetChars
@@ -97,14 +98,14 @@ export async function findProjectContext(input: {
 			entities: outlined,
 			plan: input.plan,
 			signal: input.signal,
-			cards: true
+			cards: documents === 'card'
 		});
 		return {
 			evidence: materializeContextPlan({
 				plan: input.plan,
 				entities,
 				budgetChars,
-				documents: 'card'
+				documents
 			}),
 			plan: input.plan,
 			ranking: null,
@@ -150,7 +151,7 @@ export async function findProjectContext(input: {
 		skipIds: skip,
 		budgetChars,
 		sectionsPerDoc: CONTEXT_FINDER_POLICY.agentSectionsPerDoc,
-		documents: 'card',
+		documents,
 		maxSummaries: input.maxSummaries,
 		...(scope === 'broad'
 			? {
@@ -167,7 +168,7 @@ export async function findProjectContext(input: {
 		entities,
 		plan,
 		signal: input.signal,
-		cards: true
+		cards: documents === 'card'
 	});
 	return {
 		evidence: materializeContextPlan({
@@ -175,7 +176,7 @@ export async function findProjectContext(input: {
 			entities: loaded,
 			ranker,
 			budgetChars,
-			documents: 'card'
+			documents
 		}),
 		plan,
 		ranking,

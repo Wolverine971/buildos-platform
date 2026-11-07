@@ -116,6 +116,10 @@
 	const effectiveLayout = $derived<ReaderLayout>(
 		!hasList || (reader && tableFocusId === reader.id) ? 'focus' : layout
 	);
+	// Chat opens in the full chat window, with the open item or the project already
+	// picked. The pane beside the reader is too narrow to read for now; true brings it back.
+	const CHAT_BESIDE_READER = false;
+	const paneChat = $derived(CHAT_BESIDE_READER && chatOpen);
 	let listWithChat = $state(false);
 	let detent = $state<SheetDetent>(untrack(() => openDetent));
 	let localReload = $state(0);
@@ -123,7 +127,7 @@
 		paneMode({
 			reading: Boolean(reader),
 			layout: effectiveLayout,
-			chat: chatOpen,
+			chat: paneChat,
 			listWithChat: hasList && listWithChat
 		})
 	);
@@ -202,14 +206,14 @@
 			return;
 		}
 		if (!hasList) {
-			if (chatOpen) chatOpen = false;
+			if (paneChat) chatOpen = false;
 			return;
 		}
-		if (!chatOpen && reader && tableFocusId === reader.id && layout !== 'focus') {
+		if (!paneChat && reader && tableFocusId === reader.id && layout !== 'focus') {
 			tableFocusId = null;
 			return;
 		}
-		if (chatOpen) {
+		if (paneChat) {
 			chatOpen = false;
 			layout = 'focus';
 		} else {
@@ -220,7 +224,7 @@
 
 	function toggleList() {
 		if (!hasList) return;
-		if (chatOpen) {
+		if (paneChat) {
 			listWithChat = !listWithChat;
 			return;
 		}
@@ -252,6 +256,8 @@
 
 	/** Keys for the reader and chat; the host asks first and stops when one is used. */
 	export function handleKey(event: KeyboardEvent): boolean {
+		// The chat window over the page keeps its own keys.
+		if (chatOpen && !paneChat) return false;
 		const target = event.target instanceof Element ? event.target : null;
 		// A table grid owns its keys (cell moves, type-to-edit), like a text field.
 		const typing = Boolean(
@@ -332,7 +338,7 @@
 	}
 
 	function scrimClick() {
-		if (chatOpen) chatOpen = false;
+		if (paneChat) chatOpen = false;
 		else void close();
 	}
 </script>
@@ -353,15 +359,15 @@
 				{@render readerView(reader)}
 			{/if}
 		</div>
-		<div class="chat-col" inert={!chatOpen}>
-			{#if chatOpen}
+		<div class="chat-col" inert={!paneChat}>
+			{#if paneChat}
 				{@render chatView()}
 			{/if}
 		</div>
 	{/if}
 </div>
 
-{#if phone && (reader || chatOpen)}
+{#if phone && (reader || paneChat)}
 	<div {@attach portal()} class="sheet-layer">
 		<button
 			type="button"
@@ -373,7 +379,7 @@
 		></button>
 		{#if reader}
 			<section
-				class="sheet reader-sheet {chatOpen ? 'under-chat' : detent}"
+				class="sheet reader-sheet {paneChat ? 'under-chat' : detent}"
 				class:dragging={dragTop !== null}
 				style:top={dragTop !== null ? `${dragTop}px` : null}
 				aria-label={readerTitle || 'Reader'}
@@ -387,7 +393,7 @@
 				{@render readerView(reader)}
 			</section>
 		{/if}
-		{#if chatOpen}
+		{#if paneChat}
 			<section
 				class="sheet chat-sheet"
 				class:tall={!reader}
@@ -445,8 +451,13 @@
 	{/if}
 {/snippet}
 
-{#snippet chatView()}
+{#if chatOpen && !paneChat}
+	{@render chatView(true)}
+{/if}
+
+{#snippet chatView(windowed = false)}
 	<DesktopChatPane
+		{windowed}
 		{projectId}
 		{projectName}
 		item={reader}

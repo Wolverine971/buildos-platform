@@ -11,6 +11,10 @@
 	import { goto, onNavigate, afterNavigate, invalidate, invalidateAll } from '$app/navigation';
 	import { navigationStore } from '$lib/stores/navigation.store';
 	import Navigation from '$lib/components/layout/Navigation.svelte';
+	import {
+		setReaderChatContext,
+		type ReaderChatContext
+	} from '$lib/components/layout/reader-chat-context';
 	import { clearOnboardingDrafts, onboardingStorageKey } from '$lib/utils/onboarding-state';
 	import { consumeOneTimeUrlParams } from '$lib/utils/one-time-url-params';
 	import Footer from '$lib/components/layout/Footer.svelte';
@@ -45,6 +49,8 @@
 	// FIXED: Convert to $props() for Svelte 5 runes mode compatibility
 	let { data, children }: { data: LayoutData; children?: Snippet } = $props();
 	const initialData = untrack(() => data);
+	const readerChatContext: ReaderChatContext = $state({});
+	setReaderChatContext(readerChatContext);
 
 	// Pre-load components that are commonly used - wrapped in $state for reactivity
 	let OnboardingModal = $state<any>(undefined);

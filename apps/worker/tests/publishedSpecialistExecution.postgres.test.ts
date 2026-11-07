@@ -4,7 +4,11 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { Client } from 'pg';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import {
+	extractOutline,
+	hashDocumentContent
+} from '@buildos/shared-agent-ops/utils/document-outline';
 import {
 	createSpecialistWorkbenchDraftV1,
 	createSpecialistStarterDraftV1,
@@ -47,11 +51,8 @@ import {
 	type ScriptedReply
 } from './helpers/workflowProviderScript';
 import { SupabaseAgenticChatWorkflowStore } from '../src/workers/agentic-chat/workflow/workflow-store';
-import {
-	findProjectContext,
-	type ContextFinderDecider
-} from '@buildos/agentic-chat-runtime/context-finder';
-import type { WorkflowContextFinderPortV1 } from '../src/workers/agentic-chat/workflow/context-finder-port';
+import * as contextFinder from '@buildos/agentic-chat-runtime/context-finder';
+import { createWorkflowContextFinder } from '../src/workers/agentic-chat/workflow/context-finder-port';
 const DOC = 'fd000000-0000-4000-8000-000000000001';
 const VERSION = '2026-09-19T00:00:00Z';
 const NOTE = 'CUSTOM REFERENCE: group decisions separately from working notes.';
@@ -135,6 +136,9 @@ function script(call: ScriptedCall): ScriptedReply {
 			await service?.end();
 			await admin?.end();
 			pg?.stop();
+		});
+		afterEach(() => {
+			vi.restoreAllMocks();
 		});
 		async function version(read = true) {
 			const id = randomUUID(),
@@ -265,7 +269,7 @@ function script(call: ScriptedCall): ScriptedReply {
 			async (fails) => {
 				const MEMO = 'fd000000-0000-4000-8000-0000000000aa';
 				const question = 'What does land cost for the school?';
-				const scripted: ContextFinderDecider = {
+				const scripted: contextFinder.ContextFinderDecider = {
 					decide: async (request) => ({
 						ok: true,
 						answers: Object.fromEntries(
@@ -291,35 +295,39 @@ function script(call: ScriptedCall): ScriptedReply {
 						}
 					})
 				};
-				// The real shared finder over an in-memory project: the memo is not in the
-				// specialist's bounded inventory, so only the finder can surface it.
-				const findContext = vi.fn<WorkflowContextFinderPortV1>(async (input) => {
-					if (fails) throw new Error('offline');
-					return (
-						await findProjectContext({
-							project: {
-								project: { id: E2E_PROJECT_ID, name: 'Workshop launch' },
-								documents: [
-									{
-										id: MEMO,
-										title: 'Budget memo',
-										updated_at: VERSION,
-										content:
-											'## Land\nLand is $150K per acre.\n## Staff\nTwo teachers.'
-									}
-								],
-								tasks: [],
-								goals: [],
-								plans: [],
-								milestones: [],
-								risks: []
-							},
-							message: input.question,
-							decider: scripted,
-							signal: input.signal
-						})
-					).evidence;
-				});
+				// Only the finder sees the memo. Exercise the production workflow adapter
+				// so every role gets its selected text even without a section-read tool.
+				const memo = '## Land\nLand is $150K per acre.\n## Staff\nTwo teachers.';
+				const contentHash = hashDocumentContent(memo);
+				vi.spyOn(contextFinder, 'loadContextFinderProject').mockImplementationOnce(
+					async () => {
+						if (fails) throw new Error('offline');
+						return {
+							project: { id: E2E_PROJECT_ID, name: 'Workshop launch' },
+							documents: [
+								{
+									id: MEMO,
+									title: 'Budget memo',
+									updated_at: VERSION,
+									outline: extractOutline(memo),
+									content_hash: contentHash
+								}
+							],
+							tasks: [],
+							goals: [],
+							plans: [],
+							milestones: [],
+							risks: [],
+							documentText: async (ids) => {
+								expect(ids).toEqual([MEMO]);
+								return new Map([[MEMO, { content: memo, contentHash }]]);
+							}
+						};
+					}
+				);
+				const findContext = vi.fn(
+					createWorkflowContextFinder({ client: { from: vi.fn() }, decider: scripted })
+				);
 				const v = await version();
 				const a = await buildAgenticChatWorkflowV4AdmissionArgs({
 					userId: E2E_USER_ID,
