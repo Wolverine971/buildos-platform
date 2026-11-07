@@ -56,7 +56,7 @@
 		onclick={handleClick}
 	>
 		<span
-			class="block text-xs sm:text-sm text-foreground group-hover:text-accent truncate transition-colors duration-[120ms]"
+			class="block text-xs sm:text-sm text-foreground group-hover:underline underline-offset-2 truncate transition-colors duration-[120ms]"
 		>
 			{displayName}
 		</span>

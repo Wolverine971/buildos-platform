@@ -46,17 +46,8 @@
 		<!-- Event Status -->
 		<div class="space-y-3">
 			{#if event.status === 'cancelled'}
-				<div
-					class="inline-flex items-center gap-2 rounded-full bg-destructive/10 px-3 py-1 text-xs font-medium text-destructive"
-				>
-					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M6 18L18 6M6 6l12 12"
-						/>
-					</svg>
+				<div class="inline-flex items-center gap-2 text-xs text-destructive">
+					<span class="h-1.5 w-1.5 rounded-full bg-destructive"></span>
 					Cancelled
 				</div>
 			{/if}
@@ -88,7 +79,7 @@
 							Until {formatTime(event.end.dateTime)}
 						</div>
 					{:else if isAllDayEvent()}
-						<div class="mt-1 text-xs text-muted-foreground">All day event</div>
+						<div class="mt-1 text-xs text-muted-foreground">All day</div>
 					{/if}
 				</div>
 			</div>
@@ -172,7 +163,7 @@
 							{#each event.attendees as attendee}
 								<div class="flex items-center gap-2 text-xs">
 									<span
-										class={`h-2 w-2 rounded-full ${
+										class={`h-1.5 w-1.5 rounded-full ${
 											attendee.responseStatus === 'accepted'
 												? 'bg-success'
 												: attendee.responseStatus === 'declined'
@@ -216,7 +207,7 @@
 							href={event.hangoutLink}
 							target="_blank"
 							rel="noopener noreferrer"
-							class="text-sm font-medium text-info hover:text-info/80"
+							class="text-sm font-medium text-foreground underline-offset-4 hover:underline"
 						>
 							Join with Google Meet
 						</a>
@@ -268,7 +259,7 @@
 			</a>
 			<button
 				onclick={onClose}
-				class="order-1 sm:order-2 w-full sm:w-auto rounded-lg px-4 py-3 sm:py-2 text-sm font-medium text-foreground transition hover:bg-muted/80 touch-manipulation"
+				class="order-1 sm:order-2 w-full sm:w-auto rounded-lg px-4 py-3 sm:py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 touch-manipulation"
 			>
 				Close
 			</button>

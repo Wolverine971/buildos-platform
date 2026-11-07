@@ -1750,7 +1750,7 @@
 
 {#snippet avatar(member: MemberRow)}
 	<span
-		class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-xs font-semibold text-foreground"
+		class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-xs font-medium text-foreground"
 		aria-hidden="true">{getMemberInitials(member)}</span
 	>
 {/snippet}
@@ -1767,7 +1767,7 @@
 		{#if canManageMembers}
 			<!-- Add people: email or @handle -->
 			<section aria-labelledby="invite-person-heading" class="space-y-2 p-3 sm:p-4">
-				<h3 id="invite-person-heading" class="text-sm font-semibold text-foreground">
+				<h3 id="invite-person-heading" class="text-sm font-medium text-foreground">
 					Add people
 				</h3>
 				<form class="space-y-2" onsubmit={handleInvite}>
@@ -1841,17 +1841,17 @@
 
 				{#if lastSentInvite}
 					<div
-						class="rounded-lg border border-border bg-background p-3 shadow-ink-inner space-y-2"
+						class="rounded-lg border border-border bg-background p-3 space-y-2"
 						role="status"
 					>
 						<p class="text-sm text-foreground">
 							{#if lastSentInvite.emailSent}
-								<span class="font-semibold"
+								<span class="font-medium"
 									>Invite sent to {lastSentInvite.label}.</span
 								>
 								You can also send them the link yourself.
 							{:else}
-								<span class="font-semibold"
+								<span class="font-medium"
 									>The invite is ready, but the email didn’t go out.</span
 								>
 								Copy the link and send it to {lastSentInvite.label} yourself.
@@ -1877,14 +1877,14 @@
 				{/if}
 			</section>
 		{:else if ownerMember}
-			<p class="px-3 py-2.5 text-sm text-muted-foreground sm:px-4">
+			<p class="px-3 py-3 text-sm text-muted-foreground sm:px-4">
 				Only {ownerName} can add people to this project.
 			</p>
 		{/if}
 
 		<!-- People with access: you first, then everyone else -->
 		<section aria-labelledby="members-heading" class="p-3 sm:p-4">
-			<p id="members-heading" class="micro-label text-muted-foreground">
+			<p id="members-heading" class="text-xs font-medium text-muted-foreground">
 				{canManageMembers ? 'People with access' : 'People'}{members.length
 					? ` · ${members.length}`
 					: ''}
@@ -1893,15 +1893,15 @@
 			{#if isLoading && members.length === 0}
 				<p class="mt-2 text-xs text-muted-foreground">Loading people…</p>
 			{:else if members.length === 0}
-				<p class="mt-2 text-xs text-muted-foreground">No one here yet.</p>
+				<p class="mt-2 text-xs text-muted-foreground">No one here yet</p>
 			{:else}
 				<ul class="mt-1 divide-y divide-border">
 					{#if currentMember}
 						{@const selfDetail = getMemberDetail(currentMember, true)}
-						<li class="py-2.5">
+						<li class="py-3">
 							<button
 								type="button"
-								class="flex w-full items-center gap-2.5 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								class="flex w-full items-center gap-2 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								aria-expanded={selfExpanded}
 								aria-controls="self-panel"
 								onclick={() => (selfExpanded = !selfExpanded)}
@@ -1931,10 +1931,10 @@
 							{#if selfExpanded}
 								<div
 									id="self-panel"
-									class="mt-2.5 space-y-3 rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner sm:ml-10"
+									class="mt-3 space-y-3 rounded-lg border border-border bg-muted/20 p-3 sm:ml-10"
 								>
 									{#if ownAgentAccess}
-										<div class="flex items-start gap-2.5">
+										<div class="flex items-start gap-2">
 											<Bot
 												class="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
 											/>
@@ -1957,7 +1957,7 @@
 													“Projects shared with me” for it in
 													<a
 														href="/profile?tab=people#agents"
-														class="font-medium text-accent underline-offset-2 hover:underline"
+														class="font-medium text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground"
 														>People &amp; agents</a
 													>.
 												</p>
@@ -2099,7 +2099,7 @@
 												<ul class="space-y-2">
 													{#each roleProfileAlternatives as alternative, index (`${alternative.role_name}-${index}`)}
 														<li
-															class="flex items-start justify-between gap-2 rounded border border-border bg-background p-2 shadow-ink"
+															class="flex items-start justify-between gap-2 rounded-lg border border-border bg-background p-2"
 														>
 															<div class="min-w-0">
 																<p
@@ -2208,7 +2208,7 @@
 									{#if canLeaveProject}
 										{#if confirmLeave}
 											<div
-												class="rounded-md border border-border bg-background p-3 space-y-2"
+												class="rounded-lg border border-border bg-background p-3 space-y-2"
 												role="group"
 												aria-label="Leave {projectName || 'this project'}"
 											>
@@ -2241,7 +2241,7 @@
 											<Button
 												variant="ghost"
 												size="sm"
-												class="text-destructive hover:bg-destructive/10"
+												class="text-muted-foreground hover:bg-muted/50 hover:text-destructive"
 												disabled={isLeavingProject || memberActionsBusy}
 												onclick={() => (confirmLeave = true)}
 											>
@@ -2263,9 +2263,9 @@
 						{@const memberLabel = getMemberLabel(member)}
 						{@const memberDetail = getMemberDetail(member, false)}
 						{@const manageable = canManageMembers && member.role_key !== 'owner'}
-						<li class="py-2.5">
-							<div class="flex flex-wrap items-center gap-x-2.5 gap-y-2">
-								<div class="flex min-w-0 flex-1 basis-48 items-center gap-2.5">
+						<li class="py-3">
+							<div class="flex flex-wrap items-center gap-x-2 gap-y-2">
+								<div class="flex min-w-0 flex-1 basis-48 items-center gap-2">
 									{@render avatar(member)}
 									<div class="min-w-0">
 										<p class="truncate text-sm font-medium text-foreground">
@@ -2366,7 +2366,7 @@
 
 								{#if editingMemberRoleProfileId === member.id}
 									<form
-										class="mt-2 space-y-2 rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner sm:ml-10"
+										class="mt-2 space-y-2 rounded-lg border border-border bg-muted/20 p-3 sm:ml-10"
 										onsubmit={handleSaveMemberRoleProfile}
 									>
 										<div class="space-y-1">
@@ -2429,7 +2429,7 @@
 
 								{#if confirmRemoveMemberId === member.id}
 									<div
-										class="mt-2 rounded-md border border-border bg-background p-3 space-y-2 sm:ml-10"
+										class="mt-2 rounded-lg border border-border bg-background p-3 space-y-2 sm:ml-10"
 										role="group"
 										aria-label="Remove {memberLabel}"
 									>
@@ -2469,7 +2469,7 @@
 										bind:this={handoffPanel}
 										tabindex="-1"
 										aria-labelledby="handoff-heading"
-										class="mt-2 space-y-2.5 rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:ml-10"
+										class="mt-2 space-y-3 rounded-lg border border-border bg-muted/20 p-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:ml-10"
 										onsubmit={handleConfirmHandoff}
 									>
 										<div class="space-y-1">
@@ -2487,7 +2487,7 @@
 													: 'You’ll stay on as an editor.'}
 											</p>
 										</div>
-										<label class="flex cursor-pointer items-start gap-2.5">
+										<label class="flex cursor-pointer items-start gap-2">
 											<input
 												type="checkbox"
 												class="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent"
@@ -2536,7 +2536,10 @@
 			<!-- Invited, no answer -->
 			<section aria-labelledby="pending-invites-heading" class="p-3 sm:p-4">
 				<div class="flex flex-wrap items-center justify-between gap-2">
-					<p id="pending-invites-heading" class="micro-label text-muted-foreground">
+					<p
+						id="pending-invites-heading"
+						class="text-xs font-medium text-muted-foreground"
+					>
 						Invited, no answer · {invites.length}
 					</p>
 					{#if expiredInvites.length > 0}
@@ -2596,7 +2599,7 @@
 									<Button
 										variant="ghost"
 										size="sm"
-										class="text-destructive hover:bg-destructive/10"
+										class="text-muted-foreground hover:bg-muted/50 hover:text-destructive"
 										loading={inviteActionId === invite.id &&
 											inviteActionType === 'revoke'}
 										disabled={inviteActionId !== null || clearingExpired}
@@ -2609,7 +2612,7 @@
 							</div>
 							{#if confirmRevokeInviteId === invite.id}
 								<div
-									class="mt-2 rounded-md border border-border bg-background p-3 space-y-2"
+									class="mt-2 rounded-lg border border-border bg-background p-3 space-y-2"
 									role="group"
 									aria-label="Remove the invite for {inviteLabel}"
 								>
@@ -2644,7 +2647,7 @@
 		{#if canManageMembers}
 			<!-- Agents in this project -->
 			<section aria-labelledby="project-agents-heading" class="space-y-3 p-3 sm:p-4">
-				<p id="project-agents-heading" class="micro-label text-muted-foreground">
+				<p id="project-agents-heading" class="text-xs font-medium text-muted-foreground">
 					Agents in this project
 				</p>
 
@@ -2721,12 +2724,12 @@
 		>
 			<a
 				href="/profile?tab=people"
-				class="inline-flex items-center gap-1.5 text-sm font-medium text-accent underline-offset-2 hover:underline"
+				class="inline-flex items-center gap-2 text-sm font-medium text-foreground underline-offset-4 hover:underline"
 			>
-				<Users class="h-4 w-4" />
+				<Users class="h-4 w-4 text-muted-foreground" />
 				{canManageMembers ? 'Everyone across your projects' : 'Your sharing settings'}
 			</a>
-			<Button variant="primary" size="sm" onclick={handleClose}>Done</Button>
+			<Button variant="outline" size="sm" onclick={handleClose}>Done</Button>
 		</div>
 	{/snippet}
 </Modal>

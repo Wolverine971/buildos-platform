@@ -142,7 +142,7 @@
 	function statusIcon(status: AgentRunStatus) {
 		switch (status) {
 			case 'completed':
-				return { icon: CheckCircle, cls: 'text-success' };
+				return { icon: CheckCircle, cls: 'text-muted-foreground' };
 			case 'partial':
 				return { icon: AlertCircle, cls: 'text-warning' };
 			case 'failed':
@@ -152,7 +152,7 @@
 			case 'needs_input':
 				return { icon: CircleHelp, cls: 'text-warning' };
 			case 'proposal_ready':
-				return { icon: FileDiff, cls: 'text-info' };
+				return { icon: FileDiff, cls: 'text-muted-foreground' };
 			case 'paused':
 				return { icon: Pause, cls: 'text-muted-foreground' };
 			case 'queued':
@@ -163,7 +163,7 @@
 			default:
 				return {
 					icon: LoaderCircle,
-					cls: 'text-info animate-spin motion-reduce:animate-none'
+					cls: 'text-muted-foreground animate-spin motion-reduce:animate-none'
 				};
 		}
 	}
@@ -258,6 +258,17 @@
 		}
 	});
 
+	/** Show operation and status keys as words (`update_onto_task` -> `update onto task`). */
+	function humanizeKey(value: unknown): string {
+		return String(value ?? '')
+			.replace(/[_.]+/g, ' ')
+			.trim();
+	}
+
+	function sentenceCase(text: string): string {
+		return text.charAt(0).toUpperCase() + text.slice(1);
+	}
+
 	function eventLine(event: AgentRunEventRow): {
 		icon: typeof ArrowRight;
 		cls: string;
@@ -266,25 +277,33 @@
 		const p = (event.payload ?? {}) as Record<string, any>;
 		switch (event.event_type) {
 			case 'run.tool_call':
-				return { icon: ArrowRight, cls: 'text-info', text: `Calling ${p.op ?? 'op'}` };
+				return {
+					icon: ArrowRight,
+					cls: 'text-muted-foreground',
+					text: `Calling ${humanizeKey(p.op ?? 'op')}`
+				};
 			case 'run.tool_result':
 				return p.ok === false
 					? {
 							icon: XCircle,
 							cls: 'text-destructive',
-							text: `${p.op ?? 'op'} failed${p.error?.message ? `: ${p.error.message}` : ''}`
+							text: `${sentenceCase(humanizeKey(p.op ?? 'op'))} failed${p.error?.message ? `: ${p.error.message}` : ''}`
 						}
-					: { icon: CheckCircle, cls: 'text-success', text: `${p.op ?? 'op'} ok` };
+					: {
+							icon: CheckCircle,
+							cls: 'text-muted-foreground',
+							text: `${sentenceCase(humanizeKey(p.op ?? 'op'))} done`
+						};
 			case 'run.status':
 				return {
 					icon: Activity,
 					cls: 'text-muted-foreground',
-					text: `Status: ${p.status ?? ''}`
+					text: `Status: ${p.status ? (agentRunStatusLabel(p.status) ?? humanizeKey(p.status)) : ''}`
 				};
 			case 'run.steer':
 				return {
 					icon: MessageSquare,
-					cls: 'text-warning',
+					cls: 'text-muted-foreground',
 					text: `Steer: ${p.message ?? ''}`
 				};
 			case 'run.message':
@@ -474,12 +493,12 @@
 					{#if projectHref(notification.data.projectId)}
 						<a
 							href={projectHref(notification.data.projectId)}
-							class="inline-block max-w-full truncate text-sm font-semibold text-accent hover:underline"
+							class="inline-block max-w-full truncate text-sm font-medium text-foreground hover:underline"
 						>
 							{projectLabel}
 						</a>
 					{:else}
-						<div class="truncate text-sm font-semibold text-foreground">
+						<div class="truncate text-sm font-medium text-foreground">
 							{projectLabel}
 						</div>
 					{/if}
@@ -529,14 +548,14 @@
 
 			<!-- Answer box — the run is blocked or can continue from a partial result -->
 			{#if canAnswerRun}
-				<div class="space-y-2 rounded-lg border border-warning/40 bg-warning/5 p-3">
-					<div class="micro-label text-warning">
+				<div class="space-y-2 rounded-xl border border-warning/40 bg-warning/5 p-3">
+					<div class="text-xs font-medium text-warning">
 						{runStatus === 'partial'
 							? 'Continue this work'
 							: 'BuildOS needs your input'}
 					</div>
 					{#if result?.open_questions?.length}
-						<ul class="list-disc list-inside space-y-0.5">
+						<ul class="list-disc list-inside space-y-1">
 							{#each result.open_questions as q}
 								<li class="text-sm text-foreground">{q}</li>
 							{/each}
@@ -548,9 +567,9 @@
 							rows="2"
 							disabled={answering}
 							placeholder={runStatus === 'partial'
-								? 'Tell BuildOS what to do next…'
-								: 'Type your answer…'}
-							class="min-h-[4.5rem] flex-1 resize-none rounded-md border border-border bg-background px-2.5 py-2 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50 sm:min-h-0 sm:text-sm"
+								? 'Tell BuildOS what to do next'
+								: 'Your answer'}
+							class="min-h-[4.5rem] flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50 sm:min-h-0 sm:text-sm"
 						></textarea>
 						<Button
 							onclick={submitAnswer}
@@ -568,19 +587,19 @@
 			{#snippet runDetails()}
 				<!-- Result summary / answer -->
 				{#if result?.summary || result?.answer}
-					<div class="space-y-2 rounded-lg border border-border bg-muted/40 p-3">
+					<div class="space-y-2 rounded-xl border border-border bg-muted/40 p-3">
 						{#if result.summary}
 							<div>
-								<div class="micro-label text-muted-foreground">Summary</div>
-								<div class="agent-run-prose {proseClasses} mt-0.5 break-words">
+								<div class="text-xs font-medium text-muted-foreground">Summary</div>
+								<div class="agent-run-prose {proseClasses} mt-1 break-words">
 									{@html renderAgentMarkdownContent(result.summary)}
 								</div>
 							</div>
 						{/if}
 						{#if result.answer && result.answer !== result.summary}
 							<div>
-								<div class="micro-label text-muted-foreground">Answer</div>
-								<div class="agent-run-prose {proseClasses} mt-0.5 break-words">
+								<div class="text-xs font-medium text-muted-foreground">Answer</div>
+								<div class="agent-run-prose {proseClasses} mt-1 break-words">
 									{@html renderAgentMarkdownContent(result.answer)}
 								</div>
 							</div>
@@ -590,9 +609,9 @@
 
 				<!-- Error -->
 				{#if runStatus === 'failed' && notification.data.error}
-					<div class="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-						<div class="micro-label text-destructive">Error</div>
-						<p class="text-sm text-destructive mt-0.5 whitespace-pre-wrap">
+					<div class="rounded-xl border border-destructive/30 bg-destructive/5 p-3">
+						<div class="text-xs font-medium text-destructive">Error</div>
+						<p class="text-sm text-destructive mt-1 whitespace-pre-wrap">
 							{notification.data.error}
 						</p>
 					</div>
@@ -601,16 +620,18 @@
 				<!-- Entities touched -->
 				{#if result?.entities_touched?.length}
 					<div>
-						<div class="micro-label mb-1.5 text-muted-foreground">
-							Changes ({result.entities_touched.length})
+						<div class="mb-2 text-xs font-medium text-muted-foreground">
+							Changes <span class="font-mono tabular-nums"
+								>{result.entities_touched.length}</span
+							>
 						</div>
-						<div class="flex flex-wrap gap-1.5">
+						<div class="flex flex-wrap gap-2">
 							{#each result.entities_touched as entity (`${entity.type}:${entity.id}:${entity.action}`)}
 								{@const href = entityHref(entity)}
 								{#if href}
 									<a
 										{href}
-										class="inline-flex min-h-11 items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground transition-colors hover:border-accent/50 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+										class="inline-flex min-h-11 items-center gap-1 rounded-lg border border-border bg-card px-2 py-1 text-xs text-foreground transition-colors hover:border-foreground/20 hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 										title={entity.description}
 									>
 										<span class="text-muted-foreground">{entity.action}</span>
@@ -618,7 +639,7 @@
 									</a>
 								{:else}
 									<span
-										class="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground"
+										class="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2 py-1 text-xs text-foreground"
 										title={entity.description}
 									>
 										<span class="text-muted-foreground">{entity.action}</span>
@@ -633,8 +654,10 @@
 				<!-- Open questions (continuable runs render them in the answer box above) -->
 				{#if result?.open_questions?.length && !canAnswerRun}
 					<div>
-						<div class="micro-label mb-1.5 text-muted-foreground">Open questions</div>
-						<ul class="list-disc list-inside space-y-0.5">
+						<div class="mb-2 text-xs font-medium text-muted-foreground">
+							Open questions
+						</div>
+						<ul class="list-disc list-inside space-y-1">
 							{#each result.open_questions as q}
 								<li class="text-sm text-foreground">{q}</li>
 							{/each}
@@ -644,9 +667,9 @@
 
 				<!-- Narration / event log -->
 				<div>
-					<div class="micro-label mb-1.5 text-muted-foreground">Activity</div>
+					<div class="mb-2 text-xs font-medium text-muted-foreground">Activity</div>
 					<div
-						class="rounded-lg border border-border bg-card max-h-64 overflow-y-auto divide-y divide-border/60"
+						class="rounded-xl border border-border bg-card max-h-64 overflow-y-auto divide-y divide-border/60"
 					>
 						{#if loadingEvents && events.length === 0}
 							<div class="flex items-center gap-2 p-3 text-xs text-muted-foreground">
@@ -654,7 +677,7 @@
 									class="h-4 w-4 animate-spin motion-reduce:animate-none"
 									aria-hidden="true"
 								/>
-								Loading activity…
+								Loading activity
 							</div>
 						{:else if eventsError}
 							<div class="flex items-center justify-between gap-2 p-3">
@@ -666,13 +689,13 @@
 								>
 							</div>
 						{:else if events.length === 0}
-							<div class="p-3 text-xs text-muted-foreground">No activity yet.</div>
+							<div class="p-3 text-xs text-muted-foreground">No activity yet</div>
 						{:else}
 							{#each events as event (event.id)}
 								{@const line = eventLine(event)}
 								{#if line.text}
 									{@const LineIcon = line.icon}
-									<div class="flex items-start gap-2 p-2.5">
+									<div class="flex items-start gap-2 p-3">
 										<LineIcon
 											class="w-3.5 h-3.5 mt-0.5 flex-shrink-0 {line.cls}"
 										/>
@@ -690,28 +713,28 @@
 				{#if metrics}
 					<div class="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
 						<div class="rounded-lg bg-muted/40 p-2">
-							<div class="text-sm font-medium text-foreground">
+							<div class="font-mono text-sm font-medium tabular-nums text-foreground">
 								{metrics.tool_calls ?? 0}
 							</div>
-							<div class="micro-label text-muted-foreground">Tools</div>
+							<div class="text-xs text-muted-foreground">Tools</div>
 						</div>
 						<div class="rounded-lg bg-muted/40 p-2">
-							<div class="text-sm font-medium text-foreground">
+							<div class="font-mono text-sm font-medium tabular-nums text-foreground">
 								{(metrics.tokens ?? 0).toLocaleString()}
 							</div>
-							<div class="micro-label text-muted-foreground">Tokens</div>
+							<div class="text-xs text-muted-foreground">Tokens</div>
 						</div>
 						<div class="rounded-lg bg-muted/40 p-2">
-							<div class="text-sm font-medium text-foreground">
+							<div class="font-mono text-sm font-medium tabular-nums text-foreground">
 								${(metrics.cost_usd ?? 0).toFixed(3)}
 							</div>
-							<div class="micro-label text-muted-foreground">Cost</div>
+							<div class="text-xs text-muted-foreground">Cost</div>
 						</div>
 						<div class="rounded-lg bg-muted/40 p-2">
-							<div class="text-sm font-medium text-foreground">
+							<div class="font-mono text-sm font-medium tabular-nums text-foreground">
 								{formatDuration(metrics.duration_ms)}
 							</div>
-							<div class="micro-label text-muted-foreground">Time</div>
+							<div class="text-xs text-muted-foreground">Time</div>
 						</div>
 					</div>
 				{/if}
@@ -719,7 +742,7 @@
 			{#if isReview}
 				<details
 					ontoggle={toggleReviewDetails}
-					class="rounded-lg border border-border bg-muted/20 p-3"
+					class="rounded-xl border border-border bg-muted/20 p-3"
 				>
 					<summary class="cursor-pointer text-xs font-medium text-muted-foreground"
 						>Review context and activity</summary

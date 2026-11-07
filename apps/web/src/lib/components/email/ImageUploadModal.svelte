@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/email/ImageUploadModal.svelte -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { Upload, Image as ImageIcon, Trash2, Eye, Search } from 'lucide-svelte';
+	import { Upload, Image as ImageIcon, Trash2, Eye, Search } from '$lib/icons/lucide';
 	import Modal from '../ui/Modal.svelte';
 	import TextInput from '../ui/TextInput.svelte';
 	import Select from '../ui/Select.svelte';
@@ -218,10 +218,10 @@
 	}
 </script>
 
-<Modal {isOpen} onClose={close} title="Insert Image" size="xl">
+<Modal {isOpen} onClose={close} title="Insert image" size="xl">
 	<div class="space-y-3 px-3 py-3 sm:space-y-4 sm:px-4 sm:py-4 lg:px-6">
 		{#if error}
-			<div class="rounded-md border border-destructive/40 bg-destructive/10 p-3">
+			<div class="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
 				<p class="text-sm text-destructive">{error}</p>
 			</div>
 		{/if}
@@ -237,7 +237,7 @@
 					onclick={() => (activeTab = 'upload')}
 				>
 					<Upload class="mr-2 inline h-4 w-4" />
-					Upload New
+					Upload new
 				</button>
 				<button
 					type="button"
@@ -248,7 +248,7 @@
 					onclick={() => (activeTab = 'gallery')}
 				>
 					<ImageIcon class="mr-2 inline h-4 w-4" />
-					Gallery ({images.length})
+					Gallery <span class="ml-1 font-mono text-xs tabular-nums">{images.length}</span>
 				</button>
 			</nav>
 		</div>
@@ -256,9 +256,9 @@
 		{#if activeTab === 'upload'}
 			<div class="space-y-4">
 				<div
-					class="rounded-lg border-2 border-dashed p-8 text-center transition-colors {dragActive
-						? 'border-accent bg-accent/10'
-						: 'border-border hover:border-muted-foreground'}"
+					class="rounded-xl border-2 border-dashed p-8 text-center transition-colors {dragActive
+						? 'border-accent bg-accent/5'
+						: 'border-border hover:border-foreground/20'}"
 					role="button"
 					tabindex="0"
 					aria-label="Drag and drop image upload area"
@@ -279,7 +279,7 @@
 								<img
 									src={uploadPreview}
 									alt="Upload preview"
-									class="max-h-48 max-w-full rounded-lg shadow-ink"
+									class="max-h-48 max-w-full rounded-lg"
 								/>
 							</div>
 							<div class="text-sm text-muted-foreground">
@@ -296,7 +296,7 @@
 									size="md"
 									class="w-full sm:w-auto"
 								>
-									{isUploading ? 'Uploading...' : 'Upload Image'}
+									{isUploading ? 'Uploading' : 'Upload image'}
 								</Button>
 								<Button
 									onclick={clearUpload}
@@ -321,14 +321,14 @@
 								</p>
 							</div>
 							<div class="text-xs text-muted-foreground">
-								Supports: JPG, PNG, GIF, WebP (Max 10MB)
+								JPG, PNG, GIF or WebP, up to 10 MB
 							</div>
 							<Button
 								onclick={() => fileInput?.click()}
 								variant="secondary"
 								size="md"
 							>
-								Select Image
+								Select image
 							</Button>
 						</div>
 					{/if}
@@ -355,22 +355,22 @@
 						/>
 						<TextInput
 							bind:value={searchQuery}
-							placeholder="Search images..."
+							placeholder="Search images"
 							size="md"
 							class="pl-10 text-xs sm:text-sm"
 						/>
 					</div>
 
 					<div class="flex items-center space-x-2">
-						<div class="text-sm font-medium text-foreground">Filter:</div>
+						<div class="text-sm text-muted-foreground">Filter</div>
 						<Select
 							bind:value={selectedFilter}
 							size="md"
 							class="text-xs sm:text-sm"
 							onchange={(value) => (selectedFilter = String(value))}
 						>
-							<option value="all">All Images</option>
-							<option value="email">This Email</option>
+							<option value="all">All images</option>
+							<option value="email">This email</option>
 							<option value="shared">Shared</option>
 						</Select>
 					</div>
@@ -379,7 +379,7 @@
 				{#if isLoading}
 					<div class="flex justify-center py-8">
 						<div
-							class="h-8 w-8 animate-spin rounded-full border-b-2 border-accent"
+							class="h-8 w-8 animate-spin rounded-full border-b-2 border-muted-foreground"
 						></div>
 					</div>
 				{:else if filteredImages.length === 0}
@@ -395,7 +395,7 @@
 					>
 						{#each filteredImages as image (image.id)}
 							<div
-								class="group relative overflow-hidden rounded-lg border border-border transition-shadow hover:shadow-ink"
+								class="group relative overflow-hidden rounded-xl border border-border transition-colors hover:border-foreground/20"
 							>
 								<div class="aspect-square bg-muted">
 									<img
@@ -415,7 +415,7 @@
 											onclick={() => selectImage(image)}
 											variant="secondary"
 											size="sm"
-											class="rounded-full p-3"
+											class="rounded-lg p-3"
 											title="Select image"
 										>
 											<Eye class="h-4 w-4 sm:h-5 sm:w-5" />
@@ -424,7 +424,7 @@
 											onclick={() => deleteImage(image)}
 											variant="danger"
 											size="sm"
-											class="rounded-full p-3"
+											class="rounded-lg p-3"
 											title="Delete image"
 										>
 											<Trash2 class="h-4 w-4 sm:h-5 sm:w-5" />
@@ -441,7 +441,7 @@
 									</p>
 									{#if image.storage_path?.includes('shared')}
 										<span
-											class="mt-0.5 inline-flex rounded bg-accent/15 px-1 py-0.5 text-xs font-medium text-accent"
+											class="mt-1 inline-flex text-xs text-muted-foreground"
 										>
 											Shared
 										</span>

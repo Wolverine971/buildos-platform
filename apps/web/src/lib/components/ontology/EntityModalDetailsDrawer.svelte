@@ -72,22 +72,25 @@
 		id={toggleId}
 		type="button"
 		onclick={togglePanel}
-		class="pointer-events-auto group flex h-full w-full flex-col items-center justify-center gap-2 rounded-l-md border border-r-0 px-1 py-2 shadow-ink transition-colors motion-reduce:transition-none pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring {open
-			? 'border-accent/50 bg-accent/10 text-foreground'
-			: 'border-border-strong bg-muted/95 text-foreground hover:border-accent/50 hover:bg-card'} tx tx-strip tx-weak wt-paper"
+		class="pointer-events-auto group flex h-full w-full flex-col items-center justify-center gap-2 rounded-l-lg border border-r-0 px-1 py-2 transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring {open
+			? 'border-border-strong bg-card text-foreground'
+			: 'border-border-strong bg-muted/95 text-foreground hover:bg-card'} tx tx-strip tx-weak wt-paper"
 		title={open ? `Close ${panelLabel}` : `Open ${panelLabel}`}
 		aria-label={open ? `Close ${panelLabel}` : `Open ${panelLabel}`}
 		aria-controls={panelId}
 		aria-expanded={open}
 	>
 		{#if open}
-			<PanelRightClose class="h-4 w-4 shrink-0 text-accent" />
+			<PanelRightClose class="h-4 w-4 shrink-0 text-muted-foreground" />
 		{:else}
 			<PanelRightOpen
 				class="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground motion-reduce:transition-none"
 			/>
 		{/if}
-		<span class="micro-label rotate-180 [writing-mode:vertical-rl]">DETAILS</span>
+		<span
+			class="rotate-180 text-xs font-medium text-muted-foreground [writing-mode:vertical-rl]"
+			>Details</span
+		>
 	</button>
 </div>
 
@@ -118,7 +121,7 @@
 			<div
 				class="ml-4 hidden shrink-0 border-b border-border/70 bg-muted/95 px-3 py-2 tx tx-strip tx-weak lg:block"
 			>
-				<p class="micro-label text-foreground">{panelLabel.toUpperCase()}</p>
+				<p class="text-xs font-medium text-muted-foreground">{panelLabel}</p>
 			</div>
 		{/if}
 
@@ -126,13 +129,13 @@
 			<button
 				type="button"
 				onclick={toggleMobile}
-				class="flex min-h-11 w-full min-w-0 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-left shadow-ink pressable hover:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden {mobileOpen
+				class="flex min-h-11 w-full min-w-0 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-left hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden {mobileOpen
 					? 'mb-2'
 					: ''}"
 				aria-expanded={mobileOpen}
 				aria-controls={`${panelId}-content`}
 			>
-				<span class="micro-label shrink-0 text-foreground">Details</span>
+				<span class="shrink-0 text-xs font-medium text-foreground">Details</span>
 				{#if mobileSummary}
 					<span class="min-w-0 flex-1 truncate text-xs text-muted-foreground">
 						{@render mobileSummary()}

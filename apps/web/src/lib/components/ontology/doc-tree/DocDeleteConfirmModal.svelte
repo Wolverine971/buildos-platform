@@ -5,7 +5,7 @@
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { AlertTriangle, Archive, Loader, FolderUp, Unlink } from 'lucide-svelte';
+	import { AlertTriangle, Archive, Loader, FolderUp, Unlink } from '$lib/icons/lucide';
 
 	type ArchiveMode = 'archive_children' | 'promote_children' | 'unlink_children';
 
@@ -59,20 +59,16 @@
 	}
 </script>
 
-<Modal bind:isOpen onClose={handleClose} title="Archive Document" size="sm">
+<Modal bind:isOpen onClose={handleClose} title="Archive document" size="sm">
 	<div class="space-y-4">
 		<!-- Warning icon -->
 		<div class="flex items-center gap-3">
-			<div
-				class="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center flex-shrink-0"
-			>
-				<AlertTriangle class="w-5 h-5 text-destructive" />
-			</div>
+			<AlertTriangle class="w-5 h-5 text-destructive flex-shrink-0" />
 			<div>
 				<p class="text-sm font-medium text-foreground">
 					Archive "{documentTitle}"?
 				</p>
-				<p class="text-xs text-muted-foreground mt-0.5">
+				<p class="text-xs text-muted-foreground mt-1">
 					Archived documents move to the archived section and out of the active tree.
 				</p>
 			</div>
@@ -81,7 +77,7 @@
 		<!-- Options for folders with children -->
 		{#if hasChildren}
 			<div class="space-y-2 pt-2">
-				<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+				<p class="text-xs font-medium text-muted-foreground">
 					This folder has {childCount || 'some'} document{childCount !== 1 ? 's' : ''}
 				</p>
 
@@ -89,25 +85,25 @@
 				<button
 					type="button"
 					onclick={() => (selectedMode = 'archive_children')}
-					class="w-full flex items-start gap-3 p-3 rounded-lg border transition-colors
+					class="w-full flex items-start gap-3 p-3 rounded-xl border transition-colors
 						{selectedMode === 'archive_children'
-						? 'border-destructive/50 bg-destructive/5'
-						: 'border-border hover:border-border/80 hover:bg-muted/30'}"
+						? 'border-accent/50 bg-accent/5'
+						: 'border-border hover:border-foreground/20 hover:bg-muted/50'}"
 				>
 					<div
-						class="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5
-							{selectedMode === 'archive_children' ? 'border-destructive' : 'border-muted-foreground/40'}"
+						class="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0
+							{selectedMode === 'archive_children' ? 'border-accent' : 'border-muted-foreground/40'}"
 					>
 						{#if selectedMode === 'archive_children'}
-							<div class="w-2.5 h-2.5 rounded-full bg-destructive"></div>
+							<div class="w-2.5 h-2.5 rounded-full bg-accent"></div>
 						{/if}
 					</div>
 					<div class="text-left">
-						<p class="text-sm font-medium text-foreground flex items-center gap-1.5">
-							<Archive class="w-4 h-4 text-destructive" />
+						<p class="text-sm font-medium text-foreground flex items-center gap-2">
+							<Archive class="w-4 h-4 text-muted-foreground" />
 							Archive folder and all children
 						</p>
-						<p class="text-xs text-muted-foreground mt-0.5">
+						<p class="text-xs text-muted-foreground mt-1">
 							All nested documents are archived and removed from the active tree
 						</p>
 					</div>
@@ -117,13 +113,13 @@
 				<button
 					type="button"
 					onclick={() => (selectedMode = 'promote_children')}
-					class="w-full flex items-start gap-3 p-3 rounded-lg border transition-colors
+					class="w-full flex items-start gap-3 p-3 rounded-xl border transition-colors
 						{selectedMode === 'promote_children'
 						? 'border-accent/50 bg-accent/5'
-						: 'border-border hover:border-border/80 hover:bg-muted/30'}"
+						: 'border-border hover:border-foreground/20 hover:bg-muted/50'}"
 				>
 					<div
-						class="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5
+						class="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0
 							{selectedMode === 'promote_children' ? 'border-accent' : 'border-muted-foreground/40'}"
 					>
 						{#if selectedMode === 'promote_children'}
@@ -131,11 +127,11 @@
 						{/if}
 					</div>
 					<div class="text-left">
-						<p class="text-sm font-medium text-foreground flex items-center gap-1.5">
-							<FolderUp class="w-4 h-4 text-accent" />
+						<p class="text-sm font-medium text-foreground flex items-center gap-2">
+							<FolderUp class="w-4 h-4 text-muted-foreground" />
 							Archive folder, keep children in tree
 						</p>
-						<p class="text-xs text-muted-foreground mt-0.5">
+						<p class="text-xs text-muted-foreground mt-1">
 							Nested documents will move to the parent level
 						</p>
 					</div>
@@ -145,26 +141,26 @@
 				<button
 					type="button"
 					onclick={() => (selectedMode = 'unlink_children')}
-					class="w-full flex items-start gap-3 p-3 rounded-lg border transition-colors
+					class="w-full flex items-start gap-3 p-3 rounded-xl border transition-colors
 						{selectedMode === 'unlink_children'
-						? 'border-warning/50 bg-warning/5'
-						: 'border-border hover:border-border/80 hover:bg-muted/30'}"
+						? 'border-accent/50 bg-accent/5'
+						: 'border-border hover:border-foreground/20 hover:bg-muted/50'}"
 				>
 					<div
-						class="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5
-							{selectedMode === 'unlink_children' ? 'border-warning' : 'border-muted-foreground/40'}"
+						class="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0
+							{selectedMode === 'unlink_children' ? 'border-accent' : 'border-muted-foreground/40'}"
 					>
 						{#if selectedMode === 'unlink_children'}
-							<div class="w-2.5 h-2.5 rounded-full bg-warning"></div>
+							<div class="w-2.5 h-2.5 rounded-full bg-accent"></div>
 						{/if}
 					</div>
 					<div class="text-left">
-						<p class="text-sm font-medium text-foreground flex items-center gap-1.5">
-							<Unlink class="w-4 h-4 text-warning" />
+						<p class="text-sm font-medium text-foreground flex items-center gap-2">
+							<Unlink class="w-4 h-4 text-muted-foreground" />
 							Archive folder, move children to unlinked
 						</p>
-						<p class="text-xs text-muted-foreground mt-0.5">
-							Children stay active but move to the Unlinked Documents section
+						<p class="text-xs text-muted-foreground mt-1">
+							Children stay active but move to Unlinked documents
 						</p>
 					</div>
 				</button>
@@ -177,9 +173,7 @@
 	</div>
 
 	{#snippet footer()}
-		<div
-			class="flex justify-end gap-3 px-3 sm:px-4 py-3 sm:py-4 border-t border-border bg-muted/30"
-		>
+		<div class="flex justify-end gap-3 px-4 py-4 border-t border-border bg-muted/30">
 			<Button variant="ghost" onclick={handleClose} disabled={deleting}>Cancel</Button>
 			<Button variant="danger" onclick={handleDelete} disabled={deleting}>
 				{#if deleting}

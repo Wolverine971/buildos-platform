@@ -332,7 +332,7 @@ describe('LinkedEntities request ownership', () => {
 		expect(screen.queryByText('Second link')).not.toBeInTheDocument();
 	});
 
-	it('creates links once when Add Selected is double-clicked', async () => {
+	it('creates links once when Add selected is double-clicked', async () => {
 		render(LinkedEntities, {
 			props: {
 				sourceId: 'task-a',
@@ -349,7 +349,7 @@ describe('LinkedEntities request ownership', () => {
 			availableResponse([{ id: 'document-a', title: 'Document A', isLinked: false }])
 		);
 		await fireEvent.click(await screen.findByRole('button', { name: 'Document A' }));
-		const confirm = screen.getByRole('button', { name: 'Add Selected (1)' });
+		const confirm = screen.getByRole('button', { name: 'Add selected (1)' });
 		await fireEvent.click(confirm);
 		await fireEvent.click(confirm);
 
@@ -379,7 +379,7 @@ describe('LinkedEntities request ownership', () => {
 			availableResponse([{ id: 'document-a', title: 'Document A', isLinked: false }])
 		);
 		await fireEvent.click(await screen.findByRole('button', { name: 'Document A' }));
-		await fireEvent.click(screen.getByRole('button', { name: 'Add Selected (1)' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Add selected (1)' }));
 		await waitFor(() => expect(requests).toHaveLength(2));
 		const mutation = requestFor('/api/onto/edges', 'POST');
 

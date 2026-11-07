@@ -165,7 +165,7 @@ describe('legacy notification modal accessibility', () => {
 
 		render(ProjectSynthesisModalContent, { props: { notification } });
 
-		const dialog = screen.getByRole('dialog', { name: 'Project Synthesis — Launch plan' });
+		const dialog = screen.getByRole('dialog', { name: 'Project synthesis — Launch plan' });
 		await waitFor(() => expect(dialog).toContainElement(document.activeElement as HTMLElement));
 		expect(screen.getByRole('heading', { name: 'Synthesis failed' })).toBeInTheDocument();
 		expect(screen.getByText('12 tasks in this run')).toBeInTheDocument();

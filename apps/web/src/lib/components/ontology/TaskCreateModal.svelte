@@ -8,12 +8,15 @@
 -->
 <script lang="ts">
 	import {
+		ChevronLeft,
 		ChevronRight,
+		CalendarRange,
 		Save,
 		CheckSquare,
 		ListChecks,
 		Sparkles,
-		LoaderCircle
+		LoaderCircle,
+		X
 	} from '$lib/icons/lucide';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -42,7 +45,7 @@
 	const TASK_TYPES: TaskType[] = [
 		{
 			id: 'execute',
-			name: 'Execute Task',
+			name: 'Execute task',
 			type_key: 'task.execute',
 			metadata: {
 				category: 'Execution',
@@ -52,7 +55,7 @@
 		},
 		{
 			id: 'review',
-			name: 'Review Task',
+			name: 'Review task',
 			type_key: 'task.review',
 			metadata: {
 				category: 'Review',
@@ -62,7 +65,7 @@
 		},
 		{
 			id: 'research',
-			name: 'Research Task',
+			name: 'Research task',
 			type_key: 'task.research',
 			metadata: {
 				category: 'Research',
@@ -72,7 +75,7 @@
 		},
 		{
 			id: 'plan',
-			name: 'Planning Task',
+			name: 'Planning task',
 			type_key: 'task.plan',
 			metadata: {
 				category: 'Planning',
@@ -267,17 +270,17 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted border-b border-border px-2 py-2 sm:px-4 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-				<div class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 shrink-0">
-					<ListChecks class="w-5 h-5 text-accent" />
+				<div class="flex h-9 w-9 items-center justify-center shrink-0">
+					<ListChecks class="w-5 h-5 text-muted-foreground" />
 				</div>
 				<div class="min-w-0 flex-1">
 					<h2
-						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
+						class="text-sm sm:text-base font-medium leading-tight truncate text-foreground"
 					>
-						{title || 'New Task'}
+						{title || 'New task'}
 					</h2>
 					<p class="text-2xs sm:text-xs text-muted-foreground mt-0.5 truncate">
 						{goalName ? `Connected to ${goalName}` : 'Type will be auto-classified'}
@@ -288,17 +291,10 @@
 				type="button"
 				onclick={handleClose}
 				disabled={isSaving}
-				class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
+				class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
 				aria-label="Close modal"
 			>
-				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M6 18L18 6M6 6l12 12"
-					></path>
-				</svg>
+				<X class="w-5 h-5" />
 			</button>
 		</div>
 	{/snippet}
@@ -320,26 +316,18 @@
 						<div class="space-y-3 sm:space-y-4">
 							<!-- Header -->
 							<div class="flex items-center gap-3 pb-4 border-b border-border">
-								<div class="p-2 rounded bg-muted tx tx-bloom tx-weak">
-									<ListChecks class="w-5 h-5 text-accent" />
-								</div>
+								<ListChecks class="w-5 h-5 shrink-0 text-muted-foreground" />
 								<div>
-									<h3 class="text-lg font-semibold text-foreground">
-										Choose a Task Type
+									<h3 class="text-lg font-medium text-foreground">
+										Choose a task type
 									</h3>
-									<p class="text-sm text-muted-foreground">
-										Select a task type to get started with the right structure
-									</p>
 								</div>
 							</div>
 
 							<div class="space-y-4 sm:space-y-6">
 								{#each Object.entries(templateCategories) as [category, categoryTemplates] (category)}
 									<div>
-										<h3
-											class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2"
-										>
-											<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
+										<h3 class="text-xs font-medium text-muted-foreground mb-3">
 											{category}
 										</h3>
 										<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -347,18 +335,16 @@
 												<button
 													type="button"
 													onclick={() => selectTemplate(template)}
-													class="bg-card border border-border p-2.5 sm:p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200 pressable tx tx-frame tx-weak"
+													class="bg-card border border-border p-3 sm:p-4 rounded-lg text-left group hover:border-foreground/20 hover:bg-muted/50 transition-colors duration-200 tx tx-frame tx-weak"
 												>
 													<div
 														class="flex items-start justify-between mb-2"
 													>
-														<h4
-															class="font-semibold text-foreground group-hover:text-accent transition-colors"
-														>
+														<h4 class="font-medium text-foreground">
 															{template.name}
 														</h4>
 														<ChevronRight
-															class="w-5 h-5 text-muted-foreground group-hover:text-accent flex-shrink-0 transition-transform group-hover:translate-x-0.5"
+															class="w-5 h-5 text-muted-foreground group-hover:text-foreground flex-shrink-0 transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-0.5"
 														/>
 													</div>
 													{#if template.metadata?.description}
@@ -370,10 +356,10 @@
 													{/if}
 													{#if template.metadata?.typical_duration}
 														<div
-															class="mt-2 inline-flex items-center gap-1.5 px-2 py-1 bg-muted rounded"
+															class="mt-2 inline-flex items-center px-2 py-1 bg-muted rounded-lg"
 														>
 															<span
-																class="text-xs font-semibold text-foreground uppercase tracking-wide"
+																class="font-mono tabular-nums text-xs text-muted-foreground"
 															>
 																{template.metadata.typical_duration}
 															</span>
@@ -392,15 +378,15 @@
 							<!-- Selected Template Badge -->
 							{#if selectedTemplate}
 								<div
-									class="rounded-lg border border-border bg-muted p-2.5 sm:p-4 tx tx-grain tx-weak"
+									class="rounded-xl border border-border bg-muted p-3 sm:p-4 tx tx-grain tx-weak"
 								>
 									<div class="flex items-center justify-between gap-3">
 										<div class="flex items-center gap-3 flex-1 min-w-0">
-											<div class="p-2 rounded bg-card shadow-ink">
-												<CheckSquare class="w-4 h-4 text-accent" />
-											</div>
+											<CheckSquare
+												class="w-4 h-4 shrink-0 text-muted-foreground"
+											/>
 											<div class="flex-1 min-w-0">
-												<h4 class="text-sm font-semibold text-foreground">
+												<h4 class="text-sm font-medium text-foreground">
 													{selectedTemplate.name}
 												</h4>
 												{#if selectedTemplate.metadata?.description}
@@ -434,7 +420,7 @@
 								<Textarea
 									id="description"
 									bind:value={description}
-									placeholder="Describe the task..."
+									placeholder="What needs to be done"
 									enterkeyhint="next"
 									rows={4}
 									disabled={isSaving}
@@ -447,9 +433,9 @@
 								<div class="flex items-end justify-between gap-2 mb-2">
 									<label
 										for="title"
-										class="block text-sm font-semibold uppercase tracking-wider text-foreground"
+										class="block text-sm font-medium text-foreground"
 									>
-										Task Title
+										Title
 										<span class="text-destructive ml-0.5">*</span>
 									</label>
 									<button
@@ -458,7 +444,7 @@
 										disabled={isSaving ||
 											isGeneratingTitle ||
 											!description.trim()}
-										class="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-border bg-card text-xs font-medium text-muted-foreground shadow-ink transition-all pressable hover:border-accent hover:text-accent disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:text-muted-foreground tx tx-grain tx-weak"
+										class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground tx tx-grain tx-weak"
 										aria-label="Auto-generate title from description"
 									>
 										{#if isGeneratingTitle}
@@ -473,7 +459,7 @@
 								<TextInput
 									id="title"
 									bind:value={title}
-									placeholder="Enter task title or auto-generate from description..."
+									placeholder="Task title"
 									inputmode="text"
 									enterkeyhint="next"
 									required={true}
@@ -527,7 +513,7 @@
 									</Select>
 								</FormField>
 
-								<FormField label="Initial State" labelFor="state" required={true}>
+								<FormField label="Initial state" labelFor="state" required={true}>
 									<Select
 										id="state"
 										bind:value={stateKey}
@@ -538,14 +524,11 @@
 										{#each TASK_STATES as state (state)}
 											<option value={state}>
 												{state === 'todo'
-													? 'To Do'
-													: state === 'in_progress'
-														? 'In Progress'
-														: state === 'blocked'
-															? 'Blocked'
-															: state === 'done'
-																? 'Done'
-																: state}
+													? 'To do'
+													: (
+															state.charAt(0).toUpperCase() +
+															state.slice(1)
+														).replace(/_/g, ' ')}
 											</option>
 										{/each}
 									</Select>
@@ -554,15 +537,15 @@
 
 							<!-- Scheduled Section -->
 							<div
-								class="border border-border rounded-lg p-2.5 sm:p-4 bg-muted tx tx-frame tx-weak"
+								class="border border-border rounded-xl p-3 sm:p-4 bg-muted tx tx-frame tx-weak"
 							>
 								<div class="flex items-center gap-2 mb-3">
-									<span class="text-base">📅</span>
-									<h3 class="text-sm font-semibold text-foreground">Scheduled</h3>
+									<CalendarRange class="h-4 w-4 text-muted-foreground" />
+									<h3 class="text-sm font-medium text-foreground">Scheduled</h3>
 								</div>
 								<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 									<FormField
-										label="Start Date"
+										label="Start date"
 										labelFor="startAt"
 										hint="When work should begin"
 									>
@@ -575,7 +558,7 @@
 										/>
 									</FormField>
 									<FormField
-										label="Due Date"
+										label="Due date"
 										labelFor="dueAt"
 										hint="Deadline for this task"
 									>
@@ -657,10 +640,11 @@
 					size="sm"
 					onclick={handleBack}
 					disabled={isSaving}
+					aria-label="Back"
 					class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 				>
-					<span class="hidden sm:inline">← Back</span>
-					<span class="sm:hidden">←</span>
+					<ChevronLeft class="w-3 h-3 sm:w-4 sm:h-4" />
+					<span class="hidden sm:inline">Back</span>
 				</Button>
 				<div class="flex flex-row items-center gap-2">
 					<Button
@@ -683,7 +667,7 @@
 						class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 					>
 						<Save class="w-3 h-3 sm:w-4 sm:h-4" />
-						<span class="hidden sm:inline">Create Task</span>
+						<span class="hidden sm:inline">Create task</span>
 						<span class="sm:hidden">Create</span>
 					</Button>
 				</div>

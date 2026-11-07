@@ -147,15 +147,15 @@
 
 	function segmentClass(active: boolean): string {
 		return [
-			'inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-2.5 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none',
+			'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none',
 			active
-				? 'bg-card text-foreground shadow-ink'
+				? 'bg-card text-foreground'
 				: 'text-muted-foreground hover:bg-background hover:text-foreground'
 		].join(' ');
 	}
 
 	function inputClass(): string {
-		return 'w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground shadow-ink placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50';
+		return 'w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50';
 	}
 
 	function setContextType(next: ContextType) {
@@ -273,10 +273,10 @@
 	closeOnEscape={!submitting}
 >
 	<form id={formId} onsubmit={handleSubmit} class="space-y-4 px-3 py-3 sm:px-4 sm:py-4">
-		<div class="flex items-start gap-3 rounded-lg border border-border bg-muted/35 p-3">
-			<Bot class="mt-0.5 h-5 w-5 flex-shrink-0 text-foreground" />
+		<div class="flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-3">
+			<Bot class="mt-0.5 h-5 w-5 flex-shrink-0 text-muted-foreground" />
 			<div class="min-w-0 flex-1">
-				<label for={`${formId}-goal`} class="text-sm font-semibold text-foreground">
+				<label for={`${formId}-goal`} class="text-sm font-medium text-foreground">
 					What should this automation do?
 				</label>
 				<textarea
@@ -285,7 +285,7 @@
 					rows="3"
 					disabled={submitting}
 					required
-					placeholder="Review this project every week and flag anything blocked…"
+					placeholder="Review this project every week and flag anything blocked"
 					class="{inputClass()} mt-2 resize-y"
 				></textarea>
 			</div>
@@ -342,7 +342,7 @@
 						class="flex min-h-11 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground"
 					>
 						<LoaderCircle class="h-4 w-4 animate-spin motion-reduce:animate-none" />
-						<span>Loading projects...</span>
+						<span>Loading projects</span>
 					</div>
 				{:else if projectsError}
 					<div
@@ -371,7 +371,7 @@
 
 		<button
 			type="button"
-			class="flex min-h-11 w-full items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-left shadow-ink transition-colors hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+			class="flex min-h-11 w-full items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-left transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 			aria-expanded={showAdvanced}
 			aria-controls={`${formId}-advanced-access ${formId}-advanced-timezone ${formId}-advanced-details`}
 			disabled={submitting}
@@ -393,9 +393,9 @@
 		{#if showAdvanced}
 			<div
 				id={`${formId}-advanced-access`}
-				class="space-y-3 rounded-lg border border-border bg-muted/20 p-3"
+				class="space-y-3 rounded-xl border border-border bg-muted/20 p-3"
 			>
-				<p class="micro-label font-semibold text-muted-foreground">Access policy</p>
+				<p class="text-xs font-medium text-muted-foreground">Access policy</p>
 				<div class="grid gap-3 sm:grid-cols-2">
 					<div class="space-y-2">
 						<div class="text-sm font-medium text-foreground">Access</div>
@@ -426,7 +426,7 @@
 					</div>
 
 					<label
-						class="flex min-h-[78px] items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 shadow-ink {scopeMode ===
+						class="flex min-h-[78px] items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 {scopeMode ===
 						'read_write'
 							? ''
 							: 'opacity-60'}"
@@ -451,7 +451,7 @@
 							/>
 							<span
 								aria-hidden="true"
-								class="h-6 w-11 rounded-full bg-muted transition-colors peer-checked:bg-accent peer-disabled:cursor-not-allowed after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-card after:shadow-ink after:transition-transform peer-checked:after:translate-x-5 motion-reduce:transition-none motion-reduce:after:transition-none"
+								class="h-6 w-11 rounded-full bg-muted transition-colors peer-checked:bg-accent peer-disabled:cursor-not-allowed after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:border after:border-border after:bg-card after:transition-transform peer-checked:after:translate-x-5 motion-reduce:transition-none motion-reduce:after:transition-none"
 							></span>
 						</span>
 					</label>
@@ -459,7 +459,7 @@
 			</div>
 		{/if}
 
-		<div class="space-y-3 rounded-lg border border-border bg-muted/35 p-3">
+		<div class="space-y-3 rounded-xl border border-border bg-muted/30 p-3">
 			<label class="flex items-center justify-between gap-3">
 				<span class="flex min-w-0 items-center gap-2">
 					<CalendarClock class="h-4 w-4 flex-shrink-0 text-muted-foreground" />
@@ -474,7 +474,7 @@
 					/>
 					<span
 						aria-hidden="true"
-						class="h-6 w-11 rounded-full bg-muted transition-colors peer-checked:bg-accent peer-disabled:cursor-not-allowed after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-card after:shadow-ink after:transition-transform peer-checked:after:translate-x-5 motion-reduce:transition-none motion-reduce:after:transition-none"
+						class="h-6 w-11 rounded-full bg-muted transition-colors peer-checked:bg-accent peer-disabled:cursor-not-allowed after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:border after:border-border after:bg-card after:transition-transform peer-checked:after:translate-x-5 motion-reduce:transition-none motion-reduce:after:transition-none"
 					></span>
 				</span>
 			</label>

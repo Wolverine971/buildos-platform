@@ -240,13 +240,11 @@
 >
 	{#if !embedded}
 		<CardHeader variant="default">
-			<h3
-				class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
-			>
+			<h3 class="text-xs font-medium text-muted-foreground flex items-center gap-2">
 				<History class="w-3.5 h-3.5" />
 				Activity
 				{#if hasLoaded && total > 0}
-					<span class="font-normal normal-case text-muted-foreground/70">
+					<span class="font-mono font-normal tabular-nums text-muted-foreground/70">
 						({total})
 					</span>
 				{/if}
@@ -365,7 +363,7 @@
 					<button
 						onclick={handleLoadMore}
 						disabled={isLoadingMore}
-						class="w-full text-2xs text-muted-foreground hover:text-accent py-1.5 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 rounded hover:bg-accent/5 pressable"
+						class="w-full text-2xs text-muted-foreground hover:text-foreground py-2 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 rounded-lg hover:bg-muted/50"
 					>
 						{#if isLoadingMore}
 							<LoaderCircle class="w-3 h-3 animate-spin" />

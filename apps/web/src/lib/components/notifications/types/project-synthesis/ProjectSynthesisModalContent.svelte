@@ -113,26 +113,11 @@
 	);
 
 	const statusIconClasses = $derived(
-		notification.status === 'success'
-			? 'text-success'
-			: notification.status === 'error'
-				? 'text-destructive'
-				: notification.status === 'warning'
-					? 'text-warning'
-					: notification.status === 'cancelled'
-						? 'text-muted-foreground'
-						: 'text-info'
-	);
-	const statusIconSurfaceClasses = $derived(
-		notification.status === 'success'
-			? 'bg-success/10'
-			: notification.status === 'error'
-				? 'bg-destructive/10'
-				: notification.status === 'warning'
-					? 'bg-warning/10'
-					: notification.status === 'cancelled'
-						? 'bg-muted'
-						: 'bg-info/10'
+		notification.status === 'error'
+			? 'text-destructive'
+			: notification.status === 'warning'
+				? 'text-warning'
+				: 'text-muted-foreground'
 	);
 	const statusHeading = $derived(
 		notification.status === 'success'
@@ -161,18 +146,16 @@
 	isOpen={true}
 	size="xl"
 	variant="bottom-sheet"
-	title="Project Synthesis — {notification.data.projectName}"
+	title="Project synthesis — {notification.data.projectName}"
 	onClose={handleClose}
 	showCloseButton={true}
 >
 	<div class="px-3 py-4 sm:px-6 sm:py-6">
 		<div class="space-y-4 sm:space-y-6">
 			<!-- Overview -->
-			<section class="rounded-lg border border-border bg-card p-4 shadow-ink/70 sm:p-6">
+			<section class="rounded-xl border border-border bg-card p-4 sm:p-6">
 				<div class="flex flex-wrap items-center gap-3">
-					<div
-						class="flex h-12 w-12 items-center justify-center rounded-full {statusIconSurfaceClasses}"
-					>
+					<div class="flex h-10 w-10 items-center justify-center">
 						{#if notification.status === 'success'}
 							<CheckCircle class={`h-6 w-6 ${statusIconClasses}`} />
 						{:else if notification.status === 'error' || notification.status === 'warning' || notification.status === 'cancelled'}
@@ -185,7 +168,7 @@
 						{/if}
 					</div>
 					<div class="flex-1 min-w-[200px] space-y-1" aria-live="polite">
-						<h2 class="text-lg font-semibold text-foreground">
+						<h2 class="text-lg font-medium text-foreground">
 							{statusHeading}
 						</h2>
 						<p class="text-sm text-muted-foreground">
@@ -204,25 +187,25 @@
 				</div>
 
 				{#if notification.status === 'error' && notification.data.error}
-					<p class="mt-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+					<p class="mt-4 rounded-lg bg-destructive/5 p-3 text-sm text-destructive">
 						{notification.data.error}
 					</p>
 				{/if}
 			</section>
 
 			<!-- Configuration Summary -->
-			<section class="rounded-lg border border-border bg-muted/50 p-4">
-				<h3 class="micro-label mb-3 text-foreground">Configuration</h3>
+			<section class="rounded-xl border border-border bg-muted/50 p-4">
+				<h3 class="mb-3 text-xs font-medium text-muted-foreground">Configuration</h3>
 				<div class="flex flex-wrap gap-2">
 					{#each notification.data.selectedModules as module (module)}
 						{@const meta = MODULE_METADATA[module]}
 						<div
-							class="flex items-center gap-2 rounded-full bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent"
+							class="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1 text-xs text-foreground"
 						>
 							{#if meta?.icon}
 								{@const MetaIcon = meta.icon}
 								{#if MetaIcon}
-									<MetaIcon class="w-3.5 h-3.5" />
+									<MetaIcon class="w-3.5 h-3.5 text-muted-foreground" />
 								{/if}
 							{/if}
 							<span>{meta?.name ?? module}</span>
@@ -232,11 +215,11 @@
 			</section>
 
 			<!-- Progress timeline -->
-			<section class="rounded-lg border border-border bg-card p-4 shadow-ink/70 sm:p-6">
+			<section class="rounded-xl border border-border bg-card p-4 sm:p-6">
 				<header class="mb-4 flex items-center justify-between">
-					<h3 class="micro-label text-muted-foreground">Progress</h3>
+					<h3 class="text-xs font-medium text-muted-foreground">Progress</h3>
 					{#if stepsProgress}
-						<span class="text-xs text-muted-foreground">
+						<span class="font-mono text-xs tabular-nums text-muted-foreground">
 							{completedSteps}/{totalSteps} steps complete
 						</span>
 					{/if}
@@ -247,14 +230,12 @@
 						{#each stepItems as step (step.key ?? step.name)}
 							<li class="flex items-start gap-3">
 								<div
-									class={`flex h-8 w-8 items-center justify-center rounded-full border ${
-										step.status === 'completed'
-											? 'border-success/30 bg-success/10 text-success'
-											: step.status === 'processing'
-												? 'border-info/30 bg-info/10 text-info'
-												: step.status === 'error'
-													? 'border-destructive/30 bg-destructive/10 text-destructive'
-													: 'border-border bg-card text-muted-foreground'
+									class={`flex h-8 w-8 items-center justify-center ${
+										step.status === 'processing'
+											? 'text-foreground'
+											: step.status === 'error'
+												? 'text-destructive'
+												: 'text-muted-foreground'
 									}`}
 								>
 									{#if step.status === 'completed'}
@@ -295,19 +276,17 @@
 						{/each}
 					</ol>
 				{:else}
-					<p class="text-sm text-muted-foreground">Tracking progress…</p>
+					<p class="text-sm text-muted-foreground">Tracking progress</p>
 				{/if}
 			</section>
 
 			<!-- Result summary -->
 			{#if notification.status === 'success' && result}
 				<!-- Insights Card -->
-				<section
-					class="rounded-lg border border-success/30 bg-success/10 p-4 shadow-ink sm:p-6"
-				>
-					<header class="mb-4 flex items-center gap-3 text-success">
-						<Lightbulb class="h-5 w-5" />
-						<h3 class="micro-label">Key Insights</h3>
+				<section class="rounded-xl border border-border bg-card p-4 sm:p-6">
+					<header class="mb-4 flex items-center gap-2 text-muted-foreground">
+						<Lightbulb class="h-4 w-4" />
+						<h3 class="text-xs font-medium">Key insights</h3>
 					</header>
 
 					<div class="space-y-3 text-sm text-foreground">
@@ -316,31 +295,39 @@
 				</section>
 
 				<!-- Operations Summary -->
-				<section class="rounded-lg border border-border bg-card p-4 shadow-ink/70 sm:p-6">
-					<h3 class="micro-label mb-4 text-foreground">Operations Summary</h3>
+				<section class="rounded-xl border border-border bg-card p-4 sm:p-6">
+					<h3 class="mb-4 text-xs font-medium text-muted-foreground">
+						Operations summary
+					</h3>
 					<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-						<div class="rounded-lg bg-info/10 p-4 text-center">
+						<div class="rounded-xl border border-border p-4 text-center">
 							<div class="flex items-center justify-center gap-2 mb-2">
-								<Edit2 class="h-5 w-5 text-info" />
-								<div class="text-2xl font-bold text-info">
+								<Edit2 class="h-4 w-4 text-muted-foreground" />
+								<div
+									class="font-mono text-2xl font-medium tabular-nums text-foreground"
+								>
 									{result.consolidationCount}
 								</div>
 							</div>
 							<div class="text-xs text-muted-foreground">Consolidations</div>
 						</div>
-						<div class="rounded-lg bg-success/10 p-4 text-center">
+						<div class="rounded-xl border border-border p-4 text-center">
 							<div class="flex items-center justify-center gap-2 mb-2">
-								<PlusCircle class="h-5 w-5 text-success" />
-								<div class="text-2xl font-bold text-success">
+								<PlusCircle class="h-4 w-4 text-muted-foreground" />
+								<div
+									class="font-mono text-2xl font-medium tabular-nums text-foreground"
+								>
 									{result.newTasksCount}
 								</div>
 							</div>
-							<div class="text-xs text-muted-foreground">New Tasks</div>
+							<div class="text-xs text-muted-foreground">New tasks</div>
 						</div>
-						<div class="rounded-lg bg-destructive/10 p-4 text-center">
+						<div class="rounded-xl border border-border p-4 text-center">
 							<div class="flex items-center justify-center gap-2 mb-2">
-								<MinusCircle class="h-5 w-5 text-destructive" />
-								<div class="text-2xl font-bold text-destructive">
+								<MinusCircle class="h-4 w-4 text-muted-foreground" />
+								<div
+									class="font-mono text-2xl font-medium tabular-nums text-foreground"
+								>
 									{result.deletionsCount}
 								</div>
 							</div>
@@ -351,34 +338,36 @@
 
 				<!-- Task Comparison Preview -->
 				{#if result.comparison && result.comparison.length > 0}
-					<section
-						class="rounded-lg border border-border bg-card p-4 shadow-ink/70 sm:p-6"
-					>
-						<h3 class="micro-label mb-4 text-foreground">
-							Task Comparisons
-							<span class="text-muted-foreground font-normal text-xs">
-								(Showing first {Math.min(3, result.comparison.length)} of {result
-									.comparison.length})
+					<section class="rounded-xl border border-border bg-card p-4 sm:p-6">
+						<h3 class="mb-4 text-xs font-medium text-muted-foreground">
+							Task comparisons
+							<span class="font-mono font-normal tabular-nums">
+								· first {Math.min(3, result.comparison.length)} of {result
+									.comparison.length}
 							</span>
 						</h3>
 
 						<div class="space-y-3">
 							{#each result.comparison.slice(0, 3) as item (item)}
-								<div class="rounded-lg border border-border bg-muted/50 p-3">
+								<div class="rounded-xl border border-border bg-muted/50 p-3">
 									<div class="flex items-start gap-2 mb-2">
 										<span
-											class={`rounded-full px-2 py-0.5 text-xs font-medium ${
-												item.type === 'consolidated'
-													? 'bg-info/10 text-info'
-													: item.type === 'suggested'
-														? 'bg-success/10 text-success'
-														: 'bg-destructive/10 text-destructive'
-											}`}
+											class="inline-flex items-center gap-2 text-xs text-muted-foreground"
 										>
+											<span
+												class={`h-1.5 w-1.5 rounded-full ${
+													item.type === 'consolidated'
+														? 'bg-muted-foreground'
+														: item.type === 'suggested'
+															? 'bg-success'
+															: 'bg-destructive'
+												}`}
+												aria-hidden="true"
+											></span>
 											{item.type === 'consolidated'
 												? 'Consolidated'
 												: item.type === 'suggested'
-													? 'New Task'
+													? 'New task'
 													: 'Deleted'}
 										</span>
 									</div>
@@ -389,8 +378,8 @@
 							{/each}
 						</div>
 
-						<p class="text-xs text-info mt-4">
-							Click "Review Results" to see full analysis and edit operations
+						<p class="text-xs text-muted-foreground mt-4">
+							Open "Review results" to see the full analysis and edit operations
 						</p>
 					</section>
 				{/if}
@@ -430,7 +419,7 @@
 						icon={ExternalLink}
 						class="w-full sm:w-auto"
 					>
-						Review Results
+						Review results
 					</Button>
 				{:else}
 					<Button variant="primary" onclick={handleClose} class="w-full sm:w-auto">

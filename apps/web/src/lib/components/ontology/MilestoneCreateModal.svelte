@@ -23,14 +23,16 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import {
+		ChevronLeft,
 		ChevronRight,
 		Flag,
 		Save,
 		Target,
 		Calendar,
 		Search,
-		CheckCircle2
-	} from 'lucide-svelte';
+		CheckCircle2,
+		X
+	} from '$lib/icons/lucide';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -105,7 +107,7 @@
 			state === 'pending'
 				? 'Pending'
 				: state === 'in_progress'
-					? 'In Progress'
+					? 'In progress'
 					: state === 'completed'
 						? 'Completed'
 						: state === 'missed'
@@ -132,18 +134,10 @@
 	let dueAt = $state('');
 	let stateKey = $state('pending');
 
-	// Get goal state color
-	function getGoalStateColor(state: string): string {
-		switch (state) {
-			case 'achieved':
-				return 'text-success';
-			case 'active':
-				return 'text-warning';
-			case 'abandoned':
-				return 'text-destructive';
-			default:
-				return 'text-muted-foreground';
-		}
+	// Human label for a goal state key (e.g. in_progress -> In progress)
+	function formatGoalState(state: string): string {
+		const words = state.replace(/_/g, ' ');
+		return words.charAt(0).toUpperCase() + words.slice(1);
 	}
 
 	function selectGoal(goal: Goal) {
@@ -251,24 +245,26 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted border-b border-border px-3 py-2 sm:px-4 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-				<div class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 shrink-0">
-					<Flag class="w-5 h-5 text-accent" />
+				<div
+					class="flex h-9 w-9 items-center justify-center shrink-0 text-muted-foreground"
+				>
+					<Flag class="w-5 h-5" />
 				</div>
 				<div class="min-w-0 flex-1">
 					<h2
-						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
+						class="text-sm sm:text-base font-medium leading-tight truncate text-foreground"
 					>
-						{title || 'New Milestone'}
+						{title || 'New milestone'}
 					</h2>
 					{#if selectedGoalName}
-						<p class="text-2xs sm:text-xs text-muted-foreground mt-0.5 truncate">
+						<p class="text-2xs sm:text-xs text-muted-foreground truncate">
 							For goal: <span class="text-foreground/80">{selectedGoalName}</span>
 						</p>
 					{:else}
-						<p class="text-2xs sm:text-xs text-muted-foreground mt-0.5">
+						<p class="text-2xs sm:text-xs text-muted-foreground">
 							Select a goal to add this milestone to
 						</p>
 					{/if}
@@ -278,17 +274,10 @@
 				type="button"
 				onclick={handleClose}
 				disabled={isSaving}
-				class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
+				class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 				aria-label="Close modal"
 			>
-				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M6 18L18 6M6 6l12 12"
-					></path>
-				</svg>
+				<X class="w-5 h-5" />
 			</button>
 		</div>
 	{/snippet}
@@ -307,12 +296,10 @@
 						<div class="space-y-3 sm:space-y-4">
 							<!-- Header -->
 							<div class="flex items-center gap-3 pb-4 border-b border-border">
-								<div class="p-2 rounded bg-muted tx tx-bloom tx-weak">
-									<Target class="w-5 h-5 text-warning" />
-								</div>
+								<Target class="w-5 h-5 shrink-0 text-muted-foreground" />
 								<div>
-									<h3 class="text-lg font-semibold text-foreground">
-										Select a Goal
+									<h3 class="text-lg font-medium text-foreground">
+										Select a goal
 									</h3>
 									<p class="text-sm text-muted-foreground">
 										Milestones mark meaningful progress toward a goal
@@ -329,7 +316,7 @@
 									<input
 										type="text"
 										bind:value={goalSearchQuery}
-										placeholder="Search goals..."
+										placeholder="Search goals"
 										class="w-full pl-10 pr-3 py-2.5 rounded-lg border border-border bg-background text-foreground
 											focus:outline-none focus:ring-2 focus:ring-ring focus:border-accent"
 									/>
@@ -361,7 +348,7 @@
 											</p>
 										{:else}
 											<CheckCircle2
-												class="w-8 h-8 mx-auto mb-2 text-success"
+												class="w-8 h-8 mx-auto mb-2 text-muted-foreground"
 											/>
 											<p class="text-sm text-muted-foreground">
 												All goals are completed or abandoned
@@ -376,26 +363,22 @@
 										<button
 											type="button"
 											onclick={() => selectGoal(goal)}
-											class="w-full bg-card border border-border p-3 sm:p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200 pressable tx tx-frame tx-weak"
+											class="w-full bg-card border border-border p-3 sm:p-4 rounded-lg text-left group hover:border-foreground/20 hover:bg-muted/50 transition-colors tx tx-frame tx-weak"
 										>
 											<div class="flex items-center justify-between gap-3">
 												<div class="flex items-center gap-3 min-w-0 flex-1">
-													<div
-														class="p-2 rounded bg-muted shrink-0 group-hover:bg-accent/10 transition-colors"
-													>
-														<Target
-															class="w-4 h-4 text-warning group-hover:text-accent transition-colors"
-														/>
-													</div>
+													<Target
+														class="w-4 h-4 shrink-0 text-muted-foreground"
+													/>
 													<div class="min-w-0 flex-1">
 														<h4
-															class="font-semibold text-foreground group-hover:text-accent transition-colors truncate"
+															class="font-medium text-foreground truncate"
 														>
 															{goal.name}
 														</h4>
 														{#if goal.description}
 															<p
-																class="text-xs text-muted-foreground line-clamp-1 mt-0.5"
+																class="text-xs text-muted-foreground line-clamp-1 mt-1"
 															>
 																{goal.description}
 															</p>
@@ -403,15 +386,11 @@
 													</div>
 												</div>
 												<div class="flex items-center gap-2 shrink-0">
-													<span
-														class="text-xs capitalize {getGoalStateColor(
-															goal.state_key
-														)}"
-													>
-														{goal.state_key}
+													<span class="text-xs text-muted-foreground">
+														{formatGoalState(goal.state_key)}
 													</span>
 													<ChevronRight
-														class="w-5 h-5 text-muted-foreground group-hover:text-accent transition-transform group-hover:translate-x-0.5"
+														class="w-5 h-5 text-muted-foreground group-hover:text-foreground"
 													/>
 												</div>
 											</div>
@@ -426,17 +405,17 @@
 							<!-- Selected Goal Badge -->
 							{#if selectedGoalName}
 								<div
-									class="rounded-lg border border-border bg-muted p-2.5 sm:p-4 tx tx-grain tx-weak"
+									class="rounded-lg border border-border bg-muted p-3 sm:p-4 tx tx-grain tx-weak"
 								>
 									<div class="flex items-center justify-between gap-3">
 										<div class="flex items-center gap-3 flex-1 min-w-0">
-											<div class="p-2 rounded bg-card shadow-ink">
-												<Target class="w-4 h-4 text-warning" />
-											</div>
+											<Target
+												class="w-4 h-4 shrink-0 text-muted-foreground"
+											/>
 											<div class="flex-1 min-w-0">
 												<p class="text-xs text-muted-foreground">Goal</p>
 												<h4
-													class="text-sm font-semibold text-foreground truncate"
+													class="text-sm font-medium text-foreground truncate"
 												>
 													{selectedGoalName}
 												</h4>
@@ -459,7 +438,7 @@
 
 							<!-- Milestone Title -->
 							<FormField
-								label="Milestone Title"
+								label="Title"
 								labelFor="title"
 								required={true}
 								error={!title.trim() && error ? 'Milestone title is required' : ''}
@@ -479,7 +458,7 @@
 
 							<!-- Due Date -->
 							<FormField
-								label="Due Date (optional)"
+								label="Due date"
 								labelFor="due_at"
 								required={false}
 								error={error && error.toLowerCase().includes('date') ? error : ''}
@@ -518,15 +497,11 @@
 								/>
 							</FormField>
 
-							<FormField
-								label="Milestone Details"
-								labelFor="milestone_details"
-								hint="Optional extended milestone notes"
-							>
+							<FormField label="Details" labelFor="milestone_details">
 								<Textarea
 									id="milestone_details"
 									bind:value={milestoneDetails}
-									placeholder="Add any additional milestone context or criteria..."
+									placeholder="Extra context or success criteria"
 									enterkeyhint="next"
 									rows={3}
 									disabled={isSaving}
@@ -535,7 +510,7 @@
 							</FormField>
 
 							<!-- Initial State -->
-							<FormField label="Initial State" labelFor="state" required={true}>
+							<FormField label="Initial state" labelFor="state" required={true}>
 								<Select
 									id="state"
 									bind:value={stateKey}
@@ -593,8 +568,8 @@
 						disabled={isSaving}
 						class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 					>
-						<span class="hidden sm:inline">&larr; Back</span>
-						<span class="sm:hidden">&larr;</span>
+						<ChevronLeft class="w-4 h-4" />
+						<span class="hidden sm:inline">Back</span>
 					</Button>
 				{:else}
 					<div></div>
@@ -620,7 +595,7 @@
 						class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 					>
 						<Save class="w-3 h-3 sm:w-4 sm:h-4" />
-						<span class="hidden sm:inline">Create Milestone</span>
+						<span class="hidden sm:inline">Create milestone</span>
 						<span class="sm:hidden">Create</span>
 					</Button>
 				</div>

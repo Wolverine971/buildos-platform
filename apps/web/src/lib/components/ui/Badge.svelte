@@ -64,7 +64,7 @@
 
 	let classes = $derived(
 		twMerge(
-			'inline-flex items-center gap-1.5 font-semibold tracking-tight',
+			'inline-flex items-center gap-1.5 font-medium',
 			variantClasses[variant],
 			sizeClasses[size],
 			textureClasses[texture],

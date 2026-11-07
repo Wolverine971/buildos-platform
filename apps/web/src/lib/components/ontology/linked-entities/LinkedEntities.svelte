@@ -553,7 +553,7 @@
 	}
 </script>
 
-<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden">
+<div class="bg-card border border-border rounded-xl tx tx-frame tx-weak overflow-hidden">
 	<!-- Header -->
 	<div class="px-3 sm:px-4 py-2 sm:py-2.5 border-b border-border bg-muted">
 		<div class="flex items-center justify-between gap-2">
@@ -570,30 +570,22 @@
 								? ''
 								: '-rotate-90'}"
 						/>
-						<span class="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-accent rounded-full"></span>
-						<span
-							class="truncate text-2xs sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-						>
-							Linked Entities
+						<span class="truncate text-xs font-medium text-muted-foreground">
+							Linked
 						</span>
 					</span>
 					<span class="mt-0.5 block truncate text-2xs text-muted-foreground">
-						{isLoading ? 'Loading links...' : linkedTypeSummary}
+						{isLoading ? 'Loading links' : linkedTypeSummary}
 					</span>
 				</button>
 			{:else}
-				<h3
-					class="text-2xs sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 sm:gap-2"
-				>
-					<span class="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-accent rounded-full"></span>
-					Linked Entities
-				</h3>
+				<h3 class="text-xs font-medium text-muted-foreground">Linked</h3>
 			{/if}
 
 			{#if compactEditToggle && !readOnly && contentVisible}
 				<button
 					type="button"
-					class="inline-flex h-7 items-center gap-1 rounded border border-border bg-card px-2 text-2xs font-semibold text-muted-foreground transition-colors hover:border-accent/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable"
+					class="inline-flex h-7 items-center gap-1 rounded-lg px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					onclick={() => (linksEditMode = !linksEditMode)}
 					aria-pressed={linksEditMode}
 				>

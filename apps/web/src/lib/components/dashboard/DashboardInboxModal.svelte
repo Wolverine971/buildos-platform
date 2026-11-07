@@ -31,6 +31,9 @@
 	import InboxManagerBriefControls from '$lib/components/inbox/InboxManagerBriefControls.svelte';
 	import InboxProjectBadge from '$lib/components/inbox/InboxProjectBadge.svelte';
 	import InboxProjectCleanup from '$lib/components/inbox/InboxProjectCleanup.svelte';
+	import InboxEmailUpdatesStrip, {
+		type EmailUpdateEntry
+	} from '$lib/components/inbox/InboxEmailUpdatesStrip.svelte';
 	import InboxDoneForYouStrip, {
 		type DoneForYouEntry
 	} from '$lib/components/inbox/InboxDoneForYouStrip.svelte';
@@ -219,6 +222,10 @@
 	let checkIns = $state.raw<CheckInProject[]>([]);
 	// Tasker 149: changes applied without asking this week, across projects.
 	let doneForYou = $state.raw<DoneForYouEntry[]>([]);
+	/** Tasker 154: project updates proposed from the owner's email. */
+	let emailUpdates = $state.raw<EmailUpdateEntry[]>([]);
+	let emailUpdatesDecided = $state(0);
+	const openEmailUpdates = $derived(Math.max(0, emailUpdates.length - emailUpdatesDecided));
 	// A project whose cleanup card is open shows its own "Done for you"; list the rest here.
 	// Google Calendar changes (undo_url) are never on a cleanup card, so they always list here.
 	const doneForYouElsewhere = $derived(
@@ -678,7 +685,7 @@
 
 	/** The nav badge counts inbox rows plus one per open check-in card. */
 	function syncRemainingCount() {
-		setAiInboxRemainingCount(totalAvailable + openCheckInCards);
+		setAiInboxRemainingCount(totalAvailable + openCheckInCards + openEmailUpdates);
 	}
 
 	async function loadCheckIns(): Promise<void> {
@@ -1281,6 +1288,28 @@
 		void loadInbox({ repair: true });
 		void loadCheckIns();
 		void loadDoneForYou();
+		void loadEmailUpdates();
+	}
+
+	async function loadEmailUpdates(): Promise<void> {
+		try {
+			const res = await fetch('/api/inbox/email-updates');
+			const json = await res.json().catch(() => null);
+			if (!res.ok) throw new Error(json?.error ?? 'Failed to load email updates');
+			emailUpdates = (json?.data?.items ?? []) as EmailUpdateEntry[];
+			emailUpdatesDecided = 0;
+			syncRemainingCount();
+		} catch (err) {
+			// Additive: the inbox works without it.
+			console.warn('[AI Inbox] Failed to load email updates:', err);
+			emailUpdates = [];
+		}
+	}
+
+	function handleEmailUpdateDecided() {
+		changedCount += 1;
+		emailUpdatesDecided += 1;
+		syncRemainingCount();
 	}
 
 	async function loadDoneForYou(): Promise<void> {
@@ -1308,7 +1337,7 @@
 		onClose({
 			hasChanges: changedCount > 0,
 			changedCount,
-			remainingCount: totalAvailable + openCheckInCards
+			remainingCount: totalAvailable + openCheckInCards + openEmailUpdates
 		});
 	}
 
@@ -1329,9 +1358,12 @@
 			checkIns = [];
 			checkInRemaining = {};
 			doneForYou = [];
+			emailUpdates = [];
+			emailUpdatesDecided = 0;
 			void loadInbox({ limit: INBOX_PAGE_SIZE });
 			void loadCheckIns();
 			void loadDoneForYou();
+			void loadEmailUpdates();
 		} else if (!isOpen && wasOpen) {
 			wasOpen = false;
 		}
@@ -1367,20 +1399,20 @@
 	{#snippet header()}
 		<!-- One header bar: title, live summary, and actions (no second bar under it). -->
 		<div
-			class="flex min-h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-muted px-4 py-1.5"
+			class="flex min-h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-muted px-4 py-2"
 		>
 			<div class="min-w-0">
-				<h2 class="truncate text-base font-semibold leading-tight text-foreground">
+				<h2 class="truncate text-base font-medium leading-tight text-foreground">
 					AI Inbox
 				</h2>
-				<p class="mt-0.5 truncate text-xs text-muted-foreground" aria-live="polite">
+				<p class="mt-1 truncate text-xs text-muted-foreground" aria-live="polite">
 					{#if loading}
-						Loading inbox…
+						Loading inbox
 					{:else}
 						<span
 							>{formatInboxAttentionSummary({
-								loaded: items.length + openCheckInCards,
-								total: totalAvailable + openCheckInCards,
+								loaded: items.length + openCheckInCards + openEmailUpdates,
+								total: totalAvailable + openCheckInCards + openEmailUpdates,
 								held: heldTotal
 							})}</span
 						>
@@ -1414,7 +1446,7 @@
 					type="button"
 					onclick={refreshAll}
 					disabled={loading || loadingMore}
-					class="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground shadow-ink pressable tx-button hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+					class="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
 					title="Refresh inbox"
 					aria-label="Refresh inbox"
 				>
@@ -1426,7 +1458,7 @@
 				<button
 					type="button"
 					onclick={close}
-					class="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground shadow-ink pressable tx-button hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					class="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					aria-label="Close AI Inbox"
 				>
 					<X class="h-4 w-4" aria-hidden="true" />
@@ -1442,6 +1474,7 @@
 		class="relative flex h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-4.75rem-var(--keyboard-height,0px))] min-h-0 flex-col overflow-hidden sm:h-[min(calc(85dvh-3.5rem),56rem)]"
 	>
 		{#if !triageProjects}
+			<InboxEmailUpdatesStrip entries={emailUpdates} onDecided={handleEmailUpdateDecided} />
 			<InboxDoneForYouStrip
 				entries={doneForYouElsewhere}
 				onUndone={() => {
@@ -1466,7 +1499,7 @@
 			<div class="space-y-2 p-3">
 				{#each Array(4) as _, index (index)}
 					<div
-						class="h-24 rounded-md border border-border bg-muted/30 animate-pulse motion-reduce:animate-none"
+						class="h-24 rounded-xl border border-border bg-muted/30 animate-pulse motion-reduce:animate-none"
 					></div>
 				{/each}
 			</div>
@@ -1478,7 +1511,7 @@
 		{:else if items.length === 0 && checkIns.length === 0}
 			<div class="flex flex-1 flex-col items-center justify-center px-4 py-12 text-center">
 				<Inbox class="h-6 w-6 text-muted-foreground" />
-				<p class="mt-2 text-sm font-semibold text-foreground">Nothing needs attention</p>
+				<p class="mt-2 text-sm font-medium text-foreground">Nothing needs attention</p>
 				<p class="mt-1 max-w-sm text-xs text-muted-foreground">
 					Agent proposals and source-specific suggestions will appear here when they need
 					a decision.
@@ -1499,7 +1532,7 @@
 						{#each groupedItems as group (group.key)}
 							{#if group.key === firstQuietGroupKey && groupedItems[0]?.key !== group.key}
 								<p
-									class="micro-label hidden px-1 pt-2 text-muted-foreground lg:block"
+									class="hidden px-1 pt-2 text-xs font-medium text-muted-foreground lg:block"
 									aria-hidden="true"
 								>
 									Gone quiet
@@ -1507,7 +1540,7 @@
 							{/if}
 							{#if group.key === firstDormantGroupKey && groupedItems[0]?.key !== group.key}
 								<p
-									class="micro-label hidden px-1 pt-2 text-muted-foreground lg:block"
+									class="hidden px-1 pt-2 text-xs font-medium text-muted-foreground lg:block"
 									aria-hidden="true"
 								>
 									Paused or finished
@@ -1522,21 +1555,21 @@
 								tabindex={activeGroup?.key === group.key ? 0 : -1}
 								onclick={() => selectGroup(group.key)}
 								onkeydown={(event) => handleGroupKeydown(event, group.key)}
-								class="inline-flex min-h-[44px] min-w-32 max-w-[44vw] shrink-0 snap-start items-center gap-2 rounded-md border px-3 py-2 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background motion-reduce:transition-none lg:block lg:w-full lg:max-w-none lg:min-w-0 {activeGroup?.key ===
+								class="inline-flex min-h-[44px] min-w-32 max-w-[44vw] shrink-0 snap-start items-center gap-2 rounded-lg border px-3 py-2 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background motion-reduce:transition-none lg:block lg:w-full lg:max-w-none lg:min-w-0 {activeGroup?.key ===
 								group.key
-									? 'border-accent/40 bg-accent/10'
-									: 'border-border bg-card hover:bg-muted/40'} {group.dormant &&
+									? 'border-accent/40 bg-accent/5'
+									: 'border-border bg-card hover:bg-muted/50'} {group.dormant &&
 								activeGroup?.key !== group.key
 									? 'opacity-70'
 									: ''}"
 							>
 								<p
-									class="min-w-0 flex-1 truncate text-xs font-semibold text-foreground"
+									class="min-w-0 flex-1 truncate text-xs font-medium text-foreground"
 								>
 									{group.label}
 								</p>
 								<span
-									class="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-2xs font-semibold text-foreground lg:hidden"
+									class="shrink-0 font-mono text-2xs tabular-nums text-muted-foreground lg:hidden"
 								>
 									{group.openCount}
 								</span>
@@ -1558,14 +1591,14 @@
 						class="flex min-h-0 min-w-0 flex-col overflow-hidden"
 					>
 						<div
-							class="flex min-h-11 items-center justify-between gap-3 border-b border-border bg-muted/30 px-3 py-1.5"
+							class="flex min-h-11 items-center justify-between gap-3 border-b border-border bg-muted/30 px-3 py-2"
 						>
 							<div class="min-w-0">
-								<p class="text-xs font-semibold text-foreground lg:hidden">
+								<p class="text-xs font-medium text-foreground lg:hidden">
 									{activeGroup.workload}
 								</p>
 								<p
-									class="hidden truncate text-xs font-semibold text-foreground lg:block"
+									class="hidden truncate text-xs font-medium text-foreground lg:block"
 								>
 									{activeGroup.label}
 									<span class="font-normal text-muted-foreground">
@@ -1576,7 +1609,7 @@
 							{#if activeGroup.projectId}
 								<a
 									href={resolve('/projects/[id]', { id: activeGroup.projectId })}
-									class="inline-flex min-h-11 shrink-0 items-center rounded-md px-2 text-xs font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+									class="inline-flex min-h-11 shrink-0 items-center rounded-lg px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
 								>
 									Open project
 								</a>
@@ -1621,7 +1654,7 @@
 								).slice(0, 2)}
 								{@const changes = changeCount(item)}
 								<div
-									class="inbox-spotlight-item min-w-0 rounded-lg border border-border bg-card p-3 shadow-ink lg:rounded-none lg:border-0 lg:bg-transparent lg:shadow-none"
+									class="inbox-spotlight-item min-w-0 rounded-xl border border-border bg-card p-3 lg:rounded-none lg:border-0 lg:bg-transparent"
 								>
 									{#if item.source_type === 'project_cleanup' && project}
 										<InboxProjectCleanup
@@ -1662,7 +1695,7 @@
 														variant="compact"
 													/>
 													<p
-														class="break-words text-sm font-semibold text-foreground"
+														class="break-words text-sm font-medium text-foreground"
 													>
 														{item.title ||
 															payload?.title ||
@@ -1671,7 +1704,7 @@
 													</p>
 													{#if item.freshness_state === 'possibly_stale'}
 														<span
-															class="mt-1 inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-2xs font-medium text-muted-foreground"
+															class="mt-1 inline-flex items-center gap-1 text-2xs text-muted-foreground"
 															title={item.freshness_note ||
 																'Newer information may have made this outdated.'}
 														>
@@ -1686,8 +1719,7 @@
 														<p
 															class="mt-1 break-words text-xs text-foreground/80"
 														>
-															<span class="font-semibold"
-																>Why now:</span
+															<span class="font-medium">Why now:</span
 															>
 															{payload.why_now}
 														</p>
@@ -1707,10 +1739,10 @@
 													{/if}
 													{#if item.source_type === 'calendar_suggestion' && calendar}
 														<div class="mt-2 space-y-2">
-															<div class="flex flex-wrap gap-1.5">
+															<div class="flex flex-wrap gap-2">
 																{#if calendar.event_count}
 																	<span
-																		class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground"
+																		class="rounded-lg border border-border px-2 py-1 text-2xs text-muted-foreground"
 																	>
 																		{calendar.event_count} event{calendar.event_count ===
 																		1
@@ -1720,7 +1752,7 @@
 																{/if}
 																{#if taskPreview.length}
 																	<span
-																		class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground"
+																		class="rounded-lg border border-border px-2 py-1 text-2xs text-muted-foreground"
 																	>
 																		{taskPreview.length} task{taskPreview.length ===
 																		1
@@ -1730,14 +1762,14 @@
 																{/if}
 																{#if dateRange}
 																	<span
-																		class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground"
+																		class="rounded-lg border border-border px-2 py-1 text-2xs text-muted-foreground"
 																	>
 																		{dateRange}
 																	</span>
 																{/if}
 																{#if confidence}
 																	<span
-																		class="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-2xs text-accent"
+																		class="rounded-lg border border-border px-2 py-1 text-2xs text-muted-foreground"
 																	>
 																		{confidence}
 																	</span>
@@ -1753,14 +1785,14 @@
 															{/if}
 															{#if taskPreview.length}
 																<div
-																	class="rounded-md border border-border bg-muted/20 p-2"
+																	class="rounded-lg border border-border bg-muted/20 p-2"
 																>
 																	<p
-																		class="micro-label text-muted-foreground"
+																		class="text-xs font-medium text-muted-foreground"
 																	>
 																		Suggested tasks
 																	</p>
-																	<div class="mt-1.5 space-y-1">
+																	<div class="mt-2 space-y-1">
 																		{#each taskPreview.slice(0, 3) as task, index (`${task.title}-${task.start_date ?? index}`)}
 																			<div
 																				class="flex items-start justify-between gap-2 text-2xs"
@@ -1775,7 +1807,7 @@
 																					</p>
 																					{#if task.start_date || task.recurrence_pattern}
 																						<p
-																							class="mt-0.5 text-muted-foreground"
+																							class="mt-1 text-muted-foreground"
 																						>
 																							{formatShortDate(
 																								task.start_date
@@ -1786,7 +1818,7 @@
 																				</div>
 																				{#if task.priority}
 																					<span
-																						class="shrink-0 rounded border border-border bg-card px-1.5 py-0.5 text-2xs text-muted-foreground"
+																						class="shrink-0 text-2xs text-muted-foreground"
 																					>
 																						{task.priority}
 																					</span>
@@ -1796,7 +1828,7 @@
 																	</div>
 																	{#if taskPreview.length > 3}
 																		<p
-																			class="mt-1.5 text-2xs text-muted-foreground"
+																			class="mt-2 text-2xs text-muted-foreground"
 																		>
 																			+{taskPreview.length -
 																				3} more
@@ -1820,7 +1852,7 @@
 														/>
 													{:else if changes}
 														<p
-															class="mt-1.5 text-2xs text-muted-foreground"
+															class="mt-2 text-2xs text-muted-foreground"
 														>
 															{changes} proposed change{changes === 1
 																? ''
@@ -1901,7 +1933,7 @@
 													</Button>
 													<a
 														href={resolve('/profile?tab=email')}
-														class="inline-flex min-h-11 items-center justify-center rounded-md px-3 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+														class="inline-flex min-h-11 items-center justify-center rounded-lg px-3 text-xs font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground"
 														title={integration?.email_address
 															? `Manage ${integration.email_address}`
 															: 'Manage Gmail accounts'}
@@ -1954,7 +1986,7 @@
 												</Button>
 											{:else if !canDecide(item)}
 												<div
-													class="w-full max-w-full shrink-0 break-words rounded-md border border-border bg-muted/30 px-2.5 py-2 text-2xs font-medium text-muted-foreground sm:w-auto sm:max-w-56"
+													class="w-full max-w-full shrink-0 break-words rounded-lg border border-border bg-muted/30 px-3 py-2 text-2xs font-medium text-muted-foreground sm:w-auto sm:max-w-56"
 												>
 													{item.decision_disabled_reason ?? 'View only'}
 												</div>

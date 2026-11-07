@@ -28,9 +28,7 @@
 	}
 
 	const isProcessing = $derived(notification.status === 'processing');
-	const progressMessage = $derived(
-		notification.progress?.message ?? 'Analyzing calendar events...'
-	);
+	const progressMessage = $derived(notification.progress?.message ?? 'Analyzing calendar events');
 
 	// Prepare data for CalendarAnalysisResults component
 	const suggestions = $derived(
@@ -57,7 +55,7 @@
 			<div
 				class="flex justify-between items-center px-3 py-2 border-b border-border bg-muted/50"
 			>
-				<h2 class="text-sm font-semibold text-foreground">Analyzing calendar</h2>
+				<h2 class="text-sm font-medium text-foreground">Analyzing calendar</h2>
 				<div class="flex items-center gap-2">
 					<Button
 						variant="ghost"
@@ -79,7 +77,7 @@
 
 		<div class="flex flex-col items-center gap-3 px-4 py-6 text-center tx tx-grain tx-weak">
 			<LoaderCircle
-				class="h-8 w-8 animate-spin text-accent motion-reduce:animate-none"
+				class="h-8 w-8 animate-spin text-muted-foreground motion-reduce:animate-none"
 				aria-hidden="true"
 			/>
 			<p class="text-sm text-foreground" aria-live="polite">{progressMessage}</p>
@@ -106,7 +104,7 @@
 			<div
 				class="flex justify-between items-center px-3 py-2 border-b border-border bg-muted/50"
 			>
-				<h2 class="text-sm font-semibold text-foreground">Calendar analysis results</h2>
+				<h2 class="text-sm font-medium text-foreground">Calendar analysis results</h2>
 				<div class="flex items-center gap-2">
 					<Button
 						variant="ghost"

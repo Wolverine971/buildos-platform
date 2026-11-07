@@ -5,7 +5,7 @@
 	Documentation: /apps/web/docs/features/ontology/LINKED_ENTITIES_COMPONENT.md
 -->
 <script lang="ts">
-	import { Search, Check } from 'lucide-svelte';
+	import { Search, Check } from '$lib/icons/lucide';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import type { EntityKind, AvailableEntity } from './linked-entities.types';
@@ -28,7 +28,7 @@
 
 	// Get section config for display
 	const sectionConfig = $derived(ENTITY_SECTIONS.find((s) => s.kind === kind));
-	const title = $derived(`Link ${sectionConfig?.labelPlural || 'Entities'}`);
+	const title = $derived(`Link ${sectionConfig?.labelPlural.toLowerCase() || 'items'}`);
 
 	// Filter entities by search and separate linked vs available
 	const filteredEntities = $derived(filterEntities(availableEntities, searchQuery));
@@ -37,6 +37,12 @@
 
 	const selectedCount = $derived(selectedIds.size);
 	const availableCount = $derived(unlinkedEntities.length);
+
+	// Display only: state keys are stored as snake_case (e.g. in_progress).
+	function formatStateKey(value: string): string {
+		const text = value.replace(/[_.]/g, ' ');
+		return text.charAt(0).toUpperCase() + text.slice(1);
+	}
 
 	function toggleSelection(id: string) {
 		const newSet = new Set(selectedIds);
@@ -78,23 +84,23 @@
 <Modal bind:isOpen size="sm" onClose={handleClose}>
 	{#snippet header()}
 		<div class="px-4 py-3 border-b border-border tx tx-strip tx-weak">
-			<h2 class="text-base font-semibold text-foreground">{title}</h2>
+			<h2 class="text-base font-medium text-foreground">{title}</h2>
 		</div>
 	{/snippet}
 
 	<div class="flex flex-col" style="max-height: 60vh;">
 		<!-- Search Input -->
-		<div class="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-border tx tx-grain tx-weak">
+		<div class="px-3 sm:px-4 py-2 sm:py-3 border-b border-border tx tx-grain tx-weak">
 			<div class="relative">
 				<Search
 					class="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground pointer-events-none"
 				/>
 				<input
 					type="text"
-					placeholder="Search {sectionConfig?.labelPlural.toLowerCase() || 'entities'}..."
-					class="w-full pl-8 sm:pl-9 pr-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-muted border border-border rounded-md
+					placeholder="Search {sectionConfig?.labelPlural.toLowerCase() || 'items'}"
+					class="w-full pl-8 sm:pl-9 pr-3 py-2 text-xs sm:text-sm bg-muted border border-border rounded-lg
 						placeholder:text-muted-foreground
-						focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent/50 transition-colors"
+						focus:outline-none focus:ring-2 focus:ring-ring focus:border-foreground/20 transition-colors"
 					oninput={handleSearchInput}
 				/>
 			</div>
@@ -109,16 +115,16 @@
 					class="px-3 sm:px-4 py-6 sm:py-8 text-center text-muted-foreground text-xs sm:text-sm tx tx-bloom tx-weak"
 				>
 					{#if searchQuery}
-						No matching {sectionConfig?.labelPlural.toLowerCase() || 'entities'} found
+						No matching {sectionConfig?.labelPlural.toLowerCase() || 'items'}
 					{:else}
-						No {sectionConfig?.labelPlural.toLowerCase() || 'entities'} available to link
+						No {sectionConfig?.labelPlural.toLowerCase() || 'items'} available to link
 					{/if}
 				</div>
 			{:else}
 				<!-- Already linked items (shown first, disabled) -->
 				{#each linkedEntities as entity (entity.id)}
 					<div
-						class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 border-b border-border/50 opacity-50 cursor-not-allowed"
+						class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 border-b border-border/50 opacity-50 cursor-not-allowed"
 					>
 						<div
 							class="w-4 h-4 sm:w-5 sm:h-5 rounded border border-border bg-muted flex items-center justify-center"
@@ -141,14 +147,14 @@
 					{@const isSelected = selectedIds.has(entity.id)}
 					<button
 						type="button"
-						class="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 border-b border-border/50
-							hover:bg-muted transition-colors text-left pressable
+						class="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 border-b border-border/50
+							hover:bg-muted/50 transition-colors text-left
 							focus:outline-none focus-visible:bg-muted"
 						onclick={() => toggleSelection(entity.id)}
 					>
 						<div
 							class="w-4 h-4 sm:w-5 sm:h-5 rounded border transition-colors duration-[120ms] flex items-center justify-center
-								{isSelected ? 'border-accent bg-accent' : 'border-border bg-background hover:border-accent/50'}"
+								{isSelected ? 'border-accent bg-accent' : 'border-border bg-background hover:border-foreground/20'}"
 						>
 							{#if isSelected}
 								<Check class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-accent-foreground" />
@@ -160,7 +166,7 @@
 							</span>
 							{#if entity.state_key}
 								<span class="text-2xs sm:text-xs text-muted-foreground"
-									>{entity.state_key}</span
+									>{formatStateKey(entity.state_key)}</span
 								>
 							{/if}
 						</div>
@@ -171,27 +177,25 @@
 
 		<!-- Footer Info -->
 		<div
-			class="px-3 sm:px-4 py-1.5 sm:py-2 border-t border-border bg-muted text-2xs sm:text-xs text-muted-foreground"
+			class="px-3 sm:px-4 py-2 border-t border-border bg-muted tabular-nums text-2xs sm:text-xs text-muted-foreground"
 		>
-			{selectedCount} of {availableCount} available selected
+			{selectedCount} of {availableCount} selected
 		</div>
 	</div>
 
 	{#snippet footer()}
 		<div
-			class="flex items-center justify-end gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
+			class="flex items-center justify-end gap-2 px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
 		>
-			<Button variant="ghost" size="sm" onclick={handleClose} class="pressable">Cancel</Button
-			>
+			<Button variant="ghost" size="sm" onclick={handleClose}>Cancel</Button>
 			<Button
 				variant="primary"
 				size="sm"
 				onclick={handleConfirm}
 				disabled={selectedCount === 0 || isConfirming}
 				loading={isConfirming}
-				class="pressable"
 			>
-				Add Selected ({selectedCount})
+				Add selected ({selectedCount})
 			</Button>
 		</div>
 	{/snippet}

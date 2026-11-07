@@ -3,7 +3,7 @@
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { toastService } from '$lib/stores/toast.store';
-	import { Upload, X } from 'lucide-svelte';
+	import { Upload } from '$lib/icons/lucide';
 	import type { AssetLinkRole, OntologyImageAsset } from './image-assets/types';
 	import { uploadFileToSignedStorageUrl } from '$lib/utils/signed-storage-upload';
 
@@ -164,11 +164,11 @@
 	}
 </script>
 
-<Modal bind:isOpen title="Upload Image" size="md" onClose={closeModal}>
-	<div class="space-y-3 px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
+<Modal bind:isOpen title="Upload image" size="md" onClose={closeModal}>
+	<div class="space-y-4 px-4 lg:px-6 py-4">
 		{#if formError}
 			<p
-				class="rounded border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs text-destructive"
+				class="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
 			>
 				{formError}
 			</p>
@@ -183,17 +183,17 @@
 				id="onto-image-upload-input"
 				type="file"
 				accept="image/*"
-				class="block w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground"
+				class="block w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground"
 				onchange={onFileSelected}
 			/>
 		</div>
 
 		{#if previewUrl}
-			<div class="rounded border border-border bg-muted/30 p-2">
+			<div class="rounded-xl border border-border bg-muted/30 p-2">
 				<img
 					src={previewUrl}
 					alt="Selected preview"
-					class="max-h-48 w-full rounded object-contain"
+					class="max-h-48 w-full rounded-lg object-contain"
 				/>
 				<p class="mt-1 truncate text-2xs text-muted-foreground">
 					{selectedFile?.name}
@@ -201,27 +201,27 @@
 			</div>
 		{/if}
 
-		<div class="space-y-1.5">
+		<div class="space-y-2">
 			<label class="text-xs font-medium text-muted-foreground" for="onto-image-caption">
-				Caption (optional)
+				Caption
 			</label>
 			<input
 				id="onto-image-caption"
 				type="text"
-				class="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground"
+				class="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground"
 				bind:value={caption}
 				placeholder="Team whiteboard sketch"
 			/>
 		</div>
 
-		<div class="space-y-1.5">
+		<div class="space-y-2">
 			<label class="text-xs font-medium text-muted-foreground" for="onto-image-alt-text">
-				Alt text (optional)
+				Alt text
 			</label>
 			<input
 				id="onto-image-alt-text"
 				type="text"
-				class="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground"
+				class="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground"
 				bind:value={altText}
 				placeholder="Construction progress photo"
 			/>
@@ -230,21 +230,20 @@
 
 	{#snippet footer()}
 		<div
-			class="flex items-center justify-end gap-2 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border bg-muted/30"
+			class="flex items-center justify-end gap-2 px-4 lg:px-6 py-4 border-t border-border bg-muted/30"
 		>
-			<Button size="sm" variant="ghost" class="h-8 px-2 text-xs" onclick={closeModal}>
-				<X class="h-3.5 w-3.5" />
+			<Button size="sm" variant="ghost" class="h-8 px-3 text-xs" onclick={closeModal}>
 				Cancel
 			</Button>
 			<Button
 				size="sm"
-				variant="secondary"
-				class="h-8 px-2 text-xs"
+				variant="primary"
+				class="h-8 px-3 text-xs"
 				disabled={!selectedFile || uploading}
 				onclick={handleUpload}
 			>
 				<Upload class="h-3.5 w-3.5" />
-				{uploading ? 'Uploading...' : 'Upload image'}
+				{uploading ? 'Uploading' : 'Upload image'}
 			</Button>
 		</div>
 	{/snippet}

@@ -35,13 +35,11 @@
 </script>
 
 <Modal bind:isOpen {title} {size} onClose={handleClose}>
-	<div class="px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
+	<div class="px-4 py-4 sm:px-6">
 		{#if showIcon}
 			<div class="flex items-start space-x-3">
 				<div class="flex-shrink-0">
-					<div class="flex items-center justify-center w-10 h-10 rounded-full bg-info/15">
-						<Info class="w-6 h-6 text-info" />
-					</div>
+					<Info class="mt-0.5 h-5 w-5 text-muted-foreground" />
 				</div>
 				<div class="flex-1">
 					{#if slotContent}

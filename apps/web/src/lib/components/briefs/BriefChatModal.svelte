@@ -18,7 +18,7 @@
 -->
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { X, FileText, MessageCircle } from 'lucide-svelte';
+	import { X, FileText, MessageCircle } from '$lib/icons/lucide';
 	import { renderAgentMarkdownContent } from '$lib/utils/markdown';
 	import AgentChatModal from '$lib/components/agent/AgentChatModal.svelte';
 	import ChatSessionAuditActions from '$lib/components/agent/ChatSessionAuditActions.svelte';
@@ -108,25 +108,24 @@
 	variant="bottom-sheet"
 	presentation="immersive"
 	contentScrollable={false}
-	ariaLabel="Brief Chat"
+	ariaLabel="Brief chat"
 >
 	{#snippet header()}
 		<div
 			class="brief-header flex h-11 md:h-12 items-center justify-between gap-3 px-3 md:px-4
 							border-b border-border bg-muted flex-shrink-0"
 		>
-			<h2 class="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
+			<h2 class="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
 				{displayTitle}
 			</h2>
-			<div class="flex shrink-0 items-center gap-1.5 sm:gap-2">
+			<div class="flex shrink-0 items-center gap-2">
 				<ChatSessionAuditActions sessionId={chatSessionId} />
 				<button
 					type="button"
 					onclick={requestClose}
 					class="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg
-									border border-border bg-card text-muted-foreground shadow-ink
-									transition-all pressable tx-button
-									hover:border-destructive/50 hover:text-destructive
+									text-muted-foreground transition-colors
+									hover:bg-muted/50 hover:text-foreground
 									focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					aria-label="Close dialog"
 				>
@@ -140,7 +139,7 @@
 	<div class="brief-tabs flex md:hidden border-b border-border bg-muted/50 flex-shrink-0">
 		<button
 			type="button"
-			class="brief-tab flex-1 flex items-center justify-center gap-1.5 h-11 text-sm font-semibold transition-colors relative
+			class="brief-tab flex-1 flex items-center justify-center gap-2 h-11 text-sm font-medium transition-colors relative
 								{activeTab === 'brief'
 				? 'text-foreground border-b-2 border-accent'
 				: 'text-muted-foreground hover:text-foreground'}"
@@ -155,7 +154,7 @@
 		</button>
 		<button
 			type="button"
-			class="brief-tab flex-1 flex items-center justify-center gap-1.5 h-11 text-sm font-semibold transition-colors relative
+			class="brief-tab flex-1 flex items-center justify-center gap-2 h-11 text-sm font-medium transition-colors relative
 								{activeTab === 'chat'
 				? 'text-foreground border-b-2 border-accent'
 				: 'text-muted-foreground hover:text-foreground'}"

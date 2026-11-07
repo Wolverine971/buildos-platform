@@ -6,7 +6,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
-	import { X, RefreshCw } from 'lucide-svelte';
+	import { X, RefreshCw } from '$lib/icons/lucide';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	let {
@@ -89,6 +89,15 @@
 		return parts.join(';');
 	}
 
+	// Plain-language summary of the RRULE built above (display only).
+	function describeRecurrence() {
+		const safeInterval = Math.max(1, Number(interval) || 1);
+		const safeCount = Math.max(1, Number(count) || 1);
+		const unit = frequency === 'DAILY' ? 'day' : frequency === 'MONTHLY' ? 'month' : 'week';
+		const every = safeInterval === 1 ? `Every ${unit}` : `Every ${safeInterval} ${unit}s`;
+		return `${every}, ${safeCount} ${safeCount === 1 ? 'time' : 'times'}`;
+	}
+
 	function getTimezoneOptions(base: string[]) {
 		if (typeof Intl.supportedValuesOf === 'function') {
 			return Intl.supportedValuesOf('timeZone');
@@ -167,17 +176,15 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted border-b border-border px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted border-b border-border px-3 py-2 sm:px-4 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-				<div class="p-1.5 rounded bg-success/10 text-success shrink-0">
-					<RefreshCw class="w-4 h-4" />
-				</div>
+				<RefreshCw class="w-4 h-4 shrink-0 text-muted-foreground" />
 				<div class="min-w-0 flex-1">
 					<h2
-						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
+						class="text-sm sm:text-base font-medium leading-tight truncate text-foreground"
 					>
-						Make Task Recurring
+						Make task recurring
 					</h2>
 					<p class="text-2xs sm:text-xs text-muted-foreground mt-0.5 truncate">
 						{task?.title || 'Create recurring schedule'}
@@ -189,7 +196,7 @@
 				type="button"
 				onclick={() => onClose?.()}
 				disabled={isSubmitting}
-				class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+				class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 				aria-label="Close modal"
 			>
 				<X class="h-4 w-4" />
@@ -214,9 +221,7 @@
 					<option value={tz}></option>
 				{/each}
 			</datalist>
-			<p class="text-xs text-muted-foreground">
-				Start and recurrence will follow this timezone.
-			</p>
+			<p class="text-xs text-muted-foreground">Start and recurrence follow this timezone</p>
 		</div>
 
 		<div class="space-y-1">
@@ -226,7 +231,7 @@
 			<input
 				id="task-series-start"
 				type="datetime-local"
-				class="w-full rounded border border-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+				class="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 				bind:value={startAt}
 				disabled={isSubmitting}
 			/>
@@ -279,17 +284,15 @@
 		</div>
 
 		<div
-			class="rounded border border-accent/30 bg-accent/10 p-4 text-sm text-foreground tx tx-bloom tx-weak"
+			class="rounded-xl border border-border bg-muted p-4 text-sm text-foreground tx tx-bloom tx-weak"
 		>
-			<p class="font-medium">Generated RRULE</p>
-			<p class="font-mono text-xs break-all mt-1 text-accent">
-				{buildRrule()}
-			</p>
+			<p class="text-xs font-medium text-muted-foreground">Repeats</p>
+			<p class="mt-1 text-sm text-foreground">{describeRecurrence()}</p>
 		</div>
 
 		{#if error}
 			<div
-				class="rounded border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+				class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
 			>
 				{error}
 			</div>
@@ -319,10 +322,9 @@
 				class="text-xs sm:text-sm px-2 sm:px-4"
 			>
 				<RefreshCw class="w-3 h-3 sm:w-4 sm:h-4" />
-				<span class="hidden sm:inline"
-					>{isSubmitting ? 'Creating...' : 'Make Recurring'}</span
+				<span class="hidden sm:inline">{isSubmitting ? 'Creating…' : 'Make recurring'}</span
 				>
-				<span class="sm:hidden">{isSubmitting ? '...' : 'Recurring'}</span>
+				<span class="sm:hidden">{isSubmitting ? '…' : 'Recurring'}</span>
 			</Button>
 		</div>
 	{/snippet}

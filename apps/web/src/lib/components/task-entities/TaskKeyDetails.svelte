@@ -42,16 +42,16 @@
 
 	const external = (href: string | null) => !!href && /^https?:/i.test(href);
 	const PILL =
-		'inline-flex min-h-8 min-w-0 max-w-full items-center gap-1.5 rounded-md border border-border bg-card px-2.5 text-xs leading-tight text-foreground shadow-ink';
+		'inline-flex min-h-8 min-w-0 max-w-full items-center gap-1.5 rounded-md border border-border bg-card px-2 text-xs leading-tight text-foreground';
 	const ACTIVE =
-		'pressable hover:border-accent/50 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+		'hover:border-foreground/20 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 </script>
 
 {#snippet pill(chip: TaskEntityChip)}
 	{@const Icon =
 		chip.kind === 'time' && chip.role === 'deadline' ? CalendarClock : ICONS[chip.kind]}
 	<Icon class="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden="true" />
-	<span class="shrink-0 font-semibold">{chip.label}</span>
+	<span class="shrink-0 font-medium">{chip.label}</span>
 	<span class="truncate text-muted-foreground"
 		>{chip.about && chip.kind !== 'meeting_link' ? `${chip.about} · ` : ''}{chip.display}</span
 	>

@@ -36,7 +36,7 @@
 		Link as LinkIcon,
 		Image as ImageIcon,
 		Tag as TagIcon
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -47,7 +47,6 @@
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
-	import Badge from '$lib/components/ui/Badge.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityActivityLog from './EntityActivityLog.svelte';
@@ -104,7 +103,7 @@
 
 	const STATE_OPTIONS = MILESTONE_STATES.map((state) => ({
 		value: state,
-		label: state.replace('_', ' '),
+		label: state.charAt(0).toUpperCase() + state.slice(1).replace(/_/g, ' '),
 		description:
 			state === 'pending'
 				? 'Not yet started'
@@ -160,7 +159,7 @@
 
 	const MILESTONE_STATE_META: Record<string, { label: string; variant: SurfaceBadgeVariant }> = {
 		pending: { label: 'Pending', variant: 'default' },
-		in_progress: { label: 'In Progress', variant: 'info' },
+		in_progress: { label: 'In progress', variant: 'info' },
 		completed: { label: 'Completed', variant: 'success' },
 		missed: { label: 'Missed', variant: 'error' }
 	};
@@ -172,6 +171,12 @@
 		}
 	);
 	const detailsFormId = $derived(`milestone-edit-${milestoneId}-details`);
+
+	function stateDotClass(variant: SurfaceBadgeVariant): string {
+		if (variant === 'error') return 'bg-destructive';
+		if (variant === 'warning') return 'bg-warning';
+		return 'bg-muted-foreground/50';
+	}
 
 	// Build focus for chat about this milestone
 	const entityFocus = $derived.by((): ProjectFocus | null => {
@@ -479,7 +484,7 @@
 		type="button"
 		onclick={openChatAbout}
 		disabled={isLoading || isSaving || !milestone}
-		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
+		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 		title="Chat about this milestone"
 	>
 		<img
@@ -493,7 +498,7 @@
 		type="button"
 		onclick={handleClose}
 		disabled={isSaving || isDeleting}
-		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:bg-card hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
+		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 		aria-label="Close modal"
 	>
 		<X class="w-5 h-5" />
@@ -542,24 +547,30 @@
 						class="space-y-3 sm:space-y-4"
 					>
 						<Card variant="elevated" class="wt-paper">
-							<CardHeader variant="accent" texture="strip">
+							<CardHeader variant="muted" texture="strip">
 								<div class="flex items-center justify-between gap-3">
 									<div class="flex items-center gap-2">
 										<Flag class="h-4 w-4 text-muted-foreground" />
-										<p
-											class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
-										>
+										<p class="text-xs font-medium text-muted-foreground">
 											Milestone
 										</p>
 									</div>
-									<Badge variant={milestoneStateMeta.variant} size="sm"
-										>{milestoneStateMeta.label}</Badge
+									<span
+										class="inline-flex items-center gap-2 text-xs text-muted-foreground"
 									>
+										<span
+											class="h-1.5 w-1.5 rounded-full {stateDotClass(
+												milestoneStateMeta.variant
+											)}"
+											aria-hidden="true"
+										></span>
+										{milestoneStateMeta.label}
+									</span>
 								</div>
 							</CardHeader>
 							<CardBody class="space-y-4">
 								<FormField
-									label="Milestone Title"
+									label="Title"
 									labelFor="title"
 									required={true}
 									uppercase={false}
@@ -598,7 +609,7 @@
 								</FormField>
 
 								<FormField
-									label="Milestone Details"
+									label="Details"
 									labelFor="milestone-details"
 									uppercase={false}
 									showOptional={false}
@@ -607,7 +618,7 @@
 										id="milestone-details"
 										bind:value={milestoneDetails}
 										enterkeyhint="next"
-										placeholder="Add any additional milestone context or criteria..."
+										placeholder="Extra context or success criteria"
 										rows={2}
 										disabled={isSaving}
 										size="md"
@@ -624,22 +635,17 @@
 									<div>
 										<div class="flex items-center gap-2">
 											<Calendar class="h-4 w-4 text-muted-foreground" />
-											<p
-												class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
-											>
-												Schedule & State
-											</p>
+											<h3 class="text-sm font-medium text-foreground">
+												Due date and status
+											</h3>
 										</div>
-										<h3 class="mt-1 text-sm font-semibold text-foreground">
-											Due date and current status
-										</h3>
 									</div>
 								</div>
 							</CardHeader>
 							<CardBody class="space-y-4">
 								<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 									<FormField
-										label="Due Date"
+										label="Due date"
 										labelFor="due_at"
 										uppercase={false}
 										showOptional={false}
@@ -686,7 +692,7 @@
 
 						{#if error}
 							<div
-								class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 shadow-ink-inner"
+								class="rounded-lg border border-destructive/30 bg-destructive/10 p-3"
 							>
 								<p class="text-sm text-destructive">{error}</p>
 							</div>
@@ -699,19 +705,18 @@
 					<Card variant="elevated" class="wt-card">
 						<CardHeader variant="muted" texture="strip">
 							<div class="flex items-center justify-between gap-3">
-								<div>
-									<p
-										class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
-									>
-										Controls
-									</p>
-									<h3 class="mt-1 text-sm font-semibold text-foreground">
-										Milestone operations
-									</h3>
-								</div>
-								<Badge variant={milestoneStateMeta.variant} size="sm"
-									>{milestoneStateMeta.label}</Badge
+								<h3 class="text-sm font-medium text-foreground">Overview</h3>
+								<span
+									class="inline-flex items-center gap-2 text-xs text-muted-foreground"
 								>
+									<span
+										class="h-1.5 w-1.5 rounded-full {stateDotClass(
+											milestoneStateMeta.variant
+										)}"
+										aria-hidden="true"
+									></span>
+									{milestoneStateMeta.label}
+								</span>
 							</div>
 						</CardHeader>
 						<CardBody padding="none">
@@ -723,7 +728,9 @@
 								>
 									<div class="flex items-center gap-2">
 										<Calendar class="h-4 w-4 text-muted-foreground" />
-										<p class="micro-label font-semibold">Due Date</p>
+										<p class="text-xs font-medium text-muted-foreground">
+											Due date
+										</p>
 									</div>
 
 									<div
@@ -736,7 +743,7 @@
 											{@const days = daysUntilDue}
 											{@const status = dueDateStatus}
 											<p
-												class="text-xl font-bold {status === 'overdue' ||
+												class="text-xl font-medium {status === 'overdue' ||
 												status === 'missed'
 													? 'text-destructive'
 													: status === 'today'
@@ -774,9 +781,11 @@
 								<section class="px-3 py-3 sm:px-4">
 									<div class="flex items-center gap-2">
 										<Clock class="h-4 w-4 text-muted-foreground" />
-										<p class="micro-label font-semibold">Record</p>
+										<p class="text-xs font-medium text-muted-foreground">
+											Record
+										</p>
 									</div>
-									<div class="mt-2 space-y-1.5 text-sm">
+									<div class="mt-2 space-y-2 text-sm">
 										<div class="flex items-center justify-between gap-3">
 											<span class="text-muted-foreground">State</span>
 											<span class="text-right text-foreground"
@@ -819,7 +828,9 @@
 									<section class="px-3 py-3 sm:px-4">
 										<div class="flex items-center gap-2 mb-2">
 											<TagIcon class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Tags</p>
+											<p class="text-xs font-medium text-muted-foreground">
+												Tags
+											</p>
 										</div>
 										<TagsDisplay
 											props={milestone.props}
@@ -834,12 +845,14 @@
 									<button
 										type="button"
 										onclick={() => (showLinkedEntities = !showLinkedEntities)}
-										class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity"
 										aria-expanded={showLinkedEntities}
 									>
 										<div class="flex items-center gap-2">
 											<LinkIcon class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Linked Entities</p>
+											<p class="text-xs font-medium text-muted-foreground">
+												Linked
+											</p>
 										</div>
 										<ChevronDown
 											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showLinkedEntities
@@ -866,12 +879,14 @@
 									<button
 										type="button"
 										onclick={() => (showImages = !showImages)}
-										class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity"
 										aria-expanded={showImages}
 									>
 										<div class="flex items-center gap-2">
 											<ImageIcon class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Images</p>
+											<p class="text-xs font-medium text-muted-foreground">
+												Images
+											</p>
 										</div>
 										<ChevronDown
 											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showImages
@@ -901,12 +916,14 @@
 									<button
 										type="button"
 										onclick={() => (showActivityLog = !showActivityLog)}
-										class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity"
 										aria-expanded={showActivityLog}
 									>
 										<div class="flex items-center gap-2">
 											<Activity class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Activity</p>
+											<p class="text-xs font-medium text-muted-foreground">
+												Activity
+											</p>
 										</div>
 										<ChevronDown
 											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showActivityLog
@@ -950,7 +967,7 @@
 						size="sm"
 						onclick={() => (showDeleteConfirm = true)}
 						disabled={isDeleting || isSaving}
-						class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8 pressable"
+						class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8"
 					>
 						<Trash2 class="w-3.5 h-3.5" />
 						<span class="hidden sm:inline ml-1">Delete</span>
@@ -963,7 +980,7 @@
 						size="sm"
 						onclick={handleClose}
 						disabled={isSaving || isDeleting}
-						class="text-xs h-8 pressable"
+						class="text-xs h-8"
 					>
 						Cancel
 					</Button>
@@ -974,7 +991,7 @@
 						size="sm"
 						loading={isSaving}
 						disabled={isSaving || isDeleting || !title.trim()}
-						class="text-xs h-8 pressable"
+						class="text-xs h-8"
 					>
 						<Save class="w-3.5 h-3.5" />
 						<span class="ml-1">Save</span>
@@ -988,11 +1005,11 @@
 {#if showDeleteConfirm}
 	<ConfirmationModal
 		isOpen={showDeleteConfirm}
-		title="Delete Milestone"
-		confirmText="Delete Milestone"
+		title="Delete milestone"
+		confirmText="Delete milestone"
 		confirmVariant="danger"
 		loading={isDeleting}
-		loadingText="Deleting..."
+		loadingText="Deleting"
 		icon="danger"
 		onconfirm={handleDelete}
 		oncancel={() => (showDeleteConfirm = false)}

@@ -20,7 +20,7 @@
 		Palette,
 		Settings,
 		Users
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import type { Database } from '@buildos/shared-types';
 	import type { Component } from 'svelte';
 	import {
@@ -464,30 +464,30 @@
 		) {
 			return {
 				label: `Retrying (${target.queue_attempts ?? 0}/${target.queue_max_attempts ?? '?'})`,
-				className: 'bg-info/10 text-info border border-info/30'
+				className: 'bg-warning'
 			};
 		}
 		if (target.sync_status === 'failed' || target.queue_status === 'failed') {
 			return {
 				label: 'Failed',
-				className: 'bg-destructive/10 text-destructive border border-destructive/30'
+				className: 'bg-destructive'
 			};
 		}
 		if (target.sync_status === 'synced') {
 			return {
 				label: 'Synced',
-				className: 'bg-success/10 text-success border border-success/30'
+				className: 'bg-success'
 			};
 		}
 		if (target.sync_status === 'cancelled') {
 			return {
 				label: 'Deleted',
-				className: 'bg-muted text-muted-foreground border border-border'
+				className: 'bg-muted-foreground/50'
 			};
 		}
 		return {
 			label: 'Pending',
-			className: 'bg-muted text-muted-foreground border border-border'
+			className: 'bg-muted-foreground/50'
 		};
 	}
 
@@ -569,20 +569,20 @@
 		if (!member.has_calendar) {
 			return {
 				label: 'Not linked',
-				className: 'bg-muted text-muted-foreground border border-border'
+				className: 'bg-muted-foreground/50'
 			};
 		}
 
 		if (!member.sync_enabled) {
 			return {
 				label: 'Sync off',
-				className: 'bg-warning/10 text-warning border border-warning/30'
+				className: 'bg-warning'
 			};
 		}
 
 		return {
 			label: 'Synced',
-			className: 'bg-success/10 text-success border border-success/30'
+			className: 'bg-success'
 		};
 	}
 
@@ -720,29 +720,25 @@
 <Modal bind:isOpen onClose={handleClose} size="xl">
 	{#snippet header()}
 		<div
-			class="flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted border-b border-border px-3 py-2 sm:px-4 sm:py-3 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-				<div
-					class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 text-accent shrink-0"
-				>
-					<Calendar class="w-5 h-5" />
-				</div>
+				<Calendar class="w-5 h-5 shrink-0 text-muted-foreground" />
 				<div class="min-w-0 flex-1">
 					<h2
-						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
+						class="text-sm sm:text-base font-medium leading-tight truncate text-foreground"
 					>
 						Calendar
 					</h2>
-					<p class="text-2xs sm:text-xs text-muted-foreground mt-0.5">
-						View and manage calendar details for {project?.name || 'this project'}
+					<p class="text-2xs sm:text-xs text-muted-foreground truncate">
+						{project?.name || 'This project'}
 					</p>
 				</div>
 			</div>
 			<button
 				type="button"
 				onclick={handleClose}
-				class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring tx tx-grain tx-weak"
+				class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring tx tx-grain tx-weak"
 				aria-label="Close modal"
 			>
 				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -783,7 +779,7 @@
 			<div class="flex-1 overflow-y-auto bg-background tx tx-frame tx-weak">
 				{#if loading}
 					<div class="flex items-center justify-center py-12">
-						<LoaderCircle class="h-6 w-6 animate-spin text-accent" />
+						<LoaderCircle class="h-6 w-6 animate-spin text-muted-foreground" />
 					</div>
 				{:else}
 					<div class="p-4 space-y-3 sm:p-5 sm:space-y-4">
@@ -796,11 +792,11 @@
 										class="h-4 w-4 text-destructive mt-0.5 flex-shrink-0"
 									/>
 									<div class="flex-1">
-										<h3 class="text-xs font-semibold text-destructive">
+										<h3 class="text-xs font-medium text-destructive">
 											Error with calendar settings
 										</h3>
 										<div class="mt-1 text-xs text-destructive/80">
-											<ul class="list-disc space-y-0.5 pl-4">
+											<ul class="list-disc space-y-1 pl-4">
 												{#each errors as error (error)}
 													<li>{error}</li>
 												{/each}
@@ -812,19 +808,13 @@
 						{/if}
 
 						<form onsubmit={handleSubmit} class="space-y-3 sm:space-y-4">
-							<div
-								class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
-							>
+							<div class="bg-card rounded-xl border border-border p-3 sm:p-4">
 								<div class="flex items-center justify-between gap-2">
 									<div class="flex items-center gap-2 sm:gap-3">
-										<div class="p-1.5 sm:p-2 bg-accent/10 rounded-lg">
-											<Settings
-												class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent"
-											/>
-										</div>
+										<Settings class="h-4 w-4 shrink-0 text-muted-foreground" />
 										<div>
-											<p class="text-sm font-semibold text-foreground">
-												Calendar Status
+											<p class="text-sm font-medium text-foreground">
+												Calendar status
 											</p>
 											<p class="text-xs text-muted-foreground">
 												{calendarExists
@@ -839,16 +829,19 @@
 									</div>
 									{#if calendarExists}
 										<div
-											class="flex items-center gap-1.5 px-2 py-1 bg-success/10 rounded-lg text-xs font-medium text-success"
+											class="flex items-center gap-2 text-xs text-muted-foreground"
 										>
-											<Check class="h-3 w-3" />
+											<span class="h-1.5 w-1.5 rounded-full bg-success"
+											></span>
 											<span class="hidden sm:inline">Connected</span>
 										</div>
 									{:else}
 										<div
-											class="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-lg text-xs font-medium text-muted-foreground"
+											class="flex items-center gap-2 text-xs text-muted-foreground"
 										>
-											<AlertCircle class="h-3 w-3" />
+											<span
+												class="h-1.5 w-1.5 rounded-full bg-muted-foreground/50"
+											></span>
 											<span class="hidden sm:inline">Not connected</span>
 										</div>
 									{/if}
@@ -856,20 +849,16 @@
 							</div>
 
 							{#if !calendarExists && (calendarConnectionsLoading || calendarConnectionsError || calendarConnections)}
-								<div
-									class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
-								>
+								<div class="bg-card rounded-xl border border-border p-3 sm:p-4">
 									<div class="flex items-center gap-2 mb-2">
-										<div class="p-1.5 bg-accent/10 rounded-lg">
-											<Calendar class="w-3.5 h-3.5 text-accent" />
-										</div>
+										<Calendar class="w-4 h-4 shrink-0 text-muted-foreground" />
 										<div>
-											<p class="text-sm font-semibold text-foreground">
+											<p class="text-sm font-medium text-foreground">
 												Google Calendar target
 											</p>
 											<p class="text-xs text-muted-foreground">
 												Choose the account and calendar this project should
-												use.
+												use
 											</p>
 										</div>
 									</div>
@@ -887,7 +876,7 @@
 										</p>
 									{:else if writableProjectCalendarSources.length === 0}
 										<div
-											class="rounded-md border border-dashed border-border bg-muted/30 p-3"
+											class="rounded-lg border border-dashed border-border bg-muted/30 p-3"
 										>
 											<p class="text-xs text-muted-foreground">
 												No writable calendars are available. Connect or
@@ -895,7 +884,7 @@
 											</p>
 											<a
 												href="/profile?tab=calendar"
-												class="mt-2 inline-flex text-xs font-medium text-accent hover:underline"
+												class="mt-2 inline-flex text-xs font-medium text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground"
 											>
 												Open Calendar settings
 											</a>
@@ -908,7 +897,7 @@
 											>
 												<select
 													bind:value={calendarTargetMode}
-													class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+													class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
 												>
 													<option value="create"
 														>Create a new project calendar</option
@@ -926,7 +915,7 @@
 												>
 													<select
 														bind:value={selectedConnectionId}
-														class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+														class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
 													>
 														{#each writableConnections as connection (connection.id)}
 															<option value={connection.id}>
@@ -942,7 +931,7 @@
 												>
 													<select
 														bind:value={selectedCalendarSourceId}
-														class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+														class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
 													>
 														{#each writableProjectCalendarSources as source (source.id)}
 															<option value={source.id}
@@ -959,21 +948,25 @@
 								</div>
 							{/if}
 
-							<div
-								class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
-							>
+							<div class="bg-card rounded-xl border border-border p-3 sm:p-4">
 								<div class="flex items-center justify-between gap-2 mb-2">
 									<div>
-										<p class="text-sm font-semibold text-foreground">
-											Event Sync Health
+										<p class="text-sm font-medium text-foreground">
+											Event sync health
 										</p>
 										{#if syncHealthPayload}
 											<p class="text-xs text-muted-foreground">
-												{syncHealthPayload.summary.failed_targets} failed target
-												syncs
+												{syncHealthPayload.summary.failed_targets} failed
+												{syncHealthPayload.summary.failed_targets === 1
+													? 'sync'
+													: 'syncs'}
 												{#if syncHealthPayload.summary.active_queue_targets > 0}
-													• {syncHealthPayload.summary
-														.active_queue_targets} active retries
+													· {syncHealthPayload.summary
+														.active_queue_targets} active
+													{syncHealthPayload.summary
+														.active_queue_targets === 1
+														? 'retry'
+														: 'retries'}
 												{/if}
 											</p>
 										{:else}
@@ -996,19 +989,19 @@
 									<div class="max-h-64 overflow-y-auto space-y-2 pr-1">
 										{#if syncHealthPayload.events.length === 0}
 											<p class="text-xs text-muted-foreground">
-												No project events found for sync health.
+												No project events yet
 											</p>
 										{:else}
 											{#each syncHealthPayload.events as event (event.event_id)}
 												<div
-													class="rounded-md border border-border/70 bg-background/70 px-2.5 py-2"
+													class="rounded-lg border border-border/70 bg-background/70 px-3 py-2"
 												>
 													<p
 														class="text-xs font-medium text-foreground truncate"
 													>
 														{event.title}
 													</p>
-													<div class="mt-1 space-y-1.5">
+													<div class="mt-2 space-y-2">
 														{#if event.targets.length === 0}
 															<p
 																class="text-2xs text-muted-foreground"
@@ -1020,7 +1013,7 @@
 																{@const statusBadge =
 																	getSyncTargetBadge(target)}
 																<div
-																	class="flex items-start justify-between gap-2 rounded border border-border/70 bg-background px-2 py-1.5"
+																	class="flex items-start justify-between gap-2 rounded-lg border border-border/70 bg-background px-2 py-2"
 																>
 																	<div class="min-w-0 flex-1">
 																		<p
@@ -1048,14 +1041,17 @@
 																		class="flex flex-col items-end gap-1"
 																	>
 																		<span
-																			class={`shrink-0 rounded px-2 py-0.5 text-2xs font-medium ${statusBadge.className}`}
+																			class="inline-flex shrink-0 items-center gap-2 text-2xs text-muted-foreground"
 																		>
+																			<span
+																				class={`h-1.5 w-1.5 rounded-full ${statusBadge.className}`}
+																			></span>
 																			{statusBadge.label}
 																		</span>
 																		{#if target.can_retry && target.user_id}
 																			<button
 																				type="button"
-																				class="inline-flex items-center rounded border border-border bg-card px-2 py-1 text-2xs font-medium text-foreground hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
+																				class="inline-flex items-center rounded-lg px-2 py-1 text-2xs font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
 																				disabled={isRetryingTarget(
 																					event.event_id,
 																					target.user_id
@@ -1088,17 +1084,13 @@
 								{/if}
 							</div>
 
-							<div
-								class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
-							>
+							<div class="bg-card rounded-xl border border-border p-3 sm:p-4">
 								<div class="flex items-center justify-between gap-2 mb-2">
 									<div class="flex items-center gap-2 sm:gap-3">
-										<div class="p-1.5 sm:p-2 bg-accent/10 rounded-lg">
-											<Users class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />
-										</div>
+										<Users class="h-4 w-4 shrink-0 text-muted-foreground" />
 										<div>
-											<p class="text-sm font-semibold text-foreground">
-												Team Sync Coverage
+											<p class="text-sm font-medium text-foreground">
+												Team sync coverage
 											</p>
 											{#if collaborationSummary}
 												<p class="text-xs text-muted-foreground">
@@ -1106,7 +1098,7 @@
 													{collaborationSummary.total_members} members actively
 													syncing
 													{#if collaborationSummary.pending_invite_count > 0}
-														• {collaborationSummary.pending_invite_count}
+														· {collaborationSummary.pending_invite_count}
 														pending invite{collaborationSummary.pending_invite_count ===
 														1
 															? ''
@@ -1132,7 +1124,7 @@
 								{:else if collaborationSummary}
 									<div class="space-y-2">
 										<div
-											class="flex items-center justify-between rounded-md border border-border/70 bg-background/70 px-2.5 py-2 text-xs"
+											class="flex items-center justify-between rounded-lg border border-border/70 bg-background/70 px-3 py-2 text-xs"
 										>
 											<span class="text-muted-foreground"
 												>Project sync mode</span
@@ -1143,11 +1135,11 @@
 													: 'Actor projection'}
 											</span>
 										</div>
-										<div class="max-h-44 overflow-y-auto space-y-1.5 pr-1">
+										<div class="max-h-44 overflow-y-auto space-y-2 pr-1">
 											{#each collaborationSummary.members as member (member.actor_id)}
 												{@const badge = getMemberSyncBadge(member)}
 												<div
-													class="flex items-start justify-between gap-2 rounded-md border border-border/80 bg-background/70 px-2.5 py-2"
+													class="flex items-start justify-between gap-2 rounded-lg border border-border/80 bg-background/70 px-3 py-2"
 												>
 													<div class="min-w-0">
 														<p
@@ -1170,15 +1162,18 @@
 														</p>
 													</div>
 													<span
-														class={`shrink-0 rounded px-2 py-0.5 text-2xs font-medium ${badge.className}`}
+														class="inline-flex shrink-0 items-center gap-2 text-2xs text-muted-foreground"
 													>
+														<span
+															class={`h-1.5 w-1.5 rounded-full ${badge.className}`}
+														></span>
 														{badge.label}
 													</span>
 												</div>
 											{/each}
 											{#each collaborationSummary.pending_invites as invite (invite.invitee_email)}
 												<div
-													class="flex items-start justify-between gap-2 rounded-md border border-dashed border-warning/40 bg-warning/5 px-2.5 py-2"
+													class="flex items-start justify-between gap-2 rounded-lg border border-dashed border-border px-3 py-2"
 												>
 													<div class="min-w-0">
 														<p
@@ -1194,15 +1189,17 @@
 													</div>
 													<div class="flex flex-col items-end gap-1">
 														<span
-															class="shrink-0 rounded px-2 py-0.5 text-2xs font-medium bg-warning/10 text-warning border border-warning/30"
+															class="inline-flex shrink-0 items-center gap-2 text-2xs text-muted-foreground"
 														>
+															<span
+																class="h-1.5 w-1.5 rounded-full bg-muted-foreground/50"
+															></span>
 															Pending invite
 														</span>
 														<span
-															class="shrink-0 rounded px-2 py-0.5 text-2xs font-medium bg-muted text-muted-foreground border border-border"
+															class="shrink-0 text-2xs text-muted-foreground"
+															>Not linked</span
 														>
-															Not linked
-														</span>
 													</div>
 												</div>
 											{/each}
@@ -1211,10 +1208,8 @@
 								{/if}
 							</div>
 
-							<div
-								class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
-							>
-								<FormField label="Calendar Name" required>
+							<div class="bg-card rounded-xl border border-border p-3 sm:p-4">
+								<FormField label="Calendar name" required>
 									<TextInput
 										bind:value={formData.calendarName}
 										placeholder="{project?.name} - Tasks"
@@ -1225,13 +1220,8 @@
 							</div>
 
 							{#if !calendarExists}
-								<div
-									class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
-								>
-									<FormField
-										label="Calendar Description"
-										hint="Brief description for the calendar"
-									>
+								<div class="bg-card rounded-xl border border-border p-3 sm:p-4">
+									<FormField label="Calendar description">
 										<Textarea
 											bind:value={formData.calendarDescription}
 											placeholder="Tasks and events for {project?.name}"
@@ -1242,15 +1232,11 @@
 								</div>
 							{/if}
 
-							<div
-								class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
-							>
+							<div class="bg-card rounded-xl border border-border p-3 sm:p-4">
 								<div class="flex items-center gap-2 mb-2">
-									<div class="p-1.5 bg-accent/10 rounded-lg">
-										<Palette class="w-3.5 h-3.5 text-accent" />
-									</div>
-									<p class="text-sm font-semibold text-foreground">
-										Calendar Color
+									<Palette class="w-4 h-4 shrink-0 text-muted-foreground" />
+									<p class="text-sm font-medium text-foreground">
+										Calendar color
 									</p>
 								</div>
 								<p class="text-xs text-muted-foreground mb-3">
@@ -1261,12 +1247,12 @@
 										<button
 											type="button"
 											onclick={() => selectColor(colorId)}
-											class="group relative aspect-square w-full rounded-lg border-2 transition-all hover:scale-105 pressable {formData.selectedColorId ===
+											class="group relative aspect-square w-full rounded-lg border-2 transition-colors {formData.selectedColorId ===
 											colorId
-												? 'border-foreground shadow-ink-strong ring-2 ring-offset-1 ring-accent/30 scale-105'
-												: 'border-border hover:border-accent/50 hover:shadow-ink'}"
+												? 'border-foreground ring-2 ring-accent ring-offset-1 ring-offset-card'
+												: 'border-border hover:border-foreground/20'}"
 											style="background-color: {colorInfo.hex}"
-											title="{colorInfo.name} ({colorId})"
+											title={colorInfo.name}
 											aria-label="Select {colorInfo.name} color"
 										>
 											{#if formData.selectedColorId === colorId}
@@ -1274,7 +1260,7 @@
 													class="absolute inset-0 m-auto h-3 w-3 sm:h-4 sm:w-4 {colorInfo.text ===
 													'text-white'
 														? 'text-white'
-														: 'text-foreground'} drop-shadow-lg"
+														: 'text-foreground'}"
 												/>
 											{/if}
 											<span class="sr-only">{colorInfo.name}</span>
@@ -1282,10 +1268,8 @@
 									{/each}
 								</div>
 								<div class="mt-2 text-center">
-									<p
-										class="text-2xs uppercase tracking-wide text-muted-foreground"
-									>
-										Selected: <span class="font-semibold text-foreground"
+									<p class="text-xs text-muted-foreground">
+										Selected: <span class="font-medium text-foreground"
 											>{GOOGLE_CALENDAR_COLORS[formData.selectedColorId]
 												?.name}</span
 										>
@@ -1293,16 +1277,14 @@
 								</div>
 							</div>
 
-							<div
-								class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
-							>
+							<div class="bg-card rounded-xl border border-border p-3 sm:p-4">
 								<FormField
-									label="Project Sync Mode"
+									label="Project sync mode"
 									hint="Choose how project event changes are projected to member calendars"
 								>
 									<select
 										bind:value={formData.syncMode}
-										class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+										class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
 									>
 										<option value="actor_projection">Actor projection</option>
 										<option value="member_fanout">Member fanout</option>
@@ -1316,10 +1298,8 @@
 							</div>
 
 							{#if calendarExists}
-								<div
-									class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
-								>
-									<FormField label="Sync Settings">
+								<div class="bg-card rounded-xl border border-border p-3 sm:p-4">
+									<FormField label="Sync">
 										<label class="flex items-center gap-2 cursor-pointer">
 											<input
 												type="checkbox"
@@ -1351,17 +1331,17 @@
 							disabled={deleting}
 							variant="ghost"
 							size="sm"
-							class="text-destructive hover:text-destructive hover:bg-destructive/10"
+							class="text-muted-foreground hover:text-destructive hover:bg-muted/50"
 						>
 							{#if deleting}
-								<LoaderCircle class="mr-1.5 h-3.5 w-3.5 animate-spin" />
+								<LoaderCircle class="mr-2 h-3.5 w-3.5 animate-spin" />
 							{:else}
-								<Trash2 class="mr-1.5 h-3.5 w-3.5" />
+								<Trash2 class="mr-2 h-3.5 w-3.5" />
 							{/if}
 							<span class="hidden sm:inline"
 								>{providerResourceManaged
-									? 'Delete Calendar'
-									: 'Unlink Calendar'}</span
+									? 'Delete calendar'
+									: 'Unlink calendar'}</span
 							>
 							<span class="sm:hidden"
 								>{providerResourceManaged ? 'Delete' : 'Unlink'}</span
@@ -1386,11 +1366,10 @@
 							variant="primary"
 							disabled={saving || !formData.calendarName || !calendarTargetReady}
 							size="sm"
-							class="shadow-ink pressable"
 						>
 							{#if saving}
-								<LoaderCircle class="mr-1.5 h-3.5 w-3.5 animate-spin" />
-								Saving...
+								<LoaderCircle class="mr-2 h-3.5 w-3.5 animate-spin" />
+								Saving…
 							{:else if calendarExists}
 								Update
 							{:else}
@@ -1439,7 +1418,7 @@
 	:global(.modal-content input),
 	:global(.modal-content textarea),
 	:global(.modal-content select) {
-		transition: all 0.15s ease;
+		transition: all 0.15s cubic-bezier(0.22, 1, 0.36, 1);
 	}
 
 	@media (max-width: 640px) {

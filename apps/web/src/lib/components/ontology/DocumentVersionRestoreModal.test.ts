@@ -36,7 +36,7 @@ function response(warning: string | null = null) {
 }
 async function confirm() {
 	await fireEvent.click(screen.getByRole('checkbox'));
-	await fireEvent.click(screen.getByRole('button', { name: 'Restore Version' }));
+	await fireEvent.click(screen.getByRole('button', { name: 'Restore version' }));
 }
 
 describe('DocumentVersionRestoreModal', () => {
@@ -79,7 +79,7 @@ describe('DocumentVersionRestoreModal', () => {
 				onRestoreStateChange: state
 			}
 		});
-		expect(screen.getByRole('button', { name: 'Restore Version' })).toBeDisabled();
+		expect(screen.getByRole('button', { name: 'Restore version' })).toBeDisabled();
 		await confirm();
 		expect(fetch).not.toHaveBeenCalled();
 		expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
@@ -154,7 +154,7 @@ describe('DocumentVersionRestoreModal', () => {
 			await Promise.resolve();
 			expect(onRestored).not.toHaveBeenCalled();
 			expect(mocks.success).not.toHaveBeenCalled();
-			expect(screen.getByRole('button', { name: 'Restore Version' })).toBeDisabled();
+			expect(screen.getByRole('button', { name: 'Restore version' })).toBeDisabled();
 		}
 	);
 });

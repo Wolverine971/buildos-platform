@@ -106,7 +106,7 @@
 		>
 			<div class="flex min-w-0 items-center gap-2 text-muted-foreground">
 				<MessageCircle class="h-3.5 w-3.5 shrink-0" />
-				<p class="micro-label truncate">DOCUMENT CHAT</p>
+				<p class="truncate text-xs font-medium text-muted-foreground">Document chat</p>
 			</div>
 			<button
 				type="button"
@@ -127,7 +127,7 @@
 					initialProjectFocus={focus}
 					autoSendVoiceOnStop={true}
 					conversationOnly={true}
-					composerPlaceholder="Ask about or update this document..."
+					composerPlaceholder="Ask about or update this document"
 					{onDocumentMutation}
 					onClose={handleChatClose}
 				/>
@@ -142,7 +142,7 @@
 					<button
 						type="button"
 						onclick={loadChat}
-						class="rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground shadow-ink pressable hover:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						class="rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
 						Try again
 					</button>

@@ -11,7 +11,7 @@
 	- onClose: () => void - Close callback
 -->
 <script lang="ts">
-	import { ExternalLink, Calendar, Target, CircleCheck } from 'lucide-svelte';
+	import { ExternalLink, Calendar, Target, CircleCheck } from '$lib/icons/lucide';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import type { ProjectDailyBrief } from '$lib/types/daily-brief';
 	import { renderAgentMarkdownContent } from '$lib/utils/markdown';
@@ -45,13 +45,17 @@
 					{#if brief.metadata.task_count}
 						<span class="flex items-center gap-1">
 							<Target class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-							{brief.metadata.task_count} tasks
+							<span class="font-mono tabular-nums">{brief.metadata.task_count}</span>
+							{brief.metadata.task_count === 1 ? 'task' : 'tasks'}
 						</span>
 					{/if}
 					{#if brief.metadata.completion_rate !== undefined}
 						<span class="flex items-center gap-1">
 							<CircleCheck class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-							{brief.metadata.completion_rate}% complete
+							<span class="font-mono tabular-nums"
+								>{brief.metadata.completion_rate}%</span
+							>
+							complete
 						</span>
 					{/if}
 					{#if brief.metadata.last_updated}
@@ -77,17 +81,13 @@
 			<!-- Key Insights -->
 			{#if brief.metadata?.key_insights && brief.metadata.key_insights.length > 0}
 				<div
-					class="p-3 sm:p-4 bg-accent/5 border border-accent/20 rounded-lg tx tx-bloom tx-weak"
+					class="p-3 sm:p-4 bg-muted/30 border border-border rounded-xl tx tx-bloom tx-weak"
 				>
-					<h3 class="text-xs sm:text-sm font-semibold text-foreground mb-2">
-						Key Insights
-					</h3>
+					<h3 class="text-xs font-medium text-muted-foreground mb-2">Key insights</h3>
 					<ul class="space-y-1">
 						{#each brief.metadata.key_insights as insight}
-							<li
-								class="flex items-start gap-1.5 text-xs sm:text-sm text-muted-foreground"
-							>
-								<span class="shrink-0 mt-0.5 text-accent">&#8226;</span>
+							<li class="flex items-start gap-2 text-xs sm:text-sm text-foreground">
+								<span class="shrink-0 text-muted-foreground">&#8226;</span>
 								<span>{insight}</span>
 							</li>
 						{/each}
@@ -109,10 +109,10 @@
 				{#if projectId}
 					<a
 						href="/projects/{projectId}"
-						class="inline-flex items-center gap-1 px-2.5 py-1.5 text-2xs sm:text-xs font-medium rounded-md bg-accent text-accent-foreground hover:bg-accent/90 transition-colors pressable shrink-0"
+						class="inline-flex items-center gap-1 px-3 py-2 text-2xs sm:text-xs font-medium rounded-lg bg-accent text-accent-foreground hover:bg-accent/90 transition-colors shrink-0"
 					>
 						<ExternalLink class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-						View Project
+						View project
 					</a>
 				{/if}
 			</div>

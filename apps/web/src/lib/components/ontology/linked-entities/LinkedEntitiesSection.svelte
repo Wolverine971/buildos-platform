@@ -120,7 +120,7 @@
 		{:else if showAddButton}
 			<button
 				type="button"
-				class="p-0.5 sm:p-1 rounded text-muted-foreground hover:text-accent hover:bg-accent/10
+				class="p-0.5 sm:p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/60
 					transition-colors duration-[120ms] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent pressable"
 				onclick={handleAddClick}
 				aria-label="Add {config.label.toLowerCase()}"

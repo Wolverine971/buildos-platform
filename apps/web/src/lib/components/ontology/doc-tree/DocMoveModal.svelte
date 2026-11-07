@@ -8,7 +8,7 @@
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { ChevronRight, FileText, Folder, FolderOpen, House, Loader } from 'lucide-svelte';
+	import { ChevronRight, FileText, Folder, FolderOpen, House, Loader } from '$lib/icons/lucide';
 	import type { EnrichedDocTreeNode, OntoDocument, DocStructure } from '$lib/types/onto-api';
 	import {
 		enrichTreeNodes,
@@ -128,13 +128,13 @@
 	}
 </script>
 
-<Modal bind:isOpen onClose={handleClose} title="Move Document" size="md">
+<Modal bind:isOpen onClose={handleClose} title="Move document" size="md">
 	<div class="space-y-4">
 		<!-- Current document info -->
-		<div class="px-4 py-3 bg-muted/30 rounded-lg">
+		<div class="px-4 py-3 bg-muted/50 rounded-xl">
 			<p class="text-xs text-muted-foreground mb-1">Moving</p>
 			<p class="text-sm font-medium text-foreground flex items-center gap-2">
-				<FileText class="w-4 h-4 text-accent" />
+				<FileText class="w-4 h-4 text-muted-foreground" />
 				{documentTitle}
 			</p>
 		</div>
@@ -145,12 +145,12 @@
 		{/if}
 
 		<!-- Destination picker -->
-		<div class="border border-border rounded-lg max-h-[300px] overflow-y-auto">
+		<div class="border border-border rounded-xl max-h-[300px] overflow-y-auto">
 			<!-- Root option -->
 			<button
 				type="button"
 				onclick={() => selectParent(null)}
-				class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-accent/5 transition-colors border-b border-border
+				class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted/50 transition-colors border-b border-border
 					{selectedParentId === null ? 'bg-accent/10' : ''}"
 			>
 				<House class="w-4 h-4 text-muted-foreground" />
@@ -172,8 +172,8 @@
 						type="button"
 						onclick={() => (isDisabled ? null : selectParent(node.id))}
 						disabled={isDisabled}
-						class="w-full flex items-center gap-1.5 px-3 py-2 text-left transition-colors
-							{isDisabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-accent/5'}
+						class="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors
+							{isDisabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-muted/50'}
 							{isSelected ? 'bg-accent/10' : ''}"
 						style="padding-left: {node.depth * 16 + 12}px"
 					>
@@ -192,7 +192,7 @@
 										toggleExpand(node.id);
 									}
 								}}
-								class="w-4 h-4 flex items-center justify-center rounded hover:bg-accent/10 cursor-pointer"
+								class="w-4 h-4 flex items-center justify-center rounded hover:bg-muted cursor-pointer"
 							>
 								<ChevronRight
 									class="w-3.5 h-3.5 text-muted-foreground transition-transform {isExpanded
@@ -207,9 +207,9 @@
 						<!-- Icon -->
 						{#if node.type === 'folder'}
 							{#if isExpanded}
-								<FolderOpen class="w-4 h-4 text-accent" />
+								<FolderOpen class="w-4 h-4 text-muted-foreground" />
 							{:else}
-								<Folder class="w-4 h-4 text-accent" />
+								<Folder class="w-4 h-4 text-muted-foreground" />
 							{/if}
 						{:else}
 							<FileText class="w-4 h-4 text-muted-foreground" />
@@ -239,14 +239,14 @@
 								type="button"
 								onclick={() => (childDisabled ? null : selectParent(child.id))}
 								disabled={childDisabled}
-								class="w-full flex items-center gap-1.5 px-3 py-2 text-left transition-colors
-									{childDisabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-accent/5'}
+								class="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors
+									{childDisabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-muted/50'}
 									{childSelected ? 'bg-accent/10' : ''}"
 								style="padding-left: {(child.depth || 1) * 16 + 12}px"
 							>
 								<span class="w-4"></span>
 								{#if child.type === 'folder'}
-									<Folder class="w-4 h-4 text-accent" />
+									<Folder class="w-4 h-4 text-muted-foreground" />
 								{:else}
 									<FileText class="w-4 h-4 text-muted-foreground" />
 								{/if}
@@ -267,15 +267,13 @@
 	</div>
 
 	{#snippet footer()}
-		<div
-			class="flex justify-end gap-3 px-3 sm:px-4 py-3 sm:py-4 border-t border-border bg-muted/30"
-		>
+		<div class="flex justify-end gap-3 px-4 py-4 border-t border-border bg-muted/30">
 			<Button variant="ghost" onclick={handleClose} disabled={moving}>Cancel</Button>
 			<Button variant="primary" onclick={handleMove} disabled={moving || pinned}>
 				{#if moving}
 					<Loader class="w-4 h-4 animate-spin mr-2" />
 				{/if}
-				Move Here
+				Move here
 			</Button>
 		</div>
 	{/snippet}

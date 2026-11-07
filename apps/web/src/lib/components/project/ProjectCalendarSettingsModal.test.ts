@@ -252,7 +252,7 @@ describe('ProjectCalendarSettingsModal sync coverage and health', () => {
 		await fireEvent.click(screen.getByRole('tab', { name: /settings/i }));
 
 		await waitFor(() => {
-			expect(screen.getByText('Team Sync Coverage')).toBeInTheDocument();
+			expect(screen.getByText('Team sync coverage')).toBeInTheDocument();
 		});
 		expect(screen.getByText('pending@example.com')).toBeInTheDocument();
 		expect(screen.getByText('Pending invite')).toBeInTheDocument();
@@ -270,7 +270,7 @@ describe('ProjectCalendarSettingsModal sync coverage and health', () => {
 		await fireEvent.click(screen.getByRole('tab', { name: /settings/i }));
 
 		await waitFor(() => {
-			expect(screen.getByText('Event Sync Health')).toBeInTheDocument();
+			expect(screen.getByText('Event sync health')).toBeInTheDocument();
 		});
 		expect(screen.getByText('Kickoff Call')).toBeInTheDocument();
 		expect(screen.getByText('Attempts: 2/3')).toBeInTheDocument();

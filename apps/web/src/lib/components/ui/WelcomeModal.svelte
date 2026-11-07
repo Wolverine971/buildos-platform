@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/ui/WelcomeModal.svelte -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { X } from 'lucide-svelte';
+	import { X } from '$lib/icons/lucide';
 	import Modal from './Modal.svelte';
 	import Button from './Button.svelte';
 
@@ -31,10 +31,10 @@
 
 	let {
 		isOpen = $bindable(false),
-		title = 'Welcome!',
+		title = 'Welcome',
 		subtitle = '',
-		primaryButtonText = 'Get Started',
-		secondaryButtonText = 'Maybe Later',
+		primaryButtonText = 'Get started',
+		secondaryButtonText = 'Maybe later',
 		dismissible = true,
 		persistent = false,
 		showTimeEstimate = false,
@@ -138,7 +138,7 @@
 			<button
 				type="button"
 				onclick={handleDismiss}
-				class="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				class="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				aria-label="Close welcome dialog"
 				title="Close welcome dialog"
 			>
@@ -151,15 +151,15 @@
 			{@render icon?.()}
 			{#if !icon}
 				<!-- Inkprint default icon - flat design, no blur/gradients -->
-				<div class="bg-accent rounded-full p-3 sm:p-4 shadow-ink tx tx-bloom tx-weak">
-					<div class="w-6 h-6 sm:w-8 sm:h-8 bg-accent-foreground rounded-full"></div>
+				<div class="bg-muted rounded-xl p-3 sm:p-4 tx tx-bloom tx-weak">
+					<div class="w-6 h-6 sm:w-8 sm:h-8 bg-muted-foreground/40 rounded-lg"></div>
 				</div>
 			{/if}
 		</div>
 
 		<!-- Title & Description -->
 		<div class="text-center mb-3 sm:mb-4">
-			<h2 class="text-xl font-bold text-foreground mb-2">
+			<h2 class="text-xl font-medium text-foreground mb-2">
 				{title}
 			</h2>
 			{#if subtitle}
@@ -185,9 +185,9 @@
 					size="xl"
 					fullWidth={true}
 					btnType="container"
-					class="bg-accent text-accent-foreground shadow-ink pressable"
+					class="bg-accent text-accent-foreground"
 				>
-					<span class="flex items-center justify-center space-x-2">
+					<span class="flex items-center justify-center gap-2">
 						<span>{primaryButtonText}</span>
 						{@render primaryIcon?.()}
 					</span>

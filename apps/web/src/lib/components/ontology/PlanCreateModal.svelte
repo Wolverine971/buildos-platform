@@ -7,7 +7,15 @@
 	- API Endpoint: /apps/web/src/routes/api/onto/plans/create/+server.ts
 -->
 <script lang="ts">
-	import { Calendar, ChevronRight, Clock, Search, Target } from '$lib/icons/lucide';
+	import {
+		Calendar,
+		ChevronLeft,
+		ChevronRight,
+		Clock,
+		Search,
+		Target,
+		X
+	} from '$lib/icons/lucide';
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -19,7 +27,6 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
-	import Badge from '$lib/components/ui/Badge.svelte';
 	import EntityModalDetailsDrawer from './EntityModalDetailsDrawer.svelte';
 	import { PLAN_STATES } from '$lib/types/onto';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
@@ -52,7 +59,7 @@
 		},
 		{
 			id: 'phase',
-			name: 'Project Phase',
+			name: 'Project phase',
 			type_key: 'plan.phase.project',
 			metadata: {
 				category: 'Phase',
@@ -63,7 +70,7 @@
 		},
 		{
 			id: 'quarter',
-			name: 'Quarterly Plan',
+			name: 'Quarterly plan',
 			type_key: 'plan.roadmap.strategy',
 			metadata: {
 				category: 'Roadmap',
@@ -74,7 +81,7 @@
 		},
 		{
 			id: 'custom',
-			name: 'Custom Plan',
+			name: 'Custom plan',
 			type_key: 'plan.process.base',
 			metadata: {
 				category: 'Process',
@@ -205,6 +212,11 @@
 			.join(' ');
 	}
 
+	function formatTypeLabel(typeKey: string): string {
+		const words = typeKey.replace(/^plan\./, '').replace(/[._]/g, ' ');
+		return words.charAt(0).toUpperCase() + words.slice(1);
+	}
+
 	function formatDateOnly(value: string | null | undefined): string | null {
 		if (!value) return null;
 		const parsed = new Date(value);
@@ -280,19 +292,21 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted border-b border-border px-3 py-2 sm:px-4 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-				<div class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 shrink-0">
-					<Clock class="w-5 h-5 text-accent" />
+				<div
+					class="flex h-9 w-9 items-center justify-center shrink-0 text-muted-foreground"
+				>
+					<Clock class="w-5 h-5" />
 				</div>
 				<div class="min-w-0 flex-1">
 					<h2
-						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
+						class="text-sm sm:text-base font-medium leading-tight truncate text-foreground"
 					>
-						{name || 'New Plan'}
+						{name || 'New plan'}
 					</h2>
-					<p class="text-2xs sm:text-xs text-muted-foreground mt-0.5 truncate">
+					<p class="text-2xs sm:text-xs text-muted-foreground truncate">
 						{goalName ? `Connected to ${goalName}` : 'Type will be auto-classified'}
 					</p>
 				</div>
@@ -301,17 +315,10 @@
 				type="button"
 				onclick={onClose}
 				disabled={isSaving}
-				class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
+				class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 				aria-label="Close modal"
 			>
-				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M6 18L18 6M6 6l12 12"
-					></path>
-				</svg>
+				<X class="w-5 h-5" />
 			</button>
 		</div>
 	{/snippet}
@@ -334,11 +341,11 @@
 								class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
 							>
 								<div>
-									<h3 class="text-lg font-semibold text-foreground">
+									<h3 class="text-lg font-medium text-foreground">
 										Explore templates
 									</h3>
 									<p class="text-sm text-muted-foreground">
-										Filter by problem type, planning horizon, or go custom.
+										Filter by problem type, planning horizon, or go custom
 									</p>
 								</div>
 								<div class="w-full lg:w-72">
@@ -349,7 +356,7 @@
 									>
 										<TextInput
 											bind:value={templateSearch}
-											placeholder="Search by name, metric, scope..."
+											placeholder="Name, metric, or scope"
 											type="search"
 											inputmode="search"
 											enterkeyhint="search"
@@ -365,10 +372,10 @@
 									class="text-center py-20 border border-dashed border-border rounded-lg"
 								>
 									<p class="text-muted-foreground">
-										No templates match that search.
+										No templates match that search
 									</p>
 									<p class="text-sm text-muted-foreground">
-										Try another keyword or start from scratch.
+										Try another keyword or start from scratch
 									</p>
 								</div>
 							{:else}
@@ -377,11 +384,13 @@
 										<section class="space-y-3">
 											<div class="flex items-center justify-between">
 												<h4
-													class="text-sm font-semibold tracking-[0.2em] uppercase text-muted-foreground"
+													class="text-xs font-medium text-muted-foreground"
 												>
 													{category}
 												</h4>
-												<span class="text-xs text-muted-foreground">
+												<span
+													class="font-mono text-xs tabular-nums text-muted-foreground"
+												>
 													{categoryTemplates.length} option{categoryTemplates.length ===
 													1
 														? ''
@@ -395,32 +404,23 @@
 													<button
 														type="button"
 														onclick={() => selectTemplate(template)}
-														class="group text-left pressable"
+														class="group text-left"
 													>
 														<Card
 															variant="interactive"
-															class="h-full border border-border group-hover:border-accent shadow-ink tx tx-frame tx-weak"
+															class="h-full border border-border group-hover:border-foreground/20 tx tx-frame tx-weak"
 														>
 															<CardBody class="space-y-3">
 																<div
 																	class="flex items-start justify-between gap-3"
 																>
-																	<div>
-																		<p
-																			class="text-sm uppercase tracking-[0.3em] text-muted-foreground"
-																		>
-																			{template.metadata
-																				?.category ||
-																				'General'}
-																		</p>
-																		<h5
-																			class="text-lg font-semibold text-foreground"
-																		>
-																			{template.name}
-																		</h5>
-																	</div>
+																	<h5
+																		class="text-base font-medium text-foreground"
+																	>
+																		{template.name}
+																	</h5>
 																	<ChevronRight
-																		class="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors"
+																		class="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors"
 																	/>
 																</div>
 																<p
@@ -428,34 +428,32 @@
 																>
 																	{template.metadata
 																		?.description ||
-																		'Structured yet flexible execution template.'}
+																		'Structured yet flexible execution template'}
 																</p>
 																<div
 																	class="flex flex-wrap gap-2 pt-1"
 																>
 																	{#if template.metadata?.typical_scope}
-																		<Badge
-																			size="sm"
-																			variant="info"
+																		<span
+																			class="inline-flex items-center gap-1 text-xs text-muted-foreground"
 																		>
-																			{#snippet icon()}<Calendar
-																					class="w-3 h-3"
-																				/>{/snippet}
+																			<Calendar
+																				class="w-3 h-3"
+																			/>
 																			{template.metadata
 																				.typical_scope}
-																		</Badge>
+																		</span>
 																	{/if}
 																	{#if template.metadata?.measurement_type}
-																		<Badge
-																			size="sm"
-																			variant="success"
+																		<span
+																			class="inline-flex items-center gap-1 text-xs text-muted-foreground"
 																		>
-																			{#snippet icon()}<Target
-																					class="w-3 h-3"
-																				/>{/snippet}
+																			<Target
+																				class="w-3 h-3"
+																			/>
 																			{template.metadata
 																				.measurement_type}
-																		</Badge>
+																		</span>
 																	{/if}
 																</div>
 															</CardBody>
@@ -477,24 +475,20 @@
 									<CardHeader
 										class="flex items-center justify-between border-b border-border bg-muted tx tx-frame tx-weak"
 									>
-										<div>
-											<p
-												class="text-xs font-semibold uppercase tracking-[0.3em] text-accent"
-											>
-												Blueprint details
-											</p>
-											<h3 class="text-xl font-semibold text-foreground">
-												Name, context, and timeline
-											</h3>
-										</div>
-										<Badge variant="info" size="sm">Step 2 of 2</Badge>
+										<h3 class="text-base font-medium text-foreground">
+											Name, context, and timeline
+										</h3>
+										<span
+											class="font-mono text-xs tabular-nums text-muted-foreground"
+											>Step 2 of 2</span
+										>
 									</CardHeader>
 									<CardBody class="space-y-5">
-										<FormField label="Plan name" labelFor="plan-name" required>
+										<FormField label="Name" labelFor="plan-name" required>
 											<TextInput
 												id="plan-name"
 												bind:value={name}
-												placeholder="e.g., Foundation Sprint, Q2 GTM Rollout"
+												placeholder="Q2 launch plan"
 												inputmode="text"
 												enterkeyhint="next"
 												required
@@ -502,7 +496,7 @@
 										</FormField>
 
 										<FormField
-											label="Plan description"
+											label="Description"
 											labelFor="plan-description"
 											showOptional={false}
 										>
@@ -511,22 +505,17 @@
 												bind:value={description}
 												rows={4}
 												enterkeyhint="next"
-												placeholder="Summarize the scope, success criteria, and how this plan ladders up to goals."
+												placeholder="Scope, success criteria, and how this plan ladders up to goals"
 											/>
 										</FormField>
 
-										<FormField
-											label="Plan details"
-											labelFor="plan-details"
-											hint="Optional execution notes or outline"
-											showOptional={true}
-										>
+										<FormField label="Details" labelFor="plan-details">
 											<Textarea
 												id="plan-details"
 												bind:value={planDetails}
 												rows={4}
 												enterkeyhint="next"
-												placeholder="Capture the execution outline, milestones, or runbook details..."
+												placeholder="Execution outline, milestones, runbook"
 											/>
 										</FormField>
 
@@ -580,53 +569,39 @@
 										<CardHeader
 											class="flex items-center gap-2 border-b border-border"
 										>
-											<Clock class="w-4 h-4 text-accent" />
-											<h4
-												class="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground"
-											>
-												Timeline insight
+											<Clock class="w-4 h-4 text-muted-foreground" />
+											<h4 class="text-sm font-medium text-foreground">
+												Timeline
 											</h4>
 										</CardHeader>
 										<CardBody class="space-y-3">
 											<div class="flex items-center gap-3">
-												<div class="rounded-full bg-muted p-2">
-													<Calendar class="w-4 h-4 text-accent" />
-												</div>
+												<Calendar class="w-4 h-4 text-muted-foreground" />
 												<div>
-													<p
-														class="text-xs uppercase tracking-[0.4em] text-muted-foreground"
-													>
+													<p class="text-xs text-muted-foreground">
 														Duration
 													</p>
-													<p
-														class="text-lg font-semibold text-foreground"
-													>
+													<p class="text-lg font-medium text-foreground">
 														{durationLabel}
 													</p>
 												</div>
 											</div>
 											<div class="grid grid-cols-2 gap-3 text-sm">
 												<div
-													class="rounded bg-muted p-3 border border-border"
+													class="rounded-lg bg-muted/50 p-3 border border-border"
 												>
-													<p
-														class="text-xs uppercase tracking-[0.3em] text-muted-foreground"
-													>
+													<p class="text-xs text-muted-foreground">
 														Start
 													</p>
-													<p class="font-semibold text-foreground">
+													<p class="font-medium text-foreground">
 														{startLabel}
 													</p>
 												</div>
 												<div
-													class="rounded bg-muted p-3 border border-border"
+													class="rounded-lg bg-muted/50 p-3 border border-border"
 												>
-													<p
-														class="text-xs uppercase tracking-[0.3em] text-muted-foreground"
-													>
-														End
-													</p>
-													<p class="font-semibold text-foreground">
+													<p class="text-xs text-muted-foreground">End</p>
+													<p class="font-medium text-foreground">
 														{endLabel}
 													</p>
 												</div>
@@ -638,25 +613,23 @@
 										<CardHeader
 											class="flex items-center gap-2 border-b border-border"
 										>
-											<Target class="w-4 h-4 text-accent" />
-											<h4
-												class="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground"
-											>
-												Template guidance
+											<Target class="w-4 h-4 text-muted-foreground" />
+											<h4 class="text-sm font-medium text-foreground">
+												Template
 											</h4>
 										</CardHeader>
 										<CardBody class="space-y-3">
-											<p class="text-base font-semibold text-foreground">
+											<p class="text-base font-medium text-foreground">
 												{selectedTemplate?.name || 'Custom plan'}
 											</p>
 											<p class="text-sm text-muted-foreground">
 												{selectedTemplate?.metadata?.description ||
-													'A flexible plan structure for your workflow.'}
+													'A flexible plan structure for your workflow'}
 											</p>
 											<div class="flex flex-wrap gap-2">
 												{#if selectedTemplate?.metadata?.typical_scope}
 													<span
-														class="text-xs font-semibold text-foreground rounded-full bg-muted px-3 py-1"
+														class="text-xs text-muted-foreground rounded-lg bg-muted px-2 py-1"
 													>
 														Scope: {selectedTemplate.metadata
 															.typical_scope}
@@ -666,15 +639,16 @@
 											<div class="text-xs text-muted-foreground">
 												<p>
 													State preview: <span
-														class="font-semibold text-foreground"
+														class="font-medium text-foreground"
 														>{formattedStateLabel}</span
 													>
 												</p>
 												<p>
-													Type key: <span
-														class="font-mono text-2xs text-muted-foreground"
-														>{selectedTemplate?.type_key ||
-															'plan.process.base'}</span
+													Type: <span class="text-foreground"
+														>{formatTypeLabel(
+															selectedTemplate?.type_key ||
+																'plan.process.base'
+														)}</span
 													>
 												</p>
 											</div>
@@ -698,8 +672,8 @@
 									onclick={handleBackToTemplates}
 									class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 								>
-									<span class="hidden sm:inline">← Back</span>
-									<span class="sm:hidden">←</span>
+									<ChevronLeft class="w-4 h-4" />
+									<span class="hidden sm:inline">Back</span>
 								</Button>
 								<Button
 									type="submit"
@@ -708,7 +682,7 @@
 									disabled={!canSubmit}
 									class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 								>
-									<span class="hidden sm:inline">Create Plan</span>
+									<span class="hidden sm:inline">Create plan</span>
 									<span class="sm:hidden">Create</span>
 								</Button>
 							</div>

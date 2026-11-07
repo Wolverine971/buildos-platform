@@ -110,7 +110,7 @@ describe('GoalEditModal saves', () => {
 		await screen.findByDisplayValue('Launch');
 		await fireEvent.click(screen.getByRole('button', { name: 'Open Goal details' }));
 		expect(await screen.findByText('Release')).toBeTruthy();
-		expect(screen.getByRole('button', { name: 'Linked Entities' }).ariaExpanded).toBe('false');
+		expect(screen.getByRole('button', { name: 'Linked' }).ariaExpanded).toBe('false');
 	});
 
 	it('keeps unsaved edits when a milestone change refreshes the goal', async () => {
@@ -187,7 +187,7 @@ describe('GoalEditModal saves', () => {
 			});
 			await screen.findByDisplayValue('Launch');
 			await fireEvent.click(screen.getByRole('button', { name: 'Open Goal details' }));
-			await fireEvent.click(screen.getByRole('button', { name: 'Linked Entities' }));
+			await fireEvent.click(screen.getByRole('button', { name: 'Linked' }));
 			await fireEvent.click(await screen.findByRole('button', { name: 'Mark as complete' }));
 			await waitFor(() =>
 				expect(

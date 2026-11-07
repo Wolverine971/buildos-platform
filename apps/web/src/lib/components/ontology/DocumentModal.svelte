@@ -21,9 +21,9 @@
 	- Header: strip texture (wt-paper) - separation band
 	- Footer: grain texture (wt-paper) - action surface
 	- Error states: static texture (wt-card) - blocker emphasis
-	- Buttons: grain texture + pressable + appropriate weight
-	- Metadata: micro-label pattern for compact, scannable info
-	- Collapsible sections: pressable toggle buttons with chevron indicators
+	- Header icon buttons: quiet ghost buttons; accent only for Save and the open Interact toggle
+	- Labels: sentence-case text-xs font-medium muted (no uppercase eyebrows)
+	- Collapsible sections: ghost toggle rows with chevron indicators
 
 	Documentation: /apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md
 -->
@@ -40,7 +40,6 @@
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import RichMarkdownEditor from '$lib/components/ui/RichMarkdownEditor.svelte';
-	import Badge from '$lib/components/ui/Badge.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityActivityLog from './EntityActivityLog.svelte';
@@ -104,7 +103,7 @@
 		Clock,
 		MoreHorizontal,
 		Printer
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import {
 		Copy,
 		MessageCircle,
@@ -513,7 +512,7 @@
 		DOCUMENT_STATES.filter((state) => state !== 'archived' || isArchivedDocument).map(
 			(state) => ({
 				value: state,
-				label: state.replace('_', ' ')
+				label: (state.charAt(0).toUpperCase() + state.slice(1)).replaceAll('_', ' ')
 			})
 		)
 	);
@@ -3332,19 +3331,19 @@
 		<span class="inline-flex items-center gap-1">
 			{#if saveStatus === 'saving'}
 				<LoaderCircle class="w-2.5 h-2.5 animate-spin text-muted-foreground" />
-				<span class="text-muted-foreground">SAVING</span>
+				<span class="text-muted-foreground">Saving</span>
 			{:else if saveStatus === 'saved'}
 				<Check class="w-2.5 h-2.5 text-success" />
-				<span class="text-success">{lastSavePublishedLive ? 'LIVE UPDATED' : 'SAVED'}</span>
+				<span class="text-success">{lastSavePublishedLive ? 'Live updated' : 'Saved'}</span>
 			{:else if saveStatus === 'error'}
 				<AlertTriangle class="w-2.5 h-2.5 text-destructive" />
-				<span class="text-destructive">SAVE FAILED</span>
+				<span class="text-destructive">Save failed</span>
 			{:else if saveStatus === 'conflict'}
 				<AlertTriangle class="w-2.5 h-2.5 text-warning" />
-				<span class="text-warning">CONFLICT</span>
+				<span class="text-warning">Conflict</span>
 			{:else if saveStatus === 'dirty'}
 				<span class="w-1.5 h-1.5 rounded-full bg-warning shrink-0"></span>
-				<span class="text-muted-foreground/50">UNSAVED</span>
+				<span class="text-muted-foreground/70">Unsaved</span>
 			{/if}
 		</span>
 	{/if}
@@ -3357,9 +3356,7 @@
 			labelFor={`document-title${idSuffix}`}
 			required={true}
 			error={titleFieldError}
-			uppercase={false}
 			size="sm"
-			showOptional={false}
 			class="[&>label]:!mb-1 [&>div:last-child]:!min-h-0"
 		>
 			<TextInput
@@ -3378,9 +3375,7 @@
 		<FormField
 			label="Description"
 			labelFor={`document-description${idSuffix}`}
-			uppercase={false}
 			size="sm"
-			showOptional={false}
 			class="[&>label]:!mb-1 [&>div:last-child]:!min-h-0"
 		>
 			<Textarea
@@ -3396,9 +3391,7 @@
 		<FormField
 			label="State"
 			labelFor={`document-state${idSuffix}`}
-			uppercase={false}
 			size="sm"
-			showOptional={false}
 			class="[&>label]:!mb-1 [&>div:last-child]:!min-h-0"
 		>
 			<Select
@@ -3417,21 +3410,21 @@
 {/snippet}
 
 {#snippet metadataBlock()}
-	<dl class="grid grid-cols-2 gap-x-3 gap-y-1.5">
+	<dl class="grid grid-cols-2 gap-x-3 gap-y-2">
 		<div class="min-w-0">
-			<dt class="micro-label text-muted-foreground/70">CREATED</dt>
-			<dd class="mt-0.5 truncate text-xs font-mono text-foreground">
+			<dt class="text-xs font-medium text-muted-foreground">Created</dt>
+			<dd class="mt-1 truncate text-xs font-mono text-foreground">
 				{createdAt ? new Date(createdAt).toLocaleDateString() : '—'}
 			</dd>
 		</div>
 		<div class="min-w-0">
-			<dt class="micro-label text-muted-foreground/70">UPDATED</dt>
-			<dd class="mt-0.5 truncate text-xs font-mono text-foreground">
+			<dt class="text-xs font-medium text-muted-foreground">Updated</dt>
+			<dd class="mt-1 truncate text-xs font-mono text-foreground">
 				{updatedAt ? new Date(updatedAt).toLocaleDateString() : '—'}
 			</dd>
 		</div>
 		<div class="col-span-2 flex min-w-0 items-center justify-between gap-2">
-			<dt class="micro-label text-muted-foreground/70 shrink-0">ID</dt>
+			<dt class="text-xs font-medium text-muted-foreground shrink-0">ID</dt>
 			<dd
 				class="truncate text-right text-xs font-mono text-foreground"
 				title={activeDocumentId ?? undefined}
@@ -3450,11 +3443,11 @@
 			size="sm"
 			onclick={openMoveModal}
 			disabled={documentControlsLocked || treeLoading}
-			class="w-full text-xs justify-start px-2 h-8 pressable"
+			class="w-full text-xs justify-start px-2 h-8"
 			title="Move to another location"
 		>
 			<FolderInput class="w-3.5 h-3.5" />
-			<span class="ml-1">Move to...</span>
+			<span class="ml-1">Move to</span>
 		</Button>
 		{#if activeDocumentId && !isArchivedDocument && canOrganizeDocument}
 			<OrganizeEntryButton
@@ -3472,18 +3465,18 @@
 {#snippet inheritanceBanner()}
 	{#if inheritance}
 		<div
-			class="flex flex-shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-info/30 bg-info/10 px-3 py-2 tx tx-thread tx-weak"
+			class="flex flex-shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-info/30 bg-info/10 px-3 py-2 tx tx-thread tx-weak"
 			role="note"
 			aria-label="Shared document"
 		>
 			<div class="flex min-w-0 flex-1 items-center gap-2">
 				<Share2 class="h-3.5 w-3.5 shrink-0 text-info" aria-hidden="true" />
 				<p class="min-w-0 text-xs text-foreground">
-					From <span class="font-semibold">{inheritance.ownerName}</span>
+					From <span class="font-medium">{inheritance.ownerName}</span>
 					<span class="text-muted-foreground"> · shown in {sharedWithLabel}</span>
 				</p>
 			</div>
-			<div class="flex flex-wrap items-center gap-1.5">
+			<div class="flex flex-wrap items-center gap-2">
 				{#if !inheritance.canEditOwner}
 					<p class="text-xs text-muted-foreground">
 						Only {inheritance.ownerName} editors can change this
@@ -3527,11 +3520,11 @@
 	{#if !publicPageStateLoaded || publicPageLoading}
 		<div class="flex items-center gap-2 text-xs text-muted-foreground">
 			<LoaderCircle class="w-3.5 h-3.5 animate-spin" />
-			<span>Loading public page state...</span>
+			<span>Loading public page</span>
 		</div>
 	{:else if isLiveDocument && publicPageState}
 		<div
-			class="rounded-md border px-2 py-2 space-y-1.5 tx tx-grain tx-weak wt-paper {liveDocumentNeedsAttention
+			class="rounded-xl border px-3 py-3 space-y-2 tx tx-grain tx-weak wt-paper {liveDocumentNeedsAttention
 				? 'border-warning/40 bg-warning/5'
 				: 'border-success/40 bg-success/5'}"
 		>
@@ -3543,7 +3536,7 @@
 				/>
 				<div class="min-w-0">
 					<p
-						class="micro-label {liveDocumentNeedsAttention
+						class="text-xs font-medium {liveDocumentNeedsAttention
 							? 'text-warning'
 							: 'text-success'}"
 					>
@@ -3565,7 +3558,7 @@
 			{/if}
 			{#if publicPageState.view_count_all > 0}
 				<div
-					class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground"
+					class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground"
 				>
 					<span>
 						{publicPageState.view_count_all.toLocaleString()}
@@ -3577,12 +3570,12 @@
 					{/if}
 				</div>
 			{/if}
-			<div class="grid grid-cols-2 gap-1.5">
+			<div class="grid grid-cols-2 gap-2">
 				<button
 					type="button"
 					onclick={handleCopyPublicPageUrl}
 					aria-label="Copy public page link"
-					class="inline-flex min-h-[36px] items-center justify-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground transition-colors pressable hover:bg-muted"
+					class="inline-flex min-h-[36px] items-center justify-center gap-1 rounded-lg border border-border bg-card px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted/50"
 				>
 					<Link class="w-3 h-3" />
 					Copy link
@@ -3591,7 +3584,7 @@
 					type="button"
 					onclick={openPublicPageInNewTab}
 					aria-label="Open public page in new tab"
-					class="inline-flex min-h-[36px] items-center justify-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground transition-colors pressable hover:bg-muted"
+					class="inline-flex min-h-[36px] items-center justify-center gap-1 rounded-lg border border-border bg-card px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted/50"
 				>
 					Open
 					<ExternalLink class="w-3 h-3" />
@@ -3600,7 +3593,7 @@
 					type="button"
 					onclick={handleMakeDocumentPublic}
 					disabled={sharedEditLocked}
-					class="inline-flex min-h-[36px] items-center justify-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-accent transition-colors pressable hover:bg-accent/10 disabled:opacity-50"
+					class="inline-flex min-h-[36px] items-center justify-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted/50 disabled:opacity-50"
 				>
 					{livePageHasUnpublishedChanges ? 'Review changes' : 'Edit settings'}
 				</button>
@@ -3609,7 +3602,7 @@
 					onclick={handleUnpublishPublicPage}
 					disabled={publicPageActionLoading || sharedEditLocked}
 					aria-label="Unpublish public page"
-					class="inline-flex min-h-[36px] items-center justify-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors pressable disabled:opacity-50"
+					class="inline-flex min-h-[36px] items-center justify-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
 				>
 					Unpublish
 				</button>
@@ -3632,7 +3625,7 @@
 			{/if}
 		</div>
 	{:else}
-		<div class="space-y-1.5">
+		<div class="space-y-2">
 			{#if publicPageState?.public_status === 'unpublished'}
 				<p class="text-xs text-muted-foreground leading-snug">
 					Previously published at <span class="font-mono text-foreground"
@@ -3660,7 +3653,7 @@
 					{#if publicPageState?.public_status === 'unpublished'}
 						Republish
 					{:else if publicPageState}
-						Update Public Page
+						Update public page
 					{:else}
 						Share publicly
 					{/if}
@@ -3668,7 +3661,7 @@
 			</Button>
 			{#if publicPageState?.public_status && publicPageState.public_status !== 'not_public' && publicPageState.public_status !== 'unpublished' && publicPageState.public_status !== 'pending_confirmation'}
 				<p class="text-xs text-muted-foreground">
-					Status: {publicPageState.public_status.replace('_', ' ')}
+					Status: {publicPageState.public_status.replaceAll('_', ' ')}
 				</p>
 			{/if}
 		</div>
@@ -3676,16 +3669,16 @@
 
 	{#if hasFlaggedPublicPageReview && latestPublicPageReview}
 		<div
-			class="rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1.5 space-y-1 tx tx-grain tx-weak wt-paper"
+			class="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 space-y-1 tx tx-grain tx-weak wt-paper"
 		>
-			<p class="micro-label text-destructive">CONTENT REVIEW FLAGGED</p>
+			<p class="text-xs font-medium text-destructive">Content review flagged</p>
 			{#if latestPublicPageReview.summary}
 				<p class="text-xs text-destructive leading-snug">
 					{latestPublicPageReview.summary}
 				</p>
 			{/if}
 			{#if latestPublicPageReviewReasons.length > 0}
-				<ul class="space-y-0.5 text-xs text-destructive list-disc pl-4">
+				<ul class="space-y-1 text-xs text-destructive list-disc pl-4">
 					{#each latestPublicPageReviewReasons as reason (reason)}
 						<li>{reason}</li>
 					{/each}
@@ -3715,10 +3708,10 @@
 		</div>
 	{:else if latestPublicPageReview?.status === 'error'}
 		<div
-			class="rounded-md border border-warning/30 bg-warning/10 px-2 py-1.5 space-y-1 tx tx-grain tx-weak wt-paper"
+			class="rounded-xl border border-warning/30 bg-warning/10 px-3 py-2 space-y-1 tx tx-grain tx-weak wt-paper"
 			role="status"
 		>
-			<p class="micro-label text-warning">CONTENT REVIEW UNAVAILABLE</p>
+			<p class="text-xs font-medium text-warning">Content review unavailable</p>
 			<p class="text-xs text-foreground leading-snug">
 				{latestPublicPageReview.summary ??
 					'Content review is temporarily unavailable. Please try again in a few minutes.'}
@@ -3728,7 +3721,7 @@
 			</p>
 		</div>
 	{:else if latestPublicPageReview?.status === 'passed'}
-		<p class="text-xs text-muted-foreground">Last content review passed.</p>
+		<p class="text-xs text-muted-foreground">Last content review passed</p>
 	{/if}
 {/snippet}
 
@@ -3747,11 +3740,11 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header with strip texture -->
 		<div
-			class="document-modal-header flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-3 sm:py-2 flex items-center justify-between gap-2 tx tx-strip tx-weak wt-paper"
+			class="document-modal-header flex-shrink-0 bg-muted border-b border-border px-2 py-2 sm:px-3 flex items-center justify-between gap-2 tx tx-strip tx-weak wt-paper"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
-					class="flex h-9 w-9 items-center justify-center rounded-md bg-accent/10 text-accent shrink-0"
+					class="flex h-9 w-9 items-center justify-center text-muted-foreground shrink-0"
 				>
 					{#if isTableDocument}
 						<TableIcon class="w-5 h-5" />
@@ -3763,7 +3756,7 @@
 					<!-- Breadcrumb path for nested documents -->
 					{#if breadcrumbPath.length > 0}
 						<div
-							class="flex items-center gap-1 text-xs text-muted-foreground mb-0.5 overflow-hidden"
+							class="flex items-center gap-1 text-xs text-muted-foreground mb-1 overflow-hidden"
 						>
 							{#each breadcrumbPath as crumb, i (crumb.id)}
 								<span
@@ -3778,33 +3771,42 @@
 						</div>
 					{/if}
 					<div class="flex items-center gap-2">
-						<h2 class="text-sm font-semibold leading-tight truncate text-foreground">
-							{title || (isEditing ? 'Document' : 'New Document')}
+						<h2 class="text-sm font-medium leading-tight truncate text-foreground">
+							{title || (isEditing ? 'Document' : 'New document')}
 						</h2>
 						{#if isEditing}
-							<Badge
-								variant={getStateVariant(stateKey)}
-								size="sm"
-								class="capitalize hidden sm:inline-flex shrink-0"
+							{@const stateVariant = getStateVariant(stateKey)}
+							<span
+								class="hidden sm:inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground"
 							>
-								{stateKey.replace('_', ' ')}
-							</Badge>
+								<span
+									class="h-1.5 w-1.5 rounded-full {stateVariant === 'success'
+										? 'bg-success'
+										: stateVariant === 'warning'
+											? 'bg-warning'
+											: stateVariant === 'error'
+												? 'bg-destructive'
+												: 'bg-muted-foreground/60'}"
+								></span>
+								{(stateKey.charAt(0).toUpperCase() + stateKey.slice(1)).replaceAll(
+									'_',
+									' '
+								)}
+							</span>
 						{/if}
 					</div>
 					<!-- Keep document timing and save state in the modal chrome so the editor can stay minimal. -->
 					{#if createdAt || isEditing}
-						<p
-							class="micro-label mt-0.5 flex items-center gap-1.5 text-muted-foreground/70"
-						>
+						<p class="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
 							<span class="truncate">
-								{#if createdAt}CREATED {new Date(createdAt).toLocaleDateString(
+								{#if createdAt}Created {new Date(createdAt).toLocaleDateString(
 										undefined,
 										{
 											month: 'short',
 											day: 'numeric'
 										}
 									)}{/if}{#if updatedAt && updatedAt !== createdAt}
-									· UPDATED {new Date(updatedAt).toLocaleDateString(undefined, {
+									· Updated {new Date(updatedAt).toLocaleDateString(undefined, {
 										month: 'short',
 										day: 'numeric'
 									})}{/if}
@@ -3814,7 +3816,7 @@
 					{/if}
 				</div>
 			</div>
-			<div class="flex items-center gap-1.5">
+			<div class="flex items-center gap-1">
 				<!-- More actions: copy URL / open page / export — consolidated so the
 					 header stays uncrowded, especially on mobile (Hyperplexed T2-2) -->
 				<div class="relative" bind:this={exportMenuRef}>
@@ -3833,7 +3835,7 @@
 							showExportMenu = !showExportMenu;
 						}}
 						disabled={documentControlsLocked || loading || exportingFormat !== null}
-						class="flex h-9 w-9 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
+						class="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 						title="More actions"
 						aria-label="More actions"
 						aria-haspopup="menu"
@@ -3902,8 +3904,8 @@
 								{/if}
 								<div class="my-1 border-t border-border/60"></div>
 							{/if}
-							<div class="px-3 pb-1 pt-1.5" role="presentation">
-								<p class="micro-label text-muted-foreground/70">EXPORT DOCUMENT</p>
+							<div class="px-3 pb-1 pt-2" role="presentation">
+								<p class="text-xs font-medium text-muted-foreground">Export</p>
 							</div>
 							<button
 								type="button"
@@ -3913,9 +3915,9 @@
 								role="menuitem"
 								aria-label="Export document as PDF"
 							>
-								<Printer class="h-4 w-4 shrink-0 text-accent" />
+								<Printer class="h-4 w-4 shrink-0 text-muted-foreground" />
 								<span class="min-w-0">
-									<span class="block text-xs font-semibold">PDF</span>
+									<span class="block text-xs font-medium">PDF</span>
 									<span class="block text-xs font-normal text-muted-foreground"
 										>Polished print layout</span
 									>
@@ -3931,7 +3933,7 @@
 							>
 								<FileType2 class="h-4 w-4 shrink-0 text-muted-foreground" />
 								<span class="min-w-0">
-									<span class="block text-xs font-semibold">DOCX</span>
+									<span class="block text-xs font-medium">DOCX</span>
 									<span class="block text-xs font-normal text-muted-foreground"
 										>Editable Word document</span
 									>
@@ -3947,7 +3949,7 @@
 							>
 								<FileCode2 class="h-4 w-4 shrink-0 text-muted-foreground" />
 								<span class="min-w-0">
-									<span class="block text-xs font-semibold">HTML</span>
+									<span class="block text-xs font-medium">HTML</span>
 									<span class="block text-xs font-normal text-muted-foreground"
 										>Standalone web page</span
 									>
@@ -3962,9 +3964,9 @@
 						type="button"
 						onclick={toggleDocumentInteract}
 						disabled={loading || documentControlsLocked || sharedEditLocked}
-						class="flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md border px-2.5 text-xs font-semibold shadow-ink transition-all pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper {isDocumentInteractOpen
-							? 'border-accent bg-accent text-accent-foreground hover:bg-accent/90'
-							: 'border-accent/30 bg-accent/10 text-accent hover:border-accent/60 hover:bg-accent/15'}"
+						class="flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 {isDocumentInteractOpen
+							? 'bg-accent/10 text-accent'
+							: 'text-muted-foreground hover:bg-card hover:text-foreground'}"
 						title={isDocumentInteractOpen
 							? 'Close Document Interact'
 							: 'Open Document Interact'}
@@ -3981,7 +3983,7 @@
 						type="button"
 						onclick={openChatAbout}
 						disabled={loading || documentControlsLocked}
-						class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+						class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 						title="Chat about this document"
 						aria-label="Chat about this document"
 					>
@@ -3993,7 +3995,7 @@
 					type="button"
 					onclick={requestClose}
 					disabled={isCloseBlocked}
-					class="flex h-9 w-9 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
+					class="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 					aria-label="Close modal"
 				>
 					<X class="w-5 h-5" />
@@ -4024,9 +4026,9 @@
 							id="document-details-panel-toggle"
 							type="button"
 							onclick={toggleDetailsPanel}
-							class="pointer-events-auto group flex h-full w-full flex-col items-center justify-center gap-2 rounded-l-md border border-r-0 px-1 py-2 shadow-ink transition-colors motion-reduce:transition-none pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring {showDetailsPanel
-								? 'border-accent/50 bg-accent/10 text-foreground'
-								: 'border-border-strong bg-muted/95 text-foreground hover:border-accent/50 hover:bg-card'} tx tx-strip tx-weak wt-paper"
+							class="pointer-events-auto group flex h-full w-full flex-col items-center justify-center gap-2 rounded-l-lg border border-r-0 px-1 py-2 transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring {showDetailsPanel
+								? 'border-border bg-card text-foreground'
+								: 'border-border bg-muted/95 text-muted-foreground hover:border-foreground/20 hover:bg-card hover:text-foreground'} tx tx-strip tx-weak wt-paper"
 							title={showDetailsPanel ? 'Close details panel' : 'Open details panel'}
 							aria-label={showDetailsPanel
 								? 'Close details panel'
@@ -4035,14 +4037,14 @@
 							aria-expanded={showDetailsPanel}
 						>
 							{#if showDetailsPanel}
-								<PanelRightClose class="w-4 h-4 shrink-0 text-accent" />
+								<PanelRightClose class="w-4 h-4 shrink-0 text-foreground" />
 							{:else}
 								<PanelRightOpen
 									class="w-4 h-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground motion-reduce:transition-none"
 								/>
 							{/if}
-							<span class="micro-label [writing-mode:vertical-rl] rotate-180"
-								>DETAILS</span
+							<span class="text-xs font-medium [writing-mode:vertical-rl] rotate-180"
+								>Details</span
 							>
 						</button>
 					</div>
@@ -4060,11 +4062,11 @@
 						<div
 							class="shrink-0 border-b border-border/70 bg-muted/95 px-3 py-2 tx tx-strip tx-weak"
 						>
-							<p class="micro-label text-foreground">DETAILS</p>
+							<p class="text-sm font-medium text-foreground">Details</p>
 						</div>
 						<div
 							id="document-details-content"
-							class="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain p-3 [scrollbar-gutter:stable]"
+							class="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-3 [scrollbar-gutter:stable]"
 						>
 							<!-- Settings: Title / Description / State -->
 							{@render documentDetailsFields('')}
@@ -4083,7 +4085,7 @@
 
 							<!-- Tags + Metadata strip -->
 							{#if isEditing}
-								<div class="space-y-2 border-t border-border pt-2.5">
+								<div class="space-y-2 border-t border-border pt-3">
 									{#if hasTags}
 										<TagsDisplay props={documentProps} />
 									{/if}
@@ -4093,36 +4095,39 @@
 
 							<!-- Public Page (collapsible; auto-expands when live) -->
 							{#if isEditing && activeDocumentId}
-								<div class="border-t border-border pt-2.5">
+								<div class="border-t border-border pt-3">
 									<button
 										type="button"
 										onclick={() => (showPublicPage = !showPublicPage)}
-										class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
+										class="w-full flex items-center justify-between px-2 py-2 -mx-2 text-left rounded-lg hover:bg-card transition-colors group"
 									>
 										<span class="flex items-center gap-2">
-											<span class="micro-label text-foreground"
-												>PUBLIC PAGE</span
+											<span
+												class="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors"
+												>Public page</span
 											>
 											{#if isLiveDocument}
 												<span
-													class="inline-flex items-center gap-1 rounded-full px-1.5 h-4 text-2xs font-semibold {liveDocumentNeedsAttention
-														? 'bg-warning/20 text-warning'
-														: 'bg-success/20 text-success'}"
+													class="inline-flex items-center gap-1 text-xs text-muted-foreground"
 												>
 													<span
-														class="w-1 h-1 rounded-full {liveDocumentNeedsAttention
+														class="h-1.5 w-1.5 rounded-full {liveDocumentNeedsAttention
 															? 'bg-warning'
 															: 'bg-success'}"
 													></span>
 													{liveDocumentNeedsAttention
-														? 'ATTENTION'
-														: 'LIVE'}
+														? 'Needs attention'
+														: 'Live'}
 												</span>
 											{:else if publicPageState?.public_status === 'unpublished'}
 												<span
-													class="inline-flex items-center rounded-full px-1.5 h-4 text-2xs font-semibold bg-muted text-muted-foreground"
-													>UNPUBLISHED</span
+													class="inline-flex items-center gap-1 text-xs text-muted-foreground"
 												>
+													<span
+														class="h-1.5 w-1.5 rounded-full bg-muted-foreground/60"
+													></span>
+													Unpublished
+												</span>
 											{/if}
 										</span>
 										{#if showPublicPage}
@@ -4145,11 +4150,11 @@
 
 							<!-- Collapsible group: Linked Entities / Images / Version History / Voice Notes / Activity Log -->
 							{#if isEditing && activeDocumentId}
-								<div class="border-t border-border pt-2.5">
+								<div class="border-t border-border pt-3">
 									<div class="divide-y divide-border/50">
 										<!-- Let the linked-entities card own its disclosure so the rail
 											 doesn't repeat the same heading twice. -->
-										<div class="pb-2.5">
+										<div class="pb-3">
 											<LinkedEntities
 												sourceId={activeDocumentId}
 												sourceKind="document"
@@ -4164,14 +4169,15 @@
 										</div>
 
 										<!-- Images -->
-										<div class="py-0.5">
+										<div class="py-1">
 											<button
 												type="button"
 												onclick={() => (showImages = !showImages)}
-												class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
+												class="w-full flex items-center justify-between px-2 py-2 -mx-2 text-left rounded-lg hover:bg-card transition-colors group"
 											>
-												<span class="micro-label text-foreground"
-													>IMAGES</span
+												<span
+													class="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors"
+													>Images</span
 												>
 												{#if showImages}
 													<ChevronUp
@@ -4198,14 +4204,15 @@
 										</div>
 
 										<!-- Version History -->
-										<div class="py-0.5">
+										<div class="py-1">
 											<button
 												type="button"
 												onclick={toggleVersionHistory}
-												class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
+												class="w-full flex items-center justify-between px-2 py-2 -mx-2 text-left rounded-lg hover:bg-card transition-colors group"
 											>
-												<span class="micro-label text-foreground"
-													>VERSION HISTORY</span
+												<span
+													class="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors"
+													>Version history</span
 												>
 												{#if showVersionHistory}
 													<ChevronUp
@@ -4232,14 +4239,15 @@
 										</div>
 
 										<!-- Voice Notes -->
-										<div class="py-0.5">
+										<div class="py-1">
 											<button
 												type="button"
 												onclick={() => (showVoiceNotes = !showVoiceNotes)}
-												class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
+												class="w-full flex items-center justify-between px-2 py-2 -mx-2 text-left rounded-lg hover:bg-card transition-colors group"
 											>
-												<span class="micro-label text-foreground"
-													>VOICE NOTES</span
+												<span
+													class="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors"
+													>Voice notes</span
 												>
 												{#if showVoiceNotes}
 													<ChevronUp
@@ -4264,14 +4272,15 @@
 										</div>
 
 										<!-- Activity Log -->
-										<div class="py-0.5">
+										<div class="py-1">
 											<button
 												type="button"
 												onclick={() => (showActivityLog = !showActivityLog)}
-												class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
+												class="w-full flex items-center justify-between px-2 py-2 -mx-2 text-left rounded-lg hover:bg-card transition-colors group"
 											>
-												<span class="micro-label text-foreground"
-													>ACTIVITY LOG</span
+												<span
+													class="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors"
+													>Activity</span
 												>
 												{#if showActivityLog}
 													<ChevronUp
@@ -4299,7 +4308,7 @@
 
 								<!-- Move to... button -->
 								{#if !isArchivedDocument}
-									<div class="border-t border-border pt-2.5">
+									<div class="border-t border-border pt-3">
 										{@render moveButton()}
 									</div>
 								{/if}
@@ -4426,7 +4435,7 @@
 								<div
 									role="tablist"
 									aria-label="Document panels"
-									class="flex items-center gap-1 px-2 py-1.5 overflow-x-auto scrollbar-hide"
+									class="flex items-center gap-1 px-2 py-2 overflow-x-auto scrollbar-hide"
 								>
 									{#each mobileTabs as tab, i (tab.id)}
 										{@const Icon = tab.icon}
@@ -4442,16 +4451,16 @@
 												: -1}
 											onclick={() => toggleMobileTab(tab.id)}
 											onkeydown={(event) => handleMobileTabKeydown(event, i)}
-											class="inline-flex min-h-[36px] items-center gap-1.5 px-2.5 py-1.5 rounded-md text-2xs font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab ===
+											class="inline-flex min-h-[36px] items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-colors {activeMobileTab ===
 											tab.id
-												? 'bg-card shadow-ink text-foreground'
+												? 'bg-card text-foreground'
 												: 'text-muted-foreground hover:text-foreground hover:bg-card/50'}"
 										>
 											<Icon class="w-3.5 h-3.5 shrink-0" />
 											{tab.label}
 											{#if tab.badge > 0}
 												<span
-													class="inline-flex items-center justify-center min-w-[1rem] h-3.5 px-1 text-2xs font-bold bg-accent/20 text-accent rounded-full"
+													class="font-mono tabular-nums text-xs text-muted-foreground"
 												>
 													{tab.badge}
 												</span>
@@ -4470,7 +4479,7 @@
 								<div
 									role="tabpanel"
 									aria-labelledby={`mobile-doc-tab-${activeMobileTab}`}
-									class="max-h-[40vh] overflow-y-auto border-t border-border/50 p-2.5 space-y-2 tx tx-frame tx-weak"
+									class="max-h-[40vh] overflow-y-auto border-t border-border/50 p-3 space-y-2 tx tx-frame tx-weak"
 								>
 									<!-- Details tab content -->
 									{#if activeMobileTab === 'details'}
@@ -4602,7 +4611,7 @@
 								type="button"
 								onclick={handleConflictReload}
 								disabled={saving || loading}
-								class="text-xs font-medium px-2.5 py-1 rounded-md bg-warning/15 text-warning hover:bg-warning/25 transition-colors pressable"
+								class="text-xs font-medium px-3 py-1 rounded-lg bg-warning/15 text-warning hover:bg-warning/25 transition-colors"
 							>
 								Reload latest
 							</button>
@@ -4610,7 +4619,7 @@
 								type="button"
 								onclick={handleConflictOverwrite}
 								disabled={saving || loading}
-								class="text-xs font-medium px-2.5 py-1 rounded-md bg-card border border-border text-foreground hover:bg-muted transition-colors pressable"
+								class="text-xs font-medium px-3 py-1 rounded-lg bg-card border border-border text-foreground hover:bg-muted/50 transition-colors"
 							>
 								Overwrite
 							</button>
@@ -4634,17 +4643,18 @@
 					<button
 						type="button"
 						onclick={toggleDesktopComments}
-						class="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-muted/50 transition-colors pressable group"
+						class="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-muted/50 transition-colors group"
 					>
 						<span class="flex items-center gap-2">
 							<MessageSquare
 								class="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-colors"
 							/>
-							<span class="micro-label text-foreground">COMMENTS</span>
+							<span
+								class="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors"
+								>Comments</span
+							>
 							{#if commentsCount > 0}
-								<span
-									class="inline-flex items-center justify-center min-w-[1.25rem] h-4 px-1 text-2xs font-semibold bg-accent/20 text-accent rounded-full"
-								>
+								<span class="font-mono tabular-nums text-xs text-muted-foreground">
 									{commentsCount}
 								</span>
 							{/if}
@@ -4708,7 +4718,7 @@
 							size="sm"
 							onclick={handleRestore}
 							disabled={restoring || documentControlsLocked}
-							class="text-xs px-2 h-8 pressable"
+							class="text-xs px-2 h-8"
 						>
 							<RotateCcw class="w-3.5 h-3.5" />
 							<span class="hidden sm:inline ml-1">Restore</span>
@@ -4718,10 +4728,10 @@
 							variant="ghost"
 							size="sm"
 							onclick={() => (permanentDeleteModalOpen = true)}
-							class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8 pressable"
+							class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8"
 						>
 							<Trash2 class="w-3.5 h-3.5" />
-							<span class="hidden sm:inline ml-1">Delete Permanently</span>
+							<span class="hidden sm:inline ml-1">Delete permanently</span>
 						</Button>
 					{:else if !inheritance}
 						<!-- The shared folder feeds every sub-project's shelf; it isn't archived from here. -->
@@ -4731,7 +4741,7 @@
 								variant="ghost"
 								size="sm"
 								onclick={() => (archiveModalOpen = true)}
-								class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8 pressable"
+								class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8"
 							>
 								<Archive class="w-3.5 h-3.5" />
 								<span class="hidden sm:inline ml-1">Archive</span>
@@ -4739,18 +4749,18 @@
 						{/if}
 						<!-- Create Child button -->
 						{#if onCreateChildRequested}
-							<div class="w-px h-5 bg-border mx-0.5" aria-hidden="true"></div>
+							<div class="w-px h-5 bg-border" aria-hidden="true"></div>
 							<Button
 								type="button"
 								variant="ghost"
 								size="sm"
 								onclick={handleCreateChild}
 								disabled={documentControlsLocked}
-								class="text-xs px-2 h-8 pressable"
+								class="text-xs px-2 h-8"
 								title="Create child document"
 							>
 								<FilePlus class="w-3.5 h-3.5" />
-								<span class="hidden sm:inline ml-1">Add Child</span>
+								<span class="hidden sm:inline ml-1">Add child</span>
 							</Button>
 						{/if}
 					{/if}
@@ -4763,7 +4773,7 @@
 					size="sm"
 					onclick={requestClose}
 					disabled={isCloseBlocked}
-					class="hidden sm:inline-flex text-xs h-8 pressable"
+					class="hidden sm:inline-flex text-xs h-8"
 				>
 					Cancel
 				</Button>
@@ -4778,7 +4788,7 @@
 						sharedEditLocked ||
 						isArchivedDocument ||
 						saveStatus === 'conflict'}
-					class="text-xs h-8 pressable tx tx-grain tx-weak wt-card"
+					class="text-xs h-8 tx tx-grain tx-weak wt-card"
 				>
 					<Save class="w-3.5 h-3.5" />
 					<span class="ml-1">{isEditing ? 'Save' : 'Create'}</span>
@@ -4815,7 +4825,7 @@
 	confirmText="Delete permanently"
 	confirmVariant="danger"
 	loading={deleting}
-	loadingText="Deleting..."
+	loadingText="Deleting"
 	icon="danger"
 	onconfirm={handleDelete}
 	oncancel={() => (permanentDeleteModalOpen = false)}
@@ -4839,7 +4849,7 @@
 	>
 		{#snippet content()}
 			<p class="text-sm text-muted-foreground">
-				This document belongs to <span class="font-semibold text-foreground"
+				This document belongs to <span class="font-medium text-foreground"
 					>{inheritance?.ownerName}</span
 				>. Changes appear in {sharedWithLabel}. To change only this project's version, use
 				Copy here instead.
@@ -4871,11 +4881,11 @@
 	{@const modalSession = imageInsertModalSession}
 	<Modal
 		bind:isOpen={showImageInsertModal}
-		title="Insert Image"
+		title="Insert image"
 		size="lg"
 		onClose={() => closeImageInsertModal(modalSession)}
 	>
-		<div class="p-3">
+		<div class="p-4">
 			<p class="text-xs text-muted-foreground mb-2">
 				Choose a project image or upload a new one. It will be inserted as inline markdown.
 			</p>
@@ -4912,27 +4922,27 @@
 	<Modal
 		bind:isOpen={showPublicPageConfirmModal}
 		size="xl"
-		title={publicPageState ? 'Update Public Page' : 'Confirm Public Page'}
+		title={publicPageState ? 'Update public page' : 'Publish page'}
 		onClose={closePublicPageConfirmModal}
 		closeOnEscape={!publicPageActionLoading}
 		closeOnBackdrop={!publicPageActionLoading}
 	>
-		<div class="p-3 space-y-3">
+		<div class="p-4 space-y-4">
 			<p class="text-xs text-muted-foreground">
 				Review this preview, then confirm to publish. A content review will run on publish.
 			</p>
 			{#if hasFlaggedPublicPageReview && latestPublicPageReview}
 				<div
-					class="rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1.5 space-y-1 tx tx-grain tx-weak wt-paper"
+					class="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 space-y-1 tx tx-grain tx-weak wt-paper"
 				>
-					<p class="micro-label text-destructive">LAST REVIEW WAS FLAGGED</p>
+					<p class="text-xs font-medium text-destructive">Last review was flagged</p>
 					{#if latestPublicPageReview.summary}
 						<p class="text-xs text-destructive leading-snug">
 							{latestPublicPageReview.summary}
 						</p>
 					{/if}
 					{#if latestPublicPageReviewReasons.length > 0}
-						<ul class="space-y-0.5 text-xs text-destructive list-disc pl-4">
+						<ul class="space-y-1 text-xs text-destructive list-disc pl-4">
 							{#each latestPublicPageReviewReasons as reason (reason)}
 								<li>{reason}</li>
 							{/each}
@@ -4963,13 +4973,13 @@
 			{/if}
 
 			<div class="grid gap-2 sm:grid-cols-2">
-				<FormField label="Public URL" labelFor="public-page-slug-base" uppercase={false}>
+				<FormField label="Public URL" labelFor="public-page-slug-base">
 					<div class="space-y-2">
 						<div class="flex items-center gap-2">
 							<span class="text-xs text-muted-foreground shrink-0">/p/</span>
 							{#if draft.slug_prefix}
 								<span
-									class="inline-flex items-center rounded-md border border-border bg-muted px-2 py-1 text-xs font-mono text-foreground"
+									class="inline-flex items-center rounded-lg border border-border bg-muted px-2 py-1 text-xs font-mono text-foreground"
 								>
 									{draft.slug_prefix}
 								</span>
@@ -5003,7 +5013,7 @@
 					</div>
 				</FormField>
 
-				<FormField label="Public title" labelFor="public-page-title" uppercase={false}>
+				<FormField label="Public title" labelFor="public-page-title">
 					<TextInput
 						id="public-page-title"
 						value={draft.title}
@@ -5018,7 +5028,7 @@
 				</FormField>
 
 				<div class="sm:col-span-2">
-					<FormField label="Summary" labelFor="public-page-summary" uppercase={false}>
+					<FormField label="Summary" labelFor="public-page-summary">
 						<Textarea
 							id="public-page-summary"
 							value={draft.summary}
@@ -5035,7 +5045,7 @@
 					</FormField>
 				</div>
 
-				<FormField label="Visibility" labelFor="public-page-visibility" uppercase={false}>
+				<FormField label="Visibility" labelFor="public-page-visibility">
 					<Select
 						id="public-page-visibility"
 						value={draft.visibility}
@@ -5052,7 +5062,7 @@
 					</Select>
 				</FormField>
 
-				<div class="space-y-1.5 self-end pb-0.5">
+				<div class="space-y-2 self-end pb-1">
 					<label class="flex items-center gap-2 text-xs text-foreground">
 						<input
 							type="checkbox"
@@ -5083,11 +5093,11 @@
 				</div>
 			</div>
 
-			<div class="rounded-lg border border-border overflow-hidden">
+			<div class="rounded-xl border border-border overflow-hidden">
 				<div
 					class="px-3 py-2 border-b border-border bg-muted/60 flex items-center justify-between gap-2"
 				>
-					<span class="micro-label text-foreground">PUBLIC PREVIEW</span>
+					<span class="text-xs font-medium text-muted-foreground">Preview</span>
 					<span class="text-xs text-muted-foreground truncate">
 						{publicPageDraftUrlPreview ??
 							(preview.slug_prefix && preview.slug_base
@@ -5113,9 +5123,7 @@
 			</div>
 		</div>
 		{#snippet footer()}
-			<div
-				class="px-3 sm:px-4 py-3 border-t border-border bg-muted/50 flex justify-end gap-2"
-			>
+			<div class="px-4 py-3 border-t border-border bg-muted/50 flex justify-end gap-2">
 				<Button
 					type="button"
 					variant="ghost"
@@ -5135,7 +5143,7 @@
 					disabled={publicPageActionLoading}
 					class="text-xs"
 				>
-					{publicPageState ? 'Confirm Changes' : 'Confirm and Publish'}
+					{publicPageState ? 'Confirm changes' : 'Publish'}
 				</Button>
 			</div>
 		{/snippet}

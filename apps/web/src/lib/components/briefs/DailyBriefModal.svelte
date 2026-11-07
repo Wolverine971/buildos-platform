@@ -10,7 +10,7 @@
 		AlertCircle,
 		RefreshCw,
 		MessageCircle
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import { onMount, onDestroy } from 'svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -232,7 +232,7 @@
 	$effect(() => {
 		if (isRegenerating && generationStatus.isGenerating) {
 			regenerateProgress = {
-				message: generationStatus.message || 'Regenerating brief...',
+				message: generationStatus.message || 'Regenerating brief',
 				percentage:
 					generationStatus.progress?.projects?.total > 0
 						? Math.round(
@@ -354,7 +354,7 @@
 
 		try {
 			isRegenerating = true;
-			regenerateProgress = { message: 'Starting regeneration...', percentage: 0 };
+			regenerateProgress = { message: 'Starting regeneration', percentage: 0 };
 
 			// Start streaming generation with force regenerate and ontology flag
 			await BriefClientService.startStreamingGeneration({
@@ -382,8 +382,10 @@
 		{#if isRegenerating}
 			<!-- Regenerating state -->
 			<div class="flex flex-col items-center justify-center py-8 sm:py-12 px-4 sm:px-6">
-				<RefreshCw class="h-12 w-12 text-accent animate-spin mb-4" />
-				<p class="text-foreground font-medium mb-2">Regenerating Brief</p>
+				<RefreshCw
+					class="h-8 w-8 text-muted-foreground animate-spin motion-reduce:animate-none mb-4"
+				/>
+				<p class="text-foreground font-medium mb-2">Regenerating brief</p>
 				<p class="text-muted-foreground text-sm mb-4">
 					{regenerateProgress.message}
 				</p>
@@ -404,13 +406,15 @@
 		{:else if loading}
 			<!-- Loading state -->
 			<div class="flex flex-col items-center justify-center py-8 sm:py-12 px-4 sm:px-6">
-				<LoaderCircle class="h-12 w-12 text-accent animate-spin mb-4" />
-				<p class="text-muted-foreground">Loading brief...</p>
+				<LoaderCircle
+					class="h-8 w-8 text-muted-foreground animate-spin motion-reduce:animate-none mb-4"
+				/>
+				<p class="text-muted-foreground">Loading brief</p>
 			</div>
 		{:else if error}
 			<!-- Error state -->
 			<div class="flex flex-col items-center justify-center py-8 sm:py-12 px-4 sm:px-6">
-				<AlertCircle class="h-12 w-12 text-destructive mb-4" />
+				<AlertCircle class="h-8 w-8 text-destructive mb-4" />
 				<p class="text-foreground font-medium mb-2">Failed to load brief</p>
 				<p class="text-muted-foreground text-sm mb-4">{error}</p>
 				<Button
@@ -437,14 +441,16 @@
 							/>
 						{:else if displayBrief.audio_status === 'pending' || displayBrief.audio_status === 'generating'}
 							<div
-								class="flex flex-col gap-3 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between"
+								class="flex flex-col gap-3 rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between"
 							>
 								<div class="flex items-center gap-2">
-									<LoaderCircle class="h-4 w-4 animate-spin text-accent" />
+									<LoaderCircle
+										class="h-4 w-4 animate-spin motion-reduce:animate-none"
+									/>
 									<span>
 										{canRetryAudio
 											? 'Audio narration is taking longer than expected.'
-											: 'Generating audio narration...'}
+											: 'Generating audio narration'}
 									</span>
 								</div>
 								{#if canRetryAudio}
@@ -461,11 +467,11 @@
 							</div>
 						{:else if displayBrief.audio_status === 'failed'}
 							<div
-								class="flex flex-col gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between"
+								class="flex flex-col gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between"
 							>
 								<div class="flex items-start gap-2">
 									<AlertCircle class="mt-0.5 h-4 w-4 shrink-0" />
-									<span>Audio narration is unavailable.</span>
+									<span>Audio narration is unavailable</span>
 								</div>
 								<Button
 									variant="outline"
@@ -504,10 +510,10 @@
 		<div class="px-3 sm:px-4 py-3 border-t border-border bg-muted/50">
 			<!-- Email opt-in banner if not opted in -->
 			{#if !hasEmailOptIn && !$notificationPreferencesStore.isLoading}
-				<div class="mb-3 p-2.5 bg-accent/5 border border-accent/20 rounded-lg">
+				<div class="mb-3 p-3 bg-card border border-border rounded-xl">
 					<div class="flex flex-wrap items-center justify-between gap-2">
 						<div class="flex items-center gap-2 min-w-0">
-							<Mail class="h-4 w-4 text-accent shrink-0" />
+							<Mail class="h-4 w-4 text-muted-foreground shrink-0" />
 							<p class="text-sm text-foreground">
 								Get your daily briefs delivered to your inbox
 							</p>
@@ -518,7 +524,7 @@
 							size="sm"
 							loading={emailOptInLoading}
 						>
-							Enable Email
+							Enable email
 						</Button>
 					</div>
 				</div>
@@ -539,7 +545,7 @@
 							disabled={isRegenerating}
 							class="flex-1 min-w-0 sm:flex-none"
 						>
-							Chat about Brief
+							Chat about brief
 						</Button>
 					{/if}
 					<Button
@@ -550,8 +556,7 @@
 						disabled={isRegenerating}
 						aria-label="Copy brief to clipboard"
 					>
-						<span class="hidden sm:inline"
-							>{copiedToClipboard ? 'Copied!' : 'Copy to Clipboard'}</span
+						<span class="hidden sm:inline">{copiedToClipboard ? 'Copied' : 'Copy'}</span
 						>
 					</Button>
 					<Button
@@ -573,7 +578,7 @@
 						class="sm:ml-auto {onchat ? '' : 'flex-1 min-w-0 sm:flex-none'}"
 					>
 						<span class={onchat ? 'hidden sm:inline' : ''}
-							>{isRegenerating ? 'Regenerating...' : 'Regenerate Brief'}</span
+							>{isRegenerating ? 'Regenerating' : 'Regenerate brief'}</span
 						>
 					</Button>
 				</div>

@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/calendar/CalendarDisconnectModal.svelte -->
 <script lang="ts">
-	import { AlertTriangle, Calendar, Clock, Unlink, CheckCircle } from 'lucide-svelte';
+	import { AlertTriangle, Calendar, Clock, Unlink, CheckCircle } from '$lib/icons/lucide';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import type { CalendarDependencies } from '$lib/services/calendar-disconnect-service';
@@ -47,9 +47,9 @@
 	);
 
 	const getActionButtonText = () => {
-		if (loading) return 'Disconnecting...';
-		if (selectedAction === 'remove') return 'Remove & Disconnect';
-		return 'Keep & Disconnect';
+		if (loading) return 'Disconnecting';
+		if (selectedAction === 'remove') return 'Remove and disconnect';
+		return 'Keep and disconnect';
 	};
 
 	const getActionButtonVariant = () => {
@@ -69,11 +69,11 @@
 	<div class="px-4 sm:px-6 py-4">
 		<!-- Header with warning icon -->
 		<div class="flex items-start gap-3 mb-6">
-			<div class="p-2 bg-warning/10 rounded-lg flex-shrink-0">
+			<div class="pt-1 flex-shrink-0">
 				<AlertTriangle class="w-5 h-5 text-warning" />
 			</div>
 			<div class="flex-1">
-				<h2 class="text-xl font-semibold text-foreground">Disconnect Google Calendar?</h2>
+				<h2 class="text-lg font-medium text-foreground">Disconnect Google Calendar?</h2>
 				{#if hasAnyData}
 					<p class="text-sm text-muted-foreground mt-1">
 						You have {totalItems} item{totalItems !== 1 ? 's' : ''} connected to your Google
@@ -89,12 +89,12 @@
 
 		<!-- Data Summary (only show if there's data) -->
 		{#if hasAnyData && calendarData}
-			<div class="bg-muted rounded-lg p-4 mb-6">
-				<h3 class="text-sm font-medium text-foreground mb-3">Connected items:</h3>
+			<div class="bg-muted/50 rounded-xl p-4 mb-6">
+				<h3 class="text-sm font-medium text-foreground mb-3">Connected items</h3>
 				<div class="space-y-2">
 					{#if calendarData.scheduledTasks > 0}
 						<div class="flex items-center gap-2">
-							<Calendar class="w-4 h-4 text-info flex-shrink-0" />
+							<Calendar class="w-4 h-4 text-muted-foreground flex-shrink-0" />
 							<span class="text-sm text-foreground">
 								{calendarData.scheduledTasks} scheduled task{calendarData.scheduledTasks !==
 								1
@@ -106,7 +106,7 @@
 
 					{#if calendarData.timeBlocks > 0}
 						<div class="flex items-center gap-2">
-							<Clock class="w-4 h-4 text-accent flex-shrink-0" />
+							<Clock class="w-4 h-4 text-muted-foreground flex-shrink-0" />
 							<span class="text-sm text-foreground">
 								{calendarData.timeBlocks} time block{calendarData.timeBlocks !== 1
 									? 's'
@@ -117,7 +117,7 @@
 
 					{#if calendarData.calendarTasks > 0}
 						<div class="flex items-center gap-2">
-							<CheckCircle class="w-4 h-4 text-success flex-shrink-0" />
+							<CheckCircle class="w-4 h-4 text-muted-foreground flex-shrink-0" />
 							<span class="text-sm text-foreground">
 								{calendarData.calendarTasks} task{calendarData.calendarTasks !== 1
 									? 's'
@@ -136,9 +136,9 @@
 
 				<!-- Keep option -->
 				<label
-					class="flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer transition-all
-							hover:bg-muted
-							{selectedAction === 'keep' ? 'border-accent bg-accent/10' : 'border-border'}"
+					class="flex items-start gap-3 p-3 border rounded-xl cursor-pointer transition-colors
+							hover:bg-muted/50
+							{selectedAction === 'keep' ? 'border-accent bg-accent/5' : 'border-border'}"
 				>
 					<input
 						type="radio"
@@ -157,9 +157,9 @@
 
 				<!-- Remove option -->
 				<label
-					class="flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer transition-all
-							hover:bg-muted
-							{selectedAction === 'remove' ? 'border-destructive bg-destructive/10' : 'border-border'}"
+					class="flex items-start gap-3 p-3 border rounded-xl cursor-pointer transition-colors
+							hover:bg-muted/50
+							{selectedAction === 'remove' ? 'border-destructive bg-destructive/5' : 'border-border'}"
 				>
 					<input
 						type="radio"
@@ -175,7 +175,7 @@
 						</div>
 						{#if selectedAction === 'remove'}
 							<div
-								class="mt-2 p-2 bg-destructive/10 rounded text-xs text-destructive flex items-center gap-1"
+								class="mt-2 p-2 bg-destructive/5 rounded-lg text-xs text-destructive flex items-center gap-2"
 							>
 								<AlertTriangle class="w-3 h-3" />
 								<span>This action cannot be undone</span>
@@ -186,8 +186,8 @@
 			</div>
 		{:else}
 			<!-- No data message -->
-			<div class="bg-info/10 border border-info/30 rounded-lg p-4 mb-6">
-				<p class="text-sm text-info">
+			<div class="bg-muted/50 border border-border rounded-xl p-4 mb-6">
+				<p class="text-sm text-muted-foreground">
 					You don't have any scheduled tasks or time blocks. You can safely disconnect
 					your calendar.
 				</p>

@@ -11,6 +11,7 @@ import {
 	type InboxGroupFilter
 } from '$lib/server/inbox.service';
 import { countInboxCheckInCards } from '$lib/server/inbox-check-ins.service';
+import { countEmailUpdateCards } from '$lib/server/email-project-updates.service';
 
 function parseGroup(value: string | null): InboxGroupFilter | null {
 	if (value === 'account' || value === 'project') return value;
@@ -122,6 +123,18 @@ async function countCheckInCardsSafely(
 	}
 }
 
+/** "From your email" cards (tasker 154); like check-ins, a failure here never fails the count. */
+async function countEmailUpdatesSafely(
+	params: Parameters<typeof countEmailUpdateCards>[0]
+): Promise<{ cards: number; by_project: Record<string, number> } | null> {
+	try {
+		return await countEmailUpdateCards(params);
+	} catch (error) {
+		console.warn('[Inbox count] Failed to count email updates:', error);
+		return null;
+	}
+}
+
 export const GET: RequestHandler = async (event) => {
 	const {
 		url,
@@ -161,7 +174,7 @@ export const GET: RequestHandler = async (event) => {
 		const admin = createAdminSupabaseClient();
 		// Check-ins are pending project work; they never match a source or account filter.
 		const includeCheckIns = status === 'pending' && !sourceType && group !== 'account';
-		const [result, checkIns] = await Promise.all([
+		const [result, checkIns, emailUpdates] = await Promise.all([
 			countInboxItemsWithTransientRetry({
 				supabase: supabase as any,
 				admin: admin as any,
@@ -181,19 +194,27 @@ export const GET: RequestHandler = async (event) => {
 						timeZone: url.searchParams.get('tz'),
 						projectId
 					})
+				: Promise.resolve(null),
+			includeCheckIns && !projectId
+				? countEmailUpdatesSafely({ db: supabase, userId: user.id })
 				: Promise.resolve(null)
 		]);
 
-		if (!checkIns?.cards) return ApiResponse.success({ ...result, check_ins: 0 });
+		if (!checkIns?.cards && !emailUpdates?.cards) {
+			return ApiResponse.success({ ...result, check_ins: 0, email_updates: 0 });
+		}
 		const byProject = { ...result.by_project };
-		for (const [id, cards] of Object.entries(checkIns.by_project)) {
-			byProject[id] = (byProject[id] ?? 0) + cards;
+		for (const extra of [checkIns, emailUpdates]) {
+			for (const [id, cards] of Object.entries(extra?.by_project ?? {})) {
+				byProject[id] = (byProject[id] ?? 0) + cards;
+			}
 		}
 		return ApiResponse.success({
 			...result,
-			total: result.total + checkIns.cards,
+			total: result.total + (checkIns?.cards ?? 0) + (emailUpdates?.cards ?? 0),
 			by_project: byProject,
-			check_ins: checkIns.cards
+			check_ins: checkIns?.cards ?? 0,
+			email_updates: emailUpdates?.cards ?? 0
 		});
 	} catch (error) {
 		const transient = isTransientInboxCountError(error);

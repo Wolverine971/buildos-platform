@@ -179,9 +179,11 @@
 <section class="space-y-2">
 	{#if showTitle}
 		<div class="flex items-center justify-between px-0.5">
-			<h3 class="text-sm font-semibold text-foreground">{title}</h3>
+			<h3 class="text-sm font-medium text-foreground">{title}</h3>
 			{#if assets.length > 0}
-				<span class="micro-label text-muted-foreground">{assets.length}</span>
+				<span class="font-mono text-xs tabular-nums text-muted-foreground"
+					>{assets.length}</span
+				>
 			{/if}
 		</div>
 	{/if}
@@ -274,8 +276,8 @@
 		<div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
 			{#each assets as asset (asset.id)}
 				<div
-					class="group border border-border overflow-hidden shadow-ink tx tx-thread tx-weak wt-paper
-						hover:border-accent/50 hover:shadow-ink-strong transition-all"
+					class="group border border-border overflow-hidden tx tx-thread tx-weak wt-paper
+						hover:border-foreground/20 transition-colors"
 				>
 					<button
 						class="block w-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"

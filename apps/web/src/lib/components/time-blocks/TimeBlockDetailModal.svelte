@@ -5,7 +5,7 @@
 	import EntityModalDetailsDrawer from '$lib/components/ontology/EntityModalDetailsDrawer.svelte';
 	import type { TimeBlockWithProject, TimeBlockSuggestion } from '@buildos/shared-types';
 	import { format } from 'date-fns';
-	import { Calendar, Clock, Zap, PencilLine } from 'lucide-svelte';
+	import { Calendar, Clock, Zap, PencilLine } from '$lib/icons/lucide';
 
 	let {
 		block,
@@ -79,7 +79,7 @@
 	const startDateDisplay = $derived(format(startDate, "MMM d, yyyy 'at' h:mm a"));
 	const endDateDisplay = $derived(format(endDate, "MMM d, yyyy 'at' h:mm a"));
 	const blockTitle = $derived(
-		block.block_type === 'project' ? (block.project?.name ?? 'Project Block') : 'Build Block'
+		block.block_type === 'project' ? (block.project?.name ?? 'Project block') : 'Build block'
 	);
 	const timezoneDisplay = $derived(
 		block.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -280,10 +280,12 @@
 		}
 
 		if (suggestion.priority) {
-			parts.push(suggestion.priority.toUpperCase());
+			parts.push(
+				`${suggestion.priority.charAt(0).toUpperCase()}${suggestion.priority.slice(1)} priority`
+			);
 		}
 
-		return parts.length > 0 ? parts.join(' / ') : null;
+		return parts.length > 0 ? parts.join(' · ') : null;
 	}
 
 	function handleDelete() {
@@ -301,51 +303,42 @@
 			<section
 				class="order-2 flex min-w-0 flex-col gap-4 lg:order-none lg:col-start-1 lg:row-start-1 lg:pr-1"
 			>
-				<div
-					class="rounded-2xl border border-border bg-card shadow-ink transition-all hover:shadow-ink-strong tx tx-frame tx-weak"
-				>
+				<div class="rounded-xl border border-border bg-card shadow-ink tx tx-frame tx-weak">
 					<div
 						class="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 sm:px-6 py-4"
 					>
 						<div class="space-y-2">
-							<p
-								class="text-2xs font-semibold uppercase tracking-[0.3em] text-muted-foreground"
-							>
-								Session Overview
-							</p>
-							<h2 class="text-lg font-semibold text-foreground">
+							<h2 class="text-lg font-medium text-foreground">
 								{dayOfWeek}, {monthDay}
 							</h2>
 							<div class="flex flex-wrap items-center gap-2 text-sm text-foreground">
-								<Clock class="h-4 w-4 text-info" />
-								<span class="font-semibold text-foreground">{timeRange}</span>
+								<Clock class="h-4 w-4 text-muted-foreground" />
+								<span class="font-medium text-foreground">{timeRange}</span>
 								{#if durationDisplay}
-									<span class="text-muted-foreground">|</span>
-									<span>{durationDisplay}</span>
+									<span class="text-muted-foreground">·</span>
+									<span class="text-muted-foreground">{durationDisplay}</span>
 								{/if}
 							</div>
-							<div
-								class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-							>
+							<div class="text-xs text-muted-foreground">
 								{timezoneDisplay}
 							</div>
 						</div>
 						<div class="flex flex-wrap gap-2">
 							<span
-								class="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-semibold uppercase tracking-wide text-foreground shadow-ink"
+								class="inline-flex items-center rounded-lg bg-muted px-2 py-1 text-xs text-muted-foreground"
 							>
 								{block.block_type === 'project' ? 'Project focus' : 'Build session'}
 							</span>
 							{#if block.block_type === 'build'}
 								<span
-									class="inline-flex items-center rounded-full bg-warning/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-warning"
+									class="inline-flex items-center rounded-lg bg-muted px-2 py-1 text-xs text-muted-foreground"
 								>
 									Flexible window
 								</span>
 							{/if}
 							{#if block.block_type === 'project' && block.project?.name}
 								<span
-									class="inline-flex items-center rounded-full bg-info/10 px-3 py-1 text-xs font-semibold text-info"
+									class="inline-flex items-center rounded-lg bg-muted px-2 py-1 text-xs text-muted-foreground"
 								>
 									{block.project.name}
 								</span>
@@ -354,28 +347,18 @@
 					</div>
 					<div class="px-4 sm:px-6 py-4 sm:py-6 space-y-5">
 						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-							<div
-								class="rounded-xl border border-border bg-card p-4 space-y-1.5 shadow-ink"
-							>
-								<span
-									class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-									>Start</span
-								>
-								<p class="text-sm font-semibold text-foreground">
+							<div class="rounded-xl border border-border bg-card p-4 space-y-1">
+								<span class="text-xs font-medium text-muted-foreground">Start</span>
+								<p class="text-sm font-medium text-foreground">
 									{startDateSummary}
 								</p>
 								<p class="text-xs text-muted-foreground">
 									Started {formatRelativeTime(block.start_time)}
 								</p>
 							</div>
-							<div
-								class="rounded-xl border border-border bg-card p-4 space-y-1.5 shadow-ink"
-							>
-								<span
-									class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-									>End</span
-								>
-								<p class="text-sm font-semibold text-foreground">
+							<div class="rounded-xl border border-border bg-card p-4 space-y-1">
+								<span class="text-xs font-medium text-muted-foreground">End</span>
+								<p class="text-sm font-medium text-foreground">
 									{endDateSummary}
 								</p>
 								<p class="text-xs text-muted-foreground">
@@ -388,37 +371,29 @@
 								href={block.calendar_event_link}
 								target="_blank"
 								rel="noopener noreferrer"
-								class="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-info/30 bg-info/10 px-4 py-2 text-sm font-semibold text-info transition hover:border-info/50 hover:bg-info/20"
+								class="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-foreground/20 hover:bg-muted/50"
 							>
-								<Calendar class="h-4 w-4" />
+								<Calendar class="h-4 w-4 text-muted-foreground" />
 								<span>Open calendar event</span>
 							</a>
 						{/if}
 					</div>
 				</div>
 
-				<div
-					class="rounded-2xl border border-border bg-card shadow-ink transition-all hover:shadow-ink-strong tx tx-frame tx-weak"
-				>
+				<div class="rounded-xl border border-border bg-card shadow-ink tx tx-frame tx-weak">
 					<div
 						class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 sm:px-6 py-4"
 					>
-						<div>
-							<p
-								class="text-2xs font-semibold uppercase tracking-[0.3em] text-muted-foreground"
-							>
-								Focus Suggestions
-							</p>
-							<h3 class="text-base font-semibold text-foreground">
-								{suggestionCount > 0
-									? `${suggestionCount} curated ideas`
-									: 'Personalized guidance'}
-							</h3>
-						</div>
+						<h3 class="flex items-center gap-2 text-base font-medium text-foreground">
+							Focus suggestions
+							{#if suggestionCount > 0}
+								<span class="font-mono tabular-nums text-xs text-muted-foreground">
+									{suggestionCount}
+								</span>
+							{/if}
+						</h3>
 						{#if block.suggestions_generated_at}
-							<span
-								class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-							>
+							<span class="text-xs text-muted-foreground">
 								Updated {format(
 									new Date(block.suggestions_generated_at),
 									'MMM d, h:mm a'
@@ -431,28 +406,21 @@
 							<div class="space-y-3">
 								{#each suggestions as suggestion, index}
 									<div
-										class="group relative overflow-hidden rounded-xl border border-border bg-card p-4 shadow-ink transition-all hover:shadow-ink-strong tx tx-frame tx-weak"
+										class="rounded-xl border border-border bg-card p-4 tx tx-frame tx-weak"
 									>
-										<div
-											class="pointer-events-none absolute inset-0 bg-accent/5 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-										></div>
-										<div class="relative flex gap-3">
+										<div class="flex gap-3">
 											<div
-												class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-accent text-sm font-bold text-accent-foreground shadow-ink-strong"
+												class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-muted font-mono tabular-nums text-xs text-muted-foreground"
 											>
 												{index + 1}
 											</div>
-											<div class="flex-1 space-y-1.5">
+											<div class="flex-1 space-y-1">
 												<div class="flex flex-wrap items-center gap-2">
-													<h4
-														class="text-sm font-semibold text-foreground"
-													>
+													<h4 class="text-sm font-medium text-foreground">
 														{suggestion.title}
 													</h4>
 													{#if suggestionMeta(suggestion)}
-														<span
-															class="inline-flex items-center rounded-full bg-muted px-3 py-1 text-2xs font-semibold uppercase tracking-wide text-foreground ring-1 ring-border shadow-ink"
-														>
+														<span class="text-xs text-muted-foreground">
 															{suggestionMeta(suggestion)}
 														</span>
 													{/if}
@@ -467,11 +435,11 @@
 							</div>
 						{:else}
 							<div
-								class="flex flex-col items-start gap-3 rounded-xl border border-dashed border-border bg-muted p-5 text-sm text-foreground shadow-ink-inner"
+								class="flex flex-col items-start gap-3 rounded-xl border border-dashed border-border bg-muted/50 p-5 text-sm text-foreground"
 							>
-								<p class="font-semibold text-foreground">No suggestions yet</p>
+								<p class="font-medium text-foreground">No suggestions yet</p>
 								<p class="text-xs leading-relaxed text-muted-foreground">
-									Generate tailored focus ideas to make the most of this block.
+									Generate focus ideas to make the most of this block.
 								</p>
 								{#if onRegenerate}
 									<Button
@@ -485,8 +453,8 @@
 										<Zap class="h-4 w-4" />
 										<span
 											>{isRegenerating
-												? 'Generating...'
-												: 'Generate Suggestions'}</span
+												? 'Generating…'
+												: 'Generate suggestions'}</span
 										>
 									</Button>
 								{/if}
@@ -497,13 +465,9 @@
 
 				{#if block.suggestions_summary}
 					<div
-						class="rounded-2xl border border-border bg-card shadow-ink px-5 py-5 text-sm leading-relaxed text-foreground tx tx-frame tx-weak"
+						class="rounded-xl border border-border bg-card shadow-ink px-5 py-5 text-sm leading-relaxed text-foreground tx tx-frame tx-weak"
 					>
-						<p
-							class="mb-2 text-2xs font-semibold uppercase tracking-[0.2em] text-muted-foreground"
-						>
-							AI Summary
-						</p>
+						<p class="mb-2 text-xs font-medium text-muted-foreground">Summary</p>
 						<p>{block.suggestions_summary}</p>
 					</div>
 				{/if}
@@ -515,17 +479,16 @@
 				class="flex flex-col gap-4"
 			>
 				<div
-					class="rounded-2xl border border-border bg-card shadow-ink px-4 sm:px-5 py-5 space-y-4 tx tx-frame tx-weak"
+					class="rounded-xl border border-border bg-card shadow-ink px-4 sm:px-5 py-5 space-y-4 tx tx-frame tx-weak"
 				>
 					<div class="flex items-center justify-between">
-						<h3
-							class="text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground"
-						>
-							Session Controls
-						</h3>
-						<span
-							class="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-2xs font-semibold uppercase tracking-wide text-foreground shadow-ink"
-						>
+						<h3 class="text-xs font-medium text-muted-foreground">Session</h3>
+						<span class="inline-flex items-center gap-2 text-xs text-muted-foreground">
+							<span
+								class="h-1.5 w-1.5 rounded-full {isEditMode
+									? 'bg-foreground'
+									: 'bg-muted-foreground/50'}"
+							></span>
 							{isEditMode ? 'Editing' : 'Viewing'}
 						</span>
 					</div>
@@ -537,7 +500,7 @@
 							onclick={() => (isEditMode ? exitEditMode() : enterEditMode())}
 						>
 							<PencilLine class="h-4 w-4" />
-							<span>{isEditMode ? 'Close Editor' : 'Edit Session'}</span>
+							<span>{isEditMode ? 'Close editor' : 'Edit session'}</span>
 						</Button>
 					{/if}
 					{#if onRegenerate}
@@ -551,30 +514,20 @@
 						>
 							<Zap class="h-4 w-4" />
 							<span
-								>{isRegenerating
-									? 'Regenerating...'
-									: 'Regenerate Suggestions'}</span
+								>{isRegenerating ? 'Regenerating…' : 'Regenerate suggestions'}</span
 							>
 						</Button>
 					{/if}
-					<p class="text-xs leading-relaxed text-muted-foreground">
-						Keep this block aligned with your schedule. Toggle editing to adjust timing
-						or refresh suggestions.
-					</p>
 				</div>
 
 				{#if isEditMode}
 					<div
-						class="rounded-2xl border border-border bg-card shadow-ink px-4 sm:px-5 py-5 space-y-4 tx tx-frame tx-weak"
+						class="rounded-xl border border-border bg-card shadow-ink px-4 sm:px-5 py-5 space-y-4 tx tx-frame tx-weak"
 					>
-						<h4
-							class="text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground"
-						>
-							Edit details
-						</h4>
+						<h4 class="text-xs font-medium text-muted-foreground">Edit details</h4>
 						{#if validationErrors.length > 0 || saveError}
 							<div
-								class="space-y-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+								class="space-y-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
 							>
 								{#each validationErrors as error}
 									<p>{error}</p>
@@ -587,97 +540,89 @@
 						<div class="space-y-4 text-sm text-foreground">
 							<div class="space-y-2">
 								<label
-									class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+									class="text-xs font-medium text-muted-foreground"
 									for="edit-start">Start date & time</label
 								>
 								<input
 									id="edit-start"
 									type="datetime-local"
 									bind:value={editFormData.start_time}
-									class="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground shadow-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
+									class="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
 								/>
 							</div>
 							<div class="space-y-2">
 								<label
-									class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+									class="text-xs font-medium text-muted-foreground"
 									for="edit-end">End date & time</label
 								>
 								<input
 									id="edit-end"
 									type="datetime-local"
 									bind:value={editFormData.end_time}
-									class="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground shadow-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
+									class="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
 								/>
 							</div>
 							<div class="space-y-2">
 								<label
-									class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+									class="text-xs font-medium text-muted-foreground"
 									for="edit-timezone">Timezone</label
 								>
 								<select
 									id="edit-timezone"
 									bind:value={editFormData.timezone}
-									class="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground shadow-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
+									class="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
 								>
 									{#each TIMEZONES as tz (tz)}
 										<option value={tz}>{tz}</option>
 									{/each}
 								</select>
 							</div>
-							<label
-								class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-							>
+							<label class="flex items-center gap-2 text-sm text-foreground">
 								<input
 									type="checkbox"
 									bind:checked={editFormData.regenerate_suggestions}
-									class="h-3.5 w-3.5 rounded border-border text-accent focus:ring-ring"
+									class="h-4 w-4 rounded border-border text-accent focus:ring-ring"
 								/>
 								<span>Regenerate suggestions after saving</span>
 							</label>
 							<div
-								class="rounded-lg border border-border bg-muted px-3 py-2 text-xs text-muted-foreground shadow-ink-inner"
+								class="rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground"
 							>
-								New duration: {calculateDuration(
-									editFormData.start_time,
-									editFormData.end_time
-								)} minutes
+								New duration: <span class="font-mono tabular-nums"
+									>{calculateDuration(
+										editFormData.start_time,
+										editFormData.end_time
+									)}</span
+								> minutes
 							</div>
 						</div>
 					</div>
 				{/if}
 
 				<div
-					class="rounded-2xl border border-border bg-card shadow-ink px-4 sm:px-5 py-5 space-y-3 tx tx-frame tx-weak"
+					class="rounded-xl border border-border bg-card shadow-ink px-4 sm:px-5 py-5 space-y-3 tx tx-frame tx-weak"
 				>
-					<h4
-						class="text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground"
-					>
-						Calendar Sync
-					</h4>
-					<div class="flex items-center gap-2 text-xs text-foreground">
-						<div
-							class="h-2.5 w-2.5 rounded-full {block.sync_status === 'synced'
+					<h4 class="text-xs font-medium text-muted-foreground">Calendar sync</h4>
+					<div class="flex items-center gap-2 text-xs text-muted-foreground">
+						<span
+							class="h-1.5 w-1.5 rounded-full {block.sync_status === 'synced'
 								? 'bg-success'
 								: 'bg-warning'}"
-						></div>
-						<span class="font-medium">
+						></span>
+						<span>
 							{block.sync_status === 'synced' ? 'Synced to calendar' : 'Pending sync'}
 						</span>
 					</div>
 				</div>
 
 				<div
-					class="rounded-2xl border border-border bg-card shadow-ink px-4 sm:px-5 py-5 space-y-4 tx tx-frame tx-weak"
+					class="rounded-xl border border-border bg-card shadow-ink px-4 sm:px-5 py-5 space-y-4 tx tx-frame tx-weak"
 				>
-					<h4
-						class="text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground"
-					>
-						Overview
-					</h4>
-					<div class="space-y-2 text-xs text-foreground">
+					<h4 class="text-xs font-medium text-muted-foreground">Overview</h4>
+					<div class="space-y-2 text-xs text-muted-foreground">
 						<div class="flex items-center justify-between gap-3">
 							<span>Focus type</span>
-							<span class="text-right font-semibold text-foreground">
+							<span class="text-right font-medium text-foreground">
 								{block.block_type === 'project'
 									? 'Project session'
 									: 'Build session'}
@@ -686,39 +631,39 @@
 						{#if durationDisplay}
 							<div class="flex items-center justify-between gap-3">
 								<span>Duration</span>
-								<span class="text-right font-semibold text-foreground">
+								<span class="text-right font-medium text-foreground">
 									{durationDisplay}
 								</span>
 							</div>
 						{/if}
 						<div class="flex items-start justify-between gap-3">
 							<span>Starts</span>
-							<span class="text-right font-semibold text-foreground">
+							<span class="text-right font-medium text-foreground">
 								{startDateSummary}
 							</span>
 						</div>
 						<div class="flex items-start justify-between gap-3">
 							<span>Ends</span>
-							<span class="text-right font-semibold text-foreground">
+							<span class="text-right font-medium text-foreground">
 								{endDateSummary}
 							</span>
 						</div>
 						<div class="flex items-start justify-between gap-3">
 							<span>Timezone</span>
-							<span class="text-right font-semibold text-foreground">
+							<span class="text-right font-medium text-foreground">
 								{timezoneDisplay}
 							</span>
 						</div>
 						<div class="flex items-start justify-between gap-3">
 							<span>Suggestions</span>
-							<span class="text-right font-semibold text-foreground">
+							<span class="text-right font-medium text-foreground">
 								{suggestionCount > 0 ? `${suggestionCount} ready` : 'None yet'}
 							</span>
 						</div>
 						{#if block.block_type === 'project' && block.project?.name}
 							<div class="flex items-start justify-between gap-3">
 								<span>Project</span>
-								<span class="text-right font-semibold text-foreground">
+								<span class="text-right font-medium text-foreground">
 									{block.project.name}
 								</span>
 							</div>
@@ -727,14 +672,10 @@
 				</div>
 
 				<div
-					class="rounded-2xl border border-border bg-card shadow-ink px-4 sm:px-5 py-5 space-y-3 tx tx-frame tx-weak"
+					class="rounded-xl border border-border bg-card shadow-ink px-4 sm:px-5 py-5 space-y-3 tx tx-frame tx-weak"
 				>
-					<h4
-						class="text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground"
-					>
-						Activity
-					</h4>
-					<div class="space-y-2 text-xs text-foreground">
+					<h4 class="text-xs font-medium text-muted-foreground">Activity</h4>
+					<div class="space-y-2 text-xs text-muted-foreground">
 						<div>Created {formatRelativeTime(block.created_at)}</div>
 						{#if block.updated_at !== block.created_at}
 							<div>Updated {formatRelativeTime(block.updated_at)}</div>
@@ -768,7 +709,7 @@
 						loading={isSaving}
 						disabled={validationErrors.length > 0 || isSaving}
 					>
-						Save Changes
+						Save changes
 					</Button>
 				</div>
 			{:else}
@@ -779,7 +720,7 @@
 						class="w-full sm:w-auto"
 						onclick={handleDelete}
 					>
-						Delete Block
+						Delete block
 					</Button>
 					<Button variant="outline" size="sm" class="w-full sm:w-auto" onclick={onClose}>
 						Close

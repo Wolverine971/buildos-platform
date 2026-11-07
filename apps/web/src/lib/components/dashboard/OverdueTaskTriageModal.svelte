@@ -19,7 +19,7 @@
 		Share2,
 		TriangleAlert,
 		Users
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -196,10 +196,8 @@
 	}
 
 	function formatStateLabel(state: string): string {
-		return state
-			.split('_')
-			.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-			.join(' ');
+		const label = state.replace(/_/g, ' ');
+		return label.charAt(0).toUpperCase() + label.slice(1);
 	}
 
 	function overdueLabel(dueAt: string | null): string {
@@ -870,58 +868,53 @@
 
 <svelte:window onclick={handleWindowClick} onkeydown={handleWindowKeydown} />
 
-<Modal {isOpen} onClose={closeModal} title="Project Batch Triage" size="xl">
+<Modal {isOpen} onClose={closeModal} title="Overdue tasks" size="xl">
 	<div class="space-y-3 p-2 sm:p-3">
-		<div class="flex flex-wrap items-center gap-2 text-xs">
-			<span
-				class="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1"
-			>
-				<TriangleAlert class="h-3 w-3 text-accent" />
-				{batches.length} active {batches.length === 1 ? 'project' : 'projects'}
+		<div class="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+			<span class="inline-flex items-center gap-1">
+				<TriangleAlert class="h-3 w-3" />
+				<span class="font-mono tabular-nums">{batches.length}</span> active {batches.length ===
+				1
+					? 'project'
+					: 'projects'}
 			</span>
-			<span
-				class="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1"
-			>
-				<CircleCheck class="h-3 w-3 text-success" />
-				{resolvedCount} resolved
+			<span class="inline-flex items-center gap-1">
+				<CircleCheck class="h-3 w-3" />
+				<span class="font-mono tabular-nums">{resolvedCount}</span> resolved
 			</span>
-			<span
-				class="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1"
-			>
-				<Clock3 class="h-3 w-3 text-muted-foreground" />
-				{totalRemaining} remaining
+			<span class="inline-flex items-center gap-1">
+				<Clock3 class="h-3 w-3" />
+				<span class="font-mono tabular-nums">{totalRemaining}</span> remaining
 			</span>
 		</div>
 
 		{#if isLoading}
 			<div
-				class="rounded-lg border border-border bg-card p-4 text-center text-sm text-muted-foreground shadow-ink"
+				class="rounded-xl border border-border bg-card p-4 text-center text-sm text-muted-foreground"
 			>
 				<LoaderCircle class="mx-auto mb-2 h-5 w-5 animate-spin" />
-				Loading overdue project batches...
+				Loading overdue tasks
 			</div>
 		{:else if error}
 			<div
-				class="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2 tx tx-static tx-weak shadow-ink"
+				class="rounded-xl border border-destructive/30 bg-destructive/5 p-3 space-y-2 tx tx-static tx-weak"
 			>
 				<p class="text-sm text-destructive">{error}</p>
 				<Button variant="outline" size="sm" onclick={loadBatches}>Retry</Button>
 			</div>
 		{:else if totalRemaining === 0}
 			<div
-				class="rounded-lg border border-success/30 bg-success/5 p-4 text-center space-y-2 tx tx-bloom tx-weak shadow-ink"
+				class="rounded-xl border border-border bg-card p-4 text-center space-y-2 tx tx-bloom tx-weak"
 			>
-				<CircleCheck class="mx-auto h-6 w-6 text-success" />
-				<p class="text-sm font-semibold text-foreground">
-					You cleared all overdue project batches
-				</p>
-				<p class="text-xs text-muted-foreground">No overdue tasks are left to triage.</p>
+				<CircleCheck class="mx-auto h-6 w-6 text-muted-foreground" />
+				<p class="text-sm font-medium text-foreground">All overdue tasks are handled</p>
+				<p class="text-xs text-muted-foreground">Nothing left to triage</p>
 				<div class="pt-1">
 					<a
 						href="/projects"
 						class="text-xs font-medium text-accent hover:underline underline-offset-2"
 					>
-						Go to projects &rarr;
+						Go to projects
 					</a>
 				</div>
 			</div>
@@ -935,14 +928,14 @@
 								onclick={() => setActiveProject(batch.project_id)}
 								animate:flip={{ duration: 180 }}
 								out:fly={{ x: -48, duration: 160, easing: cubicOut }}
-								class="min-w-[220px] lg:min-w-0 rounded-lg border px-3 py-2.5 text-left transition-colors shadow-ink pressable {activeBatch?.project_id ===
+								class="min-w-[220px] lg:min-w-0 rounded-xl border px-3 py-3 text-left transition-colors {activeBatch?.project_id ===
 								batch.project_id
-									? 'border-accent/40 bg-accent/10'
-									: 'border-border bg-card hover:bg-muted/40'}"
+									? 'border-accent/40 bg-accent/5'
+									: 'border-border bg-card hover:bg-muted/50'}"
 							>
 								<div class="flex items-start justify-between gap-2">
 									<div class="min-w-0">
-										<p class="text-sm font-semibold text-foreground truncate">
+										<p class="text-sm font-medium text-foreground truncate">
 											{batch.project_name}
 										</p>
 										<p class="mt-1 text-2xs text-muted-foreground">
@@ -954,7 +947,7 @@
 									</div>
 									{#if batch.project_is_collaborative}
 										<span
-											class="inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-2xs font-medium text-accent shrink-0"
+											class="inline-flex items-center gap-1 text-2xs text-muted-foreground shrink-0"
 										>
 											<Users class="h-2.5 w-2.5" />
 											Shared
@@ -962,7 +955,7 @@
 									{/if}
 								</div>
 								{#if batch.oldest_due_at}
-									<p class="mt-1.5 text-2xs text-muted-foreground">
+									<p class="mt-2 text-2xs text-muted-foreground">
 										Oldest {overdueLabel(batch.oldest_due_at)}
 									</p>
 								{/if}
@@ -971,18 +964,14 @@
 					</div>
 
 					{#if completedBatches.length > 0}
-						<div class="rounded-lg border border-border bg-card p-2.5 space-y-2">
-							<p
-								class="text-2xs font-semibold uppercase tracking-wide text-muted-foreground"
-							>
-								Cleared
-							</p>
-							<div class="space-y-1.5">
+						<div class="rounded-xl border border-border bg-card p-3 space-y-2">
+							<p class="text-xs font-medium text-muted-foreground">Cleared</p>
+							<div class="space-y-2">
 								{#each completedBatches as batch (batch.project_id)}
 									<div
 										class="flex items-center gap-2 text-xs text-muted-foreground"
 									>
-										<CheckCircle2 class="h-3.5 w-3.5 text-success shrink-0" />
+										<CheckCircle2 class="h-3.5 w-3.5 shrink-0" />
 										<span class="truncate">{batch.project_name}</span>
 									</div>
 								{/each}
@@ -993,18 +982,18 @@
 
 				{#if activeBatch}
 					<div
-						class="flex max-h-[calc(100dvh-9rem)] min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card shadow-ink sm:max-h-[calc(85dvh-7rem)]"
+						class="flex max-h-[calc(100dvh-9rem)] min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card sm:max-h-[calc(85dvh-7rem)]"
 					>
 						<div class="shrink-0 space-y-3 border-b border-border px-3 py-3">
 							<div class="flex flex-wrap items-start justify-between gap-3">
 								<div class="min-w-0">
 									<div class="flex flex-wrap items-center gap-2">
-										<p class="text-sm font-semibold text-foreground truncate">
+										<p class="text-sm font-medium text-foreground truncate">
 											{activeBatch.project_name}
 										</p>
 										{#if activeBatch.project_is_collaborative}
 											<span
-												class="inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-2xs font-medium text-accent"
+												class="inline-flex items-center gap-1 text-2xs text-muted-foreground"
 											>
 												<Share2 class="h-2.5 w-2.5" />
 												Collaborative
@@ -1027,7 +1016,7 @@
 										href="/projects/{activeBatch.project_id}"
 										target="_blank"
 										rel="noopener noreferrer"
-										class="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline underline-offset-2"
+										class="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
 									>
 										Open project
 										<ExternalLink class="h-3 w-3" />
@@ -1049,7 +1038,7 @@
 										<LoaderCircle
 											class="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
 										/>
-										Scheduling...
+										Scheduling
 									{:else}
 										Schedule from tomorrow
 									{/if}
@@ -1065,7 +1054,7 @@
 										<LoaderCircle
 											class="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
 										/>
-										Scheduling...
+										Scheduling
 									{:else}
 										Schedule from +3d
 									{/if}
@@ -1081,7 +1070,7 @@
 										<LoaderCircle
 											class="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
 										/>
-										Scheduling...
+										Scheduling
 									{:else}
 										Start & schedule all
 									{/if}
@@ -1089,7 +1078,7 @@
 								<div class="relative" bind:this={projectMenuRef}>
 									<button
 										type="button"
-										class="inline-flex min-h-[44px] w-full items-center justify-center gap-1 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground shadow-ink transition-colors hover:bg-muted sm:w-auto"
+										class="inline-flex min-h-[44px] w-full items-center justify-center gap-1 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 sm:w-auto"
 										disabled={isProjectActionRunning}
 										aria-expanded={projectMenuOpen}
 										onclick={() => (projectMenuOpen = !projectMenuOpen)}
@@ -1099,21 +1088,23 @@
 									</button>
 									{#if projectMenuOpen}
 										<div
-											class="absolute right-0 top-[calc(100%+0.5rem)] z-10 w-44 rounded-lg border border-border bg-card p-1.5 shadow-2xl"
+											class="absolute right-0 top-[calc(100%+0.5rem)] z-10 w-44 rounded-xl border border-border bg-card p-1 shadow-2xl"
 											role="menu"
 										>
 											<button
 												type="button"
-												class="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
+												class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted/50"
 												role="menuitem"
 												onclick={() => runProjectAction('done')}
 											>
-												<CircleCheck class="h-4 w-4 text-success" />
+												<CircleCheck
+													class="h-4 w-4 text-muted-foreground"
+												/>
 												Mark all done
 											</button>
 											<button
 												type="button"
-												class="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
+												class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted/50"
 												role="menuitem"
 												onclick={() => runProjectAction('backlog')}
 											>
@@ -1124,7 +1115,7 @@
 												href="/projects/{activeBatch.project_id}"
 												target="_blank"
 												rel="noopener noreferrer"
-												class="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm text-foreground transition-colors hover:bg-muted"
+												class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted/50"
 												role="menuitem"
 											>
 												<ExternalLink
@@ -1137,7 +1128,7 @@
 								</div>
 							</div>
 							<p class="text-2xs text-muted-foreground">
-								Tasks use separate open slots; overflow moves to later working days.
+								Tasks use separate open slots; overflow moves to later working days
 							</p>
 						</div>
 
@@ -1159,14 +1150,18 @@
 													href="/projects/{task.project_id}/tasks/{task.id}"
 													target="_blank"
 													rel="noopener noreferrer"
-													class="text-sm font-semibold text-foreground break-words hover:text-accent hover:underline underline-offset-2"
+													class="text-sm font-medium text-foreground break-words hover:underline underline-offset-2"
 												>
 													{task.title}
 												</a>
 												{#if task.is_assigned_to_me}
 													<span
-														class="inline-flex items-center rounded-full border border-success/30 bg-success/10 px-1.5 py-0.5 text-2xs font-medium text-success"
+														class="inline-flex items-center gap-1 text-2xs text-muted-foreground"
 													>
+														<span
+															class="h-1.5 w-1.5 rounded-full bg-success"
+															aria-hidden="true"
+														></span>
 														Mine
 													</span>
 												{/if}
@@ -1197,11 +1192,11 @@
 										</div>
 
 										<div
-											class="grid grid-cols-4 gap-1.5 sm:flex sm:shrink-0 sm:flex-wrap sm:items-center sm:gap-2"
+											class="grid grid-cols-4 gap-2 sm:flex sm:shrink-0 sm:flex-wrap sm:items-center sm:gap-2"
 										>
 											<button
 												type="button"
-												class="min-h-9 rounded-md border border-success/30 bg-success/10 px-2 py-1.5 text-2xs font-semibold text-success transition-colors hover:bg-success/15 disabled:opacity-50"
+												class="min-h-9 rounded-lg border border-border bg-card px-2 py-2 text-2xs font-medium text-foreground transition-colors hover:bg-muted/50 disabled:opacity-50"
 												disabled={isProjectActionRunning ||
 													isTaskBusy(task.id)}
 												onclick={() => handleSetTaskState(task.id, 'done')}
@@ -1210,7 +1205,7 @@
 											</button>
 											<button
 												type="button"
-												class="min-h-9 rounded-md border border-border bg-card px-2 py-1.5 text-2xs font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+												class="min-h-9 rounded-lg border border-border bg-card px-2 py-2 text-2xs font-medium text-foreground transition-colors hover:bg-muted/50 disabled:opacity-50"
 												disabled={isProjectActionRunning ||
 													isTaskBusy(task.id)}
 												onclick={() =>
@@ -1220,7 +1215,7 @@
 											</button>
 											<button
 												type="button"
-												class="min-h-9 rounded-md border border-border bg-card px-2 py-1.5 text-2xs font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+												class="min-h-9 rounded-lg border border-border bg-card px-2 py-2 text-2xs font-medium text-foreground transition-colors hover:bg-muted/50 disabled:opacity-50"
 												disabled={isProjectActionRunning ||
 													isTaskBusy(task.id)}
 												onclick={() =>
@@ -1230,7 +1225,7 @@
 											</button>
 											<button
 												type="button"
-												class="min-h-9 rounded-md border border-border bg-card px-2 py-1.5 text-2xs font-semibold text-foreground transition-colors hover:bg-muted"
+												class="min-h-9 rounded-lg border border-border bg-card px-2 py-2 text-2xs font-medium text-foreground transition-colors hover:bg-muted/50"
 												disabled={isProjectActionRunning ||
 													isTaskBusy(task.id)}
 												aria-expanded={expandedTaskId === task.id}
@@ -1246,7 +1241,7 @@
 
 									{#if expandedTaskId === task.id}
 										<div
-											class="mt-3 rounded-lg border border-border bg-background/60 p-3 space-y-3"
+											class="mt-3 rounded-xl border border-border bg-background/60 p-3 space-y-3"
 											transition:slide={{ duration: 140 }}
 										>
 											<div class="flex flex-wrap items-center gap-2">
@@ -1293,7 +1288,7 @@
 													href="/projects/{task.project_id}/tasks/{task.id}"
 													target="_blank"
 													rel="noopener noreferrer"
-													class="inline-flex min-h-[44px] items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold text-accent hover:underline underline-offset-2"
+													class="inline-flex min-h-[44px] items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground"
 												>
 													Open task
 													<ArrowRight class="h-3.5 w-3.5" />
@@ -1314,10 +1309,10 @@
 														{#each RESCHEDULE_PRESETS as preset (preset)}
 															<button
 																type="button"
-																class="rounded-md border px-2 py-1.5 text-2xs font-semibold transition-colors {activeSlotPreset ===
+																class="rounded-lg border px-2 py-2 text-2xs font-medium transition-colors {activeSlotPreset ===
 																preset
-																	? 'border-accent/40 bg-accent/10 text-accent'
-																	: 'border-border bg-card text-foreground hover:bg-muted'}"
+																	? 'border-accent/40 bg-accent/5 text-accent'
+																	: 'border-border bg-card text-foreground hover:bg-muted/50'}"
 																disabled={loadingSlotKey ===
 																	`${task.id}:${preset}`}
 																onclick={() =>
@@ -1343,14 +1338,14 @@
 																<LoaderCircle
 																	class="h-3.5 w-3.5 animate-spin"
 																/>
-																Finding open time...
+																Finding open time
 															</div>
 														{:else if activePlan?.slots?.length}
 															<div class="grid gap-2">
 																{#each activePlan.slots as slot}
 																	<button
 																		type="button"
-																		class="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-left transition-colors hover:bg-muted/40 disabled:opacity-50"
+																		class="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2 text-left transition-colors hover:bg-muted/50 disabled:opacity-50"
 																		disabled={isProjectActionRunning ||
 																			isTaskBusy(task.id)}
 																		onclick={() =>
@@ -1368,7 +1363,7 @@
 																				)}
 																			</p>
 																			<p
-																				class="mt-0.5 text-2xs text-muted-foreground"
+																				class="mt-1 text-2xs text-muted-foreground"
 																			>
 																				{formatSlotTimeRange(
 																					slot.start_at,
@@ -1377,7 +1372,7 @@
 																			</p>
 																		</div>
 																		<span
-																			class="text-2xs font-medium text-accent"
+																			class="text-2xs font-medium text-muted-foreground"
 																		>
 																			Use slot
 																		</span>
@@ -1390,7 +1385,7 @@
 															>
 																{slotErrorsByTask[task.id] ||
 																	activePlan?.note ||
-																	'No open time found in this window.'}
+																	'No open time found in this window'}
 															</p>
 														{/if}
 													{/if}

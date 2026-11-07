@@ -38,7 +38,7 @@
 		Tag as TagIcon,
 		Eye,
 		Edit
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import ProjectDeleteConfirmModal from '$lib/components/project/ProjectDeleteConfirmModal.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
@@ -694,7 +694,7 @@
 		html = html.replace(regex, (_match, type, _id, displayText) => {
 			// Use semantic accent color with opacity for entity badges
 			// Entity type is already clear from displayText, no need for different colors
-			const colorClass = 'bg-accent/15 text-accent';
+			const colorClass = 'bg-muted text-foreground';
 
 			return `<span class="inline-flex items-center px-1.5 py-0.5 rounded ${colorClass} text-xs font-medium">${displayText}</span>`;
 		});
@@ -724,7 +724,7 @@
 		type="button"
 		onclick={openChatAbout}
 		disabled={isSaving || !project}
-		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
+		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
 		title="Chat about this project"
 	>
 		<img
@@ -738,7 +738,7 @@
 		type="button"
 		onclick={handleClose}
 		disabled={isSaving}
-		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 		aria-label="Close modal"
 	>
 		<X class="h-5 w-5" />
@@ -756,7 +756,7 @@
 >
 	{#snippet header()}
 		<EntityModalHeader
-			title={name || project?.name || 'Project Settings'}
+			title={name || project?.name || 'Project settings'}
 			icon={headerIcon}
 			actions={headerActions}
 		/>
@@ -776,27 +776,27 @@
 			>
 				<!-- Content Section (Takes most space) -->
 				<div
-					class="flex h-full min-h-0 min-w-0 flex-col space-y-3 rounded-lg border border-border bg-card shadow-ink transition-all duration-200"
+					class="flex h-full min-h-0 min-w-0 flex-col space-y-3 rounded-xl border border-border bg-card shadow-ink"
 				>
 					<!-- Project Name Header -->
 					<div
-						class="rounded-t-lg border-b border-border bg-muted p-3 tx tx-frame tx-weak sm:p-4"
+						class="rounded-t-xl border-b border-border bg-muted p-3 tx tx-frame tx-weak sm:p-4"
 					>
 						<label
 							for="project-name"
-							class="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5"
+							class="block text-xs font-medium text-muted-foreground mb-2"
 						>
-							Project Name <span class="text-destructive ml-0.5">*</span>
+							Project name <span class="text-destructive ml-0.5">*</span>
 						</label>
 						<TextInput
 							id="project-name"
 							form={projectEditFormId}
 							bind:value={name}
-							placeholder="Enter a clear, memorable project name"
+							placeholder="A clear, memorable name"
 							size="lg"
 							required
 							disabled={isSaving}
-							class="font-semibold text-lg"
+							class="font-medium text-lg"
 						/>
 					</div>
 
@@ -806,10 +806,10 @@
 					>
 						<!-- Description -->
 						<div>
-							<div class="flex items-center justify-between mb-1.5">
+							<div class="flex items-center justify-between mb-2">
 								<span
 									id="project-description-label"
-									class="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+									class="text-xs font-medium text-muted-foreground"
 								>
 									Description
 								</span>
@@ -817,7 +817,7 @@
 									type="button"
 									onclick={() => (descriptionEditMode = !descriptionEditMode)}
 									disabled={isSaving}
-									class="inline-flex items-center gap-1.5 h-7 px-2 text-xs font-medium text-muted-foreground hover:text-foreground rounded-md transition-colors disabled:opacity-50 pressable"
+									class="inline-flex items-center gap-1 h-7 px-2 text-xs font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground rounded-lg transition-colors disabled:opacity-50"
 								>
 									{#if descriptionEditMode}
 										<Eye class="w-3.5 h-3.5" />
@@ -844,15 +844,9 @@
 						<div class="pt-3 border-t border-border">
 							<div class="flex items-center justify-between mb-2">
 								<div class="flex items-center gap-2">
-									<div
-										class="w-6 h-6 rounded-full bg-accent/15 flex items-center justify-center"
-									>
-										<Zap class="w-3.5 h-3.5 text-accent" />
-									</div>
-									<span
-										class="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
-									>
-										Next Move
+									<Zap class="w-4 h-4 text-muted-foreground" />
+									<span class="text-xs font-medium text-muted-foreground">
+										Next move
 									</span>
 									{#if nextStepSource && nextStepTimeAgo}
 										<span class="text-2xs text-muted-foreground">
@@ -860,13 +854,13 @@
 										</span>
 									{/if}
 								</div>
-								<div class="flex items-center gap-1.5">
+								<div class="flex items-center gap-1">
 									<!-- Generate/Regenerate button -->
 									<button
 										type="button"
 										onclick={handleGenerateNextStep}
 										disabled={isGeneratingNextStep || isSaving}
-										class="inline-flex items-center justify-center gap-1.5 h-8 min-w-8 px-2 sm:px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-muted rounded-md transition-colors disabled:opacity-50 pressable"
+										class="inline-flex items-center justify-center gap-1 h-8 min-w-8 px-2 text-xs font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground rounded-lg transition-colors disabled:opacity-50"
 										title={hasNextStep
 											? 'Regenerate with AI'
 											: 'Generate with AI'}
@@ -875,7 +869,7 @@
 											<LoaderCircle
 												class="w-4 h-4 sm:w-3.5 sm:h-3.5 animate-spin shrink-0"
 											/>
-											<span class="hidden sm:inline">Generating...</span>
+											<span class="hidden sm:inline">Generating…</span>
 										{:else if hasNextStep}
 											<RefreshCw class="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" />
 											<span class="hidden sm:inline">Regenerate</span>
@@ -890,7 +884,7 @@
 											type="button"
 											onclick={handleClearNextStep}
 											disabled={isSaving}
-											class="inline-flex items-center justify-center h-8 w-8 sm:h-auto sm:w-auto sm:p-1.5 text-muted-foreground hover:text-destructive rounded transition-colors disabled:opacity-50"
+											class="inline-flex items-center justify-center h-8 w-8 text-muted-foreground hover:bg-muted/50 hover:text-destructive rounded-lg transition-colors disabled:opacity-50"
 											title="Clear next step"
 										>
 											<X class="w-4 h-4 sm:w-3.5 sm:h-3.5" />
@@ -904,7 +898,7 @@
 								<TextInput
 									form={projectEditFormId}
 									bind:value={nextStepShort}
-									placeholder="What's the next concrete action for this project?"
+									placeholder="The next concrete action"
 									disabled={isSaving || isGeneratingNextStep}
 									class="font-medium"
 								/>
@@ -915,7 +909,7 @@
 										<Textarea
 											form={projectEditFormId}
 											bind:value={nextStepLong}
-											placeholder="Add more context or details about the next step (optional)"
+											placeholder="More context on the next step"
 											rows={2}
 											disabled={isSaving || isGeneratingNextStep}
 											class="text-sm text-muted-foreground resize-none"
@@ -925,10 +919,10 @@
 									<!-- Preview of rendered long content with entity badges -->
 									{#if nextStepLong && hasEntityLinks(nextStepLong)}
 										<div
-											class="mt-2 p-2.5 rounded-md bg-muted border border-border"
+											class="mt-2 p-3 rounded-lg bg-muted/50 border border-border"
 										>
 											<span
-												class="text-2xs font-medium text-muted-foreground uppercase tracking-wider block mb-1.5"
+												class="text-xs font-medium text-muted-foreground block mb-1"
 											>
 												Preview
 											</span>
@@ -944,7 +938,7 @@
 
 							<!-- Empty state hint -->
 							{#if !hasNextStep && !isGeneratingNextStep}
-								<p class="text-xs text-muted-foreground mt-2 italic">
+								<p class="text-xs text-muted-foreground mt-2">
 									Set a clear next action to keep momentum on this project
 								</p>
 							{/if}
@@ -953,14 +947,14 @@
 						<!-- Context Document - Main Focus -->
 						{#if contextDocument}
 							<div class="flex-1 flex flex-col pt-3 border-t border-border">
-								<div class="flex items-center justify-between mb-1.5">
+								<div class="flex items-center justify-between mb-2">
 									<div class="flex items-center gap-2">
-										<FileText class="w-4 h-4 text-accent" />
+										<FileText class="w-4 h-4 text-muted-foreground" />
 										<span
 											id="context-document-label"
-											class="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+											class="text-xs font-medium text-muted-foreground"
 										>
-											Context Document
+											Context document
 										</span>
 									</div>
 									<div class="flex items-center gap-1">
@@ -968,7 +962,7 @@
 											type="button"
 											onclick={() => (contextEditMode = !contextEditMode)}
 											disabled={isSaving}
-											class="inline-flex items-center gap-1.5 h-7 px-2 text-xs font-medium text-muted-foreground hover:text-foreground rounded-md transition-colors disabled:opacity-50 pressable"
+											class="inline-flex items-center gap-1 h-7 px-2 text-xs font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground rounded-lg transition-colors disabled:opacity-50"
 										>
 											{#if contextEditMode}
 												<Eye class="w-3.5 h-3.5" />
@@ -983,7 +977,7 @@
 											onclick={copyContext}
 											variant="ghost"
 											size="sm"
-											class="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+											class="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
 										>
 											<Copy class="w-3.5 h-3.5" />
 											<span class="hidden sm:inline">Copy</span>
@@ -1007,26 +1001,28 @@
 
 						<!-- Character Counts -->
 						<div
-							class="flex flex-wrap gap-3 sm:gap-4 text-xs text-muted-foreground pt-2.5 border-t border-border"
+							class="flex flex-wrap gap-3 sm:gap-4 text-xs text-muted-foreground pt-3 border-t border-border"
 						>
 							{#if description.length > 0}
-								<span class="flex items-center gap-1.5">
-									<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
-									<span class="font-medium"
+								<span class="flex items-center gap-2">
+									<span class="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full"
+									></span>
+									<span class="font-mono tabular-nums"
 										>{description.length.toLocaleString()}</span
 									> description
 								</span>
 							{/if}
 							{#if contextDocumentBody.length > 0}
-								<span class="flex items-center gap-1.5">
-									<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
-									<span class="font-medium"
+								<span class="flex items-center gap-2">
+									<span class="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full"
+									></span>
+									<span class="font-mono tabular-nums"
 										>{contextDocumentBody.length.toLocaleString()}</span
 									> context
 								</span>
 							{/if}
 							{#if !description && !contextDocumentBody}
-								<span class="text-muted-foreground italic text-center flex-1">
+								<span class="text-muted-foreground text-center flex-1">
 									Add project details to enable better organization
 								</span>
 							{/if}
@@ -1038,15 +1034,17 @@
 				<EntityModalDetailsDrawer panelLabel="Project details">
 					<Card variant="elevated" class="wt-card">
 						<CardHeader variant="muted" texture="strip" padding="sm">
-							<h3 class="text-sm font-semibold text-foreground">Project settings</h3>
+							<h3 class="text-sm font-medium text-foreground">Project settings</h3>
 						</CardHeader>
 						<CardBody padding="none">
 							<div class="divide-y divide-border/70">
 								<!-- Workflow -->
-								<section class="px-2.5 py-2.5 sm:px-4 sm:py-3">
+								<section class="px-3 py-3 sm:px-4">
 									<div class="flex items-center gap-2">
 										<FileText class="h-4 w-4 text-muted-foreground" />
-										<p class="micro-label">Workflow</p>
+										<p class="text-xs font-medium text-muted-foreground">
+											Workflow
+										</p>
 									</div>
 									<div class="mt-2 space-y-2">
 										<div
@@ -1079,10 +1077,12 @@
 								</section>
 
 								<!-- Facets -->
-								<section class="px-2.5 py-2.5 sm:px-4 sm:py-3">
+								<section class="px-3 py-3 sm:px-4">
 									<div class="flex items-center gap-2">
 										<Compass class="h-4 w-4 text-muted-foreground" />
-										<p class="micro-label">Facets</p>
+										<p class="text-xs font-medium text-muted-foreground">
+											Facets
+										</p>
 									</div>
 									<div class="mt-2 space-y-2">
 										<div
@@ -1170,10 +1170,12 @@
 								</section>
 
 								<!-- Timeline -->
-								<section class="px-2.5 py-2.5 sm:px-4 sm:py-3">
+								<section class="px-3 py-3 sm:px-4">
 									<div class="flex items-center gap-2">
 										<CalendarRange class="h-4 w-4 text-muted-foreground" />
-										<p class="micro-label">Timeline</p>
+										<p class="text-xs font-medium text-muted-foreground">
+											Timeline
+										</p>
 									</div>
 									<div class="mt-2 grid grid-cols-1 gap-2">
 										<div
@@ -1264,7 +1266,7 @@
 
 								<!-- Quiet read-only metadata -->
 								{#if createdDateLong || updatedDateLong}
-									<section class="px-2.5 py-2.5 sm:px-4 sm:py-3">
+									<section class="px-3 py-3 sm:px-4">
 										<dl class="grid min-w-0 grid-cols-2 gap-3">
 											{#if createdDateLong && project.created_at}
 												<div class="min-w-0">
@@ -1274,7 +1276,7 @@
 														Created
 													</dt>
 													<dd
-														class="mt-0.5 truncate text-xs text-foreground"
+														class="mt-1 truncate text-xs text-foreground"
 													>
 														<time datetime={project.created_at}
 															>{createdDateLong}</time
@@ -1290,7 +1292,7 @@
 														Updated
 													</dt>
 													<dd
-														class="mt-0.5 truncate text-xs text-foreground"
+														class="mt-1 truncate text-xs text-foreground"
 													>
 														<time datetime={project.updated_at}
 															>{updatedDateLong}</time
@@ -1304,10 +1306,12 @@
 
 								<!-- Tags -->
 								{#if hasTags}
-									<section class="px-2.5 py-2.5 sm:px-4 sm:py-3">
+									<section class="px-3 py-3 sm:px-4">
 										<div class="flex items-center gap-2 mb-2">
 											<TagIcon class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label">Tags</p>
+											<p class="text-xs font-medium text-muted-foreground">
+												Tags
+											</p>
 										</div>
 										<TagsDisplay
 											props={project.props}
@@ -1354,7 +1358,7 @@
 								size="sm"
 								onclick={() => (showDeleteConfirm = true)}
 								disabled={isDeleting || isSaving}
-								class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8 pressable"
+								class="text-muted-foreground hover:text-destructive hover:bg-muted/50 text-xs px-2 h-8"
 							>
 								<Trash2 class="w-3.5 h-3.5" />
 								<span class="hidden sm:inline ml-1">Delete</span>
@@ -1368,7 +1372,7 @@
 							size="sm"
 							onclick={handleClose}
 							disabled={isSaving || isDeleting}
-							class="text-xs h-8 pressable"
+							class="text-xs h-8"
 						>
 							Cancel
 						</Button>
@@ -1378,7 +1382,7 @@
 							size="sm"
 							loading={isSaving}
 							disabled={isSaving || isDeleting}
-							class="text-xs h-8 pressable"
+							class="text-xs h-8"
 						>
 							<Save class="w-3.5 h-3.5" />
 							<span class="ml-1">Save</span>

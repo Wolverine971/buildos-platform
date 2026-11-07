@@ -56,7 +56,7 @@
 		{#if showLabel && !compact}
 			<div class="flex items-center gap-1.5 text-xs text-muted-foreground">
 				<Tag class="w-3 h-3" />
-				<span class="font-medium uppercase tracking-wide">Tags</span>
+				<span class="font-medium">Tags</span>
 				{#if classificationInfo?.confidence}
 					<span class="text-2xs opacity-70">
 						({Math.round((classificationInfo.confidence as number) * 100)}% confidence)
@@ -66,7 +66,7 @@
 		{/if}
 		<div class="flex flex-wrap gap-1.5">
 			{#each displayTags as tag}
-				<Badge variant="accent" {size} class="font-normal">
+				<Badge variant="default" {size} class="font-normal">
 					{tag}
 				</Badge>
 			{/each}

@@ -43,7 +43,7 @@
 		Pencil,
 		CircleCheck,
 		RotateCcw
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import { getProseClasses, renderTaskMarkdown } from '$lib/utils/markdown';
 	import Button from '$lib/components/ui/Button.svelte';
 	import OrganizeEntryButton from '$lib/components/organize/OrganizeEntryButton.svelte';
@@ -53,7 +53,6 @@
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
-	import Badge from '$lib/components/ui/Badge.svelte';
 	import TaskAssigneeSelector from './TaskAssigneeSelector.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TaskEntityPopover from '$lib/components/task-entities/TaskEntityPopover.svelte';
@@ -412,7 +411,7 @@
 		return {
 			focusType: 'task',
 			focusEntityId: taskId,
-			focusEntityName: task.title || 'Untitled Task',
+			focusEntityName: task.title || 'Untitled task',
 			projectId: projectId,
 			projectName: task.project?.name || 'Project'
 		};
@@ -1044,7 +1043,7 @@
 		type="button"
 		onclick={openChatAbout}
 		disabled={isLoading || isSaving || !task}
-		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 		title="Chat about this task"
 	>
 		<img
@@ -1058,7 +1057,7 @@
 		type="button"
 		onclick={handleClose}
 		disabled={isSaving || isDeleting}
-		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:bg-card hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 		aria-label="Close modal"
 	>
 		<X class="w-5 h-5" />
@@ -1112,7 +1111,7 @@
 									<div class="flex items-end justify-between gap-2 mb-2">
 										<label
 											for={titleInputId}
-											class="block text-sm font-semibold text-foreground"
+											class="block text-sm font-medium text-foreground"
 										>
 											Title
 											<span class="text-destructive ml-0.5">*</span>
@@ -1123,7 +1122,7 @@
 											disabled={isSaving ||
 												isGeneratingTitle ||
 												!description.trim()}
-											class="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-border bg-card text-xs font-medium text-muted-foreground shadow-ink transition-all pressable hover:border-accent hover:text-accent disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:text-muted-foreground tx tx-grain tx-weak"
+											class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground tx tx-grain tx-weak"
 											aria-label="Auto-generate title from description"
 										>
 											{#if isGeneratingTitle}
@@ -1140,7 +1139,7 @@
 										bind:value={title}
 										inputmode="text"
 										enterkeyhint="next"
-										placeholder="Task title..."
+										placeholder="Task title"
 										required={true}
 										disabled={isSaving || isGeneratingTitle}
 										error={!title.trim() && error ? true : false}
@@ -1173,12 +1172,12 @@
 										{#if descriptionEditing}
 											<label
 												for={descriptionInputId}
-												class="block text-sm font-semibold text-foreground"
+												class="block text-sm font-medium text-foreground"
 											>
 												Description
 											</label>
 										{:else}
-											<h3 class="text-sm font-semibold text-foreground">
+											<h3 class="text-sm font-medium text-foreground">
 												Description
 											</h3>
 										{/if}
@@ -1187,7 +1186,7 @@
 												type="button"
 												onclick={toggleDescriptionEditing}
 												disabled={isSaving}
-												class="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground pressable hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 [@media(pointer:fine)]:min-h-7"
+												class="inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 [@media(pointer:fine)]:min-h-7"
 												aria-pressed={!descriptionEditing}
 											>
 												{#if descriptionEditing}
@@ -1205,7 +1204,7 @@
 											id={descriptionInputId}
 											bind:value={description}
 											enterkeyhint="next"
-											placeholder="Add the context, expected outcome, or handoff notes..."
+											placeholder="Context, expected outcome, or handoff notes"
 											rows={4}
 											autoResize={true}
 											maxRows={16}
@@ -1218,7 +1217,7 @@
 										<div
 											class="{getProseClasses(
 												'sm'
-											)} max-w-none rounded-lg border border-border/70 bg-card px-3 py-2.5 text-foreground [overflow-wrap:anywhere]"
+											)} max-w-none rounded-lg border border-border/70 bg-card px-3 py-2 text-foreground [overflow-wrap:anywhere]"
 											{@attach entityMentions({
 												html: descriptionHtml,
 												targets: taskEntities.targets,
@@ -1235,7 +1234,7 @@
 
 						{#if error}
 							<div
-								class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 shadow-ink-inner"
+								class="rounded-lg border border-destructive/30 bg-destructive/10 p-3"
 							>
 								<p class="text-sm text-destructive">{error}</p>
 							</div>
@@ -1271,7 +1270,9 @@
 								>
 									<div class="flex items-center gap-2">
 										<SlidersHorizontal class="h-4 w-4 text-muted-foreground" />
-										<p class="micro-label font-semibold">Workflow</p>
+										<p class="text-xs font-medium text-muted-foreground">
+											Workflow
+										</p>
 									</div>
 
 									<div class="mt-2 space-y-2">
@@ -1293,15 +1294,7 @@
 											>
 												{#each TASK_STATES as state (state)}
 													<option value={state}>
-														{state === 'todo'
-															? 'To Do'
-															: state === 'in_progress'
-																? 'In Progress'
-																: state === 'blocked'
-																	? 'Blocked'
-																	: state === 'done'
-																		? 'Done'
-																		: state}
+														{TASK_STATE_META[state]?.label ?? state}
 													</option>
 												{/each}
 											</Select>
@@ -1359,7 +1352,7 @@
 
 										{#if stateKey === 'done' && completedAt}
 											<div
-												class="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-xs text-success"
+												class="rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-xs text-success"
 											>
 												Completed {format(new Date(completedAt), 'PPpp')}
 											</div>
@@ -1376,23 +1369,39 @@
 									<div class="flex items-center justify-between gap-2">
 										<div class="flex items-center gap-2">
 											<CalendarRange class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Timeline</p>
+											<p class="text-xs font-medium text-muted-foreground">
+												Timeline
+											</p>
 										</div>
 										{#if dueMeta}
-											<Badge variant={dueMeta.variant} size="sm"
-												>{dueMeta.label}</Badge
+											<span
+												class="inline-flex items-center gap-2 text-xs {dueMeta.variant ===
+												'error'
+													? 'text-destructive'
+													: 'text-muted-foreground'}"
 											>
+												<span
+													class="h-1.5 w-1.5 rounded-full {dueMeta.variant ===
+													'error'
+														? 'bg-destructive'
+														: dueMeta.variant === 'success'
+															? 'bg-success'
+															: 'bg-muted-foreground/60'}"
+													aria-hidden="true"
+												></span>
+												{dueMeta.label}
+											</span>
 										{/if}
 									</div>
 
 									{#if dueMeta?.variant === 'error'}
 										<div
-											class="mt-2 flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2"
+											class="mt-2 flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2"
 										>
 											<CircleAlert
 												class="h-3.5 w-3.5 shrink-0 text-destructive"
 											/>
-											<p class="text-xs font-semibold text-destructive">
+											<p class="text-xs font-medium text-destructive">
 												{dueMeta.note}
 											</p>
 										</div>
@@ -1463,13 +1472,15 @@
 											<Button
 												size="sm"
 												variant="ghost"
-												class="shrink-0 text-xs pressable"
+												class="shrink-0 text-xs"
 												onclick={openSeriesModal}
 											>
 												Set up
 											</Button>
 										{:else}
-											<Badge variant="accent" size="sm">Recurring</Badge>
+											<span class="shrink-0 text-xs text-muted-foreground"
+												>Recurring</span
+											>
 										{/if}
 									</div>
 
@@ -1488,14 +1499,14 @@
 													class="w-full"
 													onclick={() => (showSeriesDeleteConfirm = true)}
 												>
-													Delete Series
+													Delete series
 												</Button>
 											{:else}
 												<p class="text-xs text-muted-foreground">
 													Delete this series? Completed instances remain
 													unless you force delete.
 												</p>
-												<div class="mt-1.5 flex flex-wrap gap-1.5">
+												<div class="mt-2 flex flex-wrap gap-2">
 													<Button
 														variant="danger"
 														size="sm"
@@ -1508,7 +1519,7 @@
 															/>
 															Removing…
 														{:else}
-															Delete Upcoming
+															Delete upcoming
 														{/if}
 													</Button>
 													<Button
@@ -1523,7 +1534,7 @@
 															/>
 															Removing…
 														{:else}
-															Force Delete All
+															Force delete all
 														{/if}
 													</Button>
 													<Button
@@ -1542,7 +1553,7 @@
 										</div>
 									{:else if isSeriesInstance}
 										<p class="mt-2 text-xs text-muted-foreground">
-											Cadence inherited from parent series.
+											Cadence inherited from parent series
 										</p>
 									{/if}
 								</section>
@@ -1552,7 +1563,9 @@
 									<section class="px-3 py-3 sm:px-4">
 										<div class="flex items-center gap-2 mb-2">
 											<TagIcon class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Tags</p>
+											<p class="text-xs font-medium text-muted-foreground">
+												Tags
+											</p>
 										</div>
 										<TagsDisplay props={task.props} size="sm" compact={true} />
 									</section>
@@ -1563,15 +1576,17 @@
 									<button
 										type="button"
 										onclick={() => (showLinkedEntities = !showLinkedEntities)}
-										class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity"
 										aria-expanded={showLinkedEntities}
 									>
 										<div class="flex items-center gap-2">
 											<LinkIcon class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Linked Entities</p>
+											<p class="text-xs font-medium text-muted-foreground">
+												Linked
+											</p>
 										</div>
 										<ChevronDown
-											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showLinkedEntities
+											class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] {showLinkedEntities
 												? 'rotate-180'
 												: ''}"
 										/>
@@ -1594,15 +1609,17 @@
 									<button
 										type="button"
 										onclick={() => (showImages = !showImages)}
-										class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity"
 										aria-expanded={showImages}
 									>
 										<div class="flex items-center gap-2">
 											<ImageIcon class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Images</p>
+											<p class="text-xs font-medium text-muted-foreground">
+												Images
+											</p>
 										</div>
 										<ChevronDown
-											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showImages
+											class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] {showImages
 												? 'rotate-180'
 												: ''}"
 										/>
@@ -1629,15 +1646,17 @@
 									<button
 										type="button"
 										onclick={() => (showActivityLog = !showActivityLog)}
-										class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity"
 										aria-expanded={showActivityLog}
 									>
 										<div class="flex items-center gap-2">
 											<Activity class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Activity</p>
+											<p class="text-xs font-medium text-muted-foreground">
+												Activity
+											</p>
 										</div>
 										<ChevronDown
-											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showActivityLog
+											class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] {showActivityLog
 												? 'rotate-180'
 												: ''}"
 										/>
@@ -1701,7 +1720,7 @@
 						size="sm"
 						onclick={() => (showDeleteConfirm = true)}
 						disabled={isDeleting || isSaving}
-						class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8 pressable"
+						class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8"
 					>
 						<Trash2 class="w-3.5 h-3.5" />
 						<span class="hidden sm:inline ml-1">Delete</span>
@@ -1714,7 +1733,7 @@
 						size="sm"
 						onclick={toggleDone}
 						disabled={isSaving || isDeleting || !title.trim()}
-						class="text-xs h-8 pressable"
+						class="text-xs h-8"
 					>
 						{#if stateKey === 'done'}
 							<RotateCcw class="w-3.5 h-3.5" />
@@ -1730,7 +1749,7 @@
 						size="sm"
 						onclick={handleClose}
 						disabled={isSaving || isDeleting}
-						class="text-xs h-8 pressable"
+						class="text-xs h-8"
 					>
 						Cancel
 					</Button>
@@ -1741,7 +1760,7 @@
 						size="sm"
 						loading={isSaving}
 						disabled={isSaving || isDeleting || !title.trim()}
-						class="text-xs h-8 pressable"
+						class="text-xs h-8"
 					>
 						<Save class="w-3.5 h-3.5" />
 						<span class="ml-1">Save</span>
@@ -1765,15 +1784,15 @@
 {#if showDeleteConfirm}
 	<ConfirmationModal
 		isOpen={showDeleteConfirm}
-		title="Delete Task"
+		title="Delete task"
 		confirmText={hasCalendarLink
 			? deleteFromCalendar
-				? 'Delete + Calendar'
+				? 'Delete + calendar'
 				: 'Delete only here'
-			: 'Delete Task'}
+			: 'Delete task'}
 		confirmVariant="danger"
 		loading={isDeleting}
-		loadingText="Deleting..."
+		loadingText="Deleting…"
 		icon="danger"
 		onconfirm={handleDelete}
 		oncancel={() => (showDeleteConfirm = false)}
@@ -1797,9 +1816,7 @@
 						</span>
 					</label>
 				{:else}
-					<p class="text-xs text-muted-foreground italic">
-						No linked calendar events found.
-					</p>
+					<p class="text-xs text-muted-foreground italic">No linked calendar events</p>
 				{/if}
 			</div>
 		{/snippet}

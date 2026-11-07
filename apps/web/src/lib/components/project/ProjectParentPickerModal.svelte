@@ -185,7 +185,7 @@
 	<div class="space-y-3 p-3 sm:p-4">
 		{#if canMove}
 			<p class="text-sm text-muted-foreground">
-				Put <span class="font-semibold text-foreground">{displayName}</span> inside the project
+				Put <span class="font-medium text-foreground">{displayName}</span> inside the project
 				it belongs to. Documents shared by that project will show on this project's Docs tab.
 			</p>
 		{/if}
@@ -194,10 +194,10 @@
 			<div
 				class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-border bg-muted/40 px-3 py-2 tx tx-thread tx-weak"
 			>
-				<FolderUp class="h-4 w-4 shrink-0 text-info" aria-hidden="true" />
+				<FolderUp class="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
 				<div class="min-w-0 flex-1">
-					<p class="micro-label">Part of</p>
-					<p class="truncate text-sm font-semibold text-foreground">
+					<p class="text-xs font-medium text-muted-foreground">Part of</p>
+					<p class="truncate text-sm font-medium text-foreground">
 						{currentParent.name || 'Untitled project'}
 					</p>
 				</div>
@@ -244,9 +244,9 @@
 					type="search"
 					bind:value={searchTerm}
 					data-autofocus
-					placeholder="Search projects..."
+					placeholder="Search projects"
 					aria-label="Search projects"
-					class="relative min-h-11 w-full rounded-lg border border-border-strong bg-background py-2 pl-9 pr-3 text-base text-foreground shadow-ink-inner placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring sm:text-sm [&::-webkit-search-cancel-button]:appearance-none"
+					class="relative min-h-11 w-full rounded-lg border border-border-strong bg-background py-2 pl-9 pr-3 text-base text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring sm:text-sm [&::-webkit-search-cancel-button]:appearance-none"
 				/>
 			</div>
 
@@ -270,10 +270,10 @@
 					</div>
 				{:else if results.length === 0}
 					<p class="py-8 text-center text-sm text-muted-foreground">
-						{normalizedSearch ? 'No matching projects.' : 'No other projects yet.'}
+						{normalizedSearch ? 'No matching projects' : 'No other projects yet'}
 					</p>
 				{:else}
-					<ul class="space-y-0.5" aria-label="Projects">
+					<ul class="space-y-1" aria-label="Projects">
 						{#each results as candidate (candidate.id)}
 							{@const reason = unavailableReason(candidate)}
 							{@const isSelected = selectedId === candidate.id}
@@ -288,11 +288,11 @@
 										selectedId = isSelected ? null : candidate.id;
 										errorMessage = null;
 									}}
-									class="flex min-h-11 w-full min-w-0 items-center gap-2.5 rounded-lg border px-2.5 py-2 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-not-allowed motion-reduce:transition-none {isSelected
-										? 'border-accent/50 bg-accent/10'
-										: 'border-transparent hover:bg-muted/60'} {reason
+									class="flex min-h-11 w-full min-w-0 items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-not-allowed motion-reduce:transition-none {isSelected
+										? 'border-accent/50 bg-accent/5'
+										: 'border-transparent hover:bg-muted/50'} {reason
 										? 'opacity-60'
-										: 'pressable'}"
+										: ''}"
 								>
 									<FolderKanban
 										class="h-4 w-4 shrink-0 {isSelected
@@ -302,7 +302,7 @@
 									/>
 									<span class="min-w-0 flex-1">
 										<span
-											class="block truncate text-sm font-semibold text-foreground"
+											class="block truncate text-sm font-medium text-foreground"
 										>
 											{candidate.name}
 										</span>
@@ -314,7 +314,7 @@
 									</span>
 									{#if reason}
 										<span
-											class="max-w-[50%] shrink-0 truncate rounded-md bg-muted px-1.5 py-0.5 text-2xs font-medium text-muted-foreground"
+											class="max-w-[50%] shrink-0 truncate text-xs text-muted-foreground"
 											title={reason}
 										>
 											{reason}

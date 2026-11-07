@@ -88,9 +88,9 @@
 	// Get modal title based on notification type (fallback for generic view)
 	let modalTitle = $derived(
 		notification.type === 'project-synthesis'
-			? `Project Synthesis - ${notification.data.projectName}`
+			? `Project synthesis — ${notification.data.projectName}`
 			: notification.type === 'calendar-analysis'
-				? 'Calendar Analysis'
+				? 'Calendar analysis'
 				: notification.type === 'generic'
 					? notification.data.title
 					: notification.type === 'agent-run'
@@ -100,7 +100,7 @@
 								notification.data.label
 							)
 						: notification.type === 'time-block'
-							? 'Time Block Suggestions'
+							? 'Time block suggestions'
 							: 'Processing'
 	);
 	let progressPercentage = $derived.by(() => {
@@ -160,11 +160,11 @@
 				{#if notification.status === 'processing'}
 					<div class="text-center py-8">
 						<LoaderCircle
-							class="w-12 h-12 text-accent animate-spin motion-reduce:animate-none mx-auto mb-4"
+							class="w-12 h-12 text-muted-foreground animate-spin motion-reduce:animate-none mx-auto mb-4"
 							aria-hidden="true"
 						/>
 						<p class="text-muted-foreground" aria-live="polite">
-							{notification.progress?.message || 'Processing...'}
+							{notification.progress?.message || 'Processing'}
 						</p>
 
 						<!-- Progress bar for percentage-based progress -->
@@ -193,23 +193,16 @@
 								{#each notification.progress.steps as step (step.key ?? step)}
 									<div class="flex items-center gap-3">
 										<div
-											class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center
-											{step.status === 'completed'
-												? 'bg-accent/10'
-												: step.status === 'processing'
-													? 'bg-accent/10'
-													: step.status === 'error'
-														? 'bg-destructive/10'
-														: 'bg-muted'}"
+											class="flex-shrink-0 w-6 h-6 flex items-center justify-center"
 										>
 											{#if step.status === 'completed'}
 												<CircleCheck
-													class="w-4 h-4 text-accent"
+													class="w-4 h-4 text-muted-foreground"
 													aria-hidden="true"
 												/>
 											{:else if step.status === 'processing'}
 												<LoaderCircle
-													class="w-4 h-4 text-accent animate-spin motion-reduce:animate-none"
+													class="w-4 h-4 text-foreground animate-spin motion-reduce:animate-none"
 													aria-hidden="true"
 												/>
 											{:else if step.status === 'error'}
@@ -219,7 +212,7 @@
 												/>
 											{:else}
 												<div
-													class="w-2 h-2 bg-muted-foreground rounded-full"
+													class="w-1.5 h-1.5 bg-muted-foreground/60 rounded-full"
 												></div>
 											{/if}
 										</div>
@@ -237,10 +230,10 @@
 				{:else if notification.status === 'success'}
 					<div class="text-center py-8">
 						<CircleCheck
-							class="w-16 h-16 text-accent mx-auto mb-4"
+							class="w-12 h-12 text-muted-foreground mx-auto mb-4"
 							aria-hidden="true"
 						/>
-						<h3 class="text-lg font-semibold text-foreground mb-2">All set</h3>
+						<h3 class="text-lg font-medium text-foreground mb-2">All set</h3>
 						<p class="text-muted-foreground">
 							{notification.type === 'calendar-analysis'
 								? 'Calendar analyzed successfully'
@@ -252,10 +245,10 @@
 				{:else if notification.status === 'error'}
 					<div class="text-center py-8">
 						<AlertCircle
-							class="w-16 h-16 text-destructive mx-auto mb-4"
+							class="w-12 h-12 text-destructive mx-auto mb-4"
 							aria-hidden="true"
 						/>
-						<h3 class="text-lg font-semibold text-foreground mb-2">
+						<h3 class="text-lg font-medium text-foreground mb-2">
 							Something went wrong
 						</h3>
 						<p class="text-destructive">
@@ -276,7 +269,7 @@
 				>
 					{#if notification.status === 'success' && notification.actions?.view}
 						<Button onclick={notification.actions.view} variant="primary" size="md">
-							View Results
+							View results
 						</Button>
 					{/if}
 					{#if notification.status === 'error' && notification.actions?.retry}

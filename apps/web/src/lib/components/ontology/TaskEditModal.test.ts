@@ -122,8 +122,8 @@ describe('TaskEditModal task loading', () => {
 		expect(closeButton.parentElement).toHaveClass('right-80');
 		expect(panel).toHaveAttribute('aria-hidden', 'false');
 		expect((panel as HTMLElement & { inert: boolean }).inert).toBe(false);
-		expect(screen.getByText('TASK DETAILS')).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'Linked Entities' })).toHaveAttribute(
+		expect(screen.getByText('Task details')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Linked' })).toHaveAttribute(
 			'aria-expanded',
 			'false'
 		);
@@ -533,7 +533,7 @@ describe('TaskEditModal task loading', () => {
 			)
 		);
 		await waitFor(() =>
-			expect(screen.getByRole('button', { name: 'Delete + Calendar' })).toBeInTheDocument()
+			expect(screen.getByRole('button', { name: 'Delete + calendar' })).toBeInTheDocument()
 		);
 
 		requireTestValue(calendarRequests[0]).response.resolve(
@@ -544,6 +544,6 @@ describe('TaskEditModal task loading', () => {
 		);
 		await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-		expect(screen.getByRole('button', { name: 'Delete + Calendar' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Delete + calendar' })).toBeInTheDocument();
 	});
 });

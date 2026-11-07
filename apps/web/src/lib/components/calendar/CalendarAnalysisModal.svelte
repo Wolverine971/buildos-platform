@@ -54,9 +54,9 @@
 
 <ConfirmationModal
 	{isOpen}
-	title={onFirstConnection ? 'Welcome to Calendar Intelligence!' : 'Analyze Your Calendar?'}
-	confirmText="Analyze Calendar"
-	cancelText="Skip for Now"
+	title={onFirstConnection ? 'Your calendar is connected' : 'Analyze your calendar?'}
+	confirmText="Analyze calendar"
+	cancelText="Skip for now"
 	icon="info"
 	onconfirm={handleAnalyze}
 	oncancel={handleSkip}
@@ -68,30 +68,34 @@
 				events.
 			</p>
 
-			<div class="bg-accent/10 rounded-lg p-3 border border-accent/20 shadow-ink">
-				<h4 class="text-sm font-semibold text-foreground mb-2">What we'll look for:</h4>
-				<ul class="space-y-1.5 text-sm text-muted-foreground">
+			<div class="bg-muted/30 rounded-xl p-3 border border-border">
+				<h4 class="text-sm font-medium text-foreground mb-2">What we look for</h4>
+				<ul class="space-y-2 text-sm text-muted-foreground">
 					<li class="flex items-start gap-2">
-						<span class="text-accent font-bold mt-0.5 flex-shrink-0">✓</span>
+						<span class="text-muted-foreground flex-shrink-0" aria-hidden="true">✓</span
+						>
 						<span>Recurring meetings that might be ongoing projects</span>
 					</li>
 					<li class="flex items-start gap-2">
-						<span class="text-accent font-bold mt-0.5 flex-shrink-0">✓</span>
+						<span class="text-muted-foreground flex-shrink-0" aria-hidden="true">✓</span
+						>
 						<span>Related events like sprints, reviews, and milestones</span>
 					</li>
 					<li class="flex items-start gap-2">
-						<span class="text-accent font-bold mt-0.5 flex-shrink-0">✓</span>
+						<span class="text-muted-foreground flex-shrink-0" aria-hidden="true">✓</span
+						>
 						<span>Meeting patterns that suggest project work</span>
 					</li>
 					<li class="flex items-start gap-2">
-						<span class="text-accent font-bold mt-0.5 flex-shrink-0">✓</span>
+						<span class="text-muted-foreground flex-shrink-0" aria-hidden="true">✓</span
+						>
 						<span>Events with multiple attendees collaborating</span>
 					</li>
 				</ul>
 			</div>
 
 			<p class="text-xs text-muted-foreground">
-				<strong class="font-semibold text-foreground">Privacy:</strong> Your events are sent
+				<strong class="font-medium text-foreground">Privacy:</strong> Your events are sent
 				to an AI model under zero data retention. We keep only the title and time of the
 				events behind each suggestion, and delete them within {eventsWindow}. You'll review
 				and approve any suggestions before projects are created. This usually takes 10 to 30

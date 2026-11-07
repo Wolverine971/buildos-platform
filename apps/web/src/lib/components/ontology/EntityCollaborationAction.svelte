@@ -314,7 +314,7 @@
 		<div class="flex items-center justify-between gap-2">
 			<div class="flex items-center gap-2">
 				<Users class="h-4 w-4 text-muted-foreground" />
-				<p class="micro-label font-semibold">Collaborate</p>
+				<p class="text-xs font-medium text-muted-foreground">Collaborate</p>
 			</div>
 			{#if currentOwner}
 				<span
@@ -480,7 +480,7 @@
 	<div class="space-y-4 p-4 text-sm">
 		<div class="grid gap-3 rounded-md border border-border bg-card p-3 tx tx-frame tx-weak">
 			<div>
-				<p class="micro-label font-semibold">To</p>
+				<p class="text-xs font-medium text-muted-foreground">To</p>
 				<p class="mt-1 truncate text-foreground" title={selectedMember?.email ?? ''}>
 					{selectedMemberLabel}
 					{#if selectedMember?.email}
@@ -489,20 +489,20 @@
 				</p>
 			</div>
 			<div>
-				<p class="micro-label font-semibold">Subject</p>
+				<p class="text-xs font-medium text-muted-foreground">Subject</p>
 				<p class="mt-1 text-foreground">{emailPreviewSubject}</p>
 			</div>
 		</div>
 
 		<div class="rounded-md border border-border bg-background p-4 leading-relaxed tx tx-frame">
 			<p>{emailPreviewIntro}</p>
-			<p class="mt-3 font-semibold text-foreground">{entityTitle}</p>
+			<p class="mt-3 font-medium text-foreground">{entityTitle}</p>
 			<blockquote
 				class="mt-3 border-l-2 border-border pl-3 text-muted-foreground whitespace-pre-wrap"
 			>
 				{emailPreviewMessage}
 			</blockquote>
-			<p class="mt-4 text-sm font-semibold text-accent">Open in BuildOS</p>
+			<p class="mt-4 text-sm font-medium text-accent">Open in BuildOS</p>
 		</div>
 	</div>
 

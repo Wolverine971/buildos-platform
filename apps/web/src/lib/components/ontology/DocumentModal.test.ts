@@ -295,12 +295,12 @@ describe('DocumentModal document loading', () => {
 
 		await waitFor(
 			() => {
-				expect(screen.getByText('DOCUMENT CHAT')).toBeInTheDocument();
+				expect(screen.getByText('Document chat')).toBeInTheDocument();
 				expect(
 					screen.getByText('Ask BuildOS to explain, rewrite, or update this document.')
 				).toBeInTheDocument();
 				expect(
-					screen.getByPlaceholderText('Ask about or update this document...')
+					screen.getByPlaceholderText('Ask about or update this document')
 				).toBeInTheDocument();
 			},
 			{ timeout: 5_000 }
@@ -780,7 +780,7 @@ describe('DocumentModal document loading', () => {
 				await screen.findByRole('button', { name: 'Restore this version' })
 			);
 			await fireEvent.click(screen.getByRole('checkbox'));
-			await fireEvent.click(screen.getByRole('button', { name: 'Restore Version' }));
+			await fireEvent.click(screen.getByRole('button', { name: 'Restore version' }));
 			await waitFor(() =>
 				expect(
 					fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH')
@@ -836,7 +836,7 @@ describe('DocumentModal document loading', () => {
 			);
 			await waitFor(() => expect(document.querySelector('.cm-content')).toHaveFocus());
 			expect(
-				screen.queryByRole('button', { name: 'Restore Version' })
+				screen.queryByRole('button', { name: 'Restore version' })
 			).not.toBeInTheDocument();
 		}
 	);
@@ -1185,11 +1185,12 @@ describe('DocumentModal document loading', () => {
 		});
 
 		await waitFor(() => expect(screen.getByDisplayValue('Document A')).toBeInTheDocument());
-		await fireEvent.click(screen.getByText('Delete Permanently').closest('button')!);
+		await fireEvent.click(screen.getByText('Delete permanently').closest('button')!);
 		await waitFor(() =>
 			expect(screen.getByText('Delete archived document')).toBeInTheDocument()
 		);
-		await fireEvent.click(screen.getByText('Delete permanently').closest('button')!);
+		// The footer and the confirmation both say "Delete permanently"; the confirmation mounts last.
+		await fireEvent.click(screen.getAllByText('Delete permanently').at(-1)!.closest('button')!);
 		await waitFor(() =>
 			expect(fetchMock).toHaveBeenCalledWith(
 				'/api/onto/documents/document-a',
@@ -1390,7 +1391,7 @@ describe('DocumentModal document loading', () => {
 			);
 			await new Promise<void>((resolve) => setTimeout(resolve, 0));
 			await fireEvent.click(
-				screen.getByRole('button', { name: /PUBLIC PAGE/, hidden: true })
+				screen.getByRole('button', { name: /Public page/, hidden: true })
 			);
 			const share = await screen.findByRole('button', {
 				name: 'Share publicly',

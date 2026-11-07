@@ -28,8 +28,8 @@
 
 <WelcomeModal
 	bind:isOpen
-	title="Welcome to BuildOS!"
-	primaryButtonText="Start Setup"
+	title="Welcome to BuildOS"
+	primaryButtonText="Start setup"
 	secondaryButtonText="I'll do this later"
 	showTimeEstimate={true}
 	timeEstimate="Takes about 5 minutes"
@@ -39,9 +39,9 @@
 	onDismiss={handleDismiss}
 >
 	{#snippet icon()}
-		<div class="rounded-lg border border-border bg-card p-3 shadow-ink tx tx-frame tx-weak">
+		<div class="rounded-xl border border-border bg-card p-3 tx tx-frame tx-weak">
 			<div
-				class="flex h-14 w-14 items-center justify-center overflow-hidden rounded-md border border-border bg-muted shadow-ink-inner"
+				class="flex h-14 w-14 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted"
 			>
 				<BuildOSLogo class="h-full w-full" />
 			</div>
@@ -58,21 +58,21 @@
 	{#snippet features()}
 		<div class="space-y-2 mb-4">
 			<div class="flex items-center gap-2">
-				<div class="w-2 h-2 rounded-full bg-accent"></div>
+				<div class="h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/60"></div>
 				<p class="text-xs text-muted-foreground">
 					<span class="font-medium text-foreground">Daily briefs</span> stay aligned with your
 					goals
 				</p>
 			</div>
 			<div class="flex items-center gap-2">
-				<div class="w-2 h-2 rounded-full bg-foreground/60"></div>
+				<div class="h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/60"></div>
 				<p class="text-xs text-muted-foreground">
 					Project memory stays grounded in how
 					<span class="font-medium text-foreground">you actually work</span>
 				</p>
 			</div>
 			<div class="flex items-center gap-2">
-				<div class="w-2 h-2 rounded-full bg-muted-foreground"></div>
+				<div class="h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/60"></div>
 				<p class="text-xs text-muted-foreground">
 					<span class="font-medium text-foreground">Suggestions and next steps</span>
 					start with the right context
@@ -82,16 +82,10 @@
 	{/snippet}
 
 	{#snippet actions()}
-		<Button
-			onclick={handleStartOnboarding}
-			variant="primary"
-			size="md"
-			fullWidth
-			class="shadow-ink-strong"
-		>
+		<Button onclick={handleStartOnboarding} variant="primary" size="md" fullWidth>
 			<span class="flex items-center justify-center gap-2">
 				<User class="w-4 h-4" />
-				<span>Start Setup</span>
+				<span>Start setup</span>
 				<ChevronRight class="w-4 h-4" />
 			</span>
 		</Button>

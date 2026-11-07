@@ -673,7 +673,7 @@ describe('ProjectWorkspace edge states', () => {
 			expect(screen.getByRole('dialog', { name: 'Brief / Start Here' })).toBeInTheDocument();
 		});
 		const briefDialog = screen.getByRole('dialog', { name: 'Brief / Start Here' });
-		expect(screen.getByRole('tab', { name: 'Daily Brief' })).toHaveAttribute(
+		expect(screen.getByRole('tab', { name: 'Daily brief' })).toHaveAttribute(
 			'aria-selected',
 			'true'
 		);
@@ -688,7 +688,7 @@ describe('ProjectWorkspace edge states', () => {
 			'2026-08-14'
 		);
 
-		await fireEvent.click(screen.getByRole('tab', { name: 'Start Here Document' }));
+		await fireEvent.click(screen.getByRole('tab', { name: 'Start Here document' }));
 		expect(
 			within(briefDialog).getByText('This is the canonical project brief.')
 		).toBeInTheDocument();

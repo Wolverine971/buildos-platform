@@ -8,7 +8,7 @@
 	- Edit Modal: /apps/web/src/lib/components/ontology/EventEditModal.svelte
 -->
 <script lang="ts">
-	import { Calendar, Save, X } from 'lucide-svelte';
+	import { Calendar, Save, X } from '$lib/icons/lucide';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -198,21 +198,21 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted border-b border-border px-3 py-2 sm:px-4 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
-					class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 text-accent shrink-0"
+					class="flex h-9 w-9 items-center justify-center shrink-0 text-muted-foreground"
 				>
 					<Calendar class="w-5 h-5" />
 				</div>
 				<div class="min-w-0 flex-1">
 					<h2
-						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
+						class="text-sm sm:text-base font-medium leading-tight truncate text-foreground"
 					>
-						{title || 'New Event'}
+						{title || 'New event'}
 					</h2>
-					<p class="text-2xs sm:text-xs text-muted-foreground mt-0.5">
+					<p class="text-2xs sm:text-xs text-muted-foreground">
 						Schedule time tied to this project
 					</p>
 				</div>
@@ -221,7 +221,7 @@
 				type="button"
 				onclick={onClose}
 				disabled={isSaving}
-				class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
+				class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 				aria-label="Close modal"
 			>
 				<X class="w-5 h-5" />
@@ -233,7 +233,7 @@
 		<form onsubmit={handleSubmit} class="space-y-4">
 			<!-- Event Title -->
 			<FormField
-				label="Event Title"
+				label="Title"
 				labelFor="eventTitle"
 				required={true}
 				error={!title.trim() && error ? 'Event title is required' : ''}
@@ -241,7 +241,7 @@
 				<TextInput
 					id="eventTitle"
 					bind:value={title}
-					placeholder="Enter event title..."
+					placeholder="Weekly team sync"
 					inputmode="text"
 					enterkeyhint="next"
 					required={true}
@@ -264,7 +264,7 @@
 						size="md"
 					/>
 					{#if startAt}
-						<p class="mt-1.5 text-xs text-muted-foreground">
+						<p class="mt-2 text-xs text-muted-foreground">
 							{new Date(startAt).toLocaleString('en-US', {
 								weekday: 'short',
 								month: 'short',
@@ -286,7 +286,7 @@
 						size="md"
 					/>
 					{#if endAt}
-						<p class="mt-1.5 text-xs text-muted-foreground">
+						<p class="mt-2 text-xs text-muted-foreground">
 							{new Date(endAt).toLocaleString('en-US', {
 								weekday: 'short',
 								month: 'short',
@@ -304,7 +304,7 @@
 				<TextInput
 					id="eventLocation"
 					bind:value={location}
-					placeholder="Enter location or meeting link..."
+					placeholder="Address or meeting link"
 					inputmode="text"
 					enterkeyhint="next"
 					disabled={isSaving}
@@ -313,15 +313,11 @@
 			</FormField>
 
 			<!-- Description -->
-			<FormField
-				label="Description"
-				labelFor="eventDescription"
-				hint="Provide additional context about this event"
-			>
+			<FormField label="Description" labelFor="eventDescription">
 				<Textarea
 					id="eventDescription"
 					bind:value={description}
-					placeholder="Describe the event..."
+					placeholder="Agenda, notes, or context"
 					enterkeyhint="next"
 					rows={3}
 					disabled={isSaving}
@@ -330,7 +326,7 @@
 			</FormField>
 
 			{#if taskOptions.length > 0}
-				<FormField label="Link to Task" labelFor="linkedTask">
+				<FormField label="Linked task" labelFor="linkedTask">
 					<Select id="linkedTask" bind:value={linkedTaskId} disabled={isSaving} size="md">
 						<option value="">No linked task</option>
 						{#each taskOptions as task (task.id)}
@@ -338,11 +334,11 @@
 						{/each}
 					</Select>
 					{#if taskOptionsLoading}
-						<p class="mt-1.5 text-xs text-muted-foreground" aria-live="polite">
+						<p class="mt-2 text-xs text-muted-foreground" aria-live="polite">
 							Loading all project tasks…
 						</p>
 					{:else if taskOptionsError}
-						<p class="mt-1.5 text-xs text-destructive">{taskOptionsError}</p>
+						<p class="mt-2 text-xs text-destructive">{taskOptionsError}</p>
 					{/if}
 				</FormField>
 			{:else if taskOptionsLoading}
@@ -401,7 +397,7 @@
 				class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 			>
 				<Save class="w-3 h-3 sm:w-4 sm:h-4" />
-				<span class="hidden sm:inline">Create Event</span>
+				<span class="hidden sm:inline">Create event</span>
 				<span class="sm:hidden">Create</span>
 			</Button>
 		</div>

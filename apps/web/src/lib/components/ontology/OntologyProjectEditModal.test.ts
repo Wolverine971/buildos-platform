@@ -128,7 +128,7 @@ describe('OntologyProjectEditModal date saving', () => {
 
 		await fireEvent.click(await screen.findByRole('button', { name: 'Open Project details' }));
 
-		const nameInput = await screen.findByLabelText(/Project Name/);
+		const nameInput = await screen.findByLabelText(/Project name/);
 		const startInput = screen.getByLabelText('Start');
 		const endInput = screen.getByLabelText('End');
 		const formId = nameInput.getAttribute('form');
@@ -171,7 +171,7 @@ describe('OntologyProjectEditModal date saving', () => {
 			props: { isOpen: true, project: initialProject, onSaved: vi.fn(), onClose: vi.fn() }
 		});
 		await fireEvent.click(await screen.findByRole('button', { name: 'Open Project details' }));
-		const nameInput = await screen.findByLabelText(/Project Name/);
+		const nameInput = await screen.findByLabelText(/Project name/);
 		await fireEvent.input(nameInput, { target: { value: 'Renamed by me' } });
 
 		// A chat/workspace refresh changes another field while the editor is open.
@@ -182,7 +182,7 @@ describe('OntologyProjectEditModal date saving', () => {
 			onClose: vi.fn()
 		});
 
-		expect(screen.getByLabelText(/Project Name/)).toHaveValue('Renamed by me');
+		expect(screen.getByLabelText(/Project name/)).toHaveValue('Renamed by me');
 		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 		await waitFor(() =>
 			expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(true)

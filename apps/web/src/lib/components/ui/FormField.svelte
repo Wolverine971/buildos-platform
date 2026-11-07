@@ -11,8 +11,8 @@
 		hint = '',
 		size = 'md',
 		required = false,
-		showOptional = true,
-		uppercase = true,
+		showOptional = false,
+		uppercase = false,
 		class: className = '',
 		children
 	}: {
@@ -36,7 +36,7 @@
 	// Consistent label styling
 	let labelClasses = $derived(
 		[
-			'block text-sm font-semibold',
+			'block text-sm font-medium',
 			size === 'sm' && 'text-xs',
 			size === 'lg' && 'text-base',
 			uppercase && 'uppercase tracking-wider',

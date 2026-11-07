@@ -249,7 +249,7 @@
 					type="button"
 					onclick={() => removeSelected(selected.actorId)}
 					{disabled}
-					class="inline-flex items-center gap-0.5 rounded-full border border-border bg-card px-1.5 py-0.5 text-xs text-foreground hover:border-accent/40 pressable disabled:opacity-60"
+					class="inline-flex items-center gap-0.5 rounded-lg border border-border bg-card px-2 py-0.5 text-xs text-foreground hover:border-foreground/20 disabled:opacity-60"
 					title="Remove {selected.label}"
 				>
 					@{selected.label}
@@ -276,7 +276,7 @@
 				<input
 					type="search"
 					class="flex-1 min-w-0 text-xs bg-transparent text-foreground placeholder:text-muted-foreground outline-none"
-					placeholder="Search members..."
+					placeholder="Search members"
 					bind:value={searchQuery}
 					disabled={disabled || isLoading}
 				/>
@@ -288,7 +288,7 @@
 			{#if canAssignToMe}
 				<button
 					type="button"
-					class="text-2xs font-medium text-accent hover:underline shrink-0 disabled:opacity-50"
+					class="text-2xs font-medium text-muted-foreground hover:text-foreground hover:underline shrink-0 disabled:opacity-50"
 					{disabled}
 					onclick={assignToMe}
 				>

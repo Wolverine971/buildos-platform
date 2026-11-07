@@ -18,6 +18,7 @@
 -->
 <script lang="ts">
 	import {
+		ChevronLeft,
 		ChevronRight,
 		AlertTriangle,
 		Save,
@@ -26,8 +27,9 @@
 		Users,
 		Target,
 		Lock,
-		Bug
-	} from 'lucide-svelte';
+		Bug,
+		X
+	} from '$lib/icons/lucide';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -51,42 +53,42 @@
 	const RISK_TYPES = [
 		{
 			type_key: 'risk.technical',
-			name: 'Technical Risk',
+			name: 'Technical risk',
 			description: 'Code, architecture, or infrastructure issues',
 			icon: Bug,
 			category: 'Project'
 		},
 		{
 			type_key: 'risk.resource',
-			name: 'Resource Risk',
+			name: 'Resource risk',
 			description: 'Team, time, or budget constraints',
 			icon: Users,
 			category: 'Project'
 		},
 		{
 			type_key: 'risk.dependency',
-			name: 'Dependency Risk',
+			name: 'Dependency risk',
 			description: 'External dependencies or third-party issues',
 			icon: Zap,
 			category: 'Project'
 		},
 		{
 			type_key: 'risk.scope',
-			name: 'Scope Risk',
+			name: 'Scope risk',
 			description: 'Requirements creep or unclear scope',
 			icon: Target,
 			category: 'Project'
 		},
 		{
 			type_key: 'risk.quality',
-			name: 'Quality Risk',
+			name: 'Quality risk',
 			description: 'Testing gaps or technical debt',
 			icon: Shield,
 			category: 'Quality'
 		},
 		{
 			type_key: 'risk.security',
-			name: 'Security Risk',
+			name: 'Security risk',
 			description: 'Vulnerabilities or compliance issues',
 			icon: Lock,
 			category: 'Quality'
@@ -125,7 +127,7 @@
 		{ value: '0.25', label: 'Unlikely (25%)', description: 'Could happen but not expected' },
 		{ value: '0.5', label: 'Possible (50%)', description: 'May or may not occur' },
 		{ value: '0.75', label: 'Likely (75%)', description: 'More likely than not' },
-		{ value: '0.9', label: 'Almost Certain (90%)', description: 'Expected to occur' }
+		{ value: '0.9', label: 'Almost certain (90%)', description: 'Expected to occur' }
 	];
 
 	let selectedType = $state<(typeof RISK_TYPES)[0] | null>(null);
@@ -161,7 +163,7 @@
 	function skipTypeSelection() {
 		selectedType = {
 			type_key: 'risk.general',
-			name: 'General Risk',
+			name: 'General risk',
 			description: 'A general project risk',
 			icon: AlertTriangle,
 			category: 'General'
@@ -261,19 +263,21 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted border-b border-border px-3 py-2 sm:px-4 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-				<div class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 shrink-0">
-					<AlertTriangle class="w-5 h-5 text-accent" />
+				<div
+					class="flex h-9 w-9 items-center justify-center shrink-0 text-muted-foreground"
+				>
+					<AlertTriangle class="w-5 h-5" />
 				</div>
 				<div class="min-w-0 flex-1">
 					<h2
-						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
+						class="text-sm sm:text-base font-medium leading-tight truncate text-foreground"
 					>
-						{title || 'New Risk'}
+						{title || 'New risk'}
 					</h2>
-					<p class="text-2xs sm:text-xs text-muted-foreground mt-0.5">
+					<p class="text-2xs sm:text-xs text-muted-foreground">
 						Type will be auto-classified
 					</p>
 				</div>
@@ -282,17 +286,10 @@
 				type="button"
 				onclick={handleClose}
 				disabled={isSaving}
-				class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
+				class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 				aria-label="Close modal"
 			>
-				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M6 18L18 6M6 6l12 12"
-					></path>
-				</svg>
+				<X class="w-5 h-5" />
 			</button>
 		</div>
 	{/snippet}
@@ -311,12 +308,10 @@
 						<div class="space-y-3 sm:space-y-4">
 							<!-- Header -->
 							<div class="flex items-center gap-3 pb-4 border-b border-border">
-								<div class="p-2 rounded bg-muted tx tx-bloom tx-weak">
-									<AlertTriangle class="w-5 h-5 text-warning" />
-								</div>
+								<AlertTriangle class="w-5 h-5 shrink-0 text-muted-foreground" />
 								<div>
-									<h3 class="text-lg font-semibold text-foreground">
-										What Type of Risk?
+									<h3 class="text-lg font-medium text-foreground">
+										What type of risk?
 									</h3>
 									<p class="text-sm text-muted-foreground">
 										Select a category to help organize and track this risk
@@ -327,11 +322,7 @@
 							<div class="space-y-4 sm:space-y-6">
 								{#each Object.entries(typesByCategory) as [category, types] (category)}
 									<div>
-										<h3
-											class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2"
-										>
-											<span class="w-1.5 h-1.5 bg-warning rounded-full"
-											></span>
+										<h3 class="text-xs font-medium text-muted-foreground mb-3">
 											{category}
 										</h3>
 										<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -340,21 +331,21 @@
 												<button
 													type="button"
 													onclick={() => selectType(type)}
-													class="bg-card border border-border p-2.5 sm:p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200 pressable tx tx-frame tx-weak"
+													class="bg-card border border-border p-3 sm:p-4 rounded-lg text-left group hover:border-foreground/20 hover:bg-muted/50 transition-colors tx tx-frame tx-weak"
 												>
 													<div
 														class="flex items-start justify-between mb-2"
 													>
 														<div class="flex items-center gap-2">
-															<TypeIcon class="w-4 h-4 text-accent" />
-															<h4
-																class="font-semibold text-foreground group-hover:text-accent transition-colors"
-															>
+															<TypeIcon
+																class="w-4 h-4 text-muted-foreground"
+															/>
+															<h4 class="font-medium text-foreground">
 																{type.name}
 															</h4>
 														</div>
 														<ChevronRight
-															class="w-5 h-5 text-muted-foreground group-hover:text-accent flex-shrink-0 transition-transform group-hover:translate-x-0.5"
+															class="w-5 h-5 text-muted-foreground group-hover:text-foreground flex-shrink-0"
 														/>
 													</div>
 													<p
@@ -373,7 +364,7 @@
 									<button
 										type="button"
 										onclick={skipTypeSelection}
-										class="w-full bg-muted border border-dashed border-border p-2.5 sm:p-4 rounded-lg text-left hover:bg-muted hover:border-warning/50 transition-all duration-200"
+										class="w-full bg-muted border border-dashed border-border p-3 sm:p-4 rounded-lg text-left hover:border-foreground/20 transition-colors"
 									>
 										<div class="flex items-center justify-between">
 											<div class="flex items-center gap-3">
@@ -382,7 +373,7 @@
 												/>
 												<div>
 													<h4 class="font-medium text-foreground">
-														General Risk
+														General risk
 													</h4>
 													<p class="text-sm text-muted-foreground">
 														Skip categorization and create a general
@@ -403,15 +394,15 @@
 							{#if selectedType}
 								{@const SelectedTypeIcon = selectedType.icon}
 								<div
-									class="rounded-lg border border-border bg-muted p-2.5 sm:p-4 tx tx-grain tx-weak"
+									class="rounded-lg border border-border bg-muted p-3 sm:p-4 tx tx-grain tx-weak"
 								>
 									<div class="flex items-center justify-between gap-3">
 										<div class="flex items-center gap-3 flex-1 min-w-0">
-											<div class="p-2 rounded bg-card shadow-ink">
-												<SelectedTypeIcon class="w-4 h-4 text-warning" />
-											</div>
+											<SelectedTypeIcon
+												class="w-4 h-4 shrink-0 text-muted-foreground"
+											/>
 											<div class="flex-1 min-w-0">
-												<h4 class="text-sm font-semibold text-foreground">
+												<h4 class="text-sm font-medium text-foreground">
 													{selectedType.name}
 												</h4>
 												<p class="text-xs text-muted-foreground truncate">
@@ -434,7 +425,7 @@
 
 							<!-- Risk Title -->
 							<FormField
-								label="Risk Title"
+								label="Title"
 								labelFor="title"
 								required={true}
 								error={!title.trim() && error ? 'Risk title is required' : ''}
@@ -454,14 +445,14 @@
 
 							<!-- Description -->
 							<FormField
-								label="Risk Details"
+								label="Details"
 								labelFor="content"
 								hint="Explain the risk in detail"
 							>
 								<Textarea
 									id="content"
 									bind:value={content}
-									placeholder="Describe what could happen and why..."
+									placeholder="What could happen, and why"
 									enterkeyhint="next"
 									rows={3}
 									disabled={isSaving}
@@ -508,14 +499,14 @@
 
 							<!-- Mitigation Strategy -->
 							<FormField
-								label="Mitigation Strategy"
+								label="Mitigation"
 								labelFor="mitigation_strategy"
 								hint="How will you prevent or reduce this risk?"
 							>
 								<Textarea
 									id="mitigation_strategy"
 									bind:value={mitigationStrategy}
-									placeholder="Steps to mitigate or prevent this risk..."
+									placeholder="Steps to prevent or soften it"
 									enterkeyhint="next"
 									rows={3}
 									disabled={isSaving}
@@ -524,7 +515,7 @@
 							</FormField>
 
 							<!-- Initial State -->
-							<FormField label="Initial State" labelFor="state" required={true}>
+							<FormField label="Initial state" labelFor="state" required={true}>
 								<Select
 									id="state"
 									bind:value={stateKey}
@@ -589,8 +580,8 @@
 					disabled={isSaving}
 					class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 				>
-					<span class="hidden sm:inline">← Back</span>
-					<span class="sm:hidden">←</span>
+					<ChevronLeft class="w-4 h-4" />
+					<span class="hidden sm:inline">Back</span>
 				</Button>
 				<div class="flex flex-row items-center gap-2">
 					<Button
@@ -613,7 +604,7 @@
 						class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 					>
 						<Save class="w-3 h-3 sm:w-4 sm:h-4" />
-						<span class="hidden sm:inline">Create Risk</span>
+						<span class="hidden sm:inline">Create risk</span>
 						<span class="sm:hidden">Create</span>
 					</Button>
 				</div>

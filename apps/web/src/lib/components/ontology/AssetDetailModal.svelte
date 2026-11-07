@@ -108,7 +108,7 @@
 
 	// One look for every control so Download, ⋯, close and the arrows read as a set.
 	const controlButton =
-		'relative inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-md border border-border bg-card text-muted-foreground shadow-ink pressable tx-button transition-colors hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50';
+		'relative inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50';
 	const menuItemBase =
 		'flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50';
 	const menuItem = `${menuItemBase} text-foreground hover:bg-muted`;
@@ -625,14 +625,14 @@
 				bind:this={stripRef}
 				class="relative min-w-0 overflow-x-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
 			>
-				<div class="flex w-max gap-1.5 px-0.5">
+				<div class="flex w-max gap-2 px-1">
 					{#each gallery as id, index (id)}
 						{@const active = index === galleryIndex}
 						<button
 							type="button"
 							data-index={index}
-							class="h-11 w-11 shrink-0 overflow-hidden rounded-md border bg-card transition-[opacity,box-shadow,border-color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-12 sm:w-12 {active
-								? 'border-accent opacity-100 ring-2 ring-accent/40'
+							class="h-11 w-11 shrink-0 overflow-hidden rounded-lg border bg-card transition-[opacity,box-shadow,border-color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-12 sm:w-12 {active
+								? 'border-accent opacity-100 ring-1 ring-accent'
 								: 'border-border opacity-50 hover:opacity-100'}"
 							onclick={() => goTo(id)}
 							disabled={locked}
@@ -688,23 +688,23 @@
 							disabled={deleting}
 							onblur={commitName}
 							onkeydown={handleNameKeydown}
-							class="w-full truncate rounded-md border border-transparent bg-transparent py-0.5 pl-1.5 pr-7 -ml-1.5 text-base font-semibold text-foreground outline-none transition-colors placeholder:text-foreground hover:border-border focus:border-accent focus:bg-background focus:ring-1 focus:ring-ring"
+							class="w-full truncate rounded-md border border-transparent bg-transparent py-0.5 pl-1.5 pr-7 -ml-1.5 text-base font-medium text-foreground outline-none transition-colors placeholder:text-foreground hover:border-border focus:border-accent focus:bg-background focus:ring-1 focus:ring-ring"
 						/>
 						<Pencil
 							class="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-0"
 						/>
 					</div>
 				{:else if shownAsset}
-					<h2 class="truncate text-base font-semibold text-foreground">{displayName}</h2>
+					<h2 class="truncate text-base font-medium text-foreground">{displayName}</h2>
 				{:else}
 					<div class="my-1 h-4 w-48 max-w-full animate-pulse rounded bg-card"></div>
 				{/if}
 
 				<div
-					class="mt-0.5 flex min-h-4 min-w-0 flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground"
+					class="mt-1 flex min-h-4 min-w-0 flex-wrap items-center gap-x-2 text-xs text-muted-foreground"
 				>
 					{#if hasGallery}
-						<span class="font-medium tabular-nums text-foreground"
+						<span class="font-mono tabular-nums text-xs text-muted-foreground"
 							>{galleryIndex + 1} / {gallery.length}</span
 						>
 					{/if}
@@ -749,12 +749,12 @@
 				</div>
 			</div>
 
-			<div class="flex shrink-0 items-center gap-1.5">
+			<div class="flex shrink-0 items-center gap-1">
 				{#if shownAsset}
 					<a
 						href={`/api/onto/assets/${shownAsset.id}/render?download=1`}
 						download
-						class="{controlButton} px-3 text-sm font-semibold"
+						class="{controlButton} px-3 text-sm font-medium"
 						aria-label="Download image"
 						title="Download"
 					>
@@ -855,7 +855,7 @@
 				<button
 					type="button"
 					onclick={closeModal}
-					class="{controlButton} w-11 hover:border-destructive/50 hover:text-destructive"
+					class="{controlButton} w-11"
 					aria-label="Close dialog"
 				>
 					<X class="h-4 w-4" />
@@ -866,7 +866,7 @@
 
 	{#if formError}
 		<p
-			class="mx-3 mt-3 rounded-lg border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs text-destructive sm:mx-4"
+			class="mx-3 mt-3 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive sm:mx-4"
 		>
 			{formError}
 		</p>
@@ -899,7 +899,7 @@
 					onclick={toggleZoom}
 					style:transform={zoomed ? `scale(${zoomScale})` : 'scale(1)'}
 					style:transform-origin={`${zoomOrigin.x}% ${zoomOrigin.y}%`}
-					class="h-auto w-auto max-w-full select-none rounded-md object-contain shadow-ink transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none {hasGallery
+					class="h-auto w-auto max-w-full select-none rounded-lg object-contain shadow-ink transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none {hasGallery
 						? 'max-h-full'
 						: 'max-h-[68dvh]'} {zoomed
 						? 'cursor-zoom-out'
@@ -916,7 +916,7 @@
 	confirmText="Delete image"
 	confirmVariant="danger"
 	loading={deleting}
-	loadingText="Deleting..."
+	loadingText="Deleting"
 	icon="danger"
 	onconfirm={handleDeleteConfirmed}
 	oncancel={() => (showDeleteConfirm = false)}

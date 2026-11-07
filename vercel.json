@@ -58,6 +58,10 @@
 			"schedule": "45 * * * *"
 		},
 		{
+			"path": "/api/cron/email-project-updates",
+			"schedule": "30 10 * * *"
+		},
+		{
 			"path": "/api/cron/renew-webhooks",
 			"schedule": "15 * * * *"
 		},

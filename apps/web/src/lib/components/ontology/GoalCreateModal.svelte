@@ -7,7 +7,7 @@
 	- API Endpoint: /apps/web/src/routes/api/onto/goals/create/+server.ts
 -->
 <script lang="ts">
-	import { ChevronRight, Target, Save } from 'lucide-svelte';
+	import { ChevronLeft, ChevronRight, Target, Save, X } from '$lib/icons/lucide';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -34,7 +34,7 @@
 	const GOAL_TYPES: GoalType[] = [
 		{
 			id: 'outcome',
-			name: 'Project Outcome',
+			name: 'Project outcome',
 			type_key: 'goal.outcome.project',
 			metadata: {
 				category: 'Outcomes',
@@ -44,7 +44,7 @@
 		},
 		{
 			id: 'okr',
-			name: 'OKR (Objective & Key Results)',
+			name: 'OKR (objective and key results)',
 			type_key: 'goal.outcome.okr',
 			metadata: {
 				category: 'Strategic',
@@ -54,7 +54,7 @@
 		},
 		{
 			id: 'milestone',
-			name: 'Milestone Goal',
+			name: 'Milestone goal',
 			type_key: 'goal.outcome.milestone',
 			metadata: {
 				category: 'Milestones',
@@ -64,7 +64,7 @@
 		},
 		{
 			id: 'metric',
-			name: 'Metric Goal',
+			name: 'Metric goal',
 			type_key: 'goal.outcome.metric',
 			metadata: {
 				category: 'Metrics',
@@ -202,17 +202,17 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted border-b border-border px-2 py-2 sm:px-4 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-				<div class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 shrink-0">
-					<Target class="w-5 h-5 text-accent" />
+				<div class="flex h-9 w-9 items-center justify-center shrink-0">
+					<Target class="w-5 h-5 text-muted-foreground" />
 				</div>
 				<div class="min-w-0 flex-1">
 					<h2
-						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
+						class="text-sm sm:text-base font-medium leading-tight truncate text-foreground"
 					>
-						{name || 'New Goal'}
+						{name || 'New goal'}
 					</h2>
 					<p class="text-2xs sm:text-xs text-muted-foreground mt-0.5">
 						Type will be auto-classified
@@ -223,17 +223,10 @@
 				type="button"
 				onclick={handleClose}
 				disabled={isSaving}
-				class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
+				class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
 				aria-label="Close modal"
 			>
-				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M6 18L18 6M6 6l12 12"
-					></path>
-				</svg>
+				<X class="w-5 h-5" />
 			</button>
 		</div>
 	{/snippet}
@@ -252,26 +245,16 @@
 						<div class="space-y-3 sm:space-y-4">
 							<!-- Header -->
 							<div class="flex items-center gap-3 pb-4 border-b border-border">
-								<div class="p-2 rounded bg-muted tx tx-bloom tx-weak">
-									<Target class="w-5 h-5 text-accent" />
-								</div>
-								<div>
-									<h3 class="text-lg font-semibold text-foreground">
-										Choose a Goal Type
-									</h3>
-									<p class="text-sm text-muted-foreground">
-										Select a goal type to define success criteria and tracking
-									</p>
-								</div>
+								<Target class="w-5 h-5 shrink-0 text-muted-foreground" />
+								<h3 class="text-lg font-medium text-foreground">
+									Choose a goal type
+								</h3>
 							</div>
 
 							<div class="space-y-4 sm:space-y-6">
 								{#each Object.entries(templateCategories) as [category, categoryTemplates] (category)}
 									<div>
-										<h3
-											class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2"
-										>
-											<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
+										<h3 class="text-xs font-medium text-muted-foreground mb-3">
 											{category}
 										</h3>
 										<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -279,18 +262,16 @@
 												<button
 													type="button"
 													onclick={() => selectTemplate(template)}
-													class="bg-card border border-border p-2.5 sm:p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200 pressable tx tx-frame tx-weak"
+													class="bg-card border border-border p-3 sm:p-4 rounded-lg text-left group hover:border-foreground/20 hover:bg-muted/50 transition-colors duration-200 tx tx-frame tx-weak"
 												>
 													<div
 														class="flex items-start justify-between mb-2"
 													>
-														<h4
-															class="font-semibold text-foreground group-hover:text-accent transition-colors"
-														>
+														<h4 class="font-medium text-foreground">
 															{template.name}
 														</h4>
 														<ChevronRight
-															class="w-5 h-5 text-muted-foreground group-hover:text-accent flex-shrink-0 transition-transform group-hover:translate-x-0.5"
+															class="w-5 h-5 text-muted-foreground group-hover:text-foreground flex-shrink-0 transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-0.5"
 														/>
 													</div>
 													{#if template.metadata?.description}
@@ -302,11 +283,13 @@
 													{/if}
 													{#if template.metadata?.measurement_type}
 														<div
-															class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 bg-muted rounded"
+															class="mt-2 inline-flex items-center gap-1 px-2 py-1 bg-muted rounded-lg"
 														>
-															<Target class="w-3 h-3 text-accent" />
+															<Target
+																class="w-3 h-3 text-muted-foreground"
+															/>
 															<span
-																class="text-xs font-medium text-foreground"
+																class="text-xs text-muted-foreground"
 															>
 																{template.metadata.measurement_type}
 															</span>
@@ -325,15 +308,15 @@
 							<!-- Selected Template Badge -->
 							{#if selectedTemplate}
 								<div
-									class="rounded-lg border border-border bg-muted p-2.5 sm:p-4 tx tx-grain tx-weak"
+									class="rounded-xl border border-border bg-muted p-3 sm:p-4 tx tx-grain tx-weak"
 								>
 									<div class="flex items-center justify-between gap-3">
 										<div class="flex items-center gap-3 flex-1 min-w-0">
-											<div class="p-2 rounded bg-card shadow-ink">
-												<Target class="w-4 h-4 text-accent" />
-											</div>
+											<Target
+												class="w-4 h-4 shrink-0 text-muted-foreground"
+											/>
 											<div class="flex-1 min-w-0">
-												<h4 class="text-sm font-semibold text-foreground">
+												<h4 class="text-sm font-medium text-foreground">
 													{selectedTemplate.name}
 												</h4>
 												{#if selectedTemplate.metadata?.description}
@@ -360,7 +343,7 @@
 
 							<!-- Goal Name -->
 							<FormField
-								label="Goal Name"
+								label="Name"
 								labelFor="name"
 								required={true}
 								error={!name.trim() && error ? 'Goal name is required' : ''}
@@ -368,7 +351,7 @@
 								<TextInput
 									id="name"
 									bind:value={name}
-									placeholder="Enter goal name..."
+									placeholder="Goal name"
 									inputmode="text"
 									enterkeyhint="next"
 									required={true}
@@ -387,7 +370,7 @@
 								<Textarea
 									id="description"
 									bind:value={description}
-									placeholder="Describe what you want to achieve..."
+									placeholder="e.g. Launch the beta to 50 users"
 									enterkeyhint="next"
 									rows={3}
 									disabled={isSaving}
@@ -396,14 +379,14 @@
 							</FormField>
 
 							<FormField
-								label="Goal Details"
+								label="Details"
 								labelFor="goal_details"
 								hint="Optional extended goal statement"
 							>
 								<Textarea
 									id="goal_details"
 									bind:value={goalDetails}
-									placeholder="Add any additional context or structured goal notes..."
+									placeholder="Context or notes"
 									enterkeyhint="next"
 									rows={3}
 									disabled={isSaving}
@@ -413,14 +396,14 @@
 
 							<!-- Success Criteria -->
 							<FormField
-								label="Success Criteria"
+								label="Success criteria"
 								labelFor="measurement_criteria"
 								hint="How will you measure success?"
 							>
 								<Textarea
 									id="measurement_criteria"
 									bind:value={measurementCriteria}
-									placeholder="e.g., 'Complete 5 tasks per week', 'Increase revenue by 20%'"
+									placeholder="e.g. Increase revenue by 20%"
 									enterkeyhint="next"
 									rows={2}
 									disabled={isSaving}
@@ -438,13 +421,13 @@
 										size="md"
 										placeholder="Select priority"
 									>
-										<option value="high">High Priority</option>
-										<option value="medium">Medium Priority</option>
-										<option value="low">Low Priority</option>
+										<option value="high">High</option>
+										<option value="medium">Medium</option>
+										<option value="low">Low</option>
 									</Select>
 								</FormField>
 
-								<FormField label="Initial State" labelFor="state" required={true}>
+								<FormField label="Initial state" labelFor="state" required={true}>
 									<Select
 										id="state"
 										bind:value={stateKey}
@@ -454,15 +437,7 @@
 									>
 										{#each GOAL_STATES as state (state)}
 											<option value={state}>
-												{state === 'draft'
-													? 'Draft'
-													: state === 'active'
-														? 'Active'
-														: state === 'achieved'
-															? 'Achieved'
-															: state === 'abandoned'
-																? 'Abandoned'
-																: state}
+												{state.charAt(0).toUpperCase() + state.slice(1)}
 											</option>
 										{/each}
 									</Select>
@@ -471,7 +446,7 @@
 
 							<!-- Target Date -->
 							<FormField
-								label="Target Date"
+								label="Target date"
 								labelFor="target_date"
 								hint="Optional deadline for achieving this goal"
 							>
@@ -523,10 +498,11 @@
 					size="sm"
 					onclick={handleBack}
 					disabled={isSaving}
+					aria-label="Back"
 					class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 				>
-					<span class="hidden sm:inline">← Back</span>
-					<span class="sm:hidden">←</span>
+					<ChevronLeft class="w-3 h-3 sm:w-4 sm:h-4" />
+					<span class="hidden sm:inline">Back</span>
 				</Button>
 				<div class="flex flex-row items-center gap-2">
 					<Button
@@ -549,7 +525,7 @@
 						class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 					>
 						<Save class="w-3 h-3 sm:w-4 sm:h-4" />
-						<span class="hidden sm:inline">Create Goal</span>
+						<span class="hidden sm:inline">Create goal</span>
 						<span class="sm:hidden">Create</span>
 					</Button>
 				</div>

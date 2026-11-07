@@ -727,7 +727,7 @@
 						ink-frame"
 					style="
 						transform: translateY({dragTranslateY}px) translateZ(0);
-						transition: {isDragging ? 'none' : 'transform 200ms cubic-bezier(0.4, 0, 0.2, 1)'};
+						transition: {isDragging ? 'none' : 'transform 200ms cubic-bezier(0.22, 1, 0.36, 1)'};
 						touch-action: pan-y;
 					"
 					{role}
@@ -758,7 +758,7 @@
 							{#if title}
 								<h2
 									id={titleId}
-									class="text-base font-semibold text-foreground truncate"
+									class="text-base font-medium text-foreground truncate"
 								>
 									{title}
 								</h2>
@@ -767,11 +767,11 @@
 							{/if}
 
 							{#if showCloseButton && !persistent}
-								<!-- Inkprint close button (a key: lip + press, see .tx-button) -->
+								<!-- Quiet ghost close button -->
 								<button
 									type="button"
 									onclick={attemptClose}
-									class="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground shadow-ink pressable tx-button hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									class="-mr-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 									aria-label="Close dialog"
 								>
 									<X class="h-4 w-4" />
@@ -834,17 +834,17 @@
 
 	/* Apply animations with GPU acceleration */
 	:global(.animate-modal-slide-up) {
-		animation: modal-slide-up 300ms cubic-bezier(0.4, 0, 0.2, 1);
+		animation: modal-slide-up 300ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 
 	:global(.animate-modal-scale) {
-		animation: modal-scale 200ms cubic-bezier(0.4, 0, 0.2, 1);
+		animation: modal-scale 200ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 
 	/* Desktop switches to scale animation */
 	@media (min-width: 640px) {
 		:global(.animate-modal-slide-up) {
-			animation: modal-scale 200ms cubic-bezier(0.4, 0, 0.2, 1);
+			animation: modal-scale 200ms cubic-bezier(0.22, 1, 0.36, 1);
 		}
 	}
 

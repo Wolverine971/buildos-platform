@@ -21,7 +21,7 @@
 		RefreshCw,
 		Mail,
 		MessageSquare
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import { toastService } from '$lib/stores/toast.store';
 
 	interface Props {
@@ -281,18 +281,18 @@
 	}
 </script>
 
-<Modal {isOpen} {onClose} title="Brief Settings" size="md">
+<Modal {isOpen} {onClose} title="Brief settings" size="md">
 	<div class="space-y-3 sm:space-y-4 px-3 sm:px-4 py-3 sm:py-4">
 		{#if briefPreferencesState.isLoading}
 			<div class="text-center py-8">
 				<div
-					class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mx-auto"
+					class="animate-spin rounded-full h-8 w-8 border-b-2 border-muted-foreground mx-auto"
 				></div>
-				<p class="text-muted-foreground mt-4">Loading preferences...</p>
+				<p class="text-muted-foreground mt-4">Loading preferences</p>
 			</div>
 		{:else if briefPreferencesState.error && !briefPreferences}
 			<div class="text-center py-8">
-				<AlertCircle class="w-12 h-12 text-destructive mx-auto mb-4" />
+				<AlertCircle class="w-8 h-8 text-destructive mx-auto mb-4" />
 				<p class="text-muted-foreground mb-4">Failed to load brief preferences</p>
 				<Button onclick={loadBriefPreferences} variant="primary" size="sm">
 					<RefreshCw class="w-4 h-4 mr-2" />
@@ -312,7 +312,7 @@
 				{#if briefPreferences.frequency === 'weekly'}
 					<div>
 						<p class="block text-xs font-medium text-muted-foreground mb-1">
-							Day of Week
+							Day of week
 						</p>
 						<div class="px-3 py-2 bg-muted rounded-lg text-sm text-foreground">
 							{DAY_OPTIONS.find((d) => d.value === briefPreferences?.day_of_week)
@@ -339,12 +339,14 @@
 				<div class="md:col-span-2">
 					<p class="block text-xs font-medium text-muted-foreground mb-1">Status</p>
 					<div class="space-y-3">
-						<div class="flex items-center space-x-2">
-							<div
-								class="px-3 py-1 rounded-full text-xs font-medium {briefPreferences.is_active
-									? 'bg-accent/10 text-accent'
-									: 'bg-muted text-muted-foreground'}"
-							>
+						<div class="flex items-center gap-4">
+							<div class="inline-flex items-center gap-2 text-sm text-foreground">
+								<span
+									class="h-1.5 w-1.5 rounded-full {briefPreferences.is_active
+										? 'bg-success'
+										: 'bg-muted-foreground/50'}"
+									aria-hidden="true"
+								></span>
 								{briefPreferences.is_active ? 'Active' : 'Inactive'}
 							</div>
 							{#if briefPreferencesState.nextScheduledBrief}
@@ -358,27 +360,19 @@
 
 						{#if briefPreferences.is_active}
 							<!-- Show notification settings -->
-							<div class="bg-muted border border-border rounded-lg p-3">
-								<h4 class="text-xs font-semibold text-foreground mb-2">
-									Notification Settings
+							<div class="bg-muted/50 border border-border rounded-xl p-3">
+								<h4 class="text-xs font-medium text-muted-foreground mb-2">
+									Notifications
 								</h4>
-								<div class="flex flex-col gap-1.5">
+								<div class="flex flex-col gap-2">
 									<div class="flex items-center gap-2 text-sm">
-										<Mail
-											class="w-4 h-4 {dailyBriefEmailEnabled
-												? 'text-accent'
-												: 'text-muted-foreground'}"
-										/>
+										<Mail class="w-4 h-4 text-muted-foreground" />
 										<span class="text-foreground">
 											Email: {dailyBriefEmailEnabled ? 'Enabled' : 'Disabled'}
 										</span>
 									</div>
 									<div class="flex items-center gap-2 text-sm">
-										<MessageSquare
-											class="w-4 h-4 {dailyBriefSmsEnabled
-												? 'text-accent'
-												: 'text-muted-foreground'}"
-										/>
+										<MessageSquare class="w-4 h-4 text-muted-foreground" />
 										<span class="text-foreground">
 											SMS: {dailyBriefSmsEnabled ? 'Enabled' : 'Disabled'}
 											{#if dailyBriefSmsEnabled && phoneNumber}
@@ -415,7 +409,7 @@
 					</FormField>
 
 					{#if briefPreferencesForm.frequency === 'weekly'}
-						<FormField label="Day of Week" labelFor="brief-day-of-week">
+						<FormField label="Day of week" labelFor="brief-day-of-week">
 							<Select
 								id="brief-day-of-week"
 								bind:value={briefPreferencesForm.day_of_week}
@@ -470,10 +464,10 @@
 							<!-- Notification Settings Section -->
 							<div class="border-t border-border pt-4 space-y-3">
 								<h4
-									class="text-sm font-semibold text-foreground flex items-center gap-2"
+									class="text-sm font-medium text-foreground flex items-center gap-2"
 								>
-									<Bell class="w-4 h-4" />
-									Notification Settings
+									<Bell class="w-4 h-4 text-muted-foreground" />
+									Notifications
 								</h4>
 								<p class="text-xs text-muted-foreground">
 									Choose how you want to be notified when your brief is ready
@@ -490,12 +484,12 @@
 									</div>
 									<div class="flex-1">
 										<div class="flex items-center gap-2">
-											<Mail class="w-4 h-4 text-accent" />
+											<Mail class="w-4 h-4 text-muted-foreground" />
 											<span class="text-sm font-medium text-foreground">
-												Email Notifications
+												Email notifications
 											</span>
 										</div>
-										<p class="text-xs text-muted-foreground mt-0.5">
+										<p class="text-xs text-muted-foreground mt-1">
 											Get your daily brief via email
 										</p>
 									</div>
@@ -519,12 +513,12 @@
 									</div>
 									<div class="flex-1">
 										<div class="flex items-center gap-2">
-											<MessageSquare class="w-4 h-4 text-accent" />
+											<MessageSquare class="w-4 h-4 text-muted-foreground" />
 											<span class="text-sm font-medium text-foreground">
-												SMS Notifications
+												SMS notifications
 											</span>
 										</div>
-										<p class="text-xs text-muted-foreground mt-0.5">
+										<p class="text-xs text-muted-foreground mt-1">
 											Receive text messages when your brief is ready
 										</p>
 										{#if !phoneVerified}
@@ -535,7 +529,7 @@
 												<span>Phone verification required</span>
 											</div>
 										{:else if phoneNumber}
-											<div class="text-xs text-accent mt-1">
+											<div class="text-xs text-muted-foreground mt-1">
 												Verified: {phoneNumber}
 											</div>
 										{/if}
@@ -547,12 +541,12 @@
 				</div>
 
 				{#if briefPreferencesForm.is_active}
-					<div class="bg-accent/5 border border-accent/20 rounded-lg p-3 sm:p-4">
+					<div class="bg-muted/30 border border-border rounded-xl p-3 sm:p-4">
 						<div class="flex items-center">
-							<Clock class="w-5 h-5 text-accent mr-2 shrink-0" />
+							<Clock class="w-4 h-4 text-muted-foreground mr-2 shrink-0" />
 							<p class="text-sm text-foreground">
-								<strong>Preview:</strong> Next brief will be scheduled for {briefPreferencesForm.frequency ===
-								'daily'
+								<span class="font-medium">Preview:</span> Next brief will be
+								scheduled for {briefPreferencesForm.frequency === 'daily'
 									? 'daily'
 									: DAY_OPTIONS.find(
 											(d) => d.value === briefPreferencesForm.day_of_week
@@ -576,7 +570,7 @@
 					<Button onclick={onClose} variant="ghost" size="md">Close</Button>
 					<Button onclick={startEditing} variant="primary" size="md">
 						<Bell class="w-4 h-4 mr-2" />
-						Edit Settings
+						Edit settings
 					</Button>
 				{:else}
 					<Button onclick={resetBriefPreferences} variant="ghost" size="md">

@@ -63,10 +63,10 @@
 
 	// Icon colors - semantic Inkprint tokens (no dark: overrides needed)
 	const iconColors = {
-		warning: 'text-warning bg-warning/15',
-		danger: 'text-destructive bg-destructive/15',
-		info: 'text-info bg-info/15',
-		success: 'text-success bg-success/15',
+		warning: 'text-warning',
+		danger: 'text-destructive',
+		info: 'text-muted-foreground',
+		success: 'text-muted-foreground',
 		none: ''
 	};
 
@@ -90,20 +90,20 @@
 	closeOnEscape={!loading}
 	persistent={loading}
 >
-	<div class="px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
+	<div class="px-4 py-4 sm:px-6">
 		<div class="sm:flex sm:items-start">
 			<!-- Icon -->
 			{#if IconComponent}
 				<div
-					class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full {iconClasses} sm:mx-0 sm:h-10 sm:w-10"
+					class="mx-auto flex h-6 w-6 flex-shrink-0 items-center justify-center {iconClasses} sm:mx-0 sm:mt-0.5"
 				>
-					<IconComponent class="h-6 w-6" />
+					<IconComponent class="h-5 w-5" />
 				</div>
 			{/if}
 
 			<!-- Content -->
 			<div
-				class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left {IconComponent
+				class="mt-3 text-center sm:ml-3 sm:mt-0 sm:text-left {IconComponent
 					? ''
 					: 'w-full'}"
 			>

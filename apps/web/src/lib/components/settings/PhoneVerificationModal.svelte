@@ -2,7 +2,7 @@
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import PhoneVerification from './PhoneVerification.svelte';
-	import { Smartphone } from 'lucide-svelte';
+	import { Smartphone } from '$lib/icons/lucide';
 
 	interface Props {
 		isOpen: boolean;
@@ -18,17 +18,15 @@
 	}
 </script>
 
-<Modal {isOpen} {onClose} title="Verify Phone Number" size="md">
+<Modal {isOpen} {onClose} title="Verify phone number" size="md">
 	<div class="p-6 space-y-4">
 		<div class="flex items-start gap-3 mb-4">
-			<div
-				class="flex-shrink-0 w-12 h-12 dither-subtle rounded-lg flex items-center justify-center"
-			>
-				<Smartphone class="w-6 h-6 text-success" />
+			<div class="flex-shrink-0 pt-1">
+				<Smartphone class="w-5 h-5 text-muted-foreground" />
 			</div>
 			<div class="flex-1">
-				<h3 class="font-semibold text-foreground mb-1">
-					SMS Notifications Require Verification
+				<h3 class="font-medium text-foreground mb-1">
+					SMS notifications need a verified number
 				</h3>
 				<p class="text-sm text-muted-foreground mb-3">
 					To receive SMS notifications, you need to verify your phone number first. We'll

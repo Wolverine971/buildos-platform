@@ -382,15 +382,15 @@
 					<div
 						class="flex h-12 items-center justify-between gap-3 px-4 border-b border-border bg-muted"
 					>
-						<h2 class="text-base font-semibold text-foreground truncate">
+						<h2 class="text-base font-medium text-foreground truncate">
 							{title}
 						</h2>
-						<!-- Inkprint close button -->
+						<!-- Quiet ghost close button -->
 						<button
 							type="button"
 							onclick={handleClose}
 							disabled={isBusy}
-							class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground shadow-ink pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+							class="-mr-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 							aria-label="Close modal"
 						>
 							<X class="h-4 w-4" />
@@ -428,9 +428,7 @@
 				{@const hasFieldError = Boolean(fieldError)}
 
 				<!-- Inkprint field card - flat design with semantic texture -->
-				<div
-					class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak"
-				>
+				<div class="bg-card border border-border rounded-xl p-4 tx tx-frame tx-weak">
 					<!-- Compact label with icon -->
 					<div class="flex items-center justify-between mb-2">
 						<div class="flex items-center gap-1.5">
@@ -439,7 +437,7 @@
 							/>
 							<label
 								for={`field-${field}`}
-								class="text-xs sm:text-sm font-semibold text-foreground uppercase tracking-wider"
+								class="text-sm font-medium text-foreground"
 							>
 								{config.label}
 								{#if config.required}
@@ -657,7 +655,7 @@
 					variant="primary"
 					size="lg"
 					loading={isBusy}
-					class="w-full font-semibold shadow-ink"
+					class="w-full"
 				>
 					{isBusy ? loadingText : submitText}
 				</Button>

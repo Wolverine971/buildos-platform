@@ -38,7 +38,7 @@
 		User,
 		Clock,
 		FileText
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -49,7 +49,6 @@
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
-	import Badge from '$lib/components/ui/Badge.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityActivityLog from './EntityActivityLog.svelte';
@@ -93,10 +92,10 @@
 	let { riskId, projectId, onClose, onUpdated, onDeleted }: Props = $props();
 
 	const IMPACT_OPTIONS = [
-		{ value: 'low', label: 'Low', color: 'bg-success/10 text-success' },
-		{ value: 'medium', label: 'Medium', color: 'bg-warning/10 text-warning' },
-		{ value: 'high', label: 'High', color: 'bg-accent/10 text-accent' },
-		{ value: 'critical', label: 'Critical', color: 'bg-destructive/10 text-destructive' }
+		{ value: 'low', label: 'Low', dot: 'bg-muted-foreground/50' },
+		{ value: 'medium', label: 'Medium', dot: 'bg-muted-foreground/50' },
+		{ value: 'high', label: 'High', dot: 'bg-warning' },
+		{ value: 'critical', label: 'Critical', dot: 'bg-destructive' }
 	];
 
 	const PROBABILITY_OPTIONS = [
@@ -104,12 +103,12 @@
 		{ value: '0.25', label: 'Unlikely (25%)' },
 		{ value: '0.5', label: 'Possible (50%)' },
 		{ value: '0.75', label: 'Likely (75%)' },
-		{ value: '0.9', label: 'Almost Certain (90%)' }
+		{ value: '0.9', label: 'Almost certain (90%)' }
 	];
 
 	const STATE_OPTIONS = RISK_STATES.map((state) => ({
 		value: state,
-		label: state.replace('_', ' '),
+		label: state.charAt(0).toUpperCase() + state.slice(1).replace(/_/g, ' '),
 		description:
 			state === 'identified'
 				? 'Risk has been logged'
@@ -180,6 +179,12 @@
 		RISK_STATE_META[stateKey] ?? { label: stateKey, variant: 'default' as SurfaceBadgeVariant }
 	);
 	const detailsFormId = $derived(`risk-edit-${riskId}-details`);
+
+	function stateDotClass(variant: SurfaceBadgeVariant): string {
+		if (variant === 'error') return 'bg-destructive';
+		if (variant === 'warning') return 'bg-warning';
+		return 'bg-muted-foreground/50';
+	}
 
 	// Computed risk score values (moved from template for Svelte 5 compatibility)
 	const riskProb = $derived(parseFloat(probability) || 0.5);
@@ -421,7 +426,7 @@
 		type="button"
 		onclick={openChatAbout}
 		disabled={isLoading || isSaving || !risk}
-		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
+		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 		title="Chat about this risk"
 	>
 		<img
@@ -435,7 +440,7 @@
 		type="button"
 		onclick={handleClose}
 		disabled={isSaving || isDeleting}
-		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
+		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 		aria-label="Close modal"
 	>
 		<X class="w-5 h-5" />
@@ -484,20 +489,24 @@
 						class="space-y-3 sm:space-y-4"
 					>
 						<Card variant="elevated" class="wt-paper">
-							<CardHeader variant="accent" texture="strip">
-								<div
-									class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end"
-								>
-									<div class="flex flex-wrap items-center gap-1.5">
-										<Badge variant={stateMeta.variant} size="sm"
-											>{stateMeta.label}</Badge
-										>
-									</div>
+							<CardHeader variant="muted" texture="strip">
+								<div class="flex items-center justify-end gap-3">
+									<span
+										class="inline-flex items-center gap-2 text-xs text-muted-foreground"
+									>
+										<span
+											class="h-1.5 w-1.5 rounded-full {stateDotClass(
+												stateMeta.variant
+											)}"
+											aria-hidden="true"
+										></span>
+										{stateMeta.label}
+									</span>
 								</div>
 							</CardHeader>
 							<CardBody class="space-y-4">
 								<FormField
-									label="Risk Title"
+									label="Title"
 									labelFor="title"
 									required={true}
 									uppercase={false}
@@ -517,7 +526,7 @@
 								</FormField>
 
 								<FormField
-									label="Risk Details"
+									label="Details"
 									labelFor="content"
 									uppercase={false}
 									showOptional={false}
@@ -526,7 +535,7 @@
 										id="content"
 										bind:value={content}
 										enterkeyhint="next"
-										placeholder="Describe what could happen and why..."
+										placeholder="What could happen, and why"
 										rows={3}
 										disabled={isSaving}
 										size="md"
@@ -534,7 +543,7 @@
 								</FormField>
 
 								<FormField
-									label="Mitigation Strategy"
+									label="Mitigation"
 									labelFor="mitigation-strategy"
 									uppercase={false}
 									showOptional={false}
@@ -543,7 +552,7 @@
 										id="mitigation-strategy"
 										bind:value={mitigationStrategy}
 										enterkeyhint="next"
-										placeholder="Steps to mitigate or prevent this risk..."
+										placeholder="Steps to prevent or soften it"
 										rows={3}
 										disabled={isSaving}
 										size="md"
@@ -557,25 +566,12 @@
 								<div
 									class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
 								>
-									<div>
-										<div class="flex items-center gap-2">
-											<Shield class="h-4 w-4 text-muted-foreground" />
-											<p
-												class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
-											>
-												Assessment
-											</p>
-										</div>
-										<h3 class="mt-1 text-sm font-semibold text-foreground">
-											Impact, probability, and ownership
+									<div class="flex items-center gap-2">
+										<Shield class="h-4 w-4 text-muted-foreground" />
+										<h3 class="text-sm font-medium text-foreground">
+											Impact, probability, and owner
 										</h3>
 									</div>
-									<p
-										class="text-xs text-muted-foreground sm:max-w-52 sm:text-right"
-									>
-										Keep operational controls together so the risk's severity is
-										obvious at a glance.
-									</p>
 								</div>
 							</CardHeader>
 							<CardBody class="space-y-4">
@@ -652,7 +648,7 @@
 											bind:value={owner}
 											inputmode="text"
 											enterkeyhint="done"
-											placeholder="Person responsible..."
+											placeholder="Who watches this risk"
 											disabled={isSaving}
 											size="sm"
 										/>
@@ -663,7 +659,7 @@
 
 						{#if error}
 							<div
-								class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 shadow-ink-inner"
+								class="rounded-lg border border-destructive/30 bg-destructive/10 p-3"
 							>
 								<p class="text-sm text-destructive">{error}</p>
 							</div>
@@ -676,19 +672,18 @@
 					<Card variant="elevated" class="wt-card">
 						<CardHeader variant="muted" texture="strip">
 							<div class="flex items-center justify-between gap-3">
-								<div>
-									<p
-										class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
-									>
-										Controls
-									</p>
-									<h3 class="mt-1 text-sm font-semibold text-foreground">
-										Risk operations
-									</h3>
-								</div>
-								<Badge variant={stateMeta.variant} size="sm"
-									>{stateMeta.label}</Badge
+								<h3 class="text-sm font-medium text-foreground">Overview</h3>
+								<span
+									class="inline-flex items-center gap-2 text-xs text-muted-foreground"
 								>
+									<span
+										class="h-1.5 w-1.5 rounded-full {stateDotClass(
+											stateMeta.variant
+										)}"
+										aria-hidden="true"
+									></span>
+									{stateMeta.label}
+								</span>
 							</div>
 						</CardHeader>
 						<CardBody padding="none">
@@ -697,41 +692,62 @@
 								<section class="px-3 py-3 sm:px-4" aria-label="Risk score">
 									<div class="flex items-center gap-2">
 										<Shield class="h-4 w-4 text-muted-foreground" />
-										<p class="micro-label font-semibold">Risk Score</p>
+										<p class="text-xs font-medium text-muted-foreground">
+											Risk score
+										</p>
 									</div>
 									<div class="mt-2 text-center">
 										<p
-											class="text-2xl font-bold {riskScore >= 2
-												? 'text-destructive'
-												: riskScore >= 1
-													? 'text-warning'
-													: 'text-foreground'}"
+											class="font-mono text-2xl font-medium tabular-nums text-foreground"
 										>
 											{riskScore.toFixed(1)}
 										</p>
-										<p class="text-xs text-muted-foreground mt-1">
+										<p
+											class="mt-1 inline-flex items-center gap-2 text-xs text-muted-foreground"
+										>
+											<span
+												class="h-1.5 w-1.5 rounded-full {riskScore >= 2
+													? 'bg-destructive'
+													: riskScore >= 1
+														? 'bg-warning'
+														: 'bg-muted-foreground/50'}"
+												aria-hidden="true"
+											></span>
 											{riskScore >= 2
-												? 'High Priority'
+												? 'High priority'
 												: riskScore >= 1
-													? 'Medium Priority'
-													: 'Low Priority'}
+													? 'Medium priority'
+													: 'Low priority'}
 										</p>
 										<p class="text-2xs text-muted-foreground mt-1">
-											Impact ({riskImpactScore}) x Probability ({Math.round(
+											Impact ({riskImpactScore}) × probability ({Math.round(
 												riskProb * 100
 											)}%)
 										</p>
 									</div>
-									<div class="mt-3 grid grid-cols-2 gap-2 text-sm">
+									<div class="mt-4 grid grid-cols-2 gap-2 text-sm">
 										<div>
-											<p class="micro-label font-semibold">Impact</p>
-											<p class="mt-0.5 font-semibold text-foreground">
+											<p class="text-xs font-medium text-muted-foreground">
+												Impact
+											</p>
+											<p
+												class="mt-1 inline-flex items-center gap-2 font-medium text-foreground"
+											>
+												<span
+													class="h-1.5 w-1.5 rounded-full {impactBadge?.dot ??
+														'bg-muted-foreground/50'}"
+													aria-hidden="true"
+												></span>
 												{impactBadge?.label ?? impact}
 											</p>
 										</div>
 										<div>
-											<p class="micro-label font-semibold">Probability</p>
-											<p class="mt-0.5 font-semibold text-foreground">
+											<p class="text-xs font-medium text-muted-foreground">
+												Probability
+											</p>
+											<p
+												class="mt-1 font-medium tabular-nums text-foreground"
+											>
 												{Math.round(riskProb * 100)}%
 											</p>
 										</div>
@@ -743,7 +759,9 @@
 									<section class="px-3 py-3 sm:px-4" aria-label="Owner">
 										<div class="flex items-center gap-2">
 											<User class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Owner</p>
+											<p class="text-xs font-medium text-muted-foreground">
+												Owner
+											</p>
 										</div>
 										<p class="mt-2 text-sm text-foreground">{owner}</p>
 									</section>
@@ -754,11 +772,21 @@
 									<div class="flex items-center justify-between gap-2">
 										<div class="flex items-center gap-2">
 											<FileText class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Status</p>
+											<p class="text-xs font-medium text-muted-foreground">
+												Status
+											</p>
 										</div>
-										<Badge variant={stateMeta.variant} size="sm"
-											>{stateMeta.label}</Badge
+										<span
+											class="inline-flex items-center gap-2 text-xs text-muted-foreground"
 										>
+											<span
+												class="h-1.5 w-1.5 rounded-full {stateDotClass(
+													stateMeta.variant
+												)}"
+												aria-hidden="true"
+											></span>
+											{stateMeta.label}
+										</span>
 									</div>
 								</section>
 
@@ -766,9 +794,11 @@
 								<section class="px-3 py-3 sm:px-4">
 									<div class="flex items-center gap-2">
 										<Clock class="h-4 w-4 text-muted-foreground" />
-										<p class="micro-label font-semibold">Record</p>
+										<p class="text-xs font-medium text-muted-foreground">
+											Record
+										</p>
 									</div>
-									<div class="mt-2 space-y-1.5 text-sm">
+									<div class="mt-2 space-y-2 text-sm">
 										<div class="flex items-center justify-between gap-3">
 											<span class="text-muted-foreground">Created</span>
 											<span class="text-right text-foreground">
@@ -807,7 +837,9 @@
 									<section class="px-3 py-3 sm:px-4">
 										<div class="flex items-center gap-2 mb-2">
 											<TagIcon class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Tags</p>
+											<p class="text-xs font-medium text-muted-foreground">
+												Tags
+											</p>
 										</div>
 										<TagsDisplay props={risk.props} size="sm" compact={true} />
 									</section>
@@ -818,12 +850,14 @@
 									<button
 										type="button"
 										onclick={() => (showLinkedEntities = !showLinkedEntities)}
-										class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity"
 										aria-expanded={showLinkedEntities}
 									>
 										<div class="flex items-center gap-2">
 											<LinkIcon class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Linked Entities</p>
+											<p class="text-xs font-medium text-muted-foreground">
+												Linked
+											</p>
 										</div>
 										<ChevronDown
 											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showLinkedEntities
@@ -850,12 +884,14 @@
 									<button
 										type="button"
 										onclick={() => (showImages = !showImages)}
-										class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity"
 										aria-expanded={showImages}
 									>
 										<div class="flex items-center gap-2">
 											<ImageIcon class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Images</p>
+											<p class="text-xs font-medium text-muted-foreground">
+												Images
+											</p>
 										</div>
 										<ChevronDown
 											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showImages
@@ -885,12 +921,14 @@
 									<button
 										type="button"
 										onclick={() => (showActivityLog = !showActivityLog)}
-										class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity"
 										aria-expanded={showActivityLog}
 									>
 										<div class="flex items-center gap-2">
 											<Activity class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Activity</p>
+											<p class="text-xs font-medium text-muted-foreground">
+												Activity
+											</p>
 										</div>
 										<ChevronDown
 											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showActivityLog
@@ -934,7 +972,7 @@
 						size="sm"
 						onclick={() => (showDeleteConfirm = true)}
 						disabled={isDeleting || isSaving}
-						class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8 pressable"
+						class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8"
 					>
 						<Trash2 class="w-3.5 h-3.5" />
 						<span class="hidden sm:inline ml-1">Delete</span>
@@ -947,7 +985,7 @@
 						size="sm"
 						onclick={handleClose}
 						disabled={isSaving || isDeleting}
-						class="text-xs h-8 pressable"
+						class="text-xs h-8"
 					>
 						Cancel
 					</Button>
@@ -958,7 +996,7 @@
 						size="sm"
 						loading={isSaving}
 						disabled={isSaving || isDeleting || !title.trim()}
-						class="text-xs h-8 pressable"
+						class="text-xs h-8"
 					>
 						<Save class="w-3.5 h-3.5" />
 						<span class="ml-1">Save</span>
@@ -972,11 +1010,11 @@
 {#if showDeleteConfirm}
 	<ConfirmationModal
 		isOpen={showDeleteConfirm}
-		title="Delete Risk"
-		confirmText="Delete Risk"
+		title="Delete risk"
+		confirmText="Delete risk"
 		confirmVariant="danger"
 		loading={isDeleting}
-		loadingText="Deleting..."
+		loadingText="Deleting"
 		icon="danger"
 		onconfirm={handleDelete}
 		oncancel={() => (showDeleteConfirm = false)}

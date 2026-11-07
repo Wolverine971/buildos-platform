@@ -97,7 +97,7 @@
 	{#snippet content()}
 		<div class="space-y-3">
 			<p class="text-sm text-muted-foreground">
-				<span class="font-semibold text-foreground">{projectName || 'This project'}</span>
+				<span class="font-medium text-foreground">{projectName || 'This project'}</span>
 				moves to Trash. You can restore it from Projects for 30 days; after that it’s erased
 				for good. Its events are removed from Google Calendar now.
 			</p>

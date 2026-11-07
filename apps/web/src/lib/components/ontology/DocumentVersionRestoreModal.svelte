@@ -215,15 +215,11 @@
 >
 	{#snippet header()}
 		<div
-			class="flex-shrink-0 bg-warning/10 border-b border-warning/30 px-4 py-3 flex items-center gap-3"
+			class="flex-shrink-0 bg-warning/10 border-b border-warning/30 px-4 py-4 flex items-center gap-3"
 		>
-			<div
-				class="flex h-10 w-10 items-center justify-center rounded-full bg-warning/15 text-warning"
-			>
-				<RotateCcw class="w-5 h-5" />
-			</div>
+			<RotateCcw class="w-5 h-5 shrink-0 text-warning" />
 			<div>
-				<h2 class="text-base font-semibold text-foreground">Restore Version</h2>
+				<h2 class="text-base font-medium text-foreground">Restore version</h2>
 				<p class="text-xs text-muted-foreground">This will overwrite current content</p>
 			</div>
 		</div>
@@ -231,7 +227,7 @@
 
 	<div class="p-4 space-y-4">
 		<!-- Warning -->
-		<div class="flex items-start gap-3 p-3 rounded-lg bg-warning/10 border border-warning/30">
+		<div class="flex items-start gap-3 p-4 rounded-xl bg-warning/10 border border-warning/30">
 			<AlertTriangle class="w-5 h-5 text-warning shrink-0 mt-0.5" />
 			<div class="text-sm text-warning">
 				<p class="font-medium mb-1">This action will overwrite the current document.</p>
@@ -244,15 +240,13 @@
 		</div>
 
 		<!-- Version details -->
-		<div class="rounded-lg border border-border bg-muted p-3 space-y-2">
-			<h3 class="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">
-				Target Version
-			</h3>
-			<div class="space-y-1.5 text-sm">
+		<div class="rounded-xl border border-border bg-muted/50 p-4 space-y-2">
+			<h3 class="text-xs font-medium text-muted-foreground mb-2">Target version</h3>
+			<div class="space-y-2 text-sm">
 				<div class="flex items-center gap-2 text-muted-foreground">
 					<Hash class="w-4 h-4" />
 					<span>
-						Version <span class="font-mono font-semibold text-foreground"
+						Version <span class="font-mono font-medium text-foreground"
 							>{version.number}</span
 						>
 					</span>
@@ -270,7 +264,7 @@
 				{#if version.snapshot_hash}
 					<div class="flex items-center gap-2 text-muted-foreground/70">
 						<span class="font-mono text-xs">
-							Hash: {version.snapshot_hash.slice(0, 12)}...
+							Hash: {version.snapshot_hash.slice(0, 12)}…
 						</span>
 					</div>
 				{/if}
@@ -306,7 +300,7 @@
 
 	{#snippet footer()}
 		<div
-			class="flex items-center justify-end gap-3 px-3 sm:px-4 py-3 border-t border-border bg-muted/30"
+			class="flex items-center justify-end gap-3 px-4 py-3 border-t border-border bg-muted/30"
 		>
 			<Button variant="ghost" size="sm" onclick={handleClose} disabled={isRestoring}>
 				Cancel
@@ -319,11 +313,11 @@
 				class="bg-warning hover:bg-warning/90 text-warning-foreground"
 			>
 				{#if isRestoring}
-					<LoaderCircle class="w-4 h-4 mr-1.5 animate-spin" />
-					Restoring...
+					<LoaderCircle class="w-4 h-4 mr-2 animate-spin" />
+					Restoring
 				{:else}
-					<RotateCcw class="w-4 h-4 mr-1.5" />
-					Restore Version
+					<RotateCcw class="w-4 h-4 mr-2" />
+					Restore version
 				{/if}
 			</Button>
 		</div>

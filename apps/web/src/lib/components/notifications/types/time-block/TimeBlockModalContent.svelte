@@ -57,35 +57,35 @@
 		if (status === 'processing') {
 			return {
 				icon: LoaderCircle,
-				iconClass: 'h-6 w-6 shrink-0 animate-spin text-accent motion-reduce:animate-none',
-				message:
-					notification.data.suggestionsState?.progress ?? 'Generating AI suggestions...'
+				iconClass:
+					'h-5 w-5 shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none',
+				message: notification.data.suggestionsState?.progress ?? 'Generating suggestions'
 			};
 		}
 		if (status === 'warning') {
 			return {
 				icon: AlertCircle,
-				iconClass: 'h-6 w-6 shrink-0 text-warning',
+				iconClass: 'h-5 w-5 shrink-0 text-warning',
 				message: 'AI suggestions unavailable. Time block created successfully.'
 			};
 		}
 		if (status === 'success') {
 			return {
 				icon: CheckCircle,
-				iconClass: 'h-6 w-6 shrink-0 text-success',
-				message: 'Suggestions are ready.'
+				iconClass: 'h-5 w-5 shrink-0 text-muted-foreground',
+				message: 'Suggestions are ready'
 			};
 		}
 		if (status === 'error') {
 			return {
 				icon: AlertCircle,
-				iconClass: 'h-6 w-6 shrink-0 text-destructive',
+				iconClass: 'h-5 w-5 shrink-0 text-destructive',
 				message: 'The time block could not be created.'
 			};
 		}
 		return {
 			icon: Clock,
-			iconClass: 'h-6 w-6 shrink-0 text-muted-foreground',
+			iconClass: 'h-5 w-5 shrink-0 text-muted-foreground',
 			message: ''
 		};
 	});
@@ -126,13 +126,13 @@
 	{#snippet header()}
 		{@const StatusIcon = statusCopy.icon}
 		<div class="flex items-center gap-3 px-6 py-4 border-b">
-			<div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted/60">
+			<div class="flex h-9 w-9 shrink-0 items-center justify-center">
 				{#if StatusIcon}
 					<StatusIcon class={statusCopy.iconClass} aria-hidden="true" />
 				{/if}
 			</div>
 			<div class="flex-1">
-				<h2 class="text-xl font-semibold text-foreground">
+				<h2 class="text-lg font-medium text-foreground">
 					{notification.data.blockType === 'project'
 						? 'Project time block'
 						: 'Build block'}
@@ -160,7 +160,7 @@
 				<p class="text-sm text-muted-foreground">{formattedDate}</p>
 			{/if}
 
-			<div class="p-4 bg-muted rounded-lg space-y-2">
+			<div class="p-4 bg-muted/50 rounded-xl space-y-2">
 				{#if formattedTime}
 					<div class="flex items-center text-sm text-foreground">
 						<Clock class="mr-2 h-4 w-4 shrink-0" aria-hidden="true" />
@@ -183,11 +183,11 @@
 		{#if status === 'success' && notification.data.suggestions?.length}
 			<div class="space-y-4">
 				<div>
-					<h4 class="text-sm font-medium text-foreground mb-3">AI-suggested tasks</h4>
+					<h4 class="text-sm font-medium text-foreground mb-3">Suggested tasks</h4>
 
 					<div class="space-y-3">
 						{#each notification.data.suggestions as suggestion, index (suggestion.task_id ?? suggestion)}
-							<div class="rounded-lg border border-border bg-card p-3">
+							<div class="rounded-xl border border-border bg-card p-3">
 								<div class="text-sm font-medium text-foreground">
 									{index + 1}. {suggestion.title}
 								</div>
@@ -203,12 +203,12 @@
 										<span>{suggestion.estimated_minutes} min</span>
 									{/if}
 									{#if suggestion.priority}
-										<span class="rounded-full bg-muted px-2 py-0.5">
+										<span>
 											{suggestion.priority}
 										</span>
 									{/if}
 									{#if suggestion.project_name && notification.data.blockType === 'build'}
-										<span class="text-info">
+										<span>
 											{suggestion.project_name}
 										</span>
 									{/if}
@@ -219,7 +219,9 @@
 				</div>
 
 				{#if notification.data.suggestionsSummary}
-					<div class="rounded-lg border border-info/30 bg-info/10 p-3 text-sm text-info">
+					<div
+						class="rounded-xl border border-border bg-muted/50 p-3 text-sm text-muted-foreground"
+					>
 						{notification.data.suggestionsSummary}
 					</div>
 				{/if}
@@ -228,7 +230,7 @@
 
 		{#if status === 'error'}
 			<div
-				class="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+				class="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
 			>
 				{notification.data.error ?? 'The time block could not be created.'}
 			</div>

@@ -136,7 +136,7 @@
 					class="brief-tab"
 				>
 					<CalendarDays class="h-4 w-4" />
-					Daily Brief
+					Daily brief
 				</button>
 				<button
 					bind:this={tabButtons[1]}
@@ -152,7 +152,7 @@
 					class="brief-tab"
 				>
 					<BookOpen class="h-4 w-4" />
-					Start Here Document
+					Start Here document
 				</button>
 			</div>
 		</div>
@@ -175,9 +175,7 @@
 					<div
 						class="mx-auto flex min-h-64 max-w-md flex-col items-center justify-center text-center"
 					>
-						<p class="font-medium text-foreground">
-							The daily brief could not be loaded.
-						</p>
+						<p class="font-medium text-foreground">Couldn't load the daily brief</p>
 						<p class="mt-1 text-sm text-muted-foreground">{error}</p>
 						<Button
 							variant="outline"
@@ -196,7 +194,7 @@
 						>
 							<time
 								datetime={latestBrief.brief_date ?? latestBrief.created_at}
-								class="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-border/70 bg-card/90 px-2.5 py-1 text-xs font-medium text-muted-foreground shadow-sm"
+								class="inline-flex min-h-8 items-center gap-2 rounded-lg border border-border/70 bg-card/90 px-2 py-1 text-xs text-muted-foreground"
 								aria-label={`Brief date: ${formatBriefDate(latestBrief.brief_date)}`}
 							>
 								<CalendarDays class="h-3.5 w-3.5" />
@@ -221,7 +219,7 @@
 						</div>
 						<p class="mt-3 font-medium text-foreground">No daily brief yet</p>
 						<p class="mt-1 text-sm text-muted-foreground">
-							The latest generated brief for this project will appear here.
+							The latest brief for this project will show up here
 						</p>
 					</div>
 				{/if}
@@ -256,7 +254,7 @@
 							</div>
 						{:else}
 							<p class="py-12 text-center text-sm text-muted-foreground">
-								This Start Here document does not have any content yet.
+								This Start Here document is empty
 							</p>
 						{/if}
 					</div>
@@ -271,7 +269,7 @@
 						</div>
 						<p class="mt-3 font-medium text-foreground">No Start Here document yet</p>
 						<p class="mt-1 text-sm text-muted-foreground">
-							Create one to give this project a durable source of truth.
+							Create one to give this project a durable source of truth
 						</p>
 					</div>
 				{/if}
@@ -290,11 +288,11 @@
 		padding: 0.75rem 0.875rem;
 		color: hsl(var(--muted-foreground));
 		font-size: 0.875rem;
-		font-weight: 600;
+		font-weight: 500;
 		transition:
-			border-color 120ms ease,
-			color 120ms ease,
-			background-color 120ms ease;
+			border-color 120ms cubic-bezier(0.22, 1, 0.36, 1),
+			color 120ms cubic-bezier(0.22, 1, 0.36, 1),
+			background-color 120ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 
 	.brief-tab:hover {

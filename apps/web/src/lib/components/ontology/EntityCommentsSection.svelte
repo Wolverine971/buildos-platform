@@ -339,9 +339,9 @@
 	<CardHeader class="flex items-center justify-between gap-2 py-2">
 		<div class="flex items-center gap-1.5">
 			<MessageSquare class="w-4 h-4 text-accent" />
-			<h3 class="text-sm font-semibold text-foreground">Comments</h3>
+			<h3 class="text-sm font-medium text-foreground">Comments</h3>
 		</div>
-		<span class="micro-label">{commentCount}</span>
+		<span class="font-mono text-xs tabular-nums text-muted-foreground">{commentCount}</span>
 	</CardHeader>
 	<CardBody padding="sm" class="space-y-3">
 		<div class="space-y-1.5">
@@ -353,7 +353,7 @@
 				bind:value={newComment}
 				bind:isVoiceBusy={newCommentVoiceBusy}
 				rows={2}
-				placeholder="Share an update or ask a question..."
+				placeholder="Share an update or ask a question"
 				disabled={isSubmitting || !canWrite}
 				voiceBlocked={isSubmitting}
 				enableVoice={canWrite}

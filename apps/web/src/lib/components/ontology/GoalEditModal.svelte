@@ -38,7 +38,7 @@
 		Link as LinkIcon,
 		Image as ImageIcon,
 		Tag as TagIcon
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -49,7 +49,6 @@
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
-	import Badge from '$lib/components/ui/Badge.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityActivityLog from './EntityActivityLog.svelte';
@@ -191,7 +190,7 @@
 		return {
 			focusType: 'goal',
 			focusEntityId: goalId,
-			focusEntityName: goal.name || 'Untitled Goal',
+			focusEntityName: goal.name || 'Untitled goal',
 			projectId: projectId,
 			projectName: goal.project?.name || 'Project'
 		};
@@ -533,7 +532,7 @@
 		type="button"
 		onclick={openChatAbout}
 		disabled={isLoading || isSaving || !goal}
-		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 		title="Chat about this goal"
 	>
 		<img
@@ -547,7 +546,7 @@
 		type="button"
 		onclick={handleClose}
 		disabled={isSaving || isDeleting}
-		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:bg-card hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 		aria-label="Close modal"
 	>
 		<X class="w-5 h-5" />
@@ -596,29 +595,34 @@
 						class="space-y-3 sm:space-y-4"
 					>
 						<Card variant="elevated" class="wt-paper">
-							<CardHeader variant="accent" texture="strip">
+							<CardHeader variant="default" texture="strip">
 								<div class="flex items-center justify-between gap-3">
 									<div class="flex items-center gap-2">
 										<Target class="h-4 w-4 text-muted-foreground" />
-										<p
-											class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
-										>
+										<p class="text-xs font-medium text-muted-foreground">
 											Goal
 										</p>
 									</div>
-									<div class="flex flex-wrap items-center justify-end gap-1.5">
-										<Badge variant={stateMeta.variant} size="sm"
-											>{stateMeta.label}</Badge
-										>
-										<Badge variant={priorityMeta.variant} size="sm">
-											{priorityMeta.label}
-										</Badge>
+									<div
+										class="flex flex-wrap items-center justify-end gap-2 text-xs text-muted-foreground"
+									>
+										<span class="inline-flex items-center gap-2">
+											<span
+												class="h-1.5 w-1.5 rounded-full {stateMeta.variant ===
+												'success'
+													? 'bg-success'
+													: 'bg-muted-foreground/60'}"
+												aria-hidden="true"
+											></span>
+											{stateMeta.label}
+										</span>
+										<span>{priorityMeta.label} priority</span>
 									</div>
 								</div>
 							</CardHeader>
 							<CardBody class="space-y-4">
 								<FormField
-									label="Goal Name"
+									label="Name"
 									labelFor="name"
 									required={true}
 									uppercase={false}
@@ -630,7 +634,7 @@
 										bind:value={name}
 										inputmode="text"
 										enterkeyhint="next"
-										placeholder="Enter goal name..."
+										placeholder="Goal name"
 										required={true}
 										disabled={isSaving}
 										error={!name.trim() && error ? true : false}
@@ -647,7 +651,7 @@
 										id="description"
 										bind:value={description}
 										enterkeyhint="next"
-										placeholder="Describe what you want to achieve..."
+										placeholder="What you want to achieve"
 										rows={3}
 										disabled={isSaving}
 										size="md"
@@ -655,7 +659,7 @@
 								</FormField>
 
 								<FormField
-									label="Goal Details"
+									label="Details"
 									labelFor="goal-details"
 									uppercase={false}
 									showOptional={false}
@@ -664,7 +668,7 @@
 										id="goal-details"
 										bind:value={goalDetails}
 										enterkeyhint="next"
-										placeholder="Add context or structured goal notes..."
+										placeholder="Context or notes"
 										rows={2}
 										disabled={isSaving}
 										size="md"
@@ -675,28 +679,11 @@
 
 						<Card variant="default" class="wt-paper">
 							<CardHeader variant="transparent" texture="none">
-								<div
-									class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
-								>
-									<div>
-										<div class="flex items-center gap-2">
-											<CalendarRange class="h-4 w-4 text-muted-foreground" />
-											<p
-												class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
-											>
-												Tracking
-											</p>
-										</div>
-										<h3 class="mt-1 text-sm font-semibold text-foreground">
-											Priority, state, and timeline
-										</h3>
-									</div>
-									<p
-										class="text-xs text-muted-foreground sm:max-w-52 sm:text-right"
-									>
-										Keep the operational controls together so the goal's status
-										is obvious at a glance.
-									</p>
+								<div class="flex items-center gap-2">
+									<CalendarRange class="h-4 w-4 text-muted-foreground" />
+									<h3 class="text-sm font-medium text-foreground">
+										Priority, state, and timeline
+									</h3>
 								</div>
 							</CardHeader>
 							<CardBody class="space-y-4">
@@ -737,15 +724,7 @@
 										>
 											{#each GOAL_STATES as state (state)}
 												<option value={state}>
-													{state === 'draft'
-														? 'Draft'
-														: state === 'active'
-															? 'Active'
-															: state === 'achieved'
-																? 'Achieved'
-																: state === 'abandoned'
-																	? 'Abandoned'
-																	: state}
+													{GOAL_STATE_META[state]?.label ?? state}
 												</option>
 											{/each}
 										</Select>
@@ -753,7 +732,7 @@
 								</div>
 
 								<FormField
-									label="Target Date"
+									label="Target date"
 									labelFor="target-date"
 									uppercase={false}
 									showOptional={false}
@@ -770,7 +749,7 @@
 								</FormField>
 
 								<FormField
-									label="Success Criteria"
+									label="Success criteria"
 									labelFor="measurement-criteria"
 									uppercase={false}
 									showOptional={false}
@@ -779,7 +758,7 @@
 										id="measurement-criteria"
 										bind:value={measurementCriteria}
 										enterkeyhint="done"
-										placeholder="How will you measure success..."
+										placeholder="How you'll know it's done"
 										rows={2}
 										disabled={isSaving}
 										size="md"
@@ -790,7 +769,7 @@
 
 						{#if error}
 							<div
-								class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 shadow-ink-inner"
+								class="rounded-lg border border-destructive/30 bg-destructive/10 p-3"
 							>
 								<p class="text-sm text-destructive">{error}</p>
 							</div>
@@ -834,11 +813,22 @@
 									<div class="flex items-center justify-between gap-2">
 										<div class="flex items-center gap-2">
 											<Target class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">State</p>
+											<p class="text-xs font-medium text-muted-foreground">
+												State
+											</p>
 										</div>
-										<Badge variant={stateMeta.variant} size="sm"
-											>{stateMeta.label}</Badge
+										<span
+											class="inline-flex items-center gap-2 text-xs text-muted-foreground"
 										>
+											<span
+												class="h-1.5 w-1.5 rounded-full {stateMeta.variant ===
+												'success'
+													? 'bg-success'
+													: 'bg-muted-foreground/60'}"
+												aria-hidden="true"
+											></span>
+											{stateMeta.label}
+										</span>
 									</div>
 									<p class="mt-2 text-xs text-muted-foreground">
 										{stateMeta.note}
@@ -853,10 +843,12 @@
 									<div class="flex items-center justify-between gap-2">
 										<div class="flex items-center gap-2">
 											<Flag class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Priority</p>
+											<p class="text-xs font-medium text-muted-foreground">
+												Priority
+											</p>
 										</div>
-										<Badge variant={priorityMeta.variant} size="sm"
-											>{priorityMeta.label}</Badge
+										<span class="text-xs text-muted-foreground"
+											>{priorityMeta.label}</span
 										>
 									</div>
 									<p class="mt-2 text-xs text-muted-foreground">
@@ -868,9 +860,11 @@
 								<section class="px-3 py-3 sm:px-4">
 									<div class="flex items-center gap-2">
 										<CalendarRange class="h-4 w-4 text-muted-foreground" />
-										<p class="micro-label font-semibold">Timeline</p>
+										<p class="text-xs font-medium text-muted-foreground">
+											Timeline
+										</p>
 									</div>
-									<div class="mt-2 space-y-1.5 text-sm">
+									<div class="mt-2 space-y-1 text-sm">
 										<div class="flex items-center justify-between gap-3">
 											<span class="text-muted-foreground">Target</span>
 											<span class="text-right text-foreground">
@@ -892,9 +886,11 @@
 								<section class="px-3 py-3 sm:px-4">
 									<div class="flex items-center gap-2">
 										<Clock class="h-4 w-4 text-muted-foreground" />
-										<p class="micro-label font-semibold">Record</p>
+										<p class="text-xs font-medium text-muted-foreground">
+											Record
+										</p>
 									</div>
-									<div class="mt-2 space-y-1.5 text-sm">
+									<div class="mt-2 space-y-1 text-sm">
 										<div class="flex items-center justify-between gap-3">
 											<span class="text-muted-foreground">Created</span>
 											<span class="text-right text-foreground">
@@ -933,7 +929,9 @@
 									<section class="px-3 py-3 sm:px-4">
 										<div class="flex items-center gap-2 mb-2">
 											<TagIcon class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Tags</p>
+											<p class="text-xs font-medium text-muted-foreground">
+												Tags
+											</p>
 										</div>
 										<TagsDisplay props={goal.props} size="sm" compact={true} />
 									</section>
@@ -944,15 +942,17 @@
 									<button
 										type="button"
 										onclick={() => (showLinkedEntities = !showLinkedEntities)}
-										class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity"
 										aria-expanded={showLinkedEntities}
 									>
 										<div class="flex items-center gap-2">
 											<LinkIcon class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Linked Entities</p>
+											<p class="text-xs font-medium text-muted-foreground">
+												Linked
+											</p>
 										</div>
 										<ChevronDown
-											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showLinkedEntities
+											class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] {showLinkedEntities
 												? 'rotate-180'
 												: ''}"
 										/>
@@ -977,15 +977,17 @@
 									<button
 										type="button"
 										onclick={() => (showImages = !showImages)}
-										class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity"
 										aria-expanded={showImages}
 									>
 										<div class="flex items-center gap-2">
 											<ImageIcon class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Images</p>
+											<p class="text-xs font-medium text-muted-foreground">
+												Images
+											</p>
 										</div>
 										<ChevronDown
-											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showImages
+											class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] {showImages
 												? 'rotate-180'
 												: ''}"
 										/>
@@ -1012,15 +1014,17 @@
 									<button
 										type="button"
 										onclick={() => (showActivityLog = !showActivityLog)}
-										class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+										class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity"
 										aria-expanded={showActivityLog}
 									>
 										<div class="flex items-center gap-2">
 											<Activity class="h-4 w-4 text-muted-foreground" />
-											<p class="micro-label font-semibold">Activity</p>
+											<p class="text-xs font-medium text-muted-foreground">
+												Activity
+											</p>
 										</div>
 										<ChevronDown
-											class="w-3.5 h-3.5 text-muted-foreground transition-transform {showActivityLog
+											class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] {showActivityLog
 												? 'rotate-180'
 												: ''}"
 										/>
@@ -1061,7 +1065,7 @@
 						size="sm"
 						onclick={() => (showDeleteConfirm = true)}
 						disabled={isDeleting || isSaving}
-						class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8 pressable"
+						class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8"
 					>
 						<Trash2 class="w-3.5 h-3.5" />
 						<span class="hidden sm:inline ml-1">Delete</span>
@@ -1074,7 +1078,7 @@
 						size="sm"
 						onclick={handleClose}
 						disabled={isSaving || isDeleting}
-						class="text-xs h-8 pressable"
+						class="text-xs h-8"
 					>
 						Cancel
 					</Button>
@@ -1085,7 +1089,7 @@
 						size="sm"
 						loading={isSaving}
 						disabled={isSaving || isDeleting || !name.trim()}
-						class="text-xs h-8 pressable"
+						class="text-xs h-8"
 					>
 						<Save class="w-3.5 h-3.5" />
 						<span class="ml-1">Save</span>
@@ -1099,11 +1103,11 @@
 {#if showDeleteConfirm}
 	<ConfirmationModal
 		isOpen={showDeleteConfirm}
-		title="Delete Goal"
-		confirmText="Delete Goal"
+		title="Delete goal"
+		confirmText="Delete goal"
 		confirmVariant="danger"
 		loading={isDeleting}
-		loadingText="Deleting..."
+		loadingText="Deleting…"
 		icon="danger"
 		onconfirm={handleDelete}
 		oncancel={() => (showDeleteConfirm = false)}
