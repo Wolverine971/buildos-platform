@@ -87,7 +87,9 @@ export class AgenticChatMutationToolRunner {
 							name: step.toolName,
 							arguments: JSON.stringify(step.arguments)
 						}
-					}
+					},
+					// The user's words this write came from (tasker 155), display only.
+					...(step.sourceQuote ? { source_quote: step.sourceQuote } : {})
 				}
 			},
 			signal
@@ -308,7 +310,9 @@ export class AgenticChatMutationToolRunner {
 						affected_entities: telemetry.affectedEntities,
 						effect_id: mutation.effectId,
 						replayed: mutation.replayed,
-						result: mutation.downstreamReceipt
+						result: mutation.downstreamReceipt,
+						duration_ms: elapsedMs(mutationStartedAt),
+						...(step.sourceQuote ? { source_quote: step.sourceQuote } : {})
 					}
 				}
 			},
@@ -392,7 +396,11 @@ export class AgenticChatMutationToolRunner {
 							name: step.toolName,
 							arguments: JSON.stringify(step.arguments)
 						}
-					}
+					},
+					// The user's words this write came from (tasker 155), display only.
+					...(step.type === 'mutating_tool' && step.sourceQuote
+						? { source_quote: step.sourceQuote }
+						: {})
 				}
 			},
 			signal

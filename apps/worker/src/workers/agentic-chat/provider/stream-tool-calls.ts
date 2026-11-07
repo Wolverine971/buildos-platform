@@ -28,6 +28,8 @@ export type CompletedProviderToolCall = {
 	canonicalProviderArguments: string;
 	scheduling?: AgenticChatProviderToolSchedulingV1;
 	decidedBy?: AgenticChatControlDecisionAuthorV1;
+	/** `from_quote`: the user's words a write came from. Display only, never a domain argument. */
+	sourceQuote?: string;
 };
 
 type ProviderToolCallAccumulator = {
@@ -305,7 +307,8 @@ export function completeToolCalls(
 		}
 		const canonicalProviderArguments = canonicalizeAgenticChatJson(parsed as JsonValue);
 		const scheduling = parseSchedulingMetadata(parsed as JsonObject);
-		const domainArguments = stripSchedulingSidecar(parsed as JsonObject);
+		const sourceQuote = readSourceQuote(parsed as JsonObject);
+		const domainArguments = stripSourceQuote(stripSchedulingSidecar(parsed as JsonObject));
 		const canonicalArguments = canonicalizeAgenticChatJson(domainArguments);
 		calls.push({
 			id: call.id,
@@ -313,10 +316,29 @@ export function completeToolCalls(
 			arguments: JSON.parse(canonicalArguments) as JsonObject,
 			canonicalArguments,
 			canonicalProviderArguments,
-			...(scheduling ? { scheduling } : {})
+			...(scheduling ? { scheduling } : {}),
+			...(sourceQuote ? { sourceQuote } : {})
 		});
 	}
 	return calls;
+}
+
+/** Display-only argument on writes (tasker 155); kept out of every domain path. */
+export const SOURCE_QUOTE_ARGUMENT = 'from_quote';
+const MAX_SOURCE_QUOTE_CHARS = 400;
+
+function readSourceQuote(arguments_: JsonObject): string | undefined {
+	const value = arguments_[SOURCE_QUOTE_ARGUMENT];
+	if (typeof value !== 'string') return undefined;
+	const quote = value.trim();
+	// A bad quote only costs the highlight, never the call.
+	return quote && quote.length <= MAX_SOURCE_QUOTE_CHARS ? quote : undefined;
+}
+
+function stripSourceQuote(arguments_: JsonObject): JsonObject {
+	if (!Object.hasOwn(arguments_, SOURCE_QUOTE_ARGUMENT)) return arguments_;
+	const { [SOURCE_QUOTE_ARGUMENT]: _quote, ...rest } = arguments_;
+	return rest as JsonObject;
 }
 
 function parseSchedulingMetadata(

@@ -2566,7 +2566,8 @@ describe('AgenticChatTurnProviderAdapter', () => {
 							assignee_actor_ids: { type: 'array', items: { type: 'string' } },
 							assignee_handles: { type: 'array', items: { type: 'string' } },
 							goal_id: { type: ['string', 'null'] },
-							supporting_milestone_id: { type: ['string', 'null'] }
+							supporting_milestone_id: { type: ['string', 'null'] },
+							from_quote: expect.objectContaining({ type: 'string' })
 						},
 						required: ['task_id']
 					}
@@ -2665,7 +2666,8 @@ describe('AgenticChatTurnProviderAdapter', () => {
 							assignee_actor_ids: { type: 'array', items: { type: 'string' } },
 							plan_id: { type: 'string' },
 							supporting_milestone_id: { type: 'string' },
-							parent: { type: 'object' }
+							parent: { type: 'object' },
+							from_quote: expect.objectContaining({ type: 'string' })
 						},
 						required: ['project_id', 'title']
 					}
@@ -2738,7 +2740,8 @@ describe('AgenticChatTurnProviderAdapter', () => {
 							state_key: { type: 'string' },
 							content: { type: 'string' },
 							parent_id: { type: ['string', 'null'] },
-							position: { type: 'number' }
+							position: { type: 'number' },
+							from_quote: expect.objectContaining({ type: 'string' })
 						},
 						required: ['project_id', 'title', 'description']
 					}
@@ -3053,7 +3056,9 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			const definition = definitionFor(name);
 			expect(definition.function.parameters.additionalProperties).toBe(false);
 			// Scheduling sidecars ride only the contract carve-out/completion passes.
-			expect(Object.keys(propertiesFor(name)).sort()).toEqual([...fields].sort());
+			expect(Object.keys(propertiesFor(name)).sort()).toEqual(
+				[...fields, 'from_quote'].sort()
+			);
 		}
 		expect(propertiesFor('update_onto_document').update_strategy).toMatchObject({
 			enum: ['replace', 'append'],

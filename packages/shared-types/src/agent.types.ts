@@ -546,7 +546,12 @@ export type AgentSSEMessage = AgentStreamEventMeta &
 		  }
 		| { type: 'text'; content: string }
 		| { type: 'text_delta'; content: string }
-		| { type: 'tool_call'; tool_call: ChatToolCall }
+		| {
+				type: 'tool_call';
+				tool_call: ChatToolCall;
+				/** The user's words this write came from (`from_quote`, tasker 155). */
+				source_quote?: string;
+		  }
 		| { type: 'tool_result'; result: Record<string, any> }
 		| {
 				/** A live sub-step inside a running tool call (e.g. web_navigate). */

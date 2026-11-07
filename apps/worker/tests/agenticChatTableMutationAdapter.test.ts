@@ -557,6 +557,26 @@ describe('table row update_onto_task', () => {
 		expect(receipt.removed_calendar_event_count).toBe(1);
 	});
 
+	it('carries the before → after field changes onto the receipt', async () => {
+		const fieldChanges = [
+			{
+				field: 'due_at',
+				before: '2026-11-04T00:00:00+00:00',
+				after: '2026-11-09T00:00:00+00:00'
+			}
+		];
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
+			ok: true,
+			data: { task: gatewayTask(), calendar_sync: 'none', field_changes: fieldChanges }
+		}));
+		const receipt = (await adapter({
+			runGateway,
+			taskSync: { syncTaskEvents: vi.fn() }
+		}).execute(input())) as Record<string, unknown>;
+
+		expect(receipt.field_changes).toEqual(fieldChanges);
+	});
+
 	it('admits the ratified assignment and relationship arguments without weakening the project fence', async () => {
 		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
 			ok: true,

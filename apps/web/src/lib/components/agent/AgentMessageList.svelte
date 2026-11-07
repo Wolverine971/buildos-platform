@@ -5,7 +5,6 @@
 	import { onDestroy, untrack } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import { prefersReducedMotion } from 'svelte/motion';
-	import { page } from '$app/state';
 	import ThinkingBlock from './ThinkingBlock.svelte';
 	import CreatedEntityCards from './CreatedEntityCards.svelte';
 	import DocumentChangeCards from './DocumentChangeCards.svelte';
@@ -26,6 +25,9 @@
 	} from './proposal-cards';
 	import { ArrowDown, ArrowRight } from '$lib/icons/lucide';
 	import { continueInProjectTarget, type TurnCardProject } from './agent-chat-turn-cards';
+	import UserMessageText from './UserMessageText.svelte';
+	import { derivePhraseMarks, type PhraseMark } from './agent-chat-phrase-marks';
+	import { flyPhrase } from './phrase-flight';
 	import { getProseClasses } from '$lib/utils/markdown';
 	import {
 		AgentMarkdownStreamRenderer,
@@ -136,10 +138,8 @@
 
 	// Turn cards (tasker 153): steps grouped into one card per project, for everyone.
 	// "Continue in Wayne Strategies": a workspace chat whose last turn was about one project.
-	// Still admins only.
 	let continuing = $state(false);
 	const continueTarget = $derived.by((): TurnCardProject | null => {
-		if (page.data?.user?.is_admin !== true) return null;
 		if (!turnCards || !onContinueInProject || selectedContextType !== 'global') return null;
 		if (streamingMessageId) return null;
 		for (let i = messages.length - 1; i >= 0; i--) {
@@ -174,6 +174,59 @@
 					: null
 		};
 	});
+	// Watch it sort (tasker 155): the words of each user message that a change came from,
+	// read from the turn that answered it. Keyed by the user message's id.
+	const phraseMarks = $derived.by(() => {
+		const byUser = new Map<string, PhraseMark[]>();
+		for (let i = 0; i < messages.length; i++) {
+			const message = messages[i];
+			if (message?.type !== 'user' || !message.content) continue;
+			for (let j = i + 1; j < messages.length; j++) {
+				const next = messages[j];
+				if (!next || next.type === 'user') break;
+				if (next.type !== 'thinking_block') continue;
+				const marks = derivePhraseMarks(
+					message.content,
+					(next as ThinkingBlockMessage).activities
+				);
+				if (marks.length) byUser.set(message.id, marks);
+				break;
+			}
+		}
+		return byUser;
+	});
+
+	// A phrase seen running in this view flies to its row when its write lands. Restored
+	// turns never fly: their phrases were never live here.
+	const seenLive = new Set<string>();
+	const flown = new Set<string>();
+	let flightQueue = Promise.resolve();
+	$effect(() => {
+		const landing: PhraseMark[] = [];
+		for (const marks of phraseMarks.values()) {
+			for (const mark of marks) {
+				if (mark.state === 'live') seenLive.add(mark.id);
+				else if (mark.state === 'landed' && seenLive.has(mark.id) && !flown.has(mark.id)) {
+					flown.add(mark.id);
+					landing.push(mark);
+				}
+			}
+		}
+		if (!landing.length || !container) return;
+		const root = container;
+		for (const mark of landing) {
+			flightQueue = flightQueue.then(async () => {
+				const source = root.querySelector(`[data-quote-mark="${CSS.escape(mark.id)}"]`);
+				const target = root.querySelector(`[data-step-slot="${CSS.escape(mark.id)}"]`);
+				await flyPhrase(source, target, {
+					text: source?.textContent ?? '',
+					label: mark.label,
+					tone: mark.action
+				});
+			});
+		}
+	});
+
 	const rowKey = messageRenderKey;
 	let saveAsTableHost = $state<{
 		open: (data: { headers: string[]; rows: string[][] }) => void;
@@ -984,7 +1037,10 @@
 											message
 										) && !isUserMessageExpanded(key)}
 									>
-										{message.content}
+										<UserMessageText
+											content={message.content}
+											marks={phraseMarks.get(message.id)}
+										/>
 									</div>
 								{/if}
 								<div class="message-footer mt-1">

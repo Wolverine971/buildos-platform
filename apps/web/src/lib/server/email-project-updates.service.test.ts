@@ -447,12 +447,10 @@ describe('decideEmailUpdate', () => {
 				error: null
 			}
 		});
-		const runWrite = vi
-			.fn()
-			.mockResolvedValue({
-				ok: false,
-				error: { code: 'FORBIDDEN', message: 'No write access' }
-			});
+		const runWrite = vi.fn().mockResolvedValue({
+			ok: false,
+			error: { code: 'FORBIDDEN', message: 'No write access' }
+		});
 		const result = await decideEmailUpdate({
 			admin: db,
 			userDb: {},

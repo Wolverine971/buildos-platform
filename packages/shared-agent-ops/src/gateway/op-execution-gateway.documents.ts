@@ -1,4 +1,5 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.documents.ts
+import { buildFieldChanges } from './field-changes';
 import { insertGatewayEntity } from './op-execution-gateway.create-idempotency';
 import { isValidUUID } from '@buildos/shared-types';
 import { logCreateAsync, logUpdateAsync } from '../ops/async-activity-logger';
@@ -1076,12 +1077,18 @@ export async function updateDocument(
 				})
 			: null;
 
+	const fieldChanges = buildFieldChanges(
+		previousDocument as Record<string, unknown>,
+		data as Record<string, unknown>
+	);
 	return {
 		document: serializeExternalEntity(
 			'document',
 			data as Record<string, unknown>,
 			project.name
 		),
+		// Before → after for title/state/description (tasker 155); the body is document_change.
+		...(fieldChanges.length ? { field_changes: fieldChanges } : {}),
 		...(documentChange
 			? {
 					document_change_status: 'changed',

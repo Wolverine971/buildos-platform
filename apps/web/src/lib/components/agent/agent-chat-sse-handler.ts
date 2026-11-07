@@ -135,6 +135,10 @@ export function buildToolCallActivity(
 			clientTurnId: event.client_turn_id,
 			turnRunId: event.turn_run_id,
 			streamSequenceIndex: event.sequence_index,
+			// The user's words this write came from (tasker 155).
+			...(typeof event.source_quote === 'string' && event.source_quote.trim()
+				? { sourceQuote: event.source_quote.trim() }
+				: {}),
 			...(skillActivity
 				? {
 						skillActivity,

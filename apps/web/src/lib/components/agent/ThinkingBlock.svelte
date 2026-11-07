@@ -14,7 +14,8 @@
 		Globe,
 		Sparkles,
 		Ban,
-		CornerUpLeft
+		CornerUpLeft,
+		ArrowUpRight
 	} from 'lucide-svelte';
 	import type { ActivityEntry, ThinkingBlockMessage } from './agent-chat.types';
 	import type { ToolActivityLine } from './agent-chat-tool-presenter';
@@ -31,6 +32,12 @@
 		type TurnCard,
 		type TurnCardProject
 	} from './agent-chat-turn-cards';
+	import {
+		buildStepDetails,
+		buildTurnReceipt,
+		type StepAction,
+		type StepDetails
+	} from './agent-chat-step-details';
 
 	interface Props {
 		block: ThinkingBlockMessage;
@@ -55,7 +62,18 @@
 		quoted: boolean;
 		outcome?: string;
 		error?: string;
+		/** What it read or changed, as links (tasker 155). */
+		details: StepDetails;
 	}
+
+	const ACTION_LABELS: Record<StepAction, string> = {
+		created: 'New',
+		updated: 'Updated',
+		archived: 'Archived',
+		deleted: 'Deleted',
+		moved: 'Moved',
+		linked: 'Linked'
+	};
 
 	// Screen-reader prefix for each row's status icon. Awaiting rows already
 	// start with "Needs your choice", so they get none.
@@ -151,9 +169,26 @@
 				...(line?.target ? { target: line.target } : {}),
 				quoted: line?.quoted === true,
 				...(outcome ? { outcome } : {}),
-				...(tone === 'failed' && line?.error ? { error: line.error } : {})
+				...(tone === 'failed' && line?.error ? { error: line.error } : {}),
+				details: buildStepDetails(activity, {
+					projectId: turnCards?.sessionProject?.id ?? null
+				})
 			};
 		});
+	});
+	// "2 updated · 1 created · 6 read" once the turn has changed something.
+	const receipt = $derived.by(() => {
+		const counts = buildTurnReceipt(
+			steps.filter((step) => step.tone === 'done').map((step) => step.details)
+		);
+		const parts = [
+			counts.updated ? `${counts.updated} updated` : '',
+			counts.created ? `${counts.created} created` : '',
+			counts.archived ? `${counts.archived} archived` : ''
+		].filter(Boolean);
+		if (!parts.length) return null;
+		if (counts.read) parts.push(`${counts.read} read`);
+		return parts.join(' · ');
 	});
 	const stepCount = $derived(steps.length);
 	const hasSteps = $derived(stepCount > 0);
@@ -334,9 +369,80 @@
 
 {#snippet sep()}<span class="thinking-step-sep" aria-hidden="true">{' · '}</span>{/snippet}
 
+{#snippet entityLink(entity: StepDetails['entities'][number], tone: StepAction | null)}
+	{#if entity.href}
+		<a
+			class="step-entity"
+			data-action={tone ?? 'read'}
+			href={entity.href}
+			target="_blank"
+			rel="noopener"
+			title="Open {entity.title} in a new tab"
+			><span class="step-entity-kind">{entity.kind}</span><span class="step-entity-title"
+				>{entity.title}</span
+			><ArrowUpRight class="step-entity-icon" aria-hidden="true" /></a
+		>
+	{:else}
+		<span class="step-entity" data-action={tone ?? 'read'}
+			><span class="step-entity-kind">{entity.kind}</span><span class="step-entity-title"
+				>{entity.title}</span
+			></span
+		>
+	{/if}
+{/snippet}
+
+{#snippet stepDetails(step: StepRow)}
+	{@const details = step.details}
+	{@const linkTarget = details.entities.length === 1 && step.target ? null : details.entities}
+	{#if step.tone === 'done' && (linkTarget?.length || details.changes.length || details.docChange || details.quote)}
+		<div class="step-details">
+			{#if details.quote}
+				<p class="step-quote" data-action={details.action ?? 'read'}>“{details.quote}”</p>
+			{/if}
+			{#if linkTarget?.length}
+				<div class="step-entities">
+					{#each linkTarget as entity (`${entity.kind}:${entity.id}`)}
+						{@render entityLink(entity, details.action)}
+					{/each}
+					{#if details.more}<span class="step-more">+{details.more} more</span>{/if}
+				</div>
+			{/if}
+			{#each details.changes as change (change.field)}
+				<p class="step-change">
+					<span class="step-change-label">{change.label}</span>
+					{#if change.before !== null}<s class="step-change-before">{change.before}</s
+						><span class="step-change-arrow" aria-hidden="true">→</span>{/if}<span
+						class="step-change-after">{change.after ?? 'cleared'}</span
+					>
+				</p>
+			{/each}
+			{#if details.docChange}
+				<p class="step-change">
+					<span class="step-change-label">Body</span>
+					<span class="step-doc-added">+{details.docChange.added}</span>
+					<span class="step-doc-removed">−{details.docChange.removed}</span>
+					<span class="text-muted-foreground"
+						>{details.docChange.added + details.docChange.removed === 1
+							? 'line'
+							: 'lines'}</span
+					>
+				</p>
+			{/if}
+		</div>
+	{/if}
+{/snippet}
+
 {#snippet stepRow(step: StepRow)}
 	{@const trail = readToolProgressSteps(step.activity.metadata?.progressSteps)}
-	<div class="py-0.5" data-step-tone={step.tone}>
+	{@const badged = Boolean(step.details.action && step.tone === 'done')}
+	{@const kind = step.details.entities[0]?.kind}
+	{@const single =
+		step.details.entities.length === 1 && step.target ? step.details.entities[0] : null}
+	<div
+		class="py-0.5"
+		data-step-tone={step.tone}
+		data-step-slot={step.activity.toolCallId ?? step.activity.id}
+	>
 		<div class="flex items-start gap-1.5 leading-snug">
 			<span class="thinking-step-icon" aria-hidden="true">
 				{#if step.tone === 'pending'}
@@ -356,21 +462,38 @@
 			{/if}
 
 			<span class="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">
-				<span
+				{#if badged && step.details.action}<span
+						class="step-action"
+						data-action={step.details.action}>{ACTION_LABELS[step.details.action]}</span
+					>{/if}<span
 					class={step.tone === 'failed'
 						? 'text-destructive'
 						: step.tone === 'stopped'
 							? 'text-muted-foreground'
-							: 'text-foreground'}>{step.verb}</span
-				>{#if step.target}{@render sep()}<span class="thinking-step-target"
-						>{step.quoted ? `“${step.target}”` : step.target}</span
-					>{/if}
+							: 'text-foreground'}
+					>{badged && kind
+						? kind.charAt(0).toUpperCase() + kind.slice(1)
+						: step.verb}</span
+				>{#if step.target}{@render sep()}{#if single?.href}<a
+							class="thinking-step-target step-target-link"
+							href={single.href}
+							target="_blank"
+							rel="noopener"
+							title="Open {single.title} in a new tab"
+							>{step.target}<ArrowUpRight
+								class="step-entity-icon"
+								aria-hidden="true"
+							/></a
+						>{:else}<span class="thinking-step-target"
+							>{step.quoted ? `“${step.target}”` : step.target}</span
+						>{/if}{/if}
 			</span>
 
 			{#if step.outcome}
 				<span class="thinking-step-outcome">{step.outcome}</span>
 			{/if}
 		</div>
+		{@render stepDetails(step)}
 		{#if step.error}
 			<p class="thinking-step-error">{step.error}</p>
 		{/if}
@@ -492,7 +615,9 @@
 							<span class="thinking-elapsed" aria-hidden="true">{elapsedLabel}</span>
 						{/if}
 						{#if hasSteps}
-							<span class="activity-count-badge">{stepSummary}</span>
+							<span class="activity-count-badge"
+								>{!isRunning && receipt ? receipt : stepSummary}</span
+							>
 						{/if}
 					</div>
 				{/if}
@@ -932,6 +1057,161 @@
 		white-space: nowrap;
 		font-variant-numeric: tabular-nums;
 		color: hsl(var(--muted-foreground));
+	}
+
+	/* Where it went (tasker 155): action badge, record links, before → after, source words. */
+	.step-action {
+		display: inline-block;
+		margin-right: 0.1rem;
+		padding: 0 0.3rem;
+		border-radius: 0.25rem;
+		font-size: 0.58rem;
+		font-weight: 700;
+		letter-spacing: 0.02em;
+		text-transform: uppercase;
+		vertical-align: 0.05em;
+		background: hsl(var(--accent) / 0.18);
+		color: hsl(var(--foreground));
+	}
+
+	.step-action[data-action='created'] {
+		background: hsl(var(--info) / 0.22);
+	}
+
+	.step-action[data-action='archived'],
+	.step-action[data-action='deleted'] {
+		background: hsl(var(--muted));
+		color: hsl(var(--muted-foreground));
+	}
+
+	.step-target-link {
+		text-decoration: underline;
+		text-decoration-color: hsl(var(--muted-foreground) / 0.35);
+		text-underline-offset: 2px;
+	}
+
+	.step-target-link:hover {
+		color: hsl(var(--foreground));
+		text-decoration-color: hsl(var(--accent));
+	}
+
+	.step-target-link :global(.step-entity-icon),
+	.step-entity :global(.step-entity-icon) {
+		display: inline;
+		width: 0.7rem;
+		height: 0.7rem;
+		margin-left: 0.1rem;
+		vertical-align: -0.1em;
+		opacity: 0.6;
+	}
+
+	.step-details {
+		margin: 0.125rem 0 0.25rem 1.125rem;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: 0.2rem;
+		min-width: 0;
+	}
+
+	.step-quote {
+		justify-self: start;
+		max-width: 100%;
+		padding: 0.05rem 0.35rem;
+		border-radius: 0.25rem;
+		font-family: var(--font-sans, inherit);
+		font-size: 0.68rem;
+		color: hsl(var(--foreground));
+		background: hsl(var(--accent) / 0.14);
+		overflow-wrap: anywhere;
+	}
+
+	.step-quote[data-action='created'] {
+		background: hsl(var(--info) / 0.16);
+	}
+
+	.step-entities {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem;
+	}
+
+	.step-entity {
+		display: inline-flex;
+		align-items: baseline;
+		gap: 0.3rem;
+		max-width: 100%;
+		min-width: 0;
+		overflow: hidden;
+		padding: 0.05rem 0.4rem;
+		border: 1px solid hsl(var(--border));
+		border-radius: 0.3rem;
+		background: hsl(var(--background) / 0.6);
+		color: hsl(var(--foreground));
+		transition:
+			border-color 120ms ease,
+			background-color 120ms ease;
+	}
+
+	a.step-entity:hover {
+		border-color: hsl(var(--accent) / 0.6);
+		background: hsl(var(--accent) / 0.08);
+	}
+
+	.step-entity-kind {
+		font-size: 0.56rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.step-entity-title {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		max-width: min(16rem, 100%);
+	}
+
+	.step-more {
+		align-self: center;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.step-change {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.3rem;
+		overflow-wrap: anywhere;
+	}
+
+	.step-change-label {
+		min-width: 3.5rem;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.step-change-before {
+		color: hsl(var(--muted-foreground));
+		text-decoration-color: hsl(var(--muted-foreground) / 0.7);
+	}
+
+	.step-change-arrow {
+		color: hsl(var(--muted-foreground));
+	}
+
+	.step-change-after {
+		padding: 0 0.25rem;
+		border-radius: 0.2rem;
+		background: hsl(var(--accent) / 0.15);
+		color: hsl(var(--foreground));
+	}
+
+	.step-doc-added {
+		color: hsl(var(--success));
+	}
+
+	.step-doc-removed {
+		color: hsl(var(--destructive));
 	}
 
 	.thinking-step-error {

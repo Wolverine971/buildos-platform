@@ -1,4 +1,5 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.projects.ts
+import { buildFieldChanges } from './field-changes';
 import { loadProjectGraphData } from '../ontology/project-graph-loader';
 import {
 	instantiateProject,
@@ -436,9 +437,12 @@ export async function updateProject(context: ToolExecutionContext, args: Record<
 	);
 
 	const project = sanitizeProjectForClient(data as Record<string, unknown>);
+	const fieldChanges = buildFieldChanges(access.entity, data as Record<string, unknown>);
 	return {
 		project,
-		message: `Updated ontology project "${project.name ?? access.project.id}".`
+		message: `Updated ontology project "${project.name ?? access.project.id}".`,
+		// Before → after for the chat's step card (tasker 155).
+		...(fieldChanges.length ? { field_changes: fieldChanges } : {})
 	};
 }
 

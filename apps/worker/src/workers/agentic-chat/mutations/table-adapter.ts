@@ -524,6 +524,7 @@ function buildEntityReceipt(
 		{
 			[receiptSpec.rootKey]: canonicalEntity,
 			...passthroughReceiptFields(data, execution.passthroughReceiptFields ?? []),
+			...fieldChangesReceipt(data),
 			message: receiptSpec.message.replace('{display}', display),
 			...(receiptSpec.staticFields ?? {})
 		},
@@ -541,6 +542,20 @@ function resolveReceiptDisplay(
 	if (typeof declared === 'string') return declared;
 	if (typeof expectedId === 'string') return expectedId;
 	return receiptSpec.fallbackLabel ?? '';
+}
+
+/**
+ * Before → after for the fields an update changed (gateway `field_changes`, tasker 155). The
+ * chat's step card shows them; the model reads the same short list, which also keeps its
+ * reply honest about what moved.
+ */
+function fieldChangesReceipt(data: Record<string, unknown> | undefined): Record<string, unknown> {
+	if (!isRecord(data) || !Array.isArray(data.field_changes)) return {};
+	const changes = data.field_changes.filter(
+		(entry): entry is Record<string, unknown> =>
+			isRecord(entry) && typeof entry.field === 'string'
+	);
+	return changes.length ? { field_changes: changes.slice(0, 12) } : {};
 }
 
 /**

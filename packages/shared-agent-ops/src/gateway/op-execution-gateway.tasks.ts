@@ -1,4 +1,5 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.tasks.ts
+import { buildFieldChanges } from './field-changes';
 import { reconcileLegacyTaskEstimate } from './task-estimate';
 import {
 	guestCalendarWriteUser,
@@ -1001,12 +1002,15 @@ async function updateTaskAttempt(
 		}
 	}
 
+	const fieldChanges = buildFieldChanges(existingTask as Record<string, unknown>, data);
 	return {
 		task: {
 			...responseTask,
 			project_name: project.name
 		},
-		...calendarReceipt
+		...calendarReceipt,
+		// Before → after for the chat's step card (tasker 155).
+		...(fieldChanges.length ? { field_changes: fieldChanges } : {})
 	};
 }
 

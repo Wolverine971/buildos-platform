@@ -1,4 +1,5 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.core-entities.ts
+import { buildFieldChanges } from './field-changes';
 import { insertGatewayEntity } from './op-execution-gateway.create-idempotency';
 import {
 	GOAL_STATES,
@@ -854,13 +855,16 @@ async function updateCoreEntity(
 		getExternalAgentActivityContext(context)
 	);
 
+	const fieldChanges = buildFieldChanges(access.entity, data as Record<string, unknown>);
 	return {
 		[config.resultKey]: serializeExternalEntity(
 			kind,
 			data as Record<string, unknown>,
 			access.project.name
 		),
-		message: `Updated ontology ${kind} "${data[config.displayField] ?? access.entity.id}".`
+		message: `Updated ontology ${kind} "${data[config.displayField] ?? access.entity.id}".`,
+		// Before → after for the chat's step card (tasker 155).
+		...(fieldChanges.length ? { field_changes: fieldChanges } : {})
 	};
 }
 

@@ -114,7 +114,8 @@ export function buildProviderToolStep(
 		toolName: call.name,
 		operationName: call.operationName,
 		arguments: call.arguments,
-		downstreamIdempotencySupported: call.downstreamIdempotencySupported
+		downstreamIdempotencySupported: call.downstreamIdempotencySupported,
+		...(call.sourceQuote ? { sourceQuote: call.sourceQuote } : {})
 	};
 }
 

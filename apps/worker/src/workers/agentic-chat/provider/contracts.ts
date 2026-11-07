@@ -432,6 +432,12 @@ export type AgenticChatProviderStepV1 =
 			operationName: string;
 			arguments: JsonObject;
 			downstreamIdempotencySupported: boolean;
+			/**
+			 * The user's words this change came from (`from_quote`, tasker 155). Display only:
+			 * published with the call so the chat can light the phrase up; never reaches review,
+			 * the adapter or effect identity.
+			 */
+			sourceQuote?: string;
 	  })
 	| {
 			type: 'finish';

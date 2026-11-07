@@ -68,3 +68,4 @@ export * from './onto-task-priority';
 export * from './chat-workflow-prototype';
 export * from './context-selection';
 export * from './agent-permission.types';
+export * from './source-quote';

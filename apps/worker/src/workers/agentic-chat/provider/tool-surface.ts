@@ -18,6 +18,7 @@ import {
 	decodeAgenticChatToolSurfaceV1
 } from '@buildos/shared-types';
 import { SCHEDULING_SIDECAR_KEYS } from '../shared/tool-scheduling';
+import { SOURCE_QUOTE_ARGUMENT } from './stream-tool-calls';
 import type { AgenticChatWorkerExecutionInputV1 } from '../turn/execution-input';
 import {
 	AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1,
@@ -269,12 +270,23 @@ export function reviewedWorkerProviderToolDefinitionV1(
 			parameters: {
 				...tool.function.parameters,
 				additionalProperties: false,
-				properties: reviewedProperties,
+				properties: { ...reviewedProperties, [SOURCE_QUOTE_ARGUMENT]: SOURCE_QUOTE_SCHEMA },
 				required: [...spec.requiredNames]
 			}
 		}
 	};
 }
+
+/**
+ * Every reviewed write may say which of the user's words it came from, so the chat can light
+ * that phrase up and show where it went (tasker 155). Split off at parse time; display only.
+ */
+const SOURCE_QUOTE_SCHEMA: JsonObject = {
+	type: 'string',
+	maxLength: 400,
+	description:
+		"Optional. The exact words from the user's latest message that this change comes from, copied verbatim (a short phrase or sentence). Omit when the change does not come from their message."
+};
 
 function isEnabledMutationTool(
 	toolName: string,
