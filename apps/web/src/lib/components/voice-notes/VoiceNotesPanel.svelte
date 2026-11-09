@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/voice-notes/VoiceNotesPanel.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { RefreshCw } from 'lucide-svelte';
+	import { RefreshCw } from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import VoiceNoteRecorder from './VoiceNoteRecorder.svelte';
 	import VoiceNoteList from './VoiceNoteList.svelte';
@@ -63,8 +63,8 @@
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-3">
 		<div>
-			<h2 class="text-base font-semibold text-foreground">Voice notes</h2>
-			<p class="text-sm text-muted-foreground">Record, save, and replay short voice notes.</p>
+			<h2 class="text-base font-medium text-foreground">Voice notes</h2>
+			<p class="text-sm text-muted-foreground">Record, save, and replay short voice notes</p>
 		</div>
 		<Button onclick={loadNotes} variant="ghost" size="sm" disabled={isLoading}>
 			<RefreshCw class={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -86,7 +86,7 @@
 	{/if}
 
 	{#if isLoading}
-		<p class="text-sm text-muted-foreground">Loading voice notes…</p>
+		<p class="text-sm text-muted-foreground">Loading voice notes</p>
 	{:else}
 		<VoiceNoteList {voiceNotes} {showTranscript} onDelete={handleDelete} />
 	{/if}

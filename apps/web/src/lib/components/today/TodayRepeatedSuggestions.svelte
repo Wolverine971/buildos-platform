@@ -21,7 +21,7 @@
 	let chosen = $state<Record<string, RepeatedChoice>>({});
 	const DONE_LABEL: Record<RepeatedChoice, string> = {
 		keep: 'Kept. Hidden here for two weeks.',
-		snooze: 'Snoozed a month.',
+		snooze: 'Snoozed a month',
 		let_go: 'Let go. It moved to the archive.'
 	};
 
@@ -42,23 +42,23 @@
 	}
 
 	const actionClass =
-		'min-h-11 rounded-md border border-border bg-background px-2.5 text-xs font-medium text-foreground hover:border-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-8';
+		'min-h-11 rounded-lg px-3 text-xs font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-8';
 </script>
 
 {#if items.length > 0}
 	<section class="mt-6" aria-label="Suggested every morning">
-		<h2 class="micro-label text-muted-foreground">Your brief keeps suggesting these</h2>
+		<h2 class="text-xs font-medium text-muted-foreground">Your brief keeps suggesting these</h2>
 		<p class="mt-1 text-sm text-muted-foreground">
 			They haven't moved. Keep them, snooze them, or let them go, and they'll stop showing up.
 		</p>
-		<ul class="mt-2 rounded-lg border border-border bg-card">
+		<ul class="mt-2 rounded-xl border border-border bg-card">
 			{#each items as item (item.task_id)}
 				{@const choice = chosen[item.task_id]}
 				<li
-					class="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border/70 px-3 py-2.5 first:border-t-0"
+					class="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border/70 px-3 py-3 first:border-t-0"
 				>
-					<span class="w-16 shrink-0 text-xs tabular-nums text-muted-foreground"
-						>{item.days} days</span
+					<span class="w-16 shrink-0 font-mono text-xs tabular-nums text-muted-foreground"
+						>{item.days} {item.days === 1 ? 'day' : 'days'}</span
 					>
 					<div class="min-w-0 flex-1 basis-48">
 						<p
@@ -72,7 +72,7 @@
 							{choice ? DONE_LABEL[choice] : item.project_name}
 						</p>
 					</div>
-					<div class="flex shrink-0 gap-1.5">
+					<div class="flex shrink-0 gap-1">
 						{#if choice}
 							<button
 								type="button"

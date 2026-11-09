@@ -1,8 +1,10 @@
+// apps/web/src/lib/components/layout/Navigation.task-chat.test.ts
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { page } from '$app/state';
 import type { ProjectItemPageData } from '$lib/server/projects/project-item-page';
+import ReaderStub from '$lib/components/projects/desktop/__fixtures__/ModalStub.svelte';
 import TaskPageWithNavigation from './__fixtures__/TaskPageWithNavigation.svelte';
 
 vi.mock('$app/state', () => ({
@@ -22,10 +24,10 @@ vi.mock('$lib/components/agent/load-agent-chat-modal', async () => {
 	};
 });
 // The task list and its selection are real. Skip fetching the reader's detail panel.
-vi.mock(
-	'$lib/components/projects/desktop/DesktopReader.svelte',
-	async () => import('$lib/components/projects/desktop/__fixtures__/ModalStub.svelte')
-);
+// Load the stub with the test so successive mounts cannot overlap an async mock factory.
+vi.mock('$lib/components/projects/desktop/DesktopReader.svelte', () => ({
+	default: ReaderStub
+}));
 
 const data: ProjectItemPageData = {
 	projectId: 'p',
@@ -76,7 +78,12 @@ beforeEach(() => {
 	// SvelteKit keeps the original loader data when the reader shallow-routes to the next task.
 	Object.assign(page.data, data);
 });
-afterEach(cleanup);
+afterEach(async () => {
+	// Chat assertions do not wait for ReaderPanes' independent background import.
+	// Let it finish before the next mount or the test environment is torn down.
+	await vi.dynamicImportSettled();
+	cleanup();
+});
 
 describe('header chat on a task page', () => {
 	it('opens the task from the loaded page even without a project task list', async () => {

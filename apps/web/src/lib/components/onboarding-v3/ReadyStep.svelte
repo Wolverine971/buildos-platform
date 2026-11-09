@@ -137,14 +137,16 @@
 <div class="mx-auto max-w-xl px-4 py-8 sm:py-12">
 	<div class="mb-6 text-center">
 		<div
-			class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-lg bg-success/10 text-success"
+			class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-muted text-muted-foreground"
 		>
-			{#if completed}<CheckCircle class="h-7 w-7" />{:else}<FolderOpen class="h-7 w-7" />{/if}
+			{#if completed}<CheckCircle class="h-7 w-7 text-success" />{:else}<FolderOpen
+					class="h-7 w-7"
+				/>{/if}
 		</div>
-		<p class="micro-label mb-2 text-muted-foreground">
+		<p class="mb-2 text-xs font-medium text-muted-foreground">
 			{completed ? 'Setup complete' : 'One last step'}
 		</p>
-		<h1 class="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+		<h1 class="text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
 			{completed
 				? 'You’re set up.'
 				: projectId
@@ -159,9 +161,9 @@
 	</div>
 
 	{#if packet}
-		<div class="mb-6 rounded-lg border border-border bg-card p-4 shadow-ink sm:p-5">
-			<p class="micro-label mb-2 text-muted-foreground">Pick up here</p>
-			<h2 class="text-lg font-semibold text-foreground [overflow-wrap:anywhere]">
+		<div class="mb-6 rounded-xl border border-border bg-card p-4 sm:p-5">
+			<p class="mb-2 text-xs font-medium text-muted-foreground">Pick up here</p>
+			<h2 class="text-lg font-medium text-foreground [overflow-wrap:anywhere]">
 				{packet.project.name}
 			</h2>
 			<p class="mt-2 text-sm leading-relaxed text-foreground [overflow-wrap:anywhere]">
@@ -175,8 +177,8 @@
 		</div>
 	{/if}
 	{#if projectId}
-		<div class="mb-6 rounded-lg border border-border bg-card p-4 sm:p-5">
-			<p class="micro-label mb-2 text-accent">When you come back</p>
+		<div class="mb-6 rounded-xl border border-border bg-card p-4 sm:p-5">
+			<p class="mb-2 text-xs font-medium text-muted-foreground">When you come back</p>
 			<p class="text-sm leading-relaxed text-foreground">{PROJECT_UPDATE_PROMPT}</p>
 			<p class="mt-2 text-sm text-muted-foreground">
 				Open that same project and continue in its chat.
@@ -186,7 +188,7 @@
 	{#if stats.length}
 		<div class="mb-6 flex flex-wrap justify-center gap-6" aria-label="Saved project structure">
 			{#each stats as stat (stat.label)}<div class="text-center">
-					<p class="text-2xl font-semibold tabular-nums text-foreground">{stat.count}</p>
+					<p class="text-2xl font-medium tabular-nums text-foreground">{stat.count}</p>
 					<p class="text-sm text-muted-foreground">
 						{stat.count === 1 ? stat.label : stat.plural}
 					</p>
@@ -203,11 +205,11 @@
 	{/if}
 	{#if projectId}
 		<p class="mb-6 text-center text-sm text-muted-foreground">
-			Want to show what you’re building? Your public page is waiting in
+			Want to show what you’re building? Your public page is waiting in Profile under
 			<a
 				href="/profile/page"
-				class="font-semibold text-accent underline-offset-2 hover:underline"
-				>Profile → Your page</a
+				class="font-medium text-foreground underline decoration-border underline-offset-2 hover:decoration-foreground"
+				>Your page</a
 			>. Nothing is public until you publish it.
 		</p>
 	{/if}
@@ -237,7 +239,7 @@
 	{#if completed}
 		<a
 			href={destination}
-			class="flex min-h-11 items-center justify-center rounded-md bg-accent px-5 py-3 font-semibold text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+			class="flex min-h-11 items-center justify-center rounded-lg bg-accent px-5 py-3 font-medium text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 			>Open Today <ArrowRight class="ml-2 h-4 w-4" /></a
 		>
 	{:else}
@@ -247,7 +249,7 @@
 			onclick={completeOnboarding}
 			loading={isCompleting}
 			disabled={isCompleting || isLoading}
-			class="w-full shadow-ink"
+			class="w-full"
 		>
 			{isCompleting
 				? 'Finishing setup…'

@@ -15,7 +15,7 @@
 
 	let {
 		source = 'workspace',
-		placeholder = 'Jot anything: a thought, a task, an update…',
+		placeholder = 'Jot anything: a thought, a task, an update',
 		autofocus = false,
 		onCaptured,
 		onSorted,
@@ -81,7 +81,7 @@
 			void sort(item.id);
 		} catch (cause) {
 			toastService.error(
-				cause instanceof Error && cause.message ? cause.message : 'Could not save that.'
+				cause instanceof Error && cause.message ? cause.message : 'Could not save that'
 			);
 		} finally {
 			saving = false;
@@ -135,11 +135,11 @@
 				{ receipt }
 			);
 			onUndone?.(result);
-			if (result.failed) toastService.error("Some of that couldn't be put back.");
-			else toastService.success('Back the way you wrote it.');
+			if (result.failed) toastService.error("Some of that couldn't be put back");
+			else toastService.success('Back the way you wrote it');
 		} catch (cause) {
 			toastService.error(
-				cause instanceof Error && cause.message ? cause.message : 'Could not undo that.'
+				cause instanceof Error && cause.message ? cause.message : 'Could not undo that'
 			);
 		}
 	}
@@ -167,13 +167,13 @@
 		voiceButtonLabel="Record a thought"
 		onkeydown={keydown}
 		class="w-full"
-		containerClass="rounded-lg border border-border bg-card shadow-ink tx tx-grid tx-weak transition-colors focus-within:border-accent/70 focus-within:ring-1 focus-within:ring-accent/30"
+		containerClass="rounded-xl border border-border bg-card tx tx-grid tx-weak transition-colors focus-within:border-foreground/30"
 		textareaClass="border-none bg-transparent px-3 pt-3 pb-1 text-base leading-snug text-foreground placeholder:text-muted-foreground shadow-none focus:outline-none focus:ring-0 sm:px-4 sm:text-sm"
 	>
 		{#snippet actions()}
 			<button
 				type="button"
-				class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-accent bg-accent text-accent-foreground shadow-ink touch-manipulation pressable hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-border disabled:bg-muted disabled:text-muted-foreground/50 disabled:shadow-none sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
+				class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-accent bg-accent text-accent-foreground touch-manipulation hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-border disabled:bg-muted disabled:text-muted-foreground/50 sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
 				aria-label="Save to your Workspace"
 				title="Save (Enter)"
 				disabled={!canSend}

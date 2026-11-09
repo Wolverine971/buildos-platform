@@ -6,7 +6,6 @@ vi.mock('./tracking-consent', () => ({
 	getEffectiveTrackingPreferences: () => ({ analytics: false, marketing: true }),
 	TRACKING_PREFERENCES_CHANGED_EVENT: 'buildos:test-tracking-preferences'
 }));
-vi.mock('@vercel/analytics/sveltekit', () => ({ injectAnalytics: vi.fn() }));
 
 type FbqStub = { queue: unknown[][]; disablePushState?: boolean };
 

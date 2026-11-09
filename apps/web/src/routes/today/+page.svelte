@@ -1230,7 +1230,7 @@
 		if (result.lines.length) return;
 		toastService.add({
 			type: 'success',
-			message: 'Saved to your Workspace.',
+			message: 'Saved to your Workspace',
 			action: { label: 'Open', onClick: () => void goto('/projects') }
 		});
 	}
@@ -1254,14 +1254,12 @@
 			});
 			const payload = await response.json().catch(() => null);
 			if (!response.ok || !payload?.data?.item) {
-				throw new Error(
-					payload?.error?.message ?? payload?.error ?? 'Could not save that.'
-				);
+				throw new Error(payload?.error?.message ?? payload?.error ?? 'Could not save that');
 			}
 			captureText = '';
 			toastService.add({
 				type: 'success',
-				message: 'Saved to your Workspace.',
+				message: 'Saved to your Workspace',
 				action: { label: 'Open', onClick: () => void goto('/projects') }
 			});
 			trackLoopEvent('loop_capture_submitted', 'today', {
@@ -1270,7 +1268,7 @@
 			});
 		} catch (cause) {
 			toastService.error(
-				cause instanceof Error && cause.message ? cause.message : 'Could not save that.'
+				cause instanceof Error && cause.message ? cause.message : 'Could not save that'
 			);
 		} finally {
 			workspaceSaving = false;
@@ -1416,7 +1414,7 @@
 			<div class="flex items-center justify-between gap-3">
 				<div class="min-w-0">
 					<div class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-						<h1 class="text-2xl font-semibold tracking-tight text-foreground">Today</h1>
+						<h1 class="text-2xl font-medium text-foreground">Today</h1>
 						<p class="text-xs text-muted-foreground">
 							{dateLabel || 'Your day, at a glance'}
 						</p>
@@ -1437,7 +1435,7 @@
 				</div>
 				<Button
 					onclick={openDayChat}
-					variant={activationProject || !hasProjects ? 'ghost' : 'primary'}
+					variant={activationProject || !hasProjects ? 'ghost' : 'outline'}
 					size="sm"
 					icon={MessageCircle}
 					class="shrink-0 text-xs [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:py-1.5"
@@ -1447,7 +1445,7 @@
 			</div>
 			{#if nextEntry}
 				<p class="mt-1 flex min-w-0 items-baseline gap-2 text-xs text-muted-foreground">
-					<span class="micro-label shrink-0 text-accent">Up next</span>
+					<span class="shrink-0 font-medium text-foreground">Up next</span>
 					<span class="truncate" title={nextEntry.title}>{nextEntry.title}</span>
 					<span class="shrink-0 text-xs stamp">{nextEntry.timeLabel}</span>
 				</p>
@@ -1455,7 +1453,7 @@
 
 			<div class="mt-2 flex flex-wrap items-center border-b border-border/70 pb-1">
 				{#if hasProjects}
-					<div class="mr-1.5 flex py-0.5">
+					<div class="mr-2 flex">
 						<ErrorBoundary area="today-brief-widget">
 							<DashboardBriefWidget
 								user={briefUser}
@@ -1470,9 +1468,9 @@
 						onclick={openInbox}
 						variant="ghost"
 						size="sm"
-						class="gap-1.5 px-1 text-xs font-medium sm:px-2 [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:py-1"
+						class="gap-2 px-1 text-xs font-medium sm:px-2 [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:py-1"
 					>
-						<Inbox class="h-4 w-4 shrink-0 text-accent" />
+						<Inbox class="h-4 w-4 shrink-0 text-muted-foreground" />
 						{inboxCount} to review
 					</Button>
 				{/if}
@@ -1481,15 +1479,15 @@
 						onclick={openOverdue}
 						variant="ghost"
 						size="sm"
-						class="gap-1.5 px-1 text-xs font-medium sm:px-2 [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:py-1"
+						class="gap-2 px-1 text-xs font-medium sm:px-2 [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:py-1"
 					>
-						<AlertCircle class="h-4 w-4 shrink-0 text-warning" />
+						<AlertCircle class="h-4 w-4 shrink-0 text-destructive" />
 						{feed.overdueCount} overdue
 					</Button>
 				{/if}
 				<a
 					href="/projects"
-					class="ml-auto inline-flex min-h-11 min-w-11 [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					class="ml-auto inline-flex min-h-11 min-w-11 [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8 items-center justify-center gap-1 rounded-lg px-2 text-xs font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					title="Open your Workspace"
 					aria-label="Open your Workspace"
 				>
@@ -1552,14 +1550,14 @@
 			{/if}
 			{#if activationProject}
 				<section
-					class="mt-4 rounded-lg border border-accent/30 bg-accent/5 p-4 sm:p-5"
+					class="mt-4 rounded-xl border border-border bg-card p-4 sm:p-5"
 					aria-label="Your next move"
 				>
-					<p class="micro-label text-muted-foreground">
+					<p class="text-xs font-medium text-muted-foreground">
 						Your next move · {activationProject.name}
 					</p>
 					<h2
-						class="mt-2 text-lg font-semibold leading-relaxed text-foreground [overflow-wrap:anywhere]"
+						class="mt-2 text-lg font-medium leading-relaxed text-foreground [overflow-wrap:anywhere]"
 					>
 						{activationProject.next_step_short ??
 							'Open your project and choose your first task.'}
@@ -1570,7 +1568,7 @@
 							activationId = null;
 							activationSource = '';
 						}}
-						class="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground shadow-ink pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						class="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>Continue with this project <ArrowUpRight class="h-4 w-4" /></a
 					>
 				</section>
@@ -1586,23 +1584,21 @@
 			     first-project brain-dump instead of the generic "what changed?" bar. -->
 				<section class="mt-4" aria-label="Start your first project">
 					<div
-						class="rounded-lg border border-border bg-card shadow-ink tx tx-grain tx-weak flex flex-col items-center gap-4 p-5 text-center sm:p-8"
+						class="rounded-xl border border-border bg-card tx tx-grain tx-weak flex flex-col items-center gap-4 p-5 text-center sm:p-8"
 					>
-						<div class="rounded-md border border-accent/20 bg-accent/10 p-2.5">
-							<Sparkles class="h-5 w-5 text-accent" />
-						</div>
+						<Sparkles class="h-5 w-5 text-muted-foreground" />
 						<div class="max-w-md">
-							<h2 class="text-lg font-semibold text-foreground sm:text-xl">
+							<h2 class="text-lg font-medium text-foreground sm:text-xl">
 								Get it out of your head
 							</h2>
-							<p class="mt-1.5 text-sm text-muted-foreground">
+							<p class="mt-2 text-sm text-muted-foreground">
 								Brain-dump whatever you're working on — messy is fine. BuildOS turns
 								it into a structured project with tasks and a clear next move.
 							</p>
 						</div>
 						<div class="w-full max-w-md">
 							<div
-								class="rounded-md border border-border bg-background p-2 text-left focus-within:border-accent sm:p-2.5"
+								class="rounded-lg border border-border bg-background p-2 text-left focus-within:border-foreground/30 sm:p-3"
 								onkeydown={handleFirstProjectKeydown}
 								role="presentation"
 							>
@@ -1610,7 +1606,7 @@
 									bind:value={captureText}
 									bind:isRecording={captureVoiceRecording}
 									bind:isTranscribing={captureVoiceFinishing}
-									placeholder="What are you working on? Dump it all here…"
+									placeholder="What are you working on?"
 									onfocus={warmAgentChatModal}
 									rows={3}
 									maxRows={10}
@@ -1655,14 +1651,14 @@
 			{:else if hasProjects && !activationProject}
 				{#if dayPart === 'evening' && !closeOpen && !closeHidden}
 					<div
-						class="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-accent/50 bg-accent/5 px-4 py-2.5"
+						class="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-card px-4 py-3"
 					>
 						<p class="text-sm text-foreground">
-							<span class="font-semibold">Close out the day?</span> Say what happened.
-							About 30 seconds.
+							<span class="font-medium">Close out the day?</span> Say what happened. About
+							30 seconds.
 						</p>
 						<div class="flex gap-2">
-							<Button variant="accent" size="sm" onclick={openCloseOut}
+							<Button variant="outline" size="sm" onclick={openCloseOut}
 								>Close out</Button
 							>
 							<Button variant="ghost" size="sm" onclick={hideCloseOut}>Not now</Button
@@ -1709,10 +1705,8 @@
 
 		{#if !feed}
 			<div class="mt-6 flex items-center gap-3 wt-paper p-3 sm:p-4 tx tx-static tx-weak">
-				<div class="p-1.5 sm:p-2 rounded-md bg-destructive/10">
-					<AlertCircle class="h-4 w-4 text-destructive" />
-				</div>
-				<p class="flex-1 text-xs sm:text-sm text-destructive">Couldn't load your day.</p>
+				<AlertCircle class="h-4 w-4 shrink-0 text-destructive" />
+				<p class="flex-1 text-xs sm:text-sm text-destructive">Couldn't load your day</p>
 				<Button onclick={refresh} variant="outline" size="sm" loading={refreshing}>
 					Retry
 				</Button>
@@ -1723,12 +1717,10 @@
 					class="mt-6 flex items-center gap-3 wt-paper p-3 sm:p-4 tx tx-static tx-weak"
 					role="alert"
 				>
-					<div class="p-1.5 sm:p-2 rounded-md bg-amber-500/10">
-						<AlertCircle class="h-4 w-4 text-amber-700 dark:text-amber-300" />
-					</div>
+					<AlertCircle class="h-4 w-4 shrink-0 text-warning" />
 					<div class="min-w-0 flex-1">
 						<p class="text-xs font-medium text-foreground sm:text-sm">
-							Some of your day couldn't be loaded.
+							Some of your day couldn't be loaded
 						</p>
 						<p class="mt-0.5 text-2xs text-muted-foreground sm:text-xs">
 							{degradedDetail}
@@ -1768,15 +1760,13 @@
 					{#snippet list()}
 						<div class="today-list">
 							{#if hasProjects && agenda.allDay.length === 0 && agenda.schedule.length === 0 && !hasIncompleteFeed}
-								<p class="micro-label mt-5 text-muted-foreground">
+								<p class="mt-5 text-xs font-medium text-muted-foreground">
 									Calendar · nothing booked
 								</p>
 							{/if}
 							{#if agenda.allDay.length > 0}
 								<section class="mt-4" aria-label="All-day events">
-									<h2
-										class="mb-3 text-sm font-semibold tracking-tight text-foreground"
-									>
+									<h2 class="mb-3 text-sm font-medium text-foreground">
 										All day
 									</h2>
 									<div class="flex flex-wrap items-center gap-2">
@@ -1786,12 +1776,14 @@
 												event.project_id
 											)}
 											<span
-												class="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs text-foreground"
+												class="inline-flex max-w-full min-w-0 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground"
 												title={eventProjectName
 													? `${eventTitle} · ${eventProjectName}`
 													: eventTitle}
 											>
-												<Calendar class="h-3 w-3 shrink-0 text-accent" />
+												<Calendar
+													class="h-3 w-3 shrink-0 text-muted-foreground"
+												/>
 												<span class="min-w-0 truncate">{eventTitle}</span>
 												{#if eventProjectName}
 													<span
@@ -1812,10 +1804,8 @@
 
 							{#if agenda.schedule.length > 0}
 								<section class="mt-4" aria-label="Today's schedule">
-									<div class="mb-1.5 flex items-center gap-2">
-										<h2
-											class="text-sm font-semibold tracking-tight text-foreground"
-										>
+									<div class="mb-2 flex items-center gap-2">
+										<h2 class="text-sm font-medium text-foreground">
 											Schedule
 										</h2>
 										<span class="text-xs stamp text-muted-foreground"
@@ -1908,10 +1898,8 @@
 
 							{#if agenda.anytime.length > 0}
 								<section class="mt-4" aria-label="Due this week and new">
-									<div class="mb-1.5 flex items-center gap-2">
-										<h2
-											class="text-sm font-semibold tracking-tight text-foreground"
-										>
+									<div class="mb-2 flex items-center gap-2">
+										<h2 class="text-sm font-medium text-foreground">
 											Due this week and new
 										</h2>
 										<span class="text-xs stamp text-muted-foreground"
@@ -1951,13 +1939,13 @@
 					     next move so the day is never a dead end. -->
 									<section class="mt-4" aria-label="What's waiting">
 										<div
-											class="rounded-lg border border-border bg-card p-4 shadow-ink sm:p-6"
+											class="rounded-xl border border-border bg-card p-4 sm:p-6"
 										>
 											<div class="mb-3 flex items-center gap-2">
-												<Sparkles class="h-4 w-4 shrink-0 text-accent" />
-												<h2
-													class="text-sm font-semibold tracking-tight text-foreground"
-												>
+												<Sparkles
+													class="h-4 w-4 shrink-0 text-muted-foreground"
+												/>
+												<h2 class="text-sm font-medium text-foreground">
 													Your projects' next moves
 												</h2>
 											</div>
@@ -1966,13 +1954,13 @@
 													<li>
 														<a
 															href={`/projects/${project.id}`}
-															class="group flex min-h-11 items-start gap-3 rounded-md py-3 motion-reduce:transition-none hover:bg-accent/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+															class="group flex min-h-11 items-start gap-3 rounded-lg px-2 py-3 motion-reduce:transition-none hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 															title={project.next_step_long ??
 																project.next_step_short ??
 																project.name}
 														>
 															<span
-																class="micro-label mt-1 shrink-0 text-accent"
+																class="mt-0.5 shrink-0 text-xs font-medium text-muted-foreground"
 															>
 																Next
 															</span>
@@ -2006,17 +1994,13 @@
 									</section>
 								{:else}
 									<div
-										class="mt-8 flex flex-col items-center gap-4 rounded-lg border border-border bg-card p-6 shadow-ink sm:p-10 text-center"
+										class="mt-8 flex flex-col items-center gap-4 rounded-xl border border-border bg-card p-6 sm:p-10 text-center"
 									>
-										<div
-											class="p-2 sm:p-3 rounded-md bg-accent/10 border border-accent/20"
-										>
-											<Sparkles class="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
-										</div>
+										<Sparkles
+											class="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground"
+										/>
 										<div>
-											<h2
-												class="text-sm font-semibold tracking-tight text-foreground"
-											>
+											<h2 class="text-sm font-medium text-foreground">
 												{#if (feed?.overdueCount ?? 0) > 0}
 													Nothing due today
 												{:else}
@@ -2079,13 +2063,15 @@
 			</nav>
 			{#if layoutOpen}
 				<section class="mt-3" aria-label="Every project's next move">
-					<h2 class="micro-label text-muted-foreground">Every project's next move</h2>
-					<ul class="mt-1 rounded-lg border border-border bg-card">
+					<h2 class="text-xs font-medium text-muted-foreground">
+						Every project's next move
+					</h2>
+					<ul class="mt-2 rounded-xl border border-border bg-card">
 						{#each (feed?.projects ?? []).filter((project) => project.kind !== 'workspace' && isActiveFacing(project.state_key) && project.next_step_short) as project (project.id)}
 							<li class="border-t border-border/70 first:border-t-0">
 								<a
 									href={`/projects/${project.id}`}
-									class="block min-h-11 px-3 py-2.5 hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									class="block min-h-11 px-3 py-3 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								>
 									<span class="block text-sm font-medium text-foreground"
 										>{project.name}</span

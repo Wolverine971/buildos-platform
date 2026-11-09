@@ -31,7 +31,7 @@
 <div class="space-y-5">
 	{#each groups as bucket (bucket.key)}
 		<section aria-label={bucket.label}>
-			<h3 class="micro-label border-b border-border/70 pb-2 text-muted-foreground">
+			<h3 class="border-b border-border/70 pb-2 text-xs font-medium text-muted-foreground">
 				{bucket.label}
 			</h3>
 			<div class="space-y-2 pt-1">
@@ -41,7 +41,7 @@
 							<h4 class="min-w-0">
 								<a
 									href={`/projects/${project.id}`}
-									class="inline-flex min-h-11 max-w-full items-center gap-2 rounded-md text-xs font-medium text-muted-foreground underline decoration-border-strong underline-offset-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-8"
+									class="inline-flex min-h-11 max-w-full items-center gap-2 rounded-lg text-xs font-medium text-muted-foreground underline decoration-border-strong underline-offset-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-8"
 									title={project.name}
 								>
 									<FolderKanban class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />

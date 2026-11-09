@@ -81,7 +81,7 @@
 
 	function entityLabel(entry: WhatChangedEntry): string {
 		// 'note' logs render as documents everywhere else in the product
-		return entry.entity_type === 'note' ? 'document' : entry.entity_type;
+		return entry.entity_type === 'note' ? 'document' : entry.entity_type.replace(/_/g, ' ');
 	}
 
 	function entityHref(entry: WhatChangedEntry): string | null {
@@ -121,11 +121,11 @@
 	<section class="mt-5 border-t border-border/70 pt-2" aria-label="What changed">
 		<button
 			onclick={() => (collapsed = !collapsed)}
-			class="flex min-h-11 w-full items-center gap-2 [@media(pointer:fine)]:min-h-7 rounded-md text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+			class="flex min-h-11 w-full items-center gap-2 [@media(pointer:fine)]:min-h-7 rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 			aria-expanded={!collapsed}
 		>
 			<div class="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2">
-				<h2 class="text-sm font-semibold tracking-tight text-foreground">What changed</h2>
+				<h2 class="text-sm font-medium text-foreground">What changed</h2>
 				<p class="text-2xs text-muted-foreground">
 					{feed.entries.length}
 					{feed.entries.length === 1 ? 'update' : 'updates'} · {sinceLabel}
@@ -146,7 +146,7 @@
 						<div class="flex min-w-0 items-center justify-between gap-2">
 							<a
 								href={`/projects/${group.projectId}`}
-								class="flex min-h-11 min-w-0 items-center rounded-md text-xs font-semibold [@media(pointer:fine)]:min-h-7 text-foreground hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								class="flex min-h-11 min-w-0 items-center rounded-lg text-xs font-medium [@media(pointer:fine)]:min-h-7 text-foreground underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								title={group.projectName}
 								><span class="truncate">{group.projectName}</span></a
 							>
@@ -155,14 +155,14 @@
 							{#each visible as entry (entry.id)}
 								{@const href = entityHref(entry)}
 								<li
-									class="flex min-h-11 min-w-0 items-center gap-1.5 [@media(pointer:fine)]:min-h-7"
+									class="flex min-h-11 min-w-0 items-center gap-2 [@media(pointer:fine)]:min-h-7"
 								>
 									<div class="flex w-3.5 shrink-0 items-center">
 										{#if entry.action === 'created'}<Plus
-												class="h-3.5 w-3.5 text-success"
+												class="h-3.5 w-3.5 text-muted-foreground"
 												aria-label="Created"
 											/>{:else if entry.action === 'deleted'}<Trash2
-												class="h-3.5 w-3.5 text-destructive"
+												class="h-3.5 w-3.5 text-muted-foreground"
 												aria-label="Deleted"
 											/>{:else}<Pencil
 												class="h-3.5 w-3.5 text-muted-foreground"
@@ -174,7 +174,7 @@
 											<a
 												{href}
 												onclick={() => trackEntityOpen(entry)}
-												class="flex min-h-6 min-w-0 items-center rounded-md text-xs leading-4 sm:flex-1 text-foreground hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+												class="flex min-h-6 min-w-0 items-center rounded-lg text-xs leading-4 sm:flex-1 text-foreground underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 												title={entry.entity_name}
 												><span class="min-w-0 truncate"
 													>{entry.entity_name}</span
@@ -213,7 +213,7 @@
 									{#if onChatAboutEntry && entry.entity_type === 'task' && entry.action !== 'deleted'}
 										<button
 											onclick={() => onChatAboutEntry(entry)}
-											class="flex h-11 w-11 shrink-0 items-center justify-center [@media(pointer:fine)]:h-7 [@media(pointer:fine)]:w-7 rounded-md text-muted-foreground hover:bg-accent/10 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											class="flex h-11 w-11 shrink-0 items-center justify-center [@media(pointer:fine)]:h-7 [@media(pointer:fine)]:w-7 rounded-lg text-muted-foreground hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 											title={`Chat about "${entry.entity_name}"`}
 											aria-label={`Chat about "${entry.entity_name}"`}
 											><MessageCircle class="h-4 w-4" /></button
@@ -225,7 +225,7 @@
 						{#if group.entries.length > VISIBLE_PER_PROJECT}
 							<button
 								onclick={() => toggleProject(group.projectId)}
-								class="inline-flex min-h-11 items-center rounded-md text-xs font-medium [@media(pointer:fine)]:min-h-7 text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								class="inline-flex min-h-11 items-center rounded-lg text-xs font-medium [@media(pointer:fine)]:min-h-7 text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								aria-expanded={isExpanded}
 								>{isExpanded
 									? 'Show less'
@@ -236,7 +236,7 @@
 				{/each}
 			</div>
 			{#if feed.truncated}<p class="mt-1 text-2xs text-muted-foreground">
-					Showing the most recent changes in this window.
+					Showing the most recent changes in this window
 				</p>{/if}
 		{/if}
 	</section>

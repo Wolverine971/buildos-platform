@@ -64,11 +64,8 @@
 	});
 </script>
 
-<section
-	class="rounded-xl border border-accent/30 bg-accent/5 p-4"
-	aria-label="Project setup in progress"
->
-	<h3 class="text-sm font-semibold text-foreground">Continue your project setup</h3>
+<section class="rounded-xl border border-border bg-card p-4" aria-label="Project setup in progress">
+	<h3 class="text-sm font-medium text-foreground">Continue your project setup</h3>
 	<p class="mt-2 text-sm text-muted-foreground" role="status">{message}</p>
 	<div class="mt-3 flex flex-wrap gap-2">
 		<Button variant="primary" onclick={onResume} disabled={busy} loading={busy}

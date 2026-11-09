@@ -41,7 +41,7 @@
 			type="button"
 			onclick={onBack}
 			{disabled}
-			class="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none disabled:opacity-50 max-[359px]:hidden"
+			class="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none disabled:opacity-50 max-[359px]:hidden"
 			aria-label="Go back to the previous step"
 		>
 			<ArrowLeft class="h-4 w-4" />
@@ -61,20 +61,20 @@
 				aria-valuetext={`${completed ? totalSteps : maxStepReached} of ${totalSteps} steps saved`}
 			>
 				<div
-					class="absolute inset-y-0 left-0 bg-accent rounded-full transition-[width] duration-200 ease-out motion-reduce:transition-none"
+					class="absolute inset-y-0 left-0 bg-accent rounded-full transition-[width] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
 					style="width: {progress}%"
 				></div>
 			</div>
 
 			<!-- Step dots and labels -->
-			<div class="mt-2.5 grid grid-cols-5">
+			<div class="mt-2 grid grid-cols-5">
 				{#each stepLabels as label, i (label)}
 					{@const isCompleted = completed || i < maxStepReached}
 					{@const isCurrent = i === currentStep}
 					{@const isReachable = i <= maxStepReached}
 					<button
 						type="button"
-						class="group flex min-h-11 flex-col items-center gap-1.5 px-1 py-1 rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none
+						class="group flex min-h-11 flex-col items-center gap-2 px-1 py-1 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none
 							{isReachable && !isCurrent ? 'cursor-pointer hover:bg-muted/50' : ''}
 							{!isReachable ? 'cursor-not-allowed' : ''}"
 						disabled={disabled || !isReachable || isCurrent}
@@ -99,9 +99,9 @@
 						<span
 							class="text-2xs sm:text-xs text-center leading-tight transition-colors duration-200 motion-reduce:transition-none
 								{isCurrent
-								? 'text-foreground font-semibold'
+								? 'text-foreground font-medium'
 								: isCompleted
-									? 'text-foreground font-medium'
+									? 'text-foreground'
 									: 'text-muted-foreground'}
 								{isReachable && !isCurrent ? 'group-hover:text-foreground' : ''}"
 						>

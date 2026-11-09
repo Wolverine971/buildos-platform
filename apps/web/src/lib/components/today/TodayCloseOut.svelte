@@ -63,14 +63,14 @@
 </script>
 
 <section
-	class="mt-4 rounded-lg border border-accent/40 bg-card p-4 shadow-ink sm:p-5"
+	class="mt-4 rounded-xl border border-border bg-card p-4 sm:p-5"
 	aria-label="Close out the day"
 >
 	<div class="flex items-baseline justify-between gap-3">
-		<h2 class="text-lg font-semibold tracking-tight text-foreground">Close out the day</h2>
+		<h2 class="text-lg font-medium text-foreground">Close out the day</h2>
 		<button
 			type="button"
-			class="min-h-11 rounded-md px-2 text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-8"
+			class="min-h-11 rounded-lg px-2 text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-8"
 			onclick={onHide}>Not now</button
 		>
 	</div>
@@ -92,30 +92,28 @@
 	</div>
 
 	{#if picks.length > 0}
-		<p class="micro-label mt-4 text-muted-foreground">Today's picks · did they happen?</p>
-		<ul class="mt-1 rounded-lg border border-border">
+		<p class="mt-4 text-xs font-medium text-muted-foreground">
+			Today's picks · did they happen?
+		</p>
+		<ul class="mt-2 rounded-lg border border-border">
 			{#each picks as pick (pick.key)}
-				<li class="border-t border-border/70 px-3 py-2.5 first:border-t-0">
+				<li class="border-t border-border/70 px-3 py-3 first:border-t-0">
 					<p class="text-sm font-medium text-foreground [overflow-wrap:anywhere]">
 						{pick.title}
 					</p>
 					{#if pick.projectName}<p class="text-xs text-muted-foreground">
 							{pick.projectName}
 						</p>{/if}
-					<div
-						class="mt-2 flex flex-wrap gap-1.5"
-						role="group"
-						aria-label="What happened"
-					>
+					<div class="mt-2 flex flex-wrap gap-2" role="group" aria-label="What happened">
 						{#each OPTIONS as option (option.value)}
 							{@const on = answers[pick.key] === option.value}
 							<button
 								type="button"
 								aria-pressed={on}
 								disabled={appliedCount !== null}
-								class="min-h-11 rounded-full border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 [@media(pointer:fine)]:min-h-8 {on
+								class="min-h-11 rounded-lg border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 [@media(pointer:fine)]:min-h-8 {on
 									? 'border-foreground bg-foreground text-background'
-									: 'border-border bg-background text-foreground hover:border-foreground/60'}"
+									: 'border-border bg-background text-foreground hover:border-foreground/20 hover:bg-muted/50'}"
 								onclick={() => choose(pick, option.value)}>{option.label}</button
 							>
 						{/each}
@@ -125,7 +123,7 @@
 		</ul>
 		<div class="mt-3 flex flex-wrap items-center justify-between gap-2">
 			{#if appliedCount !== null}
-				<p class="text-sm font-medium text-success">
+				<p class="text-sm font-medium text-foreground">
 					Updated {appliedCount} thing{appliedCount === 1 ? '' : 's'}. Tomorrow starts
 					from here.
 				</p>
@@ -134,7 +132,7 @@
 					Skip anything. Nothing changes until you apply.
 				</p>
 				<Button
-					variant="accent"
+					variant="primary"
 					size="sm"
 					loading={applying}
 					disabled={answered.length === 0}
@@ -151,7 +149,7 @@
 			>Anything else happen? BuildOS will update your projects.</label
 		>
 		<div
-			class="mt-1.5 flex items-end gap-2 rounded-md border border-border bg-background p-2 focus-within:border-accent"
+			class="mt-2 flex items-end gap-2 rounded-lg border border-border bg-background p-2 focus-within:border-foreground/30"
 		>
 			<textarea
 				id="closeout-note"
@@ -161,7 +159,7 @@
 				placeholder="Met Logan, he's in. Didn't get to the drafts. Bought the fridge."
 			></textarea>
 			<Button
-				variant="primary"
+				variant="outline"
 				size="sm"
 				icon={note.trim() ? Send : Mic}
 				disabled={!note.trim()}

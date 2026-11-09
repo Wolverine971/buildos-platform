@@ -41,7 +41,7 @@ import {
 	previewDocumentEditCalls
 } from './document-edit-preview';
 import { type AgenticChatTableEditPreviewPort, previewTableEditCalls } from './table-edit-preview';
-import { mountToolPins, type AgenticChatToolSelectorPort } from './jev-tool-selector';
+import { type AgenticChatToolSelectorPort, mountToolPins } from './jev-tool-selector';
 import type { AgenticChatExecutionObservationPortV1 } from '../effects/execution-observation';
 import { enqueueReviewTelemetryObservation } from './review/review-telemetry';
 import { appendTurnRules } from './turn-rules';

@@ -94,12 +94,12 @@
 	<div class="text-center mb-10">
 		<div class="flex justify-center mb-5">
 			<div
-				class="flex h-14 w-14 items-center justify-center rounded-lg bg-muted shadow-ink tx tx-bloom tx-weak"
+				class="flex h-14 w-14 items-center justify-center rounded-xl bg-muted tx tx-bloom tx-weak"
 			>
-				<Bell class="w-7 h-7 text-accent" />
+				<Bell class="h-7 w-7 text-muted-foreground" />
 			</div>
 		</div>
-		<h1 class="text-3xl sm:text-4xl font-bold text-foreground mb-3">Want daily check-ins?</h1>
+		<h1 class="text-3xl sm:text-4xl font-medium text-foreground mb-3">Want daily check-ins?</h1>
 		<p class="text-lg text-muted-foreground">
 			One brief each morning with what actually matters today — so nothing falls through.
 			Change this anytime.
@@ -122,19 +122,14 @@
 			<legend class="sr-only">Optional notifications</legend>
 			<!-- Email toggle -->
 			<label
-				class="relative flex cursor-pointer items-center gap-4 overflow-hidden rounded-lg border-2 p-5 tx tx-frame tx-weak pressable
+				class="relative flex cursor-pointer items-center gap-4 overflow-hidden rounded-xl border p-5 tx tx-frame tx-weak transition-colors motion-reduce:transition-none
 				{wantEmail
-					? 'border-accent bg-accent/5 shadow-ink-strong'
-					: 'border-border bg-card shadow-ink hover:border-accent/50'}"
+					? 'border-accent bg-accent/5 ring-1 ring-accent'
+					: 'border-border bg-card hover:border-foreground/20 hover:bg-muted/50'}"
 			>
-				<div
-					class="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center
-					{wantEmail ? 'bg-accent/15 text-accent' : 'bg-muted text-muted-foreground'}"
-				>
-					<Mail class="w-5 h-5" />
-				</div>
+				<Mail class="h-5 w-5 shrink-0 text-muted-foreground" />
 				<div class="relative min-w-0 flex-1">
-					<div class="font-semibold text-foreground">Email Daily Brief</div>
+					<div class="font-medium text-foreground">Email daily brief</div>
 					<p class="text-sm text-muted-foreground">
 						A morning email with what matters today — even on the projects you forgot
 						about
@@ -149,19 +144,14 @@
 
 			<!-- SMS toggle -->
 			<label
-				class="relative flex cursor-pointer items-center gap-4 overflow-hidden rounded-lg border-2 p-5 tx tx-frame tx-weak pressable
+				class="relative flex cursor-pointer items-center gap-4 overflow-hidden rounded-xl border p-5 tx tx-frame tx-weak transition-colors motion-reduce:transition-none
 				{wantSMS
-					? 'border-accent bg-accent/5 shadow-ink-strong'
-					: 'border-border bg-card shadow-ink hover:border-accent/50'}"
+					? 'border-accent bg-accent/5 ring-1 ring-accent'
+					: 'border-border bg-card hover:border-foreground/20 hover:bg-muted/50'}"
 			>
-				<div
-					class="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center
-					{wantSMS ? 'bg-accent/15 text-accent' : 'bg-muted text-muted-foreground'}"
-				>
-					<MessageSquare class="w-5 h-5" />
-				</div>
+				<MessageSquare class="h-5 w-5 shrink-0 text-muted-foreground" />
 				<div class="relative min-w-0 flex-1">
-					<div class="font-semibold text-foreground">SMS Notifications</div>
+					<div class="font-medium text-foreground">SMS notifications</div>
 					<p class="text-sm text-muted-foreground">
 						Text message reminders for events and morning check-ins
 					</p>
@@ -199,7 +189,7 @@
 				class="mb-5 rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm"
 				role="alert"
 			>
-				<p class="font-semibold text-foreground">Some preferences still need attention</p>
+				<p class="font-medium text-foreground">Some preferences still need attention</p>
 				<ul class="mt-2 space-y-1 text-foreground">
 					{#each errors as message (message)}<li>{message}</li>{/each}
 				</ul>

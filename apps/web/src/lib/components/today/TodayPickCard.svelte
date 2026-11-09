@@ -34,24 +34,15 @@
 	const live = $derived(picks.filter((pick) => !skipped.includes(pick.key)));
 	const pick = $derived(live[0] ?? null);
 	const heading = $derived(lastDone ? 'Next up' : time === 'morning' ? 'Start here' : 'Next up');
-
-	const tagClass: Record<TodayPick['kind'], string> = {
-		due: 'bg-accent/10 text-accent',
-		start: 'bg-accent/10 text-accent',
-		waiting: 'bg-info/10 text-info',
-		new: 'bg-success/10 text-success',
-		agent: 'bg-muted text-muted-foreground',
-		progress: 'bg-muted text-muted-foreground'
-	};
 </script>
 
 <section
-	class="mt-4 rounded-lg border border-border bg-card p-4 shadow-ink sm:p-5"
+	class="mt-4 rounded-xl border border-border bg-card p-4 sm:p-5"
 	aria-label="What to work on"
 >
 	{#if sideways}
-		<p class="micro-label text-muted-foreground">Plan cleared for today</p>
-		<h2 class="mt-2 text-lg font-semibold leading-snug text-foreground sm:text-xl">
+		<p class="text-xs font-medium text-muted-foreground">Plan cleared for today</p>
+		<h2 class="mt-2 text-lg font-medium leading-snug text-foreground sm:text-xl">
 			OK. Today's off. Nothing gets pushed onto tomorrow.
 		</h2>
 		<p class="mt-1 text-sm text-muted-foreground">
@@ -62,25 +53,27 @@
 		</div>
 	{:else}
 		{#if lastDone}
-			<p class="mb-2 flex items-center gap-1.5 text-sm font-medium text-success">
-				<Check class="h-4 w-4 shrink-0" /> Marked done: {lastDone}
+			<p class="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+				<Check class="h-4 w-4 shrink-0 text-success" /> Marked done: {lastDone}
 			</p>
 		{/if}
 		{#if pick}
 			<div class="flex flex-wrap items-center gap-2">
-				<span class="micro-label text-muted-foreground">{heading}</span>
-				<span class="rounded px-1.5 py-0.5 text-2xs font-medium {tagClass[pick.kind]}"
-					>{PICK_TAGS[pick.kind]}</span
+				<span class="text-xs font-medium text-muted-foreground">{heading}</span>
+				<span class="inline-flex items-center gap-2 text-xs text-muted-foreground"
+					><span
+						class="h-1.5 w-1.5 rounded-full bg-muted-foreground/50"
+						aria-hidden="true"
+					></span>{PICK_TAGS[pick.kind]}</span
 				>
 			</div>
 			<h2
-				class="mt-2 text-lg font-semibold leading-snug tracking-tight text-foreground [overflow-wrap:anywhere] sm:text-2xl"
+				class="mt-2 text-lg font-medium leading-snug text-foreground [overflow-wrap:anywhere] sm:text-2xl"
 			>
 				{pick.title}
 			</h2>
 			<p class="mt-1 text-sm text-muted-foreground">
-				{#if pick.projectName}{pick.projectName} ·
-				{/if}{pick.why}
+				{#if pick.projectName}{`${pick.projectName} · `}{/if}{pick.why}
 			</p>
 			<div class="mt-3 flex flex-wrap items-center gap-2">
 				<Button variant="primary" size="sm" onclick={() => onOpen(pick)}>Open it</Button>
@@ -97,10 +90,10 @@
 				{/if}
 			</div>
 		{:else}
-			<p class="micro-label text-muted-foreground">
+			<p class="text-xs font-medium text-muted-foreground">
 				{picks.length > 0 ? "That's all I'd suggest" : 'Nothing pressing'}
 			</p>
-			<h2 class="mt-2 text-base font-semibold leading-snug text-foreground sm:text-lg">
+			<h2 class="mt-2 text-base font-medium leading-snug text-foreground sm:text-lg">
 				Nothing else stands out. Pick anything below, or capture what's on your mind.
 			</h2>
 			{#if skipped.length > 0}

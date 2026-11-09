@@ -131,25 +131,25 @@
 	});
 </script>
 
-<div class="rounded-xl border border-border bg-card p-4 shadow-ink">
+<div class="rounded-xl border border-border bg-card p-4">
 	<div class="flex items-start justify-between gap-4">
 		<div>
-			<p class="text-sm font-semibold text-foreground">Voice note</p>
+			<p class="text-sm font-medium text-foreground">Voice note</p>
 			<p class="text-xs text-muted-foreground">
 				{#if !dictation.supported}
-					Voice recording is not supported in this browser.
+					Voice recording is not supported in this browser
 				{:else if isCapturing}
-					Recording… tap again to stop.
+					Recording, tap again to stop
 				{:else if dictation.phase === 'finishing'}
-					Finishing the transcript…
+					Finishing the transcript
 				{:else if recording}
-					Review and save your recording.
+					Review and save your recording
 				{:else}
-					Tap the mic to start a recording.
+					Tap the mic to start a recording
 				{/if}
 			</p>
 		</div>
-		<div class="text-xs font-mono text-muted-foreground">
+		<div class="font-mono text-xs tabular-nums text-muted-foreground">
 			{formatDictationDuration(
 				isCapturing ? dictation.elapsedMs : (recording?.durationSeconds ?? 0) * 1000
 			)}
@@ -158,11 +158,11 @@
 
 	<div class="mt-4 flex items-center gap-3">
 		<button
-			class={`relative flex h-12 w-12 items-center justify-center rounded-full border transition-all ${
+			class={`relative flex h-12 w-12 items-center justify-center rounded-full border transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] ${
 				dictation.phase === 'recording'
-					? 'border-destructive bg-destructive text-destructive-foreground shadow-ink-strong'
-					: 'border-border bg-card text-foreground shadow-ink'
-			} ${!dictation.supported || isUploading ? 'opacity-50 cursor-not-allowed' : 'pressable'}`}
+					? 'border-destructive bg-destructive text-destructive-foreground'
+					: 'border-border bg-card text-foreground hover:border-foreground/20 hover:bg-muted/50'
+			} ${!dictation.supported || isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
 			disabled={!dictation.supported ||
 				isUploading ||
 				dictation.phase === 'starting' ||
@@ -182,7 +182,7 @@
 		<div class="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
 			{#if dictation.phase === 'recording'}
 				<VoiceLevelMeter levels={dictation.levels} />
-				<span class="tabular-nums">
+				<span class="font-mono tabular-nums">
 					{formatDictationDuration(dictation.elapsedMs)} / {formatDictationDuration(
 						maxDuration * 1000
 					)}
@@ -208,13 +208,13 @@
 						<span class="text-muted-foreground">{dictation.draftText}</span>
 					</p>
 				{:else}
-					<p class="text-muted-foreground">Listening…</p>
+					<p class="text-muted-foreground">Listening</p>
 				{/if}
 			{:else if recording?.text}
 				<p class="mb-1 text-xs text-muted-foreground">Transcript</p>
 				<p>{recording.text}</p>
 			{:else}
-				<p class="text-xs text-muted-foreground">Your words appear here as you talk.</p>
+				<p class="text-xs text-muted-foreground">Your words appear here as you talk</p>
 			{/if}
 		</div>
 	{/if}
@@ -223,12 +223,12 @@
 		<div class="mt-4">
 			<div class="h-2 w-full rounded-full bg-muted">
 				<div
-					class="h-2 rounded-full bg-accent transition-all"
+					class="h-2 rounded-full bg-foreground/50 transition-[width] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]"
 					style={`width: ${Math.round(uploadProgress * 100)}%`}
 				></div>
 			</div>
 			<p class="mt-1 text-xs text-muted-foreground">
-				Uploading… {Math.round(uploadProgress * 100)}%
+				Uploading {Math.round(uploadProgress * 100)}%
 			</p>
 		</div>
 	{/if}
@@ -244,7 +244,7 @@
 		</div>
 	{:else if dictation.phase === 'recording'}
 		<div class="mt-4 flex flex-wrap gap-2">
-			<Button onclick={stopRecording} variant="warning" size="sm">Stop recording</Button>
+			<Button onclick={stopRecording} variant="outline" size="sm">Stop recording</Button>
 			<Button onclick={cancelRecording} variant="ghost" size="sm">Cancel</Button>
 		</div>
 	{/if}

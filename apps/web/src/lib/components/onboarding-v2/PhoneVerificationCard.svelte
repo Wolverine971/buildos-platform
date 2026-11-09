@@ -75,7 +75,7 @@
 
 			if (result.success) {
 				codeSent = true;
-				toastService.success('Verification code sent! Check your phone.');
+				toastService.success('Verification code sent. Check your phone.');
 
 				// Start resend cooldown (60 seconds)
 				resendCooldown = 60;
@@ -115,7 +115,7 @@
 
 			if (result.success && result.data?.verified) {
 				verified = true;
-				toastService.success('🎉 Phone verified successfully!');
+				toastService.success('Phone verified');
 
 				// Clear cooldown if active
 				if (cooldownInterval) {
@@ -198,18 +198,14 @@
 	});
 </script>
 
-<div
-	class="rounded-lg border border-border bg-card p-4 shadow-ink transition-shadow duration-150 hover:shadow-ink-strong motion-reduce:transition-none tx tx-frame tx-weak sm:p-6"
->
+<div class="rounded-xl border border-border bg-card p-4 tx tx-frame tx-weak sm:p-6">
 	<div class="flex items-start gap-4">
-		<div
-			class="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-success/10 shadow-ink"
-		>
-			<Phone class="w-6 h-6 text-success" />
+		<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-muted">
+			<Phone class="h-6 w-6 text-muted-foreground" />
 		</div>
 
 		<div class="min-w-0 flex-1">
-			<h4 class="font-semibold text-lg mb-2 text-foreground">SMS Notifications</h4>
+			<h4 class="font-medium text-lg mb-2 text-foreground">SMS notifications</h4>
 			<p class="text-sm text-muted-foreground mb-4">
 				Verify a US phone number for event reminders and morning check-ins. You choose
 				whether to enable texts below.
@@ -222,7 +218,7 @@
 						class="h-5 w-5 shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none"
 					/>
 					<p class="text-sm text-muted-foreground">
-						Checking for existing phone number...
+						Checking for an existing phone number…
 					</p>
 				</div>
 			{:else if optedOut}
@@ -238,7 +234,7 @@
 						href="/profile"
 						target="_blank"
 						rel="noopener noreferrer"
-						class="mt-2 inline-flex min-h-11 items-center text-accent underline underline-offset-2"
+						class="mt-2 inline-flex min-h-11 items-center text-foreground underline decoration-border underline-offset-2 hover:decoration-foreground"
 						>Open Profile</a
 					>
 					<Button variant="ghost" onclick={onSkip}>Continue without texts</Button>
@@ -250,7 +246,7 @@
 				>
 					<CheckCircle class="w-5 h-5 text-success flex-shrink-0" />
 					<div class="flex-1">
-						<p class="font-medium text-success">Phone verified!</p>
+						<p class="font-medium text-success">Phone verified</p>
 						<p class="mt-0.5 text-xs text-foreground">
 							{phoneNumber}
 						</p>
@@ -303,12 +299,12 @@
 							onclick={sendVerificationCode}
 							loading={isSending}
 							disabled={isSending || phoneNumber.replace(/\D/g, '').length !== 10}
-							class="min-w-[120px] flex-1 shadow-ink"
+							class="min-w-[120px] flex-1"
 						>
 							{#if isSending}
-								Sending...
+								Sending…
 							{:else}
-								Send Code
+								Send code
 							{/if}
 						</Button>
 						<Button variant="ghost" onclick={onSkip} disabled={isSending}>
@@ -325,12 +321,12 @@
 								for="verification-code"
 								class="block text-sm font-medium text-foreground"
 							>
-								Verification Code
+								Verification code
 							</label>
 							<button
 								type="button"
 								onclick={changePhoneNumber}
-								class="inline-flex min-h-11 items-center rounded-md px-2 text-xs text-accent hover:bg-accent/10 hover:text-accent/80 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								class="inline-flex min-h-11 items-center rounded-lg px-2 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 								disabled={isVerifying}
 							>
 								Change number
@@ -370,10 +366,10 @@
 							onclick={confirmVerification}
 							loading={isVerifying}
 							disabled={verificationCode.length !== 6}
-							class="min-w-[120px] flex-1 shadow-ink"
+							class="min-w-[120px] flex-1"
 						>
 							{#if isVerifying}
-								Verifying...
+								Verifying…
 							{:else}
 								Verify
 							{/if}
@@ -389,7 +385,7 @@
 								onclick={sendVerificationCode}
 								disabled={isSending}
 							>
-								Resend Code
+								Resend code
 							</Button>
 						{/if}
 					</div>

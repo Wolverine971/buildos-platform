@@ -2,7 +2,7 @@
 <!-- INKPRINT: Ultra-compact voice note panel with inline collapsed / block expanded pattern -->
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import { ChevronDown, ChevronUp, Mic, Play, Square } from 'lucide-svelte';
+	import { ChevronDown, ChevronUp, LoaderCircle, Mic, Play, Square } from '$lib/icons/lucide';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import VoiceNotePlayer from './VoiceNotePlayer.svelte';
 	import { deleteVoiceNote } from '$lib/services/voice-notes.service';
@@ -129,22 +129,27 @@
 {#snippet chipButton()}
 	<button
 		type="button"
-		class="inline-flex items-center border font-semibold text-muted-foreground transition-colors hover:border-accent/50 hover:bg-accent/5 hover:text-accent pressable {inline
-			? 'h-4 gap-0.5 rounded-full border-accent/20 bg-background/35 px-1.5 text-2xs leading-none tracking-normal'
-			: 'gap-1 rounded-md border-border/60 bg-muted/50 px-1.5 py-0.5 text-2xs uppercase tracking-[0.1em]'}"
+		class="inline-flex items-center border font-medium text-muted-foreground transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-foreground/20 hover:bg-muted/50 hover:text-foreground {inline
+			? 'h-4 gap-1 rounded-md border-border/60 bg-background/35 px-1 text-2xs leading-none'
+			: 'h-5 gap-1 rounded-lg border-border/60 bg-muted/50 px-2 text-2xs'}"
 		onclick={toggleExpanded}
 		aria-expanded={isExpanded}
 		aria-label={isExpanded ? 'Collapse voice notes' : 'Expand voice notes'}
 	>
 		<Mic class={inline ? 'h-2 w-2' : 'h-2.5 w-2.5'} />
 		{#if voiceNotes.length > 0}
-			<span class="tabular-nums">{voiceNotes.length}</span>
+			<span class="font-mono tabular-nums">{voiceNotes.length}</span>
 			<span class={inline ? 'hidden xs:inline' : ''}>·</span>
-			<span class={inline ? 'hidden xs:inline tabular-nums' : 'tabular-nums'}
-				>{formatDuration(totalDuration)}</span
+			<span
+				class={inline
+					? 'hidden xs:inline font-mono tabular-nums'
+					: 'font-mono tabular-nums'}>{formatDuration(totalDuration)}</span
 			>
 		{:else}
-			<span>...</span>
+			<LoaderCircle
+				class="{inline ? 'h-2 w-2' : 'h-2.5 w-2.5'} motion-safe:animate-spin"
+				aria-hidden="true"
+			/>
 		{/if}
 		{#if isExpanded}
 			<ChevronUp class={inline ? 'h-2 w-2' : 'h-2.5 w-2.5'} />
@@ -158,20 +163,20 @@
 {#snippet expandedPanel()}
 	<!-- Controls row: count on left, play all on right -->
 	<div class="flex items-center justify-between gap-2">
-		<span class="text-2xs font-medium tabular-nums text-muted-foreground">
+		<span class="font-mono text-2xs tabular-nums text-muted-foreground">
 			{voiceNotes.length} note{voiceNotes.length !== 1 ? 's' : ''} · {formatDuration(
 				totalDuration
 			)}
 		</span>
-		<div class="flex items-center gap-1.5">
+		<div class="flex items-center gap-2">
 			{#if isPlayingAll && playAllIndex !== null}
-				<span class="text-2xs tabular-nums text-accent">
+				<span class="font-mono text-2xs tabular-nums text-muted-foreground">
 					{playAllIndex + 1}/{voiceNotes.length}
 				</span>
 			{/if}
 			<button
 				type="button"
-				class="inline-flex items-center gap-1 rounded-md border border-border bg-card px-1.5 py-0.5 text-2xs font-semibold text-foreground shadow-ink transition-colors hover:border-accent hover:bg-accent/5 pressable disabled:opacity-50"
+				class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-2xs font-medium text-foreground transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-muted/50 disabled:opacity-50"
 				disabled={voiceNotes.length === 0}
 				onclick={handlePlayAll}
 			>
@@ -188,12 +193,12 @@
 
 	<!-- Voice notes list (ultra-compact, delete integrated in player) -->
 	{#if voiceNotes.length === 0}
-		<p class="mt-1.5 text-2xs italic text-muted-foreground">Voice notes uploading...</p>
+		<p class="mt-2 text-2xs text-muted-foreground">Voice notes uploading</p>
 	{:else}
-		<div class="mt-1.5 space-y-1">
+		<div class="mt-2 space-y-1">
 			{#each voiceNotes as voiceNote, index (voiceNote.id)}
 				<div
-					class="rounded-md border border-border/40 bg-muted/30 px-2 py-1 {playAllIndex ===
+					class="rounded-lg border border-border/40 bg-muted/30 px-2 py-1 {playAllIndex ===
 					index
 						? 'ring-1 ring-accent/50'
 						: ''}"
@@ -218,7 +223,7 @@
 	{@render chipButton()}
 	{#if isExpanded}
 		<div
-			class="mt-1.5 w-full basis-full self-stretch rounded-lg border border-border/50 bg-card p-2 shadow-ink tx tx-frame tx-weak"
+			class="mt-2 w-full basis-full self-stretch rounded-xl border border-border/50 bg-card p-2 tx tx-frame tx-weak"
 		>
 			{@render expandedPanel()}
 		</div>
@@ -229,7 +234,7 @@
 		{@render chipButton()}
 		{#if isExpanded}
 			<div
-				class="mt-1.5 w-full rounded-lg border border-border/50 bg-card p-2 shadow-ink tx tx-frame tx-weak"
+				class="mt-2 w-full rounded-xl border border-border/50 bg-card p-2 tx tx-frame tx-weak"
 			>
 				{@render expandedPanel()}
 			</div>
@@ -243,7 +248,7 @@
 	confirmText="Delete"
 	confirmVariant="danger"
 	loading={deleteLoading}
-	loadingText="Deleting..."
+	loadingText="Deleting"
 	onconfirm={confirmDelete}
 	oncancel={cancelDelete}
 >
@@ -255,16 +260,16 @@
 
 	{#snippet details()}
 		{#if deleteTarget}
-			<div class="mt-2 space-y-1.5 text-xs text-muted-foreground">
+			<div class="mt-2 space-y-2 text-xs text-muted-foreground">
 				<div>
-					<span class="font-semibold text-foreground">Length:</span>
+					<span class="font-medium text-foreground">Length:</span>
 					{formatDuration(deleteTarget.duration_seconds)}
 				</div>
 				{#if deleteTarget.transcript}
 					<div>
-						<span class="font-semibold text-foreground">Transcript:</span>
+						<span class="font-medium text-foreground">Transcript:</span>
 						<p
-							class="mt-0.5 rounded-md border border-border bg-muted/50 p-1.5 text-2xs text-foreground line-clamp-3"
+							class="mt-1 rounded-lg border border-border bg-muted/50 p-2 text-2xs text-foreground line-clamp-3"
 						>
 							{deleteTarget.transcript}
 						</p>

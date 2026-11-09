@@ -62,39 +62,12 @@ type MetaWindow = Window & {
 	_fbq?: MetaPixelFunction;
 };
 
-let operationalMeasurementScheduled = false;
 let postHogModulePromise: Promise<PostHogModule> | null = null;
 let visitorModulePromise: Promise<VisitorModule> | null = null;
 let metaInitialized = false;
 let metaEnabled = false;
 let lastMetaPageView: string | null = null;
 let currentRouteId: string | null = null;
-
-function runWhenIdle(callback: () => void, timeout = 3000): void {
-	if (!browser) return;
-
-	if ('requestIdleCallback' in window) {
-		window.requestIdleCallback(callback, { timeout });
-		return;
-	}
-
-	setTimeout(callback, Math.min(timeout, 1500));
-}
-
-function scheduleOperationalMeasurement(): void {
-	if (!browser || dev || operationalMeasurementScheduled) return;
-	operationalMeasurementScheduled = true;
-
-	runWhenIdle(() => {
-		void import('@vercel/analytics/sveltekit')
-			.then(({ injectAnalytics }) => {
-				injectAnalytics({ mode: 'production' });
-			})
-			.catch((error) => {
-				console.warn('Operational measurement failed to initialize:', error);
-			});
-	}, 3500);
-}
 
 function getMetaPixel(): MetaPixelFunction {
 	const metaWindow = window as MetaWindow;
@@ -193,7 +166,6 @@ async function applyTrackingPreferences(): Promise<void> {
 export function initializeBrowserAnalytics(): () => void {
 	if (!browser) return () => {};
 
-	scheduleOperationalMeasurement();
 	void applyTrackingPreferences();
 
 	const handlePreferenceChange = (_event: Event) => {

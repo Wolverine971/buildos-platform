@@ -23,6 +23,20 @@ import { OntoEventSyncService } from '$lib/services/ontology/onto-event-sync.ser
 const PROJECT_CALENDAR_BACKFILL_DAYS = 90;
 /** Google drops some push notifications; a channel this quiet gets a catch-up sync. */
 const SWEEP_QUIET_HOURS = 6;
+// PostgREST puts .in() values in the URL. Leave room for the path and identity
+// filters below an 8 KB request line, including long imported Google event IDs.
+const EVENT_BATCH_MAX_ID_BYTES = 6000;
+const EVENT_BATCH_MAX_COUNT = 100;
+
+function isExpiredSyncToken(error: any): boolean {
+	return (
+		Number(error?.code) === 410 ||
+		error?.response?.status === 410 ||
+		error?.response?.data?.error?.code === 410 ||
+		error?.errors?.some((entry: { reason?: string }) => entry.reason === 'syncTokenExpired') ===
+			true
+	);
+}
 
 export interface WebhookChannel {
 	id: string;
@@ -572,7 +586,8 @@ export class CalendarWebhookService {
 			let newSyncToken: string | undefined;
 			let pageCount = 0;
 
-			// Fetch all events from the last 7 days
+			// Keep the same recurring-series representation as incremental sync. Expanding
+			// unbounded series here can fetch decades of instances and omit their masters.
 			do {
 				pageCount++;
 				console.log(`[RESYNC] Fetching page ${pageCount} of events...`);
@@ -584,8 +599,7 @@ export class CalendarWebhookService {
 						timeMin: timeMin?.toISOString(),
 						maxResults: 100,
 						showDeleted: true,
-						singleEvents: true,
-						orderBy: 'updated',
+						singleEvents: false,
 						pageToken: pageToken
 					})
 				);
@@ -913,7 +927,7 @@ export class CalendarWebhookService {
 			const userCreatedAt = userData?.created_at ? new Date(userData.created_at) : null;
 			console.log(`[SYNC] User created at: ${userCreatedAt?.toISOString() || 'unknown'}`);
 
-			let pageToken: string | null | undefined = syncToken;
+			let pageToken: string | null | undefined;
 			let allChanges: calendar_v3.Schema$Event[] = [];
 			let newSyncToken: string | undefined;
 			let requestCount = 0;
@@ -937,33 +951,31 @@ export class CalendarWebhookService {
 
 				let response;
 				try {
-					// Use syncToken for first request if available, pageToken for pagination
-					const listParams: any = {
+					const listParams: calendar_v3.Params$Resource$Events$List = {
 						calendarId: calendarId,
 						showDeleted: true,
+						singleEvents: false,
 						maxResults: 100
 					};
 
 					// timeMin is only valid for a fresh listing. A sync-token pagination chain must
 					// retain the same query shape and may only add pageToken on later requests.
-					if (requestCount === 1 && syncToken) {
+					if (syncToken) {
 						listParams.syncToken = syncToken;
-						// Cannot use timeMin with syncToken
-					} else if (pageToken && requestCount > 1) {
-						listParams.pageToken = pageToken;
-						if (!syncToken && userCreatedAt) {
-							listParams.timeMin = userCreatedAt.toISOString();
-						}
-					} else if (!syncToken && userCreatedAt) {
-						// First request without syncToken, can use timeMin
+					} else if (userCreatedAt) {
 						listParams.timeMin = userCreatedAt.toISOString();
 					}
+					if (pageToken) listParams.pageToken = pageToken;
 
 					// Execute with rate limiting protection
 					response = await this.executeWithBackoff(() =>
 						calendar.events.list(listParams)
 					);
 				} catch (listError: any) {
+					// Token invalidation is normal Google API control flow. The outer catch
+					// performs a full resync; report an error only if recovery fails.
+					if (syncToken && !isRetry && isExpiredSyncToken(listError)) throw listError;
+
 					console.error(`[SYNC] Error in request #${requestCount}:`, {
 						code: listError.code,
 						message: listError.message,
@@ -1092,25 +1104,12 @@ export class CalendarWebhookService {
 
 			return processedCount;
 		} catch (error: any) {
-			console.error('[SYNC] Error details:', {
-				code: error.code,
-				message: error.message,
-				errors: error.errors,
-				statusText: error.statusText,
-				response: error.response?.data
-			});
-
 			if (isGoogleOAuthReconnectError(error)) {
 				console.warn('[SYNC] Calendar connection requires reconnection; sync is paused.');
 				throw error;
 			}
 
-			// Handle sync token expiration with multiple checks
-			const isTokenExpired =
-				error.code === 410 ||
-				error.message?.toLowerCase().includes('sync token is no longer valid') ||
-				error.message?.toLowerCase().includes('sync token expired') ||
-				error.errors?.some((e: any) => e.reason === 'syncTokenExpired');
+			const isTokenExpired = Boolean(syncToken) && isExpiredSyncToken(error);
 
 			if (isTokenExpired) {
 				console.log('[SYNC] *** SYNC TOKEN EXPIRED ***', {
@@ -1140,9 +1139,7 @@ export class CalendarWebhookService {
 						calendarId,
 						calendarSourceId
 					);
-					console.log(
-						`[SYNC] Full resync completed successfully with ${resyncCount} events processed`
-					);
+					console.log(`[SYNC] Full resync processed ${resyncCount} events`);
 					return resyncCount;
 				} catch (resyncError) {
 					console.error('[SYNC] Full resync also failed:', resyncError);
@@ -1166,6 +1163,14 @@ export class CalendarWebhookService {
 				}
 			}
 
+			console.error('[SYNC] Error details:', {
+				code: error.code,
+				message: error.message,
+				errors: error.errors,
+				statusText: error.statusText,
+				response: error.response?.data
+			});
+
 			// Log general sync error
 			await this.errorLogger.logCalendarError(error, 'sync', calendarId, userId, {
 				operation: 'syncCalendarChanges',
@@ -1185,6 +1190,48 @@ export class CalendarWebhookService {
 	 * Process a batch of event changes with optimized database operations
 	 */
 	private async processBatchEventChanges(
+		userId: string,
+		events: calendar_v3.Schema$Event[],
+		calendarId: string,
+		calendarSourceId?: string | null,
+		userTimezone?: string | null
+	): Promise<BatchProcessResult> {
+		const result: BatchProcessResult = { processedCount: 0, incomplete: false };
+		let batch: calendar_v3.Schema$Event[] = [];
+		let idBytes = 0;
+		const flush = async () => {
+			if (!batch.length) return;
+			const current = await this.processEventChangesBatch(
+				userId,
+				batch,
+				calendarId,
+				calendarSourceId,
+				userTimezone
+			);
+			result.processedCount += current.processedCount;
+			result.incomplete ||= current.incomplete;
+			batch = [];
+			idBytes = 0;
+		};
+
+		for (const event of events ?? []) {
+			if (!event?.id) continue;
+			// Include encoded separators/quotes conservatively; Google IDs are ASCII.
+			const eventIdBytes = encodeURIComponent(event.id).length + 9;
+			if (
+				batch.length >= EVENT_BATCH_MAX_COUNT ||
+				idBytes + eventIdBytes > EVENT_BATCH_MAX_ID_BYTES
+			) {
+				await flush();
+			}
+			batch.push(event);
+			idBytes += eventIdBytes;
+		}
+		await flush();
+		return result;
+	}
+
+	private async processEventChangesBatch(
 		userId: string,
 		events: calendar_v3.Schema$Event[],
 		calendarId: string,

@@ -129,7 +129,7 @@
 	{#if currentQuestion === 'intent'}
 		<div in:fade={fadeIn()}>
 			<div class="text-center mb-10">
-				<h1 class="text-3xl sm:text-4xl font-bold text-foreground mb-3">
+				<h1 class="text-3xl sm:text-4xl font-medium text-foreground mb-3">
 					What brings you to BuildOS?
 				</h1>
 				<p class="text-lg text-muted-foreground">This helps us set things up for you</p>
@@ -142,23 +142,16 @@
 						type="button"
 						aria-label={intent.label}
 						aria-pressed={selectedIntent === intent.id}
-						class="group relative overflow-hidden rounded-lg border-2 p-5 text-left tx tx-frame tx-weak pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring
+						class="group relative overflow-hidden rounded-xl border p-5 text-left tx tx-frame tx-weak transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none
 							{selectedIntent === intent.id
-							? 'border-accent bg-accent/5 shadow-ink-strong'
-							: 'border-border bg-card shadow-ink hover:border-accent/50 hover:shadow-ink-strong'}"
+							? 'border-accent bg-accent/5 ring-1 ring-accent'
+							: 'border-border bg-card hover:border-foreground/20 hover:bg-muted/50'}"
 						onclick={() => selectIntent(intent.id as OnboardingIntent)}
 					>
 						<div class="relative flex items-start gap-4">
-							<div
-								class="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center
-									{selectedIntent === intent.id
-									? 'bg-accent/15 text-accent'
-									: 'bg-muted text-muted-foreground group-hover:text-accent'}"
-							>
-								<Icon class="w-5 h-5" />
-							</div>
+							<Icon class="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
 							<div>
-								<p class="font-semibold text-foreground leading-snug">
+								<p class="font-medium text-foreground leading-snug">
 									{intent.label}
 								</p>
 								<p class="text-sm text-muted-foreground mt-1">
@@ -176,7 +169,7 @@
 	{#if currentQuestion === 'stakes'}
 		<div in:fly={flyIn()}>
 			<div class="text-center mb-10">
-				<h1 class="text-3xl sm:text-4xl font-bold text-foreground mb-3">
+				<h1 class="text-3xl sm:text-4xl font-medium text-foreground mb-3">
 					How important is this to you?
 				</h1>
 				<p class="text-lg text-muted-foreground">Pick the closest fit</p>
@@ -189,23 +182,16 @@
 						type="button"
 						aria-label={stakes.label}
 						aria-pressed={selectedStakes === stakes.id}
-						class="group relative w-full overflow-hidden rounded-lg border-2 p-5 text-left tx tx-frame tx-weak pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring
+						class="group relative w-full overflow-hidden rounded-xl border p-5 text-left tx tx-frame tx-weak transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none
 							{selectedStakes === stakes.id
-							? 'border-accent bg-accent/5 shadow-ink-strong'
-							: 'border-border bg-card shadow-ink hover:border-accent/50 hover:shadow-ink-strong'}"
+							? 'border-accent bg-accent/5 ring-1 ring-accent'
+							: 'border-border bg-card hover:border-foreground/20 hover:bg-muted/50'}"
 						onclick={() => selectStakes(stakes.id as OnboardingStakes)}
 					>
 						<div class="relative flex items-center gap-4">
-							<div
-								class="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center
-									{selectedStakes === stakes.id
-									? 'bg-accent/15 text-accent'
-									: 'bg-muted text-muted-foreground group-hover:text-accent'}"
-							>
-								<Icon class="w-5 h-5" />
-							</div>
+							<Icon class="h-5 w-5 shrink-0 text-muted-foreground" />
 							<div>
-								<p class="font-semibold text-foreground">{stakes.label}</p>
+								<p class="font-medium text-foreground">{stakes.label}</p>
 								<p class="text-sm text-muted-foreground mt-0.5">
 									{stakes.description}
 								</p>
@@ -218,7 +204,7 @@
 			<!-- Back button to change intent -->
 			<div class="mt-6 text-center">
 				<button
-					class="inline-flex min-h-11 items-center rounded-md px-3 text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+					class="inline-flex min-h-11 items-center rounded-lg px-3 text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 					onclick={() => (currentQuestion = 'intent')}
 				>
 					Change my answer
@@ -242,9 +228,9 @@
 				onclick={saveAndContinue}
 				loading={isSaving}
 				disabled={isSaving}
-				class="px-10 py-3 text-lg shadow-ink-strong"
+				class="px-10 py-3 text-lg"
 			>
-				{isSaving ? 'Saving...' : 'Continue'}
+				{isSaving ? 'Saving…' : 'Continue'}
 			</Button>
 		</div>
 	{/if}

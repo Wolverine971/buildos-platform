@@ -1,3 +1,4 @@
+// apps/web/src/lib/components/onboarding-v2/PhoneVerificationCard.test.ts
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
@@ -51,7 +52,7 @@ describe('onboarding phone verification', () => {
 		render(PhoneVerificationCard, { userId: 'user-1', onVerified: vi.fn(), onSkip: vi.fn() });
 		const phone = await screen.findByRole('textbox', { name: 'Phone number' });
 		await fireEvent.input(phone, { target: { value: '+1 202 555 0123' } });
-		const send = screen.getByRole('button', { name: 'Send Code' });
+		const send = screen.getByRole('button', { name: 'Send code' });
 		await waitFor(() => expect(send).toBeEnabled());
 		await fireEvent.click(send);
 		await fireEvent.keyPress(phone, { key: 'Enter' });

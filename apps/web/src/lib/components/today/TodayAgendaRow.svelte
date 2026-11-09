@@ -63,15 +63,15 @@
 	{#if timeLabel}
 		<div
 			class="w-12 shrink-0 pt-3 text-right text-2xs tabular-nums sm:w-16 sm:text-xs {current
-				? 'font-semibold text-accent'
+				? 'font-medium text-foreground'
 				: 'text-muted-foreground'}"
 		>
 			{timeLabel}
 		</div>
 	{/if}
 	<div
-		class="group relative min-w-0 flex-1 border-l-2 px-1 py-1.5 sm:px-2 {current || selected
-			? 'border-accent bg-accent/5'
+		class="group relative min-w-0 flex-1 border-l-2 px-1 py-2 sm:px-2 {current || selected
+			? 'border-accent bg-muted/50'
 			: 'border-transparent hover:bg-muted/50 focus-within:bg-muted/50'}"
 		aria-current={selected ? 'true' : undefined}
 	>
@@ -80,7 +80,7 @@
 			{#if onToggleDone}
 				<button
 					onclick={onToggleDone}
-					class="group/check relative z-10 hidden sm:flex h-11 w-11 shrink-0 items-center justify-center [@media(pointer:fine)]:h-7 [@media(pointer:fine)]:w-7 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					class="group/check relative z-10 hidden sm:flex h-11 w-11 shrink-0 items-center justify-center [@media(pointer:fine)]:h-7 [@media(pointer:fine)]:w-7 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					title={done ? 'Mark as not done' : 'Mark done'}
 					aria-label={done ? `Mark "${title}" as not done` : `Mark "${title}" done`}
 					aria-pressed={done}
@@ -88,7 +88,7 @@
 					<span
 						class="flex h-5 w-5 items-center justify-center rounded-full border {done
 							? 'border-success bg-success text-success-foreground'
-							: 'border-border-strong text-transparent group-hover/check:border-accent group-hover/check:bg-accent/10 group-hover/check:text-accent'}"
+							: 'border-border-strong text-transparent group-hover/check:border-foreground/40 group-hover/check:text-muted-foreground'}"
 					>
 						<Check class="h-3 w-3" />
 					</span>
@@ -98,14 +98,14 @@
 					class="hidden h-11 w-11 shrink-0 items-center justify-center sm:flex [@media(pointer:fine)]:h-7 [@media(pointer:fine)]:w-7"
 					aria-hidden="true"
 				>
-					<Calendar class="h-4 w-4 {current ? 'text-accent' : 'text-muted-foreground'}" />
+					<Calendar class="h-4 w-4 text-muted-foreground" />
 				</div>
 			{/if}
 			<div class="min-w-0 flex-1">
 				{#if onOpenTask}
 					<button
 						onclick={onOpenTask}
-						class="flex min-h-6 w-full min-w-0 items-center gap-1.5 rounded-md text-left text-sm font-medium leading-5 after:absolute after:inset-0 after:content-[''] hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring {done
+						class="flex min-h-6 w-full min-w-0 items-center gap-2 rounded-lg text-left text-sm font-medium leading-5 after:absolute after:inset-0 after:content-[''] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring {done
 							? 'text-muted-foreground'
 							: 'text-foreground'}"
 						{title}
@@ -119,7 +119,7 @@
 					</button>
 				{:else}
 					<p
-						class="flex min-w-0 items-start gap-1.5 text-sm font-medium leading-5 {done
+						class="flex min-w-0 items-start gap-2 text-sm font-medium leading-5 {done
 							? 'text-muted-foreground line-through'
 							: kind === 'event' && past && !current
 								? 'text-muted-foreground'
@@ -127,9 +127,7 @@
 					>
 						{#if kind === 'event'}
 							<Calendar
-								class="mt-0.5 h-3.5 w-3.5 shrink-0 sm:hidden {current
-									? 'text-accent'
-									: 'text-muted-foreground'}"
+								class="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground sm:hidden"
 								aria-hidden="true"
 							/>
 						{/if}
@@ -139,11 +137,11 @@
 					</p>
 				{/if}
 				{#if hasMetadata}<div
-						class="flex min-h-6 min-w-0 flex-wrap items-center gap-x-1.5 text-2xs sm:flex-nowrap text-muted-foreground sm:text-xs"
+						class="flex min-h-6 min-w-0 flex-wrap items-center gap-x-2 text-2xs sm:flex-nowrap text-muted-foreground sm:text-xs"
 					>
 						{#if current}
 							<span
-								class="inline-flex shrink-0 items-center gap-1 font-medium text-accent"
+								class="inline-flex shrink-0 items-center gap-1 font-medium text-foreground"
 								><span class="h-1.5 w-1.5 rounded-full bg-accent"></span>Now</span
 							>
 						{:else if showInProgress}
@@ -169,7 +167,7 @@
 								data-sveltekit-preload-code="viewport"
 								class="{timeLabel
 									? 'max-[360px]:basis-full'
-									: ''} relative z-10 inline-flex min-h-6 min-w-0 items-center gap-1 rounded-md underline decoration-border-strong underline-offset-2 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									: ''} relative z-10 inline-flex min-h-6 min-w-0 items-center gap-1 rounded-lg underline decoration-border-strong underline-offset-2 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								title={`Open ${projectName}`}
 								aria-label={`Open project ${projectName}`}
 							>
@@ -183,7 +181,7 @@
 				{#if onOpenTask}
 					<button
 						onclick={onOpenTask}
-						class="hidden sm:flex h-11 w-11 items-center justify-center [@media(pointer:fine)]:h-7 [@media(pointer:fine)]:w-7 rounded-md text-muted-foreground hover:bg-accent/10 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						class="hidden sm:flex h-11 w-11 items-center justify-center [@media(pointer:fine)]:h-7 [@media(pointer:fine)]:w-7 rounded-lg text-muted-foreground hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						title="Edit task"
 						aria-label={`Edit task "${title}"`}
 					>
@@ -194,7 +192,7 @@
 						href={projectHref}
 						data-sveltekit-preload-data="hover"
 						data-sveltekit-preload-code="viewport"
-						class="flex h-11 w-11 items-center justify-center [@media(pointer:fine)]:h-7 [@media(pointer:fine)]:w-7 rounded-md text-muted-foreground hover:bg-accent/10 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						class="flex h-11 w-11 items-center justify-center [@media(pointer:fine)]:h-7 [@media(pointer:fine)]:w-7 rounded-lg text-muted-foreground hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						title="Open project"
 						aria-label={`Open project for "${title}"`}
 					>
@@ -203,7 +201,7 @@
 				{/if}
 				<button
 					onclick={onChat}
-					class="flex h-11 w-11 items-center justify-center [@media(pointer:fine)]:h-7 [@media(pointer:fine)]:w-7 rounded-md text-muted-foreground hover:bg-accent/10 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					class="flex h-11 w-11 items-center justify-center [@media(pointer:fine)]:h-7 [@media(pointer:fine)]:w-7 rounded-lg text-muted-foreground hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					title="Chat about this"
 					aria-label={`Chat about "${title}"`}
 				>

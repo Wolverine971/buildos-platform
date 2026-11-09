@@ -2,7 +2,7 @@
 <!-- INKPRINT: High-density voice note list with semantic styling -->
 <script lang="ts">
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
-	import { Trash2 } from 'lucide-svelte';
+	import { Trash2 } from '$lib/icons/lucide';
 	import VoiceNotePlayer from './VoiceNotePlayer.svelte';
 	import type { VoiceNote } from '$lib/types/voice-notes';
 
@@ -111,12 +111,12 @@
 </script>
 
 {#if voiceNotes.length === 0}
-	<p class="text-2xs italic text-muted-foreground">No voice notes yet.</p>
+	<p class="text-sm text-muted-foreground">No voice notes yet</p>
 {:else}
-	<div class={compact ? 'space-y-1.5' : 'space-y-2'}>
+	<div class={compact ? 'space-y-2' : 'space-y-3'}>
 		{#each voiceNotes as voiceNote (voiceNote.id)}
 			<div
-				class="group rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak {compact
+				class="group rounded-xl border border-border bg-card tx tx-frame tx-weak {compact
 					? 'p-2'
 					: 'p-3'}"
 				style="content-visibility: auto; contain-intrinsic-size: 0 70px;"
@@ -124,31 +124,35 @@
 				<!-- Header row: timestamp + status + delete -->
 				<div class="flex items-center justify-between gap-2">
 					<div class="flex items-center gap-2 text-2xs text-muted-foreground">
-						<span class="font-medium uppercase tracking-wide">
+						<span class="font-medium">
 							{formatTimestamp(getTimestampValue(voiceNote))}
 						</span>
 						<span class="text-border">·</span>
-						<span class="tabular-nums"
+						<span class="font-mono tabular-nums"
 							>{formatDuration(voiceNote.duration_seconds)}</span
 						>
 						{#if voiceNote.transcription_status === 'pending'}
-							<span
-								class="rounded-full bg-accent/10 px-1.5 py-0.5 text-2xs font-medium text-accent"
-							>
-								Transcribing...
+							<span class="inline-flex items-center gap-1">
+								<span
+									class="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 motion-safe:animate-pulse"
+									aria-hidden="true"
+								></span>
+								Transcribing
 							</span>
 						{:else if voiceNote.transcription_status === 'failed'}
-							<span
-								class="rounded-full border border-destructive/20 bg-destructive/10 px-1.5 py-0.5 text-2xs font-medium text-destructive"
-							>
-								Failed
+							<span class="inline-flex items-center gap-1">
+								<span
+									class="h-1.5 w-1.5 rounded-full bg-destructive"
+									aria-hidden="true"
+								></span>
+								Transcription failed
 							</span>
 						{/if}
 					</div>
 					{#if onDelete}
 						<button
 							type="button"
-							class="sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 text-destructive/60 hover:text-destructive transition-opacity"
+							class="-m-1 rounded-lg p-1 text-muted-foreground transition-[opacity,color,background-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-muted/50 hover:text-destructive focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
 							onclick={() => promptDelete(voiceNote)}
 							aria-label="Delete voice note"
 						>
@@ -158,7 +162,7 @@
 				</div>
 
 				<!-- Player -->
-				<div class={compact ? 'mt-1.5' : 'mt-2'}>
+				<div class={compact ? 'mt-1' : 'mt-2'}>
 					<VoiceNotePlayer {voiceNote} {showTranscript} {compact} />
 				</div>
 			</div>
@@ -172,7 +176,7 @@
 	confirmText="Delete"
 	confirmVariant="danger"
 	loading={deleteLoading}
-	loadingText="Deleting..."
+	loadingText="Deleting"
 	onconfirm={confirmDelete}
 	oncancel={cancelDelete}
 >
@@ -184,16 +188,16 @@
 
 	{#snippet details()}
 		{#if deleteTarget}
-			<div class="mt-2 space-y-1.5 text-xs text-muted-foreground">
+			<div class="mt-2 space-y-2 text-xs text-muted-foreground">
 				<div>
-					<span class="font-semibold text-foreground">Length:</span>
+					<span class="font-medium text-foreground">Length:</span>
 					{formatDuration(deleteTarget.duration_seconds)}
 				</div>
 				{#if deleteTarget.transcript}
 					<div>
-						<span class="font-semibold text-foreground">Transcript:</span>
+						<span class="font-medium text-foreground">Transcript:</span>
 						<p
-							class="mt-0.5 rounded-md border border-border bg-muted/50 p-1.5 text-2xs text-foreground line-clamp-3"
+							class="mt-1 rounded-lg border border-border bg-muted/50 p-2 text-2xs text-foreground line-clamp-3"
 						>
 							{deleteTarget.transcript}
 						</p>

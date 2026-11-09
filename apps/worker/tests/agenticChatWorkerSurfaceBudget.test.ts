@@ -203,10 +203,17 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		// worker writes nothing). get_workspace_overview's description got 6 B shorter on
 		// both surfaces. Measured global 58 tools / 58,699 B (+1,935); project unchanged
 		// in tools, -6 B. Cap at measured + ~0.1%.
-		expect(global.openingBytes).toBeLessThanOrEqual(58_760);
-		expect(project.openingBytes).toBeLessThanOrEqual(72_560);
-		expect(project.admittedBytes).toBeLessThanOrEqual(72_560);
-		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(8_470);
+		// RE-BASELINED 2026-11-07 (tasker 155, source-quote highlights): the worker
+		// adds optional from_quote to each reviewed write so the UI can connect a
+		// change to the user's words. Its schema adds 250 B per write: global +4,500 B,
+		// project +7,000 B, project_create +750 B. Tool counts are unchanged. Measured
+		// global 58 tools / 63,199 B, project 70 / 79,475 B, project_create 4 / 9,203 B.
+		// Jev-selected passes pay only for their mounted writes; these caps bound the
+		// full fallback surface with ~0.1% headroom (rounded up to the next 10 B).
+		expect(global.openingBytes).toBeLessThanOrEqual(63_270);
+		expect(project.openingBytes).toBeLessThanOrEqual(79_560);
+		expect(project.admittedBytes).toBeLessThanOrEqual(79_560);
+		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(9_220);
 	});
 
 	it('mounts document reads on the global worker surface', () => {

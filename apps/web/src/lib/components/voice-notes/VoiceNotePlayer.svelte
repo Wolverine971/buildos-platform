@@ -2,7 +2,7 @@
 <!-- INKPRINT: Ultra-compact audio player with high information density -->
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import { AlertCircle, LoaderCircle, Pause, Play, Trash2 } from 'lucide-svelte';
+	import { AlertCircle, LoaderCircle, Pause, Play, Trash2 } from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import type { VoiceNote } from '$lib/types/voice-notes';
 	import { getVoiceNotePlaybackUrl } from '$lib/services/voice-notes.service';
@@ -228,10 +228,10 @@
 
 {#if compact}
 	<!-- COMPACT MODE: Single-line ultra-dense layout -->
-	<div class="flex items-center gap-1.5">
+	<div class="flex items-center gap-2">
 		<!-- Segment indicator (if in multi-note group) -->
 		{#if segmentIndex !== undefined && segmentTotal !== undefined}
-			<span class="shrink-0 text-2xs font-medium tabular-nums text-muted-foreground/70">
+			<span class="shrink-0 font-mono text-2xs tabular-nums text-muted-foreground/70">
 				{segmentIndex + 1}/{segmentTotal}
 			</span>
 		{/if}
@@ -239,7 +239,7 @@
 		<!-- Play/Pause button -->
 		<button
 			type="button"
-			class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-border bg-card text-foreground shadow-ink transition-colors hover:border-accent hover:bg-accent/5 pressable disabled:opacity-50"
+			class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-foreground transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-muted/50 disabled:opacity-50"
 			onclick={togglePlayback}
 			disabled={isLoading}
 			aria-label={isPlaying ? 'Pause' : 'Play'}
@@ -257,7 +257,7 @@
 		<div class="relative flex-1 h-5 flex items-center">
 			<div class="relative w-full h-1.5 rounded-full bg-muted overflow-hidden">
 				<div
-					class="absolute inset-y-0 left-0 bg-accent/70 rounded-full transition-[width] duration-100"
+					class="absolute inset-y-0 left-0 bg-foreground/50 rounded-full transition-[width] duration-100"
 					style="width: {progressPercent}%"
 				></div>
 			</div>
@@ -274,14 +274,14 @@
 		</div>
 
 		<!-- Time display -->
-		<span class="shrink-0 text-2xs tabular-nums text-muted-foreground">
+		<span class="shrink-0 font-mono text-2xs tabular-nums text-muted-foreground">
 			{formattedCurrentTime}/{formattedDuration}
 		</span>
 
 		<!-- Speed button -->
 		<button
 			type="button"
-			class="shrink-0 rounded border border-border/60 bg-muted/50 px-1 py-0.5 text-2xs font-bold tabular-nums text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent pressable"
+			class="inline-flex h-5 shrink-0 items-center rounded-lg px-1 font-mono text-2xs font-medium tabular-nums text-muted-foreground transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-muted/50 hover:text-foreground"
 			onclick={cycleSpeed}
 			aria-label="Change playback speed"
 		>
@@ -292,7 +292,7 @@
 		{#if onDelete}
 			<button
 				type="button"
-				class="shrink-0 flex items-center justify-center h-5 w-5 rounded border border-border/40 bg-muted/30 text-muted-foreground/60 transition-colors hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive pressable"
+				class="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-muted/50 hover:text-destructive"
 				onclick={(e) => {
 					e.stopPropagation();
 					onDelete();
@@ -329,17 +329,19 @@
 				step="0.1"
 				value={currentTime}
 				oninput={seek}
-				class="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-muted"
+				class="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-muted [accent-color:hsl(var(--foreground))]"
 				aria-label="Playback progress"
 			/>
-			<div class="mt-0.5 flex items-center justify-between text-2xs text-muted-foreground">
+			<div
+				class="mt-1 flex items-center justify-between font-mono text-2xs text-muted-foreground"
+			>
 				<span class="tabular-nums">{formattedCurrentTime}</span>
 				<span class="tabular-nums">{formattedDuration}</span>
 			</div>
 		</div>
 
 		<div class="flex flex-wrap items-center gap-2">
-			<Button onclick={togglePlayback} variant="primary" size="sm" disabled={isLoading}>
+			<Button onclick={togglePlayback} variant="outline" size="sm" disabled={isLoading}>
 				{#if isLoading}
 					<LoaderCircle class="h-3.5 w-3.5 animate-spin" />
 				{:else if isPlaying}
@@ -347,28 +349,28 @@
 				{:else}
 					<Play class="h-3.5 w-3.5" />
 				{/if}
-				<span class="ml-1.5">{isPlaying ? 'Pause' : 'Play'}</span>
+				<span class="ml-2">{isPlaying ? 'Pause' : 'Play'}</span>
 			</Button>
 
 			<button
 				type="button"
-				class="pressable rounded-md border border-border bg-muted px-2 py-0.5 text-2xs font-semibold tabular-nums text-foreground"
+				class="rounded-lg px-2 py-1 font-mono text-2xs font-medium tabular-nums text-foreground transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-muted/50"
 				onclick={cycleSpeed}
 				aria-label="Change playback speed"
 			>
 				{playbackSpeed}x
 			</button>
 
-			<div class="flex flex-wrap items-center gap-1.5 text-2xs text-muted-foreground">
-				<span class="tabular-nums">{formattedRemainingTime} left</span>
-				<div class="hidden sm:flex gap-0.5">
+			<div class="flex flex-wrap items-center gap-2 text-2xs text-muted-foreground">
+				<span class="font-mono tabular-nums">{formattedRemainingTime} left</span>
+				<div class="hidden sm:flex gap-1">
 					{#each PLAYBACK_SPEEDS as speed (speed)}
 						<button
 							type="button"
-							class="rounded px-1.5 py-0.5 text-2xs tabular-nums transition-colors pressable {playbackSpeed ===
+							class="rounded-lg px-2 py-1 font-mono text-2xs tabular-nums transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] {playbackSpeed ===
 							speed
-								? 'bg-accent text-accent-foreground'
-								: 'bg-muted text-muted-foreground hover:bg-muted/80'}"
+								? 'bg-muted font-medium text-foreground'
+								: 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}"
 							onclick={() => setSpeed(speed)}
 						>
 							{speed}x
@@ -379,16 +381,14 @@
 		</div>
 
 		{#if showTranscript && voiceNote.transcript}
-			<div class="rounded-md border border-border bg-muted/50 p-2 text-sm text-foreground">
-				<p class="mb-0.5 text-2xs uppercase tracking-wide text-muted-foreground">
-					Transcript
-				</p>
+			<div class="rounded-lg border border-border bg-muted/50 p-2 text-sm text-foreground">
+				<p class="mb-1 text-xs font-medium text-muted-foreground">Transcript</p>
 				<p class="text-xs leading-relaxed">{voiceNote.transcript}</p>
 			</div>
 		{/if}
 
 		{#if errorMessage}
-			<div class="flex items-center gap-1.5 text-2xs text-destructive">
+			<div class="flex items-center gap-2 text-2xs text-destructive">
 				<AlertCircle class="h-3 w-3" />
 				<span>{errorMessage}</span>
 			</div>

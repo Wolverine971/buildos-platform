@@ -139,7 +139,7 @@
 			if (findable && !(await saveFindable(true))) {
 				findable = false;
 				claimError =
-					'Your handle is saved, but finding you by it is still off. You can turn it on in Profile → People & agents.';
+					'Your handle is saved, but finding you by it is still off. You can turn it on in Profile under People & agents.';
 			}
 			captureEvent('onboarding_handle_claimed', { findable, source });
 		} catch {
@@ -217,12 +217,12 @@
 	<div class="text-center mb-8">
 		<div class="flex justify-center mb-5">
 			<div
-				class="flex h-14 w-14 items-center justify-center rounded-lg bg-muted shadow-ink tx tx-bloom tx-weak"
+				class="flex h-14 w-14 items-center justify-center rounded-xl bg-muted tx tx-bloom tx-weak"
 			>
-				<Users class="w-7 h-7 text-accent" />
+				<Users class="h-7 w-7 text-muted-foreground" />
 			</div>
 		</div>
-		<h1 class="text-3xl sm:text-4xl font-bold text-foreground mb-3">
+		<h1 class="text-3xl sm:text-4xl font-medium text-foreground mb-3">
 			{claimedHandle ? 'Bring someone in' : 'Claim your handle'}
 		</h1>
 		<p class="text-lg text-muted-foreground">
@@ -251,38 +251,35 @@
 		</div>
 	{:else if !claimedHandle}
 		<ul class="mb-8 space-y-3" aria-label="What a handle lets you do">
-			<li class="flex gap-4 rounded-lg border border-border bg-card p-4 shadow-ink">
-				<span
-					class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-accent"
-					aria-hidden="true"><Search class="h-5 w-5" /></span
+			<li class="flex gap-4 rounded-xl border border-border bg-card p-4">
+				<span class="mt-0.5 flex shrink-0 text-muted-foreground" aria-hidden="true"
+					><Search class="h-5 w-5" /></span
 				>
 				<div class="min-w-0">
-					<p class="font-semibold text-foreground">Find people you build with</p>
+					<p class="font-medium text-foreground">Find people you build with</p>
 					<p class="text-sm text-muted-foreground">
 						Look someone up by their handle and ask to see their projects.
 					</p>
 				</div>
 			</li>
-			<li class="flex gap-4 rounded-lg border border-border bg-card p-4 shadow-ink">
-				<span
-					class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-accent"
-					aria-hidden="true"><UserPlus class="h-5 w-5" /></span
+			<li class="flex gap-4 rounded-xl border border-border bg-card p-4">
+				<span class="mt-0.5 flex shrink-0 text-muted-foreground" aria-hidden="true"
+					><UserPlus class="h-5 w-5" /></span
 				>
 				<div class="min-w-0">
-					<p class="font-semibold text-foreground">Invite people into {projectLabel}</p>
+					<p class="font-medium text-foreground">Invite people into {projectLabel}</p>
 					<p class="text-sm text-muted-foreground">
 						A collaborator, a mentor, a friend who keeps you honest. You choose whether
 						they can view or edit.
 					</p>
 				</div>
 			</li>
-			<li class="flex gap-4 rounded-lg border border-border bg-card p-4 shadow-ink">
-				<span
-					class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-accent"
-					aria-hidden="true"><Bot class="h-5 w-5" /></span
+			<li class="flex gap-4 rounded-xl border border-border bg-card p-4">
+				<span class="mt-0.5 flex shrink-0 text-muted-foreground" aria-hidden="true"
+					><Bot class="h-5 w-5" /></span
 				>
 				<div class="min-w-0">
-					<p class="font-semibold text-foreground">Let their agents pitch in</p>
+					<p class="font-medium text-foreground">Let their agents pitch in</p>
 					<p class="text-sm text-muted-foreground">
 						When you work on something together, their AI agent can read the project
 						too. Only if you allow it, and you can turn it off anytime.
@@ -295,7 +292,7 @@
 			<div>
 				<label
 					for="onboarding-handle"
-					class="mb-1.5 block text-sm font-medium text-foreground">Your handle</label
+					class="mb-2 block text-sm font-medium text-foreground">Your handle</label
 				>
 				<TextInput
 					id="onboarding-handle"
@@ -308,13 +305,13 @@
 					disabled={claiming}
 					aria-describedby="onboarding-handle-hint"
 				/>
-				<p id="onboarding-handle-hint" class="mt-1.5 text-xs text-muted-foreground">
+				<p id="onboarding-handle-hint" class="mt-2 text-xs text-muted-foreground">
 					3 to 24 lowercase letters, numbers, or hyphens. You can change it later.
 				</p>
 			</div>
 
 			<label
-				class="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-4"
+				class="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-card p-4"
 			>
 				<input
 					type="checkbox"
@@ -334,19 +331,21 @@
 
 			{#if findable}
 				<figure
-					class="rounded-lg border border-dashed border-border p-4"
+					class="rounded-xl border border-dashed border-border p-4"
 					aria-label="Preview of what people see when they look you up"
 				>
-					<figcaption class="micro-label mb-3 text-muted-foreground">
+					<figcaption class="mb-3 text-xs font-medium text-muted-foreground">
 						What people see when they look you up
 					</figcaption>
-					<div class="flex items-center gap-3 rounded-lg bg-card p-3 shadow-ink">
+					<div
+						class="flex items-center gap-3 rounded-lg border border-border bg-card p-3"
+					>
 						<span
-							class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/15 font-semibold text-accent"
+							class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted font-medium text-foreground"
 							aria-hidden="true">{previewInitial}</span
 						>
 						<div class="min-w-0 flex-1">
-							<p class="truncate font-semibold text-foreground">
+							<p class="truncate font-medium text-foreground">
 								{profileName ?? `@${previewHandle}`}
 							</p>
 							<p class="stamp truncate text-xs text-muted-foreground">
@@ -356,7 +355,7 @@
 							</p>
 						</div>
 						<span
-							class="hidden shrink-0 items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground sm:inline-flex"
+							class="hidden shrink-0 items-center gap-1 rounded-lg border border-border px-3 py-2 text-xs font-medium text-foreground sm:inline-flex"
 							aria-hidden="true"><UserPlus class="h-3.5 w-3.5" /> Ask for access</span
 						>
 					</div>
@@ -392,9 +391,9 @@
 			</div>
 		</form>
 	{:else}
-		<div class="mb-6 rounded-lg border border-success/30 bg-success/10 p-4">
+		<div class="mb-6 rounded-xl border border-success/30 bg-success/10 p-4">
 			<div class="flex flex-wrap items-center justify-between gap-3">
-				<p class="flex items-center gap-2 font-semibold text-foreground">
+				<p class="flex items-center gap-2 font-medium text-foreground">
 					<CheckCircle2 class="h-5 w-5 shrink-0 text-success" />
 					You're @{claimedHandle}
 				</p>
@@ -415,14 +414,14 @@
 		</div>
 
 		{#if projectId}
-			<div class="mb-4 rounded-lg border border-border bg-card p-5 shadow-ink">
+			<div class="mb-4 rounded-xl border border-border bg-card p-5">
 				<ProjectInviteLinkPanel {projectId} projectName={projectLabel} />
 			</div>
 			<section
-				class="mb-8 rounded-lg border border-border bg-card p-5 shadow-ink"
+				class="mb-8 rounded-xl border border-border bg-card p-5"
 				aria-labelledby="onboarding-invite-heading"
 			>
-				<h2 id="onboarding-invite-heading" class="text-lg font-semibold text-foreground">
+				<h2 id="onboarding-invite-heading" class="text-lg font-medium text-foreground">
 					Or invite someone by email
 				</h2>
 				<p class="mt-1 text-sm text-muted-foreground">

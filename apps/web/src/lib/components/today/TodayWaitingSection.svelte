@@ -29,12 +29,6 @@
 	const onYou = $derived(items.filter((item) => item.direction === 'on_you'));
 	const onThem = $derived(items.filter((item) => item.direction === 'on_them'));
 
-	const whoClass: Record<TodayWaitingItem['who_kind'], string> = {
-		person: 'bg-info/10 text-info',
-		organization: 'bg-info/10 text-info',
-		agent: 'bg-muted text-muted-foreground'
-	};
-
 	function sinceLabel(since: string | null): string | null {
 		if (!since) return null;
 		const date = new Date(`${since}T12:00:00Z`);
@@ -64,12 +58,10 @@
 	{@const done = settled[item.id]}
 	{@const meta = [item.project_name, sinceLabel(item.since)].filter(Boolean).join(' · ')}
 	<li
-		class="flex min-w-0 items-start gap-3 border-t border-border/70 px-1 py-2.5 first:border-t-0 sm:px-2"
+		class="flex min-w-0 items-start gap-3 border-t border-border/70 px-1 py-3 first:border-t-0 sm:px-2"
 	>
 		<span
-			class="mt-0.5 max-w-[9rem] shrink-0 truncate rounded px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wide {whoClass[
-				item.who_kind
-			]}"
+			class="mt-0.5 max-w-[9rem] shrink-0 truncate text-xs font-medium text-foreground"
 			title={item.who}>{item.who}</span
 		>
 		<div class="min-w-0 flex-1">
@@ -82,17 +74,17 @@
 			</p>
 			{#if done}
 				<p class="mt-0.5 text-xs text-muted-foreground">
-					{done === 'resolved' ? 'Marked done.' : 'Removed.'}
+					{done === 'resolved' ? 'Marked done' : 'Removed'}
 				</p>
 			{:else if meta}
 				<p class="mt-0.5 truncate text-xs text-muted-foreground">{meta}</p>
 			{/if}
 		</div>
-		<div class="flex shrink-0 items-center gap-0.5">
+		<div class="flex shrink-0 items-center gap-1">
 			{#if done}
 				<button
 					type="button"
-					class="inline-flex min-h-11 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-8"
+					class="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-8"
 					onclick={() => undo(item)}
 				>
 					<Undo2 class="h-3.5 w-3.5" /> Undo
@@ -101,7 +93,7 @@
 				{#if item.direction === 'on_them'}
 					<button
 						type="button"
-						class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8"
+						class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8"
 						title="Draft a follow-up"
 						aria-label="Draft a follow-up to {item.who}"
 						onclick={() => onNudge(item)}
@@ -111,7 +103,7 @@
 				{:else if item.task_id || item.project_id}
 					<button
 						type="button"
-						class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8"
+						class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8"
 						title="Open"
 						aria-label="Open {item.what}"
 						onclick={() => onOpen(item)}
@@ -121,7 +113,7 @@
 				{/if}
 				<button
 					type="button"
-					class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-success/10 hover:text-success focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8"
+					class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8"
 					title={item.direction === 'on_you' ? 'Done' : 'They came through'}
 					aria-label="Mark done: {item.what}"
 					onclick={() => settle(item, 'resolved')}
@@ -130,7 +122,7 @@
 				</button>
 				<button
 					type="button"
-					class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8"
+					class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8"
 					title="Not a real ask, remove it"
 					aria-label="Remove: {item.what}"
 					onclick={() => settle(item, 'dismissed')}
@@ -145,18 +137,22 @@
 {#if items.length > 0}
 	<section class="mt-6" aria-label="Who's waiting">
 		{#if onYou.length > 0}
-			<h2 class="micro-label mb-1 text-muted-foreground">Waiting on you</h2>
-			<ul class="rounded-lg border border-border bg-card">
+			<h2 class="mb-2 text-xs font-medium text-muted-foreground">Waiting on you</h2>
+			<ul class="rounded-xl border border-border bg-card">
 				{#each onYou as item (item.id)}
 					{@render row(item)}
 				{/each}
 			</ul>
 		{/if}
 		{#if onThem.length > 0}
-			<h2 class="micro-label mb-1 text-muted-foreground {onYou.length > 0 ? 'mt-4' : ''}">
+			<h2
+				class="mb-2 text-xs font-medium text-muted-foreground {onYou.length > 0
+					? 'mt-4'
+					: ''}"
+			>
 				You're waiting on
 			</h2>
-			<ul class="rounded-lg border border-border bg-card">
+			<ul class="rounded-xl border border-border bg-card">
 				{#each onThem as item (item.id)}
 					{@render row(item)}
 				{/each}

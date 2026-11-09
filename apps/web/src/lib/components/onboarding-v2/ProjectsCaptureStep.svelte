@@ -611,8 +611,8 @@
 	{#if phase === 'capture'}
 		<!-- Header -->
 		<div class="mb-8 text-center">
-			<p class="micro-label mb-3 text-accent">{BRAND_TAGLINE}</p>
-			<h1 class="text-2xl sm:text-3xl font-bold mb-3 text-foreground">
+			<p class="mb-3 text-xs font-medium text-muted-foreground">{BRAND_TAGLINE}</p>
+			<h1 class="text-2xl sm:text-3xl font-medium mb-3 text-foreground">
 				{v3Prompts?.heading ?? 'Tell BuildOS what you’re working on.'}
 			</h1>
 			<p class="text-base text-muted-foreground leading-relaxed max-w-xl mx-auto">
@@ -635,7 +635,7 @@
 		{/if}
 		<!-- Composer -->
 		<div
-			class="mb-4 rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak"
+			class="mb-4 rounded-xl border border-border bg-card p-4 tx tx-frame tx-weak"
 			onkeydown={handleCaptureKeydown}
 			role="presentation"
 		>
@@ -652,13 +652,13 @@
 			/>
 
 			<!-- Prompt chips for blank-state freeze -->
-			<div class="mt-3 flex flex-wrap gap-1.5">
+			<div class="mt-3 flex flex-wrap gap-2">
 				{#each PROMPT_CHIPS as chip (chip)}
 					<button
 						type="button"
 						onclick={() => appendChip(chip)}
 						disabled={Boolean(creationSessionId)}
-						class="inline-flex min-h-11 items-center rounded-full border border-border bg-muted/40 px-3 py-1 text-2xs font-medium text-muted-foreground transition-colors hover:border-accent/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+						class="inline-flex min-h-11 items-center rounded-lg border border-border bg-muted/40 px-3 py-1 text-2xs font-medium text-muted-foreground transition-colors hover:border-foreground/20 hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 					>
 						{chip}
 					</button>
@@ -676,7 +676,7 @@
 					busy ||
 					workspaceSaving}
 				loading={isLoadingChat}
-				class="mt-4 w-full shadow-ink"
+				class="mt-4 w-full"
 			>
 				<Sparkles class="w-5 h-5 mr-2" />
 				Shape my first project
@@ -708,7 +708,7 @@
 		<!-- Existing projects (returning users): the first win already happened -->
 		{#if initialProjects.length > 0}
 			<div class="mb-4" in:fade={fadeIn()}>
-				<h3 class="text-sm font-semibold text-muted-foreground mb-2">
+				<h3 class="text-sm font-medium text-muted-foreground mb-2">
 					Already in your workspace
 				</h3>
 				<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -716,18 +716,12 @@
 						<button
 							type="button"
 							onclick={() => reviewProject(project.id)}
-							class="group relative block w-full text-left rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak pressable hover:border-accent/50 hover:shadow-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							class="group relative block w-full text-left rounded-xl border border-border bg-card p-4 tx tx-frame tx-weak transition-colors hover:border-foreground/20 hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 						>
 							<div class="flex items-start gap-3">
-								<div
-									class="flex-shrink-0 w-9 h-9 rounded-lg bg-accent/10 text-accent flex items-center justify-center"
-								>
-									<FolderOpen class="w-4.5 h-4.5" />
-								</div>
+								<FolderOpen class="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
 								<div class="flex-1 min-w-0">
-									<h4
-										class="font-semibold text-sm text-foreground truncate group-hover:text-accent transition-colors"
-									>
+									<h4 class="font-medium text-sm text-foreground truncate">
 										{project.name}
 									</h4>
 									{#if project.description}
@@ -739,7 +733,7 @@
 									{/if}
 									{#if (project.task_count ?? 0) > 0}
 										<span
-											class="mt-2 inline-flex items-center gap-1 text-2xs text-muted-foreground"
+											class="mt-2 inline-flex items-center gap-1 font-mono text-xs tabular-nums text-muted-foreground"
 										>
 											<ListChecks class="w-3 h-3" />
 											{project.task_count}
@@ -774,7 +768,7 @@
 				<button
 					type="button"
 					onclick={handleExploreSkip}
-					class="inline-flex min-h-11 items-center rounded-md px-3 text-sm text-muted-foreground underline underline-offset-2 transition-colors hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+					class="inline-flex min-h-11 items-center rounded-lg px-3 text-sm text-muted-foreground underline underline-offset-2 transition-colors hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 				>
 					Skip for now — start with an empty workspace
 				</button>
@@ -785,12 +779,12 @@
 		<div class="mb-6 text-center" in:scale={scaleIn()}>
 			<div class="flex justify-center mb-4">
 				<div
-					class="flex h-14 w-14 items-center justify-center rounded-lg bg-success shadow-ink-strong tx tx-bloom tx-weak"
+					class="flex h-14 w-14 items-center justify-center rounded-xl bg-muted tx tx-bloom tx-weak"
 				>
-					<CheckCircle class="w-7 h-7 text-success-foreground" />
+					<CheckCircle class="h-7 w-7 text-success" />
 				</div>
 			</div>
-			<h1 class="text-2xl sm:text-3xl font-bold mb-2 text-foreground">
+			<h1 class="text-2xl sm:text-3xl font-medium mb-2 text-foreground">
 				Your project is ready
 			</h1>
 			<p class="text-base text-muted-foreground max-w-xl mx-auto">
@@ -815,15 +809,15 @@
 					target="_blank"
 					rel="noopener noreferrer"
 					onclick={handleOpenProject}
-					class="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-accent underline-offset-2 hover:bg-accent/10 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					class="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 				>
-					<ExternalLink class="w-4 h-4" />
+					<ExternalLink class="h-4 w-4 text-muted-foreground" />
 					Open my project
 				</a>
 				<button
 					type="button"
 					onclick={openAdjustChat}
-					class="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+					class="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 				>
 					<MessageCircle class="w-4 h-4" />
 					Adjust in chat
@@ -832,16 +826,16 @@
 		{/if}
 
 		<section
-			class="mt-6 rounded-lg border border-border bg-card p-4 sm:p-5"
+			class="mt-6 rounded-xl border border-border bg-card p-4 sm:p-5"
 			aria-label="Optional calendar connection"
 		>
-			<p class="micro-label mb-2 text-muted-foreground">Optional · your real week</p>
+			<p class="mb-2 text-xs font-medium text-muted-foreground">Optional · your real week</p>
 			{#if isCheckingConnection}
 				<p class="text-sm text-muted-foreground" role="status">
 					Checking your calendar connection…
 				</p>
 			{:else if hasCalendarConnected}
-				<h3 class="flex items-center gap-2 text-base font-semibold text-foreground">
+				<h3 class="flex items-center gap-2 text-base font-medium text-foreground">
 					<CheckCircle class="h-5 w-5 text-success" /> Google Calendar connected
 				</h3>
 				{#if showConnectionSuccess}<p class="mt-1 text-xs text-success" role="status">
@@ -888,7 +882,7 @@
 						{analysisError ?? 'Calendar analysis failed. Retry when you’re ready.'}
 					</p>{/if}
 			{:else}
-				<h3 class="text-base font-semibold text-foreground">Make room for this project</h3>
+				<h3 class="text-base font-medium text-foreground">Make room for this project</h3>
 				<p class="mt-1 text-sm leading-relaxed text-muted-foreground">
 					Connect Google Calendar to find open time around real commitments. You can do
 					this later in Profile.
@@ -913,7 +907,7 @@
 				onclick={handleContinue}
 				loading={busy}
 				disabled={busy}
-				class="w-full sm:w-auto sm:min-w-[240px] shadow-ink"
+				class="w-full sm:w-auto sm:min-w-[240px]"
 			>
 				{hasCalendarConnected ? 'Continue setup' : 'Continue without calendar'}
 				<ArrowRight class="w-4 h-4 ml-2" />
