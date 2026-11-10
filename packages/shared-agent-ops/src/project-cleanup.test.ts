@@ -301,8 +301,21 @@ describe('autoAppliedFromRow', () => {
 			title: 'Move "LA Industrial Services brief" under "Client Work"',
 			applied_at: '2026-10-29T10:00:00Z',
 			reason: 'Fits the project and nothing is lost; you can undo it',
-			undoable: true
+			undoable: true,
+			scores: null,
+			bar: null
 		});
+	});
+
+	it('carries the scores and the bar they met', () => {
+		const bar = { minAbout: 0.85, minWanted: 0.75, minSafe: 0.85, maxReview: 0.65 };
+		const scores = { about: 0.86, wanted: 0.85, review: 0.35, safe: 0.94 };
+		const entry = autoAppliedFromRow({
+			...base,
+			result: { ...base.result, auto_apply: { ...base.result.auto_apply, scores, bar } }
+		});
+		expect(entry?.scores).toEqual(scores);
+		expect(entry?.bar).toEqual(bar);
 	});
 
 	it('skips undone rows and ones the user applied', () => {

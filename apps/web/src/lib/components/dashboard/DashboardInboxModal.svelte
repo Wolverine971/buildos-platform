@@ -2,7 +2,7 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { Inbox, RefreshCw, Settings, Sparkles, X, Zap } from '$lib/icons/lucide';
+	import { History, Inbox, RefreshCw, Settings, Sparkles, X, Zap } from '$lib/icons/lucide';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ChangeSetFailureSummary from '$lib/components/notifications/types/agent-run/ChangeSetFailureSummary.svelte';
@@ -31,6 +31,7 @@
 	import InboxManagerBriefControls from '$lib/components/inbox/InboxManagerBriefControls.svelte';
 	import InboxProjectBadge from '$lib/components/inbox/InboxProjectBadge.svelte';
 	import InboxProjectCleanup from '$lib/components/inbox/InboxProjectCleanup.svelte';
+	import InboxActivity from '$lib/components/inbox/InboxActivity.svelte';
 	import InboxEmailUpdatesStrip, {
 		type EmailUpdateEntry
 	} from '$lib/components/inbox/InboxEmailUpdatesStrip.svelte';
@@ -224,6 +225,8 @@
 	let doneForYou = $state.raw<DoneForYouEntry[]>([]);
 	/** Tasker 154: project updates proposed from the owner's email. */
 	let emailUpdates = $state.raw<EmailUpdateEntry[]>([]);
+	/** The "What happened / what's suggested" view, laid over the cards (tasker 156). */
+	let showActivity = $state(false);
 	let emailUpdatesDecided = $state(0);
 	const openEmailUpdates = $derived(Math.max(0, emailUpdates.length - emailUpdatesDecided));
 	// A project whose cleanup card is open shows its own "Done for you"; list the rest here.
@@ -1444,6 +1447,19 @@
 				{/if}
 				<button
 					type="button"
+					onclick={() => (showActivity = !showActivity)}
+					aria-pressed={showActivity}
+					class="relative flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {showActivity
+						? 'text-accent'
+						: 'text-muted-foreground hover:text-foreground'}"
+					title="What happened and what's suggested"
+				>
+					<History class="h-4 w-4" aria-hidden="true" />
+					<span class="hidden sm:inline">What happened</span>
+					<span class="sr-only sm:hidden">What happened</span>
+				</button>
+				<button
+					type="button"
 					onclick={refreshAll}
 					disabled={loading || loadingMore}
 					class="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
@@ -1473,6 +1489,12 @@
 	<div
 		class="relative flex h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-4.75rem-var(--keyboard-height,0px))] min-h-0 flex-col overflow-hidden sm:h-[min(calc(85dvh-3.5rem),56rem)]"
 	>
+		{#if showActivity}
+			<!-- Over the inbox, not instead of it: the cards keep their state underneath. -->
+			<div class="absolute inset-0 z-10">
+				<InboxActivity onClose={() => (showActivity = false)} />
+			</div>
+		{/if}
 		{#if !triageProjects}
 			<InboxEmailUpdatesStrip entries={emailUpdates} onDecided={handleEmailUpdateDecided} />
 			<InboxDoneForYouStrip
@@ -1549,6 +1571,7 @@
 							<button
 								type="button"
 								id={groupTabId(group.key)}
+								data-inbox-project-tab={group.projectId ?? undefined}
 								role="tab"
 								aria-selected={activeGroup?.key === group.key}
 								aria-controls={groupPanelId(group.key)}

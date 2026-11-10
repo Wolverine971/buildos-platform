@@ -1,5 +1,6 @@
 // packages/shared-agent-ops/src/calendar/agent-run-calendar-port.test.ts
 import { describe, expect, it, vi } from 'vitest';
+import { GoogleAgentOAuthError, GoogleAgentOAuthService } from '../google/google-agent-oauth';
 import {
 	LegacyCalendarReadError,
 	createAgentRunCalendarPort,
@@ -130,31 +131,17 @@ describe('AgentRunCalendarPort.listCalendarEvents', () => {
 });
 
 describe('legacy Google Calendar reader', () => {
-	/** `user_calendar_tokens` returns `row`; every other table is empty. */
-	function tokenAdmin(row: Record<string, unknown> | null, error: unknown = null) {
-		return {
-			from: vi.fn(() => {
-				const builder: any = {
-					select: () => builder,
-					eq: () => builder,
-					maybeSingle: async () => ({ data: row, error })
-				};
-				return builder;
-			})
-		};
-	}
-	const credentials = { clientId: 'client-id', clientSecret: 'client-secret' };
-	const read = (admin: unknown, creds = credentials) =>
-		createLegacyGoogleCalendarReader({ admin, userId: USER_ID, credentials: creds })
-			.listEvents({ calendarId: 'primary' })
-			.catch((error: unknown) => error);
+	const read = (admin: unknown) =>
+		createLegacyGoogleCalendarReader({ admin, userId: USER_ID }).listEvents({
+			calendarId: 'primary'
+		});
 
 	it('retains the page token as truncation even when Google returns a short page', async () => {
 		const list = vi
 			.fn()
 			.mockResolvedValue({ data: { items: [{ id: 'g-1' }], nextPageToken: 'more' } });
 		const prototype = Object.getPrototypeOf(
-			createAgentRunCalendarPort({ admin: {}, userId: USER_ID, credentials })
+			createAgentRunCalendarPort({ admin: {}, userId: USER_ID })
 		);
 		const authorize = vi
 			.spyOn(prototype, 'authorizeLegacyRead')
@@ -168,43 +155,39 @@ describe('legacy Google Calendar reader', () => {
 		}
 	});
 
-	it('reports not_connected when the user has no singleton grant', async () => {
-		const error = await read(tokenAdmin(null));
-		expect(error).toBeInstanceOf(LegacyCalendarReadError);
-		expect((error as LegacyCalendarReadError).code).toBe('not_connected');
-	});
-
-	it('reports not_connected for a grant row that holds no tokens', async () => {
-		const error = await read(tokenAdmin({ access_token: null, refresh_token: null }));
-		expect((error as LegacyCalendarReadError).code).toBe('not_connected');
-	});
-
-	it('reports credentials_unreadable when a stored token cannot be decrypted', async () => {
-		const error = await read(
-			tokenAdmin({
-				access_token: 'enc:v1.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
-				refresh_token: 'r'
-			})
-		);
-		expect((error as LegacyCalendarReadError).code).toBe('credentials_unreadable');
-	});
-
-	it('reports credentials_not_configured before touching the grant', async () => {
-		const admin = tokenAdmin({ access_token: 'a', refresh_token: 'r' });
-		const previous = {
-			id: process.env.PRIVATE_GOOGLE_CLIENT_ID,
-			legacyId: process.env.GOOGLE_CLIENT_ID
+	it.each([
+		['connection_not_found', 'not_connected'],
+		['not_configured', 'credentials_not_configured'],
+		['database_error', 'credentials_unreadable'],
+		['agent_authorization_required', 'reconnect_required']
+	] as const)('maps agent %s to %s', async (code, expected) => {
+		const agentOAuth = {
+			getCalendarClient: vi
+				.fn()
+				.mockRejectedValue(new GoogleAgentOAuthError(code, 'Agent access required'))
 		};
-		delete process.env.PRIVATE_GOOGLE_CLIENT_ID;
-		delete process.env.GOOGLE_CLIENT_ID;
-		try {
-			const error = await read(admin, { clientId: '', clientSecret: '' });
-			expect((error as LegacyCalendarReadError).code).toBe('credentials_not_configured');
-			expect(admin.from).not.toHaveBeenCalled();
-		} finally {
-			if (previous.id !== undefined) process.env.PRIVATE_GOOGLE_CLIENT_ID = previous.id;
-			if (previous.legacyId !== undefined) process.env.GOOGLE_CLIENT_ID = previous.legacyId;
-		}
+		await expect(
+			createLegacyGoogleCalendarReader({ admin: {}, userId: USER_ID, agentOAuth }).listEvents(
+				{ calendarId: 'primary' }
+			)
+		).rejects.toMatchObject({ code: expected });
+		expect(agentOAuth.getCalendarClient).toHaveBeenCalledWith(USER_ID, USER_ID, true);
+	});
+
+	it('refuses human-only configuration without reading a human token', async () => {
+		const admin = { from: vi.fn() };
+		const agentOAuth = new GoogleAgentOAuthService(admin as never, {
+			readEnv: (name) =>
+				({ PRIVATE_GOOGLE_CLIENT_ID: 'human', PRIVATE_GOOGLE_CLIENT_SECRET: 'secret' })[
+					name
+				]
+		});
+		await expect(
+			createLegacyGoogleCalendarReader({ admin, userId: USER_ID, agentOAuth }).listEvents({
+				calendarId: 'primary'
+			})
+		).rejects.toMatchObject({ code: 'credentials_not_configured' });
+		expect(admin.from).not.toHaveBeenCalled();
 	});
 });
 
@@ -341,7 +324,13 @@ describe('legacy Google Calendar client (writes)', () => {
 		const error = await createLegacyGoogleCalendarClient({
 			admin,
 			userId: USER_ID,
-			credentials: { clientId: 'id', clientSecret: 'secret' }
+			agentOAuth: {
+				getCalendarClient: vi
+					.fn()
+					.mockRejectedValue(
+						new GoogleAgentOAuthError('connection_not_found', 'No connected account')
+					)
+			}
 		})
 			.createProjectCalendar(USER_ID, { name: 'Launch' })
 			.catch((caught: unknown) => caught);

@@ -30,6 +30,7 @@
 		toDateInputValue,
 		type CheckInChangeSummary
 	} from './check-ins';
+	import { buildEntityHref } from '@buildos/shared-types';
 	import { flyToPile } from './pile-fly';
 
 	type RowAnswer = 'done' | 'move' | 'drop';
@@ -160,10 +161,26 @@
 		return target instanceof Element ? (target.closest('li, article') ?? target) : null;
 	}
 
-	function answerLabel(answer: RowAnswer, moveLabel?: string): string {
-		if (answer === 'done') return 'Marked done';
+	// The receipt in the Cleared pile: what the answer changed, before → after (tasker 156).
+	function answerLabel(task: CheckInTask, answer: RowAnswer, moveLabel?: string): string {
+		if (answer === 'done') return `${stateLabel(task.state_key)} → Done`;
 		if (answer === 'drop') return 'Dropped (archived)';
-		return moveLabel ? `Moved to ${moveLabel}` : 'Moved';
+		const was = dueLabel(task.due_at);
+		if (!moveLabel) return 'Moved';
+		return was ? `Due ${was} → ${moveLabel}` : `Moved to ${moveLabel}`;
+	}
+
+	// Display only: a status key as words ("in_progress" → "In progress").
+	function stateLabel(stateKey: string): string {
+		const words = stateKey.replaceAll('_', ' ').trim();
+		if (!words || words === 'todo') return 'To do';
+		return words.charAt(0).toUpperCase() + words.slice(1);
+	}
+
+	function dueLabel(dueAt: string): string | null {
+		const date = new Date(dueAt);
+		if (Number.isNaN(date.getTime())) return null;
+		return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 	}
 
 	function answerTask(
@@ -175,10 +192,10 @@
 		if (clearedPile.isHidden(taskKey(task.id))) return;
 		movingTaskId = null;
 		rowErrors = withoutKey(rowErrors, task.id);
-		flyToPile(source, task.title);
+		flyToPile(source, task.title, project.project_id);
 		const { settled } = clearedPile.add({
 			title: task.title,
-			label: answerLabel(answer, move?.label),
+			label: answerLabel(task, answer, move?.label),
 			context: project.project_name,
 			keys: [taskKey(task.id)],
 			lane,
@@ -233,7 +250,7 @@
 		if (!targets.length) return;
 		movingTaskId = null;
 		groupErrors = withoutKey(groupErrors, group.key);
-		flyToPile(sourceOf(event), `${targets.length} done`);
+		flyToPile(sourceOf(event), `${targets.length} done`, project.project_id);
 		const { settled } = clearedPile.add({
 			title: `${targets.length} task${targets.length === 1 ? '' : 's'} · ${group.label}`,
 			label: 'Marked all done',
@@ -273,7 +290,7 @@
 	function answerProject(answer: 'pause' | 'finish', event?: Event) {
 		if (projectAnswered) return;
 		projectError = null;
-		flyToPile(sourceOf(event), project.project_name);
+		flyToPile(sourceOf(event), project.project_name, project.project_id);
 		const { settled } = clearedPile.add({
 			title: project.project_name,
 			label: answer === 'pause' ? 'Paused' : 'Marked finished',
@@ -330,8 +347,8 @@
 		</span>
 		<span class="text-xs text-muted-foreground">
 			{askStillOn
-				? 'Overdue work and no changes in a while'
-				: 'Planned work that went past its date'}
+				? 'Here because work is overdue and nothing has changed in a while'
+				: 'Here because these tasks went past their date and are still open'}
 		</span>
 	</div>
 
@@ -483,12 +500,25 @@
 						: ''}"
 				>
 					{#each group.tasks as task (task.id)}
+						{@const href = buildEntityHref('task', task.id, project.project_id)}
 						<li
 							class="grid min-w-0 gap-2 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
 						>
 							<div class="min-w-0">
 								<p class="break-words text-sm text-foreground">
-									{task.title}
+									{#if href}
+										<a
+											{href}
+											target="_blank"
+											rel="noopener"
+											class="rounded-sm hover:text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											>{task.title}<span class="sr-only">
+												(opens in a new tab)</span
+											></a
+										>
+									{:else}
+										{task.title}
+									{/if}
 								</p>
 								{#if rowErrors[task.id]}
 									<p role="alert" class="mt-0.5 text-2xs text-destructive">

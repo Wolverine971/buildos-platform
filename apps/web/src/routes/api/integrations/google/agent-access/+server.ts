@@ -1,3 +1,4 @@
+// apps/web/src/routes/api/integrations/google/agent-access/+server.ts
 import type { RequestHandler } from './$types';
 import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';

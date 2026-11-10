@@ -11,6 +11,9 @@ import type {
 	LoopOperation,
 	ProjectCleanupAsk,
 	ProjectCleanupAutoApplied,
+	ProjectCleanupAutoApplyBar,
+	ProjectCleanupAutoApplyScores,
+	ProjectCleanupAutoCheck,
 	ProjectCleanupGroup,
 	ProjectCleanupItem,
 	ProjectCleanupItemRow,
@@ -334,6 +337,7 @@ export function buildProjectCleanupView(params: {
 			.filter(Boolean)
 			.sort()[0];
 		const singleVerified = itemRows.length === 1 ? itemRows[0]?.verified_headline : null;
+		const autoCheck = rollup.map((value) => readAutoCheck(value.auto_check)).find(Boolean);
 		// The latest synthesis's group wins; the section the roll-up stamped on the rows
 		// covers items the synthesis did not group.
 		const stampedSection = rollup.map((value) => value.section).find(Boolean) ?? null;
@@ -359,6 +363,7 @@ export function buildProjectCleanupView(params: {
 			seen_count: Math.max(1, seenRuns.size),
 			first_seen_at: firstSeen ?? lead.created_at,
 			updated_at: lead.updated_at,
+			...(autoCheck ? { auto_check: autoCheck } : {}),
 			...(reviewItems.length ? { review_items: reviewItems } : {}),
 			...(source === 'audit'
 				? { audit_id: params.auditIdBySuggestionId?.get(lead.id) ?? null }
@@ -458,6 +463,50 @@ export async function loadProjectCleanupRows(
 		.filter((row): row is ProjectCleanupRowRecord => Boolean(row));
 }
 
+function unit(value: unknown): number | null {
+	return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1
+		? value
+		: null;
+}
+
+function readAutoScores(value: unknown): ProjectCleanupAutoApplyScores | null {
+	const record = asRecord(value);
+	const about = unit(record?.about);
+	const wanted = unit(record?.wanted);
+	const review = unit(record?.review);
+	const safe = unit(record?.safe);
+	if (about === null || wanted === null || review === null || safe === null) return null;
+	return { about, wanted, review, safe };
+}
+
+function readAutoBar(value: unknown): ProjectCleanupAutoApplyBar | null {
+	const record = asRecord(value);
+	const minAbout = unit(record?.minAbout);
+	const minWanted = unit(record?.minWanted);
+	const minSafe = unit(record?.minSafe);
+	const maxReview = unit(record?.maxReview);
+	if (minAbout === null || minWanted === null || minSafe === null || maxReview === null) {
+		return null;
+	}
+	return { minAbout, minWanted, minSafe, maxReview };
+}
+
+/** `rollup.auto_check` as the card reads it; null when absent or malformed. */
+function readAutoCheck(value: unknown): ProjectCleanupAutoCheck | null {
+	const record = asRecord(value);
+	const scores = readAutoScores(record?.scores);
+	const bar = readAutoBar(record?.bar);
+	const at = asString(record?.at);
+	if (!record || !scores || !bar || !at) return null;
+	return {
+		scores,
+		bar,
+		outcome: record.outcome === 'cap' ? 'cap' : 'below_bar',
+		at,
+		run_id: asString(record.run_id)
+	};
+}
+
 /** How long a change applied without asking stays on the card with its Undo. */
 export const AUTO_APPLIED_VISIBLE_DAYS = 7;
 
@@ -506,7 +555,9 @@ export function autoAppliedFromRow(row: Record<string, unknown>): ProjectCleanup
 		title: asString(result.headline) ?? asString(row.title) ?? 'Cleanup change',
 		applied_at: appliedAt,
 		reason: asString(autoApply?.reason),
-		undoable: row.reversible !== false
+		undoable: row.reversible !== false,
+		scores: readAutoScores(autoApply?.scores),
+		bar: readAutoBar(autoApply?.bar)
 	};
 }
 

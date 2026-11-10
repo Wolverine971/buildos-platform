@@ -5,7 +5,8 @@
 	until the user presses Apply.
 -->
 <script lang="ts">
-	import { ChevronDown, ExternalLink, Mail } from '$lib/icons/lucide';
+	import { buildEntityHref } from '@buildos/shared-types';
+	import { ArrowUpRight, ChevronDown, ExternalLink, Mail } from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { formatRelativeTime } from '$lib/utils/date-utils';
 
@@ -14,6 +15,9 @@
 		project_id: string;
 		project_name: string | null;
 		action: 'create_task' | 'update_task';
+		task_id?: string | null;
+		proposal?: { title?: string; due_date?: string; state_key?: string };
+		current?: { title: string; due_at: string | null; state_key: string | null } | null;
 		title: string;
 		why: string | null;
 		email: { subject: string; from: string; account_email: string; received_at: string | null };
@@ -38,6 +42,50 @@
 
 	const visible = $derived(entries.filter((entry) => !decided.has(entry.id)));
 	const appliedCount = $derived([...decided.values()].filter((d) => d === 'apply').length);
+
+	type ChangeRow = { label: string; before: string | null; after: string };
+
+	// Display only: a status key as words ("in_progress" → "In progress").
+	function stateLabel(stateKey: string | null | undefined): string | null {
+		const words = (stateKey ?? '').replaceAll('_', ' ').trim();
+		if (!words) return null;
+		if (words === 'todo') return 'To do';
+		return words.charAt(0).toUpperCase() + words.slice(1);
+	}
+
+	// A civil date ("2026-11-13") or a timestamp, as "Nov 13". Civil dates stay on their day.
+	function dayLabel(value: string | null | undefined): string | null {
+		if (!value) return null;
+		const civil = /^\d{4}-\d{2}-\d{2}$/.test(value);
+		const date = new Date(civil ? `${value}T12:00:00Z` : value);
+		if (Number.isNaN(date.getTime())) return null;
+		return date.toLocaleDateString(undefined, {
+			month: 'short',
+			day: 'numeric',
+			...(civil ? { timeZone: 'UTC' } : {})
+		});
+	}
+
+	/** What Apply will change, before → after, from the card's own proposal (tasker 156). */
+	function changeRows(entry: EmailUpdateEntry): ChangeRow[] {
+		const proposal = entry.proposal ?? {};
+		const current = entry.action === 'update_task' ? (entry.current ?? null) : null;
+		const rows: ChangeRow[] = [];
+		if (proposal.title && proposal.title !== current?.title) {
+			rows.push({
+				label: entry.action === 'create_task' ? 'New task' : 'Title',
+				before: current?.title || null,
+				after: proposal.title
+			});
+		}
+		const due = dayLabel(proposal.due_date);
+		if (due) rows.push({ label: 'Due', before: dayLabel(current?.due_at), after: due });
+		const status = stateLabel(proposal.state_key);
+		if (status) {
+			rows.push({ label: 'Status', before: stateLabel(current?.state_key), after: status });
+		}
+		return rows.filter((row) => row.before !== row.after);
+	}
 
 	function senderName(from: string): string {
 		// "Jane Doe <jane@acme.com>" → "Jane Doe" (a header format, not language).
@@ -111,6 +159,11 @@
 			>
 				{#each visible as entry (entry.id)}
 					{@const error = errors.get(entry.id)}
+					{@const rows = changeRows(entry)}
+					{@const taskHref =
+						entry.action === 'update_task' && entry.task_id
+							? buildEntityHref('task', entry.task_id, entry.project_id)
+							: null}
 					<li
 						class="flex min-w-0 flex-col gap-2 rounded-md border border-border bg-card px-2.5 py-2 sm:flex-row sm:items-center sm:justify-between"
 					>
@@ -145,6 +198,46 @@
 									</a>
 								{/if}
 							</p>
+							{#if rows.length || taskHref}
+								<ul class="mt-1 space-y-0.5" aria-label="What Apply changes">
+									{#if taskHref && entry.current?.title}
+										<li class="text-2xs">
+											<span class="font-medium text-muted-foreground"
+												>Task:</span
+											>
+											<a
+												href={taskHref}
+												target="_blank"
+												rel="noopener"
+												class="inline-flex items-center gap-0.5 font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+												>{entry.current.title}<ArrowUpRight
+													class="h-3 w-3 shrink-0"
+													aria-hidden="true"
+												/><span class="sr-only">(opens in a new tab)</span
+												></a
+											>
+										</li>
+									{/if}
+									{#each rows as row (row.label)}
+										<li class="break-words text-2xs">
+											<span class="font-medium text-muted-foreground"
+												>{row.label}:</span
+											>
+											{#if row.before}
+												<span class="text-muted-foreground"
+													>{row.before}</span
+												>
+												<span
+													class="text-muted-foreground"
+													aria-hidden="true">→</span
+												>
+												<span class="sr-only">changes to</span>
+											{/if}
+											<span class="text-foreground/90">{row.after}</span>
+										</li>
+									{/each}
+								</ul>
+							{/if}
 							{#if error}
 								<p role="alert" class="mt-0.5 text-2xs text-destructive">{error}</p>
 							{/if}

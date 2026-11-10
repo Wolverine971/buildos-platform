@@ -1,9 +1,10 @@
 // packages/shared-agent-ops/src/calendar/agent-run-calendar-port.ts
 //
 // Worker-safe CalendarPort implementation for Agent Runs. This deliberately
-// avoids SvelteKit imports and reads credentials from explicit constructor
-// params first, then process.env, so it can run in Railway workers.
-import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto';
+// avoids SvelteKit imports and uses separately consented Google agent grants.
+// Human single-account connections retain their existing credentials.
+import { GoogleAgentOAuthError, GoogleAgentOAuthService } from '../google/google-agent-oauth';
+import { randomUUID } from 'node:crypto';
 import { google } from 'googleapis';
 import type { calendar_v3 } from 'googleapis';
 import type { OAuth2Client } from 'google-auth-library';
@@ -25,10 +26,7 @@ import {
 	parseAgentCalendarRangeBound,
 	type NormalizedAgentCalendarEventTiming
 } from './calendar-event-timing';
-import {
-	applyGoogleCalendarPropertyChange,
-	GOOGLE_CALENDAR_LEGACY_FULL_SCOPE
-} from './google-calendar-scopes';
+import { applyGoogleCalendarPropertyChange } from './google-calendar-scopes';
 
 type SupabaseAdmin = any;
 type CalendarScope = 'user' | 'project' | 'calendar_id';
@@ -36,39 +34,13 @@ type ProjectCalendarRow = Database['public']['Tables']['project_calendars']['Row
 type OntoEventRow = Database['public']['Tables']['onto_events']['Row'];
 type OntoEventSyncRow = Database['public']['Tables']['onto_event_sync']['Row'];
 
-export interface AgentRunGoogleOAuthCredentials {
-	clientId?: string | null;
-	clientSecret?: string | null;
-}
-
 export interface CreateAgentRunCalendarPortParams {
+	agentOAuth?: Pick<GoogleAgentOAuthService, 'getCalendarClient'>;
 	admin: SupabaseAdmin;
 	userId: string;
-	credentials?: AgentRunGoogleOAuthCredentials;
 	defaultTimezone?: string;
 }
 
-type StoredCalendarTokenFields = {
-	access_token: string | null;
-	refresh_token: string | null;
-	expiry_date?: number | null;
-	scope?: string | null;
-	token_type?: string | null;
-	updated_at?: string | null;
-};
-
-type DecodedCalendarTokens = StoredCalendarTokenFields & { requiresEncryptionUpgrade: boolean };
-
-type StoredCalendarTokenPatch = {
-	access_token?: string | null;
-	refresh_token?: string | null;
-};
-
-const ENCRYPTED_PREFIX = 'enc:v1.';
-const ENCRYPTION_CONTEXT = 'buildos:calendar-tokens:v1';
-const IV_LENGTH = 12;
-const AUTH_TAG_LENGTH = 16;
-const ALGORITHM = 'aes-256-gcm';
 const DEFAULT_TIMEZONE = 'America/New_York';
 const DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000;
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
@@ -92,175 +64,6 @@ const GOOGLE_CALENDAR_HEX_COLORS: Record<string, string> = {
 	'10': '#51b749',
 	'11': '#dc2127'
 };
-
-function normalizeCredential(value: string | null | undefined): string | undefined {
-	if (typeof value !== 'string') return undefined;
-	const trimmed = value.trim();
-	return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function getPrivateEnv(name: string): string | undefined {
-	return normalizeCredential(process.env[name]);
-}
-
-function resolveGoogleOAuthCredentials(
-	credentials?: AgentRunGoogleOAuthCredentials
-): Required<AgentRunGoogleOAuthCredentials> {
-	return {
-		clientId:
-			normalizeCredential(credentials?.clientId) ??
-			getPrivateEnv('PRIVATE_GOOGLE_CLIENT_ID') ??
-			getPrivateEnv('GOOGLE_CLIENT_ID') ??
-			'',
-		clientSecret:
-			normalizeCredential(credentials?.clientSecret) ??
-			getPrivateEnv('PRIVATE_GOOGLE_CLIENT_SECRET') ??
-			getPrivateEnv('GOOGLE_CLIENT_SECRET') ??
-			''
-	};
-}
-
-function deriveKey(secret: string): Buffer {
-	return createHash('sha256').update(`${ENCRYPTION_CONTEXT}:${secret}`, 'utf8').digest();
-}
-
-function buildFallbackSecret(): string | null {
-	const serviceKey = getPrivateEnv('PRIVATE_SUPABASE_SERVICE_KEY')?.trim();
-	const googleSecret = getPrivateEnv('PRIVATE_GOOGLE_CLIENT_SECRET')?.trim();
-
-	if (!serviceKey || !googleSecret) {
-		return null;
-	}
-
-	return `${serviceKey}:${googleSecret}`;
-}
-
-function getKeyCandidates(): Buffer[] {
-	const configuredSecret = getPrivateEnv('PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY')?.trim() || null;
-	const fallbackSecret = buildFallbackSecret();
-	const candidates = [configuredSecret, fallbackSecret].filter(
-		(value): value is string => typeof value === 'string' && value.length > 0
-	);
-	const seen = new Set<string>();
-
-	return candidates
-		.map((candidate) => deriveKey(candidate))
-		.filter((candidate) => {
-			const fingerprint = candidate.toString('hex');
-			if (seen.has(fingerprint)) {
-				return false;
-			}
-			seen.add(fingerprint);
-			return true;
-		});
-}
-
-function getActiveKey(): Buffer {
-	const [activeKey] = getKeyCandidates();
-	if (!activeKey) {
-		throw new Error(
-			'Calendar token encryption key is not available. Configure PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY or ensure server secrets are present.'
-		);
-	}
-	return activeKey;
-}
-
-function isEncryptedCalendarToken(value: string | null | undefined): boolean {
-	return typeof value === 'string' && value.startsWith(ENCRYPTED_PREFIX);
-}
-
-function encryptCalendarToken(value: string | null | undefined): string | null {
-	if (!value) {
-		return value ?? null;
-	}
-
-	if (isEncryptedCalendarToken(value)) {
-		return value;
-	}
-
-	const iv = randomBytes(IV_LENGTH);
-	const cipher = createCipheriv(ALGORITHM, getActiveKey(), iv);
-	const ciphertext = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()]);
-	const authTag = cipher.getAuthTag();
-
-	return `${ENCRYPTED_PREFIX}${Buffer.concat([iv, authTag, ciphertext]).toString('base64url')}`;
-}
-
-function decryptCalendarToken(value: string | null | undefined): {
-	value: string | null;
-	wasEncrypted: boolean;
-} {
-	if (!value) {
-		return { value: value ?? null, wasEncrypted: false };
-	}
-
-	if (!isEncryptedCalendarToken(value)) {
-		return { value, wasEncrypted: false };
-	}
-
-	const payload = value.slice(ENCRYPTED_PREFIX.length);
-	const decoded = Buffer.from(payload, 'base64url');
-
-	if (decoded.length <= IV_LENGTH + AUTH_TAG_LENGTH) {
-		throw new Error('Encrypted calendar token payload is malformed');
-	}
-
-	const iv = decoded.subarray(0, IV_LENGTH);
-	const authTag = decoded.subarray(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);
-	const ciphertext = decoded.subarray(IV_LENGTH + AUTH_TAG_LENGTH);
-
-	for (const key of getKeyCandidates()) {
-		try {
-			const decipher = createDecipheriv(ALGORITHM, key, iv);
-			decipher.setAuthTag(authTag);
-			const plaintext = Buffer.concat([
-				decipher.update(ciphertext),
-				decipher.final()
-			]).toString('utf8');
-
-			return { value: plaintext, wasEncrypted: true };
-		} catch {
-			continue;
-		}
-	}
-
-	throw new Error('Unable to decrypt calendar token with available keys');
-}
-
-function decodeStoredCalendarTokens<T extends StoredCalendarTokenFields>(
-	record: T
-): T & { requiresEncryptionUpgrade: boolean } {
-	const accessToken = decryptCalendarToken(record.access_token);
-	const refreshToken = decryptCalendarToken(record.refresh_token);
-
-	return {
-		...record,
-		access_token: accessToken.value,
-		refresh_token: refreshToken.value,
-		requiresEncryptionUpgrade:
-			(Boolean(record.access_token) && !accessToken.wasEncrypted) ||
-			(Boolean(record.refresh_token) && !refreshToken.wasEncrypted)
-	};
-}
-
-function buildEncryptedCalendarTokenPatch(
-	tokens: StoredCalendarTokenPatch
-): StoredCalendarTokenPatch {
-	const patch: StoredCalendarTokenPatch = {};
-
-	if ('access_token' in tokens && typeof tokens.access_token === 'string') {
-		const encryptedAccessToken = encryptCalendarToken(tokens.access_token);
-		if (encryptedAccessToken) {
-			patch.access_token = encryptedAccessToken;
-		}
-	}
-
-	if ('refresh_token' in tokens) {
-		patch.refresh_token = encryptCalendarToken(tokens.refresh_token);
-	}
-
-	return patch;
-}
 
 function getStringArg(...values: unknown[]): string | undefined {
 	for (const value of values) {
@@ -360,18 +163,14 @@ function safeErrorMessage(error: unknown, fallback: string): string {
 class AgentRunCalendarPort implements CalendarPort {
 	private readonly admin: SupabaseAdmin;
 	private readonly userId: string;
-	private readonly clientId: string;
-	private readonly clientSecret: string;
 	private readonly defaultTimezone: string;
-	private readonly clientCache = new Map<string, { client: OAuth2Client; expires: number }>();
+	private readonly agentOAuth: Pick<GoogleAgentOAuthService, 'getCalendarClient'>;
 	private actorId: string | null = null;
 
 	constructor(params: CreateAgentRunCalendarPortParams) {
 		this.admin = params.admin;
+		this.agentOAuth = params.agentOAuth ?? new GoogleAgentOAuthService(params.admin);
 		this.userId = params.userId;
-		const credentials = resolveGoogleOAuthCredentials(params.credentials);
-		this.clientId = credentials.clientId ?? '';
-		this.clientSecret = credentials.clientSecret ?? '';
 		this.defaultTimezone = params.defaultTimezone ?? DEFAULT_TIMEZONE;
 	}
 
@@ -623,7 +422,14 @@ class AgentRunCalendarPort implements CalendarPort {
 			await this.ensureTaskEventEdge({ projectId, taskId, eventId: finalEvent.id });
 		}
 		if (guestTaskCalendarUserId(finalEvent) && args?.sync_to_calendar !== false) {
-			await enqueueGuestTaskCalendarSync(this.admin, finalEvent, 'upsert', this.userId);
+			await enqueueGuestTaskCalendarSync(
+				this.admin,
+				finalEvent,
+				'upsert',
+				this.userId,
+				undefined,
+				true
+			);
 			return {
 				source: 'ontology',
 				event: finalEvent,
@@ -773,7 +579,14 @@ class AgentRunCalendarPort implements CalendarPort {
 			}
 			let updated = await this.patchEvent(ontoEventId, patch);
 			if (guestTaskCalendarUserId(updated) && args?.sync_to_calendar !== false) {
-				await enqueueGuestTaskCalendarSync(this.admin, updated, 'upsert', this.userId);
+				await enqueueGuestTaskCalendarSync(
+					this.admin,
+					updated,
+					'upsert',
+					this.userId,
+					undefined,
+					true
+				);
 				return {
 					source: 'ontology',
 					event: updated,
@@ -922,7 +735,14 @@ class AgentRunCalendarPort implements CalendarPort {
 					sync_status: 'pending',
 					sync_error: null
 				});
-				await enqueueGuestTaskCalendarSync(this.admin, deleted, 'delete', this.userId);
+				await enqueueGuestTaskCalendarSync(
+					this.admin,
+					deleted,
+					'delete',
+					this.userId,
+					undefined,
+					true
+				);
 				return {
 					source: 'ontology',
 					event: deleted,
@@ -1025,24 +845,6 @@ class AgentRunCalendarPort implements CalendarPort {
 		});
 	}
 
-	private requireClientId(): string {
-		if (!this.clientId) {
-			throw new Error('Google OAuth client ID is not configured');
-		}
-		return this.clientId;
-	}
-
-	private requireClientSecret(): string {
-		if (!this.clientSecret) {
-			throw new Error('Google OAuth client secret is not configured');
-		}
-		return this.clientSecret;
-	}
-
-	private createOAuth2Client(): OAuth2Client {
-		return new google.auth.OAuth2(this.requireClientId(), this.requireClientSecret());
-	}
-
 	/**
 	 * Legacy single-account read access (`user_calendar_tokens`) for hosts that
 	 * route source-aware users elsewhere, such as the worker chat calendar port.
@@ -1051,152 +853,27 @@ class AgentRunCalendarPort implements CalendarPort {
 	 * failures still throw as-is.
 	 */
 	async authorizeLegacyRead(): Promise<calendar_v3.Calendar> {
-		if (!this.clientId || !this.clientSecret) {
-			throw new LegacyCalendarReadError('credentials_not_configured');
-		}
-		let tokens: DecodedCalendarTokens | null;
 		try {
-			tokens = await this.getTokens();
-		} catch {
-			throw new LegacyCalendarReadError('credentials_unreadable');
-		}
-		if (!tokens?.access_token || !tokens.refresh_token) {
-			throw new LegacyCalendarReadError('not_connected');
-		}
-		let auth: OAuth2Client;
-		try {
-			auth = await this.getAuthenticatedClient(tokens);
-		} catch {
-			throw new LegacyCalendarReadError('reconnect_required');
-		}
-		return google.calendar({ version: 'v3', auth });
-	}
-
-	private async getAuthenticatedClient(
-		preloadedTokens?: DecodedCalendarTokens | null
-	): Promise<OAuth2Client> {
-		const cached = this.clientCache.get(this.userId);
-		if (cached && cached.expires > Date.now()) {
-			return cached.client;
-		}
-
-		const tokens = preloadedTokens ?? (await this.getTokens());
-		if (!tokens?.access_token || !tokens.refresh_token) {
-			throw new Error('No calendar connection found. Please connect Google Calendar.');
-		}
-
-		const oauth2Client = this.createOAuth2Client();
-		oauth2Client.setCredentials({
-			access_token: tokens.access_token,
-			refresh_token: tokens.refresh_token,
-			expiry_date: tokens.expiry_date ?? undefined,
-			token_type: tokens.token_type || 'Bearer',
-			// Rows saved before scopes were recorded were granted the full legacy scope.
-			scope: tokens.scope || GOOGLE_CALENDAR_LEGACY_FULL_SCOPE
-		});
-
-		oauth2Client.on('tokens', (newTokens) => {
-			void this.updateTokens(newTokens).catch((error) => {
-				console.error('Failed to update calendar tokens after refresh:', error);
-			});
-		});
-
-		if (tokens.expiry_date && tokens.expiry_date < Date.now() + 5 * 60 * 1000) {
-			try {
-				const { credentials } = await oauth2Client.refreshAccessToken();
-				await this.updateTokens(credentials);
-				oauth2Client.setCredentials({
-					...credentials,
-					refresh_token: credentials.refresh_token ?? tokens.refresh_token
-				});
-			} catch {
-				throw new Error(
-					'Calendar authentication expired. Please reconnect Google Calendar.'
+			return google.calendar({ version: 'v3', auth: await this.getAuthenticatedClient() });
+		} catch (error) {
+			if (error instanceof GoogleAgentOAuthError) {
+				if (error.code === 'provider_error') throw error;
+				throw new LegacyCalendarReadError(
+					error.code === 'not_configured'
+						? 'credentials_not_configured'
+						: error.code === 'connection_not_found'
+							? 'not_connected'
+							: error.code === 'database_error'
+								? 'credentials_unreadable'
+								: 'reconnect_required'
 				);
 			}
-		}
-
-		this.clientCache.set(this.userId, {
-			client: oauth2Client,
-			expires: Date.now() + 10 * 60 * 1000
-		});
-
-		return oauth2Client;
-	}
-
-	private async getTokens(): Promise<DecodedCalendarTokens | null> {
-		const { data, error } = await this.admin
-			.from('user_calendar_tokens')
-			.select('access_token, refresh_token, expiry_date, scope, updated_at, token_type')
-			.eq('user_id', this.userId)
-			.maybeSingle();
-
-		if (error || !data) {
-			return null;
-		}
-
-		const normalizedTokens = decodeStoredCalendarTokens(data as StoredCalendarTokenFields);
-		if (normalizedTokens.requiresEncryptionUpgrade) {
-			await this.upgradeStoredTokensIfNeeded(normalizedTokens);
-		}
-
-		return normalizedTokens;
-	}
-
-	private async upgradeStoredTokensIfNeeded(tokens: StoredCalendarTokenFields): Promise<void> {
-		const encryptedPatch = buildEncryptedCalendarTokenPatch({
-			...(typeof tokens.access_token === 'string'
-				? { access_token: tokens.access_token }
-				: {}),
-			...('refresh_token' in tokens ? { refresh_token: tokens.refresh_token ?? null } : {})
-		});
-
-		if (Object.keys(encryptedPatch).length === 0) {
-			return;
-		}
-
-		const { error } = await this.admin
-			.from('user_calendar_tokens')
-			.update(encryptedPatch)
-			.eq('user_id', this.userId);
-
-		if (error) {
-			throw new Error(error.message || 'Failed to upgrade calendar token encryption');
+			throw error;
 		}
 	}
 
-	private async updateTokens(credentials: {
-		access_token?: string | null;
-		refresh_token?: string | null;
-		expiry_date?: number | null;
-		token_type?: string | null;
-		scope?: string | null;
-	}): Promise<void> {
-		const encryptedPatch = buildEncryptedCalendarTokenPatch({
-			...(credentials.access_token !== undefined
-				? { access_token: credentials.access_token ?? null }
-				: {}),
-			...(credentials.refresh_token !== undefined
-				? { refresh_token: credentials.refresh_token ?? null }
-				: {})
-		});
-
-		const { error } = await this.admin
-			.from('user_calendar_tokens')
-			.update({
-				...encryptedPatch,
-				expiry_date: credentials.expiry_date || null,
-				token_type: credentials.token_type || 'Bearer',
-				scope: credentials.scope || undefined,
-				updated_at: new Date().toISOString()
-			})
-			.eq('user_id', this.userId);
-
-		if (error) {
-			throw new Error(error.message || 'Failed to update calendar tokens');
-		}
-
-		this.clientCache.delete(this.userId);
+	private getAuthenticatedClient(): Promise<OAuth2Client> {
+		return this.agentOAuth.getCalendarClient(this.userId, this.userId, true);
 	}
 
 	private async googleCalendar(): Promise<calendar_v3.Calendar> {

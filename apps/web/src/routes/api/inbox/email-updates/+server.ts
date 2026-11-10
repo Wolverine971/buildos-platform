@@ -8,7 +8,11 @@ export const GET: RequestHandler = async ({ locals: { safeGetSession, supabase }
 	const { user } = await safeGetSession();
 	if (!user) return ApiResponse.unauthorized();
 	try {
-		const items = await listEmailUpdateCards({ db: supabase, userId: user.id });
+		const items = await listEmailUpdateCards({
+			db: supabase,
+			userId: user.id,
+			withCurrent: true
+		});
 		return ApiResponse.success({ items });
 	} catch (error) {
 		console.warn('[Email updates] list failed:', error);

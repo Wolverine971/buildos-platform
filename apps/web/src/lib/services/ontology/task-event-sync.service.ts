@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/ontology/task-event-sync.service.ts
 import { TaskEventSyncCoordinator } from '@buildos/shared-agent-ops/calendar/task-event-sync';
 import type { Database } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';

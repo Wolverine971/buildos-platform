@@ -7,6 +7,8 @@ import { defineConfig } from 'tsup';
 // whenever a moved module collides with the barrel.
 export default defineConfig({
 	entry: [
+		'src/google/google-agent-oauth.ts',
+		'src/google/google-agent-ports.ts',
 		'src/index.ts',
 		'src/permissions/proposal.ts',
 		'src/project-cleanup.ts',

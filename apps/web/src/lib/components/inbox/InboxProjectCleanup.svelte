@@ -16,7 +16,9 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import InboxAskCard from './InboxAskCard.svelte';
+	import InboxAutoCheck from './InboxAutoCheck.svelte';
 	import InboxCleanupChangeList from './InboxCleanupChangeList.svelte';
+	import InboxItemTrail from './InboxItemTrail.svelte';
 	import InboxProjectManagerBrief from './InboxProjectManagerBrief.svelte';
 	import InboxTidyTree from './InboxTidyTree.svelte';
 	import {
@@ -30,7 +32,6 @@
 		Flag,
 		FolderTree,
 		GitBranch,
-		History,
 		ListChecks,
 		MessageCircle,
 		MessageSquare,
@@ -58,6 +59,7 @@
 		type CleanupSendResult
 	} from './cleanup-outbox';
 	import { flyToPile } from './pile-fly';
+	import { buildAppliedCheck, buildCleanupItemTrail } from './inbox-item-trail';
 	import {
 		CLEANUP_ASK_BLOCK,
 		CLEANUP_CHANGED_MESSAGE,
@@ -68,7 +70,6 @@
 		cleanupAskSummaryLine,
 		cleanupCloseReasonText,
 		cleanupItemCautions,
-		cleanupSeenLine,
 		dismissDecisionsFor,
 		formatCleanupDate,
 		groupCleanupByAsk,
@@ -309,7 +310,7 @@
 	) {
 		if (!canDecide || !items.length || !decisions.length) return;
 		forget(items);
-		flyToPile(source, copy.title);
+		flyToPile(source, copy.title, projectId);
 		queueCleanupAnswer({
 			projectId,
 			projectName,
@@ -346,7 +347,7 @@
 	) {
 		if (!canDecide || !items.length || !note.trim()) return;
 		forget(items);
-		flyToPile(source, copy.title);
+		flyToPile(source, copy.title, projectId);
 		queueCleanupNote({
 			projectId,
 			projectName,
@@ -604,13 +605,7 @@
 
 {#snippet itemFacts(item: ProjectCleanupItem)}
 	{@const cautions = cleanupItemCautions(item)}
-	{@const seen = cleanupSeenLine(item)}
-	{#if seen}
-		<p class="mt-1 inline-flex items-center gap-1 text-2xs text-muted-foreground">
-			<History class="h-3 w-3 shrink-0" aria-hidden="true" />
-			{seen}
-		</p>
-	{/if}
+	<InboxItemTrail trail={buildCleanupItemTrail(item, projectId)} />
 	{#if cautions.length}
 		<ul class="mt-1.5 space-y-1" aria-label="Cautions">
 			{#each cautions as caution (caution)}
@@ -629,7 +624,8 @@
 {/snippet}
 
 {#snippet whatChanges(rows: ProjectCleanupItem['rows'], showHeadlines: boolean)}
-	<details class="group mt-1">
+	<!-- Open by default: the before → after is part of the card, not a click away (tasker 156). -->
+	<details class="group mt-1" open>
 		<summary
 			class="-ml-1 inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-md px-1 text-2xs font-semibold text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
 		>
@@ -854,7 +850,6 @@
 						items={entry.items}
 						{canDecide}
 						canApply={canApplyAsk(entry)}
-						meta={entry.fromItem && lead ? cleanupSeenLine(lead) : null}
 						{openingChat}
 						onAnswer={(answer, _index, source) => answerAsk(entry, answer, source)}
 						onTalk={onDiscuss && lead ? () => onDiscuss?.(lead) : undefined}
@@ -865,6 +860,14 @@
 							]}
 							{#each entry.items as item (item.id)}
 								{@render changedBadge(item)}
+								{#if entry.items.length > 1}
+									<p
+										class="mt-1.5 break-words text-2xs font-semibold text-foreground"
+									>
+										{item.title}
+									</p>
+								{/if}
+								<InboxItemTrail trail={buildCleanupItemTrail(item, projectId)} />
 							{/each}
 							{#if cautions.length}
 								<ul class="mt-1.5 space-y-1" aria-label="Cautions">
@@ -1220,6 +1223,7 @@
 					{#each autoApplied as entry (entry.suggestion_id)}
 						{@const when = formatRelativeTime(entry.applied_at)}
 						{@const undoError = undoErrors.get(entry.suggestion_id)}
+						{@const check = buildAppliedCheck(entry.scores, entry.bar)}
 						<li
 							class="flex min-w-0 items-start gap-2 rounded-md border border-success/25 bg-success/5 px-2.5 py-1.5"
 						>
@@ -1240,6 +1244,9 @@
 									<p class="stamp mt-0.5 text-2xs text-muted-foreground">
 										Applied {when}
 									</p>
+								{/if}
+								{#if check}
+									<div class="mt-1"><InboxAutoCheck {check} /></div>
 								{/if}
 								{#if undoError}
 									<p

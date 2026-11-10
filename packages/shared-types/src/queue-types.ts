@@ -106,6 +106,8 @@ export interface LegacyCalendarSyncJobMetadata {
 
 export interface OntoProjectEventSyncJobMetadata {
 	kind: 'onto_project_event_sync';
+	/** Server-selected OAuth purpose; absent on pre-isolation/human jobs. */
+	googleAgentAccess?: boolean;
 	action: 'upsert' | 'delete';
 	eventId: string;
 	projectId: string;

@@ -1,6 +1,8 @@
 // packages/shared-agent-ops/src/email/gmail-read-gateway.ts
 // Server-only Gmail read gateway: ownership-scoped search and message fetch with
 // bounded provider reads. Hosts inject how private configuration resolves.
+import type { GoogleAgentDatabase } from '../google/google-agent-oauth';
+import { createGmailAgentAuthPort } from '../google/google-agent-ports';
 import sanitizeHtml from 'sanitize-html';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { GmailSchemaClient, UserEmailConnectionRow } from './gmail-database.types';
@@ -68,6 +70,7 @@ type GmailProviderDiagnosticCode =
 	| 'response_json_invalid';
 
 export type GmailReadGatewayOptions = {
+	agentAccess?: boolean;
 	oauthService?: Pick<GmailReadOAuthService, 'getAuthorizedReadAccessToken'>;
 	providerFetch?: ProviderFetch;
 	cursorCodec?: GmailReadCursorCodec;
@@ -364,7 +367,11 @@ export class GmailReadGateway {
 		const readEnv = options.readEnv ?? readGmailReadEnvFromProcess;
 		const resolveTokenKey = (version: number) =>
 			readEnv(`PRIVATE_GMAIL_TOKEN_ENCRYPTION_KEY_V${version}`);
-		this.oauthService = options.oauthService ?? new GmailReadOAuthService(admin, { readEnv });
+		this.oauthService =
+			options.oauthService ??
+			(options.agentAccess
+				? createGmailAgentAuthPort(admin as unknown as GoogleAgentDatabase, readEnv)
+				: new GmailReadOAuthService(admin, { readEnv }));
 		this.providerFetch = options.providerFetch ?? fetch;
 		this.cursorCodec = options.cursorCodec ?? {
 			issue: (params, cursorOptions = {}) =>

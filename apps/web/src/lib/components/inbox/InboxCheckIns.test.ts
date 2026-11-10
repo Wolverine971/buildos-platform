@@ -206,7 +206,7 @@ describe('InboxCheckIns', () => {
 		const [entry] = clearedPile.entries;
 		expect(entry).toMatchObject({
 			title: 'Call Dauntless Dogs',
-			label: 'Marked done',
+			label: 'To do → Done',
 			context: 'Wayne Strategies'
 		});
 
@@ -267,7 +267,7 @@ describe('InboxCheckIns', () => {
 		await fireEvent.click(confirm);
 
 		expect(queryRow('Call Dauntless Dogs')).not.toBeInTheDocument();
-		expect(clearedPile.entries[0]?.label).toMatch(/^Moved to /);
+		expect(clearedPile.entries[0]?.label).toMatch(/^Due .+ → /);
 		await waitFor(() =>
 			expect(submitAnswers).toHaveBeenCalledWith([
 				{ task_id: 'dogs', answer: 'move', due_at: dueAtFromDateInput(nextDay) }

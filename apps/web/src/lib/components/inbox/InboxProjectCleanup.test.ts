@@ -313,7 +313,7 @@ describe('InboxProjectCleanup', () => {
 		expect(rod.getByText('This folder has 4 documents inside.')).toBeInTheDocument();
 		expect(rod.getByText('What changes')).toBeInTheDocument();
 
-		expect(screen.getByText(/^Seen in 3 reviews since /)).toBeInTheDocument();
+		expect(screen.getByText(/seen in 3 reviews$/)).toBeInTheDocument();
 		expect(
 			screen.getByText("Anything you don't pick stays here for later.")
 		).toBeInTheDocument();

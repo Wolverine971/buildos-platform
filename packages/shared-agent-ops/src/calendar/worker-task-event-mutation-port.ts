@@ -25,7 +25,10 @@ const DEFAULT_PROJECT_CALENDAR_SYNC_MODE: ProjectCalendarSyncMode = 'actor_proje
  * imports SvelteKit or calls the web host.
  */
 export class WorkerTaskEventMutationPort implements TaskEventMutationPort {
-	constructor(private readonly admin: SupabaseClient<Database>) {}
+	constructor(
+		private readonly admin: SupabaseClient<Database>,
+		private readonly options: { agentAccess?: boolean } = {}
+	) {}
 
 	async createEvent(userId: string, request: CreateRequest): Promise<{ event: TaskEventRow }> {
 		assertEventRange(request.startAt, request.endAt);
@@ -165,7 +168,14 @@ export class WorkerTaskEventMutationPort implements TaskEventMutationPort {
 	): Promise<void> {
 		if (!event.project_id) return;
 		if (guestTaskCalendarUserId(event)) {
-			await enqueueGuestTaskCalendarSync(this.admin, event, action, triggeredByUserId);
+			await enqueueGuestTaskCalendarSync(
+				this.admin,
+				event,
+				action,
+				triggeredByUserId,
+				undefined,
+				this.options.agentAccess
+			);
 			return;
 		}
 		const restrictedUserId = guestTaskCalendarUserId(event) ?? calendarSyncUserId;
@@ -178,6 +188,7 @@ export class WorkerTaskEventMutationPort implements TaskEventMutationPort {
 		for (const targetUserId of targetUserIds) {
 			const metadata: OntoProjectEventSyncJobMetadata = {
 				kind: 'onto_project_event_sync',
+				...(this.options.agentAccess ? { googleAgentAccess: true } : {}),
 				action,
 				eventId: event.id,
 				projectId: event.project_id,
@@ -195,6 +206,7 @@ export class WorkerTaskEventMutationPort implements TaskEventMutationPort {
 				p_scheduled_for: new Date().toISOString(),
 				p_dedup_key: [
 					'onto-project-event-sync',
+					...(this.options.agentAccess ? ['agent'] : []),
 					action,
 					event.id,
 					targetUserId,
@@ -256,9 +268,10 @@ export class WorkerTaskEventMutationPort implements TaskEventMutationPort {
 }
 
 export function createWorkerTaskSyncPort(
-	admin: SupabaseClient<Database>
+	admin: SupabaseClient<Database>,
+	options: { agentAccess?: boolean } = {}
 ): TaskEventSyncCoordinator {
-	return new TaskEventSyncCoordinator(admin, new WorkerTaskEventMutationPort(admin));
+	return new TaskEventSyncCoordinator(admin, new WorkerTaskEventMutationPort(admin, options));
 }
 
 function eventActivitySnapshot(event: TaskEventRow): Record<string, unknown> {

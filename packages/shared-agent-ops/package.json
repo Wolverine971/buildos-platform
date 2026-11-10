@@ -442,6 +442,16 @@
 			"types": "./dist/task-entities/index.d.ts",
 			"import": "./dist/task-entities/index.mjs",
 			"require": "./dist/task-entities/index.js"
+		},
+		"./google/google-agent-oauth": {
+			"types": "./dist/google/google-agent-oauth.d.ts",
+			"import": "./dist/google/google-agent-oauth.mjs",
+			"require": "./dist/google/google-agent-oauth.js"
+		},
+		"./google/google-agent-ports": {
+			"types": "./dist/google/google-agent-ports.d.ts",
+			"import": "./dist/google/google-agent-ports.mjs",
+			"require": "./dist/google/google-agent-ports.js"
 		}
 	},
 	"scripts": {

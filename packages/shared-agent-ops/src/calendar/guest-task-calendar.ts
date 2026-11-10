@@ -40,7 +40,8 @@ export async function enqueueGuestTaskCalendarSync(
 	event: Database['public']['Tables']['onto_events']['Row'],
 	action: 'upsert' | 'delete',
 	triggeredByUserId: string,
-	calendarSyncUserId?: string
+	calendarSyncUserId?: string,
+	googleAgentAccess = false
 ): Promise<string> {
 	const targetUserId = guestTaskCalendarUserId(event) ?? calendarSyncUserId;
 	if (!targetUserId || !event.project_id) throw new Error('Missing restricted calendar target');
@@ -70,6 +71,7 @@ export async function enqueueGuestTaskCalendarSync(
 			p_scheduled_for: new Date().toISOString(),
 			p_dedup_key: [
 				'onto-project-event-sync',
+				...(googleAgentAccess ? ['agent'] : []),
 				target.action,
 				event.id,
 				target.userId,
@@ -77,6 +79,7 @@ export async function enqueueGuestTaskCalendarSync(
 			].join(':'),
 			p_metadata: {
 				kind: 'onto_project_event_sync',
+				...(googleAgentAccess ? { googleAgentAccess: true } : {}),
 				action: target.action,
 				eventId: event.id,
 				projectId: event.project_id,

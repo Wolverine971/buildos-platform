@@ -243,61 +243,67 @@ describe('worker task-event synchronization', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('creates a task event, activity row, edge, and durable calendar job without web calls', async () => {
-		const state = supabaseState();
-		const sync = createWorkerTaskSyncPort(state.client as any);
+	it.each([false, true])(
+		'preserves the task calendar job credential purpose (%s)',
+		async (agentAccess) => {
+			const state = supabaseState();
+			const sync = createWorkerTaskSyncPort(state.client as any, { agentAccess });
 
-		await sync.syncTaskEvents('user-1', 'actor-1', task(), {
-			activityLog: {
-				changeSource: 'agent_call',
-				actorContext: { agentCallSessionId: 'session-1' }
-			}
-		});
+			await sync.syncTaskEvents('user-1', 'actor-1', task(), {
+				activityLog: {
+					changeSource: 'agent_call',
+					actorContext: { agentCallSessionId: 'session-1' }
+				}
+			});
 
-		const created = [...state.events.values()][0];
-		expect(created).toMatchObject({
-			title: 'Start: Ship',
-			start_at: '2026-08-10T09:00:00.000Z',
-			end_at: '2026-08-10T09:30:00.000Z',
-			props: {
-				task_event_kind: 'start',
-				task_id: 'task-1',
-				task_title: 'Ship',
-				task_link: '/projects/project-1/tasks/task-1',
-				project_id: 'project-1'
-			}
-		});
-		expect(state.edges).toEqual([{ src_id: 'task-1', dst_id: created.id }]);
-		expect(state.inserts).toContainEqual({
-			table: 'onto_project_logs',
-			value: expect.objectContaining({
-				entity_type: 'event',
-				entity_id: created.id,
-				action: 'created',
-				changed_by_actor_id: 'actor-1',
-				agent_call_session_id: 'session-1',
-				change_source: 'agent_call'
-			})
-		});
-		expect(state.rpcCalls).toEqual([
-			{
-				name: 'add_queue_job',
-				args: expect.objectContaining({
-					p_user_id: 'user-1',
-					p_job_type: 'sync_calendar',
-					p_dedup_key: expect.stringContaining(
-						`onto-project-event-sync:upsert:${created.id}:user-1:`
-					),
-					p_metadata: expect.objectContaining({
-						kind: 'onto_project_event_sync',
-						action: 'upsert',
-						eventId: created.id,
-						targetUserId: 'user-1'
-					})
+			const created = [...state.events.values()][0];
+			expect(created).toMatchObject({
+				title: 'Start: Ship',
+				start_at: '2026-08-10T09:00:00.000Z',
+				end_at: '2026-08-10T09:30:00.000Z',
+				props: {
+					task_event_kind: 'start',
+					task_id: 'task-1',
+					task_title: 'Ship',
+					task_link: '/projects/project-1/tasks/task-1',
+					project_id: 'project-1'
+				}
+			});
+			expect(state.edges).toEqual([{ src_id: 'task-1', dst_id: created.id }]);
+			expect(state.inserts).toContainEqual({
+				table: 'onto_project_logs',
+				value: expect.objectContaining({
+					entity_type: 'event',
+					entity_id: created.id,
+					action: 'created',
+					changed_by_actor_id: 'actor-1',
+					agent_call_session_id: 'session-1',
+					change_source: 'agent_call'
 				})
-			}
-		]);
-	});
+			});
+			expect((state.rpcCalls[0]?.args.p_metadata as any)?.googleAgentAccess ?? false).toBe(
+				agentAccess
+			);
+			expect(state.rpcCalls).toEqual([
+				{
+					name: 'add_queue_job',
+					args: expect.objectContaining({
+						p_user_id: 'user-1',
+						p_job_type: 'sync_calendar',
+						p_dedup_key: expect.stringContaining(
+							`onto-project-event-sync:${agentAccess ? 'agent:' : ''}upsert:${created.id}:user-1:`
+						),
+						p_metadata: expect.objectContaining({
+							kind: 'onto_project_event_sync',
+							action: 'upsert',
+							eventId: created.id,
+							targetUserId: 'user-1'
+						})
+					})
+				}
+			]);
+		}
+	);
 
 	it('updates the existing event and enqueues the new event version', async () => {
 		const existing = event('event-existing');

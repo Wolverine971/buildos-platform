@@ -241,6 +241,8 @@ export interface OntoEventCalendarErrorLogParams {
 }
 
 export interface OntoEventSyncServiceOptions {
+	/** Preserve agent authorization when restricted writes must be queued. */
+	agentAccess?: boolean;
 	/** Source-aware Google writer, eagerly supplied or lazily constructed. */
 	calendarWriter?: OntoEventCalendarWriter;
 	createCalendarWriter?: () => OntoEventCalendarWriter;
@@ -358,6 +360,7 @@ function parseGoogleEventMappingFromExternalLink(link: string | null | undefined
 
 export class OntoEventSyncService extends OntoEventReadService {
 	protected readonly appBaseUrl: string;
+	protected readonly agentAccess: boolean;
 	protected readonly legacyCalendar?: LegacyOntoEventCalendarClient;
 	protected readonly projectCalendarService: OntoEventProjectCalendarPort;
 	protected sourceProjectCalendarService?: OntoEventProjectCalendarPort;
@@ -377,6 +380,7 @@ export class OntoEventSyncService extends OntoEventReadService {
 
 	constructor(supabase: TypedSupabaseClient, options: OntoEventSyncServiceOptions = {}) {
 		super(supabase);
+		this.agentAccess = options.agentAccess === true;
 		this.appBaseUrl = (options.appBaseUrl || FALLBACK_APP_URL).replace(/\/$/, '');
 		this.legacyCalendar = options.legacyCalendar;
 		this.projectCalendarService =
@@ -1632,7 +1636,8 @@ export class OntoEventSyncService extends OntoEventReadService {
 			event,
 			action,
 			triggeredByUserId,
-			calendarSyncUserId
+			calendarSyncUserId,
+			this.agentAccess
 		);
 		return { mode: 'actor_projection', targetUserIds: [targetUserId], enqueued: 1 };
 	}

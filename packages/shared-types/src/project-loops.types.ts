@@ -187,6 +187,7 @@ export interface ProjectSuggestionRollup {
 		at: string;
 		merged_into?: string | null;
 	} | null;
+	auto_check?: ProjectCleanupAutoCheck | null;
 }
 
 /**
@@ -244,6 +245,28 @@ export interface ProjectCleanupAutoApplyScores {
 	safe: number;
 }
 
+/** The bar the four answers were held to (moves get a looser bar than archives). */
+export interface ProjectCleanupAutoApplyBar {
+	minAbout: number;
+	minWanted: number;
+	minSafe: number;
+	maxReview: number;
+}
+
+/**
+ * The latest auto-apply check on a change that was asked about instead of applied (tasker
+ * 156). Lives on the row's `rollup.auto_check`; the roll-up rebuilds `rollup` each pass, so
+ * this is always from the newest pass or absent.
+ */
+export interface ProjectCleanupAutoCheck {
+	scores: ProjectCleanupAutoApplyScores;
+	bar: ProjectCleanupAutoApplyBar;
+	/** below_bar: an answer missed its bar. cap: it passed, but the pass had applied its limit. */
+	outcome: 'below_bar' | 'cap';
+	at: string;
+	run_id: string | null;
+}
+
 /**
  * A change applied without asking ("Done for you"). Lives on the suggestion row:
  * status 'applied', result.applied_via 'auto', result.auto_apply { scores, reason, model },
@@ -257,6 +280,9 @@ export interface ProjectCleanupAutoApplied {
 	applied_at: string;
 	reason: string | null;
 	undoable: boolean;
+	/** The four answers it passed on, and the bar when the pass recorded it (tasker 156). */
+	scores?: ProjectCleanupAutoApplyScores | null;
+	bar?: ProjectCleanupAutoApplyBar | null;
 }
 
 export interface ProjectCleanupGroup {
@@ -327,6 +353,8 @@ export interface ProjectCleanupItem {
 	audit_id?: string | null;
 	/** What it asks of the user; set by buildProjectCleanupView. */
 	ask_kind?: InboxAskKind;
+	/** Why it was asked about instead of applied, when the latest pass checked it. */
+	auto_check?: ProjectCleanupAutoCheck | null;
 }
 
 /** One project's living cleanup change set, as the inbox card and chat read it. */

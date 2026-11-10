@@ -1,3 +1,4 @@
+// apps/web/src/routes/auth/google/agent/callback/+server.ts
 import type { RequestHandler } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { createGoogleAgentOAuthService } from '$lib/server/google-agent-oauth';

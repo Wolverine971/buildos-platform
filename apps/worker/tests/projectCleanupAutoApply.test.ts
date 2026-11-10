@@ -676,6 +676,40 @@ describe('runCleanupAutoApply', () => {
 		);
 	});
 
+	it('keeps the scores of a held change on its row so the card can say why it asked', async () => {
+		const candidates = setup([
+			row({ id: 'archive', created_at: '2026-09-01T00:00:00.000Z' }),
+			row({
+				id: 'task',
+				title: 'Archive task "Old call"',
+				operations: [{ tool: 'archive_onto_task', args: { project_id: P, task_id: TASK } }]
+			})
+		]);
+		const rows = pendingRows(['archive', 'task']) as Record<string, Record<string, unknown>>;
+		rows.task!.rollup = { first_seen_at: '2026-10-28T00:00:00.000Z', section: 'safe_cleanup' };
+		const db = fakeDb({ rows });
+		await run({ candidates, db, jev: decider([HIGH, LOW]), write: writers() });
+
+		expect(rows.task).toMatchObject({
+			status: 'pending',
+			rollup: {
+				first_seen_at: '2026-10-28T00:00:00.000Z',
+				section: 'safe_cleanup',
+				auto_check: {
+					scores: LOW,
+					bar: CLEANUP_AUTO_APPLY_POLICY.bars.archive,
+					outcome: 'below_bar',
+					at: '2026-10-29T12:00:00.000Z'
+				}
+			}
+		});
+		// The applied one records the bar it met beside its scores.
+		expect(rows.archive).toMatchObject({
+			status: 'applied',
+			result: { auto_apply: { scores: HIGH, bar: CLEANUP_AUTO_APPLY_POLICY.bars.archive } }
+		});
+	});
+
 	it('archives a task through the gateway without touching its calendar', async () => {
 		const candidates = setup([
 			row({

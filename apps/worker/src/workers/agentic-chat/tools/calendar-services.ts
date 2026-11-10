@@ -1,3 +1,4 @@
+// apps/worker/src/workers/agentic-chat/tools/calendar-services.ts
 import { createCalendarAgentAuthPort } from '@buildos/shared-agent-ops/google/google-agent-ports';
 // apps/worker/src/workers/agentic-chat/tools/calendar-services.ts
 import type { TypedSupabaseClient } from '@buildos/supabase-client';

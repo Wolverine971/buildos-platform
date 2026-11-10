@@ -74,6 +74,8 @@ export type EmailUpdateCard = {
 	email: EmailUpdateSource;
 	gmail_url: string | null;
 	created_at: string;
+	/** The task as it is now, for a before → after on update cards (tasker 156). */
+	current?: { title: string; due_at: string | null; state_key: string | null } | null;
 };
 
 export type ScanPort = {
@@ -674,6 +676,8 @@ export async function listEmailUpdateCards(params: {
 	db: AnyClient;
 	userId: string;
 	now?: Date;
+	/** Also read each updated task's current values (one extra query). */
+	withCurrent?: boolean;
 }): Promise<EmailUpdateCard[]> {
 	const now = params.now ?? new Date();
 	const since = new Date(now.getTime() - EMAIL_UPDATE_TTL_DAYS * 86400_000).toISOString();
@@ -688,7 +692,7 @@ export async function listEmailUpdateCards(params: {
 		.order('created_at', { ascending: false })
 		.limit(50);
 	if (error) throw new Error(`Could not load email updates: ${error.message}`);
-	return ((data ?? []) as Array<Record<string, any>>)
+	const cards: EmailUpdateCard[] = ((data ?? []) as Array<Record<string, any>>)
 		.filter((row) => !row.project?.deleted_at && !row.project?.archived_at)
 		.map((row) => ({
 			id: row.id,
@@ -703,6 +707,30 @@ export async function listEmailUpdateCards(params: {
 			gmail_url: gmailThreadUrl(row.email ?? {}),
 			created_at: row.created_at
 		}));
+	const taskIds = [...new Set(cards.flatMap((card) => (card.task_id ? [card.task_id] : [])))];
+	if (!params.withCurrent || !taskIds.length) return cards;
+	// Best effort: a card without its task's current values still shows what it proposes.
+	const { data: tasks, error: taskError } = await params.db
+		.from('onto_tasks')
+		.select('id, title, due_at, state_key')
+		.in('id', taskIds);
+	if (taskError) return cards;
+	const byId = new Map(
+		((tasks ?? []) as Array<Record<string, any>>).map((task) => [task.id as string, task])
+	);
+	return cards.map((card) => {
+		const task = card.task_id ? byId.get(card.task_id) : null;
+		return task
+			? {
+					...card,
+					current: {
+						title: task.title ?? '',
+						due_at: task.due_at ?? null,
+						state_key: task.state_key ?? null
+					}
+				}
+			: card;
+	});
 }
 
 export async function countEmailUpdateCards(params: {

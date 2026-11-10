@@ -13,6 +13,7 @@
 import { createHash } from 'node:crypto';
 import {
 	type ProjectCleanupAutoApplyScores,
+	type ProjectCleanupAutoCheck,
 	type ProjectCleanupSection,
 	isValidUUID
 } from '@buildos/shared-types';
@@ -779,6 +780,46 @@ export interface CleanupAutoApplyWriters {
 	}): Promise<GatewayWriteOpResult>;
 }
 
+/**
+ * Keeps the scores of a change that was asked about instead of applied on its rows'
+ * `rollup.auto_check`, so the inbox card can say why it asked (tasker 156). The roll-up
+ * rebuilds `rollup` each pass, so a stale check never outlives its pass. Best effort: a
+ * failed write only costs the card that line.
+ */
+async function recordHeldAutoCheck(
+	db: AutoApplyDb,
+	candidate: CleanupAutoApplyCandidate,
+	check: ProjectCleanupAutoCheck
+): Promise<void> {
+	const ids = candidate.rows.map((row) => row.id).filter(Boolean);
+	if (!ids.length) return;
+	try {
+		for (const id of ids) {
+			const { data, error } = await db
+				.from('project_suggestions')
+				.select('id, rollup')
+				.eq('id', id)
+				.eq('status', 'pending')
+				.maybeSingle();
+			if (error) throw error;
+			const rollup = (data as { rollup?: unknown } | null)?.rollup;
+			// Only rows the roll-up has stamped: a bare auto_check is not a valid rollup.
+			if (!rollup || typeof rollup !== 'object' || Array.isArray(rollup)) continue;
+			const { error: updateError } = await db
+				.from('project_suggestions')
+				.update({ rollup: { ...(rollup as Record<string, unknown>), auto_check: check } })
+				.eq('id', id)
+				.eq('status', 'pending');
+			if (updateError) throw updateError;
+		}
+	} catch (error) {
+		console.warn(
+			'[cleanupAutoApply] could not record held scores:',
+			error instanceof Error ? error.message : String(error)
+		);
+	}
+}
+
 export interface CleanupAutoApplyOutcome {
 	lineageId: string;
 	suggestionId: string;
@@ -1096,7 +1137,9 @@ async function applyRow(params: {
 		reason: cleanupAutoApplyReason(candidate.tools),
 		model: params.model,
 		question_set_version: CLEANUP_AUTO_APPLY_QUESTION_SET_VERSION,
-		run_id: params.runId
+		run_id: params.runId,
+		// Kept with the scores so the card can show them against the bar they met (tasker 156).
+		bar: { ...cleanupAutoApplyBar(candidate.tools) }
 	};
 	const ok = errors.length === 0;
 	const { error: recordError } = await db
@@ -1221,6 +1264,17 @@ export async function runCleanupAutoApply(params: {
 				summary.applied >= CLEANUP_AUTO_APPLY_POLICY.maxAppliesPerPass
 			) {
 				summary.held += 1;
+				if (candidateScores) {
+					await recordHeldAutoCheck(params.db, candidate, {
+						scores: candidateScores,
+						bar: { ...cleanupAutoApplyBar(candidate.tools) },
+						outcome: passesCleanupAutoApplyGate(candidateScores, candidate.tools)
+							? 'cap'
+							: 'below_bar',
+						at: now().toISOString(),
+						run_id: params.runId
+					});
+				}
 				summary.outcomes.push({
 					lineageId: candidate.lineageId,
 					suggestionId: candidate.rows[0]?.id ?? '',
