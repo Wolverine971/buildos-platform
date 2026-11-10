@@ -49,6 +49,7 @@ export type {
 type OntoEventRow = Database['public']['Tables']['onto_events']['Row'];
 
 export interface OntoEventSyncServiceOptions {
+	agentAccess?: boolean;
 	calendarWriter?: OntoEventCalendarWriter;
 	projectCalendarService?: OntoEventProjectCalendarPort;
 	sourceProjectCalendarService?: OntoEventProjectCalendarPort;
@@ -60,19 +61,26 @@ export class OntoEventSyncService extends SharedOntoEventSyncService {
 	protected readonly calendarService: CalendarService;
 
 	constructor(supabase: SupabaseClient<Database>, options: OntoEventSyncServiceOptions = {}) {
-		const calendarService = new CalendarService(supabase);
+		const calendarService = new CalendarService(supabase, { agentAccess: options.agentAccess });
 		const errorLogger = ErrorLoggerService.getInstance(supabase);
 
 		const sharedOptions: SharedOntoEventSyncServiceOptions = {
+			agentAccess: options.agentAccess,
 			calendarWriter: options.calendarWriter,
-			createCalendarWriter: () => new GoogleCalendarWriteService(createAdminSupabaseClient()),
+			createCalendarWriter: () =>
+				new GoogleCalendarWriteService(createAdminSupabaseClient(), {
+					agentAccess: options.agentAccess
+				}),
 			projectCalendarService:
-				options.projectCalendarService ?? new ProjectCalendarService(supabase),
+				options.projectCalendarService ??
+				new ProjectCalendarService(supabase, { agentAccess: options.agentAccess }),
 			sourceProjectCalendarService: options.sourceProjectCalendarService,
 			createSourceProjectCalendarService: () =>
 				new ProjectCalendarService(supabase, {
+					agentAccess: options.agentAccess,
 					projectResourceService: new GoogleCalendarProjectResourceService(
-						createAdminSupabaseClient()
+						createAdminSupabaseClient(),
+						{ agentAccess: options.agentAccess }
 					)
 				}),
 			sourceRoutingEnabled:
@@ -140,7 +148,9 @@ export class OntoEventSyncService extends SharedOntoEventSyncService {
 				createAdminSupabaseClient(),
 				event,
 				action,
-				triggeredByUserId
+				triggeredByUserId,
+				undefined,
+				this.agentAccess
 			);
 			return { mode: 'actor_projection', targetUserIds: [targetUserId], enqueued: 1 };
 		}
@@ -157,6 +167,7 @@ export class OntoEventSyncService extends SharedOntoEventSyncService {
 		for (const targetUserId of targetUserIds) {
 			const dedupKey = [
 				'onto-project-event-sync',
+				...(this.agentAccess ? ['agent'] : []),
 				action,
 				event.id,
 				targetUserId,
@@ -165,6 +176,7 @@ export class OntoEventSyncService extends SharedOntoEventSyncService {
 
 			const metadata = {
 				kind: 'onto_project_event_sync',
+				...(this.agentAccess ? { googleAgentAccess: true } : {}),
 				action,
 				eventId: event.id,
 				projectId: event.project_id,

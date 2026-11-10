@@ -110,6 +110,7 @@ export interface ProjectCalendarSyncHealthPayload {
 }
 
 export interface ProjectCalendarServiceOptions {
+	agentAccess?: boolean;
 	projectResourceService?: ProjectCalendarResourceGateway;
 }
 
@@ -118,7 +119,7 @@ export class ProjectCalendarService extends SharedProjectCalendarService {
 	protected calendarService: CalendarService;
 
 	constructor(supabase: SupabaseClient<Database>, options: ProjectCalendarServiceOptions = {}) {
-		const calendarService = new CalendarService(supabase);
+		const calendarService = new CalendarService(supabase, { agentAccess: options.agentAccess });
 		super(supabase, {
 			projectResourceService: options.projectResourceService,
 			legacyCalendar: calendarService

@@ -119,7 +119,7 @@ function createCalendarPort(params: {
  * TaskSyncPort adapter: wraps TaskEventSyncService for the shared dispatcher.
  */
 function createTaskSyncPort(admin: any): TaskSyncPort {
-	return new TaskEventSyncService(admin);
+	return new TaskEventSyncService(admin, { agentAccess: true });
 }
 
 /**

@@ -39,6 +39,8 @@
 	import SettingsCard from './_shared/SettingsCard.svelte';
 	import CheckboxField from './_shared/CheckboxField.svelte';
 	import MultiCalendarConnections from './MultiCalendarConnections.svelte';
+	import ErrorBoundary from '$lib/components/ui/ErrorBoundary.svelte';
+	import GoogleAgentAccess from './GoogleAgentAccess.svelte';
 
 	// Props
 	interface Props {
@@ -604,6 +606,11 @@
 					</div>
 				</div>
 			</SettingsCard>
+			{#if calendarConnected}
+				<ErrorBoundary area="legacy-calendar-agent-access">
+					<GoogleAgentAccess kind="calendar_legacy" />
+				</ErrorBoundary>
+			{/if}
 		{/if}
 
 		<!-- Calendar Preferences -->

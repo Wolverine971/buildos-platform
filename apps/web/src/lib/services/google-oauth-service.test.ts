@@ -8,6 +8,11 @@ const { logAPIErrorMock, logDatabaseErrorMock } = vi.hoisted(() => ({
 	logDatabaseErrorMock: vi.fn()
 }));
 
+const agentOAuth = vi.hoisted(() => ({ status: vi.fn(), getCalendarClient: vi.fn() }));
+vi.mock('$lib/server/google-agent-oauth', () => ({
+	createGoogleAgentOAuthService: () => agentOAuth
+}));
+
 vi.mock('./errorLogger.service', () => ({
 	ErrorLoggerService: {
 		getInstance: vi.fn(function () {
@@ -680,5 +685,41 @@ describe('GoogleOAuthService calendar token exchange', () => {
 		});
 		expect(hostileDiagnostic).toEqual({ name: 'ProviderError', status: 401 });
 		expect(JSON.stringify(hostileDiagnostic)).not.toContain(credentialSentinel);
+	});
+});
+
+describe('legacy web Calendar agent isolation', () => {
+	it('uses companion authorization for status, validity and provider access without reading human credentials', async () => {
+		const db = { from: vi.fn() };
+		const service = new GoogleOAuthService(db as any, undefined, { agentAccess: true });
+		agentOAuth.status.mockResolvedValue({ configured: true, status: 'active' });
+		agentOAuth.getCalendarClient.mockResolvedValue({
+			credentials: { access_token: 'agent-only' }
+		});
+		expect(await service.safeGetCalendarStatus('user')).toEqual({ isConnected: true });
+		expect(await service.hasValidConnection('user')).toBe(true);
+		expect(await service.getAuthenticatedClient('user')).toMatchObject({
+			credentials: { access_token: 'agent-only' }
+		});
+		expect(agentOAuth.status).toHaveBeenCalledWith({
+			userId: 'user',
+			connectionId: 'user',
+			kind: 'calendar_legacy'
+		});
+		expect(agentOAuth.getCalendarClient).toHaveBeenCalledWith('user', 'user', true);
+		expect(db.from).not.toHaveBeenCalled();
+	});
+
+	it('does not fall back to human credentials when agent authorization fails', async () => {
+		const db = { from: vi.fn() };
+		const service = new GoogleOAuthService(db as any, undefined, { agentAccess: true });
+		agentOAuth.status.mockResolvedValue({ configured: true, status: 'not_connected' });
+		agentOAuth.getCalendarClient.mockRejectedValue(new Error('Agent approval required'));
+		expect(await service.safeGetCalendarStatus('user')).toEqual({ isConnected: false });
+		expect(await service.hasValidConnection('user')).toBe(false);
+		await expect(service.getAuthenticatedClient('user')).rejects.toThrow(
+			'Agent approval required'
+		);
+		expect(db.from).not.toHaveBeenCalled();
 	});
 });

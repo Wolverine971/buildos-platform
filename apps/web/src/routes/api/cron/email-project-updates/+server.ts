@@ -44,7 +44,7 @@ export const GET: RequestHandler = async ({ request, url }) => {
 		(users ?? []) as Array<{ id: string; timezone: string | null; is_admin: boolean | null }>
 	).filter((user) => user.is_admin);
 
-	const gateway = new GmailReadGateway(admin);
+	const gateway = new GmailReadGateway(admin, { agentAccess: true });
 	const llm = new SmartLLMService({
 		httpReferer: 'https://build-os.com',
 		appName: 'BuildOS Email Project Updates',

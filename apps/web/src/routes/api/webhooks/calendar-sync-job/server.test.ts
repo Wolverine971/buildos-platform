@@ -1,10 +1,13 @@
 // apps/web/src/routes/api/webhooks/calendar-sync-job/server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-const { processJob } = vi.hoisted(() => ({ processJob: vi.fn() }));
+const { processJob, construct } = vi.hoisted(() => ({ processJob: vi.fn(), construct: vi.fn() }));
 vi.mock('$env/static/private', () => ({ PRIVATE_BUILDOS_WEBHOOK_SECRET: 'test-secret' }));
 vi.mock('$lib/supabase/admin', () => ({ createAdminSupabaseClient: vi.fn(() => ({})) }));
 vi.mock('$lib/services/ontology/onto-event-sync.service', () => ({
 	OntoEventSyncService: class {
+		constructor(_db: unknown, options: unknown) {
+			construct(options);
+		}
 		processProjectEventSyncJob = processJob;
 	}
 }));
@@ -35,6 +38,17 @@ beforeEach(() => {
 	processJob.mockResolvedValue({ outcome: 'deleted' });
 });
 describe('calendar deletion snapshot webhook', () => {
+	it.each([true, false, undefined])(
+		'carries the queued OAuth purpose (%s) into provider wiring',
+		async (googleAgentAccess) => {
+			expect((await post({ ...payload, googleAgentAccess })).status).toBe(200);
+			expect(construct).toHaveBeenCalledWith({ agentAccess: googleAgentAccess === true });
+		}
+	);
+	it('rejects malformed credential purposes', async () => {
+		expect((await post({ ...payload, googleAgentAccess: 'true' })).status).toBe(400);
+		expect(construct).not.toHaveBeenCalled();
+	});
 	it('preserves the restriction on guest-write jobs', async () => {
 		expect((await post({ ...payload, restrictToTargetUser: true })).status).toBe(200);
 		expect(processJob).toHaveBeenCalledWith(

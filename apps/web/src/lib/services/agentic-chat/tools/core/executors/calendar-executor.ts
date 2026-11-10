@@ -247,12 +247,18 @@ export class CalendarExecutor extends BaseExecutor {
 		dependencies: CalendarExecutorDependencies = {}
 	) {
 		super(context);
-		this.calendarService = new CalendarService(this.supabase as any);
-		this.eventSyncService = new OntoEventSyncService(this.supabase as any);
-		this.projectCalendarService = new ProjectCalendarService(this.supabase as any);
-		this.googleOAuthService = new GoogleOAuthService(this.supabase as any);
-		// Keep web's existing OAuth client while retaining the provider page token
-		// that CalendarService's list response omits.
+		this.calendarService = new CalendarService(this.supabase as any, { agentAccess: true });
+		this.eventSyncService = new OntoEventSyncService(this.supabase as any, {
+			agentAccess: true
+		});
+		this.projectCalendarService = new ProjectCalendarService(this.supabase as any, {
+			agentAccess: true
+		});
+		this.googleOAuthService = new GoogleOAuthService(this.supabase as any, undefined, {
+			agentAccess: true
+		});
+		// Retain the provider page token that CalendarService's list response omits,
+		// using the agent-authorized OAuth service above.
 		this.legacyCalendarReader =
 			dependencies.legacyCalendarReader ??
 			createLegacyGoogleCalendarReader(
@@ -267,7 +273,7 @@ export class CalendarExecutor extends BaseExecutor {
 			);
 		this.googleCalendarWriteService =
 			dependencies.googleCalendarWriteService ??
-			new GoogleCalendarWriteService(this.getAdminSupabase());
+			new GoogleCalendarWriteService(this.getAdminSupabase(), { agentAccess: true });
 	}
 
 	private async resolveSourceAwareEventRoute(
@@ -687,9 +693,9 @@ export class CalendarExecutor extends BaseExecutor {
 				const multiCalendarEnabled = isMultiCalendarUserAllowed(this.userId, privateEnv);
 				let usedSourceAwareRead = false;
 				try {
-					const response = await new GoogleCalendarReadService(
-						this.getAdminSupabase()
-					).listEvents({
+					const response = await new GoogleCalendarReadService(this.getAdminSupabase(), {
+						agentAccess: true
+					}).listEvents({
 						userId: this.userId,
 						calendarSourceId: googleCalendarSourceId ?? undefined,
 						// An implicit user/primary scope means every enabled read source in

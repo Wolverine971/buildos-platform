@@ -357,6 +357,7 @@ class CalendarWriteExecution {
 					legacyCalendar
 				})
 			: new OntoEventSyncService(this.client as unknown as TypedSupabaseClient, {
+					agentAccess: true,
 					calendarWriter,
 					sourceRoutingEnabled: () => sourceAware,
 					...(sourceAware

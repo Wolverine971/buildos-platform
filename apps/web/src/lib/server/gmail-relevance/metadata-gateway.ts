@@ -1,4 +1,5 @@
 // apps/web/src/lib/server/gmail-relevance/metadata-gateway.ts
+import { createWebGmailAgentAuthPort } from '$lib/server/google-agent-oauth';
 import { z } from 'zod';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { GmailSchemaClient } from '../gmail-database.types';
@@ -123,7 +124,7 @@ export class GmailRelevanceMetadataGateway {
 		admin: TypedSupabaseClient | GmailSchemaClient,
 		options: GmailRelevanceMetadataGatewayOptions = {}
 	) {
-		this.oauthService = options.oauthService ?? new GmailReadOAuthService(admin);
+		this.oauthService = options.oauthService ?? createWebGmailAgentAuthPort();
 		this.providerFetch = options.providerFetch ?? fetch;
 		this.metadataBatchTimeoutMs = options.metadataBatchTimeoutMs ?? METADATA_BATCH_TIMEOUT_MS;
 	}

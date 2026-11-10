@@ -9,8 +9,8 @@ import { OntoEventSyncService } from './onto-event-sync.service';
  * shared with the worker runtime.
  */
 export class TaskEventSyncService extends TaskEventSyncCoordinator {
-	constructor(supabase: SupabaseClient<Database>) {
-		const eventSync = new OntoEventSyncService(supabase);
+	constructor(supabase: SupabaseClient<Database>, options: { agentAccess?: boolean } = {}) {
+		const eventSync = new OntoEventSyncService(supabase, options);
 		super(supabase, {
 			createEvent: (userId, request) => eventSync.createEvent(userId, request),
 			updateEvent: (userId, request) => eventSync.updateEvent(userId, request),

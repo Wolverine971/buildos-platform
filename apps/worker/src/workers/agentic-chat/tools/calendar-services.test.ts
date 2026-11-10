@@ -1,11 +1,9 @@
 // apps/worker/src/workers/agentic-chat/tools/calendar-services.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import {
-	GOOGLE_CALENDAR_LEGACY_FULL_SCOPE as GOOGLE_CALENDAR_SCOPE,
 	GoogleCalendarTargetError,
 	GoogleCalendarWriteError
 } from '@buildos/shared-agent-ops/calendar/google-calendar-runtime';
-import { encryptGoogleCalendarToken } from '@buildos/shared-agent-ops/calendar/google-calendar-token-crypto';
 import { createWorkerGoogleCalendarServices } from './calendar-services';
 
 const now = new Date('2026-09-03T19:00:00.000Z');
@@ -140,33 +138,12 @@ function fixture() {
 			deleted_at: null,
 			created_at: `2026-08-${10 + index}T00:00:00Z`
 		})),
-		calendar_connection_credentials: accounts.map(({ suffix, userId, kind }) => {
-			const context = {
-				userId,
-				connectionId: `connection-${suffix}`,
-				providerAccountId: `google-${suffix}`,
-				oauthClientKind: kind
-			};
-			return {
-				connection_id: context.connectionId,
-				oauth_client_kind: kind,
-				access_token_ciphertext: encryptGoogleCalendarToken(
-					`access-${suffix}`,
-					context,
-					() => key
-				),
-				refresh_token_ciphertext: encryptGoogleCalendarToken(
-					`refresh-${suffix}`,
-					context,
-					() => key
-				),
-				access_token_expires_at: '2026-09-03T20:00:00Z',
-				refresh_token_expires_at: null,
-				token_type: 'Bearer',
-				granted_scopes: [GOOGLE_CALENDAR_SCOPE],
-				revoked_at: null
-			};
-		}),
+		calendar_connection_credentials: [
+			{
+				connection_id: 'connection-a',
+				access_token_ciphertext: 'human-token-must-not-be-read'
+			}
+		],
 		user_calendar_preferences: [
 			{ user_id: 'user-1', default_write_calendar_source_id: 'source-a' }
 		],
@@ -211,14 +188,11 @@ function fixture() {
 			}
 		])
 	);
-	const createOAuthClient = vi.fn(() => ({
-		credentials: {} as Row,
-		setCredentials(values: Row) {
-			this.credentials = values;
-		},
-		refreshAccessToken: vi.fn(),
-		getTokenInfo: vi.fn()
-	}));
+	const agentAuth = {
+		getAuthenticatedClient: vi.fn(async (_userId: string, connectionId: string) => ({
+			credentials: { access_token: `access-${connectionId.replace('connection-', '')}` }
+		}))
+	};
 	const createCalendarApi = vi.fn((auth: unknown) => {
 		const token = String((auth as { credentials: Row }).credentials.access_token);
 		return apis[token.replace('access-', '')]!;
@@ -226,31 +200,32 @@ function fixture() {
 	const services = createWorkerGoogleCalendarServices(db.admin as never, {
 		env,
 		now: () => now,
-		createOAuthClient: createOAuthClient as never,
+		agentAuth: agentAuth as never,
 		createCalendarApi: createCalendarApi as never
 	});
-	return { ...db, env, services, apis, createOAuthClient, createCalendarApi };
+	return { ...db, env, services, apis, agentAuth, createCalendarApi };
 }
 
 describe('worker source-aware Calendar provider services', () => {
-	it.each([
-		['a', 'google_calendar', 'dedicated-client', 'dedicated-secret'],
-		['b', 'google_shared_login', 'shared-client', 'shared-secret']
-	])(
-		'uses the stored OAuth client and exact provider calendar for source %s',
-		async (suffix, kind, clientId, clientSecret) => {
+	it.each(['a', 'b'])(
+		'uses agent authorization for source %s regardless of its original human client',
+		async (suffix) => {
 			const f = fixture();
 			const result = await f.services.write.getEvent({
 				userId: 'user-1',
 				providerEventId: 'requested-event',
 				selector: { calendarSourceId: `source-${suffix}` }
 			});
-			expect(f.createOAuthClient).toHaveBeenCalledWith(kind, { clientId, clientSecret });
+			expect(f.agentAuth.getAuthenticatedClient).toHaveBeenCalledWith(
+				'user-1',
+				`connection-${suffix}`
+			);
 			expect(f.apis[suffix]!.events.get).toHaveBeenCalledWith({
 				calendarId: `calendar-${suffix}`,
 				eventId: 'requested-event'
 			});
 			expect(result.calendarSourceId).toBe(`source-${suffix}`);
+			expect(f.admin.from).not.toHaveBeenCalledWith('calendar_connection_credentials');
 			expect(f.apis.foreign!.events.get).not.toHaveBeenCalled();
 		}
 	);
@@ -292,7 +267,7 @@ describe('worker source-aware Calendar provider services', () => {
 				selector: { calendarSourceId: 'source-foreign' }
 			})
 		).rejects.toMatchObject({ code: 'CALENDAR_SOURCE_NOT_FOUND' });
-		expect(f.createOAuthClient).not.toHaveBeenCalled();
+		expect(f.agentAuth.getAuthenticatedClient).not.toHaveBeenCalled();
 		expect(f.createCalendarApi).not.toHaveBeenCalled();
 	});
 
@@ -476,71 +451,42 @@ describe('worker source-aware Calendar provider services', () => {
 		expect(f.apis.b!.calendars.delete).toHaveBeenCalledWith({ calendarId: 'new-calendar-b' });
 	});
 
-	it.each(['PRIVATE_GOOGLE_CALENDAR_CLIENT_ID', 'PRIVATE_GOOGLE_CALENDAR_CLIENT_SECRET'])(
-		'does not substitute shared-login credentials when %s is missing',
-		async (missingKey) => {
-			const f = fixture();
-			delete f.env[missingKey];
-			await expect(
-				f.services.write.getEvent({
-					userId: 'user-1',
-					providerEventId: 'event-a',
-					selector: { calendarSourceId: 'source-a' }
-				})
-			).rejects.toMatchObject({ code: 'not_configured' });
-			expect(f.createOAuthClient).not.toHaveBeenCalled();
-			expect(f.createCalendarApi).not.toHaveBeenCalled();
-		}
-	);
-
-	it('uses only the configured versioned token key and does not fall back to singleton encryption', async () => {
+	it('default wiring refuses human credentials when agent configuration is missing', async () => {
 		const f = fixture();
-		delete f.env.PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V1;
-		f.env.PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY = key;
-		// A host with no key is a server configuration failure, not a database
-		// failure and not a provider failure. Naming it is the whole point.
+		const services = createWorkerGoogleCalendarServices(f.admin as never, {
+			env: f.env,
+			createCalendarApi: f.createCalendarApi as never
+		});
 		await expect(
-			f.services.write.getEvent({
+			services.write.getEvent({
 				userId: 'user-1',
 				providerEventId: 'event-a',
 				selector: { calendarSourceId: 'source-a' }
 			})
-		).rejects.toMatchObject({
-			code: 'not_configured',
-			message: expect.stringContaining('PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V1')
-		});
+		).rejects.toMatchObject({ code: 'not_configured' });
 		expect(f.createCalendarApi).not.toHaveBeenCalled();
+		expect(f.admin.from).not.toHaveBeenCalledWith('calendar_connection_credentials');
 	});
 
-	it('reports key drift as an undecryptable stored credential, not a provider fault', async () => {
+	it('default wiring requires a separate grant and leaves the human connection active', async () => {
 		const f = fixture();
-		f.env.PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V1 =
-			'a-different-worker-calendar-key-with-at-least-32-bytes';
+		const services = createWorkerGoogleCalendarServices(f.admin as never, {
+			env: {
+				...f.env,
+				PRIVATE_GOOGLE_CALENDAR_AGENT_CLIENT_ID: 'agent-client',
+				PRIVATE_GOOGLE_CALENDAR_AGENT_CLIENT_SECRET: 'agent-secret'
+			},
+			createCalendarApi: f.createCalendarApi as never
+		});
 		await expect(
-			f.services.write.getEvent({
+			services.write.getEvent({
 				userId: 'user-1',
 				providerEventId: 'event-a',
 				selector: { calendarSourceId: 'source-a' }
 			})
-		).rejects.toMatchObject({
-			code: 'database_error',
-			message: expect.stringContaining('could not be decrypted')
-		});
+		).rejects.toMatchObject({ code: 'reconnect_required' });
 		expect(f.createCalendarApi).not.toHaveBeenCalled();
-	});
-
-	it('names the missing OAuth client variables instead of saying credentials are unavailable', async () => {
-		const f = fixture();
-		delete f.env.PRIVATE_GOOGLE_CALENDAR_CLIENT_SECRET;
-		await expect(
-			f.services.write.getEvent({
-				userId: 'user-1',
-				providerEventId: 'event-a',
-				selector: { calendarSourceId: 'source-a' }
-			})
-		).rejects.toMatchObject({
-			code: 'not_configured',
-			message: expect.stringContaining('PRIVATE_GOOGLE_CALENDAR_CLIENT_SECRET')
-		});
+		expect(f.tables.user_calendar_connections![0]!.status).toBe('active');
+		expect(f.writes).toEqual([]);
 	});
 });

@@ -1,4 +1,5 @@
 // apps/web/src/lib/server/google-calendar-write.service.ts
+import { createWebCalendarAgentAuthPort } from './google-agent-oauth';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import {
 	GoogleCalendarWriteService as SharedGoogleCalendarWriteService,
@@ -17,12 +18,15 @@ export {
 export class GoogleCalendarWriteService extends SharedGoogleCalendarWriteService {
 	constructor(
 		admin: TypedSupabaseClient,
-		options: Partial<GoogleCalendarWriteServiceOptions> = {}
+		options: Partial<GoogleCalendarWriteServiceOptions> & { agentAccess?: boolean } = {}
 	) {
 		super(admin, {
 			...options,
 			connectionService:
-				options.connectionService ?? new GoogleCalendarConnectionService(admin)
+				options.connectionService ??
+				(options.agentAccess
+					? createWebCalendarAgentAuthPort()
+					: new GoogleCalendarConnectionService(admin))
 		});
 	}
 }

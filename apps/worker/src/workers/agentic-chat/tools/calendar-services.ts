@@ -1,33 +1,26 @@
+import { createCalendarAgentAuthPort } from '@buildos/shared-agent-ops/google/google-agent-ports';
 // apps/worker/src/workers/agentic-chat/tools/calendar-services.ts
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import { OAuth2Client } from 'google-auth-library';
 import { type calendar_v3, google } from 'googleapis';
 import {
-	type CalendarCredentialOAuthClient,
-	GoogleCalendarConnectionError,
-	GoogleCalendarCredentialService,
 	GoogleCalendarProjectResourceService,
 	GoogleCalendarReadService,
 	GoogleCalendarSourceService,
 	GoogleCalendarTargetService,
 	GoogleCalendarWriteService
 } from '@buildos/shared-agent-ops/calendar/google-calendar-runtime';
-import type { GoogleCalendarOauthClientKind } from '@buildos/shared-agent-ops/calendar/google-calendar-token-crypto';
 
 type CalendarApi = Pick<
 	calendar_v3.Calendar,
 	'events' | 'freebusy' | 'calendars' | 'calendarList' | 'acl'
 >;
-type OAuthCredentials = { clientId: string; clientSecret: string };
 
 export type WorkerGoogleCalendarServicesOptions = {
 	env?: Record<string, string | undefined>;
 	now?: () => Date;
 	clock?: () => number;
-	createOAuthClient?: (
-		kind: GoogleCalendarOauthClientKind,
-		credentials: OAuthCredentials
-	) => CalendarCredentialOAuthClient;
+	agentAuth?: ReturnType<typeof createCalendarAgentAuthPort>;
 	createCalendarApi?: (auth: unknown) => CalendarApi;
 };
 
@@ -37,47 +30,16 @@ export type WorkerGoogleCalendarServicesOptions = {
  * the trusted claim and authorize ontology/project targets before passing them
  * to these provider services; a service-role client does not provide that gate.
  *
- * This does not enable tools or change admission. The old singleton-token port
- * must still refuse source-aware users until the seven tool adapters are ready.
+ * Agent calls use only separately consented agent grants, even when the source
+ * was originally connected using the shared-login or dedicated human client.
  */
 export function createWorkerGoogleCalendarServices(
 	admin: TypedSupabaseClient,
 	options: WorkerGoogleCalendarServicesOptions = {}
 ) {
 	const env = options.env ?? process.env;
-	const getOAuthClientCredentials = (kind: GoogleCalendarOauthClientKind): OAuthCredentials => {
-		// A connection retains the OAuth client that minted its grant. Never fall
-		// back from dedicated Calendar credentials to the shared-login client.
-		const prefix = kind === 'google_calendar' ? 'PRIVATE_GOOGLE_CALENDAR' : 'PRIVATE_GOOGLE';
-		const idName = `${prefix}_CLIENT_ID`;
-		const secretName = `${prefix}_CLIENT_SECRET`;
-		const clientId = env[idName]?.trim();
-		const clientSecret = env[secretName]?.trim();
-		if (!clientId || !clientSecret) {
-			// Name the variables, never their values: an operator reading a chat
-			// transcript or a log line has to know exactly what to set on which
-			// service, and "OAuth credentials are unavailable" never said that.
-			const missing = [clientId ? null : idName, clientSecret ? null : secretName].filter(
-				(name): name is string => name !== null
-			);
-			throw new GoogleCalendarConnectionError(
-				'not_configured',
-				`Google Calendar OAuth client credentials are not configured on this server for client kind ${kind} (missing ${missing.join(', ')})`
-			);
-		}
-		return { clientId, clientSecret };
-	};
-	const credentials = new GoogleCalendarCredentialService(admin, {
-		getOAuthClientCredentials,
-		createOAuthClient: (kind) => {
-			const config = getOAuthClientCredentials(kind);
-			return options.createOAuthClient
-				? options.createOAuthClient(kind, config)
-				: new OAuth2Client(config.clientId, config.clientSecret);
-		},
-		resolveTokenKey: (version) => env[`PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V${version}`],
-		now: options.now
-	});
+	const credentials =
+		options.agentAuth ?? createCalendarAgentAuthPort(admin, (name) => env[name]);
 	const sources = new GoogleCalendarSourceService(admin);
 	const targets = new GoogleCalendarTargetService(admin, { connectionService: sources });
 	const createCalendarApi =

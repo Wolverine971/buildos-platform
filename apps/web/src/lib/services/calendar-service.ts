@@ -276,6 +276,7 @@ export interface BulkDeleteResponse {
 }
 
 export interface CalendarServiceOptions {
+	agentAccess?: boolean;
 	/**
 	 * Server-only client used exclusively for calendar token/webhook cleanup.
 	 * calendar_webhook_channels is intentionally service-role-only.
@@ -293,13 +294,10 @@ export class CalendarService {
 	constructor(supabase: SupabaseClient, options: CalendarServiceOptions = {}) {
 		this.supabase = supabase;
 		this.activityLogger = new ActivityLogger(supabase);
-		this.oAuthService = new GoogleOAuthService(
-			supabase,
-			undefined,
-			options.privilegedSupabase
-				? { protectedCleanupSupabase: options.privilegedSupabase }
-				: {}
-		);
+		this.oAuthService = new GoogleOAuthService(supabase, undefined, {
+			agentAccess: options.agentAccess,
+			protectedCleanupSupabase: options.privilegedSupabase
+		});
 		this.disconnectOAuthService = options.privilegedSupabase
 			? new GoogleOAuthService(options.privilegedSupabase)
 			: this.oAuthService;

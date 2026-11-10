@@ -16,6 +16,8 @@ function isValidPayload(body: unknown): body is OntoProjectEventSyncJobMetadata 
 		typeof payload.eventId === 'string' &&
 		typeof payload.projectId === 'string' &&
 		typeof payload.targetUserId === 'string' &&
+		(payload.googleAgentAccess === undefined ||
+			typeof payload.googleAgentAccess === 'boolean') &&
 		(payload.eventUpdatedAt === undefined || typeof payload.eventUpdatedAt === 'string') &&
 		(payload.restrictToTargetUser === undefined ||
 			typeof payload.restrictToTargetUser === 'boolean') &&
@@ -45,7 +47,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		const supabase = createAdminSupabaseClient();
-		const service = new OntoEventSyncService(supabase as any);
+		const service = new OntoEventSyncService(supabase as any, {
+			agentAccess: body.googleAgentAccess === true
+		});
 		const result = await service.processProjectEventSyncJob({
 			action: body.action,
 			eventId: body.eventId,

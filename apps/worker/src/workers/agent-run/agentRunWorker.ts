@@ -8,6 +8,7 @@
 // encryption env before they are offered to the LLM. Worker-only web visit is
 // SSRF-safe, while web search is additionally gated on a Tavily key.
 
+import { GoogleAgentOAuthService } from '@buildos/shared-agent-ops/google/google-agent-oauth';
 import { createAgentRunAccounting } from './agentRunAccounting';
 import { persistAgentRunPageEvidence } from './agentRunPageEvidence';
 import {
@@ -297,14 +298,8 @@ function resolveExecutorRelease(): string {
 }
 
 async function createCalendarPortForRun(userId: string) {
-	const clientId = trimmedEnv('PRIVATE_GOOGLE_CLIENT_ID') ?? trimmedEnv('GOOGLE_CLIENT_ID');
-	const clientSecret =
-		trimmedEnv('PRIVATE_GOOGLE_CLIENT_SECRET') ?? trimmedEnv('GOOGLE_CLIENT_SECRET');
-	const tokenEncryptionKey = trimmedEnv('PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY');
-
-	if (!clientId || !clientSecret || !tokenEncryptionKey) {
-		return null;
-	}
+	const agentOAuth = new GoogleAgentOAuthService(supabase);
+	if (!agentOAuth.isConfigured('calendar_legacy')) return null;
 
 	// Agent Run still uses the legacy single-account token port. Once a user has
 	// an active source-aware connection, silently falling back to that row could
@@ -332,7 +327,7 @@ async function createCalendarPortForRun(userId: string) {
 
 	const { data: tokenRow, error: tokenError } = await supabase
 		.from('user_calendar_tokens')
-		.select('access_token, refresh_token')
+		.select('google_user_id')
 		.eq('user_id', userId)
 		.maybeSingle();
 
@@ -343,14 +338,14 @@ async function createCalendarPortForRun(userId: string) {
 		return null;
 	}
 
-	if (!tokenRow?.access_token || !tokenRow.refresh_token) {
+	if (!tokenRow?.google_user_id) {
 		return null;
 	}
 
 	return createAgentRunCalendarPort({
 		admin: supabase as SupabaseClient<Database>,
 		userId,
-		credentials: { clientId, clientSecret }
+		agentOAuth
 	});
 }
 

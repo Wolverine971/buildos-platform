@@ -6,6 +6,8 @@
 		GoogleCalendarSourceSummary
 	} from '$lib/types/google-calendar-integration';
 	import Button from '$lib/components/ui/Button.svelte';
+	import ErrorBoundary from '$lib/components/ui/ErrorBoundary.svelte';
+	import GoogleAgentAccess from './GoogleAgentAccess.svelte';
 
 	interface Props {
 		payload: GoogleCalendarConnectionsPayload;
@@ -292,6 +294,15 @@
 								aria-label={`Disconnect ${connection.accountLabel}`}
 							></Button>
 						</div>
+					</div>
+
+					<div class="border-t border-border px-3 py-3 sm:px-4">
+						<ErrorBoundary
+							area="calendar-agent-access"
+							context={{ connectionId: connection.id }}
+						>
+							<GoogleAgentAccess kind="calendar" connectionId={connection.id} />
+						</ErrorBoundary>
 					</div>
 
 					<div class="border-t border-border bg-muted/30 px-3 py-3 sm:px-4">

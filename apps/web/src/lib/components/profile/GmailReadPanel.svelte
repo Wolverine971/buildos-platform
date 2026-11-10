@@ -11,6 +11,8 @@
 		GmailReadAccountResult
 	} from '$lib/types/gmail-integration';
 	import SettingsCard from './_shared/SettingsCard.svelte';
+	import ErrorBoundary from '$lib/components/ui/ErrorBoundary.svelte';
+	import GoogleAgentAccess from './GoogleAgentAccess.svelte';
 
 	interface Props {
 		connections: GmailConnectionSummary[];
@@ -242,6 +244,25 @@
 		});
 	}
 </script>
+
+{#if connections.length > 0}
+	<SettingsCard
+		title="Gmail agent access"
+		description="Choose which accounts your agents can use."
+		icon={ShieldCheck}
+		bodyClass="space-y-3"
+	>
+		{#each connections as connection (connection.id)}
+			<ErrorBoundary area="gmail-agent-access" context={{ connectionId: connection.id }}>
+				<GoogleAgentAccess
+					kind="gmail"
+					connectionId={connection.id}
+					accountLabel={connection.emailAddress}
+				/>
+			</ErrorBoundary>
+		{/each}
+	</SettingsCard>
+{/if}
 
 <SettingsCard
 	title="Read Gmail"

@@ -418,7 +418,8 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 	}
 
 	private taskSync(): TaskSyncPort {
-		this.memoizedTaskSync ??= this.injectedTaskSync ?? createWorkerTaskSyncPort(this.client);
+		this.memoizedTaskSync ??=
+			this.injectedTaskSync ?? createWorkerTaskSyncPort(this.client, { agentAccess: true });
 		return this.memoizedTaskSync;
 	}
 }

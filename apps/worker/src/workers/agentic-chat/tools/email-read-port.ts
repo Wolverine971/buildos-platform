@@ -195,7 +195,7 @@ export function createWorkerAgenticChatEmailReadPort(input: {
 		if (!messagesPort) {
 			messagesPort = options.messages
 				? options.messages()
-				: new GmailReadGateway(typedClient, { readEnv });
+				: new GmailReadGateway(typedClient, { readEnv, agentAccess: true });
 		}
 		return messagesPort;
 	};

@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/google-oauth-service.ts
+import { createGoogleAgentOAuthService } from '$lib/server/google-agent-oauth';
 import { OAuth2Client } from 'google-auth-library';
 import { google } from 'googleapis';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -23,6 +24,7 @@ export interface GoogleOAuthCredentials {
 }
 
 export interface GoogleOAuthRuntimeOptions {
+	agentAccess?: boolean;
 	/** Server-only authority for deleting protected legacy webhook state. */
 	protectedCleanupSupabase?: SupabaseClient;
 }
@@ -230,6 +232,7 @@ export class GoogleOAuthService {
 	private readonly clientSecret: string;
 	private readonly protectedCleanupSupabase?: SupabaseClient;
 	private readonly MAX_RETRIES = 3;
+	private readonly agentAccess: boolean;
 	private readonly RETRY_DELAY_MS = 1000;
 
 	constructor(
@@ -238,6 +241,7 @@ export class GoogleOAuthService {
 		runtimeOptions: GoogleOAuthRuntimeOptions = {}
 	) {
 		this.supabase = supabase;
+		this.agentAccess = runtimeOptions.agentAccess === true;
 		this.errorLogger = ErrorLoggerService.getInstance(supabase);
 		const resolvedCredentials = resolveGoogleOAuthCredentials(credentials);
 		this.clientId = resolvedCredentials.clientId;
@@ -434,6 +438,14 @@ export class GoogleOAuthService {
 	 */
 	async getCalendarStatus(userId: string): Promise<CalendarStatus> {
 		try {
+			if (this.agentAccess) {
+				const access = await createGoogleAgentOAuthService().status({
+					userId,
+					connectionId: userId,
+					kind: 'calendar_legacy'
+				});
+				return { isConnected: access.configured && access.status === 'active' };
+			}
 			const { data: tokens, error } = await this.supabase
 				.from('user_calendar_tokens')
 				.select('access_token, refresh_token, updated_at, scope, google_email')
@@ -493,6 +505,8 @@ export class GoogleOAuthService {
 	 * Get authenticated OAuth2 client with automatic token refresh
 	 */
 	async getAuthenticatedClient(userId: string): Promise<OAuth2Client> {
+		if (this.agentAccess)
+			return createGoogleAgentOAuthService().getCalendarClient(userId, userId, true);
 		// Check cache first (cache for 10 minutes)
 		const cached = this.clientCache.get(userId);
 		if (cached && cached.expires > Date.now()) {
@@ -921,6 +935,10 @@ export class GoogleOAuthService {
 	 */
 	async hasValidConnection(userId: string): Promise<boolean> {
 		try {
+			if (this.agentAccess) {
+				await this.getAuthenticatedClient(userId);
+				return true;
+			}
 			const tokens = await this.getTokens(userId);
 			if (!tokens?.hasValidTokens) {
 				return false;

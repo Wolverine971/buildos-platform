@@ -336,7 +336,7 @@ export class CalendarAnalysisService extends ApiService {
 	) {
 		super('/api/calendar/analysis');
 		this.supabase = supabase;
-		this.calendarService = new CalendarService(supabase);
+		this.calendarService = new CalendarService(supabase, { agentAccess: true });
 		this.llmService = new SmartLLMService({
 			supabase,
 			appName: 'BuildOS Calendar Analysis'
@@ -394,7 +394,7 @@ export class CalendarAnalysisService extends ApiService {
 
 		const readService =
 			this.multiCalendarReadService ??
-			new GoogleCalendarReadService(createAdminSupabaseClient());
+			new GoogleCalendarReadService(createAdminSupabaseClient(), { agentAccess: true });
 		const response = await readService.listEvents({
 			userId,
 			calendarSourceIds: params.calendarSourceIds,
