@@ -87,10 +87,12 @@ export async function findProjectContext(input: {
 	askBroad?: boolean;
 }): Promise<ContextFinderResultV1> {
 	const documents = input.documents ?? 'card';
-	const budgetChars = Math.min(
-		input.budgetChars ?? CONTEXT_FINDER_POLICY.agentBudgetChars,
-		CONTEXT_FINDER_POLICY.agentBudgetChars
-	);
+	// Cards cost little, so chat fits every pick; hosts that load section text keep B's budget.
+	const ceiling =
+		documents === 'card'
+			? CONTEXT_FINDER_POLICY.agentCardBudgetChars
+			: CONTEXT_FINDER_POLICY.agentBudgetChars;
+	const budgetChars = Math.min(input.budgetChars ?? ceiling, ceiling);
 	const outlined = buildContextFinderEntities(input.project);
 	if (input.plan) {
 		const entities = await loadContextFinderPlanText({
@@ -150,7 +152,11 @@ export async function findProjectContext(input: {
 		unchecked: ranking.unchecked,
 		skipIds: skip,
 		budgetChars,
-		sectionsPerDoc: CONTEXT_FINDER_POLICY.agentSectionsPerDoc,
+		// A flag on a card is one anchor, not a section of text: flag up to the policy's ceiling.
+		sectionsPerDoc:
+			documents === 'card'
+				? CONTEXT_FINDER_POLICY.sectionsPerDoc
+				: CONTEXT_FINDER_POLICY.agentSectionsPerDoc,
 		documents,
 		maxSummaries: input.maxSummaries,
 		...(scope === 'broad'

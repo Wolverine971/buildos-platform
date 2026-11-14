@@ -8,6 +8,7 @@ import type { ChatSessionHistoryResponse, ChatSummary } from '@buildos/api-clien
 import type { AgentSSEMessage } from '@buildos/shared-types';
 
 import { newChatId } from './ids';
+import type { MessageImage } from './images';
 import type { SessionStore, WorkerTurnHandle } from './session-store';
 
 export type DemoState =
@@ -18,6 +19,7 @@ export type DemoState =
 	| 'live'
 	| 'card'
 	| 'changes'
+	| 'cards'
 	| 'pick'
 	| 'projects'
 	| 'focus';
@@ -30,6 +32,8 @@ const DEMO_STATES: ReadonlySet<string> = new Set([
 	'live',
 	'card',
 	'changes',
+	// A Workspace turn the finder tied to one project: turn cards, step details, Continue in.
+	'cards',
 	// Opening screens: the context picker, its project list, and the focus sheet over a chat.
 	'pick',
 	'projects',
@@ -258,7 +262,7 @@ const defaultScheduler: Scheduler = (run, delayMs) => {
 export function runDemoTurn(
 	store: SessionStore,
 	text: string,
-	options: { schedule?: Scheduler; now?: () => number } = {}
+	options: { schedule?: Scheduler; now?: () => number; images?: MessageImage[] } = {}
 ): () => void {
 	const schedule = options.schedule ?? defaultScheduler;
 	const clientTurnId = newChatId('turn', options.now?.());
@@ -273,7 +277,7 @@ export function runDemoTurn(
 		);
 	};
 
-	store.addUserMessage({ clientTurnId, text });
+	store.addUserMessage({ clientTurnId, text, images: options.images });
 	at(350, () => {
 		store.adoptHandle(handle, 'queued');
 		store.port.beginGeneration({ handle, executionGeneration: 0, status: 'running' });
@@ -404,6 +408,10 @@ export function seedDemo(
 	}
 	if (state === 'changes') {
 		seedChangesTurn(store, now, options.skew);
+		return;
+	}
+	if (state === 'cards') {
+		seedCardsTurn(store, now, options.skew);
 		return;
 	}
 	if (state === 'live') {
@@ -574,6 +582,178 @@ function seedChangesTurn(store: SessionStore, now: () => number, skew?: { ms: nu
 		handle,
 		executionGeneration: 0,
 		text: 'Done, three things:\n\n- **App Store screenshots** is a task under Launch, due Thursday at 9.\n- The **Launch checklist** now lists the three screenshot sizes and the promo text.\n- **Beta testers** has Priya, Marcus and Lena, with Priya marked active.'
+	});
+	store.port.finishTurn({
+		handle,
+		status: 'completed',
+		finishedReason: 'stop',
+		failureCode: null
+	});
+}
+
+const DEMO_PROJECT = { id: 'dddddddd-0000-4000-8000-00000000f001', name: 'Launch' };
+
+/**
+ * A finished Workspace turn: the finder checked 12 projects and picked Launch, pulled in three
+ * records, and the agent read the checklist, moved a task to done with a new due date and made
+ * a task. Shows turn cards, "Pulled in 3 of 12", the step details, the receipt and Continue in.
+ */
+function seedCardsTurn(store: SessionStore, now: () => number, skew?: { ms: number }): void {
+	const handle = demoHandle(newChatId('row', now()), newChatId('turn', now()));
+	const run = handle.turnRunId;
+	if (skew) skew.ms = -18_000;
+	store.addUserMessage({
+		clientTurnId: handle.clientTurnId,
+		text: 'The beta email went out, push the screenshots to Friday and add a task to thank Priya.'
+	});
+	store.adoptHandle(handle, 'queued');
+	store.port.beginGeneration({ handle, executionGeneration: 0, status: 'running' });
+	store.port.applySemanticEvent(
+		semantic(run, {
+			type: 'context_selection',
+			version: 1,
+			mode: 'on',
+			visible: true,
+			injected: true,
+			status: 'selected',
+			failure: null,
+			client_turn_id: handle.clientTurnId,
+			turn_run_id: run,
+			project_id: null,
+			workspace: { scope: 'projects', dig: true, checked: 12 },
+			projects: [{ id: DEMO_PROJECT.id, name: DEMO_PROJECT.name, p: 0.92, hop2: 'ran' }],
+			items: [
+				{
+					kind: 'document',
+					id: 'doc1',
+					label: 'Launch checklist',
+					tier: 'full',
+					p: 0.9,
+					pinned: false,
+					sections: [],
+					project_id: DEMO_PROJECT.id
+				},
+				{
+					kind: 'task',
+					id: 'task1',
+					label: 'Beta email',
+					tier: 'full',
+					p: 0.88,
+					pinned: false,
+					sections: [],
+					project_id: DEMO_PROJECT.id
+				},
+				{
+					kind: 'task',
+					id: 'task2',
+					label: 'App Store screenshots',
+					tier: 'summary',
+					p: 0.7,
+					pinned: false,
+					sections: [],
+					project_id: DEMO_PROJECT.id
+				}
+			],
+			counts: { full: 2, summary: 1, checked: 12 },
+			elapsed_ms: 640
+		})
+	);
+	const steps: Array<{
+		name: string;
+		args: Record<string, unknown>;
+		result: Record<string, unknown>;
+	}> = [
+		{
+			name: 'get_onto_document_details',
+			args: { document_id: 'doc1', project_id: DEMO_PROJECT.id },
+			result: {
+				document: { id: 'doc1', title: 'Launch checklist', project_id: DEMO_PROJECT.id }
+			}
+		},
+		{
+			name: 'update_onto_task',
+			args: { task_id: 'task1', project_id: DEMO_PROJECT.id, state_key: 'done' },
+			result: {
+				affected_entities: [
+					{
+						kind: 'task',
+						id: 'task1',
+						title: 'Beta email',
+						project_id: DEMO_PROJECT.id,
+						operation: 'updated'
+					}
+				],
+				result: {
+					field_changes: [{ field: 'state_key', before: 'in_progress', after: 'done' }]
+				}
+			}
+		},
+		{
+			name: 'update_onto_task',
+			args: { task_id: 'task2', project_id: DEMO_PROJECT.id, due_at: '2026-11-20' },
+			result: {
+				affected_entities: [
+					{
+						kind: 'task',
+						id: 'task2',
+						title: 'App Store screenshots',
+						project_id: DEMO_PROJECT.id,
+						operation: 'updated'
+					}
+				],
+				result: {
+					field_changes: [{ field: 'due_at', before: '2026-11-17', after: '2026-11-20' }]
+				}
+			}
+		},
+		{
+			name: 'create_onto_task',
+			args: { project_id: DEMO_PROJECT.id, title: 'Thank Priya for the beta list' },
+			result: {
+				affected_entities: [
+					{
+						kind: 'task',
+						id: 'task3',
+						title: 'Thank Priya for the beta list',
+						project_id: DEMO_PROJECT.id,
+						operation: 'created'
+					}
+				],
+				result: {
+					task: {
+						id: 'task3',
+						title: 'Thank Priya for the beta list',
+						project_id: DEMO_PROJECT.id
+					}
+				}
+			}
+		}
+	];
+	steps.forEach((step, index) => {
+		const id = `cards_call_${index + 1}`;
+		store.port.applySemanticEvent(
+			semantic(run, {
+				type: 'tool_call',
+				tool_call: {
+					id,
+					type: 'function',
+					function: { name: step.name, arguments: JSON.stringify(step.args) }
+				},
+				...(index === 1 ? { source_quote: 'The beta email went out' } : {})
+			})
+		);
+		store.port.applySemanticEvent(
+			semantic(run, {
+				type: 'tool_result',
+				result: { tool_call_id: id, success: true, ...step.result }
+			})
+		);
+	});
+	if (skew) skew.ms = 0;
+	store.port.appendAssistantText({
+		handle,
+		executionGeneration: 0,
+		text: 'Done. **Beta email** is marked done, **App Store screenshots** now land Friday, and I added a task to thank Priya.'
 	});
 	store.port.finishTurn({
 		handle,

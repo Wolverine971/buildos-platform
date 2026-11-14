@@ -108,7 +108,7 @@ describe('trail lines', () => {
 				ms: 312
 			}).message
 		).toBe(
-			'Jev: not here (4%) → "Networking Lunch Italia’s Corner" (91%), else "Register" 5% · 312ms'
+			'Not on this page (4%) → "Networking Lunch Italia’s Corner" (91%), else "Register" 5% · 312ms'
 		);
 		expect(
 			describeWebNavigationStep({

@@ -349,8 +349,8 @@ export function describeWebNavigationStep(step: WebNavigationStep): AgenticChatR
 		case 'decided': {
 			const verdict =
 				step.answer >= 0.5
-					? `answer is here (${percent(step.answer)})`
-					: `not here (${percent(step.answer)})`;
+					? `Answer is on this page (${percent(step.answer)})`
+					: `Not on this page (${percent(step.answer)})`;
 			const next = step.next
 				? ` → ${quoted(step.next.label)} (${percent(step.next.probability)})`
 				: '';
@@ -360,7 +360,8 @@ export function describeWebNavigationStep(step: WebNavigationStep): AgenticChatR
 					: '';
 			const dead = step.answer < 0.5 && !step.next ? ', no promising links' : '';
 			return {
-				message: `Jev: ${verdict}${next}${alternatives}${dead} · ${step.ms}ms`,
+				// Shown to the person in the step trail: no internal model names.
+				message: `${verdict}${next}${alternatives}${dead} · ${step.ms}ms`,
 				data: {
 					kind: step.kind,
 					page: step.page,

@@ -19,7 +19,8 @@ export {
 export { Wordmark } from './wordmark';
 export { BOLT_PATH, BoltMark, BoltScrollView, BoltSpinner, type BoltScrollViewProps } from './bolt';
 export { Bench, PageTitle, Sheet } from './frame';
-export { hitSlopFor, KEY_PRESS, KEY_SPRING, PULL } from './math';
+export { hitSlopFor, KEY_PRESS, KEY_SPRING, PULL, SWIPE } from './math';
+export { SwipeRow, type SwipeAction } from './swipe-row';
 
 // Chrome
 export {
@@ -35,9 +36,4 @@ export { AccountKey } from './account-key';
 export { TAB_BAR_ROW_HEIGHT, TabBar } from './tab-bar';
 
 // Tiles
-export {
-	ProjectTile,
-	PulsePill,
-	type ProjectTileProps,
-	type PulsePillProps
-} from './project-tile';
+export { ProjectTile, PulsePill, type ProjectTileProps, type PulsePillProps } from './project-tile';

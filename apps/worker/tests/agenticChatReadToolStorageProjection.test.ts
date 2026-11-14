@@ -182,7 +182,7 @@ describe('read-tool runner storage projection', () => {
 		};
 		const run = await runRead('web_navigate', full, [
 			{
-				message: 'Jev: not here (4%) → "Help with my order" (91%) · 310ms',
+				message: 'Not on this page (4%) → "Help with my order" (91%) · 310ms',
 				data: {
 					kind: 'decided',
 					page: 1,
@@ -200,7 +200,7 @@ describe('read-tool runner storage projection', () => {
 		]);
 		expect(run.returned.execution.result).toBe(full);
 		const progress = run.published.find((step) => step.eventType === 'tool_progress');
-		expect(progress?.currentActivity).toBe('Jev: not here (4%) → next link (91%) · 310ms');
+		expect(progress?.currentActivity).toBe('Not on this page (4%) → next link (91%) · 310ms');
 		expect(progress?.eventPayload.message).toBe(progress?.currentActivity);
 		const stored = JSON.stringify([run.ledger, run.published, run.projection]);
 		expect(stored).not.toContain('Help with my order');

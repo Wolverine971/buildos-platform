@@ -280,12 +280,14 @@ export function reviewedWorkerProviderToolDefinitionV1(
 /**
  * Every reviewed write may say which of the user's words it came from, so the chat can light
  * that phrase up and show where it went (tasker 155). Split off at parse time; display only.
+ * The words are usually in the latest message; after a clarifying question ("where should I
+ * file it?" → "in my workspace") they are in the message before it.
  */
 const SOURCE_QUOTE_SCHEMA: JsonObject = {
 	type: 'string',
 	maxLength: 400,
 	description:
-		"Optional. The exact words from the user's latest message that this change comes from, copied verbatim (a short phrase or sentence). Omit when the change does not come from their message."
+		"Optional; omit if none. The user's exact words this change comes from, copied verbatim (a short phrase): in their latest message, or an earlier one when they are answering your question."
 };
 
 function isEnabledMutationTool(

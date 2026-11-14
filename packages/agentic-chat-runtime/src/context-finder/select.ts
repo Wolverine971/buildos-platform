@@ -8,7 +8,7 @@
 // Jev's scores are not calibrated, so the rule is rank-relative with an absolute floor.
 import { DOCUMENT_CARD_TEXT_MAX_CHARS } from '@buildos/shared-agent-ops/utils/document-card';
 import { cardNeedsText, documentCard, documentCardChars } from './card';
-import type { ContextFinderEntity, ContextFinderKind } from './packets';
+import { matchSectionIndex, type ContextFinderEntity, type ContextFinderKind } from './packets';
 import { entityScoreKey, headingScoreKey, type ContextFinderScores } from './rank';
 
 export const CONTEXT_FINDER_POLICY = Object.freeze({
@@ -24,9 +24,16 @@ export const CONTEXT_FINDER_POLICY = Object.freeze({
 	budgetChars: 14_000,
 	sectionsPerDoc: 4,
 	/**
-	 * What an agent gets up front (tasker 150, DJ picked B on 2026-11-05): each picked
-	 * document's card (description, sections with anchors) plus text for its best sections
-	 * within this budget. The agent reads more with read_document_section.
+	 * Chat (tasker 152, card-only): every picked document arrives as a card (what it is, its
+	 * sections with anchors, the flagged ones) and every picked record as its text. A card runs
+	 * 0.3–2k characters, so `maxFull` picks normally all fit; this ceiling (the policy's own)
+	 * only stops a project of very long cards from growing the prompt without bound. A pick
+	 * that does not fit drops to a one-line summary.
+	 */
+	agentCardBudgetChars: 14_000,
+	/**
+	 * Hosts that still get document text up front (workflow specialists, Workflow Lab preview;
+	 * tasker 150, option B): each picked document's card plus text for its best sections.
 	 */
 	agentBudgetChars: 5_000,
 	agentSectionsPerDoc: 2,
@@ -44,7 +51,13 @@ export const CONTEXT_FINDER_POLICY = Object.freeze({
 	maxSummaries: 20
 });
 
-export type ContextPlanSectionV1 = { heading: string; p: number | null };
+export type ContextPlanSectionV1 = {
+	heading: string;
+	p: number | null;
+	/** The heading's anchor, so a repeated heading still names one section. Absent on plans
+	 * stored before 2026-11-13 and on sections parsed without an outline. */
+	anchor?: string;
+};
 export type ContextPlanItemV1 = {
 	kind: ContextFinderKind;
 	id: string;
@@ -77,14 +90,22 @@ export function scoredSectionsFor(
 ): ContextPlanSectionV1[] {
 	if (entity.kind !== 'document') return [];
 	return entity.packetHeadings
-		.map((section, j) => ({ heading: section.heading, p: scores[headingScoreKey(entity, j)] }))
+		.map((section, j) => ({
+			heading: section.heading,
+			anchor: section.anchor,
+			p: scores[headingScoreKey(entity, j)]
+		}))
 		.filter(
-			(x): x is { heading: string; p: number } =>
+			(x): x is { heading: string; anchor: string | undefined; p: number } =>
 				typeof x.p === 'number' && x.p >= CONTEXT_FINDER_POLICY.sectionFloor
 		)
 		.sort((a, b) => b.p - a.p)
 		.slice(0, limit)
-		.map((x) => ({ heading: x.heading, p: round(x.p) }));
+		.map((x) => ({
+			heading: x.heading,
+			p: round(x.p),
+			...(x.anchor ? { anchor: x.anchor } : {})
+		}));
 }
 
 export type ContextExcerptV1 = {
@@ -134,10 +155,8 @@ function pickedSections(
 	const used = new Set<number>();
 	const picked: ContextFinderEntity['sections'] = [];
 	for (const wanted of sections.slice(0, CONTEXT_FINDER_POLICY.sectionsPerDoc)) {
-		// Duplicate headings resolve to the first unused match, in document order.
-		const index = entity.sections.findIndex(
-			(section, i) => !used.has(i) && section.heading === wanted.heading
-		);
+		// By anchor; a plan without one falls back to the first unused heading match.
+		const index = matchSectionIndex(entity.sections, wanted, used);
 		if (index < 0) continue;
 		used.add(index);
 		picked.push(entity.sections[index]!);
@@ -233,7 +252,7 @@ export function selectProjectContext(input: {
 	drops?: ReadonlySet<string>;
 	/** A smaller share of the budget when several projects split one prompt (workspace.ts). */
 	budgetChars?: number;
-	/** Fewer sections per document than the policy's ceiling (agents: `agentSectionsPerDoc`). */
+	/** Fewer sections per document than the policy's ceiling (text hosts: `agentSectionsPerDoc`). */
 	sectionsPerDoc?: number;
 	maxSummaries?: number;
 	/**

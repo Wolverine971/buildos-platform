@@ -19,6 +19,14 @@
 		moved: 'moved',
 		linked: 'linked'
 	};
+
+	// The tooltip only ever claims what the step's state says.
+	function markTitle(mark: PhraseMark): string | undefined {
+		if (mark.state === 'landed') return `This ${mark.label} was ${ACTION_WORDS[mark.action]}`;
+		if (mark.state === 'held') return 'Waiting for your choice. Nothing was saved yet';
+		if (mark.state === 'failed') return "This change didn't go through";
+		return undefined;
+	}
 </script>
 
 {#if pieces}{#each pieces as piece, index (index)}{#if piece.mark}<span
@@ -26,9 +34,7 @@
 				data-quote-mark={piece.mark.id}
 				data-action={piece.mark.action}
 				data-state={piece.mark.state}
-				title={piece.mark.state === 'landed'
-					? `This ${piece.mark.label} was ${ACTION_WORDS[piece.mark.action]}`
-					: undefined}>{piece.text}</span
+				title={markTitle(piece.mark)}>{piece.text}</span
 			>{:else}{piece.text}{/if}{/each}{:else}{content}{/if}
 
 <style>
@@ -58,6 +64,14 @@
 
 	.phrase-mark[data-state='live'] {
 		animation: phrase-live 1.1s ease-in-out infinite;
+	}
+
+	/* Held for the person's choice: outlined, never filled. Nothing was saved. */
+	.phrase-mark[data-state='held'] {
+		background: transparent;
+		box-shadow: none;
+		text-decoration: underline dashed hsl(var(--accent) / 0.7);
+		text-underline-offset: 0.18em;
 	}
 
 	.phrase-mark[data-state='failed'] {

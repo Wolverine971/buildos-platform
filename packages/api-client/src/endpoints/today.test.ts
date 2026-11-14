@@ -77,3 +77,44 @@ describe('today', () => {
 		});
 	});
 });
+
+describe('chat', () => {
+	it('moves a Workspace chat into a project', async () => {
+		const { api, last } = client({ session_id: 's1', project_id: 'p1' });
+		const moved = await api.chat.moveToProject('s1', 'p1');
+		expect(moved.project_id).toBe('p1');
+		expect(last()).toEqual({
+			url: 'https://build-os.com/api/chat/sessions/s1/move-to-project',
+			method: 'POST',
+			body: { project_id: 'p1' }
+		});
+	});
+});
+
+describe('chat images', () => {
+	it('registers an image, then completes a project asset', async () => {
+		const { api, last } = client({
+			asset: { id: 'a1' },
+			deduped: false,
+			upload: null,
+			caps: {}
+		});
+		await api.chat.createImageAttachment({
+			project_id: null,
+			file_name: 'IMG_1.jpg',
+			content_type: 'image/jpeg',
+			file_size_bytes: 1200,
+			checksum_sha256: 'ab'.repeat(32)
+		});
+		expect(last()).toMatchObject({
+			url: 'https://build-os.com/api/agent/chat-attachments',
+			method: 'POST',
+			body: { file_name: 'IMG_1.jpg', project_id: null }
+		});
+		await api.chat.completeImageAttachment('a1');
+		expect(last()).toMatchObject({
+			url: 'https://build-os.com/api/onto/assets/a1/complete',
+			method: 'POST'
+		});
+	});
+});

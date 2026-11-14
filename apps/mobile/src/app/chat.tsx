@@ -14,6 +14,7 @@ import {
 
 import { ChangesBlock } from '@/components/chat/changes-row';
 import { ChatActionsContext } from '@/components/chat/chat-actions';
+import { ContinueChip } from '@/components/chat/continue-chip';
 import { Composer } from '@/components/chat/composer';
 import { ContextPicker, EarlierChats } from '@/components/chat/context-picker';
 import { FocusSheet } from '@/components/chat/focus-sheet';
@@ -51,7 +52,8 @@ import {
 import { demoChats, demoHasSession, parseDemoParam } from '@/lib/chat/demo';
 import { FOLLOW_THRESHOLD, showJumpToLatest } from '@/lib/chat/list-follow';
 import { type ChatStage, initialStage } from '@/lib/chat/opening';
-import type { ChatRow } from '@/lib/chat/session-store';
+import type { ChatRow, WorkRow } from '@/lib/chat/session-store';
+import { continueTarget } from '@/lib/chat/turn-view';
 import { setReaderWalk } from '@/lib/reader-walk';
 import { OPEN_PROJECT_PARAM } from '@/lib/routes';
 import { openWebPage } from '@/lib/web-pages';
@@ -188,6 +190,11 @@ export default function ChatScreen() {
 		},
 		[openOnWeb]
 	);
+	const sessionProject = useMemo(
+		() =>
+			target.type === 'project' ? { id: target.projectId, name: target.projectName } : null,
+		[target]
+	);
 	const actions = useMemo(
 		() => ({
 			chooseProposal,
@@ -195,10 +202,42 @@ export default function ChatScreen() {
 			undoChange,
 			openEntity,
 			openOnWeb,
-			turnActive: streaming
+			turnActive: streaming,
+			sessionProject
 		}),
-		[chooseProposal, undoProposal, undoChange, openEntity, openOnWeb, streaming]
+		[chooseProposal, undoProposal, undoChange, openEntity, openOnWeb, streaming, sessionProject]
 	);
+	// "Continue in X": a Workspace chat whose last finished turn was clearly about one project.
+	const continueIn = useMemo(
+		() =>
+			target.type === 'global' && !streaming && chat.sessionId
+				? continueTarget(latestWork(chat.rows))
+				: null,
+		[chat.rows, chat.sessionId, streaming, target.type]
+	);
+	const [moving, setMoving] = useState(false);
+	const [moveError, setMoveError] = useState<string | null>(null);
+	useEffect(() => setMoveError(null), [continueIn?.id]);
+	const continueInProject = useCallback(async () => {
+		const sessionId = chat.sessionId;
+		if (!continueIn || !sessionId || moving) return;
+		setMoving(true);
+		setMoveError(null);
+		try {
+			// The demo chat has no stored session to move; it only switches context.
+			if (sessionId !== 'demo') await api.chat.moveToProject(sessionId, continueIn.id);
+			playHaptic('success');
+			setTarget({ type: 'project', projectId: continueIn.id, projectName: continueIn.name });
+		} catch (error) {
+			setMoveError(
+				error instanceof Error && error.message
+					? error.message
+					: 'Could not move this chat. Try again.'
+			);
+		} finally {
+			setMoving(false);
+		}
+	}, [chat.sessionId, continueIn, moving]);
 	// Scripted earlier chats for the demo states that show a conversation; `idle` and the
 	// opening screens list the real ones.
 	const demoHistory = useMemo(
@@ -384,6 +423,17 @@ export default function ChatScreen() {
 								data={newestFirst}
 								keyExtractor={keyOf}
 								renderItem={renderRow}
+								// Inverted: the header sits under the newest message.
+								ListHeaderComponent={
+									continueIn ? (
+										<ContinueChip
+											name={continueIn.name}
+											busy={moving}
+											error={moveError}
+											onPress={() => void continueInProject()}
+										/>
+									) : undefined
+								}
 								contentContainerStyle={styles.list}
 								maintainVisibleContentPosition={{
 									minIndexForVisible: 0,
@@ -424,6 +474,7 @@ export default function ChatScreen() {
 						placeholder={`Ask about ${described.title}`}
 						autoFocus={autoFocus}
 						initialText={draft}
+						imageProjectId={target.type === 'project' ? target.projectId : null}
 						above={
 							chat.pendingChange ? (
 								<PendingChangeStrip
@@ -459,6 +510,16 @@ export default function ChatScreen() {
 			</View>
 		</ChatActionsContext>
 	);
+}
+
+/** The newest turn's work row, unless the person has written since (then no chip). */
+function latestWork(rows: readonly ChatRow[]): WorkRow | null {
+	for (let index = rows.length - 1; index >= 0; index -= 1) {
+		const row = rows[index]!;
+		if (row.kind === 'user') return null;
+		if (row.kind === 'work') return row;
+	}
+	return null;
 }
 
 const styles = StyleSheet.create({

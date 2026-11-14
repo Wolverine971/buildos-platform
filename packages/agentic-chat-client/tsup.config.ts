@@ -17,6 +17,8 @@ export default defineConfig({
 		'src/agent-chat-thinking-state.ts',
 		'src/agent-chat.types.ts',
 		'src/agent-chat-worker-ui-adapter.ts',
+		'src/agent-chat-turn-cards.ts',
+		'src/agent-chat-step-details.ts',
 		'src/agent-chat-workflow.fixture.ts'
 	],
 	format: ['cjs', 'esm'],

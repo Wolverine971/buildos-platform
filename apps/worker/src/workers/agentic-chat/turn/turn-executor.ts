@@ -563,6 +563,22 @@ export class AgenticChatTurnExecutor {
 							combined.signal
 						);
 						terminalContext.contextShift = contextShift ?? terminalContext.contextShift;
+						// What the finder added to the opening request, filed on the prompt
+						// snapshot (taken before the finder ran) so the turn can be replayed.
+						if (step.contextInjection) {
+							this.effects.recordContextInjection(
+								{
+									turnRunId: executionInput.claim.turnRunId,
+									userId: executionInput.claim.userId,
+									executionGeneration: executionInput.claim.executionGeneration,
+									promptSnapshotId: createStableAgenticChatPromptSnapshotIdV1(
+										executionInput.claim.turnRunId
+									),
+									record: step.contextInjection
+								},
+								combined.signal
+							);
+						}
 						// Carry (tasker 153): what the finder loaded from last turn, for the finalizer.
 						if (step.eventType === 'context_selection') {
 							const payload = step.eventPayload as Record<string, unknown>;

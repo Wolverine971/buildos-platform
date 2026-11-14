@@ -2284,6 +2284,8 @@ describe('table row move_onto_task', () => {
 			destination_project: { id: DESTINATION_ID, name: 'Destination' },
 			impact: { relationships_to_detach: 0 },
 			applied: { relationships_detached: 0 },
+			// Before → after for the chat's step row: the project it left and where it is now.
+			field_changes: [{ field: 'project', before: 'Source', after: 'Destination' }],
 			message: 'Moved task "Move me" to "Destination"',
 			context_shift: {
 				new_context: 'project',

@@ -1,6 +1,10 @@
 // apps/mobile/src/hooks/use-chat.ts
 // A chat screen's view of one session: its rows, sending, stopping, switching sessions.
-import { isBuildOsApiError, PROPOSAL_CARD_CLOSED_CODES } from '@buildos/api-client';
+import {
+	type AgentTurnAttachment,
+	isBuildOsApiError,
+	PROPOSAL_CARD_CLOSED_CODES
+} from '@buildos/api-client';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { LayoutAnimation } from 'react-native';
@@ -15,6 +19,7 @@ import {
 import { type ChatTarget, projectFocusFor, turnContextFor } from '@/lib/chat/context';
 import { type DemoState, demoHasSession, runDemoTurn, seedDemo } from '@/lib/chat/demo';
 import { newChatId } from '@/lib/chat/ids';
+import { attachedLine, type MessageImage } from '@/lib/chat/images';
 import { PENDING_CHANGE_FINISH_MESSAGE } from '@/lib/chat/proposals';
 import { getChatRuntime } from '@/lib/chat/runtime';
 import { createSessionStore } from '@/lib/chat/session-store';
@@ -60,6 +65,9 @@ function proposalErrorMessage(error: unknown): string {
 function animateRows() {
 	LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
 }
+
+/** Images riding on a send: what the turn references, and what the bubble shows meanwhile. */
+export type ChatSendImages = { attachments: AgentTurnAttachment[]; images: MessageImage[] };
 
 export type UseChatOptions = {
 	/** Dev only: a scripted store instead of the realtime runtime (see lib/chat/demo.ts). */
@@ -318,21 +326,24 @@ export function useChat(
 	);
 
 	const send = useCallback(
-		async (text: string) => {
+		async (text: string, attach?: ChatSendImages) => {
 			const message = text.trim();
-			if (!message) return;
+			const attachments = attach?.attachments ?? [];
+			if (!message && attachments.length === 0) return;
 			if (store.getState().activeTurn) {
 				store.setError(BUSY_MESSAGE);
 				return;
 			}
 			animateRows();
+			const shown = message || attachedLine(attachments.length);
+			const images = attach?.images;
 			if (!chat) {
-				demoCancel.current = runDemoTurn(store, message);
+				demoCancel.current = runDemoTurn(store, shown, { images });
 				return;
 			}
 			const clientTurnId = newChatId('turn');
 			const streamRunId = newChatId('stream');
-			store.addUserMessage({ clientTurnId, text: message });
+			store.addUserMessage({ clientTurnId, text: shown, images });
 			try {
 				const admission = await api.agent.sendTurn({
 					clientTurnId,
@@ -340,6 +351,7 @@ export function useChat(
 					sessionId: store.getState().sessionId,
 					context: turnContextFor(target),
 					message,
+					...(attachments.length ? { attachments } : {}),
 					projectFocus: projectFocusFor(target)
 				});
 				if (!store.getState().sessionId) {

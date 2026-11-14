@@ -26,8 +26,16 @@
 	import { ArrowDown, ArrowRight } from '$lib/icons/lucide';
 	import { continueInProjectTarget, type TurnCardProject } from './agent-chat-turn-cards';
 	import UserMessageText from './UserMessageText.svelte';
-	import { derivePhraseMarks, type PhraseMark } from './agent-chat-phrase-marks';
+	import {
+		PHRASE_LOOK_BACK,
+		derivePhraseMarksForTurn,
+		mergePhraseMarks,
+		type PhraseMark
+	} from './agent-chat-phrase-marks';
 	import { flyPhrase } from './phrase-flight';
+	import { deriveStepSettlements } from './agent-chat-step-outcomes';
+	import { sharedDocumentEditCardResolutions } from './shared-document-edit-card-state.svelte';
+	import { proposalCardResolutions, proposalCardUndos } from './proposal-card-state.svelte';
 	import { getProseClasses } from '$lib/utils/markdown';
 	import {
 		AgentMarkdownStreamRenderer,
@@ -174,50 +182,81 @@
 					: null
 		};
 	});
-	// Watch it sort (tasker 155): the words of each user message that a change came from,
-	// read from the turn that answered it. Keyed by the user message's id.
+	// What became of each change after its step ran (undone, approved, declined), from the
+	// cards below the reply. Step rows, the receipt and the lit phrases all read this, so none
+	// of them keeps claiming a change the person undid.
+	const stepSettlements = $derived(
+		deriveStepSettlements(messages, {
+			sharedEdit: (cardId) => sharedDocumentEditCardResolutions.get(cardId),
+			proposalResolution: (cardId) => proposalCardResolutions.get(cardId),
+			proposalUndo: (cardId) => proposalCardUndos.get(cardId)
+		})
+	);
+
+	// Watch it sort (tasker 155): the words of the user's messages that a change came from,
+	// read from the turn that answered them. Keyed by the user message's id. A quote is looked
+	// for in the message the turn answered, then in a few earlier user messages: a short
+	// answer to a clarifying question is acted on with words from the message before it.
 	const phraseMarks = $derived.by(() => {
 		const byUser = new Map<string, PhraseMark[]>();
+		const earlier: { id: string; content: string }[] = [];
 		for (let i = 0; i < messages.length; i++) {
 			const message = messages[i];
 			if (message?.type !== 'user' || !message.content) continue;
+			const own = { id: message.id, content: message.content };
 			for (let j = i + 1; j < messages.length; j++) {
 				const next = messages[j];
 				if (!next || next.type === 'user') break;
 				if (next.type !== 'thinking_block') continue;
-				const marks = derivePhraseMarks(
-					message.content,
-					(next as ThinkingBlockMessage).activities
+				const block = next as ThinkingBlockMessage;
+				const found = derivePhraseMarksForTurn(
+					[own, ...earlier.slice(0, PHRASE_LOOK_BACK)],
+					block.activities,
+					{
+						settled: stepSettlements.get(block.id),
+						turnActive: block.status === 'active'
+					}
 				);
-				if (marks.length) byUser.set(message.id, marks);
+				for (const [messageId, marks] of found) {
+					byUser.set(messageId, mergePhraseMarks(byUser.get(messageId) ?? [], marks));
+				}
 				break;
 			}
+			earlier.unshift(own);
 		}
 		return byUser;
 	});
 
 	// A phrase seen running in this view flies to its row when its write lands. Restored
-	// turns never fly: their phrases were never live here.
+	// turns never fly: their phrases were never live here. A held change never flies: nothing
+	// was saved. The phrase starts from wherever it is (this message or an earlier one); when
+	// it is off screen the row just glows.
 	const seenLive = new Set<string>();
 	const flown = new Set<string>();
 	let flightQueue = Promise.resolve();
 	$effect(() => {
-		const landing: PhraseMark[] = [];
+		const landing: { mark: PhraseMark; stepId: string }[] = [];
 		for (const marks of phraseMarks.values()) {
 			for (const mark of marks) {
-				if (mark.state === 'live') seenLive.add(mark.id);
-				else if (mark.state === 'landed' && seenLive.has(mark.id) && !flown.has(mark.id)) {
-					flown.add(mark.id);
-					landing.push(mark);
+				for (const stepId of mark.ids) {
+					if (mark.state === 'live') seenLive.add(stepId);
+					else if (
+						mark.state === 'landed' &&
+						seenLive.has(stepId) &&
+						!flown.has(stepId)
+					) {
+						flown.add(stepId);
+						landing.push({ mark, stepId });
+					}
 				}
 			}
 		}
 		if (!landing.length || !container) return;
 		const root = container;
-		for (const mark of landing) {
+		for (const { mark, stepId } of landing) {
 			flightQueue = flightQueue.then(async () => {
 				const source = root.querySelector(`[data-quote-mark="${CSS.escape(mark.id)}"]`);
-				const target = root.querySelector(`[data-step-slot="${CSS.escape(mark.id)}"]`);
+				const target = root.querySelector(`[data-step-slot="${CSS.escape(stepId)}"]`);
 				await flyPhrase(source, target, {
 					text: source?.textContent ?? '',
 					label: mark.label,
@@ -1181,6 +1220,7 @@
 							onToggleCollapse={onToggleThinkingBlock}
 							{onClientActionComplete}
 							{turnCards}
+							settled={stepSettlements.get(message.id)}
 						/>
 						{#if editCards}
 							{@render sharedEditCardGroup(editCards)}

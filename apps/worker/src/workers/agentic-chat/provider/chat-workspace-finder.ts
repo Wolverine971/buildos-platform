@@ -13,6 +13,7 @@ import {
 	type WorkspaceContextV1,
 	type WorkspaceFinderDecider,
 	type WorkspaceFinderReadClient,
+	contextEvidenceReadTools,
 	findWorkspaceContext,
 	loadContextFinderProject,
 	loadWorkspaceFinderProjects,
@@ -21,8 +22,9 @@ import {
 import {
 	type AgenticChatContextFinderPort,
 	type ChatContextFinding,
-	DOCUMENT_READ_TOOL_PINS,
 	allowsContextFinderUser,
+	contextEvidenceChips,
+	contextInjectionReceipt,
 	contextSelectionTransitionId,
 	turnConversation,
 	withFinderDeadline
@@ -100,8 +102,21 @@ export class ChatWorkspaceFinder implements AgenticChatContextFinderPort {
 			context,
 			injected: block !== null,
 			failure: outcome.ok ? null : outcome.failure,
-			elapsedMs: now() - started
+			elapsedMs: now() - started,
+			injection: contextInjectionReceipt(block)
 		});
+		// Every tool the rendered records tell the agent to read with (cards, tables, cut records).
+		const toolPins = block
+			? [
+					...new Set(
+						(context?.zoom ?? []).flatMap((entry) =>
+							entry.hop2 === 'ran' && entry.evidence?.status === 'selected'
+								? contextEvidenceReadTools(entry.evidence)
+								: []
+						)
+					)
+				]
+			: [];
 		return {
 			step: {
 				type: 'semantic',
@@ -112,12 +127,7 @@ export class ChatWorkspaceFinder implements AgenticChatContextFinderPort {
 				eventPayload: payload
 			},
 			injection: block,
-			...(block &&
-			context?.zoom?.some((entry) =>
-				entry.evidence?.full.some((item) => item.kind === 'document')
-			)
-				? { toolPins: DOCUMENT_READ_TOOL_PINS }
-				: {})
+			...(toolPins.length ? { toolPins } : {})
 		};
 	}
 }
@@ -157,6 +167,8 @@ export function buildWorkspaceSelectionPayload(input: {
 	injected: boolean;
 	failure: string | null;
 	elapsedMs: number;
+	/** Size and hash of the exact block added to the prompt. */
+	injection?: { chars: number; sha256: string } | null;
 }): Extract<AgenticChatProviderStepV1, { type: 'semantic' }>['eventPayload'] {
 	const { request, context } = input;
 	const selection = context?.selection;
@@ -176,18 +188,14 @@ export function buildWorkspaceSelectionPayload(input: {
 			hop2: 'hop2' in entry ? entry.hop2 : 'skipped'
 		};
 	});
+	// From the rendered evidence, like project chat: a record that did not fit is never a chip,
+	// and each chip says whether its text, a card or one line went in. A project whose records
+	// did not match shows its brief instead, so it has no chips.
 	const items = (context?.zoom ?? [])
 		.flatMap((entry) => {
-			if (entry.hop2 !== 'ran' || !entry.plan || !entry.evidence) return [];
-			const loaded = new Set(entry.evidence.full.map((item) => item.id));
-			return entry.plan.items.map((item) => ({
-				kind: item.kind,
-				id: item.id,
-				label: item.title,
-				tier: item.tier === 'full' && loaded.has(item.id) ? 'full' : 'summary',
-				p: item.p,
-				pinned: item.pinned === true,
-				sections: item.sections.map((section) => section.heading),
+			if (entry.hop2 !== 'ran' || entry.evidence?.status !== 'selected') return [];
+			return contextEvidenceChips(entry.evidence).map((chip) => ({
+				...chip,
 				project_id: entry.project.id
 			}));
 		})
@@ -220,7 +228,8 @@ export function buildWorkspaceSelectionPayload(input: {
 		counts: {
 			full: items.filter((item) => item.tier === 'full').length,
 			summary: items.filter((item) => item.tier === 'summary').length,
-			checked: context?.ranking.checked ?? 0
+			checked: context?.ranking.checked ?? 0,
+			carried: 0
 		},
 		ranker: context
 			? {
@@ -230,7 +239,12 @@ export function buildWorkspaceSelectionPayload(input: {
 					model: context.ranking.stage.model
 				}
 			: null,
-		elapsed_ms: input.elapsedMs
+		elapsed_ms: input.elapsedMs,
+		// The same record fields as project chat; global turns hand no snapshot or carry notes.
+		scope: null,
+		snapshot: null,
+		notes: null,
+		injection: input.injection ?? null
 	};
 }
 

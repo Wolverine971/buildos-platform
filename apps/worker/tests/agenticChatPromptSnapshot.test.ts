@@ -180,6 +180,142 @@ describe('Agentic Chat prompt snapshots', () => {
 	});
 });
 
+describe('Agentic Chat context-injection record', () => {
+	const record = {
+		version: 1 as const,
+		scope: 'project' as const,
+		injected: true,
+		text: 'Selected project evidence',
+		chars: 25,
+		sha256: sha256('Selected project evidence'),
+		status: 'selected',
+		failure: null,
+		messageIndex: 4,
+		toolPins: ['read_document_section'],
+		openingToolNames: ['get_project_overview', 'read_document_section']
+	};
+	const recordInput = {
+		turnRunId: TURN_RUN_ID,
+		userId: USER_ID,
+		executionGeneration: 2,
+		promptSnapshotId: PROMPT_SNAPSHOT_ID,
+		record
+	};
+
+	/** A fake `chat_prompt_snapshots` table with one optional row. */
+	function tableClient(row: { id: string; prompt_sections: unknown } | null) {
+		const filters: [string, string][] = [];
+		const updates: Record<string, unknown>[] = [];
+		const query = <Row>(rows: () => Row[]) => {
+			const builder = {
+				eq(column: string, value: string) {
+					filters.push([column, value]);
+					return builder;
+				},
+				select: () => builder,
+				then: (resolve: (value: { data: Row[]; error: null }) => unknown) =>
+					Promise.resolve({ data: rows(), error: null }).then(resolve)
+			};
+			return builder;
+		};
+		const from = vi.fn(() => ({
+			select: () => query(() => (row ? [row] : [])),
+			update: (values: Record<string, unknown>) => {
+				updates.push(values);
+				return query(() => (row ? [{ id: row.id }] : []));
+			}
+		}));
+		const client = { rpc: vi.fn(), from } as unknown as ConstructorParameters<
+			typeof SupabaseAgenticChatPromptSnapshotAdapter
+		>[0];
+		return { adapter: new SupabaseAgenticChatPromptSnapshotAdapter(client), filters, updates };
+	}
+
+	it('merges the exact injected text into the snapshot row, keeping other sections', async () => {
+		const { adapter, filters, updates } = tableClient({
+			id: PROMPT_SNAPSHOT_ID,
+			prompt_sections: { tool_surface: { kept: true } }
+		});
+
+		await expect(adapter.recordContextInjection(recordInput)).resolves.toEqual({
+			outcome: 'recorded'
+		});
+		expect(updates).toHaveLength(1);
+		const sections = updates[0]!.prompt_sections as Record<string, Record<string, unknown>>;
+		expect(sections.tool_surface).toEqual({ kept: true });
+		expect(sections.context_injection).toMatchObject({
+			version: 1,
+			scope: 'project',
+			injected: true,
+			text: 'Selected project evidence',
+			chars: 25,
+			sha256: sha256('Selected project evidence'),
+			status: 'selected',
+			failure: null,
+			message_index: 4,
+			tool_pins: ['read_document_section'],
+			opening_tool_names: ['get_project_overview', 'read_document_section'],
+			execution_generation: 2
+		});
+		expect(sha256(String(sections.context_injection!.text))).toBe(
+			sections.context_injection!.sha256
+		);
+		// Both the read and the write are scoped to this turn's own row.
+		expect(filters).toEqual([
+			['id', PROMPT_SNAPSHOT_ID],
+			['turn_run_id', TURN_RUN_ID],
+			['user_id', USER_ID],
+			['id', PROMPT_SNAPSHOT_ID],
+			['turn_run_id', TURN_RUN_ID],
+			['user_id', USER_ID]
+		]);
+	});
+
+	it('records a finder that injected nothing', async () => {
+		const { adapter, updates } = tableClient({ id: PROMPT_SNAPSHOT_ID, prompt_sections: null });
+		await adapter.recordContextInjection({
+			...recordInput,
+			record: {
+				...record,
+				injected: false,
+				text: null,
+				chars: 0,
+				sha256: null,
+				status: 'unavailable',
+				failure: 'deadline',
+				messageIndex: null,
+				toolPins: []
+			}
+		});
+		expect(
+			(updates[0]!.prompt_sections as Record<string, unknown>).context_injection
+		).toMatchObject({ injected: false, text: null, status: 'unavailable', failure: 'deadline' });
+	});
+
+	it('writes nothing when the turn has no snapshot row or no table access', async () => {
+		const missing = tableClient(null);
+		await expect(missing.adapter.recordContextInjection(recordInput)).resolves.toEqual({
+			outcome: 'snapshot_missing'
+		});
+		expect(missing.updates).toHaveLength(0);
+
+		const rpcOnly = new SupabaseAgenticChatPromptSnapshotAdapter({ rpc: vi.fn() });
+		await expect(rpcOnly.recordContextInjection(recordInput)).resolves.toEqual({
+			outcome: 'unsupported'
+		});
+	});
+
+	it('rejects a snapshot id that is not the turn identity', async () => {
+		const { adapter } = tableClient({ id: PROMPT_SNAPSHOT_ID, prompt_sections: {} });
+		await expect(
+			adapter.recordContextInjection({
+				...recordInput,
+				promptSnapshotId: '90000000-0000-4000-8000-000000000009'
+			})
+		).rejects.toBeInstanceOf(AgenticChatPromptSnapshotProtocolError);
+	});
+});
+
 function sha256(value: string): string {
 	return createHash('sha256').update(value, 'utf8').digest('hex');
 }

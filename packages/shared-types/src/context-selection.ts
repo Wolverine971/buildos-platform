@@ -5,6 +5,12 @@
 // chat-workspace-finder.ts, which adds the projects the message is about (`projects`,
 // `workspace`) and a project id per record. It carries ids, titles, tiers and section headings
 // only; never record text.
+//
+// The event is the turn's honest record of what the model was handed (2026-11-13): each chip
+// says whether its text, a card or one line went into the prompt (`given`), and the event
+// names what went in without a chip (`snapshot`, `notes`) and the size and hash of the exact
+// text added (`injection`). The parser always fills the additions (null when absent); they are
+// optional on the type only so rows and fixtures from before them still fit.
 
 export type ContextSelectionKindV1 = 'document' | 'task' | 'goal' | 'plan' | 'milestone' | 'risk';
 
@@ -12,10 +18,19 @@ export type ContextSelectionChipV1 = {
 	kind: ContextSelectionKindV1;
 	id: string;
 	label: string;
-	/** full: its content (or best sections) was selected; summary: one line only. */
+	/** full: handed as text or as a card; summary: one line only. Kept for older clients. */
 	tier: 'full' | 'summary';
+	/**
+	 * What the prompt holds for this record. text: its text (a record, a short document shown
+	 * whole, carried sections). card: a summary, headings and flagged anchors, none of the
+	 * document's text. line: a one-line description. Absent on rows stored before 2026-11-13.
+	 */
+	given?: 'text' | 'card' | 'line';
+	/** `given: 'text'` only: the text was cut; the prompt holds its beginning or some sections. */
+	partial?: true;
 	p: number | null;
 	pinned: boolean;
+	/** Section headings flagged on the card, or loaded as text. */
 	sections: string[];
 	/** Global turns: the project this record belongs to. */
 	project_id: string | null;
@@ -55,8 +70,18 @@ export type ContextSelectionEventV1 = {
 	workspace: ContextSelectionWorkspaceV1 | null;
 	projects: ContextSelectionProjectV1[];
 	items: ContextSelectionChipV1[];
-	counts: { full: number; summary: number; checked: number };
+	/** full and summary count this turn's picks only; carried items are counted apart. */
+	counts: { full: number; summary: number; checked: number; carried?: number };
 	elapsed_ms: number;
+	/** Project turns: whether the message was judged to be about the project as a whole. */
+	scope?: 'broad' | 'specific' | null;
+	/** A whole-project snapshot handed on a broad question; it has no chips. */
+	snapshot?: { chars: number } | null;
+	/** Carry lines handed without a chip: records changed since last turn, and ones named as
+	 * looked at before but not loaded. */
+	notes?: { changed: number; not_loaded: number } | null;
+	/** Size and SHA-256 of the exact text added to the prompt; the text is stored with the turn. */
+	injection?: { chars: number; sha256: string } | null;
 };
 
 const KINDS = new Set<ContextSelectionKindV1>([
@@ -71,6 +96,8 @@ const MAX_ITEMS = 30;
 const MAX_PROJECTS = 8;
 const HOP2 = new Set(['ran', 'skipped', 'deadline', 'failed']);
 const SCOPES = new Set(['projects', 'portfolio', 'none']);
+const GIVEN = new Set(['text', 'card', 'line']);
+const SHA256 = /^[0-9a-f]{64}$/;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -99,6 +126,10 @@ export function parseContextSelectionEventV1(value: unknown): ContextSelectionEv
 			id: raw.id,
 			label: raw.label,
 			tier: raw.tier === 'full' ? 'full' : 'summary',
+			...(GIVEN.has(raw.given as string)
+				? { given: raw.given as NonNullable<ContextSelectionChipV1['given']> }
+				: {}),
+			...(raw.partial === true && raw.given === 'text' ? { partial: true as const } : {}),
 			p: typeof raw.p === 'number' && Number.isFinite(raw.p) ? raw.p : null,
 			pinned: raw.pinned === true,
 			sections: Array.isArray(raw.sections)
@@ -135,6 +166,19 @@ export function parseContextSelectionEventV1(value: unknown): ContextSelectionEv
 		: null;
 	const counts = isRecord(value.counts) ? value.counts : {};
 	const count = (n: unknown) => (typeof n === 'number' && Number.isFinite(n) ? n : 0);
+	const snapshot =
+		isRecord(value.snapshot) && count(value.snapshot.chars) > 0
+			? { chars: count(value.snapshot.chars) }
+			: null;
+	const notes = isRecord(value.notes)
+		? { changed: count(value.notes.changed), not_loaded: count(value.notes.not_loaded) }
+		: null;
+	const injection =
+		isRecord(value.injection) &&
+		typeof value.injection.sha256 === 'string' &&
+		SHA256.test(value.injection.sha256)
+			? { chars: count(value.injection.chars), sha256: value.injection.sha256 }
+			: null;
 	return {
 		type: 'context_selection',
 		version: 1,
@@ -152,8 +196,14 @@ export function parseContextSelectionEventV1(value: unknown): ContextSelectionEv
 		counts: {
 			full: count(counts.full),
 			summary: count(counts.summary),
-			checked: count(counts.checked)
+			checked: count(counts.checked),
+			// Rows stored before the split counted carried chips inside `full`.
+			carried: count(counts.carried)
 		},
-		elapsed_ms: count(value.elapsed_ms)
+		elapsed_ms: count(value.elapsed_ms),
+		scope: value.scope === 'broad' || value.scope === 'specific' ? value.scope : null,
+		snapshot,
+		notes: notes && (notes.changed > 0 || notes.not_loaded > 0) ? notes : null,
+		injection
 	};
 }

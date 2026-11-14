@@ -89,10 +89,10 @@ export function buildWebNavigateTrailFromResult(result: unknown): ToolProgressSt
 			steps.push({
 				index: steps.length,
 				kind: 'decided',
-				message: `Jev: not here${answer ? ` (${answer})` : ''} → "${clicked.label}" (${percent(clicked.probability)})`
+				message: `Not on this page → followed "${clicked.label}"`
 			});
 		} else if (answer) {
-			steps.push({ index: steps.length, kind: 'decided', message: `Jev: answer ${answer}` });
+			steps.push({ index: steps.length, kind: 'decided', message: 'Found the answer' });
 		}
 	}
 	const outcome = record.outcome;

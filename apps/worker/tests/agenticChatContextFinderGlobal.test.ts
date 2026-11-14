@@ -1,4 +1,5 @@
 // apps/worker/tests/agenticChatContextFinderGlobal.test.ts
+import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import {
 	ChatWorkspaceFinder,
@@ -108,7 +109,14 @@ const receipt = {
 };
 
 /** Hop 1 answers scope + dig + per-project scores; hop 2 scores records by key prefix. */
-function fakeDecider(hop1: { scope: string; dig: number; redline: number; ninetakes: number }) {
+function fakeDecider(hop1: {
+	scope: string;
+	dig: number;
+	redline: number;
+	ninetakes: number;
+	/** "Brings new things to save"; left out of the answers when undefined. */
+	save?: number;
+}) {
 	const decide = vi.fn(
 		async (request: { state: Record<string, unknown>; questions: Record<string, unknown> }) => {
 			const answers: Record<string, unknown> = {};
@@ -120,6 +128,7 @@ function fakeDecider(hop1: { scope: string; dig: number; redline: number; nineta
 					confidence: 0.9
 				};
 				answers.dig = { type: 'noul', noul: hop1.dig };
+				if (hop1.save !== undefined) answers.save = { type: 'noul', noul: hop1.save };
 				const cards = request.state.projects as { ref: string; name: string }[];
 				for (const card of cards)
 					answers[`p_${card.ref}`] = {
@@ -203,6 +212,22 @@ describe('ChatWorkspaceFinder', () => {
 		const items = (payload as { items: { id: string; project_id: string }[] }).items;
 		expect(items.map((item) => item.id)).toContain(DISCOVERY);
 		expect(items.every((item) => item.project_id === REDLINE)).toBe(true);
+		// The same honest record as project chat: what each chip put in the prompt, and the
+		// size and hash of the block.
+		expect(
+			(items as { given?: string }[]).every((item) =>
+				['text', 'card', 'line'].includes(item.given ?? '')
+			)
+		).toBe(true);
+		expect(payload).toMatchObject({
+			scope: null,
+			snapshot: null,
+			notes: null,
+			injection: {
+				chars: found.injection!.length,
+				sha256: createHash('sha256').update(found.injection!, 'utf8').digest('hex')
+			}
+		});
 		expect(JSON.stringify(payload)).not.toContain('$1,000 covers');
 		expect(found.injection).toContain('# Project: Redline Training Company Website');
 		expect(found.injection).toContain('$1,000 covers design');
@@ -238,6 +263,40 @@ describe('ChatWorkspaceFinder', () => {
 		const payload = found.step.type === 'semantic' ? found.step.eventPayload : null;
 		expect(payload).toMatchObject({ visible: false, injected: false, status: 'empty' });
 		expect(found.injection).toBeNull();
+	});
+
+	// 2026-11-08: a brain dump that named a project got scope `none`, so the chat had no
+	// project context and asked where to file. A capture now gets its likely homes.
+	it('picks and shows likely homes for a brain dump the scope calls none', async () => {
+		const { decide, decider } = fakeDecider({
+			scope: 'none',
+			dig: 0.2,
+			save: 0.9,
+			redline: 0.9,
+			ninetakes: 0.1
+		});
+		const finder = new ChatWorkspaceFinder({
+			userIds: [USER_ID],
+			client: fakeClient().client,
+			decider
+		});
+		const found = (await finder.find(request()))!;
+		// Homes only: no record search inside the project.
+		expect(decide).toHaveBeenCalledTimes(1);
+		const payload = found.step.type === 'semantic' ? found.step.eventPayload : null;
+		expect(payload).toMatchObject({
+			visible: true,
+			injected: true,
+			status: 'selected',
+			workspace: { scope: 'projects', dig: false }
+		});
+		expect((payload as { projects: unknown[] }).projects).toHaveLength(1);
+		expect(found.injection).toContain('appears to bring new things to save');
+		expect(found.injection).toContain('The project below is the likely home');
+		expect(found.injection).toContain('# Project: ');
+		expect(found.injection).toContain(
+			`- task ${OFFER_TASK} Send Logan the Redline website offer`
+		);
 	});
 
 	it('fails open when the project cards cannot be loaded', async () => {

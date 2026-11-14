@@ -8,6 +8,7 @@ import {
 	previewDocumentArchiveCalls
 } from './document-archive-preview';
 import {
+	type AgenticChatContextInjectionRecordV1,
 	type AgenticChatPreparedProviderInvocationV1,
 	AgenticChatProviderExecutionError,
 	type AgenticChatProviderInputV1,
@@ -34,8 +35,9 @@ import {
 } from './forced-synthesis';
 import { canonicalError, canonicalFinishedReason, normalizeUsage, providerError } from './protocol';
 import { throwIfAborted } from '../shared/abortable-deadline';
+import { sha256Hex } from '../shared/identity-hash';
 import { combineAbortSignals } from '../turn/executor-helpers';
-import type { AgenticChatContextFinderPort } from './chat-context-finder';
+import type { AgenticChatContextFinderPort, ChatContextFinding } from './chat-context-finder';
 import {
 	type AgenticChatDocumentEditPreviewPort,
 	previewDocumentEditCalls
@@ -427,6 +429,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				state.writeCommission.recordTurnRulesPlaybook(turnRules.playbookSkillId);
 				request = appendWebResearchRules(request);
 				const found = finding ? await finding : null;
+				const injectionIndex = found?.injection ? request.messages.length : null;
 				if (found?.injection) request = appendSystemInstruction(request, found.injection);
 				// Selection ran before the context existed; keep what its cards are read with.
 				request = mountToolPins(request, surface, found?.toolPins);
@@ -439,7 +442,16 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					openingPass = startProviderPass(
 						this.providerPass({ ...request, signal: openingScope.signal }, state)
 					);
-					yield found.step;
+					// The prompt snapshot was taken at preparation, before the finder ran;
+					// this is the record of what the finder then added (or failed to).
+					yield {
+						...found.step,
+						contextInjection: buildContextInjectionRecord(
+							request,
+							found,
+							injectionIndex
+						)
+					};
 				}
 			}
 			openingConsumed = true;
@@ -868,4 +880,32 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			if (!pendingExecution) state.release();
 		}
 	}
+}
+
+/**
+ * What the context finder added to the opening request, for the turn's prompt snapshot. The
+ * text is the exact injected string, so its hash can be checked against the
+ * `context_selection` event; a finder that timed out or found nothing records that too.
+ */
+export function buildContextInjectionRecord(
+	request: ClientRequest,
+	found: ChatContextFinding,
+	messageIndex: number | null
+): AgenticChatContextInjectionRecordV1 {
+	const text = found.injection || null;
+	const payload = found.step.eventPayload;
+	const mounted = new Set(request.tools.map((tool) => tool.function.name));
+	return {
+		version: 1,
+		scope: request.projectId ? 'project' : 'global',
+		injected: text !== null,
+		text,
+		chars: text?.length ?? 0,
+		sha256: text === null ? null : sha256Hex(text),
+		status: typeof payload.status === 'string' ? payload.status : null,
+		failure: typeof payload.failure === 'string' ? payload.failure : null,
+		messageIndex: text === null ? null : messageIndex,
+		toolPins: (found.toolPins ?? []).filter((name) => mounted.has(name)),
+		openingToolNames: [...mounted]
+	};
 }

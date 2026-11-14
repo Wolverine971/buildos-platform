@@ -1,4 +1,5 @@
 // apps/worker/tests/agenticChatTurnProvider.test.ts
+import { createHash } from 'node:crypto';
 import {
 	ONTOLOGY_WRITE_TOOLS,
 	getGatewaySurfaceForContextType
@@ -639,6 +640,115 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			expect(client.stream.mock.calls[0]?.[0].signal.aborted).toBe(false);
 			expect(parent.signal.aborted).toBe(false);
 			expect(capacity.getSnapshot().activeRequests).toBe(0);
+		} finally {
+			invocation.release();
+		}
+	});
+
+	it('records what the finder injected on the context-selection step', async () => {
+		const client = clientWith([
+			{ type: 'text', content: 'Visible answer' },
+			{ type: 'done', finishedReason: 'stop' }
+		]);
+		const injection = 'Selected project evidence — café ☕';
+		const adapter = new AgenticChatTurnProviderAdapter({
+			client,
+			capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 }),
+			contextFinder: {
+				find: async () => ({
+					injection,
+					step: {
+						type: 'semantic',
+						transitionId: 'context-selection',
+						phase: 'stream',
+						eventType: 'context_selection',
+						currentActivity: 'Working from project context',
+						eventPayload: { type: 'context_selection', status: 'selected', failure: null }
+					}
+				})
+			}
+		});
+		const invocation = await adapter.prepare({
+			executionInput: executionInput(),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		try {
+			const [step] = await collect(invocation.stream());
+			if (step?.type !== 'semantic') throw new Error('expected the context-selection step');
+			const record = step.contextInjection;
+			const opening = client.stream.mock.calls[0]?.[0];
+			expect(record).toMatchObject({
+				version: 1,
+				injected: true,
+				text: injection,
+				chars: injection.length,
+				sha256: createHash('sha256').update(injection, 'utf8').digest('hex'),
+				status: 'selected',
+				failure: null
+			});
+			// The record points at the exact message the model received.
+			expect(opening?.messages[record!.messageIndex!]).toEqual({
+				role: 'system',
+				content: injection
+			});
+			expect(record?.openingToolNames).toEqual(
+				opening?.tools.map((tool) => tool.function.name)
+			);
+			// The record never rides in the published payload.
+			expect(step.eventPayload).not.toHaveProperty('contextInjection');
+			expect(JSON.stringify(step.eventPayload)).not.toContain(injection);
+		} finally {
+			invocation.release();
+		}
+	});
+
+	it('records that nothing was injected when the finder timed out', async () => {
+		const client = clientWith([
+			{ type: 'text', content: 'Visible answer' },
+			{ type: 'done', finishedReason: 'stop' }
+		]);
+		const adapter = new AgenticChatTurnProviderAdapter({
+			client,
+			capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 }),
+			contextFinder: {
+				find: async () => ({
+					injection: null,
+					step: {
+						type: 'semantic',
+						transitionId: 'context-selection',
+						phase: 'stream',
+						eventType: 'context_selection',
+						currentActivity: 'Working from project context',
+						eventPayload: {
+							type: 'context_selection',
+							status: 'unavailable',
+							failure: 'deadline'
+						}
+					}
+				})
+			}
+		});
+		const invocation = await adapter.prepare({
+			executionInput: executionInput(),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		try {
+			const [step] = await collect(invocation.stream());
+			if (step?.type !== 'semantic') throw new Error('expected the context-selection step');
+			expect(step.contextInjection).toMatchObject({
+				injected: false,
+				text: null,
+				chars: 0,
+				sha256: null,
+				status: 'unavailable',
+				failure: 'deadline',
+				messageIndex: null,
+				toolPins: []
+			});
 		} finally {
 			invocation.release();
 		}

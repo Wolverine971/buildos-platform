@@ -385,7 +385,7 @@ describe('web_navigate progress projection', () => {
 	it('rebuilds the step description without link labels or titles', () => {
 		const stored = projectAgenticChatToolProgressForStorageV1('web_navigate', {
 			message:
-				'Jev: not here (4%) → "Help with my order" (91%), else "Contact us" 3% · 310ms',
+				'Not on this page (4%) → "Help with my order" (91%), else "Contact us" 3% · 310ms',
 			data: {
 				kind: 'decided',
 				page: 1,
@@ -400,7 +400,7 @@ describe('web_navigate progress projection', () => {
 				ms: 310
 			}
 		});
-		expect(stored.message).toBe('Jev: not here (4%) → next link (91%) · 310ms');
+		expect(stored.message).toBe('Not on this page (4%) → next link (91%) · 310ms');
 		expect(stored.data).toEqual({
 			kind: 'decided',
 			page: 1,

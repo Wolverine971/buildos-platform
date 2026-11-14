@@ -12,16 +12,21 @@
 // The off-ramp (rank.ts): Jev also answers whether the request is about the project as a whole.
 // A broad request loads only records Jev is sure about plus a whole-project snapshot (snapshot.ts),
 // so "does everything look good?" no longer spends rounds fetching overview, cleanup and lists.
+import { createHash } from 'node:crypto';
 import {
+	type ContextCardSectionV1,
 	type ContextEvidenceV1,
 	type ContextFinderDecider,
 	type ContextFinderReadClient,
 	type ContextFinderResultV1,
 	type ContextPlanV1,
 	buildContextFinderEntities,
+	contextEvidenceReadTools,
+	contextRecordReadTools,
 	findProjectContext,
 	loadContextFinderPlanText,
 	loadContextFinderProject,
+	markCarriedDocuments,
 	renderContextEvidenceBlock,
 	renderProjectSnapshotBlock,
 	startHereIds,
@@ -50,14 +55,25 @@ export type ChatContextFinding = {
 	/** Evidence block to append to the opening request; null when nothing was found. */
 	injection: string | null;
 	/**
-	 * Tools the injection needs mounted. Documents arrive as cards that say "read the flagged
-	 * sections", and tool selection runs before the cards exist, so it can drop the reader.
+	 * Tools the injection needs mounted: every tool its text tells the agent to read with (the
+	 * section reader for cards and one-line documents, the table tools, a cut record's detail
+	 * tool, and the readers of records the carry note names). Tool selection runs before the
+	 * injection exists, so it can drop them.
 	 */
 	toolPins?: readonly string[];
 };
 
-/** The tools a document card is read with. */
-export const DOCUMENT_READ_TOOL_PINS = ['get_document_outline', 'read_document_section'] as const;
+/** Size and SHA-256 of the exact text a finder adds to the prompt (the turn stores the text). */
+export function contextInjectionReceipt(
+	injection: string | null
+): { chars: number; sha256: string } | null {
+	return injection
+		? {
+				chars: injection.length,
+				sha256: createHash('sha256').update(injection, 'utf8').digest('hex')
+			}
+		: null;
+}
 
 export type AgenticChatContextFinderPort = {
 	find(request: AgenticChatTurnProviderRequestV1): Promise<ChatContextFinding | null>;
@@ -74,6 +90,11 @@ export const CHAT_CONTEXT_FINDER_JEV_TIMEOUT_MS = 1_500;
 /** Send a duplicate Jev request when the first has not answered by then (JevClient hedge). */
 export const CHAT_CONTEXT_FINDER_HEDGE_MS = 700;
 const MAX_CHIPS = 30;
+/**
+ * The carry read (one indexed row) gets this long, counted from the start of the turn's finder
+ * work, so a slow read costs this turn its carry and never the rest of the finder's deadline.
+ */
+export const CHAT_CONTEXT_FINDER_CARRY_READ_MS = 1_200;
 /**
  * The cleanup set and the user's timezone load beside the ranking; a broad turn waits at
  * most this much longer for them, then goes out with what it has.
@@ -92,8 +113,28 @@ export type ChatContextFinderWorkingSetLoader = (input: {
 	userId: string;
 }) => Promise<unknown>;
 
-/** What the turn carried in from the last one: loaded items, and the set for the finalizer. */
-export type ChatTurnCarry = { loaded: CarryItem[]; carryIn: TurnWorkingSetV1 };
+/**
+ * What the turn carried in from the last one: loaded items, the set for the finalizer, and how
+ * many records the block names without loading (shown as notes, not chips).
+ */
+export type ChatTurnCarry = {
+	loaded: CarryItem[];
+	carryIn: TurnWorkingSetV1;
+	notes?: { changed: number; notLoaded: number };
+};
+
+/** The value, or null after `ms`. Never rejects. */
+function withinMs<T>(work: Promise<T>, ms: number): Promise<T | null> {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	return Promise.race([
+		work.catch(() => null),
+		new Promise<null>((resolve) => {
+			timer = setTimeout(() => resolve(null), ms);
+		})
+	]).finally(() => {
+		if (timer) clearTimeout(timer);
+	});
+}
 
 export class ChatContextFinder implements AgenticChatContextFinderPort {
 	constructor(
@@ -110,7 +151,12 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 			 * Carry (tasker 153): users whose follow-ups start with what the last turn used,
 			 * already loaded. Ids or 'all'; absent or empty carries for nobody.
 			 */
-			carry?: { userIds: readonly string[] | 'all'; load: ChatContextFinderWorkingSetLoader };
+			carry?: {
+				userIds: readonly string[] | 'all';
+				load: ChatContextFinderWorkingSetLoader;
+				/** Limit for the carry read; defaults to CHAT_CONTEXT_FINDER_CARRY_READ_MS. */
+				readMs?: number;
+			};
 			deadlineMs?: number;
 			jevTimeoutMs?: number;
 			now?: () => number;
@@ -133,14 +179,16 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 		let snapshot: { block: string; cleanup: boolean } | null = null;
 		let carried: (ChatTurnCarry & { block: string }) | null = null;
 		const carryOption = this.options.carry;
-		// Read beside the project load; a failed read only means this turn starts fresh.
+		// Read beside the project load, with its own short limit; a failed or slow read only
+		// means this turn starts fresh.
 		const priorSet =
 			carryOption &&
 			request.sessionId &&
 			allowsContextFinderUser(carryOption.userIds, request.userId)
-				? carryOption
-						.load({ sessionId: request.sessionId, userId: request.userId })
-						.catch(() => null)
+				? withinMs(
+						carryOption.load({ sessionId: request.sessionId, userId: request.userId }),
+						carryOption.readMs ?? CHAT_CONTEXT_FINDER_CARRY_READ_MS
+					)
 				: null;
 		const outcome = await withFinderDeadline(request, deadlineMs, async (signal) => {
 			const project = await loadContextFinderProject(this.options.client, projectId, signal);
@@ -150,7 +198,14 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 			const carryEntities = set ? buildContextFinderEntities(project) : null;
 			const carryPlan =
 				set && carryEntities ? planTurnCarry({ set, entities: carryEntities }) : null;
-			const carriedIds = new Set((carryPlan?.plan.load ?? []).map(({ item }) => item.id));
+			// Carried records are already in the prompt whole; don't rank them again. A carried
+			// document holds only the sections read before, so it stays rankable: a follow-up
+			// about another part of it still gets its card and flags.
+			const carriedIds = new Set(
+				(carryPlan?.plan.load ?? [])
+					.filter(({ item }) => item.kind !== 'document')
+					.map(({ item }) => item.id)
+			);
 			const carryText =
 				carryPlan && carryEntities
 					? loadContextFinderPlanText({
@@ -188,7 +243,6 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 				timeoutMs: this.options.jevTimeoutMs ?? CHAT_CONTEXT_FINDER_JEV_TIMEOUT_MS,
 				// The off-ramp (rank.ts): is this about the project as a whole?
 				askBroad: true,
-				// Carried records are already in the prompt; don't rank them again.
 				...(carriedIds.size
 					? { skipIds: new Set([...startHereIds(project), ...carriedIds]) }
 					: {}),
@@ -224,14 +278,24 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 			};
 		});
 		const failure = outcome.ok ? null : outcome.failure;
+		// The set the finalizer fades. When the finder missed its deadline or failed, or the
+		// carry could not be rendered, last turn's set passes through unchanged: a slow turn
+		// must not erase what the conversation was working from.
+		let carryIn: TurnWorkingSetV1 | null = null;
 		if (outcome.ok) {
 			result = outcome.value.found;
-			evidence = result.evidence;
 			plan = result.plan;
 			snapshot = outcome.value.snapshot;
 			const carry = outcome.value.carry;
 			if (carry?.block) carried = carry;
+			if (carry) carryIn = carry.carryIn;
+			// A picked document whose sections are carried says so on its card.
+			evidence = markCarriedDocuments(
+				result.evidence,
+				carriedDocumentSections(carried?.loaded ?? [])
+			);
 		} else evidence = unavailableContextEvidence(null);
+		if (!carryIn && priorSet) carryIn = readTurnWorkingSetV1(await priorSet, projectId);
 
 		const selected = evidence.status === 'selected';
 		const parts = [
@@ -250,8 +314,18 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 			scope: result?.scope ?? null,
 			broadP: result?.ranking?.broadP ?? null,
 			snapshot: snapshot ? { chars: snapshot.block.length, cleanup: snapshot.cleanup } : null,
-			carried
+			carried,
+			carryIn,
+			injection: contextInjectionReceipt(injection)
 		});
+		const toolPins = injection
+			? [
+					...new Set([
+						...(selected ? contextEvidenceReadTools(evidence) : []),
+						...(carried ? carryReadTools(carried) : [])
+					])
+				]
+			: [];
 		return {
 			step: {
 				type: 'semantic',
@@ -262,13 +336,42 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 				eventPayload: payload
 			},
 			injection,
-			...(injection &&
-			(carried?.loaded.some((item) => item.kind === 'document') ||
-				(selected && evidence.full.some((item) => item.kind === 'document')))
-				? { toolPins: DOCUMENT_READ_TOOL_PINS }
-				: {})
+			...(toolPins.length ? { toolPins } : {})
 		};
 	}
+}
+
+/** Carried documents by id: the sections whose text is loaded, or 'whole'. */
+function carriedDocumentSections(
+	loaded: readonly CarryItem[]
+): Map<string, ContextCardSectionV1[] | 'whole'> {
+	return new Map(
+		loaded
+			.filter((item) => item.kind === 'document')
+			.map((item): [string, ContextCardSectionV1[] | 'whole'] => [
+				item.id,
+				item.anchors.length
+					? item.anchors.map((anchor, i) => ({
+							heading: item.headings[i] ?? anchor,
+							anchor
+						}))
+					: 'whole'
+			])
+	);
+}
+
+/**
+ * Readers for what the carry block names: loaded documents (the agent may want another
+ * section) and every record listed as changed or not loaded ("read it if you need it").
+ */
+function carryReadTools(carried: ChatTurnCarry): string[] {
+	const loadedIds = new Set(carried.loaded.map((item) => item.id));
+	const kinds = new Set([
+		...carried.loaded.filter((item) => item.kind === 'document').map((item) => item.kind),
+		...carried.carryIn.carry.filter((item) => !loadedIds.has(item.id)).map((item) => item.kind),
+		...carried.carryIn.scanned.map((item) => item.kind)
+	]);
+	return [...kinds].flatMap((kind) => [...contextRecordReadTools(kind)]);
 }
 
 /**
@@ -350,6 +453,58 @@ export async function withFinderDeadline<T>(
 	}
 }
 
+type SelectionChip = {
+	kind: ContextEvidenceV1['full'][number]['kind'];
+	id: string;
+	label: string;
+	tier: 'full' | 'summary';
+	given: 'text' | 'card' | 'line';
+	partial?: true;
+	p: number | null;
+	pinned: boolean;
+	sections: string[];
+	carried?: true;
+	project_id?: string;
+};
+
+/**
+ * Chips for what the evidence block actually holds, built from the rendered evidence (never the
+ * plan, which also lists items that did not fit): `text` for a record, a short document shown
+ * whole or loaded sections, `card` for a document card, `line` for a one-line summary.
+ */
+export function contextEvidenceChips(evidence: ContextEvidenceV1): SelectionChip[] {
+	const full = evidence.full.map((item): SelectionChip => {
+		const given =
+			item.given ?? (item.excerpts.length || item.card?.text ? 'text' : ('card' as const));
+		return {
+			kind: item.kind,
+			id: item.id,
+			label: item.title,
+			tier: 'full',
+			given,
+			...(given === 'text' && item.partial ? { partial: true as const } : {}),
+			p: item.p,
+			pinned: item.pinned === true,
+			sections: item.excerpts.length
+				? item.excerpts.flatMap((excerpt) => (excerpt.heading ? [excerpt.heading] : []))
+				: (item.card?.flagged ?? []).map((section) => section.heading)
+		};
+	});
+	const lines = evidence.summaries.map(
+		(item): SelectionChip => ({
+			kind: item.kind,
+			id: item.id,
+			label: item.title,
+			tier: 'summary',
+			given: 'line',
+			p: item.p,
+			pinned: false,
+			sections: []
+		})
+	);
+	return [...full, ...lines];
+}
+
 /**
  * Chips carry ids, titles, tiers and section headings only: no record text. Titles stay nested
  * in `items`, because the timeline turns top-level title/summary/message/detail into a step.
@@ -368,29 +523,41 @@ export function buildContextSelectionPayload(input: {
 	snapshot?: { chars: number; cleanup: boolean } | null;
 	/** What the turn carried in from the last one (tasker 153). */
 	carried?: ChatTurnCarry | null;
+	/**
+	 * The set the finalizer fades. Defaults to `carried.carryIn`; set on its own when the carry
+	 * did not render (finder deadline or failure), so last turn's set is not erased.
+	 */
+	carryIn?: TurnWorkingSetV1 | null;
+	/** Size and hash of the exact text added to the prompt. */
+	injection?: { chars: number; sha256: string } | null;
 }): Extract<AgenticChatProviderStepV1, { type: 'semantic' }>['eventPayload'] {
 	const { request, evidence, plan } = input;
-	const loaded = new Set(evidence.full.map((item) => item.id));
-	const carriedChips = (input.carried?.loaded ?? []).map((item) => ({
-		kind: item.kind,
-		id: item.id,
-		label: item.title,
-		tier: 'full' as const,
-		p: null,
-		pinned: false,
-		sections: item.headings,
-		carried: true
-	}));
-	const ranked = (plan?.items ?? []).slice(0, MAX_CHIPS).map((item) => ({
-		kind: item.kind,
-		id: item.id,
-		label: item.title,
-		tier: item.tier === 'full' && loaded.has(item.id) ? 'full' : 'summary',
-		p: item.p,
-		pinned: item.pinned === true,
-		sections: item.sections.map((section) => section.heading)
-	}));
-	const items = [...carriedChips, ...ranked].slice(0, MAX_CHIPS);
+	const ranked = evidence.status === 'selected' ? contextEvidenceChips(evidence) : [];
+	const rankedById = new Map(ranked.map((chip) => [chip.id, chip]));
+	// One chip per record: a carried document that was also picked keeps its carried chip (its
+	// text is in the prompt) and gains the sections flagged on its card.
+	const carriedChips = (input.carried?.loaded ?? []).map((item): SelectionChip => {
+		const also = rankedById.get(item.id);
+		return {
+			kind: item.kind,
+			id: item.id,
+			label: item.title,
+			tier: 'full',
+			given: 'text',
+			p: also?.p ?? null,
+			pinned: false,
+			sections: [
+				...item.headings,
+				...(also?.sections ?? []).filter((heading) => !item.headings.includes(heading))
+			],
+			carried: true
+		};
+	});
+	const carriedIds = new Set(carriedChips.map((chip) => chip.id));
+	const picked = ranked.filter((chip) => !carriedIds.has(chip.id));
+	const items = [...carriedChips, ...picked].slice(0, MAX_CHIPS);
+	const notes = input.carried?.notes;
+	const carryIn = input.carryIn ?? input.carried?.carryIn ?? null;
 	return {
 		type: 'context_selection',
 		version: 1,
@@ -404,10 +571,12 @@ export function buildContextSelectionPayload(input: {
 		turn_run_id: request.turnRunId,
 		project_id: request.projectId,
 		items,
+		// Picks only: carried items are counted apart, never inside `full`.
 		counts: {
-			full: items.filter((item) => item.tier === 'full').length,
+			full: items.filter((item) => item.tier === 'full' && !item.carried).length,
 			summary: items.filter((item) => item.tier === 'summary').length,
-			checked: plan?.checked ?? evidence.ranker?.checked ?? 0
+			checked: plan?.checked ?? evidence.ranker?.checked ?? 0,
+			carried: items.filter((item) => item.carried).length
 		},
 		coverage: evidence.coverage,
 		ranker: evidence.ranker
@@ -422,8 +591,14 @@ export function buildContextSelectionPayload(input: {
 		scope: input.scope ?? null,
 		broad_p: input.broadP ?? null,
 		snapshot: input.snapshot ?? null,
+		// Records the carry block names without loading: handed to the model, no chip.
+		notes:
+			notes && (notes.changed || notes.notLoaded)
+				? { changed: notes.changed, not_loaded: notes.notLoaded }
+				: null,
+		injection: input.injection ?? null,
 		// Pointers only: the finalizer fades what this turn carried in but didn't use.
-		...(input.carried ? { carry_in: input.carried.carryIn } : {})
+		...(carryIn ? { carry_in: carryIn } : {})
 	};
 }
 

@@ -67,7 +67,15 @@ describe('session store: a turn from send to answer', () => {
 				verb: 'Searching tasks',
 				target: 'week',
 				status: 'pending',
-				toolCallId: 'call_1'
+				toolCallId: 'call_1',
+				// The call's arguments ride along for the step's details (lib/chat/turn-view.ts).
+				source: {
+					arguments: { query: 'week' },
+					result: null,
+					affectedEntities: null,
+					durationMs: null,
+					sourceQuote: null
+				}
 			}
 		]);
 		expect(workHeadline(work)).toBe('Searching tasks…');
@@ -245,7 +253,8 @@ describe('session store: restoring a stored chat', () => {
 				verb: 'Searching tasks',
 				target: 'week',
 				status: 'completed',
-				toolCallId: null
+				toolCallId: null,
+				source: null
 			}
 		]);
 		expect(workHeadline(work)).toBe('Worked for 37s');

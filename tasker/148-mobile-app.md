@@ -888,3 +888,50 @@ real prod data (API pointed at build-os.com for the run, `.env.local` restored):
 prompt, close-out ("pc-claude: 1 change in Radar"), 3 waiting on you + 9 you're waiting on, 3
 repeated suggestions (8–12 days), chat with draft. Screenshots in session scratchpad `shots/`.
 Not done: taps (no tap tool), so Done / Apply / Keep / Undo writes are unexercised on a device.
+
+### Swipe rows (2026-11-13, DJ: "do the next parts")
+
+`kit/swipe-row.tsx` (`SwipeRow`, PanResponder + Animated: no new native dependency, Expo Go
+safe; rules `claimsSwipe` / `swipeOutcome` / `swipeOffset` in `kit/math.ts`, 3 tests). Claims a
+drag only when clearly sideways (>12 pt and 1.5× more horizontal than vertical), selection tick
+when crossing the 88 pt trigger, success haptic on release, springs back (no bounce with Reduce
+Motion), VoiceOver gets both actions in its actions menu. Used on: close-out picks (right = Done,
+left = Not today; "Swipe right for Done, left for Not today." hint) and waiting rows (right =
+Done / Came through, left = Remove). Keys stay. Feel unverified: the simulator run can't drag.
+
+### Chat catch-up (2026-11-13): turn cards, Continue in, step details, images
+
+- **Shared rules moved, not copied:** `agent-chat-turn-cards.ts` and `agent-chat-step-details.ts`
+  (+ tests) `git mv`'d from `apps/web/src/lib/components/agent/` into
+  `packages/agentic-chat-client/src/` (exports, tsup entries, barrel); the web paths are one-line
+  re-export shims like the Oct 31 move. Package 160 tests + build; web 128 tests via shims.
+- **Store** (`lib/chat/session-store.ts`): `context_selection` events (were dropped) land on the
+  work row as `selection`; each step carries `source` (arguments, result, affected entities,
+  duration, `source_quote`) live from `tool_call`/`tool_result`, and on reopen from
+  `toolExecutions` matched by the timeline id `tool_execution:<id>`; `contextSelections` from the
+  session read (api-client type added) matched by `turn_run_id`.
+- **Turn view** (`lib/chat/turn-view.ts` → `components/chat/work-detail.tsx`): the web's
+  `deriveTurnCards` / `describePulled` / `buildStepDetails` / `buildTurnReceipt` over the row.
+  Folded line: "2 updated · 1 created · 1 read" (or "2 projects · 5 steps"). Open: "Checked 12
+  projects, picked 1", a card per project when grouped, "↻ Carried from last turn", "✦ Pulled in
+  3 of 12 · …", steps (6 then "Show N more") with New/Updated/Archived badges, record chips that
+  open the reader / project / website, the person's quoted words, before → after, Body +N −M.
+  Finished steps read past tense (`doneVerb`; a badge replaces the verb: "[Updated] task").
+- **Continue in X** (`components/chat/continue-chip.tsx`): Workspace chat, last finished turn's
+  finder picked exactly one project with p ≥ 0.7 → chip under the newest message →
+  `api.chat.moveToProject` → chat target becomes the project (messages stay).
+- **Images** (`lib/chat/images.ts` rules, `lib/chat/image-upload.ts`, `hooks/use-draft-images.ts`,
+  `components/chat/image-tray.tsx`): photo key in the composer, up to 4 (25 MB each, web copy),
+  JPEG 0.8 from the picker; SHA-256 (expo-crypto) → `POST /api/agent/chat-attachments` → bytes to
+  the signed target with the app's Supabase client `uploadToSignedUrl` → project chats
+  `POST /api/onto/assets/[id]/complete`; Send waits for uploads; images-only messages send
+  `message: ''` with "Attached N images" shown; turn `attachments` (camelCase) added to
+  `AgentTurnRequest`; sent bubbles show thumbnails (stored previews load with the bearer; Workspace
+  temporary files show an IMG placeholder after reload). New deps via `expo install`:
+  `expo-image-picker` (Expo Go bundled; app.json plugin with a Photos permission line),
+  `expo-crypto`. No OCR polling (web uses it for a status label only).
+- Dev: `/chat?demo=cards` (free) shows cards, details, receipt and Continue in.
+
+Checks: api-client 45 tests + build; package 160 + build; mobile tsc, 290 tests, Metro export;
+simulator screenshots light + dark (shots/10–13). Not exercised: a real upload, a real move, a
+real turn's cards (all need a device run / paid turn); swipe feel.

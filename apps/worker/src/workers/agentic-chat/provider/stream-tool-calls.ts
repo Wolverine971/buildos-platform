@@ -24,7 +24,10 @@ export type CompletedProviderToolCall = {
 	arguments: JsonObject;
 	/** Canonical domain-only arguments used by validation, review, and adapters. */
 	canonicalArguments: string;
-	/** Canonical provider arguments plus scheduling sidecars and any server archive preview bound before review. */
+	/**
+	 * Canonical provider arguments plus scheduling sidecars and any server archive preview bound
+	 * before review. Never carries `from_quote`: this is what review hashes and the model replays.
+	 */
 	canonicalProviderArguments: string;
 	scheduling?: AgenticChatProviderToolSchedulingV1;
 	decidedBy?: AgenticChatControlDecisionAuthorV1;
@@ -305,10 +308,16 @@ export function completeToolCalls(
 		if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
 			throw rejectedToolArgumentsError(call, 'json_shape', null, context);
 		}
-		const canonicalProviderArguments = canonicalizeAgenticChatJson(parsed as JsonValue);
 		const scheduling = parseSchedulingMetadata(parsed as JsonObject);
 		const sourceQuote = readSourceQuote(parsed as JsonObject);
-		const domainArguments = stripSourceQuote(stripSchedulingSidecar(parsed as JsonObject));
+		// The quote leaves before anything is canonicalized: the review digest, the reviewer's
+		// view and the replayed tool call are built from these arguments, and a reworded quote
+		// must not make the same writes look like a new batch.
+		const providerArguments = stripSourceQuote(parsed as JsonObject);
+		const canonicalProviderArguments = canonicalizeAgenticChatJson(
+			providerArguments as JsonValue
+		);
+		const domainArguments = stripSchedulingSidecar(providerArguments);
 		const canonicalArguments = canonicalizeAgenticChatJson(domainArguments);
 		calls.push({
 			id: call.id,
@@ -323,7 +332,7 @@ export function completeToolCalls(
 	return calls;
 }
 
-/** Display-only argument on writes (tasker 155); kept out of every domain path. */
+/** Display-only argument on writes (tasker 155); kept out of every domain and review path. */
 export const SOURCE_QUOTE_ARGUMENT = 'from_quote';
 const MAX_SOURCE_QUOTE_CHARS = 400;
 

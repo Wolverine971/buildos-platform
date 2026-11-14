@@ -16,7 +16,13 @@ import {
 	type AgentChatWorkerUiAdapterPort
 } from '@buildos/agentic-chat-client';
 import type { ChatPendingChange, ChatSessionHistoryResponse } from '@buildos/api-client';
-import type { AgentSSEMessage, ChatTurnStatusV1, TurnHandleV1 } from '@buildos/shared-types';
+import {
+	parseContextSelectionEventV1,
+	type AgentSSEMessage,
+	type ChatTurnStatusV1,
+	type ContextSelectionEventV1,
+	type TurnHandleV1
+} from '@buildos/shared-types';
 
 import {
 	type ChangeReceipts,
@@ -28,10 +34,24 @@ import {
 	type TurnChanges
 } from './changes';
 import { newChatId } from './ids';
+import { isAttachmentOnly, type MessageImage, messageImages } from './images';
 import { parseProposalCard, proposalProgress, type ProposalCard } from './proposals';
 import { toolLine } from './tool-lines';
 
 export type WorkerTurnHandle = Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>;
+
+/**
+ * A step's structured data, the same fields the web keeps on its activity metadata, so the
+ * shared turn-card and step-detail rules (@buildos/agentic-chat-client) read it unchanged.
+ */
+export type StepSource = {
+	arguments: unknown;
+	result: unknown;
+	affectedEntities: unknown;
+	durationMs: number | null;
+	/** The person's words this write came from (`source_quote`). */
+	sourceQuote: string | null;
+};
 
 export type WorkStep = {
 	id: string;
@@ -39,6 +59,8 @@ export type WorkStep = {
 	target: string | null;
 	status: 'pending' | 'completed' | 'failed';
 	toolCallId: string | null;
+	/** Absent on rows from older stores and steps with nothing to read. */
+	source?: StepSource | null;
 };
 
 export type UserRow = {
@@ -48,6 +70,8 @@ export type UserRow = {
 	text: string;
 	at: number;
 	delivery: 'sending' | 'sent' | 'failed';
+	/** Images sent with it (local files right after sending, stored previews after a reload). */
+	images?: MessageImage[];
 };
 
 export type AssistantRow = {
@@ -77,6 +101,8 @@ export type WorkRow = {
 	steps: WorkStep[];
 	stopRequested: boolean;
 	connectionLost: boolean;
+	/** What the context finder pulled in for this turn ("Pulled in 3 of 9"). */
+	selection?: ContextSelectionEventV1 | null;
 };
 
 /** A proposal the agent is waiting on (nest, combine, file, start); see lib/chat/proposals.ts. */
@@ -125,6 +151,40 @@ export type ChatSessionState = {
 export type SessionStore = ReturnType<typeof createSessionStore>;
 
 const GENERIC_FAILURE = 'Something went wrong with that reply. Try sending it again.';
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** Tool arguments arrive as a JSON string from the model; the rules want an object. */
+export function parseArgs(args: unknown): unknown {
+	if (typeof args !== 'string') return args ?? null;
+	const trimmed = args.trim();
+	if (!trimmed.startsWith('{')) return null;
+	try {
+		return JSON.parse(trimmed) as unknown;
+	} catch {
+		return null;
+	}
+}
+
+/** A live `tool_result` payload as step data (the web's AgentChatModal reads the same keys). */
+export function stepSourceFromResult(
+	previous: StepSource | null | undefined,
+	result: Record<string, unknown>
+): StepSource {
+	return {
+		arguments: previous?.arguments ?? null,
+		result: result.result ?? result,
+		affectedEntities: Array.isArray(result.affected_entities)
+			? result.affected_entities
+			: (previous?.affectedEntities ?? null),
+		durationMs:
+			typeof result.duration_ms === 'number'
+				? result.duration_ms
+				: (previous?.durationMs ?? null),
+		sourceQuote: previous?.sourceQuote ?? null
+	};
+}
 
 function parseTime(value: string | null | undefined, fallback: number): number {
 	const parsed = value ? Date.parse(value) : Number.NaN;
@@ -213,10 +273,16 @@ export function createSessionStore(
 		});
 		return true;
 	};
-	const patchStep = (turnRunId: string, toolCallId: string, patch: Partial<WorkStep>) =>
+	const patchStep = (
+		turnRunId: string,
+		toolCallId: string,
+		patch: Partial<WorkStep> | ((step: WorkStep) => Partial<WorkStep>)
+	) =>
 		patchWork({ turnRunId }, (row) => ({
 			steps: row.steps.map((step) =>
-				step.toolCallId === toolCallId ? { ...step, ...patch } : step
+				step.toolCallId === toolCallId
+					? { ...step, ...(typeof patch === 'function' ? patch(step) : patch) }
+					: step
 			)
 		}));
 
@@ -397,7 +463,18 @@ export function createSessionStore(
 									verb: line.verb,
 									target: line.target,
 									status: 'pending',
-									toolCallId
+									toolCallId,
+									source: {
+										arguments: parseArgs(call?.function?.arguments),
+										result: null,
+										affectedEntities: null,
+										durationMs: null,
+										sourceQuote:
+											typeof event.source_quote === 'string' &&
+											event.source_quote.trim()
+												? event.source_quote.trim()
+												: null
+									}
 								}
 							],
 							activity: line.verb,
@@ -411,9 +488,10 @@ export function createSessionStore(
 					const toolCallId =
 						typeof result.tool_call_id === 'string' ? result.tool_call_id : null;
 					if (toolCallId) {
-						patchStep(turnRunId, toolCallId, {
-							status: result.success === false ? 'failed' : 'completed'
-						});
+						patchStep(turnRunId, toolCallId, (step) => ({
+							status: result.success === false ? 'failed' : 'completed',
+							source: stepSourceFromResult(step.source, result)
+						}));
 					}
 					if (result.success !== false) {
 						const call = toolCallId ? calls.get(toolCallId) : undefined;
@@ -442,6 +520,13 @@ export function createSessionStore(
 				case 'error':
 					set({ error: event.error || GENERIC_FAILURE });
 					return;
+				case 'context_selection': {
+					// The finder's receipt: turn cards show it as "Pulled in 3 of 9".
+					const selection = parseContextSelectionEventV1(event);
+					if (selection?.visible && selection.injected)
+						patchWork({ turnRunId }, { selection });
+					return;
+				}
 				default:
 					return;
 			}
@@ -526,11 +611,18 @@ export function createSessionStore(
 			set({ error });
 		},
 		/** The person pressed Send: their words appear at once, with a work row waiting on admission. */
-		addUserMessage(input: { clientTurnId: string; text: string }) {
+		addUserMessage(input: { clientTurnId: string; text: string; images?: MessageImage[] }) {
 			const at = now();
 			updateRows((rows) => [
 				...rows,
-				{ kind: 'user', id: input.clientTurnId, text: input.text, at, delivery: 'sending' },
+				{
+					kind: 'user',
+					id: input.clientTurnId,
+					text: input.text,
+					at,
+					delivery: 'sending',
+					...(input.images?.length ? { images: input.images } : {})
+				},
 				{
 					kind: 'work',
 					id: makeId(),
@@ -635,10 +727,19 @@ export function createSessionStore(
 				fallback = at + 1;
 				const text = (message.content ?? '').trim();
 				if (message.role === 'user') {
+					const images = messageImages(message);
 					messageRows.push({
 						at,
 						order: 0,
-						row: { kind: 'user', id: message.id, text, at, delivery: 'sent' }
+						row: {
+							kind: 'user',
+							id: message.id,
+							// An images-only message stores placeholder words; show just the images.
+							text: isAttachmentOnly(message.metadata) && images.length ? '' : text,
+							at,
+							delivery: 'sent',
+							...(images.length ? { images } : {})
+						}
 					});
 				} else if (message.role === 'assistant' && text) {
 					const metadata = (message.metadata ?? null) as Record<string, unknown> | null;
@@ -668,23 +769,47 @@ export function createSessionStore(
 				row: WorkRow;
 				answerId: string | null;
 			}> = [];
+			// Timeline tool items are `tool_execution:<id>`; the execution row carries the data.
+			const executionById = new Map(
+				history.toolExecutions.map((execution) => [execution.id, execution])
+			);
+			const selectionByTurn = new Map(
+				(history.contextSelections ?? [])
+					.filter((selection) => selection.turn_run_id)
+					.map((selection) => [selection.turn_run_id as string, selection])
+			);
 			for (const run of history.turnRuns) {
 				const active = run.status === 'queued' || run.status === 'running';
 				if (active) activeTurnRunIds.push(run.id);
 				const steps: WorkStep[] = history.timelineItems
 					.filter((item) => item.kind === 'tool' && item.turnRunId === run.id)
-					.map((item) => ({
-						id: item.id,
-						verb: item.title,
-						target: item.summary ?? null,
-						status:
-							item.status === 'failed'
-								? 'failed'
-								: active && (item.status === 'running' || item.status === 'pending')
-									? 'pending'
-									: 'completed',
-						toolCallId: null
-					}));
+					.map((item) => {
+						const execution = item.id.startsWith('tool_execution:')
+							? executionById.get(item.id.slice('tool_execution:'.length))
+							: undefined;
+						return {
+							id: item.id,
+							verb: item.title,
+							target: item.summary ?? null,
+							status:
+								item.status === 'failed'
+									? 'failed'
+									: active &&
+										  (item.status === 'running' || item.status === 'pending')
+										? 'pending'
+										: 'completed',
+							toolCallId: null,
+							source: execution
+								? {
+										arguments: parseArgs(execution.arguments),
+										result: execution.result,
+										affectedEntities: execution.affected_entities ?? null,
+										durationMs: execution.execution_time_ms ?? null,
+										sourceQuote: null
+									}
+								: null
+						};
+					});
 				const startedAt = parseTime(run.started_at ?? run.created_at, 0);
 				const endedAt = run.finished_at ? parseTime(run.finished_at, startedAt) : null;
 				const status: WorkRow['status'] = active
@@ -712,7 +837,8 @@ export function createSessionStore(
 						activity: null,
 						steps,
 						stopRequested: false,
-						connectionLost: false
+						connectionLost: false,
+						selection: selectionByTurn.get(run.id) ?? null
 					}
 				});
 			}

@@ -1,8 +1,8 @@
 // apps/mobile/src/components/chat/rows.tsx
 // The three kinds of row in a chat: what you said, what the agent did, what it answered.
 // Each is memoized on its row object; the store only replaces the row that changed.
-import { memo, useEffect, useState } from 'react';
-import { LayoutAnimation, Pressable, StyleSheet, Text, View } from 'react-native';
+import { memo, useEffect, useMemo, useState } from 'react';
+import { Image, LayoutAnimation, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
 	BoltSpinner,
@@ -14,10 +14,17 @@ import {
 	playHaptic
 } from '@/components/kit';
 import { Markdown } from '@/components/markdown';
+import { api } from '@/lib/api';
+import type { MessageImage } from '@/lib/chat/images';
 import type { AssistantRow, UserRow, WorkRow } from '@/lib/chat/session-store';
+import { buildTurnView } from '@/lib/chat/turn-view';
 import { workAside, workHeadline } from '@/lib/chat/work-summary';
+import { useAuth } from '@/providers/auth-provider';
 import { useInk, useReducedMotion } from '@/providers/theme-provider';
 import { radius, spacing, typeScale, withAlpha } from '@/theme';
+
+import { useChatActions } from './chat-actions';
+import { foldedAside, TurnDetail } from './work-detail';
 
 /** What you said: right-aligned on an accent-tinted card, as on the website. */
 export const UserBubble = memo(function UserBubble({ row }: { row: UserRow }) {
@@ -36,12 +43,15 @@ export const UserBubble = memo(function UserBubble({ row }: { row: UserRow }) {
 					}
 				]}
 			>
-				<Text
-					selectable
-					style={[typeScale.row, styles.userText, { color: colors.foreground }]}
-				>
-					{row.text}
-				</Text>
+				{row.images?.length ? <MessageImages images={row.images} /> : null}
+				{row.text ? (
+					<Text
+						selectable
+						style={[typeScale.row, styles.userText, { color: colors.foreground }]}
+					>
+						{row.text}
+					</Text>
+				) : null}
 			</View>
 			{row.delivery === 'failed' ? (
 				<Text
@@ -54,6 +64,53 @@ export const UserBubble = memo(function UserBubble({ row }: { row: UserRow }) {
 		</View>
 	);
 });
+
+/**
+ * Images on a sent message. Stored previews are site paths that need the signed-in bearer; a
+ * Workspace chat's images were temporary files and show as a placeholder after a reload.
+ */
+function MessageImages({ images }: { images: MessageImage[] }) {
+	const { colors } = useInk();
+	const { session } = useAuth();
+	const token = session?.access_token;
+	return (
+		<View style={styles.images}>
+			{images.map((image) =>
+				image.uri ? (
+					<Image
+						key={image.key}
+						accessibilityLabel={image.fileName ?? 'Attached image'}
+						source={
+							image.remote
+								? {
+										uri: `${api.baseUrl}${image.uri}`,
+										headers: token
+											? { Authorization: `Bearer ${token}` }
+											: undefined
+									}
+								: { uri: image.uri }
+						}
+						style={[styles.image, { borderColor: colors.border }]}
+					/>
+				) : (
+					<View
+						key={image.key}
+						accessibilityLabel={image.fileName ?? 'Attached image'}
+						style={[
+							styles.image,
+							styles.imagePlaceholder,
+							{ borderColor: colors.border, backgroundColor: colors.muted }
+						]}
+					>
+						<Text style={[typeScale.small, { color: colors.mutedForeground }]}>
+							IMG
+						</Text>
+					</View>
+				)
+			)}
+		</View>
+	);
+}
 
 /** The answer, as native markdown; the live preview trails it in muted ink until it is durable. */
 export const AssistantText = memo(function AssistantText({ row }: { row: AssistantRow }) {
@@ -102,9 +159,13 @@ export const WorkBlock = memo(function WorkBlock({ row }: { row: WorkRow }) {
 	const now = useTicking(active);
 	const [expanded, setExpanded] = useState(false);
 	const open = active || expanded;
+	const { sessionProject } = useChatActions();
+	// Cards, "Pulled in" and the receipt by the website's rules (lib/chat/turn-view.ts).
+	const view = useMemo(() => buildTurnView(row, sessionProject), [row, sessionProject]);
 	const headline = workHeadline(row);
-	const aside = workAside(row, now);
-	const canExpand = !active && row.steps.length > 0;
+	const aside = active ? workAside(row, now) : foldedAside(view, row.steps.length);
+	const hasBody = row.steps.length > 0 || view.grouped;
+	const canExpand = !active && hasBody;
 	const tone =
 		row.status === 'error'
 			? colors.destructive
@@ -171,51 +232,7 @@ export const WorkBlock = memo(function WorkBlock({ row }: { row: WorkRow }) {
 					)
 				) : null}
 			</Pressable>
-			{open && row.steps.length > 0 ? (
-				<View style={styles.steps}>
-					{row.steps.map((step) => {
-						const live = active && step.status === 'pending';
-						return (
-							<View key={step.id} style={styles.step}>
-								<View
-									style={[
-										styles.stepDot,
-										{
-											backgroundColor:
-												step.status === 'failed'
-													? colors.destructive
-													: live
-														? colors.accent
-														: withAlpha(colors.mutedForeground, 0.6)
-										}
-									]}
-								/>
-								<Text
-									numberOfLines={2}
-									maxFontSizeMultiplier={1.5}
-									style={[
-										typeScale.meta,
-										styles.stepText,
-										{ color: live ? colors.foreground : colors.mutedForeground }
-									]}
-								>
-									{step.verb}
-									{step.target ? (
-										<Text
-											style={{
-												color: withAlpha(colors.mutedForeground, 0.8)
-											}}
-										>
-											{'  ·  '}
-											{step.target}
-										</Text>
-									) : null}
-								</Text>
-							</View>
-						);
-					})}
-				</View>
-			) : null}
+			{open && hasBody ? <TurnDetail view={view} active={active} /> : null}
 		</View>
 	);
 });
@@ -231,15 +248,14 @@ const styles = StyleSheet.create({
 		borderWidth: 1
 	},
 	userText: { lineHeight: 21 },
+	images: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6 },
+	image: { width: 72, height: 72, borderRadius: 10, borderWidth: 1 },
+	imagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
 	userMeta: { marginRight: 4 },
 	assistant: { gap: spacing.sm, paddingRight: 4 },
 	work: { borderLeftWidth: 2, paddingLeft: 12, gap: 8, paddingVertical: 2 },
 	workHead: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 22 },
 	workGlyph: { width: 16, alignItems: 'center', justifyContent: 'center' },
 	workTitle: { flexShrink: 1 },
-	workAside: { fontVariant: ['tabular-nums'] },
-	steps: { gap: 6, paddingBottom: 2 },
-	step: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingLeft: 5 },
-	stepDot: { width: 6, height: 6, borderRadius: 3, marginTop: 6 },
-	stepText: { flex: 1 }
+	workAside: { fontVariant: ['tabular-nums'] }
 });

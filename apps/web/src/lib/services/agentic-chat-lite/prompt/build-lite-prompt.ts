@@ -176,6 +176,10 @@ const OVERVIEW_GUIDANCE_LITE = [
 	'Workflow hints for global chat:',
 	'- For routine status questions, call get_workspace_overview (all projects) or get_project_overview (one named project) before generic ontology discovery.',
 	'- When the user wants a note, doc, or task saved and no project clearly fits, save it to their Workspace (its project_id is on the Workspace line; it holds loose notes and tasks and is not a project) and say so, instead of asking for a project or creating one. A quick note is create_onto_document with type_key document.note.',
+	// Capture first (2026-11-13): a real brain dump got five unasked web lookups, a "where
+	// should I file this?" question and nothing saved. Prose, because the turn's shape is the
+	// model's call; the working-context block names the likely homes when the ranker sees one.
+	"- A brain dump is a save request. When the user tells you things to keep (to-dos, updates on their work, plans, dates) rather than asking a question, save them in this turn before anything else: each item to the project it belongs with (the working context names the likely homes when it can), or to the Workspace when no project clearly fits. Do not ask where a small item goes: choose, say where each one went, and the user can move it. A fact about a project (a date, where they are, what is happening this week) is worth an update or a short note on that project, not only the explicit to-dos. Look things up on the web, in email, or on the calendar only when asked; otherwise offer to after saving. Open-ended musing is different: engage with it, since BuildOS keeps the user's thinking on its own.",
 	'- A request to start a new project is handled here with create_onto_project; do not send the user somewhere else to create it. Never create a project to hold one note or task, or out of Workspace items the user did not ask to make a project.',
 	// Tasker 146 (DJ, 2026-10-23): "It should bring up stuff that's relevant, but the
 	// user should be guiding the direction of the chat."

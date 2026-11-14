@@ -1,7 +1,11 @@
 // apps/web/src/lib/components/agent/agent-chat-sse-handler.ts
 import type { ToolProgressStep } from './agent-chat-tool-progress';
 import { parseContextSelectionEventV1 } from '@buildos/shared-types';
-import { CONTEXT_SELECTION_METADATA_KEY } from './agent-chat-turn-cards';
+import {
+	CONTEXT_SELECTION_METADATA_KEY,
+	contextSelectionIsShowable,
+	normalizeContextSelection
+} from './agent-chat-turn-cards';
 import {
 	readAgentChatWorkflowProgress,
 	readDurableChatWorkflowProgress,
@@ -903,10 +907,12 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 				return;
 
 			// The worker's context-finder receipt. Kept on the turn as a hidden activity: turn
-			// cards (tasker 153) show it as "Pulled in 3 of 9"; the step log never lists it.
+			// cards show what the model was handed, opened and changed from it; the step log
+			// never lists it. Kept too when the finder found nothing or could not run, so the
+			// card can say so instead of looking the same as "nothing to show".
 			case 'context_selection': {
-				const selection = parseContextSelectionEventV1(event);
-				if (selection?.visible && selection.injected) {
+				const selection = normalizeContextSelection(event);
+				if (selection && contextSelectionIsShowable(selection)) {
 					thinking.addActivity('Context picked', 'ontology_loaded', {
 						[CONTEXT_SELECTION_METADATA_KEY]: selection
 					});

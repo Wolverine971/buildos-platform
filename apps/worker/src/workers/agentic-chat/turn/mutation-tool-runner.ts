@@ -209,6 +209,12 @@ export class AgenticChatMutationToolRunner {
 			mutation.downstreamReceipt,
 			elapsedMs(mutationStartedAt)
 		);
+		// The words this write came from are kept with the record it touched, so the chat can
+		// light the phrase up again after a reload. The domain arguments never carry them.
+		const storedAffectedEntities = withSourceQuote(
+			telemetry.affectedEntities,
+			step.sourceQuote
+		);
 		// A committed effect must become durable telemetry even if cancellation
 		// arrives after the irreversible boundary. The ledger adapter owns its own
 		// bounded deadline; a fresh signal prevents user cancellation from hiding
@@ -235,7 +241,7 @@ export class AgenticChatMutationToolRunner {
 					executionTimeMs: telemetry.executionTimeMs,
 					tokensConsumed: telemetry.tokensConsumed,
 					requiresUserAction: telemetry.requiresUserAction,
-					affectedEntities: telemetry.affectedEntities
+					affectedEntities: storedAffectedEntities
 				},
 				new AbortController().signal
 			);
@@ -306,12 +312,14 @@ export class AgenticChatMutationToolRunner {
 						success: true,
 						tool_category: mutationToolCategory(step),
 						gateway_op: step.operationName,
+						// True when nothing was saved yet: the person has to choose first.
 						requires_user_action: telemetry.requiresUserAction,
-						affected_entities: telemetry.affectedEntities,
+						affected_entities: storedAffectedEntities,
 						effect_id: mutation.effectId,
 						replayed: mutation.replayed,
 						result: mutation.downstreamReceipt,
-						duration_ms: elapsedMs(mutationStartedAt),
+						// The stored execution time, so the live row and a reload agree.
+						duration_ms: telemetry.executionTimeMs,
 						...(step.sourceQuote ? { source_quote: step.sourceQuote } : {})
 					}
 				}
@@ -706,11 +714,218 @@ function stableJson(value: unknown): string {
 	return JSON.stringify(value) ?? 'null';
 }
 
-function deriveMutationAffectedEntities(
-	step: Extract<AgenticChatTurnProviderStepV1, { type: 'mutating_tool' }>,
+/** Where the first affected entity keeps the user's words (`source_quote`). */
+function withSourceQuote(entities: JsonObject[], sourceQuote: string | undefined): JsonObject[] {
+	const [first, ...rest] = entities;
+	if (!sourceQuote || !first) return entities;
+	return [{ ...first, source_quote: sourceQuote }, ...rest];
+}
+
+type MutationStep = Pick<
+	Extract<AgenticChatTurnProviderStepV1, { type: 'mutating_tool' }>,
+	'toolName' | 'operationName' | 'arguments'
+>;
+type AffectedEntityDraft = {
+	kind: string;
+	id: string | null;
+	title?: string | null;
+	projectId?: string | null;
+	operation: string;
+	/** Short facts about the change, e.g. how many table rows moved. */
+	extra?: JsonObject;
+};
+
+/** Kinds the app opens by `?entity=` on the project page. */
+const PROJECT_PAGE_KINDS = new Set(['task', 'goal', 'plan', 'milestone', 'risk']);
+
+function affectedEntity(draft: AffectedEntityDraft): JsonObject[] {
+	if (!draft.id) return [];
+	const projectId = draft.kind === 'project' ? draft.id : (draft.projectId ?? null);
+	const url =
+		draft.kind === 'project'
+			? `/projects/${draft.id}`
+			: !projectId
+				? null
+				: draft.kind === 'document'
+					? `/projects/${projectId}?doc=${draft.id}`
+					: PROJECT_PAGE_KINDS.has(draft.kind)
+						? `/projects/${projectId}?entity=${encodeURIComponent(draft.kind)}&entity_id=${draft.id}`
+						: null;
+	return [
+		{
+			kind: draft.kind,
+			id: draft.id,
+			title: draft.title ?? null,
+			projectId,
+			operation: draft.operation,
+			url,
+			...(draft.extra ?? {})
+		}
+	];
+}
+
+const record = (value: unknown): JsonObject | null => (isJsonRecord(value) ? value : null);
+
+/** A document's title inside a doc-structure tree receipt. */
+function treeNodeTitle(nodes: unknown, id: string, depth = 0): string | null {
+	if (!Array.isArray(nodes) || depth > 12) return null;
+	for (const node of nodes) {
+		if (!isJsonRecord(node)) continue;
+		if (node.id === id) return firstText(node.title);
+		const nested = treeNodeTitle(node.children, id, depth + 1);
+		if (nested) return nested;
+	}
+	return null;
+}
+
+/**
+ * Writes whose receipt is not one `onto.<kind>.<verb>` entity row. Without an entry here the
+ * step reports nothing touched, and the chat counts a calendar event or a moved document as
+ * something it only read. Keyed by operation name (a structured id, never free text).
+ */
+const NAMED_AFFECTED_ENTITIES: Readonly<
+	Record<string, (step: MutationStep, receipt: JsonObject) => JsonObject[]>
+> = {
+	'onto.document.tree.move': (step, receipt) => {
+		const id = firstText(step.arguments.document_id);
+		return affectedEntity({
+			kind: 'document',
+			id,
+			title: id ? treeNodeTitle(record(receipt.structure)?.root, id) : null,
+			projectId: firstText(step.arguments.project_id),
+			operation: 'moved'
+		});
+	},
+	'onto.task.docs.create_or_attach': (_step, receipt) => {
+		const document = record(receipt.document);
+		return affectedEntity({
+			kind: 'document',
+			id: firstText(document?.id),
+			title: firstText(document?.title),
+			projectId: firstText(document?.project_id),
+			operation: 'linked'
+		});
+	},
+	// Linking what is already linked changes nothing.
+	'onto.edge.link': (step, receipt) =>
+		receipt.created === 0
+			? []
+			: affectedEntity({
+					kind: 'edge',
+					id: firstText(receipt.edge_id, record(receipt.edge)?.id),
+					projectId: firstText(
+						record(receipt.edge)?.project_id,
+						step.arguments.project_id
+					),
+					operation: 'linked'
+				}),
+	'onto.edge.unlink': (step, receipt) =>
+		receipt.deleted === true
+			? affectedEntity({
+					kind: 'edge',
+					id: firstText(step.arguments.edge_id),
+					projectId: firstText(step.arguments.project_id),
+					operation: 'unlinked'
+				})
+			: [],
+	// A task that was already in the destination did not move this turn.
+	'onto.task.move': (step, receipt) => {
+		const task = record(receipt.task);
+		return receipt.status === 'moved'
+			? affectedEntity({
+					kind: 'task',
+					id: firstText(task?.id, step.arguments.task_id),
+					title: firstText(task?.title),
+					projectId: firstText(task?.project_id, step.arguments.destination_project_id),
+					operation: 'moved'
+				})
+			: [];
+	},
+	'x.misc.tag_onto_entity': (_step, receipt) =>
+		affectedEntity({
+			kind: firstText(receipt.entity_type) ?? 'entity',
+			id: firstText(receipt.entity_id),
+			projectId: firstText(receipt.project_id),
+			operation: 'mentioned'
+		}),
+	'onto.table.create': (_step, receipt) => tableAffectedEntity(receipt, 'created'),
+	'onto.table.update': (_step, receipt) => tableAffectedEntity(receipt, 'updated'),
+	'onto.table.rows.update': (_step, receipt) => tableAffectedEntity(receipt, 'updated'),
+	'util.agent.delegate': (_step, receipt) =>
+		receipt.ok === true
+			? affectedEntity({
+					kind: 'agent_run',
+					id: firstText(Array.isArray(receipt.run_ids) ? receipt.run_ids[0] : null),
+					title: firstText(receipt.label),
+					projectId: firstText(receipt.project_id),
+					operation: 'delegated'
+				})
+			: [],
+	'cal.event.create': (step, receipt) => calendarAffectedEntity(step, receipt, 'created'),
+	'cal.event.update': (step, receipt) => calendarAffectedEntity(step, receipt, 'updated'),
+	'cal.event.delete': (step, receipt) =>
+		receipt.already_missing === true ? [] : calendarAffectedEntity(step, receipt, 'deleted'),
+	'cal.project.set': (_step, receipt) =>
+		receipt.ok === true
+			? affectedEntity({
+					kind: 'project',
+					id: firstText(receipt.project_id),
+					operation: 'updated'
+				})
+			: []
+};
+
+/** A table write touches the table's document; `rows_changed` counts the rows it moved. */
+function tableAffectedEntity(receipt: JsonObject, operation: string): JsonObject[] {
+	const document = record(receipt.document);
+	const change = record(receipt.table_change);
+	const count = (key: string) =>
+		typeof change?.[key] === 'number' ? (change[key] as number) : 0;
+	const rowsChanged = count('rows_added') + count('rows_updated') + count('rows_deleted');
+	return affectedEntity({
+		kind: 'document',
+		id: firstText(document?.id),
+		title: firstText(document?.title),
+		projectId: firstText(document?.project_id),
+		operation,
+		extra: { table: true, ...(change ? { rows_changed: rowsChanged } : {}) }
+	});
+}
+
+/** A calendar write can fail as data (`ok: false`); only a write that happened is reported. */
+function calendarAffectedEntity(
+	step: MutationStep,
+	receipt: JsonObject,
+	operation: string
+): JsonObject[] {
+	if (receipt.ok !== true) return [];
+	return affectedEntity({
+		kind: 'event',
+		id: firstText(
+			receipt.event_id,
+			step.arguments.onto_event_id,
+			receipt.google_event_id,
+			step.arguments.event_id
+		),
+		title: firstText(step.arguments.title),
+		projectId: firstText(step.arguments.project_id),
+		operation
+	});
+}
+
+/**
+ * What a committed write touched, for the step row, the receipt and the stored execution:
+ * `{ kind, id, title, projectId, operation, url }` (+ `table`/`rows_changed` on table writes).
+ * Empty when nothing was saved: a change waiting on the person, a no-op, a failed provider half.
+ */
+export function deriveMutationAffectedEntities(
+	step: MutationStep,
 	downstreamReceipt: JsonObject | null
 ): JsonObject[] {
+	// A change waiting on the person's choice has touched nothing yet.
 	if (!downstreamReceipt || findRequiresUserAction(downstreamReceipt) === true) return [];
+	const named = NAMED_AFFECTED_ENTITIES[step.operationName];
+	if (named) return named(step, downstreamReceipt);
 	const operation = mutationOperation(step.toolName, step.operationName);
 	const kind = mutationEntityKind(step.toolName, step.operationName);
 	if (!operation || !kind) return [];

@@ -958,6 +958,11 @@ Useful for showing where a document lives in the hierarchy.`,
 					find: {
 						type: 'string',
 						description: 'Optional text to find; matching lines come back verbatim.'
+					},
+					offset: {
+						type: 'integer',
+						minimum: 0,
+						description: 'Heading index to continue a long outline from (a previous next_offset)'
 					}
 				},
 				required: ['document_id']

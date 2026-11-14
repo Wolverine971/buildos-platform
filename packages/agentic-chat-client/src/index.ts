@@ -19,3 +19,5 @@ export * from './agent-chat-workflow';
 export * from './agent-chat-thinking-state';
 export * from './agent-chat.types';
 export * from './agent-chat-worker-ui-adapter';
+export * from './agent-chat-turn-cards';
+export * from './agent-chat-step-details';

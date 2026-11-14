@@ -184,6 +184,62 @@ describe('AgenticChatExecutorEffects detached effects', () => {
 		]);
 	});
 
+	it('files the context-injection record only after the snapshot write has settled', async () => {
+		const registry = new AgenticChatPendingEffectsRegistry();
+		const persist = deferred<void>();
+		const order: string[] = [];
+		const recordContextInjection = vi.fn(async () => {
+			order.push('record');
+			return { outcome: 'recorded' as const };
+		});
+		const effects = new AgenticChatExecutorEffects({
+			promptSnapshots: {
+				persist: (() =>
+					persist.promise.then(() => {
+						order.push('snapshot');
+					})) as never,
+				recordContextInjection
+			},
+			pendingEffects: registry
+		});
+		const signal = new AbortController().signal;
+		const injection = {
+			turnRunId: TURN_RUN_ID,
+			userId: snapshotInput.userId,
+			executionGeneration: 1,
+			promptSnapshotId: snapshotInput.promptSnapshotId,
+			record: {
+				version: 1 as const,
+				scope: 'project' as const,
+				injected: true,
+				text: 'Selected project evidence',
+				chars: 25,
+				sha256: 'd'.repeat(64),
+				status: 'selected',
+				failure: null,
+				messageIndex: 3,
+				toolPins: [],
+				openingToolNames: []
+			}
+		};
+
+		effects.persistPromptSnapshot(snapshotInput, signal);
+		effects.recordContextInjection(injection, signal);
+		await Promise.resolve();
+		expect(recordContextInjection).not.toHaveBeenCalled();
+		expect(registry.size(TURN_RUN_ID)).toBe(2);
+
+		persist.resolve();
+		await effects.drainPendingEffects(TURN_RUN_ID);
+		expect(order).toEqual(['snapshot', 'record']);
+		expect(recordContextInjection.mock.calls[0]?.[0]).toBe(injection);
+
+		// A turn with no snapshot write has no row to file the record on.
+		effects.recordContextInjection(injection, signal);
+		expect(registry.size(TURN_RUN_ID)).toBe(0);
+		expect(recordContextInjection).toHaveBeenCalledOnce();
+	});
+
 	it('reports, never throws, when detached effects miss the fence deadline', async () => {
 		vi.useFakeTimers();
 		const registry = new AgenticChatPendingEffectsRegistry();

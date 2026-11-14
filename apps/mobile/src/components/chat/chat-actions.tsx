@@ -20,6 +20,8 @@ export type ChatActions = {
 	openOnWeb: (path: string) => void;
 	/** A reply is streaming; choices wait for it. */
 	turnActive: boolean;
+	/** The chat's own project (a project chat), for turn cards; null in Workspace chat. */
+	sessionProject: { id: string; name: string } | null;
 };
 
 const noop = async () => {};
@@ -30,7 +32,8 @@ export const ChatActionsContext = createContext<ChatActions>({
 	undoChange: noop,
 	openEntity: () => {},
 	openOnWeb: () => {},
-	turnActive: false
+	turnActive: false,
+	sessionProject: null
 });
 
 export function useChatActions(): ChatActions {

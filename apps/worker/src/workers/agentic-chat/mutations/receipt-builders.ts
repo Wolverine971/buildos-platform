@@ -309,7 +309,10 @@ export const AGENTIC_CHAT_MUTATION_RECEIPT_BUILDERS_V1: Readonly<
 			sourceProjectId: String(context.args.expected_source_project_id),
 			destinationProjectId: String(context.args.destination_project_id)
 		});
-		return canonicalMutationReceipt(buildTaskMoveToolResult(value as never), context.toolName);
+		return canonicalMutationReceipt(
+			{ ...buildTaskMoveToolResult(value as never), ...taskMoveFieldChanges(value) },
+			context.toolName
+		);
 	},
 
 	entity_ping: (value, context) => {
@@ -571,6 +574,20 @@ export const AGENTIC_CHAT_MUTATION_RECEIPT_BUILDERS_V1: Readonly<
 		);
 	}
 });
+
+/**
+ * Before → after for a task that moved this turn (tasker 155): the project it left and the
+ * one it is in now, by name. Nothing for a move that was already done or still needs a choice.
+ */
+function taskMoveFieldChanges(value: unknown): Record<string, unknown> {
+	if (!isRecord(value) || value.status !== 'moved') return {};
+	const from = isRecord(value.source_project) ? value.source_project.name : null;
+	const to = isRecord(value.destination_project) ? value.destination_project.name : null;
+	if (typeof from !== 'string' || !from || typeof to !== 'string' || !to || from === to) {
+		return {};
+	}
+	return { field_changes: [{ field: 'project', before: from, after: to }] };
+}
 
 const CALENDAR_RECONNECT_PATH = '/profile?tab=calendar';
 

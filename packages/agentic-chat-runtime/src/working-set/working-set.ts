@@ -662,7 +662,13 @@ export function renderTurnCarry(input: {
 	set: TurnWorkingSetV1;
 	plan: RehydratePlan;
 	entities: readonly ContextFinderEntity[];
-}): { block: string; loaded: CarryItem[]; carryIn: TurnWorkingSetV1 } {
+}): {
+	block: string;
+	loaded: CarryItem[];
+	carryIn: TurnWorkingSetV1;
+	/** Lines in the block that name records without loading them. */
+	notes: { changed: number; notLoaded: number };
+} {
 	const byId = new Map(input.entities.map((entity) => [entity.id, entity]));
 	const loaded: { item: CarryItem; text: string }[] = [];
 	const over = [...input.plan.over];
@@ -670,8 +676,9 @@ export function renderTurnCarry(input: {
 	for (const { item, entity: planned } of input.plan.load) {
 		const entity = byId.get(item.id) ?? planned;
 		const body = carriedText(item, entity);
-		if (!body) continue;
-		if (body.length > room) {
+		// No text (the document read failed): keep the item as a pointer the agent can read,
+		// so it stays in the set instead of vanishing for good.
+		if (!body || body.length > room) {
 			over.push({ item, entity });
 			continue;
 		}
@@ -691,6 +698,7 @@ export function renderTurnCarry(input: {
 	return {
 		block,
 		loaded: loaded.map(({ item }) => item),
+		notes: { changed: input.plan.changed.length, notLoaded: over.length + scanned.length },
 		carryIn: {
 			version: 1,
 			project_id: input.set.project_id,

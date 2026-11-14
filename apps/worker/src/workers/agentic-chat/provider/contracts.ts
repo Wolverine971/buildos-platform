@@ -379,6 +379,34 @@ type AgenticChatProviderScheduledToolStepV1 = {
 	scheduling?: AgenticChatProviderToolSchedulingV1;
 };
 
+/**
+ * What the context finder added to a turn's opening request, kept beside the turn's prompt
+ * snapshot (`chat_prompt_snapshots.prompt_sections.context_injection`) so "what was the model
+ * given" can be replayed. The snapshot itself is taken at preparation, before the finder runs.
+ * Server-side only: it rides on the `context_selection` step and is never published.
+ */
+export type AgenticChatContextInjectionRecordV1 = {
+	version: 1;
+	/** Which finder ran: the project finder, or the workspace finder of a global chat. */
+	scope: 'project' | 'global';
+	injected: boolean;
+	/** The exact string appended to the opening request; null when nothing was injected. */
+	text: string | null;
+	chars: number;
+	/** sha256 hex of `text` (UTF-8); the same value as `context_selection.injection.sha256`. */
+	sha256: string | null;
+	/** The finder's own outcome, copied from its event: selected, empty or unavailable. */
+	status: string | null;
+	/** Why nothing was found, for example `deadline`; null on a normal run. */
+	failure: string | null;
+	/** Where the injection sits in the opening request's messages; null when not injected. */
+	messageIndex: number | null;
+	/** Reader tools mounted because of the injection. */
+	toolPins: string[];
+	/** Every tool the opening request offered, after tool selection and pins. */
+	openingToolNames: string[];
+};
+
 export type AgenticChatProviderStepV1 =
 	| { type: 'text_delta'; text: string }
 	| {
@@ -388,6 +416,8 @@ export type AgenticChatProviderStepV1 =
 			eventType: string;
 			currentActivity: string;
 			eventPayload: JsonObject;
+			/** Never published: the executor files it on the turn's prompt snapshot. */
+			contextInjection?: AgenticChatContextInjectionRecordV1;
 	  }
 	| (AgenticChatProviderScheduledToolStepV1 & {
 			type: 'read_tool';

@@ -49,6 +49,14 @@
 				"expo-audio",
 				{ "microphonePermission": "BuildOS records voice notes you choose to capture." }
 			],
+			[
+				"expo-image-picker",
+				{
+					"photosPermission": "BuildOS attaches the photos you pick to a chat message.",
+					"cameraPermission": false,
+					"microphonePermission": false
+				}
+			],
 			"expo-asset",
 			"expo-font",
 			"@react-native-community/datetimepicker"

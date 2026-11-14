@@ -667,9 +667,15 @@ function compactOntologyDocumentDetailPayload(payload: unknown): unknown {
 	const sectionsOmitted =
 		(typeof record.sections_omitted === 'number' ? record.sections_omitted : 0) +
 		(sectionIndex?.omitted ?? 0);
+	// The index is capped; say so, and where the remaining anchors are listed.
+	const sectionsListed = sectionIndex?.sections.length ?? 0;
+	const omittedNote =
+		sectionsOmitted > 0
+			? ` sections lists the first ${sectionsListed} of ${sectionsListed + sectionsOmitted} headings; get_document_outline with offset ${sectionsListed} lists the rest.`
+			: '';
 	const message = continuable
 		? sectionIndex && sectionIndex.sections.length > 0
-			? `Long document (${content.length} chars): content_preview holds chars 0 to ${previewEnd}. Read the rest in one read_document_section call with the anchors you need from sections (up to ${DOCUMENT_SECTION_READ_BUDGET_CHARS} chars per call), or with offset ${previewEnd}.`
+			? `Long document (${content.length} chars): content_preview holds chars 0 to ${previewEnd}. Read the rest in one read_document_section call with the anchors you need from sections (up to ${DOCUMENT_SECTION_READ_BUDGET_CHARS} chars per call), or with offset ${previewEnd}.${omittedNote}`
 			: `Long document (${content.length} chars) with no headings: content_preview holds chars 0 to ${previewEnd}. Read the rest with read_document_section and offset ${previewEnd} (up to ${DOCUMENT_SECTION_READ_BUDGET_CHARS} chars per call).`
 		: record.message;
 
@@ -713,33 +719,89 @@ function compactDocumentSectionIndex(value: unknown[]): {
 }
 
 /**
- * The outline as before; a short document's inline body rides beside it whole.
- * The body is never trimmed (an edit copies old_text from it): when it cannot
- * fit, it is dropped and the message says how to read it.
+ * A page of headings from get_document_outline; a short document's inline body rides beside
+ * it whole. The tool already sizes the page, so this usually changes nothing. When the result
+ * is still too large (a big `find`, a body that escapes badly), headings are dropped only
+ * from the end, at an entry boundary, and `next_offset` and the message say exactly which
+ * ones came back, so the rest stay reachable. The body is never trimmed (an edit copies
+ * old_text from it): when it cannot fit, it is dropped and the message says how to read it.
  */
 function compactDocumentOutlinePayload(payload: unknown): unknown {
-	if (
-		!payload ||
-		typeof payload !== 'object' ||
-		Array.isArray(payload) ||
-		typeof (payload as Record<string, unknown>).content !== 'string'
-	) {
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
 		return applyToolPayloadSizeGuard(payload, TOOL_COMPACT_TARGET_CHARS);
 	}
-	const { content, ...rest } = payload as Record<string, unknown>;
-	const fitted = applyToolPayloadSizeGuard(rest, TOOL_COMPACT_TARGET_CHARS) as Record<
+	const record = payload as Record<string, unknown>;
+	if (!Array.isArray(record.outline)) {
+		// Not an outline page (a table redirect, a not-found reply).
+		return applyToolPayloadSizeGuard(payload, TOOL_COMPACT_TARGET_CHARS);
+	}
+	if ((serializedLength(record) ?? Infinity) <= DOCUMENT_COMPACT_TARGET_CHARS) {
+		return record;
+	}
+
+	const { outline, content, ...rest } = record as Record<string, unknown> & {
+		outline: unknown[];
+	};
+	const body = typeof content === 'string' ? content : null;
+	// Everything but the headings and the body first (a long `find` result).
+	const shell = applyToolPayloadSizeGuard(rest, TOOL_COMPACT_TARGET_CHARS) as Record<
 		string,
 		unknown
 	>;
-	const withBody = { ...fitted, content };
-	if ((serializedLength(withBody) ?? Infinity) <= DOCUMENT_COMPACT_TARGET_CHARS) {
-		return withBody;
+	// 300 chars of room for the rewritten message below.
+	const room = DOCUMENT_COMPACT_TARGET_CHARS - 300;
+	const bodyFits =
+		body !== null &&
+		(serializedLength({ ...shell, outline: [], content: body }) ?? Infinity) <= room;
+	const base = bodyFits ? { ...shell, content: body } : shell;
+	let used = serializedLength({ ...base, outline: [] }) ?? Infinity;
+	let kept = 0;
+	for (const entry of outline) {
+		// The entry plus the comma that joins it to the next one.
+		const size = (serializedLength(entry) ?? Infinity) + 1;
+		if (used + size > room) break;
+		used += size;
+		kept += 1;
 	}
-	return {
-		...fitted,
-		message:
-			'Outline loaded. The body did not fit in this result; read it with read_document_section and offset 0.'
-	};
+
+	const offset =
+		typeof record.offset === 'number' && Number.isFinite(record.offset) && record.offset > 0
+			? record.offset
+			: 0;
+	const total =
+		typeof record.heading_count === 'number' && record.heading_count >= offset + outline.length
+			? record.heading_count
+			: offset + outline.length;
+	const nextOffset =
+		kept < outline.length
+			? offset + kept
+			: typeof record.next_offset === 'number'
+				? record.next_offset
+				: null;
+	const fitted: Record<string, unknown> = { ...base, outline: outline.slice(0, kept) };
+	delete fitted.next_offset;
+	if (nextOffset !== null) {
+		fitted.offset = offset;
+		fitted.next_offset = nextOffset;
+	}
+	const headings =
+		kept === 0
+			? `None of the ${total} headings fit in this result.`
+			: nextOffset === null && offset === 0
+				? `Outline loaded: ${total} headings.`
+				: `Outline: headings ${offset + 1} to ${offset + kept} of ${total}.`;
+	const more =
+		nextOffset !== null
+			? ` Call get_document_outline again with offset ${nextOffset} for the rest.`
+			: '';
+	const bodyNote =
+		body === null
+			? ''
+			: bodyFits
+				? ' The full body is in content.'
+				: ' The body did not fit in this result; read it with read_document_section and offset 0.';
+	fitted.message = `${headings}${more}${bodyNote}`;
+	return fitted;
 }
 
 /**

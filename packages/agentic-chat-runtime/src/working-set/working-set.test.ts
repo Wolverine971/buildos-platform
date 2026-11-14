@@ -338,6 +338,31 @@ describe('the next real-chat turn reloads the carry', () => {
 		expect(out.carryIn.carry.map((entry) => entry.id)).toEqual([DOC, TASK]);
 	});
 
+	it('keeps a carried document whose text did not load, as a pointer to read', () => {
+		const set = {
+			version: 1 as const,
+			project_id: P,
+			carry: [
+				item({ id: DOC, anchors: [funding], headings: [], version: null }),
+				item({ id: TASK, kind: 'task', anchors: [], headings: [], version: null })
+			],
+			scanned: [],
+			scanned_count: 0
+		};
+		const { plan } = planTurnCarry({ set, entities });
+		// The document read failed: the entity arrives without its text.
+		const unloaded = entities.map((entity) =>
+			entity.id === DOC ? { ...entity, textLoaded: false, fullText: '' } : entity
+		);
+		const out = renderTurnCarry({ set, plan, entities: unloaded });
+		expect(out.loaded.map((entry) => entry.id)).toEqual([TASK]);
+		// Not loaded, but named for the agent and still in the set the finalizer fades.
+		expect(out.block).toContain('Looked at before, not loaded (read one if you need it)');
+		expect(out.block).toContain(`document ${DOC} Questions for Mom › Funding & Operations`);
+		expect(out.carryIn.carry.map((entry) => entry.id)).toEqual([TASK, DOC]);
+		expect(out.notes).toEqual({ changed: 0, notLoaded: 1 });
+	});
+
 	it('sends a section once when it sits inside another carried section', () => {
 		const doc = entities.find((entity) => entity.id === DOC)!;
 		const top = doc.sections.find((section) => section.level === 1)!.anchor!;

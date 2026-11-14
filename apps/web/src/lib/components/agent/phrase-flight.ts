@@ -53,7 +53,13 @@ export function flyPhrase(
 	target: Element | null | undefined,
 	options: { text: string; label: string; tone: FlightTone }
 ): Promise<void> {
-	if (!source || !target || typeof window === 'undefined' || typeof document === 'undefined') {
+	if (!target || typeof window === 'undefined' || typeof document === 'undefined') {
+		return Promise.resolve();
+	}
+	// The phrase isn't on the page (its message scrolled out of the loaded window): the row
+	// that saved it still glows.
+	if (!source) {
+		glowLanded(target);
 		return Promise.resolve();
 	}
 	const from = source.getClientRects()[0] ?? source.getBoundingClientRect();

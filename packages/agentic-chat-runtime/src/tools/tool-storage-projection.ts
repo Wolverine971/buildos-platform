@@ -468,12 +468,13 @@ function describeNavigationStep(data: Record<string, unknown>): string {
 			return `Retrying ${where || 'page'} with Tavily`;
 		case 'decided': {
 			const answer = typeof data.answer === 'number' ? data.answer : 0;
-			const verdict = answer >= 0.5 ? 'answer is here' : 'not here';
+			const verdict = answer >= 0.5 ? 'Answer is on this page' : 'Not on this page';
 			const next = isRecord(data.next)
 				? ` → next link (${percent(data.next.probability)})`
 				: '';
 			const dead = answer < 0.5 && !isRecord(data.next) ? ', no promising links' : '';
-			return `Jev: ${verdict} (${percent(answer)})${next}${dead}${ms}`;
+			// Shown to the person in the step trail: no internal model names.
+			return `${verdict} (${percent(answer)})${next}${dead}${ms}`;
 		}
 		case 'backtracking':
 			return `Dead end, backtracking (${percent(data.probability)})`;

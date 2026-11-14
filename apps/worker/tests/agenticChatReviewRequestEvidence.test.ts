@@ -320,6 +320,47 @@ describe('actor-facing commission guidance', () => {
 		// that fits no project goes to the user's Workspace, a valid direct target
 		// (write-routing treats it like the focused project); measured ~3,250.
 		expect(message).toContain("goes to the user's Workspace (not a project)");
-		expect(message!.length).toBeLessThan(3_300);
+		// 2026-11-13 (capture first): +~570 chars on purpose. A real brain dump ran five
+		// unasked web lookups, saved nothing and asked where to file one task. The message
+		// now says to save what the user tells it first, that a new item's home is never a
+		// question for the user, and to research only when asked; measured 3,827.
+		expect(message).toContain('save them first, in this turn');
+		expect(message).toContain('Look things up (web, email, calendar) only when asked');
+		expect(message).toContain(
+			'Where a new note, doc, or task lives is not such a choice: file it in the best-fitting project, or the Workspace'
+		);
+		expect(message!.length).toBeLessThan(3_900);
+	});
+
+	it("tells the reviewer a new item's home is the agent's choice and a told to-do is commissioned", () => {
+		const reviewer = SEMANTIC_COMMISSION_GUIDANCE.join(' ');
+		expect(reviewer).toContain(
+			"Where a new note, doc, or task lives is the agent's choice, not an ambiguous target"
+		);
+		expect(reviewer).toContain('never send that choice back to the user');
+		expect(reviewer).toContain('recording them is commissioned without the word "save"');
+		// Existing-entity ambiguity is still the user's.
+		expect(reviewer).toContain('ambiguous targets still belong to the user');
+	});
+
+	it('asks for the source quote only when a mounted write takes it', () => {
+		const plain = buildWorkerSemanticMutationOrdering(actingTools());
+		expect(plain).not.toContain('from_quote');
+		const [readOnly, clarify, update] = actingTools();
+		const quoting: AgenticChatTurnProviderToolV1 = {
+			...update!,
+			function: {
+				...update!.function,
+				parameters: {
+					...update!.function.parameters,
+					properties: {
+						...(update!.function.parameters.properties as JsonObject),
+						from_quote: { type: 'string' }
+					}
+				}
+			}
+		};
+		const message = buildWorkerSemanticMutationOrdering([readOnly!, clarify!, quoting]);
+		expect(message).toContain("set from_quote to the user's exact words it came from");
 	});
 });

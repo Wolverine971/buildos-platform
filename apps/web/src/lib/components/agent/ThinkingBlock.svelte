@@ -29,7 +29,10 @@
 	} from './agent-chat-client-actions';
 	import {
 		deriveTurnCards,
-		describePulled,
+		describeLedger,
+		type LedgerGroupView,
+		type LedgerRecord,
+		type StepSettlement,
 		type TurnCard,
 		type TurnCardProject
 	} from './agent-chat-turn-cards';
@@ -49,11 +52,23 @@
 		 * single step log. `sessionProject` is the chat's own project (null in global chat).
 		 */
 		turnCards?: { sessionProject: TurnCardProject | null } | null;
+		/**
+		 * What became of a change after its step ran, by step activity id: the person undid it,
+		 * approved a held change, or turned it down (agent-chat-step-outcomes.ts).
+		 */
+		settled?: Readonly<Record<string, StepSettlement>>;
 	}
 
-	let { block, onToggleCollapse, onClientActionComplete, turnCards = null }: Props = $props();
+	let {
+		block,
+		onToggleCollapse,
+		onClientActionComplete,
+		turnCards = null,
+		settled = undefined
+	}: Props = $props();
 
-	type StepTone = 'pending' | 'done' | 'failed' | 'awaiting' | 'stopped';
+	// 'undone' and 'declined' are changes that are not in effect: quiet rows, never a badge.
+	type StepTone = 'pending' | 'done' | 'failed' | 'awaiting' | 'stopped' | 'undone' | 'declined';
 
 	interface StepRow {
 		activity: ActivityEntry;
@@ -65,6 +80,8 @@
 		error?: string;
 		/** What it read or changed, as links (tasker 155). */
 		details: StepDetails;
+		/** Undone, approved or declined after the step ran; replaces the row's claim. */
+		settlement: StepSettlement | null;
 	}
 
 	const ACTION_LABELS: Record<StepAction, string> = {
@@ -83,7 +100,9 @@
 		done: 'Done',
 		failed: 'Failed',
 		awaiting: '',
-		stopped: 'Stopped'
+		stopped: 'Stopped',
+		undone: 'Undone',
+		declined: 'Not saved'
 	};
 
 	// Notes `finalizeThinkingBlock` writes when it has nothing more specific.
@@ -139,9 +158,14 @@
 	function stepTone(
 		activity: ActivityEntry,
 		line: Partial<ToolActivityLine> | null,
-		isLatest: boolean
+		isLatest: boolean,
+		settlement: StepSettlement | null
 	): StepTone {
 		if (activity.status === 'failed') return 'failed';
+		// The person's later click outranks what the step said when it ran.
+		if (settlement?.state === 'undone') return 'undone';
+		if (settlement?.state === 'declined') return 'declined';
+		if (settlement?.state === 'approved') return 'done';
 		if (line?.tone === 'awaiting') return 'awaiting';
 		if (activity.status === 'completed') return 'done';
 		if (activity.status === 'pending') return block.status === 'active' ? 'pending' : 'stopped';
@@ -154,7 +178,8 @@
 		const lastIndex = displayedActivities.length - 1;
 		return displayedActivities.map((activity, index) => {
 			const line = readLine(activity);
-			const tone = stepTone(activity, line, index === lastIndex);
+			const settlement = settled?.[activity.id] ?? null;
+			const tone = stepTone(activity, line, index === lastIndex, settlement);
 			const fallback = activity.content ?? '';
 			const verb =
 				line?.verb ??
@@ -162,7 +187,11 @@
 			const outcome =
 				tone === 'done' && typeof activity.metadata?.outcome === 'string'
 					? activity.metadata.outcome
-					: undefined;
+					: tone === 'stopped' && activity.activityType === 'tool_call'
+						? // The turn was stopped before this step reported back. A write may or
+							// may not have been saved, so the row claims neither.
+							'no result before the stop'
+						: undefined;
 			return {
 				activity,
 				tone,
@@ -173,40 +202,67 @@
 				...(tone === 'failed' && line?.error ? { error: line.error } : {}),
 				details: buildStepDetails(activity, {
 					projectId: turnCards?.sessionProject?.id ?? null
-				})
+				}),
+				settlement
 			};
 		});
 	});
-	// "2 updated · 1 created · 6 read" once the turn has changed something.
+	// "2 updated · 1 created · 6 opened" once the turn has changed something. Only changes
+	// that are in effect count: held, declined and undone ones are left out. "Opened" counts
+	// records a step actually read, never the rows of a list.
 	const receipt = $derived.by(() => {
 		const counts = buildTurnReceipt(
 			steps.filter((step) => step.tone === 'done').map((step) => step.details)
 		);
+		const archived = counts.archived - counts.deleted;
 		const parts = [
 			counts.updated ? `${counts.updated} updated` : '',
 			counts.created ? `${counts.created} created` : '',
-			counts.archived ? `${counts.archived} archived` : ''
+			archived ? `${archived} archived` : '',
+			counts.deleted ? `${counts.deleted} deleted` : ''
 		].filter(Boolean);
 		if (!parts.length) return null;
-		if (counts.read) parts.push(`${counts.read} read`);
+		if (counts.read) parts.push(`${counts.read} opened`);
 		return parts.join(' · ');
 	});
 	const stepCount = $derived(steps.length);
 	const hasSteps = $derived(stepCount > 0);
 
-	// Turn cards: the same rows, one card per project, plus what the finder pulled in.
+	// Turn cards: the same rows, one card per project, plus the ledger of what the model was
+	// handed, what it opened and what it changed.
 	const cards = $derived(
 		turnCards
 			? deriveTurnCards({
 					activities: block.activities,
-					sessionProject: turnCards.sessionProject
+					sessionProject: turnCards.sessionProject,
+					...(settled ? { settled } : {})
 				})
 			: null
 	);
-	const showCards = $derived(cards !== null && cards.cards.length > 0);
+	const showCards = $derived(
+		cards !== null &&
+			(cards.cards.length > 0 || cards.picked !== null || cards.contextLines.length > 0)
+	);
 	const stepById = $derived(new Map(steps.map((step) => [step.activity.id, step])));
-	// A card with only "Pulled in" still has something to open.
+	// A card with only its context list still has something to open.
 	const hasBody = $derived(hasSteps || showCards);
+
+	// Each ledger group shows a few records; the rest open on request.
+	const LEDGER_CHIPS = 4;
+	let openGroups = $state<Record<string, boolean>>({});
+	function groupRecords(
+		cardKey: string,
+		group: LedgerGroupView
+	): { records: LedgerRecord[]; hidden: number; key: string } {
+		const key = `${cardKey}:${group.group}`;
+		if (openGroups[key] || group.records.length <= LEDGER_CHIPS)
+			return { records: group.records, hidden: 0, key };
+		return {
+			records: group.records.slice(0, LEDGER_CHIPS),
+			hidden: group.records.length - LEDGER_CHIPS,
+			key
+		};
+	}
 	const projectCount = $derived(
 		showCards ? cards!.cards.filter((card) => card.projectId !== null).length : 0
 	);
@@ -327,7 +383,7 @@
 	});
 
 	// Sub-steps inside a running tool (web_navigate's live trail): one quiet
-	// line per page opened, Jev decision, retry, or backtrack.
+	// line per page opened, decision, retry, or backtrack.
 	const TRAIL_STYLES: Record<string, { icon: typeof Check; color: string }> = {
 		opened: { icon: Globe, color: 'text-muted-foreground' },
 		decided: { icon: Sparkles, color: 'text-info' },
@@ -366,6 +422,29 @@
 		if (logUserScrolled || !logContainer) return;
 		logContainer.scrollTop = logContainer.scrollHeight;
 	});
+
+	/**
+	 * The one record this step itself opened or changed, so the row's target can link to it.
+	 * A list or a search that happens to return one record has none: its target is the
+	 * project or the query, and must not open that record under another name.
+	 */
+	function ownRecord(step: StepRow): StepDetails['entities'][number] | null {
+		const own = step.details.action ? step.details.entities : step.details.opened;
+		return own.length === 1 ? own[0]! : null;
+	}
+
+	/** The row's badge: what the change is now, never what it was before the person's click. */
+	function stepBadge(step: StepRow): { label: string; tone: string } | null {
+		if (step.settlement && step.tone !== 'failed') {
+			return {
+				label: step.settlement.label,
+				tone: step.settlement.state === 'approved' ? 'updated' : 'settled'
+			};
+		}
+		if (step.details.action && step.tone === 'done')
+			return { label: ACTION_LABELS[step.details.action], tone: step.details.action };
+		return null;
+	}
 </script>
 
 {#snippet sep()}<span class="thinking-step-sep" aria-hidden="true">{' · '}</span>{/snippet}
@@ -376,16 +455,20 @@
 
 {#snippet stepDetails(step: StepRow)}
 	{@const details = step.details}
-	{@const linkTarget = details.entities.length === 1 && step.target ? null : details.entities}
-	{#if step.tone === 'done' && (linkTarget?.length || details.changes.length || details.docChange || details.quote)}
+	{@const linkTarget = ownRecord(step) && step.target ? null : details.entities}
+	{#if step.tone === 'done' && (linkTarget?.length || details.others.length || details.changes.length || details.docChange || details.quote)}
 		<div class="step-details">
 			{#if details.quote}
 				<p class="step-quote" data-action={details.action ?? 'read'}>“{details.quote}”</p>
 			{/if}
-			{#if linkTarget?.length}
+			{#if linkTarget?.length || details.others.length}
 				<div class="step-entities">
-					{#each linkTarget as entity (`${entity.kind}:${entity.id}`)}
+					{#each linkTarget ?? [] as entity (`${entity.kind}:${entity.id}`)}
 						{@render entityLink(entity)}
+					{/each}
+					<!-- eslint-disable-next-line svelte/require-each-key -- page-less records (calendar events, table rows) can arrive without an id -->
+					{#each details.others as other}
+						<RecordChip kind={other.kind.replace(/_/g, ' ')} title={other.title} />
 					{/each}
 					{#if details.more}<span class="step-more">+{details.more} more</span>{/if}
 				</div>
@@ -415,12 +498,64 @@
 	{/if}
 {/snippet}
 
+<!--
+	The ledger: every record this card's turn touched, grouped by how far it got. The group
+	title and the dot say the state without hovering; the tooltip says exactly what the model
+	had. A record the model only had a summary of is never shown as read.
+-->
+{#snippet ledgerView(card: TurnCard)}
+	{@const view = describeLedger(card.ledger!)}
+	<div class="ledger" data-testid="turn-ledger">
+		<p class="ledger-head">
+			<Sparkles class="h-3 w-3 shrink-0 text-accent" aria-hidden="true" />
+			<span>{view.label}</span>
+		</p>
+		<ul class="ledger-groups">
+			{#each view.groups as group (group.group)}
+				{@const shown = groupRecords(card.key, group)}
+				<li class="ledger-group" data-state={group.state} data-group={group.group}>
+					<span class="ledger-group-title">
+						<span class="ledger-dot" aria-hidden="true"></span>{group.title}
+					</span>
+					<span class="ledger-chips">
+						{#each shown.records as record (record.key)}
+							<span class="ledger-chip" title={record.note}>
+								<RecordChip
+									kind={record.kind}
+									title={record.title}
+									href={record.href}
+									tooltip={record.note}
+								/>{#if record.carried}<span
+										class="ledger-chip-mark"
+										title="Carried from last turn">↻</span
+									>{/if}{#if group.group === 'opened' && record.sections.length}<span
+										class="ledger-chip-sections"
+										>› {record.sections.slice(0, 3).join(', ')}</span
+									>{/if}<span class="sr-only">{record.note}</span>
+							</span>
+						{/each}
+						{#if shown.hidden > 0}
+							<button
+								type="button"
+								class="ledger-more"
+								onclick={() => (openGroups = { ...openGroups, [shown.key]: true })}
+							>
+								+{shown.hidden} more
+							</button>
+						{/if}
+					</span>
+				</li>
+			{/each}
+		</ul>
+	</div>
+{/snippet}
+
 {#snippet stepRow(step: StepRow)}
 	{@const trail = readToolProgressSteps(step.activity.metadata?.progressSteps)}
-	{@const badged = Boolean(step.details.action && step.tone === 'done')}
-	{@const kind = step.details.entities[0]?.kind}
-	{@const single =
-		step.details.entities.length === 1 && step.target ? step.details.entities[0] : null}
+	{@const badge = stepBadge(step)}
+	{@const kind =
+		step.details.entities[0]?.kind ?? step.details.others[0]?.kind.replace(/_/g, ' ')}
+	{@const single = step.target ? ownRecord(step) : null}
 	<div
 		class="py-0.5"
 		data-step-tone={step.tone}
@@ -436,26 +571,32 @@
 					<CircleDot class="h-3 w-3 text-accent" />
 				{:else if step.tone === 'stopped'}
 					<CircleDot class="h-3 w-3 text-muted-foreground" />
+				{:else if step.tone === 'undone'}
+					<CornerUpLeft class="h-3 w-3 text-muted-foreground" />
+				{:else if step.tone === 'declined'}
+					<Ban class="h-3 w-3 text-muted-foreground" />
 				{:else}
 					<Check class="h-3 w-3 text-success" />
 				{/if}
 			</span>
-			{#if STEP_TONE_LABELS[step.tone]}
+			{#if STEP_TONE_LABELS[step.tone] && !badge}
 				<span class="sr-only">{STEP_TONE_LABELS[step.tone]}:</span>
 			{/if}
 
 			<span class="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">
-				{#if badged && step.details.action}<span
-						class="step-action"
-						data-action={step.details.action}>{ACTION_LABELS[step.details.action]}</span
+				{#if badge}<span class="step-action" data-action={badge.tone}>{badge.label}</span
 					>{/if}<span
 					class={step.tone === 'failed'
 						? 'text-destructive'
-						: step.tone === 'stopped'
+						: step.tone === 'stopped' ||
+							  step.tone === 'undone' ||
+							  step.tone === 'declined'
 							? 'text-muted-foreground'
 							: 'text-foreground'}
-					>{badged && kind
-						? kind.charAt(0).toUpperCase() + kind.slice(1)
+					>{badge
+						? kind
+							? kind.charAt(0).toUpperCase() + kind.slice(1)
+							: 'Change'
 						: step.verb}</span
 				>{#if step.target}{@render sep()}{#if single?.href}<a
 							class="thinking-step-target step-target-link"
@@ -531,11 +672,6 @@
 				disabled={!hasBody}
 				class="thinking-header"
 				aria-expanded={hasBody ? !block.isCollapsed : undefined}
-				aria-label={hasBody
-					? block.isCollapsed
-						? 'Expand BuildOS thinking log'
-						: 'Collapse BuildOS thinking log'
-					: undefined}
 			>
 				<div class="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
 					{#if hasBody}
@@ -604,6 +740,11 @@
 						{/if}
 					</div>
 				{/if}
+				{#if hasBody}
+					<span class="sr-only"
+						>{block.isCollapsed ? 'Show the work log' : 'Hide the work log'}</span
+					>
+				{/if}
 			</button>
 
 			<!-- INKPRINT activity log panel -->
@@ -615,9 +756,16 @@
 								<p class="turn-cards-note">
 									Checked {cards.picked.checked}
 									{cards.picked.checked === 1 ? 'project' : 'projects'}, picked
-									{cards.picked.picked}
+									{cards.picked.picked}{cards.picked.names.length
+										? `: ${cards.picked.names.join(', ')}`
+										: ''}
 								</p>
 							{/if}
+							{#each cards.contextLines as line (line)}
+								<p class="turn-cards-note" data-testid="turn-context-line">
+									{line}
+								</p>
+							{/each}
 							{#each cards.cards as card (card.key)}
 								{@const view = cardRows(card)}
 								<section class="turn-card" aria-label={card.name}>
@@ -635,50 +783,14 @@
 											>
 										{/if}
 									</header>
+									{#if card.ledger}
+										{@render ledgerView(card)}
+									{/if}
 									<div
 										class="turn-card-rows space-y-0.5 font-mono text-2xs"
 										role="log"
 										aria-label="Steps for {card.name}"
 									>
-										{#if card.carried}
-											<div
-												class="flex items-start gap-1.5 py-0.5 leading-snug"
-											>
-												<span class="thinking-step-icon" aria-hidden="true">
-													<RefreshCw class="h-3 w-3 text-accent" />
-												</span>
-												<span
-													class="min-w-0 flex-1 break-words [overflow-wrap:anywhere]"
-												>
-													<span class="text-foreground"
-														>Carried from last turn</span
-													>{@render sep()}<span
-														class="thinking-step-target"
-														>{card.carried.join(' · ')}</span
-													>
-												</span>
-											</div>
-										{/if}
-										{#if card.pulled}
-											{@const pulled = describePulled(card.pulled)}
-											<div
-												class="flex items-start gap-1.5 py-0.5 leading-snug"
-											>
-												<span class="thinking-step-icon" aria-hidden="true">
-													<Sparkles class="h-3 w-3 text-accent" />
-												</span>
-												<span
-													class="min-w-0 flex-1 break-words [overflow-wrap:anywhere]"
-												>
-													<span class="text-foreground"
-														>{pulled.label}</span
-													>{#if pulled.detail}{@render sep()}<span
-															class="thinking-step-target"
-															>{pulled.detail}</span
-														>{/if}
-												</span>
-											</div>
-										{/if}
 										{#each view.rows as step (step.activity.id)}
 											{@render stepRow(step)}
 										{/each}
@@ -1062,9 +1174,133 @@
 	}
 
 	.step-action[data-action='archived'],
-	.step-action[data-action='deleted'] {
+	.step-action[data-action='deleted'],
+	.step-action[data-action='settled'] {
 		background: hsl(var(--muted));
 		color: hsl(var(--muted-foreground));
+	}
+
+	/* The ledger: what the model was handed, what it opened, what it changed. */
+	.ledger {
+		margin-top: 0.3rem;
+		font-size: 0.68rem;
+		line-height: 1.35;
+	}
+
+	.ledger-head {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+		color: hsl(var(--foreground));
+		font-variant-numeric: tabular-nums;
+	}
+
+	.ledger-groups {
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+		margin: 0.25rem 0 0.1rem;
+		padding: 0 0 0 0.5rem;
+		border-left: 1px solid hsl(var(--border));
+		list-style: none;
+	}
+
+	.ledger-group {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.15rem 0.4rem;
+		min-width: 0;
+	}
+
+	.ledger-group-title {
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		gap: 0.3rem;
+		color: hsl(var(--muted-foreground));
+		font-size: 0.62rem;
+		font-weight: 600;
+	}
+
+	/* Handed: an empty ring. Opened: filled. Changed: filled in the accent. */
+	.ledger-dot {
+		height: 0.4rem;
+		width: 0.4rem;
+		flex: 0 0 auto;
+		border: 1px solid hsl(var(--muted-foreground) / 0.8);
+		border-radius: 999px;
+	}
+
+	.ledger-group[data-state='opened'] .ledger-dot {
+		border-color: hsl(var(--foreground) / 0.75);
+		background: hsl(var(--foreground) / 0.75);
+	}
+
+	.ledger-group[data-state='changed'] .ledger-dot {
+		border-color: hsl(var(--accent));
+		background: hsl(var(--accent));
+	}
+
+	.ledger-group[data-state='opened'] .ledger-group-title,
+	.ledger-group[data-state='changed'] .ledger-group-title {
+		color: hsl(var(--foreground));
+	}
+
+	.ledger-chips {
+		display: flex;
+		min-width: 0;
+		flex: 1 1 12rem;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.2rem 0.3rem;
+	}
+
+	.ledger-chip {
+		display: inline-flex;
+		min-width: 0;
+		max-width: 100%;
+		align-items: baseline;
+		gap: 0.25rem;
+	}
+
+	/* Only a summary was in view: dashed and muted, so it never reads as opened. */
+	.ledger-group[data-state='handed'] .ledger-chip :global(.record-chip) {
+		border-style: dashed;
+		background: transparent;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.ledger-group[data-state='changed'] .ledger-chip :global(.record-chip) {
+		border-color: hsl(var(--accent) / 0.6);
+		background: hsl(var(--accent) / 0.08);
+	}
+
+	.ledger-chip-mark,
+	.ledger-chip-sections {
+		flex: 0 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		color: hsl(var(--muted-foreground));
+		font-size: 0.62rem;
+	}
+
+	.ledger-more {
+		border-radius: 0.25rem;
+		color: hsl(var(--muted-foreground));
+		font-size: 0.62rem;
+		font-weight: 600;
+	}
+
+	.ledger-more:hover {
+		color: hsl(var(--foreground));
+	}
+
+	.ledger-more:focus-visible {
+		outline: 2px solid hsl(var(--ring));
+		outline-offset: 1px;
 	}
 
 	.step-target-link {

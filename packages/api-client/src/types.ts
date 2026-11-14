@@ -11,6 +11,9 @@ import type {
 	AgenticChatReconcileRpcResultV1,
 	AgenticChatWorkerTurnDescriptorV1,
 	CancelTurnResultV1,
+	ChatImageAttachmentAsset,
+	ChatImageAttachmentCreateResponse,
+	ContextSelectionEventV1,
 	ChatTurnStatusV1,
 	Database,
 	Json
@@ -1204,7 +1207,54 @@ export type AgentTurnRequest = {
 	preparedPromptKey?: string | null;
 	reviewIntent?: 'project_review' | 'document_organization' | null;
 	requestedSkillId?: string | null;
+	/** Images for this turn (≤ 16; the composers allow 4). `message` may then be empty. */
+	attachments?: AgentTurnAttachment[];
 };
+
+/**
+ * An image on a turn (apps/web/src/routes/api/agent/v2/turns/worker-admission-schema.ts):
+ * a project asset, or a temporary file (Workspace chat; 24 h) by its storage location.
+ */
+export type AgentTurnAttachment =
+	| {
+			attachmentKind: 'onto_asset';
+			mediaType: 'image';
+			assetId: string;
+			projectId?: string | null;
+			displayOrder?: number;
+	  }
+	| {
+			attachmentKind: 'temporary_file';
+			mediaType: 'image';
+			temporaryAttachmentId: string;
+			storageBucket: string;
+			storagePath: string;
+			fileName?: string | null;
+			contentType: string;
+			fileSizeBytes: number;
+			width?: number | null;
+			height?: number | null;
+			/** Lowercase hex. */
+			checksumSha256?: string | null;
+			expiresAt?: string | null;
+			displayOrder?: number;
+	  };
+
+/** POST /api/agent/chat-attachments — register an image before uploading its bytes. */
+export type ChatImageAttachmentInput = {
+	/** The chat's project (an asset that stays with it); null in Workspace chat (temporary). */
+	project_id: string | null;
+	file_name: string;
+	content_type: string;
+	file_size_bytes: number;
+	/** SHA-256 of the bytes, lowercase hex (the server dedupes on it). */
+	checksum_sha256: string;
+	width?: number | null;
+	height?: number | null;
+	metadata?: Record<string, unknown>;
+};
+
+export type { ChatImageAttachmentAsset, ChatImageAttachmentCreateResponse };
 
 /**
  * POST /api/agent/v2/turns — success `data` (202 when newly admitted, 200 for a
@@ -1547,7 +1597,15 @@ export type ChatSessionHistoryResponse = {
 	truncated: boolean;
 	historyWindow: ChatHistoryWindow;
 	pendingChange: ChatPendingChange | null;
+	/**
+	 * What the context finder put in front of the model, per turn (visible and injected only);
+	 * match to a turn by `turn_run_id`. Turn events last 7 days. Absent from older servers.
+	 */
+	contextSelections?: ContextSelectionEventV1[];
 };
+
+/** POST /api/chat/sessions/[id]/move-to-project — a Workspace chat continues in one project. */
+export type ChatMoveToProjectResponse = { session_id: string; project_id: string };
 
 /** `?probe=active-turn` — the five newest turn runs from one cheap query, for a running-turn poll. */
 export type ChatActiveTurnProbeRun = Pick<

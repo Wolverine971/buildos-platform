@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
 	BoltSpinner,
 	GraphPaper,
+	ImagePlus,
 	Mic,
 	playHaptic,
 	RoundKey,
@@ -26,6 +27,8 @@ import {
 	Stamp,
 	X
 } from '@/components/kit';
+import type { ChatSendImages } from '@/hooks/use-chat';
+import { useDraftImages } from '@/hooks/use-draft-images';
 import { useKeyboardOverlap } from '@/hooks/use-keyboard-inset';
 import { useVoiceRecorder } from '@/hooks/use-voice-recorder';
 import { api } from '@/lib/api';
@@ -34,6 +37,8 @@ import type { CaptureAudio } from '@/lib/capture-queue';
 import { useAuth } from '@/providers/auth-provider';
 import { useInk, useReducedMotion } from '@/providers/theme-provider';
 import { radius, typeScale, withAlpha } from '@/theme';
+
+import { ImageTray } from './image-tray';
 
 // Box geometry, the capture box's: 1pt border + 6pt padding around 44pt keys = 58pt.
 const KEY = 44;
@@ -48,7 +53,9 @@ const FADE = 18;
 export type ComposerProps = {
 	/** A reply is in flight: the Send key becomes Stop. */
 	busy: boolean;
-	onSend: (text: string) => Promise<void> | void;
+	onSend: (text: string, images?: ChatSendImages) => Promise<void> | void;
+	/** The chat's project: images become its images; null = Workspace chat (kept 24 h). */
+	imageProjectId?: string | null;
 	onStop: () => void;
 	error: string | null;
 	onDismissError: () => void;
@@ -70,6 +77,7 @@ export function Composer({
 	placeholder,
 	autoFocus = null,
 	initialText = null,
+	imageProjectId = null,
 	above
 }: ComposerProps) {
 	const ink = useInk();
@@ -115,26 +123,33 @@ export function Composer({
 		}
 	});
 	const recording = voice.phase === 'recording' || voice.phase === 'stopping';
+	const draft = useDraftImages(imageProjectId);
 	const hasText = text.trim().length > 0;
+	const hasImages = draft.images.length > 0;
+	// Images still uploading (or one that failed) hold Send; words alone never wait on them.
+	const canSend = (hasText || hasImages) && (draft.state === 'empty' || draft.state === 'ready');
 
 	const send = async () => {
 		const value = text.trim();
-		if (!value || sending.current) return;
+		if (!canSend || sending.current) return;
+		const images = hasImages ? draft.take() : null;
+		if (hasImages && !images) return;
 		sending.current = true;
 		setText('');
 		playHaptic('light');
 		try {
-			await onSend(value);
+			await onSend(value, images ?? undefined);
 		} finally {
 			sending.current = false;
 		}
 	};
 
-	const message = error ?? voiceError ?? voice.error;
+	const message = error ?? voiceError ?? voice.error ?? draft.error;
 	const dismiss = () => {
 		onDismissError();
 		setVoiceError(null);
 		voice.clearError();
+		draft.clearError();
 	};
 
 	const borderColor = recording
@@ -189,6 +204,7 @@ export function Composer({
 					/>
 				</View>
 			) : null}
+			<ImageTray images={draft.images} onRemove={draft.remove} />
 			<View
 				style={[
 					styles.box,
@@ -239,6 +255,18 @@ export function Composer({
 					</>
 				) : (
 					<>
+						<RoundKey
+							icon={ImagePlus}
+							tone="muted"
+							size={36}
+							iconSize={18}
+							haptic="selection"
+							accessibilityLabel="Attach images"
+							accessibilityHint="Pick up to 4 photos to send with your message"
+							disabled={draft.images.length >= 4}
+							onPress={() => void draft.pick()}
+							style={styles.attach}
+						/>
 						<View style={styles.field}>
 							<TextInput
 								accessibilityLabel="Message"
@@ -272,7 +300,7 @@ export function Composer({
 							>
 								<BoltSpinner size={22} label="" />
 							</View>
-						) : hasText ? (
+						) : canSend ? (
 							<RoundKey
 								icon={Send}
 								tone="accent"
@@ -281,6 +309,14 @@ export function Composer({
 								accessibilityLabel="Send"
 								onPress={() => void send()}
 							/>
+						) : hasImages && draft.state === 'uploading' ? (
+							<View
+								style={styles.spinner}
+								accessibilityLabel="Uploading images"
+								accessible
+							>
+								<BoltSpinner size={22} label="" />
+							</View>
 						) : busy ? (
 							<RoundKey
 								icon={Square}
@@ -351,6 +387,7 @@ function RecordingDot() {
 }
 
 const styles = StyleSheet.create({
+	attach: { alignSelf: 'center' },
 	dock: { paddingTop: 8, paddingHorizontal: 10, gap: 6 },
 	fade: {
 		position: 'absolute',

@@ -7,6 +7,7 @@ import {
 import { REQUEST_TURN_CLARIFICATION_TOOL_NAME } from '@buildos/agentic-chat-runtime/catalog';
 import { reviewedAgenticChatMutationSpecV1 } from '../../mutations/tool-catalog';
 import type { AgenticChatTurnProviderMessageV1, AgenticChatTurnProviderToolV1 } from '../contracts';
+import { SOURCE_QUOTE_ARGUMENT } from '../stream-tool-calls';
 import { ACTOR_COMMISSION_GUIDANCE } from './controls';
 
 /**
@@ -178,6 +179,28 @@ const WORKER_WRITE_ARGUMENT_RULES = [
 	'When a task visibly advanced (started, blocked, finished), include state_key in update_onto_task.'
 ] as const;
 
+/**
+ * Capture comes first (2026-11-13). A real global brain dump (a trip for one project plus an
+ * errand) ran five web lookups nobody asked for, saved nothing, and ended by asking where to
+ * file one task. The rule is prose because the turn's shape is the model's call: nothing here
+ * reads the message.
+ */
+const WORKER_CAPTURE_RULE =
+	'When the user is telling you things to keep (to-dos, updates, plans, dates) rather than asking, save them first, in this turn: each in the project it belongs with, or the Workspace when none clearly fits, and say where each went. A fact about a project (a date, what is happening this week) belongs there too, as an update or a short note. Look things up (web, email, calendar) only when asked; otherwise offer to after saving.';
+
+/** Rides only when a mounted write actually takes the quote (tool-surface.ts). */
+const WORKER_SOURCE_QUOTE_RULE = `On each write, set ${SOURCE_QUOTE_ARGUMENT} to the user's exact words it came from (one short phrase), so the chat can show where each thing they said went.`;
+
+function takesSourceQuote(tool: AgenticChatTurnProviderToolV1): boolean {
+	const properties = tool.function.parameters.properties;
+	return (
+		typeof properties === 'object' &&
+		properties !== null &&
+		!Array.isArray(properties) &&
+		Object.hasOwn(properties, SOURCE_QUOTE_ARGUMENT)
+	);
+}
+
 export function buildWorkerSemanticMutationOrdering(
 	tools: readonly AgenticChatTurnProviderToolV1[]
 ): string | null {
@@ -192,6 +215,8 @@ export function buildWorkerSemanticMutationOrdering(
 		'Worker write routing: the large complex-write contract route is deferred in this opening pass.',
 		'For a clear commissioned durable change, propose the complete concrete mutation batch with the available mutation tools. The worker deterministically executes only an eligible simple batch; it withholds any complex batch before execution and opens the independently reviewed contract route in the next pass.',
 		"Resolve project references from project records; a Context Document is not a candidate project. A direct call is fine when the target id is the focused entity, was given by the user, or is the only entity of its kind a read returned this turn. A new note, doc, or task that fits no project goes to the user's Workspace (not a project).",
+		WORKER_CAPTURE_RULE,
+		...(tools.some(takesSourceQuote) ? [WORKER_SOURCE_QUOTE_RULE] : []),
 		'Do not split, shrink, or serialize a complex request merely to fit the simple lane. Include the complete commissioned batch that can be expressed with the available tools.',
 		'Call request_turn_clarification instead when a required target or value has multiple plausible choices. Never guess among loaded candidates. Include every known candidate with its stable ID when available; the candidates are shown to the user as a list beneath your question.',
 		'For an answer-only turn, do not call a disposition control; answer after any necessary reads.',

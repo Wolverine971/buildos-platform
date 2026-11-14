@@ -2325,6 +2325,19 @@ describe('audit 2026-09-02 context rendering', () => {
 			expect(focus).toContain('Never create a project to hold one note or task');
 		});
 
+		// 2026-11-13: a real brain dump got unasked web lookups and a filing question.
+		it('tells global chat to save a brain dump first, without asking where it goes', () => {
+			const { focus } = globalSection({ projects: [] });
+			expect(focus).toContain('A brain dump is a save request.');
+			expect(focus).toContain('save them in this turn before anything else');
+			expect(focus).toContain('Do not ask where a small item goes');
+			expect(focus).toContain(
+				'Look things up on the web, in email, or on the calendar only when asked'
+			);
+			// Thinking out loud still gets a reply, not a write.
+			expect(focus).toContain('Open-ended musing is different');
+		});
+
 		it('names the Workspace in a project chat only when the context carries its id', () => {
 			const projectData = {
 				project: {

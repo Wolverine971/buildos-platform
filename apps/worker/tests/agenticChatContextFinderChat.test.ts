@@ -8,6 +8,7 @@ import type {
 	ChatToolDefinition,
 	TurnInputArtifactV1
 } from '@buildos/shared-types';
+import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { loadAgenticChatConfig } from '../src/workers/agentic-chat/host/config';
 import {
@@ -185,6 +186,21 @@ describe('ChatContextFinder', () => {
 		const doc = payload.items.find((i: { id: string }) => i.id === DOC);
 		expect(doc).toMatchObject({ kind: 'document', tier: 'full', label: 'Founder Call Parse' });
 		expect(doc.sections).toContain('Budget');
+		// The honest record: this short document went in whole, the task as its own text.
+		expect(doc.given).toBe('text');
+		expect(payload.items.find((i: { id: string }) => i.id === TASK)).toMatchObject({
+			given: 'text',
+			tier: 'full'
+		});
+		expect(payload.counts).toMatchObject({ full: 2, summary: 0, carried: 0 });
+		expect(payload.scope).toBe('specific');
+		expect(payload.snapshot).toBeNull();
+		expect(payload.notes).toBeNull();
+		// Size and hash of exactly what was added to the prompt.
+		expect(payload.injection).toEqual({
+			chars: found.injection!.length,
+			sha256: createHash('sha256').update(found.injection!, 'utf8').digest('hex')
+		});
 		expect(JSON.stringify(payload)).not.toContain('$300,000');
 		// Timeline safety: no top-level title/summary/message/detail keys.
 		for (const key of ['title', 'summary', 'message', 'detail'])
@@ -220,10 +236,11 @@ describe('ChatContextFinder', () => {
 			scanned: [],
 			scanned_count: 0
 		}));
+		const jev = fakeDecider(scores);
 		const finder = new ChatContextFinder({
 			userIds: [USER_ID],
 			client: fakeClient(),
-			decider: fakeDecider(scores).decider,
+			decider: jev.decider,
 			carry: { userIds: [USER_ID], load }
 		});
 		const found = (await finder.find(request()))!;
@@ -238,12 +255,69 @@ describe('ChatContextFinder', () => {
 		const payload = found.step.eventPayload as Record<string, any>;
 		const carried = payload.items.filter((item: { carried?: boolean }) => item.carried);
 		expect(carried.map((item: { id: string }) => item.id)).toEqual([DOC, TASK]);
-		// Carried records are not ranked again.
+		expect(carried.every((item: { given?: string }) => item.given === 'text')).toBe(true);
+		// The carried document stays rankable (a follow-up may be about another section), but
+		// it is one chip; the carried task is not ranked again.
 		expect(
 			payload.items.filter((item: { id: string; carried?: boolean }) => item.id === DOC)
 		).toHaveLength(1);
+		const ranked = (
+			(jev.decide.mock.calls as unknown as [{ questions: Record<string, unknown> }][])
+				.map(([call]) => Object.keys(call.questions))
+				.flat()
+		);
+		expect(ranked.some((key) => key.startsWith('e_d'))).toBe(true);
+		expect(ranked.some((key) => key.startsWith('e_t'))).toBe(false);
+		// Carried items are counted apart from this turn's picks.
+		expect(payload.counts).toMatchObject({ full: 0, carried: 2 });
 		expect(payload.carry_in.carry.map((item: { id: string }) => item.id)).toEqual([DOC, TASK]);
 		expect(JSON.stringify(payload)).not.toContain('$300,000');
+	});
+
+	it('keeps last turn\'s set when the finder fails or the carry read is slow', async () => {
+		const stored = {
+			version: 1,
+			project_id: PROJECT_ID,
+			carry: [
+				{
+					id: DOC,
+					kind: 'document',
+					title: 'Founder Call Parse',
+					anchors: ['budget'],
+					headings: ['Budget'],
+					version: null,
+					chars: 30,
+					idle: 0
+				}
+			],
+			scanned: [],
+			scanned_count: 0
+		};
+		// The project load fails: nothing is injected, but the set passes through for the
+		// finalizer to fade instead of being erased.
+		const failed = new ChatContextFinder({
+			userIds: [USER_ID],
+			client: fakeClient(true),
+			decider: fakeDecider(scores).decider,
+			carry: { userIds: [USER_ID], load: async () => stored }
+		});
+		const missed = (await failed.find(request()))!;
+		expect(missed.injection).toBeNull();
+		const payload = missed.step.eventPayload as Record<string, any>;
+		expect(payload).toMatchObject({ status: 'unavailable', failure: 'load_or_rank_failed' });
+		expect(payload.carry_in.carry.map((item: { id: string }) => item.id)).toEqual([DOC]);
+		expect(payload.items).toEqual([]);
+
+		// A carry read that never answers costs this turn its carry, not the finder.
+		const slow = new ChatContextFinder({
+			userIds: [USER_ID],
+			client: fakeClient(),
+			decider: fakeDecider(scores).decider,
+			carry: { userIds: [USER_ID], load: () => new Promise(() => undefined), readMs: 20 }
+		});
+		const found = (await slow.find(request()))!;
+		expect(found.step.eventPayload).toMatchObject({ status: 'selected', injected: true });
+		expect(found.injection).not.toContain('Carried from last turn');
 	});
 
 	it('ignores a carry for another project, and users outside the carry list', async () => {
@@ -367,7 +441,7 @@ describe('ChatContextFinder broad-request off-ramp', () => {
 		expect(found.injection).toContain('task ' + TASK + ' — Develop initial budget · todo');
 		expect(found.injection).toContain('Merge the two budget drafts');
 		// Records at 0.6 would load in full for a specific request; a broad one only names them.
-		expect(found.injection).toContain('Nearby (summary only');
+		expect(found.injection).toContain('Nearby (one line each, no content');
 		expect(found.injection).not.toContain('$300,000');
 		expect(found.step.eventPayload).toMatchObject({
 			scope: 'broad',
@@ -376,6 +450,14 @@ describe('ChatContextFinder broad-request off-ramp', () => {
 			counts: { full: 0 },
 			snapshot: { cleanup: true }
 		});
+		// The snapshot has no chips; the event still records that it was handed, and its size.
+		const payload = found.step.eventPayload as Record<string, any>;
+		expect(payload.snapshot.chars).toBeGreaterThan(0);
+		expect(payload.injection.chars).toBe(found.injection!.length);
+		// The one-line summaries are lines, never shown as loaded; a document among them
+		// keeps its reader mounted.
+		expect(payload.items.every((item: { given?: string }) => item.given === 'line')).toBe(true);
+		expect(found.toolPins).toEqual(['get_document_outline', 'read_document_section']);
 	});
 
 	it('keeps records Jev is sure about beside the snapshot', async () => {

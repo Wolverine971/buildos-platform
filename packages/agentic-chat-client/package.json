@@ -92,6 +92,20 @@
 			"import": "./dist/agent-chat-worker-ui-adapter.mjs",
 			"require": "./dist/agent-chat-worker-ui-adapter.js"
 		},
+		"./agent-chat-turn-cards": {
+			"types": "./dist/agent-chat-turn-cards.d.ts",
+			"react-native": "./src/agent-chat-turn-cards.ts",
+			"development": "./src/agent-chat-turn-cards.ts",
+			"import": "./dist/agent-chat-turn-cards.mjs",
+			"require": "./dist/agent-chat-turn-cards.js"
+		},
+		"./agent-chat-step-details": {
+			"types": "./dist/agent-chat-step-details.d.ts",
+			"react-native": "./src/agent-chat-step-details.ts",
+			"development": "./src/agent-chat-step-details.ts",
+			"import": "./dist/agent-chat-step-details.mjs",
+			"require": "./dist/agent-chat-step-details.js"
+		},
 		"./agent-chat-workflow.fixture": {
 			"types": "./dist/agent-chat-workflow.fixture.d.ts",
 			"react-native": "./src/agent-chat-workflow.fixture.ts",

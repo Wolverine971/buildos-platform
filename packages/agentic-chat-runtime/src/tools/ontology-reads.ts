@@ -15,13 +15,13 @@ import { normalizeTaskStateInput } from '@buildos/shared-agent-ops/ontology/task
 import { buildSearchFilter } from '@buildos/shared-agent-ops/utils/search-filter';
 import {
 	collectOutlineAnchors,
-	countOutlineNodes,
 	extractOutline,
 	type DocOutlineNode
 } from '@buildos/shared-agent-ops/utils/document-outline';
 import {
 	DOCUMENT_INLINE_BODY_MAX_CHARS,
 	DOCUMENT_SECTION_READ_BUDGET_CHARS,
+	buildDocumentOutlinePage,
 	buildDocumentSectionIndex,
 	documentBodyText,
 	documentSliceEnd,
@@ -229,6 +229,8 @@ export interface SharedGetDocumentOutlineArgs {
 	document_id: string;
 	/** Optional literal text to find; matching lines come back verbatim for an edit's old_text. */
 	find?: string;
+	/** Heading index to continue a long outline from (a previous `next_offset`). */
+	offset?: number;
 }
 
 export interface SharedReadDocumentSectionArgs {
@@ -810,9 +812,29 @@ async function loadAgentDocumentDetails(
 	if (!document) return null;
 
 	return stripInternalPayloadFields({
-		document,
+		document: withoutMirroredBody(document),
 		source: 'agent_document_detail_projection'
 	});
+}
+
+/**
+ * `props.body_markdown` is a legacy mirror of `content` (479 of 628 live documents carry it,
+ * prod 2026-11-13). When `content` holds the body, the mirror only doubles the stored and
+ * streamed result, so it is dropped; a row whose body lives only in props keeps it.
+ */
+function withoutMirroredBody(document: Record<string, any>): Record<string, any> {
+	const props = document.props;
+	if (
+		typeof document.content !== 'string' ||
+		!props ||
+		typeof props !== 'object' ||
+		Array.isArray(props) ||
+		!('body_markdown' in props)
+	) {
+		return document;
+	}
+	const { body_markdown: _mirror, ...rest } = props as Record<string, unknown>;
+	return { ...document, props: rest };
 }
 
 // ============================================
@@ -1499,10 +1521,16 @@ export async function getOntoDocumentDetails(
 	};
 }
 
+/** Both tools read prose by heading; a table's body is a generated view its own tools read. */
+const TABLE_DOCUMENT_READ_MESSAGE =
+	'This document is a table. Use get_onto_table_details and read_table_rows to read it; its body is a generated view of its rows.';
+
 /**
  * Project Knowledge Layer (L2): return just the heading outline of a document.
  * Cheap "what is this doc about" scan — lets the agent decide relevance and pick
  * a section to read without pulling the full body. Computed live from content.
+ * Headings come back flat, in document order, a page at a time (`offset` /
+ * `next_offset`), so every anchor of a long document is reachable.
  * A short body (≤ DOCUMENT_INLINE_BODY_MAX_CHARS) comes back whole as well, so
  * an outline-first turn on a short document needs no section reads.
  */
@@ -1521,25 +1549,53 @@ export async function getDocumentOutline(
 			searchTool: 'search_onto_documents'
 		});
 	}
+	if (isTableTypeKey(document.type_key as string)) {
+		return {
+			document_id: document.id,
+			project_id: document.project_id,
+			title: document.title ?? null,
+			type_key: document.type_key,
+			is_table: true,
+			message: TABLE_DOCUMENT_READ_MESSAGE
+		};
+	}
 
 	const content = typeof document.content === 'string' ? document.content : '';
 	const outline = extractOutline(content);
-	const headingCount = countOutlineNodes(outline.nodes);
+	const page = buildDocumentOutlinePage(outline.nodes, normalizeReadOffset(args.offset));
+	const headingCount = page.total;
 	const find = typeof args.find === 'string' && args.find.trim() ? args.find : null;
 	const found = find ? findInDocument(content, find) : null;
 	const inlineBody = content.length <= DOCUMENT_INLINE_BODY_MAX_CHARS;
+	const paged = page.offset > 0 || page.nextOffset !== null;
+	// Says exactly which headings this result holds; a partial page never reads as the whole.
+	const loaded =
+		headingCount === 0
+			? 'This document has no markdown headings.'
+			: !paged
+				? `Outline loaded: ${headingCount} headings.`
+				: page.headings.length === 0
+					? `Offset ${page.offset} is past the last heading (${headingCount} headings).`
+					: `Outline: headings ${page.offset + 1} to ${page.offset + page.headings.length} of ${headingCount}.${
+							page.nextOffset !== null
+								? ` Call get_document_outline again with offset ${page.nextOffset} for the rest.`
+								: ' That is the end.'
+						}`;
 	const outlineMessage = inlineBody
-		? `${headingCount > 0 ? `Outline loaded: ${headingCount} headings.` : 'This document has no markdown headings.'} Short document: its full body is in content, so no section reads are needed.`
+		? `${loaded} Short document: its full body is in content, so no section reads are needed.`
 		: headingCount > 0
-			? `Outline loaded: ${headingCount} headings. Read every section you need in one read_document_section call with anchors.`
-			: 'This document has no markdown headings. Read its body with read_document_section and offset 0.';
+			? `${loaded} Read every section you need in one read_document_section call with anchors.`
+			: `${loaded} Read its body with read_document_section and offset 0.`;
 
 	return {
 		document_id: document.id,
 		project_id: document.project_id,
 		title: document.title ?? null,
 		content_length: content.length,
-		outline: outline.nodes,
+		heading_count: headingCount,
+		outline: page.headings,
+		...(paged ? { offset: page.offset } : {}),
+		...(page.nextOffset !== null ? { next_offset: page.nextOffset } : {}),
 		...(inlineBody ? { content } : {}),
 		...(found ? { find: found } : {}),
 		message: found
@@ -1578,6 +1634,34 @@ function requestedSectionAnchors(args: SharedReadDocumentSectionArgs): string[] 
 		if (anchor && !out.includes(anchor)) out.push(anchor);
 	}
 	return out;
+}
+
+/**
+ * The heading a requested reference names. An exact anchor wins. Otherwise the forms a
+ * model copies from elsewhere still resolve, as long as they name one heading only:
+ * `#budget`, the heading text itself in any case, or a card's `Budget (budget)`. Anything
+ * else misses, and the caller answers with the real anchors.
+ */
+function resolveSectionReference(
+	nodes: readonly DocOutlineNode[],
+	reference: string
+): DocOutlineNode | null {
+	const byAnchor = (anchor: string) => nodes.find((node) => node.anchor === anchor) ?? null;
+	const exact = byAnchor(reference);
+	if (exact) return exact;
+	// "#budget" or "## Budget": the leading marks are not part of the anchor or the heading.
+	const bare = reference.replace(/^#+\s*/, '').trim();
+	if (!bare) return null;
+	if (bare !== reference) {
+		const unhashed = byAnchor(bare);
+		if (unhashed) return unhashed;
+	}
+	const wanted = bare.toLowerCase();
+	const byText = nodes.filter((node) => node.text.trim().toLowerCase() === wanted);
+	if (byText.length === 1) return byText[0]!;
+	// "Notes (notes-2)", as a document card prints a section: the anchor in the brackets.
+	const trailing = /\(([^()\s]+)\)$/.exec(bare)?.[1];
+	return trailing ? byAnchor(trailing) : null;
 }
 
 function normalizeReadOffset(value: unknown): number {
@@ -1619,13 +1703,23 @@ export async function readDocumentSection(
 		});
 	}
 
-	const content = typeof document.content === 'string' ? document.content : '';
-	const requested = requestedSectionAnchors(args);
 	const base = {
 		document_id: document.id,
 		project_id: document.project_id,
 		title: document.title ?? null
 	};
+	if (isTableTypeKey(document.type_key as string)) {
+		return {
+			...base,
+			type_key: document.type_key,
+			is_table: true,
+			found: false,
+			message: TABLE_DOCUMENT_READ_MESSAGE
+		};
+	}
+
+	const content = typeof document.content === 'string' ? document.content : '';
+	const requested = requestedSectionAnchors(args);
 
 	let text = content;
 	let sections: Array<{ anchor: string; heading: string; level: number; chars: number }> = [];
@@ -1633,15 +1727,12 @@ export async function readDocumentSection(
 	let available: string[] = [];
 	if (requested.length > 0) {
 		const outline = extractOutline(content);
-		const byAnchor = new Map<string, DocOutlineNode>();
-		for (const node of flattenOutlineNodes(outline.nodes)) {
-			if (!byAnchor.has(node.anchor)) byAnchor.set(node.anchor, node);
-		}
+		const nodes = flattenOutlineNodes(outline.nodes);
 		const matched: DocOutlineNode[] = [];
 		for (const anchor of requested) {
-			const node = byAnchor.get(anchor);
-			if (node) matched.push(node);
-			else notFound.push(anchor);
+			const node = resolveSectionReference(nodes, anchor);
+			if (!node) notFound.push(anchor);
+			else if (!matched.includes(node)) matched.push(node);
 		}
 		if (notFound.length > 0) available = collectOutlineAnchors(outline.nodes);
 		if (matched.length === 0) {

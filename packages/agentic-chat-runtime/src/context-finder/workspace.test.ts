@@ -176,7 +176,7 @@ describe('workspace cards', () => {
 			message: 'what about Logan?',
 			previousFocus: [id(2), id(999)]
 		});
-		expect(Object.keys(request.questions)).toEqual(['scope', 'dig', 'p_P0', 'p_P1']);
+		expect(Object.keys(request.questions)).toEqual(['scope', 'dig', 'save', 'p_P0', 'p_P1']);
 		expect(request.questions.scope).toMatchObject({ type: 'choice' });
 		expect(request.state.previous_focus).toEqual(['P1']);
 	});
@@ -304,9 +304,9 @@ describe('selectWorkspaceProjects', () => {
 	});
 
 	it('splits the evidence budget by rank', () => {
-		expect(workspaceZoomShare(0, 1)).toEqual({ budgetChars: 5_000, maxSummaries: 20 });
-		expect(workspaceZoomShare(1, 2)).toEqual({ budgetChars: 2_500, maxSummaries: 8 });
-		expect(workspaceZoomShare(2, 3)).toEqual({ budgetChars: 1_500, maxSummaries: 4 });
+		expect(workspaceZoomShare(0, 1)).toEqual({ budgetChars: 14_000, maxSummaries: 20 });
+		expect(workspaceZoomShare(1, 2)).toEqual({ budgetChars: 6_000, maxSummaries: 8 });
+		expect(workspaceZoomShare(2, 3)).toEqual({ budgetChars: 3_500, maxSummaries: 4 });
 	});
 });
 

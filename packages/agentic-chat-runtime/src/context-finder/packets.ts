@@ -134,6 +134,25 @@ export function parseContextFinderSections(markdown: string): ContextFinderSecti
 	});
 }
 
+/**
+ * Which of a document's sections a plan section names: by anchor when the plan carries one
+ * (so the third "Notes" is the third "Notes"), else the first unused section with that heading
+ * (plans stored before anchors, and legacy parsed sections that have none). -1 when gone.
+ */
+export function matchSectionIndex(
+	sections: readonly Pick<ContextFinderSection, 'heading' | 'anchor'>[],
+	wanted: { heading: string; anchor?: string },
+	used: ReadonlySet<number>
+): number {
+	if (wanted.anchor) {
+		const byAnchor = sections.findIndex(
+			(section, i) => !used.has(i) && section.anchor === wanted.anchor
+		);
+		if (byAnchor >= 0) return byAnchor;
+	}
+	return sections.findIndex((section, i) => !used.has(i) && section.heading === wanted.heading);
+}
+
 export const clipContextText = (value: unknown, max: number): string => {
 	const text = String(value ?? '')
 		.replace(/\s+/g, ' ')
@@ -318,8 +337,9 @@ const loadedRecordText = (fullText: string) => ({
 	textHash: null
 });
 
-/** What a document card says it is: its own description, else the AI summary while it matches
- * the text. Jev's packet keeps the plain description. */
+/** What a document says it is: its own description, else the AI summary while it matches the
+ * text. The ranker's packet, the one-line summary and the card all use it, so a note with no
+ * description and no headings is ranked on more than its title. */
 function documentSummary(doc: Record<string, unknown>): string | null {
 	const description = typeof doc.description === 'string' ? doc.description.trim() : '';
 	if (description) return description;
@@ -346,7 +366,7 @@ export function buildContextFinderEntities(project: ContextFinderProjectV1): Con
 					kind: 'document',
 					title,
 					description:
-						clipContextWords(doc.description, limits.documentDescriptionChars) ||
+						clipContextWords(documentSummary(doc), limits.documentDescriptionChars) ||
 						undefined,
 					type: doc.type_key ?? undefined,
 					table
@@ -372,7 +392,8 @@ export function buildContextFinderEntities(project: ContextFinderProjectV1): Con
 				kind: 'document',
 				title,
 				description:
-					clipContextWords(doc.description, limits.documentDescriptionChars) || undefined,
+					clipContextWords(documentSummary(doc), limits.documentDescriptionChars) ||
+					undefined,
 				type: doc.type_key ?? undefined,
 				headings: packetHeadings.map((section) =>
 					clipContextText(section.heading, limits.headingChars)
@@ -445,7 +466,14 @@ export function buildContextFinderEntities(project: ContextFinderProjectV1): Con
 /** One-line summary for the summary tier: no heading lists, no JSON. */
 export function contextFinderSummaryLine(entity: ContextFinderEntity): string {
 	const packet = entity.packet;
-	const meta = [packet.state, packet.due ?? packet.date].filter(Boolean).join(', ');
+	const table = packet.table as { rows?: unknown } | undefined;
+	const meta = [
+		packet.state,
+		packet.due ?? packet.date,
+		table ? `table, ${typeof table.rows === 'number' ? table.rows : 0} rows` : null
+	]
+		.filter(Boolean)
+		.join(', ');
 	const description = clipContextWords(packet.description, 100);
 	return `${entity.kind}: ${entity.title}${meta ? ` [${meta}]` : ''}${description ? ` — ${description}` : ''}`;
 }

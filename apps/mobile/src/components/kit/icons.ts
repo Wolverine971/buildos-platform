@@ -28,6 +28,7 @@ export { default as Folder } from 'lucide-react-native/icons/folder';
 export { default as FolderKanban } from 'lucide-react-native/icons/folder-kanban';
 export { default as FolderOpen } from 'lucide-react-native/icons/folder-open';
 export { default as Inbox } from 'lucide-react-native/icons/inbox';
+export { default as ImagePlus } from 'lucide-react-native/icons/image-plus';
 export { default as Info } from 'lucide-react-native/icons/info';
 export { default as LogOut } from 'lucide-react-native/icons/log-out';
 export { default as Mic } from 'lucide-react-native/icons/mic';

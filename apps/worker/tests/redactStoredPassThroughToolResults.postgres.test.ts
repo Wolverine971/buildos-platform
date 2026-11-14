@@ -81,7 +81,7 @@ const navigateProgress = {
 	tool_name: 'web_navigate',
 	tool_call_id: 'call-nav',
 	step_index: 0,
-	message: 'Jev: not here (4%) → "Help with my order" (91%)',
+	message: 'Not on this page (4%) → "Help with my order" (91%)',
 	data: {
 		kind: 'decided',
 		page: 1,

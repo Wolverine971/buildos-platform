@@ -2,6 +2,10 @@
 import type { BuildOsHttp, RequestOptions } from '../client';
 import type {
 	ChatActiveTurnProbeResponse,
+	ChatImageAttachmentAsset,
+	ChatImageAttachmentCreateResponse,
+	ChatImageAttachmentInput,
+	ChatMoveToProjectResponse,
 	ChatPendingChangeDismissResponse,
 	ChatPendingChangeProbeResponse,
 	ProposalChooseRequest,
@@ -108,6 +112,36 @@ export function createChatEndpoints(http: BuildOsHttp) {
 				body,
 				...options
 			}),
+
+		/**
+		 * POST /api/chat/sessions/[id]/move-to-project — the owner moves a Workspace chat into a
+		 * project ("Continue in X"). 409 while a reply runs or when it is already a project chat.
+		 */
+		moveToProject: (sessionId: string, projectId: string, options?: RequestOptions) =>
+			http.request<ChatMoveToProjectResponse>(`${sessionPath(sessionId)}/move-to-project`, {
+				method: 'POST',
+				body: { project_id: projectId },
+				...options
+			}),
+
+		/**
+		 * POST /api/agent/chat-attachments — register an image (checksum, size, type). `upload`
+		 * is a signed Storage target for the bytes, or null when the same image is reused.
+		 * 429 RATE_LIMITED past 100 uploads or 250 MB a day.
+		 */
+		createImageAttachment: (input: ChatImageAttachmentInput, options?: RequestOptions) =>
+			http.request<ChatImageAttachmentCreateResponse>('/api/agent/chat-attachments', {
+				method: 'POST',
+				body: input,
+				...options
+			}),
+
+		/** POST /api/onto/assets/[id]/complete — a project image's bytes are up; queue its OCR. */
+		completeImageAttachment: (assetId: string, options?: RequestOptions) =>
+			http.request<{ asset: ChatImageAttachmentAsset; queued: boolean }>(
+				`/api/onto/assets/${encodeURIComponent(assetId)}/complete`,
+				{ method: 'POST', ...options }
+			),
 
 		/** DELETE /api/chat/sessions/[id]. */
 		remove: (sessionId: string, options?: RequestOptions) =>

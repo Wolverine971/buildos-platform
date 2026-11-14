@@ -81,3 +81,48 @@ export function toolLine(
 	const fallback = object ? object.charAt(0).toUpperCase() + object.slice(1) : 'Working';
 	return { verb: fallback, target };
 }
+
+/** Finished steps read in the past tense ("Searched tasks"), as the web's log does. */
+const PAST: Record<string, string> = {
+	Searching: 'Searched',
+	Listing: 'Listed',
+	Reading: 'Read',
+	Finding: 'Found',
+	Creating: 'Created',
+	Updating: 'Updated',
+	Deleting: 'Deleted',
+	Linking: 'Linked',
+	Unlinking: 'Unlinked',
+	Moving: 'Moved',
+	Setting: 'Set',
+	Tagging: 'Tagged',
+	Requesting: 'Requested',
+	Checking: 'Checked',
+	Proposing: 'Proposed',
+	Planning: 'Planned',
+	Running: 'Ran',
+	Loading: 'Loaded'
+};
+const KNOWN_VERBS = new Set([...Object.keys(PAST), ...Object.values(PAST)]);
+
+function splitVerb(verb: string): { first: string; rest: string } {
+	const space = verb.indexOf(' ');
+	return space < 0
+		? { first: verb, rest: '' }
+		: { first: verb.slice(0, space), rest: verb.slice(space + 1).trim() };
+}
+
+export function doneVerb(verb: string): string {
+	const { first, rest } = splitVerb(verb);
+	const past = PAST[first];
+	return past ? (rest ? `${past} ${rest}` : past) : verb;
+}
+
+/**
+ * What the step acted on, without its verb ("task" from "Updating task"), for rows whose action
+ * badge already says the verb. Null when the line does not start with a verb this table knows.
+ */
+export function verbObject(verb: string): string | null {
+	const { first, rest } = splitVerb(verb);
+	return KNOWN_VERBS.has(first) && rest ? rest : null;
+}

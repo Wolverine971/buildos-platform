@@ -22,6 +22,12 @@ export const DOCUMENT_SECTION_READ_BUDGET_CHARS = 12_000;
 /** Section index entries a long document's detail read carries. */
 export const DOCUMENT_SECTION_INDEX_MAX_ENTRIES = 30;
 const DOCUMENT_SECTION_INDEX_HEADING_CHARS = 80;
+/**
+ * Serialized characters of headings one get_document_outline call returns; more page by
+ * `offset`. Prod 2026-11-13: 51 of 628 documents have over 39 headings (what the old 5.6k cut
+ * kept) and the longest has 236; this fits about 100 to 150, inside the 16k document budget.
+ */
+export const DOCUMENT_OUTLINE_PAGE_CHARS = 12_000;
 
 export type DocumentSectionIndexEntryV1 = {
 	anchor: string;
@@ -60,6 +66,18 @@ export function flattenOutlineNodes<T extends OutlineNodeLike>(nodes: readonly T
 	return out;
 }
 
+function sectionIndexEntry(node: OutlineNodeLike): DocumentSectionIndexEntryV1 {
+	return {
+		anchor: node.anchor,
+		heading:
+			node.text.length > DOCUMENT_SECTION_INDEX_HEADING_CHARS
+				? `${node.text.slice(0, DOCUMENT_SECTION_INDEX_HEADING_CHARS - 3)}...`
+				: node.text,
+		level: node.level,
+		chars: Math.max(0, node.char_end - node.char_start)
+	};
+}
+
 /**
  * A flat section index (anchor, heading, level, size) the model can pick
  * anchors from without a separate outline read.
@@ -69,16 +87,40 @@ export function buildDocumentSectionIndex(
 	limit = DOCUMENT_SECTION_INDEX_MAX_ENTRIES
 ): { sections: DocumentSectionIndexEntryV1[]; omitted: number } {
 	const flat = flattenOutlineNodes(nodes);
-	const sections = flat.slice(0, limit).map((node) => ({
-		anchor: node.anchor,
-		heading:
-			node.text.length > DOCUMENT_SECTION_INDEX_HEADING_CHARS
-				? `${node.text.slice(0, DOCUMENT_SECTION_INDEX_HEADING_CHARS - 3)}...`
-				: node.text,
-		level: node.level,
-		chars: Math.max(0, node.char_end - node.char_start)
-	}));
+	const sections = flat.slice(0, limit).map(sectionIndexEntry);
 	return { sections, omitted: Math.max(0, flat.length - sections.length) };
+}
+
+/**
+ * One page of a document's headings in document order, starting at heading index `offset`.
+ * A page holds as many whole entries as `budgetChars` allows (always at least one), and
+ * `nextOffset` says where the next page starts, so every anchor is reachable however long
+ * the outline is.
+ */
+export function buildDocumentOutlinePage(
+	nodes: readonly OutlineNodeLike[],
+	offset = 0,
+	budgetChars = DOCUMENT_OUTLINE_PAGE_CHARS
+): {
+	headings: DocumentSectionIndexEntryV1[];
+	total: number;
+	offset: number;
+	nextOffset: number | null;
+} {
+	const flat = flattenOutlineNodes(nodes);
+	const start = Math.max(0, Math.min(Math.floor(offset) || 0, flat.length));
+	const headings: DocumentSectionIndexEntryV1[] = [];
+	let used = 0;
+	for (let index = start; index < flat.length; index += 1) {
+		const entry = sectionIndexEntry(flat[index]!);
+		// The entry plus the comma that joins it to the next one.
+		const size = JSON.stringify(entry).length + 1;
+		if (headings.length > 0 && used + size > budgetChars) break;
+		headings.push(entry);
+		used += size;
+	}
+	const end = start + headings.length;
+	return { headings, total: flat.length, offset: start, nextOffset: end < flat.length ? end : null };
 }
 
 /**

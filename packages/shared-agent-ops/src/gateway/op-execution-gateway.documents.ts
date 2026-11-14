@@ -1079,7 +1079,9 @@ export async function updateDocument(
 
 	const fieldChanges = buildFieldChanges(
 		previousDocument as Record<string, unknown>,
-		data as Record<string, unknown>
+		data as Record<string, unknown>,
+		// The body is reported as document_change below.
+		{ skip: ['content'] }
 	);
 	return {
 		document: serializeExternalEntity(

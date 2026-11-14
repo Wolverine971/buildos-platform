@@ -21,6 +21,7 @@ import {
 } from './pending-effects';
 import {
 	AGENTIC_CHAT_PROMPT_SNAPSHOT_TIMEOUT_MS,
+	type AgenticChatContextInjectionPersistInputV1,
 	type AgenticChatPromptSnapshotPersistInputV1,
 	type AgenticChatPromptSnapshotPortV1
 } from './prompt-snapshot';
@@ -54,6 +55,8 @@ export type AgenticChatExecutorEffectPortsV1 = {
 	onTerminalControlError?: (report: AgenticChatTerminalControlErrorReportV1) => void;
 };
 
+const MAX_TRACKED_SNAPSHOT_WRITES = 256;
+
 type CaptureInput = {
 	executionInput: AgenticChatWorkerExecutionInputV1;
 	processingToken: string;
@@ -62,6 +65,8 @@ type CaptureInput = {
 
 export class AgenticChatExecutorEffects {
 	private readonly pendingEffects: Pick<AgenticChatPendingEffectsRegistry, 'forTurn' | 'drain'>;
+	/** Each turn's snapshot write, so the context-injection record lands on an existing row. */
+	private readonly promptSnapshotWrites = new Map<string, Promise<void>>();
 
 	constructor(private readonly ports: AgenticChatExecutorEffectPortsV1) {
 		this.pendingEffects = ports.pendingEffects ?? AGENTIC_CHAT_PENDING_EFFECTS_REGISTRY;
@@ -81,18 +86,51 @@ export class AgenticChatExecutorEffects {
 	): void {
 		const port = this.ports.promptSnapshots;
 		if (!port) return;
+		const write = attempt(
+			() =>
+				runWithAbortableDeadline({
+					parentSignal: signal,
+					timeoutMs: AGENTIC_CHAT_PROMPT_SNAPSHOT_TIMEOUT_MS,
+					createTimeoutError: () =>
+						new Error('Agentic Chat prompt snapshot persistence timed out'),
+					run: (deadlineSignal) => port.persist(input, deadlineSignal)
+				}),
+			this.ports.onPromptSnapshotError
+		);
+		// Forgotten at the terminal drain; the bound only guards a turn that never finalizes.
+		while (this.promptSnapshotWrites.size >= MAX_TRACKED_SNAPSHOT_WRITES) {
+			const oldest = this.promptSnapshotWrites.keys().next().value as string | undefined;
+			if (oldest === undefined) break;
+			this.promptSnapshotWrites.delete(oldest);
+		}
+		this.promptSnapshotWrites.set(input.turnRunId, write);
+		this.pendingEffects.forTurn(input.turnRunId).enqueue(write);
+	}
+
+	/**
+	 * The snapshot is taken at preparation, before the context finder runs, so what the finder
+	 * then added to the opening request is filed on the same row once that write has settled.
+	 * Same policy as the snapshot: detached, bounded, never turn truth. A turn with no snapshot
+	 * write has no row to file it on and records nothing.
+	 */
+	recordContextInjection(
+		input: AgenticChatContextInjectionPersistInputV1,
+		signal: AbortSignal
+	): void {
+		const port = this.ports.promptSnapshots;
+		const snapshotWrite = this.promptSnapshotWrites.get(input.turnRunId);
+		if (!port?.recordContextInjection || !snapshotWrite) return;
 		this.pendingEffects.forTurn(input.turnRunId).enqueue(
-			attempt(
-				() =>
-					runWithAbortableDeadline({
-						parentSignal: signal,
-						timeoutMs: AGENTIC_CHAT_PROMPT_SNAPSHOT_TIMEOUT_MS,
-						createTimeoutError: () =>
-							new Error('Agentic Chat prompt snapshot persistence timed out'),
-						run: (deadlineSignal) => port.persist(input, deadlineSignal)
-					}),
-				this.ports.onPromptSnapshotError
-			)
+			attempt(async () => {
+				await snapshotWrite;
+				await runWithAbortableDeadline({
+					parentSignal: signal,
+					timeoutMs: AGENTIC_CHAT_PROMPT_SNAPSHOT_TIMEOUT_MS,
+					createTimeoutError: () =>
+						new Error('Agentic Chat context injection record timed out'),
+					run: (deadlineSignal) => port.recordContextInjection!(input, deadlineSignal)
+				});
+			}, this.ports.onPromptSnapshotError)
 		);
 	}
 
@@ -128,6 +166,7 @@ export class AgenticChatExecutorEffects {
 	 * fatal.
 	 */
 	drainPendingEffects(turnRunId: string): Promise<void> {
+		this.promptSnapshotWrites.delete(turnRunId);
 		return attempt(async () => {
 			const drained = await this.pendingEffects.drain(
 				turnRunId,

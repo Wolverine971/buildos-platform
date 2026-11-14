@@ -1,4 +1,4 @@
-// apps/web/src/lib/components/agent/agent-chat-step-details.test.ts
+// packages/agentic-chat-client/src/agent-chat-step-details.test.ts
 import { describe, expect, it } from 'vitest';
 import { buildStepDetails, buildTurnReceipt, formatChangeDate } from './agent-chat-step-details';
 import type { ActivityEntry } from './agent-chat.types';
@@ -154,12 +154,109 @@ describe('buildTurnReceipt', () => {
 				}
 			})
 		);
+		// A list names records without opening them: it adds nothing to "read".
 		expect(buildTurnReceipt([read, update, create])).toEqual({
 			created: 1,
 			updated: 1,
 			archived: 0,
-			read: 1
+			deleted: 0,
+			read: 0
 		});
+	});
+
+	it('counts as read only records a step opened, however long a list was', () => {
+		const list = buildStepDetails(
+			step({
+				result: {
+					tasks: Array.from({ length: 50 }, (_, i) => ({
+						id: `t${i}`,
+						title: `Task ${i}`,
+						project_id: P
+					}))
+				}
+			})
+		);
+		const details = buildStepDetails(
+			step({
+				result: {
+					task: { id: T, title: 'A', project_id: P },
+					project: { id: P, name: 'Bakery' }
+				}
+			})
+		);
+		const section = buildStepDetails(
+			step({
+				result: {
+					document_id: D,
+					project_id: P,
+					title: 'Radar',
+					content: '## New\nA thing',
+					sections: [{ heading: 'New', anchor: 'new' }]
+				}
+			})
+		);
+		const outline = buildStepDetails(
+			step({ result: { document_id: D, title: 'Radar', outline: [{ heading: 'New' }] } })
+		);
+		expect(list.opened).toEqual([]);
+		expect(details.opened.map((entity) => entity.id)).toEqual([T]);
+		expect(section.opened.map((entity) => entity.id)).toEqual([D]);
+		expect(section.openedSections).toEqual(['New']);
+		expect(outline.opened).toEqual([]);
+		expect(buildTurnReceipt([list, details, section, outline]).read).toBe(2);
+	});
+
+	it('counts changes to records with no page, such as calendar events', () => {
+		const event = buildStepDetails(
+			step({
+				affectedEntities: [
+					{ kind: 'event', id: 'e1', title: 'Dentist', operation: 'created' },
+					{ kind: 'event', id: 'e2', title: 'Lease signing', operation: 'created' }
+				]
+			})
+		);
+		expect(event.action).toBe('created');
+		expect(event.others).toEqual([
+			{ kind: 'event', id: 'e1', title: 'Dentist' },
+			{ kind: 'event', id: 'e2', title: 'Lease signing' }
+		]);
+		expect(buildTurnReceipt([event]).created).toBe(2);
+	});
+
+	it('a held change saved nothing: no action, no before → after, nothing in the receipt', () => {
+		const held = buildStepDetails(
+			step({
+				requiresUserAction: true,
+				sourceQuote: 'rename the menu doc',
+				affectedEntities: [
+					{ kind: 'document', id: D, title: 'Menu', projectId: P, operation: 'updated' }
+				],
+				result: { field_changes: [{ field: 'title', before: 'Menu', after: 'Menus' }] }
+			})
+		);
+		expect(held.held).toBe(true);
+		expect(held.action).toBeNull();
+		expect(held.intended).toBe('updated');
+		expect(held.changes).toEqual([]);
+		expect(buildTurnReceipt([held])).toEqual({
+			created: 0,
+			updated: 0,
+			archived: 0,
+			deleted: 0,
+			read: 0
+		});
+	});
+
+	it('gives a deleted record no link and counts it as deleted', () => {
+		const deleted = buildStepDetails(
+			step({
+				affectedEntities: [
+					{ kind: 'task', id: T, title: 'A', projectId: P, operation: 'deleted' }
+				]
+			})
+		);
+		expect(deleted.entities[0]!.href).toBeNull();
+		expect(buildTurnReceipt([deleted])).toMatchObject({ archived: 1, deleted: 1 });
 	});
 });
 

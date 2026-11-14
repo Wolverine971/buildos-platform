@@ -9,11 +9,14 @@ import {
 } from '@buildos/shared-agent-ops/utils/document-outline';
 import {
 	buildContextFinderEntities,
+	contextEvidenceReadTools,
+	contextFinderSummaryLine,
 	contextItemChars,
 	contextItemExcerpts,
 	findProjectContext,
 	loadContextFinderPlanText,
 	loadContextFinderProject,
+	markCarriedDocuments,
 	materializeContextPlan,
 	plainOutlineHeading,
 	renderContextEvidenceBlock,
@@ -284,9 +287,12 @@ describe('what an agent gets up front (cards, tasker 152)', () => {
 		// Only the stale outline's text is read; the picked document stays a card.
 		expect(textReads()).toEqual([[STALE]]);
 		const [item] = result.evidence.full;
-		expect(result.evidence.coverage.budgetChars).toBe(CONTEXT_FINDER_POLICY.agentBudgetChars);
+		expect(result.evidence.coverage.budgetChars).toBe(
+			CONTEXT_FINDER_POLICY.agentCardBudgetChars
+		);
 		expect(item!.excerpts).toEqual([]);
 		expect(item!.partial).toBe(true);
+		expect(item!.given).toBe('card');
 		expect(item!.card).toEqual({
 			description: 'Launch plan description',
 			sections: [
@@ -298,18 +304,129 @@ describe('what an agent gets up front (cards, tasker 152)', () => {
 			flagged: [
 				{ heading: 'Budget & money', anchor: 'budget--money' },
 				{ heading: 'Team', anchor: 'team' }
-			]
+			],
+			chars: FRESH_TEXT.length
 		});
+		// The plan names each flagged section by anchor, not only by its words.
+		expect(result.plan!.items[0]!.sections).toEqual([
+			{ heading: 'Budget & money', p: 0.8, anchor: 'budget--money' },
+			{ heading: 'Team', p: 0.7, anchor: 'team' }
+		]);
 		const block = renderContextEvidenceBlock(result.evidence);
+		expect(block).toContain('Summary: Launch plan description');
 		expect(block).toContain(
 			'Flagged for this question: Budget & money (budget--money) · Team (team)'
 		);
 		expect(block).toContain(
 			'Sections (anchor): Budget & money (budget--money) · Land (land) · Team (team)'
 		);
-		expect(block).toContain('read_document_section');
+		// The card says it carries none of the text, how much there is, and how to read it.
+		expect(block).toContain(
+			`Text not shown (about ${FRESH_TEXT.length} chars). Read sections with read_document_section and their anchors.`
+		);
 		expect(block).not.toContain('Budget is $300K');
-		expect(result.evidence.coverage.fullChars).toBeLessThan(400);
+		expect(result.evidence.coverage.fullChars).toBeLessThan(500);
+		expect(contextEvidenceReadTools(result.evidence)).toEqual([
+			'get_document_outline',
+			'read_document_section'
+		]);
+	});
+
+	it('gives every pick its card: the old 5,000-character text budget no longer drops them', async () => {
+		const { client } = fakeClient();
+		const project = await loadContextFinderProject(client, PROJECT, signal());
+		// Ten heading-rich reports, each card about 1k characters (prod: 14 picked, 3 cards).
+		const report = Array.from(
+			{ length: 12 },
+			(_, i) => `## Section number ${i} of the report\nBody ${i}.`
+		).join('\n');
+		for (let n = 0; n < 10; n++)
+			project.documents.push({
+				id: id(20 + n),
+				title: `Report ${n}`,
+				description: `What report ${n} covers, in a sentence of ordinary length.`,
+				type_key: 'document.knowledge',
+				updated_at: '2026-11-01T00:00:00Z',
+				outline: extractOutline(report),
+				content_hash: hashDocumentContent(report)
+			});
+		const { decider: d } = decider((k) => (/^e_d([3-9]|1[0-2])$/.test(k) ? 0.9 : 0));
+		const result = await findProjectContext({ project, message: 'Reports?', decider: d });
+		expect(result.evidence.full).toHaveLength(CONTEXT_FINDER_POLICY.maxFull);
+		expect(result.evidence.full.every((item) => item.given === 'card')).toBe(true);
+		expect(result.evidence.coverage.fullChars).toBeGreaterThan(
+			CONTEXT_FINDER_POLICY.agentBudgetChars
+		);
+		expect(result.evidence.coverage.fullChars).toBeLessThanOrEqual(
+			CONTEXT_FINDER_POLICY.agentCardBudgetChars
+		);
+	});
+
+	it('flags the section Jev scored when headings repeat', async () => {
+		const { client } = fakeClient();
+		const project = await loadContextFinderProject(client, PROJECT, signal());
+		const log = '## Week 1\n### Notes\nFirst.\n## Week 2\n### Notes\nSecond.';
+		project.documents.push({
+			id: id(5),
+			title: 'Weekly log',
+			description: 'Log',
+			type_key: 'document.knowledge',
+			updated_at: '2026-11-01T00:00:00Z',
+			outline: extractOutline(log),
+			content_hash: hashDocumentContent(log)
+		});
+		// Headings in order: Week 1, Notes, Week 2, Notes. Jev scores the second "Notes".
+		const { decider: d } = decider((k) => (k === 'e_d3' ? 0.9 : k === 'h_d3_3' ? 0.8 : 0));
+		const result = await findProjectContext({ project, message: 'Week 2?', decider: d });
+		expect(result.evidence.full[0]!.card!.flagged).toEqual([
+			{ heading: 'Notes', anchor: 'notes-1' }
+		]);
+		// A plan stored before anchors still resolves, to the first match as before.
+		const legacy = materializeContextPlan({
+			plan: {
+				...result.plan!,
+				items: result.plan!.items.map((item) => ({
+					...item,
+					sections: item.sections.map(({ heading, p }) => ({ heading, p }))
+				}))
+			},
+			entities: result.entities,
+			documents: 'card'
+		});
+		expect(legacy.full[0]!.card!.flagged).toEqual([{ heading: 'Notes', anchor: 'notes' }]);
+	});
+
+	it('says when a card is only a summary, and reads a heading-less document by offset', async () => {
+		const { client, textReads } = fakeClient();
+		const project = await loadContextFinderProject(client, PROJECT, signal());
+		const long = 'A long note with no headings. '.repeat(200);
+		project.documents.push({
+			id: id(6),
+			title: 'Rambling note',
+			description: null,
+			type_key: 'document.note',
+			updated_at: '2026-11-01T00:00:00Z',
+			outline: extractOutline(long),
+			content_hash: hashDocumentContent(long),
+			digest: { summary: 'Thoughts on the venue.', content_hash: hashDocumentContent(long) }
+		});
+		const entity = buildContextFinderEntities(project).find((e) => e.id === id(6))!;
+		// The AI summary reaches the ranker's packet and the one-line summary, not only the card.
+		expect(entity.packet.description).toBe('Thoughts on the venue.');
+		expect(contextFinderSummaryLine(entity)).toBe(
+			'document: Rambling note — Thoughts on the venue.'
+		);
+		const { decider: d } = decider((k) => (k === 'e_d3' ? 0.9 : 0));
+		const result = await findProjectContext({ project, message: 'Venue?', decider: d });
+		// A summary is enough for the card: its text is not read.
+		expect(textReads()).toEqual([[STALE]]);
+		const block = renderContextEvidenceBlock(result.evidence);
+		expect(block).toContain('Summary: Thoughts on the venue.');
+		expect(block).toContain(
+			'Text not shown; this document has no headings. Read it with read_document_section (offset 0, no anchors).'
+		);
+		expect(block).not.toContain('get_onto_document_details');
+		expect(result.evidence.full[0]!.given).toBe('card');
 	});
 
 	it('uses the AI summary when there is no description, only while it matches the text', async () => {
@@ -342,7 +459,101 @@ describe('what an agent gets up front (cards, tasker 152)', () => {
 		const { decider: d } = decider((k) => (k === 'e_d3' ? 0.9 : 0));
 		const result = await findProjectContext({ project, message: 'Venue?', decider: d });
 		expect(result.evidence.full[0]!.card!.text).toBe(note);
-		expect(renderContextEvidenceBlock(result.evidence)).toContain(note);
+		expect(result.evidence.full[0]!.given).toBe('text');
+		// Marked as the whole document, so it never reads like a summary of something longer.
+		expect(renderContextEvidenceBlock(result.evidence)).toContain(
+			`Whole document (${note.length} chars):\n${note}`
+		);
+	});
+
+	it('shows a table as its shape, never its row projection, and names the table tools', async () => {
+		const { client, textReads } = fakeClient();
+		const project = await loadContextFinderProject(client, PROJECT, signal());
+		const rows = '| Vendor | Cost |\n| --- | --- |\n' + '| Acme | 10 |\n'.repeat(60);
+		project.documents.push({
+			id: id(7),
+			title: 'Vendors',
+			description: null,
+			type_key: 'document.table',
+			updated_at: '2026-11-01T00:00:00Z',
+			outline: extractOutline(rows),
+			content_hash: hashDocumentContent(rows),
+			table: { row_count: 60, columns: [{ name: 'Vendor' }, { name: 'Cost' }] }
+		});
+		const { decider: d } = decider((k) => (k === 'e_d3' ? 0.9 : 0));
+		const result = await findProjectContext({ project, message: 'Vendors?', decider: d });
+		// The row projection is not read just to be thrown away.
+		expect(textReads()).toEqual([[STALE]]);
+		const block = renderContextEvidenceBlock(result.evidence);
+		expect(block).toContain('Table: 60 rows · columns: Vendor, Cost');
+		expect(block).toContain('Read them with read_table_rows');
+		expect(block).not.toContain('Acme');
+		expect(block).not.toContain('No summary or headings');
+		expect(contextEvidenceReadTools(result.evidence)).toEqual([
+			'get_onto_table_details',
+			'read_table_rows'
+		]);
+	});
+
+	it('marks a record cut at the record limit and names its detail tool', async () => {
+		const { client } = fakeClient();
+		const project = await loadContextFinderProject(client, PROJECT, signal());
+		project.tasks.push(
+			{
+				id: id(8),
+				title: 'Long task',
+				state_key: 'todo',
+				description: 'd'.repeat(3_000),
+				updated_at: '2026-11-01T00:00:00Z'
+			},
+			{
+				id: id(9),
+				title: 'Short task',
+				state_key: 'todo',
+				description: 'Call Sam.',
+				updated_at: '2026-11-01T00:00:00Z'
+			}
+		);
+		const { decider: d } = decider((k) => (k === 'e_t0' || k === 'e_t1' ? 0.9 : 0));
+		const result = await findProjectContext({ project, message: 'Tasks?', decider: d });
+		const [long, short] = result.evidence.full;
+		expect(long!.partial).toBe(true);
+		expect(long!.given).toBe('text');
+		expect(short!.partial).toBe(false);
+		const block = renderContextEvidenceBlock(result.evidence);
+		expect(block).toContain(
+			`[cut: the first 1,200 of ${long!.totalChars!.toLocaleString('en-US')} chars; open the whole task with get_onto_task_details]`
+		);
+		expect(block.match(/\[cut:/g)).toHaveLength(1);
+		expect(block).not.toContain('come in full');
+		expect(contextEvidenceReadTools(result.evidence)).toEqual(['get_onto_task_details']);
+	});
+
+	it('says which sections of a picked document are already loaded from last turn', async () => {
+		const { client } = fakeClient();
+		const project = await loadContextFinderProject(client, PROJECT, signal());
+		const { decider: d } = decider((k) => (k === 'e_d0' ? 0.9 : k === 'h_d0_2' ? 0.7 : 0));
+		const result = await findProjectContext({ project, message: 'Team?', decider: d });
+		const before = result.evidence.coverage.fullChars;
+		const marked = markCarriedDocuments(
+			result.evidence,
+			new Map([[FRESH, [{ heading: 'Budget & money', anchor: 'budget--money' }]]])
+		);
+		const block = renderContextEvidenceBlock(marked);
+		expect(block).toContain(
+			'Already loaded above (carried from last turn): Budget & money (budget--money)'
+		);
+		expect(block).toContain('Flagged for this question: Team (team)');
+		expect(marked.coverage.fullChars).toBeGreaterThan(before);
+		const whole = renderContextEvidenceBlock(
+			markCarriedDocuments(result.evidence, new Map([[FRESH, 'whole' as const]]))
+		);
+		expect(whole).toContain('Its whole text is already loaded above');
+		expect(whole).not.toContain('Text not shown');
+		// A document that is not in the block is left alone.
+		expect(markCarriedDocuments(result.evidence, new Map([[OTHER, 'whole' as const]]))).toBe(
+			result.evidence
+		);
 	});
 
 	it('leaves the full budget to hosts that select directly (drift review)', async () => {

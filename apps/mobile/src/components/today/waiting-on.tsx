@@ -15,6 +15,7 @@ import {
 	MicroLabel,
 	playHaptic,
 	Send,
+	SwipeRow,
 	Undo2,
 	X
 } from '@/components/kit';
@@ -122,100 +123,123 @@ function WaitingRow({
 	const main = mine ? (canOpen ? () => onOpen(item) : null) : () => onNudge(item);
 
 	return (
-		<View style={[styles.row, { borderBottomColor: withAlpha(colors.border, 0.7) }]}>
-			<Pressable
-				disabled={!main || settled !== null}
-				accessibilityRole="button"
-				accessibilityLabel={`${item.who}: ${item.what}${meta ? `, ${meta}` : ''}`}
-				accessibilityHint={mine ? 'Opens it' : `Drafts a follow-up to ${item.who} in chat`}
-				onPress={() => {
-					playHaptic('selection');
-					main?.();
-				}}
-				style={({ pressed }) => [
-					styles.main,
-					pressed && { backgroundColor: withAlpha(colors.muted, 0.7) }
-				]}
-			>
-				<View style={styles.text}>
-					<Text
-						numberOfLines={1}
-						maxFontSizeMultiplier={1.4}
-						style={[
-							styles.who,
-							{ color: mine ? colors.accent : colors.mutedForeground }
-						]}
-					>
-						{item.who}
-					</Text>
-					<Text
-						maxFontSizeMultiplier={1.6}
-						style={[
-							styles.what,
-							settled
-								? {
-										color: colors.mutedForeground,
-										textDecorationLine: 'line-through'
-									}
-								: { color: colors.foreground }
-						]}
-					>
-						{item.what}
-					</Text>
-					{settled ? (
-						<Text style={[typeScale.small, { color: colors.mutedForeground }]}>
-							{settled === 'resolved' ? 'Marked done' : 'Removed'}
-						</Text>
-					) : meta ? (
+		<SwipeRow
+			disabled={settled !== null}
+			right={{
+				label: mine ? 'Done' : 'Came through',
+				icon: Check,
+				tone: 'success',
+				onSwipe: () => onSettle(item, 'resolved')
+			}}
+			left={{
+				label: 'Remove',
+				icon: X,
+				tone: 'muted',
+				onSwipe: () => onSettle(item, 'dismissed')
+			}}
+			style={[styles.swipe, { borderBottomColor: withAlpha(colors.border, 0.7) }]}
+		>
+			<View style={styles.row}>
+				<Pressable
+					disabled={!main || settled !== null}
+					accessibilityRole="button"
+					accessibilityLabel={`${item.who}: ${item.what}${meta ? `, ${meta}` : ''}`}
+					accessibilityHint={
+						mine ? 'Opens it' : `Drafts a follow-up to ${item.who} in chat`
+					}
+					onPress={() => {
+						playHaptic('selection');
+						main?.();
+					}}
+					style={({ pressed }) => [
+						styles.main,
+						pressed && { backgroundColor: withAlpha(colors.muted, 0.7) }
+					]}
+				>
+					<View style={styles.text}>
 						<Text
 							numberOfLines={1}
 							maxFontSizeMultiplier={1.4}
-							style={[typeScale.small, { color: colors.mutedForeground }]}
+							style={[
+								styles.who,
+								{ color: mine ? colors.accent : colors.mutedForeground }
+							]}
 						>
-							{meta}
+							{item.who}
 						</Text>
+						<Text
+							maxFontSizeMultiplier={1.6}
+							style={[
+								styles.what,
+								settled
+									? {
+											color: colors.mutedForeground,
+											textDecorationLine: 'line-through'
+										}
+									: { color: colors.foreground }
+							]}
+						>
+							{item.what}
+						</Text>
+						{settled ? (
+							<Text style={[typeScale.small, { color: colors.mutedForeground }]}>
+								{settled === 'resolved' ? 'Marked done' : 'Removed'}
+							</Text>
+						) : meta ? (
+							<Text
+								numberOfLines={1}
+								maxFontSizeMultiplier={1.4}
+								style={[typeScale.small, { color: colors.mutedForeground }]}
+							>
+								{meta}
+							</Text>
+						) : null}
+					</View>
+					{!settled && main ? (
+						mine ? (
+							<ChevronRight
+								size={16}
+								strokeWidth={2}
+								color={colors.mutedForeground}
+							/>
+						) : (
+							<Send size={15} strokeWidth={2} color={colors.mutedForeground} />
+						)
 					) : null}
-				</View>
-				{!settled && main ? (
-					mine ? (
-						<ChevronRight size={16} strokeWidth={2} color={colors.mutedForeground} />
+				</Pressable>
+				<View style={styles.actions}>
+					{settled ? (
+						<Pressable
+							accessibilityRole="button"
+							accessibilityLabel={`Undo: ${item.what}`}
+							hitSlop={hitSlopFor(32, 32)}
+							onPress={() => {
+								playHaptic('light');
+								onUndo(item);
+							}}
+							style={styles.undo}
+						>
+							<Undo2 size={14} strokeWidth={2} color={colors.mutedForeground} />
+							<MicroLabel>Undo</MicroLabel>
+						</Pressable>
 					) : (
-						<Send size={15} strokeWidth={2} color={colors.mutedForeground} />
-					)
-				) : null}
-			</Pressable>
-			<View style={styles.actions}>
-				{settled ? (
-					<Pressable
-						accessibilityRole="button"
-						accessibilityLabel={`Undo: ${item.what}`}
-						hitSlop={hitSlopFor(32, 32)}
-						onPress={() => {
-							playHaptic('light');
-							onUndo(item);
-						}}
-						style={styles.undo}
-					>
-						<Undo2 size={14} strokeWidth={2} color={colors.mutedForeground} />
-						<MicroLabel>Undo</MicroLabel>
-					</Pressable>
-				) : (
-					<>
-						<RowAction
-							icon={Check}
-							label={mine ? `Done: ${item.what}` : `${item.who} came through`}
-							onPress={() => onSettle(item, 'resolved')}
-							success
-						/>
-						<RowAction
-							icon={X}
-							label={`Not a real ask, remove: ${item.what}`}
-							onPress={() => onSettle(item, 'dismissed')}
-						/>
-					</>
-				)}
+						<>
+							<RowAction
+								icon={Check}
+								label={mine ? `Done: ${item.what}` : `${item.who} came through`}
+								onPress={() => onSettle(item, 'resolved')}
+								success
+							/>
+							<RowAction
+								icon={X}
+								label={`Not a real ask, remove: ${item.what}`}
+								onPress={() => onSettle(item, 'dismissed')}
+							/>
+						</>
+					)}
+				</View>
 			</View>
-		</View>
+		</SwipeRow>
 	);
 }
 
@@ -255,12 +279,8 @@ function RowAction({
 
 const styles = StyleSheet.create({
 	gap: { marginTop: 14 },
-	row: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 6,
-		borderBottomWidth: 1
-	},
+	swipe: { borderBottomWidth: 1, borderRadius: 0 },
+	row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
 	main: {
 		flex: 1,
 		minWidth: 0,

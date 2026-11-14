@@ -9,7 +9,7 @@
 //
 // Runtime gating (calendar ops offered only with a CalendarPort, calendar
 // writes rejected in stage mode) is pinned in agentOpExecution.test.ts.
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { BUILDOS_AGENT_READ_OPS, BUILDOS_AGENT_WRITE_OPS } from '@buildos/shared-types';
 import {
 	AGENT_OP_GATEWAY_CALENDAR_READ_CATALOG,
@@ -104,35 +104,26 @@ describe('calendar op partition', () => {
 });
 
 describe('worker-safe calendar port factory', () => {
-	it('builds a CalendarPort exposing all 7 calendar methods (explicit credentials)', () => {
+	it('builds a CalendarPort exposing all 7 calendar methods with an injected agent OAuth service', () => {
+		const agentOAuth = { getCalendarClient: vi.fn() };
 		const port = createAgentRunCalendarPort({
 			admin: noopAdmin,
 			userId: '00000000-0000-4000-8000-000000000000',
-			credentials: { clientId: 'test-client-id', clientSecret: 'test-client-secret' }
+			agentOAuth
 		}) as unknown as Record<string, unknown>;
 		for (const method of CAL_PORT_METHODS) {
 			expect(typeof port[method], `port.${method} must be a function`).toBe('function');
 		}
+		expect(agentOAuth.getCalendarClient).not.toHaveBeenCalled();
 	});
 
-	it('builds a CalendarPort from process.env creds when no credentials are passed', () => {
-		const prevId = process.env.PRIVATE_GOOGLE_CLIENT_ID;
-		const prevSecret = process.env.PRIVATE_GOOGLE_CLIENT_SECRET;
-		process.env.PRIVATE_GOOGLE_CLIENT_ID = 'env-client-id';
-		process.env.PRIVATE_GOOGLE_CLIENT_SECRET = 'env-client-secret';
-		try {
-			const port = createAgentRunCalendarPort({
-				admin: noopAdmin,
-				userId: '00000000-0000-4000-8000-000000000000'
-			}) as unknown as Record<string, unknown>;
-			for (const method of CAL_PORT_METHODS) {
-				expect(typeof port[method], `port.${method} must be a function`).toBe('function');
-			}
-		} finally {
-			if (prevId === undefined) delete process.env.PRIVATE_GOOGLE_CLIENT_ID;
-			else process.env.PRIVATE_GOOGLE_CLIENT_ID = prevId;
-			if (prevSecret === undefined) delete process.env.PRIVATE_GOOGLE_CLIENT_SECRET;
-			else process.env.PRIVATE_GOOGLE_CLIENT_SECRET = prevSecret;
+	it('builds a CalendarPort with the default agent OAuth service when none is passed', () => {
+		const port = createAgentRunCalendarPort({
+			admin: noopAdmin,
+			userId: '00000000-0000-4000-8000-000000000000'
+		}) as unknown as Record<string, unknown>;
+		for (const method of CAL_PORT_METHODS) {
+			expect(typeof port[method], `port.${method} must be a function`).toBe('function');
 		}
 	});
 });

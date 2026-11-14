@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Key, MicroLabel, Mic, playHaptic } from '@/components/kit';
+import { Check, Clock, Key, MicroLabel, Mic, playHaptic, SwipeRow } from '@/components/kit';
 import { useInk } from '@/providers/theme-provider';
 import { typeScale, withAlpha } from '@/theme';
 
@@ -83,6 +83,12 @@ export function CloseOut({
 		});
 	};
 
+	// A swipe sets the answer (a second tap on the same key clears it; a swipe never does).
+	const set = (pick: TodayPick, value: CloseOutAnswer) => {
+		if (applied !== null) return;
+		setAnswers((current) => ({ ...current, [pick.key]: value }));
+	};
+
 	const apply = async () => {
 		if (applying || answered.length === 0) return;
 		setApplying(true);
@@ -140,73 +146,95 @@ export function CloseOut({
 			{picks.length > 0 ? (
 				<>
 					<MicroLabel>Today's picks · did they happen?</MicroLabel>
+					<Text
+						maxFontSizeMultiplier={1.4}
+						style={[typeScale.small, { color: colors.mutedForeground }]}
+					>
+						Swipe right for Done, left for Not today.
+					</Text>
 					{picks.map((pick) => (
-						<View
+						<SwipeRow
 							key={pick.key}
+							face={colors.card}
+							disabled={applied !== null}
+							right={{
+								label: 'Done',
+								icon: Check,
+								tone: 'success',
+								onSwipe: () => set(pick, 'done')
+							}}
+							left={{
+								label: 'Not today',
+								icon: Clock,
+								tone: 'muted',
+								onSwipe: () => set(pick, 'not_today')
+							}}
 							style={[styles.pick, { borderTopColor: withAlpha(colors.border, 0.7) }]}
 						>
-							<Text
-								maxFontSizeMultiplier={1.5}
-								style={[typeScale.row, { color: colors.foreground }]}
-							>
-								{pick.title}
-							</Text>
-							{pick.projectName ? (
+							<View style={styles.pickBody}>
 								<Text
-									numberOfLines={1}
-									style={[typeScale.small, { color: colors.mutedForeground }]}
+									maxFontSizeMultiplier={1.5}
+									style={[typeScale.row, { color: colors.foreground }]}
 								>
-									{pick.projectName}
+									{pick.title}
 								</Text>
-							) : null}
-							<View accessibilityRole="radiogroup" style={styles.options}>
-								{CLOSE_OUT_OPTIONS.map((option) => {
-									const on = answers[pick.key] === option.value;
-									return (
-										<Pressable
-											key={option.value}
-											accessibilityRole="radio"
-											accessibilityState={{
-												selected: on,
-												disabled: applied !== null
-											}}
-											accessibilityLabel={`${option.label}: ${pick.title}`}
-											disabled={applied !== null}
-											onPress={() => choose(pick, option.value)}
-											style={({ pressed }) => [
-												styles.option,
-												on
-													? {
-															backgroundColor: colors.foreground,
-															borderColor: colors.foreground
-														}
-													: {
-															backgroundColor: pressed
-																? colors.muted
-																: colors.background,
-															borderColor: colors.border
-														},
-												applied !== null && styles.dim
-											]}
-										>
-											<Text
-												maxFontSizeMultiplier={1.3}
-												style={[
-													styles.optionText,
-													{
-														color: on
-															? colors.background
-															: colors.foreground
-													}
+								{pick.projectName ? (
+									<Text
+										numberOfLines={1}
+										style={[typeScale.small, { color: colors.mutedForeground }]}
+									>
+										{pick.projectName}
+									</Text>
+								) : null}
+								<View accessibilityRole="radiogroup" style={styles.options}>
+									{CLOSE_OUT_OPTIONS.map((option) => {
+										const on = answers[pick.key] === option.value;
+										return (
+											<Pressable
+												key={option.value}
+												accessibilityRole="radio"
+												accessibilityState={{
+													selected: on,
+													disabled: applied !== null
+												}}
+												accessibilityLabel={`${option.label}: ${pick.title}`}
+												disabled={applied !== null}
+												onPress={() => choose(pick, option.value)}
+												style={({ pressed }) => [
+													styles.option,
+													on
+														? {
+																backgroundColor: colors.foreground,
+																borderColor: colors.foreground
+															}
+														: {
+																backgroundColor: pressed
+																	? colors.muted
+																	: colors.background,
+																borderColor: colors.border
+															},
+													applied !== null && styles.dim
 												]}
 											>
-												{option.label}
-											</Text>
-										</Pressable>
-									);
-								})}
+												<Text
+													maxFontSizeMultiplier={1.3}
+													style={[
+														styles.optionText,
+														{
+															color: on
+																? colors.background
+																: colors.foreground
+														}
+													]}
+												>
+													{option.label}
+												</Text>
+											</Pressable>
+										);
+									})}
+								</View>
 							</View>
-						</View>
+						</SwipeRow>
 					))}
 					<View style={styles.applyRow}>
 						{applied !== null ? (
@@ -277,7 +305,8 @@ const styles = StyleSheet.create({
 	card: { gap: 12, padding: 14, borderRadius: 12, borderWidth: 1 },
 	head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 	seen: { gap: 4, padding: 10, borderRadius: 8 },
-	pick: { gap: 4, paddingTop: 10, borderTopWidth: 1 },
+	pick: { borderTopWidth: 1, borderRadius: 0 },
+	pickBody: { gap: 4, paddingVertical: 10 },
 	options: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
 	// Two by two: four answers never fit one row on a phone, and an even grid scans faster.
 	option: {

@@ -29,7 +29,13 @@ export function grainDots({
 	tile = GRAIN.tile,
 	rMin = GRAIN.rMin,
 	rMax = GRAIN.rMax
-}: Partial<{ seed: number; count: number; tile: number; rMin: number; rMax: number }> = {}): GrainDot[] {
+}: Partial<{
+	seed: number;
+	count: number;
+	tile: number;
+	rMin: number;
+	rMax: number;
+}> = {}): GrainDot[] {
 	const next = mulberry32(seed);
 	const dots: GrainDot[] = [];
 	for (let i = 0; i < count; i++) {
@@ -54,7 +60,9 @@ export function grainPaths(dots: GrainDot[], buckets = 3): { d: string; a: numbe
 	for (const dot of dots) {
 		const i = Math.min(buckets - 1, Math.floor(((dot.a - 0.5) / 0.5) * buckets));
 		const r = dot.r;
-		parts[i].push(`M${round2(dot.x - r)} ${dot.y}a${r} ${r} 0 1 0 ${round2(2 * r)} 0a${r} ${r} 0 1 0 ${round2(-2 * r)} 0`);
+		parts[i].push(
+			`M${round2(dot.x - r)} ${dot.y}a${r} ${r} 0 1 0 ${round2(2 * r)} 0a${r} ${r} 0 1 0 ${round2(-2 * r)} 0`
+		);
 	}
 	return parts
 		.map((list, i) => ({ d: list.join(''), a: round2(0.5 + ((i + 0.5) / buckets) * 0.5) }))
@@ -65,7 +73,11 @@ export function grainPaths(dots: GrainDot[], buckets = 3): { d: string; a: numbe
 export const PULL = { start: 10, full: 90 } as const;
 
 /** How far the pull has charged the bolt, 0–1, from a scroll view's contentOffset.y. */
-export function pullProgress(offsetY: number, start: number = PULL.start, full: number = PULL.full): number {
+export function pullProgress(
+	offsetY: number,
+	start: number = PULL.start,
+	full: number = PULL.full
+): number {
 	const pull = -offsetY;
 	if (pull <= start) return 0;
 	if (pull >= full) return 1;
@@ -73,7 +85,11 @@ export function pullProgress(offsetY: number, start: number = PULL.start, full: 
 }
 
 /** True on the frame the pull first reaches the trigger (for a single haptic tick). */
-export function crossedPullTrigger(prevOffsetY: number, offsetY: number, trigger: number = PULL.full): boolean {
+export function crossedPullTrigger(
+	prevOffsetY: number,
+	offsetY: number,
+	trigger: number = PULL.full
+): boolean {
 	return -prevOffsetY < trigger && -offsetY >= trigger;
 }
 
@@ -139,8 +155,44 @@ export function springStats(
  * The spinner's charge cycle, as fractions of one loop: fill rises, flashes full, holds,
  * then drains. Durations in ms.
  */
-export const BOLT_CYCLE = { charge: 820, flashUp: 140, flashDown: 220, hold: 160, drain: 260 } as const;
+export const BOLT_CYCLE = {
+	charge: 820,
+	flashUp: 140,
+	flashDown: 220,
+	hold: 160,
+	drain: 260
+} as const;
 
 export function boltCycleMs(): number {
 	return Object.values(BOLT_CYCLE).reduce((sum, ms) => sum + ms, 0);
+}
+
+/**
+ * Row swipes. A row claims the gesture only once it is clearly sideways, so a vertical scroll
+ * that wobbles never turns into a swipe; past `trigger` points the action fires on release.
+ */
+export const SWIPE = { claim: 12, trigger: 88, max: 140 } as const;
+
+export function claimsSwipe(dx: number, dy: number): boolean {
+	return Math.abs(dx) > SWIPE.claim && Math.abs(dx) > Math.abs(dy) * 1.5;
+}
+
+export type SwipeSide = 'right' | 'left';
+
+/** Which action a release fires: right = the row's yes, left = its no, null = spring back. */
+export function swipeOutcome(
+	dx: number,
+	enabled: { right: boolean; left: boolean }
+): SwipeSide | null {
+	if (dx >= SWIPE.trigger && enabled.right) return 'right';
+	if (dx <= -SWIPE.trigger && enabled.left) return 'left';
+	return null;
+}
+
+/** The row follows the finger, then resists past `max` (half speed), like a rubber band. */
+export function swipeOffset(dx: number, enabled: { right: boolean; left: boolean }): number {
+	if ((dx > 0 && !enabled.right) || (dx < 0 && !enabled.left)) return dx * 0.15;
+	const sign = Math.sign(dx);
+	const travel = Math.abs(dx);
+	return sign * (travel <= SWIPE.max ? travel : SWIPE.max + (travel - SWIPE.max) * 0.5);
 }

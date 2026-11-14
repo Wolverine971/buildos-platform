@@ -4,6 +4,7 @@ import { sha256Hex, stableUuidFromSeed } from '../shared/identity-hash';
 import type { AgenticChatExecutionIdentityV1 } from '../turn/execution-control';
 import {
 	AGENTIC_CHAT_WORKER_PROMPT_SNAPSHOT_VERSION,
+	type AgenticChatContextInjectionRecordV1,
 	type AgenticChatPreparedPromptSnapshotV1
 } from '../provider/contracts';
 import { agenticChatGenerationWriteFenceArgsV1 } from '../turn/write-fence';
@@ -27,8 +28,21 @@ type RpcResponse = PromiseLike<{ data: unknown; error: RpcError | null }> & {
 	abortSignal?(signal: AbortSignal): RpcResponse;
 };
 
+/** A filtered read or write of `chat_prompt_snapshots` rows (the Supabase query builder). */
+type SnapshotTableQuery<Row> = PromiseLike<{ data: Row[] | null; error: RpcError | null }> & {
+	eq(column: string, value: string): SnapshotTableQuery<Row>;
+	select(columns: string): SnapshotTableQuery<Row>;
+	abortSignal?(signal: AbortSignal): SnapshotTableQuery<Row>;
+};
+type SnapshotTable = {
+	select(columns: string): SnapshotTableQuery<{ id: string; prompt_sections: unknown }>;
+	update(values: Record<string, unknown>): SnapshotTableQuery<{ id: string }>;
+};
+
 export type AgenticChatPromptSnapshotRpcClient = {
 	rpc(name: string, args: Record<string, unknown>): RpcResponse;
+	/** Service-role table access for the context-injection record; absent in RPC-only fixtures. */
+	from?(table: 'chat_prompt_snapshots'): SnapshotTable;
 };
 
 export type AgenticChatPromptSnapshotPersistInputV1 = AgenticChatExecutionIdentityV1 & {
@@ -49,12 +63,38 @@ export type AgenticChatPromptSnapshotPersistResultV1 = {
 	promptSnapshotId: string | null;
 };
 
+/** Key under `chat_prompt_snapshots.prompt_sections` that holds the finder's injection. */
+export const AGENTIC_CHAT_CONTEXT_INJECTION_SECTION = 'context_injection' as const;
+/** Far above any real injection (carry 10k + snapshot + cards); past it only the hash is kept. */
+const MAX_CONTEXT_INJECTION_CHARS = 200_000;
+
+export type AgenticChatContextInjectionPersistInputV1 = {
+	turnRunId: string;
+	userId: string;
+	executionGeneration: number;
+	promptSnapshotId: string;
+	record: AgenticChatContextInjectionRecordV1;
+};
+
+export type AgenticChatContextInjectionPersistResultV1 = {
+	/** `snapshot_missing`: the turn has no snapshot row (not persisted, or already cleaned up). */
+	outcome: 'recorded' | 'snapshot_missing' | 'unsupported';
+};
+
 export type AgenticChatPromptSnapshotPortV1 = {
 	persist(
 		input: AgenticChatPromptSnapshotPersistInputV1,
 		/** Deadline from the executor's detached write; a hung RPC is cancelled through it. */
 		signal?: AbortSignal
 	): Promise<AgenticChatPromptSnapshotPersistResultV1>;
+	/**
+	 * File what the context finder added to the opening request on the turn's snapshot row.
+	 * Call it after `persist` has settled: the row must exist.
+	 */
+	recordContextInjection?(
+		input: AgenticChatContextInjectionPersistInputV1,
+		signal?: AbortSignal
+	): Promise<AgenticChatContextInjectionPersistResultV1>;
 };
 
 export class AgenticChatPromptSnapshotRpcError extends Error {
@@ -102,6 +142,88 @@ export class SupabaseAgenticChatPromptSnapshotAdapter implements AgenticChatProm
 		if (data === null || data === undefined) throw protocolError('RPC returned no receipt');
 		return parseReceipt(data, input);
 	}
+
+	/**
+	 * The snapshot RPC accepts only the prepared prompt (its fences reject a system message
+	 * after the user's), so the finder's text is merged into `prompt_sections` on the same row.
+	 * Nothing else writes the row once it exists, which makes the read-then-write safe.
+	 */
+	async recordContextInjection(
+		input: AgenticChatContextInjectionPersistInputV1,
+		signal?: AbortSignal
+	): Promise<AgenticChatContextInjectionPersistResultV1> {
+		canonicalUuid(input.turnRunId, 'turnRunId');
+		canonicalUuid(input.userId, 'userId');
+		canonicalUuid(input.promptSnapshotId, 'promptSnapshotId');
+		if (input.promptSnapshotId !== createStableAgenticChatPromptSnapshotIdV1(input.turnRunId)) {
+			throw protocolError('snapshot id is not the stable turn identity');
+		}
+		if (!this.client.from) return { outcome: 'unsupported' };
+		const scoped = <Row>(query: SnapshotTableQuery<Row>) => {
+			const filtered = query
+				.eq('id', input.promptSnapshotId)
+				.eq('turn_run_id', input.turnRunId)
+				.eq('user_id', input.userId);
+			return signal && filtered.abortSignal ? filtered.abortSignal(signal) : filtered;
+		};
+		const read = await scoped(
+			this.client.from('chat_prompt_snapshots').select('id, prompt_sections')
+		);
+		if (read.error) {
+			throw new AgenticChatPromptSnapshotRpcError(read.error.code ?? '', read.error.message);
+		}
+		const row = read.data?.[0];
+		if (!row) return { outcome: 'snapshot_missing' };
+		const sections =
+			row.prompt_sections !== null &&
+			typeof row.prompt_sections === 'object' &&
+			!Array.isArray(row.prompt_sections)
+				? (row.prompt_sections as Record<string, unknown>)
+				: {};
+		const written = await scoped(
+			this.client
+				.from('chat_prompt_snapshots')
+				.update({
+					prompt_sections: {
+						...sections,
+						[AGENTIC_CHAT_CONTEXT_INJECTION_SECTION]: contextInjectionSection(input)
+					}
+				})
+				.select('id')
+		);
+		if (written.error) {
+			throw new AgenticChatPromptSnapshotRpcError(
+				written.error.code ?? '',
+				written.error.message
+			);
+		}
+		return { outcome: written.data?.length ? 'recorded' : 'snapshot_missing' };
+	}
+}
+
+/** The stored shape of `prompt_sections.context_injection`. */
+export function contextInjectionSection(
+	input: Pick<AgenticChatContextInjectionPersistInputV1, 'record' | 'executionGeneration'>
+): Record<string, unknown> {
+	const { record } = input;
+	const oversized = record.text !== null && record.text.length > MAX_CONTEXT_INJECTION_CHARS;
+	return {
+		version: record.version,
+		scope: record.scope,
+		injected: record.injected,
+		// The exact string the model received; its hash matches the context_selection event.
+		text: oversized ? null : record.text,
+		...(oversized ? { text_omitted: 'oversized' } : {}),
+		chars: record.chars,
+		sha256: record.sha256,
+		status: record.status,
+		failure: record.failure,
+		message_index: record.messageIndex,
+		tool_pins: record.toolPins,
+		opening_tool_names: record.openingToolNames,
+		execution_generation: input.executionGeneration,
+		recorded_at: new Date().toISOString()
+	};
 }
 
 export function createStableAgenticChatPromptSnapshotIdV1(turnRunId: string): string {
