@@ -648,8 +648,8 @@ describe('getToolsForContext', () => {
 
 - [Ontology Data Models](/apps/web/docs/features/ontology/DATA_MODELS.md) - Complete schema
 - [Agent Chat Integration](/apps/web/docs/features/ontology/AGENT_CHAT_ONTOLOGY_INTEGRATION_STATUS.md) - Integration status
-- [Tool Executor](/apps/web/src/lib/chat/tool-executor.ts) - Tool implementation
-- [Tools Config](/apps/web/src/lib/chat/tools.config.ts) - Tool definitions
+- [Tool Executor](https://github.com/Wolverine971/buildos-platform/blob/3be154c2c38a/apps/web/src/lib/services/agentic-chat/tools/core/tool-executor.ts) - Tool implementation
+- [Tools Config](https://github.com/Wolverine971/buildos-platform/blob/dc3e55e892b1/apps/web/src/lib/services/agentic-chat/tools/core/tools.config.ts) - Tool definitions
 
 ---
 

@@ -205,6 +205,6 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 ## References
 
-- Original improvement analysis: `/thoughts/shared/research/2025-11-17_improvement-opportunities.md`
+- Original improvement analysis: [`2025-11-17_improvement-opportunities.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-11-17_improvement-opportunities.md)
 - Agentic chat architecture: `/apps/web/docs/features/agentic-chat/README.md`
 - Tool execution service: `/src/lib/services/agentic-chat/execution/tool-execution-service.ts`

@@ -17,8 +17,8 @@ Owner: BuildOS Agentic Chat
 
 Related:
 
-- [Agentic Chat Skill + Tool Architecture V2](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-skill-tool-architecture-v2.md)
-- [Agentic Tool Schemas, BuildOS Audit, and OpenClaw Pattern Reevaluation](/Users/djwayne/buildos-platform/docs/technical/2026-04-10_agentic-tool-schemas-and-openclaw-pattern-reevaluation.md)
+- [Agentic Chat Skill + Tool Architecture V2](./agentic-chat-skill-tool-architecture-v2.md)
+- [Agentic Tool Schemas, BuildOS Audit, and OpenClaw Pattern Reevaluation](../technical/2026-04-10_agentic-tool-schemas-and-openclaw-pattern-reevaluation.md)
 
 ## 0. Implementation update: 2026-04-10
 
@@ -39,13 +39,13 @@ and the optional admin/control-plane gateway decision.
 
 The important implementation files are:
 
-- [gateway-surface.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/gateway-surface.ts)
-- [tool-selector.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts)
-- [master-prompt-builder.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts)
-- [stream-orchestrator/index.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/index.ts)
-- [tool-validation.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/tool-validation.ts)
-- [repair-instructions.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/repair-instructions.ts)
-- [agent-chat-orchestrator.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts)
+- gateway-surface.ts
+- [tool-selector.ts](https://github.com/Wolverine971/buildos-platform/blob/dc4bc3560767/apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts)
+- [master-prompt-builder.ts](https://github.com/Wolverine971/buildos-platform/blob/6fe56282a6e2/apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts)
+- [stream-orchestrator/index.ts](https://github.com/Wolverine971/buildos-platform/blob/9ba640d4bd90/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/index.ts)
+- [tool-validation.ts](../../packages/agentic-chat-runtime/src/loop/tool-validation.ts)
+- [repair-instructions.ts](../../packages/agentic-chat-runtime/src/loop/repair-instructions.ts)
+- [agent-chat-orchestrator.ts](https://github.com/Wolverine971/buildos-platform/blob/cae4fe5ed3ae/apps/web/src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts)
 
 The first implementation deliberately kept internal legacy compatibility shims
 for `tool_exec`, `tool_help`, `buildos_call`, and `execute_op` so old persisted
@@ -95,11 +95,11 @@ Additional observability stability pass:
 
 Relevant observability files:
 
-- [prompt-observability.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/prompt-observability.ts)
-- [prompt-dump-debug.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/prompt-dump-debug.ts)
-- [+server.ts](/Users/djwayne/buildos-platform/apps/web/src/routes/api/agent/v2/stream/+server.ts)
-- [session-detail-payload.ts](/Users/djwayne/buildos-platform/apps/web/src/routes/api/admin/chat/sessions/[id]/session-detail-payload.ts)
-- [AGENTIC_CHAT_HYBRID_TOOL_SURFACE_PROMPT_TESTS_2026-04-10.md](/Users/djwayne/buildos-platform/docs/testing/AGENTIC_CHAT_HYBRID_TOOL_SURFACE_PROMPT_TESTS_2026-04-10.md)
+- [prompt-observability.ts](https://github.com/Wolverine971/buildos-platform/blob/a81b8d116176/apps/web/src/lib/services/agentic-chat-v2/prompt-observability.ts)
+- [prompt-dump-debug.ts](https://github.com/Wolverine971/buildos-platform/blob/9ba640d4bd90/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/prompt-dump-debug.ts)
+- [+server.ts](https://github.com/Wolverine971/buildos-platform/blob/9ba640d4bd90/apps/web/src/routes/api/agent/v2/stream/%2Bserver.ts)
+- [session-detail-payload.ts](../../apps/web/src/routes/api/admin/chat/sessions/[id]/session-detail-payload.ts)
+- [AGENTIC_CHAT_HYBRID_TOOL_SURFACE_PROMPT_TESTS_2026-04-10.md](../testing/AGENTIC_CHAT_HYBRID_TOOL_SURFACE_PROMPT_TESTS_2026-04-10.md)
 
 Focused observability verification from `apps/web`:
 
@@ -156,7 +156,7 @@ This section describes the state before Phase 1 landed. It is retained to explai
 
 ### 2.1 What already existed
 
-BuildOS still has context-aware tool bundles in [tools.config.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/tools.config.ts):
+BuildOS still has context-aware tool bundles in [tools.config.ts](https://github.com/Wolverine971/buildos-platform/blob/dc3e55e892b1/apps/web/src/lib/services/agentic-chat/tools/core/tools.config.ts):
 
 - `global`
 - `project`
@@ -169,7 +169,7 @@ Those bundles were still used when gateway mode was off.
 
 ### 2.2 What gateway mode did before Phase 1
 
-When the gateway flag was enabled, [tool-selector.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts) returned only:
+When the gateway flag was enabled, [tool-selector.ts](https://github.com/Wolverine971/buildos-platform/blob/dc4bc3560767/apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts) returned only:
 
 - `skill_load`
 - `tool_search`
@@ -189,8 +189,8 @@ The pre-Phase-1 repair path was mostly prompt-driven:
 
 Relevant files:
 
-- [agent-chat-orchestrator.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts)
-- [stream-orchestrator/index.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/index.ts)
+- [agent-chat-orchestrator.ts](https://github.com/Wolverine971/buildos-platform/blob/cae4fe5ed3ae/apps/web/src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts)
+- [stream-orchestrator/index.ts](https://github.com/Wolverine971/buildos-platform/blob/9ba640d4bd90/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/index.ts)
 
 That made recovery too dependent on the model following prose instructions correctly.
 
@@ -495,9 +495,9 @@ Outcome:
 
 Status:
 
-- Complete. Implemented in [gateway-surface.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/gateway-surface.ts), [tool-selector.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts), and [tool-selection-service.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/analysis/tool-selection-service.ts).
+- Complete. Implemented in gateway-surface.ts, [tool-selector.ts](https://github.com/Wolverine971/buildos-platform/blob/dc4bc3560767/apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts), and [tool-selection-service.ts](https://github.com/Wolverine971/buildos-platform/blob/cae4fe5ed3ae/apps/web/src/lib/services/agentic-chat/analysis/tool-selection-service.ts).
 - Gateway mode now returns discovery tools plus curated direct bundles for `global`, `project`, `project_create`, `project_audit`, `project_forecast`, `calendar`, and aliases.
-- `execute_op` is not included in [gateway.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/definitions/gateway.ts).
+- `execute_op` is not included in gateway.ts.
 
 ## Phase 2: Generate direct tools from canonical ops
 
@@ -564,7 +564,7 @@ These are the next concrete steps I would take in the repo.
     - which repair classes fire most often.
 2. Replace remaining prose repair branches with typed recovery classes.
 3. Completed by the 2026-06-22 doc review/code search: retire legacy `tool_help` / `tool_exec` / `execute_op` compatibility references from the live agentic-chat code path.
-4. Obsolete after cleanup: the old `tool-help.ts` helper no longer exists; any future schema inspection work should start from [tool-schema.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/registry/tool-schema.ts).
+4. Obsolete after cleanup: the old `tool-help.ts` helper no longer exists; any future schema inspection work should start from [tool-schema.ts](https://github.com/Wolverine971/buildos-platform/blob/a81b8d116176/apps/web/src/lib/services/agentic-chat/tools/registry/tool-schema.ts).
 5. Design the separate admin/control-plane gateway if runtime config repair is still desired.
 
 ## 9. Bottom line

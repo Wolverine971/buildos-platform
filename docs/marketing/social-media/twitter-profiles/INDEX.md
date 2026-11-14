@@ -85,16 +85,16 @@ AI researchers and practitioners shaping how we think about LLM context.
 
 AI coding assistants, Claude Code experts, and AI development tooling. **HIGH STRATEGIC VALUE** for BuildOS.
 
-| Handle                                  | Name               | Verified Followers | Focus                           | Priority    |
-| --------------------------------------- | ------------------ | ------------------ | ------------------------------- | ----------- |
-| [@bcherny](ai-dev/bcherny.md)           | Boris Cherny       | **163.7K**         | Claude Code creator @ Anthropic | 🚨 CRITICAL |
-| [@trq212](ai-dev/trq212.md)             | Thorsten Ball      | **46.2K**          | Anthropic Claude Code team      | 🚨 CRITICAL |
-| [@datachaz](ai-dev/datachaz.md)         | Chaz Acheronti     | 149K               | Claude Code Patterns Guide      | 🚨 CRITICAL |
-| [@dejavucoder](ai-dev/dejavucoder.md)   | DejaVu             | **22.9K**          | Claude Code guides              | High Value  |
-| [@mckaywrigley](ai-dev/mckaywrigley.md) | McKay Wrigley      | **217K**           | AI product builder              | High Value  |
-| [@skirano](ai-dev/skirano.md)           | Sawyer             | **31K**            | Cursor/AI dev                   | High Value  |
-| [@lenadroid](ai-dev/lenadroid.md)       | Lena Hall          | **20.9K**          | DevRel @ Akamai                 | High Value  |
-| [@mitchellh](ai-dev/mitchellh.md)       | Mitchell Hashimoto | **10K**            | HashiCorp founder, Ghostty      | High Value  |
+| Handle                                         | Name               | Verified Followers | Focus                           | Priority    |
+| ---------------------------------------------- | ------------------ | ------------------ | ------------------------------- | ----------- |
+| [@bcherny](ai-dev/bcherny.md)                  | Boris Cherny       | **163.7K**         | Claude Code creator @ Anthropic | 🚨 CRITICAL |
+| [@trq212](ai-dev/trq212.md)                    | Thorsten Ball      | **46.2K**          | Anthropic Claude Code team      | 🚨 CRITICAL |
+| [@datachaz](./context-engineering/datachaz.md) | Chaz Acheronti     | 149K               | Claude Code Patterns Guide      | 🚨 CRITICAL |
+| [@dejavucoder](ai-dev/dejavucoder.md)          | DejaVu             | **22.9K**          | Claude Code guides              | High Value  |
+| [@mckaywrigley](ai-dev/mckaywrigley.md)        | McKay Wrigley      | **217K**           | AI product builder              | High Value  |
+| [@skirano](ai-dev/skirano.md)                  | Sawyer             | **31K**            | Cursor/AI dev                   | High Value  |
+| [@lenadroid](ai-dev/lenadroid.md)              | Lena Hall          | **20.9K**          | DevRel @ Akamai                 | High Value  |
+| [@mitchellh](ai-dev/mitchellh.md)              | Mitchell Hashimoto | **10K**            | HashiCorp founder, Ghostty      | High Value  |
 
 ### 🚨 Critical Notes
 
@@ -123,17 +123,17 @@ Bootstrappers, SaaS builders, and indie product makers.
 | [@asmartbear](indie-hackers/asmartbear.md)       | Jason Cohen      | **50K**            | WP Engine founder               | High Value  |
 | [@paulyacoubian](indie-hackers/paulyacoubian.md) | Paul Yacoubian   | **43.7K**          | Copy.ai founder/CEO             | High Value  |
 | [@robwalling](indie-hackers/robwalling.md)       | Rob Walling      | 38K                | TinySeed, MicroConf             | High Value  |
-| [@DmytroKrasun](indie-hackers/dmytrokrasun.md)   | Dmytro Krasun    | **28K**            | ScreenshotOne                   | High Value  |
-| [@GeorgeM_Growth](indie-hackers/georgem.md)      | George           | **26K**            | Solo biz growth                 | High Value  |
+| @DmytroKrasun                                    | Dmytro Krasun    | **28K**            | ScreenshotOne                   | High Value  |
+| @GeorgeM_Growth                                  | George           | **26K**            | Solo biz growth                 | High Value  |
 | [@johnrushx](indie-hackers/johnrushx.md)         | John Rush        | **15K**            | MarsX                           | High Value  |
-| [@TaraReed\_](indie-hackers/tarareed.md)         | Tara Reed        | **15K**            | AppsWithoutCode                 | High Value  |
+| @TaraReed\_                                      | Tara Reed        | **15K**            | AppsWithoutCode                 | High Value  |
 | [@philostar](indie-hackers/philostar.md)         | Phil             | **14K**            | 4dayweek.io (200K users/month)  | High Value  |
 | [@adamrobinson](indie-hackers/adamrobinson.md)   | Adam Robinson    | **12K**            | Retention.com                   | High Value  |
 | [@SimonHoiberg](indie-hackers/simonhoiberg.md)   | Simon Hoiberg    | **10K**            | No-code SaaS                    | Selective   |
 | [@petecodes](indie-hackers/petecodes.md)         | Pete             | **10K**            | No CS Degree                    | Selective   |
 | [@czue](indie-hackers/czue.md)                   | Cory Zue         | 7K                 | SaaS Pegasus                    | Selective   |
-| [@FounderEric](indie-hackers/founderic.md)       | Eric             | **6,339**          | FoundersBeta, FoundersPress     | Selective   |
-| [@dylan_hey](indie-hackers/dylanhey.md)          | Dylan Hey        | **6,027**          | SaaS Ads Agency ($3M ARR)       | Selective   |
+| @FounderEric                                     | Eric             | **6,339**          | FoundersBeta, FoundersPress     | Selective   |
+| @dylan_hey                                       | Dylan Hey        | **6,027**          | SaaS Ads Agency ($3M ARR)       | Selective   |
 | [@saasmakermac](indie-hackers/saasmakermac.md)   | Mac Martine      | **5,094**          | Exited 7-figure SaaS, Wildfront | Selective   |
 
 ### 🚨 Critical Note
@@ -217,10 +217,10 @@ Developer tools, frameworks, and technical content creators.
 
 | Handle                                       | Name           | Verified Followers | Focus                           | Priority   |
 | -------------------------------------------- | -------------- | ------------------ | ------------------------------- | ---------- |
-| [@fireship_dev](dev-tools/fireship.md)       | Fireship       | **400K**           | Dev tutorials, 100 seconds of X | High Value |
+| @fireship_dev                                | Fireship       | **400K**           | Dev tutorials, 100 seconds of X | High Value |
 | [@supabase](dev-tools/supabase.md)           | Supabase       | **150K**           | Company account (we use!)       | High Value |
-| [@antfu7](dev-tools/antfu.md)                | Anthony Fu     | **80K**            | Vue/Vite core                   | Selective  |
-| [@Rich_Harris](dev-tools/richharris.md)      | Rich Harris    | **50K**            | Svelte creator                  | High Value |
+| @antfu7                                      | Anthony Fu     | **80K**            | Vue/Vite core                   | Selective  |
+| @Rich_Harris                                 | Rich Harris    | **50K**            | Svelte creator                  | High Value |
 | [@stolinski](dev-tools/stolinski.md)         | Scott Tolinski | **30K**            | Syntax.fm                       | Selective  |
 | [@sveltesociety](dev-tools/sveltesociety.md) | Svelte Society | **10K**            | Community account               | Selective  |
 

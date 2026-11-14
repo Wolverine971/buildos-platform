@@ -22,8 +22,8 @@ The BuildOS notification tracking system provides analytics across notification 
 
 ## Quick Links
 
-- **Research Spec**: [`/thoughts/shared/research/2025-10-06_22-08-35_notification-tracking-system-spec.md`](/thoughts/shared/research/2025-10-06_22-08-35_notification-tracking-system-spec.md)
-- **Implementation Assessment**: [`/thoughts/shared/research/2025-10-06_22-45-00_email-tracking-reuse-assessment.md`](/thoughts/shared/research/2025-10-06_22-45-00_email-tracking-reuse-assessment.md)
+- **Research Spec**: [`/thoughts/shared/research/2025-10-06_22-08-35_notification-tracking-system-spec.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-06_22-08-35_notification-tracking-system-spec.md)
+- **Implementation Assessment**: [`/thoughts/shared/research/2025-10-06_22-45-00_email-tracking-reuse-assessment.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-06_22-45-00_email-tracking-reuse-assessment.md)
 - **Email System Docs**: [`/apps/web/docs/technical/architecture/email-system.md`](/apps/web/docs/technical/architecture/email-system.md)
 - **SMS Design**: [`/docs/architecture/SMS_NOTIFICATION_CHANNEL_DESIGN.md`](/docs/architecture/SMS_NOTIFICATION_CHANNEL_DESIGN.md)
 
@@ -619,7 +619,7 @@ ORDER BY channel, status;
 
 ## References
 
-- **Spec**: [`/thoughts/shared/research/2025-10-06_22-08-35_notification-tracking-system-spec.md`](/thoughts/shared/research/2025-10-06_22-08-35_notification-tracking-system-spec.md)
-- **Assessment**: [`/thoughts/shared/research/2025-10-06_22-45-00_email-tracking-reuse-assessment.md`](/thoughts/shared/research/2025-10-06_22-45-00_email-tracking-reuse-assessment.md)
+- **Spec**: [`/thoughts/shared/research/2025-10-06_22-08-35_notification-tracking-system-spec.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-06_22-08-35_notification-tracking-system-spec.md)
+- **Assessment**: [`/thoughts/shared/research/2025-10-06_22-45-00_email-tracking-reuse-assessment.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-06_22-45-00_email-tracking-reuse-assessment.md)
 - **Email System**: [`/apps/web/docs/technical/architecture/email-system.md`](/apps/web/docs/technical/architecture/email-system.md)
 - **SMS Design**: [`/docs/architecture/SMS_NOTIFICATION_CHANNEL_DESIGN.md`](/docs/architecture/SMS_NOTIFICATION_CHANNEL_DESIGN.md)

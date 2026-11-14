@@ -12,7 +12,8 @@ This is the unified monorepo for the web app, background worker, and shared pack
 buildos-platform/
 ├── apps/
 │   ├── web/                  # SvelteKit 2 + Svelte 5 web app (Vercel)
-│   └── worker/               # Node.js background worker (Railway)
+│   ├── worker/               # Node.js background worker (Railway)
+│   └── mobile/               # Expo iPhone app (thin client over the web API)
 ├── packages/
 │   ├── shared-types/         # Generated DB types, queue types, API types
 │   ├── shared-agent-ops/     # Agent op layer shared by web gateway + worker Agent Run runner
@@ -21,6 +22,8 @@ buildos-platform/
 │   ├── supabase-client/      # Shared Supabase client configuration
 │   ├── twilio-service/       # SMS / Twilio integration
 │   ├── agentic-chat-runtime/ # Transport-neutral agentic chat contracts, loop + supervisor
+│   ├── agentic-chat-client/  # Client-side chat core shared by the web app and the iPhone app
+│   ├── api-client/           # Typed BuildOS API client used by the mobile app
 │   └── buildos-mcp-server/   # Local stdio MCP bridge to the remote BuildOS connector
 ├── docs/                     # Cross-cutting docs (architecture, marketing, ops)
 ├── scripts/                  # Type generation, schema extraction, tooling
@@ -31,7 +34,7 @@ buildos-platform/
 
 - **Monorepo**: Turborepo 2.10 + pnpm 11 workspaces
 - **Web**: SvelteKit 2 + Svelte 5 (runes) on Vercel (`nodejs22.x`)
-- **Worker**: Node.js + Express on Railway (`nodejs_22`)
+- **Worker**: Node.js 22 + Express on Railway (three Railpack services)
 - **TypeScript**: TypeScript 5.9 for SvelteKit and package build tooling; native TypeScript 7 for
   worker compilation and selected package typechecks
 - **Queue**: Redis-free — Supabase-backed queue with PostgreSQL RPCs
@@ -132,7 +135,7 @@ Always use `pnpm`. Never `npm` or `yarn`.
 
 ## Deployment
 
-- **Web** → Vercel. Config in `vercel.json`, including ~10 cron jobs (billing/trial lifecycle, welcome/reactivation sequences, Gmail maintenance, webhook renewal, account deletions, retention cleanup — see `vercel.json` for the current list).
+- **Web** → Vercel. Config in `vercel.json`, including its cron jobs (billing/trial lifecycle, welcome/reactivation sequences, email campaigns and replies, email project updates, Gmail maintenance, webhook renewal, account deletions, retention cleanup — `vercel.json` is the current list).
 - **Worker** → Railway. Three services deploy from repository root `/` with
   Railpack on patched Node 22: `railway.toml` (daily brief), `railway.chat.toml`
   (Agentic Chat), `railway.libri.toml` (Libri). Healthcheck at `/health`.

@@ -2,7 +2,7 @@
 
 # BuildOS Strategy Spine — 2026 H2
 
-> Origin: Chocolate War strategic assessment, 2026-07-26 (source chat: `chocolate-wars-chat.md`).
+> Origin: Chocolate War strategic assessment, 2026-07-26 (source chat: [`chocolate-wars-chat.md`](./chocolate-wars-chat.md)).
 > This is the one page that gets reviewed monthly. Every hypothesis gets marked
 > **corroborated / falsified / unresolved** at review, same as an engineering gate.
 > Numbers marked `[DJ: confirm]` are proposals awaiting veto, not decisions.

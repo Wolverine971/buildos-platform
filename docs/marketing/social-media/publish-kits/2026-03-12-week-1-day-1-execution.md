@@ -35,10 +35,10 @@ then day one was productive.
 
 Open these in order:
 
-1. [BuildOS Marketing Strategy 2026](/Users/djwayne/buildos-platform/docs/marketing/strategy/buildos-marketing-strategy-2026.md)
-2. [BuildOS Brand Guide](/Users/djwayne/buildos-platform/docs/marketing/brand/brand-guide-1-pager.md)
-3. [6-Week Guerrilla Seed Campaign](/Users/djwayne/buildos-platform/docs/marketing/social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md)
-4. [Do This Asset Template](/Users/djwayne/buildos-platform/docs/marketing/social-media/publish-kits/2026-03-12-do-this-asset-template.md)
+1. [BuildOS Marketing Strategy 2026](../../strategy/buildos-marketing-strategy-2026.md)
+2. [BuildOS Brand Guide](../../brand/brand-guide-1-pager.md)
+3. [6-Week Guerrilla Seed Campaign](./2026-03-12-buildos-guerrilla-seed-campaign.md)
+4. [Do This Asset Template](./2026-03-12-do-this-asset-template.md)
 
 Then only work inside:
 

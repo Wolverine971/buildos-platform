@@ -126,7 +126,7 @@ Notifications Delivered
 
 - Implementation: `/apps/web/docs/features/notifications/implementation/NOTIFICATION_PHASE3_IMPLEMENTATION.md`
 - API: `/apps/web/docs/technical/api/endpoints/notification-preferences.md`
-- Research: `/thoughts/shared/research/2025-10-13_06-00-00_daily-brief-notification-refactor-plan.md`
+- Research: [`2025-10-13_06-00-00_daily-brief-notification-refactor-plan.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-13_06-00-00_daily-brief-notification-refactor-plan.md)
 
 ## Related Documentation
 
@@ -145,3 +145,7 @@ Notifications Delivered
 - Phase 1: UI notification system (stackable notifications)
 - Phase 3: User notifications + daily brief delivery
 - 2025-10-13 Refactor: Separated generation from notification delivery
+
+## More notification docs
+
+- [shared-project-activity-notification-spec.md](./shared-project-activity-notification-spec.md) — shared-project activity notifications: toggles, batching, caps

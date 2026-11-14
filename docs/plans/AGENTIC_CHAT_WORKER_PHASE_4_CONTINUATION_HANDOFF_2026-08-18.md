@@ -405,7 +405,7 @@ and it does not block the exit.
 ### Step 1 — get `main` green (do this first)
 
 **Complete.**
-[`tasker/54-calendar-route-size-guard.md`](../../tasker/54-calendar-route-size-guard.md) is
+[`tasker/54-calendar-route-size-guard.md`](https://github.com/Wolverine971/buildos-platform/blob/12af23f7cb1d/tasker/54-calendar-route-size-guard.md) is
 implemented and deployed: the route is 267 lines and its suite passes 13/13. DJ pushed the first
 six test-contract remediations in `ae3a241bd`; its CI run exposed one Twilio clock race. The
 four-file follow-up also repairs a date-expired PostgreSQL fixture and two loaded coverage-test

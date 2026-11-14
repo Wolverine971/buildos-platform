@@ -151,6 +151,26 @@ describe('buildAgenda', () => {
 		]);
 	});
 
+	it('keeps tasks due this week and new ones (they used to be dropped)', () => {
+		const widened = buildAgenda({
+			...feed,
+			events: [],
+			tasks: [
+				task('tP', 'in_progress'),
+				task('tN', 'new'),
+				task('tW', 'due_soon', { due: '2026-10-31T21:00:00.000Z' }),
+				task('tD', 'due_today')
+			]
+		});
+		expect(widened.anytime.map((t) => t.id)).toEqual(['tD', 'tW', 'tN', 'tP']);
+		expect(groupTodayTasks(widened.anytime).map((group) => group.label)).toEqual([
+			'Due today',
+			'Due this week',
+			'New',
+			'In progress'
+		]);
+	});
+
 	it('walks the reader in page order: schedule, then anytime', () => {
 		expect(walkOrder(agenda, groups)).toEqual(['tL', 'tTimed', 'tA', 'tZ', 'tS', 'tP']);
 	});

@@ -64,13 +64,13 @@ Short version:
 
 ### BuildOS files reviewed
 
-- [gateway.ts](../../apps/web/src/lib/services/agentic-chat/tools/core/definitions/gateway.ts)
-- [tool-selector.ts](../../apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts)
-- [tool-selector.test.ts](../../apps/web/src/lib/services/agentic-chat-v2/tool-selector.test.ts)
-- [master-prompt-builder.ts](../../apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts)
-- [tool-help.ts](../../apps/web/src/lib/services/agentic-chat/tools/registry/tool-help.ts)
-- [tool-schema.ts](../../apps/web/src/lib/services/agentic-chat/tools/registry/tool-schema.ts)
-- [tool-registry.ts](../../apps/web/src/lib/services/agentic-chat/tools/registry/tool-registry.ts)
+- gateway.ts
+- [tool-selector.ts](https://github.com/Wolverine971/buildos-platform/blob/dc4bc3560767/apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts)
+- [tool-selector.test.ts](https://github.com/Wolverine971/buildos-platform/blob/dc4bc3560767/apps/web/src/lib/services/agentic-chat-v2/tool-selector.test.ts)
+- [master-prompt-builder.ts](https://github.com/Wolverine971/buildos-platform/blob/6fe56282a6e2/apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts)
+- [tool-help.ts](https://github.com/Wolverine971/buildos-platform/blob/cae4fe5ed3ae/apps/web/src/lib/services/agentic-chat/tools/registry/tool-help.ts)
+- [tool-schema.ts](https://github.com/Wolverine971/buildos-platform/blob/a81b8d116176/apps/web/src/lib/services/agentic-chat/tools/registry/tool-schema.ts)
+- tool-registry.ts
 - [openrouter-v2-service.ts](../../apps/web/src/lib/services/openrouter-v2-service.ts)
 - [chat.types.ts](../../packages/shared-types/src/chat.types.ts)
 - [README.md](../../apps/web/docs/features/agentic-chat/README.md)
@@ -252,18 +252,18 @@ What changes after the OpenClaw correction is the architectural judgment:
 
 ### 1. In gateway mode, BuildOS gives the model four meta-tools
 
-The gateway definitions in [gateway.ts](../../apps/web/src/lib/services/agentic-chat/tools/core/definitions/gateway.ts) expose:
+The gateway definitions in gateway.ts expose:
 
 - `skill_load`
 - `tool_search`
 - `tool_schema`
 - `execute_op`
 
-The test in [tool-selector.test.ts](../../apps/web/src/lib/services/agentic-chat-v2/tool-selector.test.ts) confirms that when the gateway flag is enabled, those are the only tools the model sees.
+The test in [tool-selector.test.ts](https://github.com/Wolverine971/buildos-platform/blob/dc4bc3560767/apps/web/src/lib/services/agentic-chat-v2/tool-selector.test.ts) confirms that when the gateway flag is enabled, those are the only tools the model sees.
 
 ### 2. BuildOS makes the prompt teach a custom execution protocol
 
-[master-prompt-builder.ts](../../apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts) explicitly instructs the model to:
+[master-prompt-builder.ts](https://github.com/Wolverine971/buildos-platform/blob/6fe56282a6e2/apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts) explicitly instructs the model to:
 
 1. orient using context and skill metadata,
 2. use `tool_search` if needed,
@@ -274,7 +274,7 @@ This is the strongest place where BuildOS diverges from OpenClaw.
 
 ### 3. BuildOS has a useful canonical op layer
 
-[tool-registry.ts](../../apps/web/src/lib/services/agentic-chat/tools/registry/tool-registry.ts) gives BuildOS a canonical semantic layer with ops like:
+tool-registry.ts gives BuildOS a canonical semantic layer with ops like:
 
 - `onto.task.update`
 - `util.project.overview`
@@ -288,7 +288,7 @@ The same registry file contains explicit exception mappings and legacy tool-name
 
 ### 5. `tool_schema` is partly a migration and prompt-shaping layer
 
-[tool-schema.ts](../../apps/web/src/lib/services/agentic-chat/tools/registry/tool-schema.ts) rewrites legacy payload terms like `tool_exec`, `buildos_call`, and `args` into `execute_op` and `input`.
+[tool-schema.ts](https://github.com/Wolverine971/buildos-platform/blob/a81b8d116176/apps/web/src/lib/services/agentic-chat/tools/registry/tool-schema.ts) rewrites legacy payload terms like `tool_exec`, `buildos_call`, and `args` into `execute_op` and `input`.
 
 That means BuildOS is still carrying compatibility and protocol translation burden inside the schema helper itself.
 

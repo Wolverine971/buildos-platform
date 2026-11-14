@@ -2,7 +2,7 @@
 
 # Product Promise Production-Proof Baseline — 2026-08-31
 
-**Program:** [Tasker 78](../../tasker/78-product-promise-production-proof.md)  
+**Program:** [Tasker 78](https://github.com/Wolverine971/buildos-platform/blob/df81f97dced3/tasker/78-product-promise-production-proof.md)  
 **Status:** Initial WP-0/WP-1 packet; founder ratification and live execution are pending  
 **Current paid-launch decision:** **NO-GO**  
 **Evidence cutoff:** 2026-08-31
@@ -20,7 +20,7 @@ The launch decision is blocked by four independent facts:
 2. [Tasker 77](../../tasker/77-billing-commercial-contract-reconciliation.md) found incompatible
    trial and consumption contracts, checkout behavior that does not match visible trial copy, and
    unfinished Stripe/invoice configuration. Paid billing is correctly disabled.
-3. [Tasker 70](../../tasker/70-agentic-chat-production-battery-remediation.md) has strong partial
+3. [Tasker 70](https://github.com/Wolverine971/buildos-platform/blob/df81f97dced3/tasker/70-agentic-chat-production-battery-remediation.md) has strong partial
    production receipts, but the isolated repetitions and complete nine-scenario zero-retry battery
    are still open. [Tasker 20](../../tasker/20-agentic-chat-wave3-security-brief.md) also keeps the
    detached lifecycle flag off in Production pending its Preview smoke.
@@ -30,9 +30,9 @@ The launch decision is blocked by four independent facts:
    records the missing fresh-account onboarding branches.
 
 Known calendar defects and customer-visible corruption add separate blocking or cohort-limiting
-evidence: [Tasker 74](../../tasker/74-calendar-legacy-surface-cleanup.md) records false disconnected
+evidence: [Tasker 74](https://github.com/Wolverine971/buildos-platform/blob/df81f97dced3/tasker/74-calendar-legacy-surface-cleanup.md) records false disconnected
 state and broken recurrence editing, while
-[Tasker 79](../../tasker/79-customer-visible-paid-launch-polish.md) records malformed Brief copy,
+[Tasker 79](https://github.com/Wolverine971/buildos-platform/blob/df81f97dced3/tasker/79-customer-visible-paid-launch-polish.md) records malformed Brief copy,
 raw ontology syntax, leaked smoke-test data, obstructed content, and incomplete mobile review.
 
 This packet does not change the existing free-beta operating decision. It defines what must be true
@@ -283,7 +283,7 @@ queries, and the person who verified the run. Secrets and customer content must 
 - **Owner / Automated coverage:** T27/T52/T79;
   [Today feed](../../apps/web/src/lib/server/today-feed.service.test.ts), Today component tests,
   [ensure-today route](../../apps/web/src/routes/api/daily-briefs/ensure-today/server.test.ts),
-  [brief generator](../../apps/worker/tests/briefGenerator.test.ts), schedule/idempotency/stale tests,
+  [brief generator](https://github.com/Wolverine971/buildos-platform/blob/a81b8d116176/apps/worker/tests/briefGenerator.test.ts), schedule/idempotency/stale tests,
   and email-template tests.
 - **Live evidence / last verification / result:** T79 found malformed Markdown and smoke-test data
   in Production Today/Briefs on 2026-08-31; T27 retains incomplete IA/brief work; T52’s newer runtime
@@ -370,7 +370,7 @@ queries, and the person who verified the run. Secrets and customer content must 
 - **Cleanup:** terminate/reap test jobs, delete fixture state, and prove no running rows, provider
   orphans, pending notifications, or double usage entries.
 - **Owner / Automated coverage:** T20/T70/T74/T77;
-  [mutation partial recovery](../../apps/web/src/lib/services/agentic-chat-v2/mutation-partial-recovery.regression.test.ts),
+  [mutation partial recovery](https://github.com/Wolverine971/buildos-platform/blob/9ba640d4bd90/apps/web/src/lib/services/agentic-chat-v2/mutation-partial-recovery.regression.test.ts),
   lifecycle, stale-reaper, reconciliation, idempotency, calendar compensation, webhook, and brief
   stale/idempotency tests.
 - **Live evidence / last verification / result:** substantial Automated coverage and selected

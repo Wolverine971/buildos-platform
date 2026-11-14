@@ -2,7 +2,7 @@
 
 # Documentation Guidelines
 
-**Last Updated:** 2026-08-19
+**Last Updated:** 2026-11-13
 **Enforced by:** `pnpm check:doc-health` (runs in `pre-push`)
 
 ---
@@ -92,18 +92,38 @@ policy. Both were retired on 2026-08-19. `docs/archive/` was deleted on 2026-09-
 an archive folder still answers every grep, so superseded docs are deleted outright.
 Do not re-create `thoughts/` or `docs/archive/`.
 
+### Files that stay at the repo root
+
+`buildos-strat.md` and `buildos-strat-tasks.md` live at the root on purpose. About 60
+places in `docs/marketing/` and `.claude/` cite them as root-level sources of truth;
+a move to `docs/marketing/strategy/` on 2026-06-22 broke those links and was reverted.
+Everything else at the root is config, `README.md`, `CLAUDE.md` or `AGENTS.md`.
+
 ---
 
 ## The health gate
 
-`pnpm check:doc-health` fails `pre-push` on two conditions:
+`pnpm check:doc-health` fails `pre-push` on three conditions:
 
 1. **dead-schema** — the doc puts a table or function in query position
    (`FROM x`, `.from('x')`, `.rpc('x')`, `CREATE INDEX ... ON x`) that no longer
    exists in `packages/shared-types/src/database.types.ts`.
 2. **dead-paths** — four or more repo paths are cited and at least 60% are gone.
+3. **broken-links** — a markdown link in a current doc points at a file that is not
+   in the repo, or at a path on one machine (`/Users/...`). Checked in the doc trees
+   and in the root and app `README.md` / `CLAUDE.md` / `AGENTS.md`. Links to a deleted
+   file become a GitHub permalink at the last commit that had it, or plain text.
 
-It also reports **unstamped** point-in-time docs (non-blocking).
+It also reports, without blocking:
+
+- **unstamped** point-in-time docs.
+- **unreferenced** docs: older than 90 days and named by no doc or code file. Each one
+  is either dead (delete it) or missing from its index (link it from the nearest
+  README). A doc that must stay unlinked can carry
+  `<!-- doc-health: keep-unreferenced — why -->`.
+
+The check reads the working tree, so a doc you moved or deleted is judged as it is on
+disk before you commit.
 
 Fixing a failure, in order of preference:
 
@@ -117,6 +137,7 @@ Fixing a failure, in order of preference:
     ```
     <!-- doc-health: ignore-schema — proposes tables that were never built -->
     <!-- doc-health: ignore-paths — file paths in these examples are placeholders -->
+    <!-- doc-health: ignore-links — link targets in this template are placeholders -->
     ```
 
     Always include the reason. The marker is visible to whoever reads the doc, which

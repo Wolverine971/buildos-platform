@@ -218,3 +218,10 @@ Migration notes live in `/migrations/` with completed migration records under `/
 - **Shared types**: `/packages/shared-types/`
 - **Deployment Topology**: `/docs/DEPLOYMENT_TOPOLOGY.md`
 - **Task Index**: `/docs/TASK_INDEX.md`
+
+## More docs
+
+- [PENTEST_2026-06-22_ADVERSARIAL_ASSESSMENT.md](./features/agentic-chat/PENTEST_2026-06-22_ADVERSARIAL_ASSESSMENT.md) — chat security assessment; defines the A-numbers used in `features/agentic-chat/pentesting/TEST_MATRIX.md`; cross-project write scope findings (A3/A4) are not fully closed
+- [BRAND_KIT.md](./business/BRAND_KIT.md) — brand kit for outside design tools (logo files, colors, type); taglines predate the current positioning
+- [RICH_MARKDOWN_EDITOR_SPEC.md](./features/collaborative-editor/RICH_MARKDOWN_EDITOR_SPEC.md) — document editor spec; autosave and CodeMirror shipped, the real-time collaboration tier is unbuilt
+- [2026-08-02-ontology-crud-simplification.md](./migrations/active/2026-08-02-ontology-crud-simplification.md) — open tracker: atomic ontology create/update/delete

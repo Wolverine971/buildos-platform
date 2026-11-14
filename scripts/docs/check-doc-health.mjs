@@ -2,12 +2,18 @@
 // scripts/docs/check-doc-health.mjs
 // Detect documentation that will actively mislead an agent that greps it.
 //
-// Three checks:
-//   1. dead-paths  — doc cites repo file paths that no longer exist
-//   2. dead-schema — doc names a database table/function that no longer exists,
-//                    asserted positively (negations like "was dropped" are fine)
-//   3. unstamped   — point-in-time doc (audit/plan/phase/handoff) with no status
-//                    header, so grep cannot tell it from current reference docs
+// Five checks:
+//   1. dead-paths   — doc cites repo file paths that no longer exist
+//   2. dead-schema  — doc names a database table/function that no longer exists,
+//                     asserted positively (negations like "was dropped" are fine)
+//   3. broken-links — a markdown link in a current doc points at a file that is
+//                     not in the repo (or at a path on one person's machine)
+//   4. unstamped    — point-in-time doc (audit/plan/phase/handoff) with no status
+//                     header, so grep cannot tell it from current reference docs
+//   5. unreferenced — doc older than 90 days that no doc or code file mentions;
+//                     a delete candidate, or a doc that needs a link from an index
+//
+// 1-3 block `--strict`; 4-5 are reported only.
 //
 // Usage:
 //   node scripts/docs/check-doc-health.mjs            # report
@@ -17,7 +23,7 @@
 
 import { execSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve, basename } from 'node:path';
+import { dirname, join, normalize, basename, extname } from 'node:path';
 
 const ROOT = process.cwd();
 const args = process.argv.slice(2);
@@ -50,12 +56,84 @@ const POINT_IN_TIME =
 const STAMP_RE = /^\s*(>?\s*)?(\*\*)?(status|last updated|as of|superseded|state)(\*\*)?\s*[:：]/im;
 const STAMP_BANNER = /<!-- doc-status:/;
 
+// The working tree, not the index: tracked files that still exist plus new
+// files git would add. A doc moved or deleted but not yet committed is checked
+// (or skipped) as it is on disk, so the gate matches what the commit will hold.
+const repoFiles = execSync('git ls-files --cached --others --exclude-standard', {
+	maxBuffer: 1 << 28
+})
+	.toString()
+	.split('\n')
+	.filter((f) => f && !f.includes('node_modules/') && existsSync(join(ROOT, f)));
+const repoFileSet = new Set(repoFiles);
+const repoDirSet = new Set();
+for (const f of repoFiles) {
+	for (let d = dirname(f); d && d !== '.'; d = dirname(d)) {
+		if (repoDirSet.has(d)) break;
+		repoDirSet.add(d);
+	}
+}
+const inRepo = (p) => repoFileSet.has(p) || repoDirSet.has(p);
+
 function tracked() {
-	return execSync('git ls-files "*.md"', { maxBuffer: 1 << 28 })
-		.toString()
-		.trim()
-		.split('\n')
-		.filter((f) => f && !EXCLUDE.some((re) => re.test(f)));
+	return repoFiles.filter((f) => f.endsWith('.md') && !EXCLUDE.some((re) => re.test(f)));
+}
+
+// ---- link truth -------------------------------------------------------------
+// Links are checked in documentation trees and the root/app instruction files.
+const LINK_CHECKED =
+	/^(docs\/|apps\/(web|worker)\/docs\/|packages\/[^/]+\/docs\/|(README|CLAUDE|AGENTS)\.md$|apps\/[^/]+\/(README|AGENTS)\.md$)/;
+const MD_LINK = /\[(?:[^\]\[]|\[[^\]]*\])*\]\(((?:[^()\s]|\([^()\s]*\))+)(?:\s+"[^"]*")?\)/g;
+// A leading-slash link is a repo path only when it starts at a real top-level
+// folder; `/blogs/x` or `/r/sub/wiki` are site routes, not files.
+const REPO_TOP = new Set(
+	repoFiles.filter((f) => f.includes('/')).map((f) => f.slice(0, f.indexOf('/')))
+);
+REPO_TOP.add('thoughts'); // retired 2026-08-19; a link there is always dead
+
+// Returns [{ href, line }] for links whose target is not in the repo.
+function findBrokenLinks(lines, docDir) {
+	const broken = [];
+	let inFence = false;
+	lines.forEach((raw, i) => {
+		if (/^\s*(```|~~~)/.test(raw)) {
+			inFence = !inFence;
+			return;
+		}
+		if (inFence) return;
+		const line = raw.replace(/`[^`]*`/g, ''); // links inside code spans are examples
+		MD_LINK.lastIndex = 0;
+		let m;
+		while ((m = MD_LINK.exec(line))) {
+			const href = m[1];
+			if (/^(https?:|mailto:|#|tel:|data:|<)/.test(href)) continue;
+			if (/^\/(Users|home)\//.test(href)) {
+				broken.push({ href, line: i + 1, why: 'path on one machine' });
+				continue;
+			}
+			let p = href.split('#')[0].split('?')[0];
+			try {
+				p = decodeURIComponent(p);
+			} catch {
+				/* keep the raw path */
+			}
+			p = p.replace(/^(.*\.[A-Za-z0-9]+):\d+(?::\d+)?$/, '$1'); // file.ts:42
+			if (!p) continue;
+			if (p.startsWith('/')) {
+				if (!REPO_TOP.has(p.split('/')[1])) continue;
+				const bare = p.slice(1).replace(/\/$/, '');
+				if (inRepo(bare)) continue;
+				// An extensionless root link that is not a folder is a site route.
+				if (!/\.[A-Za-z0-9]{1,6}$/.test(p) && !p.endsWith('/')) continue;
+				broken.push({ href, line: i + 1 });
+				continue;
+			}
+			const target = normalize(join(docDir, p)).replace(/\/$/, '');
+			if (target === '.' || inRepo(target)) continue;
+			broken.push({ href, line: i + 1 });
+		}
+	});
+	return broken;
 }
 
 // ---- schema truth -----------------------------------------------------------
@@ -150,7 +228,7 @@ function looksLikeSql(body) {
 // ---- path truth -------------------------------------------------------------
 const PATH_RE =
 	/(?:^|[\s`"'(\[])((?:apps|packages|supabase|scripts|docs|src|static|\.claude|\.github)\/[A-Za-z0-9._\-\/]+\.[A-Za-z0-9]{1,6})/g;
-const BASES = ['', 'apps/web/', 'apps/worker/', 'packages/'];
+const BASES = ['', 'apps/web/', 'apps/worker/', 'apps/mobile/', 'packages/'];
 const pathCache = new Map();
 function pathResolves(p, docDir) {
 	const key = `${p}|${docDir}`;
@@ -258,7 +336,28 @@ for (const file of files) {
 		});
 	}
 
-	// 3. unstamped point-in-time doc. Only documentation trees are checked; a
+	// 3. broken links. Same exemption as dead paths: a doc that declares itself
+	// historical has already told its reader not to trust what it points at.
+	// Opt out with `<!-- doc-health: ignore-links — why -->` (e.g. link templates).
+	if (
+		LINK_CHECKED.test(file) &&
+		!declaredHistorical &&
+		!/<!--\s*doc-health:\s*ignore-links/.test(text)
+	) {
+		const brokenLinks = findBrokenLinks(lines, docDir);
+		if (brokenLinks.length) {
+			findings.push({
+				check: 'broken-links',
+				file,
+				detail: `${brokenLinks.length} link(s) point at files that are not in the repo`,
+				sample: brokenLinks
+					.slice(0, 3)
+					.map((b) => `${b.href} (line ${b.line}${b.why ? `, ${b.why}` : ''})`)
+			});
+		}
+	}
+
+	// 4. unstamped point-in-time doc. Only documentation trees are checked; a
 	// banner inside agent config or shipped content would do harm, not good.
 	if (POINT_IN_TIME.test(basename(file)) && STAMPABLE.test(file)) {
 		const head = lines.slice(0, 25).join('\n');
@@ -270,6 +369,93 @@ for (const file of files) {
 				sample: []
 			});
 		}
+	}
+}
+
+// ---- unreferenced docs ------------------------------------------------------
+// A doc nobody links to and no code names is either dead (delete it; git
+// history is the archive) or missing from its index (link it). Only docs older
+// than 90 days are reported, so work in progress is left alone.
+{
+	const INDEX_LIKE = /(^|\/)(README|INDEX|NAVIGATION_INDEX|START-HERE|START_HERE)\.md$/i;
+	const candidates = files.filter(
+		(f) =>
+			STAMPABLE.test(f) &&
+			!INDEX_LIKE.test(f) &&
+			!/^docs\/founder\//.test(f) && // personal working material, not product docs
+			!/<!--\s*doc-health:\s*keep-unreferenced/.test(readFileSync(join(ROOT, f), 'utf8'))
+	);
+	const byBase = new Map();
+	for (const f of candidates) {
+		const b = basename(f);
+		if (!byBase.has(b)) byBase.set(b, []);
+		byBase.get(b).push(f);
+	}
+	const candidateSet = new Set(candidates);
+	const referenced = new Set();
+	const mark = (target, source) => {
+		if (target !== source && candidateSet.has(target)) referenced.add(target);
+	};
+	const TEXT_EXT = new Set(
+		'.md .ts .js .mjs .cjs .svelte .json .yml .yaml .toml .sql .sh .py'.split(' ')
+	);
+	const SKIP = /pnpm-lock|database\.(types|schema)|supabase\.openapi|^artifacts\/|\/dist\//;
+	const PATHISH = /(?:^|[\s`'"(<\[])((?:\.{1,2}\/|\/)?(?:[\w@.()\-]+\/)+[\w@.()\-]+\.md)\b/g;
+	const BARE = /([\w@.\-]+\.md)\b/g;
+	for (const source of repoFiles) {
+		if (!TEXT_EXT.has(extname(source)) || SKIP.test(source)) continue;
+		let text;
+		try {
+			text = readFileSync(join(ROOT, source), 'utf8');
+		} catch {
+			continue;
+		}
+		if (text.length > 3_000_000 || !text.includes('.md')) continue;
+		const dir = dirname(source);
+		let m;
+		PATHISH.lastIndex = 0;
+		while ((m = PATHISH.exec(text))) {
+			const fromRoot = normalize(m[1].replace(/^\//, ''));
+			const fromDoc = normalize(join(dir, m[1]));
+			if (candidateSet.has(fromRoot)) mark(fromRoot, source);
+			else if (candidateSet.has(fromDoc)) mark(fromDoc, source);
+			else {
+				// a partial path such as `features/x/SPEC.md`
+				const tail = '/' + fromRoot.replace(/^(\.\.\/)+/, '');
+				const hits = (byBase.get(basename(m[1])) ?? []).filter((d) => d.endsWith(tail));
+				if (hits.length === 1) mark(hits[0], source);
+			}
+		}
+		// a bare filename counts only when one doc has that name
+		BARE.lastIndex = 0;
+		while ((m = BARE.exec(text))) {
+			const hits = byBase.get(m[1]);
+			if (hits?.length === 1) mark(hits[0], source);
+		}
+	}
+	// First-commit date for every doc, in one pass (newest first, so the last
+	// write per path is the oldest commit). Uncommitted docs have no date and are new.
+	const created = new Map();
+	let cur = null;
+	const log = execSync(
+		'git log --diff-filter=A --format=@%cs --name-only -- docs apps/web/docs apps/worker/docs packages',
+		{ maxBuffer: 1 << 28, encoding: 'utf8' }
+	);
+	for (const line of log.split('\n')) {
+		if (line.startsWith('@')) cur = line.slice(1);
+		else if (line) created.set(line, cur);
+	}
+	const cutoff = new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10);
+	for (const f of candidates) {
+		if (referenced.has(f)) continue;
+		const born = created.get(f);
+		if (!born || born > cutoff) continue;
+		findings.push({
+			check: 'unreferenced',
+			file: f,
+			detail: `first committed ${born}; no doc or code file mentions it`,
+			sample: []
+		});
 	}
 }
 
@@ -317,23 +503,33 @@ if (JSON_OUT) {
 } else {
 	const byCheck = {};
 	for (const f of findings) (byCheck[f.check] ??= []).push(f);
-	console.log(`doc-health: scanned ${files.length} tracked markdown file(s)\n`);
-	for (const check of ['dead-schema', 'dead-paths', 'unstamped']) {
+	console.log(`doc-health: scanned ${files.length} markdown file(s)\n`);
+	const ADVISORY = new Set(['unstamped', 'unreferenced']);
+	for (const check of [
+		'dead-schema',
+		'dead-paths',
+		'broken-links',
+		'unstamped',
+		'unreferenced'
+	]) {
 		const rows = byCheck[check] ?? [];
+		const shown = ADVISORY.has(check) ? 10 : 25;
 		console.log(`${check}: ${rows.length}`);
-		for (const r of rows.slice(0, check === 'unstamped' ? 10 : 25)) {
+		for (const r of rows.slice(0, shown)) {
 			console.log(`  ${r.file}`);
 			console.log(`    ${r.detail}${r.sample.length ? ` — ${r.sample.join(', ')}` : ''}`);
 		}
-		if (rows.length > (check === 'unstamped' ? 10 : 25)) {
-			console.log(`  ... and ${rows.length - (check === 'unstamped' ? 10 : 25)} more`);
+		if (rows.length > shown) {
+			console.log(`  ... and ${rows.length - shown} more (--json lists all)`);
 		}
 		console.log('');
 	}
 }
 
-const blocking = findings.filter((f) => f.check !== 'unstamped');
+const blocking = findings.filter((f) => f.check !== 'unstamped' && f.check !== 'unreferenced');
 if (STRICT && blocking.length) {
-	console.error(`doc-health: ${blocking.length} blocking finding(s) (dead-schema / dead-paths).`);
+	console.error(
+		`doc-health: ${blocking.length} blocking finding(s) (dead-schema / dead-paths / broken-links).`
+	);
 	process.exit(1);
 }

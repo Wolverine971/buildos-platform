@@ -4,7 +4,7 @@
 
 Status: **ready for integration** with Tasker 82. Not accepted until the combined
 82/84 three-repetition gate passes and the delivery tail is re-measured on it.
-Owner package: [Tasker 84](../../../tasker/84-chat-workflow-delivery-and-stall-visibility.md).
+Owner package: [Tasker 84](https://github.com/Wolverine971/buildos-platform/blob/b3968cb4cd5a/tasker/84-chat-workflow-delivery-and-stall-visibility.md).
 
 ## Outcome
 
@@ -196,11 +196,11 @@ three repetitions, verified worker provenance
 - **Delivery tail fixed:** measured as `terminalEventMs − responseHeadersMs −
 total_request_ms` over 45 turns.
 
-                    | Run                      | Median    | p90        | Max        |
-                    | ------------------------ | --------- | ---------- | ---------- |
-                    | Pre-84                   | 480 ms    | 922 ms     | 3.7 s      |
-                    | Post-84, before this fix | 1,951 ms  | 2,417 ms   | 13.3 s     |
-                    | **This run**             | **81 ms** | **387 ms** | **872 ms** |
+                        | Run                      | Median    | p90        | Max        |
+                        | ------------------------ | --------- | ---------- | ---------- |
+                        | Pre-84                   | 480 ms    | 922 ms     | 3.7 s      |
+                        | Post-84, before this fix | 1,951 ms  | 2,417 ms   | 13.3 s     |
+                        | **This run**             | **81 ms** | **387 ms** | **872 ms** |
 
 **Case 8 rep 2 attribution.** The same four model passes and three tool calls ran, all
 on the same provider. Server total was 32.1 s, of which provider authority to finish was

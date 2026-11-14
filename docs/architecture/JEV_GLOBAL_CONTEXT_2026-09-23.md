@@ -110,16 +110,16 @@ message ─┬─ Jev tool selection (exists, ~0.35 s) ────────�
 
 ## What was built
 
-| Piece                                                            | Where                                                                                                                            | Tests                                              |
-| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| Hop 1 + dig + briefs + hop-2 deadline                            | `packages/agentic-chat-runtime/src/context-finder/workspace.ts`                                                                  | `workspace.test.ts` (33 in the folder)             |
-| Card loader (accessible-projects RPC, titles, START HERE bodies) | `context-finder/load.ts` `loadWorkspaceFinderProjects`                                                                           | same                                               |
-| Hedged Jev calls                                                 | `packages/smart-llm/src/jev-client.ts` `hedgeAfterMs`                                                                            | `jev-client.test.ts` (+3)                          |
-| Worker global branch + chips payload + previous focus            | `apps/worker/.../provider/chat-workspace-finder.ts`; shared helpers in `chat-context-finder.ts`                                  | `tests/agenticChatContextFinderGlobal.test.ts` (9) |
-| Flag                                                             | `AGENTIC_CHAT_CONTEXT_FINDER_GLOBAL=off\|shadow\|chips\|on` (worker), same allowlist `AGENTIC_CHAT_CONTEXT_FINDER_CHAT_USER_IDS` | config/consumer tests                              |
-| Payload fields                                                   | `packages/shared-types/src/context-selection.ts`: `workspace`, `projects`, item `project_id` (additive)                          | `context-selection-chips.test.ts` (+4)             |
-| "Looking in" row + "Continue in <project>"                       | `ContextSelectionChips.svelte`, `AgentMessageList.svelte`, `AgentChatModal.handleContinueInProject`                              | web check 0/0                                      |
-| Global chats feed projects                                       | `apps/worker/src/workers/chat/checkpoint/globalAttribution.ts`, `attributeProject` port, global sweep                            | `chatGlobalCaptureAttribution.test.ts`, capture +2 |
+| Piece                                                            | Where                                                                                                                         | Tests                                              |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Hop 1 + dig + briefs + hop-2 deadline                            | `packages/agentic-chat-runtime/src/context-finder/workspace.ts`                                                               | `workspace.test.ts` (33 in the folder)             |
+| Card loader (accessible-projects RPC, titles, START HERE bodies) | `context-finder/load.ts` `loadWorkspaceFinderProjects`                                                                        | same                                               |
+| Hedged Jev calls                                                 | `packages/smart-llm/src/jev-client.ts` `hedgeAfterMs`                                                                         | `jev-client.test.ts` (+3)                          |
+| Worker global branch + chips payload + previous focus            | `apps/worker/.../provider/chat-workspace-finder.ts`; shared helpers in `chat-context-finder.ts`                               | `tests/agenticChatContextFinderGlobal.test.ts` (9) |
+| Flag                                                             | Allowlist `AGENTIC_CHAT_CONTEXT_FINDER_CHAT_USER_IDS` (worker); the `_GLOBAL` mode switch was retired 2026-10-25 (tasker 136) | config/consumer tests                              |
+| Payload fields                                                   | `packages/shared-types/src/context-selection.ts`: `workspace`, `projects`, item `project_id` (additive)                       | `context-selection-chips.test.ts` (+4)             |
+| "Looking in" row + "Continue in <project>"                       | `ContextSelectionChips.svelte`, `AgentMessageList.svelte`, `AgentChatModal.handleContinueInProject`                           | web check 0/0                                      |
+| Global chats feed projects                                       | `apps/worker/src/workers/chat/checkpoint/globalAttribution.ts`, `attributeProject` port, global sweep                         | `chatGlobalCaptureAttribution.test.ts`, capture +2 |
 
 **"Continue in <project>"** needs no server route. It mirrors a server context shift on the
 client: the next message carries the project context, `resolveSession` moves the session, and

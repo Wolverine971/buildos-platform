@@ -2,21 +2,21 @@
 
 # Agentic Chat Skill + Tool Architecture V2
 
-Status: Historical design context. Superseded by [Agentic Chat Tool Surface Refactor Plan](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-tool-surface-refactor-plan.md).
+Status: Historical design context. Superseded by [Agentic Chat Tool Surface Refactor Plan](./agentic-chat-tool-surface-refactor-plan.md).
 Date: 2026-04-09
 Last updated: 2026-04-12
 Owner: BuildOS Agentic Chat
 Related docs:
 
-- [Agentic Chat Operating Model](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-operating-model.md)
-- [Agentic Chat (Current Implementation)](/Users/djwayne/buildos-platform/apps/web/docs/features/agentic-chat/README.md)
+- [Agentic Chat Operating Model](./agentic-chat-operating-model.md)
+- [Agentic Chat (Current Implementation)](../../apps/web/docs/features/agentic-chat/README.md)
 
 Replaces:
 
-- [Agentic Chat Skills System - Design Spec](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-skills-system.md)
-- [Progressive Tool Disclosure Gateway Spec](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/progressive-tool-disclosure-spec.md)
-- [Spec v2: Progressive Tool Disclosure for BuildOS Ontology + Utility Tools](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/tool-help-spec.md)
-- [tool-help-spec-2](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/tool-help-spec-2.md)
+- [Agentic Chat Skills System - Design Spec](./agentic-chat-skills-system.md)
+- [Progressive Tool Disclosure Gateway Spec](https://github.com/Wolverine971/buildos-platform/blob/cae4fe5ed3ae/apps/web/src/lib/services/agentic-chat/tools/progressive-tool-disclosure-spec.md)
+- [Spec v2: Progressive Tool Disclosure for BuildOS Ontology + Utility Tools](https://github.com/Wolverine971/buildos-platform/blob/cae4fe5ed3ae/apps/web/src/lib/services/agentic-chat/tools/tool-help-spec.md)
+- [tool-help-spec-2](https://github.com/Wolverine971/buildos-platform/blob/cae4fe5ed3ae/apps/web/src/lib/services/agentic-chat/tools/tool-help-spec-2.md)
 
 ## 1. Executive Summary
 
@@ -77,13 +77,13 @@ Prompt/runtime behavior at the time:
 
 Relevant code:
 
-- [master-prompt-builder.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts)
-- [prompt-generation-service.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/prompts/prompt-generation-service.ts)
-- [tool-help.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/registry/tool-help.ts)
-- [gateway.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/definitions/gateway.ts)
-- [stream-orchestrator.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator.ts)
-- [tool-registry.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/registry/tool-registry.ts)
-- [external-tool-gateway.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/server/agent-call/external-tool-gateway.ts)
+- [master-prompt-builder.ts](https://github.com/Wolverine971/buildos-platform/blob/6fe56282a6e2/apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts)
+- [prompt-generation-service.ts](https://github.com/Wolverine971/buildos-platform/blob/cae4fe5ed3ae/apps/web/src/lib/services/agentic-chat/prompts/prompt-generation-service.ts)
+- [tool-help.ts](https://github.com/Wolverine971/buildos-platform/blob/cae4fe5ed3ae/apps/web/src/lib/services/agentic-chat/tools/registry/tool-help.ts)
+- gateway.ts
+- [stream-orchestrator.ts](https://github.com/Wolverine971/buildos-platform/blob/d58b641618f3/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator.ts)
+- tool-registry.ts
+- [external-tool-gateway.ts](../../apps/web/src/lib/server/agent-call/external-tool-gateway.ts)
 
 ### 2.2 What the external research says
 
@@ -118,8 +118,8 @@ Instead, BuildOS should implement a provider-neutral equivalent:
 
 Relevant runtime context:
 
-- [CLAUDE.md](/Users/djwayne/buildos-platform/CLAUDE.md)
-- [smart-llm-service.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/smart-llm-service.ts)
+- [CLAUDE.md](../../CLAUDE.md)
+- [smart-llm-service.ts](../../apps/web/src/lib/services/smart-llm-service.ts)
 
 ## 3. Design Principles
 
@@ -603,8 +603,8 @@ This can still happen through `buildos_call`, but the prompt should teach it as 
 
 Relevant repo background:
 
-- [agentic-chat-v2-overview-refactor-plan-2026-03-30.md](/Users/djwayne/buildos-platform/docs/archive/reports/agentic-chat-v2-overview-refactor-plan-2026-03-30.md)
-- [AGENTIC_BUILDOS_SEARCH_SPEC.md](/Users/djwayne/buildos-platform/docs/specs/AGENTIC_BUILDOS_SEARCH_SPEC.md)
+- [agentic-chat-v2-overview-refactor-plan-2026-03-30.md](https://github.com/Wolverine971/buildos-platform/blob/36955954cebb/docs/archive/reports/agentic-chat-v2-overview-refactor-plan-2026-03-30.md)
+- [AGENTIC_BUILDOS_SEARCH_SPEC.md](./AGENTIC_BUILDOS_SEARCH_SPEC.md)
 
 ## 9. Prompt Changes
 
@@ -693,9 +693,9 @@ This keeps the external protocol small while making the semantics much clearer.
 
 Relevant files:
 
-- [agent-call-service.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/server/agent-call/agent-call-service.ts)
-- [external-tool-gateway.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/server/agent-call/external-tool-gateway.ts)
-- [buildos/+server.ts](/Users/djwayne/buildos-platform/apps/web/src/routes/api/agent-call/buildos/+server.ts)
+- [agent-call-service.ts](../../apps/web/src/lib/server/agent-call/agent-call-service.ts)
+- [external-tool-gateway.ts](../../apps/web/src/lib/server/agent-call/external-tool-gateway.ts)
+- [buildos/+server.ts](../../apps/web/src/routes/api/agent-call/buildos/+server.ts)
 
 ## 12. Migration Plan
 

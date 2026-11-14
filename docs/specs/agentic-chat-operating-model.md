@@ -9,8 +9,8 @@ Owner: BuildOS Agentic Chat
 
 Related docs:
 
-- [Agentic Chat Skill + Tool Architecture V2](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-skill-tool-architecture-v2.md)
-- [Agentic Chat (Current Implementation)](/Users/djwayne/buildos-platform/apps/web/docs/features/agentic-chat/README.md)
+- [Agentic Chat Skill + Tool Architecture V2](./agentic-chat-skill-tool-architecture-v2.md)
+- [Agentic Chat (Current Implementation)](../../apps/web/docs/features/agentic-chat/README.md)
 
 ## Purpose
 
@@ -368,10 +368,10 @@ If someone asks:
 
 - "What is the architecture behind that strategy?"
 
-use [Agentic Chat Skill + Tool Architecture V2](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-skill-tool-architecture-v2.md).
+use [Agentic Chat Skill + Tool Architecture V2](./agentic-chat-skill-tool-architecture-v2.md).
 
 If someone asks:
 
 - "What is currently implemented in the web app?"
 
-use [Agentic Chat (Current Implementation)](/Users/djwayne/buildos-platform/apps/web/docs/features/agentic-chat/README.md).
+use [Agentic Chat (Current Implementation)](../../apps/web/docs/features/agentic-chat/README.md).

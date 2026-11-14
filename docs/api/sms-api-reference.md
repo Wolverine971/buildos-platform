@@ -509,7 +509,7 @@ interface SMSPreferences {
 - `next_up_enabled` - Never implemented
 - `timezone` - Use `users.timezone` instead
 
-See [SMS Deprecation Migration Plan](/thoughts/shared/research/2025-10-13_17-40-27_sms-flow-deprecation-migration-plan.md) for migration details.
+See [SMS Deprecation Migration Plan](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-13_17-40-27_sms-flow-deprecation-migration-plan.md) for migration details.
 
 ## Error Codes
 

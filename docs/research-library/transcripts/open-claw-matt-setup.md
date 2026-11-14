@@ -1,4 +1,4 @@
-<!-- research-library/transcripts/open-claw-matt-setup.md -->
+<!-- docs/research-library/transcripts/open-claw-matt-setup.md -->
 
 # OpenClaw Matt Setup - Timestamped Transcript + Analysis
 
@@ -6,7 +6,7 @@
 
 This source contributes to these multi-source skill combo indexes:
 
-- [Technology And Agent Systems Skill Combos](../../docs/research/youtube-library/skill-combo-indexes/TECHNOLOGY_AND_AGENT_SYSTEMS.md): Context engineering for agent work; Harness engineering architecture
+- [Technology And Agent Systems Skill Combos](../../research/youtube-library/skill-combo-indexes/TECHNOLOGY_AND_AGENT_SYSTEMS.md): Context engineering for agent work; Harness engineering architecture
 
 ## Source
 

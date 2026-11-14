@@ -902,7 +902,7 @@ No parameters
 
 **Purpose:** Retrieve comprehensive user activity including projects, tasks, notes, brain dumps, daily briefs, and recent activity timeline.
 
-**Performance:** Optimized query pattern using in-memory aggregation. Constant query count (9 queries) regardless of user's project count. See [N+1 Query Fix (2025-10-21)](/docs/audits/BUGFIX_CHANGELOG.md#2025-10-21-fixed-n1-query-pattern-in-admin-user-activity-endpoint-high-severity-performance-fix) for details.
+**Performance:** Optimized query pattern using in-memory aggregation. Constant query count (9 queries) regardless of user's project count. See [N+1 Query Fix (2025-10-21)](https://github.com/Wolverine971/buildos-platform/blob/ee35bdf0388c/docs/audits/BUGFIX_CHANGELOG.md#2025-10-21-fixed-n1-query-pattern-in-admin-user-activity-endpoint-high-severity-performance-fix) for details.
 
 ### Parameters
 

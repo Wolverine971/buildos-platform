@@ -19,17 +19,17 @@ The lead-gen operating system is the current source of truth for how to run manu
 
 ### Active Campaign: Cold Manuscript Writer Pilot (July 2026)
 
-| Document                                                                                                          | What It Does                                                                            |
-| ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| [Creator Acquisition Operating System](campaigns/creator-acquisition/README.md)                                   | Canonical bridge from worldbuilding to channel distribution and activation              |
-| [30-Day Writer Pilot](campaigns/creator-acquisition/01-30-day-writer-pilot.md)                                    | Four-week campaign, receipts, post jobs, setup sessions, and success criteria           |
-| [Watering-Hole Map](campaigns/creator-acquisition/02-watering-hole-map.md)                                        | Writer relationship system, search prompts, and research-to-action rules                |
-| [Receipt Kit](campaigns/creator-acquisition/03-receipt-kit.md)                                                    | Real-media capture and cross-platform asset production                                  |
-| [HyperFrames Production Lane](visual-assets/hyperframes/README.md)                                                | Repeatable real-media Reel/carousel assembly, HyperAgent setup, and publish QA          |
-| [Measurement Scorecard](campaigns/creator-acquisition/04-measurement-scorecard.md)                                | Baseline, UTMs, post log, activation funnel, and experiment decisions                   |
-| [Tasker 24](../../tasker/24-creator-social-acquisition-pilot.md)                                                  | Execution checklist and definition of done                                              |
-| [Content Project Registry](visual-assets/projects/README.md)                                                      | Current compositions, masters, source packages, and publishing closeout                 |
-| [Cold Manuscript Reel Candidate](visual-assets/projects/author-workflow-teardown/cold-manuscript-reel/PROJECT.md) | Verified 9:16 internal-example pilot with caption, music direction, and publish handoff |
+| Document                                                                                                                      | What It Does                                                                            |
+| ----------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| [Creator Acquisition Operating System](campaigns/creator-acquisition/README.md)                                               | Canonical bridge from worldbuilding to channel distribution and activation              |
+| [30-Day Writer Pilot](campaigns/creator-acquisition/01-30-day-writer-pilot.md)                                                | Four-week campaign, receipts, post jobs, setup sessions, and success criteria           |
+| [Watering-Hole Map](campaigns/creator-acquisition/02-watering-hole-map.md)                                                    | Writer relationship system, search prompts, and research-to-action rules                |
+| [Receipt Kit](campaigns/creator-acquisition/03-receipt-kit.md)                                                                | Real-media capture and cross-platform asset production                                  |
+| [HyperFrames Production Lane](visual-assets/hyperframes/README.md)                                                            | Repeatable real-media Reel/carousel assembly, HyperAgent setup, and publish QA          |
+| [Measurement Scorecard](campaigns/creator-acquisition/04-measurement-scorecard.md)                                            | Baseline, UTMs, post log, activation funnel, and experiment decisions                   |
+| [Tasker 24](https://github.com/Wolverine971/buildos-platform/blob/df81f97dced3/tasker/24-creator-social-acquisition-pilot.md) | Execution checklist and definition of done                                              |
+| [Content Project Registry](visual-assets/projects/README.md)                                                                  | Current compositions, masters, source packages, and publishing closeout                 |
+| [Cold Manuscript Reel Candidate](visual-assets/projects/author-workflow-teardown/cold-manuscript-reel/PROJECT.md)             | Verified 9:16 internal-example pilot with caption, music direction, and publish handoff |
 
 ### Prior Campaign: Author Workflow Teardown (April 10 -- April 17, 2026)
 

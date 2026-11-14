@@ -247,7 +247,7 @@ Root Documentation
 
 ---
 
-### [src/lib/components/notifications/NotificationTestButtons.svelte](../../../src/lib/components/notifications/NotificationTestButtons.svelte)
+### [src/lib/components/notifications/NotificationTestButtons.svelte](https://github.com/Wolverine971/buildos-platform/blob/fe381405fc12/apps/web/src/lib/components/notifications/NotificationTestButtons.svelte)
 
 **Inline Documentation:**
 

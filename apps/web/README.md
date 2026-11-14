@@ -37,7 +37,7 @@ Requires Node 22.23.4+ (22.x; Vercel builds and runs 22.x) or 24.22.1+, and pnpm
 ```
 apps/web/src/
 ├── routes/
-│   ├── api/                # ~50 API route groups (REST + SSE)
+│   ├── api/                # API route groups (REST + SSE)
 │   ├── (public)/           # Public marketing / content pages
 │   └── ...                 # App routes
 ├── lib/
@@ -140,7 +140,7 @@ Set in env (see root `.env.example`):
 
 ## Deployment (Vercel)
 
-- `vercel.json` defines the build command (`turbo build --filter=@buildos/web...`), security headers, long-cache static assets, and ~10 cron jobs (billing/trial lifecycle, welcome/reactivation sequences, Gmail maintenance, webhook renewal, account deletions, retention cleanup — see `vercel.json` for paths and schedules).
+- `vercel.json` defines the build command (`turbo build --filter=@buildos/web...`), security headers, long-cache static assets, and the cron jobs (billing/trial lifecycle, welcome/reactivation sequences, email campaigns and replies, email project updates, Gmail maintenance, webhook renewal, account deletions, retention cleanup — see `vercel.json` for paths and schedules).
 - Adapter: `@sveltejs/adapter-vercel` with `runtime: 'nodejs22.x'`.
 
 ## Documentation

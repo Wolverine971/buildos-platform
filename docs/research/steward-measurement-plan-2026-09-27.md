@@ -1,5 +1,10 @@
 <!-- docs/research/steward-measurement-plan-2026-09-27.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-10-23; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Steward measurement plan (2026-09-27)
 
 Research-only design from a fresh-context agent; claims about tooling cite file:line and were spot-checked (natural 9takes pair and the 17:19 "take them" reply confirmed read-only). Context: `tasker/110-project-steward-beta.md`. Every paid run needs DJ's explicit OK.

@@ -77,3 +77,16 @@ Use this section for:
 - `docs/marketing/strategy/` is the home for current marketing strategy and lifecycle docs.
 - `docs/marketing/content/drafts/` is the home for reusable founder-story narrative drafts.
 - If a business doc needs messaging or lifecycle context, link to the marketing doc instead of duplicating it.
+
+## Background and concept material
+
+Not current plans. Kept as source material.
+
+- [comms-guide.md](./comms-guide.md) — communications strategy cheat sheet (source notes)
+- [master-seed.md](./strategy/master-seed.md) — 2025 master context file; describes the product as it was then
+- [masterplan-notes.md](./strategy/masterplan-notes.md) — 2025 best-case scenario notes
+- [ENNEAGRAM_AI_ASSISTANT_ANALYSIS.md](./strategy/ENNEAGRAM_AI_ASSISTANT_ANALYSIS.md) — idea: personalizing the assistant by Enneagram type (not built)
+- [war-room-executive-brief.md](./war-room/war-room-executive-brief.md) — Project War Room concept: summary (not built)
+- [war-room-design-doc.md](./war-room/war-room-design-doc.md) — Project War Room concept: design
+- [war-room-llm-prompting-strategy.md](./war-room/war-room-llm-prompting-strategy.md) — Project War Room concept: prompting
+- [war-room-learnings.md](./war-room/war-room-learnings.md) — Project War Room concept: learnings

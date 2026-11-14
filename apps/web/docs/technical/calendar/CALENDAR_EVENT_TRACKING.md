@@ -694,7 +694,7 @@ Query patterns like:
 
 ## Related Documentation
 
-- **Specification**: `/thoughts/shared/research/2025-10-12_22-51-12_phase-generation-procedural-redesign-spec.md`
+- **Specification**: [`2025-10-12_22-51-12_phase-generation-procedural-redesign-spec.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-12_22-51-12_phase-generation-procedural-redesign-spec.md)
 - **Migration**: `/supabase/migrations/20251012_add_calendar_event_organizer_fields.sql`
 - **Calendar Service**: `/apps/web/src/lib/services/calendar-service.ts`
 - **Database Types**: `/packages/shared-types/src/database.types.ts`

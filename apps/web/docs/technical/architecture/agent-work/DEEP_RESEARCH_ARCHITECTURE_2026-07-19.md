@@ -424,7 +424,7 @@ off by default until its live-provider path is deliberately enabled and observed
 - **Implemented locally:** durable unified root/child cost ledger with atomic reservation,
   idempotent settlement, lease-based stale-row claims, and authoritative OpenRouter generation
   reconciliation
-  ([tasker 29](../../../../../../tasker/29-deep-research-cost-ledger-and-hard-budgets.md)).
+  ([tasker 29](https://github.com/Wolverine971/buildos-platform/blob/b89e1b6106cb/tasker/29-deep-research-cost-ledger-and-hard-budgets.md)).
 - Add a per-user daily research allowance.
 - **Implemented locally:** typed, worker-validated claim/source/support evidence packets; compact
   pre-ceiling finalization and successful-tool telemetry sanitation were added after the 2026-07-22

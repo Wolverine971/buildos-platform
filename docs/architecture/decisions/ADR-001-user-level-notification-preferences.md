@@ -7,7 +7,7 @@
 **Context**: Daily Brief Notification Refactor
 **Related Documents**:
 
-- `/thoughts/shared/research/2025-10-13_06-00-00_daily-brief-notification-refactor-plan.md`
+- [`2025-10-13_06-00-00_daily-brief-notification-refactor-plan.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-13_06-00-00_daily-brief-notification-refactor-plan.md)
 - Migration: `/supabase/migrations/20251013_refactor_daily_brief_notification_prefs.sql`
 
 **Update (2026-02-05):** `user_notification_preferences` is now one row per user (no `event_type` column), and explicit opt-in is enforced. This ADR remains as historical context for the 2025-10-13 refactor.
@@ -249,7 +249,7 @@ Initial implementation showed duplicate email/SMS toggles because the UI treated
 ## References
 
 - Migration: `/supabase/migrations/20251013_refactor_daily_brief_notification_prefs.sql`
-- Research: `/thoughts/shared/research/2025-10-13_06-00-00_daily-brief-notification-refactor-plan.md`
+- Research: [`2025-10-13_06-00-00_daily-brief-notification-refactor-plan.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-13_06-00-00_daily-brief-notification-refactor-plan.md)
 - Worker Implementation: `/apps/worker/src/workers/brief/briefWorker.ts`
 - Web API: `/apps/web/src/routes/api/notification-preferences/+server.ts`
 - UI Component: `/apps/web/src/lib/components/settings/NotificationPreferences.svelte`

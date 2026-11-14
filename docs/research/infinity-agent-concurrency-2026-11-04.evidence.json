@@ -1,0 +1,101 @@
+{
+	"observed_at": "2026-11-04 evening America/New_York",
+	"purpose": "Read-only baseline for Infinity agent concurrency feasibility",
+	"production_changes": false,
+	"paid_model_tests": false,
+	"railway": {
+		"service": "agentic-chat-worker",
+		"region": "us-west2",
+		"running_replicas": 4,
+		"chat_concurrency_per_replica": 4,
+		"configured_service_turn_capacity": 16,
+		"max_tool_concurrency_per_turn": 4,
+		"acting_model": "deepseek/deepseek-v4.1-flash",
+		"provider_budget_ms": 300000,
+		"worker_timeout_ms": 360000,
+		"current_billing_period_utc": ["2026-10-07T01:45:23Z", "2026-11-07T01:45:23Z"],
+		"current_period_usage_so_far_usd": {
+			"cpu": 0.35845314945987655,
+			"memory": 6.850125760869136,
+			"egress": 0.3273488401,
+			"total": 7.535927750429012
+		},
+		"previous_billing_period_utc": ["2026-09-07T01:45:23Z", "2026-10-07T01:45:23Z"],
+		"previous_period_usage_usd": 7.796426892365247,
+		"six_hour_metrics": {
+			"since_utc": "2026-11-04T21:44:38.006729Z",
+			"until_utc": "2026-11-05T03:44:39.462672Z",
+			"service_average_vcpu": 0.017567800692520785,
+			"service_average_memory_mb": 707.8944302349472,
+			"service_peak_memory_mb": 734.43311616,
+			"scope": "Service metrics across replicas; quiet window, not a load test."
+		},
+		"commands": [
+			"railway status --json (selected deployment fields only)",
+			"railway variable list --service agentic-chat-worker --json (allowlisted nonsecret fields only)",
+			"railway metrics --service agentic-chat-worker --since 6h --json",
+			"railway usage projects --project queue-worker --period current --json",
+			"railway usage projects --project queue-worker --period previous --json"
+		]
+	},
+	"supabase": {
+		"project_name": "build_os",
+		"region": "us-west-1",
+		"query_scope": "created_at/observed_at >= now() - interval '14 days' at query time on November 4 ET",
+		"tables": ["chat_turn_runs", "agentic_chat_execution_observations", "llm_usage_logs"],
+		"turns": 13,
+		"status": "All 13 completed",
+		"source": "live_ui",
+		"execution_mode": "worker_realtime",
+		"oldest_turn_utc": "2026-10-25T19:21:08.90002Z",
+		"newest_turn_utc": "2026-11-03T17:34:05.295611Z",
+		"created_to_finished_p50_seconds": 11.34,
+		"created_to_finished_p90_seconds": 58.79,
+		"created_to_worker_started_p50_seconds": 0.471,
+		"created_to_worker_started_p90_seconds": 0.555,
+		"max_overlapping_worker_turn_intervals": 1,
+		"turns_with_provider_observations": 12,
+		"provider_duration_sum_over_matching_worker_wall": 0.887,
+		"provider_duration_note": "Sum of recorded attempt duration_ms / sum of matched worker_started_at-to-finished_at intervals. Attempts may overlap; this is not a disjoint critical-path attribution.",
+		"recorded_tool_calls": 56,
+		"p50_summed_tool_duration_per_observed_turn_seconds": 1.574,
+		"web_search_calls": 3,
+		"web_search_p50_seconds": 4.25,
+		"get_document_details_calls": 14,
+		"get_document_details_p50_seconds": 0.3825,
+		"directly_turn_linked_usage_usd": 0.30514,
+		"directly_turn_linked_usage_mean_usd": 0.02347,
+		"directly_turn_linked_usage_p50_usd": 0.01024,
+		"usage_note": "Sum of coalesce(openrouter_usage_cost_usd,total_cost_usd,0) for usage rows joined by turn_run_id. Includes recorded search charges; excludes unlinked preparation/background calls. Not a complete provider invoice."
+	},
+	"infinity": {
+		"reviewed_commit": "c1a7b05ef7f22774250218a623d6f2d692928a80",
+		"commit_timestamp_utc": "2026-11-03T21:50:02Z",
+		"reference_lambda_memory_mb": 128,
+		"reference_lambda_timeout_seconds": 900,
+		"reference_input_queue_visibility_seconds": 900,
+		"reference_queue_batch_size": 1,
+		"reference_model": "global.anthropic.claude-sonnet-4-6",
+		"benchmark_source": "crates/infinity-agent-core/examples/agent_scale.rs",
+		"benchmark_note": "Scripted in-process model, waves of turns, RSS measured after each wave is idle. Not simultaneous live inference throughput."
+	},
+	"scenario_assumptions": {
+		"lambda_region": "us-east-1",
+		"lambda_architecture": "ARM",
+		"lambda_price_usd_per_gb_second": 0.0000133334,
+		"lambda_requests_usd_per_million": 0.2,
+		"aggregate_billed_runtime_seconds_per_completed_turn": 20,
+		"runtime_invocations_per_turn": 4,
+		"free_tiers_applied": false,
+		"excludes": [
+			"LLM inference",
+			"tool execution and APIs",
+			"SQS",
+			"DynamoDB",
+			"Aurora DSQL",
+			"logging",
+			"network",
+			"existing BuildOS services"
+		]
+	}
+}

@@ -1227,7 +1227,7 @@ const { results, total } = await response.json();
 
 On 2025-10-13, the daily brief notification system underwent a major refactor to separate **brief generation timing** from **notification delivery**. This change addresses the conflation of concerns where a single field controlled both when briefs were generated and how users were notified.
 
-**Implementation Plan:** `/thoughts/shared/research/2025-10-13_06-00-00_daily-brief-notification-refactor-plan.md`
+**Implementation Plan:** [`2025-10-13_06-00-00_daily-brief-notification-refactor-plan.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-13_06-00-00_daily-brief-notification-refactor-plan.md)
 
 ### Key Changes
 
@@ -1419,7 +1419,7 @@ await supabase.rpc('emit_notification_event', {
 
 ### Related Documentation
 
-- **Implementation Plan:** `/thoughts/shared/research/2025-10-13_06-00-00_daily-brief-notification-refactor-plan.md`
+- **Implementation Plan:** [`2025-10-13_06-00-00_daily-brief-notification-refactor-plan.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-13_06-00-00_daily-brief-notification-refactor-plan.md)
 - **Phase 3 Implementation:** `/apps/web/docs/features/notifications/implementation/NOTIFICATION_PHASE3_IMPLEMENTATION.md`
 - **Notification Preferences API:** See [notification-preferences.md](./notification-preferences.md) (if exists)
 

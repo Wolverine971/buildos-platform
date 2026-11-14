@@ -3,7 +3,7 @@
 Complete column listing for all 296 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-11-05T16:29:36.420Z
+**Schema generated:** 2026-11-14T02:53:46.973Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -140,7 +140,7 @@ created_at `string` · created_by `string` · document_id `string` · embedding 
 
 ### onto_documents
 
-archived_at `string?` · children `Json?` · content `string?` · content_hash `string?` · created_at `string` · created_by `string` · deleted_at `string?` · description `string?` · id `string` · outline `Json?` · project_id `string` · props `Json` · search_vector `unknown` · state_key `string` · title `string` · type_key `string` · updated_at `string`
+archived_at `string?` · children `Json?` · content `string?` · content_hash `string?` · created_at `string` · created_by `string` · deleted_at `string?` · description `string?` · digest `Json?` · id `string` · outline `Json?` · project_id `string` · props `Json` · search_vector `unknown` · state_key `string` · title `string` · type_key `string` · updated_at `string`
 
 ### onto_edges
 

@@ -53,3 +53,10 @@ docs/founder/
 
 - `docs/marketing/social-media/FOUNDER_CONTEXT.md` — founder voice for BuildOS marketing (different concern)
 - `docs/marketing/social-media/FOUNDER_LIFE_STORY_INTERVIEW.md` — bio-level life-story material
+
+## Related working files
+
+- [job-search-triage-2026-05-18.md](../research/job-search-triage-2026-05-18.md) — triage notes
+- [2026-05-06_clad.md](../research/job-outreach/2026-05-06_clad.md) — outreach notes
+- [2026-05-07_shaped.md](../research/job-outreach/2026-05-07_shaped.md) — outreach notes
+- [2026-05-07_govdash.md](../research/job-outreach/2026-05-07_govdash.md) — outreach notes

@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/DJFLOW_NEXT_PIECES_2026-09-12.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-09-24; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Chat workflow: latency and regression work
 
 Status: incremental synthesis passes focused tests and a real queued smoke run.

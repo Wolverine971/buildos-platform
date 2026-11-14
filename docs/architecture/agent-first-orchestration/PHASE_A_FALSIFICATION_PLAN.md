@@ -47,7 +47,7 @@ frozen for the first scored pass.
 ### A0 measured anchors
 
 The canonical report is
-[`control-baseline-v1.json`](../../../packages/agent-orchestrator/src/testing/harness/results/control-baseline-v1.json).
+[`control-baseline-v1.json`](https://github.com/Wolverine971/buildos-platform/blob/e16b39a3ae73/packages/agent-orchestrator/src/testing/harness/results/control-baseline-v1.json).
 It contains the 12 intended runs. C07's real bounded-timeout failure remains in the aggregates;
 only an accidental framework-level retry was removed. Timing is measured by the client from the
 real v2 SSE stream, and cost comes from stream-correlated `llm_usage_logs`.

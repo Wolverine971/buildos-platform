@@ -441,7 +441,7 @@ A literal pass:
 
 ### 3. The Inkprint Design System As The Craft-Token Layer
 
-[Inkprint](../../../apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md) is BuildOS's craft layer. The Saarinen framing improves how it's positioned and used:
+[Inkprint](../../../../apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md) is BuildOS's craft layer. The Saarinen framing improves how it's positioned and used:
 
 - **Inkprint is the calm-software design system.** Texture-based, halftone-inspired, field-notes-coded. It is structurally the opposite of Material Design's confetti and Spotify Wrapped's gradients. Lean into that publicly when discussing why BuildOS looks different.
 - **Tokens are the spec; the application is the craft.** A `bg-card` and `tx-bloom` are the door's hinges. The way they combine on a specific screen is the door's swing. Inkprint should be audited regularly to prevent drift into _spec-met, craft-failed_ territory.

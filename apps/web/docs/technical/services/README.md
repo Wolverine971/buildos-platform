@@ -61,3 +61,7 @@ When creating new services:
 3. Add comprehensive TypeScript types
 4. Include unit tests
 5. Document public methods with JSDoc
+
+## More service docs
+
+- [voice-transcription-openrouter-spec.md](./voice-transcription-openrouter-spec.md) — voice transcription through OpenRouter

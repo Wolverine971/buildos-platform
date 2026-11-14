@@ -2,7 +2,7 @@
 
 # 144 — What shared projects put on your Google Calendar
 
-**Status:** DONE — production migration applied; application rollout pending · **Priority:** P3 · **Opened:** 2026-10-23 · **Size:** ~half a day to map, then DJ decides
+**Status:** DONE — production migration applied; review fixes await deployment · **Priority:** P3 · **Opened:** 2026-10-23 · **Size:** ~half a day to map, then DJ decides
 
 **Owner:** Codex · **Needs from DJ:** nothing
 
@@ -134,3 +134,14 @@ Explicit `calendar_sync: none` / `sync_to_calendar: false` still suppresses prov
 DJ authorized applying the migration. Refreshed production's schema and reran the custom check, role probe, and all four standing checks successfully. Applied only `20261024022550_guest_task_calendar_projection.sql` with `supabase db query --linked -f`, then recorded version `20261024022550` with `supabase migration repair --status applied --linked`.
 
 Verified production at **12:20 p.m. EDT**: the migration ledger contains `guest_task_calendar_projection`; both task/event guards are enabled; the function uses `SECURITY INVOKER` with its fixed search path; authenticated/service-role execution is granted and anonymous execution is denied. No historical-task backfill was run. Web/worker application deployment was not performed in this step.
+
+### Follow-up review — 2026-10-25
+
+Rechecked the implementation and the deployed database guard. Found and fixed two application bugs, reproduced by five failing regression cases before the fixes:
+
+1. **An older owner's copy could block the guest's first copy.** After a task adopted the guest recipient, the safety check treated shared provider IDs as evidence of a missing guest mapping. It could skip creating the guest copy while the separate cleanup job removed the owner's copy. The job now permits creation only when every shared provider reference is proven to belong to another user's mapping; it handles both legacy project-calendar mappings and source mappings, including already-cancelled copies. Unknown ownership, missing mappings, and an unresolved mapping belonging to the guest still block creation. Ownership inspection adds one query only on this recovery path; user-facing event reads keep their existing scoping.
+2. **Direct event creation ignored task-link database errors.** The task-event edge lookup and insert now surface failures before queueing Google sync. A failed link can no longer report successful sync and create a provider event that later task cleanup cannot find.
+
+Validation: **194 tests passed across the same 12 files** (155 shared-package, 39 web), including eight new regression cases. Shared-package `tsc --noEmit` and whitespace checks for the changed files passed. The production migration ledger, both enabled triggers, function body, fixed search path, and authenticated/service/anonymous grants still match the applied migration. A read-only production count found zero pinned tasks/events at review time, so there is no live recipient behavior to claim from that snapshot.
+
+No new migration or production mutation was needed. These follow-up application fixes are local and need deployment; no Google writes or paid validation were run.

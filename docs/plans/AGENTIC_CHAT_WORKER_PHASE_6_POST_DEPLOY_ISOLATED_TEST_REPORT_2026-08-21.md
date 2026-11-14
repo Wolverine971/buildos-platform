@@ -249,14 +249,14 @@ The direct comparator is
 with its retained
 [`schema-v2 artifact`](./evidence/agentic_chat_worker_tasker58_isolated_two_scenario_2026-08-21_ff6e8eed6.json).
 
-| Previous issue                                         | This run              | Interpretation                                                                                                                            |
-| ------------------------------------------------------ | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Two `skill_load` allowlist rejections                  | **0**                 | The skill prompt/tool-surface repair worked.                                                                                              |
-| One `provider_round_budget_exceeded` organization turn | **0**                 | The prior organization read-loop budget failure did not recur.                                                                            |
-| Tasker 58 validation/truncation error family           | **0**                 | The closed parser/validation fixes continued to hold. See [`tasker 58`](../../tasker/58-agentic-chat-provider-tool-validation-errors.md). |
-| No approved multi-task contract in the hard-error reps | Reps 2 and 3 approved | Reviewer progress improved, but execution was blocked by configuration.                                                                   |
-| No approved organization contract                      | Rep 3 approved        | The flow progressed farther, then exposed the read-only mutation gate.                                                                    |
-| Reviewer clarification behavior                        | Still 3 total turns   | This is the principal remaining behavior defect.                                                                                          |
+| Previous issue                                         | This run              | Interpretation                                                                                                                                                                                         |
+| ------------------------------------------------------ | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Two `skill_load` allowlist rejections                  | **0**                 | The skill prompt/tool-surface repair worked.                                                                                                                                                           |
+| One `provider_round_budget_exceeded` organization turn | **0**                 | The prior organization read-loop budget failure did not recur.                                                                                                                                         |
+| Tasker 58 validation/truncation error family           | **0**                 | The closed parser/validation fixes continued to hold. See [`tasker 58`](https://github.com/Wolverine971/buildos-platform/blob/c6ff210ee36a/tasker/58-agentic-chat-provider-tool-validation-errors.md). |
+| No approved multi-task contract in the hard-error reps | Reps 2 and 3 approved | Reviewer progress improved, but execution was blocked by configuration.                                                                                                                                |
+| No approved organization contract                      | Rep 3 approved        | The flow progressed farther, then exposed the read-only mutation gate.                                                                                                                                 |
+| Reviewer clarification behavior                        | Still 3 total turns   | This is the principal remaining behavior defect.                                                                                                                                                       |
 
 The headline remained 0/6, but the failure frontier moved forward. The worker is no longer failing
 on `skill_load`, provider argument truncation, validation-repair exhaustion, or a repeated read-loop
@@ -273,15 +273,15 @@ AGENTIC_CHAT_MUTATION_PROVIDER_CAPABILITIES=
 
 Relevant source ownership:
 
-| Concern                                                         | Source                                                                                                                                      |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Parse and validate the two capability lists                     | [`phase3Config.ts`](../../apps/worker/src/workers/agentic-chat/phase3Config.ts)                                                             |
-| Require provider capability to have matching adapter capability | [`phase3Assembly.ts`](../../apps/worker/src/workers/agentic-chat/phase3Assembly.ts)                                                         |
-| Reviewed mutation specs and capability names                    | [`mutationToolCatalog.ts`](../../apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts)                                               |
-| Document-create adapter                                         | [`createOntoDocumentMutationAdapter.ts`](../../apps/worker/src/workers/agentic-chat/createOntoDocumentMutationAdapter.ts)                   |
-| Document-tree move adapter                                      | [`gatewayDocumentRelationshipMutationAdapter.ts`](../../apps/worker/src/workers/agentic-chat/gatewayDocumentRelationshipMutationAdapter.ts) |
-| Task-update adapter                                             | [`updateOntoTaskMutationAdapter.ts`](../../apps/worker/src/workers/agentic-chat/updateOntoTaskMutationAdapter.ts)                           |
-| Provider allowlist rejection boundary                           | [`readOnlyProvider.ts`](../../apps/worker/src/workers/agentic-chat/readOnlyProvider.ts)                                                     |
+| Concern                                                         | Source                                                                                                                                                                                                   |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Parse and validate the two capability lists                     | `phase3Config.ts`                                                                                                                                                                                        |
+| Require provider capability to have matching adapter capability | `phase3Assembly.ts`                                                                                                                                                                                      |
+| Reviewed mutation specs and capability names                    | [`mutationToolCatalog.ts`](../../apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts)                                                                                                         |
+| Document-create adapter                                         | [`createOntoDocumentMutationAdapter.ts`](https://github.com/Wolverine971/buildos-platform/blob/96721ff16514/apps/worker/src/workers/agentic-chat/createOntoDocumentMutationAdapter.ts)                   |
+| Document-tree move adapter                                      | [`gatewayDocumentRelationshipMutationAdapter.ts`](https://github.com/Wolverine971/buildos-platform/blob/96721ff16514/apps/worker/src/workers/agentic-chat/gatewayDocumentRelationshipMutationAdapter.ts) |
+| Task-update adapter                                             | [`updateOntoTaskMutationAdapter.ts`](https://github.com/Wolverine971/buildos-platform/blob/96721ff16514/apps/worker/src/workers/agentic-chat/updateOntoTaskMutationAdapter.ts)                           |
+| Provider allowlist rejection boundary                           | `readOnlyProvider.ts`                                                                                                                                                                                    |
 
 The minimum capabilities needed by these two scenarios are:
 
@@ -425,7 +425,7 @@ Where they describe an auto-deploy gap, this report supersedes that status with 
 
 ### Earlier failure investigation
 
-- [Tasker 58 provider/tool-validation investigation](../../tasker/58-agentic-chat-provider-tool-validation-errors.md)
+- [Tasker 58 provider/tool-validation investigation](https://github.com/Wolverine971/buildos-platform/blob/c6ff210ee36a/tasker/58-agentic-chat-provider-tool-validation-errors.md)
 - [Phase 6 Phase 4 battery root-cause report](./AGENTIC_CHAT_WORKER_PHASE_6_PHASE_4_BATTERY_ROOT_CAUSE_REPORT_2026-08-20.md)
 - [Previous schema-v2 evidence artifact](./evidence/agentic_chat_worker_tasker58_isolated_two_scenario_2026-08-21_ff6e8eed6.json)
 - [Original Phase 6 Phase 4 rerun artifact](./evidence/agentic_chat_worker_phase6_phase4_rerun_2026-08-20_0ee9cb82f.json)

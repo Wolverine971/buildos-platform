@@ -8,7 +8,7 @@
 **Last full scan:** 2026-04-17
 **Scan cadence:** Weekly during karma phase → 2–3× weekly once posting begins
 **Source spec:** [reddit-subreddit-research-spec.md](./reddit-subreddit-research-spec.md)
-**Strategy source:** [buildos-strat.md §Part 4](../../../buildos-strat.md)
+**Strategy source:** [buildos-strat.md §Part 4](../../../../buildos-strat.md)
 
 **Related Docs:**
 

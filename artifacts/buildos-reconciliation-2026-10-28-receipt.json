@@ -1,0 +1,518 @@
+{
+	"review_date": "2026-10-28",
+	"project_id": "f7824d94-0de0-460c-80dd-67bf11f6445a",
+	"task_changes": {
+		"original_open": 79,
+		"done": 6,
+		"archived_parked": 62,
+		"retained_or_rescoped": 11,
+		"verified_successful_writes": 79
+	},
+	"archived": {
+		"goals": 3,
+		"plans": 5,
+		"milestones": 1,
+		"documents": 10
+	},
+	"verified_current": {
+		"tasks_total": 54,
+		"done": 43,
+		"open": 11,
+		"overdue": 0,
+		"goals": 1,
+		"plans": 1,
+		"documents": 20
+	},
+	"documents_created": {
+		"index": "6c7f991a-661b-503a-9622-b59b855f5974",
+		"register": "f6f86aa3-af86-5713-83c5-56b0e3a45686"
+	},
+	"inbox": {
+		"explicit_dispositions": 21,
+		"duplicate_document_archived": 1,
+		"buildos_final_body": "Nothing to clean up right now",
+		"known_presentation_defect": "Stale summary/badge remains"
+	},
+	"limitations": [
+		"No code deployed or migrations applied",
+		"No live/paid tests run",
+		"No permission changes or outbound messages",
+		"Managed status/map snapshot and archived-record overview display remain stale; tracked in current freshness task"
+	],
+	"task_dispositions": [
+		{
+			"id": "18703054-aa5e-4321-855c-afb4b1471006",
+			"title": "Review Vercel Speed Insights for BuildOS performance improvements",
+			"action": "retain_or_rescope",
+			"reason": "Recent explicit October 17 request remains relevant; completion not established. Clear the expired October 18 scheduling promise until a new date is chosen."
+		},
+		{
+			"id": "14b33e82-deff-4379-9ce8-6ae592354cd3",
+			"title": "Track and optimize partnerships",
+			"action": "archive_parked",
+			"reason": "Parked legacy creator-acquisition plan. Repo tasker/118 says the creator pilot was replaced; current audience/channel needs a fresh choice under collaboration."
+		},
+		{
+			"id": "ae82efc3-2e47-477b-bc73-7ff1ed3bcc33",
+			"title": "Implement batch task triage by project",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "d9b836f5-ccdc-4feb-9936-1ca0b9700f35",
+			"title": "Add visual placement feedback — show where a new item lands in BuildOS",
+			"action": "retain_or_rescope",
+			"reason": "Recent September 25 explicit request remains relevant to trustworthy shared work; implementation not established."
+		},
+		{
+			"id": "9038c65d-6b42-43af-bb7c-9d894a834d27",
+			"title": "Apply mental models to analyze project",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "3ac0e385-d9f2-4f08-9060-90248e439a2b",
+			"title": "BuildOS: OS for the Brain - Create compartmentalization feature...",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "90bca567-6fdc-4bb6-b6ec-9f530452b412",
+			"title": "Create audience-specific landing pages",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "58aa5757-1a18-4006-97d0-769c2acd558e",
+			"title": "Produce TikToks showing voice-to-organization",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "68df6671-afbd-4fd8-a898-1ecc20421d3c",
+			"title": "Join writing Facebook groups and startup Slacks",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "ba2576b4-e2c8-4bc9-8f48-e08c4a641c08",
+			"title": "Ai should stop if it needs more direction or context",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "7a80eb09-730a-45f1-b98d-8e31e04e3144",
+			"title": "Integrate DeepGram for Audio Transcription",
+			"action": "archive_parked",
+			"reason": "Superseded implementation choice: current api/transcribe uses OpenRouter transcription. No Deepgram migration is a current commitment."
+		},
+		{
+			"id": "14d9793d-9822-4776-8d67-e2d6e62709fb",
+			"title": "Create functionality for shareable pages",
+			"action": "archive_parked",
+			"reason": "Original broad proposal superseded by implemented public pages/builder profiles/project pages. Specific daily-brief publishing scope is not verified; remaining profile work is indexed under tasker/147."
+		},
+		{
+			"id": "919adcdf-f459-434d-8193-1fe663a8e1a5",
+			"title": "Implement profile setting for public username",
+			"action": "done",
+			"reason": "Implemented in apps/web/src/routes/api/profile/me/username/+server.ts; public builder profile/editor work is indexed in tasker/147. This closes the original settings implementation, not every profile follow-up."
+		},
+		{
+			"id": "e201b2e4-6b9e-4031-8173-3a5c6c54cd79",
+			"title": "Validate one real collaboration from invitation to return visit",
+			"action": "retain_or_rescope",
+			"reason": "Re-scope generic feature testing around DJ's confirmed collaboration direction; participant and exact deliverable remain open."
+		},
+		{
+			"id": "b50e3893-ebd8-4795-8636-815098712b61",
+			"title": "Close collaboration permission and privacy verification gaps",
+			"action": "retain_or_rescope",
+			"reason": "Replace the generic old security build with the current, evidence-backed collaboration residuals."
+		},
+		{
+			"id": "16bcaf00-c9ac-4429-8d02-98f38305c808",
+			"title": "Identify and reach out to potential beta users",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "72edca56-cdd6-4a5b-a80a-eca230036c5a",
+			"title": "Content- Create 'Ruthless Prioritization Mode' Blog Post",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "efe626f8-92c7-4861-9bf5-1a2108e77043",
+			"title": "Link tasks back to original Braindump",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "84a2b346-6de5-43fa-b03e-7a40bf318a38",
+			"title": "Review Agenda for Charging Strategy",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "06333261-338b-4545-9c92-e4837c30d620",
+			"title": "Create project completion functionality",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "3677b378-505b-4913-bfd9-e41844a6012b",
+			"title": "Implement prediction functionality for next steps",
+			"action": "done",
+			"reason": "Implemented in apps/web/src/lib/services/next-step-generation.service.ts. Stale saved recommendations are now a reconciliation quality issue, not an unbuilt initial feature."
+		},
+		{
+			"id": "dd952344-ae53-406e-bc55-46242bb568d6",
+			"title": "Conduct regression test",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "139c180b-6694-46f2-8997-cda8322ecd05",
+			"title": "Develop Project Frameworks Based on Enneagram",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "ab30daf4-1d0a-433e-b01e-51f9b71fa902",
+			"title": "Add Custom Instructions for Generating Phases",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "342d57ca-de3a-47d1-89a9-45b0e9e99ad6",
+			"title": "Integrate Stripe Payment System",
+			"action": "archive_parked",
+			"reason": "Billing plumbing exists, while commercial enablement is a separate parked decision (tasker/77). Preserve this original request as implementation history; do not imply charging is enabled."
+		},
+		{
+			"id": "225207a3-0291-475c-ba9d-e410a47420ab",
+			"title": "Enhance Blog Content with Productivity and Psychological Insights",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "f5b868a4-3b91-4dac-b5ba-c1ef2e900d08",
+			"title": "Consolidated AI Context Engineering Workshop & Materials",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "b3c055e3-e5e6-4e85-adcf-c1828a769ec6",
+			"title": "Implement Project-Specific Calendar Integration",
+			"action": "done",
+			"reason": "Core integration is implemented in packages/shared-agent-ops/src/calendar/. Shared-project recipient safeguards and remaining rollout proof are tracked in tasker/144 and the retained calendar-verification task."
+		},
+		{
+			"id": "f7e9612f-76f9-477e-abf1-d846d5ba3efb",
+			"title": "Build case studies via free pilot work — offer BuildOS-powered help to people for free",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "1fb8301e-88bb-4098-abb5-9e84d1659b90",
+			"title": "Adjust Strategy for Project War Room Feature",
+			"action": "archive_parked",
+			"reason": "Retired with the War Room direction by DJ on October 28."
+		},
+		{
+			"id": "8a2df906-edfa-49da-8e54-dff6200973d9",
+			"title": "Start work on 'No More Game' for War Room feature",
+			"action": "archive_parked",
+			"reason": "Retired with the War Room direction by DJ on October 28."
+		},
+		{
+			"id": "af18b49e-83c5-4bcd-a58b-651c61027413",
+			"title": "Integrate Elite knowledge update feature",
+			"action": "archive_parked",
+			"reason": "Legacy scenario/War Room follow-on; retained as history outside the collaboration roadmap."
+		},
+		{
+			"id": "2b24a192-b065-47a3-8a02-f5ba99a499f4",
+			"title": "Implement Default Live Project for New Users",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "49088454-3924-4094-a642-519d88cb3739",
+			"title": "Implement signup hook to attach default project",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "b1736e6e-23fa-4458-9a68-b330134c68d1",
+			"title": "Define success metrics for default project feature",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "b27e11d8-006f-43fb-9ee7-b9adf2d57ac2",
+			"title": "Develop frontend search UI",
+			"action": "done",
+			"reason": "Implemented: authenticated project search is visible in the live project page; apps/web/src/routes/api/onto/search/+server.ts implements scoped search. Further search quality work requires a narrower task."
+		},
+		{
+			"id": "6a27cc61-a27d-4c56-ac3d-0f89e2e321a5",
+			"title": "Implement 'focus for the day' data model & UI",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "93f6282e-802b-4e27-9032-1cbe5e45f566",
+			"title": "Update data model + APIs for reordering",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "5d9bb52c-f0e6-459a-9fb5-718ccbf622f7",
+			"title": "Implement Dynamic Contact Saving",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "b59db664-e5b8-4a3e-a81a-e4fb31586fc3",
+			"title": "Record talk on why productivity is broken today",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "1e2bc570-4195-4f76-bb02-fd06e68f1c60",
+			"title": "Create Twitter visual brand guidelines for BuildOS",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "7115a485-7ce6-4a62-b5a5-ffe6ecdbc928",
+			"title": "Define color palette and typography for Twitter posts",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "19e838fd-1b37-4f11-ac0c-672e12a97a88",
+			"title": "Create template ontologies for different project types in BuildOS",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "ae80831b-ef45-49ba-af58-286db3613ce9",
+			"title": "Create detailed BuildOS guide for people with ADHD (child of Guide Suite parent 82dfb1b6)",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "dd0d91a6-a8fa-4c1e-8b72-f5ce61025abd",
+			"title": "Collaborate with Rebecca Murphy for AI Workshop",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "2707c717-3b2e-493c-b268-2a510c8c30e3",
+			"title": "Create basic chat interface for LLM",
+			"action": "done",
+			"reason": "Implemented: project chat and Workspace chat are present in the product and repository; tasker/146 tracks current Workspace follow-ups."
+		},
+		{
+			"id": "891a8419-a896-418d-b900-a74c25c453e1",
+			"title": "Implement Ring Visuals Instead of Bars",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "82a825e1-4b8f-4094-8fb3-fd735c88139e",
+			"title": "Implement Task Snooze Feature",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "ebf47b8b-c6b1-4b37-9dc0-03b99778a7c7",
+			"title": "Add PWA download screenshot to onboarding",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "cd82a930-846d-4f00-a62a-6b4fd9dc6abc",
+			"title": "Verify shared-project calendar behavior after rollout",
+			"action": "retain_or_rescope",
+			"reason": "Core integration exists; retain the real verification gap documented in tasker/144."
+		},
+		{
+			"id": "e235c01e-ff41-40ed-8717-1a5af2ca5a02",
+			"title": "Demo BuildOS to step brother Nick and onboard as test user",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "4ae9239a-0c88-4949-b66a-65b1971c979d",
+			"title": "Define the hackathon scenario / challenge prompt",
+			"action": "archive_parked",
+			"reason": "Parked: DJ postponed the hackathon September 25 and reoriented toward collaboration October 28. The old event plan is not a current commitment."
+		},
+		{
+			"id": "4b321d9d-3450-4a60-a8af-5d245916218e",
+			"title": "Decide hackathon format and set date",
+			"action": "archive_parked",
+			"reason": "Parked: DJ postponed the hackathon September 25 and reoriented toward collaboration October 28. The old event plan is not a current commitment."
+		},
+		{
+			"id": "0e49b52f-5788-4af4-accc-a6db83fd8d24",
+			"title": "Build hackathon landing page + signup flow",
+			"action": "archive_parked",
+			"reason": "Parked: DJ postponed the hackathon September 25 and reoriented toward collaboration October 28. The old event plan is not a current commitment."
+		},
+		{
+			"id": "83bbb949-80e0-4276-873e-23f79324874d",
+			"title": "Write advertising copy and pick distribution channels",
+			"action": "archive_parked",
+			"reason": "Parked: DJ postponed the hackathon September 25 and reoriented toward collaboration October 28. The old event plan is not a current commitment."
+		},
+		{
+			"id": "dbb15f76-e6cf-41be-bd38-20965d4d20ff",
+			"title": "Recruit pilot test group for hackathon",
+			"action": "archive_parked",
+			"reason": "Parked: DJ postponed the hackathon September 25 and reoriented toward collaboration October 28. The old event plan is not a current commitment."
+		},
+		{
+			"id": "32854535-75b2-43ca-b01c-fee6804bc012",
+			"title": "Send BuildOS demo to Sudip",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "a3984291-c0b1-47ab-ac46-4f73c17f6f98",
+			"title": "Review the collaboration journey for onboarding friction",
+			"action": "retain_or_rescope",
+			"reason": "Narrow the old whole-app audit to the current shared-work loop."
+		},
+		{
+			"id": "738ecf34-33d3-4b2d-879b-6d905049a64e",
+			"title": "Prototype Mobile-First Project Command Center Dashboard",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "9e827b1a-84a3-47aa-b5f9-e135bf756ae3",
+			"title": "Connect task to event in ui",
+			"action": "done",
+			"reason": "Task scheduling and linked calendar-event implementation exists in packages/shared-agent-ops/src/calendar/task-event-sync.ts and apps/web/src/lib/server/calendar-proxy/schedule-task.handler.ts. Live cross-account delivery remains a separate verification task."
+		},
+		{
+			"id": "769536c0-55a1-46a2-9f62-9bb40627a53f",
+			"title": "Reach out to Alex (Asia's boyfriend) with BuildOS intro",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "1016819e-495c-4b47-90fc-acb184789b6b",
+			"title": "Outreach to Sabio contacts with BuildOS demo",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "59c3a49a-7bba-4331-8aa0-2d136d3aa392",
+			"title": "SEO key word targeting",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "cdcb9219-4d61-4423-ac01-33b01647e496",
+			"title": "Verify collaborator agents can access and update shared work",
+			"action": "retain_or_rescope",
+			"reason": "MCP/tool infrastructure exists; current work is cross-account permission and reconnection proof."
+		},
+		{
+			"id": "b6bc743f-f799-4bea-984a-ca59e09a994c",
+			"title": "Align onboarding with the first shared-project outcome",
+			"action": "retain_or_rescope",
+			"reason": "Existing onboarding and People step supersede the generic expansion request; first audience is still undecided."
+		},
+		{
+			"id": "56d3f0ff-86d3-4f87-b419-b4e451940442",
+			"title": "Develop Education Hub for BuildOS",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "25dc495e-e9d7-467a-ae72-0ae67c14b6c3",
+			"title": "Identify and research target creators",
+			"action": "archive_parked",
+			"reason": "Parked legacy creator-acquisition plan. Repo tasker/118 says the creator pilot was replaced; current audience/channel needs a fresh choice under collaboration."
+		},
+		{
+			"id": "c2201875-5001-4f05-8b94-7aabc7d06132",
+			"title": "Twitter brand kit: icon + 3 templates + rollout note",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "76aa11dd-5e3a-461b-9582-e157a43b6cd5",
+			"title": "Create value-first outreach content",
+			"action": "archive_parked",
+			"reason": "Parked legacy creator-acquisition plan. Repo tasker/118 says the creator pilot was replaced; current audience/channel needs a fresh choice under collaboration."
+		},
+		{
+			"id": "b1a1b18a-b6b8-44b3-98b8-bec7fb0acac3",
+			"title": "Execute creator outreach",
+			"action": "archive_parked",
+			"reason": "Parked legacy creator-acquisition plan. Repo tasker/118 says the creator pilot was replaced; current audience/channel needs a fresh choice under collaboration."
+		},
+		{
+			"id": "1665139d-3990-4ca6-876f-f9c9e8c72f23",
+			"title": "Build content flywheel infrastructure",
+			"action": "archive_parked",
+			"reason": "Parked legacy creator-acquisition plan. Repo tasker/118 says the creator pilot was replaced; current audience/channel needs a fresh choice under collaboration."
+		},
+		{
+			"id": "35a19321-b9b4-4659-b750-fd010b71666b",
+			"title": "Record demo video for reactivation emails",
+			"action": "archive_parked",
+			"reason": "Old July 25 demo commitment superseded by the current campaign review. October 25 repo record says imported campaigns are unsent; no demo prerequisite is established."
+		},
+		{
+			"id": "e790b5b1-914e-4194-8dbc-173bd733102f",
+			"title": "Align product messaging with collaboration and shared project memory",
+			"action": "retain_or_rescope",
+			"reason": "Authors-first framing is no longer the confirmed direction; rewrite after the primary collaboration use case is selected."
+		},
+		{
+			"id": "82dfb1b6-e39d-48cb-8c32-d13c3e620daa",
+			"title": "Create User Guide Suite (ADHD/TPM/Writers/Devs)",
+			"action": "archive_parked",
+			"reason": "Parked as a legacy proposal during the owner-authorized October 28 reset. No current repo-linked commitment or completion evidence was established. Preserved recoverably; restore only if it supports the selected collaboration use case."
+		},
+		{
+			"id": "1ed7eb6b-bd2e-4f7f-a07a-521e7041d498",
+			"title": "Review the three unsent beta reactivation campaigns against the new direction",
+			"action": "retain_or_rescope",
+			"reason": "October 25 repo evidence supersedes the July nearly-complete/video-only status."
+		},
+		{
+			"id": "3b24c14f-30e1-4f18-81bd-70ef08d44dfd",
+			"title": "Battle of the Regions (DCSTW26): decide + submit pitch application",
+			"action": "archive_parked",
+			"reason": "Expired July application decision for the old October tournament. Removed from current commitments, without claiming submitted or successful."
+		},
+		{
+			"id": "64bf96de-f88c-4bbb-a115-05001ddcfb72",
+			"title": "Decide how external work should update shared project context",
+			"action": "retain_or_rescope",
+			"reason": "Reframe the old email-ingestion idea as the evidence-source decision needed for automatic project upkeep; do not assert all ingestion channels are built."
+		},
+		{
+			"id": "d128bf16-5e4a-4968-ab7b-f43303b1b0da",
+			"title": "Prototype and Integrate Threat Modeling (STRIDE + PASTA) into Project War Room",
+			"action": "archive_parked",
+			"reason": "Retired with the War Room product direction. This does not retire platform security work."
+		},
+		{
+			"id": "04e3998b-e1a1-411f-8699-d177fdf1b14c",
+			"title": "Finish Project War Room feature (including spec)",
+			"action": "archive_parked",
+			"reason": "Retired by DJ's October 28 direction: War Room is old; collaboration is the focus."
+		}
+	]
+}

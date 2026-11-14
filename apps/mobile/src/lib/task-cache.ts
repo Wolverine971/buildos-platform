@@ -3,7 +3,7 @@ import type {
 	ProjectFullResponse,
 	ProjectTask,
 	TaskDetailResponse,
-	TodayFeed
+	TodayResponse
 } from '@buildos/api-client';
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
 
@@ -47,15 +47,23 @@ function copies(userId: string | null, taskId: string): Array<{ key: QueryKey; c
 			}
 		},
 		{
+			// Today caches the whole /api/today response: the feed plus `attention`.
 			key: ['today', userId],
 			copy: {
 				read: (data) =>
-					(data as TodayFeed | undefined)?.tasks as unknown as TaskLike[] | undefined,
+					(data as TodayResponse | undefined)?.feed?.tasks as unknown as
+						| TaskLike[]
+						| undefined,
 				write: (data, map) => {
-					const feed = data as TodayFeed;
+					const response = data as TodayResponse;
 					return {
-						...feed,
-						tasks: feed.tasks.map((task) => map(task as unknown as TaskLike))
+						...response,
+						feed: {
+							...response.feed,
+							tasks: response.feed.tasks.map((task) =>
+								map(task as unknown as TaskLike)
+							)
+						}
 					};
 				}
 			}

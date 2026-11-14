@@ -516,8 +516,8 @@ Do not prioritize vanity metrics over message clarity.
 
 Use these docs together:
 
-- [BuildOS Guerrilla Content Doctrine](/Users/djwayne/buildos-platform/docs/marketing/strategy/buildos-guerrilla-content-doctrine.md)
-- [BuildOS Brand Guide](/Users/djwayne/buildos-platform/docs/marketing/brand/brand-guide-1-pager.md)
-- [6-Week Guerrilla Seed Campaign](/Users/djwayne/buildos-platform/docs/marketing/social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md)
+- [BuildOS Guerrilla Content Doctrine](./buildos-guerrilla-content-doctrine.md)
+- [BuildOS Brand Guide](../brand/brand-guide-1-pager.md)
+- [6-Week Guerrilla Seed Campaign](../social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md)
 
 These should be the current reference set for day-to-day marketing decisions.

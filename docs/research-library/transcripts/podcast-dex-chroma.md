@@ -1,4 +1,4 @@
-<!-- research-library/transcripts/podcast-dex-chroma.md -->
+<!-- docs/research-library/transcripts/podcast-dex-chroma.md -->
 
 # Context Engineering Episode 1 - Dex Horthy
 
@@ -6,7 +6,7 @@
 
 This source contributes to these multi-source skill combo indexes:
 
-- [Technology And Agent Systems Skill Combos](../../docs/research/youtube-library/skill-combo-indexes/TECHNOLOGY_AND_AGENT_SYSTEMS.md): Context engineering for agent work; Harness engineering architecture
+- [Technology And Agent Systems Skill Combos](../../research/youtube-library/skill-combo-indexes/TECHNOLOGY_AND_AGENT_SYSTEMS.md): Context engineering for agent work; Harness engineering architecture
 
 **Source:** [YouTube](https://www.youtube.com/watch?v=BNhRnx_O95c)
 **Host:** Jeff Huber, CEO of Chroma

@@ -6,12 +6,12 @@ This is the canonical map for marketing work. Start here when deciding where a d
 
 ## Current operating work
 
-| Workstream                   | Status                                  | Operating home                                                                                                                                        |
-| ---------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Writer creator acquisition   | Active 30-day pilot                     | [Creator Acquisition](campaigns/creator-acquisition/README.md) · [tasker 24](../../tasker/24-creator-social-acquisition-pilot.md)                     |
-| Retargeting                  | Strategy and manual-pilot package ready | [Retargeting](campaigns/retargeting/README.md)                                                                                                        |
-| Social relationship building | Active fieldwork                        | [Social Media Hub](social-media/README.md) · [daily engagement](social-media/daily-engagement/README.md) · [comment log](social-media/comment-log.md) |
-| Content production           | Active workspace                        | [Visual Assets](visual-assets/README.md) · [content projects](visual-assets/projects/README.md)                                                       |
+| Workstream                   | Status                                  | Operating home                                                                                                                                                                                 |
+| ---------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Writer creator acquisition   | Active 30-day pilot                     | [Creator Acquisition](campaigns/creator-acquisition/README.md) · [tasker 24](https://github.com/Wolverine971/buildos-platform/blob/df81f97dced3/tasker/24-creator-social-acquisition-pilot.md) |
+| Retargeting                  | Strategy and manual-pilot package ready | [Retargeting](campaigns/retargeting/README.md)                                                                                                                                                 |
+| Social relationship building | Active fieldwork                        | [Social Media Hub](social-media/README.md) · [daily engagement](social-media/daily-engagement/README.md) · [comment log](social-media/comment-log.md)                                          |
+| Content production           | Active workspace                        | [Visual Assets](visual-assets/README.md) · [content projects](visual-assets/projects/README.md)                                                                                                |
 
 For the current reading order and decisions that still block public execution, use [START_HERE.md](START_HERE.md). For the complete historical catalog, use [INDEX.md](INDEX.md).
 

@@ -25,7 +25,7 @@ to be sent to verify this setting; use the mocked email service and worker tests
 - **Email Tracking Flow**: See [Notification Tracking Integration](#notification-tracking-integration)
 - **Click Tracking**: See [Email Click Tracking](#email-click-tracking)
 - **Welcome Sequence**: See [Welcome Sequence Integration](#welcome-sequence-integration)
-- **Research Docs**: [`thoughts/shared/research/2025-10-06_22-45-00_email-tracking-reuse-assessment.md`](/thoughts/shared/research/2025-10-06_22-45-00_email-tracking-reuse-assessment.md)
+- **Research Docs**: [`thoughts/shared/research/2025-10-06_22-45-00_email-tracking-reuse-assessment.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-06_22-45-00_email-tracking-reuse-assessment.md)
 
 ## Data Model
 

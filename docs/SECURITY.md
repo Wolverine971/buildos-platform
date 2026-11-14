@@ -299,7 +299,7 @@ const prompt = `Analyze this: ${userInput}`;
 1. **2025-10-21**: Input Validation and Security Audit
     - Findings: 12 high-priority issues
     - Fixed: Prompt injection vulnerability (Finding #4)
-    - Report: `/thoughts/shared/research/2025-10-21_00-00-00_input-validation-security-audit.md`
+    - Report: [`2025-10-21_00-00-00_input-validation-security-audit.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-21_00-00-00_input-validation-security-audit.md)
 
 ### Planned Audits
 
@@ -312,7 +312,7 @@ const prompt = `Analyze this: ${userInput}`;
 ## Related Documentation
 
 - **Bugfix Changelog**: `/docs/BUGFIX_CHANGELOG.md`
-- **Security Audit**: `/thoughts/shared/research/2025-10-21_00-00-00_input-validation-security-audit.md`
+- **Security Audit**: [`2025-10-21_00-00-00_input-validation-security-audit.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-21_00-00-00_input-validation-security-audit.md)
 - **Admin Security Dashboard**: `/apps/web/src/routes/admin/security/+page.svelte`
 
 ---

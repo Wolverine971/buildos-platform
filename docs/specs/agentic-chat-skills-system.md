@@ -1,6 +1,6 @@
 <!-- docs/specs/agentic-chat-skills-system.md -->
 
-> Superseded by [Agentic Chat Tool Surface Refactor Plan](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-tool-surface-refactor-plan.md).
+> Superseded by [Agentic Chat Tool Surface Refactor Plan](./agentic-chat-tool-surface-refactor-plan.md).
 > This document reflects the earlier design that routed skills through `tool_help`. The current gateway uses `skill_load` for playbooks plus `tool_search`, `tool_schema`, and context-specific direct tools.
 
 # Agentic Chat Skills System - Design Spec

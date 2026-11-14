@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/BUILDOS_MCP_PERMISSION_PLAN_REVIEW_2026-09-30.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-10-23; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # BuildOS MCP permission plan — independent adversarial review
 
 Reviewed: September 30, 2026. **Final verdict after revision 2: ready to begin implementation.** No unresolved P0/P1 findings or blocking design ambiguities remain. The first pass found three P1 design gaps and three P2 clarifications; all six are resolved in the revised plan. This is a plan review, not an implementation or production security certification. No tests, live mutations, or paid calls were run.
@@ -18,10 +23,10 @@ There is a second authorization race in the same route: the ordinary scalar task
 
 Evidence:
 
-- [Task write by ID followed by side effects](/Users/djwayne/buildos-platform/packages/shared-agent-ops/src/gateway/op-execution-gateway.tasks.ts:769).
-- [Title/completion calendar synchronization and mention processing](/Users/djwayne/buildos-platform/packages/shared-agent-ops/src/gateway/op-execution-gateway.activity.ts:174).
-- [Missing calendar option defaults to auto](/Users/djwayne/buildos-platform/packages/shared-agent-ops/src/gateway/op-execution-gateway.normalization.ts:321).
-- [Document mention notifications](/Users/djwayne/buildos-platform/packages/shared-agent-ops/src/gateway/op-execution-gateway.core.ts:1212).
+- [Task write by ID followed by side effects](../../../packages/shared-agent-ops/src/gateway/op-execution-gateway.tasks.ts#L769).
+- [Title/completion calendar synchronization and mention processing](../../../packages/shared-agent-ops/src/gateway/op-execution-gateway.activity.ts#L174).
+- [Missing calendar option defaults to auto](../../../packages/shared-agent-ops/src/gateway/op-execution-gateway.normalization.ts#L321).
+- [Document mention notifications](../../../packages/shared-agent-ops/src/gateway/op-execution-gateway.core.ts#L1212).
 
 **Required plan amendment:** Route every write authorized solely by a new scoped grant through the same strict capability normalization and bounded persistence/effect policy as an approved proposal. Explicitly suppress calendar/mention/model/publishing effects for both paths. Preserve broad legacy behavior only when the legacy path independently authorizes the operation. State the mutation/revocation linearization point and require target-project, archive/deletion, membership, and current-policy checks at that write boundary. A scoped operation must never fall back to an unrestricted handler merely because its tool name is allowed. Add focused future tests for scheduled-task title/completion changes, mentions, a task moved between check and write, and revocation racing a scoped write.
 
@@ -29,7 +34,7 @@ Evidence:
 
 The draft offers a scoped authorization choice that preserves the exact policy, retains existing broad legacy grants, and evaluates a write token against the union of legacy and new scoped grants. Consider a boundary that already has broad legacy access: a newly minted token advertised as scoped to document edits in project A still passes the legacy branch for every existing broad permission. A scope-string-only token ceiling does not distinguish the two choices. Binding a policy snapshot to the authorization code alone also does not establish how that choice survives issuance and refresh.
 
-Evidence: [OAuth re-consent updates the existing active grant](/Users/djwayne/buildos-platform/apps/web/src/lib/server/agent-call/oauth-connector.service.ts:788); [access authentication currently has only an immutable scope string plus live grant policy](/Users/djwayne/buildos-platform/apps/web/src/lib/server/agent-call/oauth-connector.service.ts:1411); [token tables contain scope but no authorization-policy discriminator](/Users/djwayne/buildos-platform/supabase/migrations/20260513000001_agent_oauth_remote_mcp.sql:66).
+Evidence: [OAuth re-consent updates the existing active grant](../../../apps/web/src/lib/server/agent-call/oauth-connector.service.ts#L788); [access authentication currently has only an immutable scope string plus live grant policy](../../../apps/web/src/lib/server/agent-call/oauth-connector.service.ts#L1411); [token tables contain scope but no authorization-policy discriminator](../../../supabase/migrations/20260513000001_agent_oauth_remote_mcp.sql#L66).
 
 **Required plan amendment:** Choose one explicit product/security rule. The smaller solution is connection-wide permissions: scoped re-consent does not narrow existing access, the consent page displays **all retained effective access**, and it must not promise a token is limited to the selected new tuple. Its code snapshot records that reviewed policy and cannot expand legacy policy during issuance. A newly approved tuple may intentionally benefit existing write-capable credentials in the exact same boundary. If truly narrow token families are desired instead, specify an immutable authorization-policy ceiling/discriminator on code, access token, and refresh family and intersect it in every evaluator. Either choice must say that a new client/grant boundary never inherits old scoped grants automatically. Add a broad-existing-boundary consent test and a stale-code/concurrent-consent test for the chosen semantics.
 
@@ -45,7 +50,7 @@ The reviewed digest contains the base version and computed mutation, while the r
 
 The plan requires a document version and durable receipt but does not define whether that version can subsequently absorb another edit. Current versioning merges the newest same-actor version for 60 minutes unless it is a restore checkpoint. `forceCreateVersion` only changes the current call; later ordinary edits can overwrite the new version's snapshot. After the request payload expires, a receipt pointing to that mutable version would not prove what was approved.
 
-Evidence: [version merge condition and snapshot replacement](/Users/djwayne/buildos-platform/packages/shared-agent-ops/src/ontology/versioning.service.ts:235); [head/version writes are currently non-atomic](/Users/djwayne/buildos-platform/packages/shared-agent-ops/src/ontology/document-write.service.ts:43).
+Evidence: [version merge condition and snapshot replacement](../../../packages/shared-agent-ops/src/ontology/versioning.service.ts#L235); [head/version writes are currently non-atomic](../../../packages/shared-agent-ops/src/ontology/document-write.service.ts#L43).
 
 **Amendment:** Define an approval checkpoint marker (or equivalent immutable receipt snapshot contract), update shared version coalescing so later writes cannot merge into it, and include request/receipt ID plus resulting snapshot hash. The new transactional write must roll back if mandatory history persistence fails. Name the timestamp/hash or revision used for stale detection; document history's mutable version number alone is insufficient. Clarify that request-content retention does not delete normal project document history. Future tests must edit as the same actor immediately after approval and verify the checkpoint remains unchanged.
 
@@ -53,7 +58,7 @@ Evidence: [version merge condition and snapshot replacement](/Users/djwayne/buil
 
 “Locks request, authorization boundary, relevant project/membership, and entity in a consistent documented order” is not yet the actual repository order. The repo recently fixed reproducible deadlocks caused by writing entity/context rows before acquiring the project lock. New request/revoke/membership transactions must participate in a compatible order; locking an authorization row only helps if revocation also locks that row. Existing gateway calls and membership writers are not automatically serialized by a new approval RPC.
 
-Evidence: [project lock-first migration and rationale](/Users/djwayne/buildos-platform/supabase/migrations/20260925020000_project_write_lock_first.sql:1); [multi-project lock helper](/Users/djwayne/buildos-platform/supabase/migrations/20260930130000_project_hierarchy_shared_shelf.sql:132).
+Evidence: [project lock-first migration and rationale](../../../supabase/migrations/20260925020000_project_write_lock_first.sql#L1); [multi-project lock helper](../../../supabase/migrations/20260930130000_project_hierarchy_shared_shelf.sql#L132).
 
 **Amendment:** Name the existing project-lock helper(s), require project-before-entity/context writes, document relative request/principal/membership ordering shared by decision and revoke paths, and define checks for membership deletion, inherited project policies, or missing permission rows where a row lock alone cannot protect absence. Make the concurrency proof a package P2 exit criterion, not a reason to block planning until tests are written.
 
@@ -61,7 +66,7 @@ Evidence: [project lock-first migration and rationale](/Users/djwayne/buildos-pl
 
 “Disable requests” has no chosen effect on already-pending requests or existing standing grants, and feature-flag disablement promises mass cancellation/deactivation without stating whether this is persisted or simply an evaluator check. Re-enable must not revive authority while asynchronous cleanup is incomplete. Separately, token/code consumption and token issuance currently use multiple writes. The plan names scope snapshots and revocation-during-exchange tests but leaves the chosen issuance boundary unspecified.
 
-Evidence: [code consumption precedes issuance](/Users/djwayne/buildos-platform/apps/web/src/lib/server/agent-call/oauth-connector.service.ts:1104); [refresh consumption precedes issuance](/Users/djwayne/buildos-platform/apps/web/src/lib/server/agent-call/oauth-connector.service.ts:1220); [access then refresh inserts](/Users/djwayne/buildos-platform/apps/web/src/lib/server/agent-call/oauth-connector.service.ts:994).
+Evidence: [code consumption precedes issuance](../../../apps/web/src/lib/server/agent-call/oauth-connector.service.ts#L1104); [refresh consumption precedes issuance](../../../apps/web/src/lib/server/agent-call/oauth-connector.service.ts#L1220); [access then refresh inserts](../../../apps/web/src/lib/server/agent-call/oauth-connector.service.ts#L994).
 
 **Amendment:** Add a compact effect table for disable requests, make read-only, remove project access, disconnect, and global feature disablement. Choose a non-resurrecting persisted generation/revocation boundary for the kill switch. Define transactional code/refresh consume-and-issue or an equally precise failure contract and a live-boundary check that prevents issuance under revoked consent. These decisions can reuse existing principal-policy revision machinery; they do not require an unrelated OAuth rewrite.
 
@@ -90,4 +95,4 @@ The additional owner-browser explanation correctly limits the guarantee to MCP c
 
 ## Implementation follow-through
 
-Implementation and final adversarial findings are recorded in [the implementation record](/Users/djwayne/buildos-platform/docs/technical/reviews/BUILDOS_MCP_PERMISSION_IMPLEMENTATION_2026-09-30.md). The feature is implemented and disabled; actual task-mover compatibility and live client acceptance remain release gates. No production change or paid test was made.
+Implementation and final adversarial findings are recorded in [the implementation record](./BUILDOS_MCP_PERMISSION_IMPLEMENTATION_2026-09-30.md). The feature is implemented and disabled; actual task-mover compatibility and live client acceptance remain release gates. No production change or paid test was made.

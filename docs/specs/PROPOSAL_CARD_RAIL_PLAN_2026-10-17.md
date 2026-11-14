@@ -1,5 +1,10 @@
 <!-- docs/specs/PROPOSAL_CARD_RAIL_PLAN_2026-10-17.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-10-23; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Proposal-card rail, nest card, combine card: implementation plan
 
 Tasker 122, work packages WP4 (rail + nest) and WP5 (combine). Written 2026-10-17 from a read-only

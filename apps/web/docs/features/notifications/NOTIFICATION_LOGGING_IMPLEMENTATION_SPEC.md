@@ -79,7 +79,7 @@ The BuildOS notification system lacks comprehensive logging infrastructure, maki
 5. ❌ Worker marks "sent" before actual delivery
 6. ❌ No visibility into subscription matching or channel selection
 
-**See Full Audit**: [`/thoughts/shared/research/2025-10-10_21-00-00_notification-system-audit.md`](/thoughts/shared/research/2025-10-10_21-00-00_notification-system-audit.md)
+**See Full Audit**: [`/thoughts/shared/research/2025-10-10_21-00-00_notification-system-audit.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-10_21-00-00_notification-system-audit.md)
 
 ---
 

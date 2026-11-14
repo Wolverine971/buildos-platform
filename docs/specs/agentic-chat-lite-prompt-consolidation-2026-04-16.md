@@ -10,10 +10,10 @@ Related docs:
 
 - [FastChat vs Lite fantasy-novel flow audit](https://github.com/Wolverine971/buildos-platform/blob/36955954cebb/docs/archive/reports/agentic-chat-fastchat-vs-lite-fantasy-novel-flow-audit-2026-04-15.md)
 - [Lite prompt builder](../../apps/web/src/lib/services/agentic-chat-lite/prompt/build-lite-prompt.ts)
-- [FastChat master prompt builder](../../apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts)
+- [FastChat master prompt builder](https://github.com/Wolverine971/buildos-platform/blob/6fe56282a6e2/apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts)
 - [Agentic chat operating model](./agentic-chat-operating-model.md)
 - [Skill/tool architecture v2](./agentic-chat-skill-tool-architecture-v2.md)
-- [Gateway tool surface](../../apps/web/src/lib/services/agentic-chat/tools/core/gateway-surface.ts)
+- Gateway tool surface
 - [Capability catalog](../../apps/web/src/lib/services/agentic-chat/tools/registry/capability-catalog.ts)
 - [Skill registry](../../apps/web/src/lib/services/agentic-chat/tools/skills/registry.ts)
 

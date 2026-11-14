@@ -1,5 +1,10 @@
 <!-- docs/research/write-review-reasons-2026-10.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-10-23; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Faster write turns: routing evidence and implementation
 
 Date: 2026-10-19. Task: [138](../../tasker/138-faster-write-turns.md). Scope: lean items 1–4, authorized after the investigation briefing. Local implementation only; no deployment, production writes, or paid model calls.

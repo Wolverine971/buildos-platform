@@ -113,7 +113,7 @@ This is a default sequence, not a requirement to wait until Wednesday to ship a 
 | [04-measurement-scorecard.md](04-measurement-scorecard.md)               | Baseline, post log, UTM convention, activation funnel, and decision rules                                 |
 | [HyperFrames Production Lane](../../visual-assets/hyperframes/README.md) | Assemble an approved real receipt into an Instagram Reel, QA/carousel frames, cover, and delivery package |
 
-Execution tracker: [`../../../../tasker/24-creator-social-acquisition-pilot.md`](../../../../tasker/24-creator-social-acquisition-pilot.md).
+Execution tracker: [`../../../../tasker/24-creator-social-acquisition-pilot.md`](https://github.com/Wolverine971/buildos-platform/blob/df81f97dced3/tasker/24-creator-social-acquisition-pilot.md).
 
 ## Source Stack
 

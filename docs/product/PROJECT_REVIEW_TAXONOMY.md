@@ -75,7 +75,7 @@ terms above.
 The light review pass now ends with one bounded roll-up call. It reconciles every open finding
 across families and across passes: still true or resolved, merges, sections and groups, and the
 bottom line. That closes the gap tracked in
-[`tasker/34-project-review-holistic-synthesis.md`](../../tasker/34-project-review-holistic-synthesis.md)
+[`tasker/34-project-review-holistic-synthesis.md`](https://github.com/Wolverine971/buildos-platform/blob/df81f97dced3/tasker/34-project-review-holistic-synthesis.md)
 (absorbed by tasker 112). It is not an agent loop: one call per pass, with structured output that
 code validates. Complete Project Audit stays the deeper, slower report. Its recommendations are
 items in the same Project cleanup change set.

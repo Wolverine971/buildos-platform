@@ -42,7 +42,7 @@ the September 24 audit. All remain pending; no migration was applied while updat
 
 Check an item only after its hosted application and post-apply verification are recorded,
 including the target project, migration version, and receipt. Commit/staging state alone does
-not complete a deployment. [Tasker 104](../../../tasker/104-supabase-fitness-sizing-and-efficiency.md)
+not complete a deployment. [Tasker 104](https://github.com/Wolverine971/buildos-platform/blob/df81f97dced3/tasker/104-supabase-fitness-sizing-and-efficiency.md)
 records the overall progress, findings, and prioritized plan.
 
 | Local migration                                                                                                                                       | Evidence in production                                                                                                              | Next action                                                                                       |

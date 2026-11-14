@@ -457,9 +457,9 @@ setInterval(monitorDatabaseHealth, 5 * 60 * 1000);
 
 - [Supabase Documentation](https://supabase.com/docs)
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
-- [Supabase Connection Recovery](/docs/technical/deployment/runbooks/supabase-connection-recovery.md)
-- [Performance Troubleshooting](/docs/technical/deployment/runbooks/performance-issues.md)
-- [Incident Response Template](/docs/technical/deployment/runbooks/incident-response.md)
+- [Supabase Connection Recovery](./supabase-connection-recovery.md)
+- [Performance Troubleshooting](./performance-issues.md)
+- [Incident Response Template](https://github.com/Wolverine971/buildos-platform/blob/e834b47924f0/apps/web/docs/technical/deployment/runbooks/incident-response.md)
 
 ## 📞 Escalation Contacts
 

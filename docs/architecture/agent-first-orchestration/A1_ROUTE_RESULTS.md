@@ -47,7 +47,7 @@ band, so A2 remains blocked while A1 is revised and rerun.
 | Pre-registered routing decision | **Change**                     |
 
 The canonical report is
-[`route-eval-v1.json`](../../../packages/agent-orchestrator/src/testing/harness/results/route-eval-v1.json),
+[`route-eval-v1.json`](https://github.com/Wolverine971/buildos-platform/blob/e16b39a3ae73/packages/agent-orchestrator/src/testing/harness/results/route-eval-v1.json),
 SHA-256 `3f75d91718406443921c6717b4a09d3d61ae20133c81ad8aead94680a3df49ed`.
 
 ## What failed
@@ -92,7 +92,7 @@ clarify. C06 lost one route call to clarify, and C07 scored 6/9 because three ca
 JSON budget after repair. The p95 direct bound passed; p50 missed by about 75 ms.
 
 Canonical second-pass report:
-[`route-eval-v2.json`](../../../packages/agent-orchestrator/src/testing/harness/results/route-eval-v2.json),
+[`route-eval-v2.json`](https://github.com/Wolverine971/buildos-platform/blob/e16b39a3ae73/packages/agent-orchestrator/src/testing/harness/results/route-eval-v2.json),
 SHA-256 `381ffa915ff1de6e606f7294d4c0dc4e417a4fb9f14f036a32c026f366ce2953`.
 
 ## Third scored pass
@@ -113,7 +113,7 @@ regressed: C01 fell to 5/9 and C08 to 2/9. The invocation was also slower rather
 | Pre-registered decision     | **Change**                     |
 
 Canonical third-pass report:
-[`route-eval-v3.json`](../../../packages/agent-orchestrator/src/testing/harness/results/route-eval-v3.json),
+[`route-eval-v3.json`](https://github.com/Wolverine971/buildos-platform/blob/e16b39a3ae73/packages/agent-orchestrator/src/testing/harness/results/route-eval-v3.json),
 SHA-256 `22f58e6f234a15a382177a0f933bdd9cb2b313176ef663c0e3f9ddc9067fa59e`.
 
 ## Fourth single-model pass
@@ -124,7 +124,7 @@ The consolidated v4 prompt solved GLM's classification problem at **70/72 correc
 bounds failed. Two workflow calls also exhausted both 60-second attempts.
 
 The result was therefore **Change**, despite passing route accuracy. Canonical report:
-[`route-eval-v4.json`](../../../packages/agent-orchestrator/src/testing/harness/results/route-eval-v4.json),
+[`route-eval-v4.json`](https://github.com/Wolverine971/buildos-platform/blob/e16b39a3ae73/packages/agent-orchestrator/src/testing/harness/results/route-eval-v4.json),
 SHA-256 `4fcf67e2d15309d14d0faf53035896543b26062a8b322083e90429d6863a9f31`.
 
 ## Route-strategy change
@@ -158,7 +158,7 @@ The full 72-call hybrid run passed every A1 routing and direct-latency bound.
 | Mutation or write calls         | 0                              | 0 required                     | Pass   |
 
 The canonical A1 report is
-[`route-eval-fast-review-v1.json`](../../../packages/agent-orchestrator/src/testing/harness/results/route-eval-fast-review-v1.json),
+[`route-eval-fast-review-v1.json`](https://github.com/Wolverine971/buildos-platform/blob/e16b39a3ae73/packages/agent-orchestrator/src/testing/harness/results/route-eval-fast-review-v1.json),
 SHA-256 `ab886492a6a788eede2bc64c3c8692bc9fd362ef492ecab69930d217eb78d378`.
 
 This passed every bound that was gated at the time. It is **not** an A1 exit: under the 2026-07-25
@@ -228,7 +228,7 @@ consistently chose a context-first workflow for an out-of-scope content-planning
 review policy did not review workflow decisions. No infrastructure failure explains the misses.
 
 The canonical report is
-[`route-eval-v5.json`](../../../packages/agent-orchestrator/src/testing/harness/results/route-eval-v5.json),
+[`route-eval-v5.json`](https://github.com/Wolverine971/buildos-platform/blob/e16b39a3ae73/packages/agent-orchestrator/src/testing/harness/results/route-eval-v5.json),
 SHA-256 `f36419724637bddb5a11ae3a64fc4ddbbb200b36ef716b4bafe06cb95b5a4e20`.
 
 Per the pre-registered fallback, prompt tuning stopped. Workflow plan selection is now decoupled
@@ -262,7 +262,7 @@ was performed.
 
 Canonical reports and hashes:
 
-- [`route-eval-mitigation-v2.json`](../../../packages/agent-orchestrator/src/testing/harness/results/route-eval-mitigation-v2.json):
+- [`route-eval-mitigation-v2.json`](https://github.com/Wolverine971/buildos-platform/blob/e16b39a3ae73/packages/agent-orchestrator/src/testing/harness/results/route-eval-mitigation-v2.json):
   `07b78b69c5eb285bc5ce344ca8cdc93afa0376193632ab61a8fadfee87abbdd3`.
-- [`route-eval-holdout-v1.json`](../../../packages/agent-orchestrator/src/testing/harness/results/route-eval-holdout-v1.json):
+- [`route-eval-holdout-v1.json`](https://github.com/Wolverine971/buildos-platform/blob/e16b39a3ae73/packages/agent-orchestrator/src/testing/harness/results/route-eval-holdout-v1.json):
   `32c0f21fd770d4c293ddcf2679c399af8243e1210fc4b7784e7905ec24d55b87`.

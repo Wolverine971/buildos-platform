@@ -117,7 +117,7 @@ The current onboarding v2 flow has **three critical gaps**:
 
 **Related Documentation:**
 
-- **[User Preferences System](../preferences/README.md)** - Full documentation of preferences architecture
+- **[User Preferences System](https://github.com/Wolverine971/buildos-platform/blob/4ba85ee349db/apps/web/docs/features/preferences/README.md)** - Full documentation of preferences architecture
 - **[Onboarding README](./README.md)** - Updated flow documentation
 
 ---
@@ -2055,7 +2055,7 @@ const TOKEN_BUDGETS = {
 
 **Related Documentation:**
 
-- [User Preferences System](../preferences/README.md) - Complete preferences architecture
+- [User Preferences System](https://github.com/Wolverine971/buildos-platform/blob/4ba85ee349db/apps/web/docs/features/preferences/README.md) - Complete preferences architecture
 - [Onboarding README](./README.md) - Flow overview and component list
 - [Ontology System](../ontology/README.md) - Project structure created during onboarding
 

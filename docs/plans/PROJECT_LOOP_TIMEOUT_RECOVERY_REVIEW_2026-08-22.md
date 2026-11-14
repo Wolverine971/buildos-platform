@@ -513,7 +513,7 @@ What landed correctly, checked line by line: provider order + kill switch + boot
 
 Before this change the raw undici message (`…aborted due to timeout`) matched; now `timed out` does not. Every `generateText` timeout (daily-brief executive summary / analysis, SMS generator, etc.) will be recorded as `status: 'failure'`, which silently breaks the §10.5 telemetry and the `project-loop-provider-throughput.mjs` timeout counts for any text-profile caller. **Fix:** both sites → `error instanceof LLMRequestTimeoutError`. Add one test: text-path body-read `TimeoutError` → usage row `status: 'timeout'`. The streaming path (`:2342`) uses its own `fetchImpl` and still sees the raw DOMException — unchanged, leave it.
 
-Same family, lower priority: [`moonshot-client.ts:160`](../../packages/smart-llm/src/moonshot-client.ts#L160) still throws a plain `Error('Request timeout for model …')`, so Kimi-direct timeouts (only when `PRIVATE_MOONSHOT_ROUTE_KIMI_DIRECT=true`) now log as `failure` in the JSON path. Throw `LLMRequestTimeoutError` there too.
+Same family, lower priority: [`moonshot-client.ts:160`](https://github.com/Wolverine971/buildos-platform/blob/e4c82b356f88/packages/smart-llm/src/moonshot-client.ts#L160) still throws a plain `Error('Request timeout for model …')`, so Kimi-direct timeouts (only when `PRIVATE_MOONSHOT_ROUTE_KIMI_DIRECT=true`) now log as `failure` in the JSON path. Throw `LLMRequestTimeoutError` there too.
 
 ### 12.2 Minor — error-log volume per timeout went up, including for runs that now succeed
 

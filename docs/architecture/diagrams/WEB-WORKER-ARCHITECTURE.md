@@ -839,11 +839,14 @@ PRIVATE_TWILIO_MESSAGING_SERVICE_SID=MGxxx
 
 1. Push to GitHub main branch
 2. Railway auto-deploys
-3. From repository root `/`, Nixpacks provisions Node 22 and installs the frozen
-   pnpm 11 lockfile with development dependencies
+3. From repository root `/`, Railpack provisions patched Node 22 and installs the
+   frozen pnpm 11 lockfile with development dependencies. Three services build
+   this way: `railway.toml` (daily brief / general queue), `railway.chat.toml`
+   (Agentic Chat) and `railway.libri.toml` (Libri)
 4. Turbo builds `@buildos/worker` and its workspace dependencies; the worker
    itself is compiled with native TypeScript 7
-5. Railway starts `node apps/worker/dist/index.js` and checks `/health`
+5. Railway starts each service's entry (`dist/index.js`, `dist/chat-worker.js`,
+   `dist/libri-worker.js` under `apps/worker/`) and checks `/health`
 6. Environment variables come from the Railway dashboard; graceful shutdown
    handling drains active worker jobs when Railway sends a termination signal
 

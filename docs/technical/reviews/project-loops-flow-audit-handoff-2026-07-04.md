@@ -113,7 +113,7 @@ Core service and routes:
 - Decide route: [`apps/web/src/routes/api/inbox/decide/+server.ts`](../../../apps/web/src/routes/api/inbox/decide/+server.ts)
 - Chat route: [`apps/web/src/routes/api/inbox/[item_id]/chat-session/+server.ts`](../../../apps/web/src/routes/api/inbox/%5Bitem_id%5D/chat-session/+server.ts)
 - Resolve-from-chat route: [`apps/web/src/routes/api/inbox/[item_id]/resolve-from-chat/+server.ts`](../../../apps/web/src/routes/api/inbox/%5Bitem_id%5D/resolve-from-chat/+server.ts)
-- Project Inbox UI: [`apps/web/src/lib/components/project/ProjectInboxPanel.svelte`](../../../apps/web/src/lib/components/project/ProjectInboxPanel.svelte)
+- Project Inbox UI: [`apps/web/src/lib/components/project/ProjectInboxPanel.svelte`](https://github.com/Wolverine971/buildos-platform/blob/a81b8d116176/apps/web/src/lib/components/project/ProjectInboxPanel.svelte)
 - Dashboard Inbox UI: [`apps/web/src/lib/components/dashboard/DashboardInboxModal.svelte`](../../../apps/web/src/lib/components/dashboard/DashboardInboxModal.svelte)
 
 Shared source-to-inbox indexing:
@@ -180,7 +180,7 @@ Core code:
 - Web enqueue path: [`apps/web/src/lib/server/project-audit-trigger.service.ts`](../../../apps/web/src/lib/server/project-audit-trigger.service.ts)
 - Worker execution path: `processCompleteProjectAuditJob` in [`apps/worker/src/workers/project-loop/projectLoopWorker.ts`](../../../apps/worker/src/workers/project-loop/projectLoopWorker.ts)
 - Audit chat service: [`apps/web/src/lib/server/project-audit-chat-session.service.ts`](../../../apps/web/src/lib/server/project-audit-chat-session.service.ts)
-- Audit tracker UI: [`apps/web/src/lib/components/project/ProjectAuditTracker.svelte`](../../../apps/web/src/lib/components/project/ProjectAuditTracker.svelte)
+- Audit tracker UI: [`apps/web/src/lib/components/project/ProjectAuditTracker.svelte`](https://github.com/Wolverine971/buildos-platform/blob/7b4155804765/apps/web/src/lib/components/project/ProjectAuditTracker.svelte)
 - Audit API routes: [`apps/web/src/routes/api/onto/projects/[id]/audits`](../../../apps/web/src/routes/api/onto/projects/%5Bid%5D/audits)
 
 Schema:
@@ -356,7 +356,7 @@ Code to inspect:
 
 - Task conflict prompt and parser: [`apps/worker/src/workers/project-loop/generators.ts`](../../../apps/worker/src/workers/project-loop/generators.ts)
 - Suggestion approval executor: [`apps/web/src/lib/server/project-suggestion-actions.service.ts`](../../../apps/web/src/lib/server/project-suggestion-actions.service.ts)
-- Tool execution path: [`apps/web/src/lib/services/agentic-chat/tools/core/tool-executor.ts`](../../../apps/web/src/lib/services/agentic-chat/tools/core/tool-executor.ts)
+- Tool execution path: [`apps/web/src/lib/services/agentic-chat/tools/core/tool-executor.ts`](https://github.com/Wolverine971/buildos-platform/blob/3be154c2c38a/apps/web/src/lib/services/agentic-chat/tools/core/tool-executor.ts)
 
 Questions the audit should answer:
 

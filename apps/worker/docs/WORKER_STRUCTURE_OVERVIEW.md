@@ -95,7 +95,6 @@ Files:
 - `apps/worker/src/app.ts`
 - `apps/worker/src/http/auth.ts`
 - `apps/worker/src/middleware/jsonError.ts`
-- `apps/worker/src/routes/email-tracking.ts`
 - `apps/worker/src/routes/health.ts`
 - `apps/worker/src/routes/ontology-classification.ts`
 - `apps/worker/src/routes/queue/brief.ts`
@@ -180,7 +179,7 @@ Files:
 - `apps/worker/src/workers/agent-run/agentRunWorker.ts`
 - `apps/worker/src/workers/project-loop/*`
 - `apps/worker/src/workers/ontology/projectContextSnapshotWorker.ts`
-- `apps/worker/src/workers/project-icon/projectIconWorker.ts`
+- `apps/worker/src/workers/project-emoji/projectEmojiWorker.ts`
 - `apps/worker/src/workers/calendar/calendarSyncWorker.ts`
 
 These processors handle detached agent runs, scheduled Operatives, project loop

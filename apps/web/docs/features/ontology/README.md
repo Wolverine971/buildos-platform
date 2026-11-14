@@ -320,3 +320,10 @@ const actor = await ensureActorForUser(userId);
 ---
 
 **Status Summary**: The ontology system uses a **props-based architecture** where type_key provides semantic classification and props store AI-inferred properties. State transitions are handled at the application layer.
+
+## More ontology references
+
+- [COMMENTS_SPEC.md](./COMMENTS_SPEC.md) — comments: tables, routes, mentions, read states
+- [DOCUMENT_VERSIONING_CLUSTERING_SPEC.md](./DOCUMENT_VERSIONING_CLUSTERING_SPEC.md) — how document edits are grouped into versions
+- [MIGRATION_DASHBOARD_SPEC.md](./MIGRATION_DASHBOARD_SPEC.md) — the `/admin/migration` dashboard (complete; only write-up of that page)
+- [PROJECTS_GRAPH_FILTERING_SPEC.md](./PROJECTS_GRAPH_FILTERING_SPEC.md) — workspace graph scope filters

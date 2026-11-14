@@ -1,5 +1,10 @@
 <!-- docs/research/spend-and-speed-audit-2026-09-25.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-10-23; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Spend and speed audit (2026-09-25)
 
 Scope: where BuildOS LLM money and time go, and which fixes are cheap. Sources:

@@ -655,8 +655,8 @@ export interface DailyBriefNotificationPreferences {
 
 ## Related Documentation
 
-- **Refactor Analysis:** `/thoughts/shared/research/2025-10-16_notification-preferences-refactor-analysis.md`
-- **Implementation Phases:** `/thoughts/shared/research/2025-10-16_notification-preferences-refactor-implementation-phases.md`
+- **Refactor Analysis:** [`2025-10-16_notification-preferences-refactor-analysis.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-16_notification-preferences-refactor-analysis.md)
+- **Implementation Phases:** [`2025-10-16_notification-preferences-refactor-implementation-phases.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-16_notification-preferences-refactor-implementation-phases.md)
 - **Migration Files:** `/supabase/migrations/20251016_00*_*.sql`
 - **Daily Briefs API:** [daily-briefs.md](./daily-briefs.md)
 - **Notification System Overview:** `/apps/web/docs/features/notifications/README.md`

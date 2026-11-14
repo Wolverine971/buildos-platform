@@ -371,11 +371,11 @@ Do not increase cadence by lowering the proof bar. If there are no receipts, cap
 
 The current 6-week campaign already gives you the cross-platform content thesis, hooks, demos, and rough post angles:
 
-- [6-Week Guerrilla Seed Campaign](/Users/djwayne/buildos-platform/docs/marketing/social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md)
+- [6-Week Guerrilla Seed Campaign](./publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md)
 
 The channel roles are already defined here:
 
-- [BuildOS Marketing Strategy 2026](/Users/djwayne/buildos-platform/docs/marketing/strategy/buildos-marketing-strategy-2026.md)
+- [BuildOS Marketing Strategy 2026](../strategy/buildos-marketing-strategy-2026.md)
 
 This platform growth plan tells you how each channel should turn that into growth behavior.
 

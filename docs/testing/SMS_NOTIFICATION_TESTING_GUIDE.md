@@ -1016,7 +1016,7 @@ All of the following should pass:
 ### Related Documentation
 
 - Complete Test Guide: `apps/web/tests/manual/test-sms-click-tracking.md`
-- Main Tracking Spec: `thoughts/shared/research/2025-10-06_22-08-35_notification-tracking-system-spec.md`
+- Main Tracking Spec: [`2025-10-06_22-08-35_notification-tracking-system-spec.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-06_22-08-35_notification-tracking-system-spec.md)
 - SMS Design Doc: `docs/architecture/SMS_NOTIFICATION_CHANNEL_DESIGN.md`
 
 ---

@@ -10,7 +10,7 @@
 **Created:** 2026-09-13  
 **Closed:** 2026-09-14, at DJ's direction to defer calendar work and move on.  
 **Disposition:** The investigation and focused repair batch are complete, and Task 90 is removed from the active queue. Four further repairs passed **371 distinct focused worker tests**, source/test types, and lint. The latest focused diagnostic passed **12/12 turns** across Cases 8/9/14. The last complete gate remains failed at **45/52**; closure does not change its outcome or claim release acceptance. See the [phase 2 findings and evidence](CHAT_WORKFLOW_TASK90_PHASE2_REPAIRS_2026-09-14.md) and [previous full-gate result](CHAT_WORKFLOW_TASK90_GATE_RESULT_2026-09-14.md).  
-**Coordinates with:** [81](../../../tasker/81-chat-workflow-implementation-program.md), [82](../../../tasker/82-chat-workflow-regression-repairs.md), [84](../../../tasker/84-chat-workflow-delivery-and-stall-visibility.md), and [89](../../../tasker/89-chat-workflow-integration-acceptance.md).
+**Coordinates with:** [81](https://github.com/Wolverine971/buildos-platform/blob/b3968cb4cd5a/tasker/81-chat-workflow-implementation-program.md), [82](https://github.com/Wolverine971/buildos-platform/blob/b3968cb4cd5a/tasker/82-chat-workflow-regression-repairs.md), [84](https://github.com/Wolverine971/buildos-platform/blob/b3968cb4cd5a/tasker/84-chat-workflow-delivery-and-stall-visibility.md), and [89](https://github.com/Wolverine971/buildos-platform/blob/b3968cb4cd5a/tasker/89-chat-workflow-integration-acceptance.md).
 
 **Completed work:** The requested failure write-up and independent fresh-context
 analysis are complete. Both investigate causes and multiple remedies before further
@@ -28,7 +28,7 @@ recommendation remains unselected.
 ## Residual ownership
 
 - **Calendar — deferred by DJ:** retain the Case 10 buffer/overlap findings in
-  [82](../../../tasker/82-chat-workflow-regression-repairs.md) and the phase 2 report. Do no further
+  [82](https://github.com/Wolverine971/buildos-platform/blob/b3968cb4cd5a/tasker/82-chat-workflow-regression-repairs.md) and the phase 2 report. Do no further
   calendar implementation or testing until that work is resumed.
 - **Grounding — follow-up under 82:** Case 14 r2 turn
   `93390441-8559-4ee9-999a-f2ae569eac11` inferred no revision from a sparse change

@@ -233,8 +233,8 @@ ORDER BY created_at DESC;
 
 - [Full Documentation](README.md)
 - [Architecture Guide](ARCHITECTURE.md)
-- [API Reference](/apps/web/src/routes/api/chat/README.md)
-- [Tool Development Guide](/apps/web/src/lib/chat/TOOL_DEVELOPMENT.md)
+- API Reference
+- Tool Development Guide
 
 ## 💡 Pro Tips
 

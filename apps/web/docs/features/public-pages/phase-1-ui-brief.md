@@ -2,13 +2,13 @@
 title: Public Pages Phase 1 — End-User UI Design Brief
 status: Draft (v3 — locked for implementation)
 author: DJ (via Claude audit, 2026-04-16; v2 expanded same day with panel surfacing + views + comments; v3 locks in author-controls + URL format + mobile parity)
-source_task: [buildos-strat-tasks.md T2](../../../../buildos-strat-tasks.md) (End-user publish UX audit)
+source_task: [buildos-strat-tasks.md T2](../../../../../buildos-strat-tasks.md) (End-user publish UX audit)
 related_strategy:
-  - [buildos-strat.md §3.1 Public Pages as a First-Class Distribution Surface](../../../../buildos-strat.md)
-  - [buildos-strat-tasks.md T12 — Phase 1 end-user publish UI](../../../../buildos-strat-tasks.md)
-  - [buildos-strat-tasks.md T13 — Made with BuildOS attribution](../../../../buildos-strat-tasks.md)
-  - [buildos-strat-tasks.md T30 — URL migration /p/{user_name}/{slug}](../../../../buildos-strat-tasks.md)
-  - [docs/marketing/brand/brand-guide-1-pager.md](../../../../docs/marketing/brand/brand-guide-1-pager.md)
+  - [buildos-strat.md §3.1 Public Pages as a First-Class Distribution Surface](../../../../../buildos-strat.md)
+  - [buildos-strat-tasks.md T12 — Phase 1 end-user publish UI](../../../../../buildos-strat-tasks.md)
+  - [buildos-strat-tasks.md T13 — Made with BuildOS attribution](../../../../../buildos-strat-tasks.md)
+  - [buildos-strat-tasks.md T30 — URL migration /p/{user_name}/{slug}](../../../../../buildos-strat-tasks.md)
+  - [docs/marketing/brand/brand-guide-1-pager.md](../../../../../docs/marketing/brand/brand-guide-1-pager.md)
   - [Inkprint Design System](../../technical/components/INKPRINT_DESIGN_SYSTEM.md)
 codebase_refs:
   - [DocumentModal.svelte](../../../src/lib/components/ontology/DocumentModal.svelte) — existing publish UI, lines ~2365–2470 and ~3063–3200
@@ -20,7 +20,7 @@ codebase_refs:
   - [DocTreeNode.svelte](../../../src/lib/components/ontology/doc-tree/DocTreeNode.svelte) — Public pill at line 256
   - [DocTreeContextMenu.svelte](../../../src/lib/components/ontology/doc-tree/DocTreeContextMenu.svelte) — right-click menu
   - [projects/[id]/+page.svelte](../../../src/routes/projects/[id]/+page.svelte) — project page, three-dot menu lines 1915–2010, ProjectDocumentsSection import line 1702
-  - [resolve_onto_public_page_slug_prefix migration](../../../../supabase/migrations/20260428000004_add_public_page_slug_parts.sql) — username-prefix derivation
+  - [resolve_onto_public_page_slug_prefix migration](../../../../../supabase/migrations/20260428000004_add_public_page_slug_parts.sql) — username-prefix derivation
 path: apps/web/docs/features/public-pages/phase-1-ui-brief.md
 ---
 

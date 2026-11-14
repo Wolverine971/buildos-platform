@@ -88,8 +88,8 @@ Migration documents typically track:
 1. **Planning** → Plan changes documented in `/development/plans/`
 2. **Implementation** → Work in progress tracked here
 3. **Testing** → Testing procedures in TESTING_CHECKLIST.md
-4. **Completion** → Mark complete and archive
-5. **Archive** → Move to `/docs/archive/` when fully complete
+4. **Completion** → Mark complete
+5. **Retire** → Delete the migration doc when fully complete; git history keeps it (`docs/DOCUMENTATION_GUIDELINES.md`)
 
 ---
 

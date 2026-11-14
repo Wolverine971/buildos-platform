@@ -1827,14 +1827,14 @@ LIMIT 10;
 
 **Research:**
 
-- [PWA Browser Push Notifications Research](/thoughts/shared/research/2025-10-05_15-30-00_pwa-browser-push-notifications-research.md)
-- [Admin User System Research](/thoughts/shared/research/[date]_admin-user-system-research.md)
-- [Daily Brief Notification Research](/thoughts/shared/research/[date]_daily-brief-notification-research.md)
+- [PWA Browser Push Notifications Research](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-05_15-30-00_pwa-browser-push-notifications-research.md)
+- Admin User System Research
+- Daily Brief Notification Research
 
 **Implementation:**
 
-- [Browser Push Implementation (Phase 1)](/docs/architecture/BROWSER-PUSH-IMPLEMENTATION.md)
-- [Notification Worker Implementation](/apps/worker/docs/features/notifications/README.md)
+- Browser Push Implementation (Phase 1)
+- Notification Worker Implementation
 
 ---
 

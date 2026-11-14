@@ -1,0 +1,231 @@
+[
+	{
+		"id": "workspace",
+		"title": "BuildOS",
+		"caption": "A project workspace you can talk to",
+		"kind": "site",
+		"eyebrow": "From rough thought to working project",
+		"headline": "The conversation becomes a place to work.",
+		"insight": "BuildOS brings chat, tasks, documents, and project context into one workspace. Its public Fading Crown demo follows a fictional novel from rough description to a project with recent activity, milestones, and a suggested next move.",
+		"steps": ["Describe the rough idea", "Create the project", "Inspect the saved work"],
+		"branches": [
+			{
+				"title": "A concrete first-use story",
+				"description": "The homepage demonstrates one recognizable book project across chat, task changes, and the resulting workspace."
+			},
+			{
+				"title": "A useful place to return",
+				"description": "Recent activity, upcoming work, and project documents give the next session somewhere specific to begin."
+			},
+			{
+				"title": "Product and identity together",
+				"description": "A warm paper surface, printed labels, and orange accents carry the same visual language from the public site into the application."
+			}
+		],
+		"evidence": [
+			"apps/web/src/lib/components/landing/HomepageV2.svelte: Fading Crown demo sequence and public project surface",
+			"docs/marketing/strategy/project-workspace-rollout-2026-09-10.md: dedicated fictional demo account and screenshot provenance",
+			"apps/web/src/lib/components/projects/desktop/ProjectDesktop.svelte: project workspace"
+		],
+		"gallery": [
+			{
+				"src": "/assets/work/projects/buildos/project-demo.jpg",
+				"alt": "Fading Crown demo project with recent activity, upcoming work, and a suggested next move",
+				"caption": "Actual public demo screenshot, captured August 2026. Fading Crown is a fictional book project."
+			}
+		]
+	},
+	{
+		"id": "conversation",
+		"title": "Chat into work",
+		"caption": "Visible actions, inspectable results",
+		"kind": "flow",
+		"eyebrow": "Agentic chat",
+		"headline": "A reply can change the project—and show what changed.",
+		"insight": "A request to move a writing block travels through real tools to a saved task. The chat presents tool activity and receipts, while the worker adapter reconciles durable messages and events when the browser reconnects.",
+		"steps": ["Ask for a specific change", "Follow tool activity", "Open the updated task"],
+		"branches": [
+			{
+				"title": "Receipts beside the conversation",
+				"description": "Tool results describe concrete project and entity changes, so a user can inspect the work behind the answer."
+			},
+			{
+				"title": "Streaming with a durable record",
+				"description": "The interface separates temporary text previews from saved assistant text and deduplicates semantic events during reconciliation."
+			},
+			{
+				"title": "Honest failure states",
+				"description": "Stop, reconnect, retry, and uncertain writes have dedicated handling instead of being flattened into a success message."
+			}
+		],
+		"evidence": [
+			"apps/web/src/lib/components/agent/agent-chat-worker-ui-adapter.ts: AgentChatWorkerUiAdapter, durable text, generations and event deduplication",
+			"apps/web/src/lib/components/agent/agent-chat-tool-presenter.test.ts: tool presentation cases",
+			"apps/worker/src/workers/agentic-chat/mutations/receipt-builders.ts: canonical entity and edge receipts",
+			"apps/web/static/home/case-schedule-chat-light.jpg: public demo task update receipt"
+		],
+		"gallery": [
+			{
+				"src": "/assets/work/projects/buildos/schedule-chat-demo.jpg",
+				"alt": "Demo chat requesting a Thursday afternoon writing block with an Updated task receipt",
+				"caption": "Actual public demo: a scheduling request produces a task-update receipt. Historical capture; no speed claim."
+			},
+			{
+				"src": "/assets/work/projects/buildos/chat-receipt-demo.jpg",
+				"alt": "BuildOS chat receipt confirming creation of the Fading Crown project",
+				"caption": "Actual public demo project-creation receipt and resulting summary."
+			}
+		]
+	},
+	{
+		"id": "connected-work",
+		"title": "Connected work",
+		"caption": "Goals, plans, tasks, documents",
+		"kind": "app",
+		"eyebrow": "Project structure",
+		"headline": "The task keeps the context that makes it useful.",
+		"insight": "BuildOS gives goals, plans, tasks, milestones, and documents their own editable surfaces and relationships. A task board sits alongside a document tree, with activity and document versions making changes inspectable over time.",
+		"steps": ["Set the goal", "Connect the plan and tasks", "Keep supporting documents nearby"],
+		"branches": [
+			{
+				"title": "A working board",
+				"description": "Backlog, in-progress, scheduled, and overdue work are visible in the public demo, including the writing and beta-reader tasks from the conversation."
+			},
+			{
+				"title": "Documents with history",
+				"description": "Document trees, version history, and comparison views support work that develops through revisions."
+			},
+			{
+				"title": "Relationships are real data",
+				"description": "Mutation receipts verify the source, target, and project of a saved relationship, rather than treating links as decorative lines."
+			}
+		],
+		"evidence": [
+			"apps/web/src/lib/components/project/v2/TaskKanbanBoard.svelte: task board",
+			"apps/web/src/lib/components/project/ProjectDocumentsSection.svelte: document tree and inherited document shelf",
+			"apps/web/src/lib/components/ontology/DocumentVersionHistoryPanel.svelte: document history",
+			"apps/web/src/lib/components/ontology/DocumentComparisonView.svelte: document comparison",
+			"apps/worker/src/workers/agentic-chat/mutations/receipt-builders.ts: edge_link receipt validation and carry_goal_id_argument"
+		],
+		"gallery": [
+			{
+				"src": "/assets/work/projects/buildos/task-board-demo.jpg",
+				"alt": "Actual Fading Crown task board with backlog, in-progress, scheduled, and overdue columns",
+				"caption": "Public demo task board, August 2026. The companion document composition is an explanatory interface study."
+			}
+		]
+	},
+	{
+		"id": "sharing",
+		"title": "People & permissions",
+		"caption": "Human access and agent access",
+		"kind": "community",
+		"eyebrow": "Collaboration with explicit boundaries",
+		"headline": "Invite the person. Decide what their agents can do.",
+		"insight": "Project sharing distinguishes owner, editor, and viewer roles from a person's agent access. Invitations by email or handle, expiring links, and optional restricted project access make those boundaries visible in the interface.",
+		"steps": [
+			"Invite by handle, email, or link",
+			"Choose a role and agent access",
+			"Review or revoke access"
+		],
+		"branches": [
+			{
+				"title": "Two separate decisions",
+				"description": "Agent access can be Off, Read, or Write. Write requires an editing role; the interface fits agent access to the selected human role."
+			},
+			{
+				"title": "An invitation has a lifecycle",
+				"description": "Project invite links support 1-, 7-, or 30-day expiry, reset, turn-off, and QR display. Handles keep the underlying email private."
+			},
+			{
+				"title": "A shared project still has an owner",
+				"description": "The collaboration surface includes member management, ownership handoff, notification preferences, and restrictions for external agents."
+			}
+		],
+		"evidence": [
+			"apps/web/src/lib/components/project/ProjectCollaborationModal.svelte: separate member and agent rights, ownership handoff, restricted access",
+			"apps/web/src/lib/components/project/ProjectInviteLinkPanel.svelte: invite-link expiry, reset, off, and QR display",
+			"apps/web/src/lib/components/people/people-copy.ts: agentAccessAllowed, fitAgentAccessToRole, INVITE_LINK_DAY_CHOICES"
+		],
+		"status": "Example permissions"
+	},
+	{
+		"id": "execution",
+		"title": "Work that persists",
+		"caption": "Worker lifecycle and integrations",
+		"kind": "operations",
+		"eyebrow": "Engineering behind the interaction",
+		"headline": "The browser is a window onto the work, not its lifetime.",
+		"insight": "Worker-owned chat turns maintain execution identity, saved events, and recoverable state outside the browser. Separate background jobs handle calendar synchronization and briefs, while the Agent work surface organizes active work and history.",
+		"steps": [
+			"Queue and claim the work",
+			"Persist activity and results",
+			"Reconcile the interface"
+		],
+		"branches": [
+			{
+				"title": "Ownership with a heartbeat",
+				"description": "A worker renews a turn lease and stops acting when it loses ownership. Recovery and cancellation have explicit paths for failed or stopped work."
+			},
+			{
+				"title": "External changes need receipts",
+				"description": "The mutation layer distinguishes confirmed results from uncertain writes; calendar jobs distinguish permanent failures from retryable responses."
+			},
+			{
+				"title": "Useful integrations, visible work",
+				"description": "Calendar sync connects project events to scheduling. Brief jobs and the Agent work panel extend the workspace beyond a single conversation."
+			}
+		],
+		"evidence": [
+			"apps/worker/src/workers/agentic-chat/turn/turn-lease.ts: AgenticChatTurnLeaseKeeper and isFresh",
+			"apps/worker/src/workers/agentic-chat/host/stalled-recovery.ts: recovery sweep",
+			"apps/web/src/lib/components/agent/agent-chat-worker-ui-adapter.ts: reconcile durable state and execution generations",
+			"apps/worker/src/workers/calendar/calendarSyncWorker.ts: processCalendarSyncJob and non-retryable responses",
+			"apps/worker/src/workers/brief/briefWorker.ts: brief jobs",
+			"apps/web/src/lib/components/agent/WorkPanel.svelte: recent work, automations, active and history views"
+		],
+		"gallery": [
+			{
+				"src": "/assets/work/projects/buildos/calendar-demo.jpg",
+				"alt": "BuildOS public demo calendar with scheduled writing work",
+				"caption": "Actual public demo calendar surface. Worker lifecycle artwork is a source-backed explanation, not a production log."
+			}
+		]
+	},
+	{
+		"id": "inkprint",
+		"title": "Inkprint",
+		"caption": "A visual language with meaning",
+		"kind": "brand",
+		"eyebrow": "Product design system",
+		"headline": "Paper, ink, and texture give the work a recognizable home.",
+		"insight": "Inkprint defines warm paper and charcoal themes, orange signals, tactile surface weights, and textures with specific meanings. The same canonical stylesheet feeds a public design library, while a generator carries its theme into the mobile work in progress.",
+		"steps": [
+			"Define semantic tokens",
+			"Compose working surfaces",
+			"Carry the system across platforms"
+		],
+		"branches": [
+			{
+				"title": "Texture communicates intent",
+				"description": "Bloom signals ideation, Grain execution, Thread relationships, and Grid writable surfaces. The portfolio specimens reuse those source patterns."
+			},
+			{
+				"title": "A bench with lighter sheets",
+				"description": "The app frame and page surfaces use different tones, crisp edges, and contact shadows to create hierarchy without heavy decoration."
+			},
+			{
+				"title": "One source, multiple surfaces",
+				"description": "A sync script generates the public CSS library. Mobile theme generation is implemented; the native app is still in development."
+			}
+		],
+		"evidence": [
+			"apps/web/src/lib/styles/inkprint.css: canonical tokens, semantic textures, bench and sheet, weight system",
+			"apps/web/scripts/sync-inkprint-design-library.mjs: public modular CSS generation",
+			"scripts/mobile/generate-inkprint-theme.mjs: native token generation",
+			"apps/mobile/src/theme/inkprint.generated.ts: generated mobile theme",
+			"docs/marketing/brand/brand-guide-1-pager.md: category, voice, and real-media direction"
+		],
+		"status": "Web design system; native app in development"
+	}
+]

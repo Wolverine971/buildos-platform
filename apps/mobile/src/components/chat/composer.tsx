@@ -53,8 +53,10 @@ export type ComposerProps = {
 	error: string | null;
 	onDismissError: () => void;
 	placeholder: string;
-	/** Dev screenshots: open the keyboard when this is set; a new value focuses again. */
+	/** Opens the keyboard when this is set; a new value focuses again. */
 	autoFocus?: string | null;
+	/** Put in the box once when it arrives (or changes); the person finishes and sends it. */
+	initialText?: string | null;
 	/** Rides on the box, above the error line: the "didn't finish" strip. */
 	above?: ReactNode;
 };
@@ -67,6 +69,7 @@ export function Composer({
 	onDismissError,
 	placeholder,
 	autoFocus = null,
+	initialText = null,
 	above
 }: ComposerProps) {
 	const ink = useInk();
@@ -78,8 +81,14 @@ export function Composer({
 	// The chat is a full-screen modal, so the box rests on the screen's bottom edge: the
 	// keyboard covers exactly the window below its top, no measuring needed.
 	const lift = useKeyboardOverlap(dockRef, { restsOnScreenBottom: true });
-	const [text, setText] = useState('');
+	const [text, setText] = useState(initialText ?? '');
 	const [focused, setFocused] = useState(false);
+	const seededWith = useRef(initialText);
+	useEffect(() => {
+		if (!initialText || seededWith.current === initialText) return;
+		seededWith.current = initialText;
+		setText(initialText);
+	}, [initialText]);
 	const [transcribing, setTranscribing] = useState(false);
 	const [voiceError, setVoiceError] = useState<string | null>(null);
 	const sending = useRef(false);

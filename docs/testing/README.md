@@ -91,3 +91,7 @@ as **not run**, never passing.
 - Keep tool schema/dispatch/capability invariants and reviewed payload budgets. A harmless
   description edit should not require approving a new full-catalog hash.
 - Treat fake database concurrency as orchestration evidence; use two real connections for locks.
+
+## More test docs
+
+- [daily-brief-notification-refactor-tests.md](./daily-brief-notification-refactor-tests.md) — what tests must cover in the daily brief notification pipeline

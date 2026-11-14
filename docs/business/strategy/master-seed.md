@@ -1,5 +1,10 @@
 <!-- docs/business/strategy/master-seed.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2025-12-31; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # 🌐 Build OS: Master Context File
 
 This document serves as the **core context engine** for the Build OS which helps users organize their ideas. It is a framework where brain dumps are organized into projects with tasks associated. It enables LLMs to help users manage projects by gathering context to maintain alignment, organization, and congruence.

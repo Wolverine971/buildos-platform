@@ -531,7 +531,7 @@ Going from 4 weekly active users to 40 requires:
 - [Welcome Sequence Strategy](../strategy/buildos-welcome-sequence.md) — Email lifecycle design
 - [Brand Guide 1-Pager](../brand/brand-guide-1-pager.md) — Brand reference
 - [Brand Audit Framework](../brand/BUILDOS_BRAND_AUDIT_FRAMEWORK.md) — Audit workflow
-- [Onboarding First Braindump Rebuild Spec](../../apps/web/docs/features/onboarding/ONBOARDING_FIRST_BRAINDUMP_REBUILD_SPEC.md) — Activation fix spec
+- [Onboarding First Braindump Rebuild Spec](../../../apps/web/docs/features/onboarding/ONBOARDING_FIRST_BRAINDUMP_REBUILD_SPEC.md) — Activation fix spec
 
 ---
 

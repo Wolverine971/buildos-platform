@@ -1,5 +1,10 @@
 <!-- docs/specs/PROJECT_EMOJI_PLAN_2026-10-01.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-10-23; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Project Emojis (2026-10-01)
 
 DJ's ask: the Projects tiles show initials ("BE" for Beyond Exit Planning). Replace them with two

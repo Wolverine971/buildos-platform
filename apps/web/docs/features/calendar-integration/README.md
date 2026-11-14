@@ -87,7 +87,7 @@ invalidate the verified calendar route lifecycle.
 ## 🎯 Calendar Analysis Flow - Improvement Recommendations
 
 > **Research Date**: 2025-10-06
-> **Full Research**: `/thoughts/shared/research/2025-10-06_02-30-00_calendar-analysis-flow-audit.md`
+> **Full Research**: [`2025-10-06_02-30-00_calendar-analysis-flow-audit.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-06_02-30-00_calendar-analysis-flow-audit.md)
 
 ### Executive Summary
 
@@ -464,11 +464,11 @@ Decision criteria:
 
 ### 📚 Additional Resources
 
-**Full Research Document**: `/thoughts/shared/research/2025-10-06_02-30-00_calendar-analysis-flow-audit.md`
+**Full Research Document**: [`2025-10-06_02-30-00_calendar-analysis-flow-audit.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-06_02-30-00_calendar-analysis-flow-audit.md)
 
 **Related Documentation**:
 
-- Project Deduplication Infrastructure: `/thoughts/shared/research/2025-10-06_02-00-00_project-deduplication-research.md`
+- Project Deduplication Infrastructure: [`2025-10-06_02-00-00_project-deduplication-research.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-06_02-00-00_project-deduplication-research.md)
 - Calendar Analysis Implementation: `calendar-analysis-implementation-status.md`
 - Past Tasks Bug Fix: `PAST_TASKS_BUG_FIX.md`
 

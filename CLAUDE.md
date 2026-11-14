@@ -41,10 +41,13 @@ pnpm gen:all
 
 - `apps/web` — SvelteKit 2/Svelte 5 app on Vercel.
 - `apps/worker` — Express queue worker and scheduler on Railway.
+- `apps/mobile` — Expo iPhone app; a thin client over the web API (`apps/mobile/AGENTS.md`).
 - `packages/shared-types` — generated database and API types.
 - `packages/smart-llm` — model routing through OpenRouter with provider fallbacks.
 - `packages/shared-agent-ops` and `packages/agentic-chat-runtime` — shared agent operations and
   runtime contracts.
+- `packages/agentic-chat-client` and `packages/api-client` — chat client core and typed API client
+  shared by web and mobile.
 - `packages/buildos-mcp-server` — local bridge to the remote BuildOS MCP connector.
 - `supabase/migrations` — PostgreSQL schema changes; Supabase Auth and RLS protect user data.
 

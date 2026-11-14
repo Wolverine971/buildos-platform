@@ -269,7 +269,7 @@ The trap: spreading craft effort uniformly. The right move: invest disproportion
 
 ### 3. Inkprint Design System As The Craft-Token Enforcement Layer
 
-[Inkprint](../../../../apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md) is BuildOS's craft-token layer. The framing improves how it's positioned:
+[Inkprint](../../../../../apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md) is BuildOS's craft-token layer. The framing improves how it's positioned:
 
 - Inkprint is the calm-software design system — texture-based, halftone-inspired, field-notes-coded. Structurally the opposite of Material Design's confetti. Lean into the contrast publicly.
 - Tokens are the spec; the application is the craft. A `bg-card` and `tx-bloom` are the door's hinges; how they combine on a specific screen is the swing.

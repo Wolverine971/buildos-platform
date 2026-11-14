@@ -12,7 +12,7 @@ through explicit, reversible cohorts.
 [`AGENTIC_CHAT_WORKER_REALTIME_MIGRATION_PLAN_2026-07-29.md`](./AGENTIC_CHAT_WORKER_REALTIME_MIGRATION_PLAN_2026-07-29.md)
 § Phase 6  
 **Phase 5 record:**
-[`tasker/57-worker-phase5-reliability-hardening.md`](../../tasker/57-worker-phase5-reliability-hardening.md)
+[`tasker/57-worker-phase5-reliability-hardening.md`](https://github.com/Wolverine971/buildos-platform/blob/c6ff210ee36a/tasker/57-worker-phase5-reliability-hardening.md)
 
 ## 1. The one thing to preserve
 

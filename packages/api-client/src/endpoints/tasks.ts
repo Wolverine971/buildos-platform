@@ -39,7 +39,17 @@ export function createTaskEndpoints(http: BuildOsHttp) {
 				method: 'DELETE',
 				body: input,
 				...options
-			})
+			}),
+
+		/** POST /api/onto/tasks/[id]/restore — bring back an archived or deleted task (Undo). */
+		restore: (taskId: string, options?: RequestOptions) =>
+			http.request<Pick<TaskWriteResponse, 'task'>>(
+				`/api/onto/tasks/${encode(taskId)}/restore`,
+				{
+					method: 'POST',
+					...options
+				}
+			)
 	};
 }
 

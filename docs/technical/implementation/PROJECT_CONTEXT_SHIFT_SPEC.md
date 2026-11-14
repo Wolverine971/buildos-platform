@@ -929,9 +929,9 @@ Navigate through context history:
 
 - [Intelligent Project Creation Docs](/apps/web/docs/features/ontology/INTELLIGENT_PROJECT_CREATION.md)
 - [CRUD Tools Implementation](/apps/web/docs/features/ontology/CRUD_TOOLS_IMPLEMENTATION.md)
-- [ChatInterface Component](/apps/web/src/lib/components/agent/ChatInterface.svelte)
-- [Agent Stream API](/apps/web/src/routes/api/agent/stream/+server.ts)
-- [Chat Context Service](/apps/web/src/lib/services/chat-context-service.ts)
+- [ChatInterface Component](https://github.com/Wolverine971/buildos-platform/blob/fddac8c43063/apps/web/src/lib/components/agent/ChatInterface.svelte)
+- [Agent Stream API](https://github.com/Wolverine971/buildos-platform/blob/cae4fe5ed3ae/apps/web/src/routes/api/agent/stream/%2Bserver.ts)
+- [Chat Context Service](https://github.com/Wolverine971/buildos-platform/blob/cab64225c16d/apps/web/src/lib/services/chat-context-service.ts)
 
 ---
 

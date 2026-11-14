@@ -431,7 +431,7 @@ The two methods are bookends of the same research practice. The interview reveal
 
 ### 8. Inkprint and the Krug "Halve the Words" Rule
 
-The [Inkprint design system](../../../apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md) has texture, restraint, and field-notes coding as its design language. The Krug "halve the words" rule is the corrective for any BuildOS surface where copy has accreted: marketing site, onboarding, settings descriptions, error messages, success messages.
+The [Inkprint design system](../../../../apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md) has texture, restraint, and field-notes coding as its design language. The Krug "halve the words" rule is the corrective for any BuildOS surface where copy has accreted: marketing site, onboarding, settings descriptions, error messages, success messages.
 
 Audit pass: pick 5 surfaces, run a word-count, halve, ship. Then halve again on the next pass. Most BuildOS surfaces have 30-50% more copy than they should.
 

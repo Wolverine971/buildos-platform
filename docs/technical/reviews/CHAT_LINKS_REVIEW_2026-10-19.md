@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/CHAT_LINKS_REVIEW_2026-10-19.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-10-23; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Chat links review: fix list
 
 This is a review of `e51ee923e` (resume links and Back), `07e0f60a2` (share links) and the follow-up

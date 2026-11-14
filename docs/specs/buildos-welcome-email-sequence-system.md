@@ -12,7 +12,7 @@
 - `docs/marketing/brand/brand-guide-1-pager.md` (voice, visual)
 - `docs/marketing/growth/growth-audit-2026-04-09.md` (production emergency context)
 - `docs/architecture/diagrams/QUEUE-SYSTEM-FLOW.md`
-- Source architecture from 9takes: [`/Users/djwayne/9takes/docs/specs/email-welcome-sequence-system.md`](/Users/djwayne/9takes/docs/specs/email-welcome-sequence-system.md)
+- Source architecture from 9takes: `/Users/djwayne/9takes/docs/specs/email-welcome-sequence-system.md`
 
 This spec adapts the 9takes welcome-sequence architecture to BuildOS. The target is a production-grade, queue-driven lifecycle sequence that enrolls every **new** BuildOS signup, sends the first email immediately, schedules the remaining emails by timestamp, branches off fresh product state, tracks delivery and engagement, and avoids duplicate sends under cron concurrency.
 

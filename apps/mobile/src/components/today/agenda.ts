@@ -14,14 +14,23 @@ import type {
 export const TODAY_TASK_BUCKETS: { key: TodayTaskBucket; label: string }[] = [
 	{ key: 'due_today', label: 'Due today' },
 	{ key: 'starts_today', label: 'Starts today' },
+	{ key: 'due_soon', label: 'Due this week' },
+	{ key: 'new', label: 'New' },
 	{ key: 'in_progress', label: 'In progress' }
 ];
 
 const BUCKET_RANK: Record<TodayTaskBucket, number> = {
 	due_today: 0,
 	starts_today: 1,
-	in_progress: 2
+	due_soon: 2,
+	new: 3,
+	in_progress: 4
 };
+
+/** A bucket a newer server adds sorts last instead of breaking the order. */
+function bucketRank(bucket: string): number {
+	return BUCKET_RANK[bucket as TodayTaskBucket] ?? 99;
+}
 
 /** An all-day event, shown as a pill above the schedule. */
 export type AllDayEntry = {
@@ -255,7 +264,7 @@ export function buildAgenda(feed: TodayFeed): TodayAgenda {
 
 	schedule.sort((a, b) => a.sortMs - b.sortMs);
 	anytime.sort(
-		(a, b) => BUCKET_RANK[a.bucket] - BUCKET_RANK[b.bucket] || a.title.localeCompare(b.title)
+		(a, b) => bucketRank(a.bucket) - bucketRank(b.bucket) || a.title.localeCompare(b.title)
 	);
 	return { allDay, schedule, anytime };
 }
@@ -402,4 +411,3 @@ export function describeDegraded(sections: readonly TodayFeedDegradedSection[]):
 	const text = `${sections.map((section) => DEGRADED_LABEL[section] ?? section).join(', ')} may be incomplete.`;
 	return text.charAt(0).toUpperCase() + text.slice(1);
 }
-

@@ -1,10 +1,10 @@
-<!-- research-library/transcripts/lennys-podcast.md -->
+<!-- docs/research-library/transcripts/lennys-podcast.md -->
 
 ## Skill Combo Links
 
 This source contributes to these multi-source skill combo indexes:
 
-- [Sales And Growth Skill Combos](../../docs/research/youtube-library/skill-combo-indexes/SALES_AND_GROWTH.md): AI-native product growth operations
+- [Sales And Growth Skill Combos](../../research/youtube-library/skill-combo-indexes/SALES_AND_GROWTH.md): AI-native product growth operations
 
 https://www.youtube.com/watch?v=k-H4nsOTuxU
 

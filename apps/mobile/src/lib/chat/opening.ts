@@ -16,12 +16,15 @@ export function initialStage(input: {
 	sessionId: string | null;
 	/** Dev demo states that want a specific stage. */
 	demo?: string | null;
+	/** Opened with words already typed (Today's follow-up, close-out): straight to the chat. */
+	draft?: string | null;
 }): ChatStage {
 	if (input.demo === 'pick') return 'pick';
 	if (input.demo === 'projects') return 'projects';
 	// Any other demo state is a chat: `idle` is the empty chat right after choosing.
 	if (input.demo) return 'chat';
 	if (input.sessionId) return 'chat';
+	if (input.draft?.trim()) return 'chat';
 	return input.target.type === 'project' ? 'chat' : 'pick';
 }
 

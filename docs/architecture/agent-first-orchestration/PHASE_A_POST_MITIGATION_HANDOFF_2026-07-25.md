@@ -387,7 +387,7 @@ Do not run either paid route command while auditing.
 5. [`A1_ROUTE_RESULTS.md`](./A1_ROUTE_RESULTS.md) — route experiment history.
 6. [`NEXT_ITERATION.md`](./NEXT_ITERATION.md) — current operational stop.
 7. [`A2_PROGRESS.md`](./A2_PROGRESS.md) — built-but-blocked workflow state.
-8. [`results/README.md`](../../../packages/agent-orchestrator/src/testing/harness/results/README.md)
+8. [`results/README.md`](https://github.com/Wolverine971/buildos-platform/blob/e16b39a3ae73/packages/agent-orchestrator/src/testing/harness/results/README.md)
    — canonical result index.
 
 Implementation surfaces:

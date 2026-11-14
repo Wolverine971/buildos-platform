@@ -687,19 +687,19 @@ Expected:
 
 ### Implementation Specs
 
-- [AGENT_CHAT_ONTOLOGY_INTEGRATION_SPEC.md](/Users/annawayne/buildos-platform/docs/technical/implementation/AGENT_CHAT_ONTOLOGY_INTEGRATION_SPEC.md) - Original Phase 1 spec
-- [AGENT_CHAT_ONTOLOGY_INTEGRATION_SPEC_PHASES_2-5.md](/Users/annawayne/buildos-platform/docs/technical/implementation/AGENT_CHAT_ONTOLOGY_INTEGRATION_SPEC_PHASES_2-5.md) - Future phases
+- [AGENT_CHAT_ONTOLOGY_INTEGRATION_SPEC.md](../../../../../docs/technical/implementation/AGENT_CHAT_ONTOLOGY_INTEGRATION_SPEC.md) - Original Phase 1 spec
+- [AGENT_CHAT_ONTOLOGY_INTEGRATION_SPEC_PHASES_2-5.md](../../../../../docs/technical/implementation/AGENT_CHAT_ONTOLOGY_INTEGRATION_SPEC_PHASES_2-5.md) - Future phases
 
 ### Ontology System Docs
 
 - [Ontology README](/apps/web/docs/features/ontology/README.md) - Overview
 - [Data Models](/apps/web/docs/features/ontology/DATA_MODELS.md) - Database schema
-- [Implementation Summary](/apps/web/docs/features/ontology/IMPLEMENTATION_SUMMARY.md) - CRUD operations
+- [Implementation Summary](../chat-system/IMPLEMENTATION_SUMMARY.md) - CRUD operations
 
 ### Research & Planning
 
-- [Ontology Naming Conventions Analysis](/thoughts/shared/research/2025-11-04_ontology-naming-conventions-analysis.md)
-- [Template Management Phase 2](/thoughts/shared/research/2025-11-04_22-40-00_template-management-phase2-implementation.md)
+- [Ontology Naming Conventions Analysis](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-11-04_ontology-naming-conventions-analysis.md)
+- [Template Management Phase 2](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-11-04_22-40-00_template-management-phase2-implementation.md)
 
 ---
 

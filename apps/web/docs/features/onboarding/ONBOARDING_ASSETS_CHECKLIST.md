@@ -534,7 +534,7 @@ Once assets are created, update the component files to reference them:
 If you need clarification on any asset specs or have questions about implementation:
 
 - Check component files for placeholder comments
-- Review implementation plan: `thoughts/shared/research/2025-10-03_14-45-00_onboarding-revamp-implementation-plan.md`
+- Review implementation plan: [`2025-10-03_14-45-00_onboarding-revamp-implementation-plan.md`](https://github.com/Wolverine971/buildos-platform/blob/b5f9841e07f9/thoughts/shared/research/2025-10-03_14-45-00_onboarding-revamp-implementation-plan.md)
 - Review original spec: `apps/web/docs/features/onboarding/build-os-onboarding-revamp.md`
 
 ---

@@ -72,5 +72,5 @@ restated routing gate.
 
 - [`PHASE_A_FALSIFICATION_PLAN.md`](./PHASE_A_FALSIFICATION_PLAN.md) — pre-registered rule + closure amendment
 - [`A1_HUMAN_LABEL_PACKET.md`](./A1_HUMAN_LABEL_PACKET.md) — the label exercise and per-item results
-- [`results/analysis/ROUTE_REANALYSIS.md`](../../../packages/agent-orchestrator/src/testing/harness/results/analysis/ROUTE_REANALYSIS.md)
+- [`results/analysis/ROUTE_REANALYSIS.md`](https://github.com/Wolverine971/buildos-platform/blob/e16b39a3ae73/packages/agent-orchestrator/src/testing/harness/results/analysis/ROUTE_REANALYSIS.md)
 - [`research/SYNTHESIS.md`](./research/SYNTHESIS.md) — the dossier that predicted "eval cannot decide"

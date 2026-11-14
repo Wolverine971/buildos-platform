@@ -7,7 +7,7 @@
 
 # Procedural Phase Generation – Implementation Status (October 2025)
 
-This document captures the current status of the procedural phase-generation redesign, summarizes what has been implemented, and outlines the remaining work needed to satisfy the full specification (`thoughts/shared/research/2025-10-12_22-51-12_phase-generation-procedural-redesign-spec.md`).
+This document captures the current status of the procedural phase-generation redesign, summarizes what has been implemented, and outlines the remaining work needed to satisfy the full specification ([`2025-10-12_22-51-12_phase-generation-procedural-redesign-spec.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-12_22-51-12_phase-generation-procedural-redesign-spec.md)).
 
 ---
 

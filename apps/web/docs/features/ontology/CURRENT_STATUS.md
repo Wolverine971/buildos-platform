@@ -416,7 +416,7 @@ description, state ✅ GoalEditModal.svelte // Edit priority, target date, crite
 
 - **[TYPE_KEY_TAXONOMY.md](./TYPE_KEY_TAXONOMY.md)** - Complete type key reference
 - **[Data Models](./DATA_MODELS.md)** - Database schema documentation
-- **[Migration System Design](../../../thoughts/shared/research/2025-12-10_migration-system-design.md)** - Migration architecture
+- **[Migration System Design](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-12-10_migration-system-design.md)** - Migration architecture
 - **[TEMPLATE_FREE_ONTOLOGY_SPEC.md](./TEMPLATE_FREE_ONTOLOGY_SPEC.md)** - Template removal spec
 
 ---

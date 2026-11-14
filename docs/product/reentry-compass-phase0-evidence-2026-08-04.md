@@ -8,7 +8,7 @@
 # Re-entry Compass — Phase 0 Evidence Report
 
 **Date:** 2026-08-04
-**Tasker:** [43 — Re-entry Compass experiment](../../tasker/43-reentry-compass-experiment.md)
+**Tasker:** [43 — Re-entry Compass experiment](https://github.com/Wolverine971/buildos-platform/blob/df81f97dced3/tasker/43-reentry-compass-experiment.md)
 **Phase:** 0 — baseline, routing, and truth audit (offline; no production UI changed, no LLM in any assembly path)
 **Verdict:** GATE NOT PASSED — see §6. Recommendation: **park the Compass treatment; ship the two preconditions instead** (§8).
 

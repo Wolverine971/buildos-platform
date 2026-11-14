@@ -7,9 +7,9 @@
 **Context**: Timezone Data Consistency and Performance Optimization
 **Related Documents**:
 
-- Research: `/thoughts/shared/research/2025-10-13_timezone-centralization-COMPLETE.md`
-- Initial Analysis: `/thoughts/shared/research/2025-10-13_04-55-45_overlapping-notification-preferences-analysis.md`
-- Progress Doc: `/thoughts/shared/research/2025-10-13_17-07-51_timezone-centralization-implementation-progress.md`
+- Research: [`2025-10-13_timezone-centralization-COMPLETE.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-13_timezone-centralization-COMPLETE.md)
+- Initial Analysis: [`2025-10-13_04-55-45_overlapping-notification-preferences-analysis.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-13_04-55-45_overlapping-notification-preferences-analysis.md)
+- Progress Doc: [`2025-10-13_17-07-51_timezone-centralization-implementation-progress.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-13_17-07-51_timezone-centralization-implementation-progress.md)
 - Main Migration: `/supabase/migrations/20251013_centralize_timezone_to_users_table.sql`
 - Cleanup Migration: `/supabase/migrations/20251013_drop_deprecated_timezone_columns.sql`
 
@@ -460,9 +460,9 @@ ALTER TABLE user_notification_preferences DROP COLUMN timezone;
 
 ### Documentation
 
-- Complete Research: `/thoughts/shared/research/2025-10-13_timezone-centralization-COMPLETE.md`
-- Initial Analysis: `/thoughts/shared/research/2025-10-13_04-55-45_overlapping-notification-preferences-analysis.md`
-- Progress Tracking: `/thoughts/shared/research/2025-10-13_17-07-51_timezone-centralization-implementation-progress.md`
+- Complete Research: [`2025-10-13_timezone-centralization-COMPLETE.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-13_timezone-centralization-COMPLETE.md)
+- Initial Analysis: [`2025-10-13_04-55-45_overlapping-notification-preferences-analysis.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-13_04-55-45_overlapping-notification-preferences-analysis.md)
+- Progress Tracking: [`2025-10-13_17-07-51_timezone-centralization-implementation-progress.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-13_17-07-51_timezone-centralization-implementation-progress.md)
 - Bugfix Log: `/docs/BUGFIX_CHANGELOG.md` - Entry: "Incomplete timezone centralization migration"
 
 ### Database

@@ -133,7 +133,7 @@ Workspace    Project    Goal    Plan    Task    Subtask
 4. Differentiates from flat ChatGPT conversations
 5. No "agentic" baggage
 
-> **See [Zoom Messaging Guide](/apps/web/docs/content/ZOOM_MESSAGING_GUIDE.md) for complete messaging examples.**
+> **See [Zoom Messaging Guide](./ZOOM_MESSAGING_GUIDE.md) for complete messaging examples.**
 
 ### Agentic Chat: Critical Positioning
 

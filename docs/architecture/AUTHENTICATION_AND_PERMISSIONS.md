@@ -98,6 +98,36 @@
     - Logs are visible to members (including owners) via `current_actor_is_project_member`.
     - Public project visibility does not automatically grant log visibility.
 
+## Native app sessions (bearer path)
+
+Added 2026-10-28 for the iPhone app (`apps/mobile`, plan in `docs/specs/MOBILE_APP_PLAN_2026-10-23.md`).
+
+- The web signs in with cookies. The native app keeps its Supabase session on the device
+  (iOS keychain) and sends `Authorization: Bearer <Supabase access token>` on every request.
+- `apps/web/src/hooks.server.ts` decides per request (`locals.authSource`: `'cookie'` or
+  `'bearer'`). A JWT-shaped bearer token (`$lib/server/bearer-auth.ts`) gets a client built by
+  `createSupabaseBearer` that forwards the token for RLS and never reads or writes cookies.
+  `getVerifiedBearerSession` verifies it the same way as the cookie path: signature and claims
+  locally for ordinary reads, a live Auth lookup for mutations and the sensitive route families.
+  A bad or expired bearer token yields no session and never falls back to cookies.
+- Agent credentials (`boca_…`, `bo_…`) travel in the same header but are not JWTs, so they take
+  the cookie path untouched and their routes keep authenticating them as before.
+- Every existing `/api` route therefore works for the phone without per-route changes, because
+  routes only use `locals.safeGetSession()` and `locals.supabase`. Two routes call
+  `supabase.auth.getUser()` directly (`/api/llm-usage/summary`, `/api/admin/llm-usage/stats`);
+  they return no user for a bearer client and need `safeGetSession()` before the app uses them.
+- **Web pages inside the app** (settings, billing, integrations, account deletion) use a session
+  handoff (`$lib/server/auth-handoff.service.ts`): `POST /api/auth/handoff` (bearer only) stores
+  the sha256 of a random 60-second, single-use code in `auth_handoff_codes` (service role only);
+  the in-app browser opens `/auth/handoff?code=…`, which consumes the code in one UPDATE, mints a
+  magic-link token hash on the server with the admin API, verifies it on the cookie client (so
+  the token never leaves the server) and redirects to the page with `?app=1`. App mode
+  (`$lib/server/app-mode.ts`, cookie `buildos_app`) hides the site navigation and footer.
+- Universal links: `/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json`
+  are served from env (`PRIVATE_IOS_APP_IDS`, `PRIVATE_ANDROID_PACKAGE`,
+  `PRIVATE_ANDROID_SHA256_FINGERPRINTS`) and return 404 until configured; they claim only the
+  paths the app renders natively (`$lib/server/app-site-association.ts`).
+
 ## Drift risks and failure points
 
 - Missing `onto_actors` row: `current_actor_id()` returns null and RLS denies access.

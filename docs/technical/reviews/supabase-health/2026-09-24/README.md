@@ -2,7 +2,7 @@
 
 # Supabase health baseline — 2026-09-24
 
-Read-only evidence for [Tasker 104](../../../../../tasker/104-supabase-fitness-sizing-and-efficiency.md).
+Read-only evidence for [Tasker 104](https://github.com/Wolverine971/buildos-platform/blob/df81f97dced3/tasker/104-supabase-fitness-sizing-and-efficiency.md).
 Start with the [decision brief](../../SUPABASE_FITNESS_DECISION_2026-09-24.md) or
 [detailed audit](../../SUPABASE_FITNESS_AUDIT_2026-09-24.md).
 

@@ -18,11 +18,11 @@ polling only while running), and Markdown/ZIP exports with `flow.mmd`, `agents/<
 tests and `web check` pass; the inspector was browser-checked read-only on the pilot session
 `d104deef…`. No paid runs, no QA gate, no worker/schema changes; per-attempt prompts remain
 not persisted and are reported as coverage. Status and remaining items are in
-[Task 91](../../../tasker/91-workflow-lab-audit-and-export.md#implementation-status-2026-09-20).
+[Task 91](https://github.com/Wolverine971/buildos-platform/blob/b3968cb4cd5a/tasker/91-workflow-lab-audit-and-export.md#implementation-status-2026-09-20).
 
 **Workflow inspection handoff, September 20:** DJ tested Workflow Lab and requested log links,
 an admin-style multi-agent flow inspector, and chat/flow/evidence export for another agent to
-reverse-engineer a run. [Task 91](../../../tasker/91-workflow-lab-audit-and-export.md) is a ready
+reverse-engineer a run. [Task 91](https://github.com/Wolverine971/buildos-platform/blob/b3968cb4cd5a/tasker/91-workflow-lab-audit-and-export.md) is a ready
 implementation handoff with source map, data/coverage contract, and acceptance criteria. Existing
 `ChatSessionAuditActions` and `AgentChatModal.onSessionChange` provide the lab link/export entry;
 the session audit API still needs the workflow-specific records. This update creates the task,

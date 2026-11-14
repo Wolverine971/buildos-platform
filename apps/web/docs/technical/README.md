@@ -61,3 +61,12 @@ Documentation is automatically generated where possible and should be updated wh
 - Database schema evolves
 - New services are added
 - Architecture decisions are made
+
+## More reference docs
+
+- [PWA_PULL_TO_REFRESH.md](./PWA_PULL_TO_REFRESH.md) — rules for the installed-app pull-to-refresh gesture
+- [TOAST_SYSTEM.md](./components/TOAST_SYSTEM.md) — toast notification API
+- [codebase-inventory-tool.md](./audits/codebase-inventory-tool.md) — how to run the codebase inventory / duplicate finder
+- [supabase-auth-permissions-validation.md](./deployment/runbooks/supabase-auth-permissions-validation.md) — SQL checks for shared-project access, invites and RLS
+- [CALENDAR_EVENT_TRACKING.md](./calendar/CALENDAR_EVENT_TRACKING.md) — organizer/attendee tracking on task calendar events (Oct 2025; the phase-generation section is obsolete)
+- [AGENT_CHAT_MINIMIZE_TO_NOTIFICATION_SPEC_2026-07-10.md](./audits/AGENT_CHAT_MINIMIZE_TO_NOTIFICATION_SPEC_2026-07-10.md) — spec for minimizing chat into the notification stack (built; its research section cites the removed stream route)

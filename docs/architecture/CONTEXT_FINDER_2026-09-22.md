@@ -217,8 +217,10 @@ for DJ's account first. It reuses this core unchanged. The UX spec is
 - `turn-provider.ts`: the finder starts before live vision and tool selection and runs
   concurrently with them. The event is yielded before the first provider pass, so it arrives
   before any answer text. `on` appends `renderContextEvidenceBlock` via `appendSystemInstruction`.
-- Config: `AGENTIC_CHAT_CONTEXT_FINDER_CHAT=off|shadow|chips|on` (default off) and
-  `AGENTIC_CHAT_CONTEXT_FINDER_CHAT_USER_IDS` (a comma-separated allowlist; empty ranks nobody).
+- Config: `AGENTIC_CHAT_CONTEXT_FINDER_CHAT_USER_IDS` (a comma-separated allowlist, or `*` for
+  everyone; empty ranks nobody). Allowlisted users always get `on` (chips plus injection).
+  The `AGENTIC_CHAT_CONTEXT_FINDER_CHAT` mode switch and `AGENTIC_CHAT_CONTEXT_FINDER_BROAD` were
+  retired on 2026-10-25 (tasker 136); the worker no longer reads them.
   Wired through `bootstrap.ts` → `composition-root.ts`. Independent of the specialist flag.
 
 **Shared types**

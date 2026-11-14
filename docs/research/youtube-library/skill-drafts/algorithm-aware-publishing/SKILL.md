@@ -364,8 +364,8 @@ Distilled from three Kallaway videos, one Kallaway email source, and two BuildOS
 
 Cross-linked to BuildOS internal essays:
 
-- [`apps/web/src/content/blogs/philosophy/social-media-is-dead-interest-media.md`](../../../../apps/web/src/content/blogs/philosophy/social-media-is-dead-interest-media.md) — the BuildOS interest-media diagnosis. Same diagnosis as Kane, opposite chair: Kane writes for the creator who must succeed inside the regime; BuildOS writes for the human who must protect their mind from it. The dual audit in this skill is the reconciliation.
-- [`apps/web/src/content/blogs/philosophy/your-morning-without-the-algorithm.md`](../../../../apps/web/src/content/blogs/philosophy/your-morning-without-the-algorithm.md) — felt-experience companion to the interest-media manifesto.
+- [`apps/web/src/content/blogs/philosophy/social-media-is-dead-interest-media.md`](../../../../../apps/web/src/content/blogs/philosophy/social-media-is-dead-interest-media.md) — the BuildOS interest-media diagnosis. Same diagnosis as Kane, opposite chair: Kane writes for the creator who must succeed inside the regime; BuildOS writes for the human who must protect their mind from it. The dual audit in this skill is the reconciliation.
+- [`apps/web/src/content/blogs/philosophy/your-morning-without-the-algorithm.md`](../../../../../apps/web/src/content/blogs/philosophy/your-morning-without-the-algorithm.md) — felt-experience companion to the interest-media manifesto.
 
 Three external sources sharpen specific points without changing the skill's structure:
 

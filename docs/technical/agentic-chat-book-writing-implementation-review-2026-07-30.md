@@ -431,28 +431,28 @@ The final run completed all four turns. It demonstrated:
 
 ### Project identity and creation policy
 
-- [`apps/web/src/lib/services/agentic-chat/project-domain-profiles.ts`](../../apps/web/src/lib/services/agentic-chat/project-domain-profiles.ts)
-- [`apps/web/src/lib/services/agentic-chat/project-domain-profiles.test.ts`](../../apps/web/src/lib/services/agentic-chat/project-domain-profiles.test.ts)
+- [`apps/web/src/lib/services/agentic-chat/project-domain-profiles.ts`](https://github.com/Wolverine971/buildos-platform/blob/5f69e79bdc87/apps/web/src/lib/services/agentic-chat/project-domain-profiles.ts)
+- [`apps/web/src/lib/services/agentic-chat/project-domain-profiles.test.ts`](https://github.com/Wolverine971/buildos-platform/blob/5f69e79bdc87/apps/web/src/lib/services/agentic-chat/project-domain-profiles.test.ts)
 
 ### Domain and skill routing
 
 - [`apps/web/src/lib/services/agentic-chat/tools/domains/domain-sensing.ts`](../../apps/web/src/lib/services/agentic-chat/tools/domains/domain-sensing.ts)
-- [`apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts`](../../apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts)
-- [`apps/web/src/routes/api/agent/v2/stream/+server.ts`](../../apps/web/src/routes/api/agent/v2/stream/+server.ts)
+- [`apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts`](https://github.com/Wolverine971/buildos-platform/blob/dc4bc3560767/apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts)
+- [`apps/web/src/routes/api/agent/v2/stream/+server.ts`](https://github.com/Wolverine971/buildos-platform/blob/9ba640d4bd90/apps/web/src/routes/api/agent/v2/stream/%2Bserver.ts)
 
 ### Runtime mutation and execution integrity
 
-- [`apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/index.ts`](../../apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/index.ts)
-- [`apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/repair-instructions.ts`](../../apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/repair-instructions.ts)
-- [`apps/web/src/lib/services/agentic-chat/execution/tool-execution-service.ts`](../../apps/web/src/lib/services/agentic-chat/execution/tool-execution-service.ts)
-- [`apps/web/src/lib/services/agentic-chat-v2/tool-execution-context.ts`](../../apps/web/src/lib/services/agentic-chat-v2/tool-execution-context.ts)
+- [`apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/index.ts`](https://github.com/Wolverine971/buildos-platform/blob/9ba640d4bd90/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/index.ts)
+- [`apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/repair-instructions.ts`](../../packages/agentic-chat-runtime/src/loop/repair-instructions.ts)
+- [`apps/web/src/lib/services/agentic-chat/execution/tool-execution-service.ts`](https://github.com/Wolverine971/buildos-platform/blob/9ba640d4bd90/apps/web/src/lib/services/agentic-chat/legacy-execution/tool-execution-service.ts)
+- [`apps/web/src/lib/services/agentic-chat-v2/tool-execution-context.ts`](https://github.com/Wolverine971/buildos-platform/blob/a81b8d116176/apps/web/src/lib/services/agentic-chat-v2/tool-execution-context.ts)
 
 ### Story skill and final-answer constraints
 
 - [`apps/web/src/lib/services/agentic-chat/tools/skills/definitions/fiction_story_craft/SKILL.md`](../../apps/web/src/lib/services/agentic-chat/tools/skills/definitions/fiction_story_craft/SKILL.md)
 - [`apps/web/src/lib/services/agentic-chat/tools/skills/definitions/fiction_story_craft/evals.md`](../../apps/web/src/lib/services/agentic-chat/tools/skills/definitions/fiction_story_craft/evals.md)
-- [`apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/synthesis-context.ts`](../../apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/synthesis-context.ts)
-- [`apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/finalization-runner.ts`](../../apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/finalization-runner.ts)
+- [`apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/synthesis-context.ts`](https://github.com/Wolverine971/buildos-platform/blob/9ba640d4bd90/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/synthesis-context.ts)
+- [`apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/finalization-runner.ts`](https://github.com/Wolverine971/buildos-platform/blob/9ba640d4bd90/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/finalization-runner.ts)
 
 ### End-to-end scenario
 

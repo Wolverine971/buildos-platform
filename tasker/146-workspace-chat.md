@@ -2,13 +2,13 @@
 
 # 146 — Workspace chat: the Workspace becomes the agent's home surface
 
-**Status:** RESEARCHED (round 2 added "the you layer", 2026-10-23), NOT STARTED · **Priority:** P1 · **Opened:** 2026-10-23 · **Size:** lean ~2–3 days, ambitious ~1.5–2 weeks  
-**Owner:** Claude · **Needs from DJ to start:** the open questions at the bottom (lead with Q1), then lean or ambitious  
+**Status:** Round 3 SHIPPED in DJ's `e672aad3d` (pushed 2026-10-24 12:33; worker redeployed). Round 4 (2026-10-24): About you REMOVED in DJ's `4ba85ee34` (pushed 13:17; all 3 Railway services redeployed it). About you was live 12:34–13:17 with zero messages from affected users · **Priority:** P1 · **Opened:** 2026-10-23  
+**Owner:** Claude · **Needs from DJ:** OK for the paid battery slice under "Build status"
 **Explainer (DJ's real data, sortable):** https://claude.ai/artifact/2EuzUqpHFr3hh5DPCZpjyU. DJ's card picks and gate verdicts save to its `picks` and `gate` collections; read them with `ArtifactData list` before building.
 
 ## What users get
 
-One home chat that knows three things: **you** (who you are, what you're working toward), **your loose stuff** (notes, docs, tasks in the Workspace) and **all your projects**. You can ask "what's in my Workspace?", "file that pricing note into BuildOS", "anything here that should be a project?" or "what should I do today?", and it answers from all three. Project chat stays focused on one project, but it can still save to or find things in the Workspace when you ask.
+One home chat that knows two things: **your loose stuff** (notes, docs, tasks in the Workspace) and **all your projects**, plus your recent conversations. It learns anything about you from the conversation itself, and asks when it needs something like your location. You can ask "what's in my Workspace?", "file that pricing note into BuildOS", "anything here that should be a project?" or "what should I do today?", and it answers from all three. Project chat stays focused on one project, but it can still save to or find things in the Workspace when you ask.
 
 ## DJ direction (2026-10-23)
 
@@ -17,6 +17,29 @@ One home chat that knows three things: **you** (who you are, what you're working
 Round 2 (DJ, 2026-10-23), on the person layer:
 
 > "It contains relevant information about the person who the user is… there's a long tail of things relevant to the user that might not come up… I don't want to go crazy with keeping track of all these erroneous, irrelevant details about a person, and I also don't want those to necessarily get loaded in because it may not be relevant to the chat… A lot of times when I chat with an agent, it refers to things it already knows about me, and it thinks it's helping me out, but it's actually irrelevant… Let's at least keep track of what qualifies as what should be housed in the workspace and what's accessible."
+
+Round 3 (DJ, 2026-10-23), answers to Q1–Q3 and Q6:
+
+> "When I open the workspace chat, it should have a high-level view of things I've talked about in the past and anything that's timely, pressing, or urgent. We should have a high-level view of my recent projects that I've been working on, stuff like that."
+>
+> "I'm not sure about the About You page. I think it should evolve over time: that which is important about a person. I'm not sure what we should keep track of right now."
+>
+> "I don't want the chat to say, 'Remember this.' Make conversation. It should bring up stuff that's relevant, but the user should be guiding the direction of the chat. BuildOS should kind of infer what's going on."
+>
+> "Also, do the ambitious version."
+
+What round 3 changed (DJ's call is final; the risk is noted once in "Round 3 design" below):
+
+- **Q1 → the opening view.** Workspace chat opens with a "lay of the land": recent conversations, what's pressing, recent projects, and the Workspace shelf. It is background for the model, never recited.
+- **Q2/Q3 → About you is inferred, not asked.** No "Remember this?" cards and no fixed headings. A background job reads the user's own chat messages and keeps a short About you note that evolves; chat never asks to save anything. F11 is reversed. The note stays visible and editable in the Workspace, so a wrong guess can be fixed (the 10-23 survey found DJ's old behavioral seed was wrong).
+- **Q4 (not answered) → inferred.** Priorities come from what the user actually works on (recent projects by activity), not a list they maintain.
+- **Q6 → ambitious.**
+
+Round 4 (DJ, 2026-10-24), after seeing what About you looks for:
+
+> "I don't like any of this for what it looks for… whatever you're focused on is relevant based on whatever the chat is. Scheduling constraints are just based on whatever the chat is. If you need to know my location, you can ask for my location… I don't know how much value adding an About Us section adds. I think what matters more is the workspace just having a parking lot for ideas, like a holding ground that you can periodically analyze… and maybe group it into projects."
+
+What round 4 changed: **About you is removed** (writer job, 6-hourly sweep, per-turn gate, note format, shelf row, exclusions, eval script). Chat learns focus, schedule and location from the conversation, and asks when it needs one. The opening view, Workspace tools and cards stay. Why removing beat testing: 0 of 129 users set the Preferences tab, DJ judged every section irrelevant, so a test would measure a note that would stay nearly empty, and the risk is exactly the round 2 complaint. The full build is in `e672aad3d` if it's ever wanted back. The `about_you_refresh` enum value stays in `queue_type` (applied; harmless, like other retired job types). Chat never read the Preferences tab (0 users set it); a separate session removed the tab with DJ's OK on 10-25.
 
 Standing rules from the Workspace build: turning loose items into a project is **suggestion only**, and the agent **suggests and never auto-files**.
 
@@ -77,15 +100,15 @@ Three surveys: code (every user-level store, file:line), production data (read-o
 
 ### What exists: four stores, none read by chat
 
-| Store                                                                                                                       | Built             | Production (10-23)                                                                                                                       | Chat reads?                                                                                                                                                                                  | Verdict                                    |
-| --------------------------------------------------------------------------------------------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| `user_context` (old onboarding answers)                                                                                     | 2025              | 33 rows; raw answers ~75% filled, parsed fields 2–5 of 33; 1 row touched in 90 days                                                      | No (admin/email/export only)                                                                                                                                                                 | DEAD                                       |
-| `user_behavioral_profiles`                                                                                                  | `20260213000000`  | 7 onboarding seeds, never refined (session_count 0, confidence 0.1). DJ's says "New User… did not create any projects… first chat"        | No; chat stopped reading it in `1f83ac854` (04-14 prompt slimming)                                                                                                                            | BUILT-BUT-UNUSED, **wrong for DJ**         |
-| `users.preferences` (style, length, proactivity, role, domain)                                                              | `20260301000000`  | **0 of 129** set                                                                                                                         | No (removed 04-14). `PreferencesTab.svelte:11` and `:237` still promise it's "injected into all AI conversations"                                                                          | DEAD, **UI makes a false promise**         |
-| Living KB (`user_profiles`, `profile_documents`/`_fragments`/`_embeddings`…) + `profileSignalProcessor.ts` extraction      | `20260427000000`  | **0 rows** in all 7 tables. Extraction is gated on `extraction_enabled` (default false) and no UI creates a profile                       | No; `get_user_profile_overview` executor deleted in `a63be9294` (09-23), tool still in catalog and `people_context` SKILL.md                                                                  | BUILT-BUT-UNUSED                           |
-| Contacts memory (`user_contacts*`) + `contactSignalProcessor.ts`                                                            | `20260428000000`  | 0 contacts (manual Contacts tab is live but unused)                                                                                      | No (tools worker-unavailable, no executor)                                                                                                                                                   | Manual LIVE, agentic BUILT-BUT-UNUSED      |
-| `users.onboarding_intent` / `onboarding_stakes`                                                                             | v3 onboarding     | 19 of 129 (organize 11, plan 4, explore 3, unstuck 1)                                                                                     | No. `onboarding.config.ts:304` promises "We'll be extra careful and precise" for high stakes; nothing honors it                                                                              | LIVE for onboarding/email only             |
-| `users.name` / `timezone`                                                                                                   | —                 | 129 names; **111 timezones are the UTC default**, 18 real                                                                                | **Yes** (`context-loader.ts:3242-3282`, `build-lite-prompt.ts:584`, `:635-639`)                                                                                                              | LIVE                                       |
+| Store                                                                                                                 | Built            | Production (10-23)                                                                                                                 | Chat reads?                                                                                                                  | Verdict                               |
+| --------------------------------------------------------------------------------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `user_context` (old onboarding answers)                                                                               | 2025             | 33 rows; raw answers ~75% filled, parsed fields 2–5 of 33; 1 row touched in 90 days                                                | No (admin/email/export only)                                                                                                 | DEAD                                  |
+| `user_behavioral_profiles`                                                                                            | `20260213000000` | 7 onboarding seeds, never refined (session_count 0, confidence 0.1). DJ's says "New User… did not create any projects… first chat" | No; chat stopped reading it in `1f83ac854` (04-14 prompt slimming)                                                           | BUILT-BUT-UNUSED, **wrong for DJ**    |
+| `users.preferences` (style, length, proactivity, role, domain)                                                        | `20260301000000` | **0 of 129** set                                                                                                                   | No (removed 04-14). `PreferencesTab.svelte:11` and `:237` still promise it's "injected into all AI conversations"            | DEAD, **UI makes a false promise**    |
+| Living KB (`user_profiles`, `profile_documents`/`_fragments`/`_embeddings`…) + `profileSignalProcessor.ts` extraction | `20260427000000` | **0 rows** in all 7 tables. Extraction is gated on `extraction_enabled` (default false) and no UI creates a profile                | No; `get_user_profile_overview` executor deleted in `a63be9294` (09-23), tool still in catalog and `people_context` SKILL.md | BUILT-BUT-UNUSED                      |
+| Contacts memory (`user_contacts*`) + `contactSignalProcessor.ts`                                                      | `20260428000000` | 0 contacts (manual Contacts tab is live but unused)                                                                                | No (tools worker-unavailable, no executor)                                                                                   | Manual LIVE, agentic BUILT-BUT-UNUSED |
+| `users.onboarding_intent` / `onboarding_stakes`                                                                       | v3 onboarding    | 19 of 129 (organize 11, plan 4, explore 3, unstuck 1)                                                                              | No. `onboarding.config.ts:304` promises "We'll be extra careful and precise" for high stakes; nothing honors it              | LIVE for onboarding/email only        |
+| `users.name` / `timezone`                                                                                             | —                | 129 names; **111 timezones are the UTC default**, 18 real                                                                          | **Yes** (`context-loader.ts:3242-3282`, `build-lite-prompt.ts:584`, `:635-639`)                                              | LIVE                                  |
 
 Also: `users.bio` 0 filled; no age/location/role columns; `builder_profiles` has DJ's location and "now" line (public page only). Personal goals don't exist anywhere (`onto_goals.project_id` NOT NULL). The richest unused source is chat history: 716 sessions have summaries, 709 have topic tags.
 
@@ -110,12 +133,12 @@ Global chat has had **3 users ever; 479 of 524 user messages are DJ's**. Last 30
 
 **Four homes** (the "what qualifies" test DJ asked for):
 
-| Home           | Test                                                                                             | Examples from DJ's data                                                                                     |
-| -------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| Project        | Belongs to one effort with an outcome                                                            | "Dan was unavailable, who's next" → note on the call-list task; "Promote BuildOS" → BuildOS project goal; founder story (Marine, pastor's kid) → BuildOS marketing doc |
-| Workspace item | Something to do, keep or read later, with no effort to attach to yet                             | Gun-action callback (task); AI Taste Buds (seed note); Radar (reference folder)                              |
-| About you      | Still true in three months **and** would change answers in chats about other things               | Works later in the day; new baby, time is tight; outcome-first answers; Glen Burnie; interviewing for FDE roles (dated) |
-| Don't keep     | A passing state, a guess about the person, or something the system can look up                   | "Struggling with organization" (Feb feeling); "Tools: Gmail…" (connected accounts); the wrong behavioral seed; age by default; never "owns firearms" from an errand |
+| Home           | Test                                                                                | Examples from DJ's data                                                                                                                                                |
+| -------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Project        | Belongs to one effort with an outcome                                               | "Dan was unavailable, who's next" → note on the call-list task; "Promote BuildOS" → BuildOS project goal; founder story (Marine, pastor's kid) → BuildOS marketing doc |
+| Workspace item | Something to do, keep or read later, with no effort to attach to yet                | Gun-action callback (task); AI Taste Buds (seed note); Radar (reference folder)                                                                                        |
+| About you      | Still true in three months **and** would change answers in chats about other things | Works later in the day; new baby, time is tight; outcome-first answers; Glen Burnie; interviewing for FDE roles (dated)                                                |
+| Don't keep     | A passing state, a guess about the person, or something the system can look up      | "Struggling with organization" (Feb feeling); "Tools: Gmail…" (connected accounts); the wrong behavioral seed; age by default; never "owns firearms" from an errand    |
 
 **Personal goals** = the order of efforts across everything ("Priorities") plus goals no project holds. Project goals stay in projects; About you never copies them. Priorities is the one section BuildOS shouldn't guess.
 
@@ -140,6 +163,92 @@ Global chat has had **3 users ever; 479 of 524 user messages are DJ's**. Last 30
 
 **Eval before launch (paid, needs DJ's OK):** 30–50 of DJ's real global messages plus planted irrelevant facts, with and without the gate. Count the irrelevant-mention rate (leaks) and the missed-use rate (it should have used Schedule and didn't). Jev labels are cheap; the reply leg uses the acting model (`AGENTIC_CHAT_OPENROUTER_MODEL` in `.env.agentic-gate.local`). Estimate from that model's last measured spend before asking.
 
+## Round 3 design (built 2026-10-23; About you removed in round 4)
+
+**Opening view ("lay of the land").** Workspace chat already loaded pressing work (overdue, due soon, upcoming, with totals) and every project by recent activity. It now also loads, beside the context RPC (no added round trip):
+
+- **Recent conversations:** up to 8 chats from the last 21 days, any context, one topic line each: the title, else the summary's first sentence, else the user's own opening message. The current chat is left out. Most recent chats have no summary (summaries only exist after a chat is closed), so the user's own words carry most lines.
+- **The Workspace shelf:** the 8 newest loose items with ids, the loose total, and up to 4 open suggestions.
+- A global rule: it's background. Pick up a thread, or raise something pressing when it bears on the request or the user asks broadly. "The user steers: never open with a recap or change the subject to them."
+
+Calendar and brief chats now carry the Workspace id and a one-line save rule (F8). Snapshot version bumped to 8.
+
+**About you, inferred (REMOVED 2026-10-24, kept for the record).** One doc in the Workspace (`document.context.about_you`), format `## heading` + `- line _(Oct 2026)_`.
+
+- **Writer:** worker job `about_you_refresh`. A sweep every 6 hours queues cohort members who chatted in the last 30 hours; the job runs the model at most once per 20 hours and only after 3+ new user messages. It reads only the user's own messages (never assistant replies), the current note, the lines the user deleted, and project names (so project facts stay in projects). One JSON call on GPT-6 Luna → DeepSeek V4 Flash, capped at $0.01. The prompt's test: still true in 3 months, changes answers elsewhere, not held by a project; never sensitive traits unless asked, never facts implied by an errand.
+- **Merge rules:** lines the user deleted never come back; lines the user typed always stay; at most 6 sections × 5 lines; dated when first noted. If the user edits the note during a run, the run backs off.
+- **Reader** (every chat turn, worker): the user's own settings (the Preferences tab and onboarding stakes, which were promised but never read) plus the note's "How you like answers" section are always on. Every other section is gated: a separate small Jev call asks one yes/no per section, "would a good answer change because of this?", threshold 0.6, at most 3 sections. It runs beside the context finder with a 2 s deadline and fails open. The block is appended after the user message and says to use it silently and mention a fact only when it changes the recommendation.
+- **Gate cohort:** the finder's allowlist (DJ only today). Everyone else gets only the always-on part, which needs no model.
+- **Kept out of:** Jev's project cards and ranked records, the brief's Loose Ends, Workspace suggestions, the opening view's shelf, and Organize moves.
+- **No chip.** DJ removed the "Looking in" chips on 09-25 as distracting, so About you has no chip either. The gate's picks are logged in `llm_usage_logs` (operation `agentic_chat_about_you_gate`) for checking instead.
+
+**Rollout:** dark until `ABOUT_YOU_USER_IDS` is set on the worker (a comma list, or `*`). Suggested first value: DJ's id.
+
+## Build status (built 2026-10-23; shipped in DJ's `e672aad3d` + `4ba85ee34`)
+
+**Built:**
+
+- **Opening view:** `context/lay-of-the-land.ts` (runtime), plus `buildLayOfTheLandLines` and two global rules in `build-lite-prompt.ts`. `currentSessionId` is passed from admission and prewarm, and the snapshot cache version is 8. It was checked read-only against production for DJ: 9 recent chats came back, the first-message select works, and the shelf is empty.
+- **F8:** calendar and brief chats carry the Workspace id, plus a one-line save rule.
+- **About you (REMOVED in round 4, `4ba85ee34`):**
+    - **Note format:** `shared-agent-ops/ontology/about-you.ts` (subpath export).
+    - **Writer:** `apps/worker/src/workers/about-you/` (job, sweep, cohort), registered in `worker.ts` and on the `scheduler.ts` cron `23 */6 * * *`.
+    - **Gate:** `context-finder/about-you.ts`. The worker port `provider/chat-about-you.ts` is wired through bootstrap, composition-root and turn-provider.
+    - **Exclusions:** finder loads, the brief's Loose Ends, Workspace suggestions, the Workspace shelf/home, and Organize (pinned).
+    - **Migration** `20261024030000_about_you_refresh_queue_type.sql`: rehearsed, APPLIED and recorded.
+- **Tools and cards** (helper):
+    - `list_workspace_suggestions`;
+    - `propose_workspace_filing` → card `workspace_file` (`moveItems`, Undo `undoMoveBatch`);
+    - `propose_workspace_project` → card `workspace_project` (`graduateItems`, Undo `undoGraduate`);
+    - `get_workspace_overview` no longer counts the Workspace.
+    - Global surface caps were raised: web 65,350 chars, worker 58,760 B.
+- **UI** (helper):
+    - "Workspace chat" everywhere;
+    - the chat picker drops the Workspace (Organize's picker keeps it);
+    - the Workspace card opens Workspace chat, and its Chats tab lists Workspace chats;
+    - "Plan my day" opens Workspace chat directly;
+    - ~~an About you row on the shelf; the Preferences tab copy~~ (both reverted in round 4).
+- **Fixed while here:**
+    - `undoGraduate` never dismissed its suggestion: it filtered on `result.project_id`, but the outcome lives at `result.accepted.project_id`.
+    - `turn-preparation.test.ts` still asserted that global chat has no `create_onto_document` (stale since the 10-23 Workspace build).
+- **Eval harness (removed in round 4):** `apps/worker/scripts/about-you-gate-eval.ts` has 20 hand-labeled messages and a note with planted sections. `--dry` is free; `--live` is paid.
+
+**Validation (free):**
+
+- Every touched test file passes. Mine: shared-agent-ops 10, worker About you 17 + 7 + the in-turn placement test, runtime gate 9 + lay-of-the-land 5 + finder 59, web prompt 80. The helpers' runs total about 560.
+- Typecheck is clean for shared-agent-ops, the runtime and the worker.
+- `svelte-check` reports 0 errors and 0 warnings across 9,824 files.
+
+**Not run (paid, needs DJ's OK):**
+
+1. ~~The first About-you refresh~~ and 2. ~~`about-you-gate-eval.ts --live`~~: dropped with About you (round 4).
+2. A `pnpm agentic:prod-battery` slice with Workspace cases. The acting model is `deepseek/deepseek-v4.1-flash`; estimate it from that model's last measured battery before asking.
+
+**Deploy:** done. Web and all three Railway services run `4ba85ee34` (checked 2026-10-25). Next: the paid battery slice, if approved.
+
+**Not done:**
+
+- **Phase 4:** global research capture into the Workspace (rewrites the 340-line `apply_agentic_chat_research_capture`; rare in global chat) and the MCP write-only lane.
+- **Dead stores: cleaned up 2026-10-25 (DJ OK'd), uncommitted.**
+    - Onboarding's stakes question no longer promises behavior: "Pick the closest fit"; options read "Real deadlines and details" / "Something you care about getting done" / "No deadlines, no pressure". Nothing reads the answer beyond onboarding progress.
+    - The behavioral seed writer (`onboarding-profile-seed.service.ts`) and its call are gone. The reactivation-drafts script no longer reads the table. All 7 prod rows were deleted (0 remain; no functions, FKs or triggers used them). The empty table stays.
+    - Living KB: background profile extraction (`profileSignalProcessor.ts` and its classifier hook) and the unused endpoints `/api/profile/me` (root), `/api/profile/chapters`, `/api/profile/fragments` are removed. `user-profile.service.ts` keeps only `ensureUserProfile` and `resolveProfileActorId`, the parent row Contacts and login still need. Contact extraction and its tests stay (`tests/contactSignalProcessor.test.ts`). The empty tables stay.
+    - `get_user_profile_overview` is removed from the catalog, policy, presenter and `people_context` skill; catalog snapshot updated.
+    - `user_context` stays: admin, email and export read it.
+- **Full-page Workspace doc:** its view still opens a project chat (the card data has no `kind`).
+- **Card-bypass guard:** global chat still mounts `create_onto_project` and `move_onto_task`. Only the prompt keeps the model on the cards; a structural guard could come later.
+
+## Workspace battery (paid, DJ-approved, 2026-10-25)
+
+`pnpm agentic:prod-battery --battery=workspace-chat --confirm-prod` against `ae34ca3f1`, acting model `deepseek/deepseek-v4.1-flash`, 6 cases × 3. Cost: **$0.0914** production (58 calls); judge $0 (it never ran). Output: `output/agentic-prod-battery/2026-10-25T20-26-30-407Z/`. Score 19/24.
+
+- **Cases 3, 4, 6 passed 3/3:** filing card, project card (nothing created), project chat stashing a note in the Workspace.
+- **Case 1 failed 3/3, a real bug:** the model correctly chose the Workspace id and set `content_source: 'user_verbatim'`; the shared gateway rejected the save ("Unsupported parameter: content_source"), so nothing was saved. The field was added 2026-10-19 (`9ce2b0e04`) to route verbatim saves to review, but nothing stripped it before the gateway, so every verbatim document create/update failed in any context. No real-user hits found in `chat_turn_events` since 10-19. **Fixed, uncommitted:** normalizer `drop_routing_only_content_source` on create and update (`argument-normalizers.ts`, `tool-catalog.ts`) + regression test in `agenticChatTableMutationAdapter.test.ts`; 305 worker tests + typecheck green. Needs a worker deploy.
+- **Cases 2 and 5: judge never ran.** `PRIVATE_OPENROUTER_API_KEY` in `.env.agentic-gate.local` returns 401 from OpenRouter (on 10-19 it matched production's key; production's was likely rotated). Deterministic checks passed; by eye the answers are right (case 2 lists exactly the seeded items; case 5 lists the overdue lease first among tasks and never recaps the earlier chat).
+- **Found:** the harness account `agentic-e2e-harness@example.com` is connected to DJ's own Google Calendar (since 2026-09-24, for Cedar House), so broad openers list his real appointments and send them to the test model. `output/` is gitignored.
+- **Judge key fixed (local, gitignored):** both `.env.agentic-prod-battery.local` and `.env.agentic-gate.local` now use the working key from `apps/web/.env` (OpenRouter 200). The preflight now refuses a dead judge key before any spend (`prod-battery.ts`); script tests 25/25.
+- **Rerun after the worker deploy:** cases 1, 2, 5 (`--cases=1,2,5`), 9 turns, about $0.05 (this run measured $0.0051/turn), needs DJ's OK.
+
 ## Forks for DJ (each one is vetoable)
 
 - **F1. Relabel, don't migrate.** Keep the internal type `global` and call it "Workspace chat" in every UI label, history row and the selector. No data migration, and the 85 recent sessions keep working. The alternative is a real `workspace` type: CHECK changes on `chat_sessions` (`context_type`, `chat_type`), plus `agent_runs`/`agent_operatives`, 5 normalizers and analytics. _Rec: relabel._
@@ -151,8 +260,8 @@ Global chat has had **3 users ever; 479 of 524 user messages are DJ's**. Last 30
 - **F7. Captures land in the Workspace when nothing fits.** Global research gets saved as a note there (a TS fallback plus one SQL migration). Checkpoint "about you" notes come later, with F2(c). _Rec: research now, checkpoint later._
 - **F8. Calendar and brief chats get the Workspace id,** so their saves have a home. _Rec: yes, small._
 - **F9. Naming.** Keep internal tool names stable (the model knows them) but fix descriptions and copy so "workspace" only ever means the Workspace in anything a model or person reads. _Rec: copy only._
-- **F10. About you is a visible page the user edits,** pinned in the Workspace, instead of hidden memory. _Rec: visible._ (Q2)
-- **F11. Chat may offer "Remember this?" cards;** nothing saves without a click, and there's no background extraction. _Rec: yes._ (Q3)
+- **F10. About you is a visible page the user edits,** pinned in the Workspace, instead of hidden memory. _Settled (round 3): visible but quiet. BuildOS writes it; it sits in the Workspace (a small row on the shelf, a "Stays" lock in the card) so a wrong guess can be fixed; nobody is asked to maintain it._
+- **F11. ~~Chat may offer "Remember this?" cards~~** _Reversed by DJ (round 3): no cards. BuildOS infers from the user's own messages in the background (`about_you_refresh`). Risk noted once: inferred memory is where over-personalization comes from (96% of ChatGPT memories were unasked). Hardened by: the three-part test in the writer's prompt, a size cap, the user's deletions are permanent, a cheap cohort-only rollout, and the per-turn Jev gate that keeps sections out of turns they don't change._
 - **F12. Retire the dead stores.** Fix or remove the Preferences tab and the onboarding stakes promise now (false promises). Delete the behavioral seeds. Later, drop the living-KB and `user_context` code paths and the dangling `get_user_profile_overview` / contacts tools and `people_context` skill text. Keep the manual Contacts tab for the people layer. _Rec: false promises now, cleanup with the ambitious build._
 - **F13. No graph database.** _Rec: no._ Revisit only if About you pages outgrow a page.
 
@@ -184,13 +293,47 @@ Global chat has had **3 users ever; 479 of 524 user messages are DJ's**. Last 30
 
 ## Open questions for DJ
 
-1. **Describe what you picture when you open Workspace chat.** What's the first thing you ask it, and what should it already know about you without asking?
-2. **About you:** a page you see and edit in the Workspace, or memory that stays behind the scenes?
-3. May chat ask "Remember this?" mid-conversation, or do only you add things?
-4. **Priorities across everything:** will you set the order of your efforts, or should BuildOS infer it from what you work on?
-5. When chat spots loose items that belong together, may it put a "Start a project?" card right in the conversation, or should it only point you to the shelf?
-6. Lean first, or straight to ambitious? (And sort the cards in the explainer; disagreements become the spec.)
+Q1–Q3 and Q6 were answered in round 3 (see "DJ direction"). Q4 is decided as inferred. On Q5, the build lets chat offer a card when the user asks to file or group loose items, or when an open suggestion fits what they're asking. Never mid-topic.
+
+Still open:
+
+1. ~~Who gets About you?~~ Removed in round 4.
+2. **The paid battery slice** (Workspace cases): OK to run it? The two About you checks are gone.
 
 ## Exit
 
 Workspace chat is the name everywhere and it can list, save, file and suggest across you, your loose items and your projects. Graduating stays click-only. Focused tests are green, and an approved paid battery slice passes the Workspace cases with its scorecard saved.
+
+## Find-in-Workspace audit (2026-11-01)
+
+DJ asked whether he can quickly find things in the Workspace and whether Jev is wired in for it.
+
+**State found:**
+
+- Prod has 2 Workspaces and 0 loose items (DJ's included), so nothing has ever been found for real.
+- Jev's chat finder runs for DJ only (`AGENTIC_CHAT_CONTEXT_FINDER_CHAT_USER_IDS` = DJ on the chat worker). Measured over 30 days: $0.00075 per Workspace-chat turn, $0.00058 per project-chat turn. Everyone else relies on the model calling search on its own.
+- Hop 1 does carry a Workspace card. A free simulation over DJ's real 49 projects (~990 records) plus 45 synthetic loose items fits at title cap 40 (75 KB of 88 KB), so Jev sees every Workspace title.
+- Search reaches the Workspace everywhere (SQL, embeddings, tools, MCP for all-projects connectors). Nothing excludes it.
+- Web UI: the /projects box filters in the browser over ≤120 docs + ≤120 open tasks (220-char excerpts; no done tasks, nested docs or full text). No search across everything; `/api/onto/search` works but has no UI outside one project page. The Workspace card has no search and no direct open. Capture toasts don't link to the item.
+
+**Fixed (uncommitted, needs web + worker deploy):**
+
+- Jev's portfolio choice said "the whole workspace" (meaning all projects), so "what's in my Workspace?" could route to a portfolio pulse. Now "all of the user's projects"; the Workspace card rule says requests about what's in it, or for something saved there, concern that card.
+- The injected block called the Workspace "# Project: Workspace" and its pulse was the row's boilerplate. Now it's labelled as the user's Workspace, and the pulse lists what's loose.
+- Workspace chat gets a rule on how to find a saved item (search with the Workspace's project_id); project chats are told the same (F6 was wired but never prompted). The shelf's "more" line says how.
+- Search results said `search_scope: 'workspace'` for all-projects searches; now `'all_projects'`. Prompt "workspace-level" wording now says all projects (F9).
+- The shelf no longer lists docs archived from the tree (`state_key = 'archived'`).
+- Tests: runtime 185, web 217, worker 65 green; runtime typecheck clean.
+
+**Paid check (DJ OK'd, run 2026-11-01):** Jev only (`typesafe/jev-1.13`), DJ's real 49 project cards plus 14 sample loose items, 10 messages × 3 reps, old vs new wording. $0.0671 by receipts, 109 calls. Rows: scratchpad `jev-check/rows.json` (session 99ed4deb).
+
+- Old wording: 21/30. "What's in my workspace?", "show me my loose tasks" and "anything in my workspace that should be its own project?" went to the all-projects pulse every time (Workspace scored 0.9 but was never zoomed).
+- New wording: 28/30. Only "should be its own project?" still picks portfolio 2/3, with the Workspace first in the pulse (0.75–0.77), so the model gets its loose titles from the new pulse text.
+- Find questions: the right note came back first 9/9 (pricing, gifts, podcast). Controls unchanged: portfolio 6/6, a named project 3/3, "thanks" 3/3. Hop 1 + hop 2 p50 328 ms, p90 464 ms.
+
+**Rollout:** `AGENTIC_CHAT_CONTEXT_FINDER_CHAT_USER_IDS=*` set on the chat worker 2026-11-01 (DJ: "open Jev to all users"), so every user's project and Workspace chats get Jev context. The wording fixes still need a web + worker deploy.
+
+**Open:**
+
+- Project chat can find a Workspace item but likely can't edit it: update tools are `context_project`-scoped (`mutations/tool-catalog.ts`), and the fence only lets creates target the Workspace.
+- UI search: DJ chose the ambitious version (2026-11-01). Design spike, three live directions on real titles: https://claude.ai/artifact/RtsmhjirE4UgLZSbu9FzbP (A one box over everything, B ⌘K anywhere, C an always-visible Workspace pane with search plus matches from projects; the spike recommends C, then B's ⌘K as step two). Shared build: one search endpoint over all accessible projects including the Workspace and note text (reuses `onto_search_entities`); a best-match call (hop 1 + hop 2 as its own endpoint, ~$0.0008/search, only for 3+ word queries or thin word matches, fail-open); `?open=kind:id` item links on /projects. Awaiting DJ's pick.

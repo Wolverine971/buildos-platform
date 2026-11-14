@@ -5,7 +5,7 @@
 **Purpose:** run a small, real-money, capped deep-research bake-off (fan-out vs. single deep run)
 against production Supabase to (a) compare research quality/cost and (b) satisfy the tasker/31 WP-2
 live smoke (one `reserved → settled` ledger lifecycle per paid call). First run: 2026-07-20, results
-in [`../../../audits/DEEP_RESEARCH_V01_AUDIT_2026-07-20.md`](../../../audits/DEEP_RESEARCH_V01_AUDIT_2026-07-20.md)
+in [`../../../audits/DEEP_RESEARCH_V01_AUDIT_2026-07-20.md`](../../audits/DEEP_RESEARCH_V01_AUDIT_2026-07-20.md)
 ("Live $2 bake-off"). This runbook exists so the next run is reproducible.
 
 ## Why the setup is the way it is

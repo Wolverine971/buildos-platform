@@ -406,7 +406,7 @@ Instead of naming the chat feature, name the **capability**:
 
 ## Part 7: Messaging Framework
 
-> **See [Zoom Messaging Guide](/apps/web/docs/content/ZOOM_MESSAGING_GUIDE.md) for complete messaging examples.**
+> **See [Zoom Messaging Guide](../../../../docs/marketing/brand/ZOOM_MESSAGING_GUIDE.md) for complete messaging examples.**
 
 ### Primary Message (All Audiences)
 
@@ -593,8 +593,8 @@ ChatGPT                    BuildOS Chat
 
 ## Related Documents
 
-- **[Zoom Messaging Guide](/apps/web/docs/content/ZOOM_MESSAGING_GUIDE.md)** - Complete messaging examples, concept explainer, usage guidelines
-- **[Brand Strategy 2025](/apps/web/docs/content/BRAND_STRATEGY_2025.md)** - Overall positioning and content strategy
+- **[Zoom Messaging Guide](../../../../docs/marketing/brand/ZOOM_MESSAGING_GUIDE.md)** - Complete messaging examples, concept explainer, usage guidelines
+- **[Brand Strategy 2025](../../../../docs/marketing/brand/BRAND_STRATEGY_2025.md)** - Overall positioning and content strategy
 - **[Blog Update Master Plan](/apps/web/docs/content/BLOG_UPDATE_MASTER_PLAN.md)** - Content implementation tracker
 - **[10 Reasons Blog Draft](/apps/web/docs/content/BLOG_DRAFT_10_REASONS_SCOPED_CONVERSATION.md)** - Flagship content example
 

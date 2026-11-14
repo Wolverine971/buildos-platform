@@ -669,7 +669,7 @@ When adding a new entity type, ask:
 - **[README.md](./README.md)** - Main ontology documentation
 - **[CURRENT_STATUS.md](./CURRENT_STATUS.md)** - Implementation status
 - **[API_ENDPOINTS.md](./API_ENDPOINTS.md)** - API reference
-- **[TEMPLATE_TAXONOMY.md](./TEMPLATE_TAXONOMY.md)** - Deliverables catalog
+- **[TEMPLATE_TAXONOMY.md](https://github.com/Wolverine971/buildos-platform/blob/49c35f572d27/apps/web/docs/features/ontology/TEMPLATE_TAXONOMY.md)** - Deliverables catalog
 
 ---
 

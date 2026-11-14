@@ -1,5 +1,10 @@
 <!-- docs/specs/buildos-mcp-permission-requests-plan-2026-09-30.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-10-23; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # BuildOS MCP permission requests implementation plan
 
 Date: September 30, 2026. Revision: 2. Status: ready to begin implementation after independent adversarial review and second-pass approval. This document plans implementation; it does not authorize a production deployment or paid validation.
@@ -10,7 +15,7 @@ A connected agent that can read a BuildOS record can submit a specific proposed 
 
 The first release covers existing document and task edits through the general remote MCP integration and agent-key bridge. Implement documents first as the vertical slice, then tasks before completing the release. The search/fetch data profile stays read-only and directs users to the action-capable connection through setup guidance. This is an explicit surface limitation, not a permission error that approval can fix.
 
-This plan supersedes open choices in the [research note](/Users/djwayne/buildos-platform/docs/research/buildos-mcp-permission-requests-2026-09-30.md). Scope is deliberately bounded so approval previews and execution can agree exactly.
+This plan supersedes open choices in the [research note](../research/buildos-mcp-permission-requests-2026-09-30.md). Scope is deliberately bounded so approval previews and execution can agree exactly.
 
 | Capability      | Allowed fields and behavior                                                                                                                    | Excluded                                                                                                                                                                        |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -215,7 +220,7 @@ The plan is ready for implementation when the adversarial review has no unresolv
 
 ## Adversarial review record
 
-Independent review: [adversarial review and evidence](/Users/djwayne/buildos-platform/docs/technical/reviews/BUILDOS_MCP_PERMISSION_PLAN_REVIEW_2026-09-30.md). First pass found no P0, three P1 gaps, and three P2 clarifications. Revision 2 addresses all six. The independent reviewer reread the revised contracts and returned **ready to begin implementation**, with no unresolved blocking design findings.
+Independent review: [adversarial review and evidence](../technical/reviews/BUILDOS_MCP_PERMISSION_PLAN_REVIEW_2026-09-30.md). First pass found no P0, three P1 gaps, and three P2 clarifications. Revision 2 addresses all six. The independent reviewer reread the revised contracts and returned **ready to begin implementation**, with no unresolved blocking design findings.
 
 | Finding                                  | Revision 2 resolution                                                                                                                                                               |
 | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -232,4 +237,4 @@ Readiness evidence is document/code inspection and two independent review passes
 
 ## Implementation follow-through
 
-Implementation and final adversarial findings are recorded in [the implementation record](/Users/djwayne/buildos-platform/docs/technical/reviews/BUILDOS_MCP_PERMISSION_IMPLEMENTATION_2026-09-30.md). The feature is implemented and disabled; actual task-mover compatibility and live client acceptance remain release gates. No production change or paid test was made.
+Implementation and final adversarial findings are recorded in [the implementation record](../technical/reviews/BUILDOS_MCP_PERMISSION_IMPLEMENTATION_2026-09-30.md). The feature is implemented and disabled; actual task-mover compatibility and live client acceptance remain release gates. No production change or paid test was made.

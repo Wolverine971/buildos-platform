@@ -168,4 +168,4 @@ curl -X DELETE "https://build-os.com/api/onto/task-series/6671bfe9-0a45-4bb2-aa7
 2. **Dynamic generation** – spawn the next occurrence as soon as the current one completes (no large upfront batch).
 3. **Analytics** – surface “N of M completed” in the series card and add filters for series masters/instances.
 
-See `thoughts/shared/research/2025-11-07_recurrence-framework-design.md` for the long-form design notes.
+See [`2025-11-07_recurrence-framework-design.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-11-07_recurrence-framework-design.md) for the long-form design notes.

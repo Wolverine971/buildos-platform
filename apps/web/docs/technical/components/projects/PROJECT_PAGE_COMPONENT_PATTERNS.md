@@ -466,7 +466,7 @@ When creating or updating a component, ensure:
 
 ## Related Documentation
 
-- [Modal Standards](./MODAL_STANDARDS.md)
-- [Service Architecture](./SERVICE_ARCHITECTURE.md)
-- [Store Management](./STORE_MANAGEMENT.md)
-- [Performance Guidelines](./PERFORMANCE.md)
+- [Modal Standards](../MODAL_STANDARDS.md)
+- Service Architecture
+- Store Management
+- [Performance Guidelines](https://github.com/Wolverine971/buildos-platform/blob/f3f9e836f425/apps/web/docs/features/agentic-chat/PERFORMANCE.md)

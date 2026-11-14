@@ -53,16 +53,26 @@ Registered in `src/worker.ts`:
 | -------------------------------- | -------------------------------------------------- |
 | `generate_daily_brief`           | `workers/brief/briefWorker`                        |
 | `generate_brief_audio`           | `workers/briefAudio/briefAudioWorker`              |
+| `run_cycle`                      | `workers/cycle/cycleWorker`                        |
 | `send_notification`              | `workers/notification/notificationWorker`          |
 | `project_activity_batch_flush`   | `workers/notification/projectActivityBatchWorker`  |
 | `schedule_daily_sms`             | `workers/dailySmsWorker`                           |
 | `send_sms`                       | `workers/smsWorker`                                |
 | `classify_chat_session`          | `workers/chat/chatSessionClassifier`               |
+| `capture_chat_checkpoint`        | `workers/chat/checkpoint/checkpointJob`            |
 | `transcribe_voice_note`          | `workers/voice-notes/voiceNoteTranscriptionWorker` |
 | `extract_onto_asset_ocr`         | `workers/assets/assetOcrWorker`                    |
+| `embed_onto_entity`              | `workers/embeddings/embedEntityWorker`             |
+| `extract_task_entities`          | `workers/task-entities/extractTaskEntitiesWorker`  |
+| `table_ai_fill`                  | `workers/tables/tableAiFillWorker`                 |
 | `agent_run`                      | `workers/agent-run/agentRunWorker`                 |
 | `build_project_context_snapshot` | `workers/ontology/projectContextSnapshotWorker`    |
+| `pick_project_emoji`             | `workers/project-emoji/projectEmojiWorker`         |
+| `workspace_suggest`              | `workers/workspace-suggest/workspaceSuggestWorker` |
 | `buildos_project_loop`           | `workers/project-loop/projectLoopWorker`           |
+| `freshness_radar_scan`           | `workers/freshness-radar/signalJob`                |
+| `consolidation_run`              | `workers/consolidation/consolidationJob`           |
+| `user_data_export`               | `workers/export/userDataExportWorker`              |
 | `sync_calendar`                  | `workers/calendar/calendarSyncWorker`              |
 
 Adding a new job type is documented in [`src/workers/README.md`](./src/workers/README.md).
@@ -71,19 +81,18 @@ Adding a new job type is documented in [`src/workers/README.md`](./src/workers/R
 
 Base URL (prod): set via `PUBLIC_RAILWAY_WORKER_URL`. Requests from the web app are authenticated with `PRIVATE_RAILWAY_WORKER_TOKEN`.
 
-| Method | Path                      | Purpose                                   |
-| ------ | ------------------------- | ----------------------------------------- |
-| GET    | `/health`                 | Healthcheck                               |
-| POST   | `/classify/ontology`      | Sync ontology classification (non-queued) |
-| POST   | `/queue/brief`            | Enqueue a daily brief job                 |
-| POST   | `/queue/chat/classify`    | Enqueue chat-session classification       |
-| GET    | `/jobs/:jobId`            | Inspect a job                             |
-| GET    | `/users/:userId/jobs`     | List a user's jobs                        |
-| GET    | `/queue/stats`            | Queue depth + status counts               |
-| GET    | `/queue/stale-stats`      | Stalled-job statistics                    |
-| POST   | `/queue/cleanup`          | Run stale-job cleanup                     |
-| GET    | `/api/email-tracking/:id` | Public email open-tracking pixel          |
-| —      | `/sms/scheduled/*`        | Scheduled-SMS management endpoints        |
+| Method | Path                   | Purpose                                   |
+| ------ | ---------------------- | ----------------------------------------- |
+| GET    | `/health`              | Healthcheck                               |
+| POST   | `/classify/ontology`   | Sync ontology classification (non-queued) |
+| POST   | `/queue/brief`         | Enqueue a daily brief job                 |
+| POST   | `/queue/chat/classify` | Enqueue chat-session classification       |
+| GET    | `/jobs/:jobId`         | Inspect a job                             |
+| GET    | `/users/:userId/jobs`  | List a user's jobs                        |
+| GET    | `/queue/stats`         | Queue depth + status counts               |
+| GET    | `/queue/stale-stats`   | Stalled-job statistics                    |
+| POST   | `/queue/cleanup`       | Run stale-job cleanup                     |
+| —      | `/sms/scheduled/*`     | Scheduled-SMS management endpoints        |
 
 ## Quick Start
 

@@ -1,6 +1,6 @@
 // apps/mobile/src/components/today/sections.tsx
 // Today's sections, matching the web's Today list (TodayAgendaRow, TodayTaskGroups): All day,
-// Schedule with its time rail and "now" line, Anytime today grouped by bucket and project, and
+// Schedule with its time rail and "now" line, the untimed tasks (due this week and new) grouped by bucket and project, and
 // What's waiting for a day with nothing dated.
 import type { TodayProject } from '@buildos/api-client';
 import { Fragment } from 'react';
@@ -39,7 +39,7 @@ export function taskStatus(task: TaskLike, showProgress = true): TaskRowStatus |
 // ---------------------------------------------------------------------------------------------
 // Heads
 
-/** "Anytime today 7": 15/600 title with a mono count on the same baseline. */
+/** "Due this week and new 7": 15/600 title with a mono count on the same baseline. */
 export function SectionHead({
 	title,
 	count,
@@ -57,7 +57,10 @@ export function SectionHead({
 			accessibilityLabel={count != null ? `${title}, ${count}` : title}
 			style={[styles.sectionHead, style]}
 		>
-			<Text maxFontSizeMultiplier={1.4} style={[typeScale.section, { color: colors.foreground }]}>
+			<Text
+				maxFontSizeMultiplier={1.4}
+				style={[typeScale.section, { color: colors.foreground }]}
+			>
 				{title}
 			</Text>
 			{count != null ? <Stamp>{count}</Stamp> : null}
@@ -178,7 +181,9 @@ function NowLine({ label }: { label: string }) {
 				{label}
 			</Text>
 			<View style={styles.nowTrack}>
-				<View style={[styles.nowRule, { backgroundColor: withAlpha(colors.accent, 0.4) }]} />
+				<View
+					style={[styles.nowRule, { backgroundColor: withAlpha(colors.accent, 0.4) }]}
+				/>
 				<View style={[styles.nowDot, { backgroundColor: colors.accent }]} />
 			</View>
 		</View>
@@ -333,7 +338,10 @@ export function ScheduleSection({
 								status={taskStatus(task)}
 								icon={entry.kind === 'event' ? Calendar : undefined}
 								leading={
-									<Rail label={entry.timeLabel} tone={current ? 'accent' : 'muted'} />
+									<Rail
+										label={entry.timeLabel}
+										tone={current ? 'accent' : 'muted'}
+									/>
 								}
 								onPress={task ? () => onOpenTask(task.id) : undefined}
 							/>
@@ -353,10 +361,13 @@ export function AnytimeSection({
 	projectLabel,
 	selectedId,
 	onOpenTask,
-	onOpenProject
+	onOpenProject,
+	metaOf
 }: {
 	groups: TodayTaskGroup[];
 	count: number;
+	/** A row's second line ("Due Fri", "You added this"). */
+	metaOf?: (task: TodayTaskGroup['projects'][number]['tasks'][number]) => string | null;
 	/** The sub-head's name (e.g. "Workspace" for loose tasks). */
 	projectLabel: (projectId: string, fallback: string) => string;
 	selectedId: string | null;
@@ -365,7 +376,7 @@ export function AnytimeSection({
 }) {
 	return (
 		<View>
-			<SectionHead title="Anytime today" count={count} />
+			<SectionHead title="Due this week and new" count={count} />
 			{groups.map((bucket, index) => (
 				<View key={bucket.key} style={index > 0 ? styles.bucketGap : null}>
 					<BucketLabel label={bucket.label} />
@@ -379,6 +390,7 @@ export function AnytimeSection({
 								<TaskRow
 									key={task.id}
 									title={task.title}
+									meta={metaOf?.(task) ?? null}
 									done={isDone(task)}
 									selected={task.id === selectedId}
 									status={taskStatus(task, bucket.key !== 'in_progress')}

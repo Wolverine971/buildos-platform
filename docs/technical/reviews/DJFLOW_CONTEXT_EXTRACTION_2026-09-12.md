@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/DJFLOW_CONTEXT_EXTRACTION_2026-09-12.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-09-24; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Djflow implementation: shared context foundation
 
 Status: the shared context boundary is implemented and locally verified. The full

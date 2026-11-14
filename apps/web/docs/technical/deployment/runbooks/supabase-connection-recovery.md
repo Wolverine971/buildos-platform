@@ -328,8 +328,8 @@ WHERE state != 'idle'
 
 - [Supabase Status Page](https://status.supabase.com)
 - [Supabase Documentation](https://supabase.com/docs)
-- [BuildOS Database Schema](/docs/technical/database/schema.md)
-- [Performance Troubleshooting Guide](/docs/technical/deployment/runbooks/performance-issues.md)
+- [BuildOS Database Schema](../../../../../../.claude/skills/supabase/references/schema.md)
+- [Performance Troubleshooting Guide](./performance-issues.md)
 
 ## 📞 Escalation Contacts
 

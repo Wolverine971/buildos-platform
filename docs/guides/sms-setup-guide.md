@@ -432,7 +432,7 @@ After setup:
 ## Support Resources
 
 - [Twilio Documentation](https://www.twilio.com/docs/sms)
-- [BuildOS SMS Integration Docs](../sms-integration.md)
+- BuildOS SMS Integration Docs
 - [API Reference](../api/sms-api-reference.md)
 - [Testing Guide](./sms-testing-guide.md)
 

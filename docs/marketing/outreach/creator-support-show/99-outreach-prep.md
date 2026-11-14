@@ -85,7 +85,7 @@ Each row above links to its full analysis (channel research, on-air pain quotes,
 - [11 — Adrien Purr / OMG Adrian](analyses/11-adrien-purr.md)
 - [12 — Kelly Wakasa](analyses/12-kelly-wakasa.md)
 - [13 — Tony's Film Club](analyses/13-tony-film-club.md)
-- [14 — Liz Rowe](analyses/14-lizrowe.md)
+- 14 — Liz Rowe
 
 ---
 

@@ -18,29 +18,45 @@ For **package documentation**:
 - Shared Utils: `/packages/shared-utils/` (utility functions)
 - Smart LLM: `/packages/smart-llm/` (LLM service abstraction)
 - Supabase Client: `/packages/supabase-client/` (database client)
-- Twilio Service: `/packages/twilio-service/docs/`
+- Twilio Service: `/packages/twilio-service/` (SMS client)
 - BuildOS MCP Server: `/packages/buildos-mcp-server/` (local stdio MCP bridge)
 
 ## What's in This Folder
 
-- `/architecture/` - System-wide architecture, data flows, ADRs, diagrams
-- `/business/` - Business strategy, war room, communications guides
-- `/marketing/` - Brand, growth, social media, customer segments, investors
-- `/blogs/` - Content marketing, founder stories, user guides
-- `/philosophy/` - Product philosophy and psychological foundations
-- `/user-guide/` - End-user documentation and feature guides
-- `/writing/` - Writing resources and techniques
-- `/operations/` - Monorepo DevOps, CI/CD, monitoring, environment variables
-- `/integrations/` - Shared integrations (Supabase, Stripe, Twilio/SMS)
-- `/technical/` - Technical reviews, implementation notes, and engineering research
-- `/reports/` - Audits, assessments, and one-off investigation reports
-- `/seo-audits/` - SEO audit snapshots
-- `/example-projects/` - Example project research and migration review materials
+Product and engineering:
+
+- `/architecture/` - System-wide architecture, data flows, diagrams; ADRs in `/architecture/decisions/`
 - `/specs/` - Feature and system specifications
     - `/specs/homework/` - Homework agent orchestration system (Draft)
     - `/specs/tree-agent/` - Tree agent LLM orchestration system (Draft)
-- `/plans/` - Implementation and project plans
+    - `/specs/djflow/` - DJ Flow multi-agent orchestration (design only)
+- `/plans/` - Implementation plans, handoffs, evidence
+- `/product/` - Product definitions, activation and review work, Project Review taxonomy
+- `/research/` - Dated research, plus the YouTube library (`/research/youtube-library/`)
+- `/technical/` - Technical reviews, implementation notes, engineering research
+- `/testing/` - Test guides and the agentic chat gate
+- `/api/` - Ontology endpoints and SMS API reference
+- `/features/` - Cross-app feature specs (notifications, SMS event scheduling)
+- `/integrations/` - Shared integrations (Google, Stripe, Twilio/SMS, Libri, OpenClaw)
+- `/operations/` - Database, environment, security and worker operations
+- `/migrations/` - Active schema migration plans
+- `/privacy/` - Privacy claims and the data inventory
+- `/prompts/` - Agent prompt material
+- `/reports/` - One-off investigation reports
 - `/guides/` - How-to guides
+- `/user-guide/` - End-user documentation
+- `/example-projects/` - Example project research and seed-migration reviews
+
+Business, marketing and writing:
+
+- `/marketing/` - Brand, growth, social media, campaigns (own lane; start at `marketing/START_HERE.md`)
+- `/business/` - Business strategy, pitch material, communications guides
+- `/brainstorms/` - Dated product brainstorms
+- `/blogs/` - Blog drafts and source material
+- `/philosophy/`, `/writing/` - Product philosophy and writing craft notes
+- `/research-library/` - Saved transcripts, articles, papers
+- `/founder/` - Founder working material
+- `/print/` - Printable HTML exports
 
 ## 📝 Documentation Standards
 
@@ -99,3 +115,32 @@ This documentation follows a **deployment topology** structure:
 - **Package docs** live with their packages (`/packages/*/docs/`)
 
 This structure helps LLM agents and developers quickly determine scope and find relevant documentation.
+
+## Docs without another index
+
+Architecture decisions:
+
+- [ADR-001: user-level notification preferences](architecture/decisions/ADR-001-user-level-notification-preferences.md)
+- [ADR-002: timezone centralization](architecture/decisions/ADR-002-timezone-centralization.md)
+- [ADR-003: ontology tables in the public schema](architecture/decisions/ADR-003-ontology-schema-public-prefix.md)
+
+Specs and plans with open work:
+
+- [Chat attachments (multimodal)](specs/AGENTIC_CHAT_MULTIMODAL_SUPPORT_SPEC.md) - images shipped; PDF and video unbuilt
+- [Contacts in chat memory](specs/USER_CONTACTS_AGENTIC_MEMORY_SPEC.md)
+- [Brief chat](specs/BRIEF_CHAT_SPEC.md) - February 2026 draft for chatting with the daily brief
+- [Public skill gallery](specs/USER_FIRST_SKILL_GALLERY_SPEC_2026-07-08.md)
+- [Public pages](specs/PUBLIC_PAGES_SPEC.md) - March 2026 draft; the data model has since changed
+- [Security layered-defense plan](plans/2026-04-23-security-layered-defense-plan.md) - phase 1 shipped; phases 2-3 unbuilt
+- [In-app activity feed](features/notifications/IN_APP_ACTIVITY_FEED_SPEC.md) - draft
+- [Routes exempt from the standard API response](technical/api-response-exceptions.md)
+
+Source material:
+
+- [Design brief for image assets](guides/buildos-design-brief.md)
+- [Agentic chat core elements, part 2: context](specs/agentic-chat-core-elements-part-2-context.md) - concept essay, not built ([part 1](specs/agentic-chat-core-elements.md))
+- [Feed curation playbook](brainstorms/2026-05-13-feed-curation-playbook.md)
+- [Example project migration review](example-projects/MIGRATION_REVIEW_MASTER.md)
+- [Blog draft: why I built BuildOS](blogs/why-I-built-buildos.md) and [positioning notes](blogs/todays-blog.md)
+- [Productivity in the future](philosophy/productivity-in-the-future.md)
+- [Structure-first blog editing process](writing/john-mcphee-editing.md)

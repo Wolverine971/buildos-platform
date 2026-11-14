@@ -1567,7 +1567,7 @@ test.describe('Time-Block Notification Integration', () => {
 
 ### Research Documents
 
-- **Time-Block Notification Integration Research**: `/thoughts/shared/research/2025-10-23_21-27-27_timeblock-notification-stack-integration.md`
+- **Time-Block Notification Integration Research**: [`2025-10-23_21-27-27_timeblock-notification-stack-integration.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-23_21-27-27_timeblock-notification-stack-integration.md)
 - **Brain Dump Notification Integration** (reference): See brain dump notification bridge implementation
 
 ### Implementation Guides
@@ -1595,9 +1595,9 @@ test.describe('Time-Block Notification Integration', () => {
 
 For questions about this specification:
 
-1. Review the [research document](/thoughts/shared/research/2025-10-23_21-27-27_timeblock-notification-stack-integration.md)
+1. Review the [research document](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-23_21-27-27_timeblock-notification-stack-integration.md)
 2. Check the [notification system documentation map](/apps/web/docs/features/notifications/NOTIFICATION_SYSTEM_DOCS_MAP.md)
-3. Reference the [brain dump bridge implementation](/apps/web/src/lib/services/brain-dump-notification.bridge.ts) (proven pattern)
+3. Reference the [brain dump bridge implementation](https://github.com/Wolverine971/buildos-platform/blob/e5ffcb1c0a4e/apps/web/src/lib/services/brain-dump-notification.bridge.ts) (proven pattern)
 4. Contact the product/engineering team
 
 ---

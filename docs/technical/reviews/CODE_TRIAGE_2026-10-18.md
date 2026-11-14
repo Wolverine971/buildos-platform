@@ -39,12 +39,12 @@ Each item is a tracker in `tasker/` that a Codex agent can take cold: what users
 | 133   | [LLM spend counted right](../../../tasker/133-llm-spend-counted-right.md)                                                        | ~1 day, 2 bugs  | wave 2, after 126                      |
 | 134   | [Background cleanup: SMS crons, embedding deletes, worker redeploys, icon generation](../../../tasker/134-background-cleanup.md) | ~1 day          | wave 3, after 128                      |
 | 135   | [First send faster](../../../tasker/135-first-send-faster.md)                                                                    | ~half a day     | wave 3, after 125                      |
-| 136   | [Kill-switch cleanup after the soak](../../../tasker/136-kill-switch-cleanup-after-soak.md)                                      | ~1 day          | not before 2026-11-01                  |
+| 136   | [Kill-switch cleanup after the soak](../../../tasker/136-kill-switch-cleanup-after-soak.md)                                      | ~1 day          | DONE 10-25 (early), awaiting check     |
 
 - **Wave 1 (125-129) runs in parallel.** The five share no files. On a busy laptop, start 125-127 first and add 128-129 as runs free up.
 - **Wave 2 (130-133):** 130 and 133 wait for 126 to be committed, and 132 for 127, because they edit the same files. 131 shares no files with wave 1, so it can start whenever a run slot is free.
 - **Wave 3 (134-135)** after wave 2; 134 needs 128 in.
-- **136** waits for the two-week kill-switch soak (2026-11-01).
+- **136** done early on 2026-10-25 at DJ's request (no switch had been flipped; prod traffic too low for the extra week to add evidence). Awaiting a light check, then deploy, then remove `AGENTIC_CHAT_CONTEXT_FINDER_CHAT` and `_GLOBAL` from Railway.
 - Migrations in 129, 134 and 135 are written and rehearsed by the agent and applied by DJ.
 
 **Codex prompt** (one agent per tracker; change the file):

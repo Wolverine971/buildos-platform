@@ -1,4 +1,4 @@
-<!-- research-library/transcripts/podcast-ryo-lu-peter-yang.md -->
+<!-- docs/research-library/transcripts/podcast-ryo-lu-peter-yang.md -->
 
 # Full Tutorial: Design to Code with Cursor's Head of Design
 
@@ -6,8 +6,8 @@
 
 This source contributes to these multi-source skill combo indexes:
 
-- [Product And Design Skill Combos](../../docs/research/youtube-library/skill-combo-indexes/PRODUCT_AND_DESIGN.md): AI-era craft and quality moat; Design-to-code workflow; Taste-driven toolmaking
-- [Psychology, Agency, And Philosophy Skill Combos](../../docs/research/youtube-library/skill-combo-indexes/PSYCHOLOGY_AGENCY_AND_PHILOSOPHY.md): Constraint-driven creative systems; Designing tools that preserve agency; Taste, aliveness, and soulful AI tools
+- [Product And Design Skill Combos](../../research/youtube-library/skill-combo-indexes/PRODUCT_AND_DESIGN.md): AI-era craft and quality moat; Design-to-code workflow; Taste-driven toolmaking
+- [Psychology, Agency, And Philosophy Skill Combos](../../research/youtube-library/skill-combo-indexes/PSYCHOLOGY_AGENCY_AND_PHILOSOPHY.md): Constraint-driven creative systems; Designing tools that preserve agency; Taste, aliveness, and soulful AI tools
 
 **Source:** [YouTube](https://www.youtube.com/watch?v=bdh8k6DyKxE)
 **Host:** Peter Yang

@@ -674,7 +674,7 @@ For LLM/heuristic-based type inference:
 - **[DATA_MODELS.md](./DATA_MODELS.md)** - Complete database schema
 - **[API_ENDPOINTS.md](./API_ENDPOINTS.md)** - API reference
 - **[CURRENT_STATUS.md](./CURRENT_STATUS.md)** - Implementation status
-- **[TEMPLATE_TAXONOMY.md](./TEMPLATE_TAXONOMY.md)** - Output deliverables catalog
+- **[TEMPLATE_TAXONOMY.md](https://github.com/Wolverine971/buildos-platform/blob/49c35f572d27/apps/web/docs/features/ontology/TEMPLATE_TAXONOMY.md)** - Output deliverables catalog
 
 ---
 

@@ -6,7 +6,7 @@
 `20260929120000_project_cleanup_rollup.sql`, applied and recorded 2026-09-29). The worker, web
 and chat code is built but not yet deployed.
 **Adopted:** 2026-09-29
-**Parent:** [`tasker/112-project-review-rollup-cleanup-change-set.md`](../../tasker/112-project-review-rollup-cleanup-change-set.md)
+**Parent:** `tasker/112-project-review-rollup-cleanup-change-set.md`
 **Supersedes:** the one-brief-per-project card in
 [`PROJECT_REVIEW_MANAGER_BRIEF.md`](PROJECT_REVIEW_MANAGER_BRIEF.md). Its by-exception and
 copy rules still apply.
@@ -58,6 +58,48 @@ User actions:
 - **Discuss.** Opens chat on the whole card or on one item.
 - **Fix in chat**, on a radar item. Opens chat focused on that record.
 - **Snooze.**
+
+## Assistant's Desk (2026-10-29, tasker 149)
+
+The card is grouped by what each item asks of the user, not by section. Sections still set the
+code floor; `ProjectCleanupItem.ask_kind` (set by `cleanupAskKind`, from structure only) sets the
+block:
+
+- **Pick a path** (`path`): any other verified change, plus every pre-written question.
+- **Tidy-ups** (`tidy`): `safe_cleanup` items, with a before/after document tree.
+- **Out of date** (`stale`): radar records and findings with nothing to apply.
+- **Want me to…?** (`offer`): audit recommendations, offered as work the assistant can do.
+- **Done for you**: tidy-ups applied without asking, each with Undo.
+
+**Pre-written questions.** The roll-up call also returns `asks`: a question, optional context, the
+item ids it settles (one ask may settle several items) and 2–3 answers, each with an `action`
+(`apply`, `dismiss`, `done`, `note` or `chat`). Code maps handles to lineage ids, caps text, keeps
+an item in at most one ask, keeps one recommended answer, and drops `apply` unless every covered
+item is executable. They are stored as `brief.cleanup.asks` and narrowed to open items by
+`openCleanupAsks`.
+
+**Auto-apply ("Done for you").** On by default; kill switch `PROJECT_CLEANUP_AUTO_APPLY=off`.
+After the roll-up judgment, `cleanupAutoApply.ts` takes open `safe_cleanup` items whose rows all
+verified this pass, with no cautions, using only `move_document_in_tree`, `archive_onto_document`
+and `archive_onto_task`, with exactly replayable and undoable arguments, on an active or planning
+project, and not covered by a question. Jev answers four yes/no questions per item (fits the
+project, owner would want it, owner would want to see it first, safe without input). Jev also sees, for each
+record, the day it was last edited and whether it is empty, plus how long the change has been
+proposed and the owner's recent filing answers. Code applies an item only when it clears the bar
+for its kind (DJ, 2026-10-29). **Moves only:** about ≥ 0.85, wanted ≥ 0.75, safe ≥ 0.85 and
+review ≤ 0.65; a move loses nothing and undoes exactly. **Anything that archives:** about ≥ 0.85,
+wanted ≥ 0.80, safe ≥ 0.90 and review ≤ 0.30. At most 8 per pass, and never a tool the user
+undid in the last 30 days. Jev failing means nothing is applied. The
+undo steps are computed before writing. The row records `status 'applied'`,
+`result.applied_via 'auto'`, `result.headline` and `result.auto_apply` (scores, reason, model,
+question set version). `POST /api/onto/projects/[id]/cleanup/undo` reverses it and records
+`status 'rejected'` with `user_feedback.reason 'undone_auto_apply'`. `GET
+/api/inbox/done-for-you` lists the last week's auto-applied changes across projects.
+
+**Chat opens with the assistant.** Opening chat on one item seeds an assistant message about that
+item only (`inbox-chat-opener.ts`), led by its pre-written question when there is one.
+
+**Check-ins** (overdue tasks as "Did this happen?") live outside this change set; see tasker 149.
 
 ## Findings as lineages
 

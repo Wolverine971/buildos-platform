@@ -20,7 +20,7 @@ This document captures product and agent philosophy plus high-level linking heur
 
 ## Research notes (existing docs)
 
-- docs/examples/george-washington-revolutionary-war-project.md: key design principle is a deeply nested graph; tasks connect to plans or milestones, not directly to the project.
+- docs/example-projects/george-washington-revolutionary-war-project.md: key design principle is a deeply nested graph; tasks connect to plans or milestones, not directly to the project.
 - docs/specs/PROJECT_GRAPH_QUERY_PATTERN_SPEC.md: canonical containment edges are project -> has_plan -> plan and plan -> has_task -> task. project_id answers ownership; edges answer how connected.
 
 These sources emphasize nested graphs; this doc standardizes the linking policy and the agent workflow.

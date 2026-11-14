@@ -2,9 +2,61 @@
 
 # 143 — The four ways into a project behave the same
 
-**Status:** IMPLEMENTED LOCALLY — focused validation passed; full web check blocked by unrelated work; explainer updated, live preview verification blocked · **Priority:** P1 · **Opened:** 2026-10-23 · **Size:** ~1–2 days
+**Status:** IMPLEMENTED LOCALLY — second review, focused tests, full web check, and migration rehearsal passed; awaiting deployment · **Priority:** P1 · **Opened:** 2026-10-23 · **Size:** ~1–2 days
 
 **Owner:** Claude · **Policy decisions needed from DJ:** none; all three recommendations accepted on 2026-10-23
+
+## Second review (Codex, 2026-10-25)
+
+DJ requested a second check and overlooked edge cases. Five confirmed issues were fixed in
+small, separate code areas, each with regression coverage:
+
+1. **Back navigation repeated arrival.** SvelteKit's shallow `replaceState` consumes the URL
+   marker without updating `page.url`. Arrival now reads the browser URL, so remounting after
+   Back does not replay the toast or optional push prompt.
+2. **Partial request history disappeared.** Approving the remaining upgrade items now retains
+   projects previously satisfied through another entrance. Re-requesting a stronger permission
+   for an earlier project replaces its prior outcome instead of duplicating it. Only newly
+   approved items are returned for connection grants and described in the approval email.
+3. **Project push opt-in reactivated unrelated brief subscriptions.** Global channel changes
+   now seed missing brief subscriptions without overwriting existing event opt-outs. An explicit
+   daily-brief choice can still update those subscriptions.
+4. **Invite previews exposed email to another signed-in token holder.** The preview RPC now
+   returns the invitee email only to the intended recipient, using the bound user ID or, for
+   unbound invitations, the recipient's matching email. Page-level masking alone was insufficient.
+5. **Mixed upgrade notifications overstated permissions.** If approved projects have different
+   upgrade needs, the notification now says the owner “updated your access” and opens the project
+   choices, rather than describing every project with the first project's permission.
+
+Validation after these fixes:
+
+- **138 focused tests across 15 files passed**, covering arrival, all invite entry points and
+  acceptance routes, request decisions, notification preferences, copy, and approval emails.
+- **Full web check passed: 0 errors, 0 warnings**, through `test-gate`. The earlier unrelated
+  declaration/type blocker is resolved. Svelte autofixer and scoped diff whitespace checks pass.
+- **Migration rehearsal passed** against production's schema captured at
+  `2026-10-25T04:07:33Z`, with task 143 and existing rejoin behavior checks, all four standing
+  checks, and role probes. **0 security, API, or data findings.** The private helper's server-only
+  note is intentional; authenticated has 0 failures before/after, and anon's one pre-existing
+  failure is unchanged.
+- **All four two-session races passed** on the final migration: approve/invite, invite/approve,
+  invite/link, and link/invite. Final permissions and owner notice counts are preserved.
+
+The production migration ledger was checked read-only: task 140's prerequisite is already
+applied; task 143's migration is still pending. Consequently, these SQL fixes amend the pending
+task 143 migration. This review performed no paid tests, production writes, or deployment.
+
+Remaining rollout checks: apply task 143's migration before deploying its web changes, then
+verify actual email/push delivery and requesting-connection grants. Those grants and approval
+emails are HTTP follow-ups outside the membership transaction; a failure can leave membership
+approved while a follow-up needs recovery. The UI reports grant failures and directs the user
+to agent settings; this work does not add an automatic retry for that separate grant step.
+
+The explainer was updated in place through its existing Claude chat, now **version 5**, still
+private. Its saved live preview loads, and all four flow tabs were independently checked. The
+Oct 25 status, permission-qualified rejoin settlement, common owner notice, and reviewed
+safeguards match the implementation. The earlier preview blocker is resolved. Screenshot:
+`/Users/djwayne/.codex/visualizations/2026/10/24/01a16bb1-ba93-7dd1-b089-7b89a4bfd9b7/task-143-review.png`.
 
 ## Implementation (Codex, 2026-10-23)
 
@@ -42,14 +94,16 @@ invite/link, link/invite), proving the second session waits and that final permi
 notification counts are correct. The final rehearsal also covers legacy first-time actor creation.
 No paid tests or production writes.
 
-The required `pnpm --filter @buildos/web check` was run through `test-gate`. After rebuilding
-`@buildos/shared-types`, task 143 reported no type errors. The check remains blocked by unrelated
+At the initial implementation check, `pnpm --filter @buildos/web check` was run through `test-gate`. After rebuilding
+`@buildos/shared-types`, task 143 reported no type errors. The check was blocked by unrelated
 workspace work: `proposal-cards/types.ts:30` and `proposal-card.service.ts:52` cannot import
 `loadWorkspaceItemsV1` from the runtime's generated declarations. Rebuilding that dependency
 through the gate fails in `packages/agentic-chat-runtime/src/tools/workspace-reads.ts:514–516`
 (`entity: string` versus `WorkspaceItemEntity`) and `:630` (`name` on `never`). No unrelated source
 was edited. The shared-types build, Svelte autofixer, Python race harness compilation, and
 targeted diff whitespace check passed.
+
+The second review above supersedes that blocked result: the full web check now passes.
 
 ### Implemented matrix (local evidence)
 
@@ -77,9 +131,10 @@ python3 scripts/migration-rehearsal/check-project-join-races.py /tmp/buildos-reh
 
 The race script uses committed invented fixtures; use a fresh `--keep` directory on each run.
 
-Deploy task 140's `20261024003000_agent_access_wall_fixes.sql` before this migration, then deploy
-the web changes. The expanded RPC results are consumed by the new UI. This work has not applied
-either migration to production or exercised real email/push delivery.
+Task 140's `20261024003000_agent_access_wall_fixes.sql` is a prerequisite and was confirmed
+applied in production on the Oct 25 review. Apply task 143's migration before deploying its web
+changes. The expanded RPC results are consumed by the new UI. This work has not applied either
+migration to production or exercised real email/push delivery.
 
 ### Explainer corrections (sent and saved 2026-10-24)
 
@@ -104,7 +159,8 @@ Mark task 143 behavior **implemented and tested locally, awaiting deployment**:
   their own approval. Enabled project activity seeds a missing subscription, respecting the
   joiner's member override and any existing global opt-out. Push, email, and in-app preferences
   never switch on implicitly. Joining retires competing project invitations; it settles exact
-  rejoin requests and only upgrade items whose requested permissions are now satisfied. Broad
+  rejoin requests and project-specific upgrade items only when their requested role and agent
+  permissions are now satisfied. Broad
   access requests stay open until an explicit owner decision; project names/notes are not matched.
   Settling a request through another entrance does not grant its agent connection access.
 - **Connection consent correction:** “Projects shared with me” is off by default per connection.
@@ -122,13 +178,13 @@ the corrections above, preserves the historical numbers, and renders all four fl
 the simulator without script errors in its headless browser. Its interpretation that approval
 does not redirect Sam's unrelated open BuildOS session was also confirmed.
 
-Independent live-preview verification remains blocked: the Claude artifact viewer and chat
+At the Oct 24 follow-up, independent live-preview verification was blocked: the Claude artifact viewer and chat
 preview stay on “Still loading” after reload, the artifact's Refresh action, and republishing
 the identical corrected content with the `index.html` entrypoint. No warning/error logs were
 returned by the browser tool. Claude's stored-page render report is not a successful check of
-the live viewer. Resolving that preview and obtaining a clean full web check remain open exit
-items; deployment is a separate step. No application tests or migrations were rerun for this
-documentation-only follow-up.
+the live viewer. Both the preview and full web check were verified successfully during the Oct 25
+second review above; deployment remains a separate step. No application tests or migrations
+were rerun during the Oct 24 documentation-only follow-up.
 
 **Earlier research (Codex, 2026-10-23):** DJ initially requested research and a plan only. The audit below is
 against the current repository and the latest checked-in RPC definitions, including task 140's

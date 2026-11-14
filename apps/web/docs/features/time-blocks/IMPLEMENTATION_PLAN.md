@@ -2244,8 +2244,8 @@ See [Phase 2 detailed plan] (to be added after Phase 1 completion)
 ### A. Related Documentation
 
 - [Time Play Feature Specification](./README.md) - Complete technical spec
-- [Timeblock Feature Idea](../../../thoughts/shared/research/2025-10-05_00-00-00_timeblock-feature-idea.md) - Original philosophy
-- [Timeblock Research](../../../thoughts/shared/research/2025-10-04_04-30-00_timeblock-scheduling-feature-research.md) - Technical research
+- [Timeblock Feature Idea](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-05_00-00-00_timeblock-feature-idea.md) - Original philosophy
+- [Timeblock Research](https://github.com/Wolverine971/buildos-platform/blob/b5f9841e07f9/thoughts/shared/research/2025-10-04_04-30-00_timeblock-scheduling-feature-research.md) - Technical research
 
 ### B. Key Files Reference
 

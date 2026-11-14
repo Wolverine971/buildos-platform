@@ -2230,7 +2230,7 @@ Resolutions to open questions from the original spec:
 - [Ontology Data Models](./DATA_MODELS.md)
 - [Type Key Taxonomy](./TYPE_KEY_TAXONOMY.md)
 - [API Endpoints](./API_ENDPOINTS.md)
-- [Implementation Summary](./IMPLEMENTATION_SUMMARY.md)
+- [Implementation Summary](../chat-system/IMPLEMENTATION_SUMMARY.md)
 
 ### Services
 
@@ -2242,8 +2242,8 @@ Resolutions to open questions from the original spec:
 
 ### Database
 
-- [migration_log schema](../../../../supabase/migrations/20251124_create_migration_log.sql)
-- [legacy_entity_mappings schema](../../../../supabase/migrations/20251122_legacy_mapping_backfill.sql)
+- [migration_log schema](https://github.com/Wolverine971/buildos-platform/blob/59a02e9d396f/supabase/migrations/20251124_create_migration_log.sql)
+- [legacy_entity_mappings schema](https://github.com/Wolverine971/buildos-platform/blob/59a02e9d396f/supabase/migrations/20251122_legacy_mapping_backfill.sql)
 
 ### Style Guide
 

@@ -465,7 +465,7 @@ user_sms_preferences
 └── Safety Controls (quiet_hours, daily_sms_limit - all SMS)
 ```
 
-See [SMS Deprecation Migration Plan](/thoughts/shared/research/2025-10-13_17-40-27_sms-flow-deprecation-migration-plan.md) for complete details.
+See [SMS Deprecation Migration Plan](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-13_17-40-27_sms-flow-deprecation-migration-plan.md) for complete details.
 
 ---
 
@@ -1332,15 +1332,15 @@ SMS click tracking integrates with existing analytics:
 
 ### Related
 
-- Main Tracking Spec: `/thoughts/shared/research/2025-10-06_22-08-35_notification-tracking-system-spec.md`
-- Phase 2 (Push Tracking): `/thoughts/shared/research/2025-10-06_23-30-00_phase2-push-notification-tracking-implementation.md`
+- Main Tracking Spec: [`2025-10-06_22-08-35_notification-tracking-system-spec.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-06_22-08-35_notification-tracking-system-spec.md)
+- Phase 2 (Push Tracking): [`2025-10-06_23-30-00_phase2-push-notification-tracking-implementation.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-06_23-30-00_phase2-push-notification-tracking-implementation.md)
 
 ---
 
 ## Related Documentation
 
-- [Notification System Implementation Status](/thoughts/shared/research/2025-10-06_04-00-00_notification-system-implementation-status.md)
-- [Admin Notification Dashboard Spec](/thoughts/shared/research/2025-10-06_06-00-00_admin-notification-dashboard-spec.md)
+- [Notification System Implementation Status](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-06_04-00-00_notification-system-implementation-status.md)
+- [Admin Notification Dashboard Spec](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-06_06-00-00_admin-notification-dashboard-spec.md)
 - [Twilio Integration](/docs/integrations/twilio/README.md)
 - [SMS API Reference](/docs/api/sms-api-reference.md)
 - [SMS Setup Guide](/docs/guides/sms-setup-guide.md)

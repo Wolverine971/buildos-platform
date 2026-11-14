@@ -4,10 +4,10 @@
 >
 > **Current short-form video strategy lives in:**
 >
-> - [WS10 — Short-Form Video (TikTok, counter-positioned)](distribution/workstreams/WS10-short-form-video.md) — execution, T46–T51
-> - [Anti-feed content topic map](strategy/anti-feed-content-topic-map.md) — ranked blogs + TikTok angles per post
-> - [`anti-feed` skill](../../.claude/skills/anti-feed/SKILL.md) — dispatcher for drafting blogs, publish kits, and TikTok scripts
-> - [Brand guide](brand/brand-guide-1-pager.md) — authoritative voice + audience order (authors/YouTubers first, ADHD is supporting affinity only)
+> - [WS10 — Short-Form Video (TikTok, counter-positioned)](../distribution/workstreams/WS10-short-form-video.md) — execution, T46–T51
+> - [Anti-feed content topic map](../strategy/anti-feed-content-topic-map.md) — ranked blogs + TikTok angles per post
+> - `anti-feed` skill — dispatcher for drafting blogs, publish kits, and TikTok scripts
+> - [Brand guide](../brand/brand-guide-1-pager.md) — authoritative voice + audience order (authors/YouTubers first, ADHD is supporting affinity only)
 >
 > **Why superseded:** ADHD-led hooks, "serial productivity-app abandoners," "POV: your ADHD brain" framing, and "validation hook" patterns below are OFF-STRATEGY per the current brand guide. Leading with AI / ADHD in the hook is explicitly rejected. Use WS10's counter-positioning rubric for all new scripts.
 

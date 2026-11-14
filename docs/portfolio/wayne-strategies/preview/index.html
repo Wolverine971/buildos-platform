@@ -1,0 +1,3128 @@
+<!-- docs/portfolio/wayne-strategies/preview/index.html -->
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>BuildOS portfolio — isolated visual proof</title>
+		<style>
+			body {
+				margin: 0;
+				padding: 32px;
+				background: #d8d5ce;
+				color: #25231f;
+				font-family: Arial, sans-serif;
+			}
+			h1 {
+				font-size: 24px;
+			}
+			main {
+				display: grid;
+				grid-template-columns: 600px 300px 150px;
+				gap: 28px;
+				align-items: start;
+			}
+			section > h2 {
+				font: 12px Arial;
+				margin: 0 0 10px;
+			}
+			.sample {
+				overflow: hidden;
+				border: 1px solid #bbb4a7;
+				box-shadow: 0 5px 14px #0001;
+			}
+			.stage.svelte-1w9hrwr {
+				width: 100%;
+				height: 100%;
+				aspect-ratio: 16 / 10;
+				container-type: inline-size;
+				overflow: hidden;
+				background: #eeece7;
+				isolation: isolate;
+			}
+			.canvas.svelte-1w9hrwr {
+				--paper: #faf9f6;
+				--ink: #18181c;
+				--accent: #b85414;
+				--muted: #6a6864;
+				--edge: #d4d1c9;
+				font:
+					1.6666667cqw/1.35 Arial,
+					Helvetica,
+					sans-serif;
+				color: var(--ink);
+				width: 100%;
+				height: 100%;
+				overflow: hidden;
+				text-align: left;
+				position: relative;
+			}
+			.canvas.svelte-1w9hrwr :where(.svelte-1w9hrwr),
+			.canvas.svelte-1w9hrwr :where(.svelte-1w9hrwr)::before,
+			.canvas.svelte-1w9hrwr :where(.svelte-1w9hrwr)::after {
+				box-sizing: border-box;
+			}
+			h2.svelte-1w9hrwr,
+			h3.svelte-1w9hrwr,
+			p.svelte-1w9hrwr {
+				margin: 0;
+			}
+			h2.svelte-1w9hrwr {
+				font-size: 3.5em;
+				line-height: 1.05;
+				letter-spacing: -0.055em;
+				font-weight: 700;
+			}
+			h3.svelte-1w9hrwr {
+				font-size: 2em;
+				line-height: 1.1;
+				letter-spacing: -0.035em;
+			}
+			em.svelte-1w9hrwr {
+				font-style: normal;
+				color: var(--accent);
+			}
+			small.svelte-1w9hrwr,
+			.small-label.svelte-1w9hrwr {
+				display: block;
+				font:
+					0.86em/1.4 ui-monospace,
+					SFMono-Regular,
+					Menlo,
+					monospace;
+				letter-spacing: 0.065em;
+				color: var(--muted);
+			}
+			img.svelte-1w9hrwr {
+				display: block;
+				max-width: 100%;
+				height: auto;
+			}
+			.wordmark.svelte-1w9hrwr {
+				width: 12em;
+				margin-left: -1em;
+			}
+			.folio.svelte-1w9hrwr {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				font:
+					0.82em/1 ui-monospace,
+					SFMono-Regular,
+					Menlo,
+					monospace;
+				letter-spacing: 0.08em;
+				padding-bottom: 1.3em;
+				border-bottom: 1px solid var(--edge);
+			}
+			.workspace-view.svelte-1w9hrwr,
+			.chat-view.svelte-1w9hrwr,
+			.workbench.svelte-1w9hrwr,
+			.sharing-view.svelte-1w9hrwr,
+			.execution-view.svelte-1w9hrwr,
+			.inkprint-view.svelte-1w9hrwr {
+				position: relative;
+				height: 100%;
+				padding: 2.2em 2.6em;
+				overflow: hidden;
+			}
+			.workspace-view.svelte-1w9hrwr {
+				background:
+					radial-gradient(circle, #18181c10 0.065em, transparent 0.08em) right top /
+						0.75em 0.75em,
+					#eeece7;
+			}
+			.workspace-copy.svelte-1w9hrwr {
+				margin-top: 1.4em;
+			}
+			.workspace-copy.svelte-1w9hrwr h2:where(.svelte-1w9hrwr) {
+				font-size: 3.7em;
+			}
+			.workspace-copy.svelte-1w9hrwr p:where(.svelte-1w9hrwr) {
+				margin-top: 0.55em;
+				font-size: 1.15em;
+				color: #58554f;
+			}
+			.workspace-capture.svelte-1w9hrwr {
+				position: absolute;
+				width: 41em;
+				left: 15.6em;
+				top: 19em;
+				background: var(--paper);
+				border: 1px solid #c4bfb5;
+				border-radius: 0.65em;
+				overflow: hidden;
+				transform: rotate(-3deg);
+				box-shadow: 0 1.1em 2em -1em #18181c60;
+			}
+			.window-strip.svelte-1w9hrwr {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 0.8em 1.2em;
+				border-bottom: 1px solid var(--edge);
+				font:
+					0.7em/1.1 ui-monospace,
+					monospace;
+			}
+			.window-dots.svelte-1w9hrwr {
+				letter-spacing: 0.2em;
+				color: #8f8980;
+			}
+			.workspace-note.svelte-1w9hrwr {
+				position: absolute;
+				left: 2.6em;
+				top: 27em;
+				display: flex;
+				gap: 0.8em;
+				width: 11em;
+			}
+			.workspace-note.svelte-1w9hrwr strong:where(.svelte-1w9hrwr) {
+				font-size: 1.35em;
+				line-height: 1.15;
+				display: block;
+			}
+			.workspace-note.svelte-1w9hrwr
+				div:where(.svelte-1w9hrwr)
+				> span:where(.svelte-1w9hrwr) {
+				font-size: 0.9em;
+				display: block;
+				margin-top: 0.5em;
+				color: var(--muted);
+			}
+			.note-arrow.svelte-1w9hrwr {
+				font-size: 2.7em;
+				line-height: 0.8;
+				color: var(--accent);
+			}
+			.workspace-stamp.svelte-1w9hrwr {
+				position: absolute;
+				right: 3.8em;
+				top: 6em;
+				color: var(--accent);
+				border: 1px solid currentColor;
+				padding: 1em 1.5em;
+				font:
+					0.8em/1.5 ui-monospace,
+					monospace;
+				text-align: center;
+				transform: rotate(5deg);
+			}
+			.workspace-stamp.svelte-1w9hrwr span:where(.svelte-1w9hrwr) {
+				font-size: 1.7em;
+			}
+			.workspace-foot.svelte-1w9hrwr,
+			.workbench-foot.svelte-1w9hrwr,
+			.sharing-foot.svelte-1w9hrwr,
+			.inkprint-foot.svelte-1w9hrwr {
+				position: absolute;
+				bottom: 1.8em;
+				left: 2.6em;
+				right: 2.6em;
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				font:
+					0.8em/1.2 ui-monospace,
+					monospace;
+			}
+			.chat-view.svelte-1w9hrwr {
+				background: #f9f8f5;
+			}
+			.chat-title.svelte-1w9hrwr {
+				position: absolute;
+				top: 5em;
+				left: 2.6em;
+				right: 2.6em;
+				display: flex;
+				align-items: center;
+				gap: 1em;
+			}
+			.chat-title.svelte-1w9hrwr h2:where(.svelte-1w9hrwr) {
+				font-size: 2em;
+			}
+			.square-mark.svelte-1w9hrwr {
+				width: 2.8em;
+				height: 2.8em;
+				display: grid;
+				place-items: center;
+				background: var(--ink);
+				color: #faf9f6;
+				font-size: 1.25em;
+				border-radius: 0.35em;
+			}
+			.context-pill.svelte-1w9hrwr {
+				margin-left: auto;
+				font-size: 1em;
+				border: 1px solid var(--edge);
+				padding: 0.45em 0.8em;
+				border-radius: 2em;
+			}
+			.bubble.svelte-1w9hrwr {
+				position: absolute;
+				top: 9.5em;
+				right: 2.6em;
+				width: 42em;
+				padding: 1em 1.6em;
+				background: #eee4d9;
+				border: 1px solid #dec5af;
+				border-radius: 1.3em 1.3em 0.2em 1.3em;
+			}
+			.bubble.svelte-1w9hrwr p:where(.svelte-1w9hrwr) {
+				margin-top: 0.3em;
+				font-size: 1.8em;
+				letter-spacing: -0.025em;
+				line-height: 1.25;
+			}
+			.tool-strip.svelte-1w9hrwr {
+				position: absolute;
+				top: 18em;
+				left: 2.6em;
+				right: 2.6em;
+				background: #efeee9;
+				border: 1px solid var(--edge);
+				display: flex;
+				align-items: center;
+				gap: 1em;
+				padding: 0.8em 1.2em;
+				border-radius: 0.5em;
+			}
+			.check.svelte-1w9hrwr {
+				color: #267344;
+				font-size: 1.8em;
+			}
+			.tool-strip.svelte-1w9hrwr strong:where(.svelte-1w9hrwr) {
+				display: block;
+				font-size: 1.25em;
+			}
+			.receipt-tag.svelte-1w9hrwr {
+				margin-left: auto;
+				font:
+					0.8em/1 ui-monospace,
+					monospace;
+				color: #267344;
+			}
+			.chat-result.svelte-1w9hrwr {
+				position: absolute;
+				top: 23.2em;
+				left: 2.6em;
+				right: 2.6em;
+				display: flex;
+				gap: 1.2em;
+				align-items: center;
+				padding: 0.8em 1.2em;
+				border: 1px solid var(--edge);
+				box-shadow: 0 0.3em 0.7em #18181c08;
+				border-radius: 0.5em;
+				background: #fffefa;
+			}
+			.chat-result.svelte-1w9hrwr h3:where(.svelte-1w9hrwr) {
+				font-size: 2.1em;
+				margin: 0.15em 0;
+			}
+			.chat-result.svelte-1w9hrwr p:where(.svelte-1w9hrwr) {
+				color: var(--muted);
+				font-size: 1em;
+			}
+			.task-symbol.svelte-1w9hrwr {
+				font-size: 2em;
+				color: #287749;
+				border: 1px solid #bccebe;
+				border-radius: 0.25em;
+				width: 1.6em;
+				height: 1.6em;
+				text-align: center;
+			}
+			.link-arrow.svelte-1w9hrwr {
+				margin-left: auto;
+				font-size: 2em;
+				color: var(--accent);
+			}
+			.source-capture.svelte-1w9hrwr {
+				position: absolute;
+				top: 30.3em;
+				left: 2.6em;
+				right: 2.6em;
+			}
+			.source-capture.svelte-1w9hrwr > span:where(.svelte-1w9hrwr) {
+				font-size: 0.65em;
+				margin-bottom: 0.5em;
+			}
+			.source-capture.svelte-1w9hrwr img:where(.svelte-1w9hrwr) {
+				width: 100%;
+				height: 3.6em;
+				object-fit: cover;
+				object-position: bottom;
+				border: 1px solid var(--edge);
+				border-radius: 0.35em;
+			}
+			.chat-foot.svelte-1w9hrwr {
+				position: absolute;
+				bottom: 1.2em;
+				left: 2.6em;
+				right: 2.6em;
+				display: flex;
+				align-items: center;
+				gap: 0.6em;
+				font-size: 0.85em;
+			}
+			.signal-dot.svelte-1w9hrwr {
+				flex-shrink: 0;
+				display: inline-block;
+				background: #277b4c;
+				width: 0.65em;
+				height: 0.65em;
+				border-radius: 50%;
+			}
+			.micro-note.svelte-1w9hrwr {
+				margin-left: auto;
+				font:
+					0.7em ui-monospace,
+					monospace;
+				color: var(--muted);
+			}
+			.workbench.svelte-1w9hrwr {
+				background: #e7e5df;
+			}
+			.workbench-title.svelte-1w9hrwr {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				margin: 1.5em 0;
+			}
+			.workbench-title.svelte-1w9hrwr h2:where(.svelte-1w9hrwr) {
+				font-size: 3em;
+				margin-top: 0.2em;
+			}
+			.project-count.svelte-1w9hrwr {
+				padding: 0.55em 0.8em;
+				border: 1px solid #bbb6ab;
+				font:
+					0.9em ui-monospace,
+					monospace;
+			}
+			.context-path.svelte-1w9hrwr {
+				display: flex;
+				align-items: center;
+				gap: 1.2em;
+				background: #fbfaf7;
+				border: 1px solid var(--edge);
+				border-radius: 0.5em 0.5em 0 0;
+				padding: 1em 1.4em;
+			}
+			.context-path.svelte-1w9hrwr span:where(.svelte-1w9hrwr) {
+				font-size: 1.2em;
+				white-space: nowrap;
+			}
+			.context-path.svelte-1w9hrwr b:where(.svelte-1w9hrwr) {
+				color: var(--accent);
+				margin-right: 0.3em;
+			}
+			.context-path.svelte-1w9hrwr i:where(.svelte-1w9hrwr) {
+				color: #aaa396;
+				font-style: normal;
+			}
+			.active-path.svelte-1w9hrwr {
+				font-weight: 700;
+			}
+			.workbench-body.svelte-1w9hrwr {
+				height: 21em;
+				background: #f4f2ed;
+				position: relative;
+				border: 1px solid var(--edge);
+				border-top: 0;
+			}
+			.document-tree.svelte-1w9hrwr {
+				position: absolute;
+				width: 13.7em;
+				inset: 0 auto 0 0;
+				padding: 1.5em 1em;
+				border-right: 1px solid var(--edge);
+				display: flex;
+				flex-direction: column;
+				gap: 0.65em;
+				font-size: 0.95em;
+				background: #ebe9e3;
+			}
+			.document-tree.svelte-1w9hrwr small:where(.svelte-1w9hrwr) {
+				font-size: 0.7em;
+			}
+			.tree-current.svelte-1w9hrwr {
+				font-weight: 700;
+			}
+			.tree-divider.svelte-1w9hrwr {
+				border-top: 1px solid #ccc6bc;
+				margin: 0.5em 0;
+			}
+			.board-capture.svelte-1w9hrwr {
+				position: absolute;
+				top: 1.1em;
+				left: 14em;
+				width: 38.5em;
+			}
+			.board-heading.svelte-1w9hrwr {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				padding: 0 0.5em 0.8em;
+			}
+			.board-heading.svelte-1w9hrwr strong:where(.svelte-1w9hrwr) {
+				font-size: 1.4em;
+			}
+			.board-heading.svelte-1w9hrwr span:where(.svelte-1w9hrwr) {
+				font:
+					0.6em ui-monospace,
+					monospace;
+				color: var(--muted);
+			}
+			.board-capture.svelte-1w9hrwr img:where(.svelte-1w9hrwr) {
+				border: 1px solid var(--edge);
+				border-radius: 0.4em;
+				width: 100%;
+			}
+			.document-sheet.svelte-1w9hrwr {
+				position: absolute;
+				right: 1.5em;
+				top: 6.5em;
+				width: 23em;
+				background: #fffdf7;
+				padding: 1.2em 1.8em 1em;
+				box-shadow: 0 0.5em 1.4em #18181c25;
+				border: 1px solid #c9c2b5;
+				transform: rotate(3deg);
+			}
+			.document-tab.svelte-1w9hrwr {
+				position: absolute;
+				top: -1.7em;
+				right: 0;
+				background: #b85414;
+				color: white;
+				padding: 0.35em 0.8em;
+				font:
+					0.7em ui-monospace,
+					monospace;
+			}
+			.document-sheet.svelte-1w9hrwr h3:where(.svelte-1w9hrwr) {
+				font-family: Georgia, serif;
+				font-size: 2.2em;
+				line-height: 1;
+				margin: 0.3em 0;
+				font-weight: 400;
+			}
+			.document-sheet.svelte-1w9hrwr p:where(.svelte-1w9hrwr) {
+				font:
+					1em/1.5 Georgia,
+					serif;
+				color: #635c51;
+			}
+			.writing-lines.svelte-1w9hrwr {
+				width: 80%;
+				height: 1em;
+				margin-top: 0.3em;
+				background: repeating-linear-gradient(
+					0deg,
+					transparent,
+					transparent 0.75em,
+					#d6d0c3 0.75em,
+					#d6d0c3 0.8em
+				);
+			}
+			.doc-bottom.svelte-1w9hrwr {
+				display: flex;
+				gap: 1.2em;
+				margin-top: 0.6em;
+				padding-top: 0.7em;
+				border-top: 1px solid var(--edge);
+				font-size: 0.75em;
+				color: #70685c;
+			}
+			.sharing-view.svelte-1w9hrwr {
+				background-color: #eeeae2;
+			}
+			.share-side.svelte-1w9hrwr {
+				position: absolute;
+				left: 2.6em;
+				top: 7em;
+				width: 21em;
+			}
+			.share-side.svelte-1w9hrwr h2:where(.svelte-1w9hrwr) {
+				font-size: 3.1em;
+				margin: 0.35em 0 0.5em;
+			}
+			.share-side.svelte-1w9hrwr p:where(.svelte-1w9hrwr) {
+				font-size: 1.1em;
+				line-height: 1.5;
+				color: #635d54;
+			}
+			.permission-key.svelte-1w9hrwr {
+				font-size: 1.05em;
+				line-height: 2.4;
+				margin-top: 2em;
+			}
+			.permission-key.svelte-1w9hrwr > span:where(.svelte-1w9hrwr) {
+				font:
+					0.8em ui-monospace,
+					monospace;
+				padding: 0.4em;
+				background: #ded7cb;
+				color: #655c4e;
+				margin-right: 0.55em;
+			}
+			.share-sheet.svelte-1w9hrwr {
+				position: absolute;
+				top: 5.4em;
+				left: 24.3em;
+				width: 33em;
+				border: 1px solid #c7c0b3;
+				border-radius: 0.7em;
+				background: #fbfaf6;
+				padding: 1.5em;
+				box-shadow: 0 0.8em 1.8em #30271920;
+				transform: rotate(1deg);
+			}
+			.sheet-heading.svelte-1w9hrwr {
+				display: flex;
+				align-items: center;
+				gap: 0.9em;
+				padding-bottom: 0.9em;
+			}
+			.sheet-heading.svelte-1w9hrwr small:where(.svelte-1w9hrwr) {
+				font-size: 0.7em;
+			}
+			.sheet-heading.svelte-1w9hrwr h3:where(.svelte-1w9hrwr) {
+				font-size: 1.8em;
+			}
+			.share-icon.svelte-1w9hrwr {
+				font-size: 2.2em;
+				color: var(--accent);
+			}
+			.share-tabs.svelte-1w9hrwr {
+				display: flex;
+				gap: 2em;
+				font-size: 1em;
+				border-bottom: 1px solid var(--edge);
+				padding: 0.5em 0.2em 0.8em;
+				margin-bottom: 1em;
+			}
+			.share-tabs.svelte-1w9hrwr strong:where(.svelte-1w9hrwr) {
+				color: var(--accent);
+			}
+			.member-head.svelte-1w9hrwr,
+			.member.svelte-1w9hrwr {
+				display: grid;
+				grid-template-columns: 1fr 4.5em 3.8em;
+				align-items: center;
+				gap: 0.5em;
+			}
+			.member-head.svelte-1w9hrwr {
+				font:
+					0.65em ui-monospace,
+					monospace;
+				grid-template-columns: 1fr 6.9em 5.85em;
+				color: var(--muted);
+				padding-bottom: 0.7em;
+			}
+			.member.svelte-1w9hrwr {
+				font-size: 0.95em;
+				padding: 0.75em 0;
+				border-bottom: 1px solid #e3dfd6;
+			}
+			.member.svelte-1w9hrwr > span:where(.svelte-1w9hrwr) {
+				display: flex;
+				align-items: center;
+				gap: 0.65em;
+			}
+			.member.svelte-1w9hrwr i:where(.svelte-1w9hrwr) {
+				width: 2em;
+				height: 2em;
+				display: grid;
+				place-items: center;
+				font:
+					0.85em Georgia,
+					serif;
+				border-radius: 50%;
+				background: #e5dfd3;
+			}
+			.member.svelte-1w9hrwr b:where(.svelte-1w9hrwr) {
+				font-size: 0.85em;
+				font-weight: 400;
+				border: 1px solid #d3cec3;
+				border-radius: 0.25em;
+				text-align: center;
+				padding: 0.3em 0.2em;
+				background: #f0eee7;
+			}
+			.member.svelte-1w9hrwr .access-write:where(.svelte-1w9hrwr) {
+				background: #f5e3d4;
+				color: #9b4512;
+				border-color: #dec1aa;
+			}
+			.invite-strip.svelte-1w9hrwr {
+				padding: 0.8em;
+				margin-top: 0.8em;
+				border: 1px solid #c8c1b5;
+				border-radius: 0.35em;
+				background-color: #eeebe4;
+			}
+			.invite-strip.svelte-1w9hrwr strong:where(.svelte-1w9hrwr) {
+				display: block;
+				font-size: 1.2em;
+				margin: 0.35em 0;
+			}
+			.invite-strip.svelte-1w9hrwr > span:where(.svelte-1w9hrwr):last-child {
+				display: flex;
+				justify-content: space-between;
+				color: #655d50;
+				font-size: 0.9em;
+			}
+			.permission-rule.svelte-1w9hrwr {
+				display: flex;
+				gap: 0.5em;
+				margin-top: 1em;
+				color: #70685c;
+				font-size: 0.8em;
+			}
+			.execution-view.svelte-1w9hrwr {
+				background: #f5f3ed;
+			}
+			.execution-heading.svelte-1w9hrwr {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				margin: 1em 0;
+			}
+			.execution-heading.svelte-1w9hrwr h2:where(.svelte-1w9hrwr) {
+				font-size: 3.2em;
+			}
+			.runtime-stamp.svelte-1w9hrwr {
+				font:
+					0.8em/1.3 ui-monospace,
+					monospace;
+				color: var(--accent);
+				border: 1px solid currentColor;
+				padding: 0.6em 0.9em;
+				transform: rotate(4deg);
+			}
+			.execution-body.svelte-1w9hrwr {
+				display: grid;
+				grid-template-columns: 21em 1fr;
+				border: 1px solid var(--edge);
+				background: #fcfbf8;
+				border-radius: 0.5em;
+				height: 16.3em;
+				overflow: hidden;
+			}
+			.work-inbox.svelte-1w9hrwr {
+				padding: 1.2em;
+				border-right: 1px solid var(--edge);
+				background: #ebe8df;
+			}
+			.work-inbox.svelte-1w9hrwr h3:where(.svelte-1w9hrwr) {
+				font-size: 1.6em;
+			}
+			.work-tabs.svelte-1w9hrwr {
+				display: flex;
+				gap: 1em;
+				margin: 0.8em 0 1em;
+				padding-bottom: 0.7em;
+				border-bottom: 1px solid #cfc8ba;
+				font-size: 0.75em;
+			}
+			.work-inbox.svelte-1w9hrwr > small:where(.svelte-1w9hrwr) {
+				font-size: 0.65em;
+			}
+			.run-ticket.svelte-1w9hrwr {
+				position: relative;
+				padding: 1em;
+				margin: 0.5em 0;
+				border: 1px solid #c9c4b8;
+				border-left: 0.3em solid #267344;
+				background: #fffefa;
+				border-radius: 0.3em;
+			}
+			.run-ticket.svelte-1w9hrwr > strong:where(.svelte-1w9hrwr) {
+				font-size: 1.2em;
+				margin-left: 0.3em;
+			}
+			.run-ticket.svelte-1w9hrwr p:where(.svelte-1w9hrwr) {
+				font-size: 0.9em;
+				margin: 0.4em 0;
+			}
+			.run-state.svelte-1w9hrwr {
+				font:
+					0.7em ui-monospace,
+					monospace;
+				color: #267344;
+			}
+			.run-legend.svelte-1w9hrwr {
+				display: flex;
+				justify-content: space-between;
+				color: #6d6558;
+				font-size: 0.8em;
+			}
+			.execution-record.svelte-1w9hrwr {
+				padding: 1.4em 1.7em;
+			}
+			.execution-record.svelte-1w9hrwr > .small-label:where(.svelte-1w9hrwr) {
+				font-size: 0.7em;
+				margin-bottom: 0.5em;
+			}
+			.record-row.svelte-1w9hrwr {
+				display: flex;
+				gap: 1em;
+				align-items: center;
+				padding: 0.65em 0;
+				border-bottom: 1px dashed #d2cbbb;
+			}
+			.record-row.svelte-1w9hrwr > span:where(.svelte-1w9hrwr) {
+				font:
+					0.8em ui-monospace,
+					monospace;
+				color: #9a8c75;
+			}
+			.record-row.svelte-1w9hrwr strong:where(.svelte-1w9hrwr) {
+				font-size: 1.2em;
+			}
+			.record-row.svelte-1w9hrwr small:where(.svelte-1w9hrwr) {
+				font-size: 0.75em;
+				margin-top: 0.3em;
+				letter-spacing: 0;
+			}
+			.record-row.svelte-1w9hrwr i:where(.svelte-1w9hrwr) {
+				margin-left: auto;
+				font-style: normal;
+				color: #267344;
+				font-size: 1.2em;
+			}
+			.calendar-strip.svelte-1w9hrwr {
+				display: grid;
+				grid-template-columns: 1fr 22em;
+				gap: 1em;
+				margin-top: 1em;
+				background: #25231f;
+				color: #f7f4ed;
+				height: 6em;
+				overflow: hidden;
+				border-radius: 0.45em;
+				padding: 0.7em 1.3em;
+			}
+			.calendar-strip.svelte-1w9hrwr small:where(.svelte-1w9hrwr) {
+				color: #c1b3a1;
+				font-size: 0.7em;
+			}
+			.calendar-strip.svelte-1w9hrwr strong:where(.svelte-1w9hrwr) {
+				display: block;
+				font-size: 1.45em;
+				margin: 0.25em 0;
+			}
+			.calendar-strip.svelte-1w9hrwr
+				div:where(.svelte-1w9hrwr)
+				> span:where(.svelte-1w9hrwr) {
+				font-size: 0.8em;
+				color: #c7bcae;
+			}
+			.calendar-strip.svelte-1w9hrwr img:where(.svelte-1w9hrwr) {
+				width: 100%;
+				border-radius: 0.25em;
+			}
+			.execution-foot.svelte-1w9hrwr {
+				margin-top: 0.8em;
+				font:
+					0.65em ui-monospace,
+					monospace;
+				color: #6a6258;
+				text-align: right;
+			}
+			.inkprint-view.svelte-1w9hrwr {
+				background: #eeece5;
+			}
+			.inkprint-heading.svelte-1w9hrwr {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				margin: 1.5em 0;
+			}
+			.inkprint-heading.svelte-1w9hrwr h2:where(.svelte-1w9hrwr) {
+				font:
+					3.4em/0.98 Georgia,
+					serif;
+				letter-spacing: -0.05em;
+			}
+			.inkprint-heading.svelte-1w9hrwr em:where(.svelte-1w9hrwr) {
+				font-style: italic;
+			}
+			.edition.svelte-1w9hrwr {
+				font:
+					0.8em/1.7 ui-monospace,
+					monospace;
+				color: #746a5b;
+				text-align: right;
+			}
+			.theme-pair.svelte-1w9hrwr {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 1.2em;
+			}
+			.theme-paper.svelte-1w9hrwr,
+			.theme-ink.svelte-1w9hrwr {
+				padding: 1.6em;
+				height: 12em;
+				border: 1px solid #d0c9bc;
+				border-radius: 0.4em;
+			}
+			.theme-paper.svelte-1w9hrwr {
+				background-color: #faf9f6;
+				box-shadow: 0 0.5em 0.9em -0.7em #18181c50;
+			}
+			.theme-ink.svelte-1w9hrwr {
+				background-color: #1d1c1a;
+				color: #ebe9e3;
+				border-color: #38352f;
+			}
+			.theme-pair.svelte-1w9hrwr .wordmark:where(.svelte-1w9hrwr) {
+				width: 10em;
+				margin-top: -0.8em;
+				margin-bottom: 0.5em;
+			}
+			.theme-label.svelte-1w9hrwr {
+				display: block;
+				font:
+					0.7em ui-monospace,
+					monospace;
+				letter-spacing: 0.1em;
+				margin-bottom: 1.3em;
+			}
+			.theme-task.svelte-1w9hrwr {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.6em;
+				align-items: center;
+				padding: 0.8em;
+				border: 1px solid #ccc5b6;
+				background: #f0eee8;
+				border-radius: 0.3em;
+			}
+			.theme-task.svelte-1w9hrwr > span:where(.svelte-1w9hrwr):first-child {
+				color: #267344;
+			}
+			.theme-task.svelte-1w9hrwr strong:where(.svelte-1w9hrwr) {
+				font-size: 1.1em;
+			}
+			.mini-state.svelte-1w9hrwr {
+				display: block;
+				margin-left: 1.9em;
+				width: 100%;
+				font:
+					0.65em ui-monospace,
+					monospace;
+				color: #876045;
+			}
+			.theme-ink.svelte-1w9hrwr .theme-task:where(.svelte-1w9hrwr) {
+				background: #292621;
+				border-color: #51483b;
+			}
+			.theme-ink.svelte-1w9hrwr
+				.theme-task:where(.svelte-1w9hrwr)
+				> span:where(.svelte-1w9hrwr):first-child {
+				color: #81c29b;
+			}
+			.theme-ink.svelte-1w9hrwr .mini-state:where(.svelte-1w9hrwr) {
+				color: #f3a46d;
+			}
+			.texture-row.svelte-1w9hrwr {
+				display: grid;
+				grid-template-columns: repeat(4, 1fr);
+				gap: 1.2em;
+				margin-top: 1.6em;
+			}
+			.texture-swatch.svelte-1w9hrwr {
+				height: 4em;
+				border: 1px solid #cec6b7;
+				background-color: #e7dfd2;
+			}
+			.texture-specimen.svelte-1w9hrwr strong:where(.svelte-1w9hrwr) {
+				display: block;
+				font-size: 1.2em;
+				margin-top: 0.4em;
+			}
+			.texture-specimen.svelte-1w9hrwr > span:where(.svelte-1w9hrwr) {
+				font:
+					0.8em ui-monospace,
+					monospace;
+				color: #716758;
+			}
+			.bloom.svelte-1w9hrwr {
+				background-image: radial-gradient(circle, #18181c2b 0.08em, transparent 0.09em);
+				background-size: 0.8em 0.8em;
+			}
+			.grain.svelte-1w9hrwr {
+				background-image: repeating-linear-gradient(
+					45deg,
+					transparent,
+					transparent 0.2em,
+					#18181c1a 0.2em,
+					#18181c1a 0.3em
+				);
+			}
+			.thread.svelte-1w9hrwr {
+				background-image:
+					repeating-linear-gradient(
+						45deg,
+						transparent,
+						transparent 0.4em,
+						#18181c0a 0.4em,
+						#18181c0a 0.5em
+					),
+					repeating-linear-gradient(
+						-45deg,
+						transparent,
+						transparent 0.4em,
+						#18181c0a 0.4em,
+						#18181c0a 0.5em
+					);
+			}
+			.grid.svelte-1w9hrwr {
+				background-image:
+					linear-gradient(#88806d10 1px, transparent 1px),
+					linear-gradient(90deg, #88806d10 1px, transparent 1px);
+				background-size: 0.8em 0.8em;
+			}
+			.native-note.svelte-1w9hrwr {
+				color: #8b4b23;
+			}
+			/* Small sheets deliberately change hierarchy; no miniature tables to decipher. */
+			.compact.svelte-1w9hrwr .folio:where(.svelte-1w9hrwr) {
+				font-size: 1.2em;
+				border: 0;
+			}
+			.compact.svelte-1w9hrwr
+				.folio:where(.svelte-1w9hrwr)
+				span:where(.svelte-1w9hrwr):last-child {
+				display: none;
+			}
+			.workspace-foot.svelte-1w9hrwr {
+				display: none;
+			}
+			.compact.svelte-1w9hrwr
+				.workspace-copy:where(.svelte-1w9hrwr)
+				h2:where(.svelte-1w9hrwr) {
+				font-size: 4.3em;
+			}
+			.compact.svelte-1w9hrwr .workspace-copy:where(.svelte-1w9hrwr) p:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .workspace-note:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .workspace-stamp:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .workspace-foot:where(.svelte-1w9hrwr) {
+				display: none;
+			}
+			.compact.svelte-1w9hrwr .workspace-capture:where(.svelte-1w9hrwr) {
+				top: 22em;
+				left: 5em;
+				width: 53em;
+			}
+			.compact.svelte-1w9hrwr
+				.workspace-copy:where(.svelte-1w9hrwr)
+				.wordmark:where(.svelte-1w9hrwr) {
+				width: 16em;
+			}
+			.compact.svelte-1w9hrwr .chat-title:where(.svelte-1w9hrwr) h2:where(.svelte-1w9hrwr) {
+				font-size: 3em;
+			}
+			.compact.svelte-1w9hrwr .context-pill:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .source-capture:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .chat-foot:where(.svelte-1w9hrwr) {
+				display: none;
+			}
+			.compact.svelte-1w9hrwr .bubble:where(.svelte-1w9hrwr) {
+				top: 11.2em;
+				left: 2.6em;
+				right: 2.6em;
+				width: auto;
+				padding: 1.3em;
+			}
+			.compact.svelte-1w9hrwr .bubble:where(.svelte-1w9hrwr) p:where(.svelte-1w9hrwr) {
+				font-size: 2.4em;
+			}
+			.compact.svelte-1w9hrwr
+				.bubble:where(.svelte-1w9hrwr)
+				.small-label:where(.svelte-1w9hrwr) {
+				font-size: 1.1em;
+			}
+			.compact.svelte-1w9hrwr .tool-strip:where(.svelte-1w9hrwr) {
+				top: 22.5em;
+				padding: 0.8em 1.2em;
+			}
+			.compact.svelte-1w9hrwr
+				.tool-strip:where(.svelte-1w9hrwr)
+				strong:where(.svelte-1w9hrwr) {
+				font-size: 2.2em;
+			}
+			.compact.svelte-1w9hrwr
+				.tool-strip:where(.svelte-1w9hrwr)
+				small:where(.svelte-1w9hrwr) {
+				font-size: 1.1em;
+			}
+			.compact.svelte-1w9hrwr .receipt-tag:where(.svelte-1w9hrwr) {
+				font-size: 1.2em;
+			}
+			.compact.svelte-1w9hrwr .chat-result:where(.svelte-1w9hrwr) {
+				top: 29em;
+			}
+			.compact.svelte-1w9hrwr .chat-result:where(.svelte-1w9hrwr) h3:where(.svelte-1w9hrwr) {
+				font-size: 2.4em;
+			}
+			.compact.svelte-1w9hrwr
+				.chat-result:where(.svelte-1w9hrwr)
+				small:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .chat-result:where(.svelte-1w9hrwr) p:where(.svelte-1w9hrwr) {
+				font-size: 1.1em;
+			}
+			.compact.svelte-1w9hrwr .workbench-title:where(.svelte-1w9hrwr) {
+				margin: 1em 0;
+			}
+			.compact.svelte-1w9hrwr
+				.workbench-title:where(.svelte-1w9hrwr)
+				h2:where(.svelte-1w9hrwr) {
+				font-size: 4em;
+			}
+			.compact.svelte-1w9hrwr
+				.workbench-title:where(.svelte-1w9hrwr)
+				small:where(.svelte-1w9hrwr) {
+				font-size: 1.1em;
+			}
+			.compact.svelte-1w9hrwr .project-count:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .document-tree:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .workbench-foot:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .document-sheet:where(.svelte-1w9hrwr) p:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .writing-lines:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .doc-bottom:where(.svelte-1w9hrwr) {
+				display: none;
+			}
+			.compact.svelte-1w9hrwr .context-path:where(.svelte-1w9hrwr) {
+				gap: 1em;
+				padding: 0.8em 1em;
+			}
+			.compact.svelte-1w9hrwr
+				.context-path:where(.svelte-1w9hrwr)
+				span:where(.svelte-1w9hrwr) {
+				font-size: 1.8em;
+			}
+			.compact.svelte-1w9hrwr .context-path:where(.svelte-1w9hrwr) b:where(.svelte-1w9hrwr) {
+				display: none;
+			}
+			.compact.svelte-1w9hrwr .workbench-body:where(.svelte-1w9hrwr) {
+				height: 20em;
+			}
+			.compact.svelte-1w9hrwr .board-capture:where(.svelte-1w9hrwr) {
+				left: 0.7em;
+				width: 52em;
+				top: 1em;
+			}
+			.compact.svelte-1w9hrwr
+				.board-heading:where(.svelte-1w9hrwr)
+				strong:where(.svelte-1w9hrwr) {
+				font-size: 2em;
+			}
+			.compact.svelte-1w9hrwr
+				.board-heading:where(.svelte-1w9hrwr)
+				span:where(.svelte-1w9hrwr) {
+				font-size: 1em;
+			}
+			.compact.svelte-1w9hrwr .document-sheet:where(.svelte-1w9hrwr) {
+				top: 8em;
+				width: 24em;
+				padding: 1.2em;
+			}
+			.compact.svelte-1w9hrwr
+				.document-sheet:where(.svelte-1w9hrwr)
+				h3:where(.svelte-1w9hrwr) {
+				font-size: 3em;
+			}
+			.compact.svelte-1w9hrwr .document-tab:where(.svelte-1w9hrwr) {
+				font-size: 1em;
+			}
+			.compact.svelte-1w9hrwr .share-side:where(.svelte-1w9hrwr) {
+				top: 5em;
+				width: 100%;
+			}
+			.compact.svelte-1w9hrwr .share-side:where(.svelte-1w9hrwr) h2:where(.svelte-1w9hrwr) {
+				font-size: 4.3em;
+			}
+			.compact.svelte-1w9hrwr
+				.share-side:where(.svelte-1w9hrwr)
+				h2:where(.svelte-1w9hrwr)
+				br:where(.svelte-1w9hrwr) {
+				display: none;
+			}
+			.compact.svelte-1w9hrwr
+				.share-side:where(.svelte-1w9hrwr)
+				h2:where(.svelte-1w9hrwr)
+				em:where(.svelte-1w9hrwr) {
+				display: block;
+			}
+			.compact.svelte-1w9hrwr
+				.share-side:where(.svelte-1w9hrwr)
+				> small:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .share-side:where(.svelte-1w9hrwr) p:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .permission-key:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .sheet-heading:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .share-tabs:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .invite-strip:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .permission-rule:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .sharing-foot:where(.svelte-1w9hrwr) {
+				display: none;
+			}
+			.compact.svelte-1w9hrwr .share-sheet:where(.svelte-1w9hrwr) {
+				top: 16.7em;
+				left: 2.6em;
+				width: 54.8em;
+				padding: 1.8em;
+			}
+			.compact.svelte-1w9hrwr .member:where(.svelte-1w9hrwr) {
+				font-size: 1.6em;
+				padding: 0.6em 0;
+			}
+			.compact.svelte-1w9hrwr .member-head:where(.svelte-1w9hrwr) {
+				font-size: 1em;
+			}
+			.compact.svelte-1w9hrwr
+				.execution-heading:where(.svelte-1w9hrwr)
+				h2:where(.svelte-1w9hrwr) {
+				font-size: 4.6em;
+			}
+			.compact.svelte-1w9hrwr
+				.execution-heading:where(.svelte-1w9hrwr)
+				small:where(.svelte-1w9hrwr) {
+				font-size: 1.2em;
+			}
+			.compact.svelte-1w9hrwr .runtime-stamp:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .work-inbox:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .calendar-strip:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .execution-foot:where(.svelte-1w9hrwr) {
+				display: none;
+			}
+			.compact.svelte-1w9hrwr .execution-body:where(.svelte-1w9hrwr) {
+				display: block;
+				height: auto;
+			}
+			.compact.svelte-1w9hrwr .execution-record:where(.svelte-1w9hrwr) {
+				padding: 1.3em;
+			}
+			.compact.svelte-1w9hrwr
+				.execution-record:where(.svelte-1w9hrwr)
+				> .small-label:where(.svelte-1w9hrwr) {
+				font-size: 1em;
+			}
+			.compact.svelte-1w9hrwr .record-row:where(.svelte-1w9hrwr) {
+				padding: 1em 0;
+				gap: 1.7em;
+			}
+			.compact.svelte-1w9hrwr
+				.record-row:where(.svelte-1w9hrwr)
+				> span:where(.svelte-1w9hrwr) {
+				font-size: 1.3em;
+			}
+			.compact.svelte-1w9hrwr
+				.record-row:where(.svelte-1w9hrwr)
+				strong:where(.svelte-1w9hrwr) {
+				font-size: 2.8em;
+			}
+			.compact.svelte-1w9hrwr
+				.record-row:where(.svelte-1w9hrwr)
+				small:where(.svelte-1w9hrwr) {
+				display: none;
+			}
+			.compact.svelte-1w9hrwr
+				.inkprint-heading:where(.svelte-1w9hrwr)
+				h2:where(.svelte-1w9hrwr) {
+				font-size: 4.5em;
+			}
+			.compact.svelte-1w9hrwr .edition:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .theme-task:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .inkprint-foot:where(.svelte-1w9hrwr) {
+				display: none;
+			}
+			.compact.svelte-1w9hrwr .theme-paper:where(.svelte-1w9hrwr),
+			.compact.svelte-1w9hrwr .theme-ink:where(.svelte-1w9hrwr) {
+				height: 9em;
+				padding: 1.7em;
+			}
+			.compact.svelte-1w9hrwr
+				.theme-pair:where(.svelte-1w9hrwr)
+				.wordmark:where(.svelte-1w9hrwr) {
+				width: 20em;
+			}
+			.compact.svelte-1w9hrwr .theme-label:where(.svelte-1w9hrwr) {
+				font-size: 1.1em;
+			}
+			.compact.svelte-1w9hrwr .texture-swatch:where(.svelte-1w9hrwr) {
+				height: 5em;
+			}
+			.compact.svelte-1w9hrwr
+				.texture-specimen:where(.svelte-1w9hrwr)
+				strong:where(.svelte-1w9hrwr) {
+				font-size: 1.7em;
+			}
+			.compact.svelte-1w9hrwr
+				.texture-specimen:where(.svelte-1w9hrwr)
+				> span:where(.svelte-1w9hrwr) {
+				display: none;
+			}
+			@media (prefers-reduced-motion: no-preference) {
+				.animated.svelte-1w9hrwr > div:where(.svelte-1w9hrwr) {
+					animation: svelte-1w9hrwr-sheet-arrive 320ms ease-out both;
+				}
+			}
+			@keyframes svelte-1w9hrwr-sheet-arrive {
+				from {
+					opacity: 0;
+					transform: translateY(0.4em);
+				}
+				to {
+					opacity: 1;
+					transform: translateY(0);
+				}
+			}
+			@media (prefers-reduced-motion: reduce) {
+				.animated.svelte-1w9hrwr > div:where(.svelte-1w9hrwr) {
+					animation: none;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<h1>BuildOS / six portfolio layers</h1>
+		<p>Actual public demo assets + labeled interface studies. Full and compact variants.</p>
+		<main>
+			<section>
+				<h2>BuildOS · 600px</h2>
+				<div
+					class="sample"
+					data-layer="workspace"
+					data-width="600"
+					style="width: 600px; height: 375px"
+				>
+					<!--[-->
+					<div
+						class="stage svelte-1w9hrwr"
+						role="img"
+						aria-label="BuildOS: a project workspace you can talk to. Actual Fading Crown demo project."
+					>
+						<div class="canvas svelte-1w9hrwr" aria-hidden="true">
+							<!--[-1-->
+							<div class="workspace-view svelte-1w9hrwr">
+								<div class="folio svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">01 / BUILDOS</span
+									><span class="svelte-1w9hrwr"
+										>A PROJECT WORKSPACE YOU CAN TALK TO</span
+									>
+								</div>
+								<!---->
+								<div class="workspace-copy svelte-1w9hrwr">
+									<img
+										class="wordmark svelte-1w9hrwr"
+										src="../handoff/assets/wordmark-paper.webp"
+										alt="BuildOS"
+										width="1200"
+										height="360"
+									/><!---->
+									<h2 class="svelte-1w9hrwr">
+										Messy thinking.<br class="svelte-1w9hrwr" /><em
+											class="svelte-1w9hrwr"
+											>Structured work.</em
+										>
+									</h2>
+									<p class="svelte-1w9hrwr">
+										The project remembers what matters.
+									</p>
+								</div>
+								<div class="workspace-capture svelte-1w9hrwr">
+									<div class="window-strip svelte-1w9hrwr">
+										<span class="window-dots svelte-1w9hrwr">● ● ●</span
+										><span class="svelte-1w9hrwr"
+											>FADING CROWN / PUBLIC DEMO</span
+										><span class="svelte-1w9hrwr">↗</span>
+									</div>
+									<img
+										src="../handoff/assets/project-demo.jpg"
+										alt=""
+										width="1010"
+										height="500"
+										class="svelte-1w9hrwr"
+									/>
+								</div>
+								<div class="workspace-note svelte-1w9hrwr">
+									<span class="note-arrow svelte-1w9hrwr">↳</span>
+									<div class="svelte-1w9hrwr">
+										<strong class="svelte-1w9hrwr"
+											>Real work, in one place.</strong
+										><span class="svelte-1w9hrwr"
+											>Tasks · Documents · Project context</span
+										>
+									</div>
+								</div>
+								<div class="workspace-stamp svelte-1w9hrwr">
+									ROUGH IDEA<br class="svelte-1w9hrwr" /><span
+										class="svelte-1w9hrwr"
+										>↓</span
+									><br class="svelte-1w9hrwr" />WORKING PROJECT
+								</div>
+								<div class="workspace-foot svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">BUILDOS</span
+									><span class="svelte-1w9hrwr">ACTUAL DEMO / AUGUST 2026</span>
+								</div>
+							</div>
+							<!--]-->
+						</div>
+					</div>
+					<!--]-->
+				</div>
+			</section>
+			<section>
+				<h2>BuildOS · 300px compact</h2>
+				<div
+					class="sample"
+					data-layer="workspace"
+					data-width="300"
+					style="width: 300px; height: 187.5px"
+				>
+					<!--[-->
+					<div
+						class="stage svelte-1w9hrwr"
+						role="img"
+						aria-label="BuildOS: a project workspace you can talk to. Actual Fading Crown demo project."
+					>
+						<div class="canvas compact svelte-1w9hrwr" aria-hidden="true">
+							<!--[-1-->
+							<div class="workspace-view svelte-1w9hrwr">
+								<div class="folio svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">01 / BUILDOS</span
+									><span class="svelte-1w9hrwr"
+										>A PROJECT WORKSPACE YOU CAN TALK TO</span
+									>
+								</div>
+								<!---->
+								<div class="workspace-copy svelte-1w9hrwr">
+									<img
+										class="wordmark svelte-1w9hrwr"
+										src="../handoff/assets/wordmark-paper.webp"
+										alt="BuildOS"
+										width="1200"
+										height="360"
+									/><!---->
+									<h2 class="svelte-1w9hrwr">
+										Messy thinking.<br class="svelte-1w9hrwr" /><em
+											class="svelte-1w9hrwr"
+											>Structured work.</em
+										>
+									</h2>
+									<p class="svelte-1w9hrwr">
+										The project remembers what matters.
+									</p>
+								</div>
+								<div class="workspace-capture svelte-1w9hrwr">
+									<div class="window-strip svelte-1w9hrwr">
+										<span class="window-dots svelte-1w9hrwr">● ● ●</span
+										><span class="svelte-1w9hrwr"
+											>FADING CROWN / PUBLIC DEMO</span
+										><span class="svelte-1w9hrwr">↗</span>
+									</div>
+									<img
+										src="../handoff/assets/project-demo.jpg"
+										alt=""
+										width="1010"
+										height="500"
+										class="svelte-1w9hrwr"
+									/>
+								</div>
+								<div class="workspace-note svelte-1w9hrwr">
+									<span class="note-arrow svelte-1w9hrwr">↳</span>
+									<div class="svelte-1w9hrwr">
+										<strong class="svelte-1w9hrwr"
+											>Real work, in one place.</strong
+										><span class="svelte-1w9hrwr"
+											>Tasks · Documents · Project context</span
+										>
+									</div>
+								</div>
+								<div class="workspace-stamp svelte-1w9hrwr">
+									ROUGH IDEA<br class="svelte-1w9hrwr" /><span
+										class="svelte-1w9hrwr"
+										>↓</span
+									><br class="svelte-1w9hrwr" />WORKING PROJECT
+								</div>
+								<div class="workspace-foot svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">BUILDOS</span
+									><span class="svelte-1w9hrwr">ACTUAL DEMO / AUGUST 2026</span>
+								</div>
+							</div>
+							<!--]-->
+						</div>
+					</div>
+					<!--]-->
+				</div>
+			</section>
+			<section>
+				<h2>BuildOS · 150px compact</h2>
+				<div
+					class="sample"
+					data-layer="workspace"
+					data-width="150"
+					style="width: 150px; height: 93.75px"
+				>
+					<!--[-->
+					<div
+						class="stage svelte-1w9hrwr"
+						role="img"
+						aria-label="BuildOS: a project workspace you can talk to. Actual Fading Crown demo project."
+					>
+						<div class="canvas compact svelte-1w9hrwr" aria-hidden="true">
+							<!--[-1-->
+							<div class="workspace-view svelte-1w9hrwr">
+								<div class="folio svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">01 / BUILDOS</span
+									><span class="svelte-1w9hrwr"
+										>A PROJECT WORKSPACE YOU CAN TALK TO</span
+									>
+								</div>
+								<!---->
+								<div class="workspace-copy svelte-1w9hrwr">
+									<img
+										class="wordmark svelte-1w9hrwr"
+										src="../handoff/assets/wordmark-paper.webp"
+										alt="BuildOS"
+										width="1200"
+										height="360"
+									/><!---->
+									<h2 class="svelte-1w9hrwr">
+										Messy thinking.<br class="svelte-1w9hrwr" /><em
+											class="svelte-1w9hrwr"
+											>Structured work.</em
+										>
+									</h2>
+									<p class="svelte-1w9hrwr">
+										The project remembers what matters.
+									</p>
+								</div>
+								<div class="workspace-capture svelte-1w9hrwr">
+									<div class="window-strip svelte-1w9hrwr">
+										<span class="window-dots svelte-1w9hrwr">● ● ●</span
+										><span class="svelte-1w9hrwr"
+											>FADING CROWN / PUBLIC DEMO</span
+										><span class="svelte-1w9hrwr">↗</span>
+									</div>
+									<img
+										src="../handoff/assets/project-demo.jpg"
+										alt=""
+										width="1010"
+										height="500"
+										class="svelte-1w9hrwr"
+									/>
+								</div>
+								<div class="workspace-note svelte-1w9hrwr">
+									<span class="note-arrow svelte-1w9hrwr">↳</span>
+									<div class="svelte-1w9hrwr">
+										<strong class="svelte-1w9hrwr"
+											>Real work, in one place.</strong
+										><span class="svelte-1w9hrwr"
+											>Tasks · Documents · Project context</span
+										>
+									</div>
+								</div>
+								<div class="workspace-stamp svelte-1w9hrwr">
+									ROUGH IDEA<br class="svelte-1w9hrwr" /><span
+										class="svelte-1w9hrwr"
+										>↓</span
+									><br class="svelte-1w9hrwr" />WORKING PROJECT
+								</div>
+								<div class="workspace-foot svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">BUILDOS</span
+									><span class="svelte-1w9hrwr">ACTUAL DEMO / AUGUST 2026</span>
+								</div>
+							</div>
+							<!--]-->
+						</div>
+					</div>
+					<!--]-->
+				</div>
+			</section>
+			<section>
+				<h2>Chat into work · 600px</h2>
+				<div
+					class="sample"
+					data-layer="conversation"
+					data-width="600"
+					style="width: 600px; height: 375px"
+				>
+					<!--[-->
+					<div
+						class="stage svelte-1w9hrwr"
+						role="img"
+						aria-label="Chat becomes saved work. A scheduling request, visible tool activity, and an actual task-update receipt."
+					>
+						<div class="canvas svelte-1w9hrwr" aria-hidden="true">
+							<!--[0-->
+							<div class="chat-view svelte-1w9hrwr">
+								<div class="folio svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">02 / BUILDOS</span
+									><span class="svelte-1w9hrwr">CONVERSATION → SAVED WORK</span>
+								</div>
+								<!---->
+								<div class="chat-title svelte-1w9hrwr">
+									<span class="square-mark svelte-1w9hrwr">↗</span>
+									<div class="svelte-1w9hrwr">
+										<small class="svelte-1w9hrwr">PROJECT CHAT</small>
+										<h2 class="svelte-1w9hrwr">Fading Crown</h2>
+									</div>
+									<span class="context-pill svelte-1w9hrwr">Project context</span>
+								</div>
+								<div class="bubble svelte-1w9hrwr">
+									<span class="small-label svelte-1w9hrwr"
+										>YOU · DEMO REQUEST</span
+									>
+									<p class="svelte-1w9hrwr">
+										Move my Ch. 13 writing block<br class="svelte-1w9hrwr" />to
+										Thursday afternoon.
+									</p>
+								</div>
+								<div class="tool-strip svelte-1w9hrwr">
+									<span class="check svelte-1w9hrwr">✓</span>
+									<div class="svelte-1w9hrwr">
+										<small class="svelte-1w9hrwr">BUILDOS THOUGHTS</small
+										><strong class="svelte-1w9hrwr">Updated task</strong>
+									</div>
+									<span class="receipt-tag svelte-1w9hrwr">RECEIPT</span>
+								</div>
+								<div class="chat-result svelte-1w9hrwr">
+									<span class="task-symbol svelte-1w9hrwr">✓</span>
+									<div class="svelte-1w9hrwr">
+										<small class="svelte-1w9hrwr">WRITING BLOCK</small>
+										<h3 class="svelte-1w9hrwr">Draft Ch. 13</h3>
+										<p class="svelte-1w9hrwr">
+											Open the task. Inspect the change.
+										</p>
+									</div>
+									<span class="link-arrow svelte-1w9hrwr">↗</span>
+								</div>
+								<div class="source-capture svelte-1w9hrwr">
+									<span class="small-label svelte-1w9hrwr"
+										>ACTUAL PUBLIC DEMO RECEIPT</span
+									><img
+										src="../handoff/assets/schedule-chat-demo.jpg"
+										alt=""
+										width="1040"
+										height="178"
+										class="svelte-1w9hrwr"
+									/>
+								</div>
+								<div class="chat-foot svelte-1w9hrwr">
+									<span class="signal-dot svelte-1w9hrwr"></span
+									><span class="svelte-1w9hrwr"
+										>Tool activity stays beside the answer.</span
+									><span class="micro-note svelte-1w9hrwr"
+										>FADING CROWN / DEMO</span
+									>
+								</div>
+							</div>
+							<!--]-->
+						</div>
+					</div>
+					<!--]-->
+				</div>
+			</section>
+			<section>
+				<h2>Chat into work · 300px compact</h2>
+				<div
+					class="sample"
+					data-layer="conversation"
+					data-width="300"
+					style="width: 300px; height: 187.5px"
+				>
+					<!--[-->
+					<div
+						class="stage svelte-1w9hrwr"
+						role="img"
+						aria-label="Chat becomes saved work. A scheduling request, visible tool activity, and an actual task-update receipt."
+					>
+						<div class="canvas compact svelte-1w9hrwr" aria-hidden="true">
+							<!--[0-->
+							<div class="chat-view svelte-1w9hrwr">
+								<div class="folio svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">02 / BUILDOS</span
+									><span class="svelte-1w9hrwr">CONVERSATION → SAVED WORK</span>
+								</div>
+								<!---->
+								<div class="chat-title svelte-1w9hrwr">
+									<span class="square-mark svelte-1w9hrwr">↗</span>
+									<div class="svelte-1w9hrwr">
+										<small class="svelte-1w9hrwr">PROJECT CHAT</small>
+										<h2 class="svelte-1w9hrwr">Fading Crown</h2>
+									</div>
+									<span class="context-pill svelte-1w9hrwr">Project context</span>
+								</div>
+								<div class="bubble svelte-1w9hrwr">
+									<span class="small-label svelte-1w9hrwr"
+										>YOU · DEMO REQUEST</span
+									>
+									<p class="svelte-1w9hrwr">
+										Move my Ch. 13 writing block<br class="svelte-1w9hrwr" />to
+										Thursday afternoon.
+									</p>
+								</div>
+								<div class="tool-strip svelte-1w9hrwr">
+									<span class="check svelte-1w9hrwr">✓</span>
+									<div class="svelte-1w9hrwr">
+										<small class="svelte-1w9hrwr">BUILDOS THOUGHTS</small
+										><strong class="svelte-1w9hrwr">Updated task</strong>
+									</div>
+									<span class="receipt-tag svelte-1w9hrwr">RECEIPT</span>
+								</div>
+								<div class="chat-result svelte-1w9hrwr">
+									<span class="task-symbol svelte-1w9hrwr">✓</span>
+									<div class="svelte-1w9hrwr">
+										<small class="svelte-1w9hrwr">WRITING BLOCK</small>
+										<h3 class="svelte-1w9hrwr">Draft Ch. 13</h3>
+										<p class="svelte-1w9hrwr">
+											Open the task. Inspect the change.
+										</p>
+									</div>
+									<span class="link-arrow svelte-1w9hrwr">↗</span>
+								</div>
+								<div class="source-capture svelte-1w9hrwr">
+									<span class="small-label svelte-1w9hrwr"
+										>ACTUAL PUBLIC DEMO RECEIPT</span
+									><img
+										src="../handoff/assets/schedule-chat-demo.jpg"
+										alt=""
+										width="1040"
+										height="178"
+										class="svelte-1w9hrwr"
+									/>
+								</div>
+								<div class="chat-foot svelte-1w9hrwr">
+									<span class="signal-dot svelte-1w9hrwr"></span
+									><span class="svelte-1w9hrwr"
+										>Tool activity stays beside the answer.</span
+									><span class="micro-note svelte-1w9hrwr"
+										>FADING CROWN / DEMO</span
+									>
+								</div>
+							</div>
+							<!--]-->
+						</div>
+					</div>
+					<!--]-->
+				</div>
+			</section>
+			<section>
+				<h2>Chat into work · 150px compact</h2>
+				<div
+					class="sample"
+					data-layer="conversation"
+					data-width="150"
+					style="width: 150px; height: 93.75px"
+				>
+					<!--[-->
+					<div
+						class="stage svelte-1w9hrwr"
+						role="img"
+						aria-label="Chat becomes saved work. A scheduling request, visible tool activity, and an actual task-update receipt."
+					>
+						<div class="canvas compact svelte-1w9hrwr" aria-hidden="true">
+							<!--[0-->
+							<div class="chat-view svelte-1w9hrwr">
+								<div class="folio svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">02 / BUILDOS</span
+									><span class="svelte-1w9hrwr">CONVERSATION → SAVED WORK</span>
+								</div>
+								<!---->
+								<div class="chat-title svelte-1w9hrwr">
+									<span class="square-mark svelte-1w9hrwr">↗</span>
+									<div class="svelte-1w9hrwr">
+										<small class="svelte-1w9hrwr">PROJECT CHAT</small>
+										<h2 class="svelte-1w9hrwr">Fading Crown</h2>
+									</div>
+									<span class="context-pill svelte-1w9hrwr">Project context</span>
+								</div>
+								<div class="bubble svelte-1w9hrwr">
+									<span class="small-label svelte-1w9hrwr"
+										>YOU · DEMO REQUEST</span
+									>
+									<p class="svelte-1w9hrwr">
+										Move my Ch. 13 writing block<br class="svelte-1w9hrwr" />to
+										Thursday afternoon.
+									</p>
+								</div>
+								<div class="tool-strip svelte-1w9hrwr">
+									<span class="check svelte-1w9hrwr">✓</span>
+									<div class="svelte-1w9hrwr">
+										<small class="svelte-1w9hrwr">BUILDOS THOUGHTS</small
+										><strong class="svelte-1w9hrwr">Updated task</strong>
+									</div>
+									<span class="receipt-tag svelte-1w9hrwr">RECEIPT</span>
+								</div>
+								<div class="chat-result svelte-1w9hrwr">
+									<span class="task-symbol svelte-1w9hrwr">✓</span>
+									<div class="svelte-1w9hrwr">
+										<small class="svelte-1w9hrwr">WRITING BLOCK</small>
+										<h3 class="svelte-1w9hrwr">Draft Ch. 13</h3>
+										<p class="svelte-1w9hrwr">
+											Open the task. Inspect the change.
+										</p>
+									</div>
+									<span class="link-arrow svelte-1w9hrwr">↗</span>
+								</div>
+								<div class="source-capture svelte-1w9hrwr">
+									<span class="small-label svelte-1w9hrwr"
+										>ACTUAL PUBLIC DEMO RECEIPT</span
+									><img
+										src="../handoff/assets/schedule-chat-demo.jpg"
+										alt=""
+										width="1040"
+										height="178"
+										class="svelte-1w9hrwr"
+									/>
+								</div>
+								<div class="chat-foot svelte-1w9hrwr">
+									<span class="signal-dot svelte-1w9hrwr"></span
+									><span class="svelte-1w9hrwr"
+										>Tool activity stays beside the answer.</span
+									><span class="micro-note svelte-1w9hrwr"
+										>FADING CROWN / DEMO</span
+									>
+								</div>
+							</div>
+							<!--]-->
+						</div>
+					</div>
+					<!--]-->
+				</div>
+			</section>
+			<section>
+				<h2>Connected work · 600px</h2>
+				<div
+					class="sample"
+					data-layer="connected-work"
+					data-width="600"
+					style="width: 600px; height: 375px"
+				>
+					<!--[-->
+					<div
+						class="stage svelte-1w9hrwr"
+						role="img"
+						aria-label="Fading Crown project workbench: goals, plans, a real task board, and an illustrative document."
+					>
+						<div class="canvas svelte-1w9hrwr" aria-hidden="true">
+							<!--[1-->
+							<div class="workbench svelte-1w9hrwr">
+								<div class="folio svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">03 / BUILDOS</span
+									><span class="svelte-1w9hrwr"
+										>THE PROJECT KEEPS THE CONTEXT</span
+									>
+								</div>
+								<!---->
+								<div class="workbench-title svelte-1w9hrwr">
+									<div class="svelte-1w9hrwr">
+										<small class="svelte-1w9hrwr"
+											>PROJECT / FICTIONAL DEMO</small
+										>
+										<h2 class="svelte-1w9hrwr">Fading Crown</h2>
+									</div>
+									<span class="project-count svelte-1w9hrwr">TASKS + DOCS</span>
+								</div>
+								<div class="context-path svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr"
+										><b class="svelte-1w9hrwr">◎</b> Goal</span
+									><i class="svelte-1w9hrwr">›</i
+									><span class="svelte-1w9hrwr"
+										><b class="svelte-1w9hrwr">≡</b> Plan</span
+									><i class="svelte-1w9hrwr">›</i
+									><span class="active-path svelte-1w9hrwr"
+										><b class="svelte-1w9hrwr">✓</b> Task</span
+									><i class="svelte-1w9hrwr">↔</i
+									><span class="svelte-1w9hrwr"
+										><b class="svelte-1w9hrwr">▤</b> Document</span
+									>
+								</div>
+								<div class="workbench-body svelte-1w9hrwr">
+									<div class="document-tree svelte-1w9hrwr">
+										<small class="svelte-1w9hrwr">PROJECT FILES</small
+										><span class="tree-current svelte-1w9hrwr"
+											>▾   Manuscript</span
+										><span class="svelte-1w9hrwr">└   Act I</span
+										><span class="svelte-1w9hrwr">└   Character notes</span
+										><span class="svelte-1w9hrwr">└   World &amp; magic</span
+										><span class="tree-divider svelte-1w9hrwr"></span
+										><small class="svelte-1w9hrwr">WORK</small
+										><span class="svelte-1w9hrwr">◎   First draft</span
+										><span class="svelte-1w9hrwr">≡   Revision plan</span
+										><span class="tree-current svelte-1w9hrwr"
+											>✓   Task board</span
+										>
+									</div>
+									<div class="board-capture svelte-1w9hrwr">
+										<div class="board-heading svelte-1w9hrwr">
+											<strong class="svelte-1w9hrwr">Task board</strong
+											><span class="svelte-1w9hrwr">THE ACTUAL DEMO</span>
+										</div>
+										<img
+											src="../handoff/assets/task-board-demo.jpg"
+											alt=""
+											width="980"
+											height="310"
+											class="svelte-1w9hrwr"
+										/>
+									</div>
+									<div class="document-sheet svelte-1w9hrwr">
+										<span class="document-tab svelte-1w9hrwr"
+											>DOCUMENT / STUDY</span
+										><small class="svelte-1w9hrwr">PROJECT CONTEXT</small>
+										<h3 class="svelte-1w9hrwr">
+											The rules<br class="svelte-1w9hrwr" />of magic.
+										</h3>
+										<p class="svelte-1w9hrwr">
+											Magic costs memories.<br class="svelte-1w9hrwr" />The
+											wards are failing.
+										</p>
+										<div class="writing-lines svelte-1w9hrwr"></div>
+										<div class="doc-bottom svelte-1w9hrwr">
+											<span class="svelte-1w9hrwr">▤ Context</span
+											><span class="svelte-1w9hrwr">◷ History</span>
+										</div>
+									</div>
+								</div>
+								<div class="workbench-foot svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr"
+										>One project. Connected artifacts.</span
+									><span class="svelte-1w9hrwr"
+										>SCREENSHOT + INTERFACE STUDY</span
+									>
+								</div>
+							</div>
+							<!--]-->
+						</div>
+					</div>
+					<!--]-->
+				</div>
+			</section>
+			<section>
+				<h2>Connected work · 300px compact</h2>
+				<div
+					class="sample"
+					data-layer="connected-work"
+					data-width="300"
+					style="width: 300px; height: 187.5px"
+				>
+					<!--[-->
+					<div
+						class="stage svelte-1w9hrwr"
+						role="img"
+						aria-label="Fading Crown project workbench: goals, plans, a real task board, and an illustrative document."
+					>
+						<div class="canvas compact svelte-1w9hrwr" aria-hidden="true">
+							<!--[1-->
+							<div class="workbench svelte-1w9hrwr">
+								<div class="folio svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">03 / BUILDOS</span
+									><span class="svelte-1w9hrwr"
+										>THE PROJECT KEEPS THE CONTEXT</span
+									>
+								</div>
+								<!---->
+								<div class="workbench-title svelte-1w9hrwr">
+									<div class="svelte-1w9hrwr">
+										<small class="svelte-1w9hrwr"
+											>PROJECT / FICTIONAL DEMO</small
+										>
+										<h2 class="svelte-1w9hrwr">Fading Crown</h2>
+									</div>
+									<span class="project-count svelte-1w9hrwr">TASKS + DOCS</span>
+								</div>
+								<div class="context-path svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr"
+										><b class="svelte-1w9hrwr">◎</b> Goal</span
+									><i class="svelte-1w9hrwr">›</i
+									><span class="svelte-1w9hrwr"
+										><b class="svelte-1w9hrwr">≡</b> Plan</span
+									><i class="svelte-1w9hrwr">›</i
+									><span class="active-path svelte-1w9hrwr"
+										><b class="svelte-1w9hrwr">✓</b> Task</span
+									><i class="svelte-1w9hrwr">↔</i
+									><span class="svelte-1w9hrwr"
+										><b class="svelte-1w9hrwr">▤</b> Document</span
+									>
+								</div>
+								<div class="workbench-body svelte-1w9hrwr">
+									<div class="document-tree svelte-1w9hrwr">
+										<small class="svelte-1w9hrwr">PROJECT FILES</small
+										><span class="tree-current svelte-1w9hrwr"
+											>▾   Manuscript</span
+										><span class="svelte-1w9hrwr">└   Act I</span
+										><span class="svelte-1w9hrwr">└   Character notes</span
+										><span class="svelte-1w9hrwr">└   World &amp; magic</span
+										><span class="tree-divider svelte-1w9hrwr"></span
+										><small class="svelte-1w9hrwr">WORK</small
+										><span class="svelte-1w9hrwr">◎   First draft</span
+										><span class="svelte-1w9hrwr">≡   Revision plan</span
+										><span class="tree-current svelte-1w9hrwr"
+											>✓   Task board</span
+										>
+									</div>
+									<div class="board-capture svelte-1w9hrwr">
+										<div class="board-heading svelte-1w9hrwr">
+											<strong class="svelte-1w9hrwr">Task board</strong
+											><span class="svelte-1w9hrwr">THE ACTUAL DEMO</span>
+										</div>
+										<img
+											src="../handoff/assets/task-board-demo.jpg"
+											alt=""
+											width="980"
+											height="310"
+											class="svelte-1w9hrwr"
+										/>
+									</div>
+									<div class="document-sheet svelte-1w9hrwr">
+										<span class="document-tab svelte-1w9hrwr"
+											>DOCUMENT / STUDY</span
+										><small class="svelte-1w9hrwr">PROJECT CONTEXT</small>
+										<h3 class="svelte-1w9hrwr">
+											The rules<br class="svelte-1w9hrwr" />of magic.
+										</h3>
+										<p class="svelte-1w9hrwr">
+											Magic costs memories.<br class="svelte-1w9hrwr" />The
+											wards are failing.
+										</p>
+										<div class="writing-lines svelte-1w9hrwr"></div>
+										<div class="doc-bottom svelte-1w9hrwr">
+											<span class="svelte-1w9hrwr">▤ Context</span
+											><span class="svelte-1w9hrwr">◷ History</span>
+										</div>
+									</div>
+								</div>
+								<div class="workbench-foot svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr"
+										>One project. Connected artifacts.</span
+									><span class="svelte-1w9hrwr"
+										>SCREENSHOT + INTERFACE STUDY</span
+									>
+								</div>
+							</div>
+							<!--]-->
+						</div>
+					</div>
+					<!--]-->
+				</div>
+			</section>
+			<section>
+				<h2>Connected work · 150px compact</h2>
+				<div
+					class="sample"
+					data-layer="connected-work"
+					data-width="150"
+					style="width: 150px; height: 93.75px"
+				>
+					<!--[-->
+					<div
+						class="stage svelte-1w9hrwr"
+						role="img"
+						aria-label="Fading Crown project workbench: goals, plans, a real task board, and an illustrative document."
+					>
+						<div class="canvas compact svelte-1w9hrwr" aria-hidden="true">
+							<!--[1-->
+							<div class="workbench svelte-1w9hrwr">
+								<div class="folio svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">03 / BUILDOS</span
+									><span class="svelte-1w9hrwr"
+										>THE PROJECT KEEPS THE CONTEXT</span
+									>
+								</div>
+								<!---->
+								<div class="workbench-title svelte-1w9hrwr">
+									<div class="svelte-1w9hrwr">
+										<small class="svelte-1w9hrwr"
+											>PROJECT / FICTIONAL DEMO</small
+										>
+										<h2 class="svelte-1w9hrwr">Fading Crown</h2>
+									</div>
+									<span class="project-count svelte-1w9hrwr">TASKS + DOCS</span>
+								</div>
+								<div class="context-path svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr"
+										><b class="svelte-1w9hrwr">◎</b> Goal</span
+									><i class="svelte-1w9hrwr">›</i
+									><span class="svelte-1w9hrwr"
+										><b class="svelte-1w9hrwr">≡</b> Plan</span
+									><i class="svelte-1w9hrwr">›</i
+									><span class="active-path svelte-1w9hrwr"
+										><b class="svelte-1w9hrwr">✓</b> Task</span
+									><i class="svelte-1w9hrwr">↔</i
+									><span class="svelte-1w9hrwr"
+										><b class="svelte-1w9hrwr">▤</b> Document</span
+									>
+								</div>
+								<div class="workbench-body svelte-1w9hrwr">
+									<div class="document-tree svelte-1w9hrwr">
+										<small class="svelte-1w9hrwr">PROJECT FILES</small
+										><span class="tree-current svelte-1w9hrwr"
+											>▾   Manuscript</span
+										><span class="svelte-1w9hrwr">└   Act I</span
+										><span class="svelte-1w9hrwr">└   Character notes</span
+										><span class="svelte-1w9hrwr">└   World &amp; magic</span
+										><span class="tree-divider svelte-1w9hrwr"></span
+										><small class="svelte-1w9hrwr">WORK</small
+										><span class="svelte-1w9hrwr">◎   First draft</span
+										><span class="svelte-1w9hrwr">≡   Revision plan</span
+										><span class="tree-current svelte-1w9hrwr"
+											>✓   Task board</span
+										>
+									</div>
+									<div class="board-capture svelte-1w9hrwr">
+										<div class="board-heading svelte-1w9hrwr">
+											<strong class="svelte-1w9hrwr">Task board</strong
+											><span class="svelte-1w9hrwr">THE ACTUAL DEMO</span>
+										</div>
+										<img
+											src="../handoff/assets/task-board-demo.jpg"
+											alt=""
+											width="980"
+											height="310"
+											class="svelte-1w9hrwr"
+										/>
+									</div>
+									<div class="document-sheet svelte-1w9hrwr">
+										<span class="document-tab svelte-1w9hrwr"
+											>DOCUMENT / STUDY</span
+										><small class="svelte-1w9hrwr">PROJECT CONTEXT</small>
+										<h3 class="svelte-1w9hrwr">
+											The rules<br class="svelte-1w9hrwr" />of magic.
+										</h3>
+										<p class="svelte-1w9hrwr">
+											Magic costs memories.<br class="svelte-1w9hrwr" />The
+											wards are failing.
+										</p>
+										<div class="writing-lines svelte-1w9hrwr"></div>
+										<div class="doc-bottom svelte-1w9hrwr">
+											<span class="svelte-1w9hrwr">▤ Context</span
+											><span class="svelte-1w9hrwr">◷ History</span>
+										</div>
+									</div>
+								</div>
+								<div class="workbench-foot svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr"
+										>One project. Connected artifacts.</span
+									><span class="svelte-1w9hrwr"
+										>SCREENSHOT + INTERFACE STUDY</span
+									>
+								</div>
+							</div>
+							<!--]-->
+						</div>
+					</div>
+					<!--]-->
+				</div>
+			</section>
+			<section>
+				<h2>People & permissions · 600px</h2>
+				<div
+					class="sample"
+					data-layer="sharing"
+					data-width="600"
+					style="width: 600px; height: 375px"
+				>
+					<!--[-->
+					<div
+						class="stage svelte-1w9hrwr"
+						role="img"
+						aria-label="Illustrated project sharing: separate human roles and agent permissions, with an expiring invite link."
+					>
+						<div class="canvas svelte-1w9hrwr" aria-hidden="true">
+							<!--[2-->
+							<div class="sharing-view thread svelte-1w9hrwr">
+								<div class="folio svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">04 / BUILDOS</span
+									><span class="svelte-1w9hrwr"
+										>COLLABORATION WITH BOUNDARIES</span
+									>
+								</div>
+								<!---->
+								<div class="share-side svelte-1w9hrwr">
+									<small class="svelte-1w9hrwr">PEOPLE + AGENTS</small>
+									<h2 class="svelte-1w9hrwr">
+										Shared work.<br class="svelte-1w9hrwr" /><em
+											class="svelte-1w9hrwr"
+											>Clear rights.</em
+										>
+									</h2>
+									<p class="svelte-1w9hrwr">
+										Choose what a person can do.<br
+											class="svelte-1w9hrwr"
+										/>Then choose what their agents can do.
+									</p>
+									<div class="permission-key svelte-1w9hrwr">
+										<span class="svelte-1w9hrwr">01</span> Person’s role<br
+											class="svelte-1w9hrwr"
+										/><span class="svelte-1w9hrwr">02</span> Their agents’
+										access
+									</div>
+								</div>
+								<div class="share-sheet svelte-1w9hrwr">
+									<div class="sheet-heading svelte-1w9hrwr">
+										<span class="share-icon svelte-1w9hrwr">↗</span>
+										<div class="svelte-1w9hrwr">
+											<small class="svelte-1w9hrwr">SHARE PROJECT</small>
+											<h3 class="svelte-1w9hrwr">Fading Crown</h3>
+										</div>
+									</div>
+									<div class="share-tabs svelte-1w9hrwr">
+										<strong class="svelte-1w9hrwr">People</strong
+										><span class="svelte-1w9hrwr">Invite link</span>
+									</div>
+									<div class="member-head svelte-1w9hrwr">
+										<span class="svelte-1w9hrwr">DEMO ROLE</span
+										><span class="svelte-1w9hrwr">PERSON</span
+										><span class="svelte-1w9hrwr">AGENTS</span>
+									</div>
+									<div class="member svelte-1w9hrwr">
+										<span class="svelte-1w9hrwr"
+											><i class="svelte-1w9hrwr">O</i> Project owner</span
+										><b class="svelte-1w9hrwr">Owner</b
+										><b class="access-write svelte-1w9hrwr">Write</b>
+									</div>
+									<div class="member svelte-1w9hrwr">
+										<span class="svelte-1w9hrwr"
+											><i class="svelte-1w9hrwr">E</i> Editorial lead</span
+										><b class="svelte-1w9hrwr">Editor</b
+										><b class="svelte-1w9hrwr">Read</b>
+									</div>
+									<div class="member svelte-1w9hrwr">
+										<span class="svelte-1w9hrwr"
+											><i class="svelte-1w9hrwr">R</i> Beta reader</span
+										><b class="svelte-1w9hrwr">Viewer</b
+										><b class="svelte-1w9hrwr">Off</b>
+									</div>
+									<div class="invite-strip grid svelte-1w9hrwr">
+										<span class="small-label svelte-1w9hrwr">INVITE LINK</span
+										><strong class="svelte-1w9hrwr">Viewer · Agents Read</strong
+										><span class="svelte-1w9hrwr"
+											>Expires after 7 days
+											<b class="svelte-1w9hrwr">↗</b></span
+										>
+									</div>
+									<div class="permission-rule svelte-1w9hrwr">
+										<span class="svelte-1w9hrwr">↳</span> Agent Write requires
+										an editing role.
+									</div>
+								</div>
+								<div class="sharing-foot svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">Invite · Set access · Revoke</span
+									><span class="svelte-1w9hrwr"
+										>INTERFACE STUDY / DEMO ROLES</span
+									>
+								</div>
+							</div>
+							<!--]-->
+						</div>
+					</div>
+					<!--]-->
+				</div>
+			</section>
+			<section>
+				<h2>People & permissions · 300px compact</h2>
+				<div
+					class="sample"
+					data-layer="sharing"
+					data-width="300"
+					style="width: 300px; height: 187.5px"
+				>
+					<!--[-->
+					<div
+						class="stage svelte-1w9hrwr"
+						role="img"
+						aria-label="Illustrated project sharing: separate human roles and agent permissions, with an expiring invite link."
+					>
+						<div class="canvas compact svelte-1w9hrwr" aria-hidden="true">
+							<!--[2-->
+							<div class="sharing-view thread svelte-1w9hrwr">
+								<div class="folio svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">04 / BUILDOS</span
+									><span class="svelte-1w9hrwr"
+										>COLLABORATION WITH BOUNDARIES</span
+									>
+								</div>
+								<!---->
+								<div class="share-side svelte-1w9hrwr">
+									<small class="svelte-1w9hrwr">PEOPLE + AGENTS</small>
+									<h2 class="svelte-1w9hrwr">
+										Shared work.<br class="svelte-1w9hrwr" /><em
+											class="svelte-1w9hrwr"
+											>Clear rights.</em
+										>
+									</h2>
+									<p class="svelte-1w9hrwr">
+										Choose what a person can do.<br
+											class="svelte-1w9hrwr"
+										/>Then choose what their agents can do.
+									</p>
+									<div class="permission-key svelte-1w9hrwr">
+										<span class="svelte-1w9hrwr">01</span> Person’s role<br
+											class="svelte-1w9hrwr"
+										/><span class="svelte-1w9hrwr">02</span> Their agents’
+										access
+									</div>
+								</div>
+								<div class="share-sheet svelte-1w9hrwr">
+									<div class="sheet-heading svelte-1w9hrwr">
+										<span class="share-icon svelte-1w9hrwr">↗</span>
+										<div class="svelte-1w9hrwr">
+											<small class="svelte-1w9hrwr">SHARE PROJECT</small>
+											<h3 class="svelte-1w9hrwr">Fading Crown</h3>
+										</div>
+									</div>
+									<div class="share-tabs svelte-1w9hrwr">
+										<strong class="svelte-1w9hrwr">People</strong
+										><span class="svelte-1w9hrwr">Invite link</span>
+									</div>
+									<div class="member-head svelte-1w9hrwr">
+										<span class="svelte-1w9hrwr">DEMO ROLE</span
+										><span class="svelte-1w9hrwr">PERSON</span
+										><span class="svelte-1w9hrwr">AGENTS</span>
+									</div>
+									<div class="member svelte-1w9hrwr">
+										<span class="svelte-1w9hrwr"
+											><i class="svelte-1w9hrwr">O</i> Project owner</span
+										><b class="svelte-1w9hrwr">Owner</b
+										><b class="access-write svelte-1w9hrwr">Write</b>
+									</div>
+									<div class="member svelte-1w9hrwr">
+										<span class="svelte-1w9hrwr"
+											><i class="svelte-1w9hrwr">E</i> Editorial lead</span
+										><b class="svelte-1w9hrwr">Editor</b
+										><b class="svelte-1w9hrwr">Read</b>
+									</div>
+									<div class="member svelte-1w9hrwr">
+										<span class="svelte-1w9hrwr"
+											><i class="svelte-1w9hrwr">R</i> Beta reader</span
+										><b class="svelte-1w9hrwr">Viewer</b
+										><b class="svelte-1w9hrwr">Off</b>
+									</div>
+									<div class="invite-strip grid svelte-1w9hrwr">
+										<span class="small-label svelte-1w9hrwr">INVITE LINK</span
+										><strong class="svelte-1w9hrwr">Viewer · Agents Read</strong
+										><span class="svelte-1w9hrwr"
+											>Expires after 7 days
+											<b class="svelte-1w9hrwr">↗</b></span
+										>
+									</div>
+									<div class="permission-rule svelte-1w9hrwr">
+										<span class="svelte-1w9hrwr">↳</span> Agent Write requires
+										an editing role.
+									</div>
+								</div>
+								<div class="sharing-foot svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">Invite · Set access · Revoke</span
+									><span class="svelte-1w9hrwr"
+										>INTERFACE STUDY / DEMO ROLES</span
+									>
+								</div>
+							</div>
+							<!--]-->
+						</div>
+					</div>
+					<!--]-->
+				</div>
+			</section>
+			<section>
+				<h2>People & permissions · 150px compact</h2>
+				<div
+					class="sample"
+					data-layer="sharing"
+					data-width="150"
+					style="width: 150px; height: 93.75px"
+				>
+					<!--[-->
+					<div
+						class="stage svelte-1w9hrwr"
+						role="img"
+						aria-label="Illustrated project sharing: separate human roles and agent permissions, with an expiring invite link."
+					>
+						<div class="canvas compact svelte-1w9hrwr" aria-hidden="true">
+							<!--[2-->
+							<div class="sharing-view thread svelte-1w9hrwr">
+								<div class="folio svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">04 / BUILDOS</span
+									><span class="svelte-1w9hrwr"
+										>COLLABORATION WITH BOUNDARIES</span
+									>
+								</div>
+								<!---->
+								<div class="share-side svelte-1w9hrwr">
+									<small class="svelte-1w9hrwr">PEOPLE + AGENTS</small>
+									<h2 class="svelte-1w9hrwr">
+										Shared work.<br class="svelte-1w9hrwr" /><em
+											class="svelte-1w9hrwr"
+											>Clear rights.</em
+										>
+									</h2>
+									<p class="svelte-1w9hrwr">
+										Choose what a person can do.<br
+											class="svelte-1w9hrwr"
+										/>Then choose what their agents can do.
+									</p>
+									<div class="permission-key svelte-1w9hrwr">
+										<span class="svelte-1w9hrwr">01</span> Person’s role<br
+											class="svelte-1w9hrwr"
+										/><span class="svelte-1w9hrwr">02</span> Their agents’
+										access
+									</div>
+								</div>
+								<div class="share-sheet svelte-1w9hrwr">
+									<div class="sheet-heading svelte-1w9hrwr">
+										<span class="share-icon svelte-1w9hrwr">↗</span>
+										<div class="svelte-1w9hrwr">
+											<small class="svelte-1w9hrwr">SHARE PROJECT</small>
+											<h3 class="svelte-1w9hrwr">Fading Crown</h3>
+										</div>
+									</div>
+									<div class="share-tabs svelte-1w9hrwr">
+										<strong class="svelte-1w9hrwr">People</strong
+										><span class="svelte-1w9hrwr">Invite link</span>
+									</div>
+									<div class="member-head svelte-1w9hrwr">
+										<span class="svelte-1w9hrwr">DEMO ROLE</span
+										><span class="svelte-1w9hrwr">PERSON</span
+										><span class="svelte-1w9hrwr">AGENTS</span>
+									</div>
+									<div class="member svelte-1w9hrwr">
+										<span class="svelte-1w9hrwr"
+											><i class="svelte-1w9hrwr">O</i> Project owner</span
+										><b class="svelte-1w9hrwr">Owner</b
+										><b class="access-write svelte-1w9hrwr">Write</b>
+									</div>
+									<div class="member svelte-1w9hrwr">
+										<span class="svelte-1w9hrwr"
+											><i class="svelte-1w9hrwr">E</i> Editorial lead</span
+										><b class="svelte-1w9hrwr">Editor</b
+										><b class="svelte-1w9hrwr">Read</b>
+									</div>
+									<div class="member svelte-1w9hrwr">
+										<span class="svelte-1w9hrwr"
+											><i class="svelte-1w9hrwr">R</i> Beta reader</span
+										><b class="svelte-1w9hrwr">Viewer</b
+										><b class="svelte-1w9hrwr">Off</b>
+									</div>
+									<div class="invite-strip grid svelte-1w9hrwr">
+										<span class="small-label svelte-1w9hrwr">INVITE LINK</span
+										><strong class="svelte-1w9hrwr">Viewer · Agents Read</strong
+										><span class="svelte-1w9hrwr"
+											>Expires after 7 days
+											<b class="svelte-1w9hrwr">↗</b></span
+										>
+									</div>
+									<div class="permission-rule svelte-1w9hrwr">
+										<span class="svelte-1w9hrwr">↳</span> Agent Write requires
+										an editing role.
+									</div>
+								</div>
+								<div class="sharing-foot svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">Invite · Set access · Revoke</span
+									><span class="svelte-1w9hrwr"
+										>INTERFACE STUDY / DEMO ROLES</span
+									>
+								</div>
+							</div>
+							<!--]-->
+						</div>
+					</div>
+					<!--]-->
+				</div>
+			</section>
+			<section>
+				<h2>Work that persists · 600px</h2>
+				<div
+					class="sample"
+					data-layer="execution"
+					data-width="600"
+					style="width: 600px; height: 375px"
+				>
+					<!--[-->
+					<div
+						class="stage svelte-1w9hrwr"
+						role="img"
+						aria-label="Illustrated worker lifecycle: queue, claim, saved tool receipts, and browser reconciliation. Actual demo calendar."
+					>
+						<div class="canvas svelte-1w9hrwr" aria-hidden="true">
+							<!--[3-->
+							<div class="execution-view svelte-1w9hrwr">
+								<div class="folio svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">05 / BUILDOS</span
+									><span class="svelte-1w9hrwr">WORK OUTLIVES THE BROWSER</span>
+								</div>
+								<!---->
+								<div class="execution-heading svelte-1w9hrwr">
+									<div class="svelte-1w9hrwr">
+										<small class="svelte-1w9hrwr">WORKER-OWNED EXECUTION</small>
+										<h2 class="svelte-1w9hrwr">Still working.</h2>
+									</div>
+									<span class="runtime-stamp svelte-1w9hrwr"
+										>DURABLE<br class="svelte-1w9hrwr" />BY DESIGN</span
+									>
+								</div>
+								<div class="execution-body svelte-1w9hrwr">
+									<div class="work-inbox svelte-1w9hrwr">
+										<h3 class="svelte-1w9hrwr">Agent work</h3>
+										<div class="work-tabs svelte-1w9hrwr">
+											<strong class="svelte-1w9hrwr">Recent work</strong
+											><span class="svelte-1w9hrwr">Automations</span>
+										</div>
+										<small class="svelte-1w9hrwr">ILLUSTRATIVE RUN</small>
+										<div class="run-ticket svelte-1w9hrwr">
+											<span class="signal-dot svelte-1w9hrwr"></span
+											><strong class="svelte-1w9hrwr">Fading Crown</strong>
+											<p class="svelte-1w9hrwr">Update writing schedule</p>
+											<span class="run-state svelte-1w9hrwr"
+												>Result saved</span
+											>
+										</div>
+										<div class="run-legend svelte-1w9hrwr">
+											<span class="svelte-1w9hrwr">Active</span
+											><span class="svelte-1w9hrwr">History</span>
+										</div>
+									</div>
+									<div class="execution-record svelte-1w9hrwr">
+										<span class="small-label svelte-1w9hrwr"
+											>TURN RECORD / EXPLAINED</span
+										>
+										<div class="record-row svelte-1w9hrwr">
+											<span class="svelte-1w9hrwr">01</span>
+											<div class="svelte-1w9hrwr">
+												<strong class="svelte-1w9hrwr"
+													>Queued → claimed</strong
+												><small class="svelte-1w9hrwr"
+													>One execution owns the turn</small
+												>
+											</div>
+											<i class="svelte-1w9hrwr">✓</i>
+										</div>
+										<div class="record-row svelte-1w9hrwr">
+											<span class="svelte-1w9hrwr">02</span>
+											<div class="svelte-1w9hrwr">
+												<strong class="svelte-1w9hrwr"
+													>Tool receipt saved</strong
+												><small class="svelte-1w9hrwr"
+													>Result joins the durable record</small
+												>
+											</div>
+											<i class="svelte-1w9hrwr">✓</i>
+										</div>
+										<div class="record-row svelte-1w9hrwr">
+											<span class="svelte-1w9hrwr">03</span>
+											<div class="svelte-1w9hrwr">
+												<strong class="svelte-1w9hrwr"
+													>Browser reconnects</strong
+												><small class="svelte-1w9hrwr"
+													>Reconcile saved text + events</small
+												>
+											</div>
+											<i class="svelte-1w9hrwr">↻</i>
+										</div>
+									</div>
+								</div>
+								<div class="calendar-strip svelte-1w9hrwr">
+									<div class="svelte-1w9hrwr">
+										<small class="svelte-1w9hrwr">CONNECTED WORK</small
+										><strong class="svelte-1w9hrwr"
+											>Project events ↔ Calendar</strong
+										><span class="svelte-1w9hrwr"
+											>Separate background sync jobs</span
+										>
+									</div>
+									<img
+										src="../handoff/assets/calendar-demo.jpg"
+										alt=""
+										width="974"
+										height="344"
+										class="svelte-1w9hrwr"
+									/>
+								</div>
+								<div class="execution-foot svelte-1w9hrwr">
+									WORKER LIFECYCLE / ILLUSTRATED
+								</div>
+							</div>
+							<!--]-->
+						</div>
+					</div>
+					<!--]-->
+				</div>
+			</section>
+			<section>
+				<h2>Work that persists · 300px compact</h2>
+				<div
+					class="sample"
+					data-layer="execution"
+					data-width="300"
+					style="width: 300px; height: 187.5px"
+				>
+					<!--[-->
+					<div
+						class="stage svelte-1w9hrwr"
+						role="img"
+						aria-label="Illustrated worker lifecycle: queue, claim, saved tool receipts, and browser reconciliation. Actual demo calendar."
+					>
+						<div class="canvas compact svelte-1w9hrwr" aria-hidden="true">
+							<!--[3-->
+							<div class="execution-view svelte-1w9hrwr">
+								<div class="folio svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">05 / BUILDOS</span
+									><span class="svelte-1w9hrwr">WORK OUTLIVES THE BROWSER</span>
+								</div>
+								<!---->
+								<div class="execution-heading svelte-1w9hrwr">
+									<div class="svelte-1w9hrwr">
+										<small class="svelte-1w9hrwr">WORKER-OWNED EXECUTION</small>
+										<h2 class="svelte-1w9hrwr">Still working.</h2>
+									</div>
+									<span class="runtime-stamp svelte-1w9hrwr"
+										>DURABLE<br class="svelte-1w9hrwr" />BY DESIGN</span
+									>
+								</div>
+								<div class="execution-body svelte-1w9hrwr">
+									<div class="work-inbox svelte-1w9hrwr">
+										<h3 class="svelte-1w9hrwr">Agent work</h3>
+										<div class="work-tabs svelte-1w9hrwr">
+											<strong class="svelte-1w9hrwr">Recent work</strong
+											><span class="svelte-1w9hrwr">Automations</span>
+										</div>
+										<small class="svelte-1w9hrwr">ILLUSTRATIVE RUN</small>
+										<div class="run-ticket svelte-1w9hrwr">
+											<span class="signal-dot svelte-1w9hrwr"></span
+											><strong class="svelte-1w9hrwr">Fading Crown</strong>
+											<p class="svelte-1w9hrwr">Update writing schedule</p>
+											<span class="run-state svelte-1w9hrwr"
+												>Result saved</span
+											>
+										</div>
+										<div class="run-legend svelte-1w9hrwr">
+											<span class="svelte-1w9hrwr">Active</span
+											><span class="svelte-1w9hrwr">History</span>
+										</div>
+									</div>
+									<div class="execution-record svelte-1w9hrwr">
+										<span class="small-label svelte-1w9hrwr"
+											>TURN RECORD / EXPLAINED</span
+										>
+										<div class="record-row svelte-1w9hrwr">
+											<span class="svelte-1w9hrwr">01</span>
+											<div class="svelte-1w9hrwr">
+												<strong class="svelte-1w9hrwr"
+													>Queued → claimed</strong
+												><small class="svelte-1w9hrwr"
+													>One execution owns the turn</small
+												>
+											</div>
+											<i class="svelte-1w9hrwr">✓</i>
+										</div>
+										<div class="record-row svelte-1w9hrwr">
+											<span class="svelte-1w9hrwr">02</span>
+											<div class="svelte-1w9hrwr">
+												<strong class="svelte-1w9hrwr"
+													>Tool receipt saved</strong
+												><small class="svelte-1w9hrwr"
+													>Result joins the durable record</small
+												>
+											</div>
+											<i class="svelte-1w9hrwr">✓</i>
+										</div>
+										<div class="record-row svelte-1w9hrwr">
+											<span class="svelte-1w9hrwr">03</span>
+											<div class="svelte-1w9hrwr">
+												<strong class="svelte-1w9hrwr"
+													>Browser reconnects</strong
+												><small class="svelte-1w9hrwr"
+													>Reconcile saved text + events</small
+												>
+											</div>
+											<i class="svelte-1w9hrwr">↻</i>
+										</div>
+									</div>
+								</div>
+								<div class="calendar-strip svelte-1w9hrwr">
+									<div class="svelte-1w9hrwr">
+										<small class="svelte-1w9hrwr">CONNECTED WORK</small
+										><strong class="svelte-1w9hrwr"
+											>Project events ↔ Calendar</strong
+										><span class="svelte-1w9hrwr"
+											>Separate background sync jobs</span
+										>
+									</div>
+									<img
+										src="../handoff/assets/calendar-demo.jpg"
+										alt=""
+										width="974"
+										height="344"
+										class="svelte-1w9hrwr"
+									/>
+								</div>
+								<div class="execution-foot svelte-1w9hrwr">
+									WORKER LIFECYCLE / ILLUSTRATED
+								</div>
+							</div>
+							<!--]-->
+						</div>
+					</div>
+					<!--]-->
+				</div>
+			</section>
+			<section>
+				<h2>Work that persists · 150px compact</h2>
+				<div
+					class="sample"
+					data-layer="execution"
+					data-width="150"
+					style="width: 150px; height: 93.75px"
+				>
+					<!--[-->
+					<div
+						class="stage svelte-1w9hrwr"
+						role="img"
+						aria-label="Illustrated worker lifecycle: queue, claim, saved tool receipts, and browser reconciliation. Actual demo calendar."
+					>
+						<div class="canvas compact svelte-1w9hrwr" aria-hidden="true">
+							<!--[3-->
+							<div class="execution-view svelte-1w9hrwr">
+								<div class="folio svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">05 / BUILDOS</span
+									><span class="svelte-1w9hrwr">WORK OUTLIVES THE BROWSER</span>
+								</div>
+								<!---->
+								<div class="execution-heading svelte-1w9hrwr">
+									<div class="svelte-1w9hrwr">
+										<small class="svelte-1w9hrwr">WORKER-OWNED EXECUTION</small>
+										<h2 class="svelte-1w9hrwr">Still working.</h2>
+									</div>
+									<span class="runtime-stamp svelte-1w9hrwr"
+										>DURABLE<br class="svelte-1w9hrwr" />BY DESIGN</span
+									>
+								</div>
+								<div class="execution-body svelte-1w9hrwr">
+									<div class="work-inbox svelte-1w9hrwr">
+										<h3 class="svelte-1w9hrwr">Agent work</h3>
+										<div class="work-tabs svelte-1w9hrwr">
+											<strong class="svelte-1w9hrwr">Recent work</strong
+											><span class="svelte-1w9hrwr">Automations</span>
+										</div>
+										<small class="svelte-1w9hrwr">ILLUSTRATIVE RUN</small>
+										<div class="run-ticket svelte-1w9hrwr">
+											<span class="signal-dot svelte-1w9hrwr"></span
+											><strong class="svelte-1w9hrwr">Fading Crown</strong>
+											<p class="svelte-1w9hrwr">Update writing schedule</p>
+											<span class="run-state svelte-1w9hrwr"
+												>Result saved</span
+											>
+										</div>
+										<div class="run-legend svelte-1w9hrwr">
+											<span class="svelte-1w9hrwr">Active</span
+											><span class="svelte-1w9hrwr">History</span>
+										</div>
+									</div>
+									<div class="execution-record svelte-1w9hrwr">
+										<span class="small-label svelte-1w9hrwr"
+											>TURN RECORD / EXPLAINED</span
+										>
+										<div class="record-row svelte-1w9hrwr">
+											<span class="svelte-1w9hrwr">01</span>
+											<div class="svelte-1w9hrwr">
+												<strong class="svelte-1w9hrwr"
+													>Queued → claimed</strong
+												><small class="svelte-1w9hrwr"
+													>One execution owns the turn</small
+												>
+											</div>
+											<i class="svelte-1w9hrwr">✓</i>
+										</div>
+										<div class="record-row svelte-1w9hrwr">
+											<span class="svelte-1w9hrwr">02</span>
+											<div class="svelte-1w9hrwr">
+												<strong class="svelte-1w9hrwr"
+													>Tool receipt saved</strong
+												><small class="svelte-1w9hrwr"
+													>Result joins the durable record</small
+												>
+											</div>
+											<i class="svelte-1w9hrwr">✓</i>
+										</div>
+										<div class="record-row svelte-1w9hrwr">
+											<span class="svelte-1w9hrwr">03</span>
+											<div class="svelte-1w9hrwr">
+												<strong class="svelte-1w9hrwr"
+													>Browser reconnects</strong
+												><small class="svelte-1w9hrwr"
+													>Reconcile saved text + events</small
+												>
+											</div>
+											<i class="svelte-1w9hrwr">↻</i>
+										</div>
+									</div>
+								</div>
+								<div class="calendar-strip svelte-1w9hrwr">
+									<div class="svelte-1w9hrwr">
+										<small class="svelte-1w9hrwr">CONNECTED WORK</small
+										><strong class="svelte-1w9hrwr"
+											>Project events ↔ Calendar</strong
+										><span class="svelte-1w9hrwr"
+											>Separate background sync jobs</span
+										>
+									</div>
+									<img
+										src="../handoff/assets/calendar-demo.jpg"
+										alt=""
+										width="974"
+										height="344"
+										class="svelte-1w9hrwr"
+									/>
+								</div>
+								<div class="execution-foot svelte-1w9hrwr">
+									WORKER LIFECYCLE / ILLUSTRATED
+								</div>
+							</div>
+							<!--]-->
+						</div>
+					</div>
+					<!--]-->
+				</div>
+			</section>
+			<section>
+				<h2>Inkprint · 600px</h2>
+				<div
+					class="sample"
+					data-layer="inkprint"
+					data-width="600"
+					style="width: 600px; height: 375px"
+				>
+					<!--[-->
+					<div
+						class="stage svelte-1w9hrwr"
+						role="img"
+						aria-label="Inkprint design specimens: Paper studio and Ink room, with Bloom, Grain, Thread, and Grid textures."
+					>
+						<div class="canvas svelte-1w9hrwr" aria-hidden="true">
+							<!--[4-->
+							<div class="inkprint-view svelte-1w9hrwr">
+								<div class="folio svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">06 / BUILDOS</span
+									><span class="svelte-1w9hrwr">INKPRINT / DESIGN SYSTEM</span>
+								</div>
+								<!---->
+								<div class="inkprint-heading svelte-1w9hrwr">
+									<h2 class="svelte-1w9hrwr">
+										Feels like a<br class="svelte-1w9hrwr" /><em
+											class="svelte-1w9hrwr"
+											>place to work.</em
+										>
+									</h2>
+									<span class="edition svelte-1w9hrwr"
+										>PAPER + INK<br class="svelte-1w9hrwr" />SEMANTIC
+										TEXTURES<br class="svelte-1w9hrwr" />SURFACE WEIGHTS</span
+									>
+								</div>
+								<div class="theme-pair svelte-1w9hrwr">
+									<div class="theme-paper grid svelte-1w9hrwr">
+										<img
+											class="wordmark svelte-1w9hrwr"
+											src="../handoff/assets/wordmark-paper.webp"
+											alt="BuildOS"
+											width="1200"
+											height="360"
+										/><!----><span class="theme-label svelte-1w9hrwr"
+											>01 / PAPER STUDIO</span
+										>
+										<div class="theme-task svelte-1w9hrwr">
+											<span class="svelte-1w9hrwr">✓</span
+											><strong class="svelte-1w9hrwr"
+												>Make the next move.</strong
+											><span class="mini-state svelte-1w9hrwr"
+												>In progress</span
+											>
+										</div>
+									</div>
+									<div class="theme-ink grid svelte-1w9hrwr">
+										<img
+											class="wordmark svelte-1w9hrwr"
+											src="../handoff/assets/wordmark-ink.webp"
+											alt="BuildOS"
+											width="1200"
+											height="360"
+										/><!----><span class="theme-label svelte-1w9hrwr"
+											>02 / INK ROOM</span
+										>
+										<div class="theme-task svelte-1w9hrwr">
+											<span class="svelte-1w9hrwr">✓</span
+											><strong class="svelte-1w9hrwr"
+												>Keep the context.</strong
+											><span class="mini-state svelte-1w9hrwr"
+												>In progress</span
+											>
+										</div>
+									</div>
+								</div>
+								<div class="texture-row svelte-1w9hrwr">
+									<!--[-->
+									<div class="texture-specimen svelte-1w9hrwr">
+										<div class="texture-swatch bloom svelte-1w9hrwr"></div>
+										<strong class="svelte-1w9hrwr">Bloom</strong
+										><span class="svelte-1w9hrwr">Ideas</span>
+									</div>
+									<div class="texture-specimen svelte-1w9hrwr">
+										<div class="texture-swatch grain svelte-1w9hrwr"></div>
+										<strong class="svelte-1w9hrwr">Grain</strong
+										><span class="svelte-1w9hrwr">Execution</span>
+									</div>
+									<div class="texture-specimen svelte-1w9hrwr">
+										<div class="texture-swatch thread svelte-1w9hrwr"></div>
+										<strong class="svelte-1w9hrwr">Thread</strong
+										><span class="svelte-1w9hrwr">Relationships</span>
+									</div>
+									<div class="texture-specimen svelte-1w9hrwr">
+										<div class="texture-swatch grid svelte-1w9hrwr"></div>
+										<strong class="svelte-1w9hrwr">Grid</strong
+										><span class="svelte-1w9hrwr">Input</span>
+									</div>
+									<!--]-->
+								</div>
+								<div class="inkprint-foot svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">One canonical token system.</span
+									><span class="native-note svelte-1w9hrwr"
+										>NATIVE APP / IN DEVELOPMENT</span
+									>
+								</div>
+							</div>
+							<!--]-->
+						</div>
+					</div>
+					<!--]-->
+				</div>
+			</section>
+			<section>
+				<h2>Inkprint · 300px compact</h2>
+				<div
+					class="sample"
+					data-layer="inkprint"
+					data-width="300"
+					style="width: 300px; height: 187.5px"
+				>
+					<!--[-->
+					<div
+						class="stage svelte-1w9hrwr"
+						role="img"
+						aria-label="Inkprint design specimens: Paper studio and Ink room, with Bloom, Grain, Thread, and Grid textures."
+					>
+						<div class="canvas compact svelte-1w9hrwr" aria-hidden="true">
+							<!--[4-->
+							<div class="inkprint-view svelte-1w9hrwr">
+								<div class="folio svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">06 / BUILDOS</span
+									><span class="svelte-1w9hrwr">INKPRINT / DESIGN SYSTEM</span>
+								</div>
+								<!---->
+								<div class="inkprint-heading svelte-1w9hrwr">
+									<h2 class="svelte-1w9hrwr">
+										Feels like a<br class="svelte-1w9hrwr" /><em
+											class="svelte-1w9hrwr"
+											>place to work.</em
+										>
+									</h2>
+									<span class="edition svelte-1w9hrwr"
+										>PAPER + INK<br class="svelte-1w9hrwr" />SEMANTIC
+										TEXTURES<br class="svelte-1w9hrwr" />SURFACE WEIGHTS</span
+									>
+								</div>
+								<div class="theme-pair svelte-1w9hrwr">
+									<div class="theme-paper grid svelte-1w9hrwr">
+										<img
+											class="wordmark svelte-1w9hrwr"
+											src="../handoff/assets/wordmark-paper.webp"
+											alt="BuildOS"
+											width="1200"
+											height="360"
+										/><!----><span class="theme-label svelte-1w9hrwr"
+											>01 / PAPER STUDIO</span
+										>
+										<div class="theme-task svelte-1w9hrwr">
+											<span class="svelte-1w9hrwr">✓</span
+											><strong class="svelte-1w9hrwr"
+												>Make the next move.</strong
+											><span class="mini-state svelte-1w9hrwr"
+												>In progress</span
+											>
+										</div>
+									</div>
+									<div class="theme-ink grid svelte-1w9hrwr">
+										<img
+											class="wordmark svelte-1w9hrwr"
+											src="../handoff/assets/wordmark-ink.webp"
+											alt="BuildOS"
+											width="1200"
+											height="360"
+										/><!----><span class="theme-label svelte-1w9hrwr"
+											>02 / INK ROOM</span
+										>
+										<div class="theme-task svelte-1w9hrwr">
+											<span class="svelte-1w9hrwr">✓</span
+											><strong class="svelte-1w9hrwr"
+												>Keep the context.</strong
+											><span class="mini-state svelte-1w9hrwr"
+												>In progress</span
+											>
+										</div>
+									</div>
+								</div>
+								<div class="texture-row svelte-1w9hrwr">
+									<!--[-->
+									<div class="texture-specimen svelte-1w9hrwr">
+										<div class="texture-swatch bloom svelte-1w9hrwr"></div>
+										<strong class="svelte-1w9hrwr">Bloom</strong
+										><span class="svelte-1w9hrwr">Ideas</span>
+									</div>
+									<div class="texture-specimen svelte-1w9hrwr">
+										<div class="texture-swatch grain svelte-1w9hrwr"></div>
+										<strong class="svelte-1w9hrwr">Grain</strong
+										><span class="svelte-1w9hrwr">Execution</span>
+									</div>
+									<div class="texture-specimen svelte-1w9hrwr">
+										<div class="texture-swatch thread svelte-1w9hrwr"></div>
+										<strong class="svelte-1w9hrwr">Thread</strong
+										><span class="svelte-1w9hrwr">Relationships</span>
+									</div>
+									<div class="texture-specimen svelte-1w9hrwr">
+										<div class="texture-swatch grid svelte-1w9hrwr"></div>
+										<strong class="svelte-1w9hrwr">Grid</strong
+										><span class="svelte-1w9hrwr">Input</span>
+									</div>
+									<!--]-->
+								</div>
+								<div class="inkprint-foot svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">One canonical token system.</span
+									><span class="native-note svelte-1w9hrwr"
+										>NATIVE APP / IN DEVELOPMENT</span
+									>
+								</div>
+							</div>
+							<!--]-->
+						</div>
+					</div>
+					<!--]-->
+				</div>
+			</section>
+			<section>
+				<h2>Inkprint · 150px compact</h2>
+				<div
+					class="sample"
+					data-layer="inkprint"
+					data-width="150"
+					style="width: 150px; height: 93.75px"
+				>
+					<!--[-->
+					<div
+						class="stage svelte-1w9hrwr"
+						role="img"
+						aria-label="Inkprint design specimens: Paper studio and Ink room, with Bloom, Grain, Thread, and Grid textures."
+					>
+						<div class="canvas compact svelte-1w9hrwr" aria-hidden="true">
+							<!--[4-->
+							<div class="inkprint-view svelte-1w9hrwr">
+								<div class="folio svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">06 / BUILDOS</span
+									><span class="svelte-1w9hrwr">INKPRINT / DESIGN SYSTEM</span>
+								</div>
+								<!---->
+								<div class="inkprint-heading svelte-1w9hrwr">
+									<h2 class="svelte-1w9hrwr">
+										Feels like a<br class="svelte-1w9hrwr" /><em
+											class="svelte-1w9hrwr"
+											>place to work.</em
+										>
+									</h2>
+									<span class="edition svelte-1w9hrwr"
+										>PAPER + INK<br class="svelte-1w9hrwr" />SEMANTIC
+										TEXTURES<br class="svelte-1w9hrwr" />SURFACE WEIGHTS</span
+									>
+								</div>
+								<div class="theme-pair svelte-1w9hrwr">
+									<div class="theme-paper grid svelte-1w9hrwr">
+										<img
+											class="wordmark svelte-1w9hrwr"
+											src="../handoff/assets/wordmark-paper.webp"
+											alt="BuildOS"
+											width="1200"
+											height="360"
+										/><!----><span class="theme-label svelte-1w9hrwr"
+											>01 / PAPER STUDIO</span
+										>
+										<div class="theme-task svelte-1w9hrwr">
+											<span class="svelte-1w9hrwr">✓</span
+											><strong class="svelte-1w9hrwr"
+												>Make the next move.</strong
+											><span class="mini-state svelte-1w9hrwr"
+												>In progress</span
+											>
+										</div>
+									</div>
+									<div class="theme-ink grid svelte-1w9hrwr">
+										<img
+											class="wordmark svelte-1w9hrwr"
+											src="../handoff/assets/wordmark-ink.webp"
+											alt="BuildOS"
+											width="1200"
+											height="360"
+										/><!----><span class="theme-label svelte-1w9hrwr"
+											>02 / INK ROOM</span
+										>
+										<div class="theme-task svelte-1w9hrwr">
+											<span class="svelte-1w9hrwr">✓</span
+											><strong class="svelte-1w9hrwr"
+												>Keep the context.</strong
+											><span class="mini-state svelte-1w9hrwr"
+												>In progress</span
+											>
+										</div>
+									</div>
+								</div>
+								<div class="texture-row svelte-1w9hrwr">
+									<!--[-->
+									<div class="texture-specimen svelte-1w9hrwr">
+										<div class="texture-swatch bloom svelte-1w9hrwr"></div>
+										<strong class="svelte-1w9hrwr">Bloom</strong
+										><span class="svelte-1w9hrwr">Ideas</span>
+									</div>
+									<div class="texture-specimen svelte-1w9hrwr">
+										<div class="texture-swatch grain svelte-1w9hrwr"></div>
+										<strong class="svelte-1w9hrwr">Grain</strong
+										><span class="svelte-1w9hrwr">Execution</span>
+									</div>
+									<div class="texture-specimen svelte-1w9hrwr">
+										<div class="texture-swatch thread svelte-1w9hrwr"></div>
+										<strong class="svelte-1w9hrwr">Thread</strong
+										><span class="svelte-1w9hrwr">Relationships</span>
+									</div>
+									<div class="texture-specimen svelte-1w9hrwr">
+										<div class="texture-swatch grid svelte-1w9hrwr"></div>
+										<strong class="svelte-1w9hrwr">Grid</strong
+										><span class="svelte-1w9hrwr">Input</span>
+									</div>
+									<!--]-->
+								</div>
+								<div class="inkprint-foot svelte-1w9hrwr">
+									<span class="svelte-1w9hrwr">One canonical token system.</span
+									><span class="native-note svelte-1w9hrwr"
+										>NATIVE APP / IN DEVELOPMENT</span
+									>
+								</div>
+							</div>
+							<!--]-->
+						</div>
+					</div>
+					<!--]-->
+				</div>
+			</section>
+		</main>
+	</body>
+</html>

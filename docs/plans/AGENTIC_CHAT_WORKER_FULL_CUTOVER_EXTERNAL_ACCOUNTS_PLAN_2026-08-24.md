@@ -253,7 +253,7 @@ Tasker 59 to avoid two competing verification ledgers.
 ## Review corrections — 2026-08-24 (historical findings; remediated in Tasker 59)
 
 A nine-lens adversarial review landed after this plan was written. Findings and remediation work
-packages live in [`tasker/59`](../../tasker/59-agentic-chat-worker-cutover-review.md). Four claims
+packages live in [`tasker/59`](https://github.com/Wolverine971/buildos-platform/blob/c6ff210ee36a/tasker/59-agentic-chat-worker-cutover-review.md). Four claims
 above are wrong or incomplete and are corrected here rather than edited in place, so the original
 reasoning stays legible:
 

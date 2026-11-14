@@ -406,7 +406,7 @@ GET /api/admin/chat/export         # Data export (JSON/CSV)
 
 For complete admin monitoring documentation, see:
 
-- **[Admin Monitoring Guide](./ADMIN_MONITORING.md)** - Full implementation details
+- The standalone admin monitoring guide was removed; the admin chat pages live under `apps/web/src/routes/admin/chat/`.
 
 ## 🚦 Deployment Checklist
 
@@ -433,7 +433,6 @@ For complete admin monitoring documentation, see:
 
 ### Core Documentation
 
-- [Admin Monitoring Guide](./ADMIN_MONITORING.md) - **Admin interface for chat monitoring**
 - [Tool Executor API Pattern](./TOOL_EXECUTOR_API_PATTERN.md) - API-based tool implementation
 - [LLM Tool Instructions](/apps/web/src/lib/chat/LLM_TOOL_INSTRUCTIONS.md) - Guide for LLM tool usage
 - [Chat Architecture](./ARCHITECTURE.md) - System architecture overview

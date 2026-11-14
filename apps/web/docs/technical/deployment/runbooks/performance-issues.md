@@ -541,10 +541,10 @@ async function generatePerformanceReport() {
 
 ## 🔗 Related Resources
 
-- [Database Recovery Procedures](/docs/technical/deployment/runbooks/database-recovery.md)
-- [Supabase Connection Recovery](/docs/technical/deployment/runbooks/supabase-connection-recovery.md)
-- [OpenAI Rate Limiting](/docs/technical/deployment/runbooks/openai-rate-limiting.md)
-- [Incident Response Template](/docs/technical/deployment/runbooks/incident-response.md)
+- [Database Recovery Procedures](./database-recovery.md)
+- [Supabase Connection Recovery](./supabase-connection-recovery.md)
+- [OpenAI Rate Limiting](https://github.com/Wolverine971/buildos-platform/blob/e834b47924f0/apps/web/docs/technical/deployment/runbooks/openai-rate-limiting.md)
+- [Incident Response Template](https://github.com/Wolverine971/buildos-platform/blob/e834b47924f0/apps/web/docs/technical/deployment/runbooks/incident-response.md)
 
 ## 📞 Escalation Contacts
 

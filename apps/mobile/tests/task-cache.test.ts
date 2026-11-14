@@ -19,10 +19,13 @@ function seed() {
 	};
 	queryClient.setQueryData(['task', USER, 't1'], { task, linkedEntities: {}, entities: [] });
 	queryClient.setQueryData(['today', USER, 'America/New_York'], {
-		tasks: [
-			{ id: 't1', title: task.title, state_key: 'todo', due_at: null },
-			{ id: 't2', title: 'Other', state_key: 'todo', due_at: null }
-		]
+		feed: {
+			tasks: [
+				{ id: 't1', title: task.title, state_key: 'todo', due_at: null },
+				{ id: 't2', title: 'Other', state_key: 'todo', due_at: null }
+			]
+		},
+		attention: { waiting: [], repeated: [] }
 	});
 	queryClient.setQueryData(['project', USER, 'p1'], { tasks: [{ ...task }] });
 	const read = () => ({
@@ -30,9 +33,9 @@ function seed() {
 			.task,
 		today: (
 			queryClient.getQueryData(['today', USER, 'America/New_York']) as {
-				tasks: Record<string, unknown>[];
+				feed: { tasks: Record<string, unknown>[] };
 			}
-		).tasks[0]!,
+		).feed.tasks[0]!,
 		project: (
 			queryClient.getQueryData(['project', USER, 'p1']) as {
 				tasks: Record<string, unknown>[];

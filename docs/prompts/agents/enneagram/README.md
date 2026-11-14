@@ -70,3 +70,7 @@ The assistant should recognize these patterns and respond appropriately.
 ---
 
 _See individual type files for complete agent profiles._
+
+## Related
+
+- [TYPE_SUPERPOWERS.md](./TYPE_SUPERPOWERS.md) — what each type is good at

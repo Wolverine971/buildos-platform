@@ -58,16 +58,16 @@ The best next move for BuildOS is not "remove the gateway." It is:
 
 ### BuildOS files reviewed
 
-- [gateway.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/definitions/gateway.ts)
-- [tool-schema.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/registry/tool-schema.ts)
-- [tool-help.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/registry/tool-help.ts)
-- [tool-registry.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/registry/tool-registry.ts)
-- [tool-selector.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts)
-- [master-prompt-builder.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts)
-- [openrouter-v2-service.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/openrouter-v2-service.ts)
-- [chat.types.ts](/Users/djwayne/buildos-platform/packages/shared-types/src/chat.types.ts)
-- [README.md](/Users/djwayne/buildos-platform/apps/web/docs/features/agentic-chat/README.md)
-- [TOOL_API_MAPPING.md](/Users/djwayne/buildos-platform/apps/web/docs/features/agentic-chat/TOOL_API_MAPPING.md)
+- gateway.ts
+- [tool-schema.ts](https://github.com/Wolverine971/buildos-platform/blob/a81b8d116176/apps/web/src/lib/services/agentic-chat/tools/registry/tool-schema.ts)
+- [tool-help.ts](https://github.com/Wolverine971/buildos-platform/blob/cae4fe5ed3ae/apps/web/src/lib/services/agentic-chat/tools/registry/tool-help.ts)
+- tool-registry.ts
+- [tool-selector.ts](https://github.com/Wolverine971/buildos-platform/blob/dc4bc3560767/apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts)
+- [master-prompt-builder.ts](https://github.com/Wolverine971/buildos-platform/blob/6fe56282a6e2/apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts)
+- [openrouter-v2-service.ts](../../apps/web/src/lib/services/openrouter-v2-service.ts)
+- [chat.types.ts](../../packages/shared-types/src/chat.types.ts)
+- [README.md](../../apps/web/docs/features/agentic-chat/README.md)
+- [TOOL_API_MAPPING.md](../../apps/web/docs/features/agentic-chat/TOOL_API_MAPPING.md)
 
 ## What OpenAI Actually Recommends
 
@@ -200,8 +200,8 @@ BuildOS currently standardizes on an OpenAI-style function-tool shape:
 
 Relevant files:
 
-- [chat.types.ts:193](/Users/djwayne/buildos-platform/packages/shared-types/src/chat.types.ts#L193)
-- [openrouter-v2-service.ts:83](/Users/djwayne/buildos-platform/apps/web/src/lib/services/openrouter-v2-service.ts#L83)
+- [chat.types.ts:193](../../packages/shared-types/src/chat.types.ts#L193)
+- [openrouter-v2-service.ts:83](../../apps/web/src/lib/services/openrouter-v2-service.ts#L83)
 
 This same shape is normalized and sent through OpenRouter, even for Anthropic-routed models.
 
@@ -216,9 +216,9 @@ When `AGENTIC_CHAT_TOOL_GATEWAY=true`, the model gets these four tools:
 
 Relevant files:
 
-- [gateway.ts:11](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/definitions/gateway.ts#L11)
-- [tool-selector.ts:26](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts#L26)
-- [tool-selector.test.ts:17](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/tool-selector.test.ts#L17)
+- gateway.ts:11
+- [tool-selector.ts:26](https://github.com/Wolverine971/buildos-platform/blob/dc4bc3560767/apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts#L26)
+- [tool-selector.test.ts:17](https://github.com/Wolverine971/buildos-platform/blob/dc4bc3560767/apps/web/src/lib/services/agentic-chat-v2/tool-selector.test.ts#L17)
 
 This means BuildOS is already trying to do progressive disclosure rather than exposing the whole raw tool set directly.
 
@@ -232,7 +232,7 @@ BuildOS keeps a registry of canonical operation ids like:
 
 Relevant file:
 
-- [tool-registry.ts:12](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/registry/tool-registry.ts#L12)
+- tool-registry.ts:12
 
 This is good. It gives BuildOS a canonical semantic layer above legacy raw tool names.
 
@@ -247,9 +247,9 @@ The current gateway protocol expects the model to:
 
 Relevant files:
 
-- [master-prompt-builder.ts:232](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts#L232)
-- [tool-schema.ts:51](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/registry/tool-schema.ts#L51)
-- [tool-help.ts:74](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/registry/tool-help.ts#L74)
+- [master-prompt-builder.ts:232](https://github.com/Wolverine971/buildos-platform/blob/6fe56282a6e2/apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts#L232)
+- [tool-schema.ts:51](https://github.com/Wolverine971/buildos-platform/blob/a81b8d116176/apps/web/src/lib/services/agentic-chat/tools/registry/tool-schema.ts#L51)
+- [tool-help.ts:74](https://github.com/Wolverine971/buildos-platform/blob/cae4fe5ed3ae/apps/web/src/lib/services/agentic-chat/tools/registry/tool-help.ts#L74)
 
 This is the part that most resembles a CLI `help` or `man`-page interaction.
 
@@ -291,9 +291,9 @@ but current code and tests show:
 
 Relevant mismatches:
 
-- [README.md:189](/Users/djwayne/buildos-platform/apps/web/docs/features/agentic-chat/README.md#L189)
-- [TOOL_API_MAPPING.md:12](/Users/djwayne/buildos-platform/apps/web/docs/features/agentic-chat/TOOL_API_MAPPING.md#L12)
-- [tool-selector.test.ts:17](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/tool-selector.test.ts#L17)
+- [README.md:189](../../apps/web/docs/features/agentic-chat/README.md#L189)
+- [TOOL_API_MAPPING.md:12](../../apps/web/docs/features/agentic-chat/TOOL_API_MAPPING.md#L12)
+- [tool-selector.test.ts:17](https://github.com/Wolverine971/buildos-platform/blob/dc4bc3560767/apps/web/src/lib/services/agentic-chat-v2/tool-selector.test.ts#L17)
 
 This matters because the team can easily evaluate the current architecture against stale terminology.
 

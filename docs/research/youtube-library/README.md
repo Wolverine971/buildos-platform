@@ -85,3 +85,20 @@ Use `INGESTION_FLOW.md` for new YouTube URLs, raw transcripts, source bundles, a
 ## Migration Policy
 
 For now, do not bulk-move existing transcripts. Move or copy them only when one is actively converted into a cleaned source package or skill draft.
+
+## Local files not yet listed in INDEX.md
+
+- [2026-05-10_peter-werry-unblocked_context-engine_analysis.md](./analyses/2026-05-10_peter-werry-unblocked_context-engine_analysis.md) — analysis: context engine talk (Peter Werry, Unblocked)
+- [2026-05-21_tbpn-chesky-event-pattern-tracking_analysis.md](./analyses/2026-05-21_tbpn-chesky-event-pattern-tracking_analysis.md) — analysis: TBPN episode, event-pattern tracking
+- [2026-07-22_thariq-shihipar_agentic-engineering_analysis.md](./analyses/2026-07-22_thariq-shihipar_agentic-engineering_analysis.md) — analysis: agentic engineering talk (Thariq Shihipar)
+- [2026-07-14_greg-kamradt_thariq-claude-code-agentic-engineering.md](./transcripts/2026-07-14_greg-kamradt_thariq-claude-code-agentic-engineering.md) — transcript for the analysis above
+- [2026-07-03_naval_riding-agi-ai-anxiety.md](./transcripts/2026-07-03_naval_riding-agi-ai-anxiety.md) — transcript
+- [2026-10-22_magic-patterns_standing-out-with-ai-design.md](./inbox/2026-10-22_magic-patterns_standing-out-with-ai-design.md) — raw transcript, needs classification
+- [2026-10-25_pull-framework_pmf-sales-call-system.md](./inbox/2026-10-25_pull-framework_pmf-sales-call-system.md) — raw transcript, needs classification
+- [2026-10-30_anthropic_long-horizon-agents-talk.md](./inbox/2026-10-30_anthropic_long-horizon-agents-talk.md) — raw transcript, needs classification
+- [2026-11-03_build-software-solo_high-converting-landing-page.md](./inbox/2026-11-03_build-software-solo_high-converting-landing-page.md) — raw transcript, needs classification
+- [2026-03-14_kole-jain_uiux-concepts_analysis.md](./analyses/2026-03-14_kole-jain_uiux-concepts_analysis.md) — analysis: UI/UX concepts (Kole Jain)
+- [SOURCE_ANALYSIS_PUBLISHING_PLAN.md](./SOURCE_ANALYSIS_PUBLISHING_PLAN.md) — May 2026 plan for publishing source analyses
+- [SKILL.md](./skill-drafts/build-quality-ui-ux/SKILL.md) — root skill draft: UI/UX quality family
+- [GAP_ANALYSIS.md](./skill-drafts/build-quality-ui-ux/GAP_ANALYSIS.md) — gap analysis for that family
+- [v2-transcript-synthesis.md](./skill-drafts/cold-email-engagement-first-outreach/v2-transcript-synthesis.md) — synthesis for the cold-email skill draft

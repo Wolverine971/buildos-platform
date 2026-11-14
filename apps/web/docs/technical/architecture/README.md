@@ -38,3 +38,9 @@ When making significant architectural decisions:
 2. Use the format: `ADR-XXX-short-title.md`
 3. Include: Context, Decision, Status, Consequences
 4. Review with technical team before implementation
+
+## More architecture notes
+
+- [content-creation-skill-family.md](./content-creation-skill-family.md) — the content-creation skill family in agentic chat
+- [AGENTIC_CHAT_LAYER_TAXONOMY_PROPOSAL_2026-06-15.md](./AGENTIC_CHAT_LAYER_TAXONOMY_PROPOSAL_2026-06-15.md) — why layer 2 is called "outcome cards" (implemented proposal)
+- [REFLECTION_AI_BETTER_AT_PRODUCT_2026-06-19.md](./REFLECTION_AI_BETTER_AT_PRODUCT_2026-06-19.md) — reflection memo: decision records, per-project glossary (ideas, not built)

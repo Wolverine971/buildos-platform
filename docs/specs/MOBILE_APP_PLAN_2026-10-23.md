@@ -2,9 +2,11 @@
 
 # BuildOS iPhone app: plan
 
-Status: **plan (2026-10-23). Nothing built.** DJ chose Expo + React Native and the "native core +
-web pages for the rest" shape. Next step: Phase 0 (server groundwork), which needs no app or
-accounts.
+Status: **Phases 0–3, the Inkprint kit, chat round 1, the chat polish and the daily brief are committed and
+pushed (`867aba900`, 2026-10-31). Chat round 2 (context picker on open, proposal cards, the changes row
+with Undo) and the in-app Account & data entry are built 2026-10-31, uncommitted.** DJ chose Expo + React
+Native and the "native core + web pages for the rest" shape on 2026-10-23. Build status and the remaining
+checks live in `tasker/148-mobile-app.md` (untracked); the app itself is `apps/mobile/` (README there).
 
 ## The vision (DJ, 2026-10-23)
 
@@ -127,10 +129,20 @@ access token>`, build `locals.supabase` with that token instead of cookies. Leav
   endpoints. Confirm the web's current capture path before wiring it.
 - Offline queue: captures save locally and sync on reconnect, with a visible "waiting to send"
   state.
+- **DJ, 2026-10-29:** a capture bar pinned to the bottom of Today (type, or tap the mic);
+  "talk, then it lands" voice (record → saved on the phone → transcribed by the server → a note
+  in the Workspace, works in airplane mode); and the web capture box's smart sort on every
+  capture (no Note/Task picker), with Undo.
 
 ### Phase 3: projects
 
 Projects list → project reader → task and doc view/edit, against the existing `/api/onto` routes.
+
+**DJ, 2026-10-29:** a Today | Projects tab bar with one shared reader. Today is the command center
+(tap a task, walk the day with Prev/Next, the pattern the website's phone layout got on 10-06);
+Projects → project → Tasks/Docs → the same reader. Quick actions + light edit (state, due date,
+rename, description; docs as plain text with a save that never overwrites a newer edit). No Chat
+button until Phase 4.
 
 ### Phase 4: agent chat
 

@@ -486,7 +486,7 @@ Priority engagement with accounts in `/docs/marketing/social-media/twitter-profi
 
 ### Product Documentation
 
-- [Brain Dump Feature](/apps/web/docs/features/brain-dump/)
+- [Brain Dump Feature](https://github.com/Wolverine971/buildos-platform/tree/0e0fd59ee8bb/apps/web/docs/features/brain-dump)
 - [Ontology System](/apps/web/docs/features/ontology/)
 - [Daily Briefs](/apps/worker/docs/features/daily-briefs/)
 

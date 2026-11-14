@@ -1,4 +1,4 @@
-<!-- research-library/README.md -->
+<!-- docs/research-library/README.md -->
 
 # Research Library
 
@@ -65,3 +65,8 @@ BuildOS-specific design thinking and vision documents.
 | [design-current-priorities-brainstorm.md](design-current-priorities-brainstorm.md) | Current strategic priorities brainstorm                            |
 | [design-learning-resources.md](design-learning-resources.md)                       | Curated guide for design thinking, AI interfaces, soulful software |
 | [design-websites.md](design-websites.md)                                           | Design inspiration bookmarks                                       |
+
+## More saved articles
+
+- [blog-compound-engineering.md](./blogs/blog-compound-engineering.md) — Kieran Klaassen — compounding engineering
+- [blog-tools-for-thought.md](./blogs/blog-tools-for-thought.md) — Maggie Appleton — tools for thought as cultural practices

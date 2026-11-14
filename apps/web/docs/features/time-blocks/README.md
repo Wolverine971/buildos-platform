@@ -1757,12 +1757,12 @@ describe('LLM Task Suggestions', () => {
 ### Existing Research Documents
 
 1. **Timeblock Feature Idea** (Oct 5, 2025)
-    - Path: `/thoughts/shared/research/2025-10-05_00-00-00_timeblock-feature-idea.md`
+    - Path: [`2025-10-05_00-00-00_timeblock-feature-idea.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-10-05_00-00-00_timeblock-feature-idea.md)
     - Focus: Philosophy of "Guided Flexibility", behavioral design principles
     - Key concepts: Flow-based productivity, context-aware AI scheduling
 
 2. **Timeblock Scheduling Feature Research** (Oct 4, 2025)
-    - Path: `/thoughts/shared/research/2025-10-04_04-30-00_timeblock-scheduling-feature-research.md`
+    - Path: [`2025-10-04_04-30-00_timeblock-scheduling-feature-research.md`](https://github.com/Wolverine971/buildos-platform/blob/b5f9841e07f9/thoughts/shared/research/2025-10-04_04-30-00_timeblock-scheduling-feature-research.md)
     - Focus: Comprehensive technical analysis (1,812 lines)
     - Includes: Architecture, database schema, LLM prompts, implementation phases
 

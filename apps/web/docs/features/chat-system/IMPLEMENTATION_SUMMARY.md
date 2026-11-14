@@ -209,7 +209,7 @@ Three new tools added for intelligent task-calendar management:
 - [QUICK_START.md](QUICK_START.md) - 5-minute setup
 - [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md) - This document
 - [TOOL_EXECUTOR_API_PATTERN.md](TOOL_EXECUTOR_API_PATTERN.md) - API pattern documentation
-- [ADMIN_MONITORING.md](ADMIN_MONITORING.md) - **NEW: Admin monitoring system (October 2024)**
+- [ADMIN_MONITORING.md](https://github.com/Wolverine971/buildos-platform/blob/e0cbb205aae6/apps/web/docs/features/chat-system/ADMIN_MONITORING.md) - **NEW: Admin monitoring system (October 2024)**
 - [LLM_TOOL_INSTRUCTIONS.md](/apps/web/src/lib/chat/LLM_TOOL_INSTRUCTIONS.md) - LLM usage guide
 
 ### Updated Documentation

@@ -47,6 +47,12 @@ describe('initialStage', () => {
 	it('asks what the chat is about when opened from the nav (global, no stored chat)', () => {
 		expect(initialStage({ target: GLOBAL_TARGET, sessionId: null })).toBe('pick');
 	});
+	it('opens Workspace chat directly when Today hands it words to send (follow-up, close-out)', () => {
+		expect(
+			initialStage({ target: GLOBAL_TARGET, sessionId: null, draft: 'Help me plan' })
+		).toBe('chat');
+		expect(initialStage({ target: GLOBAL_TARGET, sessionId: null, draft: '   ' })).toBe('pick');
+	});
 	it('goes straight in from a project page, the reader, or a stored chat', () => {
 		expect(initialStage({ target: launch, sessionId: null })).toBe('chat');
 		expect(

@@ -1327,22 +1327,22 @@ export function initWebVitals() {
 All detailed research is available in:
 
 1. **Mobile Modal UX Patterns**
-   `/thoughts/shared/research/2025-11-21_15-38-14_mobile-modal-bottom-sheet-ux-patterns.md`
+   [`2025-11-21_15-38-14_mobile-modal-bottom-sheet-ux-patterns.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-11-21_15-38-14_mobile-modal-bottom-sheet-ux-patterns.md)
     - Bottom sheets, touch gestures, accessibility
     - 10,000+ words, complete implementation guide
 
 2. **Mobile Web Performance**
-   `/thoughts/shared/research/2025-11-21_15-36-31_mobile-web-performance-optimization.md`
+   [`2025-11-21_15-36-31_mobile-web-performance-optimization.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-11-21_15-36-31_mobile-web-performance-optimization.md)
     - Core Web Vitals, lazy loading, animation optimization
     - Code examples and testing strategies
 
 3. **Advanced Responsive Design**
-   `/thoughts/shared/research/2025-11-21_15-48-54_advanced-responsive-design-2025.md`
+   [`2025-11-21_15-48-54_advanced-responsive-design-2025.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-11-21_15-48-54_advanced-responsive-design-2025.md)
     - Container queries, :has(), fluid design
     - Modern CSS techniques with Tailwind
 
 4. **PWA & Mobile Capabilities**
-   `/thoughts/shared/research/2025-11-21_15-35-40_pwa-mobile-capabilities-2025.md`
+   [`2025-11-21_15-35-40_pwa-mobile-capabilities-2025.md`](https://github.com/Wolverine971/buildos-platform/blob/e2a41df3968c/thoughts/shared/research/2025-11-21_15-35-40_pwa-mobile-capabilities-2025.md)
     - PWA setup, haptics, iOS/Android specifics
     - 3,200+ lines, production-ready patterns
 

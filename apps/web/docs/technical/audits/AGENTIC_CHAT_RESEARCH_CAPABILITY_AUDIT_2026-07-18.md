@@ -204,7 +204,7 @@ This prevents one normal in-flight request or retry chain from spending drastica
 application budget. It is deliberately not described as an absolute provider-billing guarantee:
 durable reservations, request-id settlement/reconciliation, daily/global quotas, price-drift
 monitoring, and circuit breakers remain in
-[tasker 29](../../../../../tasker/29-deep-research-cost-ledger-and-hard-budgets.md).
+[tasker 29](https://github.com/Wolverine971/buildos-platform/blob/b89e1b6106cb/tasker/29-deep-research-cost-ledger-and-hard-budgets.md).
 
 ## ADDENDUM 2026-07-19: Durable Agent Run cost ledger implemented locally
 

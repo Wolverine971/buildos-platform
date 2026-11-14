@@ -107,6 +107,8 @@ export default function ChatScreen() {
 		demo?: string;
 		autofocus?: string;
 		history?: string;
+		/** Words to put in the box (not sent), with the keyboard up. */
+		draft?: string;
 	}>();
 	const openedWith = useMemo(
 		() => parseTargetParams(params),
@@ -122,22 +124,24 @@ export default function ChatScreen() {
 	);
 	const demo = DEV ? parseDemoParam(params.demo) : null;
 	const openedSession = typeof params.sessionId === 'string' ? params.sessionId : null;
+	const draft = typeof params.draft === 'string' && params.draft.trim() ? params.draft : null;
 	// What this chat is about. Starts from how it was opened; the picker and the focus sheet
 	// change it, and every send reads it (hooks/use-chat.ts).
 	const [target, setTarget] = useState<ChatTarget>(openedWith);
 	const [stage, setStage] = useState<ChatStage>(() =>
-		initialStage({ target: openedWith, sessionId: openedSession, demo })
+		initialStage({ target: openedWith, sessionId: openedSession, demo, draft })
 	);
 	const [focusOpen, setFocusOpen] = useState(demo === 'focus');
 	const [query, setQuery] = useState('');
 	// Opened again with other params while mounted (a deep link): start over from them.
 	useEffect(() => {
 		setTarget(openedWith);
-		setStage(initialStage({ target: openedWith, sessionId: openedSession, demo }));
+		setStage(initialStage({ target: openedWith, sessionId: openedSession, demo, draft }));
 		setFocusOpen(demo === 'focus');
-	}, [openedWith, openedSession, demo]);
+	}, [openedWith, openedSession, demo, draft]);
 	// Any value focuses; a new value re-focuses, so screenshots can reopen the keyboard.
-	const autoFocus = DEV && typeof params.autofocus === 'string' ? params.autofocus : null;
+	const autoFocus =
+		DEV && typeof params.autofocus === 'string' ? params.autofocus : draft ? 'draft' : null;
 	const chat = useChat(target, openedSession, { demo });
 	const desktop = useDesktop();
 	const { colors } = useInk();
@@ -419,6 +423,7 @@ export default function ChatScreen() {
 						onDismissError={chat.clearError}
 						placeholder={`Ask about ${described.title}`}
 						autoFocus={autoFocus}
+						initialText={draft}
 						above={
 							chat.pendingChange ? (
 								<PendingChangeStrip

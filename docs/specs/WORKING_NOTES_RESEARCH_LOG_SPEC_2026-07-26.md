@@ -9,7 +9,7 @@
 
 **Date:** 2026-07-26
 **Status:** Proposed. One DJ decision open (§8).
-**Tracker:** [`tasker/40-working-notes-artifacts.md`](../../tasker/40-working-notes-artifacts.md)
+**Tracker:** [`tasker/40-working-notes-artifacts.md`](https://github.com/Wolverine971/buildos-platform/blob/df81f97dced3/tasker/40-working-notes-artifacts.md)
 **Supersedes the storage leaning in** tracker 40 §3 D1 (which favored a new table) — see §3.
 
 **The requirement, from DJ:**
@@ -235,7 +235,7 @@ counts created documents must use it, and any new system-written document must b
 
 ## 10. Related
 
-- [`tasker/40-working-notes-artifacts.md`](../../tasker/40-working-notes-artifacts.md) — tracker
+- [`tasker/40-working-notes-artifacts.md`](https://github.com/Wolverine971/buildos-platform/blob/df81f97dced3/tasker/40-working-notes-artifacts.md) — tracker
 - [`PROMPT_INSTRUCTION_ARCHITECTURE_AUDIT_2026-07-26.md`](../architecture/agent-first-orchestration/PROMPT_INSTRUCTION_ARCHITECTURE_AUDIT_2026-07-26.md) §5 — the landing-place decision
 - `packages/agent-orchestrator/src/contracts/artifact.ts` — the envelope shape §4.3 borrows from
 - `apps/web/src/lib/services/ontology-context-loader.ts:641` — the exclusion filter

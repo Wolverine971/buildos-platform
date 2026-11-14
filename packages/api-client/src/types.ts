@@ -105,7 +105,11 @@ export type CalendarItem = {
 };
 
 /** Mirrors apps/web/src/lib/types/today.ts (served by apps/web/src/lib/server/today-feed.service.ts). */
-export type TodayTaskBucket = 'due_today' | 'starts_today' | 'in_progress';
+/**
+ * Why a task is on Today. `due_soon` = due yesterday through the next 7 days (not today);
+ * `new` = added in the last 3 days with no date this week.
+ */
+export type TodayTaskBucket = 'due_today' | 'starts_today' | 'due_soon' | 'new' | 'in_progress';
 export type TodayFeedDegradedSection = 'events' | 'tasks' | 'overdue';
 
 export type TodayTask = {
@@ -120,6 +124,12 @@ export type TodayTask = {
 	priority: number | null;
 	updated_at: string;
 	bucket: TodayTaskBucket;
+	/** When the task was added. */
+	created_at?: string | null;
+	/** True when the person added it themselves (by hand or through chat), not an agent. */
+	created_by_you?: boolean;
+	/** Calendar days from today to the due date (−1 = yesterday), when it has one. */
+	due_in_days?: number | null;
 };
 
 export type TodayProject = {
@@ -156,8 +166,78 @@ export type TodayParams = {
 	timezone?: string;
 };
 
+/** One open ask on Today: who is waiting on whom, written by the morning brief job. */
+export type TodayWaitingItem = {
+	id: string;
+	/** on_you: someone is waiting on the person. on_them: the person is waiting on someone. */
+	direction: 'on_you' | 'on_them';
+	who: string;
+	who_kind: 'person' | 'agent' | 'organization';
+	what: string;
+	project_id: string | null;
+	project_name: string | null;
+	task_id: string | null;
+	/** YYYY-MM-DD the ask started, when known. */
+	since: string | null;
+};
+
+/** A task the daily brief has put in "Start here" every morning for days. */
+export type TodayRepeatedSuggestion = {
+	task_id: string;
+	project_id: string;
+	project_name: string;
+	title: string;
+	/** Consecutive briefs that suggested it, ending with the latest one. */
+	days: number;
+	due_at: string | null;
+};
+
+/** Loaded beside the feed (apps/web/src/lib/server/today-attention.service.ts). */
+export type TodayAttention = {
+	waiting: TodayWaitingItem[];
+	repeated: TodayRepeatedSuggestion[];
+};
+
 export type TodayResponse = {
 	feed: TodayFeed;
+	/** Absent from servers older than 2026-11-05. */
+	attention?: TodayAttention;
+};
+
+/** PATCH /api/today/waiting/[id] */
+export type TodayWaitingStatus = 'open' | 'resolved' | 'dismissed';
+export type TodayWaitingStatusResponse = { item: { id: string; status: TodayWaitingStatus } };
+
+/** POST /api/today/suggestions/keep — Today stops listing it until `kept_until`. */
+export type TodayKeepResponse = { task_id: string; kept_until: string };
+
+export type WhatChangedActorKind = 'you' | 'member' | 'external_agent' | 'agent' | 'system';
+
+/** One collapsed receipt: the latest change to an entity within the window. */
+export type WhatChangedEntry = {
+	id: string;
+	project_id: string;
+	project_name: string;
+	entity_type: string;
+	entity_id: string;
+	entity_name: string;
+	action: 'created' | 'updated' | 'deleted';
+	change_source: string | null;
+	actor_kind: WhatChangedActorKind;
+	/** "You", "Agent chat", an external caller's name, a member's name. */
+	actor_label: string;
+	occurrences: number;
+	latest_at: string;
+};
+
+/** GET /api/today/changes?since= — apps/web/src/lib/server/what-changed.service.ts */
+export type WhatChangedResponse = {
+	feed: {
+		since: string;
+		entries: WhatChangedEntry[];
+		totalLogCount: number;
+		truncated: boolean;
+	};
 };
 
 // ---------------------------------------------------------------------------

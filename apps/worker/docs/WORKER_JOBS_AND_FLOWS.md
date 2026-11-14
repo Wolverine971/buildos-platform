@@ -27,6 +27,14 @@ legacy compatibility values, not active processors.
 | `build_project_context_snapshot` | `workers/ontology/projectContextSnapshotWorker.ts`    | Web project context snapshot service          |
 | `buildos_project_loop`           | `workers/project-loop/projectLoopWorker.ts`           | Web project-loop services, scheduler          |
 | `sync_calendar`                  | `workers/calendar/calendarSyncWorker.ts`              | Calendar projection services                  |
+| `run_cycle`                      | `workers/cycle/cycleWorker.ts`                        | Cycle database functions                      |
+| `pick_project_emoji`             | `workers/project-emoji/projectEmojiWorker.ts`         | DB trigger on project insert                  |
+| `workspace_suggest`              | `workers/workspace-suggest/workspaceSuggestWorker.ts` | Web workspace service                         |
+| `freshness_radar_scan`           | `workers/freshness-radar/signalJob.ts`                | DB trigger on chat turn signals               |
+| `consolidation_run`              | `workers/consolidation/consolidationJob.ts`           | Web consolidation service                     |
+| `user_data_export`               | `workers/export/userDataExportWorker.ts`              | User data panel (database function)           |
+| `table_ai_fill`                  | `workers/tables/tableAiFillWorker.ts`                 | Table AI fill (`shared-agent-ops`)            |
+| `extract_task_entities`          | `workers/task-entities/extractTaskEntitiesWorker.ts`  | DB trigger on task writes                     |
 
 Removed from active docs: `generate_phases`, `generate_brief_email`,
 `send_email`, `update_recurring_tasks`, `cleanup_old_data`, and `other`.

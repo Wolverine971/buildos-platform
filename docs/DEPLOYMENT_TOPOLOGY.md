@@ -363,7 +363,7 @@ See [Deployment Environment Checklist](operations/environment/DEPLOYMENT_ENV_CHE
 ### Integrations
 
 - [Twilio/SMS Integration](integrations/twilio/README.md) - SMS notifications system
-- [Supabase Integration](integrations/supabase/) - Database and auth
+- Supabase Integration - Database and auth
 - [Stripe Integration](integrations/stripe/) - Payment processing
 
 ### Navigation

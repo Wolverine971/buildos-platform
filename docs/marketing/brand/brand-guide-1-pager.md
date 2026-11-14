@@ -339,6 +339,6 @@ The product should feel like a place to work, not a sales diagram.
 
 Use this guide with:
 
-- [BuildOS Marketing Strategy 2026](/Users/djwayne/buildos-platform/docs/marketing/strategy/buildos-marketing-strategy-2026.md)
-- [BuildOS Guerrilla Content Doctrine](/Users/djwayne/buildos-platform/docs/marketing/strategy/buildos-guerrilla-content-doctrine.md)
-- [6-Week Guerrilla Seed Campaign](/Users/djwayne/buildos-platform/docs/marketing/social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md)
+- [BuildOS Marketing Strategy 2026](../strategy/buildos-marketing-strategy-2026.md)
+- [BuildOS Guerrilla Content Doctrine](../strategy/buildos-guerrilla-content-doctrine.md)
+- [6-Week Guerrilla Seed Campaign](../social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md)

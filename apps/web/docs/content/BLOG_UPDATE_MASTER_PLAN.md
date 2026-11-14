@@ -83,7 +83,7 @@ Before starting any blog update, read these documents:
 
 ### Zoom Messaging Quick Reference
 
-> **See [Zoom Messaging Guide](/apps/web/docs/content/ZOOM_MESSAGING_GUIDE.md) for complete examples.**
+> **See [Zoom Messaging Guide](../../../../docs/marketing/brand/ZOOM_MESSAGING_GUIDE.md) for complete examples.**
 
 **Primary tagline:** "Zoom in. Zoom out. Work at any level."
 

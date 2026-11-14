@@ -497,8 +497,8 @@ export async function GET() {
 
 - [Stripe Webhook Documentation](https://stripe.com/docs/webhooks)
 - [Stripe Webhook Signature Verification](https://stripe.com/docs/webhooks/signatures)
-- [Incident Response Template](/docs/technical/deployment/runbooks/incident-response.md)
-- [Performance Troubleshooting Guide](/docs/technical/deployment/runbooks/performance-issues.md)
+- [Incident Response Template](https://github.com/Wolverine971/buildos-platform/blob/e834b47924f0/apps/web/docs/technical/deployment/runbooks/incident-response.md)
+- [Performance Troubleshooting Guide](../../../../apps/web/docs/technical/deployment/runbooks/performance-issues.md)
 
 ## 📞 Escalation Contacts
 
