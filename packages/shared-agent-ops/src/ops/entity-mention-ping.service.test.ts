@@ -16,7 +16,8 @@ vi.mock('./entity-mention-notification.service', () => ({
 import {
 	EntityMentionPingServiceError,
 	buildEntityMentionPingToolResult,
-	pingOntoEntity
+	pingOntoEntity,
+	resolveMentionHandles
 } from './entity-mention-ping.service';
 
 const PROJECT_ID = '10000000-0000-4000-8000-000000000001';
@@ -226,5 +227,133 @@ describe('entity mention ping service', () => {
 			disposition: 'outcome_uncertain'
 		} satisfies Partial<EntityMentionPingServiceError>);
 		expect(notifyEntityMentionsAddedMock).toHaveBeenCalledOnce();
+	});
+});
+
+describe('resolveMentionHandles', () => {
+	const SAM_USER_ID = '80000000-0000-4000-8000-000000000008';
+	const SAMIRA_USER_ID = '90000000-0000-4000-8000-000000000009';
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	function membersClient(
+		options: {
+			members?: Array<{ actor_id: string; actor: Record<string, unknown> | null }>;
+			owner?: Record<string, unknown> | null;
+		} = {}
+	) {
+		const responses = {
+			onto_project_members: {
+				data: options.members ?? [
+					{
+						actor_id: RECIPIENT_ACTOR_ID,
+						actor: {
+							id: RECIPIENT_ACTOR_ID,
+							user_id: SAM_USER_ID,
+							name: 'Sam Lee',
+							email: 'sam.lee@example.com'
+						}
+					}
+				],
+				error: null
+			},
+			onto_projects: { data: { id: PROJECT_ID, created_by: OWNER_ACTOR_ID }, error: null },
+			onto_actors: {
+				data:
+					options.owner === undefined
+						? { id: OWNER_ACTOR_ID, user_id: USER_ID, name: 'DJ Wayne', email: null }
+						: options.owner,
+				error: null
+			}
+		};
+		return { from: vi.fn((table: string) => new QueryBuilderMock(table, responses)) };
+	}
+
+	it('matches names and @handles to members, and the owner without a member row', async () => {
+		await expect(
+			resolveMentionHandles({
+				client: membersClient() as never,
+				projectId: PROJECT_ID,
+				handles: ['@sam', 'Sam Lee', 'DJ']
+			})
+		).resolves.toEqual([
+			{ handle: 'sam', user_id: SAM_USER_ID, name: 'Sam Lee' },
+			{ handle: 'dj', user_id: USER_ID, name: 'DJ Wayne' }
+		]);
+	});
+
+	it('names the choices when a handle fits nobody or several people', async () => {
+		const supabase = membersClient({
+			members: [
+				{
+					actor_id: RECIPIENT_ACTOR_ID,
+					actor: { id: RECIPIENT_ACTOR_ID, user_id: SAM_USER_ID, name: 'Sam Lee' }
+				},
+				{
+					actor_id: ACTOR_ID,
+					actor: { id: ACTOR_ID, user_id: SAMIRA_USER_ID, name: 'Samira Khan' }
+				}
+			]
+		});
+		await expect(
+			resolveMentionHandles({
+				client: supabase as never,
+				projectId: PROJECT_ID,
+				handles: ['@sa']
+			})
+		).rejects.toMatchObject({
+			code: 'ineligible_recipients',
+			disposition: 'known_failed',
+			message: expect.stringContaining('Sam Lee, Samira Khan')
+		});
+		await expect(
+			resolveMentionHandles({
+				client: supabase as never,
+				projectId: PROJECT_ID,
+				handles: ['@priya']
+			})
+		).rejects.toMatchObject({
+			code: 'ineligible_recipients',
+			message:
+				'No active project member matches "@priya". Members: Sam Lee, Samira Khan, DJ Wayne.'
+		});
+		// The exact name still resolves when a shorter handle is ambiguous.
+		await expect(
+			resolveMentionHandles({
+				client: supabase as never,
+				projectId: PROJECT_ID,
+				handles: ['@sam']
+			})
+		).resolves.toEqual([{ handle: 'sam', user_id: SAM_USER_ID, name: 'Sam Lee' }]);
+	});
+
+	it('rejects an empty handle and a member with no account, before anything is sent', async () => {
+		await expect(
+			resolveMentionHandles({
+				client: membersClient() as never,
+				projectId: PROJECT_ID,
+				handles: ['@']
+			})
+		).rejects.toMatchObject({ code: 'invalid_arguments' });
+		await expect(
+			resolveMentionHandles({
+				client: membersClient({
+					members: [
+						{
+							actor_id: RECIPIENT_ACTOR_ID,
+							actor: { id: RECIPIENT_ACTOR_ID, user_id: null, name: 'Research Agent' }
+						}
+					]
+				}) as never,
+				projectId: PROJECT_ID,
+				handles: ['@research']
+			})
+		).rejects.toMatchObject({
+			code: 'ineligible_recipients',
+			message: 'Research Agent has no BuildOS account to notify'
+		});
+		expect(notifyEntityMentionsAddedMock).not.toHaveBeenCalled();
 	});
 });

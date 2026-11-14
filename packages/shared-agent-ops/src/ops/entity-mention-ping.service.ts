@@ -1,6 +1,15 @@
 import type { Database, JsonObject } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ensureActorId } from '../ontology/ontology-projects.service';
+import {
+	type IndexedProjectMember,
+	type ProjectMemberActor,
+	buildMemberHandleKeys,
+	formatMemberLabel,
+	indexProjectMemberRows,
+	matchProjectMemberHandle,
+	normalizeHandleToken
+} from '../ontology/project-member-handles';
 import { isValidUUID } from '../utils/validation-utils';
 import {
 	notifyEntityMentionsAdded,
@@ -226,6 +235,135 @@ export async function pingOntoEntity(
 		mentioned_user_ids: eligibleUserIds,
 		notified_user_ids: notificationResult.notifiedUserIds
 	};
+}
+
+export type ResolvedMentionHandle = {
+	/** The handle as normalized for matching, without the "@". */
+	handle: string;
+	user_id: string;
+	name: string | null;
+};
+
+const MAX_LISTED_MEMBERS = 10;
+
+/**
+ * Turn the names a ping was asked for ("@sam", "Sam Lee") into the user ids
+ * `pingOntoEntity` takes. People are matched against the project's active
+ * members and its owner, the same way task assignment matches assignee
+ * handles. Nothing is sent here, so every failure is `known_failed`: an
+ * unmatched or ambiguous name comes back with the members to choose from.
+ */
+export async function resolveMentionHandles(input: {
+	client: SupabaseClient<Database>;
+	projectId: string;
+	handles: readonly unknown[];
+}): Promise<ResolvedMentionHandle[]> {
+	const projectId = requiredText(input.projectId, 'projectId');
+	const handles: string[] = [];
+	for (const raw of input.handles) {
+		const handle = normalizeHandleToken(raw);
+		if (!handle) {
+			throw knownError('invalid_arguments', `Not a usable name or handle: ${String(raw)}`);
+		}
+		if (!handles.includes(handle)) handles.push(handle);
+	}
+	if (handles.length === 0) return [];
+	if (handles.length > MAX_MENTIONED_USERS) {
+		throw knownError(
+			'invalid_arguments',
+			`A ping supports at most ${MAX_MENTIONED_USERS} recipients`
+		);
+	}
+
+	const members = await knownDatabaseStep('Failed to load project members', () =>
+		loadActiveProjectMembers(input.client, projectId)
+	);
+	const listed = members.slice(0, MAX_LISTED_MEMBERS).map(formatMemberLabel).join(', ');
+
+	const resolved: ResolvedMentionHandle[] = [];
+	for (const handle of handles) {
+		const match = matchProjectMemberHandle(handle, members);
+		if (match.status === 'none') {
+			throw knownError(
+				'ineligible_recipients',
+				`No active project member matches "@${handle}". Members: ${listed || 'none'}.`
+			);
+		}
+		if (match.status === 'ambiguous') {
+			throw knownError(
+				'ineligible_recipients',
+				`"@${handle}" matches more than one project member: ${match.members.map(formatMemberLabel).join(', ')}. Ask which one, then use their fuller name.`
+			);
+		}
+		const userId = match.member.actor?.user_id;
+		if (!userId) {
+			throw knownError(
+				'ineligible_recipients',
+				`${formatMemberLabel(match.member)} has no BuildOS account to notify`
+			);
+		}
+		if (!resolved.some((entry) => entry.user_id === userId)) {
+			const name = match.member.actor?.name?.trim() || null;
+			resolved.push({ handle, user_id: userId, name });
+		}
+	}
+	return resolved;
+}
+
+/** Active members plus the owner, who is a recipient even without a member row. */
+async function loadActiveProjectMembers(
+	client: SupabaseClient<Database>,
+	projectId: string
+): Promise<IndexedProjectMember[]> {
+	const sb = client as any;
+	const [memberResponse, projectResponse] = await Promise.all([
+		sb
+			.from('onto_project_members')
+			.select(
+				'actor_id, actor:onto_actors!onto_project_members_actor_id_fkey(id, user_id, name, email)'
+			)
+			.eq('project_id', projectId)
+			.is('removed_at', null),
+		sb
+			.from('onto_projects')
+			.select('id, created_by')
+			.eq('id', projectId)
+			.is('deleted_at', null)
+			.maybeSingle()
+	]);
+	if (memberResponse.error) {
+		throw knownError('database_error', 'Failed to load project members', memberResponse.error);
+	}
+	if (projectResponse.error) {
+		throw knownError('database_error', 'Failed to load project', projectResponse.error);
+	}
+	if (!projectResponse.data) throw knownError('project_not_found', 'Project not found');
+
+	const members = indexProjectMemberRows(memberResponse.data ?? []);
+	const ownerActorId = projectResponse.data.created_by as string | null;
+	if (ownerActorId && !members.some((member) => member.actorId === ownerActorId)) {
+		const ownerResponse = await sb
+			.from('onto_actors')
+			.select('id, user_id, name, email')
+			.eq('id', ownerActorId)
+			.maybeSingle();
+		if (ownerResponse.error) {
+			throw knownError(
+				'database_error',
+				'Failed to load the project owner',
+				ownerResponse.error
+			);
+		}
+		const owner = (ownerResponse.data ?? null) as ProjectMemberActor | null;
+		if (owner) {
+			members.push({
+				actorId: ownerActorId,
+				actor: owner,
+				keys: buildMemberHandleKeys(owner)
+			});
+		}
+	}
+	return members;
 }
 
 export function buildEntityMentionPingToolResult(result: EntityMentionPingResult): JsonObject {

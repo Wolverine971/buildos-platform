@@ -81,8 +81,8 @@ export type AgenticChatMutationArgumentNormalizerIdV1 =
 	| 'drop_unusable_document_position'
 	| 'drop_routing_only_content_source'
 	| 'drop_scope_only_project_id'
-	| 'normalize_target_date_end_of_day'
-	| 'normalize_due_at_start_of_day'
+	| 'validate_target_date'
+	| 'validate_due_at'
 	| 'require_signed_impact'
 	| 'normalize_project_row_update'
 	| 'normalize_edge_link_arguments'
@@ -597,13 +597,13 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
-			'Send one explicit notification-only tag to active members of the focused project. Use exact user UUIDs returned by project-member reads and always pass mode "ping". This worker tool never edits entity content and does not resolve @handles.',
-		requiredNames: ['project_id', 'entity_type', 'entity_id', 'mode', 'mentioned_user_ids'],
+			'Notify project members about one task, goal, or document when the user asks to tag, ping, or notify someone. Name each person in mentioned_handles. The item itself is never edited. If a name fits no member or several, the call fails and lists the members: ask the user which one.',
+		requiredNames: ['project_id', 'entity_type', 'entity_id'],
 		reviewedArgumentNames: [
 			'project_id',
 			'entity_type',
 			'entity_id',
-			'mode',
+			'mentioned_handles',
 			'mentioned_user_ids',
 			'message'
 		],
@@ -617,18 +617,18 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 				type: 'string',
 				pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
 			},
-			mode: {
-				type: 'string',
-				enum: ['ping'],
-				default: 'ping',
+			mentioned_handles: {
+				type: 'array',
 				description:
-					'Must be "ping". This tool notifies mentioned users without editing content.'
+					'Who to notify, by name or @handle as the user said it, e.g. ["@sam"]. Matched against the project\'s active members.',
+				minItems: 1,
+				maxItems: 25,
+				items: { type: 'string', minLength: 1, maxLength: 80 }
 			},
 			mentioned_user_ids: {
 				type: 'array',
-				// The shared definition calls this optional; the worker requires it.
 				description:
-					'Recipient user UUIDs (required). Each must be an active member of the project.',
+					"Only for a person with no usable name: their user_id from a task's assignees.",
 				minItems: 1,
 				maxItems: 25,
 				uniqueItems: true,
@@ -649,7 +649,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			executor: 'table',
 			runner: 'gateway',
 			scope: { mode: 'argument_project', argument: 'project_id', required: true },
-			argumentNormalizers: ['normalize_target_date_end_of_day'],
+			argumentNormalizers: ['validate_target_date'],
 			receipt: {
 				kind: 'entity',
 				rootKey: 'goal',
@@ -687,7 +687,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			runner: 'gateway',
 			scope: { mode: 'context_project', required: false },
 			requiredUuidArguments: ['goal_id'],
-			argumentNormalizers: ['normalize_target_date_end_of_day'],
+			argumentNormalizers: ['validate_target_date'],
 			receipt: {
 				kind: 'entity',
 				rootKey: 'goal',
@@ -803,7 +803,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			runner: 'gateway',
 			scope: { mode: 'argument_project', argument: 'project_id', required: true },
 			requiredUuidArguments: ['goal_id'],
-			argumentNormalizers: ['normalize_due_at_start_of_day'],
+			argumentNormalizers: ['validate_due_at'],
 			receiptPostProcessors: ['milestone_state', 'carry_goal_id_argument'],
 			receipt: {
 				kind: 'entity',
@@ -841,7 +841,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			runner: 'gateway',
 			scope: { mode: 'context_project', required: false },
 			requiredUuidArguments: ['milestone_id'],
-			argumentNormalizers: ['normalize_due_at_start_of_day'],
+			argumentNormalizers: ['validate_due_at'],
 			receiptPostProcessors: ['milestone_state'],
 			receipt: {
 				kind: 'entity',

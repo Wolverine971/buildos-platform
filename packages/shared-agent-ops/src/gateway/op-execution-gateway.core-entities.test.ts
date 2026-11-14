@@ -198,6 +198,32 @@ describe('core entity gateway legacy row parity', () => {
 		);
 	});
 
+	it('stores a bare-day goal target and milestone due date as the end of the user day', async () => {
+		const zoned = () => ({ ...(context() as object), timezone: 'America/New_York' }) as never;
+		mocks.existingByKind.set('goal', { id: GOAL_ID, project_id: PROJECT_ID, props: {} });
+
+		await createGoal(zoned(), {
+			project_id: PROJECT_ID,
+			name: 'Ship beta',
+			target_date: '2026-11-20'
+		});
+		await createMilestone(zoned(), {
+			project_id: PROJECT_ID,
+			goal_id: GOAL_ID,
+			title: 'Beta ready',
+			due_at: '2026-11-20'
+		});
+		await updateMilestone(zoned(), { milestone_id: ENTITY_ID, due_at: '2026-07-04' });
+
+		// November 20 ends at 11:59:59 PM Eastern (UTC-5); July 4 at UTC-4. Midnight
+		// UTC, the old worker value, showed as the evening before in New York.
+		const inserted = (table: string) =>
+			mocks.insertPayloads.find((entry) => entry.table === table)?.payload;
+		expect(inserted('onto_goals')?.target_date).toBe('2026-11-21T04:59:59.000Z');
+		expect(inserted('onto_milestones')?.due_at).toBe('2026-11-21T04:59:59.000Z');
+		expect(mocks.updatePayloads[0]?.payload.due_at).toBe('2026-07-05T03:59:59.000Z');
+	});
+
 	it('mirrors goal updates and diffs mentions against the prior row', async () => {
 		mocks.existingByKind.set('goal', {
 			id: ENTITY_ID,

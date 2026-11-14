@@ -31,7 +31,8 @@ import {
 	type EntityMentionPingInput,
 	type EntityMentionPingResult,
 	EntityMentionPingServiceError,
-	pingOntoEntity
+	pingOntoEntity,
+	resolveMentionHandles
 } from '@buildos/shared-agent-ops/ops/entity-mention-ping.service';
 import { type BuildosAgentAllowedOp, type Database, type JsonObject } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -87,6 +88,8 @@ import {
 type GatewayRunner = typeof runGatewayWriteOp;
 type TaskMoveRunner = (input: AtomicTaskMoveInput) => Promise<TaskMoveResult>;
 type EntityPingRunner = (input: EntityMentionPingInput) => Promise<EntityMentionPingResult>;
+type MentionHandleResolver = typeof resolveMentionHandles;
+const MAX_PING_RECIPIENTS = 25;
 
 type TableExecutionSpec = Extract<AgenticChatMutationExecutionSpecV1, { executor: 'table' }>;
 type WorkerClient = SupabaseClient<Database>;
@@ -124,6 +127,7 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 	private readonly archiveDocument: typeof runReviewedDocumentArchive;
 	private readonly moveTask: TaskMoveRunner;
 	private readonly pingEntity: EntityPingRunner;
+	private readonly resolveMentionHandles: MentionHandleResolver;
 	private readonly previewSharedDocument: SharedDocumentPreviewRunner;
 	private readonly injectedTaskSync: TaskSyncPort | undefined;
 	private memoizedTaskSync: TaskSyncPort | undefined;
@@ -138,6 +142,7 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 			taskSync?: TaskSyncPort;
 			moveTask?: TaskMoveRunner;
 			pingEntity?: EntityPingRunner;
+			resolveMentionHandles?: MentionHandleResolver;
 			calendarWrites?: AgenticChatCalendarWritePortV1;
 			previewSharedDocument?: SharedDocumentPreviewRunner;
 		} = {}
@@ -146,6 +151,7 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 		this.archiveDocument = options.archiveDocument ?? runReviewedDocumentArchive;
 		this.moveTask = options.moveTask ?? moveOntoTaskAtomic;
 		this.pingEntity = options.pingEntity ?? pingOntoEntity;
+		this.resolveMentionHandles = options.resolveMentionHandles ?? resolveMentionHandles;
 		this.previewSharedDocument = options.previewSharedDocument ?? previewGatewayDocumentUpdate;
 		this.injectedTaskSync = options.taskSync;
 		this.injectedCalendarWrites = options.calendarWrites;
@@ -388,6 +394,39 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 		client: WorkerClient
 	): Promise<Record<string, unknown>> {
 		const { input, toolName, expected, projectId } = context;
+		// Names become user ids before anything is sent, so a name that fits no
+		// member (or several) is a known failure, never an uncertain one. The
+		// merged list is what the receipt must prove, so it replaces the expected
+		// recipients.
+		const handles = (expected.mentionedHandles as string[] | undefined) ?? [];
+		if (handles.length > 0) {
+			let resolvedUserIds: string[];
+			try {
+				const resolved = await this.resolveMentionHandles({
+					client,
+					projectId: String(projectId),
+					handles
+				});
+				resolvedUserIds = resolved.map((entry) => entry.user_id);
+			} catch (error) {
+				throw knownFailure(
+					`${toolName}_${error instanceof EntityMentionPingServiceError ? error.code : 'database_error'}`,
+					error instanceof EntityMentionPingServiceError
+						? error.message
+						: 'Could not look up the project members to notify'
+				);
+			}
+			const merged = Array.from(
+				new Set([...(expected.mentionedUserIds as string[]), ...resolvedUserIds])
+			);
+			if (merged.length > MAX_PING_RECIPIENTS) {
+				throw knownFailure(
+					`${toolName}_invalid_arguments`,
+					`A ping supports at most ${MAX_PING_RECIPIENTS} recipients`
+				);
+			}
+			expected.mentionedUserIds = merged;
+		}
 		try {
 			return (await this.pingEntity({
 				client,

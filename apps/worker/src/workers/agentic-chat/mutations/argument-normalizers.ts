@@ -126,14 +126,22 @@ export const AGENTIC_CHAT_MUTATION_ARGUMENT_NORMALIZERS_V1: Readonly<
 		args.calendar_sync = 'none';
 	},
 
-	normalize_target_date_end_of_day: ({ args }) => {
+	/**
+	 * Goal and milestone dates are checked here and resolved by the shared
+	 * gateway, exactly like task dates: a bare YYYY-MM-DD is the user's own day
+	 * (its last second, in their timezone). These used to be turned into a UTC
+	 * instant here (23:59:59Z for goals, 00:00Z for milestones), which took the
+	 * gateway's timezone step out of play: a milestone due "November 20" was
+	 * stored as November 19, 7 PM for a New York user.
+	 */
+	validate_target_date: ({ args }) => {
 		if (!Object.hasOwn(args, 'target_date')) return;
-		args.target_date = normalizeLegacyDate(args.target_date, 'target_date', true);
+		args.target_date = validatedDateArgument(args.target_date, 'target_date');
 	},
 
-	normalize_due_at_start_of_day: ({ args }) => {
+	validate_due_at: ({ args }) => {
 		if (!Object.hasOwn(args, 'due_at')) return;
-		args.due_at = normalizeLegacyDate(args.due_at, 'due_at', false);
+		args.due_at = validatedDateArgument(args.due_at, 'due_at');
 	},
 
 	require_signed_impact: ({ toolName, args }) => {
@@ -283,21 +291,31 @@ export const AGENTIC_CHAT_MUTATION_ARGUMENT_NORMALIZERS_V1: Readonly<
 		args.confirmation_token = normalizedConfirmationToken(args.confirmation_token);
 	},
 
+	/**
+	 * The worker only ever pings (it never edits the item's text), so there is
+	 * no mode to choose. Recipients are named the way the user names them:
+	 * `mentioned_handles` are matched to project members when the ping runs, and
+	 * `mentioned_user_ids` stay available for ids a read returned. The ids the
+	 * handles resolve to join `expected.mentionedUserIds` before dispatch, so the
+	 * receipt still proves exactly who was notified.
+	 */
 	normalize_entity_ping_arguments: (context) => {
 		const args = context.args;
-		if (args.mode !== 'ping') {
-			throw knownFailure(
-				'mutation_arguments_not_admitted',
-				'tag_onto_entity requires explicit mode "ping" in the worker'
-			);
-		}
 		const entityType = requiredPingEntityType(args.entity_type);
 		const entityId = requiredUuid(args.entity_id, 'entity_id');
-		const mentionedUserIds = requiredMentionedUserIds(args.mentioned_user_ids);
+		const mentionedUserIds = optionalMentionedUserIds(args.mentioned_user_ids);
+		const mentionedHandles = optionalMentionedHandles(args.mentioned_handles);
+		if (mentionedUserIds.length === 0 && mentionedHandles.length === 0) {
+			throw knownFailure(
+				'mutation_arguments_not_admitted',
+				'tag_onto_entity needs at least one person in mentioned_handles'
+			);
+		}
 		const messageSuffix = optionalMessageSuffix(args.message);
 		context.expected.entityType = entityType;
 		context.expected.entityId = entityId;
 		context.expected.mentionedUserIds = mentionedUserIds;
+		context.expected.mentionedHandles = mentionedHandles;
 		context.expected.messageSuffix = messageSuffix;
 	},
 
@@ -390,7 +408,12 @@ export const AGENTIC_CHAT_MUTATION_ARGUMENT_NORMALIZERS_V1: Readonly<
 // Shared helpers
 // ---------------------------------------------------------------------------
 
-function normalizeLegacyDate(value: unknown, field: string, endOfDate: boolean): string | null {
+/**
+ * Reject a date that is not real before dispatch, and pass a real one through
+ * untouched: the gateway decides which instant a day or wall-clock time means
+ * in the user's timezone.
+ */
+function validatedDateArgument(value: unknown, field: string): string | null {
 	if (value === null || value === '') return null;
 	if (typeof value !== 'string') {
 		throw knownFailure('mutation_arguments_not_admitted', `${field} must be a valid date`);
@@ -399,16 +422,7 @@ function normalizeLegacyDate(value: unknown, field: string, endOfDate: boolean):
 	if (!text) return null;
 	const dateOnly = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
 	const date = dateOnly
-		? new Date(
-				Date.UTC(
-					Number(dateOnly[1]),
-					Number(dateOnly[2]) - 1,
-					Number(dateOnly[3]),
-					endOfDate ? 23 : 0,
-					endOfDate ? 59 : 0,
-					endOfDate ? 59 : 0
-				)
-			)
+		? new Date(Date.UTC(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3])))
 		: new Date(text);
 	if (
 		Number.isNaN(date.getTime()) ||
@@ -419,7 +433,7 @@ function normalizeLegacyDate(value: unknown, field: string, endOfDate: boolean):
 	) {
 		throw knownFailure('mutation_arguments_not_admitted', `${field} must be a valid date`);
 	}
-	return date.toISOString();
+	return text;
 }
 
 function normalizeLegacyProjectState(value: unknown): unknown {
@@ -568,11 +582,27 @@ function requiredPingEntityType(value: unknown): 'task' | 'goal' | 'document' {
 	return value as 'task' | 'goal' | 'document';
 }
 
-function requiredMentionedUserIds(value: unknown): string[] {
-	if (!Array.isArray(value) || value.length === 0 || value.length > MAX_MENTIONED_USERS) {
+function optionalMentionedHandles(value: unknown): string[] {
+	if (value === undefined || value === null) return [];
+	if (
+		!Array.isArray(value) ||
+		value.length > MAX_MENTIONED_USERS ||
+		value.some((handle) => typeof handle !== 'string' || !handle.trim())
+	) {
 		throw knownFailure(
 			'mutation_arguments_not_admitted',
-			`mentioned_user_ids must contain 1-${MAX_MENTIONED_USERS} canonical user UUIDs`
+			`mentioned_handles must contain up to ${MAX_MENTIONED_USERS} names or @handles`
+		);
+	}
+	return (value as string[]).map((handle) => handle.trim());
+}
+
+function optionalMentionedUserIds(value: unknown): string[] {
+	if (value === undefined || value === null) return [];
+	if (!Array.isArray(value) || value.length > MAX_MENTIONED_USERS) {
+		throw knownFailure(
+			'mutation_arguments_not_admitted',
+			`mentioned_user_ids must contain up to ${MAX_MENTIONED_USERS} canonical user UUIDs`
 		);
 	}
 	const normalized: string[] = [];

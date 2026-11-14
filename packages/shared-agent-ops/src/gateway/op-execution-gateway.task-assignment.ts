@@ -1,21 +1,16 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.task-assignment.ts
 import { isValidUUID } from '@buildos/shared-types';
+import {
+	type IndexedProjectMember,
+	type ProjectMemberActor,
+	formatMemberLabel,
+	indexProjectMemberRows,
+	matchProjectMemberHandle,
+	normalizeHandleToken
+} from '../ontology/project-member-handles';
 import { ExternalToolGatewayError } from './op-execution-gateway.responses';
 
 const MAX_TASK_ASSIGNEES = 10;
-
-type ProjectMemberActor = {
-	id?: string;
-	user_id?: string | null;
-	name?: string | null;
-	email?: string | null;
-};
-
-type IndexedProjectMember = {
-	actorId: string;
-	actor: ProjectMemberActor | null;
-	keys: Set<string>;
-};
 
 /** Never carries an email: task results reach external agents (people layer). */
 export type GatewayTaskAssignee = {
@@ -29,65 +24,15 @@ function hasOwn(record: Record<string, unknown>, key: string): boolean {
 	return Object.prototype.hasOwnProperty.call(record, key);
 }
 
-function normalizeHandleToken(raw: unknown): string | null {
-	if (typeof raw !== 'string') return null;
-	const trimmed = raw.trim().toLowerCase();
-	if (!trimmed) return null;
-	const withoutPrefix = trimmed.replace(/^@+/, '');
-	const cleaned = withoutPrefix.replace(/[^a-z0-9._-]/g, '');
-	return cleaned.length > 0 ? cleaned : null;
-}
-
-function buildMemberHandleKeys(actor: ProjectMemberActor | null): Set<string> {
-	const keys = new Set<string>();
-	if (!actor) return keys;
-
-	const name = actor.name?.trim().toLowerCase();
-	if (name) {
-		for (const candidate of [name, name.replace(/\s+/g, ''), ...name.split(/\s+/)]) {
-			const normalized = normalizeHandleToken(candidate);
-			if (normalized) keys.add(normalized);
-		}
-	}
-
-	const email = actor.email?.trim().toLowerCase();
-	if (email) {
-		const normalized = normalizeHandleToken(email.split('@')[0] ?? email);
-		if (normalized) keys.add(normalized);
-	}
-
-	return keys;
-}
-
-/** Shown to agents in ambiguity errors: a name or an actor id, never email text. */
-function formatMemberLabel(member: IndexedProjectMember): string {
-	const name = member.actor?.name?.trim();
-	const email = member.actor?.email?.trim().toLowerCase();
-	if (name && name.toLowerCase() !== email) return name;
-	return `member ${member.actorId}`;
-}
-
 function resolveHandle(handle: string, members: IndexedProjectMember[]): IndexedProjectMember {
-	const exact = members.filter((member) => member.keys.has(handle));
-	if (exact.length === 1 && exact[0]) return exact[0];
-	if (exact.length > 1) {
+	const match = matchProjectMemberHandle(handle, members);
+	if (match.status === 'match') return match.member;
+	if (match.status === 'ambiguous') {
 		throw new ExternalToolGatewayError(
 			'VALIDATION_ERROR',
-			`Ambiguous assignee handle "@${handle}". Matches: ${exact.map(formatMemberLabel).join(', ')}. Use explicit IDs to disambiguate.`
+			`Ambiguous assignee handle "@${handle}". Matches: ${match.members.map(formatMemberLabel).join(', ')}. Use explicit IDs to disambiguate.`
 		);
 	}
-
-	const prefix = members.filter((member) =>
-		Array.from(member.keys).some((key) => key.startsWith(handle))
-	);
-	if (prefix.length === 1 && prefix[0]) return prefix[0];
-	if (prefix.length > 1) {
-		throw new ExternalToolGatewayError(
-			'VALIDATION_ERROR',
-			`Ambiguous assignee handle "@${handle}". Matches: ${prefix.map(formatMemberLabel).join(', ')}. Use explicit IDs to disambiguate.`
-		);
-	}
-
 	throw new ExternalToolGatewayError(
 		'VALIDATION_ERROR',
 		`No active project member matches assignee handle "@${handle}"`
@@ -166,21 +111,9 @@ export async function resolveGatewayTaskAssignees(params: {
 			);
 		}
 
-		members = ((data ?? []) as Array<{ actor_id?: string; actor?: unknown }>)
-			.map((row): IndexedProjectMember | null => {
-				if (typeof row.actor_id !== 'string') return null;
-				const rawActor = Array.isArray(row.actor) ? (row.actor[0] ?? null) : row.actor;
-				const actor =
-					rawActor && typeof rawActor === 'object'
-						? (rawActor as ProjectMemberActor)
-						: null;
-				return {
-					actorId: row.actor_id,
-					actor,
-					keys: buildMemberHandleKeys(actor)
-				};
-			})
-			.filter((member): member is IndexedProjectMember => member !== null);
+		members = indexProjectMemberRows(
+			(data ?? []) as Array<{ actor_id?: string; actor?: unknown }>
+		);
 	}
 
 	if (explicitActorIds.length > 0) {

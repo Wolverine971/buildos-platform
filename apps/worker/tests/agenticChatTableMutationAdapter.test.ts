@@ -1083,10 +1083,12 @@ describe('table rows for reviewed gateway ontology entities', () => {
 			operationName: 'onto.goal.create',
 			entityKind: 'goal',
 			arguments: { project_id: PROJECT_ID, name: 'Ship beta', target_date: '2026-08-31' },
+			// A bare day reaches the gateway untouched: the gateway resolves it as
+			// the user's own day, as it does for task dates.
 			gatewayArguments: {
 				project_id: PROJECT_ID,
 				name: 'Ship beta',
-				target_date: '2026-08-31T23:59:59.000Z'
+				target_date: '2026-08-31'
 			},
 			entity: {
 				id: ENTITY_ID,
@@ -1153,7 +1155,7 @@ describe('table rows for reviewed gateway ontology entities', () => {
 				project_id: PROJECT_ID,
 				title: 'Beta ready',
 				goal_id: GOAL_ID,
-				due_at: '2099-08-31T00:00:00.000Z'
+				due_at: '2099-08-31'
 			},
 			entity: {
 				id: ENTITY_ID,
@@ -2450,7 +2452,6 @@ describe('table row tag_onto_entity', () => {
 				project_id: PROJECT_ID,
 				entity_type: 'task',
 				entity_id: ENTITY_ID,
-				mode: 'ping',
 				mentioned_user_ids: [RECIPIENT_ID],
 				message: 'Please review.'
 			},
@@ -2496,24 +2497,108 @@ describe('table row tag_onto_entity', () => {
 		});
 	});
 
-	it('rejects content mode, handles, duplicates, and project-scope mismatch before dispatch', async () => {
+	it('resolves names to members before the one ping and proves the merged recipients', async () => {
+		const SAM_ID = '40000000-0000-4000-8000-000000000004';
+		const pingEntity = vi.fn(async () => ({
+			...pingResult(),
+			mentioned_user_ids: [RECIPIENT_ID, SAM_ID],
+			notified_user_ids: [RECIPIENT_ID, SAM_ID]
+		}));
+		const resolveMentionHandles = vi.fn(async () => [
+			{ handle: 'sam', user_id: SAM_ID, name: 'Sam Lee' },
+			// The same person named twice, once by id and once by name, is one recipient.
+			{ handle: 'riley', user_id: RECIPIENT_ID, name: 'Riley' }
+		]);
+
+		await expect(
+			adapter({ pingEntity, resolveMentionHandles }).execute(
+				input({
+					project_id: PROJECT_ID,
+					entity_type: 'task',
+					entity_id: ENTITY_ID,
+					mentioned_user_ids: [RECIPIENT_ID],
+					mentioned_handles: [' @sam ', 'Riley']
+				})
+			)
+		).resolves.toMatchObject({
+			mentioned_user_ids: [RECIPIENT_ID, SAM_ID],
+			message: 'Tagged 2 collaborators on the task.'
+		});
+		expect(resolveMentionHandles).toHaveBeenCalledWith({
+			client: {},
+			projectId: PROJECT_ID,
+			handles: ['@sam', 'Riley']
+		});
+		expect(pingEntity).toHaveBeenCalledWith(
+			expect.objectContaining({ mentionedUserIds: [RECIPIENT_ID, SAM_ID] })
+		);
+	});
+
+	it('reports a name that fits no member as a known failure with nothing sent', async () => {
 		const pingEntity = vi.fn();
-		const port = adapter({ pingEntity });
+		const named = {
+			project_id: PROJECT_ID,
+			entity_type: 'task',
+			entity_id: ENTITY_ID,
+			mentioned_handles: ['@priya']
+		};
+
+		await expect(
+			adapter({
+				pingEntity,
+				resolveMentionHandles: vi.fn(async () => {
+					throw new EntityMentionPingServiceError(
+						'ineligible_recipients',
+						'known_failed',
+						'No active project member matches "@priya". Members: Sam Lee.'
+					);
+				})
+			}).execute(input(named))
+		).rejects.toMatchObject({
+			disposition: 'known_failed',
+			failureCode: 'tag_onto_entity_ineligible_recipients'
+		});
+		await expect(
+			adapter({
+				pingEntity,
+				resolveMentionHandles: vi.fn(async () => {
+					throw new Error('connection reset');
+				})
+			}).execute(input(named))
+		).rejects.toMatchObject({
+			disposition: 'known_failed',
+			failureCode: 'tag_onto_entity_database_error'
+		});
+		expect(pingEntity).not.toHaveBeenCalled();
+	});
+
+	it('rejects a mode argument, no recipients, duplicates, and project-scope mismatch before dispatch', async () => {
+		const pingEntity = vi.fn();
+		const resolveMentionHandles = vi.fn();
+		const port = adapter({ pingEntity, resolveMentionHandles });
 		const base = {
 			project_id: PROJECT_ID,
 			entity_type: 'task',
 			entity_id: ENTITY_ID,
-			mode: 'ping',
 			mentioned_user_ids: [RECIPIENT_ID],
 			message: 'Please review.'
 		};
 
+		// The worker only pings; content mode is not an argument it admits.
 		await expect(port.execute(input({ ...base, mode: 'content' }))).rejects.toMatchObject({
 			disposition: 'known_failed',
 			failureCode: 'mutation_arguments_not_admitted'
 		});
 		await expect(
-			port.execute(input({ ...base, mentioned_handles: ['@dj'] }))
+			port.execute(
+				input({ project_id: PROJECT_ID, entity_type: 'task', entity_id: ENTITY_ID })
+			)
+		).rejects.toMatchObject({
+			disposition: 'known_failed',
+			failureCode: 'mutation_arguments_not_admitted'
+		});
+		await expect(
+			port.execute(input({ ...base, mentioned_handles: ['  '] }))
 		).rejects.toMatchObject({
 			disposition: 'known_failed',
 			failureCode: 'mutation_arguments_not_admitted'

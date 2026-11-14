@@ -176,7 +176,7 @@ Families: outcome, metric, behavior, learning. Default: goal.outcome.project`
 					target_date: {
 						type: 'string',
 						description:
-							'Target date. ISO timestamps and YYYY-MM-DD dates are accepted.'
+							"Target date. YYYY-MM-DD for a day (the user's own day); ISO datetime only when a clock time was given."
 					},
 					measurement_criteria: {
 						type: 'string',
@@ -373,7 +373,8 @@ Examples: document.knowledge.research, document.spec.technical, document.notes.m
 					},
 					due_at: {
 						type: 'string',
-						description: 'Due date in ISO format'
+						description:
+							"Due date. YYYY-MM-DD for a day (the user's own day); ISO datetime only when a clock time was given."
 					},
 					state_key: {
 						type: 'string',
@@ -1275,7 +1276,7 @@ Use for edits to goal names, descriptions, priorities, target dates, or metadata
 					target_date: {
 						type: 'string',
 						description:
-							'Target date. YYYY-MM-DD for day-level intent; ISO datetime only when a clock time was given.'
+							"Target date. YYYY-MM-DD for a day (the user's own day); ISO datetime only when a clock time was given."
 					},
 					measurement_criteria: {
 						type: 'string',
@@ -1526,7 +1527,8 @@ Use for edits to title, due date, state, or metadata.`,
 					},
 					due_at: {
 						type: 'string',
-						description: 'Milestone due date (ISO timestamp)'
+						description:
+							"Due date. YYYY-MM-DD for a day (the user's own day); ISO datetime only when a clock time was given."
 					},
 					state_key: {
 						type: 'string',

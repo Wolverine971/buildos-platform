@@ -2884,7 +2884,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				'project_id',
 				'entity_type',
 				'entity_id',
-				'mode',
+				'mentioned_handles',
 				'mentioned_user_ids',
 				'message'
 			],
@@ -3251,10 +3251,12 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(
 			projected.find((entry) => entry.function.name === 'tag_onto_entity')?.function
 				.parameters.required
-		).toEqual(['project_id', 'entity_type', 'entity_id', 'mode', 'mentioned_user_ids']);
-		expect(propertiesFor('tag_onto_entity').mode).toMatchObject({
-			enum: ['ping'],
-			default: 'ping'
+		).toEqual(['project_id', 'entity_type', 'entity_id']);
+		// The worker only pings, so there is no mode to pick; people are named.
+		expect(propertiesFor('tag_onto_entity').mode).toBeUndefined();
+		expect(propertiesFor('tag_onto_entity').mentioned_handles).toMatchObject({
+			minItems: 1,
+			maxItems: 25
 		});
 		expect(propertiesFor('tag_onto_entity').mentioned_user_ids).toMatchObject({
 			minItems: 1,
@@ -3264,7 +3266,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(
 			projected.find((entry) => entry.function.name === 'tag_onto_entity')?.function
 				.description
-		).toContain('never edits entity content');
+		).toContain('The item itself is never edited');
 	});
 
 	it('repairs invalid project relationships before admitting the worker project shell', async () => {

@@ -215,10 +215,18 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		// tool's description now says never to ask where a new note, doc or task should live
 		// (+~110 B on every surface). Tool counts are unchanged. Measured global 63,412 B,
 		// project 79,688 B, project_create 9,327 B. Caps at measured + ~0.1%.
-		expect(global.openingBytes).toBeLessThanOrEqual(63_480);
-		expect(project.openingBytes).toBeLessThanOrEqual(79_770);
-		expect(project.admittedBytes).toBeLessThanOrEqual(79_770);
-		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(9_340);
+		// RE-BASELINED 2026-11-13 (tool audit): goal and milestone dates now state the
+		// task date rule (a bare YYYY-MM-DD is the user's own day), since the worker no
+		// longer pre-converts them to UTC (+~200 B global and project, +~40 B
+		// project_create); tag_onto_entity names people in mentioned_handles and drops
+		// the always-"ping" mode argument (+~90 B); two field notes that contradicted
+		// their own schema were corrected (+~30 B). Tool counts are unchanged. Measured
+		// global 63,730 B, project 80,006 B, project_create 9,367 B. Caps at measured
+		// + ~0.1%.
+		expect(global.openingBytes).toBeLessThanOrEqual(63_800);
+		expect(project.openingBytes).toBeLessThanOrEqual(80_090);
+		expect(project.admittedBytes).toBeLessThanOrEqual(80_090);
+		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(9_380);
 	});
 
 	it('mounts document reads on the global worker surface', () => {

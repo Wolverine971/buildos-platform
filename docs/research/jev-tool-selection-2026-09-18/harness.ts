@@ -20,6 +20,7 @@ import {
 	buildJevToolSelectionBody,
 	selectJevToolDefinitions
 } from '../../../apps/worker/src/workers/agentic-chat/provider/jev-tool-selector';
+import { AUDIT_CASES } from './audit-cases';
 import { CASES, type SelectionCase, type ToolRequirement } from './cases';
 import { HELDOUT_CASES } from './heldout-cases';
 import { PLANNING_CASES } from './planning-cases';
@@ -161,7 +162,8 @@ async function main() {
 	const sets: Record<string, readonly SelectionCase[]> = {
 		tuning: CASES,
 		heldout: HELDOUT_CASES,
-		planning: PLANNING_CASES
+		planning: PLANNING_CASES,
+		audit: AUDIT_CASES
 	};
 	const pool = arg('set', 'tuning')
 		.split(',')
