@@ -31,6 +31,12 @@ restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
 healthcheckPath = "/health"
 healthcheckTimeout = 30
+# Time Railway waits between SIGTERM and SIGKILL on a deploy. Without it the
+# default is 0, so running briefs and reviews were killed mid-job and re-run
+# (and re-billed) after the 10-minute stall reclaim. Must stay above the
+# worker's own hard shutdown deadline (HARD_SHUTDOWN_TIMEOUT_MS in
+# apps/worker/src/bootstrap.ts); a test pins the two.
+drainingSeconds = 30
 
 [variables]
 NODE_ENV = "production"

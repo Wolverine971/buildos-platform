@@ -51,7 +51,6 @@ apps/worker/
     routes/
       email-tracking.ts
       health.ts
-      ontology-classification.ts
       queue/
         brief.ts
         enqueue.ts
@@ -96,7 +95,6 @@ Files:
 - `apps/worker/src/http/auth.ts`
 - `apps/worker/src/middleware/jsonError.ts`
 - `apps/worker/src/routes/health.ts`
-- `apps/worker/src/routes/ontology-classification.ts`
 - `apps/worker/src/routes/queue/brief.ts`
 - `apps/worker/src/routes/queue/enqueue.ts`
 - `apps/worker/src/routes/queue/inspection.ts`

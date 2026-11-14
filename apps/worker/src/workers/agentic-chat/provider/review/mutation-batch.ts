@@ -318,7 +318,8 @@ export function buildMutationBatchRevisionRequest(
 			// created a project twice that way; same-turn replay protection in the
 			// provider now refuses identical batches regardless of this choice.
 			toolChoice: tools.length > 0 ? 'auto' : 'none',
-			passRole: 'repair'
+			passRole: 'repair',
+			repairReason: { kind: 'reviewer_revision' }
 		},
 		[
 			'Independent review returned your proposed tool calls to you for correction; they did not execute and did not reach the user.',

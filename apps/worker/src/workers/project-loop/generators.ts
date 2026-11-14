@@ -20,6 +20,7 @@ import { THINKING_LOG_TYPE_KEY } from '@buildos/shared-agent-ops/ontology/thinki
 import type { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED } from '../../config/projectLoops';
 import { generateEnglishProjectReview } from './reviewLanguage';
+import { DetectorOutputUnusableError } from './detectorFailure';
 import { type ProjectDriftEvidence, renderDriftEvidence } from './driftEvidence';
 import { PROJECT_REVIEW_CLIPPED_TEXT_RULE, clipForPrompt } from './promptText';
 import {
@@ -429,40 +430,131 @@ function sanitizePreview(rawPreview: unknown): ProjectSuggestionPreview | undefi
 	};
 }
 
+type SanitizeOperationParams = {
+	projectId: string;
+	allowedTools: Set<string>;
+	knownDocIds?: Set<string>;
+	knownTaskIds?: Set<string>;
+};
+
 /**
- * Sanitize a model-proposed operation set against a known tool allowlist and
- * the known document ids. project_id is always forced to the loop's project so
- * the model can't target another project. Operations that reference unknown
- * documents or disallowed tools are dropped.
+ * Other names a model may give a move's parent. The integrity check, auto-apply and approval
+ * read only new_parent_id, so a move that names its parent only this way would be shown and
+ * applied as a move to the top level.
+ */
+const MOVE_PARENT_ALIAS_ARGS = [
+	'parent_id',
+	'parentId',
+	'new_parent_title',
+	'parent_title',
+	'new_parent_name'
+] as const;
+
+/**
+ * One document move, built from the three fields a move has. Nothing else the model wrote is
+ * kept. Null when the document or the parent is not one the pass was shown.
+ */
+function buildDocumentMoveArgs(
+	raw: Record<string, unknown>,
+	params: SanitizeOperationParams
+): Record<string, unknown> | null {
+	const documentId = typeof raw.document_id === 'string' ? raw.document_id : null;
+	if (!documentId) return null;
+	if (params.knownDocIds && !params.knownDocIds.has(documentId)) return null;
+
+	const rawParent = raw.new_parent_id;
+	let newParentId: string | null = null;
+	if (typeof rawParent === 'string' && rawParent.trim()) {
+		if (params.knownDocIds && !params.knownDocIds.has(rawParent)) return null;
+		newParentId = rawParent;
+	} else if (rawParent === null || rawParent === undefined || typeof rawParent === 'string') {
+		// No parent means the top level, unless the model named the parent some other way.
+		if (MOVE_PARENT_ALIAS_ARGS.some((key) => raw[key] !== undefined && raw[key] !== null)) {
+			return null;
+		}
+	} else {
+		return null;
+	}
+
+	return {
+		project_id: params.projectId,
+		document_id: documentId,
+		new_parent_id: newParentId,
+		new_position:
+			typeof raw.new_position === 'number' &&
+			Number.isInteger(raw.new_position) &&
+			raw.new_position >= 0
+				? raw.new_position
+				: 0
+	};
+}
+
+/**
+ * One task-conflict flag, built from the task id and the four loop_* props. A flag can never
+ * carry a status, title, description, date or any other change, whatever the model wrote.
+ * Null when the task is unknown, no other task is named, or the kind is not a known one.
+ */
+function buildTaskConflictFlagArgs(
+	raw: Record<string, unknown>,
+	params: SanitizeOperationParams
+): Record<string, unknown> | null {
+	const taskId = typeof raw.task_id === 'string' ? raw.task_id : null;
+	if (!taskId) return null;
+	if (params.knownTaskIds && !params.knownTaskIds.has(taskId)) return null;
+	const props =
+		raw.props && typeof raw.props === 'object' && !Array.isArray(raw.props)
+			? (raw.props as Record<string, unknown>)
+			: null;
+	const otherTaskId =
+		typeof props?.loop_conflict_with_task_id === 'string'
+			? props.loop_conflict_with_task_id
+			: null;
+	if (!props || !otherTaskId) return null;
+	const rawKind = props.loop_conflict_kind;
+	if (
+		rawKind !== undefined &&
+		rawKind !== null &&
+		!(typeof rawKind === 'string' && TASK_CONFLICT_KINDS.has(rawKind))
+	) {
+		return null;
+	}
+	const reason = truncate(props.loop_conflict_reason, 300);
+	return {
+		project_id: params.projectId,
+		task_id: taskId,
+		props: {
+			loop_flagged_conflict: true,
+			...(typeof rawKind === 'string' ? { loop_conflict_kind: rawKind } : {}),
+			loop_conflict_with_task_id: otherTaskId,
+			...(reason ? { loop_conflict_reason: reason } : {})
+		}
+	};
+}
+
+/**
+ * Turn a model-proposed operation set into operations code wrote. Each tool's arguments are
+ * rebuilt from a fixed list of fields (a document move, a task-conflict flag), the way the
+ * drift and outdated checks build theirs, so no argument the model added rides along to
+ * approval. project_id is always the loop's project. Operations that use a disallowed tool
+ * or reference an unknown document or task are dropped.
  */
 function sanitizeOperations(
 	rawOps: RawSuggestion['operations'],
-	params: {
-		projectId: string;
-		allowedTools: Set<string>;
-		knownDocIds?: Set<string>;
-		knownTaskIds?: Set<string>;
-	}
+	params: SanitizeOperationParams
 ): LoopOperation[] {
 	if (!Array.isArray(rawOps)) return [];
 	const ops: LoopOperation[] = [];
 	for (const raw of rawOps) {
 		if (!raw || typeof raw.tool !== 'string') continue;
 		if (!params.allowedTools.has(raw.tool)) continue;
-		const args: Record<string, unknown> = { ...(raw.args ?? {}) };
-		args.project_id = params.projectId;
-
-		const docId = typeof args.document_id === 'string' ? args.document_id : null;
-		if (docId && params.knownDocIds && !params.knownDocIds.has(docId)) continue;
-		const parentId = typeof args.new_parent_id === 'string' ? args.new_parent_id : null;
-		if (parentId && params.knownDocIds && !params.knownDocIds.has(parentId)) continue;
-		const taskId = typeof args.task_id === 'string' ? args.task_id : null;
-		if (taskId && params.knownTaskIds && !params.knownTaskIds.has(taskId)) continue;
-		if (raw.tool === 'update_onto_task' && !taskId) continue;
-		if (raw.tool === 'update_onto_document' && !docId) continue;
-		if (raw.tool === 'create_onto_task') {
-			if (typeof args.title !== 'string' || !args.title.trim()) continue;
-		}
+		const rawArgs = operationArgs(raw);
+		const args =
+			raw.tool === 'move_document_in_tree'
+				? buildDocumentMoveArgs(rawArgs, params)
+				: raw.tool === 'update_onto_task'
+					? buildTaskConflictFlagArgs(rawArgs, params)
+					: null;
+		if (!args) continue;
 
 		ops.push({
 			tool: raw.tool,
@@ -494,6 +586,31 @@ function sanitizeCompleteOperations(
 		return null;
 	}
 	return operations;
+}
+
+/** Whether a raw suggestion proposes any change at all (it lists at least one operation). */
+function proposesChange(suggestion: RawSuggestion | null | undefined): boolean {
+	return Boolean(
+		suggestion &&
+			typeof suggestion === 'object' &&
+			Array.isArray(suggestion.operations) &&
+			suggestion.operations.length > 0
+	);
+}
+
+/**
+ * The model answered with changes but sanitizing kept none of them. Returning an empty list
+ * would read as "this check found nothing" and the project as tidy, so the check reports as
+ * not checked instead (the pass skips it like a timeout; see detectorFailure.ts). A reply
+ * that proposes no change at all is still a clean result.
+ */
+function assertSomeProposalKept(
+	lens: string,
+	raw: readonly RawSuggestion[],
+	keptCount: number
+): void {
+	const proposed = raw.filter(proposesChange).length;
+	if (proposed > 0 && keptCount === 0) throw new DetectorOutputUnusableError(lens, proposed);
 }
 
 async function callGenerator(params: {
@@ -1011,6 +1128,7 @@ export async function generateDocOrganization(params: {
 
 	const suggestions: ProposedSuggestion[] = [];
 	for (const s of raw) {
+		if (!s || typeof s !== 'object') continue;
 		const operations = sanitizeCompleteOperations('project_loop_doc_organization', s, {
 			projectId: ctx.projectId,
 			allowedTools,
@@ -1032,6 +1150,7 @@ export async function generateDocOrganization(params: {
 			undo_operations: docMoveUndoOperations(operations, ctx)
 		});
 	}
+	assertSomeProposalKept('document organization', raw, suggestions.length);
 	return suggestions;
 }
 
@@ -1189,6 +1308,8 @@ export async function generateOutdatedDocs(params: {
 			{ projectId: ctx.projectId }
 		);
 	}
+	// Every proposed archive was refused: report the check as not checked, not a tidy project.
+	assertSomeProposalKept('project_loop_outdated_docs', raw, suggestions.length);
 	return suggestions;
 }
 
@@ -1634,6 +1755,7 @@ export async function generateTaskConflicts(params: {
 
 	const suggestions: ProposedSuggestion[] = [];
 	for (const s of raw) {
+		if (!s || typeof s !== 'object') continue;
 		const sanitizedOperations = sanitizeCompleteOperations('project_loop_task_conflicts', s, {
 			projectId: ctx.projectId,
 			allowedTools,
@@ -1671,5 +1793,6 @@ export async function generateTaskConflicts(params: {
 			undo_operations: taskConflictUndoOperations(operations, ctx)
 		});
 	}
+	assertSomeProposalKept('task conflicts', raw, suggestions.length);
 	return suggestions;
 }

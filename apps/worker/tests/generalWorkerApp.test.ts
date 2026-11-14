@@ -31,7 +31,6 @@ describe('general worker HTTP composition', () => {
 			'GET /queue/stale-stats',
 			'GET /queue/stats',
 			'GET /users/:userId/jobs',
-			'POST /classify/ontology',
 			'POST /queue/brief',
 			'POST /queue/chat/classify',
 			'POST /queue/cleanup'
@@ -65,24 +64,6 @@ describe('general worker HTTP composition', () => {
 
 		expect(response.status).toBe(401);
 		expect(await response.json()).toEqual({ error: 'Unauthorized' });
-	});
-
-	it('registers the ontology route behind the shared auth boundary', async () => {
-		process.env.PRIVATE_RAILWAY_WORKER_TOKEN = 'worker-secret';
-
-		const response = await request('/classify/ontology', {
-			method: 'POST',
-			headers: {
-				authorization: 'Bearer worker-secret',
-				'content-type': 'application/json'
-			},
-			body: JSON.stringify({})
-		});
-
-		expect(response.status).toBe(400);
-		expect(await response.json()).toEqual({
-			error: 'entityType, entityId, userId, and classificationSource are required'
-		});
 	});
 
 	it('preserves the malformed JSON response contract before route admission', async () => {

@@ -196,7 +196,11 @@
 	import {
 		appendUniqueThinkingActivity,
 		finalizeWorkerThinkingBlock,
-		upsertWorkerThinkingBlock
+		foldWorkLogForReply,
+		reopenWorkLogForNewStep,
+		toggleWorkLogByHand,
+		upsertWorkerThinkingBlock,
+		workLogCollapsedAtTurnEnd
 	} from './agent-chat-thinking-state';
 	import {
 		downloadAgentChatStepsMarkdown,
@@ -1859,8 +1863,10 @@
 		if (index === -1) return;
 
 		const block = messages[index] as ThinkingBlockMessage;
-		const nextBlock = updater(block);
-		if (!nextBlock || nextBlock === block) return;
+		const updated = updater(block);
+		if (!updated || updated === block) return;
+		// The model went back to work after starting its reply: a new step opens the log.
+		const nextBlock = reopenWorkLogForNewStep(block, updated);
 
 		const nextMessages = [...messages];
 		nextMessages[index] = nextBlock;
@@ -1916,8 +1922,9 @@
 			status,
 			completedAt: new Date(),
 			// A finished turn folds its step log to one line; a stopped or failed
-			// one stays open so the steps explain what happened.
-			isCollapsed: status === 'completed' ? true : block.isCollapsed,
+			// one is open so the steps explain what happened. A fold the person set
+			// by hand during the turn stays as they left it.
+			isCollapsed: workLogCollapsedAtTurnEnd(block, status),
 			content:
 				note ??
 				(status === 'interrupted'
@@ -1933,10 +1940,7 @@
 	}
 
 	function toggleThinkingBlockCollapse(blockId: string) {
-		updateThinkingBlock(blockId, (block) => ({
-			...block,
-			isCollapsed: !block.isCollapsed
-		}));
+		updateThinkingBlock(blockId, toggleWorkLogByHand);
 	}
 
 	function appendToolProgress(toolCallId: string, step: ToolProgressStep): boolean {
@@ -2862,7 +2866,7 @@
 		} else {
 			messages = [...messages, nextMessage];
 		}
-		if (input.text) noteWorkerTextStarted();
+		if (input.text) noteWorkerTextStarted(input.text !== (existing?.content ?? ''));
 		currentAssistantMessageId = messageId;
 		if (input.status !== 'queued' && input.status !== 'running') {
 			currentAssistantMessageId = null;
@@ -2886,7 +2890,7 @@
 			nextMessages[existingIndex] = { ...existing, content: existing.content + input.text };
 			messages = nextMessages;
 			currentAssistantMessageId = existing.id;
-			if (input.text) noteWorkerTextStarted();
+			if (input.text) noteWorkerTextStarted(true);
 			return;
 		}
 		replaceWorkerAssistantSnapshot({
@@ -2949,8 +2953,10 @@
 			];
 			currentAssistantMessageId = placeholderId;
 		}
+		const previewGrew =
+			workerLivePreview?.turnRunId !== turnRunId || workerLivePreview.text !== input.text;
 		workerLivePreview = { turnRunId, text: input.text };
-		noteWorkerTextStarted();
+		noteWorkerTextStarted(previewGrew);
 	}
 
 	/**
@@ -2986,19 +2992,25 @@
 	 * First reply text for the live turn: the thinking block switches from
 	 * "Thinking…" to "Writing the response…" and the client clock records time
 	 * to first text (send press → words on screen, the number users feel).
+	 *
+	 * `newText` is true when this call put words on screen that were not there
+	 * before (a re-sent snapshot of the same text is false). New words fold the
+	 * work log, so the answer rides up into view while it is being written.
 	 */
-	function noteWorkerTextStarted() {
+	function noteWorkerTextStarted(newText: boolean) {
 		const timing = stream.activeStreamTiming;
 		if (timing && timing.firstTextAtMs === null) {
 			stream.recordClientStreamEvent(timing.runId, 'text_delta');
 		}
 		const blockId = currentThinkingBlockId;
 		if (!blockId) return;
-		updateThinkingBlock(blockId, (block) =>
-			block.status === 'active' && block.content !== WRITING_RESPONSE_STATUS
-				? { ...block, content: WRITING_RESPONSE_STATUS }
-				: block
-		);
+		updateThinkingBlock(blockId, (block) => {
+			const labelled =
+				block.status === 'active' && block.content !== WRITING_RESPONSE_STATUS
+					? { ...block, content: WRITING_RESPONSE_STATUS }
+					: block;
+			return newText ? foldWorkLogForReply(labelled) : labelled;
+		});
 	}
 
 	const WRITING_RESPONSE_STATUS = 'Writing the response…';

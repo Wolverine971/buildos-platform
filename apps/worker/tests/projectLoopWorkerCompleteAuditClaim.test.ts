@@ -330,6 +330,31 @@ describe('processProjectLoopJob complete audit claim lifecycle', () => {
 		}
 	);
 
+	it('publishes nothing and hands both rows back for a retry when synthesis fails', async () => {
+		seedRows();
+		mocks.getJSONResponse.mockRejectedValueOnce(new Error('Request timed out'));
+		await expect(
+			processProjectLoopJob({ ...createCompleteAuditJob(), attempts: 0, maxAttempts: 3 })
+		).rejects.toThrow('Complete audit synthesis failed: Request timed out');
+		for (const table of ['project_audits', 'project_loop_runs']) {
+			expect(mocks.rows[table]).toMatchObject({ status: 'queued', started_at: null });
+		}
+		expect(findUpdate('project_audits', 'ready')).toBeUndefined();
+		expect(findUpdate('project_audits', 'failed')).toBeUndefined();
+	});
+
+	it('fails the audit without publishing the scaffold when the last attempt cannot synthesize', async () => {
+		seedRows();
+		mocks.getJSONResponse.mockRejectedValueOnce(new Error('Request timed out'));
+		await expect(
+			processProjectLoopJob({ ...createCompleteAuditJob(), attempts: 2, maxAttempts: 3 })
+		).rejects.toThrow('Complete audit synthesis failed');
+		expect(mocks.rows.project_audits.status).toBe('failed');
+		expect(mocks.rows.project_loop_runs.status).toBe('failed');
+		expect(findUpdate('project_audits', 'ready')).toBeUndefined();
+		expect(mocks.syncInboxItemForProjectAudit).not.toHaveBeenCalled();
+	});
+
 	it('resumes stale running audit and run claims from the same queue row', async () => {
 		seedRows('running');
 		const controller = new AbortController();

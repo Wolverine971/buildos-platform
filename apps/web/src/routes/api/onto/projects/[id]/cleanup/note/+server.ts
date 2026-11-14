@@ -87,6 +87,9 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 			projectId: access.projectId,
 			profile: 'balanced',
 			temperature: 0.1,
+			// The reader is waiting on this. With reasoning on, the model could spend
+			// the whole budget thinking (574 of 500 tokens seen) and return no JSON.
+			reasoning: { enabled: false },
 			maxTokens: 500,
 			timeoutMs: 30_000,
 			validation: { retryOnParseError: true, maxRetries: 1 },

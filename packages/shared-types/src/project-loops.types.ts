@@ -222,7 +222,7 @@ export interface ProjectCleanupAnswer {
 
 /**
  * A question the review pass pre-wrote so the user can answer in the card. One ask may settle
- * several items ("Is the Rod Chamberlin site still happening?"). `item_ids` are lineage ids.
+ * several items ("Is the Harbor Cafe site still happening?"). `item_ids` are lineage ids.
  */
 export interface ProjectCleanupAsk {
 	id: string;

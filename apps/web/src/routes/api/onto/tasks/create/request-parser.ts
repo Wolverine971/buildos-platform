@@ -21,7 +21,6 @@ export interface ParsedTaskCreateBody {
 	parent?: ParentInput;
 	parents?: ParentsInput;
 	connections?: ConnectionRef[];
-	classificationSource: unknown;
 }
 
 export const parseTaskCreateBody = (body: Record<string, unknown>): ParsedTaskCreateBody => {
@@ -58,7 +57,6 @@ export const parseTaskCreateBody = (body: Record<string, unknown>): ParsedTaskCr
 		props,
 		parent: parent as ParentInput | undefined,
 		parents: parents as ParentsInput | undefined,
-		connections: (connections as ConnectionRef[] | undefined) ?? undefined,
-		classificationSource: body.classification_source ?? body.classificationSource
+		connections: (connections as ConnectionRef[] | undefined) ?? undefined
 	};
 };

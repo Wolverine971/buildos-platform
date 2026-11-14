@@ -117,6 +117,7 @@ const mocks = vi.hoisted(() => {
 	const mockValidateBriefJobData = vi.fn((data) => data);
 	const mockBroadcastUserEvent = vi.fn();
 	const mockGenerateOntologyDailyBrief = vi.fn();
+	const mockRefreshTodayWaitingItemsAfterBrief = vi.fn();
 	const mockRpc = vi.fn().mockResolvedValue({ data: null, error: null });
 	const mockCreateServiceClient = vi.fn(() => ({
 		rpc: mockRpc
@@ -130,6 +131,7 @@ const mocks = vi.hoisted(() => {
 		mockValidateBriefJobData,
 		mockBroadcastUserEvent,
 		mockGenerateOntologyDailyBrief,
+		mockRefreshTodayWaitingItemsAfterBrief,
 		mockRpc,
 		mockCreateServiceClient
 	};
@@ -152,7 +154,8 @@ vi.mock('../src/workers/shared/queueUtils', () => ({
 }));
 
 vi.mock('../src/workers/brief/ontologyBriefGenerator', () => ({
-	generateOntologyDailyBrief: mocks.mockGenerateOntologyDailyBrief
+	generateOntologyDailyBrief: mocks.mockGenerateOntologyDailyBrief,
+	refreshTodayWaitingItemsAfterBrief: mocks.mockRefreshTodayWaitingItemsAfterBrief
 }));
 
 vi.mock('@buildos/shared-utils', () => ({
@@ -229,6 +232,7 @@ describe('processBriefJob stale daily brief guard', () => {
 		mocks.mockGenerateOntologyDailyBrief.mockResolvedValue({
 			id: 'new-brief-1'
 		});
+		mocks.mockRefreshTodayWaitingItemsAfterBrief.mockResolvedValue(undefined);
 	});
 
 	afterEach(() => {
@@ -510,6 +514,103 @@ describe('processBriefJob stale daily brief guard', () => {
 				})
 			])
 		);
+	});
+
+	it('sends the brief notification first and refreshes waiting items after, in the same job', async () => {
+		mocks.mockGenerateOntologyDailyBrief.mockResolvedValue({
+			status: 'generated',
+			id: 'new-brief-1',
+			actorId: 'actor-1'
+		});
+		const job = createBriefJob({
+			userId: 'user-1',
+			briefDate: '2026-04-12',
+			timezone: 'America/New_York',
+			notificationScheduledFor: '2026-04-12T15:00:00.000Z'
+		});
+
+		const result = await processBriefJob(job);
+
+		expect(result).toMatchObject({ status: 'generated', notificationOutcome: 'emitted' });
+		expect(mocks.mockRefreshTodayWaitingItemsAfterBrief).toHaveBeenCalledOnce();
+		expect(mocks.mockRefreshTodayWaitingItemsAfterBrief).toHaveBeenCalledWith({
+			userId: 'user-1',
+			actorId: 'actor-1',
+			timezone: 'America/New_York',
+			briefDate: '2026-04-12',
+			signal: job.signal
+		});
+
+		const emitIndex = mocks.mockRpc.mock.calls.findIndex(
+			([fn, args]) =>
+				fn === 'emit_notification_event' &&
+				(args as { p_event_type?: string }).p_event_type === 'brief.completed'
+		);
+		expect(emitIndex).toBeGreaterThanOrEqual(0);
+		const completedIndex = mocks.mockUpdateJobStatus.mock.calls.findIndex(
+			([, status]) => status === 'completed'
+		);
+		expect(completedIndex).toBeGreaterThanOrEqual(0);
+		const refreshOrder =
+			mocks.mockRefreshTodayWaitingItemsAfterBrief.mock.invocationCallOrder[0];
+		expect(mocks.mockRpc.mock.invocationCallOrder[emitIndex]).toBeLessThan(refreshOrder);
+		expect(mocks.mockUpdateJobStatus.mock.invocationCallOrder[completedIndex]).toBeLessThan(
+			refreshOrder
+		);
+	});
+
+	it('keeps a finished brief finished when the waiting-items refresh throws', async () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+		mocks.mockGenerateOntologyDailyBrief.mockResolvedValue({
+			status: 'generated',
+			id: 'new-brief-1',
+			actorId: 'actor-1'
+		});
+		mocks.mockRefreshTodayWaitingItemsAfterBrief.mockRejectedValueOnce(
+			new Error('waiting refresh exploded')
+		);
+		const job = createBriefJob({
+			userId: 'user-1',
+			briefDate: '2026-04-12',
+			timezone: 'America/New_York'
+		});
+
+		const result = await processBriefJob(job);
+
+		expect(result).toMatchObject({ status: 'generated', briefId: 'new-brief-1' });
+		expect(mocks.mockUpdateJobStatus).not.toHaveBeenCalledWith(
+			'job-stale-brief',
+			'failed',
+			'brief',
+			expect.anything(),
+			'claim-token'
+		);
+		expect(mocks.mockBroadcastUserEvent).not.toHaveBeenCalledWith(
+			'user-1',
+			'brief_failed',
+			expect.anything()
+		);
+		warn.mockRestore();
+	});
+
+	it('does not refresh waiting items when no brief was generated', async () => {
+		mocks.mockResponses.existingBrief = {
+			data: {
+				id: 'existing-brief-1',
+				generation_status: 'completed',
+				updated_at: '2026-04-12T13:55:00.000Z'
+			},
+			error: null
+		};
+		const job = createBriefJob({
+			userId: 'user-1',
+			briefDate: '2026-04-12',
+			timezone: 'America/New_York'
+		});
+
+		await processBriefJob(job);
+
+		expect(mocks.mockRefreshTodayWaitingItemsAfterBrief).not.toHaveBeenCalled();
 	});
 
 	it('completes jobs for fresh processing briefs without generating or emitting', async () => {

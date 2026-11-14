@@ -76,24 +76,37 @@ function text(value: unknown, max: number): string | null {
 }
 
 /**
+ * Remove handle tokens we issued (a letter and a number: "i3", "E12") from text the user
+ * reads: a parenthetical of handles is dropped, and a bare handle becomes the quoted title of
+ * what it stands for. A handle `titleOf` does not know is left as written. `prefix` is a
+ * literal letter chosen by the caller, never model or user text.
+ */
+export function scrubHandleTokens(
+	value: string | null,
+	prefix: string,
+	titleOf: (handle: string) => string | null | undefined
+): string | null {
+	if (!value) return value;
+	const scrubbed = value
+		.replace(new RegExp(`\\s*\\((?:\\s*${prefix}\\d+\\s*[,;/&]?)+\\s*\\)`, 'g'), '')
+		.replace(new RegExp(`\\b${prefix}\\d+\\b`, 'g'), (handle) => {
+			const title = titleOf(handle);
+			return title ? `"${title}"` : handle;
+		})
+		.replace(/\s{2,}/g, ' ')
+		.trim();
+	return scrubbed || null;
+}
+
+/**
  * The roll-up sees items as handles ("i3") and sometimes writes them into its prose. Handles
- * are our own structured tokens, so code removes them from anything the user reads: a
- * parenthetical of handles is dropped, and a bare handle becomes the item's title.
+ * are our own structured tokens, so code removes them from anything the user reads.
  */
 function scrubHandles(
 	value: string | null,
 	byHandle: ReadonlyMap<string, CleanupSynthesisItem>
 ): string | null {
-	if (!value) return value;
-	const scrubbed = value
-		.replace(/\s*\((?:\s*i\d+\s*[,;/&]?)+\s*\)/g, '')
-		.replace(/\bi\d+\b/g, (handle) => {
-			const item = byHandle.get(handle);
-			return item ? `"${item.title}"` : handle;
-		})
-		.replace(/\s{2,}/g, ' ')
-		.trim();
-	return scrubbed || null;
+	return scrubHandleTokens(value, 'i', (handle) => byHandle.get(handle)?.title);
 }
 
 export function describeCleanupItems(items: readonly CleanupSynthesisItem[]): string {
@@ -135,7 +148,7 @@ export const CLEANUP_SYNTHESIS_OUTPUT = [
  */
 export const CLEANUP_ASK_GUIDANCE = [
 	"Asks: pre-write the question the owner answers with one tap. Write an ask for every item that needs the owner's judgment (items you put in needs_call or note, audit items, radar items). Do not write asks for safe_cleanup items.",
-	'One ask may cover several items when one answer settles them all. Example: a stale "Rod Chamberlin" doc, a goal "Launch Rob Chamberlin book website" that looks abandoned, and an archive of the old recovery plan become one ask, "Is the Rod Chamberlin website still happening?", with answers "Still going", "On hold" and "It\'s over". Each item belongs to at most one ask.',
+	'One ask may cover several items when one answer settles them all. Example: a stale "Harbor Cafe" doc, a goal "Launch Harbor Cafe website" that looks abandoned, and an archive of the old recovery plan become one ask, "Is the Harbor Cafe website still happening?", with answers "Still going", "On hold" and "It\'s over". Each item belongs to at most one ask.',
 	"The question names the record and can be answered with a tap. Give 2 or 3 mutually exclusive answers. Each answer's effect says in one line what will change if the owner picks it.",
 	'Answer actions: "apply" only when the answer means "make the change shown under approving it", and only for items that have a change; "dismiss" when it is not needed; "done" when the owner already handled it; "note" when the answer describes a specific situation (the answer is handed to a reader that updates the project or starts an agent); "chat" to talk it through.',
 	'Audit items are offers of work: phrase them as "Want me to …?" with answers like {"label": "Yes, ask me", "action": "chat"} and {"label": "Not for this project", "action": "dismiss"}.',

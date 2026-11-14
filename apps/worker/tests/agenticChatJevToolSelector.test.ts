@@ -436,6 +436,74 @@ describe('JevToolSelector', () => {
 		expect(receipts[0]).toMatchObject({ status: 'fallback', reason: 'jev_selection_timeout' });
 	});
 
+	it.each([
+		[
+			'an HTTP error',
+			async () => jevResponse(OVERVIEW_ONLY, 503),
+			'jev_http_503',
+			'failure',
+			0
+		],
+		[
+			'a rate limit',
+			async () => jevResponse(OVERVIEW_ONLY, 429),
+			'jev_http_429',
+			'rate_limited',
+			0
+		],
+		[
+			// Jev answered, so the call was paid for even though it was unusable.
+			'a partial answer set',
+			async () => jevResponse({ get_project_overview: 0.9 }),
+			'jev_answer_set',
+			'invalid_response',
+			0.0003
+		]
+	])('records a usage row on %s', async (_label, respond, reason, status, totalCost) => {
+		const logUsageToDatabase = vi.fn(async () => undefined);
+		const { instance } = selector(vi.fn(respond) as unknown as typeof fetch, {
+			usage: { logUsageToDatabase } satisfies UsageLogger
+		});
+
+		await instance.select(request());
+
+		expect(logUsageToDatabase).toHaveBeenCalledOnce();
+		expect(logUsageToDatabase).toHaveBeenCalledWith(
+			expect.objectContaining({
+				operationType: 'agentic_chat_tool_selection',
+				status,
+				totalCost,
+				turnRunId: TURN_RUN_ID,
+				metadata: expect.objectContaining({ status: 'fallback', reason })
+			}),
+			expect.any(AbortSignal)
+		);
+	});
+
+	it('records a usage row when Jev times out', async () => {
+		const logUsageToDatabase = vi.fn(async () => undefined);
+		const fetchImpl = vi.fn(
+			(_url: string, init: NonNullable<Parameters<typeof fetch>[1]>) =>
+				new Promise<Response>((_, reject) =>
+					init.signal!.addEventListener('abort', () => reject(init.signal!.reason))
+				)
+		);
+		const { instance } = selector(fetchImpl as unknown as typeof fetch, {
+			timeoutMs: 120,
+			usage: { logUsageToDatabase } satisfies UsageLogger
+		});
+
+		await instance.select(request());
+
+		expect(logUsageToDatabase).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'timeout',
+				metadata: expect.objectContaining({ reason: 'jev_selection_timeout' })
+			}),
+			expect.any(AbortSignal)
+		);
+	});
+
 	it('never waits on the usage-log write', async () => {
 		const logUsageToDatabase = vi.fn(() => new Promise<void>(() => undefined));
 		const { instance } = selector(

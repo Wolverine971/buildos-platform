@@ -574,6 +574,12 @@ export function applyRollupPass(
 /**
  * The judged half of a pass: merges and verdicts from the roll-up model, then the age-out
  * backstop for findings nothing confirmed this pass.
+ *
+ * `unchecked` names the open findings whose own check did not run this pass (drift on a
+ * nightly pass, a check that failed or had nothing new to read, audit recommendations). No
+ * check looked at their records, so a "still true" verdict does not re-confirm them, and one
+ * that has gone `ageOutDays` without a confirmation ages out on the calendar alone: quiet
+ * passes give it no chance to be confirmed, so counting them would keep it open forever.
  */
 export function applyRollupJudgment(
 	previous: readonly RollupItem[],
@@ -583,6 +589,7 @@ export function applyRollupJudgment(
 		verdicts: RollupVerdict[];
 		merges?: Array<{ lineageId: string; into: string }>;
 		confirmed: ReadonlySet<string>;
+		unchecked?: ReadonlySet<string>;
 	}
 ): { items: RollupItem[]; events: RollupEvent[] } {
 	const items = cloneItems(previous);
@@ -590,6 +597,7 @@ export function applyRollupJudgment(
 	const openById = (id: string) =>
 		items.find((item) => item.lineageId === id && item.status === 'open');
 	const confirmed = new Set(judgment.confirmed);
+	const unchecked = new Set(judgment.unchecked ?? []);
 
 	for (const merge of judgment.merges ?? []) {
 		const keeper = openById(merge.into);
@@ -600,6 +608,8 @@ export function applyRollupJudgment(
 			other.firstSeenAt < keeper.firstSeenAt ? [other, keeper] : [keeper, other];
 		absorb(older, newer, judgment, events);
 		if (confirmed.has(newer.lineageId)) confirmed.add(older.lineageId);
+		// The surviving finding now carries a row this pass did check.
+		if (!unchecked.has(newer.lineageId)) unchecked.delete(older.lineageId);
 	}
 
 	for (const verdict of judgment.verdicts) {
@@ -610,6 +620,7 @@ export function applyRollupJudgment(
 			continue;
 		}
 		if (confirmed.has(item.lineageId)) continue;
+		if (unchecked.has(item.lineageId)) continue;
 		item.lastConfirmedAt = judgment.at;
 		item.passesSinceConfirmed = 0;
 		if (!item.seenInRuns.includes(judgment.runId)) item.seenInRuns.push(judgment.runId);
@@ -627,10 +638,16 @@ export function applyRollupJudgment(
 		if (confirmed.has(item.lineageId)) continue;
 		item.passesSinceConfirmed += 1;
 		const quietDays = (nowMs - Date.parse(item.lastConfirmedAt)) / DAY_MS;
-		if (
-			quietDays >= REVIEW_ROLLUP_POLICY.ageOutDays &&
-			item.passesSinceConfirmed >= REVIEW_ROLLUP_POLICY.ageOutMinPasses
-		) {
+		if (quietDays < REVIEW_ROLLUP_POLICY.ageOutDays) continue;
+		if (unchecked.has(item.lineageId)) {
+			close(
+				item,
+				judgment,
+				'aged_out',
+				`Not checked in ${Math.floor(quietDays)} days.`,
+				events
+			);
+		} else if (item.passesSinceConfirmed >= REVIEW_ROLLUP_POLICY.ageOutMinPasses) {
 			close(
 				item,
 				judgment,

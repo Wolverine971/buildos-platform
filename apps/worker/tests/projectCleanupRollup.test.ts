@@ -16,6 +16,7 @@ import {
 } from '../src/workers/project-loop/cleanupSynthesis';
 import { allowedSections, cleanupFacts } from '../src/workers/project-loop/cleanupPass';
 import { buildRecordFix } from '../src/workers/project-loop/driftFixes';
+import { DetectorOutputUnusableError } from '../src/workers/project-loop/detectorFailure';
 import {
 	type OpenReviewRow,
 	lineagesFromRows,
@@ -173,13 +174,26 @@ describe('outdated check proposes archives', () => {
 				archiveSuggestion('update_onto_document', { document_id: 'folder', props: {} })
 			]
 		});
-		const suggestions = await generateOutdatedDocs({
-			llm,
-			ctx: makeContext(),
-			userId: 'user-1',
-			onUsage
+		// Every proposal was refused, so the check reports as not checked rather than tidy.
+		await expect(
+			generateOutdatedDocs({
+				llm,
+				ctx: makeContext(),
+				userId: 'user-1',
+				onUsage
+			})
+		).rejects.toBeInstanceOf(DetectorOutputUnusableError);
+	});
+
+	it('is a clean result when the model proposes no change at all', async () => {
+		const llm = makeLlm({
+			suggestions: [
+				{ title: 'Nothing to do', rationale: 'x', evidence_refs: [], operations: [] }
+			]
 		});
-		expect(suggestions).toEqual([]);
+		await expect(
+			generateOutdatedDocs({ llm, ctx: makeContext(), userId: 'user-1', onUsage })
+		).resolves.toEqual([]);
 	});
 
 	it('accepts archives written flat, splits a multi-archive proposal, and logs every drop', async () => {

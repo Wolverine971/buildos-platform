@@ -183,8 +183,28 @@ export type AgenticChatWriteRouteV1 = {
 	batchSha256?: string;
 };
 
+/**
+ * Content-free host telemetry: why a `repair` pass was needed. Every repair is a
+ * full extra model pass, and without this the usage log could not say whether
+ * the cause was a tool missing from the surface, bad arguments, or something
+ * else. Fixed codes and tool names only; never part of the model request body.
+ */
+export type AgenticChatRepairReasonV1 = {
+	kind:
+		| 'empty_reply'
+		| 'reviewer_control_called'
+		| 'tool_not_on_surface'
+		| 'invalid_arguments'
+		| 'repeated_saved_proposal'
+		| 'unfinished_request'
+		| 'reviewer_revision';
+	/** The tools the rejected calls named, when the repair is about specific calls. */
+	tools?: string[];
+};
+
 export type AgenticChatTurnProviderClientRequestV1 = {
 	writeRoute?: AgenticChatWriteRouteV1;
+	repairReason?: AgenticChatRepairReasonV1;
 	/** Host-only identities observed in admitted context and successful tool results. */
 	loadedEntityIds?: readonly string[];
 	messages: readonly AgenticChatTurnProviderMessageV1[];

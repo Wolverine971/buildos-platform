@@ -423,7 +423,7 @@ function docDecidePrompt(scope: SurveyScope): string {
 		'Allowed actions:',
 		`- {"move":["D3"],"to":"P2"}: move documents to the top level of ${w.anotherIn}.`,
 		'- {"archive":["D5"],"replaced_by":"D9 or null"}: archive documents (restorable). Use replaced_by when another document now covers them.',
-		'- {"merge":["D2","D3","D4"],"to":"P2","title":"Rod Chamberlin: website"}: write one new document holding every fact from two or more documents that cover one subject in pieces or versions, then archive them (restorable). Offer it for fragments and versions; the owner is always asked first.',
+		'- {"merge":["D2","D3","D4"],"to":"P2","title":"Harbor Cafe: website"}: write one new document holding every fact from two or more documents that cover one subject in pieces or versions, then archive them (restorable). Offer it for fragments and versions; the owner is always asked first.',
 		'- {"keep":["D1"]}: leave documents as they are.',
 		'Tasks (T keys) can only move: include them in a move, like {"move":["D3","T2"],"to":"P2"}. Never archive or merge a task.',
 		'Give one recommended choice and one or two real alternatives. Each choice is a short label (under 50 characters, starting with a verb), a one-sentence description, and its actions.',

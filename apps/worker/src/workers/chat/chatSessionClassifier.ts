@@ -1,10 +1,12 @@
 // apps/worker/src/workers/chat/chatSessionClassifier.ts
-// Worker processor for classifying chat sessions and generating titles/topics
-// Also handles activity logging and next step generation for project-related sessions
+// Worker processor for classifying chat sessions and generating titles/topics.
+// For a recent project chat it also refreshes the project's next step and makes sure
+// one START HERE snapshot is queued.
 
 import type { Database } from '@buildos/shared-types';
 import { supabase } from '../../lib/supabase';
 import { logWorkerError } from '../../lib/errorLogger';
+import { TransientQueueError } from '../../lib/queueErrors';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { getErrorMessage } from '../../lib/utils/errors';
 import {
@@ -14,9 +16,7 @@ import {
 } from '../shared/queueUtils';
 import { LegacyJob } from '../shared/jobAdapter';
 import { processSessionActivityAndNextSteps } from './chatSessionActivityProcessor';
-import { enqueueChatCheckpoint } from './checkpoint/checkpointJob';
 import { queueProjectContextSnapshot } from '../ontology/projectContextSnapshotWorker';
-import { processContactSignals } from './contactSignalProcessor';
 import {
 	type SessionExtractedEntities,
 	emptySessionExtractedEntities,
@@ -26,8 +26,41 @@ import {
 import {
 	type LibriEntityHandoffStatus,
 	handoffLibriSessionEntities,
+	isLibriEntityHandoffConfigured,
 	serializeLibriEntityHandoffStatus
 } from './libriEntityHandoffClient';
+
+// A title, a few topics, a short summary and any library candidates.
+const CLASSIFICATION_MAX_TOKENS = 700;
+const CLASSIFICATION_TIMEOUT_MS = 30_000;
+/** Newest messages read from the database (any role). */
+const MESSAGE_FETCH_LIMIT = 50;
+/** Newest user/assistant messages shown to the model, after the chat's opening message. */
+const PROMPT_RECENT_MESSAGES = 30;
+const PROMPT_MESSAGE_MAX_CHARS = 500;
+
+/**
+ * The next step and the START HERE snapshot describe where a project stands now, so
+ * they only follow a chat that ended within the last day. The idle sweep also titles
+ * chats from weeks ago; an old chat must not rewrite today's project next step.
+ */
+const PROJECT_FOLLOW_UP_MAX_IDLE_MS = 24 * 60 * 60 * 1000;
+
+const SNAPSHOT_JOB_TYPE = 'build_project_context_snapshot' as const;
+/** A snapshot job in one of these states has built, or will build, the project's state. */
+const COVERING_SNAPSHOT_STATUSES = ['pending', 'processing', 'retrying', 'completed'] as const;
+
+/**
+ * Whether the queue will run this job again if it throws a transient error now. With no
+ * known attempt budget this is the last attempt, so the fallback is saved and the
+ * session stamped (the behavior before retries existed).
+ */
+function hasAttemptsRemaining(
+	job: Pick<LegacyJob<unknown>, 'attemptsMade' | 'maxAttempts'>
+): boolean {
+	if (typeof job.maxAttempts !== 'number' || typeof job.attemptsMade !== 'number') return false;
+	return job.attemptsMade + 1 < job.maxAttempts;
+}
 
 /** Classification and title promotion have different concurrency semantics.
  * Always retain the classification; only promote a title if nobody renamed it
@@ -71,7 +104,7 @@ interface ChatClassificationResponse {
 /**
  * Message structure from chat_messages table
  */
-interface ChatMessage {
+export interface ChatMessage {
 	id: string;
 	role: string;
 	content: string;
@@ -102,17 +135,13 @@ const isPlaceholderTitle = (title?: string | null) => {
 	return DEFAULT_SESSION_TITLES.has(normalized);
 };
 
-/**
- * System prompt for chat classification
- */
-const CLASSIFICATION_SYSTEM_PROMPT = `You are a chat session analyzer. Your task is to analyze chat conversation history and generate:
+const CLASSIFICATION_INTRO = `You are a chat session analyzer. Your task is to analyze chat conversation history and generate:
 
 1. A concise, descriptive title (max 50 characters) that captures the main topic/purpose of the conversation
 2. A list of 3-7 topic keywords that represent the subjects discussed
-3. A brief summary (2-3 sentences, max 500 characters) that captures what was discussed and any outcomes
-4. Structured Libri entity extraction for high-confidence people, books, YouTube videos, and YouTube channels discussed in the session
+3. A brief summary (2-3 sentences, max 500 characters) that captures what was discussed and any outcomes`;
 
-Guidelines:
+const CLASSIFICATION_GUIDELINES = `Guidelines:
 - Title should be human-readable (e.g., "Planning vacation to Japan", "Debugging API issues")
 - Topics should be specific keywords, not sentences (e.g., "authentication", "scheduling")
 - Summary should help the user quickly recall what this conversation was about
@@ -120,6 +149,29 @@ Guidelines:
 - Focus on the user's actual intent and what was accomplished
 - Ignore meta-discussion about the AI or system
 - If the conversation is too short or unclear, use "Quick chat" as the title
+- A long conversation is shown as its opening user message, a note that earlier messages were omitted, then its most recent messages. Use the opening for what the chat set out to do and the recent messages for where it ended up.`;
+
+/** Title, topics and summary only: what every chat needs. */
+const CLASSIFICATION_SYSTEM_PROMPT = `${CLASSIFICATION_INTRO}
+
+${CLASSIFICATION_GUIDELINES}
+
+Respond ONLY with valid JSON in this exact format:
+{
+  "title": "<title, max 50 characters>",
+  "topics": ["<keyword>", "<keyword>", "<keyword>"],
+  "summary": "<2-3 sentences, max 500 characters>"
+}`;
+
+/**
+ * The same job plus library (Libri) candidates. Those rules are most of this prompt, so
+ * they are sent only when the hand-off that consumes the candidates is configured.
+ * `extracted_at` is stamped in code (libriSessionEntities.ts), never asked of the model.
+ */
+const CLASSIFICATION_WITH_LIBRI_SYSTEM_PROMPT = `${CLASSIFICATION_INTRO}
+4. Structured Libri entity extraction for high-confidence people, books, YouTube videos, and YouTube channels discussed in the session
+
+${CLASSIFICATION_GUIDELINES}
 - A single clear user message is enough to extract Libri candidates when the entity evidence is explicit and high confidence
 
 Libri extraction rules:
@@ -167,36 +219,91 @@ Respond ONLY with valid JSON in this exact format:
         "evidence_snippets": ["project codename"]
       }
     ],
-    "extraction_version": "libri_session_synthesis_v1",
-    "extracted_at": "ISO-8601 timestamp"
+    "extraction_version": "libri_session_synthesis_v1"
   }
 }`;
 
-/**
- * Build the user prompt with conversation history
- */
-function getPromptMessages(messages: ChatMessage[]): ChatMessage[] {
-	// The most recent 30, so a re-classification sees what changed.
-	return messages.filter((m) => m.role === 'user' || m.role === 'assistant').slice(-30);
+export function buildClassificationSystemPrompt(options: { includeLibri: boolean }): string {
+	return options.includeLibri
+		? CLASSIFICATION_WITH_LIBRI_SYSTEM_PROMPT
+		: CLASSIFICATION_SYSTEM_PROMPT;
 }
 
-function buildUserPrompt(messages: ChatMessage[]): string {
-	const relevantMessages = getPromptMessages(messages);
+/** What the model reads of a chat: how it opened, then its most recent messages. */
+export interface ClassificationPromptMessages {
+	/** The chat's first user message, when it is older than the recent window. */
+	opening: ChatMessage | null;
+	/** Whether messages between the opening and the recent window were left out. */
+	omittedAfterOpening: boolean;
+	recent: ChatMessage[];
+	/** Opening (if any) then recent: the order `turn_index` counts in. */
+	all: ChatMessage[];
+}
 
-	if (relevantMessages.length === 0) {
+/**
+ * The most recent messages, so a re-classification sees what changed, plus the first
+ * user message, so a long chat keeps how it opened.
+ *
+ * @param messages the loaded messages, oldest first
+ * @param firstUserMessage the session's first user message when `messages` may not reach
+ *   back that far; otherwise the first user message in `messages` is used
+ */
+export function selectClassificationPromptMessages(
+	messages: ChatMessage[],
+	firstUserMessage: ChatMessage | null = null
+): ClassificationPromptMessages {
+	const conversation = messages.filter((m) => m.role === 'user' || m.role === 'assistant');
+	const recent = conversation.slice(-PROMPT_RECENT_MESSAGES);
+	const candidate = firstUserMessage ?? conversation.find((m) => m.role === 'user') ?? null;
+	const opening =
+		candidate &&
+		typeof candidate.content === 'string' &&
+		candidate.content.trim().length > 0 &&
+		!recent.some((m) => m.id === candidate.id)
+			? candidate
+			: null;
+	const justBeforeRecent = conversation[conversation.length - recent.length - 1];
+	return {
+		opening,
+		omittedAfterOpening: opening !== null && justBeforeRecent?.id !== opening.id,
+		recent,
+		all: opening ? [opening, ...recent] : recent
+	};
+}
+
+/**
+ * Build the user prompt with conversation history. Message ids and turn indices are
+ * shown only for Libri extraction, which cites them.
+ */
+export function buildClassificationUserPrompt(
+	selection: ClassificationPromptMessages,
+	options: { includeLibri: boolean }
+): string {
+	if (selection.all.length === 0) {
 		return 'No conversation content available.';
 	}
 
-	const conversationText = relevantMessages
-		.map((m, index) => {
-			const role = m.role === 'user' ? 'User' : 'Assistant';
-			// Truncate very long messages
-			const content = m.content.length > 500 ? m.content.slice(0, 500) + '...' : m.content;
-			return `turn_index=${index}\nmessage_id=${m.id}\nrole=${role}\ncontent: ${content}`;
-		})
-		.join('\n\n');
+	const render = (m: ChatMessage, index: number) => {
+		const role = m.role === 'user' ? 'User' : 'Assistant';
+		// Truncate very long messages
+		const content =
+			m.content.length > PROMPT_MESSAGE_MAX_CHARS
+				? m.content.slice(0, PROMPT_MESSAGE_MAX_CHARS) + '...'
+				: m.content;
+		return options.includeLibri
+			? `turn_index=${index}\nmessage_id=${m.id}\nrole=${role}\ncontent: ${content}`
+			: `${role}: ${content}`;
+	};
 
-	return `Analyze this conversation and generate a title, topics, summary, and Libri entity extraction:\n\n${conversationText}`;
+	const parts = selection.all.map(render);
+	if (selection.opening && selection.omittedAfterOpening) {
+		parts.splice(1, 0, '[Earlier messages omitted. The most recent messages follow.]');
+	}
+
+	const ask = options.includeLibri
+		? 'a title, topics, summary, and Libri entity extraction'
+		: 'a title, topics, and summary';
+	return `Analyze this conversation and generate ${ask}:\n\n${parts.join('\n\n')}`;
 }
 
 function truncateForFallback(text: string, maxLength: number): string {
@@ -293,7 +400,7 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			.select('id, role, content, created_at')
 			.eq('session_id', validatedData.sessionId)
 			.order('created_at', { ascending: false })
-			.limit(50);
+			.limit(MESSAGE_FETCH_LIMIT);
 
 		if (messagesError) {
 			throw new Error(`Failed to fetch messages: ${messagesError.message}`);
@@ -353,7 +460,7 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 		const typedMessages = (messages ?? []) as ChatMessage[];
 
 		// If there is no meaningful user content, use default classification.
-		// A single explicit user message still goes through synthesis so Libri entities can be extracted.
+		// A single explicit user message still goes through the model.
 		if (!messages || messages.length === 0 || !hasMeaningfulUserMessage(typedMessages)) {
 			console.log(
 				`⚠️  Session ${validatedData.sessionId} has no meaningful user messages (${messages?.length || 0})`
@@ -403,6 +510,17 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			};
 		}
 
+		// Library candidates are extracted only when the hand-off that consumes them is
+		// configured. Otherwise the model is asked for title, topics and summary alone.
+		const libriConfigured = isLibriEntityHandoffConfigured();
+
+		// A full fetch window may not reach back to how the chat opened.
+		const firstUserMessage =
+			typedMessages.length >= MESSAGE_FETCH_LIMIT
+				? await loadFirstUserMessage(validatedData.sessionId)
+				: null;
+		const promptSelection = selectClassificationPromptMessages(typedMessages, firstUserMessage);
+
 		// Initialize LLM service
 		const llmService = new SmartLLMService({
 			httpReferer: (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim(),
@@ -410,7 +528,9 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 		});
 
 		// Build prompt with conversation
-		const userPrompt = buildUserPrompt(typedMessages);
+		const userPrompt = buildClassificationUserPrompt(promptSelection, {
+			includeLibri: libriConfigured
+		});
 
 		// Call LLM for classification
 		console.log(`🤖 Calling LLM to classify session ${validatedData.sessionId}...`);
@@ -418,38 +538,62 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 		let classification: ChatClassificationResponse;
 		try {
 			classification = await llmService.getJSONResponse<ChatClassificationResponse>({
-				systemPrompt: CLASSIFICATION_SYSTEM_PROMPT,
+				systemPrompt: buildClassificationSystemPrompt({ includeLibri: libriConfigured }),
 				userPrompt,
 				userId: validatedData.userId,
 				profile: 'fast', // Use fast profile since this is a simple classification
 				operationType: 'chat_session_classification',
 				temperature: 0.3,
+				// Labelling and extraction: hidden reasoning was ~1,100 of every ~1,250
+				// output tokens and most of the job's 19-56 s (same fix as checkpointLlm.ts).
+				reasoning: { enabled: false },
+				maxTokens: CLASSIFICATION_MAX_TOKENS,
+				timeoutMs: CLASSIFICATION_TIMEOUT_MS,
 				validation: {
 					retryOnParseError: true,
-					maxRetries: 2
+					maxRetries: 2,
+					// The title, topics and summary come first in the reply. If a long
+					// library-candidate list hits the output cap, keep them.
+					allowTruncatedJsonRecovery: true
 				}
 			});
 		} catch (llmError) {
+			const llmMessage = getErrorMessage(llmError, 'LLM classification failed');
+			// The queue retries with backoff while attempts remain. Only the last attempt
+			// falls back to the first user message and stamps the session: a model
+			// failure is then not kept as the final title, and the idle sweep cannot
+			// queue the session again forever.
+			if (hasAttemptsRemaining(job)) {
+				throw new TransientQueueError(
+					'chat_classification_model_failed',
+					`Chat classification model call failed: ${llmMessage}`
+				);
+			}
 			usedFallbackClassification = true;
 			console.warn(
-				`⚠️  LLM classification failed for session ${validatedData.sessionId}, using fallback:`,
-				getErrorMessage(llmError, 'LLM classification failed')
+				`⚠️  LLM classification failed for session ${validatedData.sessionId} on the last attempt, using fallback:`,
+				llmMessage
 			);
-			classification = buildFallbackClassification(typedMessages);
+			classification = buildFallbackClassification(
+				promptSelection.opening
+					? [promptSelection.opening, ...typedMessages]
+					: typedMessages
+			);
 		}
 
 		// Validate and sanitize the response
 		const title = sanitizeTitle(classification.title);
 		const topics = sanitizeTopics(classification.topics);
 		const summary = sanitizeSummary(classification.summary);
-		const promptMessages = getPromptMessages(typedMessages);
-		const extractedEntities = sanitizeSessionExtractedEntities(
-			classification.extracted_entities,
-			{
-				knownMessageIds: new Set(promptMessages.map((message) => message.id)),
-				maxTurnIndex: Math.max(0, promptMessages.length - 1)
-			}
-		);
+		// Candidates the model was not asked for are never stored; the empty block keeps
+		// the stored shape valid (the session reads as "extraction done").
+		const promptMessages = promptSelection.all;
+		const extractedEntities = libriConfigured
+			? sanitizeSessionExtractedEntities(classification.extracted_entities, {
+					knownMessageIds: new Set(promptMessages.map((message) => message.id)),
+					maxTurnIndex: Math.max(0, promptMessages.length - 1)
+				})
+			: emptySessionExtractedEntities();
 
 		console.log(
 			`✅ Classification result${usedFallbackClassification ? ' (fallback)' : ''} for session ${validatedData.sessionId}: title ${title.length} chars, ${topics.length} topics, summary ${summary.length} chars, ${extractedEntities.libri_candidates.length} Libri candidates`
@@ -474,35 +618,46 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			updatePayload
 		);
 
-		const libriHandoffStatus = await processLibriEntityHandoff({
-			sessionId: validatedData.sessionId,
-			userId: validatedData.userId,
-			contextType: session.context_type,
-			projectId: session.context_type === 'project' ? session.entity_id : null,
-			extractedEntities,
-			jobId: job.id
-		});
+		const libriHandoffStatus = libriConfigured
+			? await processLibriEntityHandoff({
+					sessionId: validatedData.sessionId,
+					userId: validatedData.userId,
+					contextType: session.context_type,
+					projectId: session.context_type === 'project' ? session.entity_id : null,
+					extractedEntities,
+					jobId: job.id
+				})
+			: null;
 
-		// Process activity logging and next steps for project-related sessions
-		// This runs after classification to ensure we have the title/topics context
-		let activityResult = {
-			activityLogsCreated: 0,
+		// Project follow-ups run after classification is saved. Checkpoint capture
+		// (thinking log, START HERE) is not queued here: the every-minute checkpoint
+		// sweep already captures every project chat once it is idle or long enough,
+		// under the same CHAT_CHECKPOINT_CAPTURE_ENABLED switch.
+		let nextStepResult = {
 			nextStepUpdated: false,
 			projectId: null as string | null
 		};
+		const projectFollowUpsDue =
+			!lastMessageAt || Date.now() - lastMessageAt.getTime() <= PROJECT_FOLLOW_UP_MAX_IDLE_MS;
+		const sessionProjectId =
+			session.context_type === 'project' && session.entity_id ? session.entity_id : null;
 		try {
-			activityResult = await processSessionActivityAndNextSteps(
-				validatedData.sessionId,
-				validatedData.userId
-			);
-			if (activityResult.activityLogsCreated > 0 || activityResult.nextStepUpdated) {
+			if (projectFollowUpsDue) {
+				nextStepResult = await processSessionActivityAndNextSteps(
+					validatedData.sessionId,
+					validatedData.userId
+				);
+			} else if (sessionProjectId) {
 				console.log(
-					`📊 Activity processing: ${activityResult.activityLogsCreated} logs, next step ${activityResult.nextStepUpdated ? 'updated' : 'unchanged'}`
+					`⏭️  Session ${validatedData.sessionId} ended over a day ago: titled only, project follow-ups skipped`
 				);
 			}
+			if (nextStepResult.nextStepUpdated) {
+				console.log(`📊 Next step updated for project ${nextStepResult.projectId}`);
+			}
 		} catch (activityError) {
-			// Don't fail the classification job if activity processing fails
-			console.error(`⚠️ Activity processing failed (non-fatal):`, activityError);
+			// Don't fail the classification job if the next step fails
+			console.error(`⚠️ Next step processing failed (non-fatal):`, activityError);
 			void logWorkerError(activityError, {
 				userId: validatedData.userId,
 				tableName: 'chat_sessions',
@@ -516,89 +671,15 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			});
 		}
 
-		if (activityResult.projectId) {
-			try {
-				// Checkpoint capture (tasker/95) writes the thinking log and START HERE.
-				// It runs as its own queue job, deduped per session with the sweep, and
-				// captures only messages after the session's watermark.
-				const lastMessage = typedMessages[typedMessages.length - 1];
-				await enqueueChatCheckpoint({
-					sessionId: validatedData.sessionId,
-					userId: validatedData.userId,
-					trigger: 'close',
-					lastMessageId: lastMessage?.id ?? null
-				});
-			} catch (startHereError) {
-				console.error(`⚠️ Checkpoint capture enqueue failed (non-fatal):`, startHereError);
-				void logWorkerError(startHereError, {
-					userId: validatedData.userId,
-					tableName: 'chat_sessions',
-					recordId: validatedData.sessionId,
-					operationType: 'start_here_capture_processing',
-					severity: 'warning',
-					metadata: {
-						jobId: job.id,
-						projectId: activityResult.projectId,
-						nonFatal: true
-					}
-				});
-			}
-
-			// Refresh the Start Here document's managed status/map regions after a
-			// project chat session. Deduplicate this classification's retries, but
-			// bypass the read-cache TTL and older jobs so new work is not discarded.
-			const snapshotQueue = await queueProjectContextSnapshot({
-				projectId: activityResult.projectId,
+		// Refresh the Start Here document's managed status/map regions after a project
+		// chat: one forced snapshot per chat close, whoever saw the close first.
+		let projectSnapshot: ProjectSnapshotOutcome = 'not_due';
+		if (sessionProjectId && projectFollowUpsDue) {
+			projectSnapshot = await ensureProjectSnapshotAfterChat({
+				projectId: sessionProjectId,
 				userId: validatedData.userId,
-				reason: 'chat_session_end',
-				force: true,
-				revisionKey: `classified-${job.id}`
-			});
-			if (!snapshotQueue.queued) {
-				console.warn(
-					`⚠️ Project context snapshot enqueue skipped (non-fatal): ${snapshotQueue.reason}`
-				);
-			}
-		}
-
-		let contactSignalResult: Awaited<ReturnType<typeof processContactSignals>> = {
-			skipped: true,
-			reason: 'not_attempted',
-			extractedCount: 0,
-			insertedCount: 0,
-			appliedCount: 0,
-			createdCount: 0,
-			needsConfirmationCount: 0,
-			mergeCandidateCount: 0
-		};
-		try {
-			contactSignalResult = await processContactSignals({
 				sessionId: validatedData.sessionId,
-				userId: validatedData.userId,
-				messages: typedMessages,
-				classification: {
-					title,
-					topics,
-					summary
-				}
-			});
-			if (!contactSignalResult.skipped) {
-				console.log(
-					`👥 Contact signals: extracted=${contactSignalResult.extractedCount}, inserted=${contactSignalResult.insertedCount}, applied=${contactSignalResult.appliedCount}, created=${contactSignalResult.createdCount}, needsConfirmation=${contactSignalResult.needsConfirmationCount}, mergeCandidates=${contactSignalResult.mergeCandidateCount}`
-				);
-			}
-		} catch (contactError) {
-			console.error(`⚠️ Contact signal extraction failed (non-fatal):`, contactError);
-			void logWorkerError(contactError, {
-				userId: validatedData.userId,
-				tableName: 'chat_sessions',
-				recordId: validatedData.sessionId,
-				operationType: 'chat_contact_signal_processing',
-				severity: 'warning',
-				metadata: {
-					jobId: job.id,
-					nonFatal: true
-				}
+				lastMessageAtIso: latestMessageAtIso
 			});
 		}
 
@@ -620,22 +701,24 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			libriHandoff: libriHandoffStatus,
 			messageCount: messages.length,
 			usedFallbackClassification,
-			activityLogsCreated: activityResult.activityLogsCreated,
-			nextStepUpdated: activityResult.nextStepUpdated,
-			projectId: activityResult.projectId,
-			contactSignals: contactSignalResult
+			nextStepUpdated: nextStepResult.nextStepUpdated,
+			projectId: nextStepResult.projectId ?? sessionProjectId,
+			projectSnapshot
 		};
 	} catch (error) {
 		const errorMessage = getErrorMessage(error, 'Chat classification failed');
+		// A model failure with attempts left: the queue retries it, so it is not an error yet.
+		const willRetry = error instanceof TransientQueueError && hasAttemptsRemaining(job);
 		console.error(`❌ Chat classification job ${job.id} failed:`, errorMessage);
 		await logWorkerError(error, {
 			userId: job.data.userId,
 			tableName: 'chat_sessions',
 			recordId: job.data.sessionId,
 			operationType: 'chat_classification',
-			severity: 'error',
+			severity: willRetry ? 'warning' : 'error',
 			metadata: {
-				jobId: job.id
+				jobId: job.id,
+				willRetry
 			}
 		});
 		await updateJobStatus(
@@ -646,6 +729,93 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			job.processingToken
 		);
 		throw error;
+	}
+}
+
+async function loadFirstUserMessage(sessionId: string): Promise<ChatMessage | null> {
+	const { data, error } = await supabase
+		.from('chat_messages')
+		.select('id, role, content, created_at')
+		.eq('session_id', sessionId)
+		.eq('role', 'user')
+		.order('created_at', { ascending: true })
+		.limit(1);
+	if (error) {
+		// The recent messages still give a title; only the opening is missing.
+		console.warn(
+			`⚠️ Could not load the first user message of session ${sessionId}:`,
+			error.message
+		);
+		return null;
+	}
+	return ((data ?? [])[0] as ChatMessage | undefined) ?? null;
+}
+
+type ProjectSnapshotOutcome = 'not_due' | 'queued' | 'already_queued' | 'failed';
+
+function isForcedSnapshotJob(metadata: unknown): boolean {
+	return (
+		typeof metadata === 'object' &&
+		metadata !== null &&
+		!Array.isArray(metadata) &&
+		(metadata as Record<string, unknown>).force === true
+	);
+}
+
+/**
+ * Queue the project's START HERE snapshot for this chat unless one is already covered.
+ *
+ * The web close route queues a forced snapshot when the browser closes a chat, and this
+ * job used to queue a second one for the same close. A chat classified by the idle sweep
+ * has no browser close, so it gets its snapshot here. A forced snapshot job queued for
+ * the project since the chat's last message (waiting, running or done) already reflects
+ * everything the chat saved, whoever queued it. The revision key matches the close
+ * route's, so the two also coalesce in the queue while either is still in flight.
+ */
+async function ensureProjectSnapshotAfterChat(params: {
+	projectId: string;
+	userId: string;
+	sessionId: string;
+	lastMessageAtIso: string | null;
+}): Promise<ProjectSnapshotOutcome> {
+	try {
+		if (params.lastMessageAtIso) {
+			const { data: jobs, error } = await supabase
+				.from('queue_jobs')
+				.select('metadata')
+				.eq('job_type', SNAPSHOT_JOB_TYPE)
+				.like('dedup_key', `project-context-snapshot-${params.projectId}%`)
+				.in('status', [...COVERING_SNAPSHOT_STATUSES])
+				.gte('created_at', params.lastMessageAtIso)
+				.order('created_at', { ascending: false })
+				.limit(10);
+			if (error) {
+				// Unknown is treated as "not queued": a second snapshot is cheaper than none.
+				console.warn(
+					`⚠️ Could not check for a queued project snapshot (${params.projectId}):`,
+					error.message
+				);
+			} else if ((jobs ?? []).some((queued) => isForcedSnapshotJob(queued.metadata))) {
+				return 'already_queued';
+			}
+		}
+		const snapshotQueue = await queueProjectContextSnapshot({
+			projectId: params.projectId,
+			userId: params.userId,
+			reason: 'chat_session_end',
+			force: true,
+			revisionKey: `close-${params.sessionId}-${params.lastMessageAtIso ?? 'unknown'}`
+		});
+		if (!snapshotQueue.queued) {
+			console.warn(
+				`⚠️ Project context snapshot enqueue skipped (non-fatal): ${snapshotQueue.reason}`
+			);
+			return 'failed';
+		}
+		return 'queued';
+	} catch (snapshotError) {
+		console.warn(`⚠️ Project context snapshot enqueue failed (non-fatal):`, snapshotError);
+		return 'failed';
 	}
 }
 

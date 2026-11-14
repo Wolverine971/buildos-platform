@@ -36,7 +36,11 @@ import {
 	PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED
 } from '../../config/projectLoops';
 import { logWorkerError } from '../../lib/errorLogger';
-import { PermanentQueueError, classifyQueueError } from '../../lib/queueErrors';
+import {
+	PermanentQueueError,
+	TransientQueueError,
+	classifyQueueError
+} from '../../lib/queueErrors';
 import { queueConfig, resolveWorkerTimeout } from '../../config/queueConfig';
 import { captureWorkerEvent } from '../../lib/posthog';
 import {
@@ -96,7 +100,11 @@ import {
 import { PROJECT_REVIEW_CLIPPED_TEXT_RULE } from './promptText';
 import { randomUUID } from 'node:crypto';
 import type { ProjectCleanupSynthesis } from '@buildos/shared-types';
-import { type CleanupSynthesisResult, buildHeuristicCleanupSynthesis } from './cleanupSynthesis';
+import {
+	type CleanupSynthesisResult,
+	buildHeuristicCleanupSynthesis,
+	scrubHandleTokens
+} from './cleanupSynthesis';
 import {
 	type CleanupAutoApplyWriters,
 	cleanupAutoApplyProjectView,
@@ -149,7 +157,6 @@ const MAX_AUDIT_CHILD_SUGGESTIONS = 8;
 const PROJECT_LOOP_COST_CAP_USD = 0.35;
 const COMPLETE_AUDIT_SYNTHESIS_COST_CAP_USD = 0.35;
 const COMPLETE_AUDIT_SYNTHESIS_MODEL_USED = 'llm-audit-synthesis-v1';
-const COMPLETE_AUDIT_DETERMINISTIC_MODEL_USED = 'deterministic-audit-v1';
 const PRIOR_DECISION_LOOKBACK_DAYS = 60;
 const COMPLETE_AUDIT_ACTIVITY_LOOKBACK_DAYS = 30;
 const AUDIT_MEMORY_LOOKBACK_DAYS = 90;
@@ -898,18 +905,19 @@ async function runClaimedProjectReviewSignal(
 ): Promise<{ success: boolean; runId?: string; auditId?: string; skipped?: boolean }> {
 	const { projectId, userId } = claimedSignal;
 	try {
-		const [loopResult, auditResult] = await Promise.all([
-			enqueueProjectLoop({
-				projectId,
-				userId,
-				triggerReason: PROJECT_REVIEW_SIGNAL_TRIGGER_REASON
-			}),
-			queueProjectAuditFromWorker({
-				projectId,
-				userId,
-				triggerReason: PROJECT_REVIEW_SIGNAL_TRIGGER_REASON
-			})
-		]);
+		// Light pass first, then the audit: queued together, the audit's active-run
+		// check raced the light pass's run insert and both could review the same
+		// changes (the double review tasker 111 fixed for the cron path).
+		const loopResult = await enqueueProjectLoop({
+			projectId,
+			userId,
+			triggerReason: PROJECT_REVIEW_SIGNAL_TRIGGER_REASON
+		});
+		const auditResult = await queueProjectAuditFromWorker({
+			projectId,
+			userId,
+			triggerReason: PROJECT_REVIEW_SIGNAL_TRIGGER_REASON
+		});
 
 		await supabase
 			.from('project_review_signals')
@@ -978,6 +986,8 @@ type AuditRecommendationDecision = {
 	reason?: string | null;
 	note?: string | null;
 	decided_at?: string | null;
+	/** Dimension + target record it was about; rows from before 2026-11-14 stored none. */
+	key?: string | null;
 };
 
 type PriorAuditSummary = {
@@ -999,6 +1009,8 @@ type AuditMemory = {
 
 type AuditChildSuggestionDraft = {
 	role: ProjectAuditSuggestionRole;
+	/** Dimension + target record: what the recommendation is, whatever its wording. */
+	key: string;
 	row: {
 		run_id: string;
 		project_id: string;
@@ -1107,8 +1119,18 @@ type AuditSynthesisResult = {
 	packet: CompleteAuditPacket;
 	modelUsed: string;
 	costUsd: number;
-	warning?: string;
 };
+
+/**
+ * The synthesis call failed. The scaffold on its own is never published as an audit (it was:
+ * templated homework stored as a finished audit), so the audit fails and the queue retries.
+ */
+export class CompleteAuditSynthesisError extends TransientQueueError {
+	constructor(detail: string) {
+		super('project_audit_synthesis_failed', `Complete audit synthesis failed: ${detail}`);
+		this.name = 'CompleteAuditSynthesisError';
+	}
+}
 
 function parseDateMs(value: string | null | undefined): number | null {
 	if (!value) return null;
@@ -1178,7 +1200,7 @@ async function loadAuditMemory(projectId: string): Promise<AuditMemory> {
 				.limit(5),
 			supabase
 				.from('project_suggestions')
-				.select('title, status, user_feedback, decided_at, updated_at')
+				.select('title, status, user_feedback, decided_at, updated_at, preview')
 				.eq('project_id', projectId)
 				.eq('kind', 'audit_recommendation')
 				.in('status', ['addressed', 'rejected', 'applied'])
@@ -1241,7 +1263,8 @@ async function loadAuditMemory(projectId: string): Promise<AuditMemory> {
 				status,
 				reason: feedback.reason,
 				note: feedback.note,
-				decided_at: asString(row.decided_at) ?? asString(row.updated_at)
+				decided_at: asString(row.decided_at) ?? asString(row.updated_at),
+				key: storedAuditRecommendationKey(row.preview)
 			};
 		})
 		.filter((item): item is AuditRecommendationDecision => Boolean(item));
@@ -1374,12 +1397,38 @@ function sortAuditRecommendationsForDecision(
 		.map(({ recommendation }) => recommendation);
 }
 
+/**
+ * Exact-title identity, kept for the scaffold's fixed sentences and for recommendation rows
+ * stored before 2026-11-14. Model-written recommendations are matched by
+ * `auditRecommendationKey`: the model rewrites its titles on every audit.
+ */
 function recommendationMemoryKey(value: string | null | undefined): string | null {
 	const normalized = value
 		?.toLowerCase()
 		.replace(/[^a-z0-9]+/g, ' ')
 		.trim();
 	return normalized || null;
+}
+
+/**
+ * Identity of a recommendation: the audit dimension it sits under and the one record it is
+ * about. Wording never decides whether two recommendations are the same one.
+ */
+function auditRecommendationKey(
+	recommendation: Pick<ProjectAuditRecommendation, 'dimension' | 'target_entity_id'>
+): string | null {
+	const targetId = asString(recommendation.target_entity_id);
+	return targetId ? `${recommendation.dimension ?? 'general'}:${targetId}` : null;
+}
+
+/** The identity stored on a recommendation's suggestion row, in `preview.audit_recommendation`. */
+function storedAuditRecommendationKey(preview: unknown): string | null {
+	const stored = asRecord(asRecord(preview)?.audit_recommendation);
+	if (!stored) return null;
+	return auditRecommendationKey({
+		dimension: asAuditDimensionKey(stored.dimension) ?? undefined,
+		target_entity_id: asString(stored.target_entity_id) ?? undefined
+	});
 }
 
 function asUnknownArray(value: unknown): unknown[] {
@@ -1459,6 +1508,8 @@ function buildCompleteAuditPacket(params: {
 	openQuestions: Record<string, unknown>[];
 	evidenceRefs: ReturnType<typeof auditEvidenceRef>[];
 	recommendations: ProjectAuditRecommendation[];
+	/** Recommendations the user already decided, so none comes back reworded. */
+	reviewedRecommendations?: Array<{ title: string; key: string | null }>;
 } {
 	const { ctx, recentActivity } = params;
 	const metrics = computeAuditMetrics(ctx, recentActivity);
@@ -1473,6 +1524,7 @@ function buildCompleteAuditPacket(params: {
 	const goalEvidence = ctx.goals.slice(0, 3).map((goal) =>
 		auditEvidenceRef({
 			entity_type: 'goal',
+			entity_id: goal.id,
 			label: goal.name,
 			reason: goal.description ?? 'Project goal'
 		})
@@ -1765,7 +1817,10 @@ function buildCompleteAuditPacket(params: {
 				question: item.uncertainty ?? `More evidence needed for ${item.name}.`
 			})),
 		evidenceRefs: [...projectEvidence, ...goalEvidence, ...docEvidence, ...taskEvidence],
-		recommendations
+		recommendations,
+		reviewedRecommendations: (params.auditMemory?.priorRecommendationDecisions ?? []).map(
+			(decision) => ({ title: decision.title, key: decision.key ?? null })
+		)
 	};
 }
 
@@ -1785,6 +1840,7 @@ function buildCompleteAuditEvidenceCatalog(params: {
 		...params.ctx.goals.slice(0, 10).map((goal) =>
 			auditEvidenceRef({
 				entity_type: 'goal',
+				entity_id: goal.id,
 				label: goal.name,
 				reason: goal.description ?? 'Project goal'
 			})
@@ -1826,10 +1882,16 @@ function buildCompleteAuditEvidenceCatalog(params: {
 	});
 }
 
-/** Catalog entries shown to the synthesis model; citations are 1-based numbers into these. */
+/**
+ * Catalog entries shown to the synthesis model. It cites them by handle: "E1" is the first.
+ * A handle is a token we issue, so one that leaks into prose can be removed exactly; the bare
+ * numbers the prompt used before could not be told from real numbers ("task 55", "49, 50").
+ */
 const AUDIT_EVIDENCE_CATALOG_MAX = 90;
+const AUDIT_EVIDENCE_HANDLE_PREFIX = 'E';
+const AUDIT_REVIEWED_RECOMMENDATIONS_IN_PROMPT = 20;
 
-function describeAuditEvidenceCatalog(catalog: ProjectAuditEvidenceRef[]): string {
+export function describeAuditEvidenceCatalog(catalog: ProjectAuditEvidenceRef[]): string {
 	if (!catalog.length) return '(none)';
 	return catalog
 		.slice(0, AUDIT_EVIDENCE_CATALOG_MAX)
@@ -1837,32 +1899,109 @@ function describeAuditEvidenceCatalog(catalog: ProjectAuditEvidenceRef[]): strin
 			const id = ref.entity_id ? ` id=${ref.entity_id}` : '';
 			const reason = ref.reason ? ` — ${compactAuditText(ref.reason, 120)}` : '';
 			const updated = ref.updated_at ? ` updated=${ref.updated_at}` : '';
-			return `${index + 1}. ${ref.entity_type}${id}: "${ref.label}"${updated}${reason}`;
+			return `${AUDIT_EVIDENCE_HANDLE_PREFIX}${index + 1} ${ref.entity_type}${id}: "${ref.label}"${updated}${reason}`;
 		})
 		.join('\n');
 }
 
-function describeAuditScaffold(packet: CompleteAuditPacket): string {
+/**
+ * The catalog entry a citation names: its handle ("E12"), or the bare position (12) that
+ * prompts before handles asked for.
+ */
+function auditCatalogEntry(
+	raw: unknown,
+	catalog: ProjectAuditEvidenceRef[]
+): ProjectAuditEvidenceRef | undefined {
+	const text = typeof raw === 'number' ? String(raw) : typeof raw === 'string' ? raw.trim() : '';
+	const match = /^E?(\d+)$/i.exec(text);
+	if (!match) return undefined;
+	const position = Number(match[1]);
+	return position >= 1 && position <= AUDIT_EVIDENCE_CATALOG_MAX
+		? catalog[position - 1]
+		: undefined;
+}
+
+/**
+ * Model prose for the user, clipped, with any leaked evidence handle removed the way the
+ * cleanup roll-up removes its own: a parenthetical of handles is dropped and a bare handle
+ * becomes the record's title. Only handles that name a catalog entry are touched.
+ */
+function auditProse(
+	value: unknown,
+	maxLength: number,
+	catalog: ProjectAuditEvidenceRef[]
+): string | null {
+	return compactAuditText(
+		scrubHandleTokens(
+			asString(value),
+			AUDIT_EVIDENCE_HANDLE_PREFIX,
+			(handle) => auditCatalogEntry(handle, catalog)?.label
+		),
+		maxLength
+	);
+}
+
+/**
+ * Dimensions the scaffold can never rate: no risks or dependencies are loaded, so both are
+ * always "unknown" with the same sentence about owners and due dates. Shown to the model,
+ * they came back as the same homework on every project ("create a risk register", "assign
+ * owners"), so an unknown one stays out of the prompt.
+ */
+const AUDIT_UNSEEN_DIMENSION_KEYS = new Set<ProjectAuditDimensionKey>([
+	'risk_decision_quality',
+	'dependency_readiness'
+]);
+
+export function describeAuditScaffold(packet: CompleteAuditPacket): string {
+	const hidden = new Set<ProjectAuditDimensionKey>(
+		packet.dimensions
+			.filter(
+				(dimension) =>
+					AUDIT_UNSEEN_DIMENSION_KEYS.has(dimension.key) && dimension.rating === 'unknown'
+			)
+			.map((dimension) => dimension.key)
+	);
+	const shown = (item: Record<string, unknown>): boolean => {
+		const key = asAuditDimensionKey(item.dimension);
+		return !key || !hidden.has(key);
+	};
+	const reviewedTitles = [
+		...asUnknownArray(packet.changeSummary.suppressed_recommendations).map(asString),
+		...(packet.reviewedRecommendations ?? []).map((decision) => decision.title)
+	].filter((title): title is string => Boolean(title));
+	// Only scaffold recommendations about one real record reach the model. The scaffold's
+	// dimension-level sentences ("Decide which stale documents to refresh…") point at no record
+	// and came back reworded as homework, so they are left out too.
+	const targetedRecommendations = withAuditRecommendationTargets(
+		packet.recommendations,
+		packet.evidenceRefs
+	).filter(
+		(recommendation) => !recommendation.dimension || !hidden.has(recommendation.dimension)
+	);
 	return JSON.stringify(
 		{
 			delivery_confidence: packet.deliveryConfidence,
 			project_thesis: packet.projectThesis,
-			summary: packet.summary,
-			dimensions: packet.dimensions.map((dimension) => ({
-				key: dimension.key,
-				rating: dimension.rating,
-				summary: dimension.summary,
-				recommendations: dimension.recommendations ?? []
-			})),
-			top_findings: packet.topFindings,
-			recommendations: packet.recommendations.map((recommendation) => ({
+			dimensions: packet.dimensions
+				.filter((dimension) => !hidden.has(dimension.key))
+				.map((dimension) => ({
+					key: dimension.key,
+					rating: dimension.rating,
+					summary: dimension.summary
+				})),
+			top_findings: packet.topFindings.filter(shown),
+			recommendations: targetedRecommendations.map((recommendation) => ({
 				title: recommendation.title,
 				priority: recommendation.priority,
-				dimension: recommendation.dimension
+				dimension: recommendation.dimension,
+				target_entity_type: recommendation.target_entity_type,
+				target_entity_id: recommendation.target_entity_id
 			})),
-			open_questions: packet.openQuestions,
-			previously_reviewed_recommendations:
-				packet.changeSummary.suppressed_recommendations ?? []
+			open_questions: packet.openQuestions.filter(shown),
+			previously_reviewed_recommendations: [...new Set(reviewedTitles)].slice(
+				0,
+				AUDIT_REVIEWED_RECOMMENDATIONS_IN_PROMPT
+			)
 		},
 		null,
 		2
@@ -1883,17 +2022,15 @@ function sanitizeAuditEvidenceRefs(
 	const refs: ProjectAuditEvidenceRef[] = [];
 	const seen = new Set<string>();
 	for (const raw of asUnknownArray(value)) {
-		// Catalog numbers (the current prompt) cost a few tokens where a repeated
+		// Catalog handles (the current prompt) cost a few tokens where a repeated
 		// {entity_type, entity_id, label} object cost ~40; that output is what timed out.
-		const index = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : NaN;
-		if (Number.isInteger(index)) {
-			const match =
-				index >= 1 && index <= AUDIT_EVIDENCE_CATALOG_MAX ? catalog[index - 1] : undefined;
-			if (!match) continue;
-			const key = auditEvidenceKey(match);
+		if (typeof raw === 'number' || typeof raw === 'string') {
+			const cited = auditCatalogEntry(raw, catalog);
+			if (!cited) continue;
+			const key = auditEvidenceKey(cited);
 			if (seen.has(key)) continue;
 			seen.add(key);
-			refs.push(match);
+			refs.push(cited);
 			continue;
 		}
 		const record = asRecord(raw) as RawAuditEvidenceRef | null;
@@ -1926,8 +2063,8 @@ function sanitizeAuditFindings(
 		.map((raw): Record<string, unknown> | null => {
 			const record = asRecord(raw) as RawAuditFinding | null;
 			if (!record) return null;
-			const title = compactAuditText(asString(record.title), 180);
-			const summary = compactAuditText(asString(record.summary), 700);
+			const title = auditProse(record.title, 180, catalog);
+			const summary = auditProse(record.summary, 700, catalog);
 			const evidenceRefs = sanitizeAuditEvidenceRefs(
 				record.evidence ?? record.evidence_refs,
 				catalog
@@ -1956,23 +2093,22 @@ function sanitizeAuditDimensionUpdates(
 		const record = asRecord(raw) as RawAuditDimensionUpdate | null;
 		if (!record) continue;
 		const key = asAuditDimensionKey(record.key);
-		const summary = compactAuditText(asString(record.summary), 900);
+		const summary = auditProse(record.summary, 900, catalog);
 		const evidenceRefs = sanitizeAuditEvidenceRefs(
 			record.evidence ?? record.evidence_refs,
 			catalog
 		);
 		if (!key || !summary || evidenceRefs.length === 0) continue;
 		const recommendations = asUnknownArray(record.recommendations)
-			.map((item) => compactAuditText(asString(item), 180))
+			.map((item) => auditProse(item, 180, catalog))
 			.filter((item): item is string => Boolean(item))
 			.slice(0, 4);
+		const uncertainty = auditProse(record.uncertainty, 400, catalog);
 		updates.set(key, {
 			summary,
 			evidence_refs: evidenceRefs,
 			...(asAuditRating(record.rating) ? { rating: asAuditRating(record.rating)! } : {}),
-			...(compactAuditText(asString(record.uncertainty), 400)
-				? { uncertainty: compactAuditText(asString(record.uncertainty), 400) }
-				: {}),
+			...(uncertainty ? { uncertainty } : {}),
 			...(recommendations.length ? { recommendations } : {})
 		});
 	}
@@ -1987,8 +2123,8 @@ function sanitizeAuditRisks(
 		.map((raw): Record<string, unknown> | null => {
 			const record = asRecord(raw) as RawAuditRisk | null;
 			if (!record) return null;
-			const title = compactAuditText(asString(record.title), 180);
-			const summary = compactAuditText(asString(record.summary), 700);
+			const title = auditProse(record.title, 180, catalog);
+			const summary = auditProse(record.summary, 700, catalog);
 			const evidenceRefs = sanitizeAuditEvidenceRefs(
 				record.evidence ?? record.evidence_refs,
 				catalog
@@ -2019,7 +2155,7 @@ function sanitizeAuditOpenQuestions(
 		.map((raw): Record<string, unknown> | null => {
 			const record = asRecord(raw) as RawAuditOpenQuestion | null;
 			if (!record) return null;
-			const question = compactAuditText(asString(record.question), 260);
+			const question = auditProse(record.question, 260, catalog);
 			const evidenceRefs = sanitizeAuditEvidenceRefs(
 				record.evidence ?? record.evidence_refs,
 				catalog
@@ -2044,8 +2180,8 @@ function sanitizeAuditRecommendations(
 		.map((raw): ProjectAuditRecommendation | null => {
 			const record = asRecord(raw) as RawAuditRecommendation | null;
 			if (!record) return null;
-			const title = compactAuditText(asString(record.title), 180);
-			const summary = compactAuditText(asString(record.summary), 700);
+			const title = auditProse(record.title, 180, catalog);
+			const summary = auditProse(record.summary, 700, catalog);
 			const evidenceRefs = sanitizeAuditEvidenceRefs(
 				record.evidence ?? record.evidence_refs,
 				catalog
@@ -2076,13 +2212,80 @@ function sanitizeAuditRecommendations(
 		.slice(0, 12);
 }
 
+/**
+ * Record types a recommendation can be about. The project itself and activity-log lines are
+ * not: "do this for the project" is the generic homework nobody accepted (0 of 44).
+ */
+const AUDIT_TARGET_ENTITY_TYPES = new Set<ProjectAuditEvidenceRef['entity_type']>([
+	'goal',
+	'document',
+	'task',
+	'milestone',
+	'risk',
+	'calendar_event'
+]);
+
+/** The records the model was shown that a recommendation may point at, by id. */
+function auditTargetRecords(
+	catalog: ProjectAuditEvidenceRef[]
+): Map<string, ProjectAuditEvidenceRef> {
+	const targets = new Map<string, ProjectAuditEvidenceRef>();
+	for (const ref of catalog.slice(0, AUDIT_EVIDENCE_CATALOG_MAX)) {
+		if (!ref.entity_id || !AUDIT_TARGET_ENTITY_TYPES.has(ref.entity_type)) continue;
+		if (!targets.has(ref.entity_id)) targets.set(ref.entity_id, ref);
+	}
+	return targets;
+}
+
+/**
+ * Keep only recommendations that point at one real record: the target the model named (by
+ * id, or by its catalog handle), or failing that the only record it cites. Each kept
+ * recommendation carries that record as `target_entity_*` and among its evidence, so the
+ * light review can close it when the record is archived or deleted.
+ */
+export function withAuditRecommendationTargets(
+	recommendations: ProjectAuditRecommendation[],
+	catalog: ProjectAuditEvidenceRef[]
+): ProjectAuditRecommendation[] {
+	const targets = auditTargetRecords(catalog);
+	const targeted: ProjectAuditRecommendation[] = [];
+	for (const recommendation of recommendations) {
+		const namedId = asString(recommendation.target_entity_id);
+		const named = namedId
+			? (targets.get(namedId) ??
+				targets.get(auditCatalogEntry(namedId, catalog)?.entity_id ?? ''))
+			: undefined;
+		const cited = new Map<string, ProjectAuditEvidenceRef>();
+		for (const ref of recommendation.evidence_refs ?? []) {
+			const record = ref.entity_id ? targets.get(ref.entity_id) : undefined;
+			if (record?.entity_id) cited.set(record.entity_id, record);
+		}
+		const target = named ?? (cited.size === 1 ? [...cited.values()][0] : undefined);
+		if (!target?.entity_id) continue;
+		const evidenceRefs = recommendation.evidence_refs ?? [];
+		targeted.push({
+			...recommendation,
+			target_entity_type: target.entity_type,
+			target_entity_id: target.entity_id,
+			evidence_refs: evidenceRefs.some(
+				(ref) =>
+					ref.entity_type === target.entity_type && ref.entity_id === target.entity_id
+			)
+				? evidenceRefs
+				: [target, ...evidenceRefs].slice(0, 6)
+		});
+	}
+	return targeted;
+}
+
+/** One recommendation per dimension and target record; the first one wins. */
 function mergeAuditRecommendations(
-	...sources: ProjectAuditRecommendation[][]
+	recommendations: ProjectAuditRecommendation[]
 ): ProjectAuditRecommendation[] {
 	const seen = new Set<string>();
 	const merged: ProjectAuditRecommendation[] = [];
-	for (const recommendation of sources.flat()) {
-		const key = recommendationMemoryKey(recommendation.title);
+	for (const recommendation of recommendations) {
+		const key = auditRecommendationKey(recommendation);
 		if (!key || seen.has(key)) continue;
 		seen.add(key);
 		merged.push(recommendation);
@@ -2153,19 +2356,33 @@ function recommendationsFromOpenQuestions(
 		.filter((item): item is ProjectAuditRecommendation => Boolean(item));
 }
 
+/**
+ * Drop recommendations the user already decided. The match is on dimension + target record,
+ * so a dismissed one cannot come back reworded. An exact title still matches too: it is all
+ * that rows decided before 2026-11-14, and the scaffold's fixed sentences, can be matched on.
+ */
 function removePreviouslyReviewedRecommendations(
 	packet: CompleteAuditPacket,
 	recommendations: ProjectAuditRecommendation[]
 ): ProjectAuditRecommendation[] {
-	const suppressedKeys = new Set(
-		asUnknownArray(packet.changeSummary.suppressed_recommendations)
-			.map((item) => recommendationMemoryKey(asString(item)))
+	const reviewed = packet.reviewedRecommendations ?? [];
+	const reviewedKeys = new Set(
+		reviewed.map((decision) => decision.key).filter((key): key is string => Boolean(key))
+	);
+	const reviewedTitles = new Set(
+		[
+			...reviewed.map((decision) => decision.title),
+			...asUnknownArray(packet.changeSummary.suppressed_recommendations).map(asString)
+		]
+			.map((title) => recommendationMemoryKey(title))
 			.filter((key): key is string => Boolean(key))
 	);
-	if (suppressedKeys.size === 0) return recommendations;
+	if (reviewedKeys.size === 0 && reviewedTitles.size === 0) return recommendations;
 	return recommendations.filter((recommendation) => {
-		const key = recommendationMemoryKey(recommendation.title);
-		return !key || !suppressedKeys.has(key);
+		const key = auditRecommendationKey(recommendation);
+		if (key && reviewedKeys.has(key)) return false;
+		const titleKey = recommendationMemoryKey(recommendation.title);
+		return !titleKey || !reviewedTitles.has(titleKey);
 	});
 }
 
@@ -2174,8 +2391,22 @@ export function applyCompleteAuditSynthesis(
 	rawAudit: RawAuditSynthesisEnvelope['audit'],
 	evidenceCatalog: ProjectAuditEvidenceRef[]
 ): CompleteAuditPacket {
+	// The scaffold's own recommendations obey the same rule as the model's: no target record,
+	// no recommendation. With none to check, the packet is returned as it came.
+	const scaffold: CompleteAuditPacket = packet.recommendations.length
+		? (() => {
+				const recommendations = mergeAuditRecommendations(
+					withAuditRecommendationTargets(packet.recommendations, evidenceCatalog)
+				);
+				return {
+					...packet,
+					recommendations,
+					topActions: recommendations.slice(0, 5) as unknown as Record<string, unknown>[]
+				};
+			})()
+		: packet;
 	const audit = asRecord(rawAudit);
-	if (!audit) return packet;
+	if (!audit) return scaffold;
 
 	const dimensionUpdates = sanitizeAuditDimensionUpdates(
 		audit.dimension_updates,
@@ -2197,31 +2428,34 @@ export function applyCompleteAuditSynthesis(
 		audit.recommendations,
 		evidenceCatalog
 	);
-	const dimensionRecommendations = recommendationsFromDimensionUpdates(
-		dimensionUpdates,
-		dimensions
-	);
+	// The model lists each recommendation once, in recommendations[]. When it gives that list,
+	// the strings it also left on a dimension update are copies of the same advice (the doubles
+	// inside one audit), so they stay notes on the dimension and are not read again.
+	const dimensionRecommendations = explicitRecommendations.length
+		? []
+		: recommendationsFromDimensionUpdates(dimensionUpdates, dimensions);
 	const retainedDeterministicRecommendations = packet.recommendations.filter(
 		(recommendation) =>
 			!recommendation.dimension ||
 			dimensionUpdates.get(recommendation.dimension)?.rating !== 'green'
 	);
-	let recommendations = removePreviouslyReviewedRecommendations(
-		packet,
-		mergeAuditRecommendations(
-			explicitRecommendations,
-			dimensionRecommendations,
-			retainedDeterministicRecommendations
-		)
-	);
-	if (recommendations.length === 0 && openQuestions.length > 0) {
-		recommendations = removePreviouslyReviewedRecommendations(
+	// Target first (no real record, no recommendation), then one per dimension + record, then
+	// drop what the user already decided.
+	const settle = (candidates: ProjectAuditRecommendation[]): ProjectAuditRecommendation[] =>
+		removePreviouslyReviewedRecommendations(
 			packet,
-			recommendationsFromOpenQuestions(openQuestions)
+			mergeAuditRecommendations(withAuditRecommendationTargets(candidates, evidenceCatalog))
 		);
+	let recommendations = settle([
+		...explicitRecommendations,
+		...dimensionRecommendations,
+		...retainedDeterministicRecommendations
+	]);
+	if (recommendations.length === 0 && openQuestions.length > 0) {
+		recommendations = settle(recommendationsFromOpenQuestions(openQuestions));
 	}
-	const summary = compactAuditText(asString(audit.summary), 1000);
-	const projectThesis = compactAuditText(asString(audit.project_thesis), 700);
+	const summary = auditProse(audit.summary, 1000, evidenceCatalog);
+	const projectThesis = auditProse(audit.project_thesis, 700, evidenceCatalog);
 	const deliveryConfidence = asDeliveryConfidence(audit.delivery_confidence);
 	const synthesisCounts = {
 		finding_count: topFindings.length,
@@ -2244,7 +2478,7 @@ export function applyCompleteAuditSynthesis(
 			synthesisCounts.open_question_count +
 			synthesisCounts.recommendation_count >
 		0;
-	if (!hasGroundedSynthesis) return packet;
+	if (!hasGroundedSynthesis) return scaffold;
 
 	return {
 		...packet,
@@ -2264,6 +2498,49 @@ export function applyCompleteAuditSynthesis(
 		}
 	};
 }
+
+/**
+ * The synthesis call's rules. Two were removed on 2026-11-14: "mirror an open question or a
+ * dimension recommendation as a top-level recommendation" and "pair an open question with a
+ * decision_point recommendation". They turned every gap the audit could not see into
+ * homework for the user.
+ */
+export const COMPLETE_AUDIT_SYNTHESIS_SYSTEM_PROMPT = [
+	'You are a BuildOS Complete Project Audit reviewer.',
+	'Use only the evidence catalog provided. Do not invent entities, dates, blockers, or decisions.',
+	'Every finding, dimension update, risk, open question, and recommendation MUST cite evidence from the catalog by handle, for example "evidence": ["E3", "E12"].',
+	'Handles (E3, E12) belong only in the "evidence" arrays. Never write a handle, a catalog position, or a record id in a title, summary, question, or any other text the user reads. Name the document, task, or goal by its title instead.',
+	'Focus on coherence: duplicated work, missing decisions, overloaded scope, stale evidence, blockers, and unclear dependencies.',
+	'Do not create mutation operations. Recommendations should be review follow-ups, not direct writes.',
+	'Lead with the bottom line: put the single most important user decision or action first in recommendations.',
+	'Write like the project manager who has already inspected the work: use ordinary language, name the affected documents or tasks, and make a concrete recommendation.',
+	'Do not expose audit dimension keys, snake_case labels, generator language, or academic phrases such as "choose the canonical documents".',
+	'Do not ask the user to invent the next step. If judgment is required, frame one bounded choice and state which option you recommend.',
+	'Each recommendation must be about one specific document, task, or goal from the catalog. Set "target_entity_id" to that record\'s id (the id= value on its catalog line) and "target_entity_type" to its type. A recommendation about the project in general, or with no target record, is discarded, so leave it out.',
+	'Give at most one recommendation per target record and dimension. Put each recommendation in the top-level "recommendations" array once; "dimension_updates[].recommendations" are short notes shown beside that dimension in the report and never reach the user as actions.',
+	'Each recommendation title must state exactly what to decide, change, update, or consider. Never use a status-only or category-only title.',
+	'Each recommendation summary must state your recommended stance and the 2-3 evidence-backed factors that should drive the decision.',
+	'Explicitly update any scaffold dimension you can resolve from evidence; use rating="green" with no dimension recommendation when the evidence shows no user action is needed.',
+	'Do not re-raise anything listed in previously_reviewed_recommendations, in the same or different words, unless materially new evidence changes the proposed action.',
+	'If the project is healthy and nothing warrants user attention, return an empty recommendations array. Do not invent work merely to create an inbox item.',
+	'Only include dimension_updates for dimensions whose rating or summary you are changing.',
+	PROJECT_REVIEW_CLIPPED_TEXT_RULE,
+	'',
+	'Return ONLY JSON:',
+	'{ "audit": {',
+	'  "delivery_confidence": "green"|"yellow"|"red"|"unknown",',
+	'  "project_thesis": string|null,',
+	'  "summary": string,',
+	'  "top_findings": [{"title": string, "summary": string, "dimension": string, "rating": "green"|"yellow"|"red"|"unknown", "evidence": string[]}],',
+	'  "dimension_updates": [{"key": string, "rating": "green"|"yellow"|"red"|"unknown", "summary": string, "uncertainty": string|null, "recommendations": string[], "evidence": string[]}],',
+	'  "risks": [{"title": string, "summary": string, "severity": "low"|"medium"|"high", "dimension": string, "evidence": string[]}],',
+	'  "open_questions": [{"question": string, "dimension": string, "evidence": string[]}],',
+	'  "recommendations": [{"title": string, "summary": string, "role": "recommended_action"|"risk_follow_up"|"cleanup"|"decision_point", "priority": "low"|"medium"|"high", "dimension": string, "target_entity_type": "document"|"task"|"goal", "target_entity_id": string, "evidence": string[]}]',
+	'} }'
+].join('\n');
+
+/** Two 120 s timeouts in eleven audits; the synthesis reads up to 90 records in one call. */
+const COMPLETE_AUDIT_SYNTHESIS_TIMEOUT_MS = 180_000;
 
 async function synthesizeCompleteAuditPacket(params: {
 	llm: SmartLLMService;
@@ -2287,38 +2564,7 @@ async function synthesizeCompleteAuditPacket(params: {
 		recentActivity: params.recentActivity,
 		packet: params.packet
 	});
-	const systemPrompt = [
-		'You are a BuildOS Complete Project Audit reviewer.',
-		'Use only the evidence catalog provided. Do not invent entities, dates, blockers, or decisions.',
-		'Every finding, dimension update, risk, open question, and recommendation MUST cite evidence from the catalog by number, for example "evidence": [3, 12].',
-		'Focus on coherence: duplicated work, missing decisions, overloaded scope, stale evidence, blockers, and unclear dependencies.',
-		'Do not create mutation operations. Recommendations should be review follow-ups, not direct writes.',
-		'Lead with the bottom line: put the single most important user decision or action first in recommendations.',
-		'Write like the project manager who has already inspected the work: use ordinary language, name the affected documents or tasks, and make a concrete recommendation.',
-		'Do not expose audit dimension keys, snake_case labels, generator language, or academic phrases such as "choose the canonical documents".',
-		'Do not ask the user to invent the next step. If judgment is required, frame one bounded choice and state which option you recommend.',
-		'Each recommendation title must state exactly what to decide, change, update, or consider. Never use a status-only or category-only title.',
-		'Each recommendation summary must state your recommended stance and the 2-3 evidence-backed factors that should drive the decision.',
-		'Explicitly update any scaffold dimension you can resolve from evidence; use rating="green" with no dimension recommendation when the evidence shows no user action is needed.',
-		'If you raise an open question or a dimension recommendation, mirror it as a top-level recommendation; use role="decision_point" for a question that needs the user to choose or clarify.',
-		'Do not re-raise anything listed in previously_reviewed_recommendations unless materially new evidence changes the proposed action.',
-		'If the project is healthy and nothing warrants user attention, return an empty recommendations array. Do not invent work merely to create an inbox item.',
-		'If evidence is insufficient but the gap requires user attention, state the exact decision as an open question and pair it with a decision_point recommendation.',
-		'Only include dimension_updates for dimensions whose rating or summary you are changing.',
-		PROJECT_REVIEW_CLIPPED_TEXT_RULE,
-		'',
-		'Return ONLY JSON:',
-		'{ "audit": {',
-		'  "delivery_confidence": "green"|"yellow"|"red"|"unknown",',
-		'  "project_thesis": string|null,',
-		'  "summary": string,',
-		'  "top_findings": [{"title": string, "summary": string, "dimension": string, "rating": "green"|"yellow"|"red"|"unknown", "evidence": number[]}],',
-		'  "dimension_updates": [{"key": string, "rating": "green"|"yellow"|"red"|"unknown", "summary": string, "uncertainty": string|null, "recommendations": string[], "evidence": number[]}],',
-		'  "risks": [{"title": string, "summary": string, "severity": "low"|"medium"|"high", "dimension": string, "evidence": number[]}],',
-		'  "open_questions": [{"question": string, "dimension": string, "evidence": number[]}],',
-		'  "recommendations": [{"title": string, "summary": string, "role": "recommended_action"|"risk_follow_up"|"cleanup"|"decision_point", "priority": "low"|"medium"|"high", "dimension": string, "target_entity_type": string|null, "target_entity_id": string|null, "evidence": number[]}]',
-		'} }'
-	].join('\n');
+	const systemPrompt = COMPLETE_AUDIT_SYNTHESIS_SYSTEM_PROMPT;
 	const userPrompt = [
 		`Project: ${params.ctx.projectName}`,
 		`Description: ${params.ctx.projectDescription ?? '(none)'}`,
@@ -2355,6 +2601,7 @@ async function synthesizeCompleteAuditPacket(params: {
 					? { order: PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED, allow_fallbacks: true }
 					: undefined,
 			validation: { retryOnParseError: true, maxRetries: 2 },
+			timeoutMs: COMPLETE_AUDIT_SYNTHESIS_TIMEOUT_MS,
 			operationType: 'project_audit_synthesis',
 			projectId: params.ctx.projectId,
 			chatSessionId: params.chatSessionId ?? undefined,
@@ -2377,16 +2624,37 @@ async function synthesizeCompleteAuditPacket(params: {
 		};
 	} catch (error) {
 		if (params.signal?.aborted) throw params.signal.reason;
-		return {
-			packet: params.packet,
-			modelUsed: COMPLETE_AUDIT_DETERMINISTIC_MODEL_USED,
-			costUsd,
-			warning: error instanceof Error ? error.message : 'Complete audit LLM synthesis failed'
-		};
+		// No fallback packet: the caller fails the audit and publishes nothing.
+		throw new CompleteAuditSynthesisError(
+			error instanceof Error ? error.message : 'the model call did not return an audit'
+		);
 	}
 }
 
-function buildAuditChildSuggestionDrafts(params: {
+/**
+ * A draft's identity: dimension + target record. Every recommendation that reaches here went
+ * through `withAuditRecommendationTargets`, so the title fallback only covers a packet built
+ * some other way.
+ */
+function auditChildSuggestionKey(
+	recommendation: ProjectAuditRecommendation,
+	title: string
+): string | null {
+	const key = auditRecommendationKey(recommendation);
+	if (key) return key;
+	const titleKey = recommendationMemoryKey(title);
+	return titleKey ? `title:${titleKey}` : null;
+}
+
+/** The identity of an open audit recommendation row: its stored key, else its exact title. */
+function openAuditRecommendationKey(row: { title: string; preview: unknown }): string | null {
+	const stored = storedAuditRecommendationKey(row.preview);
+	if (stored) return stored;
+	const titleKey = recommendationMemoryKey(row.title);
+	return titleKey ? `title:${titleKey}` : null;
+}
+
+export function buildAuditChildSuggestionDrafts(params: {
 	auditId: string;
 	runId: string;
 	projectId: string;
@@ -2395,16 +2663,17 @@ function buildAuditChildSuggestionDrafts(params: {
 	const fallbackEvidence = params.packet.evidenceRefs
 		.slice(0, 4)
 		.map(auditEvidenceToSuggestionEvidence);
-	const seenTitles = new Set<string>();
+	const seenKeys = new Set<string>();
 
 	return params.packet.recommendations
 		.slice(0, MAX_AUDIT_CHILD_SUGGESTIONS)
 		.map((recommendation, index): AuditChildSuggestionDraft | null => {
 			const title = compactAuditText(recommendation.title, 200);
 			if (!title) return null;
-			const titleKey = title.toLowerCase();
-			if (seenTitles.has(titleKey)) return null;
-			seenTitles.add(titleKey);
+			// One row per dimension + target record, however the model worded it.
+			const key = auditChildSuggestionKey(recommendation, title);
+			if (!key || seenKeys.has(key)) return null;
+			seenKeys.add(key);
 
 			const role =
 				recommendation.role ??
@@ -2418,6 +2687,7 @@ function buildAuditChildSuggestionDrafts(params: {
 
 			return {
 				role,
+				key,
 				row: {
 					run_id: params.runId,
 					project_id: params.projectId,
@@ -2436,7 +2706,13 @@ function buildAuditChildSuggestionDrafts(params: {
 					preview: {
 						kind: 'generic',
 						summary,
-						impact: 'Review this audit recommendation and decide whether it needs project work.'
+						impact: 'Review this audit recommendation and decide whether it needs project work.',
+						// What the recommendation is about; later audits match on this, not the title.
+						audit_recommendation: {
+							dimension: recommendation.dimension ?? null,
+							target_entity_type: recommendation.target_entity_type ?? null,
+							target_entity_id: recommendation.target_entity_id ?? null
+						}
 					} as unknown as Json,
 					operations: [] as unknown as Json,
 					freshness_state: 'fresh',
@@ -2463,22 +2739,29 @@ async function createAuditChildSuggestions(params: {
 	// Tasker 112: a recommendation the previous audit already raised and the user has not
 	// decided carries forward on its existing row (same lineage, refreshed wording), linked
 	// to this audit too. Only new recommendations are inserted.
+	// Same recommendation = same dimension + target record (rows from before 2026-11-14 carry no
+	// stored target and match on their exact title).
 	const openByKey = new Map<string, OpenReviewRow>();
 	for (const row of await loadOpenReviewRows(supabase, params.projectId)) {
-		const key = row.kind === 'audit_recommendation' ? recommendationMemoryKey(row.title) : null;
+		const key = row.kind === 'audit_recommendation' ? openAuditRecommendationKey(row) : null;
 		if (key && !openByKey.has(key)) openByKey.set(key, row);
 	}
 	const now = nowIso();
 	const carried: Array<{ suggestion: Record<string, unknown>; role: string }> = [];
 	const fresh: AuditChildSuggestionDraft[] = [];
 	for (const draft of drafts) {
-		const key = recommendationMemoryKey(String(draft.row.title ?? ''));
-		const existing = key ? openByKey.get(key) : undefined;
-		if (!existing) {
+		const titleKey = recommendationMemoryKey(String(draft.row.title ?? ''));
+		const matchKey = openByKey.has(draft.key)
+			? draft.key
+			: titleKey && openByKey.has(`title:${titleKey}`)
+				? `title:${titleKey}`
+				: null;
+		const existing = matchKey ? openByKey.get(matchKey) : undefined;
+		if (!matchKey || !existing) {
 			fresh.push(draft);
 			continue;
 		}
-		openByKey.delete(key as string);
+		openByKey.delete(matchKey);
 		const { data: refreshed, error: refreshError } = await supabase
 			.from('project_suggestions')
 			.update({
@@ -2756,6 +3039,17 @@ async function requeueInterruptedLoopRun(runId: string, queueJobId: string, star
 	if (error) throw new Error(`Failed to requeue interrupted loop run: ${error.message}`);
 }
 
+async function requeueInterruptedAudit(auditId: string, runId: string, startedAt: string) {
+	const { error } = await supabase
+		.from('project_audits')
+		.update({ status: 'queued', started_at: null, finished_at: null })
+		.eq('id', auditId)
+		.eq('loop_run_id', runId)
+		.eq('status', 'running')
+		.eq('started_at', startedAt);
+	if (error) throw new Error(`Failed to requeue interrupted audit: ${error.message}`);
+}
+
 async function processCompleteProjectAuditJob(
 	job: ProcessingJob<ProjectLoopJobMetadata>
 ): Promise<{ success: boolean; runId?: string; auditId?: string; skipped?: boolean }> {
@@ -2927,46 +3221,37 @@ async function processCompleteProjectAuditJob(
 			triggerReason,
 			auditMemory
 		});
-		let synthesisResult: AuditSynthesisResult = {
+		// The scaffold is input for the synthesis, never an audit on its own: with no user to
+		// run the synthesis for, or a synthesis that fails, the audit fails and nothing is
+		// published.
+		if (!auditUserId) {
+			throw new PermanentQueueError(
+				'project_audit_missing_user',
+				'Complete audit synthesis skipped: missing audit user id.'
+			);
+		}
+		await job.updateProgress({ current: 4, total: 6, message: 'Synthesizing audit' });
+		job.signal.throwIfAborted();
+		const llm = new SmartLLMService({
+			supabase,
+			appName: 'BuildOS Complete Project Audit Worker'
+		});
+		const synthesisResult: AuditSynthesisResult = await synthesizeCompleteAuditPacket({
+			llm,
+			ctx,
+			recentActivity,
 			packet: deterministicPacket,
-			modelUsed: COMPLETE_AUDIT_DETERMINISTIC_MODEL_USED,
-			costUsd: 0
-		};
-		if (auditUserId) {
-			await job.updateProgress({ current: 4, total: 6, message: 'Synthesizing audit' });
-			job.signal.throwIfAborted();
-			const llm = new SmartLLMService({
-				supabase,
-				appName: 'BuildOS Complete Project Audit Worker'
-			});
-			synthesisResult = await synthesizeCompleteAuditPacket({
-				llm,
-				ctx,
-				recentActivity,
-				packet: deterministicPacket,
-				userId: auditUserId,
-				chatSessionId: auditChatSessionId,
-				runId,
-				auditId,
-				signal: job.signal,
-				onUsage: () => Promise.resolve()
-			});
-			if (synthesisResult.warning) {
-				await job.log(
-					`Complete audit LLM synthesis failed; using deterministic packet: ${synthesisResult.warning}`
-				);
-				console.warn(
-					`[ProjectAudits] Complete audit ${auditId} synthesis failed:`,
-					synthesisResult.warning
-				);
-			}
-			if (synthesisResult.costUsd > COMPLETE_AUDIT_SYNTHESIS_COST_CAP_USD) {
-				await job.log(
-					`Complete audit synthesis cost $${synthesisResult.costUsd.toFixed(4)} exceeded the soft cap $${COMPLETE_AUDIT_SYNTHESIS_COST_CAP_USD.toFixed(2)}.`
-				);
-			}
-		} else {
-			await job.log('Complete audit synthesis skipped: missing audit user id.');
+			userId: auditUserId,
+			chatSessionId: auditChatSessionId,
+			runId,
+			auditId,
+			signal: job.signal,
+			onUsage: () => Promise.resolve()
+		});
+		if (synthesisResult.costUsd > COMPLETE_AUDIT_SYNTHESIS_COST_CAP_USD) {
+			await job.log(
+				`Complete audit synthesis cost $${synthesisResult.costUsd.toFixed(4)} exceeded the soft cap $${COMPLETE_AUDIT_SYNTHESIS_COST_CAP_USD.toFixed(2)}.`
+			);
 		}
 		job.signal.throwIfAborted();
 		const packet = synthesisResult.packet;
@@ -3002,7 +3287,6 @@ async function processCompleteProjectAuditJob(
 		const now = nowIso();
 		const changeSummary = {
 			...packet.changeSummary,
-			...(synthesisResult.warning ? { synthesis_warning: synthesisResult.warning } : {}),
 			...(childSuggestions.warning
 				? { child_suggestion_warning: childSuggestions.warning }
 				: {})
@@ -3135,22 +3419,25 @@ async function processCompleteProjectAuditJob(
 		if (job.signal.aborted) {
 			// Fence cleanup by this invocation's start time, never another retry's claim.
 			// Reset the audit first: if that fails, leave the paired run recoverable together.
-			if (ownsAudit) {
-				const { error: resetError } = await supabase
-					.from('project_audits')
-					.update({ status: 'queued', started_at: null, finished_at: null })
-					.eq('id', auditId)
-					.eq('loop_run_id', runId)
-					.eq('status', 'running')
-					.eq('started_at', claimStartedAt);
-				if (resetError)
-					throw new Error(`Failed to requeue interrupted audit: ${resetError.message}`);
-			}
+			if (ownsAudit) await requeueInterruptedAudit(auditId, runId, claimStartedAt);
 			if (ownsRun) await requeueInterruptedLoopRun(runId, job.id, claimStartedAt);
 			throw error;
 		}
 		// A stored ready packet must survive transient failures finishing its paired run.
 		if (completingReadyAudit) throw error;
+		// A failed synthesis publishes nothing. While the queue will retry, hand the audit and
+		// its run back as queued, the way an interrupted run is: a retry skips an audit already
+		// marked failed, so failing it here would make the retry a no-op. The last attempt
+		// takes the failure path below.
+		if (error instanceof CompleteAuditSynthesisError && ownsAudit && ownsRun) {
+			const maxAttempts = job.maxAttempts ?? queueConfig.maxRetries;
+			if (job.attempts + 1 < maxAttempts) {
+				await requeueInterruptedAudit(auditId, runId, claimStartedAt);
+				await requeueInterruptedLoopRun(runId, job.id, claimStartedAt);
+				await job.log(`${error.message} Nothing was published; queued for retry.`);
+				throw error;
+			}
+		}
 		const message = error instanceof Error ? error.message : 'Complete project audit failed';
 		await failCompleteAuditState({ runId, auditId, message });
 		await supersedePendingSuggestionsForFailedRun({ runId, message });
@@ -3578,7 +3865,9 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 		}
 
 		// Kinds this pass did not check: their open findings get no evidence either way, so
-		// they neither age nor count as confirmed. Audit recommendations belong to the audit.
+		// nothing here confirms them, and one that goes a month without a check ages out
+		// (they used to be passed on as confirmed, which kept them open forever). Audit
+		// recommendations belong to the audit, which confirms the ones it raises again.
 		const skippedKinds = new Set<string>(
 			skippedLenses.map((lens) => lens.kind).filter((kind): kind is string => Boolean(kind))
 		);
@@ -3837,7 +4126,8 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			at: rollupAt,
 			verdicts: synthesis.verdicts,
 			merges: synthesis.merges,
-			confirmed: new Set([...deterministic.confirmed, ...notCheckedThisPass])
+			confirmed: deterministic.confirmed,
+			unchecked: new Set(notCheckedThisPass)
 		});
 		await writeRollupEvents(writeCtx, judged.events);
 		await writeLineageState(writeCtx, judged.items, {

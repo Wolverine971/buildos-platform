@@ -581,21 +581,6 @@ function computeBurstMetrics(rows: ProjectAuditActivityRow[], now: Date): BurstM
 	};
 }
 
-function changedEntityCountSince(
-	rows: ProjectAuditActivityRow[],
-	sinceIso: string | null,
-	now: Date
-): number {
-	const sinceMs = parseDateMs(sinceIso) ?? now.getTime() - SCHEDULED_AUDIT_INTERVAL_MS;
-	const changed = new Set<string>();
-	for (const row of rows) {
-		const createdMs = parseDateMs(row.created_at);
-		if (createdMs === null || createdMs < sinceMs) continue;
-		changed.add(`${row.entity_type ?? 'unknown'}:${row.entity_id ?? row.id ?? createdMs}`);
-	}
-	return changed.size;
-}
-
 function latestAuditTimestamp(audit: LastAuditRow | null): string | null {
 	return audit?.finished_at ?? audit?.created_at ?? null;
 }
@@ -807,22 +792,20 @@ export async function evaluateProjectAuditTrigger(params: {
 			}
 		}
 
-		const changedSinceLastAudit = changedEntityCountSince(
-			snapshot.recentActivity,
-			lastAuditAt,
-			now
-		);
-		const threshold = sizeClass === 'medium' ? 3 : 6;
-		if (changedSinceLastAudit < threshold && (burst?.majorChanges72h ?? 0) === 0) {
+		// Scheduled audits are paused unless the project changed a lot: a handful
+		// of edited records since the last audit used to be enough, and none of
+		// the recommendations those audits produced was accepted. The nightly
+		// scan now queues only on the same burst of change the burst trigger uses.
+		if (!burst || !passesBurstThreshold(snapshot, burst)) {
 			return result(
 				'skipped_no_activity',
-				'No meaningful activity since the last complete audit.'
+				'Scheduled complete audits now wait for a burst of change; recent activity is below the burst threshold.'
 			);
 		}
 
 		return result(
 			'queued',
-			`Scheduled audit queued after ${changedSinceLastAudit} changed entities.`
+			`Scheduled audit queued after a burst of change (${burst.changedEntities7d} records changed in the last 7 days).`
 		);
 	}
 

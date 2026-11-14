@@ -20,7 +20,7 @@ Railpack builder:
 | Start command       | `node apps/worker/dist/index.js` | `node apps/worker/dist/chat-worker.js` | `node apps/worker/dist/libri-worker.js` |
 | Healthcheck path    | `/health`                        | `/health`                              | `/health`                               |
 | Healthcheck timeout | `30`                             | `300`                                  | `300`                                   |
-| Draining seconds    | default                          | `90`                                   | `30`                                    |
+| Draining seconds    | `30`                             | `90`                                   | `30`                                    |
 | Restart policy      | `ON_FAILURE`, max retries `3`    | `ON_FAILURE`, max retries `3`          | `ON_FAILURE`, max retries `3`           |
 
 The general process does not start the chat consumer and does not serve

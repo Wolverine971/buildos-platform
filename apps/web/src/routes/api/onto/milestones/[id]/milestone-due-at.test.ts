@@ -27,10 +27,6 @@ vi.mock('../../shared/error-logging', () => ({
 	logOntologyApiError: vi.fn()
 }));
 
-vi.mock('$lib/server/ontology-classification.service', () => ({
-	classifyOntologyEntity: vi.fn(async () => undefined)
-}));
-
 vi.mock('$lib/services/ontology/auto-organizer.service', () => ({
 	AutoOrganizeError: class AutoOrganizeError extends Error {
 		status = 400;

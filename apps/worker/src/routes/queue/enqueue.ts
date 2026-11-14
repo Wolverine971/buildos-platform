@@ -5,6 +5,10 @@ import { getErrorMessage } from '../../http/errors';
 import { logWorkerError } from '../../lib/errorLogger';
 import { getQueueCorrelationId } from '../../lib/queueCorrelation';
 import { supabase } from '../../lib/supabase';
+import {
+	CLASSIFY_CHAT_SESSION_JOB,
+	enqueueChatSessionClassification
+} from '../../workers/chat/classificationSweep';
 import type { GeneralWorkerHttpQueue } from './queuePort';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -36,7 +40,7 @@ function registerChatClassificationRoute(app: Application, queue: GeneralWorkerH
 				.from('queue_jobs')
 				.select('*')
 				.eq('user_id', userId)
-				.eq('job_type', 'classify_chat_session')
+				.eq('job_type', CLASSIFY_CHAT_SESSION_JOB)
 				.eq('metadata->>sessionId', sessionId)
 				.in('status', ['pending', 'processing']);
 
@@ -47,12 +51,7 @@ function registerChatClassificationRoute(app: Application, queue: GeneralWorkerH
 				});
 			}
 
-			const job = await queue.add(
-				'classify_chat_session',
-				userId,
-				{ sessionId, userId },
-				{ priority: 8, dedupKey: `classify-session-${sessionId}` }
-			);
+			const job = await enqueueChatSessionClassification(queue, { sessionId, userId });
 
 			console.log(
 				`🏷️  API: Queued chat classification for session ${sessionId}, job ${job.queue_job_id}`

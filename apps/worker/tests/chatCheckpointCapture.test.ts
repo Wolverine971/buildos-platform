@@ -6,10 +6,12 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
 	type CheckpointCapturePorts,
+	findLoggedThinkingEntry,
 	runChatCheckpointCapture
 } from '../src/workers/chat/checkpoint/checkpointCapture';
 import {
 	type SectionEdit,
+	START_HERE_SYNTHESIS_SYSTEM_PROMPT,
 	applySectionEdit,
 	normalizeSynthesisReply,
 	normalizeThinkingLogReply,
@@ -25,6 +27,7 @@ import {
 	readStartHereDocumentSections,
 	splitStartHereSectionBlocks
 } from '../../../packages/shared-agent-ops/src/ontology/start-here';
+import { buildThinkingLogEntry } from '../../../packages/shared-agent-ops/src/ontology/thinking-log';
 
 type RawFixture = {
 	timezone: string;
@@ -62,6 +65,7 @@ function fixture(): MemoryCheckpointFixture {
 	};
 }
 
+const t04 = raw.sessions[1]!.messages.find((message) => message.id === T04)!.content;
 const t05 = raw.sessions[1]!.messages.find((message) => message.id === T05)!.content;
 const t05Cleaned = t05.replace(/\n\nThat's where my head is at\..*$/s, '');
 
@@ -128,6 +132,8 @@ const themeReplies = {
 							'- **Dual thesis** — Anti-fragility is the method; stability is the felt result.'
 					}
 				],
+				// The user's own messages: T04 drops Exclusions, T05 states the thesis.
+				evidence: [T04, T05],
 				rationale: 'Two new decisions.'
 			},
 			{
@@ -303,6 +309,7 @@ describe('chat checkpoint capture (tasker/95)', () => {
 					{
 						heading: 'Decisions',
 						add: [{ markdown: '- **Bridges, not defenses** — The social thesis.' }],
+						evidence: [T05],
 						rationale: 'New decision.'
 					}
 				]
@@ -389,6 +396,27 @@ describe('chat checkpoint capture (tasker/95)', () => {
 		expect(outcome.status).toBe('noop');
 		expect(completeJson.calls).toEqual([]);
 		expect(state.watermarks.get(THEME_SESSION)).toBe(raw.sessions[1]!.messages[3]!.id);
+	});
+
+	// A hard-deleted project left its id on the session; writing it into the checkpoint
+	// row broke the project foreign key (23503) and failed the job on every retry.
+	it('records no project when the project is gone, and still advances the watermark', async () => {
+		const completeJson = canned(themeReplies);
+		const { ports, state } = createMemoryCheckpointPorts(fixture(), completeJson);
+		const messages = raw.sessions.find((session) => session.id === THEME_SESSION)!.messages;
+
+		const outcome = await runChatCheckpointCapture(
+			{ ...ports, loadProject: () => Promise.resolve(null) },
+			{ sessionId: THEME_SESSION, userId: USER_ID, trigger: 'idle', now: NOW }
+		);
+
+		expect(outcome.status).toBe('noop');
+		expect(completeJson.calls).toEqual([]);
+		expect(state.writes).toBe(0);
+		expect(state.records).toHaveLength(1);
+		expect(state.records[0]!.projectId).toBeNull();
+		expect(state.records[0]!.userMessageCount).toBeGreaterThan(0);
+		expect(state.watermarks.get(THEME_SESSION)).toBe(messages[messages.length - 1]!.id);
 	});
 
 	it("shows the synthesis model the chat's write receipts, or says it saved none", async () => {
@@ -498,6 +526,294 @@ describe('chat checkpoint capture (tasker/95)', () => {
 		}
 		expect((await run([T05])).currentState).toBe('- **Blueprint:** not started.');
 		expect((await run(['c1'], true)).currentState).toBe('- **Blueprint:** not started.');
+	});
+
+	// Decisions save without review and are never removed, so a decision needs the
+	// user's own word. A model that reads an assistant suggestion as accepted cites
+	// nothing a user said.
+	describe('Decisions need a cited user message', () => {
+		const withDecisionsEdit = async (edit: Record<string, unknown>) => {
+			const base = fixture();
+			const messages = raw.sessions[1]!.messages;
+			// The chat did save something; that is still not evidence of a decision.
+			base.sessions[1] = {
+				...base.sessions[1]!,
+				savedChanges: [
+					{
+						tool: 'update_onto_document',
+						kind: 'document',
+						title: 'Blueprint',
+						at: messages[messages.length - 1]!.created_at
+					}
+				]
+			};
+			const { ports, state } = createMemoryCheckpointPorts(
+				base,
+				canned({
+					log: { passages: [] },
+					synthesis: {
+						edits: [{ heading: 'Decisions', rationale: 'From the chat.', ...edit }]
+					}
+				})
+			);
+			const outcome = await runChatCheckpointCapture(ports, {
+				sessionId: THEME_SESSION,
+				userId: USER_ID,
+				trigger: 'idle',
+				now: NOW
+			});
+			return {
+				decisions: section(state.startHere.content, 'Decisions'),
+				reviews: state.reviews,
+				skipped: 'record' in outcome ? outcome.record.skipped : []
+			};
+		};
+		const hardcover = { add: [{ markdown: '- **Hardcover first** — Print before ebook.' }] };
+
+		it('drops an added decision that cites nothing, an assistant, or only a saved change', async () => {
+			for (const evidence of [[], ['assistant-reply'], ['c1']]) {
+				const result = await withDecisionsEdit({ ...hardcover, evidence });
+				expect(result.decisions).toBe(decisions);
+				expect(result.skipped).toContainEqual({
+					heading: 'Decisions',
+					reason: 'no_evidence'
+				});
+			}
+		});
+
+		it('saves the decision when the edit cites a user message from this stretch of chat', async () => {
+			const result = await withDecisionsEdit({ ...hardcover, evidence: ['c1', T05] });
+
+			expect(result.decisions).toBe(
+				`${decisions}\n- **Hardcover first** — Print before ebook. _(2026-09-22)_`
+			);
+			expect(result.skipped).not.toContainEqual({
+				heading: 'Decisions',
+				reason: 'no_evidence'
+			});
+		});
+
+		it('does not propose removing a decision without the user reversing it', async () => {
+			const removal = { remove: [blockIds(raw.startHere.content, 'Decisions')[0]] };
+
+			const uncited = await withDecisionsEdit({ ...removal, evidence: [] });
+			expect(uncited.decisions).toBe(decisions);
+			expect(uncited.reviews).toHaveLength(0);
+
+			// Cited, it still only reaches the user as a review, never an automatic removal.
+			const cited = await withDecisionsEdit({ ...removal, evidence: [T05] });
+			expect(cited.decisions).toBe(decisions);
+			expect(cited.reviews).toHaveLength(1);
+		});
+
+		it('tells the model so', () => {
+			expect(START_HERE_SYNTHESIS_SYSTEM_PROMPT).toContain(
+				'list in "evidence" the id of the user message that makes, accepts or reverses the decision'
+			);
+			expect(START_HERE_SYNTHESIS_SYSTEM_PROMPT).toContain(
+				'a Decisions edit that cites no user message is dropped'
+			);
+		});
+	});
+
+	// The watermark moves only when a checkpoint finishes. A capture that saved the
+	// thinking log and then failed (a START HERE conflict, say) is retried over the same
+	// messages, and used to prepend the same entry a second time.
+	describe('a retried checkpoint', () => {
+		const input = {
+			sessionId: THEME_SESSION,
+			userId: USER_ID,
+			trigger: 'idle' as const,
+			now: NOW
+		};
+		/** Ports whose first START HERE save fails, after the thinking log is saved. */
+		function failingOnce(replies: Replies) {
+			const completeJson = canned(replies);
+			const { ports, state } = createMemoryCheckpointPorts(fixture(), completeJson);
+			let failed = false;
+			const flaky: CheckpointCapturePorts = {
+				...ports,
+				saveStartHere: async (params) => {
+					if (!failed) {
+						failed = true;
+						throw new Error('Document changed during checkpoint capture');
+					}
+					return ports.saveStartHere(params);
+				}
+			};
+			return { ports: flaky, state, completeJson };
+		}
+		const entryCount = (content: string) => content.match(/^## /gm)?.length ?? 0;
+
+		it('does not add the thinking log entry twice', async () => {
+			const { ports, state } = failingOnce(themeReplies);
+
+			await expect(runChatCheckpointCapture(ports, input)).rejects.toThrow(
+				'Document changed during checkpoint capture'
+			);
+			// The log was saved, the checkpoint was not: no record, no watermark.
+			expect(entryCount(state.thinkingLog!.content)).toBe(1);
+			expect(state.records).toHaveLength(0);
+			expect(state.watermarks.has(THEME_SESSION)).toBe(false);
+			const logAfterFailure = state.thinkingLog!.content;
+
+			const outcome = await runChatCheckpointCapture(ports, input);
+
+			expect(outcome.status).toBe('captured');
+			expect(state.thinkingLog!.content).toBe(logAfterFailure);
+			expect(entryCount(state.thinkingLog!.content)).toBe(1);
+			// START HERE is saved by the retry, and the receipt still names the log entry
+			// verbatim, so Undo can remove it.
+			expect(section(state.startHere.content, 'Decisions')).toContain('**Dual thesis**');
+			const record = state.records[0]!;
+			expect(record.thinkingLog?.passageCount).toBe(1);
+			expect(state.thinkingLog!.content).toContain(record.thinkingLog!.entry);
+		});
+
+		it('recognises its entry when the model words the retry differently', async () => {
+			const { ports, state, completeJson } = failingOnce(themeReplies);
+			await expect(runChatCheckpointCapture(ports, input)).rejects.toThrow();
+			const logAfterFailure = state.thinkingLog!.content;
+
+			// A new topic, and the whole message back instead of the cleaned passage.
+			completeJson.replies = {
+				...themeReplies,
+				log: {
+					topic: 'Bridges instead of defenses',
+					passages: [{ message_id: T05, text: t05 }]
+				}
+			};
+			const outcome = await runChatCheckpointCapture(ports, input);
+
+			expect(outcome.status).toBe('captured');
+			expect(state.thinkingLog!.content).toBe(logAfterFailure);
+			expect(entryCount(state.thinkingLog!.content)).toBe(1);
+		});
+
+		it('still logs new words in a later checkpoint', async () => {
+			const completeJson = canned(themeReplies);
+			const { ports, state } = createMemoryCheckpointPorts(fixture(), completeJson);
+			// First checkpoint: the first exchange only (T04 and its reply).
+			state.visibleThrough.set(THEME_SESSION, raw.sessions[1]!.messages[1]!.id);
+			completeJson.replies = {
+				log: { topic: 'Exclusions', passages: [{ message_id: T04, text: t04 }] },
+				synthesis: { edits: [] }
+			};
+			await runChatCheckpointCapture(ports, input);
+			expect(entryCount(state.thinkingLog!.content)).toBe(1);
+
+			state.visibleThrough.delete(THEME_SESSION);
+			completeJson.replies = {
+				log: { topic: 'Theme', passages: [{ message_id: T05, text: t05Cleaned }] },
+				synthesis: { edits: [] }
+			};
+			await runChatCheckpointCapture(ports, input);
+
+			expect(entryCount(state.thinkingLog!.content)).toBe(2);
+			expect(state.thinkingLog!.content).toContain('build bridges rather than defenses');
+		});
+	});
+
+	it('names the chat and the project on both model calls, for their cost logs', async () => {
+		const calls: Array<{ operation: string; sessionId?: string; projectId?: string }> = [];
+		const completeJson = (async ({ operation, sessionId, projectId }) => {
+			calls.push({ operation, sessionId, projectId });
+			return operation === 'thinking_log' ? { passages: [] } : { edits: [] };
+		}) as CheckpointCapturePorts['completeJson'];
+		const { ports } = createMemoryCheckpointPorts(fixture(), completeJson);
+
+		await runChatCheckpointCapture(ports, {
+			sessionId: THEME_SESSION,
+			userId: USER_ID,
+			trigger: 'idle',
+			now: NOW
+		});
+
+		expect(calls).toHaveLength(2);
+		for (const call of calls) {
+			expect(call.sessionId).toBe(THEME_SESSION);
+			expect(call.projectId).toBe(raw.project.id);
+		}
+		expect(calls.map((call) => call.operation).sort()).toEqual([
+			'start_here_synthesis',
+			'thinking_log'
+		]);
+	});
+});
+
+describe('findLoggedThinkingEntry', () => {
+	const passage =
+		'I think the book is about stability, and anti-fragility is how you get there. The reader should build bridges, not defenses.';
+	const stamp = { date: '2026-09-22', time: '3:50 PM' };
+	const entryFor = (
+		text: string,
+		overrides: { date?: string; time?: string; topic?: string } = {}
+	) =>
+		buildThinkingLogEntry({
+			date: overrides.date ?? stamp.date,
+			time: overrides.time ?? stamp.time,
+			topic: overrides.topic ?? 'Stability and anti-fragility',
+			chatTitle: 'Shaping the theme',
+			passages: [text]
+		});
+	const older = buildThinkingLogEntry({
+		date: '2026-09-20',
+		time: '9:02 AM',
+		topic: 'Contract',
+		chatTitle: null,
+		passages: ['I do not need the exclusions section in the contract at all.']
+	});
+	const logWith = (entry: string) =>
+		`# Thinking log — Book\n\n_Your own words from project chats, newest first._\n\n${entry}\n\n${older}\n`;
+
+	it('returns the saved entry verbatim when the same passages are already logged', () => {
+		const entry = entryFor(passage);
+
+		expect(findLoggedThinkingEntry({ content: logWith(entry), entry, ...stamp })).toBe(entry);
+	});
+
+	it('still finds it under a different topic and a lightly different cleanup', () => {
+		const saved = entryFor(passage);
+		const retried = entryFor(passage.replace('build bridges, not', 'build bridges and not'), {
+			topic: 'Bridges'
+		});
+
+		expect(retried).not.toBe(saved);
+		expect(findLoggedThinkingEntry({ content: logWith(saved), entry: retried, ...stamp })).toBe(
+			saved
+		);
+	});
+
+	it('finds nothing when the words are new, even at the same date and time', () => {
+		const saved = entryFor(passage);
+		const other = entryFor(
+			'Separately, the launch plan needs a newsletter list before the cover is designed.'
+		);
+
+		expect(
+			findLoggedThinkingEntry({ content: logWith(saved), entry: other, ...stamp })
+		).toBeNull();
+	});
+
+	it('finds nothing when the stamp differs, so a repeated thought later is logged again', () => {
+		const saved = entryFor(passage);
+
+		expect(
+			findLoggedThinkingEntry({
+				content: logWith(saved),
+				entry: entryFor(passage, { time: '4:15 PM' }),
+				date: stamp.date,
+				time: '4:15 PM'
+			})
+		).toBeNull();
+		expect(
+			findLoggedThinkingEntry({
+				content: logWith(saved),
+				entry: entryFor(passage, { date: '2026-09-23' }),
+				date: '2026-09-23',
+				time: stamp.time
+			})
+		).toBeNull();
 	});
 });
 

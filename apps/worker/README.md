@@ -81,18 +81,17 @@ Adding a new job type is documented in [`src/workers/README.md`](./src/workers/R
 
 Base URL (prod): set via `PUBLIC_RAILWAY_WORKER_URL`. Requests from the web app are authenticated with `PRIVATE_RAILWAY_WORKER_TOKEN`.
 
-| Method | Path                   | Purpose                                   |
-| ------ | ---------------------- | ----------------------------------------- |
-| GET    | `/health`              | Healthcheck                               |
-| POST   | `/classify/ontology`   | Sync ontology classification (non-queued) |
-| POST   | `/queue/brief`         | Enqueue a daily brief job                 |
-| POST   | `/queue/chat/classify` | Enqueue chat-session classification       |
-| GET    | `/jobs/:jobId`         | Inspect a job                             |
-| GET    | `/users/:userId/jobs`  | List a user's jobs                        |
-| GET    | `/queue/stats`         | Queue depth + status counts               |
-| GET    | `/queue/stale-stats`   | Stalled-job statistics                    |
-| POST   | `/queue/cleanup`       | Run stale-job cleanup                     |
-| —      | `/sms/scheduled/*`     | Scheduled-SMS management endpoints        |
+| Method | Path                   | Purpose                             |
+| ------ | ---------------------- | ----------------------------------- |
+| GET    | `/health`              | Healthcheck                         |
+| POST   | `/queue/brief`         | Enqueue a daily brief job           |
+| POST   | `/queue/chat/classify` | Enqueue chat-session classification |
+| GET    | `/jobs/:jobId`         | Inspect a job                       |
+| GET    | `/users/:userId/jobs`  | List a user's jobs                  |
+| GET    | `/queue/stats`         | Queue depth + status counts         |
+| GET    | `/queue/stale-stats`   | Stalled-job statistics              |
+| POST   | `/queue/cleanup`       | Run stale-job cleanup               |
+| —      | `/sms/scheduled/*`     | Scheduled-SMS management endpoints  |
 
 ## Quick Start
 

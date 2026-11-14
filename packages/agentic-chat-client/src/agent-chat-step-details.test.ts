@@ -112,6 +112,8 @@ describe('buildStepDetails', () => {
 		const details = buildStepDetails(step({ result: { tasks } }), { now: NOW });
 		expect(details.entities).toHaveLength(4);
 		expect(details.more).toBe(3);
+		// The rest stay available for a list the person opens.
+		expect(details.rest.map((entity) => entity.id)).toEqual(['t4', 't5', 't6']);
 	});
 
 	it('carries a document body edit size', () => {

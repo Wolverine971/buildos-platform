@@ -2,8 +2,10 @@
 //
 // Tasker 149 lane C: which tidy-ups qualify, the Jev request and gate, exact undo plans, and the
 // apply/record contract the web's "Done for you" and Undo read. Jev and every write are mocked.
+// Audit 2026-11-14: the re-check before applying (F5) and the half-applied row (F6).
 import { describe, expect, it, vi } from 'vitest';
 import type { JevDecider } from '@buildos/smart-llm';
+import { computeProjectSuggestionFreshnessFingerprint } from '@buildos/shared-agent-ops';
 import {
 	CLEANUP_AUTO_APPLY_POLICY,
 	CLEANUP_AUTO_APPLY_QUESTION_SET_VERSION,
@@ -452,12 +454,30 @@ type Query = {
 	filters: Filter[];
 };
 
-function fakeDb(params: {
-	projectState?: string;
-	rows: Record<string, Record<string, unknown>>;
-	undone?: Array<{ operations: unknown[] }>;
+type RecordState = { title?: string | null; state_key?: string | null; updated_at?: string | null };
+
+/** The project's records as the freshness re-check reads them. */
+type ProjectState = {
 	docStructure?: unknown;
-}) {
+	/** Per id; null means the record is gone. An unlisted id reads as UNTOUCHED_RECORD. */
+	documents?: Record<string, RecordState | null>;
+	tasks?: Record<string, RecordState | null>;
+};
+
+const UNTOUCHED_RECORD = {
+	title: 'Record',
+	state_key: 'draft',
+	updated_at: '2026-10-01T00:00:00.000Z',
+	created_at: '2026-10-01T00:00:00.000Z'
+};
+
+function fakeDb(
+	params: {
+		projectState?: string;
+		rows: Record<string, Record<string, unknown>>;
+		undone?: Array<{ operations: unknown[] }>;
+	} & ProjectState
+) {
 	const queries: Query[] = [];
 	const value = (query: Query, column: string) =>
 		query.filters.find(([kind, col]) => kind === 'eq' && col === column)?.[2];
@@ -469,6 +489,18 @@ function fakeDb(params: {
 					state_key: params.projectState ?? 'active',
 					doc_structure: params.docStructure ?? { version: 1, root: [] }
 				},
+				error: null
+			};
+		}
+		if (query.table === 'onto_documents' || query.table === 'onto_tasks') {
+			const ids = (query.filters.find(([kind, col]) => kind === 'in' && col === 'id')?.[2] ??
+				[]) as string[];
+			const overrides = query.table === 'onto_documents' ? params.documents : params.tasks;
+			return {
+				data: ids.flatMap((id) => {
+					const override = overrides?.[id];
+					return override === null ? [] : [{ id, ...UNTOUCHED_RECORD, ...override }];
+				}),
 				error: null
 			};
 		}
@@ -583,10 +615,30 @@ const HIGH = { about: 0.95, wanted: 0.92, review: 0.1, safe: 0.97 };
 const LOW = { about: 0.95, wanted: 0.6, review: 0.1, safe: 0.97 };
 const NOW = () => new Date('2026-10-29T12:00:00.000Z');
 
-function pendingRows(ids: string[]) {
-	return Object.fromEntries(
-		ids.map((id) => [id, { id, status: 'pending', undo_operations: [{ tool: 'old' }] }])
-	);
+/**
+ * The candidates' rows as a review pass left them: pending, each stamped with the scoped
+ * fingerprint of the records it changes as they were in `proposedAgainst` (the production
+ * helper, run against its own fake so the test database's query log stays clean).
+ */
+async function pendingRows(
+	candidates: readonly CleanupAutoApplyCandidate[],
+	proposedAgainst: ProjectState = {}
+) {
+	const asProposed = fakeDb({ rows: {}, ...proposedAgainst });
+	const rows: Record<string, Record<string, unknown>> = {};
+	for (const candidateRow of candidates.flatMap((candidate) => candidate.rows)) {
+		rows[candidateRow.id] = {
+			id: candidateRow.id,
+			status: 'pending',
+			undo_operations: [{ tool: 'old' }],
+			source_fingerprint: await computeProjectSuggestionFreshnessFingerprint(
+				asProposed,
+				P,
+				candidateRow.operations
+			)
+		};
+	}
+	return rows;
 }
 
 async function run(params: {
@@ -620,7 +672,7 @@ describe('runCleanupAutoApply', () => {
 				operations: [{ tool: 'archive_onto_task', args: { project_id: P, task_id: TASK } }]
 			})
 		]);
-		const db = fakeDb({ rows: pendingRows(['archive', 'task']) });
+		const db = fakeDb({ rows: await pendingRows(candidates) });
 		const write = writers();
 		const jev = decider([HIGH, LOW]);
 		const summary = await run({ candidates, db, jev, write });
@@ -685,7 +737,7 @@ describe('runCleanupAutoApply', () => {
 				operations: [{ tool: 'archive_onto_task', args: { project_id: P, task_id: TASK } }]
 			})
 		]);
-		const rows = pendingRows(['archive', 'task']) as Record<string, Record<string, unknown>>;
+		const rows = await pendingRows(candidates);
 		rows.task!.rollup = { first_seen_at: '2026-10-28T00:00:00.000Z', section: 'safe_cleanup' };
 		const db = fakeDb({ rows });
 		await run({ candidates, db, jev: decider([HIGH, LOW]), write: writers() });
@@ -717,7 +769,7 @@ describe('runCleanupAutoApply', () => {
 				operations: [{ tool: 'archive_onto_task', args: { project_id: P, task_id: TASK } }]
 			})
 		]);
-		const db = fakeDb({ rows: pendingRows(['task']) });
+		const db = fakeDb({ rows: await pendingRows(candidates) });
 		const write = writers();
 		await run({ candidates, db, jev: decider([HIGH]), write });
 		expect(write.runGatewayWriteOp).toHaveBeenCalledWith(
@@ -753,16 +805,11 @@ describe('runCleanupAutoApply', () => {
 				]
 			})
 		]);
-		const db = fakeDb({
-			rows: pendingRows(['move']),
-			docStructure: {
-				version: 3,
-				root: [
-					{ id: FOLDER, children: [{ id: DOC_C }, { id: DOC_B }] },
-					{ id: ARCHIVE_FOLDER }
-				]
-			}
-		});
+		const docStructure = {
+			version: 3,
+			root: [{ id: FOLDER, children: [{ id: DOC_C }, { id: DOC_B }] }, { id: ARCHIVE_FOLDER }]
+		};
+		const db = fakeDb({ rows: await pendingRows(candidates, { docStructure }), docStructure });
 		const write = writers();
 		const summary = await run({ candidates, db, jev: decider([HIGH]), write });
 		expect(summary.applied).toBe(1);
@@ -800,7 +847,7 @@ describe('runCleanupAutoApply', () => {
 		const candidates = setup([row({ id: 'archive' })]);
 		const write = writers();
 
-		const noJev = fakeDb({ rows: pendingRows(['archive']) });
+		const noJev = fakeDb({ rows: await pendingRows(candidates) });
 		expect((await run({ candidates, db: noJev, jev: null, write })).status).toBe('no_decider');
 		expect(noJev.queries).toEqual([]);
 
@@ -811,12 +858,12 @@ describe('runCleanupAutoApply', () => {
 				receipt: { modelRequested: 'typesafe/jev-1.13', durationMs: 8000 }
 			}))
 		} as unknown as JevDecider;
-		const jevDown = fakeDb({ rows: pendingRows(['archive']) });
+		const jevDown = fakeDb({ rows: await pendingRows(candidates) });
 		const failed = await run({ candidates, db: jevDown, jev: broken, write });
 		expect(failed.status).toBe('jev_failed');
 		expect(describeCleanupAutoApply(failed)).toContain('jev_timeout');
 
-		const off = fakeDb({ rows: pendingRows(['archive']) });
+		const off = fakeDb({ rows: await pendingRows(candidates) });
 		const killed = await run({
 			candidates,
 			db: off,
@@ -827,7 +874,7 @@ describe('runCleanupAutoApply', () => {
 		expect(killed.status).toBe('disabled');
 		expect(off.queries).toEqual([]);
 
-		const paused = fakeDb({ rows: pendingRows(['archive']), projectState: 'paused' });
+		const paused = fakeDb({ rows: await pendingRows(candidates), projectState: 'paused' });
 		const pausedJev = decider([HIGH]);
 		expect((await run({ candidates, db: paused, jev: pausedJev, write })).status).toBe(
 			'project_state'
@@ -841,7 +888,7 @@ describe('runCleanupAutoApply', () => {
 	it('pauses a tool for 30 days after the owner undid one of its auto-applied changes', async () => {
 		const candidates = setup([row({ id: 'archive' })]);
 		const db = fakeDb({
-			rows: pendingRows(['archive']),
+			rows: await pendingRows(candidates),
 			undone: [{ operations: [{ tool: 'archive_onto_document', args: {} }] }]
 		});
 		const jev = decider([HIGH]);
@@ -875,8 +922,8 @@ describe('runCleanupAutoApply', () => {
 				]
 			})
 		]);
-		const rows = pendingRows(['decided', 'fails']);
-		rows.decided.status = 'rejected';
+		const rows = await pendingRows(candidates);
+		rows.decided!.status = 'rejected';
 		const db = fakeDb({ rows });
 		const write = writers({
 			runReviewedDocumentArchive: vi.fn(async () => ({
@@ -900,12 +947,12 @@ describe('runCleanupAutoApply', () => {
 			decided_at: null,
 			undo_operations: [{ tool: 'old' }]
 		});
-		expect(rows.decided.status).toBe('rejected');
+		expect(rows.decided!.status).toBe('rejected');
 	});
 
 	it('never archives a document with a public page', async () => {
 		const candidates = setup([row({ id: 'public' })]);
-		const db = fakeDb({ rows: pendingRows(['public']) });
+		const db = fakeDb({ rows: await pendingRows(candidates) });
 		const write = writers({
 			previewGatewayDocumentArchive: vi.fn(async () => ({
 				ok: true as const,
@@ -942,7 +989,7 @@ describe('runCleanupAutoApply', () => {
 				})
 			)
 		);
-		const db = fakeDb({ rows: pendingRows(ids) });
+		const db = fakeDb({ rows: await pendingRows(candidates) });
 		const summary = await run({
 			candidates,
 			db,
@@ -953,5 +1000,380 @@ describe('runCleanupAutoApply', () => {
 		expect(
 			summary.outcomes.filter((outcome) => outcome.detail === 'per-pass cap')
 		).toHaveLength(2);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// F5: the records are re-checked right before a row is applied
+// ---------------------------------------------------------------------------
+
+describe('re-check before applying (F5)', () => {
+	const expectLeftForOwner = (
+		summary: Awaited<ReturnType<typeof run>>,
+		db: ReturnType<typeof fakeDb>,
+		write: ReturnType<typeof writers>
+	) => {
+		expect(summary).toMatchObject({ status: 'ran', applied: 0, failed: 0 });
+		expect(summary.appliedLineageIds).toEqual([]);
+		expect(summary.outcomes).toHaveLength(1);
+		expect(summary.outcomes[0]).toMatchObject({
+			status: 'skipped',
+			reason: 'changed_since_proposed'
+		});
+		expect(summary.outcomes[0]?.detail).toContain('left for the owner');
+		// Nothing was claimed or written.
+		expect(db.queries.some((query) => query.op === 'update')).toBe(false);
+		expect(write.runReviewedDocumentArchive).not.toHaveBeenCalled();
+		expect(write.runGatewayWriteOp).not.toHaveBeenCalled();
+	};
+
+	it('leaves an archive for the owner when the document was edited after it was proposed', async () => {
+		// Proposed on an earlier night against the untouched document, carried since.
+		const candidates = setup([row({ id: 'archive' })]);
+		const rows = await pendingRows(candidates);
+		// The owner edited the document yesterday; the roll-up and Jev still said yes.
+		const db = fakeDb({
+			rows,
+			documents: { [DOC_A]: { updated_at: '2026-10-28T09:30:00.000Z' } }
+		});
+		const write = writers();
+		const summary = await run({ candidates, db, jev: decider([HIGH]), write });
+
+		expectLeftForOwner(summary, db, write);
+		expect(rows.archive).toMatchObject({
+			status: 'pending',
+			undo_operations: [{ tool: 'old' }]
+		});
+		expect(describeCleanupAutoApply(summary)).toBe(
+			'Auto-apply: 0 applied, 0 held for review, 1 not applied (1 changed since proposed) of 1 scored (Jev 420 ms).'
+		);
+	});
+
+	it('leaves it for the owner when the record was renamed, archived or deleted meanwhile', async () => {
+		const candidates = setup([row({ id: 'archive' })]);
+		for (const now of [
+			{ title: 'Old draft (final)' },
+			{ state_key: 'archived' },
+			null
+		] as const) {
+			const db = fakeDb({
+				rows: await pendingRows(candidates),
+				documents: { [DOC_A]: now }
+			});
+			const write = writers();
+			expectLeftForOwner(
+				await run({ candidates, db, jev: decider([HIGH]), write }),
+				db,
+				write
+			);
+		}
+	});
+
+	it('leaves a task archive for the owner when the task changed', async () => {
+		const candidates = setup([
+			row({
+				id: 'task',
+				operations: [{ tool: 'archive_onto_task', args: { project_id: P, task_id: TASK } }]
+			})
+		]);
+		const db = fakeDb({
+			rows: await pendingRows(candidates),
+			tasks: { [TASK]: { state_key: 'in_progress', updated_at: '2026-10-28T09:30:00.000Z' } }
+		});
+		const write = writers();
+		expectLeftForOwner(await run({ candidates, db, jev: decider([HIGH]), write }), db, write);
+	});
+
+	it('leaves a move for the owner when the document was moved by hand meanwhile', async () => {
+		const candidates = setup([
+			row({
+				id: 'move',
+				kind: 'doc_org',
+				title: 'Move "B" into "Archive"',
+				operations: [
+					{
+						tool: 'move_document_in_tree',
+						args: {
+							project_id: P,
+							document_id: DOC_B,
+							new_parent_id: ARCHIVE_FOLDER,
+							new_position: 0
+						}
+					}
+				]
+			})
+		]);
+		const proposedAgainst = {
+			docStructure: {
+				version: 3,
+				root: [{ id: FOLDER, children: [{ id: DOC_B }] }, { id: ARCHIVE_FOLDER }]
+			}
+		};
+		const db = fakeDb({
+			rows: await pendingRows(candidates, proposedAgainst),
+			// The owner has since pulled it out to the top level.
+			docStructure: {
+				version: 4,
+				root: [{ id: FOLDER }, { id: DOC_B }, { id: ARCHIVE_FOLDER }]
+			}
+		});
+		const write = writers();
+		expectLeftForOwner(await run({ candidates, db, jev: decider([HIGH]), write }), db, write);
+	});
+
+	it('does not apply a row that has no proposed-against state on record', async () => {
+		const candidates = setup([row({ id: 'archive' })]);
+		const rows = await pendingRows(candidates);
+		rows.archive!.source_fingerprint = null;
+		const db = fakeDb({ rows });
+		const write = writers();
+		expectLeftForOwner(await run({ candidates, db, jev: decider([HIGH]), write }), db, write);
+	});
+
+	it('still applies when only an unrelated record changed', async () => {
+		const candidates = setup([row({ id: 'archive' })]);
+		const db = fakeDb({
+			rows: await pendingRows(candidates),
+			documents: { [DOC_B]: { updated_at: '2026-10-28T09:30:00.000Z' } }
+		});
+		const summary = await run({ candidates, db, jev: decider([HIGH]) });
+		expect(summary).toMatchObject({ applied: 1, appliedLineageIds: ['archive'] });
+	});
+});
+
+// ---------------------------------------------------------------------------
+// F6: a row that fails part-way never stays half-made without a way back
+// ---------------------------------------------------------------------------
+
+describe('half-applied rows (F6)', () => {
+	const OK = { ok: true, data: {} };
+	const FAIL = {
+		ok: false,
+		error: { code: 'VALIDATION_ERROR' as const, message: 'tree write refused' }
+	};
+	const docStructure = {
+		version: 5,
+		root: [
+			{ id: FOLDER, children: [{ id: DOC_A }, { id: DOC_B }, { id: DOC_C }] },
+			{ id: ARCHIVE_FOLDER }
+		]
+	};
+	const moveTo = (documentId: string, position: number) => ({
+		tool: 'move_document_in_tree',
+		args: {
+			project_id: P,
+			document_id: documentId,
+			new_parent_id: ARCHIVE_FOLDER,
+			new_position: position
+		}
+	});
+	const threeMoves = () =>
+		setup([
+			row({
+				id: 'moves',
+				kind: 'doc_org',
+				title: 'Move 3 documents into "Archive"',
+				operations: [moveTo(DOC_A, 0), moveTo(DOC_B, 1), moveTo(DOC_C, 2)]
+			})
+		]);
+	const moveCall = (documentId: string, parentId: string, position: number) =>
+		expect.objectContaining({
+			op: 'onto.document.tree.move',
+			args: {
+				project_id: P,
+				document_id: documentId,
+				new_parent_id: parentId,
+				new_position: position
+			}
+		});
+	// Where a move left a document, and the place it goes back to.
+	const wayBack = (documentId: string) => ({
+		tool: 'move_document_in_tree',
+		args: {
+			project_id: P,
+			document_id: documentId,
+			new_parent_id: FOLDER,
+			new_position: 0,
+			expected_parent_id: ARCHIVE_FOLDER
+		}
+	});
+
+	it('undoes the moves that ran when a later move fails, and hands the row back', async () => {
+		const candidates = threeMoves();
+		const rows = await pendingRows(candidates, { docStructure });
+		const db = fakeDb({ rows, docStructure });
+		const runGatewayWriteOp = vi
+			.fn()
+			.mockResolvedValueOnce(OK)
+			.mockResolvedValueOnce(OK)
+			.mockResolvedValueOnce(FAIL)
+			.mockResolvedValue(OK);
+		const write = writers({ runGatewayWriteOp });
+		const summary = await run({ candidates, db, jev: decider([HIGH]), write });
+
+		// Two moves ran, the third failed, then the two went back newest first.
+		expect(runGatewayWriteOp).toHaveBeenCalledTimes(5);
+		expect(runGatewayWriteOp).toHaveBeenNthCalledWith(1, moveCall(DOC_A, ARCHIVE_FOLDER, 0));
+		expect(runGatewayWriteOp).toHaveBeenNthCalledWith(2, moveCall(DOC_B, ARCHIVE_FOLDER, 1));
+		expect(runGatewayWriteOp).toHaveBeenNthCalledWith(3, moveCall(DOC_C, ARCHIVE_FOLDER, 2));
+		expect(runGatewayWriteOp).toHaveBeenNthCalledWith(4, moveCall(DOC_B, FOLDER, 0));
+		expect(runGatewayWriteOp).toHaveBeenNthCalledWith(5, moveCall(DOC_A, FOLDER, 0));
+
+		expect(summary).toMatchObject({ applied: 0, failed: 0, appliedLineageIds: [] });
+		expect(summary.outcomes).toEqual([
+			expect.objectContaining({
+				suggestionId: 'moves',
+				status: 'released',
+				reason: 'rolled_back',
+				detail: 'tree write refused; the 2 steps that ran were undone'
+			})
+		]);
+		// Back on the card exactly as it was, with no "Done for you" entry.
+		expect(rows.moves).toMatchObject({
+			status: 'pending',
+			decided_at: null,
+			undo_operations: [{ tool: 'old' }]
+		});
+		expect(rows.moves).not.toHaveProperty('result');
+		expect(describeCleanupAutoApply(summary)).toBe(
+			'Auto-apply: 0 applied, 0 held for review, 1 not applied (1 rolled back) of 1 scored (Jev 420 ms).'
+		);
+	});
+
+	it('records the row as applied with an Undo for exactly what is still moved when the rollback fails', async () => {
+		const candidates = threeMoves();
+		const rows = await pendingRows(candidates, { docStructure });
+		const db = fakeDb({ rows, docStructure });
+		const runGatewayWriteOp = vi
+			.fn()
+			.mockResolvedValueOnce(OK) // move A
+			.mockResolvedValueOnce(OK) // move B
+			.mockResolvedValueOnce(FAIL) // move C
+			.mockResolvedValueOnce(OK) // B goes back
+			.mockResolvedValueOnce({
+				ok: false,
+				error: { code: 'VALIDATION_ERROR' as const, message: 'still refused' }
+			}); // A does not
+		const write = writers({ runGatewayWriteOp });
+		const summary = await run({ candidates, db, jev: decider([HIGH]), write });
+
+		expect(runGatewayWriteOp).toHaveBeenCalledTimes(5);
+		expect(summary).toMatchObject({ applied: 0, failed: 1, appliedLineageIds: [] });
+		expect(summary.outcomes[0]).toMatchObject({ status: 'failed', reason: 'partly_applied' });
+		// Only A is still moved, so Undo moves only A back.
+		expect(rows.moves).toMatchObject({
+			status: 'applied',
+			applied_at: '2026-10-29T12:00:00.000Z',
+			undo_operations: [wayBack(DOC_A)],
+			result: {
+				ok: false,
+				applied_via: 'auto',
+				headline: 'Move 3 documents into "Archive" (partly done: 1 of 3 steps)',
+				applied_operations: 1,
+				partial_failure: true,
+				errors: [{ tool: 'move_document_in_tree', error: 'tree write refused' }],
+				rollback: { attempted: true, undone_operations: 1, error: 'still refused' },
+				auto_apply: { scores: HIGH }
+			}
+		});
+		expect((rows.moves!.undo_operations as unknown[]).length).toBe(1);
+		expect(describeCleanupAutoApply(summary)).toBe(
+			'Auto-apply: 0 applied, 0 held for review, 1 failed (1 partly applied, with Undo) of 1 scored (Jev 420 ms).'
+		);
+	});
+
+	it('keeps an Undo for only the archive that ran when the worker cannot restore a document', async () => {
+		const candidates = setup([
+			row({
+				id: 'two-archives',
+				title: 'Archive two old drafts',
+				operations: [
+					{
+						tool: 'archive_onto_document',
+						args: { project_id: P, document_id: DOC_A, children: 'archive_children' }
+					},
+					{
+						tool: 'archive_onto_document',
+						args: { project_id: P, document_id: DOC_C, children: 'archive_children' }
+					}
+				]
+			})
+		]);
+		const rows = await pendingRows(candidates);
+		const db = fakeDb({ rows });
+		const write = writers({
+			runReviewedDocumentArchive: vi
+				.fn()
+				.mockResolvedValueOnce(OK)
+				.mockResolvedValueOnce({
+					ok: false,
+					error: {
+						code: 'VALIDATION_ERROR' as const,
+						message: 'document_archive_review_changed'
+					}
+				})
+		});
+		const summary = await run({ candidates, db, jev: decider([HIGH]), write });
+
+		// No rollback is attempted: restoring a document is the web Undo's job.
+		expect(write.runGatewayWriteOp).not.toHaveBeenCalled();
+		expect(summary.outcomes[0]).toMatchObject({ status: 'failed', reason: 'partly_applied' });
+		expect(rows['two-archives']).toMatchObject({
+			status: 'applied',
+			undo_operations: [
+				{
+					tool: 'restore_onto_document',
+					args: { project_id: P, document_id: DOC_A, restore_state_key: 'draft' }
+				}
+			],
+			result: {
+				ok: false,
+				applied_via: 'auto',
+				headline: 'Archive two old drafts (partly done: 1 of 2 steps)',
+				applied_operations: 1,
+				partial_failure: true,
+				rollback: { attempted: false, undone_operations: 0 }
+			}
+		});
+		// The document that was never archived is not in the Undo, so Undo will not refuse on it.
+		expect(JSON.stringify(rows['two-archives']!.undo_operations)).not.toContain(DOC_C);
+	});
+
+	it('restores archived tasks through the gateway when a later task archive fails', async () => {
+		const OTHER_TASK = uuid(202);
+		const candidates = setup([
+			row({
+				id: 'two-tasks',
+				title: 'Archive two finished tasks',
+				operations: [
+					{ tool: 'archive_onto_task', args: { project_id: P, task_id: TASK } },
+					{ tool: 'archive_onto_task', args: { project_id: P, task_id: OTHER_TASK } }
+				]
+			})
+		]);
+		const rows = await pendingRows(candidates);
+		const db = fakeDb({ rows });
+		const runGatewayWriteOp = vi
+			.fn()
+			.mockResolvedValueOnce(OK)
+			.mockResolvedValueOnce(FAIL)
+			.mockResolvedValue(OK);
+		const summary = await run({
+			candidates,
+			db,
+			jev: decider([HIGH]),
+			write: writers({ runGatewayWriteOp })
+		});
+
+		expect(runGatewayWriteOp).toHaveBeenCalledTimes(3);
+		expect(runGatewayWriteOp).toHaveBeenNthCalledWith(
+			3,
+			expect.objectContaining({
+				op: 'onto.task.update',
+				args: { task_id: TASK, archived: false, calendar_sync: 'none' }
+			})
+		);
+		expect(summary.outcomes[0]).toMatchObject({ status: 'released', reason: 'rolled_back' });
+		expect(rows['two-tasks']).toMatchObject({ status: 'pending', decided_at: null });
 	});
 });

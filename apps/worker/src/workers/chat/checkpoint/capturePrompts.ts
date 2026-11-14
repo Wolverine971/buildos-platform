@@ -20,8 +20,19 @@ export type PromptSection = {
 
 export type PromptEntity = { type: string; id: string; title: string | null };
 
-/** One project record the chat's tools saved in the captured window (a write receipt). */
-export type PromptSavedChange = { tool: string; kind: string; title: string | null };
+/**
+ * One project record the chat's tools saved (a write receipt). `id`, `operation`
+ * ("created", "updated", "deleted", "moved", ...) and `projectId` come straight from the
+ * receipt when it has them; the START HERE prompt shows only tool, kind and title.
+ */
+export type PromptSavedChange = {
+	tool: string;
+	kind: string;
+	title: string | null;
+	id?: string | null;
+	operation?: string | null;
+	projectId?: string | null;
+};
 
 /**
  * The project records one successful tool execution saved, from its
@@ -37,7 +48,18 @@ export function savedChangesFromExecution(row: Record<string, unknown>): PromptS
 		if (!kind) return [];
 		const title =
 			typeof entity?.title === 'string' && entity.title.trim() ? entity.title : null;
-		return [{ tool, kind, title }];
+		const text = (value: unknown) =>
+			typeof value === 'string' && value.trim() ? value.trim() : null;
+		return [
+			{
+				tool,
+				kind,
+				title,
+				id: text(entity?.id),
+				operation: text(entity?.operation),
+				projectId: text(entity?.projectId) ?? text(entity?.project_id)
+			}
+		];
 	});
 }
 
@@ -92,7 +114,7 @@ Headings:
 - Do not edit sections marked editable="false".
 
 Section conventions:
-- Decisions: one bullet per decision, "- **Decision** — rationale." Do not write dates; code stamps them. Decisions are a permanent record: never remove one because it was carried out. Change one only when the user reversed it.
+- Decisions: one bullet per decision, "- **Decision** — rationale." Do not write dates; code stamps them. Decisions are a permanent record: never remove one because it was carried out. Change one only when the user reversed it. Edit Decisions only on the user's own word: list in "evidence" the id of the user message that makes, accepts or reverses the decision. A saved change or assistant text is not evidence of a decision, and a Decisions edit that cites no user message is dropped.
 - Current state: a short snapshot of right now; rewrite it instead of stacking states. Rewrite it only on evidence, and list that evidence in "evidence": the id of a user message that reports the change, or the [cN] id of a record under "Changes this chat saved". Assistant text is not evidence: its status descriptions read the old record, and work it says it did counts only when listed under "Changes this chat saved". A user's request is not its result either: without a saved change, record what they decided, not that it was done. When that is all the chat has, leave Current state alone. Keep it consistent with Decisions.
 - Vocabulary and mental model: one bullet per term, "- **Term** — meaning".
 - Open questions: questions about the project itself, not about BuildOS or this document. Remove questions the chat answered or a decision in the document settles; add questions the chat opened.
@@ -106,7 +128,7 @@ What counts:
 - Text outside the sections is read-only. If the chat contradicts it, say so in one sentence in "outside_note".
 
 Return JSON only:
-{"edits": [{"heading": "<exact heading>", "add": [{"after": "b7", "restates": null, "markdown": "<one line>"}], "remove": ["b12"], "replace": [{"id": "b3", "markdown": "<new line>"}], "rewrite": "<complete body, only for Current state or a new section>", "evidence": ["<user message id or cN>"], "rationale": "<what changed and why>"}], "outside_note": "<optional one sentence>"}
+{"edits": [{"heading": "<exact heading>", "add": [{"after": "b7", "restates": null, "markdown": "<one line>"}], "remove": ["b12"], "replace": [{"id": "b3", "markdown": "<new line>"}], "rewrite": "<complete body, only for Current state or a new section>", "evidence": ["<user message id, or cN for Current state>"], "rationale": "<what changed and why>"}], "outside_note": "<optional one sentence>"}
 Return {"edits": []} when nothing durable changed.`;
 
 const USER_MESSAGE_PROMPT_MAX_CHARS = 6000;

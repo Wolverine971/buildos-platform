@@ -31,10 +31,6 @@ vi.mock('$lib/services/async-activity-logger', () => ({
 	getChatSessionIdFromRequest: vi.fn(() => null)
 }));
 
-vi.mock('$lib/server/ontology-classification.service', () => ({
-	classifyOntologyEntity: vi.fn()
-}));
-
 vi.mock('../../shared/error-logging', () => ({
 	logOntologyApiError: vi.fn()
 }));

@@ -5,7 +5,7 @@
  * Spec Reference: /docs/specs/DAILY_BRIEF_ONTOLOGY_MIGRATION_SPEC.md
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
 	categorizeTasks,
 	calculateGoalProgress,
@@ -975,6 +975,51 @@ describe('prepareBriefData', () => {
 		expect(result.projects.map((project) => project.project.id)).toEqual(['project-1']);
 		expect(result.todaysTasks.map((task) => task.id)).toEqual(['loose-today']);
 		expect(result.workspace).toMatchObject({ projectId: 'ws-1', openTaskCount: 1 });
+	});
+
+	it('counts every open task on a project, dated this week or not', () => {
+		const loader = new OntologyBriefDataLoader({} as never);
+
+		const result = loader.prepareBriefData(
+			[
+				{
+					project: createMockProject({ id: 'project-1', name: 'Launch Plan' }),
+					isShared: false,
+					activityLogs: [],
+					startHere: null,
+					tasks: [
+						createMockTask({ id: 'undated-todo', project_id: 'project-1' }),
+						createMockTask({
+							id: 'undated-in-progress',
+							project_id: 'project-1',
+							state_key: 'in_progress'
+						}),
+						createMockTask({
+							id: 'finished',
+							project_id: 'project-1',
+							state_key: 'done',
+							completed_at: '2025-11-01T00:00:00Z'
+						})
+					],
+					goals: [],
+					plans: [],
+					milestones: [],
+					risks: [],
+					documents: [],
+					requirements: [],
+					edges: [],
+					taskDependencies: new Map(),
+					goalProgress: new Map(),
+					recentUpdates: { tasks: [], goals: [], documents: [] }
+				}
+			],
+			'2025-12-17',
+			'UTC',
+			createEmptyCalendarBriefSection()
+		);
+
+		expect(result.projects[0].thisWeekTasks).toEqual([]);
+		expect(result.projects[0].openTaskCount).toBe(2);
 	});
 });
 

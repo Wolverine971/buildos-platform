@@ -10,6 +10,7 @@ import {
 import type { SmartLLMService } from '../src/lib/services/smart-llm-service';
 import { PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED } from '../src/config/projectLoops';
 import { ProjectReviewLanguageError } from '../src/workers/project-loop/reviewLanguage';
+import { DetectorOutputUnusableError } from '../src/workers/project-loop/detectorFailure';
 
 function makeContext(): LoopContext {
 	return {
@@ -315,8 +316,8 @@ describe('project loop generators', () => {
 		});
 	});
 
-	it('drops task conflict suggestions with unknown task ids', async () => {
-		const suggestions = await generateTaskConflicts({
+	it('reports task conflicts as not checked when the only proposal names an unknown task', async () => {
+		const pending = generateTaskConflicts({
 			candidatePairs: PAIR_1_2,
 			llm: makeLlm({
 				suggestions: [
@@ -343,11 +344,12 @@ describe('project loop generators', () => {
 			onUsage
 		});
 
-		expect(suggestions).toEqual([]);
+		// Dropping it silently would read as "no conflicts": the check reports as not checked.
+		await expect(pending).rejects.toBeInstanceOf(DetectorOutputUnusableError);
 	});
 
-	it('drops task conflict suggestions with unknown paired task ids', async () => {
-		const suggestions = await generateTaskConflicts({
+	it('reports task conflicts as not checked when the only proposal pairs an unknown task', async () => {
+		const pending = generateTaskConflicts({
 			candidatePairs: PAIR_1_2,
 			llm: makeLlm({
 				suggestions: [
@@ -378,10 +380,11 @@ describe('project loop generators', () => {
 			onUsage
 		});
 
-		expect(suggestions).toEqual([]);
+		// Dropping it silently would read as "no conflicts": the check reports as not checked.
+		await expect(pending).rejects.toBeInstanceOf(DetectorOutputUnusableError);
 	});
 
-	it('drops task conflict suggestions when evidence does not match the flagged pair', async () => {
+	it('reports task conflicts as not checked when evidence does not match the only flagged pair', async () => {
 		const ctx: LoopContext = {
 			...makeContext(),
 			tasks: [
@@ -396,7 +399,7 @@ describe('project loop generators', () => {
 			]
 		};
 
-		const suggestions = await generateTaskConflicts({
+		const pending = generateTaskConflicts({
 			candidatePairs: PAIR_1_2,
 			llm: makeLlm({
 				suggestions: [
@@ -427,7 +430,8 @@ describe('project loop generators', () => {
 			onUsage
 		});
 
-		expect(suggestions).toEqual([]);
+		// Dropping it silently would read as "no conflicts": the check reports as not checked.
+		await expect(pending).rejects.toBeInstanceOf(DetectorOutputUnusableError);
 	});
 
 	it('drops a whole task conflict when the conflict filter removes any operation', async () => {
@@ -586,6 +590,258 @@ describe('project loop generators', () => {
 			expect.stringContaining('1 of 3 proposed operations were invalid'),
 			{ projectId: 'project-1' }
 		);
+	});
+
+	it('builds a task-conflict flag from the task id and the loop_* props only', async () => {
+		const suggestions = await generateTaskConflicts({
+			candidatePairs: PAIR_1_2,
+			llm: makeLlm({
+				suggestions: [
+					{
+						title: 'Duplicate launch announcement tasks',
+						evidence_refs: [
+							{ entity_type: 'task', entity_id: 'task-1', reason: 'Same outcome' },
+							{ entity_type: 'task', entity_id: 'task-2', reason: 'Same outcome' }
+						],
+						operations: [
+							{
+								tool: 'update_onto_task',
+								args: {
+									task_id: 'task-1',
+									// None of these belong to "flag a conflict".
+									project_id: 'another-project',
+									state_key: 'done',
+									title: 'Rewritten title',
+									description: 'Rewritten description',
+									due_at: '2026-12-01T00:00:00.000Z',
+									priority: 1,
+									calendar_sync: 'auto',
+									props: {
+										loop_flagged_conflict: false,
+										loop_conflict_kind: 'duplicate',
+										loop_conflict_with_task_id: 'task-2',
+										loop_conflict_reason: 'Same announcement work.',
+										archived: true,
+										owner_note: 'slipped in'
+									}
+								},
+								label: 'Flag likely duplicate'
+							}
+						]
+					}
+				]
+			}),
+			ctx: makeContext(),
+			userId: 'user-1',
+			onUsage
+		});
+
+		expect(suggestions).toHaveLength(1);
+		// Exact: nothing the model added rides along to approval.
+		expect(suggestions[0]?.operations).toEqual([
+			{
+				tool: 'update_onto_task',
+				args: {
+					project_id: 'project-1',
+					task_id: 'task-1',
+					props: {
+						loop_flagged_conflict: true,
+						loop_conflict_kind: 'duplicate',
+						loop_conflict_with_task_id: 'task-2',
+						loop_conflict_reason: 'Same announcement work.'
+					}
+				},
+				label: 'Flag likely duplicate'
+			}
+		]);
+	});
+
+	it('drops a task-conflict flag whose kind is not a known one', async () => {
+		const flag = (kind: unknown) => ({
+			title: `Conflict (${String(kind)})`,
+			evidence_refs: [
+				{ entity_type: 'task', entity_id: 'task-1', reason: 'Same outcome' },
+				{ entity_type: 'task', entity_id: 'task-2', reason: 'Same outcome' }
+			],
+			operations: [
+				{
+					tool: 'update_onto_task',
+					args: {
+						task_id: 'task-1',
+						props: { loop_conflict_kind: kind, loop_conflict_with_task_id: 'task-2' }
+					}
+				}
+			]
+		});
+		const suggestions = await generateTaskConflicts({
+			candidatePairs: PAIR_1_2,
+			llm: makeLlm({ suggestions: [flag('merge_and_delete'), flag(7), flag('blocked_by')] }),
+			ctx: makeContext(),
+			userId: 'user-1',
+			onUsage
+		});
+
+		expect(suggestions.map((suggestion) => suggestion.title)).toEqual([
+			'Conflict (blocked_by)'
+		]);
+		expect(suggestions[0]?.operations[0]?.args).toEqual({
+			project_id: 'project-1',
+			task_id: 'task-1',
+			props: {
+				loop_flagged_conflict: true,
+				loop_conflict_kind: 'blocked_by',
+				loop_conflict_with_task_id: 'task-2'
+			}
+		});
+	});
+
+	describe('document organization', () => {
+		const docContext = (): LoopContext => {
+			const base = makeContext();
+			return {
+				...base,
+				documents: [
+					...base.documents,
+					...['doc-2', 'doc-3'].map((id) => ({
+						id,
+						title: `Launch ${id}`,
+						type_key: 'document.notes',
+						state_key: 'active',
+						description: null,
+						updated_at: '2026-06-22T00:00:00.000Z',
+						parent_id: null
+					}))
+				]
+			};
+		};
+		const organize = (suggestions: unknown[]) =>
+			generateDocOrganization({
+				llm: makeLlm({ suggestions }),
+				ctx: docContext(),
+				userId: 'user-1',
+				onUsage
+			});
+
+		it('builds a move from document, parent and position only', async () => {
+			const suggestions = await organize([
+				{
+					title: 'Group launch material under "Launch plan"',
+					operations: [
+						{
+							tool: 'move_document_in_tree',
+							args: {
+								document_id: 'doc-2',
+								new_parent_id: 'doc-1',
+								new_position: 2,
+								// None of these belong to a move.
+								project_id: 'another-project',
+								new_parent_title: 'A folder that does not exist',
+								title: 'Renamed',
+								state_key: 'archived',
+								content: 'Rewritten body'
+							},
+							label: 'Move under Launch plan'
+						},
+						// Written flat, with a position that is not a whole number.
+						{
+							tool: 'move_document_in_tree',
+							document_id: 'doc-3',
+							new_parent_id: null,
+							new_position: 1.5
+						}
+					]
+				}
+			]);
+
+			expect(suggestions).toHaveLength(1);
+			expect(suggestions[0]?.operations).toEqual([
+				{
+					tool: 'move_document_in_tree',
+					args: {
+						project_id: 'project-1',
+						document_id: 'doc-2',
+						new_parent_id: 'doc-1',
+						new_position: 2
+					},
+					label: 'Move under Launch plan'
+				},
+				{
+					tool: 'move_document_in_tree',
+					args: {
+						project_id: 'project-1',
+						document_id: 'doc-3',
+						new_parent_id: null,
+						new_position: 0
+					},
+					label: undefined
+				}
+			]);
+		});
+
+		it('drops a move that names its parent only by title or by another field', async () => {
+			const move = (args: Record<string, unknown>) => ({
+				title: `Move ${JSON.stringify(args)}`,
+				operations: [{ tool: 'move_document_in_tree', args }]
+			});
+			const suggestions = await organize([
+				// Would otherwise be replayed as a move to the top level.
+				move({ document_id: 'doc-2', new_parent_title: 'Research' }),
+				move({ document_id: 'doc-2', parent_id: 'doc-1' }),
+				move({ document_id: 'doc-2', new_parent_id: { id: 'doc-1' } }),
+				move({ new_parent_id: 'doc-1' }),
+				move({ document_id: 'doc-3', new_parent_id: 'doc-1' })
+			]);
+
+			expect(suggestions.map((suggestion) => suggestion.operations[0]?.args)).toEqual([
+				{
+					project_id: 'project-1',
+					document_id: 'doc-3',
+					new_parent_id: 'doc-1',
+					new_position: 0
+				}
+			]);
+		});
+
+		it('reports the check as not checked when every proposed change is dropped', async () => {
+			const error = await organize([
+				{
+					title: 'Group under an invented document',
+					operations: [
+						{
+							tool: 'move_document_in_tree',
+							args: { document_id: 'doc-2', new_parent_id: 'doc-invented' }
+						}
+					]
+				},
+				{
+					title: 'Archive instead of moving',
+					operations: [{ tool: 'archive_onto_document', args: { document_id: 'doc-3' } }]
+				}
+			]).catch((thrown: unknown) => thrown);
+
+			// An empty list here would read as "nothing to organize" and the project as tidy.
+			expect(error).toBeInstanceOf(DetectorOutputUnusableError);
+			expect((error as Error).message).toBe(
+				'document organization: none of the 2 proposed changes could be used'
+			);
+		});
+
+		it('still reads as clean when the model proposes no change at all', async () => {
+			expect(await organize([])).toEqual([]);
+			// A wordy "nothing to do", and entries that are not suggestions.
+			expect(
+				await organize([
+					{
+						title: 'Already well organized',
+						rationale: 'No moves needed.',
+						operations: []
+					},
+					{ title: 'No operations key' },
+					null,
+					'not a suggestion'
+				])
+			).toEqual([]);
+		});
 	});
 
 	it('emits drift as an evidence-backed no-op review item', async () => {

@@ -86,7 +86,7 @@ describe('Chat tool schema compatibility', () => {
 		expect(parameters?.properties?.type_key?.default).toBe('task.default');
 	});
 
-	it('publishes the BuildOS web-search defaults and bounded evidence contract', () => {
+	it('publishes only the web-search settings chat honors', () => {
 		const tool = CHAT_TOOL_DEFINITIONS.find(
 			(candidate) => candidate.function?.name === 'web_search'
 		);
@@ -100,7 +100,7 @@ describe('Chat tool schema compatibility', () => {
 			| undefined;
 
 		expect(tool?.function?.description).toContain('Find current public-web sources');
-		expect(tool?.function?.description).toContain('four ranked snippets by default');
+		expect(tool?.function?.description).toContain('four ranked snippets');
 		expect(tool?.function?.description).toContain(
 			'Use web_visit on returned or user-supplied URLs'
 		);
@@ -110,15 +110,15 @@ describe('Chat tool schema compatibility', () => {
 		);
 		expect(tool?.function?.description).not.toContain('using the Tavily API');
 		expect(tool?.function?.description).not.toMatch(/provider synthesis|model lane/i);
-		expect(parameters?.properties?.search_depth?.default).toBe('advanced');
-		expect(parameters?.properties?.max_results).toMatchObject({
-			default: 4,
-			minimum: 1,
-			maximum: 10
-		});
-		expect(parameters?.properties?.include_answer?.default).toBe(false);
-		expect(parameters?.properties?.include_domains?.maxItems).toBe(20);
-		expect(parameters?.properties?.exclude_domains?.maxItems).toBe(20);
+		// Chat fixes depth, result count, and answer mode in the worker, so the
+		// schema offers only what a call can actually change.
+		expect(Object.keys(parameters?.properties ?? {}).sort()).toEqual([
+			'exclude_domains',
+			'include_domains',
+			'query'
+		]);
+		expect(parameters?.properties?.include_domains?.maxItems).toBe(5);
+		expect(parameters?.properties?.exclude_domains?.maxItems).toBe(5);
 	});
 
 	it('publishes the exact create_onto_project schema', () => {

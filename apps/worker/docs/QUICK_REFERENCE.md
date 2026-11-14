@@ -62,22 +62,21 @@ VAPID_SUBJECT=mailto:support@build-os.com
 `/health` and `/api/email-tracking/:trackingId` are public. All other routes
 require `Authorization: Bearer $PRIVATE_RAILWAY_WORKER_TOKEN`.
 
-| Method | Route                             | Purpose                                          |
-| ------ | --------------------------------- | ------------------------------------------------ |
-| GET    | `/health`                         | Service health                                   |
-| POST   | `/classify/ontology`              | Synchronous create-modal ontology classification |
-| POST   | `/queue/brief`                    | Enqueue `generate_daily_brief`                   |
-| POST   | `/queue/chat/classify`            | Enqueue `classify_chat_session`                  |
-| GET    | `/jobs/:jobId`                    | Fetch one queue job                              |
-| GET    | `/users/:userId/jobs`             | List user jobs with optional filters             |
-| GET    | `/queue/stats`                    | Queue stats view                                 |
-| GET    | `/queue/stale-stats`              | Cleanup eligibility report                       |
-| POST   | `/queue/cleanup`                  | Manual queue cleanup                             |
-| GET    | `/api/email-tracking/:trackingId` | Open tracking pixel                              |
-| GET    | `/sms/scheduled/user/:userId`     | List scheduled SMS messages                      |
-| POST   | `/sms/scheduled/:id/cancel`       | Cancel a scheduled SMS and pending queue job     |
-| PATCH  | `/sms/scheduled/:id/update`       | Update scheduled SMS row timing                  |
-| POST   | `/sms/scheduled/:id/regenerate`   | Regenerate scheduled SMS content                 |
+| Method | Route                             | Purpose                                      |
+| ------ | --------------------------------- | -------------------------------------------- |
+| GET    | `/health`                         | Service health                               |
+| POST   | `/queue/brief`                    | Enqueue `generate_daily_brief`               |
+| POST   | `/queue/chat/classify`            | Enqueue `classify_chat_session`              |
+| GET    | `/jobs/:jobId`                    | Fetch one queue job                          |
+| GET    | `/users/:userId/jobs`             | List user jobs with optional filters         |
+| GET    | `/queue/stats`                    | Queue stats view                             |
+| GET    | `/queue/stale-stats`              | Cleanup eligibility report                   |
+| POST   | `/queue/cleanup`                  | Manual queue cleanup                         |
+| GET    | `/api/email-tracking/:trackingId` | Open tracking pixel                          |
+| GET    | `/sms/scheduled/user/:userId`     | List scheduled SMS messages                  |
+| POST   | `/sms/scheduled/:id/cancel`       | Cancel a scheduled SMS and pending queue job |
+| PATCH  | `/sms/scheduled/:id/update`       | Update scheduled SMS row timing              |
+| POST   | `/sms/scheduled/:id/regenerate`   | Regenerate scheduled SMS content             |
 
 ## Active Jobs
 

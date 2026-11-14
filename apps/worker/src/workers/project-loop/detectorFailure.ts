@@ -12,6 +12,8 @@ export type DetectorSkipReason =
 	| 'cost_cap'
 	| 'provider_timeout'
 	| 'provider_error'
+	| 'invalid_response'
+	| 'unusable_output'
 	| 'invalid_language'
 	| 'finder_unavailable';
 
@@ -32,17 +34,55 @@ export class DetectorFinderUnavailableError extends Error {
 }
 
 /**
+ * A lens whose model answered, but none of what it proposed survived sanitizing (invented ids,
+ * tools outside the allowlist, missing targets). It reports as not checked, never as a tidy
+ * project.
+ */
+export class DetectorOutputUnusableError extends Error {
+	constructor(lens: string, proposed: number) {
+		super(
+			`${lens}: none of the ${proposed} proposed change${proposed === 1 ? '' : 's'} could be used`
+		);
+		this.name = 'DetectorOutputUnusableError';
+	}
+}
+
+/**
+ * The safe diagnostic smart-llm leaves on a failed call. `getJSONResponse` rethrows a terminal
+ * failure as a generic Error whose `cause` is `{ llmErrorDiagnostic }`: the original error's
+ * class and HTTP status survive only there, as fixed fields (never as message text).
+ */
+function llmErrorDiagnostic(error: unknown): { category?: unknown; status?: unknown } | null {
+	if (!error || typeof error !== 'object') return null;
+	const diagnostic = (error as { llmErrorDiagnostic?: unknown }).llmErrorDiagnostic;
+	return diagnostic && typeof diagnostic === 'object'
+		? (diagnostic as { category?: unknown; status?: unknown })
+		: null;
+}
+
+/** The model answered, but with nothing usable: unparseable JSON or empty or cut-off content. */
+function isInvalidModelResponse(error: unknown): boolean {
+	return (
+		error instanceof SyntaxError ||
+		error instanceof OpenRouterEmptyContentError ||
+		llmErrorDiagnostic(error)?.category === 'invalid_response'
+	);
+}
+
+/**
  * Detector isolation is intentionally narrow: a provider timeout, transient
- * upstream response, or exhausted language retry may degrade a single lens.
- * Cancellation, malformed JSON, empty content, database failures, and local
- * invariants must still stop the run.
+ * upstream response, exhausted language retry, or an answer that is still
+ * malformed JSON or empty after the repair retries may degrade a single lens
+ * (it reports as not checked; the other lenses' output is kept).
+ * Cancellation, database failures, and local invariants must still stop the run.
  */
 export function classifyDetectorFailure(error: unknown): DetectorSkipReason | null {
 	if (error instanceof LLMRequestCancelledError) return null;
 	if (error instanceof DetectorFinderUnavailableError) return 'finder_unavailable';
+	if (error instanceof DetectorOutputUnusableError) return 'unusable_output';
 	if (error instanceof ProjectReviewLanguageError) return 'invalid_language';
 	if (error instanceof LLMRequestTimeoutError) return 'provider_timeout';
-	if (error instanceof SyntaxError || error instanceof OpenRouterEmptyContentError) return null;
+	if (isInvalidModelResponse(error)) return 'invalid_response';
 
 	const directMetadata = parseOpenRouterErrorMetadata(error);
 	const cause =
@@ -51,10 +91,11 @@ export function classifyDetectorFailure(error: unknown): DetectorSkipReason | nu
 		directMetadata.status !== undefined || isOpenRouterProviderError(error) ? error : cause;
 	if (candidate instanceof LLMRequestCancelledError) return null;
 	if (candidate instanceof LLMRequestTimeoutError) return 'provider_timeout';
-	if (candidate instanceof SyntaxError || candidate instanceof OpenRouterEmptyContentError) {
-		return null;
-	}
-	const { status } = parseOpenRouterErrorMetadata(candidate);
+	if (isInvalidModelResponse(candidate)) return 'invalid_response';
+	const diagnosticStatus = llmErrorDiagnostic(candidate)?.status;
+	const status =
+		parseOpenRouterErrorMetadata(candidate).status ??
+		(typeof diagnosticStatus === 'number' ? diagnosticStatus : undefined);
 	if (
 		status === 408 ||
 		status === 429 ||

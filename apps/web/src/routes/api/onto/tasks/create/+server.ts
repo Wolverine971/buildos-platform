@@ -1,7 +1,6 @@
 // apps/web/src/routes/api/onto/tasks/create/+server.ts
 import type { RequestHandler } from './$types';
 import type { Database, Json } from '@buildos/shared-types';
-import { dev } from '$app/environment';
 import { ApiResponse } from '$lib/utils/api-response';
 import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
@@ -11,7 +10,6 @@ import {
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
 import { normalizeTaskStateInput } from '../../shared/task-state';
-import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
 import { TaskEventSyncService } from '$lib/services/ontology/task-event-sync.service';
 import {
 	AutoOrganizeError,
@@ -96,8 +94,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			props,
 			parent,
 			parents,
-			connections,
-			classificationSource
+			connections
 		} = parseTaskCreateBody(body);
 
 		const normalizedProjectId = normalizeRequiredString(project_id, 'Project ID');
@@ -477,16 +474,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			getChangeSourceFromRequest(request),
 			chatSessionId
 		);
-		if (classificationSource === 'create_modal') {
-			void classifyOntologyEntity({
-				entityType: 'task',
-				entityId: task.id,
-				userId: user.id,
-				classificationSource: 'create_modal'
-			}).catch((err) => {
-				if (dev) console.warn('[Task Create] Classification failed:', err);
-			});
-		}
 		let taskWithAssignees = { ...task, assignees: [] as unknown[] };
 		try {
 			const assigneeMap = await fetchTaskAssigneesMap({ supabase, taskIds: [task.id] });

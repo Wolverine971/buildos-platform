@@ -8,7 +8,6 @@ import { createRequestCorrelationId, runWithRequestCorrelation } from './lib/que
 import type { WorkerEventLoopLagMonitor } from './lib/workerOperationalHealth';
 import { jsonParseErrorHandler } from './middleware/jsonError';
 import { registerHealthRoute } from './routes/health';
-import { registerOntologyClassificationRoute } from './routes/ontology-classification';
 import { registerBriefQueueRoute } from './routes/queue/brief';
 import { registerGeneralEnqueueRoutes } from './routes/queue/enqueue';
 import { registerQueueInspectionRoutes } from './routes/queue/inspection';
@@ -72,7 +71,6 @@ export function createGeneralWorkerApp({
 		eventLoopLagMonitor,
 		getWorkerHealth: readWorkerHealth
 	});
-	registerOntologyClassificationRoute(app);
 	registerBriefQueueRoute(app, queue);
 	registerGeneralEnqueueRoutes(app, queue);
 	registerQueueInspectionRoutes(app, queue);

@@ -319,6 +319,62 @@ describe('undoAutoAppliedCleanup', () => {
 		expect(await undo(supabase)).toMatchObject({ ok: true, undoneSteps: 1 });
 	});
 
+	it('undoes a partly applied change through the steps the worker recorded as still in effect', async () => {
+		// Audit F6: a later step failed and the worker could not take the earlier one back, so
+		// it recorded the row as applied with an Undo for only the move that is in effect.
+		const OTHER_DOC = '00000000-0000-4000-8000-000000000102';
+		const supabase = fakeSupabase({
+			suggestion: appliedRow(
+				[
+					{
+						tool: 'move_document_in_tree',
+						args: {
+							project_id: P,
+							document_id: DOC,
+							new_parent_id: FOLDER,
+							new_position: 0,
+							expected_parent_id: ARCHIVE
+						}
+					}
+				],
+				{
+					kind: 'doc_org',
+					result: {
+						ok: false,
+						applied_via: 'auto',
+						headline: 'Move 2 documents into "Archive" (partly done: 1 of 2 steps)',
+						applied_operations: 1,
+						partial_failure: true,
+						errors: [{ tool: 'move_document_in_tree', error: 'tree write refused' }],
+						rollback: { attempted: true, undone_operations: 0, error: 'still refused' }
+					}
+				}
+			),
+			docStructure: {
+				version: 6,
+				// The second document never moved; nothing in the stored undo names it.
+				root: [
+					{ id: FOLDER, children: [{ id: OTHER_DOC }] },
+					{ id: ARCHIVE, children: [{ id: DOC }] }
+				]
+			}
+		});
+
+		expect(await undo(supabase)).toMatchObject({ ok: true, undoneSteps: 1 });
+		expect(mocks.replayLoopOperations).toHaveBeenCalledTimes(1);
+		expect(mocks.replayLoopOperations.mock.calls[0]?.[0]?.operations).toEqual([
+			{
+				tool: 'move_document_in_tree',
+				args: { project_id: P, document_id: DOC, new_parent_id: FOLDER, new_position: 0 }
+			}
+		]);
+		expect(supabase.state.suggestion).toMatchObject({
+			status: 'rejected',
+			user_feedback: { reason: UNDO_AUTO_APPLY_REASON },
+			result: { partial_failure: true, undone_at: '2026-10-29T12:00:00.000Z' }
+		});
+	});
+
 	it('keeps the change applied when the first step fails, so Undo stays on the card', async () => {
 		mocks.restoreDocumentInTree.mockRejectedValueOnce(
 			new Error('Document version conflict: the document changed before restore')

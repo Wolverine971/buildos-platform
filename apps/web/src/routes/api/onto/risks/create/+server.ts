@@ -32,7 +32,6 @@
  * - Project ownership verification
  */
 import type { RequestHandler } from './$types';
-import { dev } from '$app/environment';
 import { ApiResponse } from '$lib/utils/api-response';
 import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
@@ -42,7 +41,6 @@ import {
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
-import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
 import {
 	AutoOrganizeError,
 	autoOrganizeConnections,
@@ -83,7 +81,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			parents,
 			connections
 		} = body;
-		const classificationSource = body?.classification_source ?? body?.classificationSource;
 
 		// Validate required fields
 		if (!project_id) {
@@ -255,17 +252,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			getChangeSourceFromRequest(request),
 			chatSessionId
 		);
-
-		if (classificationSource === 'create_modal') {
-			void classifyOntologyEntity({
-				entityType: 'risk',
-				entityId: risk.id,
-				userId: user.id,
-				classificationSource: 'create_modal'
-			}).catch((err) => {
-				if (dev) console.warn('[Risk Create] Classification failed:', err);
-			});
-		}
 
 		return ApiResponse.created({ risk });
 	} catch (error) {

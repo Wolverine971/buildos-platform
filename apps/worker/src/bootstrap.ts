@@ -4,7 +4,12 @@ import type { Server } from 'node:http';
 import { createGeneralWorkerApp } from './app';
 import { logProjectLoopProviderConfiguration } from './config/projectLoops';
 import { logQueueConfiguration } from './config/queueConfig';
-import { describeScheduledWorkGate, resolveScheduledWorkGate } from './config/scheduledWork';
+import {
+	describeQueueConsumerGate,
+	describeScheduledWorkGate,
+	resolveQueueConsumerGate,
+	resolveScheduledWorkGate
+} from './config/scheduledWork';
 import { logWorkerError } from './lib/errorLogger';
 import { shutdownPostHog } from './lib/posthog';
 import { WorkerEventLoopLagMonitor } from './lib/workerOperationalHealth';
@@ -26,6 +31,8 @@ export async function startGeneralWorkerProcess(): Promise<void> {
 	logStartupConfiguration();
 	const scheduledWork = resolveScheduledWorkGate(process.env);
 	console.log(describeScheduledWorkGate(scheduledWork));
+	const queueConsumers = resolveQueueConsumerGate(process.env);
+	console.log(describeQueueConsumerGate(queueConsumers));
 
 	const port = parsePort(process.env.PORT);
 	const eventLoopLagMonitor = new WorkerEventLoopLagMonitor();
@@ -110,7 +117,10 @@ export async function startGeneralWorkerProcess(): Promise<void> {
 	process.on('SIGINT', () => void gracefulShutdown('SIGINT'));
 
 	try {
-		await startWorker({ scheduledWork: scheduledWork.enabled });
+		await startWorker({
+			scheduledWork: scheduledWork.enabled,
+			queueConsumers: queueConsumers.enabled
+		});
 		if (scheduledWork.enabled) startScheduler();
 		server = app.listen(port, '0.0.0.0', () => {
 			console.log(`🚀 API server running on port ${port}`);

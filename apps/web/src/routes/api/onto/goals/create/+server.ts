@@ -32,7 +32,6 @@
  */
 import type { RequestHandler } from './$types';
 import type { Database, Json } from '@buildos/shared-types';
-import { dev } from '$app/environment';
 import { ApiResponse } from '$lib/utils/api-response';
 import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
@@ -42,7 +41,6 @@ import {
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
-import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
 import {
 	notifyEntityMentionsAdded,
 	resolveEntityMentionUserIds
@@ -94,7 +92,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			props,
 			connections
 		} = body;
-		const classificationSource = body?.classification_source ?? body?.classificationSource;
 
 		const normalizedProjectId = normalizeRequiredString(project_id, 'Project ID');
 		if (!normalizedProjectId.ok) {
@@ -323,17 +320,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			getChangeSourceFromRequest(request),
 			chatSessionId
 		);
-
-		if (classificationSource === 'create_modal') {
-			void classifyOntologyEntity({
-				entityType: 'goal',
-				entityId: createdGoal.id,
-				userId: user.id,
-				classificationSource: 'create_modal'
-			}).catch((err) => {
-				if (dev) console.warn('[Goal Create] Classification failed:', err);
-			});
-		}
 
 		return ApiResponse.created({ goal: createdGoal });
 	} catch (error) {

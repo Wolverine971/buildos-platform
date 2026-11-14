@@ -40,10 +40,6 @@ vi.mock('$lib/services/ontology/auto-organizer.service', () => ({
 	toParentRefs: vi.fn(() => [])
 }));
 
-vi.mock('$lib/server/ontology-classification.service', () => ({
-	classifyOntologyEntity: vi.fn()
-}));
-
 vi.mock('../../shared/error-logging', () => ({
 	logOntologyApiError: vi.fn()
 }));

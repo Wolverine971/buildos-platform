@@ -2041,10 +2041,6 @@
 				}
 			}
 
-			if (wasCreating) {
-				payload.classification_source = 'create_modal';
-			}
-
 			let request: Response;
 
 			if (requestedDocumentId) {

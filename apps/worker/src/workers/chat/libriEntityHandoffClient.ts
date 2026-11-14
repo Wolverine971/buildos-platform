@@ -122,6 +122,40 @@ function buildApiUrl(baseUrl: string, endpointPath = ENTITY_HANDOFF_PATH): strin
 	}
 }
 
+type ResolvedHandoffConfig =
+	| { configured: true; url: string; apiKey: string }
+	| { configured: false; message: string };
+
+/** The one place that decides whether a hand-off can be sent, and why not. */
+function resolveHandoffConfig(env: Record<string, string | undefined>): ResolvedHandoffConfig {
+	const config = readConfig(env);
+	if (!config.enabled) {
+		return {
+			configured: false,
+			message: 'Libri integration is disabled for this BuildOS environment.'
+		};
+	}
+	if (!config.apiBaseUrl || !config.apiKey) {
+		return {
+			configured: false,
+			message: 'Libri is not configured for this BuildOS environment.'
+		};
+	}
+	const url = buildApiUrl(config.apiBaseUrl);
+	if (!url) return { configured: false, message: 'Libri API base URL is invalid.' };
+	return { configured: true, url, apiKey: config.apiKey };
+}
+
+/**
+ * Whether a session's library candidates would actually be sent. When this is false the
+ * hand-off answers `not_configured`, so callers need not extract candidates at all.
+ */
+export function isLibriEntityHandoffConfigured(
+	env: Record<string, string | undefined> = process.env
+): boolean {
+	return resolveHandoffConfig(env).configured;
+}
+
 function entityHashInput(entity: ExtractedLibriEntity): Record<string, unknown> {
 	return {
 		entity_type: entity.entity_type,
@@ -347,36 +381,18 @@ export async function handoffLibriSessionEntities(
 	const now = options.now ?? (() => new Date());
 	const attemptedAt = now().toISOString();
 	const idempotencyKey = buildLibriHandoffIdempotencyKey(input.sessionId, entities);
-	const config = readConfig(options.env ?? process.env);
+	const config = resolveHandoffConfig(options.env ?? process.env);
 
-	if (!config.enabled) {
+	if (!config.configured) {
 		return buildConfigurationStatus({
 			entities,
 			idempotencyKey,
 			attemptedAt,
-			message: 'Libri integration is disabled for this BuildOS environment.'
+			message: config.message
 		});
 	}
 
-	if (!config.apiBaseUrl || !config.apiKey) {
-		return buildConfigurationStatus({
-			entities,
-			idempotencyKey,
-			attemptedAt,
-			message: 'Libri is not configured for this BuildOS environment.'
-		});
-	}
-
-	const url = buildApiUrl(config.apiBaseUrl);
-	if (!url) {
-		return buildConfigurationStatus({
-			entities,
-			idempotencyKey,
-			attemptedAt,
-			message: 'Libri API base URL is invalid.'
-		});
-	}
-
+	const { url } = config;
 	const fetcher = options.fetchFn ?? fetch;
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? DEFAULT_TIMEOUT_MS);

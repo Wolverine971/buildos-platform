@@ -28,6 +28,7 @@ describe('empty reply repair', () => {
 		expect(repair).not.toBeNull();
 		expect(repair!.tools).toBe(original.tools);
 		expect(repair!.passRole).toBe('repair');
+		expect(repair!.repairReason).toEqual({ kind: 'empty_reply' });
 		expect(repair!.emptyReplyRepairAttempted).toBe(true);
 		expect(repair!.reasoningEffort).toBe('none');
 		expect(repair!.logicalProviderRound).toBe(original.logicalProviderRound + 1);
@@ -128,6 +129,11 @@ describe('agentic chat surface repair guidance', () => {
 			MUTATION_TOOL_NAME,
 			SECOND_MUTATION_TOOL_NAME
 		]);
+		// The usage log can say which tools the surface was missing.
+		expect(repair?.repairReason).toEqual({
+			kind: 'tool_not_on_surface',
+			tools: [MUTATION_TOOL_NAME, SECOND_MUTATION_TOOL_NAME]
+		});
 		// Plural rejection phrasing, de-duplicated and sorted.
 		expect(instruction).toContain(
 			`${MUTATION_TOOL_NAME}, ${SECOND_MUTATION_TOOL_NAME} are not callable in this pass and the calls were rejected without execution.`

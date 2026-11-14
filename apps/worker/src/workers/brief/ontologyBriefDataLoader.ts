@@ -1446,10 +1446,15 @@ function formatMilestoneDueDistance(daysAway: number): string {
 	return `${Math.abs(daysAway)}d overdue`;
 }
 
+/**
+ * `stable` swaps the day count for upcoming / today / overdue: the same milestone
+ * then reads the same every day until it is due or late (the write-up fingerprint).
+ */
 function formatMilestoneForBrief(
 	milestone: OntoMilestone,
 	briefDate: string,
-	timezone: string
+	timezone: string,
+	options: { stable?: boolean } = {}
 ): string | null {
 	if (!milestone.due_at) return milestone.title || null;
 
@@ -1461,8 +1466,53 @@ function formatMilestoneForBrief(
 	const dueDay = parseISO(`${dueDateStr}T12:00:00`);
 	const daysAway = differenceInDays(dueDay, today);
 	const dueLabel = formatInTimeZone(dueDate, timezone, 'MMM d');
+	const distance = options.stable
+		? daysAway < 0
+			? 'overdue'
+			: daysAway === 0
+				? 'today'
+				: 'upcoming'
+		: formatMilestoneDueDistance(daysAway);
 
-	return `${milestone.title} — due ${dueLabel} (${formatMilestoneDueDistance(daysAway)})`;
+	return `${milestone.title} — due ${dueLabel} (${distance})`;
+}
+
+/**
+ * Newest created / updated / completed stamp across everything loaded for a project.
+ * Activity-log rows are left out on purpose: they are a 24-hour window, so counting
+ * them would move this stamp the day after a change with nothing new having happened.
+ */
+export function getProjectLastChangedAt(
+	data: Pick<
+		OntoProjectWithRelations,
+		'tasks' | 'goals' | 'plans' | 'milestones' | 'risks' | 'documents' | 'requirements'
+	>
+): string | null {
+	let latestMs = Number.NEGATIVE_INFINITY;
+	const consider = (entity: {
+		updated_at?: string | null;
+		created_at?: string | null;
+		completed_at?: string | null;
+	}) => {
+		for (const stamp of [entity.updated_at, entity.created_at, entity.completed_at]) {
+			const parsed = parseMaybeDate(stamp);
+			if (parsed && parsed.getTime() > latestMs) latestMs = parsed.getTime();
+		}
+	};
+
+	for (const entities of [
+		data.tasks,
+		data.goals,
+		data.plans,
+		data.milestones,
+		data.risks,
+		data.documents,
+		data.requirements
+	]) {
+		for (const entity of entities ?? []) consider(entity);
+	}
+
+	return Number.isFinite(latestMs) ? new Date(latestMs).toISOString() : null;
 }
 
 /**
@@ -2904,6 +2954,7 @@ export class OntologyBriefDataLoader {
 				const projectOverdueTasks = overdueTasksByProject.get(data.project.id) ?? [];
 				const projectUpcomingAll = upcomingTasksByProject.get(data.project.id) ?? [];
 				const projectBlockedTasks = blockedTasksByProject.get(data.project.id) ?? [];
+				const projectOpenTasks = data.tasks.filter((t) => !isTaskCompleteOrCancelled(t));
 				const projectRecentlyUpdatedAll =
 					recentlyUpdatedByProject.get(data.project.id) ?? [];
 				const projectCalendarToday = calendarTodayByProject.get(data.project.id) ?? [];
@@ -2943,12 +2994,19 @@ export class OntologyBriefDataLoader {
 					nextMilestone: nextMilestone
 						? formatMilestoneForBrief(nextMilestone, briefDate, timezone)
 						: null,
+					nextMilestoneStable: nextMilestone
+						? formatMilestoneForBrief(nextMilestone, briefDate, timezone, {
+								stable: true
+							})
+						: null,
+					lastChangedAt: getProjectLastChangedAt(data),
 					activePlan,
 					calendarToday: projectCalendarToday,
 					calendarUpcoming: projectCalendarUpcoming,
 					todaysTasks: projectTodaysTasks,
 					overdueTasks: projectOverdueTasks,
 					thisWeekTasks: [...projectTodaysTasks, ...projectUpcomingAll],
+					openTaskCount: projectOpenTasks.length,
 					blockedTasks: projectBlockedTasks,
 					unblockingTasks: unblockingTasks.map((u) => u.task),
 					recentlyUpdatedTasks: projectRecentlyUpdated,
@@ -2969,6 +3027,7 @@ export class OntologyBriefDataLoader {
 			staleInProgressTasks: categorizedTasks.staleInProgressTasks,
 			highPriorityCount,
 			recentUpdates: allRecentUpdates,
+			recentlyCompletedTasks: categorizedTasks.recentlyCompleted,
 			recentlyPausedProjects,
 			tasksByWorkMode,
 			projects,

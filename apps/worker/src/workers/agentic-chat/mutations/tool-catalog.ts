@@ -902,7 +902,6 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			'probability',
 			'state_key',
 			'content',
-			'description',
 			'mitigation_strategy'
 		]
 	},
@@ -940,7 +939,6 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			'probability',
 			'state_key',
 			'content',
-			'description',
 			'mitigation_strategy',
 			'owner',
 			'props'

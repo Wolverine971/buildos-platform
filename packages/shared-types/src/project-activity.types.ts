@@ -233,12 +233,6 @@ export interface NextStepGenerationContext {
 	}>;
 	/** Recent activity on the project */
 	recentActivity?: ProjectLogEntry[];
-	/** What was discussed/changed in the current session */
-	sessionChanges?: {
-		created: Array<{ type: ProjectLogEntityType; name: string; id: string }>;
-		updated: Array<{ type: ProjectLogEntityType; name: string; id: string }>;
-		deleted: Array<{ type: ProjectLogEntityType; name: string; id: string }>;
-	};
 	/** Previous next step (for continuity) */
 	previousNextStep?: {
 		short: string | null;

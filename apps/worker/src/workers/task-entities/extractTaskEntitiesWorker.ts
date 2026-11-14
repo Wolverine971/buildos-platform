@@ -247,6 +247,9 @@ export async function processExtractTaskEntitiesJob(
 				// spent ~1,700 reasoning tokens and returned empty or cut-off JSON on 5 of 10.
 				reasoning: { enabled: false },
 				maxTokens: TASK_ENTITY_MAX_TOKENS,
+				// A real call answers in about 2 s. Without this the 120 s default
+				// applied, and one hung call held a worker slot for the full two minutes.
+				timeoutMs: 30_000,
 				operationType: TASK_ENTITY_OPERATION,
 				projectId,
 				signal: job.signal,

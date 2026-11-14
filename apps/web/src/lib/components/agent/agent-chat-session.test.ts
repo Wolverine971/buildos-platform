@@ -14,7 +14,8 @@ import {
 	prewarmAgentContext,
 	probeActiveTurnRun,
 	syncBrowserTimezone,
-	warmAgentChatStreamTransport
+	warmAgentChatStreamTransport,
+	markUndoneDocumentChanges
 } from './agent-chat-session';
 
 function makeSession(overrides: Partial<ChatSession> = {}): ChatSession {
@@ -1488,5 +1489,45 @@ describe('syncBrowserTimezone', () => {
 
 		expect(second).toBe(false);
 		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('markUndoneDocumentChanges', () => {
+	const card = (documentId: string, beforeHash: string, afterHash: string) => ({
+		id: `${documentId}:${afterHash}`,
+		documentId,
+		projectId: 'p1',
+		title: 'Doc',
+		linesAdded: 1,
+		linesRemoved: 0,
+		hunks: [],
+		hunksTruncated: false,
+		editCount: 1,
+		beforeHash,
+		afterHash,
+		revertPatches: null
+	});
+	const message = (changes: unknown[]) =>
+		({
+			id: 'document-changes-1',
+			type: 'document_changes',
+			content: '',
+			data: { changes },
+			timestamp: new Date(0)
+		}) as never;
+
+	it('marks a card undone when the document is back at its pre-edit hash', () => {
+		const [marked] = markUndoneDocumentChanges(
+			[message([card('d1', 'before-1', 'after-1'), card('d2', 'before-2', 'after-2')])],
+			{ d1: 'before-1', d2: 'after-2' }
+		);
+		const changes = (marked!.data as { changes: Array<{ undone?: boolean }> }).changes;
+		expect(changes.map((change) => change.undone === true)).toEqual([true, false]);
+	});
+
+	it('leaves cards alone when the document was edited again or is unknown', () => {
+		const input = [message([card('d1', 'before-1', 'after-1')])];
+		expect(markUndoneDocumentChanges(input, { d1: 'something-else' })).toEqual(input);
+		expect(markUndoneDocumentChanges(input, {})).toEqual(input);
 	});
 });

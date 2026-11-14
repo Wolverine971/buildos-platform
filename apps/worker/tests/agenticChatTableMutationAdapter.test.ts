@@ -1495,7 +1495,8 @@ describe('table row update_onto_project', () => {
 				name: 'Renamed project',
 				description: '  Updated context  ',
 				state_key: 'active',
-				start_at: '2026-08-11T00:00:00.000Z',
+				// A bare day reaches the gateway untouched, to be resolved as the user's day.
+				start_at: '2026-08-11',
 				end_at: null,
 				props: { color: 'blue' }
 			},

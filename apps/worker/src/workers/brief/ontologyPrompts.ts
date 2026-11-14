@@ -24,14 +24,28 @@ import { formatOthersActivityForPrompt } from './othersActivityBriefSection.js';
 interface TaskPromptContext {
 	briefDate: string;
 	timezone: string;
+	/**
+	 * Fingerprint rendering only. Wording that moves every day with nothing having
+	 * changed ("3 days overdue" becomes "4 days overdue") is replaced by the state it
+	 * describes (today / overdue), so the text differs only when that state does.
+	 */
+	stableDates?: boolean;
 }
 
-function formatGoalTarget(goal: GoalProgress): string | null {
+/** `stableDates`: see `TaskPromptContext.stableDates`. */
+function formatGoalTarget(goal: GoalProgress, stableDates = false): string | null {
 	if (!goal.targetDate) return null;
 
 	const formattedDate = format(parseISO(`${goal.targetDate}T00:00:00`), 'MMM d, yyyy');
 	if (goal.targetDaysAway === null) {
 		return `Target: ${formattedDate}`;
+	}
+
+	if (stableDates) {
+		// `status` (on_track / at_risk / behind) is derived from the days left, so it
+		// carries the within-a-week and overdue transitions; "today" is the one it misses.
+		const today = goal.targetDaysAway === 0 ? ' (today)' : '';
+		return `Target: ${formattedDate}${today} [${goal.status}]`;
 	}
 
 	if (goal.targetDaysAway === 0) {
@@ -47,8 +61,8 @@ function formatGoalTarget(goal: GoalProgress): string | null {
 	return `Target: ${formattedDate} (${overdueDays} ${overdueLabel} overdue)`;
 }
 
-function formatGoalProgress(goal: GoalProgress): string {
-	const targetSummary = formatGoalTarget(goal);
+function formatGoalProgress(goal: GoalProgress, stableDates = false): string {
+	const targetSummary = formatGoalTarget(goal, stableDates);
 	const taskProgress =
 		goal.totalTasks > 0 ? `${goal.completedTasks}/${goal.totalTasks} tasks done` : null;
 	const details = [targetSummary, taskProgress].filter(Boolean).join('; ');
@@ -72,6 +86,14 @@ function formatTaskDateForPrompt(
 
 	const localDate = formatInTimeZone(parsed, context.timezone, 'yyyy-MM-dd');
 	const displayDate = formatInTimeZone(parsed, context.timezone, 'MMM d');
+
+	if (context.stableDates) {
+		if (localDate === context.briefDate) return `${label} ${displayDate} — today`;
+		if (label === 'due' && localDate < context.briefDate) {
+			return `due ${displayDate} — overdue`;
+		}
+		return `${label} ${displayDate}`;
+	}
 
 	if (label === 'due' && localDate < context.briefDate) {
 		const overdueDays = differenceInDays(
@@ -217,6 +239,11 @@ export interface OntologyAnalysisPromptInput {
 	holidays?: string[];
 	projectBriefContents?: string[];
 	yesterdayPlan?: YesterdayPlanItem[];
+	/**
+	 * Executive summary only: the "Start Here" actions the brief prints right under
+	 * the summary, in order. The summary's first action must be one of them.
+	 */
+	priorityActions?: string[];
 }
 
 export interface YesterdayPlanItem {
@@ -225,6 +252,9 @@ export interface YesterdayPlanItem {
 	taskTitle: string | null;
 	projectName: string | null;
 }
+
+/** How many of today's tasks the analysis prompt lists before "... and N more". */
+const ANALYSIS_TODAY_TASK_LIMIT = 15;
 
 export class OntologyAnalysisPrompt {
 	static getSystemPrompt(): string {
@@ -257,7 +287,6 @@ export class OntologyAnalysisPrompt {
 - Reference specific projects and tasks by name
 - No filler paragraphs—every sentence earns its place
 - Skip sections if you have nothing meaningful to say
-- Don't repeat what's in the executive summary
 
 Never output JSON.`;
 	}
@@ -265,6 +294,17 @@ Never output JSON.`;
 	static buildUserPrompt(input: OntologyAnalysisPromptInput): string {
 		const { date, timezone, briefData, holidays, projectBriefContents } = input;
 		const recentlyPausedProjects = briefData.recentlyPausedProjects ?? [];
+		// Every task line names its project: the model is told to reference projects
+		// and tasks by name, and without the name it had to guess which project a task
+		// belonged to.
+		const projectNames = new Map<string, string>();
+		for (const project of briefData.projects) {
+			projectNames.set(project.project.id, project.project.name);
+		}
+		if (briefData.workspace) projectNames.set(briefData.workspace.projectId, 'Workspace');
+		const taskContext: TaskPromptContext = { briefDate: date, timezone };
+		const formatTaskLine = (task: OntoTask): string =>
+			formatTaskForPrompt(task, projectNames.get(task.project_id), taskContext);
 
 		let prompt = `Generate a goal-oriented daily brief analysis.
 
@@ -319,29 +359,18 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 			prompt += '\n';
 		}
 
-		// Today's Tasks by Work Mode
+		// Today's tasks, listed directly. Grouping by work mode dropped every task
+		// without a work type (about half of all open tasks in prod), so the prompt said
+		// "Tasks Today: N" and listed fewer. The work mode still shows on each line.
 		prompt += `## Today's Tasks\n`;
 		if (briefData.todaysTasks.length === 0) {
 			prompt += `No tasks scheduled for today.\n`;
 		} else {
-			const tasksByMode = briefData.tasksByWorkMode;
-			for (const [mode, tasks] of Object.entries(tasksByMode)) {
-				const modeTasks = tasks.filter((t) =>
-					briefData.todaysTasks.some((tt) => tt.id === t.id)
-				);
-				if (modeTasks.length > 0) {
-					prompt += `\n### ${mode.charAt(0).toUpperCase() + mode.slice(1)} Tasks\n`;
-					for (const task of modeTasks.slice(0, 3)) {
-						prompt +=
-							formatTaskForPrompt(task, undefined, {
-								briefDate: date,
-								timezone
-							}) + '\n';
-					}
-					if (modeTasks.length > 3) {
-						prompt += `... and ${modeTasks.length - 3} more\n`;
-					}
-				}
+			for (const task of briefData.todaysTasks.slice(0, ANALYSIS_TODAY_TASK_LIMIT)) {
+				prompt += formatTaskLine(task) + '\n';
+			}
+			if (briefData.todaysTasks.length > ANALYSIS_TODAY_TASK_LIMIT) {
+				prompt += `... and ${briefData.todaysTasks.length - ANALYSIS_TODAY_TASK_LIMIT} more\n`;
 			}
 		}
 		prompt += '\n';
@@ -351,8 +380,7 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 			prompt += `## Recently Updated Tasks (Last 7 Days)\n`;
 			prompt += `*Tasks with recent activity - ordered by update time*\n\n`;
 			for (const task of briefData.recentlyUpdatedTasks.slice(0, 10)) {
-				prompt +=
-					formatTaskForPrompt(task, undefined, { briefDate: date, timezone }) + '\n';
+				prompt += formatTaskLine(task) + '\n';
 			}
 			if (briefData.recentlyUpdatedTasks.length > 10) {
 				prompt += `... and ${briefData.recentlyUpdatedTasks.length - 10} more\n`;
@@ -365,8 +393,7 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 			prompt += `## Upcoming Tasks (Next 7 Days)\n`;
 			prompt += `*Tasks with due dates or start dates coming up - deduplicated from recent updates*\n\n`;
 			for (const task of briefData.upcomingTasks.slice(0, 5)) {
-				prompt +=
-					formatTaskForPrompt(task, undefined, { briefDate: date, timezone }) + '\n';
+				prompt += formatTaskLine(task) + '\n';
 			}
 			if (briefData.upcomingTasks.length > 5) {
 				prompt += `... and ${briefData.upcomingTasks.length - 5} more\n`;
@@ -378,8 +405,7 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 		if (briefData.blockedTasks.length > 0) {
 			prompt += `## Blocked Tasks\n`;
 			for (const task of briefData.blockedTasks.slice(0, 5)) {
-				prompt +=
-					formatTaskForPrompt(task, undefined, { briefDate: date, timezone }) + '\n';
+				prompt += formatTaskLine(task) + '\n';
 			}
 			prompt += '\n';
 		}
@@ -388,8 +414,7 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 		if (briefData.overdueTasks.length > 0) {
 			prompt += `## Overdue Tasks\n`;
 			for (const task of briefData.overdueTasks.slice(0, 5)) {
-				prompt +=
-					formatTaskForPrompt(task, undefined, { briefDate: date, timezone }) + '\n';
+				prompt += formatTaskLine(task) + '\n';
 			}
 			prompt += '\n';
 		}
@@ -526,8 +551,19 @@ Do NOT include a heading—start directly with content.
 	}
 
 	static buildUserPrompt(input: OntologyAnalysisPromptInput): string {
-		const { date, timezone, briefData, holidays, projectBriefContents, yesterdayPlan } = input;
+		const {
+			date,
+			timezone,
+			briefData,
+			holidays,
+			projectBriefContents,
+			yesterdayPlan,
+			priorityActions
+		} = input;
 		const recentlyPausedProjects = briefData.recentlyPausedProjects ?? [];
+		const startHereActions = (priorityActions ?? [])
+			.map((action) => action.trim())
+			.filter((action) => action.length > 0);
 
 		// Calculate aggregate stats
 		const activeGoals = briefData.goals.filter(
@@ -656,9 +692,24 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 			prompt += '\n';
 		}
 
+		// The brief prints this same list under "Start Here", directly below the
+		// summary. Without it the summary picked its own first action and the two
+		// disagreed.
+		if (startHereActions.length > 0) {
+			prompt += `\n## Start Here List\n`;
+			prompt += `The brief prints this list under "Start Here", right below your summary. The first thing you tell the user to do must be one of these items, named the way it is written here. Do not open with an action that is not on this list.\n`;
+			startHereActions.forEach((action, index) => {
+				prompt += `${index + 1}. ${action}\n`;
+			});
+		}
+
+		const startHereRule =
+			startHereActions.length > 0
+				? ' That ONE thing must come from the Start Here List above.'
+				: '';
 		prompt += `
 Write a 150-word executive summary following the system prompt structure.
-Lead with the verdict ("Loaded day" / "Light day" / "Blockers first"), then the ONE thing to start with.
+Lead with the verdict ("Loaded day" / "Light day" / "Blockers first"), then the ONE thing to start with.${startHereRule}
 Use actual project/task names from the briefs above. Be scannable—busy person, 30 seconds.`;
 
 		return prompt;
@@ -675,6 +726,211 @@ export interface ProjectBriefPromptInput {
 	project: ProjectBriefData;
 }
 
+/**
+ * The project write-up's user prompt. `fingerprint` renders the same inputs so the
+ * text reads the same on two different days unless something really changed:
+ * - the date line is left out;
+ * - day counts ("3 days overdue", "12d") become the state they describe (today /
+ *   overdue / upcoming), so a task or goal that turns due or late still changes it;
+ * - the rolling "Recent Changes" and "Recently Updated" lists, which shrink as items
+ *   age out, are replaced by the project's last-change stamp and open-task count;
+ * - "Upcoming" lists every task due this week, because the prompt's own list leaves
+ *   out whatever "Recently Updated" already shows.
+ * Everything else is shared with the real prompt, so a section added here is covered
+ * by the fingerprint without further work.
+ */
+function renderProjectBriefUserPrompt(
+	input: ProjectBriefPromptInput,
+	fingerprint: boolean
+): string {
+	const { date, timezone, project } = input;
+	const taskContext: TaskPromptContext = { briefDate: date, timezone, stableDates: fingerprint };
+	const taskLine = (task: OntoTask): string => formatTaskForPrompt(task, undefined, taskContext);
+	// Hand-built project data (tests, scripts) may carry no stamp; the rolling lists
+	// are then the only record of recent change, so the fingerprint keeps them.
+	const useChangeStamp = fingerprint && project.lastChangedAt !== undefined;
+
+	let prompt = `Generate a project brief for: ${project.project.name}
+
+${fingerprint ? '' : `Date: ${date}\n`}Timezone: ${timezone}
+
+## Project Info
+- Project ID: ${project.project.id}
+- State: ${project.project.state_key}
+- Type: ${project.project.type_key}
+${project.project.description ? `- Description: ${project.project.description}` : ''}
+`;
+
+	if (project.startHere) {
+		prompt += `\n## Project Start Here\n`;
+		prompt += `Document: ${project.startHere.title} [id: ${project.startHere.documentId}]\n`;
+		if (project.startHere.updatedAt) {
+			prompt += `Updated: ${project.startHere.updatedAt}\n`;
+		}
+		if (project.startHere.truncated) {
+			prompt += `Trimmed to fit; use it for orientation only.\n`;
+		}
+		if (project.startHere.orientation) {
+			prompt += `\nWhat this is: ${project.startHere.orientation}\n`;
+		}
+		if (project.startHere.currentState) {
+			prompt += `\nCurrent state:\n${project.startHere.currentState}\n`;
+		}
+		if (project.startHere.status) {
+			prompt += `\nStatus: ${project.startHere.status}\n`;
+		}
+	}
+
+	prompt += `\n## Calendar Today (${project.calendarToday.length})\n`;
+
+	if (project.calendarToday.length > 0) {
+		for (const item of project.calendarToday.slice(0, 5)) {
+			prompt += formatCalendarItemForPrompt(item, false) + '\n';
+		}
+	} else {
+		prompt += `No project calendar items today.\n`;
+	}
+
+	if (project.calendarUpcoming.length > 0) {
+		prompt += `\n## Upcoming Calendar (${project.calendarUpcoming.length})\n`;
+		for (const item of project.calendarUpcoming.slice(0, 5)) {
+			prompt += formatCalendarItemForPrompt(item, true) + '\n';
+		}
+	}
+
+	if (useChangeStamp) {
+		prompt += `\n## Change Stamp\n`;
+		prompt += `- Last change: ${project.lastChangedAt ?? 'none'}\n`;
+		prompt += `- Open tasks: ${project.openTaskCount ?? 0}\n`;
+	} else if (project.recentChanges.length > 0) {
+		prompt += `\n## Recent Changes\n`;
+		for (const change of project.recentChanges.slice(0, 8)) {
+			prompt += formatRecentChangeForPrompt(change) + '\n';
+		}
+	}
+
+	if (project.documents.length > 0) {
+		prompt += `\n## Recent Documents\n`;
+		for (const document of project.documents.slice(0, 5)) {
+			prompt += formatDocumentForPrompt(document) + '\n';
+		}
+	}
+
+	if (project.plans.length > 0) {
+		prompt += `\n## Plans\n`;
+		const planLines = project.plans.slice(0, 5).map(formatPlanForPrompt);
+		// Plans and goals arrive in database order, which is not guaranteed.
+		if (fingerprint) planLines.sort();
+		prompt += planLines.join('\n') + '\n';
+	}
+
+	prompt += `
+## Today's Tasks (${project.todaysTasks.length})
+`;
+
+	if (project.todaysTasks.length > 0) {
+		for (const task of project.todaysTasks.slice(0, 5)) {
+			prompt += taskLine(task) + '\n';
+		}
+	} else {
+		prompt += `No tasks scheduled for today.\n`;
+	}
+
+	if (project.overdueTasks.length > 0) {
+		prompt += `\n## Overdue Tasks (${project.overdueTasks.length})\n`;
+		for (const task of project.overdueTasks.slice(0, 5)) {
+			prompt += taskLine(task) + '\n';
+		}
+	}
+
+	prompt += `\n## This Week (${project.thisWeekTasks.length} tasks)\n`;
+
+	// Recently Updated Tasks (per PROJECT_CONTEXT_ENRICHMENT_SPEC.md)
+	if (
+		!useChangeStamp &&
+		project.recentlyUpdatedTasks &&
+		project.recentlyUpdatedTasks.length > 0
+	) {
+		prompt += `\n## Recently Updated (Last 7 Days)\n`;
+		for (const task of project.recentlyUpdatedTasks.slice(0, 5)) {
+			prompt += taskLine(task) + '\n';
+		}
+		if (project.recentlyUpdatedTasks.length > 5) {
+			prompt += `... and ${project.recentlyUpdatedTasks.length - 5} more\n`;
+		}
+	}
+
+	// Upcoming Tasks (per PROJECT_CONTEXT_ENRICHMENT_SPEC.md)
+	let upcomingTasks = (project.upcomingTasks ?? []).slice(0, 5);
+	if (useChangeStamp) {
+		const todaysTaskIds = new Set(project.todaysTasks.map((task) => task.id));
+		upcomingTasks = project.thisWeekTasks.filter((task) => !todaysTaskIds.has(task.id));
+	}
+	if (upcomingTasks.length > 0) {
+		prompt += `\n## Upcoming (Next 7 Days)\n`;
+		for (const task of upcomingTasks) {
+			prompt += taskLine(task) + '\n';
+		}
+	}
+
+	// Goals
+	if (project.goals.length > 0) {
+		prompt += `\n## Goal Progress\n`;
+		const goalLines = project.goals.map((goal) => formatGoalProgress(goal, fingerprint));
+		if (fingerprint) goalLines.sort();
+		prompt += goalLines.join('\n') + '\n';
+	}
+
+	// Blocked
+	if (project.blockedTasks.length > 0) {
+		prompt += `\n## Blocked Tasks (${project.blockedTasks.length})\n`;
+		for (const task of project.blockedTasks.slice(0, 3)) {
+			prompt += taskLine(task) + '\n';
+		}
+	}
+
+	// The next step the project page shows now: the short line, then the longer version.
+	if (project.nextSteps.length > 0) {
+		prompt += `\n## Current Next Step\n`;
+		for (const step of project.nextSteps) {
+			prompt += `- ${step}\n`;
+		}
+	}
+
+	// Milestone
+	const nextMilestone = fingerprint
+		? (project.nextMilestoneStable ?? project.nextMilestone)
+		: project.nextMilestone;
+	if (nextMilestone) {
+		prompt += `\n## Next Milestone\n- ${nextMilestone}\n`;
+	}
+
+	if (project.requirements.length > 0) {
+		prompt += `\n## Requirements\n`;
+		for (const requirement of project.requirements.slice(0, 5)) {
+			prompt += `- ${requirement.text}\n`;
+		}
+	}
+
+	prompt += `
+Write the JSON response now. The briefMarkdown should use this structure when data exists:
+## [${project.project.name}](/projects/${project.project.id})
+
+### Status
+### Calendar
+### Recent Changes
+### Goal Progress
+### Today's Work
+### Blockers
+### Next Steps
+
+Omit empty sections.
+
+Also return nextStepShort and nextStepLong as the persisted project next step. If the Current Next Step above is still right, return it unchanged. Otherwise anchor a new one in goals, plans, milestones, active tasks, recent changes, and calendar commitments.`;
+
+	return prompt;
+}
+
 export class OntologyProjectBriefPrompt {
 	static getSystemPrompt(): string {
 		return `You are a BuildOS productivity strategist writing a concise project-specific daily brief.
@@ -689,189 +945,28 @@ Rules:
 - Do not invent events, documents, goals, plans, or task status.
 - Be concrete and name the work that changed.
 - Keep the briefMarkdown under 220 words.
-- Return the project-level next step in nextStepShort/nextStepLong. If the existing next step is still right, refine it; if it is stale, replace it.
+- This write-up is shown again on later days while the project stays unchanged. Give dates as calendar dates ("Nov 20"). You may say a task is due today or overdue, but do not write "yesterday", "tomorrow", "in 3 days", or a count of days overdue.
+- Return the project-level next step in nextStepShort/nextStepLong. If the current next step is still right, return it unchanged, word for word; if it is stale, replace it.
 - Return JSON only with this shape:
 {
   "briefMarkdown": "Markdown brief beginning with the project heading",
-  "statusLine": "One-sentence project status",
-  "recentChangeSummary": "One sentence about what changed, or empty string",
-  "calendarSummary": "One sentence about calendar commitments, or empty string",
   "nextStepShort": "<=120 chars, one concrete next action, or empty string",
   "nextStepLong": "2-4 sentences, <=600 chars with reasoning and useful entity references, or empty string"
 }`;
 	}
 
 	static buildUserPrompt(input: ProjectBriefPromptInput): string {
-		const { date, timezone, project } = input;
+		return renderProjectBriefUserPrompt(input, false);
+	}
 
-		let prompt = `Generate a project brief for: ${project.project.name}
-
-Date: ${date}
-Timezone: ${timezone}
-
-## Project Info
-- Project ID: ${project.project.id}
-- State: ${project.project.state_key}
-- Type: ${project.project.type_key}
-${project.project.description ? `- Description: ${project.project.description}` : ''}
-`;
-
-		if (project.startHere) {
-			prompt += `\n## Project Start Here\n`;
-			prompt += `Document: ${project.startHere.title} [id: ${project.startHere.documentId}]\n`;
-			if (project.startHere.updatedAt) {
-				prompt += `Updated: ${project.startHere.updatedAt}\n`;
-			}
-			if (project.startHere.truncated) {
-				prompt += `Trimmed to fit; use it for orientation only.\n`;
-			}
-			if (project.startHere.orientation) {
-				prompt += `\nWhat this is: ${project.startHere.orientation}\n`;
-			}
-			if (project.startHere.currentState) {
-				prompt += `\nCurrent state:\n${project.startHere.currentState}\n`;
-			}
-			if (project.startHere.status) {
-				prompt += `\nStatus: ${project.startHere.status}\n`;
-			}
-		}
-
-		prompt += `\n## Calendar Today (${project.calendarToday.length})\n`;
-
-		if (project.calendarToday.length > 0) {
-			for (const item of project.calendarToday.slice(0, 5)) {
-				prompt += formatCalendarItemForPrompt(item, false) + '\n';
-			}
-		} else {
-			prompt += `No project calendar items today.\n`;
-		}
-
-		if (project.calendarUpcoming.length > 0) {
-			prompt += `\n## Upcoming Calendar (${project.calendarUpcoming.length})\n`;
-			for (const item of project.calendarUpcoming.slice(0, 5)) {
-				prompt += formatCalendarItemForPrompt(item, true) + '\n';
-			}
-		}
-
-		if (project.recentChanges.length > 0) {
-			prompt += `\n## Recent Changes\n`;
-			for (const change of project.recentChanges.slice(0, 8)) {
-				prompt += formatRecentChangeForPrompt(change) + '\n';
-			}
-		}
-
-		if (project.documents.length > 0) {
-			prompt += `\n## Recent Documents\n`;
-			for (const document of project.documents.slice(0, 5)) {
-				prompt += formatDocumentForPrompt(document) + '\n';
-			}
-		}
-
-		if (project.plans.length > 0) {
-			prompt += `\n## Plans\n`;
-			for (const plan of project.plans.slice(0, 5)) {
-				prompt += formatPlanForPrompt(plan) + '\n';
-			}
-		}
-
-		prompt += `
-## Today's Tasks (${project.todaysTasks.length})
-`;
-
-		if (project.todaysTasks.length > 0) {
-			for (const task of project.todaysTasks.slice(0, 5)) {
-				prompt +=
-					formatTaskForPrompt(task, undefined, { briefDate: date, timezone }) + '\n';
-			}
-		} else {
-			prompt += `No tasks scheduled for today.\n`;
-		}
-
-		if (project.overdueTasks.length > 0) {
-			prompt += `\n## Overdue Tasks (${project.overdueTasks.length})\n`;
-			for (const task of project.overdueTasks.slice(0, 5)) {
-				prompt +=
-					formatTaskForPrompt(task, undefined, { briefDate: date, timezone }) + '\n';
-			}
-		}
-
-		prompt += `\n## This Week (${project.thisWeekTasks.length} tasks)\n`;
-
-		// Recently Updated Tasks (per PROJECT_CONTEXT_ENRICHMENT_SPEC.md)
-		if (project.recentlyUpdatedTasks && project.recentlyUpdatedTasks.length > 0) {
-			prompt += `\n## Recently Updated (Last 7 Days)\n`;
-			for (const task of project.recentlyUpdatedTasks.slice(0, 5)) {
-				prompt +=
-					formatTaskForPrompt(task, undefined, { briefDate: date, timezone }) + '\n';
-			}
-			if (project.recentlyUpdatedTasks.length > 5) {
-				prompt += `... and ${project.recentlyUpdatedTasks.length - 5} more\n`;
-			}
-		}
-
-		// Upcoming Tasks (per PROJECT_CONTEXT_ENRICHMENT_SPEC.md)
-		if (project.upcomingTasks && project.upcomingTasks.length > 0) {
-			prompt += `\n## Upcoming (Next 7 Days)\n`;
-			for (const task of project.upcomingTasks.slice(0, 5)) {
-				prompt +=
-					formatTaskForPrompt(task, undefined, { briefDate: date, timezone }) + '\n';
-			}
-		}
-
-		// Goals
-		if (project.goals.length > 0) {
-			prompt += `\n## Goal Progress\n`;
-			for (const goal of project.goals) {
-				prompt += formatGoalProgress(goal) + '\n';
-			}
-		}
-
-		// Blocked
-		if (project.blockedTasks.length > 0) {
-			prompt += `\n## Blocked Tasks (${project.blockedTasks.length})\n`;
-			for (const task of project.blockedTasks.slice(0, 3)) {
-				prompt +=
-					formatTaskForPrompt(task, undefined, { briefDate: date, timezone }) + '\n';
-			}
-		}
-
-		// Next Steps
-		if (project.nextSteps.length > 0) {
-			prompt += `\n## Next Steps\n`;
-			for (const step of project.nextSteps) {
-				prompt += `- ${step}\n`;
-			}
-		}
-
-		// Milestone
-		if (project.nextMilestone) {
-			prompt += `\n## Next Milestone\n- ${project.nextMilestone}\n`;
-		}
-
-		if (project.requirements.length > 0) {
-			prompt += `\n## Requirements\n`;
-			for (const requirement of project.requirements.slice(0, 5)) {
-				prompt += `- ${requirement.text}\n`;
-			}
-		}
-
-		prompt += `
-Write the JSON response now. The briefMarkdown should use this structure when data exists:
-## [${project.project.name}](/projects/${project.project.id})
-
-### Status
-### Calendar
-### Recent Changes
-### Goal Progress
-### Today's Work
-### Blockers
-### Next Steps
-
-Omit empty sections.
-
-Also return nextStepShort and nextStepLong as the persisted project next step. Anchor it in goals, plans, milestones, active tasks, recent changes, and calendar commitments.`;
-
-		return prompt;
+	/**
+	 * The text the write-up's input hash is taken over: the system prompt plus the
+	 * user prompt in its day-stable rendering (see `renderProjectBriefUserPrompt`).
+	 * Two days with the same text have nothing new to write about; a changed prompt
+	 * template changes the text too, so a prompt edit refreshes every write-up once.
+	 */
+	static buildFingerprintSource(input: ProjectBriefPromptInput): string {
+		return `${OntologyProjectBriefPrompt.getSystemPrompt()}\n\n${renderProjectBriefUserPrompt(input, true)}`;
 	}
 }
 

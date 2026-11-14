@@ -12,6 +12,7 @@ import {
 	type TodayWaitingInputs,
 	type WaitingTaskInput,
 	buildRefMaps,
+	buildTodayWaitingPrompt,
 	refreshTodayWaitingItems,
 	selectWaitingTasks,
 	validateWaitingResponse
@@ -215,6 +216,49 @@ describe('validateWaitingResponse', () => {
 		expect(out.resolvedKeys).toEqual(['old-ask']);
 	});
 
+	it('asks for resolved_keys before items, so a cut-off answer still names finished asks', () => {
+		const { systemPrompt } = buildTodayWaitingPrompt(inputs, refs, {
+			briefDate: '2026-11-04',
+			timezone: 'UTC'
+		});
+		const contract = systemPrompt.slice(systemPrompt.lastIndexOf('Return JSON only'));
+
+		expect(contract).toContain('Write resolved_keys first, then items');
+		expect(contract.indexOf('"resolved_keys"')).toBeGreaterThan(-1);
+		expect(contract.indexOf('"resolved_keys"')).toBeLessThan(contract.indexOf('"items"'));
+	});
+
+	it('reads resolved_keys and items in either order', () => {
+		const existing = new Set(['old-ask']);
+		const item = JSON.stringify(good);
+		const resolvedFirst = validateWaitingResponse(
+			JSON.parse(`{"resolved_keys":["old-ask"],"items":[${item}]}`),
+			refs,
+			existing,
+			'2026-11-04'
+		);
+		const itemsFirst = validateWaitingResponse(
+			JSON.parse(`{"items":[${item}],"resolved_keys":["old-ask"]}`),
+			refs,
+			existing,
+			'2026-11-04'
+		);
+
+		expect(resolvedFirst).toEqual(itemsFirst);
+		expect(resolvedFirst.resolvedKeys).toEqual(['old-ask']);
+		expect(resolvedFirst.items.map((i) => i.item_key)).toEqual(['matt-pitch-ok']);
+	});
+
+	it('still closes finished asks when the answer stopped before items', () => {
+		const out = validateWaitingResponse(
+			{ resolved_keys: ['old-ask'] },
+			refs,
+			new Set(['old-ask']),
+			'2026-11-04'
+		);
+		expect(out).toEqual({ items: [], resolvedKeys: ['old-ask'], dropped: 0 });
+	});
+
 	it('survives a missing or malformed response', () => {
 		expect(validateWaitingResponse(null, refs, new Set(), '2026-11-04').items).toEqual([]);
 		expect(
@@ -385,5 +429,71 @@ describe('refreshTodayWaitingItems', () => {
 		);
 		expect(prompt.userPrompt).toContain("T1 [P1] Get Matt's OK on the pitch | state blocked");
 		expect(prompt.userPrompt).toContain('logan-offer | on_them | Logan | offer');
+	});
+
+	it("turns hidden reasoning off, caps tokens and time, and passes the caller's signal", async () => {
+		const controller = new AbortController();
+		const db = fakeDb(baseTables());
+		const llm = llmReturning({ resolved_keys: [], items: [] });
+
+		const out = await refreshTodayWaitingItems({
+			...params(db.client, llm),
+			signal: controller.signal
+		});
+
+		expect(out).toEqual({ status: 'refreshed', saved: 0, resolved: 0, dropped: 0, kept: 0 });
+		const options = (llm.getJSONResponse.mock.calls[0] as any[])[0];
+		expect(options).toMatchObject({
+			reasoning: { enabled: false },
+			maxTokens: 3000,
+			timeoutMs: 30000
+		});
+		expect(options.signal).toBe(controller.signal);
+	});
+
+	it('writes nothing when the caller gave up while the model was answering', async () => {
+		const controller = new AbortController();
+		const db = fakeDb(
+			baseTables({
+				today_waiting_items: [
+					{
+						user_id: USER,
+						item_key: 'cody-balance',
+						status: 'open',
+						who: 'Cody',
+						what: 'balance',
+						direction: 'on_them',
+						since: null
+					}
+				]
+			})
+		);
+		const llm = {
+			getJSONResponse: vi.fn().mockImplementation(async () => {
+				controller.abort(new Error('time cap reached'));
+				return {
+					resolved_keys: ['cody-balance'],
+					items: [
+						{
+							key: 'matt-pitch',
+							direction: 'on_them',
+							who: 'Matt',
+							who_kind: 'person',
+							what: 'OK on the pitch',
+							project_ref: 'P1',
+							task_ref: 'T1',
+							since: '2026-10-08'
+						}
+					]
+				};
+			})
+		};
+
+		await expect(
+			refreshTodayWaitingItems({ ...params(db.client, llm), signal: controller.signal })
+		).rejects.toThrow('time cap reached');
+
+		expect(db.writes).toEqual([]);
+		expect(db.tables.today_waiting_items.map((row) => row.status)).toEqual(['open']);
 	});
 });

@@ -17,7 +17,6 @@ import {
 	createOrMergeDocumentVersion,
 	toDocumentSnapshot
 } from '$lib/services/ontology/versioning.service';
-import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
 import {
 	notifyEntityMentionsAdded,
 	resolveEntityMentionUserIds
@@ -78,9 +77,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			parents,
 			connections
 		} = body as Record<string, unknown>;
-		const classificationSource =
-			(body as Record<string, unknown>)?.classification_source ??
-			(body as Record<string, unknown>)?.classificationSource;
 
 		if (!project_id || typeof project_id !== 'string') {
 			return ApiResponse.badRequest('project_id is required');
@@ -420,17 +416,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			getChangeSourceFromRequest(request),
 			chatSessionId
 		);
-
-		if (classificationSource === 'create_modal') {
-			void classifyOntologyEntity({
-				entityType: 'document',
-				entityId: document.id,
-				userId: session.user.id,
-				classificationSource: 'create_modal'
-			}).catch((err) => {
-				if (dev) console.warn('[Document Create] Classification failed:', err);
-			});
-		}
 
 		if (!shouldSkipProjectLoopBurst(request, projectLoopReviewContext)) {
 			queueProjectLoopBurstAsync({

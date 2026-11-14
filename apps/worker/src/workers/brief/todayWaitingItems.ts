@@ -20,6 +20,15 @@ import { buildProjectAccessFilter } from './ontologyBriefDataLoader.js';
 
 export const TODAY_WAITING_MODELS = [DEEPSEEK_V4_FLASH_MODEL, XIAOMI_MIMO_V25_MODEL] as const;
 export const TODAY_WAITING_MAX_ITEMS = 12;
+/**
+ * Hidden reasoning shares the token cap. With reasoning on and a 2,000 cap, 4 of 5
+ * failed calls (prod, 30 days to 2026-11-14) spent 1,799-2,000 tokens thinking and
+ * wrote no answer, and each fallback then took 30-64 s. Reasoning is off for this
+ * call; the cap leaves room for 12 items plus the resolved keys.
+ */
+const TODAY_WAITING_MAX_TOKENS = 3_000;
+/** Per model attempt. The caller caps the whole refresh and cancels it through `signal`. */
+const TODAY_WAITING_MODEL_TIMEOUT_MS = 30_000;
 const MAX_PROJECTS = 30;
 const MAX_TASKS = 60;
 const MAX_EXISTING = 40;
@@ -243,7 +252,10 @@ export function buildRefMaps(inputs: TodayWaitingInputs): RefMaps {
 	return { projects, tasks };
 }
 
-const SYSTEM_PROMPT = `You read one person's work in BuildOS and list who is waiting on whom.
+// resolved_keys comes before items in the output on purpose: an answer cut off at the
+// token cap loses its tail, and finished asks must still close. The reader below
+// takes the two fields in either order.
+export const TODAY_WAITING_SYSTEM_PROMPT = `You read one person's work in BuildOS and list who is waiting on whom.
 
 List only concrete, open asks between the person and a NAMED someone:
 - direction "on_you": a named person, organization, or agent is waiting on the person (an approval, a reply, a deliverable, an intro, a payment they asked for).
@@ -270,8 +282,8 @@ Rules:
 - resolved_keys: keys from "Already listed" whose ask is clearly finished now (its task is gone or done, or the next step moved past it). Leave out keys you are unsure about.
 - At most ${TODAY_WAITING_MAX_ITEMS} items, most important first. An empty list is fine.
 
-Return JSON only:
-{"items":[{"key":"...","direction":"on_you|on_them","who":"...","who_kind":"person|agent|organization","what":"...","project_ref":"P1","task_ref":"T3"|null,"since":"YYYY-MM-DD"|null}],"resolved_keys":["..."]}`;
+Return JSON only. Write resolved_keys first, then items:
+{"resolved_keys":["..."],"items":[{"key":"...","direction":"on_you|on_them","who":"...","who_kind":"person|agent|organization","what":"...","project_ref":"P1","task_ref":"T3"|null,"since":"YYYY-MM-DD"|null}]}`;
 
 export function buildTodayWaitingPrompt(
 	inputs: TodayWaitingInputs,
@@ -311,7 +323,7 @@ export function buildTodayWaitingPrompt(
 			`${item.item_key} | ${item.direction} | ${clip(item.who, 80)} | ${clip(item.what, 160)}`
 		);
 	}
-	return { systemPrompt: SYSTEM_PROMPT, userPrompt: lines.join('\n') };
+	return { systemPrompt: TODAY_WAITING_SYSTEM_PROMPT, userPrompt: lines.join('\n') };
 }
 
 // ============================================================================
@@ -537,7 +549,9 @@ export async function refreshTodayWaitingItems(
 		model: TODAY_WAITING_MODELS[0],
 		models: [...TODAY_WAITING_MODELS],
 		temperature: 0.2,
-		maxTokens: 2_000,
+		maxTokens: TODAY_WAITING_MAX_TOKENS,
+		timeoutMs: TODAY_WAITING_MODEL_TIMEOUT_MS,
+		reasoning: { enabled: false },
 		requirements: { maxCost: 0.01 },
 		operationType: 'today_waiting_items',
 		validation: { retryOnParseError: true, maxRetries: 1, allowTruncatedJsonRecovery: true },
@@ -550,6 +564,13 @@ export async function refreshTodayWaitingItems(
 			existing_count: inputs.existing.length
 		}
 	});
+
+	// The caller gave up (its time cap or a cancelled job): do not write after it moved on.
+	if (signal?.aborted) {
+		throw signal.reason instanceof Error
+			? signal.reason
+			: new Error('Today waiting items refresh was cancelled.');
+	}
 
 	const { items, resolvedKeys, dropped } = validateWaitingResponse(
 		response,

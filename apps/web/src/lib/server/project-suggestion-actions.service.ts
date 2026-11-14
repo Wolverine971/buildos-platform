@@ -401,6 +401,79 @@ function documentTreeMoveArgs(
 
 const PROJECT_UPDATE_FIELDS = ['name', 'description', 'type_key'] as const;
 
+// ---------------------------------------------------------------------------
+// Per-kind argument allow-lists (Project Review audit 2026-11-14, F7)
+//
+// Two review kinds have exactly one shape of change: a task-conflict suggestion flags a task
+// (four loop_* props), and a document-organization suggestion moves a document. The worker
+// builds those operations from fixed fields
+// (apps/worker/src/workers/project-loop/generators.ts: buildTaskConflictFlagArgs,
+// buildDocumentMoveArgs). Replay applies the same lists, so a row stored before that, or
+// edited since, cannot carry a status, title, description, date, or a parent named any other
+// way into approval. Other kinds (the freshness radar's task updates, drift fixes) keep the
+// field lists above.
+// ---------------------------------------------------------------------------
+
+/** The only props a task-conflict flag writes. */
+const TASK_CONFLICT_PROP_KEYS = [
+	'loop_flagged_conflict',
+	'loop_conflict_kind',
+	'loop_conflict_with_task_id',
+	'loop_conflict_reason'
+] as const;
+
+/** The only arguments a document-organization move carries, besides the project fence. */
+const DOCUMENT_MOVE_ARG_KEYS = ['document_id', 'new_parent_id', 'new_position'] as const;
+
+/**
+ * The arguments a suggestion of this kind may replay for this tool, and the names of any
+ * stored arguments left out. `undefined`: this kind and tool have no allow-list (replayed as
+ * stored). `null`: nothing of the allowed shape is left, so the batch is refused.
+ */
+function suggestionKindArgs(
+	suggestionKind: string | undefined,
+	tool: GatewayReplayTool,
+	args: Record<string, unknown>
+): { args: Record<string, unknown>; dropped: string[] } | null | undefined {
+	if (suggestionKind === 'task_conflict' && tool === 'update_onto_task') {
+		const storedProps = isJsonObject(args.props) ? args.props : {};
+		const props = pickDefined(storedProps, TASK_CONFLICT_PROP_KEYS);
+		if (Object.keys(props).length === 0) return null;
+		return {
+			args: { task_id: args.task_id, props },
+			dropped: [
+				...Object.keys(args).filter(
+					(key) => key !== 'task_id' && key !== 'project_id' && key !== 'props'
+				),
+				...Object.keys(storedProps)
+					.filter((key) => !(TASK_CONFLICT_PROP_KEYS as readonly string[]).includes(key))
+					.map((key) => `props.${key}`)
+			]
+		};
+	}
+	if (suggestionKind === 'doc_org' && tool === 'move_document_in_tree') {
+		const parent = args.new_parent_id;
+		// Only an existing document or the top level: never a parent named by title, which
+		// the tree move would create.
+		if (
+			parent !== null &&
+			parent !== undefined &&
+			!(typeof parent === 'string' && isValidUUID(parent.trim()))
+		) {
+			return null;
+		}
+		return {
+			args: pickDefined(args, DOCUMENT_MOVE_ARG_KEYS),
+			dropped: Object.keys(args).filter(
+				(key) =>
+					key !== 'project_id' &&
+					!(DOCUMENT_MOVE_ARG_KEYS as readonly string[]).includes(key)
+			)
+		};
+	}
+	return undefined;
+}
+
 function gatewayArgsFor(
 	tool: GatewayReplayTool,
 	args: Record<string, unknown>,
@@ -467,9 +540,16 @@ function prepareArchiveOperation(
  */
 function prepareLoopOperations(
 	operations: readonly LoopOperation[],
-	expectedProjectId: string | undefined
+	expectedProjectId: string | undefined,
+	suggestionKind?: string
 ):
-	| { ok: true; projectId: string; prepared: PreparedLoopOperation[] }
+	| {
+			ok: true;
+			projectId: string;
+			prepared: PreparedLoopOperation[];
+			/** Stored arguments a kind's allow-list left out, as `tool.argument`. */
+			droppedArgs: string[];
+	  }
 	| { ok: false; tool: string; error: string } {
 	for (const operation of operations) {
 		if (!isReplayableLoopOperationTool(operation?.tool)) {
@@ -520,6 +600,7 @@ function prepareLoopOperations(
 	const fence: string = projectId;
 
 	const prepared: PreparedLoopOperation[] = [];
+	const droppedArgs: string[] = [];
 	for (const operation of operations) {
 		const tool = operation.tool as ReplayableLoopOperationTool;
 		if (isArchiveReplayTool(tool)) {
@@ -534,14 +615,23 @@ function prepareLoopOperations(
 			prepared.push(archive);
 			continue;
 		}
+		const allowed = suggestionKindArgs(suggestionKind, tool, operation.args);
+		if (allowed === null) {
+			return {
+				ok: false,
+				tool,
+				error: `Operation ${tool} has invalid arguments; nothing was changed.`
+			};
+		}
+		if (allowed) droppedArgs.push(...allowed.dropped.map((name) => `${tool}.${name}`));
 		prepared.push({
 			tool,
 			op: REPLAYABLE_LOOP_OPERATION_OPS[tool],
-			args: gatewayArgsFor(tool, operation.args, fence)
+			args: gatewayArgsFor(tool, allowed?.args ?? operation.args, fence)
 		});
 	}
 
-	return { ok: true, projectId: fence, prepared };
+	return { ok: true, projectId: fence, prepared, droppedArgs };
 }
 
 // A doc-tree move reloads the latest tree on every attempt, so one retry after a
@@ -559,6 +649,11 @@ export type LoopOperationReplayResult = {
 	errors: Array<{ tool: string; error: string }>;
 	/** Per-operation success, aligned with the input operations. */
 	outcomes: boolean[];
+	/**
+	 * Set when the suggestion kind's allow-list left stored arguments out: less was written
+	 * than the stored operations describe.
+	 */
+	trimmed?: true;
 };
 
 /**
@@ -582,11 +677,16 @@ export async function replayLoopOperations(params: {
 	operationKind?: string;
 	/** The project every operation must target. Derived from the operations when omitted. */
 	projectId?: string;
+	/**
+	 * The kind of the suggestion being approved. A task-conflict or document-organization
+	 * suggestion replays only its kind's fixed arguments; omit for undo and other replays.
+	 */
+	suggestionKind?: string;
 	/** @deprecated Ignored: replays no longer self-fetch /api/onto routes. */
 	fetchFn?: typeof fetch;
 }): Promise<LoopOperationReplayResult> {
 	const { operations } = params;
-	const batch = prepareLoopOperations(operations, params.projectId);
+	const batch = prepareLoopOperations(operations, params.projectId, params.suggestionKind);
 	if (!batch.ok) {
 		console.warn(
 			`[ProjectSuggestions] Refused replay ${params.operationId} (${params.operationKind ?? 'suggestion_apply'}): ${batch.error}`
@@ -596,6 +696,13 @@ export async function replayLoopOperations(params: {
 			errors: [{ tool: batch.tool, error: batch.error }],
 			outcomes: operations.map(() => false)
 		};
+	}
+
+	if (batch.droppedArgs.length) {
+		// Names only: the values are stored model output.
+		console.warn(
+			`[ProjectSuggestions] Replay ${params.operationId} left out arguments a ${params.suggestionKind} suggestion cannot carry: ${batch.droppedArgs.join(', ')}`
+		);
 	}
 
 	const errors: Array<{ tool: string; error: string }> = [];
@@ -678,7 +785,12 @@ export async function replayLoopOperations(params: {
 		}
 	}
 
-	return { appliedCount, errors, outcomes };
+	return {
+		appliedCount,
+		errors,
+		outcomes,
+		...(batch.droppedArgs.length ? { trimmed: true as const } : {})
+	};
 }
 
 // Same change source the gateway records for every other replayed operation.
@@ -1218,15 +1330,20 @@ export async function decideProjectSuggestion(params: {
 		chatSessionId,
 		operations,
 		operationId: `project_suggestion:${suggestionId}`,
-		projectId
+		projectId,
+		suggestionKind: typeof suggestion.kind === 'string' ? suggestion.kind : undefined
 	});
 	const { appliedCount, errors } = replay;
 	// What was written, with the before values the check read from live state a moment ago.
-	const receipt = buildSuggestionReceipt({
-		operations,
-		verified: integrity.summary.operations,
-		applied: replay.outcomes
-	});
+	// The verified list describes the stored operations, so when the kind's allow-list wrote
+	// less than that, no receipt is kept rather than one that overstates.
+	const receipt = replay.trimmed
+		? []
+		: buildSuggestionReceipt({
+				operations,
+				verified: integrity.summary.operations,
+				applied: replay.outcomes
+			});
 
 	const result: ProjectSuggestionResult = {
 		ok: errors.length === 0,

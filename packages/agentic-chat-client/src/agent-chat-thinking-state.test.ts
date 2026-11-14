@@ -4,7 +4,11 @@ import type { ActivityEntry, ThinkingBlockMessage, UIMessage } from './agent-cha
 import {
 	appendUniqueThinkingActivity,
 	finalizeWorkerThinkingBlock,
-	upsertWorkerThinkingBlock
+	foldWorkLogForReply,
+	reopenWorkLogForNewStep,
+	toggleWorkLogByHand,
+	upsertWorkerThinkingBlock,
+	workLogCollapsedAtTurnEnd
 } from './agent-chat-thinking-state';
 
 function activity(id: string, eventId?: string): ActivityEntry {
@@ -142,5 +146,109 @@ describe('agent chat thinking state', () => {
 		const result = finalizeWorkerThinkingBlock(input, 'turn-1', 'completed');
 
 		expect(result).toEqual({ messages: input, blockId: completed.id });
+	});
+});
+
+describe('work log fold while a turn runs', () => {
+	function toolStep(id: string, status: ActivityEntry['status']): ActivityEntry {
+		return {
+			id,
+			content: id,
+			timestamp: new Date('2026-08-07T00:00:00.000Z'),
+			activityType: 'tool_call',
+			status
+		};
+	}
+
+	const working = workerBlock('turn-fold', {
+		isCollapsed: false,
+		activities: [toolStep('read', 'completed')]
+	});
+
+	it('folds the moment reply text starts', () => {
+		expect(foldWorkLogForReply(working)).toMatchObject({
+			isCollapsed: true,
+			foldSetBy: 'reply'
+		});
+	});
+
+	it('is a no-op for every later piece of reply text', () => {
+		const folded = foldWorkLogForReply(working);
+		expect(foldWorkLogForReply(folded)).toBe(folded);
+	});
+
+	it('waits while a step is still in flight, then folds on the next reply text', () => {
+		const inFlight = { ...working, activities: [toolStep('write', 'pending')] };
+		expect(foldWorkLogForReply(inFlight)).toBe(inFlight);
+		const landed = { ...working, activities: [toolStep('write', 'completed')] };
+		expect(foldWorkLogForReply(landed).isCollapsed).toBe(true);
+	});
+
+	it('does not fold a turn that is waiting on the person, or one that has ended', () => {
+		const waiting = { ...working, agentState: 'waiting_on_user' as const };
+		expect(foldWorkLogForReply(waiting)).toBe(waiting);
+		const ended = { ...working, status: 'error' as const };
+		expect(foldWorkLogForReply(ended)).toBe(ended);
+	});
+
+	it('opens again when the model goes back to work, and folds when the reply resumes', () => {
+		const folded = foldWorkLogForReply(working);
+		const resumed = reopenWorkLogForNewStep(folded, {
+			...folded,
+			activities: [...folded.activities, toolStep('search', 'pending')]
+		});
+		expect(resumed.isCollapsed).toBe(false);
+		expect(resumed.foldSetBy).toBeUndefined();
+
+		// Reply text that arrives while the new step runs leaves the log open.
+		expect(foldWorkLogForReply(resumed)).toBe(resumed);
+		const stepDone = {
+			...resumed,
+			activities: [resumed.activities[0]!, toolStep('search', 'completed')]
+		};
+		// The step finishing does not fold it; the next reply text does.
+		expect(reopenWorkLogForNewStep(resumed, stepDone)).toBe(stepDone);
+		expect(foldWorkLogForReply(stepDone)).toMatchObject({
+			isCollapsed: true,
+			foldSetBy: 'reply'
+		});
+	});
+
+	it('stays folded when an existing row changes or a hidden row is added', () => {
+		const folded = foldWorkLogForReply(working);
+		const rowChanged = { ...folded, activities: [toolStep('read', 'failed')] };
+		expect(reopenWorkLogForNewStep(folded, rowChanged)).toBe(rowChanged);
+		const hiddenRow = { ...folded, activities: [...folded.activities, activity('phase')] };
+		expect(reopenWorkLogForNewStep(folded, hiddenRow)).toBe(hiddenRow);
+	});
+
+	it("keeps the person's choice for the rest of the turn", () => {
+		// Opened by hand after the reply folded it: no later reply text or step moves it.
+		const opened = toggleWorkLogByHand(foldWorkLogForReply(working));
+		expect(opened).toMatchObject({ isCollapsed: false, foldSetBy: 'user' });
+		expect(foldWorkLogForReply(opened)).toBe(opened);
+		expect(workLogCollapsedAtTurnEnd(opened, 'completed')).toBe(false);
+
+		// Closed by hand while the model works: a new step does not open it.
+		const closed = toggleWorkLogByHand(working);
+		const withStep = {
+			...closed,
+			activities: [...closed.activities, toolStep('s', 'pending')]
+		};
+		expect(reopenWorkLogForNewStep(closed, withStep)).toBe(withStep);
+		expect(workLogCollapsedAtTurnEnd(closed, 'error')).toBe(true);
+	});
+
+	it('ends folded when the turn finishes, open when it stops or fails', () => {
+		const folded = foldWorkLogForReply(working);
+		expect(workLogCollapsedAtTurnEnd(working, 'completed')).toBe(true);
+		expect(workLogCollapsedAtTurnEnd(folded, 'completed')).toBe(true);
+		expect(workLogCollapsedAtTurnEnd(folded, 'error')).toBe(false);
+		expect(workLogCollapsedAtTurnEnd(folded, 'cancelled')).toBe(false);
+		expect(workLogCollapsedAtTurnEnd(working, 'interrupted')).toBe(false);
+
+		const messages: UIMessage[] = [folded];
+		const failed = finalizeWorkerThinkingBlock(messages, 'turn-fold', 'failed');
+		expect(failed.messages[0]).toMatchObject({ status: 'error', isCollapsed: false });
 	});
 });

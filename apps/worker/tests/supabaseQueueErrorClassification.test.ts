@@ -143,6 +143,23 @@ describe('queue processor error classification', () => {
 		});
 	});
 
+	it('records the real message of a database error thrown as a plain object', async () => {
+		// Supabase returns PostgrestError objects, not Error instances.
+		const args = await captureFailArgs({
+			message:
+				'insert or update on table "chat_capture_checkpoints" violates foreign key constraint',
+			code: '23503',
+			details: null,
+			hint: null
+		});
+
+		expect(args.p_error_message).toBe(
+			'insert or update on table "chat_capture_checkpoints" violates foreign key constraint (23503)'
+		);
+		expect(args.p_retry).toBe(true);
+		expect(classifyQueueError({}).message).toBe('Unknown error');
+	});
+
 	it('does not retry a transient failure after attempts are exhausted', async () => {
 		const args = await captureFailArgs(
 			new TransientQueueError('provider_timeout', 'Provider timed out'),

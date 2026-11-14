@@ -1,4 +1,6 @@
 // apps/worker/src/lib/queueErrors.ts
+import { getErrorMessage } from './utils/errors';
+
 export type QueueFailureKind = 'permanent' | 'transient';
 
 export interface ClassifiedQueueFailure {
@@ -52,6 +54,22 @@ export function classifyQueueError(error: unknown): ClassifiedQueueFailure {
 	return {
 		kind: 'transient',
 		code: 'unclassified',
-		message: error instanceof Error ? error.message : 'Unknown error'
+		message: describeQueueError(error)
 	};
+}
+
+/**
+ * The text recorded on a failed job. Supabase returns database errors as plain
+ * objects (`{ message, code, details }`), not `Error` instances, so reading
+ * only `Error.message` recorded every one of them as "Unknown error".
+ */
+export function describeQueueError(error: unknown): string {
+	const message = getErrorMessage(error);
+	if (!error || typeof error !== 'object' || error instanceof QueueProcessorError) {
+		return message;
+	}
+	const code = Reflect.get(error, 'code');
+	return typeof code === 'string' && code.trim() && !message.includes(code)
+		? `${message} (${code})`
+		: message;
 }

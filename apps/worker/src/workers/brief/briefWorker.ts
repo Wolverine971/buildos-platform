@@ -15,7 +15,10 @@ import {
 import { LegacyJob } from '../shared/jobAdapter';
 import { queueConfig } from '../../config/queueConfig';
 import { classifyQueueError } from '../../lib/queueErrors';
-import { generateOntologyDailyBrief } from './ontologyBriefGenerator';
+import {
+	generateOntologyDailyBrief,
+	refreshTodayWaitingItemsAfterBrief
+} from './ontologyBriefGenerator';
 import { generateCorrelationId } from '@buildos/shared-utils';
 import {
 	type ExistingBriefJobDecision,
@@ -658,6 +661,24 @@ export async function processBriefJob(
    → Brief Type: ${useOntology ? 'ONTOLOGY 🧬' : 'LEGACY'}
    → Email Preference: ${shouldEmailBrief ? 'ENABLED ✅ (will be sent via notification system)' : 'DISABLED ❌'}
    → SMS Preference: ${shouldSmsBrief ? 'ENABLED ✅ (will be sent via notification system)' : 'DISABLED ❌'}`);
+
+		// Last, and only now: refresh the Today page's waiting-on list. It takes 10-45 s,
+		// so it runs after the notification is out and the job is recorded as done, where
+		// it can no longer make the brief late. It is still part of this job: it stops
+		// with the job's signal or at its own time cap. The helper never throws; the
+		// catch is a second guard, because a throw here would reach the handler below
+		// and mark a finished brief as failed.
+		try {
+			await refreshTodayWaitingItemsAfterBrief({
+				userId: job.data.userId,
+				actorId: ontologyBrief.actorId,
+				timezone,
+				briefDate: validatedBriefDate,
+				signal: job.signal
+			});
+		} catch (waitingError) {
+			console.warn('Today waiting items refresh failed after the brief:', waitingError);
+		}
 
 		return {
 			status: 'generated',

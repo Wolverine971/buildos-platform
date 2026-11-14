@@ -19,9 +19,20 @@
  * NODE_ENV is deliberately not a signal: `NODE_ENV=production node dist/index.js`
  * on a laptop is still a laptop.
  *
- * Queue consumers are not gated here: a local worker still claims queue_jobs.
+ * Queue consumers have their own gate with the same resolution rules
+ * (WORKER_QUEUE_CONSUMERS_ENABLED, below).
  */
 export const SCHEDULED_WORK_ENV = 'WORKER_SCHEDULER_ENABLED';
+
+/**
+ * Claiming queue_jobs also runs only on a deployed worker. A laptop worker
+ * shares the production queue, so it used to race Railway for real users'
+ * briefs, reviews, and notifications and run them on whatever code was checked
+ * out. Locally the HTTP API still starts and jobs queued by a local web app are
+ * processed by the deployed worker. Set WORKER_QUEUE_CONSUMERS_ENABLED=true to
+ * have this machine claim jobs (for example while changing a processor).
+ */
+export const QUEUE_CONSUMERS_ENV = 'WORKER_QUEUE_CONSUMERS_ENABLED';
 
 export interface ScheduledWorkGate {
 	enabled: boolean;
@@ -35,12 +46,20 @@ const RAILWAY_RUNTIME_KEYS = [
 ] as const;
 
 export function resolveScheduledWorkGate(env: NodeJS.ProcessEnv): ScheduledWorkGate {
-	const explicit = env[SCHEDULED_WORK_ENV]?.trim().toLowerCase();
+	return resolveDeployedWorkerGate(env, SCHEDULED_WORK_ENV);
+}
+
+export function resolveQueueConsumerGate(env: NodeJS.ProcessEnv): ScheduledWorkGate {
+	return resolveDeployedWorkerGate(env, QUEUE_CONSUMERS_ENV);
+}
+
+function resolveDeployedWorkerGate(env: NodeJS.ProcessEnv, envName: string): ScheduledWorkGate {
+	const explicit = env[envName]?.trim().toLowerCase();
 	if (explicit === 'true' || explicit === '1') {
-		return { enabled: true, reason: `${SCHEDULED_WORK_ENV}=${explicit}` };
+		return { enabled: true, reason: `${envName}=${explicit}` };
 	}
 	if (explicit === 'false' || explicit === '0') {
-		return { enabled: false, reason: `${SCHEDULED_WORK_ENV}=${explicit}` };
+		return { enabled: false, reason: `${envName}=${explicit}` };
 	}
 
 	const railwayKey = RAILWAY_RUNTIME_KEYS.find((key) => env[key]?.trim());
@@ -55,7 +74,7 @@ export function resolveScheduledWorkGate(env: NodeJS.ProcessEnv): ScheduledWorkG
 		};
 	}
 
-	const ignored = explicit ? ` (ignored ${SCHEDULED_WORK_ENV}="${explicit}")` : '';
+	const ignored = explicit ? ` (ignored ${envName}="${explicit}")` : '';
 	return { enabled: false, reason: `not a Railway deployment${ignored}` };
 }
 
@@ -63,5 +82,12 @@ export function describeScheduledWorkGate(gate: ScheduledWorkGate): string {
 	if (gate.enabled) {
 		return `⏰ Scheduled work ON (${gate.reason}): crons, startup brief scheduling, retention purges, and queue alerts will run.`;
 	}
-	return `⏸️ Scheduled work OFF (${gate.reason}): no crons, startup brief scheduling, retention purges, or queue alerts. Queue jobs are still claimed. Set ${SCHEDULED_WORK_ENV}=true to opt in.`;
+	return `⏸️ Scheduled work OFF (${gate.reason}): no crons, startup brief scheduling, retention purges, or queue alerts. Set ${SCHEDULED_WORK_ENV}=true to opt in.`;
+}
+
+export function describeQueueConsumerGate(gate: ScheduledWorkGate): string {
+	if (gate.enabled) {
+		return `📥 Queue consumers ON (${gate.reason}): this worker claims and runs queue jobs.`;
+	}
+	return `⏸️ Queue consumers OFF (${gate.reason}): this worker will not claim queue jobs; the deployed worker runs them. Set ${QUEUE_CONSUMERS_ENV}=true to run jobs on this machine.`;
 }

@@ -8,10 +8,6 @@ import type { FreshnessScanJobMetadata } from './freshness-radar.types';
 export type QueueJobType = Exclude<Database['public']['Enums']['queue_type'], 'process_brain_dump'>;
 export type QueueJobStatus = Database['public']['Enums']['queue_status'];
 
-export type OntologyEntityType = 'task' | 'plan' | 'goal' | 'risk' | 'milestone' | 'document';
-
-export type OntologyClassificationSource = 'create_modal';
-
 export type BriefNotificationSuppressionReason =
 	| 'inactive_preference'
 	| 'invalid_preference'
@@ -19,13 +15,6 @@ export type BriefNotificationSuppressionReason =
 	| 'preference_lookup_failed'
 	| 'preference_missing'
 	| 'cycle_delivery_suppressed';
-
-export interface OntologyClassificationRequest {
-	entityType: OntologyEntityType;
-	entityId: string;
-	userId: string;
-	classificationSource: OntologyClassificationSource;
-}
 
 // Brief generation progress tracking
 export type BriefGenerationStep =

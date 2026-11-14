@@ -1,5 +1,6 @@
 // packages/agentic-chat-client/src/agent-chat-thinking-state.ts
 import type { ActivityEntry, ThinkingBlockMessage, UIMessage } from './agent-chat.types';
+import { isTurnStep } from './agent-chat-turn-cards';
 
 type WorkerTerminalStatus = 'completed' | 'failed' | 'cancelled';
 
@@ -108,9 +109,75 @@ export function finalizeWorkerThinkingBlock(
 	const nextBlock: ThinkingBlockMessage = {
 		...block,
 		status: status === 'failed' ? 'error' : status,
+		// A stopped or failed turn shows its steps: a fold the reply made opens again.
+		...(status !== 'completed' && block.foldSetBy === 'reply' ? { isCollapsed: false } : {}),
 		content: status === 'failed' ? 'Error' : status === 'cancelled' ? 'Cancelled' : 'Complete'
 	};
 	const nextMessages = [...messages];
 	nextMessages[index] = nextBlock;
 	return { messages: nextMessages, blockId: block.id };
+}
+
+// ---------------------------------------------------------------------------
+// The work log's fold while a turn runs. It is open while the model works and
+// folds the moment reply text starts, so the answer rides up into view. Every
+// rule here reads structured state (step rows, statuses), never message text.
+// ---------------------------------------------------------------------------
+
+/** A tool call that has not reported back yet. */
+function hasStepInFlight(block: ThinkingBlockMessage): boolean {
+	return block.activities.some(
+		(activity) => activity.activityType === 'tool_call' && activity.status === 'pending'
+	);
+}
+
+/**
+ * New reply text arrived: fold the work log. Not while a step is still in flight (its row
+ * is what the person is watching), not while the turn waits on the person, and never over
+ * a fold the person set by hand.
+ */
+export function foldWorkLogForReply(block: ThinkingBlockMessage): ThinkingBlockMessage {
+	if (block.status !== 'active' || block.agentState === 'waiting_on_user') return block;
+	if (block.foldSetBy === 'user' || block.isCollapsed) return block;
+	if (hasStepInFlight(block)) return block;
+	return { ...block, isCollapsed: true, foldSetBy: 'reply' };
+}
+
+/**
+ * The model wrote a little and went back to work: a new step row opens a log the reply had
+ * folded. A change to a row that is already there (a step finishing, a progress note) does
+ * not, so the panel never flaps while the answer is being written.
+ */
+export function reopenWorkLogForNewStep(
+	previous: ThinkingBlockMessage,
+	next: ThinkingBlockMessage
+): ThinkingBlockMessage {
+	if (next.foldSetBy !== 'reply' || !next.isCollapsed || next.status !== 'active') return next;
+	if (next.activities === previous.activities) return next;
+	const known = new Set(previous.activities.map((activity) => activity.id));
+	if (!next.activities.some((activity) => !known.has(activity.id) && isTurnStep(activity))) {
+		return next;
+	}
+	const reopened: ThinkingBlockMessage = { ...next, isCollapsed: false };
+	delete reopened.foldSetBy;
+	return reopened;
+}
+
+/** The person clicked the header: flip the fold, and it is theirs for the rest of the turn. */
+export function toggleWorkLogByHand(block: ThinkingBlockMessage): ThinkingBlockMessage {
+	return { ...block, isCollapsed: !block.isCollapsed, foldSetBy: 'user' };
+}
+
+/**
+ * How the fold stands once the turn ends. A finished turn folds to one line. A stopped or
+ * failed one shows its steps, so a fold the reply made opens again. A fold the person set
+ * by hand during the turn stays as they left it.
+ */
+export function workLogCollapsedAtTurnEnd(
+	block: ThinkingBlockMessage,
+	status: ThinkingBlockMessage['status']
+): boolean | undefined {
+	if (block.foldSetBy === 'user') return block.isCollapsed;
+	if (status === 'completed') return true;
+	return block.foldSetBy === 'reply' ? false : block.isCollapsed;
 }

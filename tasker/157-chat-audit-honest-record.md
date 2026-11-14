@@ -105,9 +105,21 @@ a re-run of case 7 (about 1.5¢, needs DJ's OK) would confirm the wording live.
 
 - Stop during a write: the database fence rejects events after Stop, so live and reload can
   still differ until the session reloads.
-- Document and table Undo is not known after a reload (rows read "Updated" again).
+- **Document Undo after a reload: built 2026-11-14, uncommitted.** The session GET returns each
+  edited document's current `content_hash` (`documentHashes`); a rebuilt card whose `beforeHash`
+  equals it reads Undone (`markUndoneDocumentChanges`), and so do its row and the receipt.
+  Tables are not covered (2 table documents in production).
 - Assignee, goal/milestone link and calendar-update before → after.
 - At phone width an opened chip's title truncates beside its "› sections" suffix.
-- The reply does not yet offer the lookup it skipped (the refund call).
+- The reply does not offer the lookup it skipped (the refund call). **Decided 2026-11-14 (DJ):
+  keep the instant receipt.** It is fast and built only from saved effects; a model-written
+  closing reply would add 2 to 4 seconds per brain dump and could misstate what happened.
 - `save` threshold calibration: two readings so far (0.87, 0.84); read `workspace.save_p` from
   real turns. The September eval harness was deleted in `1499e4d54`, so there is no free replay.
+
+## Sized against production (2026-11-14, last 30 days, 52 turns)
+
+0 stopped turns, 0 calendar edits, 0 link or assignee changes in chat, 3 document edits, 2 task
+edits. Stop-during-write and the missing before → after kinds are parked until they show up.
+The work log card (`ThinkingBlock.svelte`, `RecordList.svelte`) is mid-redesign in another
+session (one record per row), which replaces the chip layout that truncated at phone width.

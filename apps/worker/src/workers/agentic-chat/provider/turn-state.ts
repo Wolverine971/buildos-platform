@@ -688,6 +688,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 							logicalProviderRound: value.logicalProviderRound + 1,
 							providerAttempt: undefined,
 							passRole: 'repair',
+							repairReason: { kind: 'repeated_saved_proposal' },
 							toolChoice: 'auto'
 						},
 						createReplayRepairInstruction(repeats)
@@ -790,6 +791,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 				logicalProviderRound: value.logicalProviderRound + 1,
 				providerAttempt: undefined,
 				passRole: 'repair',
+				repairReason: { kind: 'unfinished_request' },
 				toolChoice: 'auto'
 			},
 			[

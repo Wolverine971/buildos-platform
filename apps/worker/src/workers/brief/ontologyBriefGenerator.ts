@@ -48,6 +48,14 @@ import type {
 	ProjectRecentChange
 } from './ontologyBriefTypes.js';
 import type { YesterdayPlanItem } from './ontologyPrompts.js';
+import {
+	type PreviousProjectWriteup,
+	type ProjectWriteupGenerationMode,
+	type ProjectWriteupReuseDecision,
+	computeProjectWriteupInputHash,
+	decideProjectWriteupReuse,
+	loadPreviousProjectWriteups
+} from './projectWriteupReuse.js';
 import { refreshTodayWaitingItems } from './todayWaitingItems.js';
 
 // ============================================================================
@@ -79,17 +87,24 @@ export type OntologyDailyBriefGenerationResult =
 	| OntologyDailyBriefResult
 	| OntologyDailyBriefSkippedResult;
 
+// statusLine, recentChangeSummary and calendarSummary were written by the model and
+// stored on every write-up but read nowhere (web, mobile or worker), and nextAction
+// was read here but never asked for. All four are gone from the contract.
 interface ProjectBriefLLMResponse {
 	briefMarkdown?: string;
-	statusLine?: string;
-	recentChangeSummary?: string;
-	calendarSummary?: string;
-	nextAction?: string;
 	nextStepShort?: string;
 	nextStepLong?: string;
 }
 
 const PROJECT_BRIEF_MODELS = [DEEPSEEK_V4_FLASH_MODEL, XIAOMI_MIMO_V25_MODEL] as const;
+/**
+ * Project write-ups ran with hidden reasoning on and no cap (prod, 30 days to
+ * 2026-11-14): reasoning was 78% of output tokens, two calls burned the whole 8,192
+ * default and failed, and four held a slot until the 120 s default timeout. A
+ * finished write-up is well under 1,000 tokens.
+ */
+const PROJECT_BRIEF_MAX_TOKENS = 2_000;
+const PROJECT_BRIEF_TIMEOUT_MS = 45_000;
 /**
  * Executive summary, analysis and re-engagement writers (DJ 2026-09-25, tasker
  * 108 side-by-side on his real brief): GPT-6 Luna wrote the most grounded summary
@@ -106,6 +121,8 @@ const ANALYSIS_MAX_TOKENS = 3_000;
 const BRIEF_ENTITY_RECORDING_TIMEOUT_MS = 5_000;
 const TODAY_WAITING_ITEMS_TIMEOUT_MS = 45_000;
 const PROJECT_BRIEF_GENERATION_CONCURRENCY = 3;
+/** How many priority actions the brief prints under "Start Here". */
+const START_HERE_ACTION_COUNT = 3;
 const ACTIVE_PROJECT_STATES = ['planning', 'active'] as const;
 
 // ============================================================================
@@ -460,6 +477,41 @@ async function updateProgress(
 // PROJECT BRIEF GENERATION
 // ============================================================================
 
+/** The one-line health read at the top of a template (non-AI) project write-up. */
+export function formatProjectStatusLine(project: ProjectBriefData): string {
+	const goalsAtRisk = project.goals.filter(
+		(g) =>
+			g.goal.state_key !== 'achieved' &&
+			g.goal.state_key !== 'abandoned' &&
+			(g.status === 'at_risk' || g.status === 'behind')
+	);
+	const todayCount = project.todaysTasks.length;
+	const blockedCount = project.blockedTasks.length;
+	const openCount = project.openTaskCount ?? 0;
+
+	if (blockedCount > 0 && goalsAtRisk.length > 0) {
+		return `🔴 **Needs attention** — ${blockedCount} blocked, ${goalsAtRisk.length} goal${goalsAtRisk.length > 1 ? 's' : ''} at risk`;
+	}
+	if (blockedCount > 0) {
+		return `⚠️ **${blockedCount} blocked task${blockedCount > 1 ? 's' : ''}** — resolve to keep momentum`;
+	}
+	if (goalsAtRisk.length > 0) {
+		return `⚠️ **${goalsAtRisk.length} goal${goalsAtRisk.length > 1 ? 's' : ''} at risk** — check progress`;
+	}
+	if (todayCount > 0) {
+		return `✅ **On track** — ${todayCount} task${todayCount > 1 ? 's' : ''} today`;
+	}
+	if (project.thisWeekTasks.length > 0) {
+		return `📅 **${project.thisWeekTasks.length} tasks this week** — nothing urgent today`;
+	}
+	// Nothing dated this week is not the same as nothing to do: in prod (7 days to
+	// 2026-11-14) 121 of 143 "No active tasks" lines sat on projects with open tasks.
+	if (openCount > 0) {
+		return `📋 **${openCount} open task${openCount > 1 ? 's' : ''}** — none dated this week`;
+	}
+	return `📭 **No active tasks** — project may need planning`;
+}
+
 function formatOntologyProjectBrief(project: ProjectBriefData, _timezone: string): string {
 	const projectId = project.project.id;
 	const projectName = project.project.name;
@@ -469,25 +521,7 @@ function formatOntologyProjectBrief(project: ProjectBriefData, _timezone: string
 	const activeGoals = project.goals.filter(
 		(g) => g.goal.state_key !== 'achieved' && g.goal.state_key !== 'abandoned'
 	);
-	const goalsAtRisk = activeGoals.filter((g) => g.status === 'at_risk' || g.status === 'behind');
-	const todayCount = project.todaysTasks.length;
-	const blockedCount = project.blockedTasks.length;
-
-	let statusLine = '';
-	if (blockedCount > 0 && goalsAtRisk.length > 0) {
-		statusLine = `🔴 **Needs attention** — ${blockedCount} blocked, ${goalsAtRisk.length} goal${goalsAtRisk.length > 1 ? 's' : ''} at risk`;
-	} else if (blockedCount > 0) {
-		statusLine = `⚠️ **${blockedCount} blocked task${blockedCount > 1 ? 's' : ''}** — resolve to keep momentum`;
-	} else if (goalsAtRisk.length > 0) {
-		statusLine = `⚠️ **${goalsAtRisk.length} goal${goalsAtRisk.length > 1 ? 's' : ''} at risk** — check progress`;
-	} else if (todayCount > 0) {
-		statusLine = `✅ **On track** — ${todayCount} task${todayCount > 1 ? 's' : ''} today`;
-	} else if (project.thisWeekTasks.length > 0) {
-		statusLine = `📅 **${project.thisWeekTasks.length} tasks this week** — nothing urgent today`;
-	} else {
-		statusLine = `📭 **No active tasks** — project may need planning`;
-	}
-	brief += `${statusLine}\n\n`;
+	brief += `${formatProjectStatusLine(project)}\n\n`;
 
 	// Calendar - project-specific commitments
 	if (project.calendarToday.length > 0 || project.calendarUpcoming.length > 0) {
@@ -616,32 +650,75 @@ function formatOntologyProjectBrief(project: ProjectBriefData, _timezone: string
 	return brief;
 }
 
-async function generateOntologyProjectBrief(
+/** The fingerprint is an optimisation; if it cannot be computed the write-up is written fresh. */
+function safeProjectWriteupInputHash(
+	project: ProjectBriefData,
+	briefDate: string,
+	timezone: string
+): string | null {
+	try {
+		return computeProjectWriteupInputHash(project, briefDate, timezone);
+	} catch (error) {
+		console.warn(
+			`[OntologyBrief] Could not fingerprint project ${project.project.id}; writing it fresh`,
+			error
+		);
+		return null;
+	}
+}
+
+/**
+ * Writes and saves one project's write-up.
+ *
+ * `previousWriteup` is the project's most recent stored write-up. When it was written
+ * from the same inputs as today's (equal hash) and is less than a week old, it is used
+ * again: no model call, and the project's next step is left alone.
+ */
+export async function generateOntologyProjectBrief(
 	dailyBriefId: string,
 	project: ProjectBriefData,
 	timezone: string,
 	userId: string,
 	briefDate: string,
-	signal?: AbortSignal
+	signal?: AbortSignal,
+	previousWriteup?: PreviousProjectWriteup | null
 ): Promise<OntologyProjectBriefRow> {
 	throwIfAborted(signal);
 	const fallbackBriefContent = formatOntologyProjectBrief(project, timezone);
 	let briefContent = fallbackBriefContent;
-	let generationMode: 'llm' | 'deterministic_fallback' = 'deterministic_fallback';
+	let generationMode: ProjectWriteupGenerationMode = 'deterministic_fallback';
 	let llmModelUsed: string | null = null;
 	let llmCost: number | null = null;
-	let llmStatusLine: string | null = null;
-	let llmRecentChangeSummary: string | null = null;
-	let llmCalendarSummary: string | null = null;
-	let llmNextAction: string | null = null;
 	let llmNextStepShort: string | null = null;
 	let llmNextStepLong: string | null = null;
 	let llmSkippedReason: string | null = null;
 	let nextStepPersisted = false;
+	let nextStepKept = false;
+	let writeupReusedFromDate: string | null = null;
 	const llmDecision = getProjectLlmBriefDecision(project);
+	// Template write-ups cost nothing to rebuild, so only model write-ups are hashed.
+	let inputHash = llmDecision.shouldUseLlm
+		? safeProjectWriteupInputHash(project, briefDate, timezone)
+		: null;
+	const reuseDecision: ProjectWriteupReuseDecision | null = inputHash
+		? decideProjectWriteupReuse({ inputHash, briefDate, previous: previousWriteup })
+		: null;
+	/** 'reused', or why the write-up was written fresh. Null for template write-ups. */
+	const writeupReuse = !reuseDecision
+		? null
+		: reuseDecision.reuse
+			? 'reused'
+			: reuseDecision.reason;
 
 	if (!llmDecision.shouldUseLlm) {
 		llmSkippedReason = 'low_signal_project';
+	} else if (reuseDecision && reuseDecision.reuse) {
+		// Nothing the write-up is written from has changed: show the same write-up and
+		// leave the project's next step exactly as it is.
+		briefContent = reuseDecision.briefContent;
+		generationMode = 'reused';
+		writeupReusedFromDate = reuseDecision.writtenForDate;
+		llmSkippedReason = 'unchanged_since_last_writeup';
 	} else {
 		try {
 			const llmService = new SmartLLMService({
@@ -662,6 +739,9 @@ async function generateOntologyProjectBrief(
 				model: PROJECT_BRIEF_MODELS[0],
 				models: [...PROJECT_BRIEF_MODELS],
 				temperature: 0.25,
+				maxTokens: PROJECT_BRIEF_MAX_TOKENS,
+				timeoutMs: PROJECT_BRIEF_TIMEOUT_MS,
+				reasoning: { enabled: false },
 				requirements: {
 					maxCost: 0.04,
 					minAccuracy: 4.3
@@ -691,20 +771,19 @@ async function generateOntologyProjectBrief(
 			if (normalized) {
 				briefContent = normalized;
 				generationMode = 'llm';
-				llmStatusLine = response.statusLine?.trim() || null;
-				llmRecentChangeSummary = response.recentChangeSummary?.trim() || null;
-				llmCalendarSummary = response.calendarSummary?.trim() || null;
-				llmNextAction = response.nextAction?.trim() || null;
 			}
-			llmNextStepShort =
-				sanitizeNextStepShort(response.nextStepShort) ||
-				sanitizeNextStepShort(response.nextAction);
-			llmNextStepLong =
-				sanitizeNextStepLong(response.nextStepLong) ||
-				sanitizeNextStepLong(response.nextAction) ||
-				llmNextStepShort;
+			llmNextStepShort = sanitizeNextStepShort(response.nextStepShort);
+			llmNextStepLong = sanitizeNextStepLong(response.nextStepLong) || llmNextStepShort;
 
-			if (llmNextStepShort) {
+			// The model is told to return the current next step unchanged when it is
+			// still right. Then there is nothing to save: the project page keeps its
+			// text, its "updated" time and who wrote it.
+			nextStepKept =
+				Boolean(llmNextStepShort) &&
+				llmNextStepShort === sanitizeNextStepShort(project.project.next_step_short) &&
+				llmNextStepLong === sanitizeNextStepLong(project.project.next_step_long);
+
+			if (llmNextStepShort && !nextStepKept) {
 				const now = new Date().toISOString();
 				const { data: persistedProject, error: nextStepError } = await supabase
 					.from('onto_projects')
@@ -738,6 +817,10 @@ async function generateOntologyProjectBrief(
 				project.nextSteps = [llmNextStepShort, llmNextStepLong].filter(
 					(step): step is string => Boolean(step)
 				);
+				// The next step is one of the hashed inputs. Store the hash of the inputs
+				// as tomorrow will load them (with the step just saved), or this write-up
+				// would count as "changed" tomorrow because of its own save.
+				inputHash = safeProjectWriteupInputHash(project, briefDate, timezone);
 			}
 		} catch (error) {
 			throwIfAborted(signal);
@@ -770,15 +853,19 @@ async function generateOntologyProjectBrief(
 		generationMode,
 		llmModelUsed,
 		llmCost,
-		llmStatusLine,
-		llmRecentChangeSummary,
-		llmCalendarSummary,
-		llmNextAction,
 		llmNextStepShort,
 		llmNextStepLong,
 		nextStepPersisted,
+		nextStepKept,
 		llmSkippedReason,
 		llmDecision,
+		// Reuse bookkeeping (see projectWriteupReuse.ts). `inputHash` is what the next
+		// brief compares against; `writeupReusedFromDate` is the brief date the reused
+		// text was written for, carried forward so the weekly refresh counts from it.
+		inputHash,
+		writeupReused: generationMode === 'reused',
+		writeupReusedFromDate,
+		writeupReuse,
 		recentChanges: project.recentChanges.slice(0, 8),
 		calendarToday: project.calendarToday.slice(0, 5),
 		calendarUpcoming: project.calendarUpcoming.slice(0, 5)
@@ -813,7 +900,79 @@ async function generateOntologyProjectBrief(
 // MAIN BRIEF GENERATION
 // ============================================================================
 
-function generateMainBriefMarkdown(
+/**
+ * The one-line day read under the Executive Brief.
+ *
+ * "Clear day" is only for a day with nothing scheduled AND nothing overdue or
+ * blocked: the 2026-11-13 brief printed it directly under a summary about overdue
+ * work. Overdue work is named without a total (DJ: overdue totals read as shame).
+ */
+export function formatDayLine(
+	briefData: Pick<OntologyBriefData, 'todaysTasks' | 'projects' | 'blockedTasks' | 'overdueTasks'>
+): string {
+	const taskCount = briefData.todaysTasks.length;
+	const projectCount = briefData.projects.length;
+	const blockedCount = briefData.blockedTasks.length;
+	const overdueCount = briefData.overdueTasks.length;
+	const attentionCount = blockedCount + overdueCount;
+	const waitingWork =
+		overdueCount > 0 && blockedCount > 0
+			? 'Overdue and blocked work'
+			: overdueCount > 0
+				? 'Overdue work'
+				: 'Blocked work';
+
+	if (taskCount === 0) {
+		if (attentionCount === 0) return '📭 **Clear day** — no tasks scheduled';
+		return `📌 **Nothing scheduled today** — ${waitingWork.toLowerCase()} is still open`;
+	}
+	if (attentionCount >= 3) {
+		// A blocked-only total stays; a total that includes overdue work does not.
+		const attention =
+			overdueCount > 0
+				? `${waitingWork} needs attention`
+				: `${attentionCount} items need attention`;
+		return `🔴 **${attention}** — ${taskCount} tasks across ${projectCount} projects`;
+	}
+	if (taskCount >= 10) {
+		return `📋 **Full day** — ${taskCount} tasks across ${projectCount} projects`;
+	}
+	if (taskCount >= 5) {
+		return `🎯 **Solid workload** — ${taskCount} tasks across ${projectCount} projects`;
+	}
+	return `✨ **Light day** — ${taskCount} tasks, good for deep work`;
+}
+
+/** The summary used when the summary model call fails on every model. */
+export function buildFallbackExecutiveSummary(
+	briefData: Pick<
+		OntologyBriefData,
+		'projects' | 'todaysTasks' | 'blockedTasks' | 'overdueTasks' | 'goals'
+	>
+): string {
+	const counted = (count: number, noun: string) =>
+		`**${count} ${noun}${count === 1 ? '' : 's'}**`;
+	const blockedCount = briefData.blockedTasks.length;
+	const overdueCount = briefData.overdueTasks.length;
+	const goalsAtRiskCount = briefData.goals.filter(
+		(g) => g.status === 'at_risk' || g.status === 'behind'
+	).length;
+
+	let summary = `You have ${counted(briefData.projects.length, 'active project')} with ${counted(briefData.todaysTasks.length, 'task')} starting today. `;
+	if (blockedCount > 0) {
+		summary += `${counted(blockedCount, 'task')} ${blockedCount === 1 ? 'is' : 'are'} blocked. `;
+	}
+	if (overdueCount > 0) {
+		summary += `${counted(overdueCount, 'task')} ${overdueCount === 1 ? 'is' : 'are'} overdue. `;
+	}
+	if (goalsAtRiskCount > 0) {
+		summary += `${counted(goalsAtRiskCount, 'goal')} need${goalsAtRiskCount === 1 ? 's' : ''} attention.`;
+	}
+	return summary;
+}
+
+/** Builds the brief's markdown page. Exported for tests. */
+export function generateMainBriefMarkdown(
 	briefData: OntologyBriefData,
 	projectBriefContents: string[],
 	executiveSummary: string,
@@ -856,30 +1015,12 @@ function generateMainBriefMarkdown(
 	}
 
 	// Day Hook - one-liner that sets expectations
-	const taskCount = briefData.todaysTasks.length;
-	const projectCount = briefData.projects.length;
-	const blockedCount = briefData.blockedTasks.length;
-	const overdueCount = briefData.overdueTasks.length;
-	const attentionCount = blockedCount + overdueCount;
-
-	let dayType = '';
-	if (taskCount === 0) {
-		dayType = '📭 **Clear day** — no tasks scheduled';
-	} else if (attentionCount >= 3) {
-		dayType = `🔴 **${attentionCount} items need attention** — ${taskCount} tasks across ${projectCount} projects`;
-	} else if (taskCount >= 10) {
-		dayType = `📋 **Full day** — ${taskCount} tasks across ${projectCount} projects`;
-	} else if (taskCount >= 5) {
-		dayType = `🎯 **Solid workload** — ${taskCount} tasks across ${projectCount} projects`;
-	} else {
-		dayType = `✨ **Light day** — ${taskCount} tasks, good for deep work`;
-	}
-	mainBrief += `${dayType}\n\n`;
+	mainBrief += `${formatDayLine(briefData)}\n\n`;
 
 	// Priority Actions - what to do first
 	if (priorityActions.length > 0) {
 		mainBrief += `## Start Here\n\n`;
-		for (const action of priorityActions.slice(0, 3)) {
+		for (const action of priorityActions.slice(0, START_HERE_ACTION_COUNT)) {
 			mainBrief += `- **${formatPriorityActionMarkdown(action)}**\n`;
 		}
 		mainBrief += '\n';
@@ -1021,8 +1162,10 @@ function generateMainBriefMarkdown(
 		}
 	}
 
-	// Recent Wins - Momentum Section (completed tasks)
-	const completedTasks = briefData.recentUpdates.tasks.filter((t) => t.state_key === 'done');
+	// Recent Wins - Momentum Section. Tasks finished in the last 24 hours, by completion
+	// time. Filtering recent updates for "done" also counted long-finished tasks that
+	// were merely edited yesterday.
+	const completedTasks = briefData.recentlyCompletedTasks ?? [];
 
 	if (completedTasks.length > 0) {
 		mainBrief += `## ✅ Recent Wins\n\n`;
@@ -1236,6 +1379,18 @@ export async function generateOntologyDailyBrief(
 			jobId
 		);
 
+		// Each project's most recent stored write-up, so an unchanged project reuses it
+		// instead of being rewritten. A forced regeneration is an explicit ask for a
+		// fresh brief, so it skips the lookup and every write-up is written again.
+		const previousWriteups =
+			options?.forceRegenerate === true
+				? new Map<string, PreviousProjectWriteup>()
+				: await loadPreviousProjectWriteups(supabase, {
+						userId,
+						projectIds: briefData.projects.map((project) => project.project.id),
+						briefDate: briefDateInUserTz
+					});
+
 		const projectBriefResults = await mapWithConcurrency(
 			briefData.projects,
 			PROJECT_BRIEF_GENERATION_CONCURRENCY,
@@ -1246,7 +1401,8 @@ export async function generateOntologyDailyBrief(
 					userTimezone,
 					userId,
 					briefDateInUserTz,
-					signal
+					signal,
+					previousWriteups.get(project.project.id)
 				)
 		);
 		throwIfAborted(signal);
@@ -1277,12 +1433,16 @@ export async function generateOntologyDailyBrief(
 			projectBriefs
 		);
 
+		const reusedWriteupCount = projectBriefs.filter(
+			(brief) => brief.metadata?.writeupReused === true
+		).length;
 		console.log(
-			`[OntologyBrief] Generated ${projectBriefs.length}/${briefData.projects.length} project briefs`
+			`[OntologyBrief] Generated ${projectBriefs.length}/${briefData.projects.length} project briefs (${reusedWriteupCount} unchanged and reused)`
 		);
 
-		// Step 5: Generate executive summary via LLM
-		// NOTE: Executive summary now generated AFTER project briefs so it has full formatted context
+		// Steps 5-6: Write the executive summary and the analysis. Neither reads the other's
+		// output, so they run side by side (one after the other added 7-11 s). The
+		// summary still follows the project briefs so it has full formatted context.
 		await updateProgress(
 			dailyBrief.id,
 			{ step: 'generating_executive_summary', progress: 60 },
@@ -1290,63 +1450,9 @@ export async function generateOntologyDailyBrief(
 		);
 
 		const holidays = getHoliday(briefDateObj);
-		let executiveSummary = '';
-
-		try {
-			const llmService = new SmartLLMService({
-				httpReferer: (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim(),
-				appName: 'BuildOS Ontology Brief Worker'
-			});
-
-			// Pass project brief contents for full context in executive summary
-			const summaryPrompt = OntologyExecutiveSummaryPrompt.buildUserPrompt({
-				date: briefDateInUserTz,
-				timezone: userTimezone,
-				briefData,
-				holidays: holidays || undefined,
-				projectBriefContents: promptProjectBriefContents,
-				yesterdayPlan
-			});
-
-			executiveSummary = await llmService.generateText({
-				prompt: summaryPrompt,
-				userId,
-				profile: 'custom',
-				models: [...DAILY_BRIEF_WRITING_MODELS],
-				temperature: 0.7,
-				maxTokens: EXECUTIVE_SUMMARY_MAX_TOKENS,
-				signal,
-				systemPrompt: OntologyExecutiveSummaryPrompt.getSystemPrompt(),
-				operationType: 'daily_brief_executive_summary',
-				// llm_usage_logs.brief_id references legacy daily_briefs.
-				metadata: { ontologyDailyBriefId: dailyBrief.id }
-			});
-
-			console.log(`[OntologyBrief] Generated executive summary`);
-		} catch (llmError) {
-			throwIfAborted(signal);
-			console.error('[OntologyBrief] Failed to generate executive summary:', llmError);
-
-			// Fallback executive summary
-			executiveSummary = `You have **${briefData.projects.length} active projects** with **${briefData.todaysTasks.length} tasks** starting today. `;
-			if (briefData.blockedTasks.length > 0) {
-				executiveSummary += `**${briefData.blockedTasks.length} tasks** are blocked. `;
-			}
-			if (briefData.overdueTasks.length > 0) {
-				executiveSummary += `**${briefData.overdueTasks.length} tasks** are overdue. `;
-			}
-			const goalsAtRisk = briefData.goals.filter(
-				(g) => g.status === 'at_risk' || g.status === 'behind'
-			);
-			if (goalsAtRisk.length > 0) {
-				executiveSummary += `**${goalsAtRisk.length} goals** need attention.`;
-			}
-		}
-
-		// Step 6: Generate full LLM analysis
-		await updateProgress(dailyBrief.id, { step: 'llm_analysis', progress: 75 }, jobId);
-
-		let llmAnalysis: string | null = null;
+		// The "Start Here" list the brief prints. Built before the summary so the
+		// summary's first action comes from it and the two never disagree.
+		const linkedPriorityActions = extractPriorityActions(briefData);
 		const isReengagement = options?.isReengagement === true;
 		const daysSinceLastLogin = options?.daysSinceLastLogin || 0;
 		const engagementStage =
@@ -1356,114 +1462,167 @@ export async function generateOntologyDailyBrief(
 					? 'reengagement'
 					: 'standard';
 
-		try {
-			const llmService = new SmartLLMService({
-				httpReferer: (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim(),
-				appName: 'BuildOS Ontology Brief Worker'
-			});
-
-			if (isReengagement && daysSinceLastLogin > 0) {
-				// Re-engagement analysis
-				const { data: userData } = await supabase
-					.from('users')
-					.select('last_visit')
-					.eq('id', userId)
-					.single();
-				const reengagementStage =
-					engagementStage === 'dormant' ? 'dormant' : 'reengagement';
-
-				const reengagementPrompt = OntologyReengagementPrompt.buildUserPrompt({
-					date: briefDateInUserTz,
-					timezone: userTimezone,
-					daysSinceLastLogin,
-					lastLoginDate: userData?.last_visit || 'Unknown',
-					engagementStage: reengagementStage,
-					briefData
+		const writeExecutiveSummary = async (): Promise<string> => {
+			try {
+				const llmService = new SmartLLMService({
+					httpReferer: (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim(),
+					appName: 'BuildOS Ontology Brief Worker'
 				});
 
-				llmAnalysis = await llmService.generateText({
-					prompt: reengagementPrompt,
-					userId,
-					profile: 'custom',
-					models: [...DAILY_BRIEF_WRITING_MODELS],
-					temperature: 0.7,
-					maxTokens: REENGAGEMENT_MAX_TOKENS,
-					signal,
-					operationType: 'daily_brief_reengagement',
-					metadata: { ontologyDailyBriefId: dailyBrief.id },
-					systemPrompt: OntologyReengagementPrompt.getSystemPrompt(
-						daysSinceLastLogin,
-						reengagementStage
-					)
-				});
-			} else {
-				// Standard analysis - include project briefs for full context
-				const analysisPrompt = OntologyAnalysisPrompt.buildUserPrompt({
+				// Pass project brief contents for full context in executive summary
+				const summaryPrompt = OntologyExecutiveSummaryPrompt.buildUserPrompt({
 					date: briefDateInUserTz,
 					timezone: userTimezone,
 					briefData,
 					holidays: holidays || undefined,
-					projectBriefContents: promptProjectBriefContents
+					projectBriefContents: promptProjectBriefContents,
+					yesterdayPlan,
+					priorityActions: linkedPriorityActions
+						.slice(0, START_HERE_ACTION_COUNT)
+						.map((action) => action.text)
 				});
 
-				llmAnalysis = await llmService.generateText({
-					prompt: analysisPrompt,
+				const summary = await llmService.generateText({
+					prompt: summaryPrompt,
 					userId,
 					profile: 'custom',
 					models: [...DAILY_BRIEF_WRITING_MODELS],
-					temperature: 0.4,
-					maxTokens: ANALYSIS_MAX_TOKENS,
+					temperature: 0.7,
+					maxTokens: EXECUTIVE_SUMMARY_MAX_TOKENS,
 					signal,
-					operationType: 'daily_brief_analysis',
-					metadata: { ontologyDailyBriefId: dailyBrief.id },
-					systemPrompt: OntologyAnalysisPrompt.getSystemPrompt()
+					systemPrompt: OntologyExecutiveSummaryPrompt.getSystemPrompt(),
+					operationType: 'daily_brief_executive_summary',
+					// llm_usage_logs.brief_id references legacy daily_briefs.
+					metadata: { ontologyDailyBriefId: dailyBrief.id }
 				});
+
+				console.log(`[OntologyBrief] Generated executive summary`);
+				return summary;
+			} catch (llmError) {
+				throwIfAborted(signal);
+				console.error('[OntologyBrief] Failed to generate executive summary:', llmError);
+				return buildFallbackExecutiveSummary(briefData);
 			}
+		};
 
-			console.log(`[OntologyBrief] Generated LLM analysis`);
-		} catch (llmError) {
-			throwIfAborted(signal);
-			console.error('[OntologyBrief] Failed to generate LLM analysis:', llmError);
+		const writeLlmAnalysis = async (): Promise<string | null> => {
+			try {
+				const llmService = new SmartLLMService({
+					httpReferer: (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim(),
+					appName: 'BuildOS Ontology Brief Worker'
+				});
+				let analysis: string;
 
-			// Fallback LLM analysis with key metrics
-			const blockedCount = briefData.blockedTasks.length;
-			const overdueCount = briefData.overdueTasks.length;
-			const todayCount = briefData.todaysTasks.length;
-			const goalsAtRisk = briefData.goals.filter(
-				(g) => g.status === 'at_risk' || g.status === 'behind'
-			);
+				if (isReengagement && daysSinceLastLogin > 0) {
+					// Re-engagement analysis
+					const { data: userData } = await supabase
+						.from('users')
+						.select('last_visit')
+						.eq('id', userId)
+						.single();
+					const reengagementStage =
+						engagementStage === 'dormant' ? 'dormant' : 'reengagement';
 
-			const analysisPoints: string[] = [];
+					const reengagementPrompt = OntologyReengagementPrompt.buildUserPrompt({
+						date: briefDateInUserTz,
+						timezone: userTimezone,
+						daysSinceLastLogin,
+						lastLoginDate: userData?.last_visit || 'Unknown',
+						engagementStage: reengagementStage,
+						briefData
+					});
 
-			if (todayCount > 0) {
-				analysisPoints.push(`You have **${todayCount} tasks** scheduled for today.`);
-			}
-			if (overdueCount > 0) {
-				analysisPoints.push(
-					`⚠️ **${overdueCount} tasks are overdue** and need immediate attention.`
+					analysis = await llmService.generateText({
+						prompt: reengagementPrompt,
+						userId,
+						profile: 'custom',
+						models: [...DAILY_BRIEF_WRITING_MODELS],
+						temperature: 0.7,
+						maxTokens: REENGAGEMENT_MAX_TOKENS,
+						signal,
+						operationType: 'daily_brief_reengagement',
+						metadata: { ontologyDailyBriefId: dailyBrief.id },
+						systemPrompt: OntologyReengagementPrompt.getSystemPrompt(
+							daysSinceLastLogin,
+							reengagementStage
+						)
+					});
+				} else {
+					// Standard analysis - include project briefs for full context
+					const analysisPrompt = OntologyAnalysisPrompt.buildUserPrompt({
+						date: briefDateInUserTz,
+						timezone: userTimezone,
+						briefData,
+						holidays: holidays || undefined,
+						projectBriefContents: promptProjectBriefContents
+					});
+
+					analysis = await llmService.generateText({
+						prompt: analysisPrompt,
+						userId,
+						profile: 'custom',
+						models: [...DAILY_BRIEF_WRITING_MODELS],
+						temperature: 0.4,
+						maxTokens: ANALYSIS_MAX_TOKENS,
+						signal,
+						operationType: 'daily_brief_analysis',
+						metadata: { ontologyDailyBriefId: dailyBrief.id },
+						systemPrompt: OntologyAnalysisPrompt.getSystemPrompt()
+					});
+				}
+
+				console.log(`[OntologyBrief] Generated LLM analysis`);
+				return analysis;
+			} catch (llmError) {
+				throwIfAborted(signal);
+				console.error('[OntologyBrief] Failed to generate LLM analysis:', llmError);
+
+				// Fallback LLM analysis with key metrics
+				const blockedCount = briefData.blockedTasks.length;
+				const overdueCount = briefData.overdueTasks.length;
+				const todayCount = briefData.todaysTasks.length;
+				const goalsAtRisk = briefData.goals.filter(
+					(g) => g.status === 'at_risk' || g.status === 'behind'
 				);
-			}
-			if (blockedCount > 0) {
-				analysisPoints.push(
-					`🚫 **${blockedCount} tasks are blocked** - consider addressing blockers first.`
-				);
-			}
-			if (goalsAtRisk.length > 0) {
-				analysisPoints.push(
-					`🔴 **${goalsAtRisk.length} goals** are at risk or behind schedule.`
-				);
-			}
 
-			if (analysisPoints.length > 0) {
-				llmAnalysis = analysisPoints.join('\n\n');
+				const analysisPoints: string[] = [];
+
+				if (todayCount > 0) {
+					analysisPoints.push(`You have **${todayCount} tasks** scheduled for today.`);
+				}
+				if (overdueCount > 0) {
+					analysisPoints.push(
+						`⚠️ **${overdueCount} tasks are overdue** and need immediate attention.`
+					);
+				}
+				if (blockedCount > 0) {
+					analysisPoints.push(
+						`🚫 **${blockedCount} tasks are blocked** - consider addressing blockers first.`
+					);
+				}
+				if (goalsAtRisk.length > 0) {
+					analysisPoints.push(
+						`🔴 **${goalsAtRisk.length} goals** are at risk or behind schedule.`
+					);
+				}
+
+				return analysisPoints.length > 0 ? analysisPoints.join('\n\n') : null;
 			}
-		}
+		};
+
+		// The summary starts first; both calls are in flight before either returns.
+		const [summaryResult, analysisResult] = await Promise.allSettled([
+			writeExecutiveSummary(),
+			writeLlmAnalysis()
+		]);
+		// Each writer falls back by itself, so one only rejects when the job is cancelled.
+		if (summaryResult.status === 'rejected') throw summaryResult.reason;
+		if (analysisResult.status === 'rejected') throw analysisResult.reason;
+		const executiveSummary = summaryResult.value;
+		const llmAnalysis = analysisResult.value;
 
 		// Step 7: Generate main brief markdown
 		await updateProgress(dailyBrief.id, { step: 'finalizing', progress: 90 }, jobId);
-
-		// Extract priority actions first so we can include them in the brief
-		const linkedPriorityActions = extractPriorityActions(briefData);
 
 		const mainBriefContent = generateMainBriefMarkdown(
 			briefData,
@@ -1510,30 +1669,17 @@ export async function generateOntologyDailyBrief(
 				'Recording brief entity references'
 			);
 		} catch (entityError) {
-			console.warn('[OntologyBrief] Brief entity recording skipped:', entityError);
+			console.error(
+				`[OntologyBrief] Brief entity recording failed for brief ${dailyBrief.id}: ${entityError instanceof Error ? entityError.message : String(entityError)}`,
+				entityError
+			);
 		}
 
 		await updateProgress(dailyBrief.id, { step: 'completed', progress: 100 }, jobId);
 
-		// Step 10: Refresh the Today page's "waiting on you / you're waiting on" asks. The
-		// brief is already saved and marked completed, so this can never fail or hold it.
-		try {
-			const waiting = await withTimeout(
-				refreshTodayWaitingItems({
-					supabase,
-					userId,
-					actorId,
-					timezone: userTimezone,
-					briefDate: briefDateInUserTz,
-					signal
-				}),
-				TODAY_WAITING_ITEMS_TIMEOUT_MS,
-				'Refreshing Today waiting items'
-			);
-			console.log(`[OntologyBrief] Today waiting items: ${JSON.stringify(waiting)}`);
-		} catch (waitingError) {
-			console.warn('[OntologyBrief] Today waiting items skipped:', waitingError);
-		}
+		// The Today page's waiting-on refresh used to run here, inside generation. It
+		// takes 10-45 s and held back the "brief is ready" notification, so the brief
+		// worker now runs it after sending that: see refreshTodayWaitingItemsAfterBrief.
 
 		console.log(`[OntologyBrief] Successfully generated brief for user ${userId}`);
 
@@ -1566,10 +1712,86 @@ export async function generateOntologyDailyBrief(
 }
 
 // ============================================================================
+// TODAY WAITING ITEMS
+// ============================================================================
+
+/**
+ * Refreshes the Today page's "waiting on you / you're waiting on" asks for a brief
+ * that is already saved. The brief worker calls this after it has sent the "brief is
+ * ready" notification: the refresh takes 10-45 s and, while it ran inside generation,
+ * 10 of 30 briefs went out after the time the person asked for (prod, to 2026-11-14).
+ *
+ * Never throws, so it cannot fail a finished brief. It stops when the job's `signal`
+ * aborts or at its own time cap, whichever comes first. The refresh gets its own
+ * signal because withTimeout only stops waiting: without it the model call kept
+ * running and wrote rows after the job had ended.
+ */
+export async function refreshTodayWaitingItemsAfterBrief(params: {
+	userId: string;
+	actorId: string;
+	timezone: string;
+	briefDate: string;
+	signal?: AbortSignal;
+}): Promise<void> {
+	const { userId, actorId, timezone, briefDate, signal } = params;
+	// The job was cancelled before the refresh began: nothing to start.
+	if (signal?.aborted) return;
+	const waitingAbort = new AbortController();
+	const cancelWaitingWithJob = () => waitingAbort.abort(signal?.reason);
+	signal?.addEventListener('abort', cancelWaitingWithJob, { once: true });
+	try {
+		const waiting = await withTimeout(
+			refreshTodayWaitingItems({
+				supabase,
+				userId,
+				actorId,
+				timezone,
+				briefDate,
+				signal: waitingAbort.signal
+			}),
+			TODAY_WAITING_ITEMS_TIMEOUT_MS,
+			'Refreshing Today waiting items'
+		);
+		console.log(`[OntologyBrief] Today waiting items: ${JSON.stringify(waiting)}`);
+	} catch (waitingError) {
+		console.warn('[OntologyBrief] Today waiting items skipped:', waitingError);
+	} finally {
+		signal?.removeEventListener('abort', cancelWaitingWithJob);
+		// Cancels the model call when the time cap won; does nothing after a finish.
+		waitingAbort.abort(new Error('Today waiting items refresh stopped at its time cap'));
+	}
+}
+
+// ============================================================================
 // ENTITY TRACKING
 // ============================================================================
 
-async function recordBriefEntities(
+/**
+ * Kinds the original `ontology_brief_entities_kind_check` allowed. Migration
+ * 20261114200000 adds 'event' and 'project', which this file has inserted all along:
+ * one such row made the database reject the whole batch, so 25 of 42 briefs saved
+ * nothing (prod, 30 days to 2026-11-14). Until that migration is applied the save
+ * retries with these kinds only; afterwards the retry never runs and can be deleted.
+ */
+const LEGACY_BRIEF_ENTITY_KINDS: ReadonlySet<string> = new Set([
+	'task',
+	'goal',
+	'plan',
+	'milestone',
+	'output',
+	'document',
+	'risk',
+	'requirement',
+	'decision'
+]);
+const POSTGRES_CHECK_VIOLATION = '23514';
+
+/**
+ * Saves which tasks, goals, events and so on a brief mentions (chat about a brief
+ * reads them). Replaces whatever an earlier run of the same brief saved, and never
+ * throws on a database error: the brief is already complete.
+ */
+export async function recordBriefEntities(
 	dailyBriefId: string,
 	briefData: OntologyBriefData
 ): Promise<void> {
@@ -1726,19 +1948,56 @@ async function recordBriefEntities(
 		}
 	}
 
-	if (entities.length > 0) {
-		const dedupedEntities = Array.from(
-			new Map(
-				entities.map((entity) => [
-					`${entity.project_id ?? 'global'}:${entity.entity_kind}:${entity.entity_id}:${entity.role}`,
-					entity
-				])
-			).values()
+	// A regenerated brief keeps its row id, so clear what the earlier run saved first;
+	// otherwise every regeneration adds a second copy of each row.
+	const { error: clearError } = await supabase
+		.from('ontology_brief_entities')
+		.delete()
+		.eq('daily_brief_id', dailyBriefId);
+	if (clearError) {
+		console.error(
+			`[OntologyBrief] Failed to clear earlier brief entities for brief ${dailyBriefId}: ${clearError.message}`,
+			clearError
 		);
-		const { error } = await supabase.from('ontology_brief_entities').insert(dedupedEntities);
-
-		if (error) {
-			console.warn('[OntologyBrief] Failed to record brief entities:', error);
-		}
+		return;
 	}
+	if (entities.length === 0) return;
+
+	const dedupedEntities = Array.from(
+		new Map(
+			entities.map((entity) => [
+				`${entity.project_id ?? 'global'}:${entity.entity_kind}:${entity.entity_id}:${entity.role}`,
+				entity
+			])
+		).values()
+	);
+	const { error } = await supabase.from('ontology_brief_entities').insert(dedupedEntities);
+	if (!error) return;
+
+	console.error(
+		`[OntologyBrief] Failed to record ${dedupedEntities.length} brief entities for brief ${dailyBriefId}: ${error.message}`,
+		error
+	);
+	if (error.code !== POSTGRES_CHECK_VIOLATION) return;
+
+	// The kind check has not been widened yet (see LEGACY_BRIEF_ENTITY_KINDS): save
+	// the rows it does allow instead of none.
+	const legacyEntities = dedupedEntities.filter((entity) =>
+		LEGACY_BRIEF_ENTITY_KINDS.has(entity.entity_kind)
+	);
+	if (legacyEntities.length === 0 || legacyEntities.length === dedupedEntities.length) return;
+
+	const { error: retryError } = await supabase
+		.from('ontology_brief_entities')
+		.insert(legacyEntities);
+	if (retryError) {
+		console.error(
+			`[OntologyBrief] Retry without event/project rows also failed for brief ${dailyBriefId}: ${retryError.message}`,
+			retryError
+		);
+		return;
+	}
+	console.warn(
+		`[OntologyBrief] Saved ${legacyEntities.length} of ${dedupedEntities.length} brief entities for brief ${dailyBriefId}; event and project rows wait on migration 20261114200000.`
+	);
 }

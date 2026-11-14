@@ -30,7 +30,8 @@
 		Database,
 		Globe,
 		Network,
-		Timer
+		Timer,
+		RotateCcw
 	} from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import AdminSidebar from '$lib/components/admin/AdminSidebar.svelte';
@@ -231,6 +232,12 @@
 					href: '/admin/model-incidents',
 					icon: Timer,
 					description: 'Stalled & failed model calls'
+				},
+				{
+					title: 'Failed Jobs',
+					href: '/admin/jobs',
+					icon: RotateCcw,
+					description: 'Re-run background work'
 				},
 				{
 					title: 'Security Center',

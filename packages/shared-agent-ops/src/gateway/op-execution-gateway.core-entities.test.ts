@@ -390,6 +390,29 @@ describe('core entity gateway legacy row parity', () => {
 		});
 	});
 
+	it.each([
+		['content', { content: '  Vendor slipped two weeks  ' }],
+		['its older name, description', { description: '  Vendor slipped two weeks  ' }]
+	])('updates both homes of the risk text when given %s', async (_label, args) => {
+		mocks.existingByKind.set('risk', {
+			id: ENTITY_ID,
+			project_id: PROJECT_ID,
+			title: 'Launch slip',
+			state_key: 'identified',
+			content: 'Vendor delay',
+			props: { retained: true, description: 'Vendor delay' }
+		});
+
+		await updateRisk(context(), { risk_id: ENTITY_ID, ...args });
+
+		expect(mocks.updatePayloads[0]).toMatchObject({
+			payload: {
+				content: 'Vendor slipped two weeks',
+				props: { retained: true, description: 'Vendor slipped two weeks' }
+			}
+		});
+	});
+
 	it('clears risk mitigation time and blank compatibility values when state reopens', async () => {
 		mocks.existingByKind.set('risk', {
 			id: ENTITY_ID,

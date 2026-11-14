@@ -2305,6 +2305,45 @@ describe('AgenticChatOpenRouterClient', () => {
 		}
 	);
 
+	it.each(['repair', 'acting'] as const)(
+		'records why a repair pass ran only on %s usage without sending it to the model',
+		async (passRole) => {
+			const fetchImpl = vi.fn(async () =>
+				sseResponse([
+					JSON.stringify({
+						choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }]
+					}),
+					'[DONE]'
+				])
+			);
+			const test = harness(fetchImpl);
+			// A later acting pass is built from the repair request and still carries the tag.
+			const repairReason = {
+				kind: 'tool_not_on_surface' as const,
+				tools: ['update_onto_task']
+			};
+			await collect(test.client.stream({ ...input(), passRole, repairReason }));
+			const logger = { logUsageToDatabase: vi.fn(async () => undefined) };
+			await new AgenticChatLlmUsageObserver(logger).observe(test.observations[0]!);
+			const logged = logger.logUsageToDatabase.mock.calls[0] as unknown as [
+				{ metadata: Record<string, unknown> }
+			];
+			if (passRole === 'repair') {
+				expect(logged[0].metadata).toMatchObject({
+					repairReason: 'tool_not_on_surface',
+					repairTools: ['update_onto_task']
+				});
+			} else {
+				expect(logged[0].metadata).not.toHaveProperty('repairReason');
+				expect(logged[0].metadata).not.toHaveProperty('repairTools');
+			}
+			const wire = JSON.parse(
+				(fetchImpl.mock.calls[0] as unknown as [string, { body: string }])[1].body
+			);
+			expect(wire).not.toHaveProperty('repairReason');
+		}
+	);
+
 	it('maps observations into the durable shared usage logger contract', async () => {
 		const logger = { logUsageToDatabase: vi.fn(async () => undefined) };
 		const observer = new AgenticChatLlmUsageObserver(logger);

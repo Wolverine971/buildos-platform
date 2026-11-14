@@ -1,5 +1,6 @@
 // apps/worker/src/workers/chat/chatSessionActivityProcessor.ts
-// Extension to chat classification that generates activity logs and next steps for projects
+// Follow-up to chat classification for project chats: when the chat saved changes to the
+// project, write the project's next step from where the project now stands.
 
 import { supabase } from '../../lib/supabase';
 import { logWorkerError } from '../../lib/errorLogger';
@@ -13,32 +14,12 @@ import {
 	buildStartHerePromptExcerpt,
 	pickProjectStartHereDocument
 } from '@buildos/shared-agent-ops/ontology/start-here';
-import type {
-	Json,
-	NextStepGenerationContext,
-	ProjectLogEntityType,
-	ProjectLogInsert
-} from '@buildos/shared-types';
+import type { Json, NextStepGenerationContext, ProjectLogEntityType } from '@buildos/shared-types';
+import { type PromptSavedChange, latestSavedChanges } from './checkpoint/capturePrompts';
 
 // =============================================================================
 // Types
 // =============================================================================
-
-/**
- * A chat operation record from the database
- */
-interface ChatOperation {
-	id: string;
-	chat_session_id: string;
-	operation_type: string;
-	table_name: string;
-	entity_id: string | null;
-	before_data: Record<string, unknown> | null;
-	after_data: Record<string, unknown> | null;
-	status: string | null;
-	executed_at: string | null;
-	created_at: string | null;
-}
 
 /**
  * Chat session with context information
@@ -56,17 +37,6 @@ interface ChatSessionContext {
 interface NextStepGenerationResult {
 	nextStepShort: string;
 	nextStepLong: string;
-}
-
-/**
- * Processed change summary for a session
- */
-interface SessionChangeSummary {
-	projectId: string | null;
-	created: Array<{ type: ProjectLogEntityType; name: string; id: string }>;
-	updated: Array<{ type: ProjectLogEntityType; name: string; id: string }>;
-	deleted: Array<{ type: ProjectLogEntityType; name: string; id: string }>;
-	activityLogs: ProjectLogInsert[];
 }
 
 type GoalSummary = NonNullable<NextStepGenerationContext['goals']>[number];
@@ -100,45 +70,20 @@ type RecentActivityEntry = NonNullable<NextStepGenerationContext['recentActivity
 // Constants
 // =============================================================================
 
-/**
- * Mapping from database table names to entity types
- */
-const TABLE_TO_ENTITY_TYPE: Record<string, ProjectLogEntityType> = {
-	onto_projects: 'project',
-	onto_tasks: 'task',
-	onto_documents: 'document',
-	onto_notes: 'note',
-	onto_goals: 'goal',
-	onto_milestones: 'milestone',
-	onto_risks: 'risk',
-	onto_plans: 'plan',
-	onto_requirements: 'requirement',
-	onto_sources: 'source',
-	onto_edges: 'edge',
-	// Legacy table mappings
-	tasks: 'task',
-	projects: 'project',
-	notes: 'note'
-};
-
-/**
- * Operation type mapping
- */
-const OPERATION_TO_ACTION: Record<string, 'created' | 'updated' | 'deleted'> = {
-	insert: 'created',
-	create: 'created',
-	update: 'updated',
-	upsert: 'updated',
-	delete: 'deleted',
-	remove: 'deleted'
-};
-
-/**
- * System prompt for next step generation
- */
 const NEXT_STEP_START_HERE_MAX_CHARS = 1800;
+const NEXT_STEP_MAX_TOKENS = 400;
+const NEXT_STEP_TIMEOUT_MS = 30_000;
+/** Newest write executions read per session; the prompt shows the latest of them. */
+const SAVED_CHANGE_ROWS = 200;
 
-const NEXT_STEP_SYSTEM_PROMPT = `You are a project advisor helping users identify their next action. Use goals and recent progress to propose the most helpful next step.
+/**
+ * System prompt for next step generation.
+ *
+ * It carries no worked example: the old one showed an invented person, deadline and
+ * slide numbers, and the model wrote details like them into real next steps. The link
+ * example is built per call from a record that is in the context (buildNextStepPrompt).
+ */
+export const NEXT_STEP_SYSTEM_PROMPT = `You are a project advisor helping users identify their next action. Use goals and recent progress to propose the most helpful next step.
 
 Priorities (in order):
 1. Start from where the project actually stands. START HERE, when given, records its current state and decisions; much of the work lives in documents, not tasks. Never repeat a previous next step that START HERE, recent changes or the conversation show is done or superseded.
@@ -153,30 +98,43 @@ Guidelines:
    - What to do and why
    - The parent goal it supports when available
    - Any important context or considerations
-   - References to specific tasks/documents/goals using the format [[type:id|name]]
 3. Focus on momentum - what moves the project forward
 4. Be specific and actionable, not vague
 5. Prefer continuity with recent work unless there's a more urgent goal or blocker
+6. Use only what the context gives you. Never add a person, date, deadline, number or detail that is not written there.
 
-Entity reference format: [[type:id|display_name]]
-Valid types: task, document, goal, milestone, risk, plan, user
-
-Example short: "Review the draft presentation and share feedback with the team."
-Example long: "The [[task:abc-123|draft presentation]] is ready for review. Focus on the key messaging in slides 3-5, then share your feedback with [[user:def-456|Sarah]] before the Friday deadline. Consider the [[document:ghi-789|brand guidelines]] for consistency."
+Entity references:
+- The context writes each record as [[type:id|name]]. To reference a record in the long version, copy that reference with its exact type and id.
+- Valid types: task, document, goal, milestone, risk, plan.
+- Reference only records that appear in the context. Never invent an id; when no record fits, write plain text without a reference.
 
 Respond ONLY with valid JSON:
 {
-  "nextStepShort": "Clear, actionable one-sentence next step",
-  "nextStepLong": "Detailed explanation with [[entity:id|name]] references where helpful"
+  "nextStepShort": "<one clear sentence, max 100 chars>",
+  "nextStepLong": "<2-4 sentences, max 650 chars>"
 }`;
+
+/** Record kinds a next step may link to (the kinds resolveProjectEntityLinks can verify). */
+const LINKABLE_KINDS: ReadonlySet<string> = new Set([
+	'task',
+	'document',
+	'goal',
+	'milestone',
+	'risk',
+	'plan'
+]);
 
 // =============================================================================
 // Main Processing Functions
 // =============================================================================
 
 /**
- * Process activity logging and next step generation for a chat session
- * This is called after the main classification job completes
+ * Refresh a project's next step after one of its chats. Called once the chat's
+ * classification is saved.
+ *
+ * The next step is regenerated only when the chat saved changes to the project (its
+ * successful write tool executions). A chat that only read or talked changed nothing the
+ * next step is built from, so it costs no model call and overwrites nothing.
  *
  * @param sessionId - The chat session ID
  * @param userId - The user ID
@@ -186,49 +144,44 @@ export async function processSessionActivityAndNextSteps(
 	sessionId: string,
 	userId: string
 ): Promise<{
-	activityLogsCreated: number;
 	nextStepUpdated: boolean;
 	projectId: string | null;
+	/** Why no next step was written, for the job log. */
+	skippedReason?: 'not_project_session' | 'no_saved_changes' | 'not_generated';
 }> {
-	console.log(`📊 Processing activity and next steps for session ${sessionId}`);
+	console.log(`📊 Processing next step for session ${sessionId}`);
 
 	// 1. Get session context to determine the project
 	const sessionContext = await getSessionContext(sessionId, userId);
 	if (!sessionContext) {
 		console.log(`⚠️ Session ${sessionId} not found or not authorized`);
-		return { activityLogsCreated: 0, nextStepUpdated: false, projectId: null };
+		return { nextStepUpdated: false, projectId: null, skippedReason: 'not_project_session' };
 	}
 
 	// Only process project-related sessions
 	if (sessionContext.context_type !== 'project' || !sessionContext.entity_id) {
-		console.log(`⏭️ Session ${sessionId} is not project-related, skipping activity processing`);
-		return { activityLogsCreated: 0, nextStepUpdated: false, projectId: null };
+		console.log(`⏭️ Session ${sessionId} is not project-related, skipping next step`);
+		return { nextStepUpdated: false, projectId: null, skippedReason: 'not_project_session' };
 	}
 
 	const projectId = sessionContext.entity_id;
 
-	// 2. Get chat operations for this session
-	const operations = await getSessionOperations(sessionId);
-	console.log(`📝 Found ${operations.length} operations for session ${sessionId}`);
-
-	// 3. Process operations into activity logs
-	const changeSummary = processOperationsToActivityLogs(operations, projectId, userId, sessionId);
-
-	// 4. Insert activity logs
-	let activityLogsCreated = 0;
-	if (changeSummary.activityLogs.length > 0) {
-		activityLogsCreated = await insertActivityLogs(changeSummary.activityLogs);
-		console.log(`✅ Created ${activityLogsCreated} activity logs`);
-	}
-
-	// 5. Generate and update next steps
-	let nextStepUpdated = false;
 	try {
-		const nextStep = await generateNextSteps(sessionId, userId, projectId, changeSummary);
-		if (nextStep) {
-			await updateProjectNextStep(projectId, nextStep);
-			nextStepUpdated = true;
+		// 2. What the chat saved, from its write receipts
+		const savedChanges = projectSavedChanges(
+			await loadSessionSavedChanges(sessionId),
+			projectId
+		);
+		console.log(`📝 Found ${savedChanges.length} saved change(s) for session ${sessionId}`);
+		if (savedChanges.length === 0) {
+			return { nextStepUpdated: false, projectId, skippedReason: 'no_saved_changes' };
+		}
+
+		// 3. Generate and update the next step
+		const nextStep = await generateNextSteps(sessionId, userId, projectId, savedChanges);
+		if (nextStep && (await updateProjectNextStep(projectId, nextStep))) {
 			console.log(`✅ Updated next step for project ${projectId}`);
+			return { nextStepUpdated: true, projectId };
 		}
 	} catch (error) {
 		console.error(`⚠️ Failed to generate next steps:`, error);
@@ -246,11 +199,7 @@ export async function processSessionActivityAndNextSteps(
 		// Don't fail the whole process if next step generation fails
 	}
 
-	return {
-		activityLogsCreated,
-		nextStepUpdated,
-		projectId
-	};
+	return { nextStepUpdated: false, projectId, skippedReason: 'not_generated' };
 }
 
 // =============================================================================
@@ -279,102 +228,33 @@ async function getSessionContext(
 }
 
 /**
- * Get all operations from a chat session
+ * The records this chat's tools saved, oldest first: the same write receipts
+ * (`chat_tool_executions.affected_entities`) checkpoint capture reads. Reads and failed
+ * executions carry no receipt.
  */
-async function getSessionOperations(sessionId: string): Promise<ChatOperation[]> {
+async function loadSessionSavedChanges(sessionId: string): Promise<PromptSavedChange[]> {
 	const { data, error } = await supabase
-		.from('chat_operations')
-		.select('*')
-		.eq('chat_session_id', sessionId)
-		.eq('status', 'completed') // Only include completed operations
-		.order('created_at', { ascending: true });
+		.from('chat_tool_executions')
+		.select('tool_name, tool_category, success, affected_entities, created_at')
+		.eq('session_id', sessionId)
+		.eq('success', true)
+		.or('tool_category.is.null,tool_category.neq.read')
+		.order('created_at', { ascending: false })
+		.limit(SAVED_CHANGE_ROWS);
 
 	if (error) {
-		console.error('Error fetching chat operations:', error);
-		void logWorkerError(error, {
-			tableName: 'chat_operations',
-			recordId: sessionId,
-			operationType: 'chat_session_operations_lookup',
-			severity: 'warning',
-			metadata: {
-				sessionId
-			}
-		});
-		return [];
+		throw new Error(`Failed to load the session's saved changes: ${error.message}`);
 	}
 
-	return (data ?? []) as ChatOperation[];
+	return latestSavedChanges((data ?? []) as Array<Record<string, unknown>>);
 }
 
-/**
- * Process chat operations into activity log entries
- */
-function processOperationsToActivityLogs(
-	operations: ChatOperation[],
-	projectId: string,
-	userId: string,
-	sessionId: string
-): SessionChangeSummary {
-	const summary: SessionChangeSummary = {
-		projectId,
-		created: [],
-		updated: [],
-		deleted: [],
-		activityLogs: []
-	};
-
-	for (const op of operations) {
-		// Map table name to entity type
-		const entityType = TABLE_TO_ENTITY_TYPE[op.table_name];
-		if (!entityType) {
-			continue; // Skip unknown tables
-		}
-
-		// Map operation type to action
-		const action = OPERATION_TO_ACTION[op.operation_type.toLowerCase()];
-		if (!action) {
-			continue; // Skip unknown operation types
-		}
-
-		// Get entity ID (from operation or from data)
-		const entityId =
-			op.entity_id || (op.after_data as Record<string, unknown>)?.id?.toString() || null;
-		if (!entityId) {
-			continue; // Skip if we can't determine entity ID
-		}
-
-		// Get entity name for summary
-		const entityName = getEntityName(op.after_data || op.before_data, entityType);
-
-		// Add to appropriate change list
-		const changeEntry = { type: entityType, name: entityName, id: entityId };
-		switch (action) {
-			case 'created':
-				summary.created.push(changeEntry);
-				break;
-			case 'updated':
-				summary.updated.push(changeEntry);
-				break;
-			case 'deleted':
-				summary.deleted.push(changeEntry);
-				break;
-		}
-
-		// Create activity log entry
-		summary.activityLogs.push({
-			project_id: projectId,
-			entity_type: entityType,
-			entity_id: entityId,
-			action,
-			before_data: op.before_data as Json | null,
-			after_data: op.after_data as Json | null,
-			changed_by: userId,
-			change_source: 'chat',
-			chat_session_id: sessionId
-		});
-	}
-
-	return summary;
+/** Saved changes that belong to this project; a receipt naming another project is left out. */
+export function projectSavedChanges(
+	changes: PromptSavedChange[],
+	projectId: string
+): PromptSavedChange[] {
+	return changes.filter((change) => !change.projectId || change.projectId === projectId);
 }
 
 /**
@@ -399,42 +279,20 @@ function getEntityName(
 }
 
 /**
- * Insert activity logs into the database
- */
-async function insertActivityLogs(logs: ProjectLogInsert[]): Promise<number> {
-	if (logs.length === 0) return 0;
-
-	const { data, error } = await supabase.from('onto_project_logs').insert(logs).select('id');
-
-	if (error) {
-		console.error('Error inserting activity logs:', error);
-		void logWorkerError(error, {
-			tableName: 'onto_project_logs',
-			operationType: 'chat_activity_log_insert',
-			severity: 'warning',
-			metadata: {
-				logCount: logs.length
-			}
-		});
-		return 0;
-	}
-
-	return data?.length ?? 0;
-}
-
-/**
  * Generate next steps using LLM
  */
 async function generateNextSteps(
 	sessionId: string,
 	userId: string,
 	projectId: string,
-	changeSummary: SessionChangeSummary
+	savedChanges: PromptSavedChange[]
 ): Promise<NextStepGenerationResult | null> {
 	// Get project info
 	const { data: project } = await supabase
 		.from('onto_projects')
-		.select('name, description, type_key, state_key, next_step_short, next_step_long')
+		.select(
+			'name, description, type_key, state_key, next_step_short, next_step_long, next_step_source'
+		)
 		.eq('id', projectId)
 		// The Workspace (loose items) has no next step to write; skip the model call.
 		.eq('kind', 'project')
@@ -444,6 +302,13 @@ async function generateNextSteps(
 		.maybeSingle();
 
 	if (!project) {
+		return null;
+	}
+
+	// A next step the user wrote is theirs: never replace it, and do not spend a model
+	// call on a result that would be thrown away.
+	if (project.next_step_source === 'user') {
+		console.log(`⏭️ Project ${projectId} has a user-written next step, leaving it`);
 		return null;
 	}
 
@@ -491,18 +356,12 @@ async function generateNextSteps(
 		? buildStartHerePromptExcerpt(startHere.content, NEXT_STEP_START_HERE_MAX_CHARS).content
 		: null;
 
-	const sessionTaskIds = new Set<string>();
-	for (const change of [
-		...changeSummary.created,
-		...changeSummary.updated,
-		...changeSummary.deleted
-	]) {
-		if (change.type === 'task') {
-			sessionTaskIds.add(change.id);
+	const taskIds = new Set<string>();
+	for (const change of savedChanges) {
+		if (change.kind === 'task' && change.id) {
+			taskIds.add(change.id);
 		}
 	}
-
-	const taskIds = new Set<string>(sessionTaskIds);
 	for (const task of recentCompletedTasks ?? []) {
 		taskIds.add(task.id);
 	}
@@ -527,11 +386,6 @@ async function generateNextSteps(
 		recentCompletedTasks: (recentCompletedTasks ?? []) as TaskSummary[],
 		taskGoalLinks,
 		recentActivity: (recentActivity ?? []) as NextStepGenerationContext['recentActivity'],
-		sessionChanges: {
-			created: changeSummary.created,
-			updated: changeSummary.updated,
-			deleted: changeSummary.deleted
-		},
 		previousNextStep: {
 			short: project.next_step_short,
 			long: project.next_step_long
@@ -539,7 +393,7 @@ async function generateNextSteps(
 	};
 
 	// Build user prompt
-	const userPrompt = buildNextStepPrompt(context, messages ?? [], startHereExcerpt);
+	const userPrompt = buildNextStepPrompt(context, messages ?? [], startHereExcerpt, savedChanges);
 
 	// Call LLM
 	const llmService = new SmartLLMService({
@@ -555,6 +409,11 @@ async function generateNextSteps(
 			profile: 'fast',
 			operationType: 'chat_project_next_step',
 			temperature: 0.4,
+			// One sentence plus a short paragraph: hidden reasoning was ~1,640 of every
+			// ~1,700 output tokens and ~19 s per call (same fix as checkpointLlm.ts).
+			reasoning: { enabled: false },
+			maxTokens: NEXT_STEP_MAX_TOKENS,
+			timeoutMs: NEXT_STEP_TIMEOUT_MS,
 			validation: {
 				retryOnParseError: true,
 				maxRetries: 2
@@ -587,11 +446,14 @@ async function generateNextSteps(
 
 /**
  * Build the prompt for next step generation
+ *
+ * @param savedChanges the records this chat saved (its write receipts), oldest first
  */
 export function buildNextStepPrompt(
 	context: NextStepGenerationContext,
 	messages: Array<{ role: string; content: string }>,
-	startHereExcerpt: string | null = null
+	startHereExcerpt: string | null = null,
+	savedChanges: PromptSavedChange[] = []
 ): string {
 	const parts: string[] = [];
 	const goals = context.goals ?? [];
@@ -619,16 +481,9 @@ export function buildNextStepPrompt(
 		taskDisplayNames.set(task.id, task.title);
 	}
 
-	if (context.sessionChanges) {
-		const allSessionChanges = [
-			...context.sessionChanges.created,
-			...context.sessionChanges.updated,
-			...context.sessionChanges.deleted
-		];
-		for (const change of allSessionChanges) {
-			if (change.type === 'task' && !taskDisplayNames.has(change.id)) {
-				taskDisplayNames.set(change.id, change.name);
-			}
+	for (const change of savedChanges) {
+		if (change.kind === 'task' && change.id && change.title && !isRemoval(change)) {
+			if (!taskDisplayNames.has(change.id)) taskDisplayNames.set(change.id, change.title);
 		}
 	}
 
@@ -692,27 +547,13 @@ export function buildNextStepPrompt(
 		parts.push('');
 	}
 
-	// Recent changes
-	if (context.sessionChanges) {
-		const { created, updated, deleted } = context.sessionChanges;
-
-		if (created.length > 0 || updated.length > 0 || deleted.length > 0) {
-			parts.push('## Recent Changes in This Session');
-
-			if (created.length > 0) {
-				parts.push('Created:');
-				created.forEach((c) => parts.push(`- ${c.type}: "${c.name}" (id: ${c.id})`));
-			}
-			if (updated.length > 0) {
-				parts.push('Updated:');
-				updated.forEach((u) => parts.push(`- ${u.type}: "${u.name}" (id: ${u.id})`));
-			}
-			if (deleted.length > 0) {
-				parts.push('Deleted:');
-				deleted.forEach((d) => parts.push(`- ${d.type}: "${d.name}" (id: ${d.id})`));
-			}
-			parts.push('');
+	// What this chat saved, from its write receipts
+	if (savedChanges.length > 0) {
+		parts.push('## Recent Changes in This Session');
+		for (const change of savedChanges) {
+			parts.push(`- ${formatSavedChangeLine(change)}`);
 		}
+		parts.push('');
 	}
 
 	// Previous next step
@@ -738,6 +579,17 @@ export function buildNextStepPrompt(
 		parts.push('');
 	}
 
+	// A link example made from a record that is really in this context, so the model
+	// copies a true id and has no invented person, date or detail to imitate.
+	const linkExample = pickLinkExample(context, savedChanges);
+	if (linkExample) {
+		parts.push('## Reference format');
+		parts.push(
+			`Write a reference exactly as the context does. For example, this record from above: ${linkExample}`
+		);
+		parts.push('');
+	}
+
 	parts.push(
 		'Prioritize goal-aligned momentum from recent progress when selecting the next step.'
 	);
@@ -749,6 +601,48 @@ export function buildNextStepPrompt(
 // =============================================================================
 // Prompt Helper Functions
 // =============================================================================
+
+/** A receipt for a record that no longer exists; it must not be offered as a link. */
+function isRemoval(change: PromptSavedChange): boolean {
+	return change.operation === 'deleted';
+}
+
+/**
+ * One saved change as a prompt line: what the tool did, to which record. A live record
+ * of a linkable kind is written as a reference so the model can copy its id.
+ */
+function formatSavedChangeLine(change: PromptSavedChange): string {
+	const operation = change.operation?.trim() || 'saved';
+	const title = change.title?.trim() || '(untitled)';
+	if (change.id && LINKABLE_KINDS.has(change.kind) && !isRemoval(change)) {
+		return `${operation} ${formatEntityReference(change.kind, change.id, title)}`;
+	}
+	return `${operation} ${change.kind}: "${title}"`;
+}
+
+/**
+ * A record from this context to show the reference format with: the newest thing the
+ * chat saved, else an active goal, else a recently completed task. Null when none of
+ * those exist; the prompt then shows no example rather than an invented one.
+ */
+function pickLinkExample(
+	context: NextStepGenerationContext,
+	savedChanges: PromptSavedChange[]
+): string | null {
+	const saved = [...savedChanges]
+		.reverse()
+		.find(
+			(change) =>
+				change.id && change.title && LINKABLE_KINDS.has(change.kind) && !isRemoval(change)
+		);
+	if (saved?.id && saved.title) return formatEntityReference(saved.kind, saved.id, saved.title);
+	const goals = context.goals ?? [];
+	const goal = goals.find((candidate) => !isCompletedGoal(candidate)) ?? goals[0];
+	if (goal) return formatEntityReference('goal', goal.id, goal.name);
+	const task = (context.recentCompletedTasks ?? [])[0];
+	if (task) return formatEntityReference('task', task.id, task.title);
+	return null;
+}
 
 const VALID_ENTITY_REFERENCE_TYPES = new Set([
 	'project',
@@ -963,13 +857,15 @@ async function fetchTaskGoalLinks(projectId: string, taskIds: string[]): Promise
 }
 
 /**
- * Update project's next step
+ * Update project's next step. Returns false when nothing was written: the project is no
+ * longer active, or its next step was written by the user (never overwritten, including
+ * one the user wrote while the model was running).
  */
 async function updateProjectNextStep(
 	projectId: string,
 	nextStep: NextStepGenerationResult
-): Promise<void> {
-	const { error } = await supabase
+): Promise<boolean> {
+	const { data, error } = await supabase
 		.from('onto_projects')
 		.update({
 			next_step_short: nextStep.nextStepShort,
@@ -980,11 +876,15 @@ async function updateProjectNextStep(
 		.eq('id', projectId)
 		.in('state_key', ACTIVE_PROJECT_STATES)
 		.is('deleted_at', null)
-		.is('archived_at', null);
+		.is('archived_at', null)
+		// `neq` alone would also drop rows whose source is null.
+		.or('next_step_source.is.null,next_step_source.neq.user')
+		.select('id');
 
 	if (error) {
 		throw new Error(`Failed to update project next step: ${error.message}`);
 	}
+	return (data ?? []).length > 0;
 }
 
 // =============================================================================

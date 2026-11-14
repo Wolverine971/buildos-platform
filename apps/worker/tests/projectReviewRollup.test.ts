@@ -372,6 +372,64 @@ describe('applyRollupJudgment', () => {
 		expect(open(judged.items)).toHaveLength(1);
 		expect(rowIds(open(judged.items)[0])?.sort()).toEqual(['new', 'old']);
 	});
+
+	function openedOn(at: string) {
+		return applyRollupPass(
+			[],
+			pass('r1', at, [
+				candidate('drift-1', 'drift', [], [ref('goal', 'g1')]),
+				candidate('doc-1', 'doc_outdated', [flag('d1')])
+			]),
+			{ judgment: false }
+		).items;
+	}
+
+	it('never re-confirms an unchecked finding, and ages it out after 30 days on the calendar alone', () => {
+		const judged = applyRollupJudgment(openedOn('2026-09-01T00:00:00Z'), {
+			runId: 'r2',
+			at: '2026-10-02T00:00:00Z',
+			// The roll-up model calls both still true, but drift's own check did not run.
+			verdicts: [
+				{ lineageId: 'drift-1', verdict: 'still_true' },
+				{ lineageId: 'doc-1', verdict: 'still_true' }
+			],
+			confirmed: new Set(),
+			unchecked: new Set(['drift-1'])
+		});
+
+		const drift = judged.items.find((item) => item.lineageId === 'drift-1');
+		const doc = judged.items.find((item) => item.lineageId === 'doc-1');
+		// One pass, 31 days: an unchecked finding closes; nothing confirmed it.
+		expect(drift).toMatchObject({ status: 'closed', closeReason: 'aged_out' });
+		expect(drift?.seenInRuns).toEqual(['r1']);
+		expect(judged.events).toContainEqual(
+			expect.objectContaining({ type: 'closed', lineageId: 'drift-1', reason: 'aged_out' })
+		);
+		// A checked finding the model re-confirmed stays open.
+		expect(doc).toMatchObject({ status: 'open', lastConfirmedAt: '2026-10-02T00:00:00Z' });
+	});
+
+	it('keeps an unchecked finding open until it has gone 30 days without a check', () => {
+		const judged = applyRollupJudgment(openedOn('2026-09-01T00:00:00Z'), {
+			runId: 'r2',
+			at: '2026-09-25T00:00:00Z',
+			verdicts: [],
+			confirmed: new Set(),
+			unchecked: new Set(['drift-1'])
+		});
+		expect(open(judged.items).map((item) => item.lineageId)).toEqual(['drift-1', 'doc-1']);
+	});
+
+	it('still needs 3 quiet passes to age out a finding whose check ran', () => {
+		const judged = applyRollupJudgment(openedOn('2026-09-01T00:00:00Z'), {
+			runId: 'r2',
+			at: '2026-10-02T00:00:00Z',
+			verdicts: [],
+			confirmed: new Set(),
+			unchecked: new Set()
+		});
+		expect(open(judged.items)).toHaveLength(2);
+	});
 });
 
 describe('closeRollupRows', () => {

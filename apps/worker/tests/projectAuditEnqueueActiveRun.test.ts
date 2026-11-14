@@ -235,3 +235,43 @@ describe('scheduled audits wait for an answer to the latest actionable audit', (
 		expect(mocks.rpc).not.toHaveBeenCalled();
 	});
 });
+
+describe('which skipped evaluations are stored', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mocks.recordProjectAuditTriggerEvaluation.mockResolvedValue('evaluation-1');
+	});
+
+	function skipped(decision: string) {
+		mocks.evaluateProjectAuditTrigger.mockResolvedValue({
+			...queuedEvaluation(),
+			evaluation: { ...queuedEvaluation().evaluation, decision, reason_summary: decision }
+		});
+	}
+
+	it('does not store a below-baseline project from the nightly scan', async () => {
+		skipped('skipped_ineligible');
+		const result = await queueProjectAuditFromWorker({
+			projectId: 'project-1',
+			userId: 'user-1',
+			triggerReason: 'scheduled'
+		});
+		expect(result).toMatchObject({ queued: false, decision: 'skipped_ineligible' });
+		expect(mocks.recordProjectAuditTriggerEvaluation).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['scheduled', 'skipped_no_activity'],
+		['burst', 'skipped_ineligible']
+	])('still stores a %s evaluation that ends %s', async (triggerReason, decision) => {
+		skipped(decision);
+		await queueProjectAuditFromWorker({
+			projectId: 'project-1',
+			userId: 'user-1',
+			triggerReason: triggerReason as 'scheduled' | 'burst'
+		});
+		expect(mocks.recordProjectAuditTriggerEvaluation).toHaveBeenCalledWith(
+			expect.objectContaining({ evaluation: expect.objectContaining({ decision }) })
+		);
+	});
+});

@@ -74,6 +74,7 @@ if (!valid) {
 // Queue-monitoring interval; stored so graceful shutdown can clear it.
 let queueMonitoringInterval: NodeJS.Timeout | null = null;
 let generalWorkerRuntimeLifecycle: GeneralWorkerRuntimeLifecycle | null = null;
+let queueConsumersDisabled = false;
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -422,10 +423,16 @@ async function processCalendarSync(job: ProcessingJob) {
 
 /**
  * Start the Supabase-based worker. `scheduledWork` (config/scheduledWork.ts)
- * gates the startup queue purge and the queue alert monitor; queue consumers
- * always start.
+ * gates the startup queue purge and the queue alert monitor. `queueConsumers`
+ * gates claiming jobs at all: off on a laptop, where the queue is production's.
  */
-export async function startWorker({ scheduledWork }: { scheduledWork: boolean }) {
+export async function startWorker({
+	scheduledWork,
+	queueConsumers = true
+}: {
+	scheduledWork: boolean;
+	queueConsumers?: boolean;
+}) {
 	console.log('🚀 Starting worker...');
 	const lifecycle = getOrCreateGeneralWorkerRuntimeLifecycle();
 
@@ -548,7 +555,11 @@ export async function startWorker({ scheduledWork }: { scheduledWork: boolean })
 
 	// Agentic Chat is owned exclusively by chat-worker.ts. This process starts
 	// only the general queue and its registered processors.
-	await lifecycle.start();
+	if (queueConsumers) {
+		await lifecycle.start();
+	} else {
+		queueConsumersDisabled = true;
+	}
 
 	// Run actionable queue alert checks without dumping cumulative queue history
 	// on every tick. The queue_jobs_stats view remains available for on-demand
@@ -602,6 +613,16 @@ export async function shutdownWorker(): Promise<void> {
 }
 
 export function getWorkerHealth(): GeneralWorkerRuntimeLifecycleHealth {
+	if (queueConsumersDisabled) {
+		// A local worker that deliberately leaves the queue to the deployed
+		// worker: its HTTP API is up and there is nothing to be unhealthy about.
+		return {
+			healthy: true,
+			state: 'idle',
+			reason: 'queue_consumers_disabled',
+			queue: queue.getHealth()
+		};
+	}
 	if (generalWorkerRuntimeLifecycle) return generalWorkerRuntimeLifecycle.getHealth();
 	const queueHealth = queue.getHealth();
 	return {

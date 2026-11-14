@@ -407,6 +407,12 @@ export interface OntologyBriefData {
 	staleInProgressTasks: OntoTask[];
 	highPriorityCount: number;
 	recentUpdates: RecentUpdates;
+	/**
+	 * Tasks finished in the last 24 hours, newest first (by `completed_at`). "Recent Wins"
+	 * reads this; `recentUpdates.tasks` is filtered by `updated_at`, so it also holds
+	 * long-finished tasks that were merely edited.
+	 */
+	recentlyCompletedTasks?: OntoTask[];
 	recentlyPausedProjects: ProjectPauseNotice[];
 	tasksByWorkMode: Record<string, OntoTask[]>;
 	/** Real projects only. The Workspace (loose items) lives in `workspace`. */
@@ -516,12 +522,27 @@ export interface ProjectBriefData {
 	documents: OntoDocument[];
 	nextSteps: string[];
 	nextMilestone: string | null;
+	/**
+	 * `nextMilestone` with its day count ("12d", "3d overdue") reduced to
+	 * upcoming / today / overdue, so the text only changes when that state does.
+	 * Read by the write-up fingerprint, never shown.
+	 */
+	nextMilestoneStable?: string | null;
+	/**
+	 * Newest created / updated / completed stamp across every task, goal, plan,
+	 * milestone, risk, document and requirement loaded for the project. It moves only
+	 * when something in the project really changes. The write-up fingerprint reads it
+	 * in place of the rolling "recent" lists, which also shrink as items age out.
+	 */
+	lastChangedAt?: string | null;
 	activePlan: OntoPlan | null;
 	calendarToday: CalendarBriefItem[];
 	calendarUpcoming: CalendarBriefItem[];
 	todaysTasks: OntoTask[];
 	overdueTasks: OntoTask[];
 	thisWeekTasks: OntoTask[];
+	/** Every task in the project that is not done, cancelled or archived, dated or not. */
+	openTaskCount: number;
 	blockedTasks: OntoTask[];
 	unblockingTasks: OntoTask[];
 	// Strategic task splits per PROJECT_CONTEXT_ENRICHMENT_SPEC.md

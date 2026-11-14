@@ -58,27 +58,31 @@
 	{@const done = settled[item.id]}
 	{@const meta = [item.project_name, sinceLabel(item.since)].filter(Boolean).join(' · ')}
 	<li
-		class="flex min-w-0 items-start gap-3 border-t border-border/70 px-1 py-3 first:border-t-0 sm:px-2"
+		class="flex min-w-0 items-center gap-2 border-t border-border/70 py-3 pl-3 pr-1 first:border-t-0 sm:gap-3 sm:pl-4 sm:pr-2"
 	>
-		<span
-			class="mt-0.5 max-w-[9rem] shrink-0 truncate text-xs font-medium text-foreground"
-			title={item.who}>{item.who}</span
-		>
-		<div class="min-w-0 flex-1">
-			<p
-				class="text-sm leading-snug [overflow-wrap:anywhere] {done
-					? 'text-muted-foreground line-through'
-					: 'text-foreground'}"
+		<!-- The name sits in a fixed-width column so every ask starts at the same left edge, in both
+		     lists. On a phone it stacks above the ask instead, so the ask keeps the full width. -->
+		<div class="min-w-0 flex-1 sm:flex sm:items-baseline sm:gap-3">
+			<span
+				class="block text-xs font-medium leading-snug text-foreground [overflow-wrap:anywhere] sm:w-24 sm:shrink-0"
+				>{item.who}</span
 			>
-				{item.what}
-			</p>
-			{#if done}
-				<p class="mt-0.5 text-xs text-muted-foreground">
-					{done === 'resolved' ? 'Marked done' : 'Removed'}
+			<div class="min-w-0 sm:flex-1">
+				<p
+					class="text-sm leading-snug [overflow-wrap:anywhere] {done
+						? 'text-muted-foreground line-through'
+						: 'text-foreground'}"
+				>
+					{item.what}
 				</p>
-			{:else if meta}
-				<p class="mt-0.5 truncate text-xs text-muted-foreground">{meta}</p>
-			{/if}
+				{#if done}
+					<p class="mt-0.5 text-xs text-muted-foreground">
+						{done === 'resolved' ? 'Marked done' : 'Removed'}
+					</p>
+				{:else if meta}
+					<p class="mt-0.5 truncate text-xs text-muted-foreground">{meta}</p>
+				{/if}
+			</div>
 		</div>
 		<div class="flex shrink-0 items-center gap-1">
 			{#if done}

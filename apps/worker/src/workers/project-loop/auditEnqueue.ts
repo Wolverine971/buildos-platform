@@ -256,10 +256,20 @@ export async function queueProjectAuditFromWorker(params: {
 	}
 
 	if (evaluated.evaluation.decision !== 'queued' || !evaluated.snapshot) {
-		const evaluationId = await recordProjectAuditTriggerEvaluation({
-			supabase,
-			evaluation: evaluated.evaluation
-		});
+		// The nightly scan evaluates every active project, and most are below the
+		// audit baseline every night. Those rows say nothing new (2,460 in 30 days
+		// for 11 audits), so the scan no longer stores them. Every other decision,
+		// and every other trigger, is still recorded.
+		const persistEvaluation = !(
+			params.triggerReason === 'scheduled' &&
+			evaluated.evaluation.decision === 'skipped_ineligible'
+		);
+		const evaluationId = persistEvaluation
+			? await recordProjectAuditTriggerEvaluation({
+					supabase,
+					evaluation: evaluated.evaluation
+				})
+			: null;
 		if (evaluated.evaluation.decision === 'deferred_quiet_period') {
 			await scheduleProjectAuditTriggerEvaluation({
 				projectId: params.projectId,

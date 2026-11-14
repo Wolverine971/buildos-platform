@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => {
 		inserts: [] as QueryRecord[],
 		run: {} as Record<string, any>,
 		driftPassesSinceConfirmed: 0,
+		/** When the existing drift finding was raised (and last confirmed). */
+		driftCreatedAt: '2026-08-18T00:00:00.000Z',
 		projectKind: 'project'
 	};
 
@@ -72,8 +74,8 @@ const mocks = vi.hoisted(() => {
 						evidence_refs: [],
 						title: 'Existing drift finding',
 						rollup: { passes_since_confirmed: state.driftPassesSinceConfirmed },
-						created_at: '2026-08-18T00:00:00.000Z',
-						updated_at: '2026-08-18T00:00:00.000Z'
+						created_at: state.driftCreatedAt,
+						updated_at: state.driftCreatedAt
 					}
 				],
 				error: null
@@ -351,6 +353,7 @@ describe('processProjectLoopJob detector degradation', () => {
 		mocks.state.updates.length = 0;
 		mocks.state.inserts.length = 0;
 		mocks.state.driftPassesSinceConfirmed = 0;
+		mocks.state.driftCreatedAt = '2026-08-18T00:00:00.000Z';
 		mocks.state.projectKind = 'project';
 		mocks.state.run = { ...mocks.claimedRun, status: 'queued', queue_job_id: 'queue-1' };
 		mocks.generateDrift.mockResolvedValue([]);
@@ -379,6 +382,8 @@ describe('processProjectLoopJob detector degradation', () => {
 		async (triggerReason) => {
 			mocks.state.run.trigger_reason = triggerReason;
 			mocks.state.driftPassesSinceConfirmed = 2;
+			const raisedAt = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+			mocks.state.driftCreatedAt = raisedAt;
 			const job = createJob();
 			await expect(processProjectLoopJob(job)).resolves.toMatchObject({ success: true });
 			expect(mocks.loadProjectDriftEvidence).not.toHaveBeenCalled();
@@ -402,14 +407,15 @@ describe('processProjectLoopJob detector degradation', () => {
 				)
 			).toBe(false);
 			expect(mocks.state.run.summary).not.toContain("didn't finish");
+			// Kept, but not confirmed: nothing checked it, so it counts one more quiet pass.
 			expect(mocks.state.updates).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
 						payload: expect.objectContaining({
 							lineage_id: 'old-drift',
 							rollup: expect.objectContaining({
-								passes_since_confirmed: 2,
-								last_confirmed_at: '2026-08-18T00:00:00.000Z'
+								passes_since_confirmed: 3,
+								last_confirmed_at: raisedAt
 							})
 						})
 					})
@@ -417,6 +423,27 @@ describe('processProjectLoopJob detector degradation', () => {
 			);
 		}
 	);
+
+	it('ages out a drift finding no check has looked at in 30 days', async () => {
+		mocks.state.run.trigger_reason = 'end_of_day';
+		mocks.state.driftPassesSinceConfirmed = 1;
+		mocks.state.driftCreatedAt = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString();
+
+		await expect(processProjectLoopJob(createJob())).resolves.toMatchObject({ success: true });
+
+		expect(mocks.generateDrift).not.toHaveBeenCalled();
+		const closed = mocks.state.updates.find(
+			(query) =>
+				query.table === 'project_suggestions' &&
+				(query.payload as { status?: string })?.status === 'superseded'
+		);
+		expect(closed?.payload).toMatchObject({
+			status: 'superseded',
+			rollup: expect.objectContaining({
+				close: expect.objectContaining({ reason: 'aged_out' })
+			})
+		});
+	});
 
 	it('never reviews the Workspace (loose items), whatever queued the run', async () => {
 		mocks.state.projectKind = 'workspace';
@@ -549,6 +576,8 @@ describe('processProjectLoopJob detector degradation', () => {
 	});
 
 	it('completes after a typed drift timeout and keeps the open drift finding', async () => {
+		// Raised recently, so the missed check does not age it out.
+		mocks.state.driftCreatedAt = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
 		mocks.generateDrift.mockRejectedValue(
 			new LLMRequestTimeoutError(120_000, 'deepseek/deepseek-v4-flash', {
 				generationId: 'gen-drift-timeout'

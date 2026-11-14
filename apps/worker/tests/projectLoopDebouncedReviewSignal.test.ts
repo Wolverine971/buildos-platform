@@ -344,6 +344,9 @@ describe('processProjectLoopJob debounced review signals', () => {
 			processProjectLoopJob({ ...createDebouncedSignalJob(), attempts: 0, maxAttempts: 3 })
 		).rejects.toThrow('db timeout');
 		expect(failedUpdate()).toBeUndefined();
+		// Light pass first, then the audit: the audit is never queued beside a light pass
+		// that has not been queued yet.
+		expect(mocks.queueProjectAuditFromWorker).not.toHaveBeenCalled();
 
 		mocks.state.queries.length = 0;
 		await expect(

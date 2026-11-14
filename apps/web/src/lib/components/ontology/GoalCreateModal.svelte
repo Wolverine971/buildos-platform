@@ -137,8 +137,7 @@
 				state_key: stateKey || 'draft',
 				target_date: targetDate || null,
 				measurement_criteria: measurementCriteria.trim() || null,
-				priority: priority || 'medium',
-				classification_source: 'create_modal'
+				priority: priority || 'medium'
 			};
 
 			const response = await fetch('/api/onto/goals/create', {

@@ -2,8 +2,8 @@
 //
 // Chat checkpoint capture (tasker/95). Runs after chat turns, never inside one:
 // a scheduler sweep enqueues it once a session crosses a size or turn
-// threshold or goes idle, and closing a chat runs it too. Each run reads only
-// the messages after the session's watermark, so each message is captured once.
+// threshold or goes idle. Each run reads only the messages after the session's
+// watermark, so each message is captured once.
 //
 // Two outputs per checkpoint:
 // - Thinking log: the user's own words, near-verbatim, dated, newest first.
@@ -12,6 +12,11 @@
 //   additions and the Current state snapshot now; removed or reworded lines
 //   wait in one reviewable proposal per project. Managed fences, unique
 //   headings, valid links and code-owned decision dates are enforced here.
+//   Current state and Decisions change only on cited evidence.
+//
+// A run that fails after the thinking log is saved is retried over the same
+// messages (the watermark moves only at the end), so the log write recognises
+// the entry its earlier attempt wrote and does not add it twice.
 import {
 	START_HERE_AUTHORED_SECTION_NAMES,
 	START_HERE_SECTION_MAX_CHARS,
@@ -47,6 +52,7 @@ import {
 	buildThinkingLogDocument,
 	buildThinkingLogEntry,
 	faithfulPassage,
+	passageFidelity,
 	prependThinkingLogEntry
 } from '@buildos/shared-agent-ops/ontology/thinking-log';
 
@@ -126,6 +132,9 @@ export type CheckpointCapturePorts = {
 		userPrompt: string;
 		userId: string;
 		operation: 'thinking_log' | 'start_here_synthesis';
+		/** The chat and project the call is for, so its cost log links to both. */
+		sessionId?: string;
+		projectId?: string;
 	}): Promise<unknown>;
 	saveThinkingLog(params: {
 		session: CheckpointSession & { projectId: string };
@@ -215,6 +224,50 @@ function outsideSectionsText(content: string): string {
 	return stripStartHereScaffolding(preamble.replace(/^#\s+.*$/m, '')).trim();
 }
 
+/** How much of two entries' words must match for them to be the same entry (see below). */
+const SAME_ENTRY_FIDELITY = 0.9;
+
+/**
+ * The entry an earlier attempt of this capture already wrote, verbatim from the log, or
+ * null when the log holds none.
+ *
+ * The log keeps the user's words, not message ids, so the earlier entry is recognised by
+ * what code stamped on it (the date in its heading and the time on its source line, both
+ * taken from the last logged message) and by its text: the same passages, or nearly the
+ * same, because the model's light cleanup can differ a little between attempts. "Nearly"
+ * uses the bar a cleaned passage must clear against its own message, in both directions.
+ * A miss only repeats an entry, and a false match only skips words the log already has.
+ */
+export function findLoggedThinkingEntry(params: {
+	content: string;
+	/** The entry about to be written (buildThinkingLogEntry). */
+	entry: string;
+	date: string;
+	time: string;
+}): string | null {
+	const body = (entry: string) => entry.split('\n\n').slice(2).join('\n\n').trim();
+	const wanted = body(params.entry);
+	if (!wanted) return null;
+	const log = params.content.replace(/\r\n?/g, '\n');
+	const starts = [...log.matchAll(/^##[ \t]+/gm)].map((match) => match.index ?? 0);
+	for (let index = 0; index < starts.length; index++) {
+		const existing = log.slice(starts[index], starts[index + 1] ?? log.length).trim();
+		const [heading = '', source = ''] = existing.split('\n\n');
+		if (!heading.startsWith(`## ${params.date} · `)) continue;
+		if (!source.trim().endsWith(`· ${params.time}_`)) continue;
+		const logged = body(existing);
+		if (!logged) continue;
+		if (
+			logged === wanted ||
+			(passageFidelity(wanted, logged) >= SAME_ENTRY_FIDELITY &&
+				passageFidelity(logged, wanted) >= SAME_ENTRY_FIDELITY)
+		) {
+			return existing;
+		}
+	}
+	return null;
+}
+
 function recentLogHeadings(content: string | null | undefined): string[] {
 	if (!content) return [];
 	return [...content.matchAll(/^##[ \t]+(.+?)[ \t]*$/gm)]
@@ -272,6 +325,9 @@ export async function runChatCheckpointCapture(
 	const projectSession = { ...session, projectId };
 	const project = await ports.loadProject(projectSession);
 	if (!project) {
+		// The project may be hard-deleted while its session still points at it; that id
+		// would break the checkpoint row's foreign key and fail every retry.
+		record.projectId = null;
 		await ports.finishCheckpoint(record);
 		return { status: 'noop', record };
 	}
@@ -326,7 +382,9 @@ export async function runChatCheckpointCapture(
 				stamp
 			}),
 			userId: session.userId,
-			operation: 'thinking_log'
+			operation: 'thinking_log',
+			sessionId: session.id,
+			projectId
 		}),
 		ports.completeJson({
 			systemPrompt: START_HERE_SYNTHESIS_SYSTEM_PROMPT,
@@ -344,7 +402,9 @@ export async function runChatCheckpointCapture(
 				stamp
 			}),
 			userId: session.userId,
-			operation: 'start_here_synthesis'
+			operation: 'start_here_synthesis',
+			sessionId: session.id,
+			projectId
 		})
 	]);
 
@@ -364,22 +424,37 @@ export async function runChatCheckpointCapture(
 		}));
 	if (passages.length > 0) {
 		const lastPassage = validInstant(passages[passages.length - 1]!.message.created_at) ?? now;
+		const date = civilParts(lastPassage, timezone).date;
+		const time = civilClock(lastPassage, timezone);
 		const entry = buildThinkingLogEntry({
-			date: civilParts(lastPassage, timezone).date,
-			time: civilClock(lastPassage, timezone),
+			date,
+			time,
 			topic: log.topic,
 			chatTitle: session.title,
 			passages: passages.map((passage) => passage.text)
 		});
-		const content = project.thinkingLog
-			? prependThinkingLogEntry(project.thinkingLog.content, entry)
-			: buildThinkingLogDocument(project.name, entry);
-		const saved = await ports.saveThinkingLog({
-			session: projectSession,
-			document: project.thinkingLog,
-			content
-		});
-		record.thinkingLog = { documentId: saved.id, entry, passageCount: passages.length };
+		// A retry after a failure further down reads these same messages again. The
+		// entry its earlier attempt saved is kept as it is (and stays undoable).
+		const alreadyLogged = project.thinkingLog
+			? findLoggedThinkingEntry({ content: project.thinkingLog.content, entry, date, time })
+			: null;
+		if (alreadyLogged && project.thinkingLog) {
+			record.thinkingLog = {
+				documentId: project.thinkingLog.id,
+				entry: alreadyLogged,
+				passageCount: passages.length
+			};
+		} else {
+			const content = project.thinkingLog
+				? prependThinkingLogEntry(project.thinkingLog.content, entry)
+				: buildThinkingLogDocument(project.name, entry);
+			const saved = await ports.saveThinkingLog({
+				session: projectSession,
+				document: project.thinkingLog,
+				content
+			});
+			record.thinkingLog = { documentId: saved.id, entry, passageCount: passages.length };
+		}
 	}
 
 	// --- START HERE -----------------------------------------------------------
@@ -388,14 +463,21 @@ export async function runChatCheckpointCapture(
 	// message from this stretch of the chat or a saved change. Assistant
 	// messages carry no ids in the prompt, so a status read the assistant gave
 	// ("Blueprint: not started") cannot be cited as news.
+	//
+	// Decisions are a permanent record that saves without review, so they need the
+	// user's own word: a cited user message. A saved change shows work was done, not
+	// that the user decided something, and an assistant suggestion is not a decision.
+	const userMessageIds = new Set(userMessages.map((message) => message.id));
 	const citable = new Set([
-		...userMessages.map((message) => message.id),
+		...userMessageIds,
 		...savedChanges.slice(0, SAVED_CHANGE_PROMPT_LIMIT).map((_, index) => savedChangeId(index))
 	]);
 	const evidenceSkips: Array<{ heading: string; reason: string }> = [];
 	synthesis.edits = synthesis.edits.filter((edit) => {
-		if (standardStartHereSectionName(edit.heading) !== 'Current state') return true;
-		if (edit.evidence.some((id) => citable.has(id))) return true;
+		const section = standardStartHereSectionName(edit.heading);
+		const accepted =
+			section === 'Current state' ? citable : section === 'Decisions' ? userMessageIds : null;
+		if (!accepted || edit.evidence.some((id) => accepted.has(id))) return true;
 		evidenceSkips.push({ heading: edit.heading, reason: 'no_evidence' });
 		return false;
 	});

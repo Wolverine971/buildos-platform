@@ -676,7 +676,6 @@ export type TaskWriteFields = {
 export type TaskCreateInput = TaskWriteFields & {
 	project_id: string;
 	title: string;
-	classification_source?: string;
 };
 
 /** PATCH /api/onto/tasks/[id] — apps/web/src/routes/api/onto/tasks/[id]/+server.ts */

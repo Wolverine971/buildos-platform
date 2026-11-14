@@ -536,6 +536,10 @@ export function buildValidationRepairRequest(
 			logicalProviderRound: request.logicalProviderRound + 1,
 			providerRound: 'synthesis',
 			passRole: 'repair',
+			repairReason: {
+				kind: 'invalid_arguments',
+				tools: Array.from(new Set(calls.map((call) => call.name))).sort()
+			},
 			messages: [
 				...request.messages,
 				...(unexecutedProposal?.length

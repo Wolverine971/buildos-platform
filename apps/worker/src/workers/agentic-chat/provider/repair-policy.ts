@@ -26,6 +26,7 @@ export function buildEmptyReplyRepairRequest(
 			...request,
 			logicalProviderRound: request.logicalProviderRound + 1,
 			passRole: 'repair',
+			repairReason: { kind: 'empty_reply' },
 			emptyReplyRepairAttempted: true,
 			// An empty reply usually means hidden reasoning consumed the whole output
 			// cap (book loop t01: 4,000/4,000 reasoning tokens). Re-asking with
@@ -61,6 +62,7 @@ export function buildReviewerMimicryRepairRequest(
 			...request,
 			logicalProviderRound: request.logicalProviderRound + 1,
 			passRole: 'repair',
+			repairReason: { kind: 'reviewer_control_called', tools: names },
 			unavailableSkillRepairAttempted: true
 		},
 		[
@@ -141,6 +143,7 @@ export function buildUnavailableSurfaceToolRepairRequest(
 			...surface,
 			providerRound: 'synthesis',
 			passRole: 'repair',
+			repairReason: { kind: 'tool_not_on_surface', tools: rejectedNames },
 			logicalProviderRound: request.logicalProviderRound + 1,
 			unavailableSkillRepairAttempted: true
 		},

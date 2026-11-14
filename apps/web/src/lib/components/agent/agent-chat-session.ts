@@ -116,6 +116,11 @@ type LoadedChatSessionPayload = {
 	contextSelections?: unknown[];
 	/** The user's words each write came from, by provider tool-call id (turn events, 7 days). */
 	sourceQuotes?: Record<string, unknown>;
+	/**
+	 * Current body hash of each document a turn in this chat edited, by document id. A rebuilt
+	 * change card whose pre-edit hash equals it is no longer in place, so it reads Undone.
+	 */
+	documentHashes?: Record<string, unknown>;
 	truncated?: boolean;
 	historyWindow?: Partial<Pick<RestoreHistoryWindow, 'toolsTruncated' | 'eventsTruncated'>>;
 	voiceNotes?: VoiceNote[];
@@ -1183,6 +1188,30 @@ function deriveDocumentChangeCardsFromSources(
 	return cards;
 }
 
+/**
+ * A reloaded chat does not remember that Undo ran, but the document does: when its body is
+ * back at the hash it had before the turn's edits, the change is no longer in place. Cards in
+ * that state read Undone (and so do their step row and the receipt). A document edited again
+ * since matches neither hash and keeps "Updated".
+ */
+export function markUndoneDocumentChanges(
+	messages: UIMessage[],
+	documentHashes: Record<string, unknown>
+): UIMessage[] {
+	return messages.map((message) => {
+		if (message.type !== 'document_changes') return message;
+		const changes = (message.data as { changes?: DocumentChangeCard[] } | undefined)?.changes;
+		if (!Array.isArray(changes)) return message;
+		let changed = false;
+		const marked = changes.map((card) => {
+			if (card.undone || documentHashes[card.documentId] !== card.beforeHash) return card;
+			changed = true;
+			return { ...card, undone: true };
+		});
+		return changed ? { ...message, data: { ...message.data, changes: marked } } : message;
+	});
+}
+
 function buildDocumentChangesMessage(
 	changes: DocumentChangeCard[],
 	idSuffix: string,
@@ -1245,6 +1274,7 @@ export function buildAgentChatSessionSnapshot(
 		timelineItems: loadedTimelineItems,
 		contextSelections = [],
 		sourceQuotes = {},
+		documentHashes = {},
 		truncated,
 		historyWindow,
 		voiceNotes = [],
@@ -1275,6 +1305,10 @@ export function buildAgentChatSessionSnapshot(
 		turnRuns,
 		Array.isArray(contextSelections) ? contextSelections : [],
 		sourceQuotes && typeof sourceQuotes === 'object' ? sourceQuotes : {}
+	);
+	messages = markUndoneDocumentChanges(
+		messages,
+		documentHashes && typeof documentHashes === 'object' ? documentHashes : {}
 	);
 	const timelineItems = Array.isArray(loadedTimelineItems)
 		? restoreTimelineToolDetails(loadedTimelineItems, toolExecutions ?? [])

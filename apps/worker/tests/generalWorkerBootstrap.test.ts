@@ -80,6 +80,7 @@ const originalPort = process.env.PORT;
 // a deployed Railway worker unless it says otherwise.
 const SCHEDULED_WORK_KEYS = [
 	'WORKER_SCHEDULER_ENABLED',
+	'WORKER_QUEUE_CONSUMERS_ENABLED',
 	'RAILWAY_ENVIRONMENT_ID',
 	'RAILWAY_ENVIRONMENT',
 	'RAILWAY_ENVIRONMENT_NAME',
@@ -173,7 +174,10 @@ describe('general worker process bootstrap', () => {
 		await startGeneralWorkerProcess();
 
 		expect(harness.events).toEqual(['worker-start', 'scheduler-start', 'http-listen']);
-		expect(harness.startWorker).toHaveBeenCalledWith({ scheduledWork: true });
+		expect(harness.startWorker).toHaveBeenCalledWith({
+			scheduledWork: true,
+			queueConsumers: true
+		});
 		expect(harness.createGeneralWorkerApp).toHaveBeenCalledWith({
 			eventLoopLagMonitor: expect.any(Object),
 			getWorkerHealth: harness.getWorkerHealth,
@@ -232,7 +236,10 @@ describe('general worker scheduled-work gate', () => {
 
 		await startGeneralWorkerProcess();
 
-		expect(harness.startWorker).toHaveBeenCalledWith({ scheduledWork: false });
+		expect(harness.startWorker).toHaveBeenCalledWith({
+			scheduledWork: false,
+			queueConsumers: false
+		});
 		expect(harness.startScheduler).not.toHaveBeenCalled();
 		expect(harness.events).toEqual(['worker-start', 'http-listen']);
 		expect(scheduledWorkLogLines()).toEqual([
@@ -247,7 +254,10 @@ describe('general worker scheduled-work gate', () => {
 
 		await startGeneralWorkerProcess();
 
-		expect(harness.startWorker).toHaveBeenCalledWith({ scheduledWork: true });
+		expect(harness.startWorker).toHaveBeenCalledWith({
+			scheduledWork: true,
+			queueConsumers: false
+		});
 		expect(harness.events).toEqual(['worker-start', 'scheduler-start', 'http-listen']);
 		expect(scheduledWorkLogLines()).toEqual([
 			expect.stringContaining('Scheduled work ON (WORKER_SCHEDULER_ENABLED=true)')
@@ -263,12 +273,35 @@ describe('general worker scheduled-work gate', () => {
 		]);
 	});
 
+	it('leaves queue jobs to the deployed worker unless this machine opts in', async () => {
+		for (const key of SCHEDULED_WORK_KEYS) delete process.env[key];
+		process.env.WORKER_QUEUE_CONSUMERS_ENABLED = 'true';
+
+		await startGeneralWorkerProcess();
+
+		expect(harness.startWorker).toHaveBeenCalledWith({
+			scheduledWork: false,
+			queueConsumers: true
+		});
+		expect(harness.startScheduler).not.toHaveBeenCalled();
+		expect(
+			consoleLogSpy.mock.calls
+				.map((call) => String(call[0]))
+				.filter((line) => line.includes('Queue consumers'))
+		).toEqual([
+			expect.stringContaining('Queue consumers ON (WORKER_QUEUE_CONSUMERS_ENABLED=true)')
+		]);
+	});
+
 	it('lets an explicit kill switch stop scheduled work on Railway', async () => {
 		process.env.WORKER_SCHEDULER_ENABLED = 'false';
 
 		await startGeneralWorkerProcess();
 
-		expect(harness.startWorker).toHaveBeenCalledWith({ scheduledWork: false });
+		expect(harness.startWorker).toHaveBeenCalledWith({
+			scheduledWork: false,
+			queueConsumers: true
+		});
 		expect(harness.startScheduler).not.toHaveBeenCalled();
 	});
 });

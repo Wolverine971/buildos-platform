@@ -4,15 +4,18 @@
 // Chat turns never wait on capture: the scheduler sweeps recently active project
 // sessions every minute and enqueues a capture once a session's uncaptured part
 // crosses a size or turn threshold (after the assistant has replied) or the
-// session has been idle. Closing a chat enqueues the same job.
+// session has been idle. The sweep is the only producer: closing a chat used to
+// enqueue the same job from the classifier, and most of those found nothing new.
 //
 // One capture per session is active at a time: the dedup key is the session,
-// and add_queue_job dedups pending/processing jobs. A capture that fails is
-// recorded against the session's newest message, and the sweep leaves that
-// session alone until a new message arrives, so a broken session cannot spend
-// on the model every minute.
+// and add_queue_job dedups pending/processing jobs. A capture that fails for
+// good (no attempts left) is recorded against the session's newest message, and
+// the sweep leaves that session alone until a new message arrives, so a broken
+// session cannot spend on the model every minute. An attempt the queue will
+// retry records nothing: the retry may succeed.
 import { globalCaptureUserIds } from './globalAttribution';
 import type { CaptureChatCheckpointJobMetadata } from '@buildos/shared-types';
+import { classifyQueueError, describeQueueError } from '../../../lib/queueErrors';
 import { supabase } from '../../../lib/supabase';
 import type { ProcessingJob } from '../../../lib/supabaseQueue';
 import { type CheckpointTrigger, runChatCheckpointCapture } from './checkpointCapture';
@@ -192,11 +195,25 @@ export async function sweepChatCheckpoints(now = new Date()): Promise<{
 	return { scanned: candidates.length, enqueued };
 }
 
+/**
+ * Whether the queue will run this job again after `error` (the queue's own rule: a
+ * transient failure with attempts left). With no known attempt budget this is the last
+ * attempt.
+ */
+function willBeRetried(
+	job: Pick<ProcessingJob<unknown>, 'attempts' | 'maxAttempts'>,
+	error: unknown
+): boolean {
+	if (classifyQueueError(error).kind !== 'transient') return false;
+	if (typeof job.maxAttempts !== 'number' || typeof job.attempts !== 'number') return false;
+	return job.attempts + 1 < job.maxAttempts;
+}
+
 export async function processCaptureChatCheckpointJob(
 	job: ProcessingJob<CaptureChatCheckpointJobMetadata>
 ) {
 	const { sessionId, userId, trigger, lastMessageId } = job.data;
-	// The kill switch also covers jobs already queued and the chat-close path.
+	// The kill switch also covers jobs already queued.
 	if (!chatCaptureEnabled()) {
 		await job.log('Checkpoint capture disabled (CHAT_CHECKPOINT_CAPTURE_ENABLED=false)');
 		return { success: true, status: 'disabled' };
@@ -221,7 +238,12 @@ export async function processCaptureChatCheckpointJob(
 			reviewRunId: record.review?.runId ?? null
 		};
 	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
+		// A failed row stops the sweep from queueing this session again, so it is written
+		// only when the queue has given up. Recording every attempt left a failed row
+		// behind captures whose retry then succeeded.
+		if (willBeRetried(job, error)) throw error;
+		// The ports throw Supabase errors as plain objects; String() made them "[object Object]".
+		const message = describeQueueError(error);
 		if (lastMessageId) {
 			const { error: recordError } = await supabase.from('chat_capture_checkpoints').insert({
 				session_id: sessionId,

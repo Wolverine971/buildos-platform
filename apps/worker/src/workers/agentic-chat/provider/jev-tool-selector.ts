@@ -406,6 +406,7 @@ export class JevToolSelector implements AgenticChatToolSelectorPort {
 		) {
 			receipt.reason = 'input_limit';
 			emit();
+			this.logUsage(request, receipt, null, randomUUID(), started, null);
 			return withSelectionOutcome(
 				request,
 				receipt,
@@ -420,6 +421,7 @@ export class JevToolSelector implements AgenticChatToolSelectorPort {
 		if (timeoutMs < 100) {
 			receipt.reason = 'turn_budget';
 			emit();
+			this.logUsage(request, receipt, null, randomUUID(), started, null);
 			return withSelectionOutcome(
 				request,
 				receipt,
@@ -548,7 +550,11 @@ export class JevToolSelector implements AgenticChatToolSelectorPort {
 			dump?.complete({ ...receipt });
 			// Off the critical path. The row costs ~$0.0003, so a turn's billing join
 			// may miss it; that is cheaper than delaying the first model pass.
-			if (responseBody)
+			// A timeout or failed request has no response body and is recorded all
+			// the same: the turn then carried the full surface, and without a row
+			// a degraded endpoint only shows up as slower turns. A turn the user
+			// stopped is not a Jev failure.
+			if (responseBody || !request.signal.aborted)
 				this.logUsage(request, receipt, responseBody, usageLogId, started, dump);
 		}
 		request.signal.throwIfAborted();
@@ -563,7 +569,7 @@ export class JevToolSelector implements AgenticChatToolSelectorPort {
 	private logUsage(
 		request: AgenticChatTurnProviderRequestV1,
 		receipt: JevToolSelectionReceipt,
-		responseBody: Record<string, unknown>,
+		responseBody: Record<string, unknown> | null,
 		usageLogId: string,
 		started: number,
 		dump: ReturnType<typeof startLocalPromptDump>
@@ -595,11 +601,11 @@ export class JevToolSelector implements AgenticChatToolSelectorPort {
 						totalCost: receipt.costUsd ?? 0,
 						openrouterUsageCost: receipt.costUsd,
 						openrouterRequestId:
-							typeof responseBody.id === 'string' ? responseBody.id : undefined,
+							typeof responseBody?.id === 'string' ? responseBody.id : undefined,
 						responseTimeMs: receipt.durationMs,
 						requestStartedAt: new Date(started),
 						requestCompletedAt: new Date(started + receipt.durationMs),
-						status: receipt.status === 'selected' ? 'success' : 'invalid_response',
+						status: usageStatusFor(receipt),
 						streaming: false,
 						projectId: request.projectId ?? undefined,
 						chatSessionId: request.sessionId,
@@ -629,6 +635,28 @@ export class JevToolSelector implements AgenticChatToolSelectorPort {
 			reportError(error);
 		}
 	}
+}
+
+/**
+ * How a selection attempt reads in `llm_usage_logs`. The reasons are this file's
+ * own fixed codes, never remote or user text.
+ */
+function usageStatusFor(
+	receipt: JevToolSelectionReceipt
+): 'success' | 'failure' | 'timeout' | 'rate_limited' | 'invalid_response' {
+	if (receipt.status === 'selected') return 'success';
+	if (receipt.reason === 'jev_selection_timeout') return 'timeout';
+	if (receipt.reason === 'jev_http_429') return 'rate_limited';
+	if (
+		receipt.reason === 'jev_answer_set' ||
+		receipt.reason === 'jev_invalid_answer' ||
+		receipt.reason === 'jev_invalid_response'
+	) {
+		return 'invalid_response';
+	}
+	// HTTP errors, network failures, and requests that could not be sent
+	// (input_limit, turn_budget).
+	return 'failure';
 }
 
 /**

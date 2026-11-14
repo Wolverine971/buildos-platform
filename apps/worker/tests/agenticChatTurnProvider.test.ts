@@ -663,7 +663,11 @@ describe('AgenticChatTurnProviderAdapter', () => {
 						phase: 'stream',
 						eventType: 'context_selection',
 						currentActivity: 'Working from project context',
-						eventPayload: { type: 'context_selection', status: 'selected', failure: null }
+						eventPayload: {
+							type: 'context_selection',
+							status: 'selected',
+							failure: null
+						}
 					}
 				})
 			}
@@ -2958,7 +2962,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				'probability',
 				'state_key',
 				'content',
-				'description',
 				'mitigation_strategy'
 			],
 			update_onto_risk: [
@@ -2968,7 +2971,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				'probability',
 				'state_key',
 				'content',
-				'description',
 				'mitigation_strategy',
 				'owner',
 				'props'

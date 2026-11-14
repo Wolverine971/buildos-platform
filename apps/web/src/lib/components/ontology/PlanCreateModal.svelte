@@ -253,8 +253,7 @@
 				description: description.trim() || null,
 				state_key: stateKey || 'draft',
 				start_date: startDate || null,
-				end_date: endDate || null,
-				classification_source: 'create_modal'
+				end_date: endDate || null
 			};
 
 			const response = await fetch('/api/onto/plans/create', {

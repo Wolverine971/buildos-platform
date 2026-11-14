@@ -193,7 +193,6 @@
 				due_at: dueDateIso,
 				state_key: stateKey || 'pending',
 				description: description.trim() || null,
-				classification_source: 'create_modal',
 				goal_id: selectedGoalId
 			};
 

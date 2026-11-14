@@ -7,6 +7,12 @@
 // worker archive seam for documents), so access checks and activity logging still apply. Before
 // anything is written the row stores exactly how to undo it; the web's Undo replays that.
 //
+// Two guards run per row (audit 2026-11-14, F5 and F6). Right before a row is claimed, the
+// records it changes are compared with the state the review proposed it against; an edit, move
+// or archive since then leaves the row for the owner. And a row whose later step fails is never
+// left half-made without a way back: the steps that ran are undone on the spot, or, when the
+// worker cannot undo them, the row is recorded as applied with an Undo for exactly those steps.
+//
 // Jev is a stateless decision model: it answers four probabilities per change. Everything else
 // (who is a candidate, the bar, the cap, the cooldown after an undo, failure handling) is code.
 
@@ -27,6 +33,7 @@ import type {
 	DocumentArchiveReviewSnapshot,
 	GatewayWriteOpResult
 } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
+import { computeProjectSuggestionFreshnessFingerprint } from '@buildos/shared-agent-ops';
 import { cleanupSectionAllowed } from '@buildos/shared-agent-ops/project-cleanup';
 import { readDocumentArchiveChildrenMode } from '@buildos/shared-agent-ops/proposal-context';
 import { type RowVerification, cleanupFacts } from './cleanupPass';
@@ -824,6 +831,15 @@ export interface CleanupAutoApplyOutcome {
 	lineageId: string;
 	suggestionId: string;
 	status: 'applied' | 'held' | 'not_claimed' | 'released' | 'failed' | 'skipped';
+	/**
+	 * Set by code when it can name why a row was not applied in full:
+	 * - changed_since_proposed: a record it changes was edited, moved or archived after the
+	 *   review proposed it (or no proposed-against state is on record); left for the owner.
+	 * - rolled_back: a later step failed, the steps that ran were undone, the row is pending.
+	 * - partly_applied: a later step failed and the steps that ran could not be undone here;
+	 *   the row is recorded as applied with an Undo for exactly those steps.
+	 */
+	reason?: 'changed_since_proposed' | 'rolled_back' | 'partly_applied';
 	detail?: string;
 	scores?: ProjectCleanupAutoApplyScores | null;
 }
@@ -910,6 +926,14 @@ type PreparedStep =
 	| { tool: 'archive_onto_document'; snapshot: DocumentArchiveReviewSnapshot }
 	| { tool: 'archive_onto_task'; taskId: string };
 
+type PreparedRow = {
+	steps: PreparedStep[];
+	/** The whole change's undo, in the order Undo replays it. */
+	undo: CleanupUndoOperation[];
+	/** The same operations grouped by the step they undo, aligned with `steps`. */
+	undoByStep: CleanupUndoOperation[][];
+};
+
 /**
  * Read the live state each step needs and plan its undo. Throws (nothing written) when a step
  * cannot be undone exactly or the server's archive preview refuses.
@@ -920,11 +944,12 @@ async function prepareRow(params: {
 	userId: string;
 	projectId: string;
 	row: OpenReviewRow;
-}): Promise<{ steps: PreparedStep[]; undo: CleanupUndoOperation[] }> {
+}): Promise<PreparedRow> {
 	const { projectId } = params;
 	const root = await loadTreeRoot(params.db, projectId);
 	const steps: PreparedStep[] = [];
 	const undo: CleanupUndoOperation[] = [];
+	const undoByStep: CleanupUndoOperation[][] = [];
 	const moves: Array<{
 		document_id: string;
 		new_parent_id: string | null;
@@ -944,6 +969,8 @@ async function prepareRow(params: {
 			};
 			moves.push(move);
 			steps.push({ tool: 'move_document_in_tree', args: move });
+			// Filled in below, once every move's previous place is known.
+			undoByStep.push([]);
 		} else if (operation.tool === 'archive_onto_document') {
 			const mode = readDocumentArchiveChildrenMode(args.children);
 			const preview = await params.writers.previewGatewayDocumentArchive({
@@ -959,16 +986,20 @@ async function prepareRow(params: {
 			}
 			// A public page outlives the archive: that affects people outside the project.
 			if (snapshot.public_pages.length) throw new Error('document has a public page');
+			const archiveUndo = planDocumentArchiveUndo({ projectId, root, snapshot });
 			steps.push({ tool: 'archive_onto_document', snapshot });
-			undo.push(...planDocumentArchiveUndo({ projectId, root, snapshot }));
+			undo.push(...archiveUndo);
+			undoByStep.push(archiveUndo);
 		} else if (operation.tool === 'archive_onto_task') {
 			const taskId = String(args.task_id);
-			steps.push({ tool: 'archive_onto_task', taskId });
-			undo.push({
+			const taskUndo: CleanupUndoOperation = {
 				tool: 'restore_onto_task',
 				args: { project_id: projectId, task_id: taskId },
 				label: 'Restore the task'
-			});
+			};
+			steps.push({ tool: 'archive_onto_task', taskId });
+			undo.push(taskUndo);
+			undoByStep.push([taskUndo]);
 		} else {
 			throw new Error(`${operation.tool} is not applied without asking`);
 		}
@@ -981,8 +1012,59 @@ async function prepareRow(params: {
 		const moveUndo = planMoveUndo({ projectId, root, moves });
 		if (!moveUndo) throw new Error('a moved document is not in the document tree');
 		undo.push(...moveUndo);
+		// Every step is a move here and the plan lists the newest move first.
+		moveUndo.forEach((operation, index) => {
+			undoByStep[moves.length - 1 - index] = [operation];
+		});
 	}
-	return { steps, undo };
+	return { steps, undo, undoByStep };
+}
+
+/**
+ * The undo for only the first `ran` steps of a row. Moves walk back newest first (each one's
+ * previous place was read from the tree as the earlier moves left it); archives keep the order
+ * they were planned in.
+ */
+function undoForRanSteps(prepared: PreparedRow, ran: number): CleanupUndoOperation[] {
+	if (ran >= prepared.steps.length) return prepared.undo;
+	const groups = prepared.undoByStep.slice(0, ran);
+	const movesOnly = prepared.steps.every((step) => step.tool === 'move_document_in_tree');
+	return (movesOnly ? [...groups].reverse() : groups).flat();
+}
+
+/**
+ * Whether the records a row changes are still as they were when the review proposed it
+ * (audit F5). A row carried over from an earlier night keeps the fingerprint it was last
+ * proposed with, so this is the only place an edit made since then is noticed. It is the same
+ * scoped fingerprint manual approval compares (the web's isProjectSuggestionFresh): title,
+ * state, last edit and tree parent of exactly the documents and tasks the operations change.
+ * Unlike manual approval, a row with no fingerprint on record is not applied: nobody is
+ * looking at it. Returns the reason the row is left for the owner, or null when unchanged.
+ */
+async function changedSinceProposed(params: {
+	db: AutoApplyDb;
+	projectId: string;
+	row: OpenReviewRow;
+	storedFingerprint: string | null;
+}): Promise<string | null> {
+	if (!params.storedFingerprint) {
+		return 'no record of the state this change was proposed against; left for the owner';
+	}
+	let live: string | null;
+	try {
+		live = await computeProjectSuggestionFreshnessFingerprint(
+			params.db,
+			params.projectId,
+			params.row.operations
+		);
+	} catch (error) {
+		return `could not re-check what this change touches (${
+			error instanceof Error ? error.message : String(error)
+		}); left for the owner`;
+	}
+	return live === params.storedFingerprint
+		? null
+		: 'a record this change touches was edited, moved or archived since it was proposed; left for the owner';
 }
 
 async function runStep(params: {
@@ -1036,7 +1118,87 @@ async function runStep(params: {
 	});
 }
 
-/** Apply one suggestion row: plan undo, claim, write, record. One row never stops another. */
+/**
+ * Undo the steps of a half-applied row right away (audit F6), through the gateway the worker
+ * already writes with: a move goes back to its planned place, an archived task is restored the
+ * way the web's Undo restores it. Restoring an archived document has no worker write path, so a
+ * row that needs one is not rolled back at all. Stops at the first inverse that fails and
+ * returns what is still in effect, in Undo order. Runs without the pass's abort signal: it only
+ * takes back writes this row just made.
+ */
+async function rollBackRanSteps(params: {
+	db: AutoApplyDb;
+	writers: CleanupAutoApplyWriters;
+	userId: string;
+	projectId: string;
+	undo: CleanupUndoOperation[];
+}): Promise<{
+	attempted: boolean;
+	undone: number;
+	remaining: CleanupUndoOperation[];
+	error: string | null;
+}> {
+	const { undo, projectId } = params;
+	if (!undo.length || undo.some((operation) => operation.tool === 'restore_onto_document')) {
+		return { attempted: false, undone: 0, remaining: undo, error: null };
+	}
+	for (const [index, operation] of undo.entries()) {
+		let failure: string | null = null;
+		try {
+			let result: GatewayWriteOpResult;
+			if (operation.tool === 'move_document_in_tree') {
+				result = await runStep({
+					db: params.db,
+					writers: params.writers,
+					userId: params.userId,
+					projectId,
+					step: {
+						tool: 'move_document_in_tree',
+						args: {
+							project_id: projectId,
+							document_id: operation.args.document_id,
+							new_parent_id: operation.args.new_parent_id,
+							new_position: operation.args.new_position
+						}
+					}
+				});
+			} else if (operation.tool === 'restore_onto_task') {
+				result = await params.writers.runGatewayWriteOp({
+					admin: params.db as never,
+					userId: params.userId,
+					scope: scopeFor(projectId, 'onto.task.update'),
+					op: 'onto.task.update',
+					// The board's canonical restore, as the web's Undo sends it.
+					args: {
+						task_id: operation.args.task_id,
+						archived: false,
+						calendar_sync: 'none'
+					}
+				});
+			} else {
+				throw new Error(`${operation.tool} cannot be rolled back by the worker`);
+			}
+			if (!result.ok) failure = result.error?.message ?? 'failed';
+		} catch (error) {
+			failure = error instanceof Error ? error.message : 'Operation threw';
+		}
+		if (failure) {
+			return {
+				attempted: true,
+				undone: index,
+				remaining: undo.slice(index),
+				error: failure
+			};
+		}
+	}
+	return { attempted: true, undone: undo.length, remaining: [], error: null };
+}
+
+/**
+ * Apply one suggestion row: plan undo, re-check the records, claim, write, record. A row that
+ * fails part-way is rolled back, or recorded with an Undo for exactly the steps that ran. One
+ * row never stops another.
+ */
 async function applyRow(params: {
 	db: AutoApplyDb;
 	writers: CleanupAutoApplyWriters;
@@ -1069,15 +1231,27 @@ async function applyRow(params: {
 		};
 	}
 
-	// Claim on 'pending' so a decision the user made meanwhile wins. The undo is stored with
-	// the claim, before any write.
-	const claimedAt = params.now().toISOString();
 	const { data: previous, error: readError } = await db
 		.from('project_suggestions')
-		.select('undo_operations')
+		.select('undo_operations, source_fingerprint')
 		.eq('id', row.id)
 		.maybeSingle();
 	if (readError) return { ...base, status: 'skipped', detail: readError.message };
+
+	// Re-check right before applying: manual approval does, and nobody is watching this one.
+	const changed = await changedSinceProposed({
+		db,
+		projectId: params.projectId,
+		row,
+		storedFingerprint: asString(asRecord(previous)?.source_fingerprint)
+	});
+	if (changed) {
+		return { ...base, status: 'skipped', reason: 'changed_since_proposed', detail: changed };
+	}
+
+	// Claim on 'pending' so a decision the user made meanwhile wins. The undo is stored with
+	// the claim, before any write.
+	const claimedAt = params.now().toISOString();
 	const { data: claimed, error: claimError } = await db
 		.from('project_suggestions')
 		.update({
@@ -1117,9 +1291,9 @@ async function applyRow(params: {
 		if (errors.length) break;
 	}
 
-	if (applied === 0) {
-		// Nothing was written: hand the item back to the card as it was.
-		await db
+	// Hand the item back to the card as it was.
+	const release = () =>
+		db
 			.from('project_suggestions')
 			.update({
 				status: 'pending',
@@ -1128,7 +1302,40 @@ async function applyRow(params: {
 			})
 			.eq('id', row.id)
 			.eq('status', 'approved');
+
+	if (applied === 0) {
+		// Nothing was written.
+		await release();
 		return { ...base, status: 'released', detail: errors[0]?.error };
+	}
+
+	// Some steps were written and a later one failed. Take them back now; when that cannot be
+	// done here, the row is recorded as applied below so "Done for you" offers an Undo for
+	// exactly the steps still in effect. Either way nothing stays changed without a way back.
+	const ok = errors.length === 0;
+	let undoInEffect = prepared.undo;
+	let stepsInEffect = applied;
+	let rollback: Awaited<ReturnType<typeof rollBackRanSteps>> | null = null;
+	if (!ok) {
+		rollback = await rollBackRanSteps({
+			db,
+			writers: params.writers,
+			userId: params.userId,
+			projectId: params.projectId,
+			undo: undoForRanSteps(prepared, applied)
+		});
+		if (rollback.attempted && !rollback.remaining.length) {
+			await release();
+			return {
+				...base,
+				status: 'released',
+				reason: 'rolled_back',
+				detail: `${errors[0]?.error ?? 'a step failed'}; the ${applied} step${applied === 1 ? '' : 's'} that ran ${applied === 1 ? 'was' : 'were'} undone`
+			};
+		}
+		undoInEffect = rollback.remaining;
+		// Every inverse the worker runs itself undoes one step.
+		stepsInEffect = applied - rollback.undone;
 	}
 
 	const appliedAt = params.now().toISOString();
@@ -1141,20 +1348,36 @@ async function applyRow(params: {
 		// Kept with the scores so the card can show them against the bar they met (tasker 156).
 		bar: { ...cleanupAutoApplyBar(candidate.tools) }
 	};
-	const ok = errors.length === 0;
+	const partLine = `${stepsInEffect} of ${prepared.steps.length} steps`;
 	const { error: recordError } = await db
 		.from('project_suggestions')
 		.update({
-			status: ok ? 'applied' : 'failed',
-			applied_at: ok ? appliedAt : null,
+			// 'applied' also when only part of it is in effect: Undo and "Done for you" read
+			// applied rows, and a 'failed' row would leave those steps with no way back.
+			status: 'applied',
+			applied_at: appliedAt,
 			decided_at: appliedAt,
+			// The claim stored the whole undo; a part-applied row keeps only what still applies.
+			...(ok ? {} : { undo_operations: undoInEffect }),
 			result: {
 				ok,
 				applied_via: 'auto',
-				headline: candidate.headline,
-				applied_operations: applied,
+				headline: ok
+					? candidate.headline
+					: `${candidate.headline} (partly done: ${partLine})`,
+				applied_operations: stepsInEffect,
 				execution_policy: 'prevalidated_sequential',
-				...(ok ? {} : { partial_failure: true, errors }),
+				...(ok
+					? {}
+					: {
+							partial_failure: true,
+							errors,
+							rollback: {
+								attempted: rollback?.attempted ?? false,
+								undone_operations: rollback?.undone ?? 0,
+								...(rollback?.error ? { error: rollback.error } : {})
+							}
+						}),
 				auto_apply: autoApply
 			}
 		})
@@ -1169,7 +1392,12 @@ async function applyRow(params: {
 	}
 	return ok
 		? { ...base, status: 'applied' }
-		: { ...base, status: 'failed', detail: errors[0]?.error };
+		: {
+				...base,
+				status: 'failed',
+				reason: 'partly_applied',
+				detail: `${errors[0]?.error ?? 'a step failed'}; ${partLine} are in effect and can be undone from Done for you`
+			};
 }
 
 /**
@@ -1354,10 +1582,23 @@ export function describeCleanupAutoApply(summary: CleanupAutoApplySummary): stri
 	const skipped = summary.outcomes.filter((outcome) =>
 		['skipped', 'released', 'not_claimed'].includes(outcome.status)
 	).length;
+	const count = (reason: CleanupAutoApplyOutcome['reason']) =>
+		summary.outcomes.filter((outcome) => outcome.reason === reason).length;
+	const changed = count('changed_since_proposed');
+	const rolledBack = count('rolled_back');
+	const partlyApplied = count('partly_applied');
+	const notApplied = [
+		changed ? `${changed} changed since proposed` : '',
+		rolledBack ? `${rolledBack} rolled back` : ''
+	].filter(Boolean);
 	return [
 		`Auto-apply: ${summary.applied} applied, ${summary.held} held for review`,
-		summary.failed ? `, ${summary.failed} failed` : '',
-		skipped ? `, ${skipped} not applied` : '',
+		summary.failed
+			? `, ${summary.failed} failed${partlyApplied ? ` (${partlyApplied} partly applied, with Undo)` : ''}`
+			: '',
+		skipped
+			? `, ${skipped} not applied${notApplied.length ? ` (${notApplied.join(', ')})` : ''}`
+			: '',
 		` of ${summary.scored} scored`,
 		summary.blockedTools.length
 			? `; paused after an undo: ${summary.blockedTools.join(', ')}`

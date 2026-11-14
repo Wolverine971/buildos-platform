@@ -203,8 +203,7 @@
 				state_key: stateKey || 'todo',
 				start_at: parseDateTimeFromInput(startAt),
 				due_at: parseDateTimeFromInput(dueAt),
-				assignee_actor_ids: assigneeActorIds,
-				classification_source: 'create_modal'
+				assignee_actor_ids: assigneeActorIds
 			};
 
 			const response = await fetch('/api/onto/tasks/create', {

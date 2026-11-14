@@ -1,7 +1,9 @@
+// apps/worker/tests/chatCheckpointReceipts.test.ts
 import { describe, expect, it } from 'vitest';
 import {
 	latestSavedChanges,
-	SAVED_CHANGE_PROMPT_LIMIT
+	SAVED_CHANGE_PROMPT_LIMIT,
+	savedChangesFromExecution
 } from '../src/workers/chat/checkpoint/capturePrompts';
 
 function write(title: string, created_at: string) {
@@ -44,5 +46,55 @@ describe('latestSavedChanges', () => {
 		]);
 
 		expect(changes.map((change) => change.title)).toEqual(['Chapter 1', 'Chapter 2']);
+	});
+});
+
+describe('savedChangesFromExecution', () => {
+	// The next step after a chat links to what the chat saved, so the receipt's id,
+	// operation and project come through with the title.
+	it("keeps the receipt's id, operation and project", () => {
+		expect(
+			savedChangesFromExecution({
+				tool_name: 'create_onto_task',
+				tool_category: 'ontology_action',
+				success: true,
+				affected_entities: [
+					{
+						kind: 'task',
+						id: 'task-1',
+						title: 'Outline chapter 3',
+						projectId: 'project-1',
+						operation: 'created',
+						url: '/projects/project-1?entity=task&entity_id=task-1'
+					}
+				]
+			})
+		).toEqual([
+			{
+				tool: 'create_onto_task',
+				kind: 'task',
+				title: 'Outline chapter 3',
+				id: 'task-1',
+				operation: 'created',
+				projectId: 'project-1'
+			}
+		]);
+	});
+
+	it('leaves them null on a receipt that has only a kind and title', () => {
+		expect(
+			savedChangesFromExecution({
+				...write('Chapter 2', '2026-09-23T12:03:00Z')
+			})
+		).toEqual([
+			{
+				tool: 'update_onto_document',
+				kind: 'document',
+				title: 'Chapter 2',
+				id: null,
+				operation: null,
+				projectId: null
+			}
+		]);
 	});
 });

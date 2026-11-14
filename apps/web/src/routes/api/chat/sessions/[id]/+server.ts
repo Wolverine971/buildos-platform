@@ -218,6 +218,36 @@ export const GET: RequestHandler = async ({
 			sourceQuotes[call.id] = quote.trim();
 	}
 
+	// Undo after a reload: the current body hash of each document a turn here edited, so a
+	// rebuilt change card can tell whether its edit is still in place (its pre-edit hash equal
+	// to the current one means it was undone). Read as the signed-in user; ids only from this
+	// session's own stored writes.
+	const editedDocumentIds = [
+		...new Set(
+			(toolExecutions || []).flatMap((execution) => {
+				const affected = (execution as { affected_entities?: unknown }).affected_entities;
+				if (!Array.isArray(affected)) return [];
+				return affected.flatMap((entity) => {
+					const record = entity as { kind?: unknown; id?: unknown } | null;
+					return record?.kind === 'document' && typeof record.id === 'string'
+						? [record.id]
+						: [];
+				});
+			})
+		)
+	].slice(0, 100);
+	const documentHashes: Record<string, string> = {};
+	if (editedDocumentIds.length) {
+		const { data: hashRows } = await supabase
+			.from('onto_documents')
+			.select('id, content_hash')
+			.in('id', editedDocumentIds)
+			.limit(100);
+		for (const row of hashRows ?? []) {
+			if (typeof row.content_hash === 'string') documentHashes[row.id] = row.content_hash;
+		}
+	}
+
 	return ApiResponse.success({
 		session: projectFocus
 			? { ...session, agent_metadata: { focus: projectFocus } }
@@ -228,6 +258,7 @@ export const GET: RequestHandler = async ({
 		timelineItems,
 		contextSelections,
 		sourceQuotes,
+		documentHashes,
 		voiceNoteGroups: voice.voiceNoteGroups,
 		voiceNotes: voice.voiceNotes,
 		truncated,

@@ -467,11 +467,8 @@ Examples: document.knowledge.research, document.spec.technical, document.notes.m
 					},
 					content: {
 						type: 'string',
-						description: 'Risk content summary'
-					},
-					description: {
-						type: 'string',
-						description: 'Risk description'
+						description:
+							'What the risk is and why it matters, in prose. The one field for the risk description.'
 					},
 					mitigation_strategy: {
 						type: 'string',
@@ -1584,11 +1581,8 @@ Use for edits to title, impact, probability, state, or mitigation metadata.`,
 					},
 					content: {
 						type: 'string',
-						description: 'Risk content summary'
-					},
-					description: {
-						type: 'string',
-						description: 'Risk description'
+						description:
+							'What the risk is and why it matters, in prose. The one field for the risk description.'
 					},
 					mitigation_strategy: {
 						type: 'string',

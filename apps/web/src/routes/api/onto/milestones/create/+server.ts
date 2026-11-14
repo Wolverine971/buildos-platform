@@ -30,7 +30,6 @@
  */
 import type { RequestHandler } from './$types';
 import type { Database } from '@buildos/shared-types';
-import { dev } from '$app/environment';
 import { ApiResponse } from '$lib/utils/api-response';
 import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
@@ -46,7 +45,6 @@ import {
 	normalizeDateTimeInput,
 	resolveUserCivilTimezone
 } from '../../shared/input-normalization';
-import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
 import {
 	AutoOrganizeError,
 	autoOrganizeConnections,
@@ -84,7 +82,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			parents,
 			connections
 		} = body;
-		const classificationSource = body?.classification_source ?? body?.classificationSource;
 
 		// Validate required fields
 		if (!project_id) {
@@ -272,17 +269,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			getChangeSourceFromRequest(request),
 			chatSessionId
 		);
-
-		if (classificationSource === 'create_modal') {
-			void classifyOntologyEntity({
-				entityType: 'milestone',
-				entityId: createdMilestone.id,
-				userId: user.id,
-				classificationSource: 'create_modal'
-			}).catch((err) => {
-				if (dev) console.warn('[Milestone Create] Classification failed:', err);
-			});
-		}
 
 		const goalIdForResponse =
 			connectionList.find((connection) => connection.kind === 'goal')?.id ?? null;

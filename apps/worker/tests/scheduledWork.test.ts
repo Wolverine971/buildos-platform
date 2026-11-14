@@ -1,7 +1,12 @@
 // apps/worker/tests/scheduledWork.test.ts
 import { describe, expect, it } from 'vitest';
 
-import { describeScheduledWorkGate, resolveScheduledWorkGate } from '../src/config/scheduledWork';
+import {
+	describeQueueConsumerGate,
+	describeScheduledWorkGate,
+	resolveQueueConsumerGate,
+	resolveScheduledWorkGate
+} from '../src/config/scheduledWork';
 
 // The general worker's real Railway service exposes these (names checked 2026-10-04).
 const RAILWAY_PRODUCTION = {
@@ -62,11 +67,47 @@ describe('scheduled work gate', () => {
 	it('logs one line that says what is off and how to opt in', () => {
 		const off = describeScheduledWorkGate(resolveScheduledWorkGate({}));
 		expect(off).toContain('Scheduled work OFF');
-		expect(off).toContain('Queue jobs are still claimed');
 		expect(off).toContain('WORKER_SCHEDULER_ENABLED=true');
 		expect(off).not.toContain('\n');
 
 		const on = describeScheduledWorkGate(resolveScheduledWorkGate(RAILWAY_PRODUCTION));
 		expect(on).toContain('Scheduled work ON (Railway environment "production")');
+	});
+});
+
+describe('queue consumer gate', () => {
+	it('is off for a local worker and on for a deployed Railway service', () => {
+		expect(resolveQueueConsumerGate({}).enabled).toBe(false);
+		expect(resolveQueueConsumerGate({ NODE_ENV: 'production' }).enabled).toBe(false);
+		expect(resolveQueueConsumerGate(RAILWAY_PRODUCTION)).toEqual({
+			enabled: true,
+			reason: 'Railway environment "production"'
+		});
+	});
+
+	it('has its own switch, independent of the scheduler switch', () => {
+		expect(resolveQueueConsumerGate({ WORKER_QUEUE_CONSUMERS_ENABLED: 'true' }).enabled).toBe(
+			true
+		);
+		expect(resolveQueueConsumerGate({ WORKER_SCHEDULER_ENABLED: 'true' }).enabled).toBe(false);
+		expect(resolveScheduledWorkGate({ WORKER_QUEUE_CONSUMERS_ENABLED: 'true' }).enabled).toBe(
+			false
+		);
+		expect(
+			resolveQueueConsumerGate({
+				...RAILWAY_PRODUCTION,
+				WORKER_QUEUE_CONSUMERS_ENABLED: 'false'
+			}).enabled
+		).toBe(false);
+	});
+
+	it('logs one line that says jobs are left to the deployed worker and how to opt in', () => {
+		const off = describeQueueConsumerGate(resolveQueueConsumerGate({}));
+		expect(off).toContain('Queue consumers OFF');
+		expect(off).toContain('WORKER_QUEUE_CONSUMERS_ENABLED=true');
+		expect(off).not.toContain('\n');
+		expect(describeQueueConsumerGate(resolveQueueConsumerGate(RAILWAY_PRODUCTION))).toContain(
+			'Queue consumers ON'
+		);
 	});
 });

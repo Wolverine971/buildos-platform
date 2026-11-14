@@ -14,7 +14,9 @@ export function createCheckpointCompleteJson(options?: {
 		httpReferer: (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim(),
 		appName: 'BuildOS Chat Checkpoint Capture'
 	});
-	return ({ systemPrompt, userPrompt, userId, operation }) =>
+	// The capture engine names the chat and project on each call (one port serves many
+	// sessions); the options are the fallback for callers that build a port per session.
+	return ({ systemPrompt, userPrompt, userId, operation, sessionId, projectId }) =>
 		llm.getJSONResponse<unknown>({
 			systemPrompt,
 			userPrompt,
@@ -26,8 +28,8 @@ export function createCheckpointCompleteJson(options?: {
 			reasoning: { enabled: false },
 			validation: { retryOnParseError: true, maxRetries: 1 },
 			operationType: `chat_checkpoint_${operation}`,
-			chatSessionId: options?.sessionId,
-			projectId: options?.projectId,
+			chatSessionId: sessionId ?? options?.sessionId,
+			projectId: projectId ?? options?.projectId,
 			signal: options?.signal,
 			onUsage: options?.onUsage
 				? (event) => options.onUsage?.({ ...event, operation })

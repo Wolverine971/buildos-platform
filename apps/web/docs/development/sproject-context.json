@@ -220,6 +220,11 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
+		},
+		{
 			"file": "src/routes/projects/[id]/ProjectWorkspace.svelte",
 			"type": "component",
 			"components": [
@@ -258,11 +263,6 @@
 				"ProjectParentPickerModal",
 				"ProjectCollaborationModal"
 			]
-		},
-		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/admin/chat/SessionFlowVisuals.svelte",
@@ -963,32 +963,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/builder-profile/builder-visitor.svelte.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["closedAsk", "BuilderVisitor"]
-		},
-		{
-			"file": "src/lib/components/chat/project-selector-browser.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"DEFAULT_PROJECT_SELECTOR_LIMIT",
-				"MAX_PROJECT_SELECTOR_LIMIT",
-				"PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS",
-				"withoutWorkspace",
-				"normalizeProjectSelectionSearch",
-				"PROJECT_RECENCY_RECENT_MAX_DAYS",
-				"PROJECT_RECENCY_OLDER_MAX_DAYS",
-				"parseProjectUpdatedAt",
-				"formatRelativeProjectUpdate",
-				"groupProjectsByRecency",
-				"normalizeProjectSelectionLimit",
-				"clearProjectSelectionBrowserCache",
-				"fetchProjectSelectionSummaries"
-			]
-		},
-		{
 			"file": "src/lib/components/agent/agent-chat-attachments.svelte.ts",
 			"type": "component",
 			"components": [],
@@ -1136,6 +1110,7 @@
 				"warmAgentChatTurnRoute",
 				"resetAgentChatTurnRouteWarmupForTests",
 				"warmAgentChatStreamTransport",
+				"markUndoneDocumentChanges",
 				"buildTableChangesMessage",
 				"buildAgentChatSessionSnapshot",
 				"loadAgentChatSessionSnapshot"
@@ -1517,6 +1492,32 @@
 				"tableChangeHref",
 				"describeTableUndoConflict",
 				"undoTableChange"
+			]
+		},
+		{
+			"file": "src/lib/components/builder-profile/builder-visitor.svelte.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["closedAsk", "BuilderVisitor"]
+		},
+		{
+			"file": "src/lib/components/chat/project-selector-browser.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"DEFAULT_PROJECT_SELECTOR_LIMIT",
+				"MAX_PROJECT_SELECTOR_LIMIT",
+				"PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS",
+				"withoutWorkspace",
+				"normalizeProjectSelectionSearch",
+				"PROJECT_RECENCY_RECENT_MAX_DAYS",
+				"PROJECT_RECENCY_OLDER_MAX_DAYS",
+				"parseProjectUpdatedAt",
+				"formatRelativeProjectUpdate",
+				"groupProjectsByRecency",
+				"normalizeProjectSelectionLimit",
+				"clearProjectSelectionBrowserCache",
+				"fetchProjectSelectionSummaries"
 			]
 		},
 		{
@@ -1981,6 +1982,18 @@
 			]
 		},
 		{
+			"file": "src/lib/components/task-entities/entity-mentions.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["findWord", "splitMentions", "MENTION_CLASS", "entityMentions"]
+		},
+		{
+			"file": "src/lib/components/task-entities/task-entities.svelte.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["TaskEntities"]
+		},
+		{
 			"file": "src/lib/components/tables/fixtures.ts",
 			"type": "component",
 			"components": [],
@@ -2143,18 +2156,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/task-entities/entity-mentions.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["findWord", "splitMentions", "MENTION_CLASS", "entityMentions"]
-		},
-		{
-			"file": "src/lib/components/task-entities/task-entities.svelte.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["TaskEntities"]
-		},
-		{
 			"file": "src/lib/components/today/today-picks.ts",
 			"type": "component",
 			"components": [],
@@ -2188,6 +2189,18 @@
 				"isLiveSuggestion",
 				"filingByItem",
 				"matchesLooseFilter"
+			]
+		},
+		{
+			"file": "src/lib/components/admin/chat/session-audit-ui.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"eventIcon",
+				"eventSeverityClasses",
+				"timelineDotClasses",
+				"statusBadge",
+				"libriStatusClasses"
 			]
 		},
 		{
@@ -2237,28 +2250,10 @@
 			]
 		},
 		{
-			"file": "src/lib/components/admin/chat/session-audit-ui.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"eventIcon",
-				"eventSeverityClasses",
-				"timelineDotClasses",
-				"statusBadge",
-				"libriStatusClasses"
-			]
-		},
-		{
 			"file": "src/lib/components/agent/__fixtures__/chat-history-state.svelte.ts",
 			"type": "component",
 			"components": [],
 			"exports": ["navigating"]
-		},
-		{
-			"file": "src/lib/components/landing/home-variants/fading-crown.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["FADING_CROWN_PROJECT_ID", "FADING_CROWN", "FADING_CROWN_COUNTS"]
 		},
 		{
 			"file": "src/lib/components/builder-profile/editor/builder-editor-state.svelte.ts",
@@ -2352,6 +2347,12 @@
 			]
 		},
 		{
+			"file": "src/lib/components/landing/home-variants/fading-crown.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["FADING_CROWN_PROJECT_ID", "FADING_CROWN", "FADING_CROWN_COUNTS"]
+		},
+		{
 			"file": "src/lib/components/people/hub/hub-actions.ts",
 			"type": "component",
 			"components": [],
@@ -2436,39 +2437,6 @@
 				"presentCycleStatus",
 				"formatCycleTimestamp",
 				"presentCycle"
-			]
-		},
-		{
-			"file": "src/lib/components/project/emoji/emoji-catalog.generated.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["EMOJI_CATALOG"]
-		},
-		{
-			"file": "src/lib/components/project/emoji/project-emoji.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"MAX_PROJECT_EMOJIS",
-				"isEmojiGlyph",
-				"tileGlyphs",
-				"readProjectEmoji",
-				"normalizeEmojiSelection",
-				"slotsFrom",
-				"slotGlyphs",
-				"placeEmoji",
-				"searchCatalog"
-			]
-		},
-		{
-			"file": "src/lib/components/project/freshness/freshness-context.svelte.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"PROJECT_FRESHNESS_CONTEXT_KEY",
-				"ProjectFreshnessState",
-				"setProjectFreshnessContext",
-				"getProjectFreshnessContext"
 			]
 		},
 		{
@@ -2600,10 +2568,43 @@
 			"exports": ["itemKey", "targetKey", "readItem", "readTarget", "createDesktopDrag"]
 		},
 		{
+			"file": "src/lib/components/project/freshness/freshness-context.svelte.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"PROJECT_FRESHNESS_CONTEXT_KEY",
+				"ProjectFreshnessState",
+				"setProjectFreshnessContext",
+				"getProjectFreshnessContext"
+			]
+		},
+		{
 			"file": "src/lib/components/project/v2/board-a11y.ts",
 			"type": "component",
 			"components": [],
 			"exports": ["handleRovingTabKeydown", "slideMotion", "fadeMotion"]
+		},
+		{
+			"file": "src/lib/components/project/emoji/emoji-catalog.generated.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["EMOJI_CATALOG"]
+		},
+		{
+			"file": "src/lib/components/project/emoji/project-emoji.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"MAX_PROJECT_EMOJIS",
+				"isEmojiGlyph",
+				"tileGlyphs",
+				"readProjectEmoji",
+				"normalizeEmojiSelection",
+				"slotsFrom",
+				"slotGlyphs",
+				"placeEmoji",
+				"searchCatalog"
+			]
 		},
 		{
 			"file": "src/lib/components/ui/codemirror/extensions.ts",
@@ -2656,21 +2657,16 @@
 			]
 		},
 		{
-			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"PROJECT_COMMANDERS",
-				"DEFAULT_PUBLIC_PROJECT_ID",
-				"getCommander",
-				"formatTimelineYearRange"
-			]
-		},
-		{
 			"file": "src/lib/components/landing/home-variants/b/examples.ts",
 			"type": "component",
 			"components": [],
 			"exports": ["ASSEMBLY_EXAMPLES", "UPDATE_DEMOS"]
+		},
+		{
+			"file": "src/lib/components/landing/home-variants/d/project-reel.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["REEL_STORIES", "storyAt"]
 		},
 		{
 			"file": "src/lib/components/landing/home-variants/c/dump-demo.ts",
@@ -2691,16 +2687,21 @@
 			]
 		},
 		{
+			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"PROJECT_COMMANDERS",
+				"DEFAULT_PUBLIC_PROJECT_ID",
+				"getCommander",
+				"formatTimelineYearRange"
+			]
+		},
+		{
 			"file": "src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
 			"type": "component",
 			"components": [],
 			"exports": ["prepareAgentRunChatEventDetail"]
-		},
-		{
-			"file": "src/lib/components/landing/home-variants/d/project-reel.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["REEL_STORIES", "storyAt"]
 		},
 		{
 			"file": "src/lib/components/ontology/graph/lib/graph.filters.ts",
@@ -2853,8 +2854,6 @@
 		"src/lib/components/landing/home-variants/a/LiveProject.svelte",
 		"src/lib/components/landing/home-variants/d/AnimatedDemo.svelte",
 		"src/lib/components/admin/adminRoutes.ts",
-		"src/lib/components/builder-profile/builder-visitor.svelte.ts",
-		"src/lib/components/chat/project-selector-browser.ts",
 		"src/lib/components/agent/agent-chat-attachments.svelte.ts",
 		"src/lib/components/agent/agent-chat-capture-receipts.svelte.ts",
 		"src/lib/components/agent/agent-chat-client-actions.ts",
@@ -2902,6 +2901,8 @@
 		"src/lib/components/agent/shared-document-edit-card-state.svelte.ts",
 		"src/lib/components/agent/shared-document-edit-cards.ts",
 		"src/lib/components/agent/table-change-cards.ts",
+		"src/lib/components/builder-profile/builder-visitor.svelte.ts",
+		"src/lib/components/chat/project-selector-browser.ts",
 		"src/lib/components/consolidation/consolidation-picture.ts",
 		"src/lib/components/dashboard/dashboard-presentation.ts",
 		"src/lib/components/layout/agent-chat-launch-params.ts",
@@ -2942,6 +2943,8 @@
 		"src/lib/components/table-surfaces/document-embeds.ts",
 		"src/lib/components/table-surfaces/make-live-table.ts",
 		"src/lib/components/table-surfaces/table-surface-utils.ts",
+		"src/lib/components/task-entities/entity-mentions.ts",
+		"src/lib/components/task-entities/task-entities.svelte.ts",
 		"src/lib/components/tables/fixtures.ts",
 		"src/lib/components/tables/table-cell-format.ts",
 		"src/lib/components/tables/table-client.ts",
@@ -2949,23 +2952,21 @@
 		"src/lib/components/tables/table-grid-model.ts",
 		"src/lib/components/tables/table-import.ts",
 		"src/lib/components/tables/table-view-model.ts",
-		"src/lib/components/task-entities/entity-mentions.ts",
-		"src/lib/components/task-entities/task-entities.svelte.ts",
 		"src/lib/components/today/today-picks.ts",
 		"src/lib/components/today/today-task-order.ts",
 		"src/lib/components/ui/rich-markdown-editor-voice.ts",
 		"src/lib/components/workspace/workspace-model.ts",
+		"src/lib/components/admin/chat/session-audit-ui.ts",
 		"src/lib/components/admin/chat-users/chat-user-export.ts",
 		"src/lib/components/admin/chat-users/chat-user-ui.ts",
-		"src/lib/components/admin/chat/session-audit-ui.ts",
 		"src/lib/components/agent/__fixtures__/chat-history-state.svelte.ts",
-		"src/lib/components/landing/home-variants/fading-crown.ts",
 		"src/lib/components/builder-profile/editor/builder-editor-state.svelte.ts",
 		"src/lib/components/builder-profile/editor/builder-editor.ts",
 		"src/lib/components/builder-profile/editor/drag-reorder.ts",
 		"src/lib/components/builder-profile/editor/editor-api.ts",
 		"src/lib/components/builder-profile/editor/editor-styles.ts",
 		"src/lib/components/builder-profile/editor/image-crop.ts",
+		"src/lib/components/landing/home-variants/fading-crown.ts",
 		"src/lib/components/people/hub/hub-actions.ts",
 		"src/lib/components/ontology/doc-tree/drop-geometry.ts",
 		"src/lib/components/ontology/doc-tree/tree-images.ts",
@@ -2973,9 +2974,6 @@
 		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/profile/cycles/cycle-presenter.ts",
-		"src/lib/components/project/emoji/emoji-catalog.generated.ts",
-		"src/lib/components/project/emoji/project-emoji.ts",
-		"src/lib/components/project/freshness/freshness-context.svelte.ts",
 		"src/lib/components/projects/desktop/desktop-chats.svelte.ts",
 		"src/lib/components/projects/desktop/desktop-context.ts",
 		"src/lib/components/projects/desktop/desktop-model.ts",
@@ -2987,16 +2985,19 @@
 		"src/lib/components/projects/desktop/reader-removals.svelte.ts",
 		"src/lib/components/projects/desktop/reader-task-groups.ts",
 		"src/lib/components/projects/desktop/useDesktopDrag.svelte.ts",
+		"src/lib/components/project/freshness/freshness-context.svelte.ts",
 		"src/lib/components/project/v2/board-a11y.ts",
+		"src/lib/components/project/emoji/emoji-catalog.generated.ts",
+		"src/lib/components/project/emoji/project-emoji.ts",
 		"src/lib/components/ui/codemirror/extensions.ts",
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",
 		"src/lib/components/ui/codemirror/sticky-scroll.ts",
 		"src/lib/components/ui/codemirror/voice-widget.ts",
-		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 		"src/lib/components/landing/home-variants/b/examples.ts",
-		"src/lib/components/landing/home-variants/c/dump-demo.ts",
-		"src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
 		"src/lib/components/landing/home-variants/d/project-reel.ts",
+		"src/lib/components/landing/home-variants/c/dump-demo.ts",
+		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
+		"src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
 		"src/lib/components/ontology/graph/lib/graph.filters.ts",
 		"src/lib/components/ontology/graph/lib/graph.layout.ts",
 		"src/lib/components/ontology/graph/lib/graph.service.ts",

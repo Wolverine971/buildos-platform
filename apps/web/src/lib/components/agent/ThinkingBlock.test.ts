@@ -36,6 +36,27 @@ function thinkingBlock(): ThinkingBlockMessage {
 	};
 }
 
+// jsdom has no Web Animations; the record list's slide needs a finishing stub. It stays in
+// place after the tests (this file has its own jsdom), since an outro can finish late.
+Element.prototype.animate = vi.fn(() => {
+	let finish: ((event: AnimationPlaybackEvent) => void) | null = null;
+	return {
+		cancel: vi.fn(),
+		currentTime: 0,
+		finished: Promise.resolve(),
+		playState: 'finished',
+		addEventListener: vi.fn(),
+		removeEventListener: vi.fn(),
+		get onfinish() {
+			return finish;
+		},
+		set onfinish(handler: ((event: AnimationPlaybackEvent) => void) | null) {
+			finish = handler;
+			if (handler) setTimeout(() => handler({} as AnimationPlaybackEvent), 0);
+		}
+	} as unknown as Animation;
+});
+
 describe('ThinkingBlock', () => {
 	afterEach(cleanup);
 
@@ -309,13 +330,136 @@ describe('ThinkingBlock', () => {
 		);
 	});
 
-	it('does not animate layout ceilings or spacing', () => {
-		expect(source).not.toMatch(
-			/\b(?:grid-template-rows|max-height|max-width|padding|border-width)\s+\d+ms\b/
-		);
+	it('animates layout in one place only: the fold of the work log', () => {
+		// The panel folds to its header over time, so the reply glides up instead of jumping.
+		// Nothing else animates a layout ceiling or spacing.
+		expect(source).not.toMatch(/\b(?:max-height|max-width|padding|border-width)\s+\d+ms\b/);
+		expect(source.match(/grid-template-rows var\(--fold-ms\)/g)).toHaveLength(2);
+		expect(source).not.toMatch(/\bgrid-template-rows\s+\d+ms\b/);
 		expect(source).toContain('grid-template-rows: 0fr');
 		expect(source).toContain('grid-template-rows: 1fr');
 		expect(source).toContain('transition: transform 160ms');
+	});
+
+	it('settles shut over half a second after a live turn, and at tap speed on a click', async () => {
+		const onToggleCollapse = vi.fn();
+		const live = thinkingBlock();
+		const { container, rerender } = render(ThinkingBlock, { block: live, onToggleCollapse });
+		const body = () => container.querySelector('.thinking-body')!;
+		expect(body()).toHaveClass('thinking-body-open');
+
+		await rerender({
+			block: {
+				...live,
+				status: 'completed',
+				isCollapsed: true,
+				completedAt: new Date('2026-08-27T12:00:07.000Z')
+			},
+			onToggleCollapse
+		});
+		expect(body()).not.toHaveClass('thinking-body-open');
+		expect(body()).toHaveClass('thinking-body-settle');
+		expect(source).toMatch(
+			/\.thinking-body-settle:not\(\.thinking-body-open\),\s*\.thinking-body-settle-reopen\.thinking-body-open\s*{\s*--fold-ms: 500ms;/
+		);
+
+		// Reopening by hand, and every toggle after it, runs at tap speed.
+		await fireEvent.click(screen.getByRole('button', { name: /Worked for 7s/ }));
+		expect(onToggleCollapse).toHaveBeenCalledWith('thinking-1');
+		expect(body()).not.toHaveClass('thinking-body-settle');
+	});
+
+	it('folds the moment the reply starts, with the turn still running', async () => {
+		const onToggleCollapse = vi.fn();
+		const live = thinkingBlock();
+		const { container, rerender } = render(ThinkingBlock, { block: live, onToggleCollapse });
+		const body = () => container.querySelector('.thinking-body')!;
+		expect(body()).toHaveClass('thinking-body-open');
+		// The first open of a turn is quick: there is no reply below it to push around.
+		expect(body()).not.toHaveClass('thinking-body-settle-reopen');
+
+		// The chat window folds the block when reply text arrives; the turn is still active.
+		const writing = {
+			...live,
+			content: 'Writing the response…',
+			isCollapsed: true,
+			foldSetBy: 'reply' as const
+		};
+		await rerender({ block: writing, onToggleCollapse });
+		expect(body()).not.toHaveClass('thinking-body-open');
+		expect(body()).toHaveClass('thinking-body-settle');
+		// The header still says what is happening, and offers the log back.
+		expect(screen.getByTestId('thinking-live-status')).toHaveTextContent(
+			'Writing the response…'
+		);
+		const header = container.querySelector('.thinking-header')!;
+		expect(header).toHaveAttribute('aria-expanded', 'false');
+		expect(header).toHaveTextContent('Show the work log');
+	});
+
+	it('opens again when the model goes back to work, then folds for the rest of the reply', async () => {
+		const onToggleCollapse = vi.fn();
+		const live = thinkingBlock();
+		const { container, rerender } = render(ThinkingBlock, {
+			block: { ...live, isCollapsed: true, foldSetBy: 'reply' },
+			onToggleCollapse
+		});
+		const body = () => container.querySelector('.thinking-body')!;
+		expect(body()).not.toHaveClass('thinking-body-open');
+
+		const resumed = {
+			...live,
+			isCollapsed: false,
+			activities: [
+				...live.activities,
+				{
+					id: 'activity-search',
+					content: 'Searching tasks',
+					timestamp: new Date('2026-08-27T12:00:03.000Z'),
+					activityType: 'tool_call' as const,
+					status: 'pending' as const,
+					metadata: { line: { verb: 'Searching tasks', tone: 'pending' } }
+				}
+			]
+		};
+		await rerender({ block: resumed, onToggleCollapse });
+		expect(body()).toHaveClass('thinking-body-open');
+		// The words already written ride back down at the slow pace, not a snap.
+		expect(body()).toHaveClass('thinking-body-settle-reopen');
+		expect(screen.getByTestId('thinking-live-status')).toHaveTextContent('Searching tasks…');
+
+		await rerender({
+			block: { ...resumed, isCollapsed: true, foldSetBy: 'reply' },
+			onToggleCollapse
+		});
+		expect(body()).not.toHaveClass('thinking-body-open');
+		expect(body()).toHaveClass('thinking-body-settle');
+	});
+
+	it('moves at tap speed once the person takes the fold over mid-turn', async () => {
+		const onToggleCollapse = vi.fn();
+		const live = thinkingBlock();
+		const folded = { ...live, isCollapsed: true, foldSetBy: 'reply' as const };
+		const { container, rerender } = render(ThinkingBlock, { block: folded, onToggleCollapse });
+		const body = () => container.querySelector('.thinking-body')!;
+
+		await fireEvent.click(container.querySelector('.thinking-header')!);
+		expect(onToggleCollapse).toHaveBeenCalledWith('thinking-1');
+		await rerender({
+			block: { ...live, isCollapsed: false, foldSetBy: 'user' },
+			onToggleCollapse
+		});
+		expect(body()).toHaveClass('thinking-body-open');
+		expect(body()).not.toHaveClass('thinking-body-settle');
+		expect(body()).not.toHaveClass('thinking-body-settle-reopen');
+	});
+
+	it('folds a restored turn at tap speed: it was never seen running', () => {
+		const { container } = render(ThinkingBlock, {
+			block: { ...thinkingBlock(), status: 'completed', isCollapsed: true },
+			onToggleCollapse: vi.fn()
+		});
+		expect(container.querySelector('.thinking-body')).not.toHaveClass('thinking-body-settle');
 	});
 
 	it('disables the replacement disclosure motion for reduced motion', () => {
@@ -327,6 +471,7 @@ describe('ThinkingBlock', () => {
 		expect(reducedMotion).toContain('.thinking-log-chevron');
 		expect(reducedMotion).toContain('.thinking-status-in');
 		expect(reducedMotion).toContain('.thinking-hammer');
+		expect(reducedMotion).toContain('.thinking-body');
 		expect(reducedMotion).toContain('transition: none');
 	});
 
@@ -542,9 +687,65 @@ describe('ThinkingBlock', () => {
 			const list = document.querySelector('[data-step-slot="list"]')!;
 			expect(list.querySelector('a.step-target-link')).toBeNull();
 			// The task it returned is still reachable, under its own name.
-			expect(list.querySelector('a.record-chip')?.textContent).toContain('Send invoice');
+			expect(list.querySelector('a.record-row')?.textContent).toContain('Send invoice');
 			const open = document.querySelector('[data-step-slot="open"]')!;
 			expect(open.querySelector('a.step-target-link')?.textContent).toContain('Send invoice');
+		});
+
+		it('lists a long result one record per row and opens the rest on request', async () => {
+			const tasks = Array.from({ length: 9 }, (_, i) => ({
+				id: `t${i}`,
+				title: `Task ${i}`,
+				project_id: P
+			}));
+			render(ThinkingBlock, {
+				block: finished([
+					step(
+						'list',
+						{ verb: 'Listed tasks', tone: 'done', target: 'Wayne Strategies' },
+						{ result: { tasks } }
+					)
+				]),
+				onToggleCollapse: vi.fn(),
+				turnCards: session
+			});
+			const list = document.querySelector('[data-step-slot="list"]')!;
+			const titles = () =>
+				Array.from(list.querySelectorAll('a.record-row .record-row-title')).map(
+					(node) => node.textContent
+				);
+			expect(titles()).toEqual(['Task 0', 'Task 1']);
+
+			const toggle = screen.getByRole('button', { name: 'Show 7 more tasks' });
+			expect(toggle).toHaveAttribute('aria-expanded', 'false');
+			await fireEvent.click(toggle);
+			expect(titles()).toHaveLength(9);
+			expect(titles().at(-1)).toBe('Task 8');
+
+			// The same button closes it again.
+			const close = screen.getByRole('button', { name: 'Show fewer' });
+			expect(close).toHaveAttribute('aria-expanded', 'true');
+		});
+
+		it('shows a three-record list whole: one hidden row is not worth a toggle', () => {
+			const tasks = Array.from({ length: 3 }, (_, i) => ({
+				id: `t${i}`,
+				title: `Task ${i}`,
+				project_id: P
+			}));
+			render(ThinkingBlock, {
+				block: finished([
+					step(
+						'list',
+						{ verb: 'Listed tasks', tone: 'done', target: 'Wayne Strategies' },
+						{ result: { tasks } }
+					)
+				]),
+				onToggleCollapse: vi.fn(),
+				turnCards: session
+			});
+			expect(document.querySelectorAll('a.record-row')).toHaveLength(3);
+			expect(screen.queryByRole('button', { name: /Show \d+ more/ })).toBeNull();
 		});
 
 		it('says where a brain dump is being filed, and when context could not be checked', () => {

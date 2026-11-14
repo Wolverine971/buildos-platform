@@ -48,6 +48,7 @@
 		"label-paths:changed": "node --import tsx scripts/labelFilePaths.ts --changed",
 		"agentic:prod-battery": "node --import tsx scripts/agentic/prod-battery.ts",
 		"agentic:incidents": "node --import tsx scripts/agentic/llm-incidents.ts",
+		"jev:cutoff-replay": "cd apps/worker && NODE_OPTIONS=--conditions=development ./node_modules/.bin/tsx ../../docs/research/jev-tool-selection-2026-09-18/cutoff-replay.ts",
 		"db:rehearse": "python3 scripts/migration-rehearsal/rehearse.py",
 		"test:agentic:gate": "node --import tsx --test scripts/agentic/*.test.ts",
 		"verify:ci": "pnpm run verify:static && pnpm run build && pnpm run test:coverage",

@@ -47,6 +47,11 @@ export type StepDetails = {
 	/** How many more records the step touched than `entities` shows. */
 	more: number;
 	/**
+	 * The records after `entities`, for a list the person opens ("Show 46 more"). Capped, so
+	 * it can be shorter than `more`. Display only: the receipt counts `entities`.
+	 */
+	rest: StepEntity[];
+	/**
 	 * Records whose text this read actually returned (a details read, a section read). A list
 	 * or a search names records without opening them, so it opens none.
 	 */
@@ -87,6 +92,8 @@ const PLURAL_KEYS: Record<string, RecordLinkKind> = {
 	risks: 'risk'
 };
 const MAX_ENTITIES = 4;
+/** Most records one step's opened list carries, so a huge result never floods the page. */
+const MAX_LISTED = 200;
 
 const FIELD_LABELS: Record<string, string> = {
 	title: 'Title',
@@ -393,6 +400,7 @@ export function buildStepDetails(
 		intended,
 		entities: all.slice(0, MAX_ENTITIES),
 		more: Math.max(0, all.length - MAX_ENTITIES),
+		rest: all.slice(MAX_ENTITIES, MAX_LISTED),
 		opened: opened.entities,
 		openedSections: opened.sections,
 		others: action ? othersFromAffected(metadata.affectedEntities) : [],

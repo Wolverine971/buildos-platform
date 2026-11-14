@@ -563,6 +563,145 @@ describe('decideProjectSuggestion', () => {
 			result: expect.objectContaining({ partial_failure: true })
 		});
 	});
+
+	describe('a task-conflict suggestion only ever flags (audit F7)', () => {
+		const flagProps = {
+			loop_flagged_conflict: true,
+			loop_conflict_kind: 'duplicate',
+			loop_conflict_with_task_id: 'task-2',
+			loop_conflict_reason: 'Same announcement work.'
+		};
+		const decodedFlag = {
+			actionLabel: 'Update',
+			entityLabel: 'task',
+			target: 'Publish launch announcement',
+			changes: [{ label: 'Loop flagged conflict', value: 'true' }]
+		};
+		const approve = async (operation: Record<string, unknown>) => {
+			mocks.isProjectSuggestionFresh.mockResolvedValue(true);
+			mocks.verifyProjectSuggestionIntegrity.mockResolvedValue({
+				ok: true,
+				summary: {
+					headline: 'Flag "Publish launch announcement" for review.',
+					operation_count: 1,
+					operations: [decodedFlag],
+					structural_fingerprint: 'structural-fingerprint',
+					verified_at: '2026-11-14T12:00:00.000Z'
+				}
+			});
+			const stored = { kind: 'task_conflict', operations: [operation] };
+			const { supabase, updates } = makeSupabase({
+				project_suggestions: [
+					{ data: pendingSuggestion(stored), error: null },
+					{ data: pendingSuggestion({ ...stored, status: 'approved' }), error: null },
+					{ data: pendingSuggestion({ ...stored, status: 'applied' }), error: null }
+				],
+				project_loop_runs: [{ data: { chat_session_id: 'chat-1' }, error: null }]
+			});
+			const outcome = await decideProjectSuggestion({
+				supabase,
+				userId: 'user-1',
+				projectId: 'project-1',
+				suggestionId: 'suggestion-1',
+				action: 'approve'
+			});
+			return { outcome, updates };
+		};
+
+		it('writes the flag and nothing else the stored operation carries', async () => {
+			// vitest.setup.ts already replaces console.warn; swap in a local mock so only this
+			// test's calls are read, and put the previous one back afterwards.
+			const previousWarn = console.warn;
+			const warn = vi.fn();
+			console.warn = warn;
+			const { outcome, updates } = await approve({
+				tool: 'update_onto_task',
+				args: {
+					task_id: 'task-1',
+					project_id: 'project-1',
+					// What a model added on top of "flag a conflict".
+					state_key: 'done',
+					title: 'Rewritten title',
+					description: 'Rewritten description',
+					due_at: '2026-12-01T00:00:00.000Z',
+					calendar_sync: 'auto',
+					props: { ...flagProps, archived: true }
+				}
+			}).finally(() => {
+				console.warn = previousWarn;
+			});
+
+			expect(mocks.runGatewayWriteOp).toHaveBeenCalledTimes(1);
+			// Exact: no status, title, description, date or calendar sync reaches the write.
+			expect(mocks.runGatewayWriteOp.mock.calls[0]?.[0]).toMatchObject({
+				op: 'onto.task.update',
+				scope: { allowed_ops: ['onto.task.update'], write_project_ids: ['project-1'] }
+			});
+			expect(mocks.runGatewayWriteOp.mock.calls[0]?.[0]?.args).toEqual({
+				task_id: 'task-1',
+				props: flagProps,
+				calendar_sync: 'none'
+			});
+			expect(mocks.runGatewayWriteOp.mock.calls[0]?.[0]).not.toHaveProperty('taskSync');
+			expect(outcome).toMatchObject({
+				ok: true,
+				result: { ok: true, applied_operations: 1 }
+			});
+			expect(updates.map((update) => update.payload.status)).toEqual(['approved', 'applied']);
+			// The verified list described the stored operation, so no receipt overstates the write.
+			expect(outcome.ok && outcome.result).not.toHaveProperty('receipt');
+			// The log names what was left out, never its values.
+			const logged = warn.mock.calls.map(([message]) => String(message)).join('\n');
+			expect(logged).toContain('update_onto_task.state_key');
+			expect(logged).toContain('update_onto_task.props.archived');
+			expect(logged).not.toContain('Rewritten');
+		});
+
+		it('keeps the receipt when the stored operation is already just the flag', async () => {
+			const { outcome } = await approve({
+				tool: 'update_onto_task',
+				args: { task_id: 'task-1', project_id: 'project-1', props: flagProps }
+			});
+
+			expect(mocks.runGatewayWriteOp.mock.calls[0]?.[0]?.args).toEqual({
+				task_id: 'task-1',
+				props: flagProps,
+				calendar_sync: 'none'
+			});
+			expect(outcome).toMatchObject({
+				ok: true,
+				result: {
+					ok: true,
+					receipt: [
+						{ action_label: 'Update task', entity: { kind: 'task', id: 'task-1' } }
+					]
+				}
+			});
+		});
+
+		it('writes nothing when the stored operation holds no flag at all', async () => {
+			const { outcome, updates } = await approve({
+				tool: 'update_onto_task',
+				args: { task_id: 'task-1', project_id: 'project-1', state_key: 'done', props: {} }
+			});
+
+			expect(mocks.runGatewayWriteOp).not.toHaveBeenCalled();
+			expect(outcome).toMatchObject({
+				ok: true,
+				result: {
+					ok: false,
+					applied_operations: 0,
+					errors: [
+						{
+							tool: 'update_onto_task',
+							error: 'Operation update_onto_task has invalid arguments; nothing was changed.'
+						}
+					]
+				}
+			});
+			expect(updates.at(-1)?.payload).toMatchObject({ status: 'failed' });
+		});
+	});
 });
 
 describe('replayLoopOperations', () => {
@@ -718,6 +857,126 @@ describe('replayLoopOperations', () => {
 
 		expect(replay).toEqual({ appliedCount: 1, errors: [], outcomes: [true] });
 		expect(mocks.runGatewayWriteOp).toHaveBeenCalledTimes(2);
+	});
+
+	describe('per-kind argument allow-lists (audit F7)', () => {
+		const DOC = '44444444-4444-4444-8444-444444444444';
+		const PARENT = '55555555-5555-4555-8555-555555555555';
+		const replayMove = (args: Record<string, unknown>, suggestionKind?: string) =>
+			replayLoopOperations({
+				supabase,
+				userId: 'user-1',
+				chatSessionId: null,
+				operations: [
+					{ tool: 'move_document_in_tree', args: { project_id: 'project-1', ...args } }
+				],
+				operationId: 'project_suggestion:s-move',
+				projectId: 'project-1',
+				suggestionKind
+			});
+		const writtenArgs = () => mocks.runGatewayWriteOp.mock.calls.map(([call]) => call.args);
+
+		it('replays a document-organization move with document, parent and position only', async () => {
+			const replay = await replayMove(
+				{
+					document_id: DOC,
+					new_parent_id: PARENT,
+					new_position: 1,
+					// Would create a grouping document, or rename one, if it were forwarded.
+					new_parent_title: 'A folder that does not exist',
+					title: 'Renamed',
+					state_key: 'archived'
+				},
+				'doc_org'
+			);
+
+			expect(replay).toEqual({
+				appliedCount: 1,
+				errors: [],
+				outcomes: [true],
+				trimmed: true
+			});
+			expect(writtenArgs()).toEqual([
+				{
+					project_id: 'project-1',
+					document_id: DOC,
+					new_parent_id: PARENT,
+					new_position: 1
+				}
+			]);
+		});
+
+		it('moves to the top level, as the card showed, when the parent is named some other way', async () => {
+			await replayMove({ document_id: DOC, parent_id: PARENT, position: 3 }, 'doc_org');
+			await replayMove({ document_id: DOC, new_parent_title: 'Research' }, 'doc_org');
+
+			// The integrity check reads only new_parent_id, so these were shown as top-level moves.
+			const topLevel = {
+				project_id: 'project-1',
+				document_id: DOC,
+				new_parent_id: null,
+				new_position: 0
+			};
+			expect(writtenArgs()).toEqual([topLevel, topLevel]);
+		});
+
+		it('refuses a document-organization move whose parent is not a document id', async () => {
+			const replay = await replayMove(
+				{ document_id: DOC, new_parent_id: 'Research' },
+				'doc_org'
+			);
+
+			expect(replay).toEqual({
+				appliedCount: 0,
+				errors: [
+					{
+						tool: 'move_document_in_tree',
+						error: 'Operation move_document_in_tree has invalid arguments; nothing was changed.'
+					}
+				],
+				outcomes: [false]
+			});
+			expect(mocks.runGatewayWriteOp).not.toHaveBeenCalled();
+		});
+
+		it('leaves other kinds and undo replays as stored', async () => {
+			const taskUpdate = {
+				tool: 'update_onto_task',
+				args: {
+					task_id: 'task-1',
+					project_id: 'project-1',
+					state_key: 'in_progress',
+					due_at: '2026-12-01T00:00:00.000Z'
+				}
+			};
+			// The freshness radar's task updates carry real field changes.
+			const replay = await replayLoopOperations({
+				supabase,
+				userId: 'user-1',
+				chatSessionId: null,
+				operations: [taskUpdate],
+				operationId: 'project_suggestion:s-radar',
+				suggestionKind: 'freshness_update'
+			});
+			// A document move outside doc_org keeps the legacy reading of its arguments.
+			await replayMove({ document_id: DOC, parent_id: PARENT, position: 3 });
+
+			expect(replay).toEqual({ appliedCount: 1, errors: [], outcomes: [true] });
+			expect(writtenArgs()).toEqual([
+				{
+					task_id: 'task-1',
+					state_key: 'in_progress',
+					due_at: '2026-12-01T00:00:00.000Z',
+					calendar_sync: 'none'
+				},
+				{
+					project_id: 'project-1',
+					document_id: DOC,
+					new_parent_id: PARENT,
+					new_position: 3
+				}
+			]);
+		});
 	});
 
 	it('keeps the task_completed signal for a replay that marks a task done', async () => {

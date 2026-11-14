@@ -197,8 +197,7 @@
 				state_key: stateKey || 'identified',
 				content: content.trim() || null,
 				description: content.trim() || null,
-				mitigation_strategy: mitigationStrategy.trim() || null,
-				classification_source: 'create_modal'
+				mitigation_strategy: mitigationStrategy.trim() || null
 			};
 
 			const response = await fetch('/api/onto/risks/create', {

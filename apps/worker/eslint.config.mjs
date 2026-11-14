@@ -104,11 +104,7 @@ export default [
 
 	/* Prompt examples intentionally keep escaped JSON snippets readable in source. */
 	{
-		files: [
-			'src/workers/homework/**/*.ts',
-			'src/workers/homework/*.ts',
-			'src/workers/ontology/ontologyClassifier.ts'
-		],
+		files: ['src/workers/homework/**/*.ts', 'src/workers/homework/*.ts'],
 		rules: {
 			'no-useless-escape': 'off'
 		}

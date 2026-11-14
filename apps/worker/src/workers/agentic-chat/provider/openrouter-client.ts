@@ -321,6 +321,11 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					...(passRole === 'mutation_review' && input.writeRoute
 						? { writeRoute: input.writeRoute }
 						: {}),
+					// Later passes are built from this request, so the tag is read
+					// only while the pass is still the repair it describes.
+					...(passRole === 'repair' && input.repairReason
+						? { repairReason: input.repairReason }
+						: {}),
 					...(lastPromptDump
 						? {
 								localPromptDump: {

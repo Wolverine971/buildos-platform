@@ -22,6 +22,7 @@
 	import { WORKER_STOPPING_STATUS } from './agent-chat-worker-status';
 	import AgentClientActionCard from './AgentClientActionCard.svelte';
 	import RecordChip from '$lib/components/ui/RecordChip.svelte';
+	import RecordList, { type RecordListRow } from './RecordList.svelte';
 	import { readToolProgressSteps, type ToolProgressStep } from './agent-chat-tool-progress';
 	import {
 		collectGmailConnectionClientActions,
@@ -31,7 +32,6 @@
 		deriveTurnCards,
 		describeLedger,
 		type LedgerGroupView,
-		type LedgerRecord,
 		type StepSettlement,
 		type TurnCard,
 		type TurnCardProject
@@ -141,6 +141,27 @@
 	// Stop pressed and the turn has not ended yet: say so wherever the status shows.
 	const isStopping = $derived(block.status === 'active' && block.stopRequested === true);
 
+	// A live turn folds itself the moment the reply starts (and at the end, if it had not
+	// already): a slow settle of half a second, so the reply glides up under the header
+	// instead of jumping. If the model goes back to work, the log opens again. The chat
+	// window decides when (`block.isCollapsed`); this only picks the pace. A click on the
+	// header folds at tap speed, and so does every fold after it.
+	// Plain closure flag: it only records that this view saw the turn running.
+	let sawRunning = false;
+	let headerClicked = $state(false);
+	const settleFold = $derived.by(() => {
+		if (isRunning) sawRunning = true;
+		return sawRunning && !headerClicked;
+	});
+	// Once the reply has folded the log, opening it again for more work pushes the words
+	// the person is reading back down the page, so that open runs at the same slow pace.
+	// The first open of a turn has nothing below it and stays quick.
+	let sawReplyFold = false;
+	const settleReopen = $derived.by(() => {
+		if (isRunning && block.foldSetBy === 'reply') sawReplyFold = true;
+		return sawReplyFold && !headerClicked;
+	});
+
 	const displayedActivities = $derived(
 		block.activities.filter(
 			(activity) =>
@@ -247,21 +268,34 @@
 	// A card with only its context list still has something to open.
 	const hasBody = $derived(hasSteps || showCards);
 
-	// Each ledger group shows a few records; the rest open on request.
-	const LEDGER_CHIPS = 4;
-	let openGroups = $state<Record<string, boolean>>({});
-	function groupRecords(
-		cardKey: string,
-		group: LedgerGroupView
-	): { records: LedgerRecord[]; hidden: number; key: string } {
-		const key = `${cardKey}:${group.group}`;
-		if (openGroups[key] || group.records.length <= LEDGER_CHIPS)
-			return { records: group.records, hidden: 0, key };
-		return {
-			records: group.records.slice(0, LEDGER_CHIPS),
-			hidden: group.records.length - LEDGER_CHIPS,
-			key
-		};
+	// Records are listed one per row (RecordList): the first two show, the rest open on request.
+	function ledgerRows(group: LedgerGroupView): RecordListRow[] {
+		return group.records.map((record) => {
+			const sections =
+				group.group === 'opened' && record.sections.length
+					? `› ${record.sections.slice(0, 3).join(', ')}`
+					: '';
+			const aside = [record.carried ? '↻ carried from last turn' : '', sections]
+				.filter(Boolean)
+				.join(' ');
+			return {
+				key: record.key,
+				kind: record.kind,
+				title: record.title,
+				href: record.href,
+				note: record.note,
+				...(aside ? { aside } : {})
+			};
+		});
+	}
+
+	function entityRows(entities: StepDetails['entities']): RecordListRow[] {
+		return entities.map((entity) => ({
+			key: `${entity.kind}:${entity.id}`,
+			kind: entity.kind,
+			title: entity.title,
+			href: entity.href
+		}));
 	}
 	const projectCount = $derived(
 		showCards ? cards!.cards.filter((card) => card.projectId !== null).length : 0
@@ -452,10 +486,6 @@
 
 {#snippet sep()}<span class="thinking-step-sep" aria-hidden="true">{' · '}</span>{/snippet}
 
-{#snippet entityLink(entity: StepDetails['entities'][number])}
-	<RecordChip kind={entity.kind} title={entity.title} href={entity.href} />
-{/snippet}
-
 {#snippet stepDetails(step: StepRow)}
 	{@const details = step.details}
 	{@const linkTarget = ownRecord(step) && step.target ? null : details.entities}
@@ -464,16 +494,18 @@
 			{#if details.quote}
 				<p class="step-quote" data-action={details.action ?? 'read'}>“{details.quote}”</p>
 			{/if}
-			{#if linkTarget?.length || details.others.length}
+			{#if linkTarget?.length}
+				<RecordList
+					rows={entityRows([...linkTarget, ...details.rest])}
+					uncounted={details.more - details.rest.length}
+				/>
+			{/if}
+			{#if details.others.length}
 				<div class="step-entities">
-					{#each linkTarget ?? [] as entity (`${entity.kind}:${entity.id}`)}
-						{@render entityLink(entity)}
-					{/each}
 					<!-- eslint-disable-next-line svelte/require-each-key -- page-less records (calendar events, table rows) can arrive without an id -->
 					{#each details.others as other}
 						<RecordChip kind={other.kind.replace(/_/g, ' ')} title={other.title} />
 					{/each}
-					{#if details.more}<span class="step-more">+{details.more} more</span>{/if}
 				</div>
 			{/if}
 			{#each details.changes as change (change.field)}
@@ -524,38 +556,14 @@
 		</p>
 		<ul class="ledger-groups">
 			{#each view.groups as group (group.group)}
-				{@const shown = groupRecords(card.key, group)}
 				<li class="ledger-group" data-state={group.state} data-group={group.group}>
-					<span class="ledger-group-title">
+					<p class="ledger-group-title">
 						<span class="ledger-dot" aria-hidden="true"></span>{group.title}
-					</span>
-					<span class="ledger-chips">
-						{#each shown.records as record (record.key)}
-							<span class="ledger-chip" title={record.note}>
-								<RecordChip
-									kind={record.kind}
-									title={record.title}
-									href={record.href}
-									tooltip={record.note}
-								/>{#if record.carried}<span
-										class="ledger-chip-mark"
-										title="Carried from last turn">↻</span
-									>{/if}{#if group.group === 'opened' && record.sections.length}<span
-										class="ledger-chip-sections"
-										>› {record.sections.slice(0, 3).join(', ')}</span
-									>{/if}<span class="sr-only">{record.note}</span>
-							</span>
-						{/each}
-						{#if shown.hidden > 0}
-							<button
-								type="button"
-								class="ledger-more"
-								onclick={() => (openGroups = { ...openGroups, [shown.key]: true })}
-							>
-								+{shown.hidden} more
-							</button>
-						{/if}
-					</span>
+						<span class="ledger-group-count">{group.records.length}</span>
+					</p>
+					<div class="ledger-list">
+						<RecordList rows={ledgerRows(group)} tone={group.state} />
+					</div>
 				</li>
 			{/each}
 		</ul>
@@ -679,7 +687,9 @@
 			<button
 				type="button"
 				onclick={() => {
-					if (hasBody) onToggleCollapse(block.id);
+					if (!hasBody) return;
+					headerClicked = true;
+					onToggleCollapse(block.id);
 				}}
 				disabled={!hasBody}
 				class="thinking-header"
@@ -760,7 +770,12 @@
 			</button>
 
 			<!-- INKPRINT activity log panel -->
-			<div class="thinking-body" class:thinking-body-open={hasBody && !block.isCollapsed}>
+			<div
+				class="thinking-body"
+				class:thinking-body-open={hasBody && !block.isCollapsed}
+				class:thinking-body-settle={settleFold}
+				class:thinking-body-settle-reopen={settleReopen}
+			>
 				<div class="thinking-body-inner">
 					{#if showCards && cards}
 						<div class="turn-cards p-2 sm:p-2.5" data-testid="turn-cards">
@@ -1216,29 +1231,36 @@
 	.ledger-groups {
 		display: flex;
 		flex-direction: column;
-		gap: 0.2rem;
-		margin: 0.25rem 0 0.1rem;
+		gap: 0.35rem;
+		margin: 0.3rem 0 0.2rem;
 		padding: 0 0 0 0.5rem;
 		border-left: 1px solid hsl(var(--border));
 		list-style: none;
 	}
 
 	.ledger-group {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: baseline;
-		gap: 0.15rem 0.4rem;
 		min-width: 0;
 	}
 
 	.ledger-group-title {
-		display: inline-flex;
-		flex: 0 0 auto;
+		display: flex;
 		align-items: center;
 		gap: 0.3rem;
 		color: hsl(var(--muted-foreground));
 		font-size: 0.62rem;
 		font-weight: 600;
+	}
+
+	.ledger-group-count {
+		font-weight: 500;
+		font-variant-numeric: tabular-nums;
+		color: hsl(var(--muted-foreground));
+	}
+
+	/* Rows sit under the group's words, clear of its dot. */
+	.ledger-list {
+		margin-top: 0.1rem;
+		padding-left: 0.7rem;
 	}
 
 	/* Handed: an empty ring. Opened: filled. Changed: filled in the accent. */
@@ -1263,62 +1285,6 @@
 	.ledger-group[data-state='opened'] .ledger-group-title,
 	.ledger-group[data-state='changed'] .ledger-group-title {
 		color: hsl(var(--foreground));
-	}
-
-	.ledger-chips {
-		display: flex;
-		min-width: 0;
-		flex: 1 1 12rem;
-		flex-wrap: wrap;
-		align-items: baseline;
-		gap: 0.2rem 0.3rem;
-	}
-
-	.ledger-chip {
-		display: inline-flex;
-		min-width: 0;
-		max-width: 100%;
-		align-items: baseline;
-		gap: 0.25rem;
-	}
-
-	/* Only a summary was in view: dashed and muted, so it never reads as opened. */
-	.ledger-group[data-state='handed'] .ledger-chip :global(.record-chip) {
-		border-style: dashed;
-		background: transparent;
-		color: hsl(var(--muted-foreground));
-	}
-
-	.ledger-group[data-state='changed'] .ledger-chip :global(.record-chip) {
-		border-color: hsl(var(--accent) / 0.6);
-		background: hsl(var(--accent) / 0.08);
-	}
-
-	.ledger-chip-mark,
-	.ledger-chip-sections {
-		flex: 0 1 auto;
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		color: hsl(var(--muted-foreground));
-		font-size: 0.62rem;
-	}
-
-	.ledger-more {
-		border-radius: 0.25rem;
-		color: hsl(var(--muted-foreground));
-		font-size: 0.62rem;
-		font-weight: 600;
-	}
-
-	.ledger-more:hover {
-		color: hsl(var(--foreground));
-	}
-
-	.ledger-more:focus-visible {
-		outline: 2px solid hsl(var(--ring));
-		outline-offset: 1px;
 	}
 
 	.step-target-link {
@@ -1369,11 +1335,6 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.25rem;
-	}
-
-	.step-more {
-		align-self: center;
-		color: hsl(var(--muted-foreground));
 	}
 
 	.step-change {
@@ -1446,20 +1407,50 @@
 		}
 	}
 
+	/*
+	   The fold. Rows go 1fr to 0fr, so the panel closes to its real height with nothing to
+	   measure, and the reply below glides up instead of jumping. `visibility` waits for the
+	   close to end (and flips at once on open), so folded steps stay out of the tab order.
+	   This is the one place the work log animates layout: it runs when the reply starts and
+	   when the model goes back to work, a few times a turn at most, on a panel whose width
+	   never changes. An interrupted fold turns around from where it is, so it never jumps.
+	*/
 	.thinking-body {
+		--fold-ms: 240ms;
+		--fold-ease: cubic-bezier(0.32, 0.72, 0, 1);
 		display: grid;
 		grid-template-rows: 0fr;
 		visibility: hidden;
+		transition:
+			grid-template-rows var(--fold-ms) var(--fold-ease),
+			visibility 0s linear var(--fold-ms);
+	}
+
+	/* A live turn settles shut over half a second, at an even pace: the eye is on the reply
+	   below, which rides this curve up the page. Opening again mid-reply rides it back down. */
+	.thinking-body-settle:not(.thinking-body-open),
+	.thinking-body-settle-reopen.thinking-body-open {
+		--fold-ms: 500ms;
+		--fold-ease: cubic-bezier(0.45, 0, 0.2, 1);
 	}
 
 	.thinking-body-open {
 		grid-template-rows: 1fr;
 		visibility: visible;
+		transition:
+			grid-template-rows var(--fold-ms) var(--fold-ease),
+			visibility 0s;
 	}
 
 	.thinking-body-inner {
 		min-height: 0;
 		overflow: hidden;
+		opacity: 0;
+		transition: opacity var(--fold-ms) ease;
+	}
+
+	.thinking-body-open .thinking-body-inner {
+		opacity: 1;
 	}
 
 	/* The scroll clamp changes immediately; motion lives on the disclosure affordance below. */
@@ -1566,7 +1557,9 @@
 			display: none;
 		}
 
-		.thinking-log-chevron {
+		.thinking-log-chevron,
+		.thinking-body,
+		.thinking-body-inner {
 			transition: none;
 		}
 	}

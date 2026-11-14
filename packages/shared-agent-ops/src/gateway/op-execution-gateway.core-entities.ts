@@ -739,27 +739,27 @@ export async function updateRisk(context: ToolExecutionContext, args: Record<str
 					? (existing.mitigated_at ?? new Date().toISOString())
 					: null;
 		}
-		if (args.content !== undefined) {
-			updateData.content =
-				normalizeOptionalText(args.content, 'content', { allowNull: true }) || null;
-		}
+		// One body text, two homes (the content column and props.description, which
+		// older readers use). `description` is the same field under its older name,
+		// as on create, so both homes always change together: updating only one
+		// left the app showing the stale text.
+		const bodyGiven = args.content !== undefined || args.description !== undefined;
+		const body = bodyGiven
+			? normalizeOptionalText(args.content, 'content', { allowNull: true }) ||
+				normalizeOptionalText(args.description, 'description', { allowNull: true }) ||
+				null
+			: null;
+		if (bodyGiven) updateData.content = body;
 		if (
 			args.props !== undefined ||
-			args.description !== undefined ||
+			bodyGiven ||
 			args.mitigation_strategy !== undefined ||
 			args.owner !== undefined
 		) {
 			updateData.props = {
 				...((existing.props as Record<string, unknown> | null) ?? {}),
 				...(normalizeProps(args.props, 'props') ?? {}),
-				...(args.description !== undefined
-					? {
-							description:
-								normalizeOptionalText(args.description, 'description', {
-									allowNull: true
-								}) || null
-						}
-					: {}),
+				...(bodyGiven ? { description: body } : {}),
 				...(args.mitigation_strategy !== undefined
 					? {
 							mitigation_strategy:

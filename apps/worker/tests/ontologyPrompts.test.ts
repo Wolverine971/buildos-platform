@@ -216,6 +216,62 @@ describe('OntologyAnalysisPrompt calendar summary', () => {
 	});
 });
 
+describe('OntologyAnalysisPrompt task lists', () => {
+	it("lists every one of today's tasks with its project name, work type or not", () => {
+		const todaysTasks = [
+			createTask({ id: 'task-a', title: 'Write the pitch', type_key: 'task.create' }),
+			// No work type: the old work-mode grouping dropped tasks like this one.
+			createTask({ id: 'task-b', title: 'Call the venue', type_key: 'task.default' }),
+			createTask({
+				id: 'task-c',
+				title: 'File receipts',
+				project_id: 'project-2',
+				type_key: 'task.default'
+			})
+		];
+		const project = (id: string, name: string) => ({
+			project: { id, name, state_key: 'active' },
+			todaysTasks: [],
+			overdueTasks: [],
+			thisWeekTasks: [],
+			upcomingTasks: [],
+			recentlyUpdatedTasks: [],
+			blockedTasks: [],
+			calendarToday: [],
+			goals: [],
+			nextSteps: [],
+			nextMilestone: null
+		});
+
+		const prompt = OntologyAnalysisPrompt.buildUserPrompt({
+			date: '2025-12-17',
+			timezone: 'America/New_York',
+			briefData: createBriefData(createEmptyCalendarSection(), {
+				todaysTasks,
+				projects: [
+					project('project-1', 'Launch Plan'),
+					project('project-2', 'Bookkeeping')
+				] as unknown as OntologyBriefData['projects']
+			})
+		});
+
+		const todaySection = prompt.slice(
+			prompt.indexOf("## Today's Tasks"),
+			prompt.indexOf('## Project Details')
+		);
+		expect(prompt).toContain('- Tasks Today: 3');
+		expect(todaySection).toContain('Write the pitch');
+		expect(todaySection).toContain('Call the venue');
+		expect(todaySection).toContain('File receipts');
+		expect(todaySection).toMatch(/Call the venue.*\| Launch Plan/);
+		expect(todaySection).toMatch(/File receipts.*\| Bookkeeping/);
+	});
+
+	it('no longer asks the model to avoid repeating a summary it never sees', () => {
+		expect(OntologyAnalysisPrompt.getSystemPrompt()).not.toContain('executive summary');
+	});
+});
+
 describe('OntologyExecutiveSummaryPrompt', () => {
 	it('includes goal task progress and yesterday continuity', () => {
 		const goal: GoalProgress = {
@@ -272,6 +328,47 @@ describe('OntologyExecutiveSummaryPrompt', () => {
 		expect(prompt).toContain(
 			'- Ship launch page [still_open | task: Ship launch page | project: Launch Plan]'
 		);
+	});
+
+	it('lists the Start Here actions and ties the first action to them', () => {
+		const prompt = OntologyExecutiveSummaryPrompt.buildUserPrompt({
+			date: '2025-12-17',
+			timezone: 'America/New_York',
+			briefData: createBriefData(createEmptyCalendarSection()),
+			priorityActions: ['Send the invoice', '  ', 'Address goal: Beta Launch']
+		});
+
+		expect(prompt).toContain('## Start Here List');
+		expect(prompt).toContain('1. Send the invoice\n2. Address goal: Beta Launch\n');
+		expect(prompt).toContain(
+			'The first thing you tell the user to do must be one of these items'
+		);
+		expect(prompt).toContain('That ONE thing must come from the Start Here List above.');
+		// After the data, before the closing instruction.
+		expect(prompt.indexOf('## Start Here List')).toBeGreaterThan(
+			prompt.indexOf('## Project Context')
+		);
+		expect(prompt.indexOf('## Start Here List')).toBeLessThan(
+			prompt.indexOf('Write a 150-word executive summary')
+		);
+	});
+
+	it('leaves the Start Here list out when the brief has no priority actions', () => {
+		const withoutList = OntologyExecutiveSummaryPrompt.buildUserPrompt({
+			date: '2025-12-17',
+			timezone: 'America/New_York',
+			briefData: createBriefData(createEmptyCalendarSection())
+		});
+		const emptyList = OntologyExecutiveSummaryPrompt.buildUserPrompt({
+			date: '2025-12-17',
+			timezone: 'America/New_York',
+			briefData: createBriefData(createEmptyCalendarSection()),
+			priorityActions: []
+		});
+
+		expect(withoutList).not.toContain('Start Here List');
+		expect(emptyList).toBe(withoutList);
+		expect(withoutList).toContain('then the ONE thing to start with.\nUse actual');
 	});
 
 	it('scores overdue, at-risk goals, and calendar commitments for prompt inclusion', () => {

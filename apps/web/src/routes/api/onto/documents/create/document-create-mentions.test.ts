@@ -28,10 +28,6 @@ vi.mock('$lib/services/async-activity-logger', () => ({
 	getChatSessionIdFromRequest: vi.fn(() => null)
 }));
 
-vi.mock('$lib/server/ontology-classification.service', () => ({
-	classifyOntologyEntity: vi.fn()
-}));
-
 vi.mock('$lib/server/entity-mention-notification.service', () => ({
 	resolveEntityMentionUserIds: resolveEntityMentionUserIdsMock,
 	notifyEntityMentionsAdded: notifyEntityMentionsAddedMock

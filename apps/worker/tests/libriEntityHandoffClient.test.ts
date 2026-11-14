@@ -2,7 +2,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
 	buildLibriHandoffIdempotencyKey,
-	handoffLibriSessionEntities
+	handoffLibriSessionEntities,
+	isLibriEntityHandoffConfigured
 } from '../src/workers/chat/libriEntityHandoffClient';
 import type {
 	ExtractedLibriEntity,
@@ -267,5 +268,43 @@ describe('Libri entity handoff client', () => {
 		expect(buildLibriHandoffIdempotencyKey('session-2', first)).not.toBe(
 			buildLibriHandoffIdempotencyKey('session-1', first)
 		);
+	});
+});
+
+// The classifier asks this before spending prompt on library candidates. It must agree
+// with the hand-off itself: false exactly when the hand-off would answer not_configured.
+describe('isLibriEntityHandoffConfigured', () => {
+	const configured = {
+		LIBRI_INTEGRATION_ENABLED: 'true',
+		LIBRI_API_BASE_URL: 'https://libri.example/api/v1/',
+		LIBRI_API_KEY: 'secret'
+	};
+	const notConfigured: Array<[string, Record<string, string | undefined>]> = [
+		['nothing set', {}],
+		['switched off', { ...configured, LIBRI_INTEGRATION_ENABLED: 'false' }],
+		['no base URL', { ...configured, LIBRI_API_BASE_URL: undefined }],
+		['no API key', { ...configured, LIBRI_API_KEY: '  ' }],
+		['an invalid base URL', { ...configured, LIBRI_API_BASE_URL: 'not a url' }]
+	];
+
+	it('is true when the hand-off is on and has a valid URL and key', () => {
+		expect(isLibriEntityHandoffConfigured(configured)).toBe(true);
+	});
+
+	it.each(notConfigured)('is false with %s, as the hand-off reports', async (_label, env) => {
+		expect(isLibriEntityHandoffConfigured(env)).toBe(false);
+
+		const fetchFn = vi.fn() as unknown as typeof fetch;
+		const status = await handoffLibriSessionEntities(
+			{
+				sessionId: 'session-1',
+				contextType: 'project',
+				projectId: 'project-1',
+				extractedEntities: extraction([candidate({})])
+			},
+			{ env, fetchFn, now: fixedNow }
+		);
+		expect(status?.status).toBe('not_configured');
+		expect(fetchFn).not.toHaveBeenCalled();
 	});
 });

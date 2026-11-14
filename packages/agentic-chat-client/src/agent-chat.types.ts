@@ -199,6 +199,12 @@ export interface ThinkingBlockMessage extends UIMessage {
 	status: 'active' | 'completed' | 'interrupted' | 'cancelled' | 'error';
 	agentState?: AgentLoopState;
 	isCollapsed?: boolean;
+	/**
+	 * Who last set the work log's fold while the turn ran. 'reply': it folded because reply
+	 * text started, and it opens again if another step starts. 'user': the person clicked
+	 * the header, and their choice holds for the rest of the turn.
+	 */
+	foldSetBy?: 'reply' | 'user';
 	/** Stop was pressed; the active block reads "Stopping…" until the turn ends. */
 	stopRequested?: boolean;
 	/** When the turn ended in this browser; with `timestamp` it gives "Worked for 55s". */

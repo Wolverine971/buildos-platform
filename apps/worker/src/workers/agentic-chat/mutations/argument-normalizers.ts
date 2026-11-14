@@ -169,7 +169,9 @@ export const AGENTIC_CHAT_MUTATION_ARGUMENT_NORMALIZERS_V1: Readonly<
 		}
 		for (const field of ['start_at', 'end_at'] as const) {
 			if (!Object.hasOwn(args, field)) continue;
-			args[field] = normalizeLegacyProjectDate(args[field], field);
+			// Checked here, resolved by the gateway as the user's own day (start
+			// opens it, end closes it), like task, goal, and milestone dates.
+			args[field] = validatedDateArgument(args[field], field);
 			changed += 1;
 		}
 		if (Object.hasOwn(args, 'props')) {
@@ -450,29 +452,6 @@ function normalizeLegacyProjectState(value: unknown): unknown {
 	// (as `normalized`, not the raw `value`) exactly like the old inline
 	// `aliases[normalized] ?? normalized` did for every input.
 	return normalizeAgenticChatProjectStateV1(value) ?? normalized;
-}
-
-function normalizeLegacyProjectDate(value: unknown, field: string): string | null {
-	if (value === null || value === '') return null;
-	if (typeof value !== 'string') {
-		throw knownFailure('mutation_arguments_not_admitted', `${field} must be a valid date`);
-	}
-	const text = value.trim();
-	if (!text) return null;
-	const dateOnly = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-	const date = dateOnly
-		? new Date(Date.UTC(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3])))
-		: new Date(text);
-	if (
-		Number.isNaN(date.getTime()) ||
-		(dateOnly !== null &&
-			(date.getUTCFullYear() !== Number(dateOnly[1]) ||
-				date.getUTCMonth() !== Number(dateOnly[2]) - 1 ||
-				date.getUTCDate() !== Number(dateOnly[3])))
-	) {
-		throw knownFailure('mutation_arguments_not_admitted', `${field} must be a valid date`);
-	}
-	return date.toISOString();
 }
 
 function reviewedEntityKind(value: unknown, label: string): ReviewedLinkEntityKind {

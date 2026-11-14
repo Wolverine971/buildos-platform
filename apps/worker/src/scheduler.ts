@@ -58,6 +58,11 @@ import { getDailyBriefEligibleUserIds } from './workers/brief/dailyBriefEligibil
 import { checkAndScheduleAgentOperatives } from './scheduler/agentOperatives';
 import { runPrivacyRetention } from './scheduler/privacyRetention';
 import { chatCaptureEnabled, sweepChatCheckpoints } from './workers/chat/checkpoint/checkpointJob';
+import {
+	chatClassificationSweepEnabled,
+	enqueueChatSessionClassification,
+	sweepChatClassifications
+} from './workers/chat/classificationSweep';
 import { runDocumentDigestSweep } from './workers/document-digest/documentDigest';
 import { SmartLLMService } from './lib/services/smart-llm-service';
 
@@ -99,6 +104,34 @@ let agentRunCostReconciliationInFlight: Promise<void> | null = null;
 let agentRunStrandedSweepInFlight: Promise<void> | null = null;
 let cycleCoordinatorInFlight: Promise<void> | null = null;
 let dailyBriefCycleShadowInFlight: Promise<void> | null = null;
+let chatClassificationSweepInFlight: Promise<void> | null = null;
+
+/**
+ * Queue titles and summaries for chats that went quiet without the browser closing them.
+ * One run at a time in this process; the per-session dedup key covers other replicas.
+ */
+export async function runScheduledChatClassificationSweep(): Promise<boolean> {
+	if (chatClassificationSweepInFlight) return false;
+
+	chatClassificationSweepInFlight = (async () => {
+		const { due, enqueued } = await sweepChatClassifications({
+			db: supabase,
+			enqueue: (params) => enqueueChatSessionClassification(queue, params)
+		});
+		if (enqueued > 0) {
+			console.log(`🏷️ Chat classification sweep: queued ${enqueued} of ${due} idle chat(s)`);
+		}
+	})()
+		.catch((error) => {
+			console.error('🏷️ Chat classification sweep failed:', error);
+		})
+		.finally(() => {
+			chatClassificationSweepInFlight = null;
+		});
+
+	await chatClassificationSweepInFlight;
+	return true;
+}
 
 export async function runScheduledCycleCoordinator(): Promise<boolean> {
 	if (cycleCoordinatorInFlight) return false;
@@ -351,8 +384,8 @@ export function startScheduler() {
 	});
 
 	// End-of-day project loops: hourly check that only enqueues projects whose
-	// owner is in the first local hour after midnight. No-ops unless
-	// ENABLE_PROJECT_LOOPS is set (off in prod by default).
+	// owner is in the first local hour after midnight. Always on:
+	// PROJECT_LOOPS_ENABLED is a constant since July 2026 (config/projectLoops.ts).
 	cron.schedule('0 * * * *', async () => {
 		if (!PROJECT_LOOPS_ENABLED) return;
 		console.log('🔁 Enqueuing end-of-day project loops...');
@@ -478,6 +511,17 @@ export function startScheduler() {
 			}
 		});
 		console.log('📝 Chat checkpoint capture sweep scheduled (every minute)');
+	}
+
+	// Chat titles and summaries: the browser only queues classification when a chat is
+	// closed, and most chats never are. Queue it from here once a chat of any context
+	// type has been quiet for 10 minutes (at most 5 per run, newest first). Independent
+	// of checkpoint capture. Set CHAT_CLASSIFICATION_SWEEP_ENABLED=false to disable.
+	if (chatClassificationSweepEnabled()) {
+		cron.schedule('*/2 * * * *', async () => {
+			await runScheduledChatClassificationSweep();
+		});
+		console.log('🏷️ Chat classification sweep scheduled (every 2 minutes)');
 	}
 
 	// Stranded-run liveness recovery. Every action is idempotent/bounded and

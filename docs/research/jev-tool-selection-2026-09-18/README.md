@@ -139,4 +139,12 @@ NODE_OPTIONS=--conditions=development ./node_modules/.bin/tsx \
 
 The harness uses `PRIVATE_OPENROUTER_API_KEY` from the env or the local `.env` files, sends only the synthetic cases, refuses to overwrite results, and hard-stops at $0.50.
 
+### Re-check the cutoff on real traffic (free)
+
+```sh
+pnpm jev:cutoff-replay
+```
+
+`cutoff-replay.ts` reads the last 60 days of logged Jev scores with one read-only production query (`cutoff-replay.sql`: tool names and scores, no message text), replays them through the worker's own `selectJevToolDefinitions` at 0.3 to 0.7, and counts the turns that went on to call a tool each cutoff would have dropped. No model calls. On 2026-11-13 it showed 0.3 losing a called tool on 1 of 46 real turns, 0.4 on 7, and 0.5 on 16, so the cutoff stayed at 0.3.
+
 Background: [Jev research brief](../jev-decision-model-2026-09-18.md).

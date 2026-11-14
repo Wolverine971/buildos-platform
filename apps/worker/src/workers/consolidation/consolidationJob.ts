@@ -456,9 +456,13 @@ export async function check(job: ProcessingJob<ConsolidationRunJobMetadata>, run
 			signal: job.signal,
 			validation: { retryOnParseError: true, maxRetries: 2 },
 			operationType: 'consolidation_check_groups',
-			// Same budget as the full survey's grouping call: it is the same call.
-			timeoutMs: 240_000,
-			maxTokens: 24_000,
+			// Someone is waiting in chat. With reasoning on, both real runs spent the
+			// whole 24,000-token budget thinking (117 s each), returned no JSON, and
+			// were re-run on the fallback model for another 148–202 s. The answer
+			// itself is a short list of groups.
+			reasoning: { enabled: false },
+			timeoutMs: 90_000,
+			maxTokens: 8_000,
 			projectId: run.root_project_id,
 			metadata: { consolidation_run_id: run.id, consolidation_mode: 'check' },
 			onUsage: usage.onUsage

@@ -345,4 +345,159 @@ describe('BriefBackoffCalculator', () => {
 			expect(result.reason).toBe('User is active (logged in within 2 days)');
 		});
 	});
+
+	describe('Brief email opens and clicks count as activity', () => {
+		const DAY_MS = 24 * 60 * 60 * 1000;
+		const daysAgo = (days: number) => new Date(Date.now() - days * DAY_MS).toISOString();
+
+		type DeliveryRow = {
+			recipient_user_id: string;
+			opened_at: string | null;
+			clicked_at: string | null;
+		};
+
+		/** The notification_deliveries query: select → in → eq → eq → gte (awaited). */
+		function mockBriefEmailActivity(
+			rows: DeliveryRow[],
+			error: { message: string } | null = null
+		) {
+			const builder = {
+				select: vi.fn().mockReturnThis(),
+				in: vi.fn().mockReturnThis(),
+				eq: vi.fn().mockReturnThis(),
+				gte: vi.fn().mockResolvedValue({ data: error ? null : rows, error })
+			};
+			mockSupabase.from.mockReturnValueOnce(builder);
+			return builder;
+		}
+
+		it('keeps sending normal briefs to someone who reads the email but never opens the app', async () => {
+			mockUserLastVisit(10);
+			mockLastBriefSent(1);
+			const deliveries = mockBriefEmailActivity([
+				{ recipient_user_id: 'user-1', opened_at: daysAgo(3), clicked_at: null },
+				{ recipient_user_id: 'user-1', opened_at: daysAgo(1), clicked_at: null }
+			]);
+
+			const result = await calculator.shouldSendDailyBrief('user-1');
+
+			expect(mockSupabase.from).toHaveBeenNthCalledWith(3, 'notification_deliveries');
+			expect(deliveries.in).toHaveBeenCalledWith('recipient_user_id', ['user-1']);
+			expect(deliveries.eq).toHaveBeenCalledWith('channel', 'email');
+			expect(deliveries.eq).toHaveBeenCalledWith('payload->>event_type', 'brief.completed');
+			expect(result.shouldSend).toBe(true);
+			expect(result.isReengagement).toBe(false);
+			expect(result.engagementStage).toBe('standard');
+			expect(result.reason).toBe('User is active (opened a brief email within 2 days)');
+			// Re-engagement copy quotes the app visit, so that stays literal.
+			expect(result.daysSinceLastLogin).toBe(10);
+			expect(result.daysSinceLastActivity).toBe(1);
+		});
+
+		it('uses the click when it is later than the open', async () => {
+			mockUserLastVisit(10);
+			mockLastBriefSent(1);
+			mockBriefEmailActivity([
+				{ recipient_user_id: 'user-1', opened_at: daysAgo(6), clicked_at: daysAgo(2) }
+			]);
+
+			const result = await calculator.shouldSendDailyBrief('user-1');
+
+			expect(result.daysSinceLastActivity).toBe(2);
+			expect(result.shouldSend).toBe(true);
+			expect(result.reason).toBe('User is active (opened a brief email within 2 days)');
+		});
+
+		it('uses the app visit when it is later than the last email open', async () => {
+			mockUserLastVisit(1);
+			mockLastBriefSent(1);
+			mockBriefEmailActivity([
+				{ recipient_user_id: 'user-1', opened_at: daysAgo(5), clicked_at: null }
+			]);
+
+			const result = await calculator.shouldSendDailyBrief('user-1');
+
+			expect(result.daysSinceLastActivity).toBe(1);
+			expect(result.reason).toBe('User is active (logged in within 2 days)');
+		});
+
+		it('runs the backoff stages on the email open', async () => {
+			mockUserLastVisit(30);
+			mockLastBriefSent(3);
+			mockBriefEmailActivity([
+				{ recipient_user_id: 'user-1', opened_at: daysAgo(4), clicked_at: null }
+			]);
+
+			const result = await calculator.shouldSendDailyBrief('user-1');
+
+			expect(result.shouldSend).toBe(true);
+			expect(result.isReengagement).toBe(true);
+			expect(result.reason).toBe('4-day re-engagement email');
+			expect(result.daysSinceLastLogin).toBe(30);
+		});
+
+		it('falls back to app visits when the open lookup fails', async () => {
+			const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+			mockUserLastVisit(10);
+			mockLastBriefSent(1);
+			mockBriefEmailActivity([], { message: 'deliveries unavailable' });
+
+			const result = await calculator.shouldSendDailyBrief('user-1');
+
+			expect(result.shouldSend).toBe(false);
+			expect(result.reason).toBe('First backoff period (5-13 days)');
+			expect(result.daysSinceLastActivity).toBe(10);
+			warn.mockRestore();
+		});
+
+		it('batch path: one extra query for everyone, applied per user', async () => {
+			mockSupabase.rpc = vi.fn().mockResolvedValue({
+				data: [
+					{
+						user_id: 'reader',
+						brief_date: daysAgo(1).slice(0, 10),
+						generation_completed_at: daysAgo(1)
+					},
+					{
+						user_id: 'lapsed',
+						brief_date: daysAgo(1).slice(0, 10),
+						generation_completed_at: daysAgo(1)
+					}
+				],
+				error: null
+			});
+			mockSupabase.from.mockReturnValueOnce({
+				select: vi.fn().mockReturnThis(),
+				in: vi.fn().mockResolvedValue({
+					data: [
+						{ id: 'reader', last_visit: daysAgo(10) },
+						{ id: 'lapsed', last_visit: daysAgo(10) }
+					],
+					error: null
+				})
+			});
+			const deliveries = mockBriefEmailActivity([
+				{ recipient_user_id: 'reader', opened_at: daysAgo(0), clicked_at: daysAgo(0) }
+			]);
+
+			const results = await calculator.shouldSendDailyBriefBatch(['reader', 'lapsed']);
+
+			const deliveryQueries = mockSupabase.from.mock.calls.filter(
+				([table]: [string]) => table === 'notification_deliveries'
+			);
+			expect(deliveryQueries).toHaveLength(1);
+			expect(deliveries.in).toHaveBeenCalledWith('recipient_user_id', ['reader', 'lapsed']);
+			expect(results.get('reader')).toMatchObject({
+				shouldSend: true,
+				engagementStage: 'standard',
+				daysSinceLastLogin: 10,
+				daysSinceLastActivity: 0
+			});
+			expect(results.get('lapsed')).toMatchObject({
+				shouldSend: false,
+				reason: 'First backoff period (5-13 days)',
+				daysSinceLastActivity: 10
+			});
+		});
+	});
 });

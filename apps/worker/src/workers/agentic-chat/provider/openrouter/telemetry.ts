@@ -198,6 +198,14 @@ export class AgenticChatLlmUsageObserver implements AgenticChatProviderUsageObse
 									: {})
 							}
 						: {}),
+					...(observation.passRole === 'repair' && observation.repairReason
+						? {
+								repairReason: observation.repairReason.kind,
+								...(observation.repairReason.tools?.length
+									? { repairTools: observation.repairReason.tools }
+									: {})
+							}
+						: {}),
 					...(observation.localPromptDump
 						? { localPromptDump: observation.localPromptDump }
 						: {}),

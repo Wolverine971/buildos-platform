@@ -23,6 +23,18 @@ describe('worker deployment inputs', () => {
 		expect(readRepoFile('.nvmrc').trim()).toBe('22.23.4');
 	});
 
+	it('gives the general worker time to finish its shutdown on a deploy', () => {
+		const draining = readRepoFile('railway.toml').match(/^drainingSeconds = (\d+)$/m);
+		const hardDeadline = readRepoFile('apps/worker/src/bootstrap.ts').match(
+			/const HARD_SHUTDOWN_TIMEOUT_MS = ([\d_]+);/
+		);
+		expect(draining).not.toBeNull();
+		expect(hardDeadline).not.toBeNull();
+		const hardDeadlineMs = Number(hardDeadline![1]!.replaceAll('_', ''));
+		// Railway's default is 0: SIGKILL straight after SIGTERM, so the drain never ran.
+		expect(Number(draining![1]) * 1000).toBeGreaterThan(hardDeadlineMs);
+	});
+
 	it.each(['railway.toml'])(
 		'%s watches exactly the transitive workspace dependencies and build inputs',
 		(path) => {

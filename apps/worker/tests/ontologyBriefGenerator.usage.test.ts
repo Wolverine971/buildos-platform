@@ -99,6 +99,7 @@ function createBriefData(): OntologyBriefData {
 		todaysTasks: [],
 		overdueTasks: [],
 		thisWeekTasks: [],
+		openTaskCount: 0,
 		blockedTasks: [],
 		unblockingTasks: [],
 		recentlyUpdatedTasks: [],
