@@ -1,6 +1,5 @@
 // apps/web/src/lib/components/agent/agent-chat-sse-handler.ts
 import type { ToolProgressStep } from './agent-chat-tool-progress';
-import { parseContextSelectionEventV1 } from '@buildos/shared-types';
 import {
 	CONTEXT_SELECTION_METADATA_KEY,
 	contextSelectionIsShowable,
@@ -899,7 +898,10 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 				if (typeof event.tool_call_id === 'string' && typeof event.message === 'string') {
 					thinking.appendToolProgress?.(event.tool_call_id, {
 						index: event.step_index,
-						message: event.message,
+						// A worker deployed before the trail copy changed prefixes its own
+						// lines with an internal model name; it is never shown. (A fixed prefix
+						// on our own format string, not a reading of anyone's words.)
+						message: event.message.replace(/^Jev: /, ''),
 						kind: typeof event.data?.kind === 'string' ? event.data.kind : 'step',
 						...(event.data ? { data: event.data } : {})
 					});

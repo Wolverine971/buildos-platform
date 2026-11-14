@@ -85,14 +85,22 @@ export function buildWebNavigateTrailFromResult(result: unknown): ToolProgressSt
 		});
 		const clicked = row.clicked as Record<string, unknown> | undefined;
 		const answer = percent(row.answer_probability);
+		// Same words as the worker's live trail; never an internal model name.
 		if (clicked && typeof clicked.label === 'string') {
+			const chance = percent(clicked.probability);
 			steps.push({
 				index: steps.length,
 				kind: 'decided',
-				message: `Not on this page → followed "${clicked.label}"`
+				message: `Not on this page${answer ? ` (${answer})` : ''} → "${clicked.label}"${chance ? ` (${chance})` : ''}`
 			});
 		} else if (answer) {
-			steps.push({ index: steps.length, kind: 'decided', message: 'Found the answer' });
+			const here =
+				typeof row.answer_probability === 'number' && row.answer_probability >= 0.5;
+			steps.push({
+				index: steps.length,
+				kind: 'decided',
+				message: `${here ? 'Answer is on this page' : 'Not on this page'} (${answer})`
+			});
 		}
 	}
 	const outcome = record.outcome;

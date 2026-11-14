@@ -1,11 +1,11 @@
 // apps/web/src/routes/api/chat/sessions/[id]/+server.ts
 import type { RequestHandler } from './$types';
 import { z } from 'zod';
+import type { ContextSelectionEventV1, ProjectFocus } from '@buildos/shared-types';
 import {
-	parseContextSelectionEventV1,
-	type ContextSelectionEventV1,
-	type ProjectFocus
-} from '@buildos/shared-types';
+	contextSelectionIsShowable,
+	normalizeContextSelection
+} from '$lib/components/agent/agent-chat-turn-cards';
 import {
 	buildProjectWideFocus,
 	isProjectScopedContext,
@@ -197,13 +197,26 @@ export const GET: RequestHandler = async ({
 		]);
 	if (voice.error) return ApiResponse.databaseError(voice.error);
 
-	// Turn cards (tasker 153): what the context finder put in front of the model, per turn,
-	// so a reloaded chat still shows "Pulled in 3 of 9". Turn events last 7 days.
+	// Turn cards: what the context finder put in front of the model, per turn, so a reloaded
+	// chat shows the same handed / opened / changed ledger as the live one. Kept too when the
+	// finder found nothing or could not run, so the card can say so. Turn events last 7 days.
 	const contextSelections: ContextSelectionEventV1[] = (turnEvents || []).flatMap((event) => {
 		if (event.event_type !== 'context_selection') return [];
-		const selection = parseContextSelectionEventV1(event.payload);
-		return selection?.visible && selection.injected ? [selection] : [];
+		const selection = normalizeContextSelection(event.payload);
+		return selection && contextSelectionIsShowable(selection) ? [selection] : [];
 	});
+	// Watch it sort after a reload: the user's words each write came from, by the write's
+	// tool-call id (`source_quote` on the `tool_call` turn event; the stored execution's
+	// arguments never carry it). Turn events last 7 days.
+	const sourceQuotes: Record<string, string> = {};
+	for (const event of turnEvents || []) {
+		if (event.event_type !== 'tool_call') continue;
+		const payload = event.payload as Record<string, unknown> | null;
+		const call = payload?.tool_call as Record<string, unknown> | null | undefined;
+		const quote = payload?.source_quote;
+		if (typeof call?.id === 'string' && typeof quote === 'string' && quote.trim())
+			sourceQuotes[call.id] = quote.trim();
+	}
 
 	return ApiResponse.success({
 		session: projectFocus
@@ -214,6 +227,7 @@ export const GET: RequestHandler = async ({
 		turnRuns: turnRuns || [],
 		timelineItems,
 		contextSelections,
+		sourceQuotes,
 		voiceNoteGroups: voice.voiceNoteGroups,
 		voiceNotes: voice.voiceNotes,
 		truncated,

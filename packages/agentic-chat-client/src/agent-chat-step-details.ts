@@ -55,6 +55,10 @@ export type StepDetails = {
 	openedSections: string[];
 	/** Changed records with no page: counted in the receipt, shown as plain chips. */
 	others: StepOtherRecord[];
+	/** The badge word when it is more exact than the action ("Unlinked", "Delegated"). */
+	actionLabel: string | null;
+	/** Table writes: how many rows changed. */
+	rowsChanged: number | null;
 	changes: StepFieldChange[];
 	/** Body edit size for document writes. */
 	docChange: { added: number; removed: number } | null;
@@ -94,7 +98,8 @@ const FIELD_LABELS: Record<string, string> = {
 	target_date: 'Target',
 	end_at: 'End',
 	description: 'Description',
-	archived_at: 'Archived'
+	archived_at: 'Archived',
+	project: 'Project'
 };
 const DATE_FIELDS = new Set(['start_at', 'due_at', 'target_date', 'end_at', 'archived_at']);
 const OPERATIONS: Record<string, StepAction> = {
@@ -102,7 +107,17 @@ const OPERATIONS: Record<string, StepAction> = {
 	updated: 'updated',
 	deleted: 'deleted',
 	moved: 'moved',
-	linked: 'linked'
+	linked: 'linked',
+	// Changes with no badge colour of their own; `actionLabel` carries the exact word.
+	unlinked: 'updated',
+	mentioned: 'updated',
+	delegated: 'updated'
+};
+/** The exact word for operations that share another action's colour. */
+const OPERATION_LABELS: Record<string, string> = {
+	unlinked: 'Unlinked',
+	mentioned: 'Mentioned',
+	delegated: 'Delegated'
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -332,6 +347,17 @@ function docChange(result: unknown): StepDetails['docChange'] {
 	return added === null || removed === null ? null : { added, removed };
 }
 
+/** Rows a table write changed (`rows_changed` on its affected document). */
+function rowsChanged(value: unknown): number | null {
+	if (!Array.isArray(value)) return null;
+	let total: number | null = null;
+	for (const raw of value) {
+		if (isRecord(raw) && typeof raw.rows_changed === 'number' && raw.rows_changed >= 0)
+			total = (total ?? 0) + raw.rows_changed;
+	}
+	return total;
+}
+
 export function buildStepDetails(
 	activity: ActivityEntry,
 	options: { projectId?: string | null; now?: Date; timeZone?: string } = {}
@@ -370,6 +396,8 @@ export function buildStepDetails(
 		opened: opened.entities,
 		openedSections: opened.sections,
 		others: action ? othersFromAffected(metadata.affectedEntities) : [],
+		actionLabel: action && firstOperation ? (OPERATION_LABELS[firstOperation] ?? null) : null,
+		rowsChanged: action ? rowsChanged(metadata.affectedEntities) : null,
 		changes: action ? fieldChanges(result, now, options.timeZone) : [],
 		docChange: action ? docChange(result) : null,
 		quote,

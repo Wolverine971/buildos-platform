@@ -39,11 +39,13 @@ describe('tool progress steps', () => {
 		});
 		expect(steps.map((s) => s.message)).toEqual([
 			'Opened chamber.test/events',
-			'Jev: not here (4%) → "Networking Lunch" (91%)',
+			'Not on this page (4%) → "Networking Lunch" (91%)',
 			'Opened chamber.test/events/lunch',
-			'Jev: answer 95%',
+			'Answer is on this page (95%)',
 			'Found it: Networking Lunch'
 		]);
+		// The trail is shown to the person: it never names an internal model.
+		expect(steps.map((s) => s.message).join(' ')).not.toMatch(/jev/i);
 		expect(steps.at(-1)?.data).toEqual({ outcome: 'found' });
 		expect(buildWebNavigateTrailFromResult(null)).toEqual([]);
 	});

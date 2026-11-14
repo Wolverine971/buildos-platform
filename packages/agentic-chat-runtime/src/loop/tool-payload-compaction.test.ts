@@ -2101,6 +2101,88 @@ describe('document reads', () => {
 		expect(payload.content).toBe(content);
 		expect(payload.outline.length).toBeLessThan(120);
 		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(DOCUMENT_BUDGET);
+		// The cut is at a heading boundary, and the result says what it holds.
+		expect(payload.outline).toEqual(outline.slice(0, payload.outline.length));
+		expect(payload.next_offset).toBe(payload.outline.length);
+		expect(payload.message).toBe(
+			`Outline: headings 1 to ${payload.outline.length} of 120. Call get_document_outline again with offset ${payload.next_offset} for the rest. The full body is in content.`
+		);
+	});
+
+	const outlinePage = (count: number, from = 0) =>
+		Array.from({ length: count }, (_, index) => ({
+			anchor: `session-${from + index + 1}-notes-from-the-weekly-review`,
+			heading: `Session ${from + index + 1}: notes from the weekly review`,
+			level: 2,
+			chars: 1_200
+		}));
+
+	it('passes a page of headings through whole, past the general tool budget', () => {
+		const outline = outlinePage(110);
+		const result = {
+			document_id: docId,
+			title: 'Log',
+			content_length: 140_000,
+			heading_count: 110,
+			outline,
+			message:
+				'Outline loaded: 110 headings. Read every section you need in one read_document_section call with anchors.'
+		};
+		const payload = buildToolPayloadForModel(
+			toolCall('get_document_outline'),
+			toolResult(result),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(JSON.stringify(outline).length).toBeGreaterThan(6_000);
+		expect(payload.outline).toEqual(outline);
+		expect(payload.message).toBe(result.message);
+		expect(payload).not.toHaveProperty('next_offset');
+	});
+
+	it('cuts an oversized page at a heading boundary and says where to continue', () => {
+		const outline = outlinePage(300, 100);
+		const payload = buildToolPayloadForModel(
+			toolCall('get_document_outline'),
+			toolResult({
+				document_id: docId,
+				title: 'Log',
+				content_length: 500_000,
+				heading_count: 600,
+				outline,
+				offset: 100,
+				next_offset: 400,
+				message: 'Outline: headings 101 to 400 of 600.'
+			}),
+			parseArgs
+		) as Record<string, any>;
+		const kept = payload.outline.length as number;
+
+		expect(kept).toBeGreaterThan(39);
+		expect(kept).toBeLessThan(300);
+		expect(payload.outline).toEqual(outline.slice(0, kept));
+		expect(payload.offset).toBe(100);
+		expect(payload.next_offset).toBe(100 + kept);
+		expect(payload.message).toBe(
+			`Outline: headings 101 to ${100 + kept} of 600. Call get_document_outline again with offset ${100 + kept} for the rest.`
+		);
+		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(DOCUMENT_BUDGET);
+	});
+
+	it('says how many headings a long document section index leaves out', () => {
+		const sections = Array.from({ length: 30 }, (_, index) => ({
+			anchor: `part-${index + 1}`,
+			heading: `Part ${index + 1}`,
+			level: 2,
+			chars: 900
+		}));
+		const payload = detail(lines(300), { sections, sections_omitted: 88 });
+
+		expect(payload.document.sections).toHaveLength(30);
+		expect(payload.document.sections_omitted).toBe(88);
+		expect(payload.message).toContain(
+			'sections lists the first 30 of 118 headings; get_document_outline with offset 30 lists the rest.'
+		);
 	});
 
 	it('re-cuts an over-budget section read at an exact offset', () => {

@@ -88,7 +88,7 @@ export type TurnCard = {
 export type TurnCards = {
 	cards: TurnCard[];
 	/** Global turns: "Checked 12 projects, picked 2". */
-	picked: { checked: number; picked: number; names: string[] } | null;
+	picked: { checked: number; picked: number; names: string[]; capture: boolean } | null;
 	/**
 	 * Context the model got that has no record chip (a whole-project snapshot, notes carried
 	 * from last turn), and the finder's own outcome when it found nothing or could not run.
@@ -212,59 +212,13 @@ function pulledFrom(
 	};
 }
 
-const GIVEN = new Set<string>(['text', 'card', 'line']);
-
-type RawChip = { given: LedgerGiven | null; partial: boolean };
-
-/** The finder receipt as stored (parsed fields plus the newer ones older parsers drop). */
-function readRawSelection(activities: ActivityEntry[]): Record<string, unknown> | null {
-	for (let i = activities.length - 1; i >= 0; i--) {
-		const raw = activities[i]?.metadata?.[CONTEXT_SELECTION_METADATA_KEY];
-		if (isRecord(raw)) return raw;
-	}
-	return null;
-}
-
 /**
- * A `context_selection` payload ready to store on the turn: the shared parser's fields, plus
- * the honest-ledger fields (`given`, `partial`, `scope`, `snapshot`, `notes`, `injection`)
- * read tolerantly, so they survive even where the shared parser predates them. Null for a
- * malformed payload.
+ * A `context_selection` payload ready to store on the turn (live event, or a stored turn
+ * event): the shared parser's typed fields, including what each record was handed as
+ * (`given`), and what went in without a chip (`snapshot`, `notes`). Null when malformed.
  */
-export function normalizeContextSelection(
-	value: unknown
-): (ContextSelectionEventV1 & Record<string, unknown>) | null {
-	const parsed = parseContextSelectionEventV1(value);
-	if (!parsed || !isRecord(value)) return null;
-	const rawItems = new Map<string, Record<string, unknown>>();
-	for (const raw of Array.isArray(value.items) ? value.items : []) {
-		if (isRecord(raw) && typeof raw.kind === 'string' && typeof raw.id === 'string')
-			rawItems.set(`${raw.kind}:${raw.id}`, raw);
-	}
-	const count = (n: unknown) => (typeof n === 'number' && Number.isFinite(n) && n > 0 ? n : 0);
-	return {
-		...parsed,
-		items: parsed.items.map((item) => {
-			const raw = rawItems.get(`${item.kind}:${item.id}`);
-			return {
-				...item,
-				...(raw && GIVEN.has(raw.given as string) ? { given: raw.given } : {}),
-				...(raw?.partial === true ? { partial: true } : {})
-			};
-		}),
-		scope: value.scope === 'broad' || value.scope === 'specific' ? value.scope : null,
-		snapshot: isRecord(value.snapshot) ? { chars: count(value.snapshot.chars) } : null,
-		notes: isRecord(value.notes)
-			? {
-					changed: count(value.notes.changed),
-					not_loaded: count(value.notes.not_loaded)
-				}
-			: null,
-		injection:
-			isRecord(value.injection) && typeof value.injection.sha256 === 'string'
-				? { chars: count(value.injection.chars), sha256: value.injection.sha256 }
-				: null
-	};
+export function normalizeContextSelection(value: unknown): ContextSelectionEventV1 | null {
+	return parseContextSelectionEventV1(value);
 }
 
 /** Whether a stored selection has anything a turn card can show. */
@@ -273,29 +227,13 @@ export function contextSelectionIsShowable(selection: ContextSelectionEventV1 | 
 	return selection.injected || selection.status === 'unavailable' || selection.status === 'empty';
 }
 
-function rawChips(raw: Record<string, unknown> | null): Map<string, RawChip> {
-	const out = new Map<string, RawChip>();
-	for (const item of Array.isArray(raw?.items) ? raw.items : []) {
-		if (!isRecord(item) || typeof item.kind !== 'string' || typeof item.id !== 'string')
-			continue;
-		out.set(`${item.kind}:${item.id}`, {
-			given: GIVEN.has(item.given as string) ? (item.given as LedgerGiven) : null,
-			partial: item.partial === true
-		});
-	}
-	return out;
-}
-
 /**
  * What the finder handed the model for a chip. Older events carry no `given`: a one-line tier
  * is a line, a carried record had its text reloaded, a document arrives as a card (tasker
  * 152), and any other record arrives as text.
  */
-function chipGiven(
-	item: ContextSelectionEventV1['items'][number],
-	raw: RawChip | undefined
-): LedgerGiven {
-	if (raw?.given) return raw.given;
+function chipGiven(item: ContextSelectionEventV1['items'][number]): LedgerGiven {
+	if (item.given) return item.given;
 	if (item.tier !== 'full') return 'line';
 	if (item.carried) return 'text';
 	return item.kind === 'document' ? 'card' : 'text';
@@ -336,21 +274,18 @@ function handedNote(
  */
 export function deriveTurnLedger(input: {
 	items: ContextSelectionEventV1['items'];
-	raw?: Record<string, unknown> | null;
 	checked: number;
 	steps: ActivityEntry[];
 	projectId: string | null;
 	settled?: Readonly<Record<string, StepSettlement>>;
 }): TurnLedger | null {
-	const chips = rawChips(input.raw ?? null);
 	const records = new Map<string, LedgerRecord>();
 	const hadText = new Set<string>();
 
 	for (const item of input.items) {
 		const key = `${item.kind}:${item.id}`;
 		if (records.has(key)) continue;
-		const raw = chips.get(key);
-		const given = chipGiven(item, raw);
+		const given = chipGiven(item);
 		const projectId = item.project_id ?? input.projectId;
 		const base = {
 			given,
@@ -369,7 +304,7 @@ export function deriveTurnLedger(input: {
 			group: given === 'text' ? 'given' : given,
 			...base,
 			action: null,
-			note: handedNote(base, raw?.partial === true)
+			note: handedNote(base, item.partial === true)
 		});
 	}
 	const inView = records.size;
@@ -492,10 +427,7 @@ export function describeLedger(ledger: TurnLedger): { label: string; groups: Led
 }
 
 /** Lines for context the model got without a chip, and for a finder that found or ran nothing. */
-function contextLinesFrom(
-	selection: ContextSelectionEventV1 | null,
-	raw: Record<string, unknown> | null
-): string[] {
+function contextLinesFrom(selection: ContextSelectionEventV1 | null): string[] {
 	if (!selection?.visible) return [];
 	const lines: string[] = [];
 	if (selection.status === 'unavailable') {
@@ -514,19 +446,17 @@ function contextLinesFrom(
 		);
 	}
 	if (!selection.injected) return lines;
-	if (isRecord(raw?.snapshot)) lines.push('Also given: a snapshot of the whole project');
-	if (isRecord(raw?.notes)) {
-		const changed = typeof raw.notes.changed === 'number' ? raw.notes.changed : 0;
-		const notLoaded = typeof raw.notes.not_loaded === 'number' ? raw.notes.not_loaded : 0;
-		if (changed > 0)
-			lines.push(
-				`Also told: ${changed} ${changed === 1 ? 'record' : 'records'} changed since last turn`
-			);
-		if (notLoaded > 0)
-			lines.push(
-				`Also told: ${notLoaded} earlier ${notLoaded === 1 ? 'record was' : 'records were'} not reloaded`
-			);
-	}
+	if (selection.snapshot) lines.push('Also given: a snapshot of the whole project');
+	const changed = selection.notes?.changed ?? 0;
+	const notLoaded = selection.notes?.not_loaded ?? 0;
+	if (changed > 0)
+		lines.push(
+			`Also told: ${changed} ${changed === 1 ? 'record' : 'records'} changed since last turn`
+		);
+	if (notLoaded > 0)
+		lines.push(
+			`Also told: ${notLoaded} earlier ${notLoaded === 1 ? 'record was' : 'records were'} not reloaded`
+		);
 	return lines;
 }
 
@@ -539,7 +469,6 @@ export function deriveTurnCards(input: {
 }): TurnCards {
 	const { activities, sessionProject } = input;
 	const selection = readTurnSelection(activities);
-	const rawSelection = readRawSelection(activities);
 	const injected = selection?.injected === true;
 
 	const names = new Map<string, string>();
@@ -626,7 +555,6 @@ export function deriveTurnCards(input: {
 					: selection.items.filter((item) => item.project_id === card.projectId);
 		card.ledger = deriveTurnLedger({
 			items,
-			raw: rawSelection,
 			checked:
 				selection?.project_id && card.projectId === selection.project_id
 					? selection.counts.checked
@@ -654,11 +582,13 @@ export function deriveTurnCards(input: {
 			? {
 					checked: selection.workspace.checked,
 					picked: selection.projects.length,
-					names: selection.projects.map((project) => project.name)
+					names: selection.projects.map((project) => project.name),
+					// A brain dump: the picked projects are where its pieces are being filed.
+					capture: selection.workspace.capture === true
 				}
 			: null;
 
-	return { cards: ordered, picked, contextLines: contextLinesFrom(selection, rawSelection) };
+	return { cards: ordered, picked, contextLines: contextLinesFrom(selection) };
 }
 
 /**

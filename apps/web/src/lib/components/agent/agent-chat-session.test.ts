@@ -688,6 +688,112 @@ describe('agent-chat-session helpers', () => {
 		expect(block.activities[0].metadata.contextSelection.counts.checked).toBe(6);
 	});
 
+	it('restores what each record was handed as, and a turn that only got context', () => {
+		const turnId = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
+		const snapshot = buildAgentChatSessionSnapshot({
+			session: makeSession(),
+			messages: [
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: 'Answered from what was in view.',
+					created_at: '2026-11-13T10:01:00.000Z'
+				}
+			] as any,
+			toolExecutions: [],
+			turnRuns: [{ id: turnId, status: 'completed', assistant_message_id: 'assistant-1' }],
+			contextSelections: [
+				{
+					type: 'context_selection',
+					version: 1,
+					mode: 'on',
+					visible: true,
+					injected: true,
+					status: 'selected',
+					failure: null,
+					client_turn_id: 'turn-1',
+					turn_run_id: turnId,
+					project_id: 'p1',
+					items: [
+						{
+							kind: 'document',
+							id: 'd',
+							label: 'Worklist',
+							tier: 'full',
+							given: 'card',
+							sections: ['Group 1']
+						}
+					],
+					counts: { full: 1, summary: 0, checked: 6 },
+					snapshot: { chars: 4200 }
+				}
+			]
+		});
+
+		// No tool ran, yet the turn's context list is back (live shows it too).
+		const block = snapshot.messages.find((message) => message.type === 'thinking_block') as any;
+		expect(block.activities).toHaveLength(1);
+		const stored = block.activities[0].metadata.contextSelection;
+		expect(stored.items[0]).toMatchObject({ id: 'd', given: 'card', sections: ['Group 1'] });
+		expect(stored.snapshot).toEqual({ chars: 4200 });
+	});
+
+	it('restores the words a write came from, from the execution or the turn event', () => {
+		const snapshot = buildAgentChatSessionSnapshot({
+			session: makeSession(),
+			messages: [
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: 'Done.',
+					created_at: '2026-11-13T10:01:00.000Z'
+				}
+			] as any,
+			toolExecutions: [
+				{
+					id: 'exec-1',
+					message_id: 'assistant-1',
+					tool_name: 'create_onto_task',
+					sequence_index: 1,
+					arguments: { title: 'Call Frontier' },
+					result: { task: { id: 't1', title: 'Call Frontier' } },
+					affected_entities: [
+						{
+							kind: 'task',
+							id: 't1',
+							title: 'Call Frontier',
+							operation: 'created',
+							source_quote: 'call Frontier Airlines and get a refund'
+						}
+					],
+					success: true,
+					created_at: '2026-11-13T10:00:30.000Z'
+				},
+				{
+					id: 'exec-2',
+					message_id: 'assistant-1',
+					provider_tool_call_id: 'call_abc',
+					tool_name: 'update_onto_task',
+					sequence_index: 2,
+					arguments: { task_id: 't2' },
+					result: { task: { id: 't2', title: 'Mow lawn' } },
+					affected_entities: [
+						{ kind: 'task', id: 't2', title: 'Mow lawn', operation: 'updated' }
+					],
+					success: true,
+					created_at: '2026-11-13T10:00:40.000Z'
+				}
+			] as any,
+			sourceQuotes: { call_abc: 'mow the lawn tomorrow' }
+		});
+
+		const block = snapshot.messages.find((message) => message.type === 'thinking_block') as any;
+		expect(block.activities.map((activity: any) => activity.metadata.sourceQuote)).toEqual([
+			'call Frontier Airlines and get a refund',
+			'mow the lawn tomorrow'
+		]);
+	});
+
 	it('buildAgentChatSessionSnapshot exposes active turn runs for restore polling', () => {
 		const snapshot = buildAgentChatSessionSnapshot({
 			session: makeSession(),

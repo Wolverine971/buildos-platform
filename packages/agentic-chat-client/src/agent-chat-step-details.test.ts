@@ -247,6 +247,47 @@ describe('buildTurnReceipt', () => {
 		});
 	});
 
+	it('names unlinks, delegations and table rows exactly', () => {
+		const unlink = buildStepDetails(
+			step({
+				affectedEntities: [
+					{ kind: 'edge', id: 'e1', title: 'Menu ↔ Launch', operation: 'unlinked' }
+				]
+			})
+		);
+		expect(unlink.action).toBe('updated');
+		expect(unlink.actionLabel).toBe('Unlinked');
+		expect(unlink.others).toEqual([{ kind: 'edge', id: 'e1', title: 'Menu ↔ Launch' }]);
+		const rows = buildStepDetails(
+			step({
+				affectedEntities: [
+					{
+						kind: 'document',
+						id: D,
+						title: 'Vendors',
+						projectId: P,
+						operation: 'updated',
+						table: true,
+						rows_changed: 3
+					}
+				]
+			})
+		);
+		expect(rows.rowsChanged).toBe(3);
+		expect(rows.entities[0]!.id).toBe(D);
+		const move = buildStepDetails(
+			step({
+				affectedEntities: [
+					{ kind: 'task', id: T, title: 'A', projectId: P, operation: 'moved' }
+				],
+				result: { field_changes: [{ field: 'project', before: 'Bakery', after: 'Cafe' }] }
+			})
+		);
+		expect(move.changes).toEqual([
+			{ field: 'project', label: 'Project', before: 'Bakery', after: 'Cafe' }
+		]);
+	});
+
 	it('gives a deleted record no link and counts it as deleted', () => {
 		const deleted = buildStepDetails(
 			step({

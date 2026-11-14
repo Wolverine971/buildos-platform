@@ -673,6 +673,81 @@ export async function waitForUsageSummary(
 	return summarizeUsageLogs(lastRows);
 }
 
+export interface TurnEventRow {
+	event_type: string;
+	sequence_index: number | null;
+	payload: Record<string, unknown>;
+}
+
+/**
+ * A turn's stored stream events of one type, in order. These are the rows a chat reload
+ * restores from, so they are the durable record of what the chat showed (which records
+ * the turn was handed, the words each write came from).
+ */
+export async function getTurnEvents(
+	admin: TypedSupabaseClient,
+	streamRunId: string,
+	eventType: string
+): Promise<TurnEventRow[]> {
+	const { data, error } = await admin
+		.from('chat_turn_events')
+		.select('event_type, sequence_index, payload')
+		.eq('stream_run_id', streamRunId)
+		.eq('event_type', eventType)
+		.order('sequence_index', { ascending: true });
+	if (error) {
+		throw new Error(
+			`[agentic-e2e] failed to read ${eventType} events for ${streamRunId}: ${error.message}`
+		);
+	}
+	return ((data as Array<Partial<TurnEventRow>> | null) ?? []).map((row) => ({
+		event_type: String(row.event_type ?? eventType),
+		sequence_index: typeof row.sequence_index === 'number' ? row.sequence_index : null,
+		payload:
+			row.payload && typeof row.payload === 'object' && !Array.isArray(row.payload)
+				? (row.payload as Record<string, unknown>)
+				: {}
+	}));
+}
+
+/**
+ * What the context finder added to the turn's prompt, as filed on its prompt snapshot
+ * (`chat_prompt_snapshots.prompt_sections.context_injection`: the exact text and its hash).
+ * The worker writes it detached, after the snapshot row lands, so this polls briefly. Null
+ * when the turn has no record.
+ */
+export async function getContextInjectionRecord(
+	admin: TypedSupabaseClient,
+	turnRunId: string,
+	options: { timeoutMs?: number; intervalMs?: number } = {}
+): Promise<Record<string, unknown> | null> {
+	const timeoutMs = options.timeoutMs ?? 8_000;
+	const intervalMs = options.intervalMs ?? 400;
+	const deadline = Date.now() + timeoutMs;
+	do {
+		const { data, error } = await admin
+			.from('chat_prompt_snapshots')
+			.select('prompt_sections')
+			.eq('turn_run_id', turnRunId)
+			.limit(1);
+		if (error) {
+			throw new Error(
+				`[agentic-e2e] failed to read the prompt snapshot for ${turnRunId}: ${error.message}`
+			);
+		}
+		const sections = (data as Array<{ prompt_sections?: unknown }> | null)?.[0]?.prompt_sections;
+		const record =
+			sections && typeof sections === 'object' && !Array.isArray(sections)
+				? (sections as Record<string, unknown>).context_injection
+				: null;
+		if (record && typeof record === 'object' && !Array.isArray(record)) {
+			return record as Record<string, unknown>;
+		}
+		await new Promise((resolve) => setTimeout(resolve, intervalMs));
+	} while (Date.now() < deadline);
+	return null;
+}
+
 export interface EventRow {
 	id: string;
 	project_id: string | null;

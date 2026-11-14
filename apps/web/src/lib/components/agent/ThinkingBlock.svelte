@@ -442,7 +442,10 @@
 			};
 		}
 		if (step.details.action && step.tone === 'done')
-			return { label: ACTION_LABELS[step.details.action], tone: step.details.action };
+			return {
+				label: step.details.actionLabel ?? ACTION_LABELS[step.details.action],
+				tone: step.details.action
+			};
 		return null;
 	}
 </script>
@@ -456,7 +459,7 @@
 {#snippet stepDetails(step: StepRow)}
 	{@const details = step.details}
 	{@const linkTarget = ownRecord(step) && step.target ? null : details.entities}
-	{#if step.tone === 'done' && (linkTarget?.length || details.others.length || details.changes.length || details.docChange || details.quote)}
+	{#if step.tone === 'done' && (linkTarget?.length || details.others.length || details.changes.length || details.docChange || details.rowsChanged !== null || details.quote)}
 		<div class="step-details">
 			{#if details.quote}
 				<p class="step-quote" data-action={details.action ?? 'read'}>“{details.quote}”</p>
@@ -482,6 +485,15 @@
 					>
 				</p>
 			{/each}
+			{#if details.rowsChanged !== null}
+				<p class="step-change">
+					<span class="step-change-label">Rows</span>
+					<span class="step-change-after"
+						>{details.rowsChanged}
+						{details.rowsChanged === 1 ? 'row' : 'rows'} changed</span
+					>
+				</p>
+			{/if}
 			{#if details.docChange}
 				<p class="step-change">
 					<span class="step-change-label">Body</span>
@@ -753,12 +765,18 @@
 					{#if showCards && cards}
 						<div class="turn-cards p-2 sm:p-2.5" data-testid="turn-cards">
 							{#if cards.picked}
-								<p class="turn-cards-note">
-									Checked {cards.picked.checked}
-									{cards.picked.checked === 1 ? 'project' : 'projects'}, picked
-									{cards.picked.picked}{cards.picked.names.length
-										? `: ${cards.picked.names.join(', ')}`
-										: ''}
+								<p class="turn-cards-note" data-testid="turn-picked">
+									{#if cards.picked.capture}
+										<!-- A brain dump: the picks are where its pieces go. -->
+										Filing into: {cards.picked.names.join(' · ')}
+									{:else}
+										Checked {cards.picked.checked}
+										{cards.picked.checked === 1 ? 'project' : 'projects'},
+										picked
+										{cards.picked.picked}{cards.picked.names.length
+											? `: ${cards.picked.names.join(', ')}`
+											: ''}
+									{/if}
 								</p>
 							{/if}
 							{#each cards.contextLines as line (line)}

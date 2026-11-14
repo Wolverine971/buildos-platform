@@ -218,6 +218,10 @@ export function buildWorkspaceSelectionPayload(input: {
 					scope: selection?.scope ?? null,
 					dig: selection?.dig ?? false,
 					dig_p: context.ranking.dig,
+					// Capture: the message brought new things to save, so the picks are their
+					// likely homes. `save_p` is kept so the threshold can be tuned from real turns.
+					capture: selection?.capture === true,
+					save_p: context.ranking.save ?? null,
 					checked: context.ranking.checked,
 					unchecked: context.ranking.unchecked,
 					hop1_ms: context.ranking.durationMs

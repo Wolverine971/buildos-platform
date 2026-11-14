@@ -404,10 +404,209 @@ describe('ThinkingBlock', () => {
 
 		const cards = screen.getByTestId('turn-cards');
 		expect(cards.textContent).toContain('Wayne Strategies');
-		expect(cards.textContent).toContain('Pulled in 2 of 5');
-		expect(cards.textContent).toContain('Worklist, Griffin');
+		// The ledger says what the model had: a document card and a one-liner, nothing opened.
+		const ledger = screen.getByTestId('turn-ledger');
+		expect(ledger.textContent).toContain('Looked through 5 · 2 in view · 0 opened');
+		expect(ledger.textContent).toContain('Summary and headings only');
+		expect(ledger.textContent).toContain('One-line summary only');
+		expect(ledger.textContent).toContain('Worklist');
+		expect(ledger.textContent).toContain('Griffin');
+		expect(cards.textContent).not.toMatch(/pulled in/i);
 		expect(cards.textContent).toContain('Another project');
 		expect(screen.getByText('2 projects · 2 steps')).toBeTruthy();
 		expect(screen.queryByRole('log', { name: 'BuildOS thinking log' })).toBeNull();
+	});
+
+	describe('rows only claim what is true now', () => {
+		const P = 'p-wayne';
+		const session = { sessionProject: { id: P, name: 'Wayne Strategies' } };
+		const step = (
+			id: string,
+			line: Record<string, unknown>,
+			metadata: Record<string, unknown> = {},
+			status: ActivityEntry['status'] = 'completed'
+		): ActivityEntry => ({
+			id,
+			content: String(line.verb ?? id),
+			timestamp: new Date('2026-11-13T12:00:01.000Z'),
+			activityType: 'tool_call',
+			status,
+			toolCallId: id,
+			metadata: { toolName: id, arguments: { project_id: P }, line, ...metadata }
+		});
+		const finished = (activities: ActivityEntry[]): ThinkingBlockMessage => ({
+			id: 'thinking-truth',
+			type: 'thinking_block',
+			content: 'Complete',
+			timestamp: new Date('2026-11-13T12:00:00.000Z'),
+			completedAt: new Date('2026-11-13T12:00:06.000Z'),
+			status: 'completed',
+			isCollapsed: false,
+			activities
+		});
+		const docUpdate = {
+			affectedEntities: [
+				{ kind: 'document', id: 'd1', title: 'Menu', projectId: P, operation: 'updated' }
+			],
+			result: { document_change: { lines_added: 12, lines_removed: 3 } }
+		};
+
+		it('a held change is not badged, not counted, and says it waits on the person', () => {
+			render(ThinkingBlock, {
+				block: finished([
+					step(
+						'held',
+						{
+							verb: 'Needs your choice to update document',
+							tone: 'awaiting',
+							target: 'Menu'
+						},
+						{ ...docUpdate, requiresUserAction: true }
+					)
+				]),
+				onToggleCollapse: vi.fn(),
+				turnCards: session
+			});
+			const row = document.querySelector('[data-step-slot="held"]')!;
+			expect(row.getAttribute('data-step-tone')).toBe('awaiting');
+			expect(row.textContent).toContain('Needs your choice to update document');
+			expect(row.querySelector('.step-action')).toBeNull();
+			expect(row.textContent).not.toContain('+12');
+			// Nothing was saved, so the header keeps the step count and the ledger shows no change.
+			expect(document.querySelector('.activity-count-badge')?.textContent).toBe('1 step');
+			expect(screen.queryByTestId('turn-ledger')).toBeNull();
+		});
+
+		it('an undone change reads Undone and leaves the receipt; an approved one reads Updated', async () => {
+			const block = finished([
+				step(
+					'saved',
+					{ verb: 'Updated document', tone: 'done', target: 'Menu' },
+					docUpdate
+				),
+				step(
+					'held',
+					{
+						verb: 'Needs your choice to update document',
+						tone: 'awaiting',
+						target: 'Menu'
+					},
+					{ ...docUpdate, requiresUserAction: true }
+				)
+			]);
+			const view = render(ThinkingBlock, {
+				block,
+				onToggleCollapse: vi.fn(),
+				turnCards: session
+			});
+			expect(screen.getByText('1 updated')).toBeTruthy();
+			expect(
+				document.querySelector('[data-step-slot="saved"] .step-action')?.textContent
+			).toBe('Updated');
+
+			await view.rerender({
+				block,
+				settled: {
+					saved: { state: 'undone', label: 'Undone' },
+					held: { state: 'approved', label: 'Updated' }
+				}
+			});
+			const saved = document.querySelector('[data-step-slot="saved"]')!;
+			expect(saved.getAttribute('data-step-tone')).toBe('undone');
+			expect(saved.querySelector('.step-action')?.textContent).toBe('Undone');
+			expect(saved.textContent).not.toContain('+12');
+			const held = document.querySelector('[data-step-slot="held"]')!;
+			expect(held.getAttribute('data-step-tone')).toBe('done');
+			expect(held.querySelector('.step-action')?.textContent).toBe('Updated');
+			expect(held.textContent).not.toContain('Needs your choice');
+			expect(screen.queryByText('1 updated')).toBeNull();
+		});
+
+		it('never links a list to the one record it happened to return', () => {
+			render(ThinkingBlock, {
+				block: finished([
+					step(
+						'list',
+						{ verb: 'Listed tasks', tone: 'done', target: 'Wayne Strategies' },
+						{ result: { tasks: [{ id: 't1', title: 'Send invoice', project_id: P }] } }
+					),
+					step(
+						'open',
+						{ verb: 'Read task', tone: 'done', target: 'Send invoice' },
+						{ result: { task: { id: 't1', title: 'Send invoice', project_id: P } } }
+					)
+				]),
+				onToggleCollapse: vi.fn(),
+				turnCards: session
+			});
+			const list = document.querySelector('[data-step-slot="list"]')!;
+			expect(list.querySelector('a.step-target-link')).toBeNull();
+			// The task it returned is still reachable, under its own name.
+			expect(list.querySelector('a.record-chip')?.textContent).toContain('Send invoice');
+			const open = document.querySelector('[data-step-slot="open"]')!;
+			expect(open.querySelector('a.step-target-link')?.textContent).toContain('Send invoice');
+		});
+
+		it('says where a brain dump is being filed, and when context could not be checked', () => {
+			const selection = (payload: Record<string, unknown>): ActivityEntry => ({
+				id: 'sel',
+				content: 'Context picked',
+				timestamp: new Date('2026-11-13T12:00:00.500Z'),
+				activityType: 'ontology_loaded',
+				metadata: {
+					contextSelection: {
+						type: 'context_selection',
+						version: 1,
+						mode: 'on',
+						visible: true,
+						injected: true,
+						status: 'selected',
+						failure: null,
+						client_turn_id: 'c',
+						turn_run_id: 't',
+						project_id: null,
+						workspace: null,
+						projects: [],
+						items: [],
+						counts: { full: 0, summary: 0, checked: 0 },
+						elapsed_ms: 300,
+						...payload
+					}
+				}
+			});
+			const view = render(ThinkingBlock, {
+				block: finished([
+					selection({
+						workspace: { scope: 'projects', dig: false, capture: true, checked: 51 },
+						projects: [
+							{ id: 'p-cadre', name: 'The Cadre', p: 0.8, hop2: 'skipped' },
+							{ id: 'p-ws', name: 'Workspace', p: 0.6, hop2: 'skipped' }
+						]
+					})
+				]),
+				onToggleCollapse: vi.fn(),
+				turnCards: { sessionProject: null }
+			});
+			expect(screen.getByTestId('turn-picked').textContent).toContain(
+				'Filing into: The Cadre · Workspace'
+			);
+			view.unmount();
+
+			render(ThinkingBlock, {
+				block: finished([
+					selection({
+						project_id: P,
+						injected: false,
+						status: 'unavailable',
+						failure: 'deadline'
+					})
+				]),
+				onToggleCollapse: vi.fn(),
+				turnCards: session
+			});
+			expect(screen.getByTestId('turn-context-line').textContent).toBe(
+				"Couldn't check project context this turn (it took too long)"
+			);
+		});
 	});
 });

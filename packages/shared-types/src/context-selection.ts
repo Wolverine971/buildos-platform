@@ -50,6 +50,8 @@ export type ContextSelectionWorkspaceV1 = {
 	scope: 'projects' | 'portfolio' | 'none' | null;
 	/** Jev judged the message to look for something specific inside the projects. */
 	dig: boolean;
+	/** The message brought new things to save; `projects` are their likely homes. */
+	capture?: boolean;
 	checked: number;
 };
 
@@ -157,6 +159,7 @@ export function parseContextSelectionEventV1(value: unknown): ContextSelectionEv
 					? (value.workspace.scope as ContextSelectionWorkspaceV1['scope'])
 					: null,
 				dig: value.workspace.dig === true,
+				...(value.workspace.capture === true ? { capture: true } : {}),
 				checked:
 					typeof value.workspace.checked === 'number' &&
 					Number.isFinite(value.workspace.checked)

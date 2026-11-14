@@ -881,7 +881,11 @@ describe('provider pass started before its status step', () => {
 		const iterator = invocation.stream()[Symbol.asyncIterator]();
 
 		const first = await iterator.next();
-		expect(first.value).toEqual(step);
+		// The step also carries the private record of what was injected (never in eventPayload).
+		expect(first.value).toMatchObject(step);
+		expect(first.value).toMatchObject({
+			contextInjection: { injected: true, text: 'WORKING CONTEXT' }
+		});
 		// The request is already out while the executor persists the status.
 		expect(client.stream).toHaveBeenCalledTimes(1);
 		expect(JSON.stringify(client.stream.mock.calls[0]![0].messages.at(-1))).toContain(

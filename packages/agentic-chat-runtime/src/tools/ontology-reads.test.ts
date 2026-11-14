@@ -347,6 +347,144 @@ describe('document body reads', () => {
 		expect(long.message).toContain('one read_document_section call with anchors');
 	});
 
+	it('lists every heading of a long outline across pages, and says which ones each page holds', async () => {
+		const headings = Array.from(
+			{ length: 400 },
+			(_, index) => `## Session ${index + 1}: notes from the weekly planning review`
+		);
+		const longOutline = headings.map((heading) => `${heading}\nBody line.`).join('\n');
+		const context = documentContext({ content: longOutline });
+
+		const first = await getDocumentOutline(context, { document_id: DOCUMENT_ID });
+		expect(first.heading_count).toBe(400);
+		expect(first.outline.length).toBeGreaterThan(39);
+		expect(first.outline.length).toBeLessThan(400);
+		expect(first.outline[0]).toMatchObject({ level: 2, heading: headings[0]!.slice(3) });
+		expect(first.next_offset).toBe(first.outline.length);
+		expect(first.message).toContain(`headings 1 to ${first.outline.length} of 400`);
+		expect(first.message).toContain(`offset ${first.next_offset}`);
+		expect(first.message).not.toContain('Outline loaded: 400 headings');
+		expect(JSON.stringify(first.outline).length).toBeLessThanOrEqual(12_100);
+
+		const anchors: string[] = first.outline.map((entry: any) => entry.anchor);
+		let next: number | undefined = first.next_offset;
+		let last = first;
+		while (next !== undefined) {
+			last = await getDocumentOutline(context, { document_id: DOCUMENT_ID, offset: next });
+			expect(last.offset).toBe(next);
+			anchors.push(...last.outline.map((entry: any) => entry.anchor));
+			next = last.next_offset;
+		}
+		expect(anchors).toHaveLength(400);
+		expect(new Set(anchors).size).toBe(400);
+		expect(last.message).toContain('of 400. That is the end.');
+
+		// The newest entry of an append-style document is readable by its listed anchor.
+		const tail = await readDocumentSection(context, {
+			document_id: DOCUMENT_ID,
+			anchors: [anchors.at(-1)!]
+		});
+		expect(tail.heading).toBe(headings.at(-1)!.slice(3));
+
+		const past = await getDocumentOutline(context, { document_id: DOCUMENT_ID, offset: 900 });
+		expect(past.outline).toEqual([]);
+		expect(past.message).toContain('past the last heading (400 headings)');
+	});
+
+	it('returns a short outline whole, flat and unpaged', async () => {
+		const result = await getDocumentOutline(documentContext({ content: doc }), {
+			document_id: DOCUMENT_ID
+		});
+		expect(result.outline.map((entry: any) => [entry.anchor, entry.level])).toEqual([
+			['plan', 1],
+			['scope', 2],
+			['out-of-scope', 3],
+			['budget', 2],
+			['risks', 2]
+		]);
+		expect(result.heading_count).toBe(5);
+		expect(result).not.toHaveProperty('offset');
+		expect(result).not.toHaveProperty('next_offset');
+		expect(result.message).toContain('Outline loaded: 5 headings.');
+	});
+
+	it('resolves the anchor forms a model copies, and still misses on an ambiguous one', async () => {
+		const context = documentContext({ content: doc });
+		for (const reference of ['#budget', 'Budget', 'BUDGET', '## Budget', 'Budget (budget)']) {
+			const result = await readDocumentSection(context, {
+				document_id: DOCUMENT_ID,
+				anchors: [reference]
+			});
+			expect(result, reference).toMatchObject({ found: true, anchor: 'budget' });
+		}
+		const twice = await readDocumentSection(context, {
+			document_id: DOCUMENT_ID,
+			anchors: ['budget', '#budget', 'Out of scope']
+		});
+		expect(twice.sections.map((section: any) => section.anchor)).toEqual([
+			'budget',
+			'out-of-scope'
+		]);
+
+		const repeated = ['# Log', '## Notes', 'First week.', '## Notes', 'Second week.'].join(
+			'\n'
+		);
+		const repeatedContext = documentContext({ content: repeated });
+		const outline = await getDocumentOutline(repeatedContext, { document_id: DOCUMENT_ID });
+		const [firstNotes, secondNotes] = outline.outline
+			.filter((entry: any) => entry.heading === 'Notes')
+			.map((entry: any) => entry.anchor as string);
+		expect(firstNotes).not.toBe(secondNotes);
+
+		const ambiguous = await readDocumentSection(repeatedContext, {
+			document_id: DOCUMENT_ID,
+			anchors: ['Notes']
+		});
+		expect(ambiguous.found).toBe(false);
+		expect(ambiguous.available_anchors).toEqual(
+			expect.arrayContaining([firstNotes, secondNotes])
+		);
+		// A card prints "Heading (anchor)"; the anchor in the brackets settles it.
+		const second = await readDocumentSection(repeatedContext, {
+			document_id: DOCUMENT_ID,
+			anchors: [`Notes (${secondNotes})`]
+		});
+		expect(second).toMatchObject({ found: true, anchor: secondNotes });
+		expect(second.content).toContain('Second week.');
+	});
+
+	it('sends outline and section reads of a table to the table tools', async () => {
+		const context = documentContext({ content: doc, type_key: 'document.table' });
+		const outline = await getDocumentOutline(context, { document_id: DOCUMENT_ID });
+		expect(outline).toMatchObject({ is_table: true });
+		expect(outline).not.toHaveProperty('outline');
+		expect(outline).not.toHaveProperty('content');
+		expect(outline.message).toContain('read_table_rows');
+
+		const section = await readDocumentSection(context, {
+			document_id: DOCUMENT_ID,
+			anchors: ['scope']
+		});
+		expect(section).toMatchObject({ is_table: true, found: false });
+		expect(section).not.toHaveProperty('content');
+		expect(section.message).toContain('get_onto_table_details');
+	});
+
+	it('drops the mirrored body from props, and keeps a body that lives only there', async () => {
+		const mirrored = await getOntoDocumentDetails(
+			documentContext({ content: doc, props: { origin: 'chat', body_markdown: doc } }),
+			{ document_id: DOCUMENT_ID }
+		);
+		expect(mirrored.document.content).toBe(doc);
+		expect(mirrored.document.props).toEqual({ origin: 'chat' });
+
+		const legacy = await getOntoDocumentDetails(
+			documentContext({ content: null, props: { body_markdown: doc } }),
+			{ document_id: DOCUMENT_ID }
+		);
+		expect(legacy.document.props).toEqual({ body_markdown: doc });
+	});
+
 	it('attaches a section index only to a long, non-table document', async () => {
 		const short = await getOntoDocumentDetails(documentContext({ content: doc }), {
 			document_id: DOCUMENT_ID

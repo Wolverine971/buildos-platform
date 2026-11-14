@@ -961,8 +961,7 @@ Useful for showing where a document lives in the hierarchy.`,
 					},
 					offset: {
 						type: 'integer',
-						minimum: 0,
-						description: 'Heading index to continue a long outline from (a previous next_offset)'
+						description: 'Heading index to continue from (next_offset)'
 					}
 				},
 				required: ['document_id']

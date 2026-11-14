@@ -203,11 +203,27 @@ export function bakeryProjectSpec(
 	name: string,
 	tasks: readonly BakeryTaskSpec[] = []
 ): ProjectSpec {
+	return fixtureProjectSpec({
+		name,
+		typeKey: 'project.business.product_launch',
+		description: BAKERY_DESCRIPTION,
+		tasks
+	});
+}
+
+/** A small fixture project with todo tasks; the bakery and any second project share it. */
+export function fixtureProjectSpec(options: {
+	name: string;
+	typeKey: string;
+	description: string;
+	tasks?: readonly BakeryTaskSpec[];
+}): ProjectSpec {
+	const tasks = options.tasks ?? [];
 	return {
 		project: {
-			name,
-			type_key: 'project.business.product_launch',
-			description: BAKERY_DESCRIPTION
+			name: options.name,
+			type_key: options.typeKey,
+			description: options.description
 		},
 		entities: tasks.map((task) => ({
 			temp_id: task.slug,

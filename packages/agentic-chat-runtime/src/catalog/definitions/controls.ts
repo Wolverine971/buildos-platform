@@ -244,7 +244,7 @@ export const REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION: ChatToolDefinition = {
 	function: {
 		name: REQUEST_TURN_CLARIFICATION_TOOL_NAME,
 		description:
-			'Ask when a commissioned durable change still has an ambiguous required target or value after reading context. Do not postpone safe work or ask about a merely possible later change.',
+			'Ask when a commissioned durable change still has an ambiguous required target or value after reading context. Do not postpone safe work or ask about a merely possible later change. Never ask where a new note, doc, or task should live: file it in the best-fitting project, or the Workspace, and say where.',
 		parameters: {
 			type: 'object',
 			properties: {

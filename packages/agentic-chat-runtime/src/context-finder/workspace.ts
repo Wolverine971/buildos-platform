@@ -502,10 +502,11 @@ export type WorkspaceSelectionV1 = {
 export function selectWorkspaceProjects(
 	ranking: WorkspaceRankingV1,
 	/** Eval sweeps only; production uses the frozen policy. */
+	// Plain numbers: the frozen policy's own types are its literal values.
 	overrides: Partial<
-		Pick<
-			typeof WORKSPACE_FINDER_POLICY,
-			'floor' | 'relative' | 'maxZoom' | 'maxPulse' | 'digThreshold' | 'saveThreshold'
+		Record<
+			'floor' | 'relative' | 'maxZoom' | 'maxPulse' | 'digThreshold' | 'saveThreshold',
+			number
 		>
 	> = {}
 ): WorkspaceSelectionV1 {
@@ -913,7 +914,9 @@ function captureHomesLine(context: WorkspaceContextV1): string | null {
 	const { selection } = context;
 	if (!selection.capture) return null;
 	const home = selection.home ?? null;
-	const workspace = home ? `the user's Workspace (project_id ${home.id})` : "the user's Workspace";
+	const workspace = home
+		? `the user's Workspace (project_id ${home.id})`
+		: "the user's Workspace";
 	if (selection.scope === 'portfolio')
 		return `The message also appears to bring new things to save: each belongs with the project it is about, or with ${workspace} when none fits.`;
 	const projects = context.zoom.filter((entry) => !entry.workspace);

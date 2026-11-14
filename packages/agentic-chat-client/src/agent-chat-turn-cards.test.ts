@@ -132,7 +132,12 @@ describe('deriveTurnCards', () => {
 			step('get_onto_document_details', { document_id: 'd9' }, { project_id: 'p-9t' })
 		];
 		const { cards, picked } = deriveTurnCards({ activities, sessionProject: null });
-		expect(picked).toEqual({ checked: 12, picked: 2, names: ['9takes', 'Wayne Strategies'] });
+		expect(picked).toEqual({
+			checked: 12,
+			picked: 2,
+			names: ['9takes', 'Wayne Strategies'],
+			capture: false
+		});
 		expect(cards.map((card) => card.name)).toEqual([
 			'9takes',
 			'Wayne Strategies',
@@ -449,15 +454,16 @@ describe('the turn ledger', () => {
 			scope: 'broad',
 			snapshot: { chars: 10 },
 			notes: { changed: 1, not_loaded: 0 },
-			injection: { chars: 900, sha256: 'abc' }
+			injection: { chars: 900, sha256: 'a'.repeat(64) }
 		}).metadata![CONTEXT_SELECTION_METADATA_KEY];
 		const stored = normalizeContextSelection(raw)!;
-		expect(stored.items[0]).toMatchObject({ id: 'd1', given: 'card', partial: true });
+		// `partial` only applies to text; a card is never "cut".
+		expect(stored.items[0]).toMatchObject({ id: 'd1', given: 'card' });
 		expect(stored).toMatchObject({
 			scope: 'broad',
 			snapshot: { chars: 10 },
 			notes: { changed: 1, not_loaded: 0 },
-			injection: { chars: 900, sha256: 'abc' }
+			injection: { chars: 900, sha256: 'a'.repeat(64) }
 		});
 		expect(normalizeContextSelection({ type: 'nope' })).toBeNull();
 		expect(contextSelectionIsShowable(stored)).toBe(true);
@@ -466,5 +472,28 @@ describe('the turn ledger', () => {
 				readTurnSelection([selectionActivity({ injected: false, visible: false })])
 			)
 		).toBe(false);
+	});
+});
+
+describe('a brain dump in workspace chat', () => {
+	it('marks the picked projects as where things are being filed', () => {
+		const { picked } = deriveTurnCards({
+			activities: [
+				selectionActivity({
+					workspace: { scope: 'projects', dig: false, capture: true, checked: 51 },
+					projects: [
+						{ id: 'p-cadre', name: 'The Cadre', p: 0.8, hop2: 'skipped' },
+						{ id: 'p-ws', name: 'Workspace', p: 0.6, hop2: 'skipped' }
+					]
+				})
+			],
+			sessionProject: null
+		});
+		expect(picked).toEqual({
+			checked: 51,
+			picked: 2,
+			names: ['The Cadre', 'Workspace'],
+			capture: true
+		});
 	});
 });

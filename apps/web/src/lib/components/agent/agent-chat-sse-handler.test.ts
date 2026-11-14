@@ -865,7 +865,8 @@ describe('createSSEHandler — tool call + result', () => {
 				toolCallId: 'call-7',
 				step: {
 					index: 2,
-					message: 'Jev: not here (4%) → "Pricing" (91%) · 300ms',
+					// An older worker's line: the internal model name is never shown.
+					message: 'not here (4%) → "Pricing" (91%) · 300ms',
 					kind: 'decided',
 					data: { kind: 'decided', answer: 0.04 }
 				}

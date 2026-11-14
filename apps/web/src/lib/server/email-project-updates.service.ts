@@ -397,8 +397,9 @@ type CheckedUpdate = {
 };
 
 /**
- * Finds the model's copied words in the subject as stored (string match, exact → close →
- * fuzzy; not a reading of what the email means). Null when they are not in the subject.
+ * Finds the model's copied words in the subject as stored (string match: the same words in
+ * order, ignoring case and punctuation; not a reading of what the email means). Null when
+ * they are not in the subject: a merely similar phrase gets no highlight.
  */
 function subjectQuoteSpan(
 	message: GmailInboxScanMessage,

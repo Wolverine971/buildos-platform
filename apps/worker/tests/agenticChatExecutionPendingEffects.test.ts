@@ -188,7 +188,7 @@ describe('AgenticChatExecutorEffects detached effects', () => {
 		const registry = new AgenticChatPendingEffectsRegistry();
 		const persist = deferred<void>();
 		const order: string[] = [];
-		const recordContextInjection = vi.fn(async () => {
+		const recordContextInjection = vi.fn(async (_input: unknown) => {
 			order.push('record');
 			return { outcome: 'recorded' as const };
 		});

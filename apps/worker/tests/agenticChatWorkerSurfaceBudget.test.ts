@@ -210,10 +210,15 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		// global 58 tools / 63,199 B, project 70 / 79,475 B, project_create 4 / 9,203 B.
 		// Jev-selected passes pay only for their mounted writes; these caps bound the
 		// full fallback surface with ~0.1% headroom (rounded up to the next 10 B).
-		expect(global.openingBytes).toBeLessThanOrEqual(63_270);
-		expect(project.openingBytes).toBeLessThanOrEqual(79_560);
-		expect(project.admittedBytes).toBeLessThanOrEqual(79_560);
-		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(9_220);
+		// RE-BASELINED 2026-11-13 (chat audit fixes): get_document_outline gained an offset
+		// so long outlines can be paged (+~90 B global and project), and the clarification
+		// tool's description now says never to ask where a new note, doc or task should live
+		// (+~110 B on every surface). Tool counts are unchanged. Measured global 63,412 B,
+		// project 79,688 B, project_create 9,327 B. Caps at measured + ~0.1%.
+		expect(global.openingBytes).toBeLessThanOrEqual(63_480);
+		expect(project.openingBytes).toBeLessThanOrEqual(79_770);
+		expect(project.admittedBytes).toBeLessThanOrEqual(79_770);
+		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(9_340);
 	});
 
 	it('mounts document reads on the global worker surface', () => {
