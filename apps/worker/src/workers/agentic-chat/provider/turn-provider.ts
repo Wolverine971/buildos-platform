@@ -434,6 +434,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				// Selection ran before the context existed; keep what its cards are read with.
 				request = mountToolPins(request, surface, found?.toolPins);
 				state.setCurrentRequest(request);
+				if (found?.homes) state.setWriteHomes(found.homes);
 				if (found) {
 					// The opening request goes out while the executor persists the
 					// "Working from" status; the status still reaches it first.

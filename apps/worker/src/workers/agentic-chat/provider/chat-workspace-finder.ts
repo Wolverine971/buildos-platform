@@ -127,7 +127,19 @@ export class ChatWorkspaceFinder implements AgenticChatContextFinderPort {
 				eventPayload: payload
 			},
 			injection: block,
-			...(toolPins.length ? { toolPins } : {})
+			...(toolPins.length ? { toolPins } : {}),
+			// Every project the ranker saw, by id, so a receipt can say where a new record
+			// went. The Workspace is not a project and reads as the user's own.
+			...(context?.ranking.projects.length
+				? {
+						homes: new Map(
+							context.ranking.projects.map((project) => [
+								project.id,
+								project.workspace ? 'your Workspace' : project.name
+							])
+						)
+					}
+				: {})
 		};
 	}
 }

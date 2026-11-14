@@ -306,7 +306,7 @@ Families: timebox, pipeline, campaign, roadmap, process, phase. Default: plan.ph
 					type_key: {
 						type: 'string',
 						default: 'document.default',
-						description: `Document type taxonomy (required): document.{family}[.{variant}]
+						description: `Optional document type taxonomy (omit for document.default): document.{family}[.{variant}]
 Families: context (project/brief), knowledge (research), notes (meeting_notes/rfc), spec (product/technical), reference (handbook/sop), intake (client/project), creative (structure/character/world/chapter).
 document.context.project is reserved for the project's single Start Here document and must not be used for ordinary notes; use document.default instead.
 Examples: document.knowledge.research, document.spec.technical, document.notes.meeting_notes, document.creative.character`

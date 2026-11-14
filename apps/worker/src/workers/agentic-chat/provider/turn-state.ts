@@ -150,6 +150,8 @@ export type ToolRoundStreamState = {
 	): string;
 	markToolRoundCompleted(): void;
 	setCurrentRequest(value: ClientRequest): void;
+	/** Global turns: where new records can be filed, so the write receipt names each home. */
+	setWriteHomes(value: ReadonlyMap<string, string>): void;
 	resolveMemoServed(call: CompletedProviderToolCall): AgenticChatReadToolExecutionV1 | null;
 	/** The phase the acting model is in, for the one-shot surface repair. */
 	getSurfaceRepairContext(): SurfaceRepairContext;
@@ -600,6 +602,12 @@ export class ProviderTurnState implements ToolRoundStreamState {
 
 	setCurrentRequest(value: ClientRequest): void {
 		this.currentRequest = value;
+	}
+
+	/** Global turns: where new records can be filed, so the write receipt names each home. */
+	private writeHomes: ReadonlyMap<string, string> | undefined;
+	setWriteHomes(value: ReadonlyMap<string, string>): void {
+		this.writeHomes = value;
 	}
 
 	resolveMemoServed(call: CompletedProviderToolCall): AgenticChatReadToolExecutionV1 | null {
@@ -1257,7 +1265,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 			// One receipt per call: skipped duplicates and unledgered tools keep the pass.
 			if (ledger.length !== calls.length) return null;
 		}
-		const text = renderDirectWriteReceipt(ledger);
+		const text = renderDirectWriteReceipt(ledger, this.writeHomes);
 		return text ? [text, alreadySatisfied].filter(Boolean).join('\n\n') : null;
 	}
 

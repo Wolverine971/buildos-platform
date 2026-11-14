@@ -145,7 +145,9 @@ export const WORKSPACE_CHAT_SCENARIO_IDS: Readonly<Record<number, string>> = Obj
 	3: 'workspace-03-file-card',
 	4: 'workspace-04-project-card',
 	5: 'workspace-05-broad-opener',
-	6: 'workspace-06-project-chat-stash'
+	6: 'workspace-06-project-chat-stash',
+	// Tasker/157: a two-turn brain dump (files first, then a follow-up update).
+	7: 'workspace-07-brain-dump-files-first'
 });
 
 export const BATTERY_SCENARIO_IDS: Readonly<Record<BatteryName, Readonly<Record<number, string>>>> =

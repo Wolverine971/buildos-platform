@@ -797,6 +797,37 @@ describe('renderDirectWriteReceipt', () => {
 		...patch
 	});
 
+	it('says where each new record went when the turn knows its homes', () => {
+		const homes = new Map([
+			['p-bakery', 'Harbor Bakery Launch'],
+			['p-ws', 'your Workspace']
+		]);
+		expect(
+			renderDirectWriteReceipt(
+				[
+					entry({ title: 'Book the health inspection', projectId: 'p-bakery' }),
+					entry({ title: 'Call Delta for a refund', projectId: 'p-ws' }),
+					// An update stays where it was; an unknown project is not named.
+					entry({ action: 'update', title: 'Deck oven order', projectId: 'p-bakery' }),
+					entry({ title: 'Loose end', projectId: 'p-unknown' })
+				],
+				homes
+			)
+		).toBe(
+			[
+				'Done:',
+				'- Created task “Book the health inspection” in Harbor Bakery Launch',
+				'- Created task “Call Delta for a refund” in your Workspace',
+				'- Updated task “Deck oven order”',
+				'- Created task “Loose end”'
+			].join('\n')
+		);
+		// A project chat passes no homes: nothing changes.
+		expect(
+			renderDirectWriteReceipt([entry({ title: 'Draft Q3 plan', projectId: 'p-bakery' })])
+		).toBe('Done — created task “Draft Q3 plan”.');
+	});
+
 	it('renders one receipt as a sentence', () => {
 		expect(renderDirectWriteReceipt([entry({ title: 'Draft Q3 plan' })])).toBe(
 			'Done — created task “Draft Q3 plan”.'

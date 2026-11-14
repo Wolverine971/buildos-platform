@@ -61,6 +61,11 @@ export type ChatContextFinding = {
 	 * injection exists, so it can drop them.
 	 */
 	toolPins?: readonly string[];
+	/**
+	 * Global turns: names of the homes a new record can be filed into, by project id (the
+	 * Workspace reads "your Workspace"). The write receipt uses it to say where each went.
+	 */
+	homes?: ReadonlyMap<string, string>;
 };
 
 /** Size and SHA-256 of the exact text a finder adds to the prompt (the turn stores the text). */

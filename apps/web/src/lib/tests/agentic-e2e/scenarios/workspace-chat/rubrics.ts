@@ -37,6 +37,39 @@ export function buildWorkspaceListingRubric(facts: WorkspaceListingFacts): strin
 	);
 }
 
+export interface BrainDumpFacts {
+	/** What the turn actually saved, read from the database: its title and where it lives. */
+	saved: ReadonlyArray<{ kind: 'task' | 'note'; title: string; home: string }>;
+	/** The errand that tempts a lookup nobody asked for. */
+	lookupTopic: string;
+}
+
+/**
+ * A spoken brain dump in Workspace chat (tasker/157). Where each item landed, that nothing
+ * was researched and that no filing question was asked are checked against stored rows; the
+ * judge only reads the reply: does it say what was saved and where, without sending the
+ * filing decision back or reporting research the user did not ask for.
+ */
+export function buildBrainDumpRubric(facts: BrainDumpFacts): string {
+	const saved = facts.saved.length
+		? facts.saved.map((item) => `- ${item.kind}: "${item.title}" → ${item.home}`).join('\n')
+		: '- (nothing was saved)';
+	return (
+		'The user spoke a brain dump into Workspace chat: some context about their week, then ' +
+		'things they need to do. They asked no question. A good reply confirms, briefly, what ' +
+		'was saved and where each thing went.\n\n' +
+		`What the turn saved (read from the database; treat as fact):\n${saved}\n\n` +
+		'Score 5: says the items were saved and names where each one went, asks nothing about ' +
+		`where to file, and at most offers to look up ${facts.lookupTopic}.\n` +
+		'Score 4: the same with a minor slip (a little long, or one home left implicit).\n' +
+		'Score 3: confirms the saves but leaves out where most of them went.\n' +
+		'Score 2 or lower if ANY of these: it asks the user where an item should be filed or ' +
+		`which project it belongs to; it reports findings about ${facts.lookupTopic} (phone ` +
+		'numbers, policies, steps to follow) that the user did not ask for; it claims a saved ' +
+		'item that is not listed above; or it does not confirm the saves at all.'
+	);
+}
+
 export interface BroadOpenerFacts {
 	projectName: string;
 	overdueTask: { title: string; due: string };

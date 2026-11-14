@@ -48,7 +48,7 @@ test('rejects stale provenance, failed outcomes and slow load-bearing cases', ()
 	assert.ok(failures.some((f) => f.includes('0/4')));
 	assert.ok(failures.some((f) => f.includes('latency')));
 });
-test('scores the Workspace chat battery on its own six cases with no Cedar latency limits', () => {
+test('scores the Workspace chat battery on its own seven cases with no Cedar latency limits', () => {
 	const c = card();
 	c.battery = 'workspace-chat';
 	c.cases = WORKSPACE_CHAT_CASES.map((n) => ({
@@ -73,7 +73,7 @@ test('scores the Workspace chat battery on its own six cases with no Cedar laten
 	c.cases.pop();
 	assert.ok(
 		evaluateGateScorecard(c, 3, 'workspace-chat').includes(
-			'The complete 6-case workspace-chat battery did not run'
+			'The complete 7-case workspace-chat battery did not run'
 		)
 	);
 });

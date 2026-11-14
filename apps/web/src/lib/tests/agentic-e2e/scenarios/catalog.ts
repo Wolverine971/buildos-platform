@@ -46,6 +46,7 @@ import { workspaceCase03FileCardScenario } from './workspace-chat/case-03-file-c
 import { workspaceCase04ProjectCardScenario } from './workspace-chat/case-04-project-card.scenario';
 import { workspaceCase05BroadOpenerScenario } from './workspace-chat/case-05-broad-opener.scenario';
 import { workspaceCase06ProjectChatStashScenario } from './workspace-chat/case-06-project-chat-stash.scenario';
+import { workspaceCase07BrainDumpFilesFirstScenario } from './workspace-chat/case-07-brain-dump-files-first.scenario';
 
 export const scenarioCatalog: Scenario[] = [
 	documentCreateScenario,
@@ -85,5 +86,6 @@ export const scenarioCatalog: Scenario[] = [
 	workspaceCase03FileCardScenario,
 	workspaceCase04ProjectCardScenario,
 	workspaceCase05BroadOpenerScenario,
-	workspaceCase06ProjectChatStashScenario
+	workspaceCase06ProjectChatStashScenario,
+	workspaceCase07BrainDumpFilesFirstScenario
 ];

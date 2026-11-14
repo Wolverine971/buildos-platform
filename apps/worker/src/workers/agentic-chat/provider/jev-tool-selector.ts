@@ -100,6 +100,10 @@ const planningReads = (entity: 'goal' | 'plan' | 'milestone' | 'risk') => [
 // Jev judges the capability a message asks for; code adds the lookups that find
 // its target, so Jev is never asked to guess which search a write will need.
 const SUPPORTING_TOOLS: Readonly<Record<string, readonly string[]>> = {
+	// The project tool creates the project only; the goals and tasks a new project
+	// is asked for are separate calls. Jev kept the project tool without the goal
+	// tool on 3 of 13 production turns, which costs a repair pass when one is needed.
+	create_onto_project: ['create_onto_goal', 'create_onto_task'],
 	create_onto_task: TASK_READS,
 	update_onto_task: TASK_READS,
 	move_onto_task: [...TASK_READS, 'get_onto_project_details'],
@@ -378,7 +382,11 @@ export class JevToolSelector implements AgenticChatToolSelectorPort {
 		if (
 			request.toolChoice !== 'auto' ||
 			request.liveVisionRequest ||
-			request.tools.length <= 3
+			request.tools.length <= 3 ||
+			// Project Setup mounts four tools and needs them all: Jev kept every one
+			// on 21/21 production turns (30 days to 2026-11-13) while adding ~285 ms
+			// before the first model pass. Nothing to cut, so do not ask.
+			request.contextType === 'project_create'
 		) {
 			emit();
 			return withSelectionOutcome(

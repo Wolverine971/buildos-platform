@@ -73,9 +73,33 @@ item lives; research only when asked.
 
 ## Deploy state
 
-`c3eba8749` ("updates", 22:41) swept the build mid-edit. The chat worker is live on it. The web
-build failed on a type error that is fixed in the working tree, so the site is still on the
-previous version. The rest is uncommitted and needs one push.
+Everything above is live: `ce965833a` (23:07) on web and the chat worker. Checked on production
+with the 11-13 Radar chat: "Looked through 24 · 14 in view · 3 opened", matching the turn's real
+reads; no overflow at 340 px; no console errors.
+
+## Paid check (2026-11-13, DJ approved, $0.0154 model + one judge call)
+
+Workspace battery **case 7, "brain dump files first"** (new, reusable):
+`AGENTIC_PROD_BATTERY_REPETITIONS=1 pnpm agentic:prod-battery --confirm-prod --battery=workspace-chat --cases=7`
+(one repetition always exits 1 with "requires three repetitions"; read `scorecard.json`).
+Evidence: `output/agentic-prod-battery/2026-11-14T04-16-50-876Z/`.
+
+- **Turn 1, brain dump (10.3 s):** `save_p` 0.87, capture on, both projects picked. Four saves in
+  one turn: the inspection task and a trip note in the bakery, the mulch task in the garden, the
+  refund task in the Workspace. No web lookups, no filing question. Every write carried an exact
+  quote; the stored injection hash matched the event's.
+- **Turn 2, follow-up (12.1 s):** `state_key` todo → in_progress and `due_at` moved a week, with
+  before → after and an exact quote. One reviewer revision round first.
+- **Gap found:** the reply was the bare receipt ("Created task …") and named no homes (judge 3/3,
+  borderline).
+
+## Built after the paid check (uncommitted, not live-verified)
+
+The receipt names the home of each new record on global turns: "Created task “Book the health
+inspection” in Harbor Bakery Launch", "… in your Workspace". `WriteLedgerEntry.projectId`,
+`renderDirectWriteReceipt(ledger, homes)`, homes from the workspace finder's ranked projects.
+Worker typecheck clean; worker chat tests 2,121 and runtime loop tests 432 pass. Needs a push;
+a re-run of case 7 (about 1.5¢, needs DJ's OK) would confirm the wording live.
 
 ## Not done
 
@@ -83,7 +107,7 @@ previous version. The rest is uncommitted and needs one push.
   still differ until the session reloads.
 - Document and table Undo is not known after a reload (rows read "Updated" again).
 - Assignee, goal/milestone link and calendar-update before → after.
-- A real-browser look at the new card (380 px, dark) and the paid check: one brain dump plus one
-  update follow-up on the harness account, about 3¢ on DeepSeek V4.1 Flash (DJ approved 11-13).
-- `save` threshold calibration: read `workspace.save_p` from real turns. The September eval
-  harness was deleted in `1499e4d54`, so there is no free replay.
+- At phone width an opened chip's title truncates beside its "› sections" suffix.
+- The reply does not yet offer the lookup it skipped (the refund call).
+- `save` threshold calibration: two readings so far (0.87, 0.84); read `workspace.save_p` from
+  real turns. The September eval harness was deleted in `1499e4d54`, so there is no free replay.

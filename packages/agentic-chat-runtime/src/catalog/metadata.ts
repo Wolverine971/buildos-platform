@@ -133,11 +133,10 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		category: 'search'
 	},
 	search_onto_documents: {
-		summary: 'Keyword search for documents by title.',
+		summary: 'Keyword search for documents by title, description, or body text.',
 		capabilities: [
 			'Supports project/type/state filters',
-			'Returns markdown header outlines',
-			'Does not return full document bodies'
+			'Returns matching documents with metadata, not full bodies'
 		],
 		contexts: ['global', 'project'],
 		category: 'search'
@@ -168,8 +167,11 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		category: 'search'
 	},
 	get_onto_project_details: {
-		summary: 'Load the complete ontology project graph and metadata.',
-		capabilities: ['Returns nested entities', 'Use after identifying a project'],
+		summary: "Load one project's own record: description, type, state, dates, and properties.",
+		capabilities: [
+			'For a project property that the loaded context does not already show',
+			'Status and progress questions start from get_project_overview instead'
+		],
 		contexts: ['project'],
 		timeoutMs: 45000,
 		category: 'read'
@@ -507,9 +509,11 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	// ============================================
 
 	create_onto_project: {
-		summary:
-			'Web-owned composite project creation with classified type_key, inferred props, and optional initial graph.',
-		capabilities: ['Supports goals/plans/tasks scaffolding', 'Captures clarifications'],
+		summary: 'Create a new project: the project record and its starting Context document.',
+		capabilities: [
+			'For asks to start, set up, or create a project',
+			'Goals and tasks for the new project are created afterwards with their own tools'
+		],
 		contexts: ['project_create', 'project'],
 		category: 'write'
 	},
@@ -540,9 +544,10 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		category: 'write'
 	},
 	create_onto_document: {
-		summary: 'Create a document linked to a project (brief/spec/context).',
+		summary:
+			"Create a document or note (note, brief, spec, research) in a project or the user's Workspace.",
 		capabilities: [
-			'Validates ownership',
+			'For asks to save, write down, or keep a note or document',
 			'Stores body markdown/props',
 			'Supports tree placement via parent_id/position'
 		],
@@ -582,11 +587,10 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		category: 'write'
 	},
 	create_task_document: {
-		summary: 'Create or attach a document to a specific task workspace.',
+		summary: 'Attach an existing document to a task as one of its working documents.',
 		capabilities: [
-			'Creates task_has_document edge',
-			'Can attach existing docs',
-			'Uses document project_id for project membership'
+			'For asks to link or attach a document to a task',
+			'Does not create a new document'
 		],
 		contexts: ['project'],
 		category: 'write'
@@ -689,11 +693,10 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		timeoutMs: 45000
 	},
 	tag_onto_entity: {
-		summary: 'Tag collaborators on a task, goal, or document (content mention or manual ping).',
+		summary: 'Notify (ping) project members about a task, goal, or document.',
 		capabilities: [
-			'Supports explicit user IDs or @handle resolution',
-			'Supports content-mode canonical mention injection or ping-only mode',
-			'Reuses standard mention notification rules and permissions'
+			'For asks to tag, ping, or notify a collaborator about a specific item',
+			'Sends a notification only; never edits the item'
 		],
 		contexts: ['project'],
 		category: 'write'
@@ -874,13 +877,9 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		category: 'search'
 	},
 	web_visit: {
-		summary: 'Fetch a specific URL, convert HTML to markdown, and persist metadata.',
+		summary: 'Read one specific public web page by URL and return its text.',
 		capabilities: [
-			'Best for reading known pages',
-			'Fast deterministic HTML-to-markdown conversion',
-			'Stores a reusable snapshot plus immutable page-version evidence',
-			'Returns stable chunk selectors and content hashes for grounded citation',
-			'Optional link list for related sources',
+			'Best for reading a page the user linked or a search returned',
 			'Pairs with web_search for discovery'
 		],
 		contexts: ['base', 'global', 'project_create', 'project'],
@@ -923,12 +922,11 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		category: 'utility'
 	},
 	delegate_task: {
-		summary: 'Dispatch a self-contained task to a background Agent Run.',
+		summary:
+			'Hand a project change to a background agent that stages it for the user to review.',
 		capabilities: [
-			'Creates and queues an agent run without blocking the chat turn',
-			'Supports read-only or explicitly requested read-write scope',
-			'Can request a higher-reasoning deep lane with a bounded observed-cost budget',
-			'Can stage read-write changes for later review before commit'
+			'Only for asks to do work in the background or to stage a change set for review',
+			'Stages the changes; nothing is applied until the user approves'
 		],
 		contexts: ['global', 'project'],
 		timeoutMs: 30000,

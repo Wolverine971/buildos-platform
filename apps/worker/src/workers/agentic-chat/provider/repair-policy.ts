@@ -288,7 +288,24 @@ const DIRECT_WRITE_RECEIPT_KINDS: Readonly<Record<string, string>> = {
 	entity: 'item'
 };
 
-function describeDirectWrite(entry: WriteLedgerEntry): string {
+/**
+ * Names of the homes a global turn could file into, by project id (from the workspace
+ * finder's picks; the Workspace reads "your Workspace"). Empty in a project chat, where
+ * every new record's home is the open project and naming it would be noise.
+ */
+export type DirectWriteHomeNames = ReadonlyMap<string, string>;
+
+function describeDirectWrite(entry: WriteLedgerEntry, homes?: DirectWriteHomeNames): string {
+	const line = describeDirectWriteChange(entry);
+	// A new record says where it went (2026-11-13: a brain dump filed four things into
+	// three homes and the reply named none of them). Updates stay where they already were.
+	const home =
+		entry.action === 'create' && entry.projectId ? homes?.get(entry.projectId) : undefined;
+	const name = home ? cleanReceiptText(home) : '';
+	return name ? `${line} in ${name}` : line;
+}
+
+function describeDirectWriteChange(entry: WriteLedgerEntry): string {
 	const verb = DIRECT_WRITE_RECEIPT_VERBS[entry.action ?? ''] ?? 'saved';
 	const rawKind = entry.entityKind ?? 'item';
 	if (rawKind === 'relationship') return `${verb} the items`;
@@ -310,9 +327,12 @@ function describeDirectWrite(entry: WriteLedgerEntry): string {
  * last-resort receipt, so it never names tools, contracts, or review. Null
  * unless every entry succeeded.
  */
-export function renderDirectWriteReceipt(ledger: readonly WriteLedgerEntry[]): string | null {
+export function renderDirectWriteReceipt(
+	ledger: readonly WriteLedgerEntry[],
+	homes?: DirectWriteHomeNames
+): string | null {
 	if (ledger.length === 0 || ledger.some((entry) => entry.status !== 'success')) return null;
-	const lines = ledger.map(describeDirectWrite);
+	const lines = ledger.map((entry) => describeDirectWrite(entry, homes));
 	if (lines.length === 1) return `Done — ${lines[0]}.`;
 	return [
 		'Done:',

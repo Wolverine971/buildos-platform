@@ -362,6 +362,34 @@ describe('JevToolSelector', () => {
 		).toEqual(['update_onto_task']);
 	});
 
+	it('skips Project Setup, whose four tools are all needed, without calling Jev', async () => {
+		const fetchImpl = vi.fn();
+		const { instance, receipts } = selector(fetchImpl as unknown as typeof fetch);
+		const original = request({ contextType: 'project_create' });
+
+		expectUnchangedSurface(await instance.select(original), original, 'skipped');
+		expect(fetchImpl).not.toHaveBeenCalled();
+		expect(receipts[0]).toMatchObject({ status: 'skipped', reason: 'ineligible_surface' });
+	});
+
+	it('keeps goal and task creation with a new project', () => {
+		const surface = [
+			'create_onto_project',
+			'create_onto_goal',
+			'create_onto_task',
+			'web_search'
+		].map(tool);
+
+		expect(
+			selectJevToolDefinitions(surface, {
+				create_onto_project: 0.9,
+				create_onto_goal: 0.1,
+				create_onto_task: 0.1,
+				web_search: 0.01
+			}).map((selected) => selected.function.name)
+		).toEqual(['create_onto_project', 'create_onto_goal', 'create_onto_task']);
+	});
+
 	it('skips gate passes without calling Jev', async () => {
 		const fetchImpl = vi.fn();
 		const { instance, receipts } = selector(fetchImpl as unknown as typeof fetch);

@@ -32,6 +32,8 @@ export type WriteLedgerEntry = {
 	/** Canonical scalar values requested by a successful write, keyed by durable field. */
 	changedValues?: Record<string, string>;
 	title?: string;
+	/** The project a saved record lives in (the Workspace is one), when the call named it. */
+	projectId?: string;
 	stateKey?: string;
 	typeKey?: string;
 	parentId?: string;
@@ -506,6 +508,9 @@ function buildEntryFromExecution(execution: FastToolExecution): WriteLedgerEntry
 			readString(args.name) ??
 			readString(project?.name);
 		if (title) entry.title = title;
+		// Where it landed, so a receipt can say "in <project>" (a project is its own home).
+		const projectId = entityKind === 'project' ? undefined : readString(args.project_id);
+		if (projectId) entry.projectId = projectId;
 		const typeKey =
 			extractTypeKey(result) ?? readString(args.type_key) ?? readString(project?.type_key);
 		if (typeKey) entry.typeKey = typeKey;

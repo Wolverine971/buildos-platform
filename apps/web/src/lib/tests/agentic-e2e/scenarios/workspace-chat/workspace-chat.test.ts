@@ -4,6 +4,7 @@
 // writes to production as the harness account, so registration, case shape, the
 // card reader and the destructive-reset account guard are checked here for free.
 import { describe, expect, it } from 'vitest';
+import { locateSourceQuote } from '@buildos/shared-types';
 import type { TurnResult } from '../../harness/types';
 import { scenarioCatalog } from '../catalog';
 import { selectBattery } from '../../harness/battery';
@@ -13,7 +14,13 @@ import {
 	harnessCivilDate,
 	readyCardsForTool
 } from './fixture';
-import { RECAP_RULE, buildBroadOpenerRubric, buildWorkspaceListingRubric } from './rubrics';
+import {
+	RECAP_RULE,
+	buildBrainDumpRubric,
+	buildBroadOpenerRubric,
+	buildWorkspaceListingRubric
+} from './rubrics';
+import { CASE_07_BRAIN_DUMP, CASE_07_FOLLOW_UP } from './case-07-brain-dump-files-first.scenario';
 
 const BATTERY = selectBattery(scenarioCatalog, 'workspace-chat');
 
@@ -24,8 +31,12 @@ const EXPECTED: Array<[number, string, 'global' | 'project']> = [
 	[3, 'workspace-03-file-card', 'global'],
 	[4, 'workspace-04-project-card', 'global'],
 	[5, 'workspace-05-broad-opener', 'global'],
-	[6, 'workspace-06-project-chat-stash', 'project']
+	[6, 'workspace-06-project-chat-stash', 'project'],
+	[7, 'workspace-07-brain-dump-files-first', 'global']
 ];
+
+/** Case 7 is the only multi-turn case: the brain dump, then a follow-up update. */
+const TURN_COUNTS: Readonly<Record<number, number>> = { 7: 2 };
 
 const CARD = {
 	card_rail: 'proposal_v1',
@@ -55,22 +66,24 @@ function turnWith(toolResults: Array<Record<string, unknown>>): TurnResult {
 }
 
 describe('workspace-chat battery registration', () => {
-	it('registers the six cases in order with the ids the prod battery maps', () => {
+	it('registers the seven cases in order with the ids the prod battery maps', () => {
 		expect(BATTERY.map((scenario) => [scenario.batteryCase, scenario.id])).toEqual(
 			EXPECTED.map(([number, id]) => [number, id])
 		);
 	});
 
-	it('runs each case as one turn in the intended chat, with seed and cleanup', () => {
+	it('runs each case in the intended chat, with seed and cleanup', () => {
 		for (const scenario of BATTERY) {
 			const [, , context] = EXPECTED.find(([number]) => number === scenario.batteryCase)!;
 			expect(scenario.category).toBe('workspace-chat');
 			expect(scenario.title).toMatch(/^Workspace \d — /);
 			expect(typeof scenario.seed).toBe('function');
 			expect(typeof scenario.teardown).toBe('function');
-			expect(scenario.turns).toHaveLength(1);
-			expect(scenario.turns[0]!.contextType).toBe(context);
-			expect(scenario.turns[0]!.message.trim().length).toBeGreaterThan(20);
+			expect(scenario.turns).toHaveLength(TURN_COUNTS[scenario.batteryCase!] ?? 1);
+			for (const turn of scenario.turns) {
+				expect(turn.contextType).toBe(context);
+				expect(turn.message.trim().length).toBeGreaterThan(20);
+			}
 		}
 		const project = BATTERY.find((scenario) => scenario.batteryCase === 6)!;
 		expect(
@@ -78,17 +91,17 @@ describe('workspace-chat battery registration', () => {
 		).toBe('p');
 	});
 
-	it('declares write tools only on the two save cases and judges only the two prose cases', () => {
+	it('declares write tools only on the save cases and judges only the prose cases', () => {
 		expect(
 			BATTERY.filter((scenario) => (scenario.requiredMutationTools ?? []).length > 0).map(
 				(scenario) => scenario.batteryCase
 			)
-		).toEqual([1, 6]);
+		).toEqual([1, 6, 7]);
 		expect(
 			BATTERY.filter((scenario) => scenario.turns.some((turn) => turn.judge)).map(
 				(scenario) => scenario.batteryCase
 			)
-		).toEqual([2, 5]);
+		).toEqual([2, 5, 7]);
 	});
 
 	it('keeps ids unique across the whole catalog', () => {
@@ -135,7 +148,50 @@ describe('workspace-chat fixture', () => {
 	});
 });
 
+describe('workspace-chat case 7 (brain dump)', () => {
+	const scenario = BATTERY.find((entry) => entry.batteryCase === 7)!;
+
+	it('speaks the three to-dos as words a write can quote back', () => {
+		// The case maps each saved item to the user's words; a rewording that broke these
+		// phrases would make every quote check fail for the wrong reason.
+		for (const phrase of [
+			'I need to book the health inspection before opening week',
+			'I need to order mulch for the raised beds',
+			'I need to call Delta Airlines and get a refund for my checked bag'
+		]) {
+			expect(locateSourceQuote(CASE_07_BRAIN_DUMP, phrase)?.match).toBe('exact');
+			expect(locateSourceQuote(CASE_07_FOLLOW_UP, phrase)).toBeNull();
+		}
+		expect(scenario.turns[0]!.message).toBe(CASE_07_BRAIN_DUMP);
+		expect(scenario.turns[1]!.message).toBe(CASE_07_FOLLOW_UP);
+	});
+
+	it('asks no question in the dump and gives the follow-up a full date', () => {
+		expect(CASE_07_BRAIN_DUMP).not.toContain('?');
+		expect(CASE_07_FOLLOW_UP).toMatch(/push the deck oven order to \w+, \w+ \d{1,2}, \d{4} /);
+	});
+
+	it('keeps the provenance checks as checkpoints so the follow-up still runs', () => {
+		expect(scenario.turns.map((turn) => (turn.checkpoints ?? []).length)).toEqual([3, 3]);
+		expect(scenario.turns.map((turn) => Boolean(turn.judge))).toEqual([true, false]);
+		expect(scenario.requiredMutationTools).toEqual(['create_onto_task', 'update_onto_task']);
+	});
+});
+
 describe('workspace-chat rubrics', () => {
+	it('grades a brain-dump reply on what it says was saved, never on filing questions', () => {
+		const rubric = buildBrainDumpRubric({
+			saved: [{ kind: 'task', title: 'Order mulch', home: 'the garden project' }],
+			lookupTopic: 'the refund'
+		});
+		expect(rubric).toContain('- task: "Order mulch" → the garden project');
+		expect(rubric).toContain('asks the user where an item should be filed');
+		expect(rubric).toContain('at most offers to look up the refund');
+		expect(buildBrainDumpRubric({ saved: [], lookupTopic: 'x' })).toContain(
+			'(nothing was saved)'
+		);
+	});
+
 	it('fails a listing that drops, invents or misfiles an item', () => {
 		const rubric = buildWorkspaceListingRubric({
 			looseItems: [

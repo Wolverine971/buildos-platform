@@ -626,6 +626,9 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			},
 			mentioned_user_ids: {
 				type: 'array',
+				// The shared definition calls this optional; the worker requires it.
+				description:
+					'Recipient user UUIDs (required). Each must be an active member of the project.',
 				minItems: 1,
 				maxItems: 25,
 				uniqueItems: true,

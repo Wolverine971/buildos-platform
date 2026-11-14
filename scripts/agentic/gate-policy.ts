@@ -5,7 +5,7 @@ export const CEDAR_CASES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14];
  * Workspace chat battery (tasker/146). Run as its own slice; it is never part of
  * the 13-case Cedar House gate, and a green run is never a full post-deploy pass.
  */
-export const WORKSPACE_CHAT_CASES = [1, 2, 3, 4, 5, 6];
+export const WORKSPACE_CHAT_CASES = [1, 2, 3, 4, 5, 6, 7];
 
 export type BatteryName = 'cedar-house' | 'workspace-chat';
 

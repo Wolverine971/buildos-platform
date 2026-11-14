@@ -111,8 +111,8 @@ test('selects the Workspace chat battery and its cases; only Cedar case 10 needs
 	assert.throws(() => parseBatterySelection(['--battery=cedar']), /--battery must be one of/);
 	assert.deepEqual(parseCaseSelection(['--cases=6,1'], 'workspace-chat'), [1, 6]);
 	assert.throws(
-		() => parseCaseSelection(['--cases=7'], 'workspace-chat'),
-		/Workspace chat cases from: 1, 2, 3, 4, 5, 6/
+		() => parseCaseSelection(['--cases=8'], 'workspace-chat'),
+		/Workspace chat cases from: 1, 2, 3, 4, 5, 6, 7/
 	);
 	assert.equal(batteryNeedsCalendar('cedar-house', null), true);
 	assert.equal(batteryNeedsCalendar('cedar-house', [1, 2]), false);
