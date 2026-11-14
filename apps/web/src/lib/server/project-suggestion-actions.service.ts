@@ -29,6 +29,7 @@ import {
 import { archiveDocumentInTree } from '$lib/services/ontology/doc-structure.service';
 import { logUpdateAsync } from '$lib/services/async-activity-logger';
 import { archiveTaskCanonical } from '$lib/server/task-archive.service';
+import { buildSuggestionReceipt } from '$lib/server/suggestion-receipt';
 import { isProjectSuggestionFresh } from '$lib/server/project-loop-snapshot.service';
 import { finalizeProjectLoopRunIfComplete } from '$lib/server/project-loop-run.service';
 import { captureServerEvent } from '$lib/server/posthog';
@@ -1220,13 +1221,20 @@ export async function decideProjectSuggestion(params: {
 		projectId
 	});
 	const { appliedCount, errors } = replay;
+	// What was written, with the before values the check read from live state a moment ago.
+	const receipt = buildSuggestionReceipt({
+		operations,
+		verified: integrity.summary.operations,
+		applied: replay.outcomes
+	});
 
 	const result: ProjectSuggestionResult = {
 		ok: errors.length === 0,
 		applied_operations: appliedCount,
 		execution_policy: 'prevalidated_sequential',
 		partial_failure: appliedCount > 0 && errors.length > 0,
-		...(errors.length ? { errors } : {})
+		...(errors.length ? { errors } : {}),
+		...(receipt.length ? { receipt } : {})
 	};
 
 	const { data: updated, error: updateError } = await supabase

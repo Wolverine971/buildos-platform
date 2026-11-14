@@ -6,6 +6,7 @@
 // stored suggestion rows and review runs. An item's state comes from its status and result
 // fields, never from its wording.
 
+import { buildEntityHref, type RecordLinkKind } from '@buildos/shared-types';
 import {
 	buildAppliedCheck,
 	buildHeldCheck,
@@ -53,10 +54,43 @@ export type ActivityRunRow = {
 	created_at: string;
 };
 
+/** An email_project_updates row ("From your email"). */
+export type ActivityEmailRow = {
+	id: string;
+	project_id: string;
+	project_name: string | null;
+	action: 'create_task' | 'update_task';
+	task_id: string | null;
+	title: string;
+	why: string | null;
+	proposal: { title?: string; due_date?: string; state_key?: string } | null;
+	status: string;
+	subject: string | null;
+	from: string | null;
+	created_at: string;
+	decided_at: string | null;
+};
+
+/** A project log row for a task or project the user changed themselves. */
+export type ActivityLogRow = {
+	id: string;
+	project_id: string;
+	project_name: string | null;
+	entity_type: 'task' | 'project';
+	entity_id: string;
+	action: string;
+	before: Record<string, unknown> | null;
+	after: Record<string, unknown> | null;
+	created_at: string;
+};
+
 export type ActivityPayload = {
 	since: string;
 	suggestions: ActivitySuggestionRow[];
 	runs: ActivityRunRow[];
+	emails?: ActivityEmailRow[];
+	/** Newest first. Only the user's own direct changes (not chat or agents). */
+	logs?: ActivityLogRow[];
 };
 
 export type ActivityState =
@@ -66,9 +100,17 @@ export type ActivityState =
 	| 'you_applied'
 	| 'you_handled'
 	| 'you_dismissed'
+	| 'you_settled'
 	| 'closed'
 	| 'in_progress'
 	| 'failed';
+
+/** One change, as a line; with the record's link and before → after rows when known. */
+export type ActivityChange = {
+	text: string;
+	href: string | null;
+	rows: Array<{ label: string; before: string | null; after: string }>;
+};
 
 export type ActivityStep = { key: string; label: string; at: string | null; detail: string | null };
 
@@ -85,8 +127,8 @@ export type ActivityEntry = {
 	summary: string | null;
 	whyNow: string | null;
 	records: TrailRecord[];
-	/** What it changed or would change, one line each. */
-	changes: string[];
+	/** What it changed or would change. */
+	changes: ActivityChange[];
 	check: TrailCheck | null;
 	steps: ActivityStep[];
 };
@@ -115,6 +157,7 @@ const STATE_COPY: Record<ActivityState, { label: string; tone: ActivityEntry['to
 	you_applied: { label: 'You applied it', tone: 'done' },
 	you_handled: { label: 'You marked it handled', tone: 'done' },
 	you_dismissed: { label: 'You said not needed', tone: 'quiet' },
+	you_settled: { label: 'You settled it', tone: 'done' },
 	closed: { label: 'Closed by a later review', tone: 'quiet' },
 	in_progress: { label: 'In progress', tone: 'quiet' },
 	failed: { label: "Didn't apply", tone: 'warn' }
@@ -130,6 +173,16 @@ const CLOSE_REASONS: Record<string, string> = {
 	merged: 'Merged into another item',
 	aged_out: 'No longer flagged'
 };
+
+const LINK_KINDS: ReadonlySet<string> = new Set([
+	'project',
+	'task',
+	'document',
+	'goal',
+	'milestone',
+	'plan',
+	'risk'
+]);
 
 /** Reviews this close together are one night's pass. */
 const SAME_PASS_MS = 3 * 3_600_000;
@@ -195,13 +248,41 @@ function entryFrom(row: ActivitySuggestionRow): ActivityEntry {
 	const heldCheck = record(rollup?.auto_check);
 	const source = sourceLabel(row.kind);
 
-	const changes = list(row.operations).flatMap((operation) => {
-		const label = text(operation.label);
-		return label ? [label] : [];
-	});
+	// An applied change has a receipt of what was written; otherwise each step's label.
+	const receipt = list(result?.receipt);
+	const changes: ActivityChange[] = receipt.length
+		? receipt.map((step) => {
+				const entity = record(step.entity);
+				const kind = text(entity?.kind);
+				const id = text(entity?.id);
+				const target = text(step.target);
+				const action = text(step.action_label) ?? 'Change';
+				return {
+					text: target ? `${action} · ${target}` : action,
+					href:
+						kind && id && LINK_KINDS.has(kind)
+							? buildEntityHref(
+									kind as RecordLinkKind,
+									id,
+									kind === 'project' ? id : row.project_id
+								)
+							: null,
+					rows: list(step.changes).flatMap((change) => {
+						const label = text(change.label);
+						const after = text(change.value);
+						return label && after
+							? [{ label, before: text(change.before), after }]
+							: [];
+					})
+				};
+			})
+		: list(row.operations).flatMap((operation) => {
+				const label = text(operation.label);
+				return label ? [{ text: label, href: null, rows: [] }] : [];
+			});
 	if (!changes.length && list(row.operations).length) {
 		const summary = text(preview?.summary);
-		if (summary) changes.push(summary);
+		if (summary) changes.push({ text: summary, href: null, rows: [] });
 	}
 
 	let check: TrailCheck | null = null;
@@ -293,18 +374,21 @@ function entryFrom(row: ActivitySuggestionRow): ActivityEntry {
 	};
 }
 
-function byProject(
-	rows: ActivitySuggestionRow[],
-	bluf: (entries: ActivityEntry[]) => string
-): ActivityProject[] {
+type Placed = { projectId: string; projectName: string | null; entry: ActivityEntry };
+
+function placed(row: ActivitySuggestionRow): Placed {
+	return { projectId: row.project_id, projectName: row.project_name, entry: entryFrom(row) };
+}
+
+function byProject(items: Placed[], bluf: (entries: ActivityEntry[]) => string): ActivityProject[] {
 	const groups = new Map<string, { name: string; entries: ActivityEntry[] }>();
-	for (const row of rows) {
-		const group = groups.get(row.project_id) ?? {
-			name: row.project_name ?? 'Project',
+	for (const item of items) {
+		const group = groups.get(item.projectId) ?? {
+			name: item.projectName ?? 'Project',
 			entries: []
 		};
-		group.entries.push(entryFrom(row));
-		groups.set(row.project_id, group);
+		group.entries.push(item.entry);
+		groups.set(item.projectId, group);
 	}
 	return [...groups.entries()]
 		.map(([id, group]) => {
@@ -312,6 +396,194 @@ function byProject(
 			return { id, name: group.name, bluf: bluf(entries), entries };
 		})
 		.sort((a, b) => (b.entries[0]?.at ?? '').localeCompare(a.entries[0]?.at ?? ''));
+}
+
+const ANSWERED: readonly ActivityState[] = [
+	'you_applied',
+	'you_handled',
+	'you_dismissed',
+	'you_settled',
+	'undone'
+];
+
+// Display only: a status key as words ("in_progress" → "In progress").
+function stateWords(stateKey: unknown): string | null {
+	const words = (text(stateKey) ?? '').replaceAll('_', ' ').trim();
+	if (!words) return null;
+	if (words === 'todo') return 'To do';
+	return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+// A civil date ("2026-11-13") or a timestamp, as "Nov 13". Civil dates stay on their day.
+function dayWords(value: unknown): string | null {
+	const raw = text(value);
+	if (!raw) return null;
+	const civil = raw.length === 10;
+	const date = new Date(civil ? `${raw}T12:00:00Z` : raw);
+	if (Number.isNaN(date.getTime())) return null;
+	return date.toLocaleDateString(undefined, {
+		month: 'short',
+		day: 'numeric',
+		...(civil ? { timeZone: 'UTC' } : {})
+	});
+}
+
+function senderName(from: string | null): string | null {
+	if (!from) return null;
+	// "Jane Doe <jane@acme.com>" → "Jane Doe" (a header format, not language).
+	const name = from.split('<')[0]?.trim().replace(/^"|"$/g, '');
+	return name || from;
+}
+
+/** A "From your email" card: waiting, applied, set aside, or expired unanswered. */
+function emailEntry(row: ActivityEmailRow): Placed | null {
+	const states: Record<string, { state: ActivityState; label?: string }> = {
+		pending: { state: 'waiting' },
+		applied: { state: 'you_applied' },
+		dismissed: { state: 'you_dismissed', label: 'You said not now' },
+		expired: { state: 'closed', label: 'Expired unanswered' },
+		failed: { state: 'failed' }
+	};
+	const known = states[row.status];
+	if (!known) return null;
+	const proposal = row.proposal ?? {};
+	const rows: ActivityChange['rows'] = [];
+	const due = dayWords(proposal.due_date);
+	if (due) rows.push({ label: 'Due', before: null, after: due });
+	const status = stateWords(proposal.state_key);
+	if (status) rows.push({ label: 'Status', before: null, after: status });
+	const taskHref = row.task_id ? buildEntityHref('task', row.task_id, row.project_id) : null;
+	const sender = senderName(row.from);
+	const steps: ActivityStep[] = [
+		{
+			key: 'seen',
+			label: 'Found in your email',
+			at: row.created_at,
+			detail:
+				[sender, row.subject ? `“${row.subject}”` : null].filter(Boolean).join(': ') || null
+		}
+	];
+	if (known.state !== 'waiting') {
+		steps.push({
+			key: 'answer',
+			label: known.label ?? STATE_COPY[known.state].label,
+			at: row.decided_at,
+			detail: null
+		});
+	}
+	return {
+		projectId: row.project_id,
+		projectName: row.project_name,
+		entry: {
+			id: `email:${row.id}`,
+			headline: row.title,
+			state: known.state,
+			stateLabel: known.label ?? STATE_COPY[known.state].label,
+			tone: STATE_COPY[known.state].tone,
+			at: row.decided_at ?? row.created_at,
+			source: 'From your email',
+			summary: row.why,
+			whyNow: null,
+			records: [],
+			changes: [
+				{
+					text: row.action === 'create_task' ? 'New task' : 'Update task',
+					href: taskHref,
+					rows
+				}
+			],
+			check: null,
+			steps
+		}
+	};
+}
+
+/**
+ * Overdue tasks the user settled themselves, and projects they paused or finished: what the
+ * inbox's "Did this happen?" and "Still on?" cards ask for. Read from each record's latest
+ * project log row, by its before and after fields. A change that was later put back (the
+ * latest row matches no rule) is left out.
+ */
+function settledEntries(logs: ActivityLogRow[]): Placed[] {
+	const latest = new Map<string, ActivityLogRow>();
+	for (const log of [...logs].sort((a, b) => b.created_at.localeCompare(a.created_at))) {
+		const key = `${log.entity_type}:${log.entity_id}`;
+		if (!latest.has(key)) latest.set(key, log);
+	}
+	const out: Placed[] = [];
+	for (const log of latest.values()) {
+		const before = log.before ?? {};
+		const after = log.after ?? {};
+		let label: string | null = null;
+		let rows: ActivityChange['rows'] = [];
+		let headline: string | null = null;
+		let wasDue: string | null = null;
+
+		if (log.entity_type === 'project') {
+			const next = text(after.state_key);
+			if (next === text(before.state_key)) continue;
+			if (next === 'paused') label = 'You paused the project';
+			else if (next === 'completed') label = 'You marked the project finished';
+			else continue;
+			headline = log.project_name ?? 'Project';
+			rows = [
+				{ label: 'Status', before: stateWords(before.state_key), after: stateWords(next)! }
+			];
+		} else {
+			const due = text(before.due_at);
+			const dueMs = due ? Date.parse(due) : Number.NaN;
+			const overdue = dueMs < Date.parse(log.created_at) && before.state_key !== 'done';
+			if (!overdue) continue;
+			wasDue = dayWords(due);
+			const nextDue = text(after.due_at);
+			if (log.action === 'deleted' || text(after.archived_at)) {
+				label = 'You dropped it';
+				rows = [
+					{ label: 'Status', before: stateWords(before.state_key), after: 'Archived' }
+				];
+			} else if (after.state_key === 'done') {
+				label = 'You marked it done';
+				rows = [{ label: 'Status', before: stateWords(before.state_key), after: 'Done' }];
+			} else if (nextDue && Date.parse(nextDue) > dueMs) {
+				label = 'You moved it';
+				rows = [{ label: 'Due', before: wasDue, after: dayWords(nextDue) ?? nextDue }];
+			} else continue;
+			headline = text(before.title) ?? text(after.title) ?? 'Task';
+		}
+
+		out.push({
+			projectId: log.project_id,
+			projectName: log.project_name,
+			entry: {
+				id: `log:${log.id}`,
+				headline,
+				state: 'you_settled',
+				stateLabel: label,
+				tone: 'done',
+				at: log.created_at,
+				source:
+					log.entity_type === 'project' ? 'Overdue work, gone quiet' : 'Past its date',
+				summary: null,
+				whyNow: null,
+				records: [],
+				changes: [
+					{
+						text: log.entity_type === 'project' ? 'Project' : 'Task',
+						href: buildEntityHref(log.entity_type, log.entity_id, log.project_id),
+						rows
+					}
+				],
+				check: null,
+				steps: [
+					...(wasDue
+						? [{ key: 'due', label: `Was due ${wasDue}`, at: null, detail: null }]
+						: []),
+					{ key: 'answer', label, at: log.created_at, detail: null }
+				]
+			}
+		});
+	}
+	return out;
 }
 
 /**
@@ -341,7 +613,7 @@ function happenedBluf(entries: ActivityEntry[]): string {
 		entries.filter((entry) => states.includes(entry.state)).length;
 	const parts = [
 		[count(['applied_for_you']), 'applied for you'],
-		[count(['you_applied', 'you_handled', 'you_dismissed', 'undone']), 'you answered'],
+		[count([...ANSWERED]), 'you answered'],
 		[count(['closed']), 'closed on their own'],
 		[count(['failed']), "didn't apply"]
 	] as const;
@@ -356,8 +628,23 @@ export function buildInboxActivity(payload: ActivityPayload): InboxActivity {
 	const settled = payload.suggestions.filter(
 		(row) => row.status !== 'pending' && stateOf(row) !== 'in_progress'
 	);
-	const happened = byProject(settled, happenedBluf);
-	const suggested = byProject(waiting, (entries) => plural(entries.length, 'suggestion'));
+	const emails = (payload.emails ?? []).flatMap((row) => {
+		const item = emailEntry(row);
+		return item ? [item] : [];
+	});
+	const happened = byProject(
+		[
+			...settled.map(placed),
+			...emails.filter((item) => item.entry.state !== 'waiting'),
+			...settledEntries(payload.logs ?? [])
+		],
+		happenedBluf
+	);
+	const waitingItems = [
+		...waiting.map(placed),
+		...emails.filter((item) => item.entry.state === 'waiting')
+	];
+	const suggested = byProject(waitingItems, (entries) => plural(entries.length, 'suggestion'));
 
 	const runs = [...payload.runs].sort((a, b) => b.created_at.localeCompare(a.created_at));
 	const newest = runs[0];
@@ -384,9 +671,7 @@ export function buildInboxActivity(payload: ActivityPayload): InboxActivity {
 
 	const all = happened.flatMap((project) => project.entries);
 	const forYou = all.filter((entry) => entry.state === 'applied_for_you').length;
-	const answered = all.filter((entry) =>
-		['you_applied', 'you_handled', 'you_dismissed', 'undone'].includes(entry.state)
-	).length;
+	const answered = all.filter((entry) => ANSWERED.includes(entry.state)).length;
 	const closed = all.filter((entry) => entry.state === 'closed').length;
 	const did = [
 		forYou ? `${plural(forYou, 'change')} made for you` : null,
@@ -397,8 +682,8 @@ export function buildInboxActivity(payload: ActivityPayload): InboxActivity {
 		did.length
 			? `In the last ${INBOX_ACTIVITY_DAYS} days: ${did.join(', ')}.`
 			: `Nothing changed in the last ${INBOX_ACTIVITY_DAYS} days.`,
-		waiting.length
-			? `${plural(waiting.length, 'suggestion')} waiting on you across ${plural(suggested.length, 'project')}.`
+		waitingItems.length
+			? `${plural(waitingItems.length, 'suggestion')} waiting on you across ${plural(suggested.length, 'project')}.`
 			: 'Nothing is waiting on you.'
 	];
 
@@ -409,7 +694,7 @@ export function buildInboxActivity(payload: ActivityPayload): InboxActivity {
 		suggested,
 		counts: {
 			happened: all.length,
-			suggested: waiting.length,
+			suggested: waitingItems.length,
 			reviews: runs.length,
 			costUsd: runs.reduce((sum, run) => sum + (run.cost_usd ?? 0), 0)
 		}

@@ -4,11 +4,14 @@
 // The rows behind the inbox's "What happened / what's suggested" view (tasker 156): every
 // suggestion still waiting (touched by a review in the last month), every one settled in the last week, and that week's review runs,
 // across the projects the user can read (RLS on project_suggestions and project_loop_runs).
+// Plus the user's "From your email" cards and their own direct task / project changes.
 // The browser builds the view from these rows (inbox-activity.ts) so dates use its time zone.
 import type { RequestHandler } from './$types';
 import {
 	INBOX_ACTIVITY_DAYS,
 	INBOX_WAITING_DAYS,
+	type ActivityEmailRow,
+	type ActivityLogRow,
 	type ActivityPayload,
 	type ActivityRunRow,
 	type ActivitySuggestionRow
@@ -21,7 +24,22 @@ const SUGGESTION_SELECT =
 const RUN_SELECT =
 	'id, project_id, trigger_reason, status, suggestion_count, cost_usd, created_at, project:onto_projects(name, deleted_at)';
 
+const EMAIL_SELECT =
+	'id, project_id, action, task_id, title, why, proposal, email, status, created_at, decided_at, project:onto_projects(name, deleted_at)';
+const LOG_SELECT =
+	'id, project_id, entity_type, entity_id, action, before_data, after_data, created_at, project:onto_projects(name, deleted_at)';
+/** The log fields the view reads; descriptions and props stay on the server. */
+const LOG_FIELDS = ['title', 'state_key', 'due_at', 'archived_at'] as const;
+
 type Joined = Record<string, any>;
+
+function slimLogData(value: unknown): Record<string, unknown> | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+	const data = value as Record<string, unknown>;
+	return Object.fromEntries(
+		LOG_FIELDS.filter((field) => field in data).map((field) => [field, data[field]])
+	);
+}
 
 /** Operation args can hold whole document bodies; the view only needs each step's label. */
 function slimOperations(value: unknown): Array<{ tool: string | null; label: string | null }> {
@@ -49,7 +67,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 	}
 	const supabase = locals.supabase as any;
 
-	const [waiting, settled, runs] = await Promise.all([
+	const [waiting, settled, runs, emails, logs] = await Promise.all([
 		supabase
 			.from('project_suggestions')
 			.select(SUGGESTION_SELECT)
@@ -70,7 +88,27 @@ export const GET: RequestHandler = async ({ locals }) => {
 			.select(RUN_SELECT)
 			.gte('created_at', since)
 			.order('created_at', { ascending: false })
-			.limit(200)
+			.limit(200),
+		// "From your email" cards: waiting ones, and ones answered or expired this week.
+		supabase
+			.from('email_project_updates')
+			.select(EMAIL_SELECT)
+			.eq('user_id', user.id)
+			.or(`status.eq.pending,updated_at.gte.${since}`)
+			.order('updated_at', { ascending: false })
+			.limit(100),
+		// The user's own direct task and project changes (not chat or agent writes). The view
+		// keeps the ones that settled an overdue task or paused / finished a project.
+		supabase
+			.from('onto_project_logs')
+			.select(LOG_SELECT)
+			.eq('changed_by', user.id)
+			.in('entity_type', ['task', 'project'])
+			.in('action', ['updated', 'deleted'])
+			.in('change_source', ['api', 'form'])
+			.gte('created_at', since)
+			.order('created_at', { ascending: false })
+			.limit(300)
 	]);
 	if (waiting.error || settled.error) {
 		return ApiResponse.internalError(
@@ -120,5 +158,43 @@ export const GET: RequestHandler = async ({ locals }) => {
 			created_at: row.created_at
 		}));
 
-	return ApiResponse.success({ since, suggestions, runs: runRows } satisfies ActivityPayload);
+	// Both are extra lines in the view; it works without them.
+	const emailRows: ActivityEmailRow[] = (emails.error ? [] : ((emails.data ?? []) as Joined[]))
+		.filter(live)
+		.map((row) => ({
+			id: row.id,
+			project_id: row.project_id,
+			project_name: row.project?.name ?? null,
+			action: row.action,
+			task_id: row.task_id ?? null,
+			title: row.title,
+			why: row.why ?? null,
+			proposal: row.proposal ?? null,
+			status: row.status,
+			subject: row.email?.subject ?? null,
+			from: row.email?.from ?? null,
+			created_at: row.created_at,
+			decided_at: row.decided_at ?? null
+		}));
+	const logRows: ActivityLogRow[] = (logs.error ? [] : ((logs.data ?? []) as Joined[]))
+		.filter(live)
+		.map((row) => ({
+			id: row.id,
+			project_id: row.project_id,
+			project_name: row.project?.name ?? null,
+			entity_type: row.entity_type,
+			entity_id: row.entity_id,
+			action: row.action,
+			before: slimLogData(row.before_data),
+			after: slimLogData(row.after_data),
+			created_at: row.created_at
+		}));
+
+	return ApiResponse.success({
+		since,
+		suggestions,
+		runs: runRows,
+		emails: emailRows,
+		logs: logRows
+	} satisfies ActivityPayload);
 };

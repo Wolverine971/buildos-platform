@@ -20,7 +20,14 @@
 		current?: { title: string; due_at: string | null; state_key: string | null } | null;
 		title: string;
 		why: string | null;
-		email: { subject: string; from: string; account_email: string; received_at: string | null };
+		email: {
+			subject: string;
+			from: string;
+			account_email: string;
+			received_at: string | null;
+			/** Where in the subject the words the change came from sit. */
+			subject_quote?: { start: number; end: number };
+		};
 		gmail_url: string | null;
 		created_at: string;
 	};
@@ -85,6 +92,19 @@
 			rows.push({ label: 'Status', before: stateLabel(current?.state_key), after: status });
 		}
 		return rows.filter((row) => row.before !== row.after);
+	}
+
+	/** The subject split around the words the change came from, for a highlight. */
+	function subjectParts(email: EmailUpdateEntry['email']): [string, string, string] | null {
+		const span = email.subject_quote;
+		if (!span) return null;
+		const { start, end } = span;
+		if (!(start >= 0 && end > start && end <= email.subject.length)) return null;
+		return [
+			email.subject.slice(0, start),
+			email.subject.slice(start, end),
+			email.subject.slice(end)
+		];
 	}
 
 	function senderName(from: string): string {
@@ -160,6 +180,7 @@
 				{#each visible as entry (entry.id)}
 					{@const error = errors.get(entry.id)}
 					{@const rows = changeRows(entry)}
+					{@const parts = subjectParts(entry.email)}
 					{@const taskHref =
 						entry.action === 'update_task' && entry.task_id
 							? buildEntityHref('task', entry.task_id, entry.project_id)
@@ -177,15 +198,13 @@
 								</p>
 							{/if}
 							<p class="mt-0.5 break-words text-2xs text-muted-foreground">
-								{[
-									entry.project_name,
-									`${senderName(entry.email.from)}: “${entry.email.subject}”`,
-									entry.email.received_at
-										? formatRelativeTime(entry.email.received_at)
-										: null
-								]
-									.filter(Boolean)
-									.join(' · ')}
+								{#if entry.project_name}{entry.project_name} ·
+								{/if}{senderName(entry.email.from)}: “{#if parts}{parts[0]}<mark
+										class="rounded-sm bg-accent/20 px-0.5 text-foreground"
+										>{parts[1]}</mark
+									>{parts[2]}{:else}{entry.email
+										.subject}{/if}”{#if entry.email.received_at}
+									· {formatRelativeTime(entry.email.received_at)}{/if}
 								{#if entry.gmail_url}
 									<a
 										href={entry.gmail_url}

@@ -11,6 +11,7 @@ import {
 	decideProjectSuggestion,
 	type ProjectSuggestionDecisionOutcome
 } from '$lib/server/project-suggestion-actions.service';
+import { receiptLines } from '$lib/server/suggestion-receipt';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 // Stop starting new decisions well before the function limit; the rest stay in the list.
@@ -49,6 +50,8 @@ export type CleanupOutcome = {
 	ok: boolean;
 	status: CleanupOutcomeStatus;
 	message?: string;
+	/** What an applied change wrote, one line per step (tasker 156). */
+	receipt?: string[];
 };
 
 type AnySupabase = any;
@@ -118,7 +121,13 @@ export function toCleanupOutcome(
 			message: firstResultError(outcome) ?? 'Some changes could not be applied.'
 		};
 	}
-	return { suggestion_id: suggestionId, ok: true, status: 'applied' };
+	const receipt = receiptLines(outcome.result?.receipt);
+	return {
+		suggestion_id: suggestionId,
+		ok: true,
+		status: 'applied',
+		...(receipt.length ? { receipt } : {})
+	};
 }
 
 export function dedupeCleanupDecisions<T extends { suggestion_id: string }>(decisions: T[]): T[] {

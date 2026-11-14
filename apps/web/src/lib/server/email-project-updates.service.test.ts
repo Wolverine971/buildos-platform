@@ -153,6 +153,37 @@ describe('checkEmailUpdates', () => {
 		expect(out[1]!.proposal.due_date).toBeUndefined();
 	});
 
+	it('keeps where the copied words sit in the subject, and nothing from the body', () => {
+		const withSubject = [
+			{
+				...emails[0]!,
+				message: { ...emails[0]!.message, subject: 'Quote: can we move it to Nov 14?' }
+			}
+		];
+		const update = {
+			email: 'E1',
+			project: 'P1',
+			action: 'update_task',
+			task: 'T1',
+			due_date: '2026-11-14'
+		};
+		const [inSubject] = checkEmailUpdates(
+			{ updates: [{ ...update, quote: 'Can we move it to Nov 14' }] },
+			projects,
+			withSubject as never
+		);
+		expect(inSubject?.subjectQuote).toEqual({ start: 7, end: 31 });
+		// The words are in the body: no offsets (body text is never stored).
+		const [inBody] = checkEmailUpdates(
+			{ updates: [{ ...update, quote: 'Can we push to the 14th?' }] },
+			projects,
+			emails as never
+		);
+		expect(inBody?.subjectQuote).toBeNull();
+		const [none] = checkEmailUpdates({ updates: [update] }, projects, emails as never);
+		expect(none?.subjectQuote).toBeNull();
+	});
+
 	it('returns nothing for a malformed reply', () => {
 		expect(checkEmailUpdates(null, projects, emails as never)).toEqual([]);
 		expect(checkEmailUpdates({ updates: 'x' }, projects, emails as never)).toEqual([]);

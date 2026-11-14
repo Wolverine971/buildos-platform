@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { ChevronDown, X } from '$lib/icons/lucide';
+	import { ArrowUpRight, ChevronDown, X } from '$lib/icons/lucide';
 	import InboxItemTrail from './InboxItemTrail.svelte';
 	import {
 		buildInboxActivity,
@@ -121,9 +121,47 @@
 					<p class="text-2xs font-semibold text-foreground/80">
 						{entry.state === 'waiting' ? 'Would change' : 'Change'}
 					</p>
-					<ul class="mt-0.5 space-y-0.5">
+					<ul class="mt-0.5 space-y-1">
 						{#each entry.changes as change, index (index)}
-							<li class="break-words text-2xs text-foreground/90">{change}</li>
+							<li class="break-words text-2xs text-foreground/90">
+								{#if change.href}
+									<a
+										href={change.href}
+										target="_blank"
+										rel="noopener"
+										class="inline-flex max-w-full items-center gap-0.5 font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										><span class="min-w-0 break-words">{change.text}</span
+										><ArrowUpRight
+											class="h-3 w-3 shrink-0"
+											aria-hidden="true"
+										/><span class="sr-only">(opens in a new tab)</span></a
+									>
+								{:else}
+									{change.text}
+								{/if}
+								{#if change.rows.length}
+									<ul class="mt-0.5 space-y-0.5 pl-2">
+										{#each change.rows as row, rowIndex (rowIndex)}
+											<li>
+												<span class="font-medium text-muted-foreground"
+													>{row.label}:</span
+												>
+												{#if row.before}
+													<span class="text-muted-foreground"
+														>{row.before}</span
+													>
+													<span
+														class="text-muted-foreground"
+														aria-hidden="true">→</span
+													>
+													<span class="sr-only">changes to</span>
+												{/if}
+												<span class="text-foreground/90">{row.after}</span>
+											</li>
+										{/each}
+									</ul>
+								{/if}
+							</li>
 						{/each}
 					</ul>
 				</div>

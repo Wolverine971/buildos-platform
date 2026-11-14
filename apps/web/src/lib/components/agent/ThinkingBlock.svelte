@@ -21,6 +21,7 @@
 	import type { ToolActivityLine } from './agent-chat-tool-presenter';
 	import { WORKER_STOPPING_STATUS } from './agent-chat-worker-status';
 	import AgentClientActionCard from './AgentClientActionCard.svelte';
+	import RecordChip from '$lib/components/ui/RecordChip.svelte';
 	import { readToolProgressSteps, type ToolProgressStep } from './agent-chat-tool-progress';
 	import {
 		collectGmailConnectionClientActions,
@@ -369,26 +370,8 @@
 
 {#snippet sep()}<span class="thinking-step-sep" aria-hidden="true">{' · '}</span>{/snippet}
 
-{#snippet entityLink(entity: StepDetails['entities'][number], tone: StepAction | null)}
-	{#if entity.href}
-		<a
-			class="step-entity"
-			data-action={tone ?? 'read'}
-			href={entity.href}
-			target="_blank"
-			rel="noopener"
-			title="Open {entity.title} in a new tab"
-			><span class="step-entity-kind">{entity.kind}</span><span class="step-entity-title"
-				>{entity.title}</span
-			><ArrowUpRight class="step-entity-icon" aria-hidden="true" /></a
-		>
-	{:else}
-		<span class="step-entity" data-action={tone ?? 'read'}
-			><span class="step-entity-kind">{entity.kind}</span><span class="step-entity-title"
-				>{entity.title}</span
-			></span
-		>
-	{/if}
+{#snippet entityLink(entity: StepDetails['entities'][number])}
+	<RecordChip kind={entity.kind} title={entity.title} href={entity.href} />
 {/snippet}
 
 {#snippet stepDetails(step: StepRow)}
@@ -402,7 +385,7 @@
 			{#if linkTarget?.length}
 				<div class="step-entities">
 					{#each linkTarget as entity (`${entity.kind}:${entity.id}`)}
-						{@render entityLink(entity, details.action)}
+						{@render entityLink(entity)}
 					{/each}
 					{#if details.more}<span class="step-more">+{details.more} more</span>{/if}
 				</div>
@@ -1095,8 +1078,7 @@
 		text-decoration-color: hsl(var(--accent));
 	}
 
-	.step-target-link :global(.step-entity-icon),
-	.step-entity :global(.step-entity-icon) {
+	.step-target-link :global(.step-entity-icon) {
 		display: inline;
 		width: 0.7rem;
 		height: 0.7rem;
@@ -1133,43 +1115,6 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.25rem;
-	}
-
-	.step-entity {
-		display: inline-flex;
-		align-items: baseline;
-		gap: 0.3rem;
-		max-width: 100%;
-		min-width: 0;
-		overflow: hidden;
-		padding: 0.05rem 0.4rem;
-		border: 1px solid hsl(var(--border));
-		border-radius: 0.3rem;
-		background: hsl(var(--background) / 0.6);
-		color: hsl(var(--foreground));
-		transition:
-			border-color 120ms ease,
-			background-color 120ms ease;
-	}
-
-	a.step-entity:hover {
-		border-color: hsl(var(--accent) / 0.6);
-		background: hsl(var(--accent) / 0.08);
-	}
-
-	.step-entity-kind {
-		font-size: 0.56rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		color: hsl(var(--muted-foreground));
-	}
-
-	.step-entity-title {
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		max-width: min(16rem, 100%);
 	}
 
 	.step-more {

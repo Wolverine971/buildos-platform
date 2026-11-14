@@ -11,6 +11,7 @@
 // code; email text is never classified here.
 import { runGatewayWriteOp } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import type { GmailInboxScanMessage } from '@buildos/shared-agent-ops/email/gmail-read-gateway';
+import { locateSourceQuote } from '@buildos/shared-types';
 
 type AnyClient = any;
 
@@ -60,6 +61,12 @@ export type EmailUpdateSource = {
 	subject: string;
 	from: string;
 	received_at: string | null;
+	/**
+	 * Where in `subject` the words the change came from sit (tasker 156), for a highlight.
+	 * Offsets only: when those words are in the email's body, nothing is kept, because
+	 * email body text is never stored (docs/privacy/CLAIMS.md G11).
+	 */
+	subject_quote?: { start: number; end: number };
 };
 
 export type EmailUpdateCard = {
@@ -153,6 +160,7 @@ type RawUpdate = {
 	due_date?: unknown;
 	state?: unknown;
 	why?: unknown;
+	quote?: unknown;
 };
 
 function clip(value: unknown, max: number): string {
@@ -339,9 +347,10 @@ Rules:
 - due_date is YYYY-MM-DD and only when the email gives or implies a date. Today is given in the input.
 - title is a short task title in the imperative ("Send revised quote to Acme"), at most 12 words.
 - why is one plain sentence naming the email's sender and what they said.
+- quote is the words in that email (its subject or its text) that say it, copied character for character, at most 20 words. Leave it out if no short passage says it.
 - At most ${MAX_UPDATES_PER_RUN} updates, best first.
 Reply with JSON only:
-{"updates":[{"email":"E2","project":"P1","action":"create_task","title":"...","due_date":"2026-11-14","why":"..."},{"email":"E5","project":"P3","action":"update_task","task":"T7","due_date":"2026-11-20","state":null,"why":"..."}]}`;
+{"updates":[{"email":"E2","project":"P1","action":"create_task","title":"...","due_date":"2026-11-14","why":"...","quote":"..."},{"email":"E5","project":"P3","action":"update_task","task":"T7","due_date":"2026-11-20","state":null,"why":"...","quote":"..."}]}`;
 
 export function buildEmailUpdatesUserPrompt(params: {
 	today: string;
@@ -383,7 +392,23 @@ type CheckedUpdate = {
 	taskTitle: string | null;
 	proposal: EmailUpdateProposal;
 	why: string | null;
+	/** The model's copied words, when code found them in the email's subject. */
+	subjectQuote: { start: number; end: number } | null;
 };
+
+/**
+ * Finds the model's copied words in the subject as stored (string match, exact → close →
+ * fuzzy; not a reading of what the email means). Null when they are not in the subject.
+ */
+function subjectQuoteSpan(
+	message: GmailInboxScanMessage,
+	quote: unknown
+): { start: number; end: number } | null {
+	const words = clip(quote, 240);
+	if (!words) return null;
+	const found = locateSourceQuote(clip(message.subject, 200), words);
+	return found ? { start: found.start, end: found.end } : null;
+}
 
 /** Keep only updates whose refs exist and whose change is real; drop the rest. */
 export function checkEmailUpdates(
@@ -405,6 +430,7 @@ export function checkEmailUpdates(
 		const email = emailByRef.get(String(item.email ?? '').trim());
 		if (!project || !email) continue;
 		const why = clip(item.why, 300) || null;
+		const subjectQuote = subjectQuoteSpan(email.message, item.quote);
 		const dueDate = isIsoDate(item.due_date) ? item.due_date : undefined;
 
 		if (item.action === 'create_task') {
@@ -420,7 +446,8 @@ export function checkEmailUpdates(
 				taskId: null,
 				taskTitle: null,
 				proposal: { title, ...(dueDate ? { due_date: dueDate } : {}) },
-				why
+				why,
+				subjectQuote
 			});
 			continue;
 		}
@@ -451,7 +478,8 @@ export function checkEmailUpdates(
 					...(state ? { state_key: state } : {}),
 					...(due ? { due_date: due } : {})
 				},
-				why
+				why,
+				subjectQuote
 			});
 		}
 	}
@@ -631,7 +659,10 @@ export async function runEmailProjectUpdates(params: {
 			}),
 			why: update.why,
 			proposal: update.proposal,
-			email: sourceFor(update.email.message),
+			email: {
+				...sourceFor(update.email.message),
+				...(update.subjectQuote ? { subject_quote: update.subjectQuote } : {})
+			},
 			connection_id: update.email.message.connectionId,
 			message_id: update.email.message.messageId
 		}));

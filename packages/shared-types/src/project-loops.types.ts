@@ -462,9 +462,26 @@ export interface ProjectSuggestion {
 	updated_at: string;
 }
 
+/**
+ * One applied step of a suggestion, as it was verified against live state just before the
+ * write (tasker 156): what it did, to which record, and each field before → after. Display
+ * only; long text is clipped.
+ */
+export interface ProjectSuggestionReceiptOperation {
+	/** "Move document", "Archive task", "Update task". */
+	action_label: string;
+	/** The record's title. */
+	target: string | null;
+	/** The record the step changed, for a link. */
+	entity?: { kind: string; id: string } | null;
+	changes: Array<{ label: string; before?: string; value: string }>;
+}
+
 /** Outcome stored after an approved suggestion's operations are replayed. */
 export interface ProjectSuggestionResult {
 	ok: boolean;
+	/** What the applied steps changed. Absent on results stored before 2026-11-13. */
+	receipt?: ProjectSuggestionReceiptOperation[];
 	applied_operations?: number;
 	/** All operations are prevalidated together, then replayed in stored order. */
 	execution_policy?: 'prevalidated_sequential';

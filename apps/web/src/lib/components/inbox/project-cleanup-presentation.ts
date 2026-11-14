@@ -46,12 +46,16 @@ export type CleanupOutcome = {
 	ok: boolean;
 	status: CleanupOutcomeStatus;
 	message?: string;
+	/** What an applied change wrote, one line per step. */
+	receipt?: string[];
 };
 
 /** What happened to one card item, rolled up from its rows' outcomes. */
 export type CleanupItemResult = {
 	status: 'applied' | 'rejected' | 'addressed' | 'changed' | 'failed';
 	message: string | null;
+	/** What was written, one line per step, when the item was applied. */
+	receipt?: string[];
 };
 
 export const CLEANUP_CHANGED_MESSAGE =
@@ -245,7 +249,8 @@ export function summarizeCleanupItemOutcome(
 	const lead = settled[0]?.status ?? 'applied';
 	if (lead === 'rejected') return { status: 'rejected', message: null };
 	if (lead === 'addressed') return { status: 'addressed', message: null };
-	return { status: 'applied', message: null };
+	const receipt = mine.flatMap((outcome) => outcome.receipt ?? []);
+	return { status: 'applied', message: null, ...(receipt.length ? { receipt } : {}) };
 }
 
 export function cleanupResultLabel(result: CleanupItemResult): string {

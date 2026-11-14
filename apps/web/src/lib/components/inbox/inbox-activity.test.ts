@@ -186,7 +186,7 @@ describe('buildInboxActivity', () => {
 		expect(brand).toMatchObject({
 			headline: 'Move "Personal Brand Principles" under "Project Context and Strategy".',
 			stateLabel: 'Applied for you',
-			changes: ['Move Principles under Strategy']
+			changes: [{ text: 'Move Principles under Strategy', href: null, rows: [] }]
 		});
 		expect(brand?.records[0]?.href).toContain('doc-brand');
 		expect(brand?.check?.rows).toHaveLength(4);
@@ -237,10 +237,160 @@ describe('buildInboxActivity', () => {
 			]
 		});
 		expect(merged.counts.suggested).toBe(1);
-		expect(merged.suggested[0]?.entries[0]).toMatchObject({
-			id: 'stub-2',
-			changes: ['Archive "Stub 2"', 'Archive "Stub 1"']
+		const lead = merged.suggested[0]?.entries[0];
+		expect(lead?.id).toBe('stub-2');
+		expect(lead?.changes.map((change) => change.text)).toEqual([
+			'Archive "Stub 2"',
+			'Archive "Stub 1"'
+		]);
+	});
+
+	it('shows an applied change from its receipt, with a link and before → after', () => {
+		const applied = buildInboxActivity({
+			since: '',
+			runs: [],
+			suggestions: [
+				row({
+					id: 'mine',
+					status: 'applied',
+					operations: [{ tool: 'update_onto_task', label: 'Update the task' }],
+					result: {
+						ok: true,
+						receipt: [
+							{
+								action_label: 'Update task',
+								target: 'Send proposal',
+								entity: { kind: 'task', id: 'task-1' },
+								changes: [{ label: 'Due', before: 'Nov 5', value: 'Nov 13' }]
+							}
+						]
+					},
+					applied_at: '2026-11-12T15:00:00.000Z'
+				})
+			]
 		});
+		const [change] = applied.happened[0]?.entries[0]?.changes ?? [];
+		expect(change).toMatchObject({
+			text: 'Update task · Send proposal',
+			rows: [{ label: 'Due', before: 'Nov 5', after: 'Nov 13' }]
+		});
+		expect(change?.href).toContain('task-1');
+	});
+
+	it('lists email cards: waiting ones as suggestions, answered ones as what happened', () => {
+		const email = {
+			project_id: WAYNE,
+			project_name: 'Wayne Strategies',
+			action: 'update_task' as const,
+			task_id: 'task-1',
+			title: 'Move "Send proposal" to Nov 13',
+			why: 'They asked for it by end of next week.',
+			proposal: { due_date: '2026-11-13' },
+			subject: 'Re: proposal timing',
+			from: 'Sam Ortiz <sam@example.com>',
+			created_at: '2026-11-09T10:30:00.000Z',
+			decided_at: null
+		};
+		const activity = buildInboxActivity({
+			since: '',
+			runs: [],
+			suggestions: [],
+			emails: [
+				{ ...email, id: 'e1', status: 'pending' },
+				{ ...email, id: 'e2', status: 'dismissed', decided_at: '2026-11-10T12:00:00.000Z' },
+				{ ...email, id: 'e3', status: 'running' }
+			]
+		});
+		expect(activity.counts).toMatchObject({ suggested: 1, happened: 1 });
+		const waiting = activity.suggested[0]?.entries[0];
+		expect(waiting).toMatchObject({ source: 'From your email', stateLabel: 'Waiting on you' });
+		expect(waiting?.changes[0]?.rows).toEqual([
+			{ label: 'Due', before: null, after: 'Nov 13' }
+		]);
+		expect(waiting?.steps[0]?.detail).toBe('Sam Ortiz: “Re: proposal timing”');
+		expect(activity.happened[0]?.entries[0]?.stateLabel).toBe('You said not now');
+		expect(activity.bluf[0]).toBe('In the last 7 days: you answered 1.');
+	});
+
+	it('lists overdue tasks you settled and projects you paused, from the latest log row', () => {
+		const log = {
+			project_id: WAYNE,
+			project_name: 'Wayne Strategies',
+			entity_type: 'task' as const,
+			action: 'updated',
+			created_at: '2026-11-08T03:55:00.000Z'
+		};
+		const due = '2026-11-07T04:59:59+00:00';
+		const activity = buildInboxActivity({
+			since: '',
+			runs: [],
+			suggestions: [],
+			logs: [
+				{
+					...log,
+					id: 'l1',
+					entity_id: 'lawn',
+					before: { title: 'Mow lawn', state_key: 'todo', due_at: due },
+					after: { title: 'Mow lawn', state_key: 'done', due_at: due }
+				},
+				{
+					...log,
+					id: 'l2',
+					entity_id: 'call',
+					before: { title: 'Call Dauntless Dogs', state_key: 'todo', due_at: due },
+					after: { state_key: 'todo', due_at: '2026-11-14T04:59:59+00:00' }
+				},
+				// Not overdue when it was finished: an ordinary edit, not a check-in.
+				{
+					...log,
+					id: 'l3',
+					entity_id: 'early',
+					before: {
+						title: 'Early',
+						state_key: 'todo',
+						due_at: '2026-11-20T04:59:59+00:00'
+					},
+					after: { state_key: 'done' }
+				},
+				// Marked done, then put back: the latest row settles nothing.
+				{
+					...log,
+					id: 'l5',
+					entity_id: 'undo',
+					created_at: '2026-11-08T04:00:00.000Z',
+					before: { title: 'Undo me', state_key: 'done', due_at: due },
+					after: { state_key: 'todo', due_at: due }
+				},
+				{
+					...log,
+					id: 'l4',
+					entity_id: 'undo',
+					before: { title: 'Undo me', state_key: 'todo', due_at: due },
+					after: { state_key: 'done', due_at: due }
+				},
+				{
+					...log,
+					id: 'l6',
+					entity_type: 'project' as const,
+					entity_id: WAYNE,
+					before: { state_key: 'active' },
+					after: { state_key: 'paused' }
+				}
+			]
+		});
+		const entries = activity.happened[0]?.entries ?? [];
+		expect(entries.map((entry) => [entry.headline, entry.stateLabel]).sort()).toEqual([
+			['Call Dauntless Dogs', 'You moved it'],
+			['Mow lawn', 'You marked it done'],
+			['Wayne Strategies', 'You paused the project']
+		]);
+		const lawn = entries.find((entry) => entry.headline === 'Mow lawn');
+		expect(lawn?.changes[0]).toMatchObject({
+			text: 'Task',
+			rows: [{ label: 'Status', before: 'To do', after: 'Done' }]
+		});
+		expect(lawn?.changes[0]?.href).toContain('lawn');
+		expect(activity.happened[0]?.bluf).toBe('3 you answered');
 	});
 
 	it('says so when nothing happened', () => {

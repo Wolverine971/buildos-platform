@@ -67,6 +67,14 @@ function backOnCard(message: string): string {
 	return `${message.trim().replace(/[.\s]+$/, '')}. It's back on your card.`;
 }
 
+const MAX_RECEIPT_LINES = 3;
+
+function receiptDetail(lines: string[]): string {
+	const shown = lines.slice(0, MAX_RECEIPT_LINES).join(' · ');
+	const more = lines.length - MAX_RECEIPT_LINES;
+	return more > 0 ? `${shown} · +${more} more` : shown;
+}
+
 function cleanupUrl(projectId: string): string {
 	return `/api/onto/projects/${encodeURIComponent(projectId)}/cleanup`;
 }
@@ -123,7 +131,11 @@ export async function runCleanupPayloads(
 			const status = results.get(item.id)?.status;
 			return status === 'failed' || status === 'changed';
 		});
-		if (!back.length) return {};
+		if (!back.length) {
+			// The receipt: what the save wrote, shown on the pile entry once it lands.
+			const receipt = payload.items.flatMap((item) => results.get(item.id)?.receipt ?? []);
+			return receipt.length ? { detail: receiptDetail(receipt) } : {};
+		}
 		const changed = back.some((item) => results.get(item.id)?.status === 'changed');
 		const failure = back
 			.map((item) => results.get(item.id))
