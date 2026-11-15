@@ -1224,7 +1224,23 @@ describe('decideProjectSuggestion with a freshness bundle', () => {
 		mocks.createAdminSupabaseClient.mockReturnValue(db);
 		mocks.verifyProjectSuggestionIntegrity.mockResolvedValue({
 			ok: true,
-			summary: { operation_count: 2 }
+			summary: {
+				operation_count: 2,
+				operations: [
+					{
+						actionLabel: 'Update',
+						entityLabel: 'task',
+						target: 'Send investor deck',
+						changes: [{ label: 'Status', before: 'Todo', value: 'Done' }]
+					},
+					{
+						actionLabel: 'Update',
+						entityLabel: 'milestone',
+						target: 'Pricing page live',
+						changes: [{ label: 'Due date', before: '2026-09-25', value: '2026-10-03' }]
+					}
+				]
+			}
 		});
 		mocks.isProjectSuggestionFresh.mockResolvedValue(true);
 		mocks.runGatewayWriteOp.mockResolvedValue({ ok: true, data: {} });
@@ -1245,6 +1261,20 @@ describe('decideProjectSuggestion with a freshness bundle', () => {
 		]);
 		expect(mocks.runGatewayWriteOp.mock.calls[0]![0].chatSessionId).toBe('session-1');
 		expect(db.find('project_suggestions', 'bundle-1')?.status).toBe('applied');
+		expect(db.find('project_suggestions', 'bundle-1')?.result.receipt).toEqual([
+			{
+				action_label: 'Update task',
+				target: 'Send investor deck',
+				entity: { kind: 'task', id: 'task-1' },
+				changes: [{ label: 'Status', before: 'Todo', value: 'Done' }]
+			},
+			{
+				action_label: 'Update milestone',
+				target: 'Pricing page live',
+				entity: { kind: 'milestone', id: 'ms-1' },
+				changes: [{ label: 'Due date', before: '2026-09-25', value: '2026-10-03' }]
+			}
+		]);
 		expect(db.find('freshness_flags', 'f-task')?.status).toBe('applied');
 		expect(db.find('freshness_flags', 'f-ms')?.status).toBe('applied');
 		expect(mocks.finalizeProjectLoopRunIfComplete).toHaveBeenCalledWith(db, null);

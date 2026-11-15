@@ -259,7 +259,9 @@ export class ProjectCalendarService extends SharedProjectCalendarService {
 					.eq('project_id', projectId),
 				this.supabase
 					.from('onto_project_invites')
-					.select('invitee_email, invitee_handle, role_key, access, expires_at')
+					// RLS shows pending invites to project admins only; their emails are read
+					// server-side below because the signed-in client can't (Tasker 158).
+					.select('id, invitee_handle, role_key, access, expires_at')
 					.eq('project_id', projectId)
 					.eq('status', 'pending')
 					.gte('expires_at', new Date().toISOString())
@@ -291,7 +293,8 @@ export class ProjectCalendarService extends SharedProjectCalendarService {
 			if (actorIds.length > 0) {
 				const { data: actorRows, error: actorError } = await this.supabase
 					.from('onto_actors')
-					.select('id, user_id, name, email')
+					// Names only: members don't see each other's emails (Tasker 158).
+					.select('id, user_id, name')
 					.in('id', actorIds);
 
 				if (actorError) {
@@ -305,7 +308,7 @@ export class ProjectCalendarService extends SharedProjectCalendarService {
 							id: actor.id,
 							user_id: actor.user_id,
 							name: actor.name,
-							email: actor.email
+							email: null
 						}
 					])
 				);
@@ -368,12 +371,27 @@ export class ProjectCalendarService extends SharedProjectCalendarService {
 				(member) => member.has_calendar && member.sync_enabled
 			).length;
 
-			const pendingInvitesRaw = (inviteResponse.data ?? []) as Array<
-				Pick<
-					ProjectInvite,
-					'invitee_email' | 'invitee_handle' | 'role_key' | 'access' | 'expires_at'
-				>
+			const visibleInvites = (inviteResponse.data ?? []) as Array<
+				Pick<ProjectInvite, 'id' | 'invitee_handle' | 'role_key' | 'access' | 'expires_at'>
 			>;
+			const inviteEmails = new Map<string, string>();
+			if (visibleInvites.length > 0) {
+				const { data: emailRows, error: emailError } = await createAdminSupabaseClient()
+					.from('onto_project_invites')
+					.select('id, invitee_email')
+					.in(
+						'id',
+						visibleInvites.map((invite) => invite.id)
+					);
+				if (emailError) {
+					return ApiResponse.error('Failed to fetch pending project invites', 500);
+				}
+				for (const row of emailRows ?? []) inviteEmails.set(row.id, row.invitee_email);
+			}
+			const pendingInvitesRaw = visibleInvites.map((invite) => ({
+				...invite,
+				invitee_email: inviteEmails.get(invite.id) ?? ''
+			}));
 			const seenInviteEmails = new Set<string>();
 			const pendingInvites: ProjectCalendarPendingInvite[] = [];
 			for (const invite of pendingInvitesRaw) {
@@ -569,7 +587,7 @@ export class ProjectCalendarService extends SharedProjectCalendarService {
 			if (targetUserIds.length > 0) {
 				const { data: actorRows, error: actorError } = await this.supabase
 					.from('onto_actors')
-					.select('user_id, name, email')
+					.select('user_id, name')
 					.in('user_id', targetUserIds)
 					.eq('kind', 'human');
 
@@ -584,7 +602,7 @@ export class ProjectCalendarService extends SharedProjectCalendarService {
 							row.user_id as string,
 							{
 								name: row.name,
-								email: row.email
+								email: null
 							}
 						])
 				);

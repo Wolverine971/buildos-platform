@@ -25,7 +25,7 @@ export function createGmailAgentAuthPort(db: GoogleAgentDatabase, readEnv?: Goog
 				if (!(error instanceof GoogleAgentOAuthError)) throw error;
 				throw new GmailOAuthError(
 					error.code === 'agent_authorization_required'
-						? 'reconnect_required'
+						? 'agent_access_required'
 						: error.code,
 					error.message
 				);
@@ -44,7 +44,7 @@ export function createCalendarAgentAuthPort(db: GoogleAgentDatabase, readEnv?: G
 				if (!(error instanceof GoogleAgentOAuthError)) throw error;
 				throw new GoogleCalendarConnectionError(
 					error.code === 'agent_authorization_required'
-						? 'reconnect_required'
+						? 'agent_access_required'
 						: error.code,
 					error.message
 				);

@@ -33,17 +33,17 @@ live verification, or a named exit gate is still pending.
 
 ## Open (recent work, 140–157)
 
-| Tracker                                                                           | What's left                                                                                                                                   |
-| --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| [157 — Chat audit: honest record](157-chat-audit-honest-record.md)                | Case 7 rerun (receipt names homes), full prod battery (absorbed from 138/150/152), save-threshold readings, "Continue in X" first turn unfelt |
-| [156 — AI Inbox: see under the hood](156-ai-inbox-see-under-the-hood.md)          | Paid review pass + email quote dry run; DJ decision on storing email body words (claim G11)                                                   |
-| [154 — Project calendars two-way + Gmail cards](154-project-calendars-two-way.md) | DJ moves an event in Google → check Done for you; Gmail cards paid dry run before going live; member fan-out deferred                         |
-| [145 — People layer launch](145-people-layer-launch.md)                           | The 7-step two-account live run (also closes 140, 141, 143, and checks the brief's "While you were away" lines for another person); review the 7 pre-10-23 editors whose agents are on Write                    |
-| [140 — Agent access wall](140-agent-access-wall.md)                               | Two-account run (in 145); the editor `external_agent_access` gap is fixed by 158's migration 120200                                           |
-| [141 — One home for sharing](141-one-home-for-sharing-settings.md)                | Two-account run (in 145); email leak moves to 158                                                                                             |
-| [143 — Four ways in, unified](143-four-ways-in-unified.md)                        | Two-account run (in 145)                                                                                                                      |
-| [146 — Workspace chat](146-workspace-chat.md)                                     | Paid rerun of Workspace battery cases 1, 2, 5; search moved to 159; project chat can't edit Workspace items                                   |
-| [148 — Mobile app](148-mobile-app.md)                                             | Blocked on DJ: Apple Developer + Expo accounts, a real-iPhone run. Then web parity (new Today, inbox, chat record)                            |
+| Tracker                                                                           | What's left                                                                                                                                                                                  |
+| --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [157 — Chat audit: honest record](157-chat-audit-honest-record.md)                | Battery 46/52 + Workspace 14/16 on 11-15; the misses trace to 158 item 4 (calendar) plus one non-verbatim hostile-note run; save-threshold readings; "Continue in X" first turn unfelt       |
+| [156 — AI Inbox: see under the hood](156-ai-inbox-see-under-the-hood.md)          | Auto-apply has fired once ever (scores sit just under the bar): DJ calibration call; email quote check waits on 158 item 4; DJ decision on storing email body words                          |
+| [154 — Project calendars two-way + Gmail cards](154-project-calendars-two-way.md) | Gmail cards cron never ran (now in `apps/web/vercel.json`, needs deploy) and can't read Gmail until 158 item 4; DJ moves an event in Google, then checks Done for you                        |
+| [145 — People layer launch](145-people-layer-launch.md)                           | The 7-step two-account live run (also closes 140, 141, 143, and checks the brief's "While you were away" lines for another person); review the 7 pre-10-23 editors whose agents are on Write |
+| [140 — Agent access wall](140-agent-access-wall.md)                               | Two-account run (in 145); the editor `external_agent_access` gap is fixed by 158's migration 120200                                                                                          |
+| [141 — One home for sharing](141-one-home-for-sharing-settings.md)                | Two-account run (in 145); email leak moves to 158                                                                                                                                            |
+| [143 — Four ways in, unified](143-four-ways-in-unified.md)                        | Two-account run (in 145)                                                                                                                                                                     |
+| [146 — Workspace chat](146-workspace-chat.md)                                     | Cases 1, 2, 7 pass live (11-15); case 5 waits on 158 item 4; search moved to 159; project chat can't edit Workspace items                                                                    |
+| [148 — Mobile app](148-mobile-app.md)                                             | Blocked on DJ: Apple Developer + Expo accounts, a real-iPhone run. Then web parity (new Today, inbox, chat record)                                                                           |
 
 ## Needs DJ
 

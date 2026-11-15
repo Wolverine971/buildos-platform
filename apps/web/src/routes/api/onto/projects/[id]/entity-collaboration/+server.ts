@@ -12,6 +12,7 @@ import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { logOntologyApiError } from '../../../shared/error-logging';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { loadActorEmails } from '$lib/server/actor-emails';
 
 type EntityType = 'task' | 'document' | 'goal' | 'plan';
 type EntitySummary = {
@@ -188,12 +189,12 @@ async function fetchActor(
 ): Promise<ActorSummary | null> {
 	const { data, error } = await supabase
 		.from('onto_actors')
-		.select('id, user_id, name, email')
+		.select('id, user_id, name')
 		.eq('id', actorId)
 		.maybeSingle();
 
 	if (error || !data) return null;
-	return data;
+	return { ...data, email: null };
 }
 
 async function fetchActiveProjectMemberActor(
@@ -203,7 +204,7 @@ async function fetchActiveProjectMemberActor(
 ): Promise<ActorSummary | null> {
 	const { data, error } = await supabase
 		.from('onto_project_members')
-		.select('actor:onto_actors!onto_project_members_actor_id_fkey(id, user_id, name, email)')
+		.select('actor:onto_actors!onto_project_members_actor_id_fkey(id, user_id, name)')
 		.eq('project_id', projectId)
 		.eq('actor_id', actorId)
 		.is('removed_at', null)
@@ -211,7 +212,11 @@ async function fetchActiveProjectMemberActor(
 
 	if (error || !data?.actor) return null;
 	const actor = Array.isArray(data.actor) ? data.actor[0] : data.actor;
-	return actor ?? null;
+	if (!actor) return null;
+	// The signed-in client can't read emails (Tasker 158). The membership read above is the
+	// access check; the address is only used to send this person the ping.
+	const emails = await loadActorEmails([actor.id]);
+	return { ...actor, email: emails.get(actor.id) ?? null };
 }
 
 async function fetchMembersAndAssignments({
@@ -229,7 +234,7 @@ async function fetchMembersAndAssignments({
 		supabase
 			.from('onto_project_members')
 			.select(
-				'id, project_id, actor_id, role_key, access, role_name, created_at, removed_at, actor:onto_actors!onto_project_members_actor_id_fkey(id, user_id, name, email)'
+				'id, project_id, actor_id, role_key, access, role_name, created_at, removed_at, actor:onto_actors!onto_project_members_actor_id_fkey(id, user_id, name)'
 			)
 			.eq('project_id', projectId)
 			.is('removed_at', null)
@@ -237,7 +242,7 @@ async function fetchMembersAndAssignments({
 		supabase
 			.from('onto_assignments')
 			.select(
-				'id, actor_id, object_kind, object_id, role_key, created_at, actor:onto_actors!onto_assignments_actor_id_fkey(id, user_id, name, email)'
+				'id, actor_id, object_kind, object_id, role_key, created_at, actor:onto_actors!onto_assignments_actor_id_fkey(id, user_id, name)'
 			)
 			.eq('object_kind', entityType)
 			.eq('object_id', entityId)

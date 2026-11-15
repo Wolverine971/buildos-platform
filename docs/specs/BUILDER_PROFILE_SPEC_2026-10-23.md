@@ -2,7 +2,7 @@
 
 # Builder Profiles (2026-10-23)
 
-**Status:** BUILT (ambitious), uncommitted, not deployed (2026-10-23). Tracker: `tasker/147-builder-profiles.md`.
+**Status:** BUILT (ambitious) and deployed; finishing pass 2026-11-15 (see tracker round 4). Tracker: `tasker/147-builder-profiles.md`.
 **Ask (DJ, 10-23):** a builder profile. BuildOS's version of Linktree but more detailed: where you
 are on social media, links you care about, the projects you want people to see, a short bio, with
 some parts hidden. Also like a GitHub profile: an honest picture of what you've been working on.
@@ -222,4 +222,7 @@ MCP `get_builder_profile`, `/p/{author}` redirect, privacy copy. Differences fro
   cron and the editor's "Draft this week now".
 - The build log counts the person's own changes and their agents' (`changed_by`), across every
   project, per day in their time zone. Live-card bars use the same rollup.
-- No per-person share image yet (default BuildOS image).
+- Per-person share image added 11-15 (drawn from code: satori + bundled Inter + sharp).
+- Writing became opt-in per page on 11-15 (`builder_profile_writing`): a published page shows
+  on the profile only after the owner picks it. Auto-listing every public doc put show notes
+  on DJ's live page.

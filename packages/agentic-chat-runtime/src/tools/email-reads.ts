@@ -298,6 +298,9 @@ async function describeAccount(
  * not turn into "please reconnect".
  */
 function accountReadGuidance(status: string, accountLabel: string): string | undefined {
+	if (status === 'agent_access_required') {
+		return `BuildOS agents don't have the user's approval to read "${accountLabel}" yet. Ask them to turn on Agent access for it in Profile → Email (a one-time Google approval); their Gmail connection itself is fine.`;
+	}
 	if (status === 'reconnect_required') {
 		return `Ask the user to reconnect "${accountLabel}" in Profile → Email; other accounts still returned results.`;
 	}
@@ -336,6 +339,17 @@ async function toSafeToolError(
 			return new Error(
 				`Gmail account "${label}" needs to be reconnected before BuildOS can read it. ` +
 					'Ask the user to reconnect it in Profile → Email, then try again.'
+			);
+		}
+		case 'agent_access_required': {
+			const targetConnectionId = connectionId ?? classified.connectionId ?? undefined;
+			const label =
+				port && targetConnectionId
+					? await describeAccount(port, context, state, targetConnectionId)
+					: 'this Gmail account';
+			return new Error(
+				`BuildOS agents don't have the user's approval to read Gmail account "${label}" yet. ` +
+					'Ask the user to turn on Agent access for it in Profile → Email (a one-time Google approval), then try again. Their Gmail connection itself is fine.'
 			);
 		}
 		case 'connection_not_found':

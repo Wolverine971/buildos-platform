@@ -23,6 +23,7 @@ export type GoogleCalendarSourceReadFailureReason =
 	| 'reconnect_required'
 	/** This server has no Calendar credentials configured. Not a Google outage. */
 	| 'credentials_not_configured'
+	| 'agent_access_required'
 	/** Credentials exist but this server's key cannot decrypt them (key drift). */
 	| 'credentials_unreadable'
 	/** The source exists but is not enabled for reading (or is freeBusy-only). */
@@ -230,6 +231,9 @@ function classifyCalendarReadError(error: unknown): CalendarReadFailure {
 	if (connectionCode === 'reconnect_required' || connectionCode === 'refresh_token_required') {
 		return { status: 'error', reasonCode: 'reconnect_required', errorName, message };
 	}
+	if (connectionCode === 'agent_access_required') {
+		return { status: 'error', reasonCode: 'agent_access_required', errorName, message };
+	}
 	// Server configuration, not a provider fault. Collapsing these into
 	// `provider_error` is what made the assistant blame "a transient OAuth/sync
 	// issue on Google's side" for an unset Railway variable.
@@ -298,6 +302,9 @@ function describeSourceFailure(
 	const reasonCode = failure?.reasonCode ?? 'provider_error';
 	if (reasonCode === 'reconnect_required') {
 		return `Could not read ${subject}: this calendar needs to be reconnected (its Google access expired or was revoked) before BuildOS can read it (reason: reconnect_required)`;
+	}
+	if (reasonCode === 'agent_access_required') {
+		return `Could not read ${subject}: the user has not approved BuildOS agents for this Google Calendar yet (or the approval lapsed). They can turn on Agent access for it in Profile → Calendar; their calendar connection itself is fine (reason: agent_access_required)`;
 	}
 	if (reasonCode === 'credentials_not_configured') {
 		return `Could not read ${subject}: this server's Google Calendar credentials are not configured, so Google Calendar was never contacted (reason: credentials_not_configured)`;

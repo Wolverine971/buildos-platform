@@ -127,6 +127,11 @@ describe('GET /api/onto/projects/[id]/members', () => {
 			return {};
 		});
 
+		const usersIn = vi.fn().mockResolvedValue({ data: [], error: null });
+		createAdminSupabaseClientMock.mockReturnValue({
+			from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ in: usersIn }) })
+		});
+
 		const response = await GET(event);
 		const payload = await response.json();
 
@@ -194,8 +199,7 @@ describe('GET /api/onto/projects/[id]/members', () => {
 				actor: {
 					id: 'actor-owner',
 					user_id: 'user-owner',
-					name: 'DJ',
-					email: 'dj@example.com'
+					name: 'DJ'
 				}
 			},
 			{
@@ -207,8 +211,7 @@ describe('GET /api/onto/projects/[id]/members', () => {
 				actor: {
 					id: 'actor-current',
 					user_id: 'user-1',
-					name: 'Ian',
-					email: 'ian@example.com'
+					name: 'Ian'
 				}
 			},
 			{
@@ -217,12 +220,24 @@ describe('GET /api/onto/projects/[id]/members', () => {
 				role_key: 'editor',
 				access: 'write',
 				created_at: '2026-01-03T00:00:00.000Z',
-				actor: { id: 'actor-other', user_id: null, name: 'Phil', email: 'phil@example.com' }
+				actor: { id: 'actor-other', user_id: null, name: 'Phil' }
 			}
 		];
 
-		function wire(event: RequestEvent, memberRows: unknown[]) {
+		// Emails live in onto_actors, readable only through the admin client.
+		const defaultEmails: Record<string, string> = {
+			'actor-owner': 'dj@example.com',
+			'actor-current': 'ian@example.com',
+			'actor-other': 'phil@example.com'
+		};
+
+		function wire(
+			event: RequestEvent,
+			memberRows: unknown[],
+			emailsByActor: Record<string, string> = defaultEmails
+		) {
 			const supabase = event.locals.supabase as any;
+			const memberSelect = vi.fn();
 			supabase.rpc.mockResolvedValue({ data: true, error: null });
 			supabase.from.mockImplementation((table: string) => {
 				if (table === 'onto_projects') {
@@ -239,15 +254,14 @@ describe('GET /api/onto/projects/[id]/members', () => {
 						})
 					};
 				}
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							is: vi.fn().mockReturnValue({
-								order: vi.fn().mockResolvedValue({ data: memberRows, error: null })
-							})
+				memberSelect.mockReturnValue({
+					eq: vi.fn().mockReturnValue({
+						is: vi.fn().mockReturnValue({
+							order: vi.fn().mockResolvedValue({ data: memberRows, error: null })
 						})
 					})
-				};
+				});
+				return { select: memberSelect };
 			});
 			const usersIn = vi.fn().mockResolvedValue({
 				data: [
@@ -257,15 +271,28 @@ describe('GET /api/onto/projects/[id]/members', () => {
 				error: null
 			});
 			const usersSelect = vi.fn().mockReturnValue({ in: usersIn });
-			createAdminSupabaseClientMock.mockReturnValue({
-				from: vi.fn().mockReturnValue({ select: usersSelect })
-			});
-			return { usersSelect, usersIn };
+			const actorsIn = vi.fn().mockImplementation(async (_col: string, ids: string[]) => ({
+				data: ids
+					.filter((id) => emailsByActor[id])
+					.map((id) => ({ id, email: emailsByActor[id] })),
+				error: null
+			}));
+			const actorsSelect = vi.fn().mockReturnValue({ in: actorsIn });
+			const adminFrom = vi
+				.fn()
+				.mockImplementation((table: string) =>
+					table === 'onto_actors' ? { select: actorsSelect } : { select: usersSelect }
+				);
+			createAdminSupabaseClientMock.mockReturnValue({ from: adminFrom });
+			return { usersSelect, usersIn, actorsSelect, actorsIn, memberSelect };
 		}
 
 		it('a non-owner sees names and handles, and only their own email', async () => {
 			const event = createEvent();
-			const { usersSelect, usersIn } = wire(event, rows);
+			const { usersSelect, usersIn, actorsSelect, actorsIn, memberSelect } = wire(
+				event,
+				rows
+			);
 
 			const payload = await (await GET(event)).json();
 			const byId = Object.fromEntries(payload.data.members.map((m: any) => [m.id, m]));
@@ -281,6 +308,11 @@ describe('GET /api/onto/projects/[id]/members', () => {
 			// The handle lookup reads usernames only, never emails.
 			expect(usersSelect).toHaveBeenCalledWith('id, username');
 			expect(usersIn).toHaveBeenCalledWith('id', ['user-owner', 'user-1']);
+			// The signed-in members select no longer asks for email, and a non-owner
+			// only looks up their own address.
+			expect(memberSelect.mock.calls[0]?.[0]).not.toMatch(/\bemail\b/);
+			expect(actorsSelect).toHaveBeenCalledWith('id, email');
+			expect(actorsIn).toHaveBeenCalledWith('id', ['actor-current']);
 		});
 
 		it('the owner sees everyone’s email', async () => {
@@ -292,7 +324,11 @@ describe('GET /api/onto/projects/[id]/members', () => {
 						? { ...row, actor_id: 'actor-someone' }
 						: row
 			);
-			wire(event, ownerRows);
+			wire(event, ownerRows, {
+				'actor-current': 'dj@example.com',
+				'actor-someone': 'ian@example.com',
+				'actor-other': 'phil@example.com'
+			});
 
 			const payload = await (await GET(event)).json();
 			const emails = payload.data.members.map((m: any) => m.actor.email);
@@ -304,8 +340,13 @@ describe('GET /api/onto/projects/[id]/members', () => {
 		it('still lists members when the handle lookup fails', async () => {
 			const event = createEvent();
 			wire(event, rows);
-			createAdminSupabaseClientMock.mockImplementation(() => {
-				throw new Error('no service key');
+			// Only the handle lookup (users) fails; emails (onto_actors) still load.
+			const admin = createAdminSupabaseClientMock();
+			createAdminSupabaseClientMock.mockReturnValue({
+				from: vi.fn().mockImplementation((table: string) => {
+					if (table === 'users') throw new Error('no service key');
+					return admin.from(table);
+				})
 			});
 
 			const response = await GET(event);

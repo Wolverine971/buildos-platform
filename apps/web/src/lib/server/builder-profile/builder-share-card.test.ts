@@ -1,9 +1,9 @@
 // apps/web/src/lib/server/builder-profile/builder-share-card.test.ts
 import { describe, expect, it } from 'vitest';
-import sharp from 'sharp';
 import type { BuilderProfileView } from '$lib/builder-profile/types';
 import {
 	avatarHostAllowed,
+	avatarImageType,
 	renderBuilderShareCard,
 	SHARE_CARD_HEIGHT,
 	SHARE_CARD_WIDTH,
@@ -76,8 +76,20 @@ describe('share card', () => {
 
 	it('draws a 1200×630 PNG with no system fonts', async () => {
 		const png = await renderBuilderShareCard(view());
-		const meta = await sharp(png).metadata();
-		expect(meta.format).toBe('png');
-		expect([meta.width, meta.height]).toEqual([SHARE_CARD_WIDTH, SHARE_CARD_HEIGHT]);
+		// PNG signature, then the IHDR chunk's width and height (big-endian at bytes 16 and 20).
+		expect([...png.subarray(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
+		expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([
+			SHARE_CARD_WIDTH,
+			SHARE_CARD_HEIGHT
+		]);
 	}, 20_000);
+
+	it('recognizes PNG, JPEG and WebP photos and nothing else', () => {
+		expect(
+			avatarImageType(Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0]))
+		).toBe('image/png');
+		expect(avatarImageType(Uint8Array.from([0xff, 0xd8, 0xff, 0xe0]))).toBe('image/jpeg');
+		expect(avatarImageType(new TextEncoder().encode('RIFF....WEBPVP8 '))).toBe('image/webp');
+		expect(avatarImageType(new TextEncoder().encode('<svg'))).toBeNull();
+	});
 });

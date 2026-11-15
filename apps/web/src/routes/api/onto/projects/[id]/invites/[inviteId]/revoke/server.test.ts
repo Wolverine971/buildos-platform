@@ -10,6 +10,13 @@ vi.mock('../../../../../shared/error-logging', () => ({
 	logOntologyApiError: vi.fn()
 }));
 
+const { createAdminSupabaseClientMock } = vi.hoisted(() => ({
+	createAdminSupabaseClientMock: vi.fn()
+}));
+vi.mock('$lib/supabase/admin', () => ({
+	createAdminSupabaseClient: createAdminSupabaseClientMock
+}));
+
 import { POST } from './+server';
 
 const createEvent = (): RequestEvent => {
@@ -89,6 +96,11 @@ describe('POST /api/onto/projects/[id]/invites/[inviteId]/revoke', () => {
 			return {};
 		});
 
+		// The first invite lookup reads invitee_email, so it runs on the admin client.
+		createAdminSupabaseClientMock.mockReturnValue({
+			from: vi.fn().mockReturnValue({ select: select })
+		});
+
 		const response = await POST(event);
 		const payload = await response.json();
 
@@ -137,6 +149,11 @@ describe('POST /api/onto/projects/[id]/invites/[inviteId]/revoke', () => {
 			return {};
 		});
 
+		// The first invite lookup reads invitee_email, so it runs on the admin client.
+		createAdminSupabaseClientMock.mockReturnValue({
+			from: vi.fn().mockReturnValue({ select: select })
+		});
+
 		const response = await POST(event);
 		expect(response.status).toBe(200);
 		const logged = insert.mock.calls[0]?.[0]?.after_data;
@@ -150,25 +167,31 @@ describe('POST /api/onto/projects/[id]/invites/[inviteId]/revoke', () => {
 
 		supabase.rpc.mockResolvedValue({ data: true, error: null });
 
-		const inviteSelectMaybeSingle = vi
-			.fn()
-			.mockResolvedValueOnce({
-				data: {
-					id: 'invite-1',
-					invitee_email: 'invitee@example.com',
-					status: 'pending'
-				},
-				error: null
-			})
-			.mockResolvedValueOnce({
-				data: { status: 'accepted' },
-				error: null
-			});
+		// First lookup (with the email) runs on admin; the re-check after a lost race on the signed-in client.
+		const adminMaybeSingle = vi.fn().mockResolvedValue({
+			data: {
+				id: 'invite-1',
+				invitee_email: 'invitee@example.com',
+				status: 'pending'
+			},
+			error: null
+		});
+		const inviteSelectMaybeSingle = vi.fn().mockResolvedValue({
+			data: { status: 'accepted' },
+			error: null
+		});
 
 		const select = vi.fn().mockReturnValue({
 			eq: vi.fn().mockReturnValue({
 				eq: vi.fn().mockReturnValue({
 					maybeSingle: inviteSelectMaybeSingle
+				})
+			})
+		});
+		const adminSelect = vi.fn().mockReturnValue({
+			eq: vi.fn().mockReturnValue({
+				eq: vi.fn().mockReturnValue({
+					maybeSingle: adminMaybeSingle
 				})
 			})
 		});
@@ -191,6 +214,10 @@ describe('POST /api/onto/projects/[id]/invites/[inviteId]/revoke', () => {
 				return { select, update };
 			}
 			return {};
+		});
+
+		createAdminSupabaseClientMock.mockReturnValue({
+			from: vi.fn().mockReturnValue({ select: adminSelect })
 		});
 
 		const response = await POST(event);

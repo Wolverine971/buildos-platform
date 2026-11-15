@@ -7,6 +7,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse, HttpStatus } from '$lib/utils/api-response';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { logOntologyApiError } from '../../../../../shared/error-logging';
 import { EmailService } from '$lib/services/email-service';
 import { appBaseUrl } from '$lib/server/people/invite-links';
@@ -63,7 +64,9 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.forbidden('Only the project owner can resend invites');
 		}
 
-		const { data: invite, error: inviteError } = await supabase
+		// invitee_email isn't readable through the signed-in client (Tasker 158); access was
+		// checked above, so read the invite server-side.
+		const { data: invite, error: inviteError } = await createAdminSupabaseClient()
 			.from('onto_project_invites')
 			.select(
 				'id, invitee_email, invitee_handle, role_key, access, agent_access, status, expires_at'

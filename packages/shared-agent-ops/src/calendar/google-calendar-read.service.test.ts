@@ -115,7 +115,8 @@ describe('GoogleCalendarReadService failure classification', () => {
 	it.each([
 		['not_configured', 'credentials_not_configured'],
 		['database_error', 'credentials_unreadable'],
-		['reconnect_required', 'reconnect_required']
+		['reconnect_required', 'reconnect_required'],
+		['agent_access_required', 'agent_access_required']
 	])('reports a %s connection error as %s, never provider_error', async (code, reasonCode) => {
 		const { service } = readService({
 			getAuthenticatedClient: async () => {
@@ -143,6 +144,21 @@ describe('GoogleCalendarReadService failure classification', () => {
 			"this server's Google Calendar credentials are not configured"
 		);
 		expect(response.warnings[0]?.message).toContain('credentials_not_configured');
+	});
+
+	it('tells the model where to approve agent access instead of asking for a reconnect', async () => {
+		const { service } = readService({
+			getAuthenticatedClient: async () => {
+				throw new GoogleCalendarConnectionError(
+					'agent_access_required',
+					'Enable Agent access'
+				);
+			}
+		});
+		const response = await service.listEvents({ userId: 'user-1' });
+		expect(response.warnings[0]?.message).toContain('Agent access');
+		expect(response.warnings[0]?.message).toContain('Profile → Calendar');
+		expect(response.warnings[0]?.message).not.toContain('reconnected');
 	});
 
 	it('keeps unrelated provider failures on provider_error', async () => {

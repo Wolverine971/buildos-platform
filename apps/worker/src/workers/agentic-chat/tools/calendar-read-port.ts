@@ -75,7 +75,8 @@ const CONNECTION_LEVEL_REASON_CODES = new Map<string, string>([
 	['connection_not_found', 'connection_not_found'],
 	['source_not_found', 'source_not_found'],
 	['refresh_token_required', 'refresh_token_required'],
-	['reconnect_required', 'reconnect_required']
+	['reconnect_required', 'reconnect_required'],
+	['agent_access_required', 'agent_access_required']
 ]);
 
 function connectionLevelReasonCode(error: unknown): string | null {

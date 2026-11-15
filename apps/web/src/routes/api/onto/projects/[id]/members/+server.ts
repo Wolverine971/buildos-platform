@@ -14,6 +14,7 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../../shared/error-logging';
 import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { loadActorEmails } from '$lib/server/actor-emails';
 
 type MemberWithRole = {
 	role_key: string | null;
@@ -100,7 +101,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		const { data: members, error } = await supabase
 			.from('onto_project_members')
 			.select(
-				'id, project_id, actor_id, role_key, access, agent_access, joined_via_invite_link_id, role_name, role_description, created_at, added_by_actor_id, removed_at, actor:onto_actors!onto_project_members_actor_id_fkey(id, user_id, name, email)'
+				'id, project_id, actor_id, role_key, access, agent_access, joined_via_invite_link_id, role_name, role_description, created_at, added_by_actor_id, removed_at, actor:onto_actors!onto_project_members_actor_id_fkey(id, user_id, name)'
 			)
 			.eq('project_id', projectId)
 			.is('removed_at', null)
@@ -121,9 +122,20 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.databaseError(error);
 		}
 
-		const rows = (members ?? []) as unknown as MemberRow[];
-		const viewerIsOwner = rows.some(
+		const viewerIsOwner = ((members ?? []) as unknown as MemberRow[]).some(
 			(row) => row.actor_id === access.actorId && row.access === 'admin'
+		);
+		// Emails aren't readable through the signed-in client; the owner gets every
+		// member's, everyone else only their own.
+		const emails = await loadActorEmails(
+			viewerIsOwner
+				? ((members ?? []) as unknown as MemberRow[]).map((row) => row.actor_id)
+				: [access.actorId]
+		);
+		const rows = ((members ?? []) as unknown as MemberRow[]).map((row) =>
+			row.actor
+				? { ...row, actor: { ...row.actor, email: emails.get(row.actor_id) ?? null } }
+				: row
 		);
 		const handles = await loadHandles([
 			...new Set(rows.map((row) => row.actor?.user_id).filter((id): id is string => !!id))

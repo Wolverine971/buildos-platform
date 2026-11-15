@@ -120,6 +120,8 @@ export default defineConfig({
 		// Ensure Svelte uses browser/client exports in tests (not SSR)
 		conditions: ['browser']
 	},
+	// Same as vite.config.ts: the share card inlines resvg's WebAssembly.
+	assetsInclude: ['**/*.wasm'],
 	test: {
 		...localWorkerLimits(),
 		globals: true,

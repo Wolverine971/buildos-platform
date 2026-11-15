@@ -529,6 +529,41 @@ describe('shared email reads', () => {
 		).rejects.toThrow(/reconnect.*Profile → Email/is);
 	});
 
+	it('tells the user to approve Agent access, not reconnect, when agents lack Gmail approval', async () => {
+		const search = searchResult();
+		search.messages = [
+			{
+				...search.messages[0]!,
+				connectionId: RECONNECT_ID,
+				accountLabel: 'Cadre',
+				emailAddress: 'cadre@example.com',
+				messageId: 'm9'
+			}
+		];
+		const port = createPort({
+			searchMessages: vi.fn(async () => search),
+			getMessage: vi.fn(async () => {
+				throw new AgenticChatEmailReadErrorV1(
+					'agent_access_required',
+					'Enable Agent access',
+					RECONNECT_ID
+				);
+			})
+		});
+		const { context } = createContext(port);
+		await searchEmailMessages(context, {
+			connection_ids: [RECONNECT_ID],
+			query: 'newer_than:1d'
+		});
+
+		const error = await getEmailMessage(context, {
+			connection_id: RECONNECT_ID,
+			message_id: 'm9'
+		}).catch((caught: unknown) => caught as Error);
+		expect(error.message).toMatch(/Agent access.*Profile → Email/s);
+		expect(error.message).not.toMatch(/reconnect/i);
+	});
+
 	it('maps an ownership failure to a safe error naming list_email_accounts', async () => {
 		const port = createPort({
 			searchMessages: vi.fn(async () => {

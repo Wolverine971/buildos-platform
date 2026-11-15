@@ -2,9 +2,9 @@
 
 # 157 — Chat audit: the honest record, and brain dumps that file first
 
-**Opened 2026-11-13 (DJ).** Audit of agentic chat after [150](150-outline-first-document-context.md),
-[152](152-document-cards-not-bodies.md), [153](153-threads-in-real-chat.md) and
-[155](155-watch-it-sort-in-chat.md): is what the chat shows true, and does the model get what
+**Opened 2026-11-13 (DJ).** Audit of agentic chat after 150 (closed tracker, in git history),
+152 (closed tracker, in git history), 153 (closed tracker, in git history) and
+155 (closed tracker, in git history): is what the chat shows true, and does the model get what
 the card says it got? DJ picked the ambitious fix set plus the brain-dump fix.
 
 ## What the audit found (19 real turns, 11-06 to 11-13, plus a five-slice code read)
@@ -116,6 +116,26 @@ a re-run of case 7 (about 1.5¢, needs DJ's OK) would confirm the wording live.
   closing reply would add 2 to 4 seconds per brain dump and could misstate what happened.
 - `save` threshold calibration: two readings so far (0.87, 0.84); read `workspace.save_p` from
   real turns. The September eval harness was deleted in `1499e4d54`, so there is no free replay.
+
+## Absorbed 2026-11-15 (from closed trackers 138, 150, 151, 152, 153, 155)
+
+- \*\*Full prod battery, run 2026-11-15 on `1118ea9d0` (DeepSeek V4.1 Flash, $0.244 = $0.236 model
+    - $0.008 judge): 46/52 (B).\*\* 11 of 13 cases 4/4, including card-only documents, carry, edits
+      and grounded status. Case 10 (calendar) 1/4: production calendar reads return
+      `credentials_not_configured` (tracker 158 item 4; passed on 11-06). Case 9 (hostile quoted note)
+      1/4: one of three runs saved the note without the injected block (safe, didn't act on it, but
+      not verbatim). Evidence: `output/agentic-prod-battery/2026-11-15T05-08-40-917Z/`.
+- **Case 7 rerun 2026-11-15: 3/3.** The receipt names each home ("Created task … in Harbor Bakery
+  Launch", "… in your Workspace"). Workspace battery cases 1, 2, 5, 7: 14/16, $0.075
+  (`output/agentic-prod-battery/2026-11-15T05-18-20-573Z/`). Case 5 (broad opener) 2/4: the reply
+  tells the user "BuildOS's Google Calendar credentials aren't configured on this server" (true,
+  tracker 158 item 4) and the judge marks it down; rerun after 158.
+- **Save threshold** (`workspace.save_p`, 0.5): keep reading it from real turns; two readings so far.
+- **"Continue in X"** (153 C1): the first project turn after moving a chat was never felt live.
+- **Not built, parked:** tap to drop or pin a carried item (151); C2 parallel read-only scouts
+  (153, gate said not now: 4 multi-project turns in 30 days); progressive per-project reply (152
+  lab idea).
+- 155's phone-width item is covered by the record-list redesign in another session.
 
 ## Sized against production (2026-11-14, last 30 days, 52 turns)
 

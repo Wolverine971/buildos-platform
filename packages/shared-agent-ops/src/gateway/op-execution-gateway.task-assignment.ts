@@ -100,7 +100,8 @@ export async function resolveGatewayTaskAssignees(params: {
 		const { data, error } = await params.admin
 			.from('onto_project_members')
 			.select(
-				'actor_id, actor:onto_actors!onto_project_members_actor_id_fkey(id, user_id, name, email)'
+				// No email: this may run on a signed-in client, which can't read it (Tasker 158).
+				'actor_id, actor:onto_actors!onto_project_members_actor_id_fkey(id, user_id, name)'
 			)
 			.eq('project_id', params.projectId)
 			.is('removed_at', null);
@@ -148,7 +149,7 @@ export async function fetchGatewayTaskAssignees(params: {
 	const { data, error } = await params.admin
 		.from('onto_task_assignees')
 		.select(
-			'task_id, created_at, assignee:onto_actors!onto_task_assignees_assignee_actor_id_fkey(id, user_id, name, email)'
+			'task_id, created_at, assignee:onto_actors!onto_task_assignees_assignee_actor_id_fkey(id, user_id, name)'
 		)
 		.eq('project_id', params.projectId)
 		.eq('task_id', params.taskId)
@@ -166,13 +167,14 @@ export async function fetchGatewayTaskAssignees(params: {
 		if (!rawActor || typeof rawActor !== 'object') continue;
 		const actor = rawActor as ProjectMemberActor;
 		if (typeof actor.id !== 'string' || typeof row.created_at !== 'string') continue;
-		const email = actor.email?.trim().toLowerCase() ?? null;
 		const name = actor.name?.trim() || null;
 		assignees.push({
 			actor_id: actor.id,
 			user_id: actor.user_id ?? null,
-			// An actor created without a name was named after its email.
-			name: name && name.toLowerCase() !== email ? name : null,
+			// An actor created without a name was named after its email. The email column isn't
+			// readable here, so treat any name containing "@" as that case: a structural check on
+			// an address shape, and a misfire only hides a display name.
+			name: name && !name.includes('@') ? name : null,
 			assigned_at: row.created_at
 		});
 	}

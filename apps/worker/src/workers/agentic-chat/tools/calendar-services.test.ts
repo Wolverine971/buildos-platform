@@ -484,8 +484,9 @@ describe('worker source-aware Calendar provider services', () => {
 				providerEventId: 'event-a',
 				selector: { calendarSourceId: 'source-a' }
 			})
-		).rejects.toMatchObject({ code: 'reconnect_required' });
+		).rejects.toMatchObject({ code: 'agent_access_required' });
 		expect(f.createCalendarApi).not.toHaveBeenCalled();
+		expect(f.admin.from).not.toHaveBeenCalledWith('calendar_connection_credentials');
 		expect(f.tables.user_calendar_connections![0]!.status).toBe('active');
 		expect(f.writes).toEqual([]);
 	});

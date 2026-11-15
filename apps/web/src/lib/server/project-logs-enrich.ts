@@ -75,11 +75,12 @@ export async function enrichLogsForDisplay<T extends ProjectLogRowForEnrich>(
 	if (actorIds.length > 0) {
 		const { data: actors } = await supabase
 			.from('onto_actors')
-			.select('id, name, email')
+			// Names only: the signed-in client can't read actor emails (Tasker 158).
+			.select('id, name')
 			.in('id', actorIds);
 
 		for (const actor of actors || []) {
-			actorsById.set(actor.id, { name: actor.name, email: actor.email });
+			actorsById.set(actor.id, { name: actor.name, email: null });
 		}
 	}
 
@@ -95,12 +96,12 @@ export async function enrichLogsForDisplay<T extends ProjectLogRowForEnrich>(
 	if (userIdsForActors.length > 0) {
 		const { data: actorRows } = await supabase
 			.from('onto_actors')
-			.select('user_id, name, email')
+			.select('user_id, name')
 			.in('user_id', userIdsForActors);
 
 		for (const actor of actorRows || []) {
 			if (actor.user_id) {
-				actorByUserId.set(actor.user_id, { name: actor.name, email: actor.email });
+				actorByUserId.set(actor.user_id, { name: actor.name, email: null });
 			}
 		}
 	}

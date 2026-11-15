@@ -211,13 +211,15 @@ export async function loadPeopleHub({
 			? supabase
 					.from('onto_project_members')
 					.select(
-						'id, project_id, actor_id, role_key, agent_access, created_at, joined_via_invite_link_id, actor:onto_actors!onto_project_members_actor_id_fkey(id, user_id, name, email)'
+						'id, project_id, actor_id, role_key, agent_access, created_at, joined_via_invite_link_id, actor:onto_actors!onto_project_members_actor_id_fkey(id, user_id, name)'
 					)
 					.in('project_id', ownedIds)
 					.is('removed_at', null)
 			: Promise.resolve({ data: [], error: null }),
+		// Invitee emails aren't readable through the signed-in client (Tasker 158). These
+		// are your own projects, so read them server-side; @handle invites stay hidden below.
 		ownedIds.length > 0
-			? supabase
+			? admin
 					.from('onto_project_invites')
 					.select(
 						'id, project_id, invitee_email, invitee_handle, role_key, agent_access, created_at, expires_at'
@@ -257,6 +259,25 @@ export async function loadPeopleHub({
 	}
 
 	const memberRows = (membersResult.data ?? []) as unknown as MemberRow[];
+	// Members of your own projects: their emails are yours to see, read server-side
+	// because the signed-in client can't read onto_actors.email (Tasker 158).
+	const memberActorIds = Array.from(new Set(memberRows.map((row) => row.actor_id)));
+	if (memberActorIds.length > 0) {
+		const { data: emailRows, error: emailError } = await admin
+			.from('onto_actors')
+			.select('id, email')
+			.in('id', memberActorIds);
+		if (emailError) console.error('[PeopleHub] Failed to load member emails', emailError);
+		const emails = new Map(
+			((emailRows ?? []) as { id: string; email: string | null }[]).map((row) => [
+				row.id,
+				row.email
+			])
+		);
+		for (const row of memberRows) {
+			if (row.actor) row.actor = { ...row.actor, email: emails.get(row.actor_id) ?? null };
+		}
+	}
 	const userIds = Array.from(
 		new Set(
 			memberRows

@@ -1,6 +1,7 @@
 // packages/shared-agent-ops/src/email/gmail-read-gateway.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import { GmailReadGateway, GmailReadGatewayError } from './gmail-read-gateway';
+import { GmailOAuthError } from './gmail-read-oauth.service';
 
 type Connection = {
 	id: string;
@@ -812,6 +813,30 @@ describe('GmailReadGateway.scanInboxWindow', () => {
 
 		expect(result.account.status).toBe('success');
 		expect(result.messages).toEqual([]);
+	});
+
+	it('reports a missing agent approval as agent_access_required, not reconnect', async () => {
+		const { admin } = createAdmin([activeConnection]);
+		const oauthService = {
+			getAuthorizedReadAccessToken: vi
+				.fn()
+				.mockRejectedValue(
+					new GmailOAuthError('agent_access_required', 'Enable Agent access')
+				)
+		};
+		const providerFetch = vi.fn();
+		const gateway = new GmailReadGateway(admin, { oauthService, providerFetch });
+
+		const result = await gateway.scanInboxWindow({
+			userId: 'user-1',
+			connectionId,
+			afterEpochSeconds: 1,
+			beforeEpochSeconds: 2,
+			maxResults: 50
+		});
+
+		expect(result.account.status).toBe('agent_access_required');
+		expect(providerFetch).not.toHaveBeenCalled();
 	});
 
 	it('does not call Google for a reconnect-required account', async () => {

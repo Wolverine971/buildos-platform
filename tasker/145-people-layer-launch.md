@@ -23,7 +23,7 @@ Handles + find + requests (web and MCP), per-person agent setting (Off/Read/Writ
 6. [ ] Fresh signup with a handle (email and Google): the onboarding People step claims it; invite from onboarding works.
 7. [ ] Share button on a project page opens the Share window, owners and members.
 8. [ ] Next morning, A's daily brief "While you were away" names B and B's agent with what they changed
-   (from closed tracker 142; the section is live and already lists DJ's own agents, checked 2026-11-15).
+       (from closed tracker 142; the section is live and already lists DJ's own agents, checked 2026-11-15).
 9. [ ] Sharing hub + Share window as a member (from 141), and an agent upgrade request end to end (from 140).
 
 ## Decisions and tidy-up

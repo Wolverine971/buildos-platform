@@ -4,10 +4,14 @@
 // person's photo, name, headline, what they're building and their last 6 months of active
 // days. Drawn from code, never by an image model: satori lays the card out and turns all
 // text into vector paths using the bundled Inter font (so the server needs no system
-// fonts), then sharp rasterizes the SVG. Colors are Inkprint's light "paper" tokens.
+// fonts), then resvg (WebAssembly) rasterizes the SVG. Colors are Inkprint's light "paper" tokens.
 
 import satori from 'satori';
-import sharp from 'sharp';
+import { initWasm, Resvg } from '@resvg/resvg-wasm';
+import resvgWasm from '@resvg/resvg-wasm/index_bg.wasm?inline';
+import decodeWebp, { init as initWebpDecoder } from '@jsquash/webp/decode.js';
+import webpDecoderWasm from '@jsquash/webp/codec/dec/webp_dec.wasm?inline';
+import { deflateSync } from 'node:zlib';
 import { env as publicEnv } from '$env/dynamic/public';
 import inter400 from './fonts/inter-latin-400-normal.woff?inline';
 import inter700 from './fonts/inter-latin-700-normal.woff?inline';
@@ -80,18 +84,104 @@ export function avatarHostAllowed(url: string, supabaseUrl: string | undefined):
 	}
 }
 
-/** The photo as a small PNG data URI, or null (then the card shows initials). */
+/** The photo's image type from its first bytes. */
+export function avatarImageType(
+	bytes: Uint8Array
+): 'image/png' | 'image/jpeg' | 'image/webp' | null {
+	if (
+		bytes.length > 8 &&
+		bytes[0] === 0x89 &&
+		bytes[1] === 0x50 &&
+		bytes[2] === 0x4e &&
+		bytes[3] === 0x47
+	)
+		return 'image/png';
+	if (bytes.length > 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff)
+		return 'image/jpeg';
+	if (
+		bytes.length > 12 &&
+		String.fromCharCode(...bytes.subarray(0, 4)) === 'RIFF' &&
+		String.fromCharCode(...bytes.subarray(8, 12)) === 'WEBP'
+	)
+		return 'image/webp';
+	return null;
+}
+
+const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
+	let c = n;
+	for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+	return c >>> 0;
+});
+
+function pngChunk(type: string, data: Buffer): Buffer {
+	const head = Buffer.alloc(8);
+	head.writeUInt32BE(data.length, 0);
+	head.write(type, 4, 'ascii');
+	let crc = 0xffffffff;
+	for (const byte of Buffer.concat([head.subarray(4), data]))
+		crc = CRC_TABLE[(crc ^ byte) & 0xff]! ^ (crc >>> 8);
+	const tail = Buffer.alloc(4);
+	tail.writeUInt32BE((crc ^ 0xffffffff) >>> 0, 0);
+	return Buffer.concat([head, data, tail]);
+}
+
+/** RGBA pixels → PNG (8-bit RGBA, no filtering). The renderer can't draw WebP itself. */
+export function encodeRgbaPng(
+	rgba: Uint8Array | Uint8ClampedArray,
+	width: number,
+	height: number
+): Buffer {
+	const header = Buffer.alloc(13);
+	header.writeUInt32BE(width, 0);
+	header.writeUInt32BE(height, 4);
+	header[8] = 8; // bit depth
+	header[9] = 6; // RGBA
+	const raw = Buffer.alloc((width * 4 + 1) * height);
+	for (let y = 0; y < height; y++) {
+		raw[y * (width * 4 + 1)] = 0; // filter: none
+		Buffer.from(rgba.buffer, rgba.byteOffset + y * width * 4, width * 4).copy(
+			raw,
+			y * (width * 4 + 1) + 1
+		);
+	}
+	return Buffer.concat([
+		Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+		pngChunk('IHDR', header),
+		pngChunk('IDAT', deflateSync(raw)),
+		pngChunk('IEND', Buffer.alloc(0))
+	]);
+}
+
+let webpDecoder: Promise<void> | null = null;
+async function webpToPng(bytes: Buffer): Promise<Buffer | null> {
+	webpDecoder ??= initWebpDecoder(new WebAssembly.Module(dataUriBytes(webpDecoderWasm))).catch(
+		(error) => {
+			webpDecoder = null;
+			throw error;
+		}
+	);
+	await webpDecoder;
+	const image = await decodeWebp(Uint8Array.from(bytes).buffer);
+	if (!image?.width || !image.height || image.width * image.height > 2048 * 2048) return null;
+	return encodeRgbaPng(image.data, image.width, image.height);
+}
+
+/** The photo as a PNG or JPEG data URI, or null (then the card shows initials). */
 async function avatarDataUri(url: string | undefined): Promise<string | null> {
 	if (!url || !avatarHostAllowed(url, publicEnv.PUBLIC_SUPABASE_URL)) return null;
 	try {
 		const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
 		if (!res.ok) return null;
 		const length = Number(res.headers.get('content-length') ?? 0);
-		if (length > 4_000_000) return null;
+		if (length > 2_000_000) return null;
 		const bytes = Buffer.from(await res.arrayBuffer());
-		if (bytes.byteLength > 4_000_000) return null;
-		const png = await sharp(bytes).resize(256, 256, { fit: 'cover' }).png().toBuffer();
-		return `data:image/png;base64,${png.toString('base64')}`;
+		if (bytes.byteLength > 2_000_000) return null;
+		const type = avatarImageType(bytes);
+		if (type === 'image/webp') {
+			const png = await webpToPng(bytes);
+			return png ? `data:image/png;base64,${png.toString('base64')}` : null;
+		}
+		return type ? `data:${type};base64,${bytes.toString('base64')}` : null;
 	} catch {
 		return null;
 	}
@@ -405,5 +495,20 @@ export async function renderBuilderShareCard(
 		height: SHARE_CARD_HEIGHT,
 		fonts: loadFonts()
 	});
-	return sharp(Buffer.from(svg)).png({ compressionLevel: 9 }).toBuffer();
+	await loadRasterizer();
+	const png = new Resvg(svg, { fitTo: { mode: 'width', value: SHARE_CARD_WIDTH } })
+		.render()
+		.asPng();
+	return Buffer.from(png);
+}
+
+// SVG → PNG in WebAssembly. A native rasterizer (sharp) can't load on Vercel: its libvips
+// shared library isn't bundled into the function. The wasm is inlined like the fonts.
+let rasterizer: Promise<void> | null = null;
+function loadRasterizer(): Promise<void> {
+	rasterizer ??= initWasm(dataUriBytes(resvgWasm)).catch((error) => {
+		rasterizer = null;
+		throw error;
+	});
+	return rasterizer;
 }

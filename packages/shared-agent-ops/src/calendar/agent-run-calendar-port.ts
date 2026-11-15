@@ -865,7 +865,9 @@ class AgentRunCalendarPort implements CalendarPort {
 							? 'not_connected'
 							: error.code === 'database_error'
 								? 'credentials_unreadable'
-								: 'reconnect_required'
+								: error.code === 'agent_authorization_required'
+									? 'agent_access_required'
+									: 'reconnect_required'
 				);
 			}
 			throw error;
@@ -1624,7 +1626,8 @@ export type LegacyCalendarReadReasonCode =
 	| 'not_connected'
 	| 'credentials_not_configured'
 	| 'credentials_unreadable'
-	| 'reconnect_required';
+	| 'reconnect_required'
+	| 'agent_access_required';
 
 export class LegacyCalendarReadError extends Error {
 	readonly code: LegacyCalendarReadReasonCode;

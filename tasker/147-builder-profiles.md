@@ -2,7 +2,26 @@
 
 # 147 — Builder profiles (build-os.com/@handle)
 
-**Status:** BUILT (ambitious) + round 2 redesign (10-25); round 1 committed in 81ca4bfa1; round 2 UNCOMMITTED, not deployed · **Opened:** 2026-10-23 · **Owner:** Claude
+> **2026-11-15 (Claude), after DJ deployed `fa3db38bc`:**
+>
+> - **Share card was 500 on production:** `sharp` can't load on Vercel (`libvips-cpp.so.8.18.3:
+cannot open shared object file`). Replaced with `@resvg/resvg-wasm` (SVG→PNG) and
+>   `@jsquash/webp` (WebP photos → PNG via a small zlib PNG encoder), both inlined as base64
+>   (`assetsInclude: ['**/*.wasm']` in `vite.config.ts` + `vitest.config.ts`). Verified: local
+>   production build inlines both, web check 0 errors, builder-profile tests 34/34, a real render
+>   with DJ's WebP photo (~0.5 s). UNCOMMITTED; needs a web deploy, then check
+>   `/api/public/builders/djwayne/card` returns `image/png`.
+> - Same root cause, older: `/api/admin/emails/attachments` also imports `sharp` and 500s on
+>   production (since before this tracker). Not fixed here.
+> - **Draft wording:** "Draft my page" now passes the owner's existing pitches as `owner_pitch` and
+>   drafts pitches only for projects without one (Use all can't overwrite them), and tells the
+>   model not to present a client project's subject (military service, a sport) as the person's
+>   own background. New `builder-profile-drafts.test.ts`. Production rerun before the fix
+>   (DeepSeek V4 Flash, ~$0.0014): headline "Founder, BuildOS"; bio claimed "precision — in
+>   shooting"; BuildOS pitch "AI-first project organization…". Recheck after deploy (~$0.0014).
+> - Writing is off on the live page (no Julian), verified signed out.
+
+**Status:** Rounds 1–3 committed, pushed, deployed (web + worker). Round 4 "finish" (11-15) BUILT, UNCOMMITTED, not deployed; migration `20261115160000` APPLIED + recorded (see Round 4) · **Opened:** 2026-10-23 · **Owner:** Claude
 **Spec:** `docs/specs/BUILDER_PROFILE_SPEC_2026-10-23.md` · **Mockup:** https://claude.ai/artifact/7zHm28L8Lty5pjR1s54Fez
 
 ## What users get
@@ -126,24 +145,95 @@ Built (UNCOMMITTED, not deployed):
   official mark (Simple Icons, CC0, inlined, no new dependency) instead of hand-drawn glyphs; X
   was a plain cross. Same component on the page and in the editor. `SocialIcon.test.ts` guards it.
 
+## Round 4 (2026-11-15): finish up
+
+DJ: "finish up 147." Built (UNCOMMITTED, web + worker not deployed):
+
+- **Writing is opt-in per page.** New `builder_profile_writing` (owner's picked public pages, in
+  order). `get_builder_profile` / `get_builder_project` show only picked pages that are still
+  live, public and the owner's; nothing shows until a page is picked. `show_writing` is no
+  longer read (default now false). Editor: Settings → Writing lists the owner's published
+  pages with a switch each (picked first, up/down to reorder, open link); the card on the
+  canvas follows the picks. `PUT /api/profile/builder/writing`. The old Settings "Writing"
+  switch is gone.
+- **Per-person share image.** `/api/public/builders/[handle]/card` draws a 1200×630 PNG from
+  code (satori → SVG with text as paths using bundled Inter WOFF, sharp → PNG; no system
+  fonts, no image model): photo (fetched only from our storage or Google sign-in hosts),
+  name, @handle · location, headline, Now line, 6 months of the build log with numbers,
+  "Building: …" (anyone-audience projects) and the page address. Cached a day; the page's
+  `og:image` carries `?v=` (changes with what the card shows). Profile and project pages use
+  it with `summary_large_image`; drafts keep the default. Description now reads as
+  sentences about the person ("Founder, BuildOS. Building BuildOS, 9takes. 208 active days…").
+  New dep `satori@0.63.2` (lockfile changed).
+- **Counters.** Project page views are their own counter (`project_views`, owner stats line
+  shows "N project page views"). The event route rate-limits per address (30/min, in memory)
+  and passes a daily-rotating HMAC of the visitor's network address (IPv6 by /64) to
+  `bump_builder_profile_stat`, which counts one view per visitor per page per day and at most
+  20 taps (`builder_profile_stat_visitors`, pruned after 2 days). Optional env
+  `BUILDER_STATS_SECRET` (falls back to the service key).
+- **Editor.** "Draft this week now" gets the new drafts back from the POST (no full editor
+  reload); when the model drafts nothing it now says so instead of "Nothing moved". Two tabs:
+  links and projects saves carry a save counter (`links_rev`, `projects_rev`; stale → 409),
+  text fields carry the value they loaded (`expected`; changed → 409). A 409 shows a "changed
+  in another tab or window" banner with Reload and stops autosaving.
+- **Brief window.** "From People You Follow" reads since the last completed brief (12 h–7 d
+  clamp, same as "While you were away"), 24 h when there's none. Worker change.
+- **Stranger-review polish.** Build log: "updates", "done by AI agents", "DJ / DJ's AI
+  agents", "Across the N projects…" / "all DJ's work", a "What counts as an update?"
+  explainer; phone shows the last 6 months (numbers for the same 6 months, no sideways
+  scroll, no clipped month); tap (or hover) a day for its numbers. Blank cover band 4–5rem.
+  Meta dots hidden on narrow cards (no stray "·"). Avatar alt "Photo of …". Cards: "Last 12
+  weeks · N updates". Footer: "Follow DJ to get their updates in your daily brief" and one
+  line on what the page is above the claim box. `/p/` author name links to `/@handle` when
+  published. Cookie bar: "Accept all" and "Necessary only" same weight (sitewide), and the
+  bar's height is published as `--consent-bar-space` so builder pages keep the claim form
+  clear of it.
+- **Small visitor wins (done):** a social can be an email address (mailto:, envelope icon;
+  GitHub already supported); signed-out Follow / Ask to join go to sign-up (it links to
+  sign-in) with "Create a free account to follow @djwayne…" at the top.
+- **Migration `20261115160000_builder_profile_finish.sql`**: rehearsed with `--role-probe`
+  together with 120700 (passed, all standing checks green). It refuses to apply before
+  `20261105120700` (which also replaces `get_builder_profile`; applying it afterwards would
+  undo the opt-in). APPLIED + recorded 11-15 after 158 applied 120700: rollback dry run in
+  prod first, function md5s match the rehearsal, anon read of /@djwayne OK (4 projects,
+  Writing empty). The deployed (old) web code keeps working: its 2-argument counter call
+  still resolves (checked in a rolled-back transaction).
+- **Paid check (approved 11-15):** "Draft my page" on `deepseek/deepseek-v4-flash`, $0.00142
+  (994 in / 3,126 out). "Draft this week now" called the model too (9takes had 5 done tasks)
+  but got no usable line (every project on the page is Listed, so no project lines; no Now
+  line came back); its usage row wasn't written (script exited before the async log), est.
+  ≈$0.001. Wording: headline and 9takes / Wayne Strategies pitches fine; BuildOS pitch leads
+  with "AI-first project organization" (off-brand), bio mentions Marine Corps / long-range
+  shooting from The Cadre project. DJ should edit before using.
+- **Checks:** svelte-check 0/0; worker typecheck clean; eslint clean on touched files;
+  autofixer clean on touched components; builder tests 159 (web) + brief section 14
+  (worker); browser (headless, counters blocked) logged out at 390px light/dark and 1280px:
+  no sideways scroll, no console errors, tap-a-day works, card endpoint 200 PNG / 404 for
+  unknown.
+
 ## Open
 
-- [ ] DJ: review the draft at Profile → Your page, then Publish (and add Instagram/TikTok if wanted).
-- [ ] Paid check (needs DJ OK): one "Draft my page" + one "Draft this week now" on DJ's account to
-      see the model's wording. Cost: two small `fast`-profile JSON calls (well under $0.01 each,
-      estimate; not measured).
-- [ ] Deploy web (Vercel) for the page, editor, cron; deploy worker (Railway) for the brief section.
-- [ ] Share image: pages use the default BuildOS image; a per-person card needs a font-safe renderer.
-- [ ] View/tap counters accept any POST (owner-only vanity numbers); add rate limiting if abused.
-- [ ] `pnpm gen:all` to add the new tables to generated types (needs SUPABASE_ACCESS_TOKEN); code uses
-      loose casts until then.
-- [ ] "Draft this week now" still re-reads the whole editor to get drafts.
-- [ ] Two editor tabs open at once: last save wins (no conflict check).
-- [ ] Real-phone check of /@handle and /profile/page (checked at 390px with server HTML only).
-- [ ] DJ: turn Writing off on the live page (Julian Episode 390 is public there), or OK Claude to.
-- [ ] DJ: set 9takes/BuildOS project links (tap "Use 9takes.com") and an "I'm interested" link.
-- [ ] Review list items not yet picked: Writing opt-in per doc, contact/email/GitHub, per-person
-      share card, Follow → sign-up with context, label rewrites, banner shrink, cookie-bar parity,
-      phone grid "Apr" clip, tap for day details, stray "·", avatar alt, /p/ author link.
-- [ ] Project page views count as profile views (same counter).
-- [ ] Brief window is the last 24 h, so lines published on a day someone's brief skips are missed.
+- [x] DJ published his page himself (10-25). Instagram/TikTok: DJ's call.
+- [x] Paid check (approved 11-15): done, see Round 4.
+- [x] Deploy rounds 1–3 (done before 11-15).
+- [x] Apply `20261115160000` (11-15).
+- [ ] Deploy round 4: web (Vercel) and worker (Railway). Optional Vercel env
+      `BUILDER_STATS_SECRET`.
+- [x] Share image: per-person card drawn from code (round 4).
+- [x] View/tap counters: per-address limit + one view per visitor per day (round 4).
+- [ ] `pnpm gen:all` for the builder tables (parent session); code uses loose casts until then.
+- [x] "Draft this week now" no longer re-reads the editor (round 4).
+- [x] Two editor tabs: conflict check (round 4).
+- [ ] Real-phone check of /@handle and /profile/page (headless 390px only so far).
+- [x] Writing off on the live page: done as data by 158; lasting fix = opt-in (round 4).
+- [ ] DJ: set 9takes/BuildOS project links and an "I'm interested" link; pick Writing pages if
+      wanted; rewrite the drafted BuildOS pitch before using it.
+- [x] Review list: Writing opt-in, email/GitHub socials, share card, Follow → sign-up with
+      context, label rewrites, banner shrink, cookie-bar parity, "Apr" clip, tap for day,
+      stray "·", avatar alt, /p/ author link (round 4).
+- [ ] Not done (DJ's call): main contact button ("Work with me"), "Open to" chip, role line
+      per project card, one tagline everywhere, a make-your-page landing, email-only follow.
+- [x] Project page views counted apart (round 4).
+- [x] Brief reads since the last brief (round 4).
+- [ ] Privacy page text changed (visitor code, Writing picks); `CURRENT_PRIVACY_VERSION` not
+      bumped (bumping may ask every user to re-accept). DJ's call.

@@ -159,7 +159,8 @@ describe('legacy Google Calendar reader', () => {
 		['connection_not_found', 'not_connected'],
 		['not_configured', 'credentials_not_configured'],
 		['database_error', 'credentials_unreadable'],
-		['agent_authorization_required', 'reconnect_required']
+		['agent_authorization_required', 'agent_access_required'],
+		['invalid_state', 'reconnect_required']
 	] as const)('maps agent %s to %s', async (code, expected) => {
 		const agentOAuth = {
 			getCalendarClient: vi

@@ -118,7 +118,7 @@ export type GmailInboxWindowScan = {
 		connectionId: string;
 		accountLabel: string;
 		emailAddress: string;
-		status: 'success' | 'reconnect_required' | 'unavailable';
+		status: 'success' | 'reconnect_required' | 'agent_access_required' | 'unavailable';
 	};
 	/** Every inbox message in the window (newest first, capped at maxResults). */
 	listedMessageIds: string[];
@@ -684,12 +684,18 @@ export class GmailReadGateway {
 				failure instanceof GmailOAuthError &&
 				(failure.code === 'reconnect_required' ||
 					failure.code === 'read_capability_disabled');
+			const agentAccessRequired =
+				failure instanceof GmailOAuthError && failure.code === 'agent_access_required';
 			await this.audit({
 				userId,
 				connectionId: connection.id,
 				operation: 'gmail.messages.search',
 				outcome: 'failure',
-				reasonCode: reconnectRequired ? 'reconnect_required' : 'provider_error',
+				reasonCode: agentAccessRequired
+					? 'agent_access_required'
+					: reconnectRequired
+						? 'reconnect_required'
+						: 'provider_error',
 				metadata: {
 					failureStage,
 					gatewayErrorCode:
@@ -709,7 +715,11 @@ export class GmailReadGateway {
 					connectionId: connection.id,
 					accountLabel: connection.account_label,
 					emailAddress: connection.email_address,
-					status: reconnectRequired ? 'reconnect_required' : 'unavailable',
+					status: agentAccessRequired
+						? 'agent_access_required'
+						: reconnectRequired
+							? 'reconnect_required'
+							: 'unavailable',
 					messageCount: 0,
 					hasMore: false,
 					nextCursor: null
@@ -978,12 +988,18 @@ export class GmailReadGateway {
 				failure instanceof GmailOAuthError &&
 				(failure.code === 'reconnect_required' ||
 					failure.code === 'read_capability_disabled');
+			const agentAccessRequired =
+				failure instanceof GmailOAuthError && failure.code === 'agent_access_required';
 			await this.audit({
 				userId: params.userId,
 				connectionId: connection.id,
 				operation: 'gmail.messages.scan',
 				outcome: 'failure',
-				reasonCode: reconnectRequired ? 'reconnect_required' : 'provider_error',
+				reasonCode: agentAccessRequired
+					? 'agent_access_required'
+					: reconnectRequired
+						? 'reconnect_required'
+						: 'provider_error',
 				metadata: {
 					failureStage,
 					gatewayErrorCode:
@@ -997,7 +1013,11 @@ export class GmailReadGateway {
 			return {
 				account: {
 					...account,
-					status: reconnectRequired ? 'reconnect_required' : 'unavailable'
+					status: agentAccessRequired
+						? 'agent_access_required'
+						: reconnectRequired
+							? 'reconnect_required'
+							: 'unavailable'
 				},
 				listedMessageIds: [],
 				truncated: false,

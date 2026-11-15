@@ -80,7 +80,8 @@ const GMAIL_OAUTH_ERROR_CODES = new Set([
 	'not_configured',
 	'connection_not_found',
 	'read_capability_disabled',
-	'reconnect_required'
+	'reconnect_required',
+	'agent_access_required'
 ]);
 const GMAIL_GATEWAY_ERROR_CODES = new Set([
 	'invalid_request',

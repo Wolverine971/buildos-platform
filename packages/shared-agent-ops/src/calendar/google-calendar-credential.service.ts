@@ -85,6 +85,9 @@ export class GoogleCalendarConnectionError extends Error {
 			| 'account_already_connected'
 			| 'connection_limit_exceeded'
 			| 'reconnect_required'
+			// Agent ports only: BuildOS agents have no separate Google approval yet
+			// (or it lapsed). The person's own calendar connection is fine.
+			| 'agent_access_required'
 			| 'database_error'
 			| 'provider_error',
 		message: string,

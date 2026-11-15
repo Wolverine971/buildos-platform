@@ -243,6 +243,7 @@ export interface AgenticChatExternalAccountsResultV1 {
 export type AgenticChatEmailSearchAccountStatusV1 =
 	| 'success'
 	| 'reconnect_required'
+	| 'agent_access_required'
 	| 'unavailable';
 
 /** Per-account outcome of one multi-account search; a failed account never fails the search. */
@@ -389,6 +390,7 @@ export type AgenticChatEmailReadErrorCodeV1 =
 	| 'not_configured'
 	| 'connection_not_found'
 	| 'reconnect_required'
+	| 'agent_access_required'
 	| 'read_capability_disabled'
 	| 'message_not_found'
 	| 'provider_response_too_large'

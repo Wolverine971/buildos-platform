@@ -159,7 +159,10 @@ describe('GET /api/onto/projects/[id]/invites', () => {
 			],
 			error: null
 		});
-		supabase.from.mockReturnValue(invitesQuery);
+		// Invite emails aren't readable through the signed-in client: the list runs on admin.
+		createAdminSupabaseClientMock.mockReturnValue({
+			from: vi.fn().mockReturnValue(invitesQuery)
+		});
 
 		const payload = await (await GET(event)).json();
 
@@ -182,27 +185,29 @@ describe('GET /api/onto/projects/[id]/invites', () => {
 		const supabase = event.locals.supabase as any;
 		supabase.rpc.mockResolvedValue({ data: true, error: null });
 		const dayMs = 24 * 60 * 60 * 1000;
-		supabase.from.mockReturnValue(
-			query({
-				data: [
-					{
-						id: 'old',
-						invitee_email: 'beau@example.com',
-						invitee_handle: null,
-						status: 'pending',
-						expires_at: new Date(Date.now() - dayMs).toISOString()
-					},
-					{
-						id: 'fresh',
-						invitee_email: 'lee@example.com',
-						invitee_handle: null,
-						status: 'pending',
-						expires_at: new Date(Date.now() + dayMs).toISOString()
-					}
-				],
-				error: null
-			})
-		);
+		createAdminSupabaseClientMock.mockReturnValue({
+			from: vi.fn().mockReturnValue(
+				query({
+					data: [
+						{
+							id: 'old',
+							invitee_email: 'beau@example.com',
+							invitee_handle: null,
+							status: 'pending',
+							expires_at: new Date(Date.now() - dayMs).toISOString()
+						},
+						{
+							id: 'fresh',
+							invitee_email: 'lee@example.com',
+							invitee_handle: null,
+							status: 'pending',
+							expires_at: new Date(Date.now() + dayMs).toISOString()
+						}
+					],
+					error: null
+				})
+			)
+		});
 
 		const payload = await (await GET(event)).json();
 

@@ -234,8 +234,7 @@ export async function fetchTaskAssigneesMap({
 			assignee:onto_actors!onto_task_assignees_assignee_actor_id_fkey(
 				id,
 				user_id,
-				name,
-				email
+				name
 			)
 		`
 		)

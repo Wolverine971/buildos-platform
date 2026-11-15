@@ -11,7 +11,7 @@ export type GmailReadAccountResult = {
 	connectionId: string;
 	accountLabel: string;
 	emailAddress: string;
-	status: 'success' | 'reconnect_required' | 'unavailable';
+	status: 'success' | 'reconnect_required' | 'agent_access_required' | 'unavailable';
 	messageCount: number;
 	hasMore: boolean;
 	nextCursor: string | null;

@@ -289,6 +289,21 @@ describe('worker calendar read port', () => {
 		expect(result.events).toEqual([]);
 	});
 
+	it('surfaces a missing agent approval as agent_access_required, not a reconnect', async () => {
+		const services = fakeServices();
+		services.read.listEvents = vi.fn(async () => {
+			throw new GoogleCalendarConnectionError('agent_access_required', 'Enable Agent access');
+		});
+		const { context } = createContext({ services: () => services });
+
+		const result = await listCalendarEvents(context, RANGE);
+
+		expect(result.google_read).toMatchObject({
+			coverage: 'unavailable',
+			source_failures: [expect.objectContaining({ reason_code: 'agent_access_required' })]
+		});
+	});
+
 	it('surfaces missing OAuth configuration as unavailable coverage, not a tool failure', async () => {
 		const services = fakeServices();
 		services.read.listEvents = vi.fn(async () => {

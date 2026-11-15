@@ -203,7 +203,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.forbidden('Access denied');
 		}
 
-		const { data: invites, error } = await supabase
+		// invitee_email isn't readable through the signed-in client (Tasker 158); access was
+		// checked above, so read the invite server-side.
+		const { data: invites, error } = await createAdminSupabaseClient()
 			.from('onto_project_invites')
 			.select(
 				'id, invitee_email, invitee_handle, role_key, access, agent_access, status, created_at, expires_at'

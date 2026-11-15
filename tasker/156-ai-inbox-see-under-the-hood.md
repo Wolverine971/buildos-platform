@@ -2,10 +2,25 @@
 
 # 156 — AI Inbox: see under the hood (watch it sort, for the inbox)
 
+> **2026-11-15 (Claude, paid checks):**
+>
+> - **Held scores land live (free):** the nightly pass at 05:00 UTC stamped `rollup.auto_check`
+>   (scores, bar, outcome, run id) on five 9takes tidy-ups. Paid review dry run on The Cadre
+>   (read-only, DeepSeek V4 Flash + scoring model): 9 questions, and the roll-up turned all 7
+>   tidy-ups into questions, so none reached auto-apply.
+> - **Auto-apply has fired once ever (2026-11-07).** Every scored tidy-up lands just under the
+>   bar: "about" 0.73–0.80 vs 0.85, archive "safe" 0.75–0.81 vs 0.90. Decision for DJ: lower
+>   `minAbout` to ~0.75 for moves (Undo covers it), or accept that the inbox asks instead.
+> - Question answers offer "Already archived / Already moved — close the finding" on records that
+>   are plainly not archived or moved. The `done` answer doesn't fit tidy-ups; drop it there.
+> - One document title in prod is stored as "Marketing &amp; Email" (escaped once at save).
+> - **Email quote check blocked:** agent Gmail access is broken in production (tracker 158 item 4).
+>   Absorbed from 149 (closed): first real auto-apply happened 11-07; calibration above.
+
 **Opened 2026-11-07 (DJ). High-level architecture for another agent to research, then build.**
 Start by reading this file, then the two trackers it builds on:
-[155 — Watch it sort, in real chat](155-watch-it-sort-in-chat.md) (the pattern) and
-[149 — AI Inbox: Assistant's Desk](149-ai-inbox-assistants-desk.md) (what the inbox is today).
+155 — Watch it sort, in real chat (closed tracker, in git history) (the pattern) and
+149 — AI Inbox: Assistant's Desk (closed tracker, in git history) (what the inbox is today).
 
 ## What DJ asked for
 

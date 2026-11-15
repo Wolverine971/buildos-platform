@@ -87,6 +87,24 @@ export async function draftPage(params: {
 		goalsByProject.set(g.project_id, list);
 	}
 
+	// Pitches the owner already wrote stay theirs: they go in as context, and no new pitch is
+	// drafted for those projects (so "Use all" can't overwrite them).
+	const { data: placements } = projects.length
+		? await admin
+				.from('builder_profile_projects')
+				.select('project_id, pitch')
+				.eq('user_id', userId)
+				.in(
+					'project_id',
+					projects.map((p) => p.id)
+				)
+		: { data: [] };
+	const ownPitch = new Map<string, string>();
+	for (const row of (placements ?? []) as { project_id: string; pitch: string | null }[]) {
+		const pitch = row.pitch?.trim();
+		if (pitch) ownPitch.set(row.project_id, pitch);
+	}
+
 	const input = {
 		name: (user as any)?.name ?? null,
 		current_bio: (user as any)?.bio ?? null,
@@ -95,7 +113,8 @@ export async function draftPage(params: {
 			name: p.name,
 			description: (p.description ?? '').slice(0, 500),
 			goals: goalsByProject.get(p.id) ?? [],
-			stage: p.facet_stage
+			stage: p.facet_stage,
+			owner_pitch: ownPitch.get(p.id) ?? null
 		}))
 	};
 
@@ -104,7 +123,8 @@ export async function draftPage(params: {
 		'Return JSON only: {"headline": string, "bio": string, "pitches": [{"project_id": string, "pitch": string}]}.',
 		'- headline: up to 8 words, what they do or build (for example "Founder, BuildOS" or "Writer and podcast producer").',
 		'- bio: one or two sentences in the first person, up to 240 characters, specific to their projects.',
-		'- pitches: one per project in the input, one sentence each, up to 140 characters, saying what the project is for so a stranger gets it.',
+		"- pitches: one per project whose owner_pitch is null, one sentence each, up to 140 characters, saying what the project is for so a stranger gets it. Skip projects that have an owner_pitch; read it as the owner's own words and match its voice.",
+		"- Some projects are work the person does for someone else (a client's business, course or website). Describe the person's role and the kind of work. Never present a project's subject, credentials or life experience (military service, a sport, a license) as the person's own unless the notes say it is theirs.",
 		`- ${PRIVACY_RULES}`
 	].join('\n');
 
@@ -130,7 +150,7 @@ export async function draftPage(params: {
 				project_id: typeof p?.project_id === 'string' ? p.project_id : '',
 				pitch: clip(p?.pitch, 160) ?? ''
 			}))
-			.filter((p) => allowed.has(p.project_id) && p.pitch)
+			.filter((p) => allowed.has(p.project_id) && !ownPitch.has(p.project_id) && p.pitch)
 	};
 }
 

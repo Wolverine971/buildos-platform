@@ -69,6 +69,8 @@ export default defineConfig(({ mode }) => {
 
 	return {
 		cacheDir,
+		// The share card inlines resvg's WebAssembly (`?inline`); a native rasterizer can't load on Vercel.
+		assetsInclude: ['**/*.wasm'],
 
 		plugins: [
 			{

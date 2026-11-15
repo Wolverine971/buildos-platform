@@ -3,6 +3,7 @@ import { redirectToLogin } from '$lib/server/auth-redirects';
 import { env as privateEnv } from '$env/dynamic/private';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { isGmailRelevancePhaseAUserAllowed } from '$lib/server/gmail-relevance/config';
 import { compileProjectEmailProfile } from '$lib/server/gmail-relevance/project-email-profile';
 import {
@@ -118,7 +119,9 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 			.is('deleted_at', null)
 			.order('updated_at', { ascending: false })
 			.limit(30),
-		supabase
+		// Member emails feed the profile; the signed-in client can't read them (Tasker 158).
+		// The project was picked through the signed-in client above, so access is checked.
+		createAdminSupabaseClient()
 			.from('onto_project_members')
 			.select(
 				'id, role_name, role_description, actor:onto_actors!onto_project_members_actor_id_fkey(id, name, email, user_id)'

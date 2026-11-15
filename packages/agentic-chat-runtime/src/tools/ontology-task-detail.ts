@@ -230,7 +230,7 @@ export async function fetchTaskAssigneesMapForProject(
 		.select(
 			`task_id, assignee_actor_id, created_at,
 			assignee:onto_actors!onto_task_assignees_assignee_actor_id_fkey(
-				id, user_id, name, email
+				id, user_id, name
 			)`
 		)
 		.eq('project_id', input.projectId)

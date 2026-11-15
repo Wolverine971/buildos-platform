@@ -13,7 +13,7 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		function: {
 			name: 'list_calendar_events',
 			description:
-				'List merged, deduplicated Google and ontology events. Pass explicit time_min/time_max for an exact window.',
+				'List merged, deduplicated Google and ontology events. Pass explicit time_min/time_max for an exact window. A source failure with reason_code agent_access_required means the user has not approved BuildOS agents for that Google account yet: tell them to turn on Agent access in Profile → Calendar (a one-time Google approval), not to reconnect.',
 			parameters: {
 				type: 'object',
 				properties: {

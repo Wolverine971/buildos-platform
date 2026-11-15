@@ -88,19 +88,29 @@ function describeCalendarCoverage(read: {
 				.map((f) => f.calendar)
 				.join(', ')} from Profile > Calendar (/profile?tab=calendar).`
 		: '';
+	const agentAccess = read.source_failures.filter(
+		(f) => f.reason_code === 'agent_access_required'
+	);
+	const agentAccessSentence = agentAccess.length
+		? ` BuildOS agents are not approved for ${agentAccess
+				.map((f) => f.calendar)
+				.join(
+					', '
+				)} yet: tell the user to turn on Agent access in Profile > Calendar (/profile?tab=calendar). Their calendar connection itself is fine; do not ask them to reconnect.`
+		: '';
 
 	if (read.coverage === 'unavailable') {
 		return (
 			`No calendar data was read: all ${read.source_count} connected calendar source(s) failed` +
 			`${reasons ? ` (${reasons})` : ''}. Do not assert availability, free time, or that a slot is open ` +
-			`from this result — the calendar was not read.${reconnectSentence}`
+			`from this result — the calendar was not read.${reconnectSentence}${agentAccessSentence}`
 		);
 	}
 
 	return (
 		`Calendar coverage is degraded: ${read.failed_source_count} of ${read.source_count} calendar ` +
 		`source(s) failed${reasons ? ` (${reasons})` : ''}. Events on those calendars are missing from ` +
-		`this result, so availability may be wrong.${reconnectSentence}${truncationWarning ? ` ${truncationWarning}` : ''}`
+		`this result, so availability may be wrong.${reconnectSentence}${agentAccessSentence}${truncationWarning ? ` ${truncationWarning}` : ''}`
 	);
 }
 

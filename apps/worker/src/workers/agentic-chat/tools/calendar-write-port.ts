@@ -102,6 +102,7 @@ const RECONNECT_REASON_CODES = new Set([
 
 export type AgenticChatCalendarWriteErrorCodeV1 =
 	| 'reconnect_required'
+	| 'agent_access_required'
 	| 'not_configured'
 	| 'not_connected'
 	| 'credentials_unreadable';
@@ -111,7 +112,8 @@ const LEGACY_GRANT_FAILURE_CODES = new Map<string, AgenticChatCalendarWriteError
 	['not_connected', 'not_connected'],
 	['credentials_unreadable', 'credentials_unreadable'],
 	['credentials_not_configured', 'not_configured'],
-	['reconnect_required', 'reconnect_required']
+	['reconnect_required', 'reconnect_required'],
+	['agent_access_required', 'agent_access_required']
 ]);
 
 /**
@@ -136,6 +138,7 @@ export function calendarWriteFailureCode(
 				? candidate.code
 				: null;
 	if (code === 'not_configured') return 'not_configured';
+	if (code === 'agent_access_required') return 'agent_access_required';
 	if (code !== null && RECONNECT_REASON_CODES.has(code)) return 'reconnect_required';
 
 	// Raw provider rejections: a 401 or an `invalid_grant` body both mean the

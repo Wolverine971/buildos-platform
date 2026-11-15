@@ -923,7 +923,15 @@ describe('calendar write failure classification', () => {
 		expect(calendarWriteFailureCode(grant('credentials_not_configured'))).toBe(
 			'not_configured'
 		);
+		expect(calendarWriteFailureCode(grant('agent_access_required'))).toBe(
+			'agent_access_required'
+		);
 		expect(calendarWriteFailureCode(grant('something_else'))).toBeNull();
+		expect(
+			calendarWriteFailureCode(
+				new GoogleCalendarConnectionError('agent_access_required', 'Enable Agent access')
+			)
+		).toBe('agent_access_required');
 	});
 	it('maps every dead-grant shape to reconnect_required and env gaps to not_configured', () => {
 		expect(

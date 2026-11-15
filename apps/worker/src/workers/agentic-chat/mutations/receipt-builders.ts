@@ -601,6 +601,11 @@ function calendarFailureReceipt(
 ): Record<string, unknown> {
 	if (errorCode === null) return {};
 	const connection = typeof connectionId === 'string' && connectionId ? connectionId : null;
+	if (errorCode === 'agent_access_required') {
+		// No reconnect handoff: reconnecting the person's own calendar would not help.
+		// They approve BuildOS agents once from the Agent access row in Profile > Calendar.
+		return { error_code: errorCode, connection_id: connection, requires_user_action: true };
+	}
 	if (errorCode !== 'reconnect_required') {
 		return { error_code: errorCode, connection_id: connection, requires_user_action: false };
 	}
@@ -625,6 +630,8 @@ function calendarFailureMessage(errorCode: string): string {
 	switch (errorCode) {
 		case 'reconnect_required':
 			return 'Google Calendar must be reconnected before this change can reach Google. The BuildOS record was saved.';
+		case 'agent_access_required':
+			return `BuildOS agents don't have the user's approval for Google Calendar yet, so nothing was sent to Google. The BuildOS record was saved. They can turn on Agent access in Profile > Calendar (${CALENDAR_RECONNECT_PATH}); their calendar connection itself is fine.`;
 		case 'not_connected':
 			return `Google Calendar is not connected, so nothing was sent to Google. Connect it from Profile > Calendar (${CALENDAR_RECONNECT_PATH}).`;
 		case 'credentials_unreadable':

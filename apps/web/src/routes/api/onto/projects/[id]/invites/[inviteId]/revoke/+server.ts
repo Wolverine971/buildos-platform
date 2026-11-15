@@ -6,6 +6,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { logOntologyApiError } from '../../../../../shared/error-logging';
 
 export const POST: RequestHandler = async ({ params, locals }) => {
@@ -52,7 +53,9 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.forbidden('Only the project owner can revoke invites');
 		}
 
-		const { data: invite, error: inviteError } = await supabase
+		// invitee_email isn't readable through the signed-in client (Tasker 158); access was
+		// checked above, so read the invite server-side.
+		const { data: invite, error: inviteError } = await createAdminSupabaseClient()
 			.from('onto_project_invites')
 			.select('id, invitee_email, invitee_handle, status')
 			.eq('id', inviteId)

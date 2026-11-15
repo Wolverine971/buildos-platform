@@ -103,6 +103,9 @@ export class GmailOAuthError extends Error {
 			| 'connection_limit_exceeded'
 			| 'read_capability_disabled'
 			| 'reconnect_required'
+			// Agent ports only: BuildOS agents have no separate Google approval yet
+			// (or it lapsed). The person's own Gmail connection is fine.
+			| 'agent_access_required'
 			| 'database_error'
 			| 'provider_error',
 		message: string,
