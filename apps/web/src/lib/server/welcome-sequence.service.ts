@@ -1322,16 +1322,17 @@ export class WelcomeSequenceService {
 					? { last_evaluated_at: claimedAt }
 					: { updated_at: claimedAt };
 
-			const { data, error } = await this.sequenceTable()
-				.update(claimPayload)
+			// Count the claimed row; never `.select()` it. Production PostgREST (12.2.3)
+			// rejects an update with an `or` filter that returns rows, with the same
+			// "column ... does not exist" error the schema fallback below listens for.
+			const { count, error } = await this.sequenceTable()
+				.update(claimPayload, { count: 'exact' })
 				.eq('user_id', userId)
 				.is(sentField, null)
 				.is(skippedField, null)
-				.or(`${claimField}.is.null,${claimField}.lt.${claimCutoff}`)
-				.select('user_id')
-				.maybeSingle();
+				.or(`${claimField}.is.null,${claimField}.lt.${claimCutoff}`);
 			if (!error) {
-				return Boolean((data as { user_id?: string } | null)?.user_id);
+				return (count ?? 0) > 0;
 			}
 
 			const schemaChanged =

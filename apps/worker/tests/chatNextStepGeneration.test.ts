@@ -22,7 +22,7 @@ const PROJECT_ID = 'project-1';
 const TASK_ID = '11111111-1111-4111-8111-111111111111';
 
 type Call = [method: string, args: unknown[]];
-type Result = { data: unknown; error: { message: string } | null };
+type Result = { data: unknown; error: { message: string } | null; count?: number | null };
 
 /** A PostgREST-style query: every filter returns the query, and awaiting it gives the result. */
 function query(result: (calls: Call[]) => Result, calls: Call[] = []) {
@@ -56,9 +56,13 @@ describe('processSessionActivityAndNextSteps', () => {
 	let executionsError: { message: string } | null;
 	let project: Record<string, unknown> | null;
 	/** Rows the guarded next-step update reports as written. */
-	let updatedRows: Array<{ id: string }>;
+	let updatedCount: number;
 	let executionCalls: Call[];
-	let projectUpdates: Array<{ payload: Record<string, unknown>; calls: Call[] }>;
+	let projectUpdates: Array<{
+		payload: Record<string, unknown>;
+		options: unknown;
+		calls: Call[];
+	}>;
 	let tablesRead: string[];
 
 	beforeEach(() => {
@@ -88,7 +92,7 @@ describe('processSessionActivityAndNextSteps', () => {
 			next_step_long: null,
 			next_step_source: 'ai'
 		};
-		updatedRows = [{ id: PROJECT_ID }];
+		updatedCount = 1;
 		executionCalls = [];
 		projectUpdates = [];
 		tablesRead = [];
@@ -117,10 +121,13 @@ describe('processSessionActivityAndNextSteps', () => {
 				case 'onto_projects':
 					return {
 						select: () => query(() => ({ data: project, error: null })),
-						update: (payload: Record<string, unknown>) => {
+						update: (payload: Record<string, unknown>, options?: unknown) => {
 							const calls: Call[] = [];
-							projectUpdates.push({ payload, calls });
-							return query(() => ({ data: updatedRows, error: null }), calls);
+							projectUpdates.push({ payload, options, calls });
+							return query(
+								() => ({ data: null, count: updatedCount, error: null }),
+								calls
+							);
 						}
 					};
 				case 'onto_tasks':
@@ -181,6 +188,10 @@ describe('processSessionActivityAndNextSteps', () => {
 			'or',
 			['next_step_source.is.null,next_step_source.neq.user']
 		]);
+		// Production PostgREST rejects an update with an `or` filter that returns rows, so
+		// the write counts rows instead of selecting them.
+		expect(projectUpdates[0]!.options).toEqual({ count: 'exact' });
+		expect(projectUpdates[0]!.calls.map(([method]) => method)).not.toContain('select');
 	});
 
 	it('makes no model call and writes nothing when the chat saved no changes', async () => {
@@ -241,7 +252,7 @@ describe('processSessionActivityAndNextSteps', () => {
 
 	it('reports no update when the user wrote a next step while the model was running', async () => {
 		// The guarded write matched no row.
-		updatedRows = [];
+		updatedCount = 0;
 
 		const result = await processSessionActivityAndNextSteps('session-1', 'user-1');
 

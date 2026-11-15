@@ -45,6 +45,7 @@ class QueryBuilderMock implements PromiseLike<any> {
 	private selectOptions: Record<string, any> | undefined;
 	private insertPayload: Record<string, any> | null = null;
 	private updatePayload: Record<string, any> | null = null;
+	private updateCount = false;
 	private filters: Array<{ operator: 'eq' | 'is'; field: string; value: any }> = [];
 	private orExpression: string | null = null;
 	private containsFilter: { field: string; value: Record<string, any> } | null = null;
@@ -70,9 +71,10 @@ class QueryBuilderMock implements PromiseLike<any> {
 		return this;
 	}
 
-	update(payload: Record<string, any>) {
+	update(payload: Record<string, any>, options?: { count?: string }) {
 		this.action = 'update';
 		this.updatePayload = payload;
+		this.updateCount = options?.count === 'exact';
 		return this;
 	}
 
@@ -372,6 +374,19 @@ class QueryBuilderMock implements PromiseLike<any> {
 
 	private executeUpdate() {
 		if (this.table === 'welcome_email_sequences' && this.updatePayload) {
+			// Production PostgREST (12.2.3) rejects an update with an `or` filter that
+			// returns rows; mirror it so a claim written that way fails here too.
+			if (this.orExpression && this.selectedColumns !== undefined) {
+				const column = this.orExpression.split('.')[0];
+				return {
+					data: null,
+					error: {
+						code: '42703',
+						message: `column welcome_email_sequences.${column} does not exist`
+					}
+				};
+			}
+
 			if (this.shouldSimulateMissingLastEvaluatedAtError()) {
 				return {
 					data: null,
@@ -397,6 +412,7 @@ class QueryBuilderMock implements PromiseLike<any> {
 			if (!row) {
 				return {
 					data: this.resultMode === 'many' ? [] : null,
+					...(this.updateCount ? { count: 0 } : {}),
 					error: null
 				};
 			}
@@ -416,6 +432,7 @@ class QueryBuilderMock implements PromiseLike<any> {
 					this.resultMode === 'maybeSingle' || this.resultMode === 'single'
 						? this.projectSelectedColumns(nextRow)
 						: null,
+				...(this.updateCount ? { count: 1 } : {}),
 				error: null
 			};
 		}

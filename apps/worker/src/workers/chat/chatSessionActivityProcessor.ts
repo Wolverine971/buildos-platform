@@ -865,26 +865,31 @@ async function updateProjectNextStep(
 	projectId: string,
 	nextStep: NextStepGenerationResult
 ): Promise<boolean> {
-	const { data, error } = await supabase
+	// Count the written rows; never `.select()` them. Production PostgREST (12.2.3) rejects
+	// an update that has an `or` filter and returns rows ("column onto_projects.<col> does
+	// not exist", 42703), which failed every next-step write on 2026-11-14.
+	const { count, error } = await supabase
 		.from('onto_projects')
-		.update({
-			next_step_short: nextStep.nextStepShort,
-			next_step_long: nextStep.nextStepLong,
-			next_step_updated_at: new Date().toISOString(),
-			next_step_source: 'ai'
-		})
+		.update(
+			{
+				next_step_short: nextStep.nextStepShort,
+				next_step_long: nextStep.nextStepLong,
+				next_step_updated_at: new Date().toISOString(),
+				next_step_source: 'ai'
+			},
+			{ count: 'exact' }
+		)
 		.eq('id', projectId)
 		.in('state_key', ACTIVE_PROJECT_STATES)
 		.is('deleted_at', null)
 		.is('archived_at', null)
 		// `neq` alone would also drop rows whose source is null.
-		.or('next_step_source.is.null,next_step_source.neq.user')
-		.select('id');
+		.or('next_step_source.is.null,next_step_source.neq.user');
 
 	if (error) {
 		throw new Error(`Failed to update project next step: ${error.message}`);
 	}
-	return (data ?? []).length > 0;
+	return (count ?? 0) > 0;
 }
 
 // =============================================================================
