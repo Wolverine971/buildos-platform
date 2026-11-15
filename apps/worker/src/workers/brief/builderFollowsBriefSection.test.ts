@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	type BuilderFollowsBriefClient,
 	fetchBuilderFollowsBriefSection,
-	formatBuilderFollowsSection
+	formatBuilderFollowsSection,
+	resolveBuilderFollowsSince
 } from './builderFollowsBriefSection';
 import type { BuilderFollowsBriefLine } from './ontologyBriefTypes';
 
@@ -49,6 +50,15 @@ function fakeClient(tables: Tables, failing: string[] = []) {
 				gte: (column, value) => {
 					rows = rows.filter((row) => String(valueAt(row, column) ?? '') >= value);
 					return query;
+				},
+				lt: (column, value) => {
+					rows = rows.filter((row) => String(valueAt(row, column) ?? '') < value);
+					return query;
+				},
+				maybeSingle: () => {
+					const out = result();
+					const data = Array.isArray(out.data) ? (out.data[0] ?? null) : out.data;
+					return Promise.resolve({ data, error: out.error });
 				},
 				order: (column, options) => {
 					rows.sort((a, b) => {
@@ -357,5 +367,49 @@ describe('formatBuilderFollowsSection', () => {
 		);
 		expect(markdown).toContain('- ... and 3 more\n');
 		expect(markdown).not.toContain('## Your Page');
+	});
+});
+
+describe('resolveBuilderFollowsSince', () => {
+	const now = new Date('2026-11-15T11:00:00Z');
+	const briefs = (rows: Row[]) =>
+		fakeClient({
+			ontology_daily_briefs: rows.map((row) => ({
+				user_id: 'reader',
+				generation_status: 'completed',
+				...row
+			}))
+		}).client;
+
+	it('starts at the last brief that went out, so a skipped day drops nothing', async () => {
+		// The last brief was two days ago (yesterday's was skipped).
+		const client = briefs([
+			{ brief_date: '2026-11-13', generation_completed_at: '2026-11-13T11:05:00Z' },
+			{ brief_date: '2026-11-12', generation_completed_at: '2026-11-12T11:05:00Z' }
+		]);
+		const since = await resolveBuilderFollowsSince(client, 'reader', '2026-11-15', now);
+		expect(since.toISOString()).toBe('2026-11-13T11:05:00.000Z');
+	});
+
+	it('ignores today’s brief and failed ones, and caps the window at a week', async () => {
+		const client = briefs([
+			{ brief_date: '2026-11-15', generation_completed_at: '2026-11-15T10:00:00Z' },
+			{
+				brief_date: '2026-11-14',
+				generation_status: 'failed',
+				generation_completed_at: '2026-11-14T11:00:00Z'
+			},
+			{ brief_date: '2026-10-01', generation_completed_at: '2026-10-01T11:00:00Z' }
+		]);
+		const since = await resolveBuilderFollowsSince(client, 'reader', '2026-11-15', now);
+		expect(since.toISOString()).toBe('2026-11-08T11:00:00.000Z');
+	});
+
+	it('falls back to the last 24 hours with no earlier brief or when the read fails', async () => {
+		const empty = await resolveBuilderFollowsSince(briefs([]), 'reader', '2026-11-15', now);
+		expect(empty.toISOString()).toBe('2026-11-14T11:00:00.000Z');
+		const down = fakeClient({}, ['ontology_daily_briefs']).client;
+		const failed = await resolveBuilderFollowsSince(down, 'reader', '2026-11-15', now);
+		expect(failed.toISOString()).toBe('2026-11-14T11:00:00.000Z');
 	});
 });

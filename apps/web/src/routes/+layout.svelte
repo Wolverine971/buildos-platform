@@ -45,6 +45,7 @@
 	import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 	import { LOGOUT_REDIRECT_STORAGE_KEY } from '$lib/utils/auth';
 	import { clearedPile } from '$lib/stores/inbox-cleared-pile.svelte';
+	import { registerFindPalette, requestFind } from '$lib/components/workspace/find-bridge';
 
 	// FIXED: Convert to $props() for Svelte 5 runes mode compatibility
 	let { data, children }: { data: LayoutData; children?: Snippet } = $props();
@@ -69,6 +70,32 @@
 			(module) => (ClearedPile = module.default)
 		);
 	});
+
+	// ⌘K anywhere (tasker 159): Workspace search in a window, loaded on first use. On
+	// /projects, ⌘K focuses that page's own search box instead.
+	let FindPalette = $state<
+		typeof import('$lib/components/workspace/FindPalette.svelte').default | null
+	>(null);
+	let findOpen = $state(false);
+
+	async function openFindPalette() {
+		if (!FindPalette)
+			FindPalette = (await import('$lib/components/workspace/FindPalette.svelte')).default;
+		findOpen = true;
+	}
+
+	function handleFindShortcut(event: KeyboardEvent) {
+		if (!data.user || findOpen || event.defaultPrevented) return;
+		if (!(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey) return;
+		if (event.key.toLowerCase() !== 'k') return;
+		// Editors keep their own ⌘K (insert link).
+		const target = event.target as HTMLElement | null;
+		if (target?.isContentEditable || target?.closest?.('.cm-editor')) return;
+		event.preventDefault();
+		requestFind();
+	}
+
+	onMount(() => registerFindPalette(() => void openFindPalette()));
 
 	// Onboarding state — reactive to data changes, not just route changes
 	let forceOnboardingActive = $state(false);
@@ -1097,6 +1124,8 @@
 <ModeWatcher />
 <IOSSplashScreens />
 
+<svelte:window onkeydown={handleFindShortcut} />
+
 <div
 	class="layout-root flex min-h-screen min-h-[100dvh] w-full flex-col overflow-x-hidden {isSheetRoute
 		? 'bg-bench bench-grain'
@@ -1213,6 +1242,10 @@
 
 	{#if ClearedPile}
 		<ClearedPile />
+	{/if}
+
+	{#if user && FindPalette}
+		<FindPalette bind:open={findOpen} />
 	{/if}
 
 	<TrackingPreferences />

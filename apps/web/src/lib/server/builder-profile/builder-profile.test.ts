@@ -9,14 +9,17 @@ import {
 	loadBuilderProject,
 	parseLinks,
 	parsePlacements,
-	replaceLinks
+	parseWritingPicks,
+	recordEvent,
+	replaceLinks,
+	replaceWriting
 } from './builder-profile.service';
 import { decideDraft, draftPage, draftWeeklyUpdates } from './builder-profile-drafts';
 
 // A tiny stand-in for the Supabase query builder: every chain resolves to the result
 // queued for its table (in call order), and calls are recorded.
 function fakeClient(options: {
-	tables?: Record<string, Array<{ data?: unknown; error?: unknown }>>;
+	tables?: Record<string, Array<{ data?: unknown; error?: unknown; count?: number | null }>>;
 	rpc?: Record<string, (args: any) => { data?: unknown; error?: unknown }>;
 }) {
 	const calls: { table: string; op: string; args: unknown[] }[] = [];
@@ -26,9 +29,13 @@ function fakeClient(options: {
 	const from = (table: string) => {
 		const result = () => {
 			const next = queues[table]?.shift() ?? { data: [], error: null };
-			return { data: next.data ?? null, error: next.error ?? null };
+			return {
+				data: next.data ?? null,
+				error: next.error ?? null,
+				count: next.count ?? null
+			};
 		};
-		let settled: { data: unknown; error: unknown } | null = null;
+		let settled: { data: unknown; error: unknown; count: number | null } | null = null;
 		const chain: any = {};
 		for (const op of [
 			'select',
@@ -36,6 +43,8 @@ function fakeClient(options: {
 			'in',
 			'is',
 			'gte',
+			'lt',
+			'or',
 			'order',
 			'limit',
 			'insert',
@@ -113,8 +122,9 @@ describe('replaceLinks', () => {
 	it.each([false, true])(
 		'lets the database generate link IDs (existing IDs: %s)',
 		async (existing) => {
+			// The save claims the next links counter first (count = rows that matched).
 			const fetch = vi.fn<typeof globalThis.fetch>(
-				async () => new Response(null, { status: 204 })
+				async () => new Response(null, { status: 204, headers: { 'content-range': '*/1' } })
 			);
 			const admin = createClient('https://builder-links.test', 'offline-test-key', {
 				global: { fetch },
@@ -129,17 +139,28 @@ describe('replaceLinks', () => {
 					audience: 'collaborators'
 				}
 			]);
-			await replaceLinks({
-				admin,
-				userId: PROJECT,
-				links: existing ? links.map((link) => ({ ...link, id: OTHER })) : links
-			});
+			await expect(
+				replaceLinks({
+					admin,
+					userId: PROJECT,
+					links: existing ? links.map((link) => ({ ...link, id: OTHER })) : links,
+					baseRev: 3
+				})
+			).resolves.toEqual({ rev: 4 });
 
-			expect(fetch).toHaveBeenCalledTimes(2);
-			const [deleteUrl, deleteOptions] = fetch.mock.calls[0]!;
+			const linkCalls = fetch.mock.calls.filter(([url]) =>
+				new URL(String(url)).pathname.endsWith('/builder_profile_links')
+			);
+			expect(linkCalls).toHaveLength(2);
+			const [claimUrl, claimOptions] = fetch.mock.calls.find(
+				([, options]) => options?.method === 'PATCH'
+			)!;
+			expect(new URL(String(claimUrl)).searchParams.get('links_rev')).toBe('eq.3');
+			expect(JSON.parse(String(claimOptions?.body))).toEqual({ links_rev: 4 });
+			const [deleteUrl, deleteOptions] = linkCalls[0]!;
 			expect(deleteOptions?.method).toBe('DELETE');
 			expect(new URL(String(deleteUrl)).searchParams.get('user_id')).toBe(`eq.${PROJECT}`);
-			const [insertUrl, insertOptions] = fetch.mock.calls[1]!;
+			const [insertUrl, insertOptions] = linkCalls[1]!;
 			expect(insertOptions?.method).toBe('POST');
 			expect(new URL(String(insertUrl)).pathname).toBe('/rest/v1/builder_profile_links');
 			// Inspect the real client's column list: JSON alone drops undefined properties,
@@ -154,25 +175,50 @@ describe('replaceLinks', () => {
 	);
 
 	it('clears all links without sending an empty insert', async () => {
-		const { client, calls } = fakeClient({});
-		await replaceLinks({ admin: client, userId: PROJECT, links: [] });
-		expect(calls).toEqual([
+		const { client, calls } = fakeClient({
+			tables: { builder_profiles: [{ data: null }, { count: 1 }] }
+		});
+		await replaceLinks({ admin: client, userId: PROJECT, links: [], baseRev: 0 });
+		expect(calls.filter((call) => call.table === 'builder_profile_links')).toEqual([
 			{ table: 'builder_profile_links', op: 'delete', args: [] },
 			{ table: 'builder_profile_links', op: 'eq', args: ['user_id', PROJECT] }
 		]);
 	});
 
-	it('does not insert when deleting the previous links fails', async () => {
+	it('does not insert when deleting the previous links fails, and gives the counter back', async () => {
 		const error = { message: 'Delete failed' };
-		const { client, calls } = fakeClient({ tables: { builder_profile_links: [{ error }] } });
+		const { client, calls } = fakeClient({
+			tables: {
+				builder_profiles: [{ data: null }, { count: 1 }, { data: null }],
+				builder_profile_links: [{ error }]
+			}
+		});
 		await expect(
 			replaceLinks({
 				admin: client,
 				userId: PROJECT,
-				links: parseLinks([{ url: '9takes.com' }])
+				links: parseLinks([{ url: '9takes.com' }]),
+				baseRev: 2
 			})
 		).rejects.toEqual(error);
 		expect(calls.some((call) => call.op === 'insert')).toBe(false);
+		const updates = calls.filter((c) => c.table === 'builder_profiles' && c.op === 'update');
+		expect(updates.map((c) => c.args[0])).toEqual([{ links_rev: 3 }, { links_rev: 2 }]);
+	});
+
+	it('refuses a save from a tab that missed another tab’s save (409)', async () => {
+		const { client, calls } = fakeClient({
+			tables: { builder_profiles: [{ data: null }, { count: 0 }] }
+		});
+		const failure = replaceLinks({
+			admin: client,
+			userId: PROJECT,
+			links: parseLinks([{ url: '9takes.com' }]),
+			baseRev: 5
+		});
+		await expect(failure).rejects.toBeInstanceOf(BuilderProfileError);
+		await expect(failure).rejects.toMatchObject({ status: 409 });
+		expect(calls.some((call) => call.table === 'builder_profile_links')).toBe(false);
 	});
 });
 
@@ -530,8 +576,35 @@ describe('drafts', () => {
 		const llm = { getJSONResponse: vi.fn() };
 		await expect(
 			draftWeeklyUpdates({ llm, admin: admin.client, userId: 'u' })
-		).resolves.toEqual({ created: 0 });
+		).resolves.toEqual({ created: 0, drafts: [], reason: 'nothing_moved' });
 		expect(llm.getJSONResponse).not.toHaveBeenCalled();
+	});
+
+	it('says it had nothing to say (not that nothing moved) when the model drafts no line', async () => {
+		const admin = fakeClient({
+			tables: {
+				builder_profile_projects: [
+					{
+						data: [
+							{
+								project_id: PROJECT,
+								level: 'listed',
+								public_name: null,
+								pitch: null,
+								project: { name: '9takes', deleted_at: null, archived_at: null }
+							}
+						]
+					}
+				],
+				onto_tasks: [{ data: [{ project_id: PROJECT, title: 'Ship the beta' }] }],
+				builder_profile_activity_daily: [{ data: [] }]
+			}
+		});
+		const llm = { getJSONResponse: vi.fn().mockResolvedValue({ now: null, projects: [] }) };
+		await expect(
+			draftWeeklyUpdates({ llm, admin: admin.client, userId: 'u' })
+		).resolves.toEqual({ created: 0, drafts: [], reason: 'nothing_to_say' });
+		expect(admin.calls.some((c) => c.table === 'builder_profile_updates')).toBe(false);
 	});
 
 	it('writes a Now line and lines only for live projects with done work', async () => {
@@ -566,7 +639,29 @@ describe('drafts', () => {
 					}
 				],
 				builder_profile_activity_daily: [{ data: [] }],
-				builder_profile_updates: [{ data: null }, { data: null }]
+				builder_profile_updates: [
+					{ data: null },
+					{
+						data: [
+							{
+								id: 'p1',
+								project_id: PROJECT,
+								body: 'Reached out to a few podcasts.',
+								status: 'drafted',
+								week_of: '2026-11-09',
+								created_at: 't'
+							},
+							{
+								id: 'n1',
+								project_id: null,
+								body: 'Getting 9takes ready for beta.',
+								status: 'drafted',
+								week_of: '2026-11-09',
+								created_at: 't'
+							}
+						]
+					}
+				]
 			}
 		});
 		const llm = {
@@ -578,9 +673,13 @@ describe('drafts', () => {
 				]
 			})
 		};
-		await expect(
-			draftWeeklyUpdates({ llm, admin: admin.client, userId: 'u' })
-		).resolves.toEqual({ created: 2 });
+		// The new drafts come back (Now line first) so the editor needn't reload everything.
+		const result = await draftWeeklyUpdates({ llm, admin: admin.client, userId: 'u' });
+		expect(result.created).toBe(2);
+		expect(result.drafts.map((d) => [d.id, d.project_name])).toEqual([
+			['n1', null],
+			['p1', '9takes']
+		]);
 		const insert = admin.calls.find(
 			(c) => c.table === 'builder_profile_updates' && c.op === 'insert'
 		);
@@ -611,5 +710,86 @@ describe('drafts', () => {
 			(c) => c.table === 'builder_profiles' && c.op === 'update'
 		);
 		expect(pageUpdate?.args[0]).toMatchObject({ now_text: 'Edited line.' });
+	});
+});
+
+describe('Writing picks', () => {
+	const PAGE = '11111111-2222-4333-8444-555555555555';
+	const STRANGER = '99999999-2222-4333-8444-555555555555';
+
+	it('refuses bad, repeated or too many ids', () => {
+		expect(parseWritingPicks([PAGE])).toEqual([PAGE]);
+		expect(() => parseWritingPicks('x')).toThrow(BuilderProfileError);
+		expect(() => parseWritingPicks([PAGE, PAGE])).toThrow(/twice/);
+		expect(() => parseWritingPicks(['nope'])).toThrow(/Unknown page/);
+	});
+
+	it('only saves the owner’s own live public pages, in order', async () => {
+		const pages = {
+			data: [
+				{
+					id: PAGE,
+					title: 'Sorting',
+					slug: 'dj-sorting',
+					slug_prefix: 'dj',
+					slug_base: 'sorting',
+					published_at: '2026-11-01',
+					project: { name: 'BuildOS', deleted_at: null }
+				}
+			]
+		};
+		const ok = fakeClient({
+			tables: {
+				onto_actors: [{ data: { id: 'actor' } }],
+				onto_public_pages: [pages],
+				builder_profile_writing: [{ data: [] }, { data: null }, { data: null }]
+			}
+		});
+		await replaceWriting({ admin: ok.client, userId: 'u', pageIds: [PAGE] });
+		const insert = ok.calls.find(
+			(c) => c.table === 'builder_profile_writing' && c.op === 'insert'
+		);
+		expect(insert?.args[0]).toEqual([{ user_id: 'u', page_id: PAGE, position: 0 }]);
+
+		const bad = fakeClient({
+			tables: {
+				onto_actors: [{ data: { id: 'actor' } }],
+				onto_public_pages: [pages],
+				builder_profile_writing: [{ data: [] }]
+			}
+		});
+		await expect(
+			replaceWriting({ admin: bad.client, userId: 'u', pageIds: [STRANGER] })
+		).rejects.toMatchObject({ status: 403 });
+		expect(bad.calls.some((c) => c.op === 'delete' || c.op === 'insert')).toBe(false);
+	});
+});
+
+describe('recordEvent', () => {
+	it('passes the visitor key and project, and reports a repeat visit as not counted', async () => {
+		const admin = fakeClient({
+			rpc: {
+				builder_profile_target: () => ({
+					data: [{ user_id: 'owner', username: 'dj', status: 'published' }]
+				}),
+				bump_builder_profile_stat: () => ({ data: false })
+			}
+		});
+		await expect(
+			recordEvent({
+				admin: admin.client,
+				handle: 'dj',
+				kind: 'project_view',
+				viewerId: null,
+				visitorKey: 'k',
+				subject: PROJECT
+			})
+		).resolves.toBe(false);
+		expect(admin.rpc).toHaveBeenCalledWith('bump_builder_profile_stat', {
+			p_user_id: 'owner',
+			p_kind: 'project_view',
+			p_visitor: 'k',
+			p_subject: PROJECT
+		});
 	});
 });

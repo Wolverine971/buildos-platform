@@ -24,22 +24,22 @@ Re-check result: none of the 44 open bugs was fixed by the day's other commits. 
 
 ## Work queue (no decisions needed)
 
-Each item is a tracker in `tasker/` that a Codex agent can take cold: what users get, the files it owns, each bug with where it is now and the fix, rules, checks, a self-check and a report format. Status lives in the tracker, not here. Claude does a light check after each one reports.
+Each item is a tracker in `tasker/` that a Codex agent can take cold: what users get, the files it owns, each bug with where it is now and the fix, rules, checks, a self-check and a report format. **Closed 2026-11-15:** every tracker below (125–139) was checked and shipped (round 2 in `1499e4d54`; 136 and 138–139 in later pushes), and the files were removed from `tasker/` (they stay in git history). One residual: remove the unread `AGENTIC_CHAT_CONTEXT_FINDER_CHAT` and `AGENTIC_CHAT_CONTEXT_FINDER_GLOBAL` variables from the Railway agentic-chat-worker (DJ; tracked in `tasker/README.md`). Claude does a light check after each one reports.
 
-| Order | Tracker                                                                                                                          | Size            | Start                                  |
-| ----- | -------------------------------------------------------------------------------------------------------------------------------- | --------------- | -------------------------------------- |
-| 125   | [Chat window tells the truth and always finishes](../../../tasker/125-chat-window-truth-and-finish.md)                           | ~1 day, 6 bugs  | wave 1, now                            |
-| 126   | [Chat gets the facts right](../../../tasker/126-chat-gets-the-facts-right.md)                                                    | ~1 day, 6 bugs  | wave 1, now                            |
-| 127   | [Project loops and audits survive deploys](../../../tasker/127-project-loops-survive-deploys.md)                                 | ~1 day, 4 bugs  | wave 1, now                            |
-| 128   | [Queue and brief scheduling hardening](../../../tasker/128-queue-and-brief-scheduling.md)                                        | ~1 day, 4 bugs  | wave 1, now                            |
-| 129   | [Delete round 2 and small chores](../../../tasker/129-delete-round-2-and-chores.md)                                              | ~1 day          | wave 1, now                            |
-| 130   | [Calendar you can trust](../../../tasker/130-calendar-you-can-trust.md)                                                          | ~2 days, 6 bugs | wave 2, after 126                      |
-| 131   | [Chat turns end cleanly](../../../tasker/131-chat-turns-end-cleanly.md)                                                          | ~1 day, 4 bugs  | any time (shares no files with wave 1) |
-| 132   | [Approved changes never duplicate or lose edits](../../../tasker/132-approved-changes-never-duplicate.md)                        | ~2 days, 6 bugs | wave 2, after 127                      |
-| 133   | [LLM spend counted right](../../../tasker/133-llm-spend-counted-right.md)                                                        | ~1 day, 2 bugs  | wave 2, after 126                      |
-| 134   | [Background cleanup: SMS crons, embedding deletes, worker redeploys, icon generation](../../../tasker/134-background-cleanup.md) | ~1 day          | wave 3, after 128                      |
-| 135   | [First send faster](../../../tasker/135-first-send-faster.md)                                                                    | ~half a day     | wave 3, after 125                      |
-| 136   | [Kill-switch cleanup after the soak](../../../tasker/136-kill-switch-cleanup-after-soak.md)                                      | ~1 day          | DONE 10-25 (early), awaiting check     |
+| Order | Tracker                                                                                                              | Size            | Start                                  |
+| ----- | -------------------------------------------------------------------------------------------------------------------- | --------------- | -------------------------------------- |
+| 125   | Chat window tells the truth and always finishes (closed tracker, in git history)                                     | ~1 day, 6 bugs  | wave 1, now                            |
+| 126   | Chat gets the facts right (closed tracker, in git history)                                                           | ~1 day, 6 bugs  | wave 1, now                            |
+| 127   | Project loops and audits survive deploys (closed tracker, in git history)                                            | ~1 day, 4 bugs  | wave 1, now                            |
+| 128   | Queue and brief scheduling hardening (closed tracker, in git history)                                                | ~1 day, 4 bugs  | wave 1, now                            |
+| 129   | Delete round 2 and small chores (closed tracker, in git history)                                                     | ~1 day          | wave 1, now                            |
+| 130   | Calendar you can trust (closed tracker, in git history)                                                              | ~2 days, 6 bugs | wave 2, after 126                      |
+| 131   | Chat turns end cleanly (closed tracker, in git history)                                                              | ~1 day, 4 bugs  | any time (shares no files with wave 1) |
+| 132   | Approved changes never duplicate or lose edits (closed tracker, in git history)                                      | ~2 days, 6 bugs | wave 2, after 127                      |
+| 133   | LLM spend counted right (closed tracker, in git history)                                                             | ~1 day, 2 bugs  | wave 2, after 126                      |
+| 134   | Background cleanup: SMS crons, embedding deletes, worker redeploys, icon generation (closed tracker, in git history) | ~1 day          | wave 3, after 128                      |
+| 135   | First send faster (closed tracker, in git history)                                                                   | ~half a day     | wave 3, after 125                      |
+| 136   | Kill-switch cleanup after the soak (closed tracker, in git history)                                                  | ~1 day          | DONE 10-25 (early), awaiting check     |
 
 - **Wave 1 (125-129) runs in parallel.** The five share no files. On a busy laptop, start 125-127 first and add 128-129 as runs free up.
 - **Wave 2 (130-133):** 130 and 133 wait for 126 to be committed, and 132 for 127, because they edit the same files. 131 shares no files with wave 1, so it can start whenever a run slot is free.

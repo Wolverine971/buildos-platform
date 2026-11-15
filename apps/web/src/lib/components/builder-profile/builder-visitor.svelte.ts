@@ -2,7 +2,8 @@
 //
 // What a visitor can do on a builder page or a project page: follow the person or a
 // project, ask to join a project, and count a view or a link tap. Signed-out visitors
-// go to sign-in and come back to the same page with the button they tapped focused
+// go to sign-up (most visitors are new; it links to sign-in) with what they tapped named
+// there, and come back to the same page with that button focused
 // (?intent=follow[&project=id], or ?ask=id), so nothing is done on their behalf.
 
 import { toastService } from '$lib/stores/toast.store';
@@ -49,20 +50,25 @@ export class BuilderVisitor {
 		return this.asks[projectId] ?? closedAsk;
 	}
 
-	track(kind: 'view' | 'link_tap') {
+	/** A view of this page (a project page passes its project), or a link tap. */
+	track(kind: 'view' | 'link_tap', projectId?: string) {
 		const ctx = this.#ctx();
 		if (!ctx.countable) return;
+		const body =
+			kind === 'view' && projectId
+				? { kind: 'project_view', project_id: projectId }
+				: { kind };
 		void fetch(`/api/public/builders/${encodeURIComponent(ctx.handle)}/event`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ kind }),
+			body: JSON.stringify(body),
 			keepalive: true
 		}).catch(() => {});
 	}
 
 	#signIn(query: string) {
 		const path = `${this.#ctx().returnPath}?${query}`;
-		window.location.href = `/auth/login?redirect=${encodeURIComponent(path)}`;
+		window.location.href = `/auth/register?redirect=${encodeURIComponent(path)}`;
 	}
 
 	async setFollow(projectId: string | null, on: boolean) {

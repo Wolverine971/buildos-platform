@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/workspace/WorkspaceShelf.svelte -->
 <!--
-	The Workspace's loose items, above the project tiles: newest first, filterable, each
-	one draggable onto a project. Above them sit the agent's "this looks like a project"
+	The Workspace's loose items, in the pane beside the project tiles: newest first,
+	filterable, each one draggable onto a project. Above them sit the agent's "this looks like a project"
 	groupings. Starting a project from them is always the person's call: the card only
 	opens a confirm with the name and items, and nothing moves until they say so.
 	Select mode makes the same thing possible from any items the person picks.
@@ -251,10 +251,10 @@
 	</header>
 
 	{#if loading && !home}
-		<div class="grid-cards" aria-busy="true" aria-label="Loading loose items">
+		<div class="list-cards" aria-busy="true" aria-label="Loading loose items">
 			{#each [0, 1, 2] as index (index)}
 				<div
-					class="h-28 animate-pulse rounded-xl bg-muted motion-reduce:animate-none"
+					class="h-16 animate-pulse rounded-xl bg-muted motion-reduce:animate-none"
 				></div>
 			{/each}
 		</div>
@@ -265,7 +265,7 @@
 	{:else if !shown.length}
 		<p class="empty">No loose items match.</p>
 	{:else}
-		<div class="grid-cards">
+		<div class="list-cards">
 			{#each visible as item (itemRef(item))}
 				{@const suggestion = filings.get(itemRef(item)) ?? null}
 				<LooseCard
@@ -279,6 +279,7 @@
 					filing={suggestion}
 					filingName={nameOf(suggestion?.target_project_id ?? null)}
 					busy={busyIds.has(item.id) || (suggestion ? busyIds.has(suggestion.id) : false)}
+					compact
 					{onOpen}
 					onToggleSelect={toggleSelect}
 					{onMove}
@@ -392,15 +393,11 @@
 		font-variant-numeric: tabular-nums;
 		color: hsl(var(--muted-foreground));
 	}
-	.grid-cards {
+	/* The Workspace pane beside the projects (tasker 159): a list, newest first. */
+	.list-cards {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-		gap: 8px;
-	}
-	@media (max-width: 639px) {
-		.grid-cards {
-			grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-		}
+		gap: 6px;
+		min-width: 0;
 	}
 	.empty {
 		padding: 4px 0;
@@ -418,7 +415,7 @@
 	}
 	.groupings {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
 		gap: 8px;
 	}
 	.grouping {

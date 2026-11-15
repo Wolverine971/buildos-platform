@@ -85,7 +85,7 @@
 	let note = $state('');
 
 	onMount(async () => {
-		visitor.track('view');
+		visitor.track('view', project.id);
 		if (!canAct || !page.viewer.signed_in) return;
 		if (askProjectId === project.id && !project.viewer_is_member) {
 			visitor.openAsk(project.id);
@@ -317,13 +317,13 @@
 
 		{#if data.activity}
 			<section class="pp-section" aria-labelledby="project-log">
-				{@render sectionHead('project-log', 'Build log', 'last 12 months')}
 				<BuildLog
+					headingId="project-log"
 					activity={data.activity}
 					projectCount={1}
 					ownerView={isOwner}
 					who={firstName}
-					scopeLabel="Counting work on {project.name} only."
+					scopeLabel="Only work on {project.name}."
 				/>
 			</section>
 		{:else if hasWeeks && project.weekly}
@@ -499,7 +499,7 @@
 			</section>
 		{/if}
 
-		<ClaimFooter signedIn={page.viewer.signed_in} {isOwner} followNote />
+		<ClaimFooter signedIn={page.viewer.signed_in} {isOwner} followName={firstName} />
 	</article>
 </BuilderPageShell>
 

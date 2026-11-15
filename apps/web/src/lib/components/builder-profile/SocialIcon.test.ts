@@ -7,7 +7,9 @@ import SocialIcon from './SocialIcon.svelte';
 
 afterEach(cleanup);
 
-const brands = (Object.keys(PLATFORM_LABELS) as SocialPlatform[]).filter((p) => p !== 'website');
+const brands = (Object.keys(PLATFORM_LABELS) as SocialPlatform[]).filter(
+	(p) => p !== 'website' && p !== 'email'
+);
 
 describe('SocialIcon', () => {
 	it('draws the real X mark, not a plain cross', () => {
@@ -28,5 +30,10 @@ describe('SocialIcon', () => {
 	it('draws a globe for a plain website', () => {
 		const { container } = render(SocialIcon, { platform: 'website' });
 		expect(container.querySelector('svg')?.getAttribute('class')).toContain('lucide');
+	});
+
+	it('draws an envelope for an email address', () => {
+		const { container } = render(SocialIcon, { platform: 'email' });
+		expect(container.querySelector('svg')?.getAttribute('class')).toContain('lucide-mail');
 	});
 });

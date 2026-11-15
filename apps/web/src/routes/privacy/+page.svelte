@@ -548,13 +548,16 @@
 					<p>
 						Your builder page at build-os.com/@handle stays private until you publish
 						it. Once published, anyone (and any agent) can see what you put on it: your
-						name, handle, photo, headline, location, bio, links, and the projects you
-						chose, each with only the details you chose. It also shows a grid of the
+						name, handle, photo, headline, location, bio, links, the projects you
+						chose (each with only the details you chose), and the public pages you
+						picked for Writing. It also shows a grid of the
 						days you worked, as counts only, never task titles or times of day. Links
 						and projects marked "people I work with" show only to people who share a
 						project with you. Publishing also lets people find you by your handle. For
-						your page's own stats we count views and link taps per day, with no
-						information about who visited. Taking the page down hides it at once. A
+						your page's own stats we count views and link taps per day. So one visitor
+						counts once a day, we keep a one-way code made from their network address
+						that changes every day and is deleted after two days; we never store the
+						address itself. Taking the page down hides it at once. A
 						photo or cover image you upload is stored at its own unlisted web address so
 						your page can show it; removing it, or deleting your account, deletes the
 						file.

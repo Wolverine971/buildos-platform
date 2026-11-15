@@ -3,8 +3,10 @@
 // The owner's builder page editor (Profile > People & agents > Your page).
 // GET   → everything the editor shows (BuilderEditorData)
 // PATCH → header and section settings: headline, location, avatar_url, now_text, bio,
-//         show_build_log, build_log_includes_private, show_agent_split, show_writing,
-//         show_builds_with, show_on_collaborator_pages, weekly_drafts
+//         show_build_log, build_log_includes_private, show_agent_split,
+//         show_builds_with, show_on_collaborator_pages, weekly_drafts.
+//         expected: { field: value it had when the editor loaded } → 409 if it changed since
+//         (another tab saved it), instead of overwriting.
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
@@ -46,7 +48,8 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
 		await saveSettings({ admin: createAdminSupabaseClient() as any, userId: user.id, patch });
 		return ApiResponse.success({ saved: true });
 	} catch (error) {
-		if (error instanceof BuilderProfileError) return ApiResponse.error(error.message, error.status);
+		if (error instanceof BuilderProfileError)
+			return ApiResponse.error(error.message, error.status);
 		return ApiResponse.internalError(error, 'Could not save your page');
 	}
 };

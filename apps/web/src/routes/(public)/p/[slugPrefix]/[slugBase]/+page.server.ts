@@ -1,6 +1,7 @@
 // apps/web/src/routes/(public)/p/[slugPrefix]/[slugBase]/+page.server.ts
 import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
+import { authorPageHref } from '$lib/server/builder-profile/builder-profile.service';
 
 export const load: PageServerLoad = async ({ params, fetch, locals }) => {
 	const slugPrefix = params.slugPrefix?.trim().toLowerCase();
@@ -29,5 +30,5 @@ export const load: PageServerLoad = async ({ params, fetch, locals }) => {
 		throw error(404, 'Public page not found');
 	}
 
-	return { page, currentUser };
+	return { page, currentUser, authorHref: await authorPageHref(page.author_slug_prefix) };
 };

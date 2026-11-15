@@ -71,7 +71,8 @@ import type {
 import { buildWorkspaceBriefSection, isWorkspaceProjectRow } from './workspaceBriefSection.js';
 import {
 	type BuilderFollowsBriefClient,
-	fetchBuilderFollowsBriefSection
+	fetchBuilderFollowsBriefSection,
+	resolveBuilderFollowsSince
 } from './builderFollowsBriefSection.js';
 import {
 	type OthersActivityCaller,
@@ -1624,6 +1625,22 @@ function truncateRecentChangeTitle(title: string): string {
 	return trimmed.length > 120 ? `${trimmed.slice(0, 117)}...` : trimmed;
 }
 
+function buildCurrentEntityNames(project: OntoProjectWithRelations): Map<string, string> {
+	const names = new Map<string, string>();
+	const add = (id: string | null | undefined, name: string | null | undefined) => {
+		const trimmed = name?.trim();
+		if (id && trimmed) names.set(id, trimmed);
+	};
+	add(project.project.id, project.project.name);
+	for (const task of project.tasks) add(task.id, task.title);
+	for (const doc of project.documents) add(doc.id, doc.title);
+	for (const goal of project.goals) add(goal.id, goal.name);
+	for (const plan of project.plans) add(plan.id, plan.name);
+	for (const milestone of project.milestones) add(milestone.id, milestone.title);
+	for (const risk of project.risks) add(risk.id, risk.title);
+	return names;
+}
+
 function buildProjectRecentChanges(params: {
 	project: OntoProjectWithRelations;
 	recentTasks: OntoTask[];
@@ -1631,6 +1648,8 @@ function buildProjectRecentChanges(params: {
 	const cutoff = subDays(new Date(), RECENT_CHANGE_WINDOW_DAYS);
 	const changes: ProjectRecentChange[] = [];
 	const seen = new Set<string>();
+	// A content-only edit logs no title; fall back to the record's current name, never its id.
+	const currentNames = buildCurrentEntityNames(params.project);
 
 	for (const log of params.project.activityLogs) {
 		const kind = normalizeActivityEntityKind(log.entityType);
@@ -1638,7 +1657,9 @@ function buildProjectRecentChanges(params: {
 		addRecentChange(changes, seen, {
 			kind,
 			id: log.entityId,
-			title: truncateRecentChangeTitle(log.entityLabel ?? `${kind} ${log.entityId}`),
+			title: truncateRecentChangeTitle(
+				log.entityLabel ?? currentNames.get(log.entityId) ?? `Untitled ${kind}`
+			),
 			action: log.action,
 			changedAt: log.createdAt,
 			actorName: log.actorName,
@@ -2452,15 +2473,16 @@ export class OntologyBriefDataLoader {
 	}
 
 	/**
-	 * Builder profiles: lines that people the user follows published in the activity window,
+	 * Builder profiles: lines that people the user follows published since their last brief,
 	 * plus the user's own drafted lines. Never throws; null when there is nothing to show.
 	 */
-	loadBuilderFollowsBriefSection(userId: string): Promise<BuilderFollowsBriefSection | null> {
-		return fetchBuilderFollowsBriefSection(
-			this.supabase as unknown as BuilderFollowsBriefClient,
-			userId,
-			subHours(new Date(), ACTIVITY_WINDOW_HOURS)
-		);
+	async loadBuilderFollowsBriefSection(
+		userId: string,
+		briefDate: string
+	): Promise<BuilderFollowsBriefSection | null> {
+		const client = this.supabase as unknown as BuilderFollowsBriefClient;
+		const since = await resolveBuilderFollowsSince(client, userId, briefDate);
+		return fetchBuilderFollowsBriefSection(client, userId, since);
 	}
 
 	/**

@@ -29,6 +29,7 @@
 		filingName = null,
 		busy = false,
 		sorting = false,
+		compact = false,
 		onOpen,
 		onToggleSelect,
 		onMove,
@@ -49,6 +50,8 @@
 		busy?: boolean;
 		/** Just captured and BuildOS is reading it (it may become tasks or move). */
 		sorting?: boolean;
+		/** A row in the Workspace pane's list instead of a card on a grid. */
+		compact?: boolean;
 		onOpen: (item: LooseItem) => void;
 		onToggleSelect: (item: LooseItem) => void;
 		onMove: (item: LooseItem, anchor: HTMLElement) => void;
@@ -82,6 +85,7 @@
 	class:lifted
 	class:selected
 	class:sorting
+	class:compact
 	aria-busy={sorting || undefined}
 	data-drag-kind={selecting ? undefined : item.entity}
 	data-drag-id={selecting ? undefined : item.id}
@@ -144,7 +148,7 @@
 						aria-label="Move {item.title} to {filingName}"
 					>
 						<FolderInput class="h-3.5 w-3.5 shrink-0" />
-						<span class="truncate">{shortName(filingName, 22)}</span>
+						<span class="truncate">{shortName(filingName, compact ? 16 : 22)}</span>
 					</button>
 					<button
 						type="button"
@@ -409,5 +413,33 @@
 		.actions {
 			transition: none;
 		}
+	}
+	/* The Workspace pane's list: one row per item, actions at the right. */
+	.card.compact {
+		grid-template-columns: minmax(0, 1fr) auto;
+		grid-template-rows: auto;
+		min-height: 0;
+		border-radius: 10px;
+	}
+	.card.compact .main {
+		gap: 2px;
+		padding: 8px 4px 8px 10px;
+		border-radius: 10px 0 0 10px;
+	}
+	.card.compact .excerpt {
+		-webkit-line-clamp: 1;
+		line-clamp: 1;
+	}
+	.card.compact .topics {
+		display: none;
+	}
+	.card.compact .foot {
+		align-self: center;
+		min-height: 0;
+		padding: 0 4px 0 0;
+	}
+	.card.compact .actions {
+		flex-direction: column;
+		gap: 0;
 	}
 </style>

@@ -1,7 +1,8 @@
 <!-- apps/web/src/lib/components/builder-profile/ActivityBars.svelte -->
 <!-- Twelve weekly bars for a live project card: ink for the owner, accent for their agents. -->
 <script lang="ts">
-	let { weeks, agentSplit = true }: { weeks: [number, number][]; agentSplit?: boolean } = $props();
+	let { weeks, agentSplit = true }: { weeks: [number, number][]; agentSplit?: boolean } =
+		$props();
 
 	const W = 10;
 	const G = 3;
@@ -22,7 +23,7 @@
 	viewBox="0 0 {weeks.length * (W + G) - G} {H}"
 	preserveAspectRatio="none"
 	role="img"
-	aria-label="{total} changes in the last 12 weeks"
+	aria-label="{total} updates in the last 12 weeks"
 >
 	{#each bars as bar (bar.x)}
 		<rect

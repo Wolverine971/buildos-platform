@@ -9,7 +9,14 @@
 <script lang="ts">
 	import { onDestroy, tick } from 'svelte';
 	import { beforeNavigate } from '$app/navigation';
-	import { AlertCircle, ArrowLeft, Check, Copy, ExternalLink } from '$lib/icons/lucide';
+	import {
+		AlertCircle,
+		ArrowLeft,
+		Check,
+		Copy,
+		ExternalLink,
+		RefreshCw
+	} from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import type {
 		BuilderEditorData,
@@ -239,7 +246,20 @@
 		{/if}
 	</header>
 
-	{#if editor.publishError || (editor.saveState === 'error' && editor.saveMessage) || !editor.handle}
+	{#if editor.conflict}
+		<div
+			class="flex flex-wrap items-center justify-between gap-2 border-b border-warning/40 bg-warning/10 px-4 py-2 text-sm"
+			role="alert"
+		>
+			<p class="inline-flex min-w-0 items-start gap-2 text-foreground">
+				<AlertCircle class="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+				<span>{editor.conflict}</span>
+			</p>
+			<Button variant="outline" size="sm" onclick={() => window.location.reload()}
+				><RefreshCw class="h-4 w-4" aria-hidden="true" />Reload</Button
+			>
+		</div>
+	{:else if editor.publishError || (editor.saveState === 'error' && editor.saveMessage) || !editor.handle}
 		<div class="border-b border-border bg-muted/40 px-4 py-2 text-sm" role="status">
 			{#if editor.publishError}
 				<p class="text-destructive">{editor.publishError}</p>

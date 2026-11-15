@@ -288,7 +288,7 @@ Calendar and brief chats now carry the Workspace id and a one-line save rule (F8
 ## Related
 
 - **Smart capture (DJ, 10-23):** "We shouldn't have to explicitly say [note or task]… the agentic flow… should be processing that." That redesign is separate UI work, but its classifier must be a model's structured output (no regex, AGENTS.md), and it should share Workspace chat's write path and Workspace rules.
-- [138 — Faster write turns](138-faster-write-turns.md): Workspace creates already skip review.
+- 138 — Faster write turns (closed tracker, in git history): Workspace creates already skip review.
 - Spec: `docs/specs/WORKSPACE_ARCHITECTURE_2026-10-23.md` ("Build status").
 
 ## Open questions for DJ
@@ -336,4 +336,4 @@ DJ asked whether he can quickly find things in the Workspace and whether Jev is 
 **Open:**
 
 - Project chat can find a Workspace item but likely can't edit it: update tools are `context_project`-scoped (`mutations/tool-catalog.ts`), and the fence only lets creates target the Workspace.
-- UI search: DJ chose the ambitious version (2026-11-01). Design spike, three live directions on real titles: https://claude.ai/artifact/RtsmhjirE4UgLZSbu9FzbP (A one box over everything, B ⌘K anywhere, C an always-visible Workspace pane with search plus matches from projects; the spike recommends C, then B's ⌘K as step two). Shared build: one search endpoint over all accessible projects including the Workspace and note text (reuses `onto_search_entities`); a best-match call (hop 1 + hop 2 as its own endpoint, ~$0.0008/search, only for 3+ word queries or thin word matches, fail-open); `?open=kind:id` item links on /projects. Awaiting DJ's pick.
+- **UI search → [159](159-workspace-search.md), building since 2026-11-15** (DJ: build the recommended C, then ⌘K). History: DJ chose the ambitious version (2026-11-01). Design spike, three live directions on real titles: https://claude.ai/artifact/RtsmhjirE4UgLZSbu9FzbP (A one box over everything, B ⌘K anywhere, C an always-visible Workspace pane with search plus matches from projects; the spike recommends C, then B's ⌘K as step two). Shared build: one search endpoint over all accessible projects including the Workspace and note text (reuses `onto_search_entities`); a best-match call (hop 1 + hop 2 as its own endpoint, ~$0.0008/search, only for 3+ word queries or thin word matches, fail-open); `?open=kind:id` item links on /projects. Awaiting DJ's pick.

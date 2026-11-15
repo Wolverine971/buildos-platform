@@ -7667,6 +7667,101 @@ export type Database = {
           },
         ]
       }
+      calendar_ingest_changes: {
+        Row: {
+          after: Json
+          applied_at: string
+          applied_event_updated_at: string | null
+          before: Json
+          calendar_source_id: string | null
+          change_kind: string
+          created_at: string
+          external_event_id: string
+          fields: string[]
+          id: string
+          onto_event_id: string | null
+          origin: string
+          project_id: string | null
+          provider_calendar_id: string
+          status: string
+          task_id: string | null
+          title: string
+          undone_at: string | null
+          user_id: string
+        }
+        Insert: {
+          after?: Json
+          applied_at?: string
+          applied_event_updated_at?: string | null
+          before?: Json
+          calendar_source_id?: string | null
+          change_kind: string
+          created_at?: string
+          external_event_id: string
+          fields?: string[]
+          id?: string
+          onto_event_id?: string | null
+          origin?: string
+          project_id?: string | null
+          provider_calendar_id: string
+          status?: string
+          task_id?: string | null
+          title: string
+          undone_at?: string | null
+          user_id: string
+        }
+        Update: {
+          after?: Json
+          applied_at?: string
+          applied_event_updated_at?: string | null
+          before?: Json
+          calendar_source_id?: string | null
+          change_kind?: string
+          created_at?: string
+          external_event_id?: string
+          fields?: string[]
+          id?: string
+          onto_event_id?: string | null
+          origin?: string
+          project_id?: string | null
+          provider_calendar_id?: string
+          status?: string
+          task_id?: string | null
+          title?: string
+          undone_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_ingest_changes_onto_event_id_fkey"
+            columns: ["onto_event_id"]
+            isOneToOne: false
+            referencedRelation: "onto_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_ingest_changes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_ingest_changes_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "onto_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_ingest_changes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_oauth_states: {
         Row: {
           code_verifier: string
@@ -11735,6 +11830,152 @@ export type Database = {
           },
           {
             foreignKeyName: "email_project_rules_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_project_update_runs: {
+        Row: {
+          accounts_read: number
+          created_at: string
+          emails_read: number
+          error: string | null
+          finished_at: string | null
+          id: string
+          status: string
+          suggestions_created: number
+          user_id: string
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          accounts_read?: number
+          created_at?: string
+          emails_read?: number
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          status?: string
+          suggestions_created?: number
+          user_id: string
+          window_end: string
+          window_start: string
+        }
+        Update: {
+          accounts_read?: number
+          created_at?: string
+          emails_read?: number
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          status?: string
+          suggestions_created?: number
+          user_id?: string
+          window_end?: string
+          window_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_project_update_runs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_project_updates: {
+        Row: {
+          action: string
+          connection_id: string | null
+          created_at: string
+          decided_at: string | null
+          email: Json
+          error: string | null
+          id: string
+          message_id: string
+          project_id: string
+          proposal: Json
+          run_id: string | null
+          status: string
+          task_id: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          why: string | null
+        }
+        Insert: {
+          action: string
+          connection_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          email?: Json
+          error?: string | null
+          id?: string
+          message_id: string
+          project_id: string
+          proposal?: Json
+          run_id?: string | null
+          status?: string
+          task_id?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          why?: string | null
+        }
+        Update: {
+          action?: string
+          connection_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          email?: Json
+          error?: string | null
+          id?: string
+          message_id?: string
+          project_id?: string
+          proposal?: Json
+          run_id?: string | null
+          status?: string
+          task_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          why?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_project_updates_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "user_email_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_project_updates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_project_updates_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "email_project_update_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_project_updates_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "onto_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_project_updates_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -18824,6 +19065,7 @@ export type Database = {
           project_id: string | null
           requested_items: Json | null
           role_requested: string
+          settled_elsewhere: boolean
           status: string
           to_user_id: string
           via: string
@@ -18846,6 +19088,7 @@ export type Database = {
           project_id?: string | null
           requested_items?: Json | null
           role_requested?: string
+          settled_elsewhere?: boolean
           status?: string
           to_user_id: string
           via?: string
@@ -18868,6 +19111,7 @@ export type Database = {
           project_id?: string | null
           requested_items?: Json | null
           role_requested?: string
+          settled_elsewhere?: boolean
           status?: string
           to_user_id?: string
           via?: string
@@ -19821,6 +20065,7 @@ export type Database = {
           created_at: string | null
           hex_color: string | null
           id: string
+          inbound_backfilled_at: string | null
           is_primary: boolean | null
           last_synced_at: string | null
           project_id: string
@@ -19842,6 +20087,7 @@ export type Database = {
           created_at?: string | null
           hex_color?: string | null
           id?: string
+          inbound_backfilled_at?: string | null
           is_primary?: boolean | null
           last_synced_at?: string | null
           project_id: string
@@ -19863,6 +20109,7 @@ export type Database = {
           created_at?: string | null
           hex_color?: string | null
           id?: string
+          inbound_backfilled_at?: string | null
           is_primary?: boolean | null
           last_synced_at?: string | null
           project_id?: string
@@ -25403,12 +25650,12 @@ export type Database = {
       accept_project_invite_by_id: {
         Args: { p_invite_id: string }
         Returns: {
-          agent_access: string
-          project_name: string
-          status: string
           access: string
+          agent_access: string
           project_id: string
+          project_name: string
           role_key: string
+          status: string
         }[]
       }
       accept_project_invite_link: {
@@ -26151,7 +26398,11 @@ export type Database = {
         Returns: Json
       }
       claim_email_campaign_sends: {
-        Args: { p_daily_cap?: number; p_lease_seconds?: number; p_limit: number }
+        Args: {
+          p_daily_cap?: number
+          p_lease_seconds?: number
+          p_limit: number
+        }
         Returns: {
           attempt_count: number
           beta_signup_id: string | null
@@ -27979,6 +28230,7 @@ export type Database = {
         Args: { p_token_hash: string }
         Returns: {
           access: string
+          agent_access: string
           can_accept: boolean
           created_at: string
           declined_at: string
@@ -28391,6 +28643,7 @@ export type Database = {
         Args: never
         Returns: {
           access: string
+          agent_access: string
           can_accept: boolean
           created_at: string
           declined_at: string
@@ -29646,6 +29899,10 @@ export type Database = {
         Returns: Json
       }
       request_user_data_export: { Args: never; Returns: Json }
+      requeue_failed_queue_jobs: {
+        Args: { p_job_ids: string[] }
+        Returns: number
+      }
       require_cycle_service_role: { Args: never; Returns: undefined }
       reserve_agent_run_cost: {
         Args: {

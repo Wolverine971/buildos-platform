@@ -4,6 +4,7 @@
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import BuilderProjectPage from '$lib/components/builder-profile/BuilderProjectPage.svelte';
 	import { projectPaths } from '$lib/builder-profile/project-pages';
+	import { shareCardVersion } from '$lib/builder-profile/format';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -27,6 +28,12 @@
 			.join(' · ')
 			.slice(0, 300) || `${project.name}, a project ${owner} is building on BuildOS.`
 	);
+	// The owner's card (photo, name, projects); a draft page keeps the default image.
+	const shareImage = $derived(
+		view.page.status === 'published'
+			? `${data.origin}/api/public/builders/${profile.handle}/card?v=${shareCardVersion(view.page)}`
+			: undefined
+	);
 	const jsonLd = $derived({
 		'@context': 'https://schema.org',
 		'@type': 'CreativeWork',
@@ -48,7 +55,11 @@
 	{description}
 	{canonical}
 	ogType="website"
-	twitterCardType="summary"
+	ogImage={shareImage}
+	ogImageAlt={shareImage ? `${owner}'s page on BuildOS` : undefined}
+	ogImageType={shareImage ? 'image/png' : undefined}
+	ogImageHeight={shareImage ? 630 : undefined}
+	twitterCardType={shareImage ? 'summary_large_image' : 'summary'}
 	author={owner}
 	{jsonLd}
 	noindex={view.page.status !== 'published' || project.audience !== 'anyone'}

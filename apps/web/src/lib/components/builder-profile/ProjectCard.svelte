@@ -165,9 +165,10 @@
 					{#if hasWeeks && card.weekly}
 						<div class="rounded-lg border border-border bg-background px-3 py-2.5">
 							<div class="mb-1.5 flex items-baseline justify-between gap-2">
-								<span class="micro-label">12 weeks</span>
+								<span class="micro-label">Last 12 weeks</span>
 								<span class="stamp text-2xs text-muted-foreground"
-									>{weekTotal} changes</span
+									>{weekTotal}
+									{weekTotal === 1 ? 'update' : 'updates'}</span
 								>
 							</div>
 							<ActivityBars weeks={card.weekly} {agentSplit} />

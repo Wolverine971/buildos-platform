@@ -2334,7 +2334,7 @@ export class CalendarWebhookService {
 	private async markProjectCalendarBackfilled(projectCalendarId: string): Promise<void> {
 		const { error } = await this.supabase
 			.from('project_calendars')
-			.update({ inbound_backfilled_at: new Date().toISOString() } as any)
+			.update({ inbound_backfilled_at: new Date().toISOString() })
 			.eq('id', projectCalendarId);
 		if (error) console.error('[PROJECT_CALENDAR_WATCH] Failed to mark backfill:', error);
 	}

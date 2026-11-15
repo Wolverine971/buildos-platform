@@ -164,12 +164,13 @@ describe('BuilderProjectPage', () => {
 		const radar = within(more).getByRole('link', { name: /Radar/ });
 		expect(radar.getAttribute('href')).toBe('https://radar.dev/');
 		expect(radar.getAttribute('target')).toBe('_blank');
-		expect(screen.getByText('Counting work on 9takes only.')).toBeTruthy();
+		expect(screen.getByText('Only work on 9takes.')).toBeTruthy();
 	});
 
-	it('sends a signed-out Follow to sign-in and back to this project, ready to follow', async () => {
+	it('sends a signed-out Follow to sign-up and back to this project, ready to follow', async () => {
 		render(BuilderProjectPage, { data: projectView(), origin: 'https://build-os.com' });
 		await fireEvent.click(screen.getByRole('button', { name: 'Follow 9takes' }));
+		expect(new URL(assigned, 'https://x.test').pathname).toBe('/auth/register');
 		const back = decodeURIComponent(
 			new URL(assigned, 'https://x.test').searchParams.get('redirect')!
 		);

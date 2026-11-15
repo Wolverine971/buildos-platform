@@ -9,6 +9,7 @@ import type {
 	BuilderAudience,
 	BuilderEditorLink,
 	BuilderEditorProject,
+	BuilderEditorWritingOption,
 	BuilderLinkKind,
 	BuilderProfileLink,
 	BuilderProfileProjectCard,
@@ -16,7 +17,7 @@ import type {
 	BuilderProfileView,
 	BuilderProjectLevel
 } from '$lib/builder-profile/types';
-import { normalizeLinkUrl } from '$lib/builder-profile/links';
+import { normalizeLinkUrl, normalizeSocialUrl } from '$lib/builder-profile/links';
 import { normalizeReplyUrl, projectSlug, replyDisplay } from '$lib/builder-profile/project-pages';
 import { activeLabel } from '$lib/builder-profile/format';
 
@@ -39,6 +40,7 @@ export const LIMITS = {
 } as const;
 
 export const URL_ERROR = 'Needs a web address that starts with https://';
+export const SOCIAL_ERROR = 'Needs a web address or an email address';
 export const REPLY_ERROR = 'Needs a web address or an email address';
 
 // ---- Header ---------------------------------------------------------------------
@@ -114,8 +116,9 @@ export function linkRowsFrom(
 	const toRow = (link: BuilderEditorLink): EditorLinkRow => ({
 		key: link.id ?? makeKey(),
 		kind: link.kind,
-		// "x.com/you" reads better than "https://x.com/you"; saving puts https:// back.
-		url: link.url.replace(/^https:\/\//i, ''),
+		// "x.com/you" reads better than "https://x.com/you"; saving puts https:// back
+		// (and an email address goes back to mailto:).
+		url: link.url.replace(/^(https:\/\/|mailto:)/i, ''),
 		label: link.label ?? '',
 		note: link.note ?? '',
 		audience: link.audience
@@ -135,7 +138,12 @@ export function isBlankLinkRow(row: EditorLinkRow): boolean {
 export function linkRowError(row: EditorLinkRow): string | null {
 	if (isBlankLinkRow(row)) return null;
 	if (!row.url.trim()) return 'Add a web address, or delete this link.';
-	return normalizeLinkUrl(row.url) ? null : URL_ERROR;
+	return linkRowUrl(row) ? null : row.kind === 'social' ? SOCIAL_ERROR : URL_ERROR;
+}
+
+/** The address a row saves as: socials can be an email address (mailto:), links can't. */
+export function linkRowUrl(row: Pick<EditorLinkRow, 'kind' | 'url'>): string | null {
+	return row.kind === 'social' ? normalizeSocialUrl(row.url) : normalizeLinkUrl(row.url);
 }
 
 /** The PUT /api/profile/builder/links body: socials first, then links, in on-screen order. */
@@ -148,7 +156,7 @@ export function buildLinksPayload(
 		if (isBlankLinkRow(row)) continue;
 		const item: LinkPayloadItem = {
 			kind: row.kind,
-			url: normalizeLinkUrl(row.url) ?? row.url.trim(),
+			url: linkRowUrl(row) ?? row.url.trim(),
 			audience: row.audience
 		};
 		const label = normalizeText(row.label);
@@ -450,6 +458,8 @@ export function overlayView(
 		links: EditorLinkRow[];
 		rows: EditorProjectRow[];
 		audience: PreviewAudience;
+		/** The owner's Writing picks; when given, Writing shows exactly the picked pages. */
+		writing?: BuilderEditorWritingOption[];
 	}
 ): BuilderProfileView {
 	const { header, settings, audience } = draft;
@@ -458,7 +468,7 @@ export function overlayView(
 
 	const links: BuilderProfileLink[] = [];
 	for (const row of [...draft.socials, ...draft.links]) {
-		const url = normalizeLinkUrl(row.url);
+		const url = linkRowUrl(row);
 		if (!url || !visible(row.audience)) continue;
 		links.push({
 			id: row.key,
@@ -519,6 +529,16 @@ export function overlayView(
 	// The page shows Live cards first, then Listed, each in the order you set.
 	projects.sort((a, b) => Number(b.level === 'live') - Number(a.level === 'live'));
 
+	const writing = draft.writing
+		? draft.writing
+				.filter((option) => option.picked)
+				.map((option) => ({
+					title: option.title,
+					url_path: option.url_path,
+					published_at: option.published_at ?? undefined
+				}))
+		: base.writing;
+
 	const activity =
 		settings.show_build_log && base.activity
 			? { ...base.activity, show_agent_split: settings.show_agent_split }
@@ -539,12 +559,13 @@ export function overlayView(
 		settings: {
 			show_build_log: settings.show_build_log,
 			show_agent_split: settings.show_agent_split,
-			show_writing: settings.show_writing,
+			show_writing: writing.length > 0,
 			show_builds_with: settings.show_builds_with
 		},
 		links,
 		projects,
-		activity
+		activity,
+		writing
 	};
 }
 

@@ -7,8 +7,15 @@
 -->
 <script lang="ts">
 	import ErrorBoundary from '$lib/components/ui/ErrorBoundary.svelte';
-	import { onDestroy, untrack } from 'svelte';
-	import { goto, invalidate, invalidateAll, preloadData, pushState } from '$app/navigation';
+	import { onDestroy, onMount, untrack } from 'svelte';
+	import {
+		goto,
+		invalidate,
+		invalidateAll,
+		preloadData,
+		pushState,
+		replaceState
+	} from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
@@ -56,6 +63,11 @@
 	import WorkspaceCapture from '$lib/components/workspace/WorkspaceCapture.svelte';
 	import WorkspaceShelf from '$lib/components/workspace/WorkspaceShelf.svelte';
 	import GraduateDialog from '$lib/components/workspace/GraduateDialog.svelte';
+	import FindResults from '$lib/components/workspace/FindResults.svelte';
+	import { createFindSearch } from '$lib/components/workspace/find-search.svelte';
+	import { registerFindHost } from '$lib/components/workspace/find-bridge';
+	import { PANE_LIMITS, type FindItem } from '$lib/components/workspace/find-model';
+	import type { ReaderItem } from '$lib/components/projects/desktop/reader-model';
 	import {
 		AUTO_FILE_CONFIDENCE,
 		type AutoFiled,
@@ -276,6 +288,82 @@
 		projects.find((project) => project.kind === 'workspace')?.id ?? data.workspaceId ?? null
 	);
 	const projectsById = $derived(new Map(realProjects.map((project) => [project.id, project])));
+
+	// ---------- Workspace search (tasker 159) ----------
+	// The search box finds across the Workspace and every project, note text included; the
+	// results take the Workspace pane's place while there's a query. Tiles still filter by name.
+
+	const find = createFindSearch();
+	onDestroy(() => find.destroy());
+
+	let searchInput = $state<HTMLInputElement | null>(null);
+	let desktop = $state<{
+		openAt: (projectId: string, item?: ReaderItem | null) => boolean;
+	} | null>(null);
+
+	function setSearch(value: string) {
+		searchQuery = value;
+		find.set(value);
+	}
+
+	/** Open a result (or a link target) in its card and reader; off this desktop, its page. */
+	function openFound(item: Pick<FindItem, 'kind' | 'id' | 'project_id'>): boolean {
+		const reader: ReaderItem | null =
+			item.kind === 'project' ? null : { kind: item.kind, id: item.id };
+		if (desktop?.openAt(item.project_id, reader)) return true;
+		void goto(resolve('/projects/[id]', { id: item.project_id }));
+		return true;
+	}
+
+	async function saveSearchAsNote(text: string) {
+		try {
+			const result = await workspaceRequest<{ item: LooseItem }>('/api/workspace/capture', {
+				kind: 'note',
+				text,
+				source: 'search'
+			});
+			addLoose([result.item]);
+			setSearch('');
+			toastService.success('Saved to your Workspace.');
+		} catch (err) {
+			toastService.error(err instanceof Error ? err.message : 'Could not save that note.');
+		}
+	}
+
+	onMount(() =>
+		registerFindHost({
+			open: (item) => openFound(item),
+			focus: () => {
+				if (!searchInput || page.state.desktopCard) return false;
+				searchInput.focus();
+				searchInput.select();
+				return true;
+			}
+		})
+	);
+
+	// `?open=kind:id`: open the item once the tiles are in. The landing entry loses the
+	// parameter first, so Back from the card returns to a plain /projects.
+	let handledOpen: unknown = null;
+	$effect(() => {
+		const pending = data.openTarget;
+		if (!pending || pending === handledOpen || projectsLoading || !desktop) return;
+		handledOpen = pending;
+		void Promise.resolve(pending).then((target) => {
+			const url = new URL(page.url);
+			url.searchParams.delete('open');
+			if (!page.state.desktopCard)
+				replaceState(`${url.pathname}${url.search}${url.hash}`, page.state);
+			if (!target) {
+				toastService.add({
+					type: 'info',
+					message: 'That item isn’t available. It may have moved or been deleted.'
+				});
+				return;
+			}
+			openFound(target);
+		});
+	});
 
 	// ---------- Workspace (loose items, suggestions) ----------
 
@@ -844,7 +932,7 @@
 	}
 
 	function clearFilters() {
-		searchQuery = '';
+		setSearch('');
 		selectedOwnership = 'all';
 		selectedContexts = [];
 		selectedScales = [];
@@ -1138,18 +1226,30 @@
 									class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
 								/>
 								<input
+									bind:this={searchInput}
 									type="search"
-									aria-label="Search projects"
-									class="min-h-11 w-full rounded-lg border border-border bg-card py-2 pl-9 pr-10 text-base text-foreground placeholder:text-muted-foreground focus:border-foreground/30 focus:outline-none focus:ring-2 focus:ring-ring sm:text-sm [&::-webkit-search-cancel-button]:appearance-none [@media(pointer:fine)]:min-h-9 [@media(pointer:fine)]:py-1.5"
-									placeholder="Search"
+									aria-label="Find in your Workspace and projects"
+									autocomplete="off"
+									class="min-h-11 w-full rounded-lg border border-border-strong bg-card py-2 pl-9 pr-10 text-base text-foreground shadow-ink-inner placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring sm:text-sm [&::-webkit-search-cancel-button]:appearance-none [@media(pointer:fine)]:min-h-9 [@media(pointer:fine)]:py-1.5"
+									placeholder="Find anything: notes, tasks, docs, projects"
 									bind:value={searchQuery}
+									oninput={() => find.set(searchQuery)}
+									onkeydown={(event) => {
+										if (event.key === 'Escape' && searchQuery) {
+											event.preventDefault();
+											setSearch('');
+										}
+									}}
 								/>
 								{#if searchQuery}
 									<button
 										type="button"
 										class="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-										onclick={() => (searchQuery = '')}
-										aria-label="Clear project search"
+										onclick={() => {
+											setSearch('');
+											searchInput?.focus();
+										}}
+										aria-label="Clear search"
 									>
 										<X class="h-4 w-4" />
 									</button>
@@ -1379,6 +1479,7 @@
 				{@render tileSkeleton(projectCount)}
 			{:else if !projectsLoading || projects.length > 0}
 				<ProjectDesktop
+					bind:this={desktop}
 					{projects}
 					visible={filteredProjects}
 					completed={showCompletedDisclosure ? completedProjects : []}
@@ -1386,6 +1487,7 @@
 					{workspaceId}
 					loose={looseShelf}
 					emptyTiles={tilesEmpty}
+					looseCount={workspaceHome ? workspaceHome.items.length : null}
 					titleFor={looseTitle}
 					onContentMoved={handleContentMoved}
 					onPatch={applyProjectPatches}
@@ -1531,6 +1633,25 @@
 </PullToRefresh>
 
 {#snippet looseShelf(api: LooseApi)}
+	{#if find.active}
+		<ErrorBoundary area="workspace-search">
+			<FindResults
+				search={find}
+				limits={PANE_LIMITS}
+				onOpen={(item) => {
+					const reader =
+						item.kind === 'project' ? null : { kind: item.kind, id: item.id };
+					if (!api.openAt(item.project_id, reader)) openFound(item);
+				}}
+				onSaveNote={(text) => void saveSearchAsNote(text)}
+			/>
+		</ErrorBoundary>
+	{:else}
+		{@render shelfList(api)}
+	{/if}
+{/snippet}
+
+{#snippet shelfList(api: LooseApi)}
 	<WorkspaceShelf
 		home={workspaceHome}
 		loading={workspaceLoading}
@@ -1566,6 +1687,10 @@
 				</Button>
 			</div>
 		</div>
+	{:else if searchQuery.trim() && activeFilterCount === 0}
+		<!-- Searching: the results beside this list what's inside projects; only names
+		     filter the tiles, so say so quietly. -->
+		<p class="text-sm text-muted-foreground">No project names match “{searchQuery.trim()}”.</p>
 	{:else}
 		<div class="wt-paper border-dashed px-4 py-8 text-center">
 			<p class="text-sm font-medium text-foreground">

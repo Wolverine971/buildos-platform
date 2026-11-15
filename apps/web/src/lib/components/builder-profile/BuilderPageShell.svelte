@@ -39,7 +39,11 @@
 </script>
 
 <div class="flex-1 bg-bench bench-grain">
-	<div class="mx-auto w-full max-w-[46rem] px-3 pb-14 pt-3 sm:px-6 sm:pt-5">
+	<!-- Bottom room grows while the privacy bar shows, so the claim form stays reachable. -->
+	<div
+		class="mx-auto w-full max-w-[46rem] px-3 pt-3 sm:px-6 sm:pt-5"
+		style="padding-bottom: calc(3.5rem + var(--consent-bar-space, 0px))"
+	>
 		<nav class="mb-3 flex items-center justify-between gap-3" aria-label="BuildOS">
 			<a
 				href={signedIn ? '/projects' : '/'}

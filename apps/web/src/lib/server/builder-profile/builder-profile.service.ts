@@ -6,7 +6,7 @@
 // the tables are read-only to signed-in users (see 20261024020000_builder_profiles.sql).
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { normalizeLinkUrl } from '$lib/builder-profile/links';
+import { normalizeLinkUrl, normalizeSocialUrl } from '$lib/builder-profile/links';
 import { normalizeReplyUrl } from '$lib/builder-profile/project-pages';
 import type {
 	BuilderAudience,
@@ -14,6 +14,7 @@ import type {
 	BuilderEditorLink,
 	BuilderEditorPlacement,
 	BuilderEditorProject,
+	BuilderEditorWritingOption,
 	BuilderLinkKind,
 	BuilderProfileResult,
 	BuilderProfileSettings,
@@ -30,6 +31,9 @@ export const MAX_LINKS = 30;
 export const MAX_PROJECTS = 24;
 export const MAX_BIO = 280;
 export const MAX_NAME = 80;
+export const MAX_WRITING = 20;
+export const CONFLICT_MESSAGE =
+	'Your page changed in another tab or window. Reload to see the latest, then make your change again.';
 const ACTIVITY_MAX_AGE_MS = 20 * 60 * 60 * 1000;
 
 export class BuilderProfileError extends Error {
@@ -216,7 +220,7 @@ export async function loadEditorData(params: {
 	const { admin, userId } = params;
 	await ensureProfileRow(admin, userId);
 
-	const [userResult, profileResult, linksResult, placementsResult, draftsResult, owned] =
+	const [userResult, profileResult, linksResult, placementsResult, draftsResult, owned, writing] =
 		await Promise.all([
 			admin
 				.from('users')
@@ -237,7 +241,8 @@ export async function loadEditorData(params: {
 				.eq('status', 'drafted')
 				.order('created_at', { ascending: false })
 				.limit(20),
-			loadOwnedProjects(admin, userId)
+			loadOwnedProjects(admin, userId),
+			loadWritingOptions(admin, userId)
 		]);
 	for (const result of [userResult, profileResult, linksResult, placementsResult, draftsResult]) {
 		if (result.error) throw result.error;
@@ -379,8 +384,168 @@ export async function loadEditorData(params: {
 		})),
 		projects,
 		drafts,
+		writing_options: writing,
+		links_rev: Number(profileRow?.links_rev ?? 0),
+		projects_rev: Number(profileRow?.projects_rev ?? 0),
 		sign_in_avatar_url: params.signInAvatarUrl ?? null
 	};
+}
+
+// ---- Writing (opt-in per page) ------------------------------------------------------
+
+function publicPagePath(page: {
+	slug: string;
+	slug_prefix: string | null;
+	slug_base: string | null;
+}): string {
+	return page.slug_prefix && page.slug_base
+		? `/p/${page.slug_prefix}/${page.slug_base}`
+		: `/p/${page.slug}`;
+}
+
+/**
+ * The owner's live public pages, the ones they picked first (in page order), then the
+ * rest newest first. Same rules as get_builder_profile's Writing section: published,
+ * live, public, indexable, not deleted, created or published by the owner.
+ */
+export async function loadWritingOptions(
+	admin: Client,
+	userId: string
+): Promise<BuilderEditorWritingOption[]> {
+	const actorId = await actorIdFor(admin, userId);
+	if (!actorId) return [];
+	const [pagesResult, picksResult] = await Promise.all([
+		admin
+			.from('onto_public_pages')
+			.select(
+				'id, title, slug, slug_prefix, slug_base, published_at, project:onto_projects!inner(name, deleted_at)'
+			)
+			.or(`created_by.eq.${actorId},published_by.eq.${actorId}`)
+			.eq('status', 'published')
+			.eq('public_status', 'live')
+			.eq('visibility', 'public')
+			.eq('noindex', false)
+			.is('deleted_at', null)
+			.order('published_at', { ascending: false, nullsFirst: false })
+			.limit(100),
+		admin
+			.from('builder_profile_writing')
+			.select('page_id, position')
+			.eq('user_id', userId)
+			.order('position', { ascending: true })
+	]);
+	if (pagesResult.error) throw pagesResult.error;
+	if (picksResult.error) throw picksResult.error;
+	const order = new Map(
+		((picksResult.data ?? []) as { page_id: string }[]).map((row, index) => [
+			row.page_id,
+			index
+		])
+	);
+	const options = ((pagesResult.data ?? []) as any[])
+		.filter((row) => row.project && !row.project.deleted_at)
+		.map(
+			(row): BuilderEditorWritingOption => ({
+				page_id: row.id,
+				title: (row.title ?? '').trim() || 'Untitled page',
+				url_path: publicPagePath(row),
+				published_at: row.published_at ?? null,
+				project_name: row.project?.name ?? null,
+				picked: order.has(row.id)
+			})
+		);
+	return options.sort((a, b) => {
+		const pa = order.get(a.page_id);
+		const pb = order.get(b.page_id);
+		if (pa !== undefined && pb !== undefined) return pa - pb;
+		if (pa !== undefined) return -1;
+		if (pb !== undefined) return 1;
+		return 0;
+	});
+}
+
+export function parseWritingPicks(input: unknown): string[] {
+	if (!Array.isArray(input)) throw new BuilderProfileError('Pages must be a list');
+	const ids = input.filter((id): id is string => typeof id === 'string');
+	if (ids.length !== input.length || ids.some((id) => !/^[0-9a-f-]{36}$/i.test(id))) {
+		throw new BuilderProfileError('Unknown page');
+	}
+	if (new Set(ids).size !== ids.length) throw new BuilderProfileError('A page is listed twice');
+	if (ids.length > MAX_WRITING) {
+		throw new BuilderProfileError(`You can show up to ${MAX_WRITING} pages under Writing`);
+	}
+	return ids;
+}
+
+/** The pages to show under Writing, in this order. Only the owner's own live public pages. */
+export async function replaceWriting(params: {
+	admin: Client;
+	userId: string;
+	pageIds: string[];
+}): Promise<void> {
+	const { admin, userId, pageIds } = params;
+	if (pageIds.length) {
+		const allowed = new Set((await loadWritingOptions(admin, userId)).map((o) => o.page_id));
+		if (pageIds.some((id) => !allowed.has(id))) {
+			throw new BuilderProfileError('You can only show your own published public pages', 403);
+		}
+	}
+	const del = await admin.from('builder_profile_writing').delete().eq('user_id', userId);
+	if (del.error) throw del.error;
+	if (pageIds.length === 0) return;
+	const { error } = await admin
+		.from('builder_profile_writing')
+		.insert(pageIds.map((page_id, position) => ({ user_id: userId, page_id, position })));
+	if (error) throw error;
+}
+
+// ---- Conflict check ---------------------------------------------------------------
+
+type RevColumn = 'links_rev' | 'projects_rev';
+
+/**
+ * Claims the next save of the links or the projects list. With the counter the editor
+ * loaded (baseRev), a save from a tab that missed another tab's save is refused (409)
+ * instead of silently overwriting it. Without one (older clients), it just counts.
+ * Returns the new counter.
+ */
+async function claimRevision(
+	admin: Client,
+	userId: string,
+	column: RevColumn,
+	baseRev: number | null | undefined
+): Promise<number> {
+	await ensureProfileRow(admin, userId);
+	let base = baseRev;
+	if (typeof base !== 'number' || !Number.isInteger(base) || base < 0) {
+		const { data, error } = await admin
+			.from('builder_profiles')
+			.select(column)
+			.eq('user_id', userId)
+			.maybeSingle();
+		if (error) throw error;
+		base = Number((data as Record<string, unknown> | null)?.[column] ?? 0);
+	}
+	const next = base + 1;
+	// count instead of .select(): PostgREST 12.2 mishandles update + filter + select.
+	const { error, count } = await admin
+		.from('builder_profiles')
+		.update({ [column]: next }, { count: 'exact' })
+		.eq('user_id', userId)
+		.eq(column, base);
+	if (error) throw error;
+	if (!count) throw new BuilderProfileError(CONFLICT_MESSAGE, 409);
+	return next;
+}
+
+/** Undo a claim when the save after it failed, so this tab can try again. */
+async function releaseRevision(admin: Client, userId: string, column: RevColumn, claimed: number) {
+	await admin
+		.from('builder_profiles')
+		.update({ [column]: claimed - 1 })
+		.eq('user_id', userId)
+		.eq(column, claimed)
+		.then(({ error }: { error: unknown }) => error && console.error(error));
 }
 
 // ---- Saving ------------------------------------------------------------------
@@ -442,6 +607,7 @@ export async function saveSettings(params: {
 }): Promise<void> {
 	const { admin, userId, patch } = params;
 	await ensureProfileRow(admin, userId);
+	await checkExpected(admin, userId, patch.expected);
 	const update: Record<string, unknown> = {};
 	if ('headline' in patch) update.headline = cleanText(patch.headline, 120, 'Headline');
 	if ('location' in patch) update.location = cleanText(patch.location, 80, 'Location');
@@ -495,18 +661,69 @@ export async function saveSettings(params: {
 	if (nowChanged) await recordPublishedLine(admin, userId, null, nowChanged);
 }
 
+const TEXT_FIELDS = {
+	headline: 'profile',
+	location: 'profile',
+	now_text: 'profile',
+	bio: 'user',
+	name: 'user'
+} as const;
+
+/**
+ * The editor sends the value each text field had when it loaded (expected). If the saved
+ * value is different now, another tab or window changed it: refuse (409) rather than
+ * overwrite it without anyone seeing.
+ */
+async function checkExpected(admin: Client, userId: string, expected: unknown) {
+	if (!expected || typeof expected !== 'object') return;
+	const fields = Object.keys(expected).filter(
+		(key): key is keyof typeof TEXT_FIELDS => key in TEXT_FIELDS
+	);
+	if (fields.length === 0) return;
+	const [profile, user] = await Promise.all([
+		admin
+			.from('builder_profiles')
+			.select('headline, location, now_text')
+			.eq('user_id', userId)
+			.maybeSingle(),
+		admin.from('users').select('bio, name').eq('id', userId).maybeSingle()
+	]);
+	if (profile.error) throw profile.error;
+	if (user.error) throw user.error;
+	const same = (a: unknown, b: unknown) =>
+		String(a ?? '')
+			.replace(/\s+/g, ' ')
+			.trim() ===
+		String(b ?? '')
+			.replace(/\s+/g, ' ')
+			.trim();
+	for (const field of fields) {
+		const row = (TEXT_FIELDS[field] === 'profile' ? profile.data : user.data) as Record<
+			string,
+			unknown
+		> | null;
+		if (!same(row?.[field], (expected as Record<string, unknown>)[field])) {
+			throw new BuilderProfileError(CONFLICT_MESSAGE, 409);
+		}
+	}
+}
+
 export function parseLinks(input: unknown): BuilderEditorLink[] {
 	if (!Array.isArray(input)) throw new BuilderProfileError('Links must be a list');
 	if (input.length > MAX_LINKS)
 		throw new BuilderProfileError(`You can add up to ${MAX_LINKS} links`);
 	return input.map((raw, index) => {
 		const item = (raw ?? {}) as Record<string, unknown>;
-		const url = normalizeLinkUrl(typeof item.url === 'string' ? item.url : '');
+		const kind: BuilderLinkKind = item.kind === 'social' ? 'social' : 'link';
+		const rawUrl = typeof item.url === 'string' ? item.url : '';
+		// Socials can be an email address (mailto:); other links are web addresses only.
+		const url = kind === 'social' ? normalizeSocialUrl(rawUrl) : normalizeLinkUrl(rawUrl);
 		if (!url)
 			throw new BuilderProfileError(
-				`Link ${index + 1} needs a web address that starts with https://`
+				kind === 'social'
+					? `Social ${index + 1} needs a web address or an email address`
+					: `Link ${index + 1} needs a web address that starts with https://`
 			);
-		const kind: BuilderLinkKind = item.kind === 'social' ? 'social' : 'link';
 		return {
 			kind,
 			url,
@@ -521,8 +738,20 @@ export async function replaceLinks(params: {
 	admin: Client;
 	userId: string;
 	links: BuilderEditorLink[];
-}) {
+	baseRev?: number | null;
+}): Promise<{ rev: number }> {
 	const { admin, userId, links } = params;
+	const rev = await claimRevision(admin, userId, 'links_rev', params.baseRev);
+	try {
+		await writeLinks(admin, userId, links);
+	} catch (error) {
+		await releaseRevision(admin, userId, 'links_rev', rev);
+		throw error;
+	}
+	return { rev };
+}
+
+async function writeLinks(admin: Client, userId: string, links: BuilderEditorLink[]) {
 	const del = await admin.from('builder_profile_links').delete().eq('user_id', userId);
 	if (del.error) throw del.error;
 	if (links.length === 0) return;
@@ -601,7 +830,8 @@ export async function replacePlacements(params: {
 	admin: Client;
 	userId: string;
 	placements: PlacementInput[];
-}) {
+	baseRev?: number | null;
+}): Promise<{ rev: number }> {
 	const { admin, userId, placements } = params;
 	const owned = new Set((await loadOwnedProjects(admin, userId)).map((p) => p.id));
 	for (const p of placements) {
@@ -609,6 +839,17 @@ export async function replacePlacements(params: {
 			throw new BuilderProfileError('You can only put projects you own on your page', 403);
 		}
 	}
+	const rev = await claimRevision(admin, userId, 'projects_rev', params.baseRev);
+	try {
+		await writePlacements(admin, userId, placements);
+	} catch (error) {
+		await releaseRevision(admin, userId, 'projects_rev', rev);
+		throw error;
+	}
+	return { rev };
+}
+
+async function writePlacements(admin: Client, userId: string, placements: PlacementInput[]) {
 	const { data: existing, error: existingError } = await admin
 		.from('builder_profile_projects')
 		.select('project_id, this_week')
@@ -795,24 +1036,54 @@ export async function askToJoin(params: {
 	}
 }
 
+export type BuilderEventKind = 'view' | 'project_view' | 'link_tap';
+
+/**
+ * Counts one view or tap for the owner's numbers. visitorKey (a daily-rotating hash the
+ * route makes from the visitor's network address) lets the database count each visitor
+ * once a day per page and cap their taps; subject is the project for project_view.
+ */
 export async function recordEvent(params: {
 	admin: Client;
 	handle: string;
-	kind: 'view' | 'link_tap';
+	kind: BuilderEventKind;
 	viewerId: string | null;
+	visitorKey?: string | null;
+	subject?: string | null;
 }): Promise<boolean> {
 	const target = await resolveBuilderTarget(params.admin, params.handle);
 	if (!target || target.status !== 'published') return false;
 	if (params.viewerId && params.viewerId === target.user_id) return false;
-	const { error } = await params.admin.rpc('bump_builder_profile_stat', {
+	const { data, error } = await params.admin.rpc('bump_builder_profile_stat', {
 		p_user_id: target.user_id,
-		p_kind: params.kind
+		p_kind: params.kind,
+		p_visitor: params.visitorKey ?? null,
+		p_subject: params.subject ?? null
 	});
 	if (error) throw error;
-	return true;
+	return data !== false;
 }
 
 // ---- Old author index (/p/{slug_prefix}) -------------------------------------------
+
+/**
+ * Where a public page's author name links: their builder page (/@handle) when it's
+ * published, so the page points at one address for the person; null keeps /p/{prefix}.
+ * Never throws (a public page must load even if this lookup fails).
+ */
+export async function authorPageHref(slugPrefix: unknown): Promise<string | null> {
+	if (typeof slugPrefix !== 'string' || !slugPrefix.trim()) return null;
+	try {
+		const { createAdminSupabaseClient } = await import('$lib/supabase/admin');
+		const handle = await builderHandleForAuthorSlug(
+			createAdminSupabaseClient() as any,
+			slugPrefix.trim().toLowerCase()
+		);
+		return handle ? `/@${handle}` : null;
+	} catch {
+		return null;
+	}
+}
 
 /**
  * The published builder page that replaces an author index at /p/{slug}: the slug is

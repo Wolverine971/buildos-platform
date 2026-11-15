@@ -2,10 +2,12 @@
 // Builder profiles (build-os.com/@handle) in the daily brief. Two short parts, both pure data
 // and formatting: no model call, and never part of the LLM prompt.
 // - "From People You Follow": weekly lines that people the user follows published since the
-//   last brief. A line shows only if the author's public page would show it to this user
-//   (the same rules as get_builder_profile in 20261024020000_builder_profiles.sql).
+//   last brief that went out (not just the last 24 hours, so a day with no brief doesn't drop
+//   lines). A line shows only if the author's public page would show it to this user (the
+//   same rules as get_builder_profile in 20261024020000_builder_profiles.sql).
 // - "Your Page": a nudge when the user's own page has drafted lines waiting.
 import type { BuilderFollowsBriefLine, BuilderFollowsBriefSection } from './ontologyBriefTypes.js';
+import { resolveOthersActivityWindow } from './othersActivityBriefSection.js';
 
 export const BUILDER_FOLLOWS_LINE_CAP = 6;
 // Far more than a day of weekly lines; the cap above applies after the visibility checks.
@@ -19,6 +21,8 @@ interface LooseQuery extends PromiseLike<LooseResult> {
 	in(column: string, values: readonly string[]): LooseQuery;
 	is(column: string, value: null): LooseQuery;
 	gte(column: string, value: string): LooseQuery;
+	lt(column: string, value: string): LooseQuery;
+	maybeSingle(): PromiseLike<LooseResult>;
 	order(column: string, options: { ascending: boolean }): LooseQuery;
 	limit(count: number): LooseQuery;
 }
@@ -235,6 +239,38 @@ async function countDraftedUpdates(client: BuilderFollowsBriefClient, userId: st
 		.eq('status', 'drafted');
 	if (error) throw new Error(`builder_profile_updates drafts: ${error.message}`);
 	return count ?? 0;
+}
+
+/**
+ * Where "From People You Follow" starts: the last completed brief before this one, clamped
+ * to between 12 hours and 7 days back (the same window as "While you were away"); the last
+ * 24 hours when there is no earlier brief or it can't be read.
+ */
+export async function resolveBuilderFollowsSince(
+	client: BuilderFollowsBriefClient,
+	userId: string,
+	briefDate: string,
+	now: Date = new Date()
+): Promise<Date> {
+	let previous: string | null = null;
+	try {
+		const { data, error } = await client
+			.from('ontology_daily_briefs')
+			.select('generation_completed_at')
+			.eq('user_id', userId)
+			.eq('generation_status', 'completed')
+			.lt('brief_date', briefDate)
+			.order('brief_date', { ascending: false })
+			.limit(1)
+			.maybeSingle();
+		if (error) throw new Error(error.message);
+		previous =
+			(data as { generation_completed_at?: string | null } | null)?.generation_completed_at ??
+			null;
+	} catch (error) {
+		console.warn('[BuilderFollowsBrief] Could not read the last brief; using 24 hours:', error);
+	}
+	return resolveOthersActivityWindow(previous, now).start;
 }
 
 /**

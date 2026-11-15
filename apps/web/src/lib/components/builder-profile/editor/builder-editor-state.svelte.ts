@@ -6,10 +6,14 @@
 // at once, images after the crop. The card on the canvas shows unsaved edits as you
 // type (overlayView); the saved page is re-read after a save to pick up what only the
 // server knows (weekly bars, the build log). A failed save keeps what the owner typed
-// and puts the server's message next to the control.
+// and puts the server's message next to the control. Two tabs on the same page can't
+// silently overwrite each other: saves carry what this tab last saw (a save counter for
+// links and projects, the loaded value for text fields), and a stale save comes back 409
+// and asks the owner to reload (conflict).
 
 import type {
 	BuilderEditorData,
+	BuilderEditorWritingOption,
 	BuilderPageDraftSuggestion,
 	BuilderPageSection,
 	BuilderProfileSettings,
@@ -53,7 +57,6 @@ export type ToggleSetting =
 	| 'show_build_log'
 	| 'build_log_includes_private'
 	| 'show_agent_split'
-	| 'show_writing'
 	| 'show_builds_with'
 	| 'show_on_collaborator_pages'
 	| 'weekly_drafts';
@@ -77,15 +80,18 @@ const EMPTY_SETTINGS: BuilderProfileSettings = {
 
 const BASE = '/api/profile/builder';
 const NOTHING_MOVED = 'Nothing moved this week, so there’s nothing to draft.';
+const NOTHING_TO_SAY =
+	'Work moved this week, but there was no line worth drafting. Weekly lines are written for Live projects; make one Live to get them.';
 /** How long after the last change links and projects save. */
 const AUTOSAVE_MS = 800;
 /** Settings the server needs to recount before the card can show them. */
 const RELOAD_AFTER: ToggleSetting[] = [
 	'show_build_log',
 	'build_log_includes_private',
-	'show_writing',
 	'show_builds_with'
 ];
+const CONFLICT_FALLBACK =
+	'Your page changed in another tab or window. Reload to see the latest, then make your change again.';
 
 export class BuilderPageEditorState {
 	/** Called after Publish or Take down succeeds (publishing turns on handle findability). */
@@ -141,6 +147,17 @@ export class BuilderPageEditorState {
 	projectsBusy = $state(false);
 	projectsError = $state<string | null>(null);
 
+	// ---- Writing (opt-in per page) ----
+	writingOptions = $state<BuilderEditorWritingOption[]>([]);
+	writingBusy = $state(false);
+	writingError = $state<string | null>(null);
+
+	// ---- Two tabs ----
+	/** Set when a save was refused because another tab or window saved first. */
+	conflict = $state<string | null>(null);
+	linksRev = $state(0);
+	projectsRev = $state(0);
+
 	// ---- Section toggles ----
 	toggleBusy = $state<Partial<Record<ToggleSetting, boolean>>>({});
 	toggleError = $state<{ key: ToggleSetting; message: string } | null>(null);
@@ -191,7 +208,8 @@ export class BuilderPageEditorState {
 					socials: this.socials,
 					links: this.links,
 					rows: this.rows,
-					audience: this.previewAudience
+					audience: this.previewAudience,
+					writing: this.writingOptions
 				})
 			: null
 	);
@@ -250,6 +268,16 @@ export class BuilderPageEditorState {
 		this.rows = rows;
 		this.savedProjectsKey = projectsKey(rows);
 		this.setDrafts(data.drafts);
+		this.writingOptions = data.writing_options ?? [];
+		this.linksRev = data.links_rev ?? 0;
+		this.projectsRev = data.projects_rev ?? 0;
+	}
+
+	/** A save came back 409: another tab saved first. Stop autosaving over it. */
+	private noteConflict(result: { ok: boolean; status?: number; error?: string }): boolean {
+		if (result.ok || result.status !== 409) return false;
+		this.conflict = result.error || CONFLICT_FALLBACK;
+		return true;
 	}
 
 	/** After the handle changes: pick up the new handle and status only. */
@@ -377,7 +405,11 @@ export class BuilderPageEditorState {
 			this.fieldErrors = { ...this.fieldErrors, name: 'Add your name.' };
 			return;
 		}
-		const ok = await this.patch(field, { [field]: change }, false);
+		const ok = await this.patch(
+			field,
+			{ [field]: change, expected: { [field]: saved ?? null } },
+			false
+		);
 		if (!ok) return;
 		if (field === 'name') this.name = change;
 		else this.settings = { ...this.settings, [field]: change };
@@ -395,6 +427,7 @@ export class BuilderPageEditorState {
 		body: Record<string, unknown>,
 		reload: boolean
 	): Promise<boolean> {
+		if (this.conflict) return false;
 		this.fieldSaving = field;
 		const result = await this.track(
 			() => callApi<{ saved: boolean }>(BASE, 'PATCH', body),
@@ -402,6 +435,7 @@ export class BuilderPageEditorState {
 		);
 		if (this.fieldSaving === field) this.fieldSaving = null;
 		if (!result.ok) {
+			this.noteConflict(result);
 			this.fieldErrors = { ...this.fieldErrors, [field]: result.error };
 			return false;
 		}
@@ -578,7 +612,7 @@ export class BuilderPageEditorState {
 	}
 
 	async saveLinks(): Promise<boolean> {
-		if (!this.linksDirty || Object.keys(this.linkErrors).length) return false;
+		if (this.conflict || !this.linksDirty || Object.keys(this.linkErrors).length) return false;
 		if (this.linksBusy) {
 			this.scheduleLinksSave();
 			return false;
@@ -588,19 +622,20 @@ export class BuilderPageEditorState {
 		this.linksError = null;
 		const result = await this.track(
 			() =>
-				callApi<unknown>(
+				callApi<{ rev?: number }>(
 					`${BASE}/links`,
 					'PUT',
-					buildLinksPayload(this.socials, this.links),
+					{ ...buildLinksPayload(this.socials, this.links), base_rev: this.linksRev },
 					'Could not save your links. Try again.'
 				),
 			(r) => (r.ok ? null : r.error)
 		);
 		this.linksBusy = false;
 		if (!result.ok) {
-			this.linksError = result.error;
+			if (!this.noteConflict(result)) this.linksError = result.error;
 			return false;
 		}
+		if (typeof result.data?.rev === 'number') this.linksRev = result.data.rev;
 		this.savedLinksKey = sentKey;
 		if (this.linksDirty) this.scheduleLinksSave();
 		return true;
@@ -661,6 +696,7 @@ export class BuilderPageEditorState {
 
 	async saveProjects(): Promise<boolean> {
 		if (
+			this.conflict ||
 			!this.projectsDirty ||
 			Object.keys(this.projectErrors).length ||
 			Object.keys(this.replyErrors).length
@@ -679,19 +715,20 @@ export class BuilderPageEditorState {
 		this.projectsError = null;
 		const result = await this.track(
 			() =>
-				callApi<{ saved: number }>(
+				callApi<{ saved: number; rev?: number }>(
 					`${BASE}/projects`,
 					'PUT',
-					payload,
+					{ ...payload, base_rev: this.projectsRev },
 					'Could not save your projects. Try again.'
 				),
 			(r) => (r.ok ? null : r.error)
 		);
 		this.projectsBusy = false;
 		if (!result.ok) {
-			this.projectsError = result.error;
+			if (!this.noteConflict(result)) this.projectsError = result.error;
 			return false;
 		}
+		if (typeof result.data?.rev === 'number') this.projectsRev = result.data.rev;
 		this.savedProjectsKey = sentKey;
 		// A project newly shown or made Live needs its bars and counts from the server.
 		const needsReload = payload.projects.some(
@@ -743,30 +780,78 @@ export class BuilderPageEditorState {
 		this.weeklyBusy = 'draft';
 		this.weeklyMessage = null;
 		this.weeklyError = null;
-		const result = await callApi<{ created: number }>(
+		const result = await callApi<{
+			created: number;
+			drafts?: BuilderProfileUpdateDraft[];
+			reason?: 'nothing_moved' | 'nothing_to_say';
+		}>(
 			`${BASE}/updates`,
 			'POST',
 			{ action: 'draft' },
 			'Could not draft this week’s update. Try again.'
 		);
+		this.weeklyBusy = null;
 		if (!result.ok) {
-			this.weeklyBusy = null;
 			this.weeklyError = result.error;
 			return;
 		}
 		if (!result.data?.created) {
-			this.weeklyBusy = null;
-			this.weeklyMessage = NOTHING_MOVED;
+			this.weeklyMessage =
+				result.data?.reason === 'nothing_to_say' ? NOTHING_TO_SAY : NOTHING_MOVED;
 			return;
 		}
-		const editor = await callApi<BuilderEditorData>(BASE, 'GET');
-		this.weeklyBusy = null;
-		if (editor.ok && editor.data) {
-			// New drafts replace the old ones; start each textarea from the new text.
-			this.draftBodies = {};
-			this.setDrafts(editor.data.drafts);
-		} else {
-			this.weeklyError = 'Drafted, but could not load the drafts. Refresh to see them.';
+		// The new drafts come back with the call (no reload of the whole editor). They
+		// replace the old ones; start each textarea from the new text.
+		this.draftBodies = {};
+		this.setDrafts(result.data.drafts ?? []);
+	}
+
+	// ---- Writing ----------------------------------------------------------------
+
+	/** Show or hide one published page under Writing. Saves at once. */
+	async setWritingPicked(pageId: string, picked: boolean): Promise<void> {
+		const option = this.writingOptions.find((o) => o.page_id === pageId);
+		if (!option || option.picked === picked) return;
+		const previous = this.writingOptions;
+		// Newly picked pages go to the end of the picked list.
+		const rest = previous.filter((o) => o.page_id !== pageId);
+		const pickedCount = rest.filter((o) => o.picked).length;
+		const next = [...rest];
+		next.splice(picked ? pickedCount : next.length, 0, { ...option, picked });
+		await this.saveWriting(next, previous);
+	}
+
+	/** Move a picked page up or down in the Writing list. */
+	async moveWriting(pageId: string, delta: -1 | 1): Promise<void> {
+		const index = this.writingOptions.findIndex((o) => o.page_id === pageId && o.picked);
+		const target = this.writingOptions[index + delta];
+		if (index < 0 || !target?.picked) return;
+		const previous = this.writingOptions;
+		await this.saveWriting(moveItem(previous, index, delta), previous);
+	}
+
+	private async saveWriting(
+		next: BuilderEditorWritingOption[],
+		previous: BuilderEditorWritingOption[]
+	): Promise<void> {
+		if (this.writingBusy || this.conflict) return;
+		this.writingOptions = next;
+		this.writingBusy = true;
+		this.writingError = null;
+		const result = await this.track(
+			() =>
+				callApi<{ page_ids: string[] }>(
+					`${BASE}/writing`,
+					'PUT',
+					{ page_ids: next.filter((o) => o.picked).map((o) => o.page_id) },
+					'Could not save that. Try again.'
+				),
+			(r) => (r.ok ? null : r.error)
+		);
+		this.writingBusy = false;
+		if (!result.ok) {
+			this.writingOptions = previous;
+			this.writingError = result.error;
 		}
 	}
 

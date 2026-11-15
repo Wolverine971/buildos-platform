@@ -75,6 +75,8 @@ export interface BuilderProfileCollaborator {
 export interface BuilderProfileStats {
 	views_7d: number;
 	views_28d: number;
+	/** Views of the person's project pages (/@handle/<project>), counted apart. */
+	project_views_28d?: number;
 	link_taps_28d: number;
 	follows_28d: number;
 	asks_28d: number;
@@ -109,6 +111,7 @@ export interface BuilderProfileView {
 	settings: {
 		show_build_log: boolean;
 		show_agent_split: boolean;
+		/** True when the owner picked at least one page for Writing. */
 		show_writing: boolean;
 		show_builds_with: boolean;
 	};
@@ -161,10 +164,22 @@ export interface BuilderProfileSettings {
 	show_build_log: boolean;
 	build_log_includes_private: boolean;
 	show_agent_split: boolean;
+	/** Unused: Writing shows exactly the pages the owner picked (writing_options). */
 	show_writing: boolean;
 	show_builds_with: boolean;
 	show_on_collaborator_pages: boolean;
 	weekly_drafts: boolean;
+}
+
+/** A public page the owner published, which they can pick to show under Writing. */
+export interface BuilderEditorWritingOption {
+	page_id: string;
+	title: string;
+	url_path: string;
+	published_at: string | null;
+	project_name: string | null;
+	/** On the page under Writing (in this order: picked first). */
+	picked: boolean;
 }
 
 export interface BuilderEditorLink {
@@ -232,6 +247,11 @@ export interface BuilderEditorData {
 	links: BuilderEditorLink[];
 	projects: BuilderEditorProject[];
 	drafts: BuilderProfileUpdateDraft[];
+	/** Public pages the owner can pick for Writing; nothing shows until they pick one. */
+	writing_options: BuilderEditorWritingOption[];
+	/** Save counters for the conflict check (a second tab can't silently overwrite). */
+	links_rev: number;
+	projects_rev: number;
 	/** The photo on the user's Google sign-in, offered as a one-tap avatar. */
 	sign_in_avatar_url: string | null;
 }

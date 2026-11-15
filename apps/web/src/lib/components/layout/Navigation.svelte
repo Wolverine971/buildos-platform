@@ -41,9 +41,11 @@
 		Bot,
 		CreditCard,
 		Workflow,
-		Users
+		Users,
+		Search
 	} from '$lib/icons/lucide';
 	import { toggleMode } from 'mode-watcher';
+	import { requestFind } from '$lib/components/workspace/find-bridge';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { logout } from '$lib/utils/auth';
 	import { lockBodyScroll, unlockBodyScroll } from '$lib/utils/body-scroll-lock';
@@ -951,6 +953,21 @@
 			<!-- Right side -->
 			<div class="flex items-center gap-2 flex-shrink-0">
 				{#if user}
+					<!-- Find (⌘K): Workspace search from any page (tasker 159). -->
+					<button
+						type="button"
+						onclick={requestFind}
+						class="relative hidden h-9 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-muted-foreground shadow-ink hover:bg-muted hover:text-foreground md:flex {navMotion}"
+						aria-label="Find a note, task, doc or project"
+						aria-keyshortcuts="Meta+K Control+K"
+						title="Find (⌘K)"
+					>
+						<Search class="h-4 w-4" />
+						<kbd class="hidden font-mono text-2xs text-muted-foreground lg:inline"
+							>⌘K</kbd
+						>
+					</button>
+
 					<!-- Agent Work: persistent run history/control. Kept separate from
 					     AI Inbox, which owns pending mutation reviews. -->
 					<button

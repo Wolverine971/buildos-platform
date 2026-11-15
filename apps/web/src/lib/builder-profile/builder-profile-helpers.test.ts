@@ -1,7 +1,23 @@
 // apps/web/src/lib/builder-profile/builder-profile-helpers.test.ts
 import { describe, expect, it } from 'vitest';
-import { detectPlatform, displayUrl, normalizeLinkUrl, socialHandle } from './links';
-import { activeLabel, buildLogGrid, initialsOf, levelFor, stageLabel } from './format';
+import {
+	detectPlatform,
+	displayUrl,
+	normalizeLinkUrl,
+	normalizeSocialUrl,
+	socialHandle
+} from './links';
+import {
+	activeLabel,
+	buildLogGrid,
+	buildLogTotals,
+	cellLabel,
+	initialsOf,
+	levelFor,
+	shareCardVersion,
+	signupContextLine,
+	stageLabel
+} from './format';
 import { toAgentJson } from './agent-json';
 import type { BuilderProfileView } from './types';
 
@@ -170,5 +186,95 @@ describe('agent json', () => {
 		});
 		expect(json.writing[0]?.url).toBe('https://build-os.com/p/dj-wayne/julian-pod-390');
 		expect(json.how_to_ask).toContain('request_buildos_access');
+	});
+});
+
+describe('email as a social', () => {
+	it('turns an email address into a mailto: link and leaves web links alone', () => {
+		expect(normalizeSocialUrl('dj@example.com')).toBe('mailto:dj@example.com');
+		expect(normalizeSocialUrl('mailto:dj@example.com')).toBe('mailto:dj@example.com');
+		expect(normalizeSocialUrl('github.com/djwayne')).toBe('https://github.com/djwayne');
+		expect(normalizeSocialUrl('mailto:not-an-email')).toBeNull();
+		expect(normalizeSocialUrl('javascript:alert(1)')).toBeNull();
+		expect(normalizeSocialUrl('dj@example.com/x')).toBeNull();
+	});
+
+	it('shows an email social as an envelope with the bare address', () => {
+		expect(detectPlatform('mailto:dj@example.com')).toBe('email');
+		expect(displayUrl('mailto:dj@example.com')).toBe('dj@example.com');
+		expect(socialHandle('mailto:dj@example.com')).toBe('dj@example.com');
+	});
+});
+
+describe('build log on a phone', () => {
+	const activity = {
+		includes_private: false,
+		show_agent_split: true,
+		today: '2026-11-15',
+		days: [
+			['2026-11-14', 10, 4],
+			['2026-11-10', 2, 0],
+			['2026-03-01', 50, 0]
+		] as [string, number, number][]
+	};
+
+	it('counts only the weeks it is given (the last 6 months on a phone)', () => {
+		const grid = buildLogGrid(activity);
+		expect(grid.activeDays).toBe(3);
+		const half = buildLogTotals(grid.weeks.slice(-26));
+		expect(half).toEqual({ activeDays: 2, changes: 12, byAgents: 4, agentPercent: 33 });
+	});
+
+	it('says "updates" and "by AI agents" for a day', () => {
+		const grid = buildLogGrid(activity);
+		const day = grid.weeks.flat().find((c) => c.date === '2026-11-14')!;
+		expect(cellLabel(day)).toBe('Nov 14: 10 updates, 4 by AI agents');
+		const empty = grid.weeks.flat().find((c) => c.date === '2026-11-13')!;
+		expect(cellLabel(empty)).toBe('Nov 13: no updates');
+	});
+});
+
+describe('signupContextLine', () => {
+	it('names who you are following or asking, from the page you came from', () => {
+		expect(signupContextLine('/@djwayne?intent=follow')).toBe(
+			'Create a free account to follow @djwayne. Updates show up in your daily brief.'
+		);
+		expect(signupContextLine('/@djwayne/9takes?intent=follow&project=abc')).toContain(
+			'follow @djwayne’s project'
+		);
+		expect(signupContextLine('/@djwayne?ask=abc')).toContain('ask @djwayne about joining');
+	});
+
+	it('says nothing for other paths', () => {
+		expect(signupContextLine('/projects')).toBeNull();
+		expect(signupContextLine('/@djwayne')).toBeNull();
+		expect(signupContextLine('/@x?intent=follow')).toBeNull();
+		expect(signupContextLine(null)).toBeNull();
+	});
+});
+
+describe('shareCardVersion', () => {
+	const base = {
+		profile: { handle: 'djwayne', name: 'DJ Wayne', headline: 'Founder, BuildOS' },
+		projects: [{ name: 'BuildOS', audience: 'anyone' }],
+		activity: { today: '2026-11-15', show_agent_split: true, days: [] }
+	};
+
+	it('changes when what the card shows changes, and only then', () => {
+		const v = shareCardVersion(base);
+		expect(shareCardVersion({ ...base })).toBe(v);
+		expect(
+			shareCardVersion({ ...base, profile: { ...base.profile, headline: 'Builder' } })
+		).not.toBe(v);
+		expect(
+			shareCardVersion({ ...base, activity: { ...base.activity, today: '2026-11-16' } })
+		).not.toBe(v);
+		// A collaborators-only project isn't on the card.
+		expect(
+			shareCardVersion({
+				...base,
+				projects: [...base.projects, { name: 'Client work', audience: 'collaborators' }]
+			})
+		).toBe(v);
 	});
 });

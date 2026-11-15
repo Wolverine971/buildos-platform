@@ -1,7 +1,8 @@
 // apps/web/src/routes/api/profile/builder/updates/+server.ts
 //
 // The weekly update for the owner's page.
-// POST  { action: 'draft' }                          → draft this week's lines now
+// POST  { action: 'draft' }                          → draft this week's lines now; returns
+//                                                      { created, drafts } (the new drafts)
 // PATCH { id, action: 'publish' | 'skip', body? }    → decide one drafted line
 // PATCH { action: 'publish_all' }                    → publish every drafted line as written
 
@@ -11,7 +12,10 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
-import { decideDraft, draftWeeklyUpdates } from '$lib/server/builder-profile/builder-profile-drafts';
+import {
+	decideDraft,
+	draftWeeklyUpdates
+} from '$lib/server/builder-profile/builder-profile-drafts';
 import { BuilderProfileError } from '$lib/server/builder-profile/builder-profile.service';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -29,7 +33,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const result = await draftWeeklyUpdates({ llm: llm as any, admin, userId: user.id });
 		return ApiResponse.success(result);
 	} catch (error) {
-		if (error instanceof BuilderProfileError) return ApiResponse.error(error.message, error.status);
+		if (error instanceof BuilderProfileError)
+			return ApiResponse.error(error.message, error.status);
 		return ApiResponse.internalError(error, 'Could not draft this week’s update. Try again.');
 	}
 };
@@ -37,9 +42,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 export const PATCH: RequestHandler = async ({ request, locals }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user) return ApiResponse.unauthorized('Authentication required');
-	const body = (await request.json().catch(() => null)) as
-		| { id?: unknown; action?: unknown; body?: unknown }
-		| null;
+	const body = (await request.json().catch(() => null)) as {
+		id?: unknown;
+		action?: unknown;
+		body?: unknown;
+	} | null;
 	const admin = createAdminSupabaseClient() as any;
 	try {
 		if (body?.action === 'publish_all') {
@@ -66,7 +73,8 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
 		});
 		return ApiResponse.success({ decided: body.action });
 	} catch (error) {
-		if (error instanceof BuilderProfileError) return ApiResponse.error(error.message, error.status);
+		if (error instanceof BuilderProfileError)
+			return ApiResponse.error(error.message, error.status);
 		return ApiResponse.internalError(error, 'Could not save that');
 	}
 };

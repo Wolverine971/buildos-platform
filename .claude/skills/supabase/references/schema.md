@@ -1,9 +1,9 @@
 # BuildOS Database Schema Reference
 
-Complete column listing for all 296 tables, grouped by domain.
+Complete column listing for all 299 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-11-15T03:33:51.640Z
+**Schema generated:** 2026-11-15T05:17:49.163Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -18,10 +18,10 @@ For enum values, constraints, and RLS, check migrations in `supabase/migrations/
 - [Ontology System](#ontology-system) (47 tables)
 - [Projects & Tasks (Legacy)](#projects--tasks-legacy) (23 tables)
 - [Chat & Agents](#chat--agents) (47 tables)
-- [Calendar](#calendar) (13 tables)
+- [Calendar](#calendar) (14 tables)
 - [Notifications](#notifications) (7 tables)
 - [SMS & Twilio](#sms--twilio) (7 tables)
-- [Email](#email) (31 tables)
+- [Email](#email) (33 tables)
 - [Billing](#billing) (14 tables)
 - [Beta Program](#beta-program) (6 tables)
 - [Queue & Jobs](#queue--jobs) (2 tables)
@@ -64,7 +64,7 @@ created_at `string` · id `number` · ip_address `unknown` · updated_at `string
 
 ### people_requests
 
-agent_access_requested `string?` · created_at `string` · decided_at `string?` · decision `Json?` · expires_at `string` · from_user_id `string` · id `string` · kind `string` · note `string?` · project_hint `string?` · project_id `string?` · requested_items `Json?` · role_requested `string` · status `string` · to_user_id `string` · via `string` · via_agent_label `string?` · via_caller_id `string?` · via_invite_link_id `string?` · via_oauth_grant_id `string?`
+agent_access_requested `string?` · created_at `string` · decided_at `string?` · decision `Json?` · expires_at `string` · from_user_id `string` · id `string` · kind `string` · note `string?` · project_hint `string?` · project_id `string?` · requested_items `Json?` · role_requested `string` · settled_elsewhere `boolean` · status `string` · to_user_id `string` · via `string` · via_agent_label `string?` · via_caller_id `string?` · via_invite_link_id `string?` · via_oauth_grant_id `string?`
 
 ### user_contact_access_audit
 
@@ -320,7 +320,7 @@ context_snapshot `Json?` · created_at `string?` · description `string?` · gen
 
 ### project_calendars
 
-calendar_id `string` · calendar_name `string` · calendar_source_id `string?` · color_id `string?` · created_at `string?` · hex_color `string?` · id `string` · is_primary `boolean?` · last_synced_at `string?` · project_id `string` · provider_resource_managed `boolean` · sync_enabled `boolean?` · sync_error `string?` · updated_at `string?` · user_id `string` · visibility `string?`
+calendar_id `string` · calendar_name `string` · calendar_source_id `string?` · color_id `string?` · created_at `string?` · hex_color `string?` · id `string` · inbound_backfilled_at `string?` · is_primary `boolean?` · last_synced_at `string?` · project_id `string` · provider_resource_managed `boolean` · sync_enabled `boolean?` · sync_error `string?` · updated_at `string?` · user_id `string` · visibility `string?`
 
 ### project_context_snapshot
 
@@ -598,6 +598,10 @@ access_token_ciphertext `string` · access_token_expires_at `string?` · connect
 
 attempt_count `number` · calendar_source_id `string` · created_at `string` · entity_id `string` · entity_kind `string` · id `string` · last_attempted_at `string?` · operation `string` · provider_event_id `string` · reason_code `string` · resolved_at `string?` · status `string` · updated_at `string` · user_id `string`
 
+### calendar_ingest_changes
+
+after `Json` · applied_at `string` · applied_event_updated_at `string?` · before `Json` · calendar_source_id `string?` · change_kind `string` · created_at `string` · external_event_id `string` · fields `string[]` · id `string` · onto_event_id `string?` · origin `string` · project_id `string?` · provider_calendar_id `string` · status `string` · task_id `string?` · title `string` · undone_at `string?` · user_id `string`
+
 ### calendar_oauth_states
 
 code_verifier `string` · connection_id `string?` · consumed_at `string?` · created_at `string` · expires_at `string` · id `string` · nonce `string` · oauth_client_kind `string` · redirect_path `string` · state_hash `string` · user_id `string`
@@ -737,6 +741,14 @@ compiler_version `string?` · created_at `string` · current_profile_hash `strin
 ### email_project_rules
 
 connection_id `string?` · created_at `string` · disabled_at `string?` · id `string` · key_version `number` · match_value_ciphertext `string` · match_value_hash `string` · project_id `string` · rule_kind `string` · source_decision_id `string?` · updated_at `string` · user_id `string`
+
+### email_project_update_runs
+
+accounts_read `number` · created_at `string` · emails_read `number` · error `string?` · finished_at `string?` · id `string` · status `string` · suggestions_created `number` · user_id `string` · window_end `string` · window_start `string`
+
+### email_project_updates
+
+action `string` · connection_id `string?` · created_at `string` · decided_at `string?` · email `Json` · error `string?` · id `string` · message_id `string` · project_id `string` · proposal `Json` · run_id `string?` · status `string` · task_id `string?` · title `string` · updated_at `string` · user_id `string` · why `string?`
 
 ### email_recipients
 

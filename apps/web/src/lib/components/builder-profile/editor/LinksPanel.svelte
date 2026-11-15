@@ -10,6 +10,7 @@
 		detectPlatform,
 		displayUrl,
 		normalizeLinkUrl,
+		normalizeSocialUrl,
 		PLATFORM_LABELS
 	} from '$lib/builder-profile/links';
 	import SocialIcon from '../SocialIcon.svelte';
@@ -32,7 +33,7 @@
 	}
 
 	function socialName(row: EditorLinkRow): string {
-		const url = normalizeLinkUrl(row.url);
+		const url = normalizeSocialUrl(row.url);
 		return url ? PLATFORM_LABELS[detectPlatform(url)] : 'this social link';
 	}
 
@@ -88,7 +89,7 @@
 		{#if editor.socials.length}
 			<ul class="grid gap-2">
 				{#each editor.socials as row, index (row.key)}
-					{@const url = normalizeLinkUrl(row.url)}
+					{@const url = normalizeSocialUrl(row.url)}
 					{@const platform = url ? detectPlatform(url) : 'website'}
 					{@const error = shownError(row)}
 					{@const name = socialName(row)}
@@ -118,10 +119,9 @@
 							>
 							<input
 								id="social-{row.key}"
-								type="url"
-								inputmode="url"
+								type="text"
 								bind:value={row.url}
-								placeholder="x.com/you, linkedin.com/in/you…"
+								placeholder="x.com/you, github.com/you, you@email.com…"
 								autocomplete="off"
 								autocapitalize="off"
 								spellcheck="false"

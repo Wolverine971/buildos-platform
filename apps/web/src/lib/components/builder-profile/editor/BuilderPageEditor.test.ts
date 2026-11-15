@@ -105,6 +105,26 @@ function editorData(overrides: Partial<BuilderEditorData> = {}): BuilderEditorDa
 			}
 		],
 		drafts: [],
+		writing_options: [
+			{
+				page_id: 'w1',
+				title: 'How BuildOS sorts a brain dump',
+				url_path: '/p/dj-wayne/sorting',
+				published_at: '2026-11-01T12:00:00Z',
+				project_name: 'BuildOS',
+				picked: false
+			},
+			{
+				page_id: 'w2',
+				title: 'Show notes',
+				url_path: '/p/dj-wayne/show-notes',
+				published_at: '2026-10-01T12:00:00Z',
+				project_name: 'Podcast',
+				picked: false
+			}
+		],
+		links_rev: 2,
+		projects_rev: 5,
 		sign_in_avatar_url: null,
 		...overrides
 	};
@@ -255,8 +275,10 @@ describe('BuilderPageEditor', () => {
 		expect(within(canvas()).getByText('Glen Burnie, MD')).toBeInTheDocument();
 		await fireEvent.blur(location);
 		await waitFor(() => expect(calls(fetchMock, 'PATCH /api/profile/builder')).toHaveLength(1));
+		// The value it had when the editor loaded goes along (conflict check).
 		expect(bodyOf(fetchMock, 'PATCH /api/profile/builder')).toEqual({
-			location: 'Glen Burnie, MD'
+			location: 'Glen Burnie, MD',
+			expected: { location: null }
 		});
 		expect(await screen.findByText('Saved')).toBeInTheDocument();
 	});
@@ -317,7 +339,8 @@ describe('BuilderPageEditor', () => {
 					pitch: 'Answer before you see anyone else.'
 				},
 				{ project_id: P2, level: 'listed', audience: 'anyone' }
-			]
+			],
+			base_rev: 5
 		});
 		// A newly shown project needs its numbers from the server.
 		await waitFor(() =>
@@ -351,7 +374,8 @@ describe('BuilderPageEditor', () => {
 					label: 'Team notes',
 					audience: 'collaborators'
 				}
-			]
+			],
+			base_rev: 2
 		});
 	});
 
@@ -362,9 +386,7 @@ describe('BuilderPageEditor', () => {
 		const input = screen.getByLabelText('Social link 1');
 		await fireEvent.input(input, { target: { value: 'javascript:alert(1)' } });
 		await fireEvent.blur(input);
-		expect(
-			screen.getByText('Needs a web address that starts with https://')
-		).toBeInTheDocument();
+		expect(screen.getByText('Needs a web address or an email address')).toBeInTheDocument();
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 		expect(calls(fetchMock, 'PUT /api/profile/builder/links')).toHaveLength(0);
 	});
@@ -400,10 +422,12 @@ describe('BuilderPageEditor', () => {
 		await fireEvent.click(await screen.findByRole('button', { name: 'Use all' }));
 		await waitFor(() => expect(calls(fetchMock, 'PATCH /api/profile/builder')).toHaveLength(2));
 		expect(bodyOf(fetchMock, 'PATCH /api/profile/builder', 0)).toEqual({
-			headline: 'Founder and builder'
+			headline: 'Founder and builder',
+			expected: { headline: 'Founder, BuildOS' }
 		});
 		expect(bodyOf(fetchMock, 'PATCH /api/profile/builder', 1)).toEqual({
-			bio: 'I build tools for people making complex things.'
+			bio: 'I build tools for people making complex things.',
+			expected: { bio: null }
 		});
 		await waitFor(
 			() => expect(calls(fetchMock, 'PUT /api/profile/builder/projects')).toHaveLength(1),
@@ -491,8 +515,98 @@ describe('BuilderPageEditor', () => {
 			'PATCH /api/profile/builder': { body: { success: true, data: { saved: true } } }
 		});
 		renderEditor(editorData(), previewView(), 'settings');
-		await fireEvent.click(screen.getByRole('switch', { name: 'Writing' }));
+		await fireEvent.click(screen.getByRole('switch', { name: 'Builds with' }));
 		await waitFor(() => expect(calls(fetchMock, 'PATCH /api/profile/builder')).toHaveLength(1));
-		expect(bodyOf(fetchMock, 'PATCH /api/profile/builder')).toEqual({ show_writing: false });
+		expect(bodyOf(fetchMock, 'PATCH /api/profile/builder')).toEqual({
+			show_builds_with: false
+		});
+	});
+
+	it('shows nothing under Writing until a page is turned on, then saves the pick', async () => {
+		const fetchMock = mockApi({
+			'PUT /api/profile/builder/writing': {
+				body: { success: true, data: { page_ids: ['w1'] } }
+			}
+		});
+		renderEditor(editorData(), previewView(), 'settings');
+		expect(within(canvas()).queryByText('How BuildOS sorts a brain dump')).toBeNull();
+		expect(
+			screen.getByText(/Nothing shows under Writing until you turn a page on/)
+		).toBeInTheDocument();
+
+		await fireEvent.click(
+			screen.getByRole('switch', { name: 'How BuildOS sorts a brain dump' })
+		);
+		expect(within(canvas()).getByText('How BuildOS sorts a brain dump')).toBeInTheDocument();
+		expect(within(canvas()).queryByText('Show notes')).toBeNull();
+		await waitFor(() =>
+			expect(calls(fetchMock, 'PUT /api/profile/builder/writing')).toHaveLength(1)
+		);
+		expect(bodyOf(fetchMock, 'PUT /api/profile/builder/writing')).toEqual({
+			page_ids: ['w1']
+		});
+	});
+
+	it('stops saving and asks to reload when another tab saved first', async () => {
+		const fetchMock = mockApi({
+			'PUT /api/profile/builder/links': {
+				status: 409,
+				body: {
+					success: false,
+					error: 'Your page changed in another tab or window. Reload to see the latest, then make your change again.'
+				}
+			}
+		});
+		renderEditor(editorData(), previewView(), 'links');
+		await fireEvent.click(
+			within(panel()).getByRole('button', { name: /Newsletter/, expanded: false })
+		);
+		await fireEvent.input(screen.getByLabelText('Title'), {
+			target: { value: 'Friday notes' }
+		});
+		await waitFor(
+			() => expect(calls(fetchMock, 'PUT /api/profile/builder/links')).toHaveLength(1),
+			AUTOSAVE
+		);
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Reload' })).toBeInTheDocument()
+		);
+		expect(screen.getByText(/Your page changed in another tab or window/)).toBeInTheDocument();
+		// No more autosaves over the other tab's work.
+		await fireEvent.input(screen.getByLabelText('Title'), {
+			target: { value: 'Friday notes 2' }
+		});
+		await new Promise((resolve) => setTimeout(resolve, 1000));
+		expect(calls(fetchMock, 'PUT /api/profile/builder/links')).toHaveLength(1);
+	});
+
+	it('shows new weekly drafts from the draft call itself, without reloading the editor', async () => {
+		const fetchMock = mockApi({
+			'POST /api/profile/builder/updates': {
+				body: {
+					success: true,
+					data: {
+						created: 1,
+						drafts: [
+							{
+								id: 'n1',
+								project_id: null,
+								project_name: null,
+								body: 'Shipping builder pages.',
+								status: 'drafted',
+								week_of: '2026-11-09',
+								created_at: '2026-11-15T12:00:00Z'
+							}
+						]
+					}
+				}
+			}
+		});
+		renderEditor(editorData(), previewView(), 'updates');
+		await fireEvent.click(screen.getByRole('button', { name: 'Draft this week now' }));
+		expect(((await screen.findByLabelText('Now line')) as HTMLTextAreaElement).value).toBe(
+			'Shipping builder pages.'
+		);
+		expect(calls(fetchMock, 'GET /api/profile/builder')).toHaveLength(0);
 	});
 });

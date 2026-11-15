@@ -7,7 +7,7 @@
 
 # Faster write turns: routing evidence and implementation
 
-Date: 2026-10-19. Task: [138](../../tasker/138-faster-write-turns.md). Scope: lean items 1–4, authorized after the investigation briefing. Local implementation only; no deployment, production writes, or paid model calls.
+Date: 2026-10-19. Task: 138 (closed tracker, in git history). Scope: lean items 1–4, authorized after the investigation briefing. Local implementation only; no deployment, production writes, or paid model calls.
 
 ## Result
 

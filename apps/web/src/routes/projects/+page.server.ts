@@ -23,8 +23,10 @@ import { loadProjectEmojis } from '$lib/server/projects/project-emoji';
 import { getUserDashboardAnalytics } from '$lib/services/dashboard/user-dashboard-analytics.service';
 import { createEmptyUserDashboardAnalytics } from '$lib/types/dashboard-analytics';
 import { loadWorkspaceHome } from '$lib/server/workspace/workspace.service';
+import { resolveOpenTarget, type OpenTarget } from '$lib/server/workspace/find.service';
+import { parseOpenParam } from '$lib/components/workspace/find-model';
 
-export const load: PageServerLoad = async ({ locals, depends }) => {
+export const load: PageServerLoad = async ({ locals, depends, url }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user) {
 		throw error(401, 'Authentication required');
@@ -168,8 +170,19 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 		return null;
 	});
 
+	// STREAMED: `?open=kind:id` (search results, ⌘K, chat links): the item's project, read with
+	// the person's session. The page opens its card and reader once the tiles land.
+	const openRef = parseOpenParam(url.searchParams.get('open'));
+	const openTarget: Promise<OpenTarget | null> | null = openRef
+		? resolveOpenTarget(locals.supabase as never, openRef).catch((err) => {
+				console.error('[Projects] Could not resolve the open link:', err);
+				return null;
+			})
+		: null;
+
 	return {
 		actorId,
+		openTarget,
 		projects,
 		projectCount,
 		workspaceId,

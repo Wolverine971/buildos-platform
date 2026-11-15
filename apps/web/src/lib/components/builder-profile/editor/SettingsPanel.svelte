@@ -1,11 +1,12 @@
 <!-- apps/web/src/lib/components/builder-profile/editor/SettingsPanel.svelte -->
-<!-- Your page > Settings: the page's address (your @handle) and which parts show.
-     Each switch saves at once. -->
+<!-- Your page > Settings: the page's address (your @handle), which parts show, and which
+     published pages show under Writing. Each switch saves at once. -->
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import PanelHead from './PanelHead.svelte';
 	import ToggleRow from './ToggleRow.svelte';
+	import WritingPicker from './WritingPicker.svelte';
 	import { callApi } from './editor-api';
 	import type { BuilderPageEditorState, ToggleSetting } from './builder-editor-state.svelte';
 
@@ -58,7 +59,6 @@
 			label: 'Show agents in a second color',
 			hint: 'Work your agents did, in orange.'
 		},
-		{ key: 'show_writing', label: 'Writing', hint: 'Pages you published from your projects.' },
 		{
 			key: 'show_builds_with',
 			label: 'Builds with',
@@ -139,6 +139,8 @@
 			{/each}
 		</div>
 	</section>
+
+	<WritingPicker {editor} />
 
 	<section aria-labelledby="settings-elsewhere">
 		<h3 id="settings-elsewhere" class="micro-label mb-1">On other pages</h3>

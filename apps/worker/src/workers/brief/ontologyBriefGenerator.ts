@@ -1346,7 +1346,7 @@ export async function generateOntologyDailyBrief(
 				briefDateInUserTz,
 				userTimezone
 			),
-			dataLoader.loadBuilderFollowsBriefSection(userId),
+			dataLoader.loadBuilderFollowsBriefSection(userId, briefDateInUserTz),
 			dataLoader.loadOthersActivityBriefSection(userId, projectsData, briefDateInUserTz)
 		]);
 

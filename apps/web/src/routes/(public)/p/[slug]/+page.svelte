@@ -140,7 +140,7 @@
 						<div class="min-w-0 flex-1">
 							{#if page.author_slug_prefix}
 								<a
-									href={`/p/${page.author_slug_prefix}`}
+									href={data.authorHref ?? `/p/${page.author_slug_prefix}`}
 									class="block text-sm font-semibold text-foreground hover:text-accent transition-colors truncate"
 								>
 									{page.author_name || page.author_slug_prefix}

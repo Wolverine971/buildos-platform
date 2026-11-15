@@ -407,7 +407,11 @@ describe('ProjectDesktop', () => {
 		const { onPatch } = renderDesktop();
 
 		await fireEvent.click(screen.getByRole('link', { name: /^Wayne Strategies/ }));
-		expect(pushState).toHaveBeenCalledWith('', { desktopCard: 'ws', desktopDepth: 1 });
+		// The card's address can be refreshed or shared (tasker 159).
+		expect(pushState).toHaveBeenCalledWith('/projects?open=project:ws', {
+			desktopCard: 'ws',
+			desktopDepth: 1
+		});
 		// A project that holds others opens on its nested projects, first in line.
 		const inside = await screen.findByRole('tab', { name: /Nested projects/ });
 		expect(inside.getAttribute('aria-selected')).toBe('true');
@@ -473,7 +477,7 @@ describe('ProjectDesktop', () => {
 		await fireEvent.click(await screen.findByRole('tab', { name: /Docs/ }));
 		await fireEvent.click(await screen.findByRole('button', { name: 'Pricing notes' }));
 		// Opening pushes one entry, so Back closes the reader before the card.
-		expect(pushState).toHaveBeenLastCalledWith('', {
+		expect(pushState).toHaveBeenLastCalledWith('/projects?open=document:d1', {
 			desktopCard: 'ws',
 			desktopDepth: 2,
 			desktopPeek: { kind: 'document', id: 'd1' },
@@ -486,7 +490,7 @@ describe('ProjectDesktop', () => {
 		// J walks into the folder: the next doc is nested, and its folder opens.
 		await fireEvent.keyDown(window, { key: 'j' });
 		expect(replaceState).toHaveBeenLastCalledWith(
-			'',
+			'/projects?open=document:d2',
 			expect.objectContaining({ desktopPeek: { kind: 'document', id: 'd2' } })
 		);
 		expect(await screen.findByText('Body of d2')).toBeTruthy();
@@ -608,5 +612,36 @@ describe('ProjectDesktop', () => {
 		await fireEvent.keyDown(window, { key: 'Escape' });
 
 		expect(go).toHaveBeenCalledWith(-2);
+	});
+
+	it('opens a search result: its project card, then the item in the reader (tasker 159)', async () => {
+		const { component } = render(ProjectDesktop, {
+			props: {
+				projects: PROJECTS,
+				visible: PROJECTS,
+				completed: [],
+				searching: false,
+				onPatch: vi.fn(),
+				onOpenFull: vi.fn()
+			}
+		});
+		const desktop = component as unknown as {
+			openAt: (projectId: string, item?: { kind: 'document'; id: string } | null) => boolean;
+		};
+		expect(desktop.openAt('not-on-this-desktop')).toBe(false);
+		expect(desktop.openAt('ws', { kind: 'document', id: 'd1' })).toBe(true);
+		await waitFor(() =>
+			expect(pushState).toHaveBeenLastCalledWith(
+				'/projects?open=document:d1',
+				expect.objectContaining({
+					desktopCard: 'ws',
+					desktopPeek: { kind: 'document', id: 'd1' }
+				})
+			)
+		);
+		expect(pushState).toHaveBeenCalledWith(
+			'/projects?open=project:ws',
+			expect.objectContaining({ desktopCard: 'ws' })
+		);
 	});
 });

@@ -66,6 +66,8 @@
 	/** What the loose shelf can ask of the desktop. */
 	export type LooseApi = {
 		open: (item: { kind: 'document' | 'task'; id: string }) => void;
+		/** Open any project's card, and one of its docs, tasks or goals in the reader. */
+		openAt: (projectId: string, item?: ReaderItem | null) => boolean;
 		move: (item: { kind: 'document' | 'task'; id: string }, anchor: HTMLElement) => void;
 		lifted: string | null;
 	};
@@ -88,7 +90,8 @@
 		loose,
 		emptyTiles,
 		titleFor,
-		onContentMoved
+		onContentMoved,
+		looseCount = null
 	}: {
 		/** Everything the viewer can see; the rules and folders need the whole family. */
 		projects: readonly ProjectListSummary[];
@@ -112,6 +115,8 @@
 		titleFor?: (item: DesktopItem) => string | null;
 		/** A doc or task moved (or moved back on Undo). */
 		onContentMoved?: (event: ContentMoved) => void;
+		/** Loose items in the Workspace, for the phone's Workspace / Projects switch. */
+		looseCount?: number | null;
 	} = $props();
 
 	const isWorkspace = (project: ProjectListSummary) => project.kind === 'workspace';
@@ -121,6 +126,7 @@
 	const HOVER_MS = 320;
 	const SPRING_MS = 650;
 	const SORT_KEY = 'projects-desktop-sort';
+	const SHOW_KEY = 'projects-desktop-show';
 	const SORTS: { value: DesktopSort; label: string }[] = [
 		{ value: 'recent', label: 'Recent' },
 		{ value: 'activity', label: 'By activity' }
@@ -168,8 +174,20 @@
 
 	let sort = $state<DesktopSort>('recent');
 	let completedOpen = $state(false);
+	/** Narrow screens: which side shows. Wide screens show both. */
+	let show = $state<'workspace' | 'projects'>('workspace');
+	function setShow(next: 'workspace' | 'projects') {
+		show = next;
+		try {
+			localStorage.setItem(SHOW_KEY, next);
+		} catch {
+			// The choice still holds for this visit.
+		}
+	}
 	onMount(() => {
 		try {
+			const shown = localStorage.getItem(SHOW_KEY);
+			if (shown === 'projects' || shown === 'workspace') show = shown;
 			const saved = localStorage.getItem(SORT_KEY);
 			// 'state' is the old name of By activity.
 			if (saved === 'recent') sort = saved;
@@ -294,12 +312,26 @@
 	let root = $state<HTMLElement | null>(null);
 	let restoreFocusTo: string | null = null;
 
+	/**
+	 * The address for what's open: `?open=project:<id>` for a card, `?open=<kind>:<id>` for an
+	 * item in its reader (tasker 159). Refresh reopens it and the link can be shared; Back
+	 * still steps out through shallow history.
+	 */
+	function urlFor(open: string | null): string {
+		const url = new URL(page.url);
+		if (open) url.searchParams.set('open', open);
+		else url.searchParams.delete('open');
+		// Keep the address readable: open=task:<id>, not open=task%3A<id>.
+		const search = url.search.replace(/([?&]open=[a-z]+)%3A/, '$1:');
+		return `${url.pathname}${search}${url.hash}`;
+	}
+
 	function openCard(id: string) {
 		if (drag.swallowsClick()) return;
 		hover = null;
 		clearHoverTimer();
 		if (id === openId) return;
-		pushState('', {
+		pushState(urlFor(`project:${id}`), {
 			...page.state,
 			desktopCard: id,
 			desktopDepth: (page.state.desktopDepth ?? 0) + 1,
@@ -318,11 +350,12 @@
 	// leaves the reader in one step instead of walking every item read.
 	function openItem(item: ReaderItem) {
 		if (peek?.kind === item.kind && peek.id === item.id) return;
+		const url = urlFor(`${item.kind}:${item.id}`);
 		if (peek) {
-			replaceState('', { ...page.state, desktopPeek: item });
+			replaceState(url, { ...page.state, desktopPeek: item });
 			return;
 		}
-		pushState('', {
+		pushState(url, {
 			...page.state,
 			desktopPeek: item,
 			desktopPeekPushed: true,
@@ -333,7 +366,11 @@
 	function closeItem() {
 		if (!peek) return;
 		if (page.state.desktopPeekPushed) history.back();
-		else replaceState('', { ...page.state, desktopPeek: undefined });
+		else
+			replaceState(urlFor(openId ? `project:${openId}` : null), {
+				...page.state,
+				desktopPeek: undefined
+			});
 	}
 
 	// The chat (and anything else that announces a change) may have touched this
@@ -360,7 +397,24 @@
 		manualSprung = new Set();
 		const depth = page.state.desktopDepth ?? 0;
 		if (depth > 0) history.go(-depth);
-		else replaceState('', { ...page.state, desktopCard: undefined, desktopDepth: undefined });
+		else
+			replaceState(urlFor(null), {
+				...page.state,
+				desktopCard: undefined,
+				desktopDepth: undefined
+			});
+	}
+
+	/**
+	 * Open a project's card and, optionally, one of its records in the reader: search results,
+	 * ⌘K and `?open=` links. False when the project isn't on this desktop (the caller can go to
+	 * its full page instead).
+	 */
+	export function openAt(projectId: string, item: ReaderItem | null = null): boolean {
+		if (!index.byId.has(projectId)) return false;
+		if (openId !== projectId) openCard(projectId);
+		if (item) void tick().then(() => openItem(item));
+		return true;
 	}
 
 	// Opening lifts the card to the top of the screen so it and the dock fit;
@@ -707,6 +761,7 @@
 
 	const looseApi: LooseApi = {
 		open: (item) => void openLoose(item),
+		openAt: (projectId, item) => openAt(projectId, item ?? null),
 		move: (item, anchor) => {
 			if (workspaceId) openPicker({ ...item, projectId: workspaceId }, anchor);
 		},
@@ -1010,92 +1065,121 @@
 			/>
 		</div>
 	{:else}
-		{#if loose}
-			{@render loose(looseApi)}
-		{/if}
-		{#if emptyTiles && !tiles.length && !completedTiles.length}
+		<!-- Workspace beside the projects (tasker 159, direction C): the loose list and search
+		     results on the left, tiles on the right. Narrower screens get a Workspace / Projects
+		     switch (Workspace first); a search shows both, results first. -->
+		<div class={['home', { split: Boolean(loose) }]} data-show={searching ? 'both' : show}>
 			{#if loose}
-				<h2 class="section-title -mb-3">Projects</h2>
-			{/if}
-			{@render emptyTiles()}
-		{:else}
-			{#if searching}
-				<p class="text-xs text-muted-foreground">
-					{tiles.length}
-					{tiles.length === 1 ? 'match' : 'matches'} across all states
-				</p>
-			{/if}
-			<div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-				{#if loose}
-					<h2 class="section-title self-center">
-						Projects <span class="section-count">{tiles.length}</span>
-					</h2>
-				{/if}
-				<DesktopKey />
-				<div
-					class="inline-flex rounded-lg bg-muted p-0.5 text-xs font-medium"
-					role="group"
-					aria-label="Arrange projects"
-				>
-					{#each SORTS as { value, label } (value)}
+				{#if !searching}
+					<div class="switch" role="group" aria-label="Show">
 						<button
 							type="button"
-							class="min-h-9 rounded-md px-3 pressable [@media(pointer:fine)]:min-h-7 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {sort ===
-							value
-								? 'bg-card text-foreground shadow-sm'
-								: 'text-muted-foreground hover:text-foreground'}"
-							aria-pressed={sort === value}
-							onclick={() => setSort(value)}
+							aria-pressed={show === 'workspace'}
+							onclick={() => setShow('workspace')}
 						>
-							{label}
+							Workspace{#if looseCount !== null}<span class="n">{looseCount}</span
+								>{/if}
 						</button>
-					{/each}
-				</div>
-			</div>
-
-			{#each groups as group (group.key)}
-				<section
-					class="grid gap-2"
-					aria-label={sort === 'activity' ? group.label : 'Projects'}
-				>
-					{#if sort === 'activity'}
-						<h2 class="section-title">
-							{group.label} <span class="section-count">{group.projects.length}</span>
-						</h2>
-					{/if}
-					<div class="grid-tiles">
-						{#each group.projects as project (project.id)}
-							{@render tile(project)}
-						{/each}
+						<button
+							type="button"
+							aria-pressed={show === 'projects'}
+							onclick={() => setShow('projects')}
+						>
+							Projects<span class="n">{tiles.length}</span>
+						</button>
 					</div>
-				</section>
-			{/each}
-
-			{#if completedTiles.length}
-				<section class="grid gap-2">
-					<button
-						type="button"
-						class="section-title flex min-h-9 items-center gap-1.5 self-start rounded-md px-1 text-left !text-muted-foreground transition-colors hover:!text-foreground"
-						aria-expanded={completedOpen}
-						onclick={() => (completedOpen = !completedOpen)}
-					>
-						<ChevronRight
-							class="h-3.5 w-3.5 transition-transform motion-reduce:transition-none {completedOpen
-								? 'rotate-90'
-								: ''}"
-						/>
-						Completed <span class="section-count">{completedTiles.length}</span>
-					</button>
-					{#if completedOpen}
-						<div class="grid-tiles">
-							{#each completedTiles as project (project.id)}
-								{@render tile(project)}
+				{/if}
+				<aside class="pane" aria-label="Your Workspace">
+					{@render loose(looseApi)}
+				</aside>
+			{/if}
+			<div class="tiles-col">
+				{#if emptyTiles && !tiles.length && !completedTiles.length}
+					{#if loose}
+						<h2 class="section-title -mb-3">Projects</h2>
+					{/if}
+					{@render emptyTiles()}
+				{:else}
+					{#if searching}
+						<p class="text-xs text-muted-foreground">
+							{tiles.length}
+							{tiles.length === 1 ? 'match' : 'matches'} across all states
+						</p>
+					{/if}
+					<div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+						{#if loose}
+							<h2 class="section-title self-center">
+								Projects <span class="section-count">{tiles.length}</span>
+							</h2>
+						{/if}
+						<DesktopKey />
+						<div
+							class="inline-flex rounded-lg bg-muted p-0.5 text-xs font-medium"
+							role="group"
+							aria-label="Arrange projects"
+						>
+							{#each SORTS as { value, label } (value)}
+								<button
+									type="button"
+									class="min-h-9 rounded-md px-3 pressable [@media(pointer:fine)]:min-h-7 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {sort ===
+									value
+										? 'bg-card text-foreground shadow-sm'
+										: 'text-muted-foreground hover:text-foreground'}"
+									aria-pressed={sort === value}
+									onclick={() => setSort(value)}
+								>
+									{label}
+								</button>
 							{/each}
 						</div>
+					</div>
+
+					{#each groups as group (group.key)}
+						<section
+							class="grid gap-2"
+							aria-label={sort === 'activity' ? group.label : 'Projects'}
+						>
+							{#if sort === 'activity'}
+								<h2 class="section-title">
+									{group.label}
+									<span class="section-count">{group.projects.length}</span>
+								</h2>
+							{/if}
+							<div class="grid-tiles">
+								{#each group.projects as project (project.id)}
+									{@render tile(project)}
+								{/each}
+							</div>
+						</section>
+					{/each}
+
+					{#if completedTiles.length}
+						<section class="grid gap-2">
+							<button
+								type="button"
+								class="section-title flex min-h-9 items-center gap-1.5 self-start rounded-md px-1 text-left !text-muted-foreground transition-colors hover:!text-foreground"
+								aria-expanded={completedOpen}
+								onclick={() => (completedOpen = !completedOpen)}
+							>
+								<ChevronRight
+									class="h-3.5 w-3.5 transition-transform motion-reduce:transition-none {completedOpen
+										? 'rotate-90'
+										: ''}"
+								/>
+								Completed <span class="section-count">{completedTiles.length}</span>
+							</button>
+							{#if completedOpen}
+								<div class="grid-tiles">
+									{#each completedTiles as project (project.id)}
+										{@render tile(project)}
+									{/each}
+								</div>
+							{/if}
+						</section>
 					{/if}
-				</section>
-			{/if}
-		{/if}
+				{/if}
+			</div>
+		</div>
 	{/if}
 </div>
 
@@ -1192,6 +1276,81 @@
 	.desktop {
 		display: grid;
 		gap: 24px;
+	}
+	.home,
+	.tiles-col {
+		display: grid;
+		gap: 24px;
+		min-width: 0;
+		align-content: start;
+	}
+	.pane {
+		display: grid;
+		gap: 12px;
+		min-width: 0;
+		align-content: start;
+	}
+	.switch {
+		display: none;
+		justify-self: start;
+		border-radius: 8px;
+		background: hsl(var(--muted));
+		padding: 2px;
+	}
+	.switch button {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		min-height: 40px;
+		padding: 0 14px;
+		border-radius: 6px;
+		font-size: 13px;
+		font-weight: 600;
+		color: hsl(var(--muted-foreground));
+	}
+	.switch button[aria-pressed='true'] {
+		background: hsl(var(--card));
+		color: hsl(var(--foreground));
+		box-shadow: var(--shadow-ink);
+	}
+	.switch button:focus-visible {
+		outline: 2px solid hsl(var(--ring));
+		outline-offset: 1px;
+	}
+	.switch .n {
+		font-family: var(--font-mono, ui-monospace, monospace);
+		font-size: 11px;
+		font-weight: 400;
+		font-variant-numeric: tabular-nums;
+		color: hsl(var(--muted-foreground));
+	}
+	@media (max-width: 1023px) {
+		.home.split {
+			gap: 16px;
+		}
+		.home.split .switch {
+			display: inline-flex;
+		}
+		.home.split[data-show='workspace'] .tiles-col,
+		.home.split[data-show='projects'] .pane {
+			display: none;
+		}
+	}
+	@media (min-width: 1024px) {
+		.home.split {
+			grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+			align-items: start;
+			gap: 28px;
+		}
+		/* A search gives the results the wider side; tiles narrow to the name matches. */
+		.home.split[data-show='both'] {
+			grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+		}
+		.home.split .pane {
+			padding-right: 20px;
+			border-right: 1px solid hsl(var(--border));
+			min-height: 240px;
+		}
 	}
 	.section-title {
 		font-size: 14px;

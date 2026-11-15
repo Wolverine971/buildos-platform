@@ -2,20 +2,11 @@
 
 # Tasker — Open Work
 
-**Audited and cleaned 2026-10-04.** All 69 trackers were checked against git history, the code, and
-deploy status. Each surviving tracker carries a dated `> **Audit 2026-10-04 — …**` block under its
-title. All code on `main` was pushed and deployed as of `df81f97dc` (Vercel and all three Railway
-workers green). Notes inside older trackers that say "uncommitted" or "not deployed" are stale. The QA
-branch and `pnpm agentic:gate` were retired on 09-24; live checks now use `pnpm agentic:prod-battery`.
-
-**Cleanup, with the owner's OK:** 69 trackers → 20.
-
-- 51 completed, superseded, or stale trackers were removed after their residuals moved, as "Absorbed
-  from NN" sections in the trackers that now own them. Copies sit in
-  `~/.Trash/buildos-tasker-cleanup-2026-10-04/` on DJ's machine.
-- Marketing threads were merged into [118](118-marketing-backlog.md).
-- The ten chat-workflow pilot trackers were condensed into
-  [117](117-chat-workflow-pilot-status.md).
+**Re-audited 2026-11-15** for trackers 125–159 against git and production. Everything through
+`1118ea9d0` is committed and pushed, so "UNCOMMITTED" notes inside older trackers are stale.
+Trackers 125–139, 144, 150–153 and 155 were closed today (finished or superseded); their few
+residuals moved into 157 or the "Needs DJ" list below, and the files remain in git history.
+Trackers numbered 124 and below were last audited on 2026-10-04 and are carried over unchanged.
 
 This folder is an active-work queue, not a build log. Completed work belongs in feature docs,
 verification receipts, commits, and git history. A tracker stays here only while it has at least one
@@ -32,150 +23,58 @@ When a tracker reaches its exit condition:
 Do not keep a completed file around as an archive. Do not mark a tracker complete when deployment,
 live verification, or a named exit gate is still pending.
 
-## Owner decisions (2026-10-04)
+## Running now (2026-11-15)
 
-- **Home is `/today`.** Every signed-in landing goes there: password, Google, register, email
-  confirm, the logo, and old `/dashboard` links. `/today` triggers today's brief and shows the brief
-  chip.
-- **Deep Research never runs by accident.** It is behind `PRIVATE_DEEP_RESEARCH_ENABLED`, off by
-  default ([29](29-deep-research-production-track.md)).
-- **Marketing is separate from engineering** ([118](118-marketing-backlog.md)), and paused.
-- **Chat workflow pilot:** read [117](117-chat-workflow-pilot-status.md), then pick leave, switch
-  off, or remove.
+| Tracker                                                           | Owner            | What users get                                                                                                                                                                               |
+| ----------------------------------------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [158 — Privacy and security: fix first](158-privacy-fix-first.md) | agent DJ assigns | The 8 Nov 5 security migrations applied (they were never applied; editors can still change owner/agent columns), collaborator emails sealed at the database, Writing off on DJ's public page |
+| [159 — Workspace search](159-workspace-search.md)                 | Claude agent     | Always-visible search pane on /projects over Workspace + every project, then ⌘K anywhere                                                                                                     |
+| [147 — Builder profiles](147-builder-profiles.md)                 | Claude agent     | Finished /@handle pages: Writing opt-in per doc, share image, polish, approved draft check                                                                                                   |
 
-## Shipped 2026-10-04 (`b3968cb4c`, `f52586c25`) — deployed and live-checked where free
+## Open (recent work, 140–157)
 
-**Checked live 10-05 ~04:00 UTC:**
+| Tracker                                                                           | What's left                                                                                                                                   |
+| --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| [157 — Chat audit: honest record](157-chat-audit-honest-record.md)                | Case 7 rerun (receipt names homes), full prod battery (absorbed from 138/150/152), save-threshold readings, "Continue in X" first turn unfelt |
+| [156 — AI Inbox: see under the hood](156-ai-inbox-see-under-the-hood.md)          | Paid review pass + email quote dry run; DJ decision on storing email body words (claim G11)                                                   |
+| [154 — Project calendars two-way + Gmail cards](154-project-calendars-two-way.md) | DJ moves an event in Google → check Done for you; Gmail cards paid dry run before going live; member fan-out deferred                         |
+| [145 — People layer launch](145-people-layer-launch.md)                           | The 7-step two-account live run (also closes 140, 141, 143, and checks the brief's "While you were away" lines for another person); review the 7 pre-10-23 editors whose agents are on Write                    |
+| [140 — Agent access wall](140-agent-access-wall.md)                               | Two-account run (in 145); the editor `external_agent_access` gap is fixed by 158's migration 120200                                           |
+| [141 — One home for sharing](141-one-home-for-sharing-settings.md)                | Two-account run (in 145); email leak moves to 158                                                                                             |
+| [143 — Four ways in, unified](143-four-ways-in-unified.md)                        | Two-account run (in 145)                                                                                                                      |
+| [146 — Workspace chat](146-workspace-chat.md)                                     | Paid rerun of Workspace battery cases 1, 2, 5; search moved to 159; project chat can't edit Workspace items                                   |
+| [148 — Mobile app](148-mobile-app.md)                                             | Blocked on DJ: Apple Developer + Expo accounts, a real-iPhone run. Then web parity (new Today, inbox, chat record)                            |
 
-- `/dashboard` → `/today`; the logo points to `/today`; `/today` fires `ensure-today` and shows the
-  brief chip.
-- The production Railway worker logs "Scheduled work ON" and created 6 project-loop jobs at 04:00.
-- The welcome cron runs hourly: 20 stale enrollments closed, 1 recent signup deferred to its Monday
-  send, 0 late emails.
-- No Deep Research variable is set on Vercel or any Railway service, so it is off.
+## Needs DJ
 
-S1 and the Project Setup fix still need a paid live check.
+- **Apple Developer account** (individual, or company with a D-U-N-S number) and an **Expo account** (148).
+- **A second test account + your phone** for the people-layer live run (145).
+- **Railway cleanup:** remove `AGENTIC_CHAT_CONTEXT_FINDER_CHAT` and `AGENTIC_CHAT_CONTEXT_FINDER_GLOBAL`
+  from agentic-chat-worker. Nothing reads them (checked 2026-11-15); removing them redeploys the service.
+- **Builder page:** review your draft, Publish, set the 9takes/BuildOS links (147).
+- **Inbox:** decide whether highlighting the email-body words a card came from is worth storing them (156).
+- **Move one event on a project calendar in Google**, then open AI Inbox → Done for you (154).
 
-| What                                                                                                                | Tracker                                       | Deploys      |
-| ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ------------ |
-| Writes after reading email, web, or Google Calendar content go to review (S1), with the seeded malicious-email test | [20](20-agentic-chat-wave3-security-brief.md) | worker       |
-| A local worker no longer runs production crons (Railway-only, or `WORKER_SCHEDULER_ENABLED=true`)                   | [109](109-agentic-chat-session-spend.md)      | worker       |
-| Project Setup no longer tells new users their new project is "unfinished" (an extra 5–15 s repair pass)             | [109](109-agentic-chat-session-spend.md)      | worker       |
-| Deep Research kill switch (web refuse + worker cancel + hidden from catalog)                                        | [29](29-deep-research-production-track.md)    | web + worker |
-| `/today` is the single home and triggers today's brief                                                              | —                                             | web          |
-| Welcome emails (days 1/3/6/9) finally scheduled, with a 12-day backlog guard so nobody gets a late "welcome"        | [38](38-live-verification-debt.md)            | web          |
-| Migration rehearsal enforces the lock-first rule, and now recognizes the multi-project lock helper                  | —                                             | scripts      |
+## Older open trackers (audited 2026-10-04, not re-audited)
 
-## Do next (ranked)
-
-0. **Give every new project a tomorrow, then run [121](121-five-person-return-use-test.md).**
-   Day one works; nobody returns. Brief-by-default after the first project (DJ, 2026-10-10), then
-   five real people through it.
-1. **P0 — Account deletion fails in prod** ([103](103-privacy-audit-trustworthy-data-handling.md)).
-   An agent is on it; the fix (`20261004213000`) is not applied yet.
-2. **CI is red on `f52586c25`.** Web typecheck fails on `'lead' is possibly undefined` in
-   `cleanup-note.service.ts` (the in-progress inbox-cleanup work). It deployed anyway, because
-   Vercel doesn't typecheck.
-3. **P1 — The ~30-minute live-click checklist** in [38](38-live-verification-debt.md). It covers
-   116, 115, 114, 96, and calendar.
-4. **P1 — Close 116 with one click check** ([116](116-buildos-plugin-reconnect-loop.md)).
-   The ChatGPT app connection recovered at 19:50 UTC and refreshes on its own. The unauthenticated
-   calls came from the plugin's direct `.mcp.json` server in Codex cloud threads; it is removed
-   locally (uncommitted). Restart Codex, then run one BuildOS `search` in a cloud thread.
-5. **P1 — Activation measurement is broken** ([38](38-live-verification-debt.md);
-   `docs/research/activation-funnel-2026-10-04.md`).
-    - The chat worker has no PostHog key, so chat-created projects are invisible.
-    - Brand-new Google accounts from the login page get no signup event.
-    - The last 12 weeks: 14 signups → 7 projects → 0 returned on a later day.
-6. **Paid confirmations, each needing DJ's OK:**
-    - Project Setup turn (~$0.06–0.08, [109](109-agentic-chat-session-spend.md)).
-    - Seeded-email battery case (a few cents, [20](20-agentic-chat-wave3-security-brief.md)).
-    - Calendar-write check (~$0.01).
-
-## Mobile app (2026-10-28)
-
-The BuildOS iPhone app (Expo). Server groundwork is built and the app shell runs in Expo Go; the
-Apple Developer account gates push and store builds. Plan: `docs/specs/MOBILE_APP_PLAN_2026-10-23.md`.
-
-| Tracker                               | Start                       | What users get                                                      |
-| ------------------------------------- | --------------------------- | ------------------------------------------------------------------- |
-| [148 — Mobile app](148-mobile-app.md) | now (DJ runs it in Expo Go) | Today, capture, projects, chat and the brief on the phone, natively |
-
-## Workspace (2026-10-23)
-
-The Workspace (loose notes, docs and tasks; home at /projects) is built and uncommitted. Spec and
-build status: `docs/specs/WORKSPACE_ARCHITECTURE_2026-10-23.md`.
-
-| Tracker                                       | Start                         | What users get                                                       |
-| --------------------------------------------- | ----------------------------- | -------------------------------------------------------------------- |
-| [146 — Workspace chat](146-workspace-chat.md) | after DJ answers Q1 (picture) | One home chat that knows you, your loose items and all your projects |
-
-## People layer (2026-10-23)
-
-Sharing projects with people and their agents. Built and staged 10-23; these are the next pieces.
-Spec: `docs/specs/PEOPLE_LAYER_ARCHITECTURE_2026-10-23.md`. Explainer page:
-https://claude.ai/artifact/JEk3EN2pfLzhc52kpD2kRG
-
-| Tracker                                                                     | Start                         | What users get                                                        |
-| --------------------------------------------------------------------------- | ----------------------------- | --------------------------------------------------------------------- |
-| [145 — People layer launch](145-people-layer-launch.md)                     | after DJ pushes               | Shipped and checked live with two accounts, a phone, and real emails  |
-| [143 — Four ways in, unified](143-four-ways-in-unified.md)                  | now                           | Ask, invite, link and rejoin all land and notify the same way         |
-| [140 — Agent access wall](140-agent-access-wall.md)                         | now (DJ picks lean/ambitious) | An agent blocked in a shared project gets through with one tap or yes |
-| [142 — Brief: what others did](142-brief-what-others-did.md)                | any time                      | The morning brief says what each person and their agent changed       |
-| [141 — One home for sharing settings](141-one-home-for-sharing-settings.md) | after DJ interview            | One place in Profile for people and agents, and a new People tab      |
-| [144 — Shared-project calendar sync](144-shared-project-calendar-sync.md)   | any time (research)           | A plain answer on what shared projects put on your calendar           |
-
-## Code triage round 2 — Codex queue (2026-10-18)
-
-No-decision fixes from `docs/technical/reviews/CODE_TRIAGE_2026-10-18.md`. Each tracker is written for a
-Codex agent starting cold; Claude does a light check after each reports. The plan, the decision-gated
-work and the env cleanup live in the triage doc.
-
-| Tracker                                                                           | Start                         | What users get                                                          |
-| --------------------------------------------------------------------------------- | ----------------------------- | ----------------------------------------------------------------------- |
-| [125 — Chat window truth and finish](125-chat-window-truth-and-finish.md)         | wave 1, now                   | No hung "Thinking…", real errors shown, no cross-chat leaks             |
-| [126 — Chat gets the facts right](126-chat-gets-the-facts-right.md)               | wave 1, now                   | No archived goals as active, right day for evening events               |
-| [127 — Project loops survive deploys](127-project-loops-survive-deploys.md)       | wave 1, now                   | Loops and audits resume after a deploy instead of sticking 1 h          |
-| [128 — Queue and brief scheduling](128-queue-and-brief-scheduling.md)             | wave 1, now                   | No queue freeze on a hung call; no double briefs                        |
-| [129 — Delete round 2 and chores](129-delete-round-2-and-chores.md)               | wave 1, now                   | ~4k dead lines gone; prod values become code defaults                   |
-| [130 — Calendar you can trust](130-calendar-you-can-trust.md)                     | after 126                     | All-day events, honest coverage, MCP project fence (security)           |
-| [131 — Chat turns end cleanly](131-chat-turns-end-cleanly.md)                     | any time                      | Failed turns end at once; abandoned model calls stop billing            |
-| [132 — Approved changes never duplicate](132-approved-changes-never-duplicate.md) | after 127                     | No stuck idempotency keys, duplicate creates or lost edits              |
-| [133 — LLM spend counted right](133-llm-spend-counted-right.md)                   | after 126                     | Background AI costs counted fully; one glitch can't fail a call         |
-| [134 — Background cleanup](134-background-cleanup.md)                             | after 128                     | Less cron/job churn, fewer redeploys, icon generation removed           |
-| [135 — First send faster](135-first-send-faster.md)                               | after 125                     | One fewer round trip on a new user's first message                      |
-| [136 — Kill-switch cleanup](136-kill-switch-cleanup-after-soak.md)                | DONE 10-25, awaiting check    | ~2.5k lines of off-branches and A/B arms gone                           |
-| [137 — Round 2 check follow-ups](137-round-2-check-follow-ups.md)                 | now, beside 130 + 132         | No stuck queue slots; think-aloud models don't time out                 |
-| [138 — Faster write turns](138-faster-write-turns.md)                             | now (DJ picks lean/ambitious) | Chat edits land without the 4 s hidden check or a repeat review         |
-| [139 — Follow through on DJ's calls](139-follow-through-on-djs-calls.md)          | now                           | Fewer ignored inbox suggestions; old chats stop looking recently active |
-
-## Active trackers
-
-| Tracker                                                                                        | Status              | Pri | What's left                                                                                                                                                                                                                                                                                                                    |
-| ---------------------------------------------------------------------------------------------- | ------------------- | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [150 — Outline-first document context](150-outline-first-document-context.md)                  | NEW                 | P1  | Chat's context finder loads every doc's full text every project turn (p50 45k chars, 9takes 489k). Load outlines, text only for Jev picks or on request; backfill outline cache (32% filled); DJ picks A/B.                                                                                                                    |
-| [151 — Carry turn context forward](151-carry-turn-context-forward.md)                          | NEW                 | P1  | Chat follow-ups re-index, re-run Jev and re-read what the last turn already read (DJ's 9takes turn 2: ~10k chars of rereads, 7 calls, 23 s). Working set: used items carried with text, scanned as a note. DJ picks lean/ambitious.                                                                                            |
-| [152 — Robust threads](152-robust-threads.md)                                                  | BUILT (uncommitted) | P1  | Lab threads made sturdy: earned reading budget + turn pool, per-thread time limits, model-call watchdog + retry, whole-thread retry, skipped-piece repair, 5-thread cap, plan/reply fallbacks. 45 lab tests. Live run + commit pending.                                                                                        |
-| [153 — Threads in real chat](153-threads-in-real-chat.md)                                      | PLAN v2             | P1  | Move the lab's cards, carry and project split onto real agentic chat (one engine). A cards ~2.5 d, B carry in worker finder ~4 d, C1 global pick visible ~2 d, C2 read-only parallel scouts ~4.5 d (gated). 4 step reviews folded in.                                                                                          |
-| [155 — Watch it sort, in real chat](155-watch-it-sort-in-chat.md)                              | BUILDING            | P1  | Demo-style "where it went" in real chat: phrase highlights by kind fly to rows; every record read/changed is a new-tab link; before → after on updates; receipt. P1 backend quote + field changes, P2 rows, P3 flight, P4 finish.                                                                                              |
-| [156 — AI Inbox: see under the hood](156-ai-inbox-see-under-the-hood.md)                       | SPEC                | P1  | Apply 155's watch-it-sort principles to the AI inbox: one provenance shape per item (origin, signals, referenced records, before → after changes, source words), clickable references, "how it got here" timeline, changes fly to where they land. Phase 0 research first, then lean/ambitious for DJ.                         |
-| [157 — Chat audit: the honest record](157-chat-audit-honest-record.md)                         | BUILT (needs push)  | P1  | Audit of chat after 150/152/153/155, then fixes: the selection event says what the model was handed (text, card or line) and the injected text is stored per turn; the chat shows handed → opened → changed; held and undone changes no longer read as saved; brain dumps get likely homes and file first. Paid check passed ($0.015); receipt-names-homes follow-up uncommitted. |
-| [121 — Five-person return-use test](121-five-person-return-use-test.md)                        | STAGED              | P1  | Protocol + message ready, live page matches, signup + welcome + PostHog verified. Blocked on the brief-by-default build; do one fresh-account dry run first. DJ picks P1–P5.                                                                                                                                                   |
-| [103 — Privacy audit](103-privacy-audit-trustworthy-data-handling.md)                          | ACTIVE              | P0  | Fix account deletion and prove it end to end; owner env/key items; ZDR check (paid); DATA_INVENTORY items 13–18.                                                                                                                                                                                                               |
-| [20 — Agentic Chat security](20-agentic-chat-wave3-security-brief.md)                          | ACTIVE              | P1  | S1 rebuilt 10-04, uncommitted. Left: deploy, the calendar-counts-as-external veto, second-order gaps, a paid seeded-email case.                                                                                                                                                                                                |
-| [116 — BuildOS plugin reconnect loop](116-buildos-plugin-reconnect-loop.md)                    | VERIFY LIVE         | P1  | App path recovered; refresh works on its own. Direct `.mcp.json` removed (uncommitted). Left: commit, restart Codex, one cloud-thread `search`.                                                                                                                                                                                |
-| [109 — Chat spend and speed](109-agentic-chat-session-spend.md)                                | VERIFY LIVE         | P1  | Project Setup repair fix and cron guard built 10-04. Left: deploy, paid Project Setup check (~$0.07), streaming answers, calendar-write check, key split, local queue guard (absorbed 65, 108).                                                                                                                                |
-| [38 — Live verification debt](38-live-verification-debt.md)                                    | VERIFY LIVE         | P1  | Live-click checklist ready; welcome-email cron fix built. Left: PostHog 2-min check, chat-worker PostHog key, Google signup event, fresh-account walk after 103 (absorbed 74, 78).                                                                                                                                             |
-| [115 — Skills: Jev playbooks + connector pack](115-skills-jev-playbooks-and-connector-pack.md) | ACTIVE              | P1  | Lean pass live. Supabase redirect allow-list, post-deploy smoke, then Phase 1 tests (P2).                                                                                                                                                                                                                                      |
-| [76 — Production database security](76-production-database-security-containment.md)            | ACTIVE              | P2  | 104's 5 guard fixes, leaked-password protection, OTP expiry, Postgres patch, Supabase's 2026-10-30 default-exposure change (absorbed 104).                                                                                                                                                                                     |
-| [88 — Freshness radar](88-chat-workflow-ordinary-chat.md)                                      | VERIFY LIVE         | P2  | Live for DJ only. auto_apply decision (~20 clean scans), backtest, widen beyond DJ.                                                                                                                                                                                                                                            |
-| [119 — Project pages overfetch audit](119-project-pages-overfetch-audit.md)                    | AWAITING DJ         | P2  | Fixes built, uncommitted: project load 98→74 KB, START HERE 62→33 KB, task open 2→1 requests, access check 628→0.1 KB, no alt-tab refetch. SQL trim + heavy GET fate await DJ.                                                                                                                                                 |
-| [122 — Project nesting and merge in chat](122-project-nesting-and-merge-in-chat.md)            | AWAITING DJ         | P2  | Chat claimed projects can't nest (8 are nested; Wayne holds 7). Plan: ~1-day truth fix, then a nest card, then a move card on Organize (click = consent, Undo); fold stays parked. Q1–Q6 for DJ.                                                                                                                               |
-| [120 — Vercel project RPC errors](120-vercel-project-rpc-errors.md)                            | LOCAL VERIFIED      | P2  | Auth guard + request context built; 16 tests, full web lint/build and both typechecks pass. Not deployed; live correlation pending. Grants unchanged.                                                                                                                                                                          |
-| [96 — Capture follow-ups](96-capture-followups-from-book-loop.md)                              | VERIFY LIVE         | P2  | Click the receipt chip + Undo once; delete the dead `reconcileStartHereAuthoredSections`.                                                                                                                                                                                                                                      |
-| [114 — Large write batches](114-large-batch-cleanup-budget-and-review-deadlock.md)             | VERIFY LIVE         | P2  | Reconcile effect `094a68ea`; first live click on the cleanup card (absorbed 112); then one approved batch turn (~$0.06–0.10).                                                                                                                                                                                                  |
-| [110 — Project steward beta](110-project-steward-beta.md)                                      | WAITING ON DJ       | P2  | Behind the `project_steward` flag (DJ only). Charter edits; 9takes scorecard; second project?                                                                                                                                                                                                                                  |
-| [29 — Deep Research](29-deep-research-production-track.md)                                     | PARKED + GATED      | P2  | Kill switch built 10-04 (`PRIVATE_DEEP_RESEARCH_ENABLED`, off). Quotas and an eval only if it is ever turned back on (absorbed 32).                                                                                                                                                                                            |
+| Tracker                                                                                        | Status         | Pri | What's left                                                                                                                                                                                      |
+| ---------------------------------------------------------------------------------------------- | -------------- | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [121 — Five-person return-use test](121-five-person-return-use-test.md)                        | STAGED         | P1  | Protocol + message ready, live page matches, signup + welcome + PostHog verified. Blocked on the brief-by-default build; do one fresh-account dry run first. DJ picks P1–P5.                     |
+| [103 — Privacy audit](103-privacy-audit-trustworthy-data-handling.md)                          | ACTIVE         | P0  | Fix account deletion and prove it end to end; owner env/key items; ZDR check (paid); DATA_INVENTORY items 13–18.                                                                                 |
+| [20 — Agentic Chat security](20-agentic-chat-wave3-security-brief.md)                          | ACTIVE         | P1  | S1 rebuilt 10-04, uncommitted. Left: deploy, the calendar-counts-as-external veto, second-order gaps, a paid seeded-email case.                                                                  |
+| [116 — BuildOS plugin reconnect loop](116-buildos-plugin-reconnect-loop.md)                    | VERIFY LIVE    | P1  | App path recovered; refresh works on its own. Direct `.mcp.json` removed (uncommitted). Left: commit, restart Codex, one cloud-thread `search`.                                                  |
+| [109 — Chat spend and speed](109-agentic-chat-session-spend.md)                                | VERIFY LIVE    | P1  | Project Setup repair fix and cron guard built 10-04. Left: deploy, paid Project Setup check (~$0.07), streaming answers, calendar-write check, key split, local queue guard (absorbed 65, 108).  |
+| [38 — Live verification debt](38-live-verification-debt.md)                                    | VERIFY LIVE    | P1  | Live-click checklist ready; welcome-email cron fix built. Left: PostHog 2-min check, chat-worker PostHog key, Google signup event, fresh-account walk after 103 (absorbed 74, 78).               |
+| [115 — Skills: Jev playbooks + connector pack](115-skills-jev-playbooks-and-connector-pack.md) | ACTIVE         | P1  | Lean pass live. Supabase redirect allow-list, post-deploy smoke, then Phase 1 tests (P2).                                                                                                        |
+| [76 — Production database security](76-production-database-security-containment.md)            | ACTIVE         | P2  | 104's 5 guard fixes, leaked-password protection, OTP expiry, Postgres patch, Supabase's 2026-10-30 default-exposure change (absorbed 104).                                                       |
+| [88 — Freshness radar](88-chat-workflow-ordinary-chat.md)                                      | VERIFY LIVE    | P2  | Live for DJ only. auto_apply decision (~20 clean scans), backtest, widen beyond DJ.                                                                                                              |
+| [119 — Project pages overfetch audit](119-project-pages-overfetch-audit.md)                    | AWAITING DJ    | P2  | Fixes built, uncommitted: project load 98→74 KB, START HERE 62→33 KB, task open 2→1 requests, access check 628→0.1 KB, no alt-tab refetch. SQL trim + heavy GET fate await DJ.                   |
+| [122 — Project nesting and merge in chat](122-project-nesting-and-merge-in-chat.md)            | AWAITING DJ    | P2  | Chat claimed projects can't nest (8 are nested; Wayne holds 7). Plan: ~1-day truth fix, then a nest card, then a move card on Organize (click = consent, Undo); fold stays parked. Q1–Q6 for DJ. |
+| [120 — Vercel project RPC errors](120-vercel-project-rpc-errors.md)                            | LOCAL VERIFIED | P2  | Auth guard + request context built; 16 tests, full web lint/build and both typechecks pass. Not deployed; live correlation pending. Grants unchanged.                                            |
+| [96 — Capture follow-ups](96-capture-followups-from-book-loop.md)                              | VERIFY LIVE    | P2  | Click the receipt chip + Undo once; delete the dead `reconcileStartHereAuthoredSections`.                                                                                                        |
+| [114 — Large write batches](114-large-batch-cleanup-budget-and-review-deadlock.md)             | VERIFY LIVE    | P2  | Reconcile effect `094a68ea`; first live click on the cleanup card (absorbed 112); then one approved batch turn (~$0.06–0.10).                                                                    |
+| [110 — Project steward beta](110-project-steward-beta.md)                                      | WAITING ON DJ  | P2  | Behind the `project_steward` flag (DJ only). Charter edits; 9takes scorecard; second project?                                                                                                    |
+| [29 — Deep Research](29-deep-research-production-track.md)                                     | PARKED + GATED | P2  | Kill switch built 10-04 (`PRIVATE_DEEP_RESEARCH_ENABLED`, off). Quotas and an eval only if it is ever turned back on (absorbed 32).                                                              |
 
 ## Parked
 

@@ -2,7 +2,10 @@
 import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
-import { builderHandleForAuthorSlug } from '$lib/server/builder-profile/builder-profile.service';
+import {
+	authorPageHref,
+	builderHandleForAuthorSlug
+} from '$lib/server/builder-profile/builder-profile.service';
 
 export const load: PageServerLoad = async ({ params, fetch, locals }) => {
 	const slug = params.slug?.trim().toLowerCase();
@@ -26,7 +29,10 @@ export const load: PageServerLoad = async ({ params, fetch, locals }) => {
 		// A published builder page replaces the author index.
 		let builderHandle: string | null = null;
 		try {
-			builderHandle = await builderHandleForAuthorSlug(createAdminSupabaseClient() as any, slug);
+			builderHandle = await builderHandleForAuthorSlug(
+				createAdminSupabaseClient() as any,
+				slug
+			);
 		} catch {
 			builderHandle = null;
 		}
@@ -61,5 +67,5 @@ export const load: PageServerLoad = async ({ params, fetch, locals }) => {
 		throw redirect(301, `/p/${page.slug_prefix}/${page.slug_base}`);
 	}
 
-	return { page, currentUser };
+	return { page, currentUser, authorHref: await authorPageHref(page.author_slug_prefix) };
 };

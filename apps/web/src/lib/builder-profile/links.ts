@@ -16,6 +16,7 @@ export type SocialPlatform =
 	| 'bluesky'
 	| 'facebook'
 	| 'medium'
+	| 'email'
 	| 'website';
 
 const PLATFORM_HOSTS: { platform: SocialPlatform; hosts: string[]; suffix?: string }[] = [
@@ -44,6 +45,7 @@ export const PLATFORM_LABELS: Record<SocialPlatform, string> = {
 	bluesky: 'Bluesky',
 	facebook: 'Facebook',
 	medium: 'Medium',
+	email: 'Email',
 	website: 'Website'
 };
 
@@ -70,6 +72,26 @@ export function normalizeLinkUrl(raw: string | null | undefined): string | null 
 	}
 }
 
+const EMAIL = /^[^\s@/]+@[^\s@/]+\.[^\s@/]+$/;
+
+/**
+ * A social can also be an email address, so visitors have a way to write to the person:
+ * "dj@example.com" or "mailto:dj@example.com" becomes a mailto: link; anything else goes
+ * through normalizeLinkUrl. Never returns other schemes.
+ */
+export function normalizeSocialUrl(raw: string | null | undefined): string | null {
+	const trimmed = (raw ?? '').trim();
+	if (!trimmed || trimmed.length > MAX_LINK_URL_LENGTH - 7) return null;
+	const email = trimmed.replace(/^mailto:/i, '');
+	if (EMAIL.test(email)) return `mailto:${email}`;
+	if (/^mailto:/i.test(trimmed)) return null;
+	return normalizeLinkUrl(trimmed);
+}
+
+export function isEmailLink(url: string | null | undefined): boolean {
+	return !!url && /^mailto:/i.test(url);
+}
+
 function hostOf(url: string): string | null {
 	try {
 		return new URL(url).hostname.toLowerCase().replace(/^(www\.|m\.|mobile\.)/, '');
@@ -79,6 +101,7 @@ function hostOf(url: string): string | null {
 }
 
 export function detectPlatform(url: string): SocialPlatform {
+	if (isEmailLink(url)) return 'email';
 	const host = hostOf(url);
 	if (!host) return 'website';
 	for (const entry of PLATFORM_HOSTS) {
@@ -90,6 +113,7 @@ export function detectPlatform(url: string): SocialPlatform {
 
 /** "x.com/djwayne3" style text for showing a link without the scheme. */
 export function displayUrl(url: string): string {
+	if (isEmailLink(url)) return url.slice('mailto:'.length);
 	try {
 		const parsed = new URL(url);
 		const host = parsed.hostname.replace(/^www\./, '');
@@ -102,6 +126,7 @@ export function displayUrl(url: string): string {
 
 /** The handle-ish tail of a social URL ("@djwayne3", "in/djwayne"), for labels. */
 export function socialHandle(url: string): string | null {
+	if (isEmailLink(url)) return url.slice('mailto:'.length);
 	try {
 		const parsed = new URL(url);
 		const parts = parsed.pathname.split('/').filter(Boolean);

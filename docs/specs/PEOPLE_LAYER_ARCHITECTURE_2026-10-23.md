@@ -368,6 +368,6 @@ share window on 9takes, onboarding step and signup via a deleted preview route).
 - Guest agents linking their tasks to the owner's goals and plans: fine as is.
 - Email invites defaulting to Editor: fine (links stay Viewer).
 - Agents-off message: must say the owner turned agents off and the person has to ask the owner again → [tasker 140](../../tasker/140-agent-access-wall.md).
-- Guest tasks on calendars: map it first → [tasker 144](../../tasker/144-shared-project-calendar-sync.md).
+- Guest tasks on calendars: map it first → tasker 144 (closed tracker, in git history).
 - People tab and scattered settings: rethink → [tasker 141](../../tasker/141-one-home-for-sharing-settings.md).
 - Next pieces are tracked in tasker 140–145 (README section "People layer").

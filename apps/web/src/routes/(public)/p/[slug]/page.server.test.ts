@@ -1,10 +1,13 @@
 // apps/web/src/routes/(public)/p/[slug]/page.server.test.ts
 import { describe, expect, it, vi } from 'vitest';
 
-const builderMocks = vi.hoisted(() => ({ handleForSlug: vi.fn(async () => null as string | null) }));
+const builderMocks = vi.hoisted(() => ({
+	handleForSlug: vi.fn(async () => null as string | null)
+}));
 vi.mock('$lib/supabase/admin', () => ({ createAdminSupabaseClient: () => ({}) }));
 vi.mock('$lib/server/builder-profile/builder-profile.service', () => ({
-	builderHandleForAuthorSlug: builderMocks.handleForSlug
+	builderHandleForAuthorSlug: builderMocks.handleForSlug,
+	authorPageHref: async () => null
 }));
 
 function makeLocals(user: { id: string; email: string | null } | null = null) {

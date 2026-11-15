@@ -10,7 +10,10 @@
 // with no names of clients, prospects or other people.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { BuilderPageDraftSuggestion } from '$lib/builder-profile/types';
+import type {
+	BuilderPageDraftSuggestion,
+	BuilderProfileUpdateDraft
+} from '$lib/builder-profile/types';
 import { BuilderProfileError, loadOwnedProjects } from './builder-profile.service';
 
 type Client = SupabaseClient<any>;
@@ -37,7 +40,10 @@ const PRIVACY_RULES = [
 
 function clip(value: unknown, max: number): string | null {
 	if (typeof value !== 'string') return null;
-	const text = value.replace(/\s+/g, ' ').trim().replace(/^["']|["']$/g, '');
+	const text = value
+		.replace(/\s+/g, ' ')
+		.trim()
+		.replace(/^["']|["']$/g, '');
 	if (!text) return null;
 	if (text.length <= max) return text;
 	const cut = text.slice(0, max);
@@ -58,7 +64,11 @@ export async function draftPage(params: {
 	const wanted = new Set(params.projectIds);
 	const projects = owned.filter((p) => wanted.has(p.id)).slice(0, 8);
 
-	const { data: user } = await admin.from('users').select('name, bio').eq('id', userId).maybeSingle();
+	const { data: user } = await admin
+		.from('users')
+		.select('name, bio')
+		.eq('id', userId)
+		.maybeSingle();
 	const { data: goals } = projects.length
 		? await admin
 				.from('onto_goals')
@@ -132,30 +142,40 @@ function mondayOf(date = new Date()): string {
 	return d.toISOString().slice(0, 10);
 }
 
+export interface WeeklyDraftResult {
+	created: number;
+	drafts: BuilderProfileUpdateDraft[];
+	/** Why nothing was drafted: nothing moved (no model call), or it had nothing to say. */
+	reason?: 'nothing_moved' | 'nothing_to_say';
+}
+
 /**
  * Drafts this week's Now line and one line per live project with something done.
- * Replaces any drafts still waiting. Returns how many drafts were written (0 = nothing
- * moved this week, so nothing to say).
+ * Replaces any drafts still waiting. Returns the new drafts (none = nothing moved this
+ * week, so nothing to say), so the editor can show them without reloading everything.
  */
 export async function draftWeeklyUpdates(params: {
 	llm: DraftLLM;
 	admin: Client;
 	userId: string;
 	now?: Date;
-}): Promise<{ created: number }> {
+}): Promise<WeeklyDraftResult> {
 	const { llm, admin, userId } = params;
 	const now = params.now ?? new Date();
 	const since = new Date(now.getTime() - 7 * 86_400_000).toISOString();
 
 	const { data: placements, error } = await admin
 		.from('builder_profile_projects')
-		.select('project_id, level, public_name, pitch, project:onto_projects!inner(name, deleted_at, archived_at)')
-		.eq('user_id', userId);
+		.select(
+			'project_id, level, public_name, pitch, project:onto_projects!inner(name, deleted_at, archived_at)'
+		)
+		.eq('user_id', userId)
+		.order('position', { ascending: true });
 	if (error) throw error;
 	const onPage = ((placements ?? []) as any[]).filter(
 		(p) => p.project && !p.project.deleted_at && !p.project.archived_at
 	);
-	if (onPage.length === 0) return { created: 0 };
+	if (onPage.length === 0) return { created: 0, drafts: [], reason: 'nothing_moved' };
 	const ids = onPage.map((p) => p.project_id);
 
 	const [{ data: done }, { data: activity }] = await Promise.all([
@@ -183,7 +203,10 @@ export async function draftWeeklyUpdates(params: {
 	}
 	const changesByProject = new Map<string, number>();
 	for (const row of (activity ?? []) as { project_id: string; changes: number }[]) {
-		changesByProject.set(row.project_id, (changesByProject.get(row.project_id) ?? 0) + row.changes);
+		changesByProject.set(
+			row.project_id,
+			(changesByProject.get(row.project_id) ?? 0) + row.changes
+		);
 	}
 
 	const projects = onPage.map((p) => ({
@@ -194,11 +217,13 @@ export async function draftWeeklyUpdates(params: {
 		done_this_week: doneByProject.get(p.project_id) ?? [],
 		changes_this_week: changesByProject.get(p.project_id) ?? 0
 	}));
-	const anyMovement = projects.some((p) => p.done_this_week.length > 0 || p.changes_this_week > 0);
-	if (!anyMovement) return { created: 0 };
+	const anyMovement = projects.some(
+		(p) => p.done_this_week.length > 0 || p.changes_this_week > 0
+	);
+	if (!anyMovement) return { created: 0, drafts: [], reason: 'nothing_moved' };
 
 	const systemPrompt = [
-		'You draft a weekly update for someone\'s public builder page, from what they finished this week.',
+		"You draft a weekly update for someone's public builder page, from what they finished this week.",
 		'Return JSON only: {"now": string | null, "projects": [{"project_id": string, "line": string}]}.',
 		'- now: one short sentence, up to 140 characters, present tense, what they are focused on right now (for example "Building project sharing in BuildOS."). Null if nothing moved.',
 		'- projects: only for projects with "live": true and at least one item in done_this_week. One sentence each, past tense, up to 180 characters, what moved this week in general terms. Combine items; never copy a task title word for word.',
@@ -210,7 +235,11 @@ export async function draftWeeklyUpdates(params: {
 		projects?: { project_id?: unknown; line?: unknown }[];
 	}>({
 		systemPrompt,
-		userPrompt: JSON.stringify({ week_ending: now.toISOString().slice(0, 10), projects }, null, 2),
+		userPrompt: JSON.stringify(
+			{ week_ending: now.toISOString().slice(0, 10), projects },
+			null,
+			2
+		),
 		userId,
 		profile: 'fast',
 		temperature: 0.4,
@@ -221,7 +250,8 @@ export async function draftWeeklyUpdates(params: {
 		projects.filter((p) => p.live && p.done_this_week.length > 0).map((p) => p.project_id)
 	);
 	const weekOf = mondayOf(now);
-	const rows: { user_id: string; project_id: string | null; body: string; week_of: string }[] = [];
+	const rows: { user_id: string; project_id: string | null; body: string; week_of: string }[] =
+		[];
 	const nowLine = clip(result?.now, 160);
 	if (nowLine) rows.push({ user_id: userId, project_id: null, body: nowLine, week_of: weekOf });
 	for (const item of Array.isArray(result?.projects) ? result.projects : []) {
@@ -231,7 +261,7 @@ export async function draftWeeklyUpdates(params: {
 			rows.push({ user_id: userId, project_id: projectId, body: line, week_of: weekOf });
 		}
 	}
-	if (rows.length === 0) return { created: 0 };
+	if (rows.length === 0) return { created: 0, drafts: [], reason: 'nothing_to_say' };
 
 	const cleared = await admin
 		.from('builder_profile_updates')
@@ -241,9 +271,27 @@ export async function draftWeeklyUpdates(params: {
 	if (cleared.error) throw cleared.error;
 	const inserted = await admin
 		.from('builder_profile_updates')
-		.insert(rows.map((r) => ({ ...r, status: 'drafted', source: 'drafted' })));
+		.insert(rows.map((r) => ({ ...r, status: 'drafted', source: 'drafted' })))
+		.select('id, project_id, body, status, week_of, created_at');
 	if (inserted.error) throw inserted.error;
-	return { created: rows.length };
+	const names = new Map(onPage.map((p) => [p.project_id as string, p.project.name as string]));
+	const drafts: BuilderProfileUpdateDraft[] = ((inserted.data ?? []) as any[]).map((d) => ({
+		id: d.id,
+		project_id: d.project_id,
+		project_name: d.project_id ? (names.get(d.project_id) ?? null) : null,
+		body: d.body,
+		status: d.status,
+		week_of: d.week_of,
+		created_at: d.created_at
+	}));
+	// Now line first, then projects in page order (the order the editor lists them).
+	const order = new Map(onPage.map((p, index) => [p.project_id as string, index]));
+	drafts.sort(
+		(a, b) =>
+			(a.project_id ? (order.get(a.project_id) ?? 99) + 1 : 0) -
+			(b.project_id ? (order.get(b.project_id) ?? 99) + 1 : 0)
+	);
+	return { created: drafts.length, drafts };
 }
 
 /** Publish (optionally edited) or skip one drafted line. */

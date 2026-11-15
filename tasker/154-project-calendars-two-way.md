@@ -2,6 +2,15 @@
 
 # 154 — Project calendars sync both ways (+ Gmail digest, DJ only)
 
+> **2026-11-15 (Claude, paid checks):** The Gmail "From your email" cron has **never run** in
+> production: it was registered only in the root `vercel.json`, but Vercel's root directory is
+> `apps/web`, so only `apps/web/vercel.json` counts. Added there (10:30 UTC daily), UNCOMMITTED;
+> ships with the next web deploy. The dry run (local server on prod data) then read **0 of 3**
+> Gmail accounts: the cron uses agent-only Google access, which is not set up in production
+> (missing `google_agent_grants` table and separate OAuth client). That is tracker
+> [158](158-privacy-fix-first.md) item 4. Card quality stays unjudged until 158 fixes it; then rerun
+> the dry run (~$0.004).
+
 Started 2026-11-05. DJ's call: calendar = ambitious (live webhooks, low-risk changes applied
 without asking, with Undo); Gmail = lean, DJ's accounts only, no CASA.
 

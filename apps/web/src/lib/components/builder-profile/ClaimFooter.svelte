@@ -1,18 +1,19 @@
 <!-- apps/web/src/lib/components/builder-profile/ClaimFooter.svelte -->
-<!-- The foot of a builder page or project page card: "Made in BuildOS", and for
-     signed-out visitors a box to claim their own build-os.com/@handle. -->
+<!-- The foot of a builder page or project page card: "Made in BuildOS", what following
+     gets you, and for signed-out visitors a box to claim their own build-os.com/@handle with
+     one line on what that page is. -->
 <script lang="ts">
 	let {
 		signedIn,
 		isOwner = false,
 		inEditor = false,
-		followNote = false
+		followName = null
 	}: {
 		signedIn: boolean;
 		isOwner?: boolean;
 		inEditor?: boolean;
-		/** Adds "follow along in your daily brief" when there's something to follow. */
-		followNote?: boolean;
+		/** The owner's first name: adds what following them gets you. */
+		followName?: string | null;
 	} = $props();
 
 	let claimHandle = $state('');
@@ -40,8 +41,9 @@
 		<p class="inline-flex items-center gap-2 text-sm text-muted-foreground">
 			<img src="/brain-bolt-80.png" alt="" class="h-5 w-5" width="20" height="20" />
 			<span
-				>Made in <span class="font-semibold text-foreground">BuildOS</span>{followNote
-					? ' · follow along in your daily brief'
+				>Made in <span class="font-semibold text-foreground">BuildOS</span>{followName &&
+				!isOwner
+					? `. Follow ${followName} to get their updates in your daily brief.`
 					: ''}</span
 			>
 		</p>
@@ -54,6 +56,10 @@
 				>
 			{/if}
 		{:else}
+			<p class="w-full text-sm text-foreground">
+				Get your own page. It fills itself in from the projects you run in BuildOS, and it’s
+				free.
+			</p>
 			<form class="flex w-full flex-wrap gap-2 sm:w-auto" onsubmit={claim} inert={inEditor}>
 				<label for="claim-handle" class="sr-only">Pick your handle</label>
 				<div

@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-11-15T03:33:51.640Z
+// Generated on: 2026-11-15T05:17:49.163Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -875,6 +875,27 @@ export type DatabaseSchema = {
 		resolved_at: string | null;
 		status: string;
 		updated_at: string;
+		user_id: string;
+	};
+	calendar_ingest_changes: {
+		after: Json;
+		applied_at: string;
+		applied_event_updated_at: string | null;
+		before: Json;
+		calendar_source_id: string | null;
+		change_kind: string;
+		created_at: string;
+		external_event_id: string;
+		fields: string[];
+		id: string;
+		onto_event_id: string | null;
+		origin: string;
+		project_id: string | null;
+		provider_calendar_id: string;
+		status: string;
+		task_id: string | null;
+		title: string;
+		undone_at: string | null;
 		user_id: string;
 	};
 	calendar_oauth_states: {
@@ -1908,6 +1929,38 @@ export type DatabaseSchema = {
 		source_decision_id: string | null;
 		updated_at: string;
 		user_id: string;
+	};
+	email_project_update_runs: {
+		accounts_read: number;
+		created_at: string;
+		emails_read: number;
+		error: string | null;
+		finished_at: string | null;
+		id: string;
+		status: string;
+		suggestions_created: number;
+		user_id: string;
+		window_end: string;
+		window_start: string;
+	};
+	email_project_updates: {
+		action: string;
+		connection_id: string | null;
+		created_at: string;
+		decided_at: string | null;
+		email: Json;
+		error: string | null;
+		id: string;
+		message_id: string;
+		project_id: string;
+		proposal: Json;
+		run_id: string | null;
+		status: string;
+		task_id: string | null;
+		title: string;
+		updated_at: string;
+		user_id: string;
+		why: string | null;
 	};
 	email_recipients: {
 		created_at: string | null;
@@ -3630,6 +3683,7 @@ export type DatabaseSchema = {
 		project_id: string | null;
 		requested_items: Json | null;
 		role_requested: string;
+		settled_elsewhere: boolean;
 		status: string;
 		to_user_id: string;
 		via: string;
@@ -3844,6 +3898,7 @@ export type DatabaseSchema = {
 		created_at: string | null;
 		hex_color: string | null;
 		id: string;
+		inbound_backfilled_at: string | null;
 		is_primary: boolean | null;
 		last_synced_at: string | null;
 		project_id: string;
@@ -5179,6 +5234,7 @@ export const tableNames = [
 	'calendar_analysis_preferences',
 	'calendar_connection_credentials',
 	'calendar_event_orphan_receipts',
+	'calendar_ingest_changes',
 	'calendar_oauth_states',
 	'calendar_project_suggestions',
 	'calendar_webhook_channels',
@@ -5232,6 +5288,8 @@ export const tableNames = [
 	'email_project_profile_versions',
 	'email_project_profiles',
 	'email_project_rules',
+	'email_project_update_runs',
+	'email_project_updates',
 	'email_recipients',
 	'email_relevance_adjudications',
 	'email_relevance_message_observations',

@@ -7,7 +7,7 @@
 
 **DJ's decision (2026-11-05): not §5.** A new tool doesn't guarantee the model calls it. Keep the
 lab's design (plan call → parallel project threads → reply) and make the threads robust: tasker
-[152](../../tasker/152-robust-threads.md). §2's ideas still guide the build: threads earn their
+152 (closed tracker, in git history). §2's ideas still guide the build: threads earn their
 own budget, the commit work reuses real chat's write ledger, and the worker comes later.
 
 **Sources:** three read-only code investigations (2026-11-05) covering:

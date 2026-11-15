@@ -1,7 +1,10 @@
 <!-- apps/web/src/lib/components/privacy/TrackingPreferences.svelte -->
 <!--
   First visit shows a one-line bar so the page stays readable on a phone. "Choices" (or the
-  footer's Privacy choices link) opens the full panel with per-tool switches.
+  footer's Privacy choices link) opens the full panel with per-tool switches. "Necessary
+  only" and "Accept all" carry the same visual weight (consent guidance expects equal
+  prominence). While the bar shows, its height is published as --consent-bar-space so pages
+  can keep their last content (a form, a button) clear of it.
 -->
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
@@ -20,6 +23,18 @@
 	let marketing = $state(false);
 	let privacySignal = $state<BrowserPrivacySignal>(null);
 	let panel = $state<HTMLElement | null>(null);
+	let barHeight = $state(0);
+
+	// Tell the page how much room the bar takes at the bottom of the screen.
+	$effect(() => {
+		const root = document.documentElement;
+		if (!isOpen || barHeight <= 0) {
+			root.style.removeProperty('--consent-bar-space');
+			return;
+		}
+		root.style.setProperty('--consent-bar-space', `${Math.ceil(barHeight) + 16}px`);
+		return () => root.style.removeProperty('--consent-bar-space');
+	});
 
 	const privacySignalLabel = $derived(
 		privacySignal === 'global-privacy-control' ? 'Global Privacy Control' : 'Do Not Track'
@@ -84,6 +99,7 @@
 {#if isOpen}
 	<aside
 		bind:this={panel}
+		bind:clientHeight={barHeight}
 		tabindex="-1"
 		aria-label={showDetails ? undefined : 'Privacy choices'}
 		aria-labelledby={showDetails ? 'tracking-preferences-title' : undefined}
@@ -115,7 +131,11 @@
 					>
 						Necessary only
 					</Button>
-					<Button size="sm" onclick={() => persistPreferences(true, true)}>
+					<Button
+						variant="outline"
+						size="sm"
+						onclick={() => persistPreferences(true, true)}
+					>
 						Accept all
 					</Button>
 				</div>
@@ -217,8 +237,10 @@
 							>
 								Save choices
 							</Button>
-							<Button size="sm" onclick={() => persistPreferences(true, true)}
-								>Accept all</Button
+							<Button
+								variant="outline"
+								size="sm"
+								onclick={() => persistPreferences(true, true)}>Accept all</Button
 							>
 						{/if}
 					</div>

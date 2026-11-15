@@ -1,6 +1,13 @@
 // apps/web/src/routes/(public)/p/[slugPrefix]/[slugBase]/page.server.test.ts
 import { describe, expect, it, vi } from 'vitest';
 
+const builderMocks = vi.hoisted(() => ({
+	authorPageHref: vi.fn(async (_prefix: unknown) => null as string | null)
+}));
+vi.mock('$lib/server/builder-profile/builder-profile.service', () => ({
+	authorPageHref: builderMocks.authorPageHref
+}));
+
 function makeLocals(user: { id: string; email: string | null } | null = null) {
 	return {
 		safeGetSession: vi.fn(async () => (user ? { user, session: {} } : {}))
@@ -8,6 +15,35 @@ function makeLocals(user: { id: string; email: string | null } | null = null) {
 }
 
 describe('nested public page route', () => {
+	it('links the author to their builder page when they have one', async () => {
+		builderMocks.authorPageHref.mockResolvedValueOnce('/@djwayne');
+		const fetchMock = vi.fn(
+			async () =>
+				new Response(
+					JSON.stringify({
+						success: true,
+						data: {
+							page: {
+								slug: 'dj-wayne-julian-pod-390',
+								slug_prefix: 'dj-wayne',
+								slug_base: 'julian-pod-390',
+								author_slug_prefix: 'dj-wayne'
+							}
+						}
+					}),
+					{ status: 200, headers: { 'Content-Type': 'application/json' } }
+				)
+		);
+		const { load } = await import('./+page.server');
+		const result = await load({
+			params: { slugPrefix: 'dj-wayne', slugBase: 'julian-pod-390' },
+			locals: makeLocals(),
+			fetch: fetchMock
+		} as any);
+		expect(builderMocks.authorPageHref).toHaveBeenCalledWith('dj-wayne');
+		expect(result).toMatchObject({ authorHref: '/@djwayne' });
+	});
+
 	it('loads the page by combining prefix and base into the stored slug', async () => {
 		const fetchMock = vi.fn(
 			async () =>

@@ -97,7 +97,16 @@
 
 	const ownerStats = $derived(
 		view.status === 'published' && view.stats
-			? `${view.stats.views_7d} views this week · ${view.stats.views_28d} in 4 weeks · ${view.stats.link_taps_28d} taps · ${view.stats.followers} followers · ${view.stats.asks_28d} asks`
+			? [
+					`${view.stats.views_7d} views this week`,
+					`${view.stats.views_28d} in 4 weeks`,
+					hasLive ? `${view.stats.project_views_28d ?? 0} project page views` : null,
+					`${view.stats.link_taps_28d} taps`,
+					`${view.stats.followers} followers`,
+					`${view.stats.asks_28d} asks`
+				]
+					.filter(Boolean)
+					.join(' · ')
 			: null
 	);
 
@@ -175,7 +184,11 @@
 {/snippet}
 
 {#snippet headerBody()}
-	<div class="bp-cover relative overflow-hidden bg-muted" aria-hidden="true">
+	<div
+		class="bp-cover relative overflow-hidden bg-muted"
+		data-blank={view.profile.cover_url ? undefined : 'true'}
+		aria-hidden="true"
+	>
 		{#if view.profile.cover_url}
 			<img
 				src={view.profile.cover_url}
@@ -193,7 +206,7 @@
 				{#if view.profile.avatar_url}
 					<img
 						src={view.profile.avatar_url}
-						alt=""
+						alt="Photo of {displayName}"
 						width="96"
 						height="96"
 						referrerpolicy="no-referrer"
@@ -243,17 +256,21 @@
 			>
 				{displayName}
 			</h1>
-			<p class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-muted-foreground">
+			<!-- Dots between parts show only when they sit on one line (wide card); a narrow
+			     one wraps, and a dot left at a line's end reads as a stray mark. -->
+			<p
+				class="bp-meta flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted-foreground"
+			>
 				<span class="font-mono">@{handle}</span>
 				{#if view.profile.location}
-					<span aria-hidden="true">·</span>
+					<span class="bp-sep" aria-hidden="true">·</span>
 					<span class="inline-flex items-center gap-1"
 						><MapPin class="h-3.5 w-3.5" aria-hidden="true" />{view.profile
 							.location}</span
 					>
 				{/if}
 				{#if since}
-					<span aria-hidden="true">·</span>
+					<span class="bp-sep" aria-hidden="true">·</span>
 					<span>On BuildOS since {since}</span>
 				{/if}
 			</p>
@@ -360,8 +377,8 @@
 
 {#snippet logBody()}
 	{#if view.activity}
-		{@render sectionHead('builder-log', 'Build log', 'last 12 months')}
 		<BuildLog
+			headingId="builder-log"
 			activity={view.activity}
 			projectCount={view.projects.length}
 			ownerView={isOwner || inEditor}
@@ -528,7 +545,7 @@
 			</section>
 		{/if}
 
-		<ClaimFooter signedIn={view.viewer.signed_in} {isOwner} {inEditor} followNote={hasLive} />
+		<ClaimFooter signedIn={view.viewer.signed_in} {isOwner} {inEditor} followName={firstName} />
 	</article>
 {/snippet}
 
@@ -565,6 +582,16 @@
 	.bp-cover {
 		height: 7.5rem;
 	}
+	/* No cover photo: a thin band, so the name and the first project sit higher. */
+	.bp-cover[data-blank='true'] {
+		height: 4rem;
+	}
+
+	@container (max-width: 35.99rem) {
+		.bp-meta .bp-sep {
+			display: none;
+		}
+	}
 
 	.bp-cover-blank {
 		background:
@@ -581,6 +608,9 @@
 	@container (min-width: 36rem) {
 		.bp-cover {
 			height: 10rem;
+		}
+		.bp-cover[data-blank='true'] {
+			height: 5rem;
 		}
 		.bp-section {
 			padding: 1.5rem 2rem 1.75rem;

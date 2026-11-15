@@ -13,6 +13,7 @@
 	import BuildOSLogo from '$lib/components/layout/BuildOSLogo.svelte';
 	import { validateEmailClient } from '$lib/utils/client-email-validation';
 	import { normalizeRedirectPath } from '$lib/utils/auth-redirect';
+	import { signupContextLine } from '$lib/builder-profile/format';
 	import { authErrorMessage } from '$lib/utils/auth-status';
 	import { logAuthClientError } from '$lib/utils/auth-client-logger';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
@@ -49,6 +50,8 @@
 	let successMessage = $state('');
 	let emailError = $state('');
 	let redirectParam = $derived(normalizeRedirectPath(page.url.searchParams.get('redirect')));
+	// Sent here from Follow or Ask to join on someone's page: say what the account is for.
+	const contextLine = $derived(signupContextLine(redirectParam));
 	let redirectQuery = $derived(
 		redirectParam ? `?redirect=${encodeURIComponent(redirectParam)}` : ''
 	);
@@ -440,7 +443,7 @@
 			Join BuildOS
 		</h1>
 		<p class="mt-2 text-sm text-muted-foreground sm:text-base">
-			{BRAND_TAGLINE}
+			{contextLine ?? BRAND_TAGLINE}
 		</p>
 	</div>
 

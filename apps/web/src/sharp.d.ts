@@ -4,11 +4,16 @@ declare module 'sharp' {
 		quality?: number;
 	};
 
+	type PngOptions = {
+		compressionLevel?: number;
+	};
+
 	type ResizeOptions = {
 		fit?: 'contain' | 'cover' | 'fill' | 'inside' | 'outside';
 	};
 
 	type Metadata = {
+		format?: string;
 		width?: number;
 		height?: number;
 	};
@@ -16,6 +21,7 @@ declare module 'sharp' {
 	type SharpInstance = {
 		metadata(): Promise<Metadata>;
 		webp(options?: WebpOptions): SharpInstance;
+		png(options?: PngOptions): SharpInstance;
 		resize(width?: number, height?: number, options?: ResizeOptions): SharpInstance;
 		toBuffer(): Promise<Buffer>;
 	};
