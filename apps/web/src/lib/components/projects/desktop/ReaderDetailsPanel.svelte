@@ -15,8 +15,7 @@
 		Link,
 		MessageSquare,
 		Repeat,
-		Users,
-		X
+		Users
 	} from '$lib/icons/lucide';
 	import EntityActivityLog from '$lib/components/ontology/EntityActivityLog.svelte';
 	import EntityCollaborationAction from '$lib/components/ontology/EntityCollaborationAction.svelte';
@@ -44,8 +43,7 @@
 		onOpenLinked,
 		onLinksChanged,
 		onImagesChanged,
-		onAllDetails,
-		onClose
+		onAllDetails
 	}: {
 		kind: ReaderKind;
 		id: string;
@@ -64,7 +62,6 @@
 		onImagesChanged?: () => void;
 		/** The full editor, for what the panel doesn't carry (repeat setup, organize, delete). */
 		onAllDetails: () => void;
-		onClose: () => void;
 	} = $props();
 
 	// ---------- Folded sections ----------
@@ -161,19 +158,6 @@
 </script>
 
 <aside class="panel" aria-label="Details">
-	<header class="panel-head">
-		<h2 class="title">Details</h2>
-		<button
-			type="button"
-			class="ib"
-			onclick={onClose}
-			aria-label="Close details"
-			title="Close (D)"
-		>
-			<X class="h-4 w-4" />
-		</button>
-	</header>
-
 	<div class="rows">
 		<EntityCollaborationAction
 			{projectId}
@@ -343,40 +327,7 @@
 		overscroll-behavior: contain;
 		background: hsl(var(--background));
 	}
-	/* Solid and on top while the sections scroll under it. */
-	.panel-head {
-		position: sticky;
-		top: 0;
-		z-index: 10;
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		border-bottom: 1px solid hsl(var(--border));
-		background: hsl(var(--background));
-		padding: 4px 4px 4px 16px;
-	}
-	.title {
-		font-size: 14px;
-		font-weight: 500;
-		color: hsl(var(--foreground));
-	}
-	.ib {
-		display: inline-grid;
-		place-items: center;
-		width: 32px;
-		height: 32px;
-		border-radius: 8px;
-		color: hsl(var(--muted-foreground));
-		transition:
-			background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),
-			color 150ms cubic-bezier(0.22, 1, 0.36, 1);
-	}
-	.ib:hover {
-		background: hsl(var(--muted));
-		color: hsl(var(--foreground));
-	}
-	/* Each block keeps its children's layers (textures, raised cards) to itself,
-	   so nothing paints over the sticky header. */
+	/* Each block keeps its children's layers (textures, raised cards) to itself. */
 	.rows,
 	.sec,
 	.meta {
@@ -482,7 +433,6 @@
 		align-self: flex-start;
 		margin: 8px 16px 16px;
 	}
-	.ib:focus-visible,
 	.sec-head:focus-visible,
 	.link:focus-visible,
 	.all:focus-visible {
@@ -490,7 +440,6 @@
 		outline-offset: -2px;
 	}
 	@media (prefers-reduced-motion: reduce) {
-		.ib,
 		.link,
 		.all,
 		.sec-head,

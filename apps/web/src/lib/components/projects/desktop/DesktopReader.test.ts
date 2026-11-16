@@ -209,7 +209,9 @@ describe('DesktopReader on Today', () => {
 
 		await screen.findByRole('heading', { name: 'Plan' });
 		expect(screen.queryByRole('complementary', { name: 'Details' })).not.toBeInTheDocument();
-		await fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+		const detailsTab = screen.getByRole('button', { name: 'Expand details' });
+		expect(detailsTab).toHaveAttribute('aria-expanded', 'false');
+		await fireEvent.click(detailsTab);
 		// The panel is loaded on first open.
 		await vi.dynamicImportSettled();
 		const panel = await screen.findByRole(
@@ -218,15 +220,21 @@ describe('DesktopReader on Today', () => {
 			{ timeout: 5000 }
 		);
 		expect(panel).toHaveTextContent('Assignees');
+		expect(detailsTab).toHaveAttribute('aria-expanded', 'true');
+		expect(document.getElementById(detailsTab.getAttribute('aria-controls')!)).toContainElement(
+			panel
+		);
 		expect(panel).toHaveTextContent("Doesn't repeat");
 		for (const section of ['Linked items', 'Comments', 'Activity', 'Images']) {
 			expect(screen.getByRole('button', { name: new RegExp(section) })).toBeInTheDocument();
 		}
 		expect(screen.getByRole('button', { name: 'Open the full editor' })).toBeInTheDocument();
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Close details' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Collapse details' }));
 		await waitFor(() =>
 			expect(screen.queryByRole('complementary', { name: 'Details' })).not.toBeInTheDocument()
 		);
+		expect(detailsTab).toHaveAttribute('aria-expanded', 'false');
+		expect(screen.getByRole('button', { name: 'Expand details' })).toBe(detailsTab);
 	}, 15000);
 });

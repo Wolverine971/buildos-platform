@@ -4,8 +4,8 @@
 	(state, priority, dates) change in one click from their chips. The pencil (E)
 	makes the title and the body or description editable, autosaved (docs with
 	the doc modal's conflict check). "All details" opens the full editor for the
-	rest (assignees, repeats, links, comments). Bottom left archives (a goal:
-	deletes) with Undo, and the reader moves to the next item. The header carries
+	rest (assignees, repeats, links, comments). Archive, beside the state (a
+	goal: deletes), has Undo, and the reader moves to the next item. The header carries
 	Prev/Next and the depth toggles (list, focus, full page). On phones the same
 	actions sit in a thumb bar, and the handle (data-sheet-drag) drags the sheet.
 	A task lists the docs made for it, which open here too.
@@ -14,7 +14,6 @@
 	import { tick, untrack, type Snippet } from 'svelte';
 	import { resolve } from '$app/paths';
 	import {
-		Archive,
 		ArrowUpRight,
 		Check,
 		ChevronDown,
@@ -34,8 +33,6 @@
 		Minimize2,
 		PanelLeftClose,
 		PanelLeftOpen,
-		PanelRightClose,
-		PanelRightOpen,
 		Pencil,
 		RefreshCw,
 		Table2 as Table,
@@ -784,6 +781,7 @@
 	// What the full editors keep in their drawer (assignees, links, comments,
 	// activity…) opens beside the item. Open or shut is remembered here.
 	const DETAILS_KEY = 'buildos:reader-details-open';
+	const detailsId = $props.id();
 	function readDetailsOpen(): boolean {
 		try {
 			return localStorage.getItem(DETAILS_KEY) === '1';
@@ -852,7 +850,7 @@
 		else if (kind === 'plan') linkedPlanId = id;
 	}
 
-	// ---------- Archive / delete (bottom left) ----------
+	// ---------- Archive / delete (beside the state) ----------
 
 	// The item leaves at once and the reader moves to the next one; the change
 	// is sent after the Undo window (see reader-removals).
@@ -1206,7 +1204,7 @@
 							{/snippet}
 						</ReaderChip>
 					</div>
-					{@render editControl()}
+					{@render removeControl()}
 				</div>
 				{#snippet docText()}
 					{#if doc.content?.trim()}
@@ -1254,7 +1252,7 @@
 							</button>
 						{/each}
 					</div>
-					{@render editControl()}
+					{@render removeControl()}
 				</div>
 				<div class="facts">
 					{#if canWrite || task.priority != null}
@@ -1469,7 +1467,7 @@
 						{/snippet}
 					</ReaderChip>
 					<span class="tag">Updated {shortDate(goal.updated_at)}</span>
-					{@render editControl()}
+					{@render removeControl()}
 				</div>
 				{#snippet goalText()}
 					{#if description.trim()}
@@ -1487,49 +1485,59 @@
 				{@render textFrame(false, goalText)}
 			{/if}
 		</div>
-		{#if showDetails && DetailsPanel && current}
+		{#if current && !isTable}
 			{@const entity = current.task ?? current.goal ?? current.doc}
-			<div class="details-col">
-				{#key key}
-					<DetailsPanel
-						kind={item.kind}
-						id={item.id}
-						{projectId}
-						{canWrite}
-						{title}
-						props={(current.task?.props ?? null) as Record<string, unknown> | null}
-						assignees={current.task?.assignees ?? []}
-						createdAt={entity?.created_at ?? null}
-						completedAt={current.task?.state_key === 'done'
-							? (current.task.completed_at ?? null)
-							: null}
-						onAssignees={item.kind === 'task' ? saveAssignees : undefined}
-						onOpenLinked={openLinked}
-						onLinksChanged={detailsChanged}
-						onAllDetails={() => void openDetails()}
-						onClose={toggleDetails}
-					/>
-				{/key}
+			<div class={['details-dock', { open: showDetails }]}>
+				<button
+					type="button"
+					class="details-tab"
+					onclick={toggleDetails}
+					aria-expanded={showDetails}
+					aria-controls={detailsId}
+					aria-label={showDetails ? 'Collapse details' : 'Expand details'}
+					title={showDetails ? 'Collapse details (D)' : 'Expand details (D)'}
+				>
+					{#if showDetails}<ChevronRight class="h-4 w-4" />{:else}<ChevronLeft
+							class="h-4 w-4"
+						/>{/if}
+					<span>Details</span>
+				</button>
+				<div id={detailsId} class="details-col" hidden={!showDetails}>
+					{#if showDetails && DetailsPanel}
+						{#key key}
+							<DetailsPanel
+								kind={item.kind}
+								id={item.id}
+								{projectId}
+								{canWrite}
+								{title}
+								props={(current.task?.props ?? null) as Record<
+									string,
+									unknown
+								> | null}
+								assignees={current.task?.assignees ?? []}
+								createdAt={entity?.created_at ?? null}
+								completedAt={current.task?.state_key === 'done'
+									? (current.task.completed_at ?? null)
+									: null}
+								onAssignees={item.kind === 'task' ? saveAssignees : undefined}
+								onOpenLinked={openLinked}
+								onLinksChanged={detailsChanged}
+								onAllDetails={() => void openDetails()}
+							/>
+						{/key}
+					{:else if showDetails}
+						<div class="p-4 text-sm text-muted-foreground" role="status">
+							Loading details…
+						</div>
+					{/if}
+				</div>
 			</div>
 		{/if}
 	</div>
 
 	{#if !phone}
 		<footer class="keys">
-			{#if canWrite && current}
-				<button
-					type="button"
-					class="remove"
-					disabled={leaving}
-					onclick={() => void removeItem()}
-					title="{removal.label} this {word}. You can undo it for a few seconds."
-				>
-					{#if removal.label === 'Delete'}<Trash2 class="h-3.5 w-3.5" />{:else}<Archive
-							class="h-3.5 w-3.5"
-						/>{/if}
-					{removal.label}
-				</button>
-			{/if}
 			<span class="hints">
 				<span><kbd>↑</kbd> <kbd>↓</kbd> walk the list</span>
 				{#if canShowList}<span><kbd>F</kbd> focus</span>{/if}
@@ -1555,9 +1563,7 @@
 					disabled={!current || leaving}
 					onclick={() => void removeItem()}
 				>
-					{#if removal.label === 'Delete'}<Trash2 class="h-5 w-5" />{:else}<Archive
-							class="h-5 w-5"
-						/>{/if}
+					<Trash2 class="h-5 w-5" />
 					<span>{removal.label}</span>
 				</button>
 			{/if}
@@ -1605,24 +1611,20 @@
 	{/if}
 </div>
 
-<!-- Edit sits at the end of the first row of the body, not in the header. -->
-{#snippet editControl()}
-	{#if current && !isTable}
-		<span class="edit-slot">
-			<button
-				type="button"
-				class="act"
-				onclick={toggleDetails}
-				aria-pressed={detailsOpen}
-				aria-label="Details"
-				title="Assignees, links, comments and activity (D)"
-			>
-				{#if detailsOpen}<PanelRightClose class="h-3.5 w-3.5" />{:else}<PanelRightOpen
-						class="h-3.5 w-3.5"
-					/>{/if}
-				{#if !phone}<span>Details</span>{/if}
-			</button>
-		</span>
+<!-- Archive (or delete) sits beside the item's state, apart from it; the toast has Undo.
+     Phones keep it in the bottom bar. -->
+{#snippet removeControl()}
+	{#if canWrite && current && !phone}
+		<button
+			type="button"
+			class="remove"
+			disabled={leaving}
+			onclick={() => void removeItem()}
+			title="{removal.label} this {word}. You can undo it for a few seconds."
+		>
+			<Trash2 class="h-3.5 w-3.5" />
+			{removal.label}
+		</button>
 	{/if}
 {/snippet}
 
@@ -1965,26 +1967,73 @@
 		min-height: 0;
 		container-type: inline-size;
 	}
-	.details-col {
+	/* The tab shares the drawer's edge and stays reachable while its contents scroll. */
+	.details-dock {
+		--details-tab-width: 36px;
+		position: relative;
 		flex: none;
-		width: 300px;
+		width: var(--details-tab-width);
 		min-height: 0;
+	}
+	.phone .details-dock {
+		--details-tab-width: 44px;
+	}
+	.details-dock.open {
+		width: calc(300px + var(--details-tab-width));
+	}
+	.details-tab {
+		position: absolute;
+		top: 12px;
+		left: 0;
+		z-index: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 8px;
+		width: calc(var(--details-tab-width) + 1px);
+		padding: 12px 0;
+		border: 1px solid hsl(var(--border));
+		border-right: 0;
+		border-radius: 8px 0 0 8px;
+		background: hsl(var(--background));
+		color: hsl(var(--muted-foreground));
+		font-size: 12px;
+		font-weight: 500;
+	}
+	.details-tab span {
+		writing-mode: vertical-rl;
+	}
+	.details-tab[aria-expanded='true'] {
+		color: hsl(var(--foreground));
+	}
+	.details-tab:hover {
+		background: hsl(var(--muted));
+		color: hsl(var(--foreground));
+	}
+	.details-tab:focus-visible {
+		outline: 2px solid hsl(var(--ring));
+		outline-offset: -3px;
+	}
+	.details-col {
+		position: absolute;
+		inset: 0 0 0 var(--details-tab-width);
 		border-left: 1px solid hsl(var(--border));
+		background: hsl(var(--background));
 	}
 	@container (max-width: 760px) {
-		.details-col {
+		.details-dock.open {
 			position: absolute;
 			inset: 0 0 0 auto;
 			z-index: 6;
-			width: min(320px, 100%);
+			width: min(calc(320px + var(--details-tab-width)), 100%);
+		}
+		.details-dock.open .details-col {
 			box-shadow: -8px 0 24px hsl(0 0% 0% / 0.12);
 		}
 	}
 	@container (max-width: 480px) {
-		.details-col {
+		.details-dock.open {
 			width: 100%;
-			border-left: 0;
-			box-shadow: none;
 		}
 	}
 	.body {
@@ -2198,7 +2247,7 @@
 	.task-docs .tag {
 		margin-left: auto;
 	}
-	/* The body's first row: status (or a goal's or doc's facts) left, Edit far right. */
+	/* The body's first row holds the item's state and facts. */
 	.lead {
 		display: flex;
 		flex-wrap: wrap;
@@ -2219,12 +2268,6 @@
 	.facts.lead {
 		gap: 8px;
 		margin-bottom: 16px;
-	}
-	.edit-slot {
-		display: inline-flex;
-		align-items: center;
-		gap: 8px;
-		margin-left: auto;
 	}
 	.title-row {
 		display: flex;
@@ -2346,7 +2389,7 @@
 		align-items: center;
 		gap: 4px 16px;
 		border-top: 1px solid hsl(var(--border));
-		padding: 4px 16px 4px 8px;
+		padding: 4px 16px;
 		font-size: 12px;
 		color: hsl(var(--muted-foreground));
 	}
@@ -2357,14 +2400,15 @@
 		gap: 4px 16px;
 		margin-left: auto;
 	}
-	.keys .remove {
+	.lead .remove {
 		display: inline-flex;
 		flex: none;
 		align-items: center;
 		gap: 6px;
-		min-height: 28px;
-		border-radius: 8px;
-		padding: 0 8px;
+		min-height: 36px;
+		border: 1px solid hsl(var(--border));
+		border-radius: 10px;
+		padding: 0 12px;
 		font-size: 12px;
 		font-weight: 500;
 		color: hsl(var(--muted-foreground));
@@ -2372,12 +2416,17 @@
 			background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),
 			color 150ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
+	/* Beside chips (a doc's or goal's facts) it matches their height. */
+	.lead:not(:has(.states)) .remove {
+		min-height: 28px;
+		border-radius: 8px;
+	}
 	/* Neutral surface on hover; the red text alone says it removes. */
-	.keys .remove:hover:not(:disabled) {
+	.lead .remove:hover:not(:disabled) {
 		background: hsl(var(--muted));
 		color: hsl(var(--destructive));
 	}
-	.keys .remove:focus-visible {
+	.lead .remove:focus-visible {
 		outline: 2px solid hsl(var(--ring));
 		outline-offset: 1px;
 	}
@@ -2441,7 +2490,7 @@
 		.title-pencil,
 		.states button,
 		.task-docs li button,
-		.keys .remove {
+		.lead .remove {
 			transition: none;
 		}
 	}

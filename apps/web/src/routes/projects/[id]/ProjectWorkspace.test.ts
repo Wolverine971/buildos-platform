@@ -612,7 +612,7 @@ describe('ProjectWorkspace edge states', () => {
 		).toHaveLength(1);
 
 		// The goal's full form opens from the Details panel (words and facts edit in place).
-		await fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Expand details' }));
 		await vi.dynamicImportSettled();
 		await fireEvent.click(await screen.findByRole('button', { name: 'Open the full editor' }));
 		await vi.dynamicImportSettled();

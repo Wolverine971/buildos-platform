@@ -36,7 +36,7 @@
 	} from '$lib/icons/lucide';
 	import { isTableTypeKey, type LoadedTable } from '@buildos/shared-agent-ops/tables';
 	import { untrack } from 'svelte';
-	import { MediaQuery } from 'svelte/reactivity';
+	import { MediaQuery, SvelteMap } from 'svelte/reactivity';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import { slide } from 'svelte/transition';
 	import { resolve } from '$app/paths';
@@ -140,21 +140,64 @@
 				.map((doc) => doc.id)
 		)
 	);
-	const tasks = $derived(
-		[...withoutRemoved(data?.project.tasks ?? [])].sort(
-			(a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at)
-		)
-	);
+	// A state set in the reader shows in the list at once, before the card's next read.
+	const stateSet = new SvelteMap<string, string>();
+	// Rows keep the order they first had (most recently touched on top). Changing a
+	// task's state touches it, and re-sorting would jump that row to the top under you.
+	// Tasks that arrive later go on top. Plain, not state: it only ever grows.
+	const rank = new Map<string, number>();
+	let topRank = 0;
+	const tasks = $derived.by(() => {
+		const fresh = [...withoutRemoved(data?.project.tasks ?? [])]
+			.map((task) => {
+				const state = stateSet.get(task.id);
+				return state && state !== task.state_key ? { ...task, state_key: state } : task;
+			})
+			.sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at));
+		const first = rank.size === 0;
+		const unseen = fresh.filter((task) => !rank.has(task.id));
+		if (first) unseen.forEach((task, index) => rank.set(task.id, index));
+		else for (const task of unseen.reverse()) rank.set(task.id, --topRank);
+		return fresh.sort((a, b) => rank.get(a.id)! - rank.get(b.id)!);
+	});
+	// The card's read caught up with a state set here: the read wins from now on.
+	$effect(() => {
+		const read = data?.project.tasks ?? [];
+		untrack(() => {
+			for (const task of read)
+				if (stateSet.get(task.id) === task.state_key) stateSet.delete(task.id);
+		});
+	});
+	// A task whose state changes while you read stays in the section it was in (checked
+	// off, or back open) until the reader closes; then it slides to where it belongs.
+	const heldIn = new SvelteMap<string, 'open' | 'done'>();
+	$effect(() => {
+		if (reader?.kind !== 'task') untrack(() => heldIn.clear());
+	});
 	const goals = $derived(withoutRemoved(data?.goals ?? []));
-	const openTasks = $derived(tasks.filter((task) => task.state_key !== 'done'));
-	const doneTasks = $derived(tasks.filter((task) => task.state_key === 'done'));
+	const sectionOf = (task: { id: string; state_key: string }) =>
+		heldIn.get(task.id) ?? (task.state_key === 'done' ? 'done' : 'open');
+	const openTasks = $derived(tasks.filter((task) => sectionOf(task) === 'open'));
+	const doneTasks = $derived(tasks.filter((task) => sectionOf(task) === 'done'));
+	// Counts follow the real states, so Done ticks up the moment one is checked off.
+	const openCount = $derived(tasks.filter((task) => task.state_key !== 'done').length);
+	const doneCount = $derived(tasks.length - openCount);
+	let doneBump = $state(0);
+
+	function taskStateChanged(id: string, state: string, previous: string) {
+		if (!heldIn.has(id)) heldIn.set(id, previous === 'done' ? 'done' : 'open');
+		stateSet.set(id, state);
+		if (state === 'done') doneBump += 1;
+		onChanged();
+	}
 	// The same split as the tile's T bar, from the card's fresher task list.
 	const taskMix = $derived.by(() => {
 		const mix = Object.fromEntries(TASK_BUCKETS.map((bucket) => [bucket, 0])) as Record<
 			TaskBucket,
 			number
 		>;
-		for (const task of openTasks) {
+		for (const task of tasks) {
+			if (task.state_key === 'done') continue;
 			const bucket = taskBucket(task, now);
 			if (bucket !== 'done') mix[bucket] += 1;
 		}
@@ -181,7 +224,7 @@
 				label: workspace ? 'Notes & docs' : 'Docs',
 				count: data ? data.project.documents.length : project.document_count
 			},
-			{ key: 'tasks', label: 'Tasks', count: data ? openTasks.length : project.task_count },
+			{ key: 'tasks', label: 'Tasks', count: data ? openCount : project.task_count },
 			...(workspace
 				? []
 				: [
@@ -519,6 +562,7 @@
 		{onOpenItem}
 		{onCloseItem}
 		{onChanged}
+		onTaskState={taskStateChanged}
 		{workspace}
 	>
 		{#snippet list()}
@@ -687,7 +731,7 @@
 						{#each openTasks as task (task.id)}
 							{@render taskRow(task)}
 						{/each}
-						{#if doneTasks.length}
+						{#if doneCount}
 							<button
 								type="button"
 								class="mt-1 flex min-h-9 items-center gap-2 rounded-lg px-2 text-left text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground motion-reduce:transition-none"
@@ -700,9 +744,10 @@
 										: ''}"
 								/>
 								<span
-									>Done<span class="ml-1 font-mono font-normal tabular-nums"
-										>{doneTasks.length}</span
-									></span
+									>Done{#key doneBump}<span
+											class="ml-1 font-mono font-normal tabular-nums"
+											class:bump={doneBump > 0}>{doneCount}</span
+										>{/key}</span
 								>
 							</button>
 							{#if showDone}
@@ -882,7 +927,10 @@
 		data-drag-project={movable ? project.id : undefined}
 	>
 		<span></span>
-		<span class="glyph bucket-{bucket}">
+		<span
+			class="glyph bucket-{bucket}"
+			class:checked={heldIn.has(task.id) && task.state_key === 'done'}
+		>
 			{#if task.state_key === 'done'}<CircleCheck
 					class="h-4 w-4"
 				/>{:else if task.state_key === 'in_progress'}<CircleDot
@@ -1190,6 +1238,33 @@
 		width: 28px;
 		height: 28px;
 		color: hsl(var(--muted-foreground));
+	}
+	/* Checked off while reading: the check pops in; the Done count ticks up beside it. */
+	.glyph.checked {
+		color: hsl(var(--success));
+		animation: check-pop 260ms cubic-bezier(0.22, 1, 0.36, 1);
+	}
+	.bump {
+		display: inline-block;
+		animation: count-bump 420ms cubic-bezier(0.22, 1, 0.36, 1);
+	}
+	@keyframes check-pop {
+		from {
+			transform: scale(0.6);
+			opacity: 0.4;
+		}
+	}
+	@keyframes count-bump {
+		30% {
+			transform: translateY(-3px);
+			color: hsl(var(--foreground));
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.glyph.checked,
+		.bump {
+			animation: none;
+		}
 	}
 	/* Task colors match the tile's T bar (desktop-colors.css). */
 	.bucket-overdue {

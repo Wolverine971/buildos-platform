@@ -9,6 +9,7 @@
 	import ErrorBoundary from '$lib/components/ui/ErrorBoundary.svelte';
 	import { onDestroy, onMount, untrack } from 'svelte';
 	import {
+		afterNavigate,
 		goto,
 		invalidate,
 		invalidateAll,
@@ -344,11 +345,17 @@
 
 	// `?open=kind:id`: open the item once the tiles are in. The landing entry loses the
 	// parameter first, so Back from the card returns to a plain /projects.
-	let handledOpen: unknown = null;
+	// Only a navigation honors it. A refresh after an edit (invalidate) reruns the load with
+	// the landing address, `?open` and all, and used to reopen that item over whatever you
+	// had moved on to.
+	let openArmed = $state(false);
+	afterNavigate(() => {
+		openArmed = true;
+	});
 	$effect(() => {
 		const pending = data.openTarget;
-		if (!pending || pending === handledOpen || projectsLoading || !desktop) return;
-		handledOpen = pending;
+		if (!openArmed || !pending || projectsLoading || !desktop) return;
+		openArmed = false;
 		void Promise.resolve(pending).then((target) => {
 			const url = new URL(page.url);
 			url.searchParams.delete('open');
@@ -421,6 +428,19 @@
 		return (payload?.data ?? payload) as T;
 	}
 
+	// invalidate() resets page.state, and the open card and its reader live there: a
+	// refresh while a card is open closed it (and the `?open` link then reopened it, the
+	// "page refreshed" flash). The card reads its own data fresh, so the tiles behind it
+	// wait and refresh once when it closes.
+	let projectsStale = false;
+	function refreshProjects() {
+		if (page.state.desktopCard) {
+			projectsStale = true;
+			return;
+		}
+		void invalidate('ontology:projects');
+	}
+
 	async function refreshWorkspace() {
 		try {
 			workspaceHome = await workspaceRequest<WorkspaceHome>('/api/workspace');
@@ -475,13 +495,13 @@
 			result.outcome === 'moved' ||
 			result.outcome === 'partial'
 		)
-			void invalidate('ontology:projects');
+			refreshProjects();
 	}
 
 	function handleSortUndone(result: CaptureUndoResult) {
 		removeLoose(result.removed_ids);
 		if (result.restored) addLoose([result.restored]);
-		void invalidate('ontology:projects');
+		refreshProjects();
 	}
 
 	function looseTitle(item: DesktopItem): string | null {
@@ -505,7 +525,7 @@
 				{ action: 'accept' }
 			);
 			removeLoose(suggestion.items.map((ref) => ref.id));
-			void invalidate('ontology:projects');
+			refreshProjects();
 			const label = receipt.moved === 1 ? '1 item' : `${receipt.moved} items`;
 			const toastId: string = toastService.add({
 				type: 'success',
@@ -546,7 +566,7 @@
 			);
 			if (!filed.length) return;
 			removeLoose(filed.flatMap((entry) => entry.item_ids));
-			void invalidate('ontology:projects');
+			refreshProjects();
 			for (const entry of filed) {
 				const name = projectsById.get(entry.project_id)?.name ?? 'a project';
 				const what =
@@ -595,7 +615,7 @@
 		} catch (err) {
 			toastService.error(err instanceof Error ? err.message : 'Could not undo that.');
 		} finally {
-			void invalidate('ontology:projects');
+			refreshProjects();
 			void refreshWorkspace();
 		}
 	}
@@ -890,6 +910,11 @@
 	const isSearching = $derived(searchQuery.trim().length > 0);
 	// A desktop card takes the page; search and filters come back when it closes.
 	const desktopCardOpen = $derived(Boolean(page.state.desktopCard));
+	$effect(() => {
+		if (desktopCardOpen || !projectsStale) return;
+		projectsStale = false;
+		void invalidate('ontology:projects');
+	});
 
 	function applyProjectPatches(patches: ProjectPatch[]) {
 		const byId = new Map(patches.map(({ id, patch }) => [id, patch]));
@@ -1493,7 +1518,7 @@
 					onPatch={applyProjectPatches}
 					onOpenFull={handleProjectClick}
 					onDataChanged={() => {
-						void invalidate('ontology:projects');
+						refreshProjects();
 						void refreshWorkspace();
 					}}
 				/>

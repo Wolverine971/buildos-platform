@@ -514,6 +514,19 @@ describe('ProjectDesktop', () => {
 			).toBe(JSON.stringify({ state_key: 'done' }))
 		);
 		await waitFor(() => expect(onDataChanged).toHaveBeenCalled());
+		// The row stays where it was, checked off, while you read it (even after the card's
+		// next read), and the Done pile counts it at once.
+		const row = screen.getByRole('button', { name: 'Call Ana' });
+		expect(row.getAttribute('aria-current')).toBe('true');
+		expect(row.className).toContain('line-through');
+		expect(row.closest('[data-row-id]')?.querySelector('.glyph.checked')).toBeTruthy();
+		const rows = [...document.querySelectorAll('[data-row-id]')].map((el) =>
+			el.getAttribute('data-row-id')
+		);
+		expect(rows.indexOf('t1')).toBeLessThan(rows.indexOf('t2'));
+		expect(screen.getByRole('button', { name: /^Done\s*1$/ })).toBeTruthy();
+		// Archive sits beside the states now, with a trash can.
+		expect(screen.getByRole('button', { name: 'Archive' })).toBeTruthy();
 
 		// The reader's brain bolt opens the full chat window about the task.
 		await fireEvent.click(screen.getByRole('button', { name: 'Chat about this task' }));
