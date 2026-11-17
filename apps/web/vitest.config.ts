@@ -151,6 +151,9 @@ export default defineConfig({
 			'**/lib/tests/agentic-e2e/__tests__/**',
 			// Playwright specs, not vitest.
 			'**/lib/tests/agentic-e2e/browser/**',
+			// The layout-shift harness drives a real browser against a dev server;
+			// run it with `pnpm test:layout-shift`. Its judge and shadow tests stay in CI.
+			'**/lib/tests/layout-shift/**/*.live.test.ts',
 			'tests/browser/**'
 		],
 		// Suppress console output during tests for cleaner output

@@ -163,6 +163,11 @@ describe('SupabaseAgenticChatResearchCaptureAdapter', () => {
 			2,
 			'apply_agentic_chat_research_capture',
 			expect.objectContaining({
+				p_turn_run_id: TURN_RUN_ID,
+				p_queue_job_id: QUEUE_JOB_ID,
+				p_processing_token: PROCESSING_TOKEN,
+				p_execution_generation: EXECUTION_GENERATION,
+				p_user_id: USER_ID,
 				p_project_id: PROJECT_ID,
 				p_stream_run_id: executionInput.streamRunId,
 				p_rendered_entry:
@@ -174,8 +179,13 @@ describe('SupabaseAgenticChatResearchCaptureAdapter', () => {
 		expect(applyArgs.p_canonical_argument_hash).toMatch(/^[0-9a-f]{64}$/);
 	});
 
-	it('does not apply for non-eligible or cancelled evidence', async () => {
-		for (const outcome of ['not_eligible', 'cancel_requested'] as const) {
+	it('does not apply without eligible, current, non-terminal ownership', async () => {
+		for (const outcome of [
+			'not_eligible',
+			'cancel_requested',
+			'stale_generation',
+			'already_terminal'
+		] as const) {
 			const rpc = vi.fn(async () => ({ data: evidenceReceipt(outcome), error: null }));
 			const adapter = new SupabaseAgenticChatResearchCaptureAdapter({ rpc });
 			await expect(
@@ -188,6 +198,34 @@ describe('SupabaseAgenticChatResearchCaptureAdapter', () => {
 			expect(rpc).toHaveBeenCalledOnce();
 		}
 	});
+
+	it.each(['load_agentic_chat_research_capture_evidence', 'apply_agentic_chat_research_capture'])(
+		'stops capture when %s rejects ownership',
+		async (deniedRpc) => {
+			const rpc = vi.fn(async (name: string) =>
+				name === deniedRpc
+					? { data: null, error: { code: '42501', message: 'ownership denied' } }
+					: { data: evidenceReceipt(), error: null }
+			);
+			const adapter = new SupabaseAgenticChatResearchCaptureAdapter({ rpc });
+			await expect(
+				adapter.capture({
+					executionInput,
+					processingToken: PROCESSING_TOKEN,
+					signal: new AbortController().signal
+				})
+			).rejects.toMatchObject({
+				name: 'AgenticChatResearchCaptureRpcError',
+				code: '42501',
+				rpcName: deniedRpc
+			});
+			expect(rpc.mock.calls.map(([name]) => name)).toEqual(
+				deniedRpc === 'load_agentic_chat_research_capture_evidence'
+					? [deniedRpc]
+					: ['load_agentic_chat_research_capture_evidence', deniedRpc]
+			);
+		}
+	);
 
 	it('skips projectless turns before SQL and rejects cross-bound receipts', async () => {
 		const rpc = vi.fn();
@@ -225,9 +263,9 @@ describe('SupabaseAgenticChatResearchCaptureAdapter', () => {
 
 describe('agenticChatResearchCaptureMayQualifyV1', () => {
 	it('lets a first generation skip the evidence query below the shared research threshold', () => {
-		expect(agenticChatResearchCaptureMayQualifyV1({ executionGeneration: 1, toolNames: [] })).toBe(
-			false
-		);
+		expect(
+			agenticChatResearchCaptureMayQualifyV1({ executionGeneration: 1, toolNames: [] })
+		).toBe(false);
 		expect(
 			agenticChatResearchCaptureMayQualifyV1({
 				executionGeneration: 1,
@@ -259,8 +297,8 @@ describe('agenticChatResearchCaptureMayQualifyV1', () => {
 	});
 
 	it('always runs the query for a later generation, whose earlier rows are not in memory', () => {
-		expect(agenticChatResearchCaptureMayQualifyV1({ executionGeneration: 2, toolNames: [] })).toBe(
-			true
-		);
+		expect(
+			agenticChatResearchCaptureMayQualifyV1({ executionGeneration: 2, toolNames: [] })
+		).toBe(true);
 	});
 });

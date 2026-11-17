@@ -104,7 +104,7 @@ describe('SupabaseAgenticChatEffectControlAdapter', () => {
 	});
 
 	it('grants mutation authority only for the single valid begin winner', async () => {
-		const { adapter } = createAdapter(
+		const { adapter, rpc } = createAdapter(
 			receipt({
 				state: 'started',
 				startedAt: STARTED_AT,
@@ -116,6 +116,15 @@ describe('SupabaseAgenticChatEffectControlAdapter', () => {
 		await expect(
 			adapter.begin({ ...identity, providerToolCallId: 'provider-call-1' })
 		).resolves.toMatchObject({ outcome: 'started', invokeAdapter: true });
+		expect(rpc).toHaveBeenCalledWith('begin_agentic_chat_effect', {
+			p_turn_run_id: TURN_RUN_ID,
+			p_queue_job_id: QUEUE_JOB_ID,
+			p_processing_token: PROCESSING_TOKEN,
+			p_execution_generation: 2,
+			p_effect_id: EFFECT_ID,
+			p_canonical_argument_hash: ARGUMENT_HASH,
+			p_provider_tool_call_id: 'provider-call-1'
+		});
 
 		const invalid = createAdapter(
 			receipt({
@@ -148,6 +157,17 @@ describe('SupabaseAgenticChatEffectControlAdapter', () => {
 				failureCode: 'uncertain_external_commit'
 			})
 		).resolves.toMatchObject({ state: 'uncertain', outcome: 'reconciled' });
+		expect(rpc).toHaveBeenCalledWith('reconcile_agentic_chat_effect', {
+			p_turn_run_id: TURN_RUN_ID,
+			p_queue_job_id: QUEUE_JOB_ID,
+			p_processing_token: PROCESSING_TOKEN,
+			p_execution_generation: 2,
+			p_effect_id: EFFECT_ID,
+			p_canonical_argument_hash: ARGUMENT_HASH,
+			p_target_state: 'uncertain',
+			p_downstream_receipt: null,
+			p_failure_code: 'uncertain_external_commit'
+		});
 		await expect(
 			adapter.reconcile({
 				...identity,
@@ -179,6 +199,7 @@ describe('SupabaseAgenticChatEffectControlAdapter', () => {
 	it('rejects identity, state, timestamp, receipt, and authority corruption', async () => {
 		const corruptions = [
 			{ userId: TURN_RUN_ID },
+			{ executionGeneration: 1 },
 			{ state: 'started', startedAt: null, outcome: 'started', invokeAdapter: true },
 			{ state: 'succeeded', startedAt: STARTED_AT, finishedAt: null, outcome: 'existing' },
 			{
@@ -202,17 +223,33 @@ describe('SupabaseAgenticChatEffectControlAdapter', () => {
 		}
 	});
 
-	it('keeps database errors typed and does not expose a missing receipt as success', async () => {
-		const rpcError = new SupabaseAgenticChatEffectControlAdapter({
-			rpc: vi.fn(async () => ({
+	it.each(['reserve', 'begin', 'reconcile'] as const)(
+		'%s preserves a database fence denial without retrying or granting authority',
+		async (operation) => {
+			const rpc = vi.fn(async () => ({
 				data: null,
-				error: { code: '23505', message: 'effect identity conflict' }
-			}))
-		});
-		await expect(
-			rpcError.begin({ ...identity, providerToolCallId: null })
-		).rejects.toBeInstanceOf(AgenticChatEffectControlRpcError);
+				error: { code: '42501', message: 'execution ownership denied' }
+			}));
+			const adapter = new SupabaseAgenticChatEffectControlAdapter({ rpc });
+			const request = {
+				...identity,
+				toolName: 'fixture_project_write',
+				operationName: 'update_project',
+				providerToolCallId: null,
+				targetState: 'uncertain' as const,
+				downstreamReceipt: null,
+				failureCode: 'uncertain_external_commit'
+			};
+			await expect(adapter[operation](request)).rejects.toMatchObject({
+				name: AgenticChatEffectControlRpcError.name,
+				code: '42501',
+				rpcName: `${operation}_agentic_chat_effect`
+			});
+			expect(rpc).toHaveBeenCalledOnce();
+		}
+	);
 
+	it('does not expose a missing receipt as success', async () => {
 		const missing = createAdapter(null).adapter;
 		await expect(
 			missing.begin({ ...identity, providerToolCallId: null })

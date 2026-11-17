@@ -29,7 +29,7 @@ import {
 } from '@buildos/shared-agent-ops/tables';
 import {
 	type NativeSearchCacheRpcClient,
-	createSupabaseNativeSearchDiscoveryCacheStore
+	createSupabaseNativeSearchDiscoveryCacheStores
 } from '@buildos/shared-agent-ops/web/native-search';
 import { type JSONRequestOptions, LLMUsageLogger } from '@buildos/smart-llm';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
@@ -260,9 +260,10 @@ function createDefaultSearch(): TableAiFillSearch | null {
 		(process.env.NATIVE_SEARCH_DURABLE_CACHE_ENABLED ?? '').trim().toLowerCase()
 	);
 	const port = createAgentRunWebResearchPort({
+		purpose: 'table_fill',
 		tavilyCreditCostUsd: resolveTavilyCreditCostUsd(),
-		searchCacheStore: durable
-			? createSupabaseNativeSearchDiscoveryCacheStore(
+		searchCacheStores: durable
+			? createSupabaseNativeSearchDiscoveryCacheStores(
 					defaultSupabase as unknown as NativeSearchCacheRpcClient
 				)
 			: undefined

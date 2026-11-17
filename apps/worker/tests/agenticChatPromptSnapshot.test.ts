@@ -153,6 +153,17 @@ describe('Agentic Chat prompt snapshots', () => {
 		});
 	});
 
+	it('propagates ownership denial without reporting a saved snapshot or retrying', async () => {
+		const rpc = vi.fn(async () => ({
+			data: null,
+			error: { code: '42501', message: 'ownership denied' }
+		}));
+		await expect(
+			new SupabaseAgenticChatPromptSnapshotAdapter({ rpc }).persist(input)
+		).rejects.toMatchObject({ name: 'AgenticChatPromptSnapshotRpcError', code: '42501' });
+		expect(rpc).toHaveBeenCalledOnce();
+	});
+
 	it('rejects locally inconsistent prompt evidence before calling the database', async () => {
 		const { adapter, rpc } = adapterFor(receipt());
 		await expect(
@@ -289,7 +300,12 @@ describe('Agentic Chat context-injection record', () => {
 		});
 		expect(
 			(updates[0]!.prompt_sections as Record<string, unknown>).context_injection
-		).toMatchObject({ injected: false, text: null, status: 'unavailable', failure: 'deadline' });
+		).toMatchObject({
+			injected: false,
+			text: null,
+			status: 'unavailable',
+			failure: 'deadline'
+		});
 	});
 
 	it('writes nothing when the turn has no snapshot row or no table access', async () => {

@@ -398,7 +398,7 @@ export function createAgenticChatCompositionRoot(options: {
 		mutationCapabilities
 	);
 	const readTool = new AgenticChatToolExecutionAdapter(options.client, {
-		webResearch: options.webResearch ?? createAgentRunWebResearchPort(),
+		webResearch: options.webResearch ?? createAgentRunWebResearchPort({ purpose: 'chat' }),
 		...(options.usage ? { usage: options.usage } : {}),
 		...(options.webNavigator ? { webNavigator: options.webNavigator } : {}),
 		...(options.emailRelevanceDecider

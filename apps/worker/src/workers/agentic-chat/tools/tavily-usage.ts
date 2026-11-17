@@ -10,8 +10,10 @@ import type { LLMUsageLogger } from '@buildos/smart-llm';
 export type TavilyUsageLogger = Pick<LLMUsageLogger, 'logUsageToDatabase'>;
 
 export interface TavilyCharge {
-	/** e.g. `tavily/search-advanced`, `tavily/extract-advanced` */
+	/** e.g. `tavily/search-advanced`, `tavily/extract-advanced`, `serper/search` */
 	model: string;
+	/** Who billed it; Tavily unless said otherwise. */
+	provider?: 'tavily' | 'serper';
 	credits: number;
 	costUsd: number;
 	providerRequestId?: string | null;
@@ -40,7 +42,7 @@ export async function logTavilyCharge(
 			operationType: context.operationType,
 			modelRequested: charge.model,
 			modelUsed: charge.model,
-			provider: 'tavily',
+			provider: charge.provider ?? 'tavily',
 			promptTokens: 0,
 			completionTokens: 0,
 			totalTokens: 0,
@@ -55,7 +57,9 @@ export async function logTavilyCharge(
 			...(context.turnRunId ? { turnRunId: context.turnRunId } : {}),
 			metadata: {
 				...(context.metadata ?? {}),
-				tavily_credits: charge.credits,
+				...((charge.provider ?? 'tavily') === 'tavily'
+					? { tavily_credits: charge.credits }
+					: { provider_credits: charge.credits }),
 				provider_request_id: charge.providerRequestId ?? null,
 				...(charge.source ? { charge_source: charge.source } : {})
 			}

@@ -10,7 +10,9 @@ const base = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(base, '../../..');
 const localRequire = createRequire(path.join(repo, 'apps/web/package.json'));
 const { chromium } = localRequire('@playwright/test');
-const browser = await chromium.launch({ channel: 'chrome' });
+const browser = await chromium.launch({
+	executablePath: `${process.env.HOME}/.local/bin/headless-chrome`
+});
 try {
 	const page = await browser.newPage({ viewport: { width: 1200, height: 900 } });
 	const errors = [];

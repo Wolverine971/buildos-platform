@@ -10,6 +10,7 @@ import type {
 } from '@buildos/shared-agent-ops/knowledge';
 import { KNOWLEDGE_KIND_DEFINITIONS } from '@buildos/shared-agent-ops/knowledge';
 import { requireApiData } from '$lib/utils/api-client-helpers';
+import type { ResearchTrayPayload } from './research-tray';
 import {
 	BookUser,
 	Building,
@@ -137,6 +138,8 @@ export const knowledgeApi = {
 		kind?: KnowledgeKind | null;
 		filter?: string;
 		q?: string;
+		researched?: 'any' | 'yes' | 'no';
+		sort?: 'recent' | 'name' | 'researched';
 		limit?: number;
 		offset?: number;
 	}) {
@@ -144,6 +147,9 @@ export const knowledgeApi = {
 		if (params.kind) search.set('kind', params.kind);
 		if (params.filter) search.set('filter', params.filter);
 		if (params.q) search.set('q', params.q);
+		if (params.researched && params.researched !== 'any')
+			search.set('researched', params.researched);
+		if (params.sort && params.sort !== 'recent') search.set('sort', params.sort);
 		search.set('limit', String(params.limit ?? 60));
 		if (params.offset) search.set('offset', String(params.offset));
 		return call<KnowledgeListResult>(`/api/knowledge/entities?${search}`);
@@ -205,11 +211,26 @@ export const knowledgeApi = {
 			skipped: number;
 		}>(`/api/knowledge/youtube`, json({ urls, own }));
 	},
-	enrich(entityIds: string[], fields?: string[]) {
-		return call<{ runId: string; targets: unknown[]; budget_usd: number }>(
-			`/api/knowledge/enrich`,
-			json({ entity_ids: entityIds, ...(fields?.length ? { fields } : {}) })
-		);
+	enrich(body: {
+		entity_ids: string[];
+		fields?: string[];
+		instructions?: string;
+		entry_instructions?: Record<string, string>;
+	}) {
+		return call<{
+			runs: Array<{ runId: string; budget_usd: number; targets: number }>;
+			queued: number;
+			budget_usd: number;
+			skipped: Array<{ entity_id: string; reason: string }>;
+			not_queued: string[];
+			refused: string | null;
+		}>(`/api/knowledge/enrich`, json(body));
+	},
+	research() {
+		return call<ResearchTrayPayload>(`/api/knowledge/research`);
+	},
+	cancelResearch(target: { target_id: string } | { run_id: string }) {
+		return call<{ cancelled: number }>(`/api/knowledge/research/cancel`, json(target));
 	},
 	run(id: string) {
 		return call<{

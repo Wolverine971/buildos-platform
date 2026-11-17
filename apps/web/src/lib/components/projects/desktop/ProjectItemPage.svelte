@@ -26,6 +26,7 @@
 	import ReaderTaskList from './ReaderTaskList.svelte';
 	import { treeWithoutRemoved, withoutRemoved } from './reader-removals.svelte';
 	import { groupTasksForReader, taskReaderOrder } from './reader-task-groups';
+	import { TaskHold } from './reader-task-hold.svelte';
 	import type { ReaderItem, ReaderKind } from './reader-model';
 
 	let { data }: { data: ProjectItemPageData } = $props();
@@ -63,7 +64,14 @@
 				.map((doc) => doc.id)
 		)
 	);
-	const taskGroups = $derived(groupTasksForReader(withoutRemoved(card?.project.tasks ?? [])));
+	// A task changed in the reader keeps its row until the reader moves off tasks.
+	const taskHold = new TaskHold();
+	$effect(() => {
+		if (item.kind !== 'task') untrack(() => taskHold.release());
+	});
+	const taskGroups = $derived(
+		groupTasksForReader(withoutRemoved(card?.project.tasks ?? []), taskHold.held)
+	);
 	const openTaskCount = $derived(
 		taskGroups.reduce(
 			(total, group) => total + (group.key === 'done' ? 0 : group.tasks.length),
@@ -158,6 +166,11 @@
 		void refreshCard();
 	}
 
+	function taskState(id: string, _state: string, previous: string) {
+		taskHold.change(id, previous);
+		changed();
+	}
+
 	function keydown(event: KeyboardEvent) {
 		if (event.defaultPrevented || document.querySelector('[role="dialog"]')) return;
 		if (panes?.handleKey(event)) event.preventDefault();
@@ -223,6 +236,7 @@
 			onOpenItem={openItem}
 			onCloseItem={closeItem}
 			onChanged={changed}
+			onTaskState={taskState}
 		>
 			{#snippet list()}
 				<div class="rail-tabs" role="tablist" aria-label="Show">

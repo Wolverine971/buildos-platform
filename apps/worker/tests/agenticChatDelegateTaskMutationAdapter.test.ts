@@ -80,6 +80,41 @@ function dispatchReceipt() {
 }
 
 describe('AgenticChatDelegateTaskMutationAdapter', () => {
+	it.each([
+		['changed effect key', 'mutation_effect_identity_invalid'],
+		['unadmitted tool', 'mutation_tool_not_admitted'],
+		['cancelled attempt', 'mutation_cancelled_before_dispatch']
+	])('rejects %s before any downstream work', async (scenario, failureCode) => {
+		const downstream = vi.fn();
+		const access = vi.fn();
+		const adapter = new AgenticChatDelegateTaskMutationAdapter({} as never, {
+			dispatch: downstream,
+			assertProjectWriteAccess: access
+		});
+		const input = mutationInput() as Parameters<
+			AgenticChatDelegateTaskMutationAdapter['execute']
+		>[0];
+		if (scenario === 'changed effect key') {
+			input.downstreamIdempotencyKey = 'chat-effect:another-effect';
+		} else if (scenario === 'unadmitted tool') {
+			input.executionInput.artifact.prepared.toolSurface = {
+				version: 1,
+				surfaceProfile: 'no_mutations',
+				toolNames: [],
+				definitions: []
+			};
+		} else {
+			input.signal = AbortSignal.abort(new Error('cancelled'));
+		}
+
+		await expect(adapter.execute(input)).rejects.toMatchObject({
+			disposition: 'known_failed',
+			failureCode
+		});
+		expect(downstream).not.toHaveBeenCalled();
+		expect(access).not.toHaveBeenCalled();
+	});
+
 	it('atomically dispatches a focused review-required Agent Run without applying changes', async () => {
 		const dispatch = vi.fn(async () => dispatchReceipt());
 		const assertProjectWriteAccess = vi.fn(async () => undefined);

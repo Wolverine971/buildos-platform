@@ -5,6 +5,11 @@
 	the next (org → people → person). On phones the card opens as a sheet. Chat is the main way
 	in; "Ask in chat" hands an entry to it.
 
+	Research at scale (tasker 164): filter and sort by researched / not researched, tick entries
+	(shift-click for a range) and press Enrich N; the "What should we look for?" dialog starts
+	the research and the bottom-right tray shows it running while you keep browsing. One poll
+	(KnowledgeResearchQueue) feeds the tray, the dialog's allowance and every card.
+
 	PRIVACY: the search text stays in component state, never in the URL. Only the open entry's
 	id (?e=) is in the URL so a chat card can link straight to it.
 -->
@@ -17,6 +22,15 @@
 	import { loadAgentChatModal } from '$lib/components/agent/load-agent-chat-modal';
 	import KnowledgeEntityCard from '$lib/components/knowledge/KnowledgeEntityCard.svelte';
 	import KnowledgeImportDialog from '$lib/components/knowledge/KnowledgeImportDialog.svelte';
+	import KnowledgeEnrichDialog from '$lib/components/knowledge/KnowledgeEnrichDialog.svelte';
+	import KnowledgeResearchTray from '$lib/components/knowledge/KnowledgeResearchTray.svelte';
+	import { KnowledgeResearchQueue } from '$lib/components/knowledge/research-queue.svelte';
+	import {
+		isActiveTarget,
+		type EnrichEntry,
+		type EnrichStarted,
+		type ResearchTarget
+	} from '$lib/components/knowledge/research-tray';
 	import {
 		KIND_ICON,
 		KIND_LABEL,
@@ -27,14 +41,25 @@
 		type KnowledgeKind,
 		type KnowledgeListResult
 	} from '$lib/components/knowledge/knowledge-client';
-	import { GitMerge, Loader2, Plus, Search, Share2, Upload, X } from '$lib/icons/lucide';
+	import {
+		GitMerge,
+		Loader2,
+		Plus,
+		Search,
+		Share2,
+		Sparkles,
+		Upload,
+		X
+	} from '$lib/icons/lucide';
 	import { toastService } from '$lib/stores/toast.store';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
 	type Filter = 'all' | 'known' | 'owned';
-	type Row = KnowledgeEntitySummary & { updated_at: string };
+	type Researched = 'any' | 'yes' | 'no';
+	type Sort = 'recent' | 'name' | 'researched';
+	type Row = KnowledgeEntitySummary & { updated_at: string; researched_at?: string | null };
 
 	// First paint only; the page reloads its own list after.
 	// svelte-ignore state_referenced_locally
@@ -46,6 +71,9 @@
 	let filter = $state<Filter>('all');
 	let kind = $state<KnowledgeKind | null>(null);
 	let query = $state('');
+	let researched = $state<Researched>('any');
+	let sort = $state<Sort>('recent');
+	let researchedCounts = $state<{ yes: number; no: number } | null>(initial?.researched ?? null);
 	let loading = $state(false);
 	let loadingMore = $state(false);
 	let stack = $state<string[]>([]);
@@ -62,7 +90,20 @@
 	const wide = $derived(innerWidth >= 1024);
 	const selected = $derived(stack.at(-1) ?? null);
 	const everythingCount = $derived(Object.values(counts).reduce((sum, n) => sum + (n ?? 0), 0));
-	const isEmpty = $derived(!loading && everythingCount === 0 && !query && filter === 'all');
+	const isEmpty = $derived(
+		!loading && everythingCount === 0 && !query && filter === 'all' && researched === 'any'
+	);
+
+	// Research: one queue for the tray, the dialog and the cards.
+	const research = new KnowledgeResearchQueue({ onSettled: onResearchSettled });
+	let enrichEntries = $state<EnrichEntry[] | null>(null);
+	/** Ticked entries (kept across filters and pages), by id. */
+	let picked = $state.raw<Map<string, Row>>(new Map());
+	let lastPickIndex: number | null = null;
+	const pickedCount = $derived(picked.size);
+	const allShownPicked = $derived(rows.length > 0 && rows.every((r) => picked.has(r.id)));
+	const someShownPicked = $derived(rows.some((r) => picked.has(r.id)));
+	const maxBatch = $derived(research.allowance?.max_batch ?? 75);
 
 	let requestSeq = 0;
 	async function refresh(options: { append?: boolean } = {}) {
@@ -73,6 +114,8 @@
 			const result = await knowledgeApi.list({
 				kind,
 				filter,
+				researched,
+				sort,
 				q: query.trim() || undefined,
 				limit: 60,
 				offset: options.append ? rows.length : 0
@@ -81,6 +124,7 @@
 			rows = options.append ? [...rows, ...result.entities] : result.entities;
 			total = result.total;
 			knownCount = result.known_count;
+			researchedCounts = result.researched ?? null;
 			if (!kind) counts = result.counts;
 		} catch (error) {
 			if (seq === requestSeq)
@@ -107,10 +151,99 @@
 		searchTimer = setTimeout(() => void refresh(), 250);
 	}
 
-	function choose(next: { filter?: Filter; kind?: KnowledgeKind | null }) {
+	function choose(next: {
+		filter?: Filter;
+		kind?: KnowledgeKind | null;
+		researched?: Researched;
+		sort?: Sort;
+	}) {
 		if (next.filter !== undefined) filter = next.filter;
 		if (next.kind !== undefined) kind = next.kind;
+		if (next.researched !== undefined) researched = next.researched;
+		if (next.sort !== undefined) sort = next.sort;
+		lastPickIndex = null;
 		void refresh();
+	}
+
+	function togglePick(row: Row, index: number, event: MouseEvent) {
+		const on = !picked.has(row.id);
+		const from = event.shiftKey && lastPickIndex !== null ? lastPickIndex : index;
+		const range = rows.slice(Math.min(from, index), Math.max(from, index) + 1);
+		const next = new Map(picked);
+		for (const r of range) {
+			if (on) next.set(r.id, r);
+			else next.delete(r.id);
+		}
+		picked = next;
+		lastPickIndex = index;
+	}
+
+	function toggleAllShown() {
+		const next = new Map(picked);
+		for (const r of rows) {
+			if (allShownPicked) next.delete(r.id);
+			else next.set(r.id, r);
+		}
+		picked = next;
+	}
+
+	function clearPicked() {
+		picked = new Map();
+		lastPickIndex = null;
+	}
+
+	function enrichPicked() {
+		enrichEntries = [...picked.values()].map((r) => ({
+			id: r.id,
+			name: r.name,
+			kind: r.kind,
+			researched_at: r.researched_at ?? null
+		}));
+	}
+
+	function onEnrichStarted(result: EnrichStarted) {
+		enrichEntries = null;
+		const notQueued = new Set(result.not_queued);
+		// Keep ticked only what didn't start, so it can be sent again later.
+		picked = new Map([...picked].filter(([id]) => notQueued.has(id)));
+		toastService.success(
+			result.queued === 1
+				? 'Research started. Follow it in the tray.'
+				: `Researching ${result.queued} entries. Follow them in the tray.`
+		);
+		if (result.not_queued.length) {
+			toastService.info(
+				`${result.not_queued.length} not started yet${result.refused ? `: ${result.refused}` : ''}`
+			);
+		}
+		void research.started();
+	}
+
+	/** Research finished for some entries: mark them researched without losing the scroll. */
+	function onResearchSettled(targets: ResearchTarget[]) {
+		const done = new Map(
+			targets.filter((t) => t.status === 'done').map((t) => [t.entity_id, t.finished_at])
+		);
+		if (!done.size) return;
+		if (researched !== 'any' || sort === 'researched') {
+			void refresh();
+			return;
+		}
+		rows = rows.map((r) =>
+			done.has(r.id) ? { ...r, researched_at: done.get(r.id) ?? new Date().toISOString() } : r
+		);
+	}
+
+	function setIndeterminate(node: HTMLInputElement) {
+		node.indeterminate = someShownPicked && !allShownPicked;
+	}
+
+	let lastFocusCheck = 0;
+	function onWindowFocus() {
+		// Research may have been started from chat in another tab; look once on return.
+		if (research.live || Date.now() - lastFocusCheck < 15_000) return;
+		lastFocusCheck = Date.now();
+		void research.refresh();
 	}
 
 	function syncUrl(id: string | null) {
@@ -155,7 +288,11 @@
 		void refreshDuplicates();
 		const fromUrl = page.url.searchParams.get('e');
 		if (fromUrl && /^[0-9a-f-]{36}$/i.test(fromUrl)) stack = [fromUrl];
-		return () => clearTimeout(searchTimer);
+		const stopResearch = research.start();
+		return () => {
+			clearTimeout(searchTimer);
+			stopResearch();
+		};
 	});
 
 	// Add an entry by hand.
@@ -271,7 +408,7 @@
 	<title>Knowledge · BuildOS</title>
 </svelte:head>
 
-<svelte:window bind:innerWidth />
+<svelte:window bind:innerWidth onfocus={onWindowFocus} />
 
 {#snippet card(id: string)}
 	<ErrorBoundary area="knowledge entry">
@@ -283,6 +420,8 @@
 				onClose={closeCard}
 				onChanged={() => void refresh()}
 				onAskChat={askInChat}
+				research={research.byEntity.get(id) ?? null}
+				onFindMore={(entity) => (enrichEntries = [entity])}
 			/>
 		{/key}
 	</ErrorBoundary>
@@ -425,6 +564,56 @@
 						</button>
 					{/each}
 				</div>
+				<div class="flex flex-wrap items-center gap-2">
+					<div
+						class="-mx-4 flex min-w-0 flex-1 gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0"
+						role="toolbar"
+						aria-label="Research filter"
+					>
+						<button
+							type="button"
+							class="{chip} {researched === 'any' ? chipOn : chipOff}"
+							aria-pressed={researched === 'any'}
+							onclick={() => choose({ researched: 'any' })}
+						>
+							Any
+						</button>
+						<button
+							type="button"
+							class="{chip} {researched === 'yes' ? chipOn : chipOff}"
+							aria-pressed={researched === 'yes'}
+							onclick={() => choose({ researched: 'yes' })}
+						>
+							<Sparkles class="h-3.5 w-3.5" aria-hidden="true" /> Researched
+							{#if researchedCounts}<span class="stamp text-xs text-muted-foreground"
+									>{researchedCounts.yes}</span
+								>{/if}
+						</button>
+						<button
+							type="button"
+							class="{chip} {researched === 'no' ? chipOn : chipOff}"
+							aria-pressed={researched === 'no'}
+							onclick={() => choose({ researched: 'no' })}
+						>
+							Not researched
+							{#if researchedCounts}<span class="stamp text-xs text-muted-foreground"
+									>{researchedCounts.no}</span
+								>{/if}
+						</button>
+					</div>
+					<label class="flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground">
+						Sort
+						<select
+							class="min-h-8 rounded-md border border-border bg-card px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+							value={sort}
+							onchange={(e) => choose({ sort: e.currentTarget.value as Sort })}
+						>
+							<option value="recent">Recently updated</option>
+							<option value="name">Name A–Z</option>
+							<option value="researched">Recently researched</option>
+						</select>
+					</label>
+				</div>
 				{#if duplicates.length}
 					<button
 						type="button"
@@ -451,17 +640,51 @@
 									: 'Nothing here yet.'}
 						</p>
 					{:else}
+						<div
+							class="mb-1.5 flex min-h-9 items-center gap-2 text-sm text-muted-foreground"
+						>
+							<label
+								class="inline-flex min-h-9 cursor-pointer items-center gap-2.5 pl-3.5"
+							>
+								<input
+									type="checkbox"
+									class="h-4 w-4 rounded border-border"
+									checked={allShownPicked}
+									{@attach setIndeterminate}
+									onchange={toggleAllShown}
+								/>
+								{pickedCount
+									? `${pickedCount} selected`
+									: 'Select all shown, or tick a few to research them at once'}
+							</label>
+						</div>
 						<ul
 							class="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card {loading
 								? 'opacity-60'
 								: ''}"
 						>
-							{#each rows as row (row.id)}
+							{#each rows as row, index (row.id)}
 								{@const RowIcon = KIND_ICON[row.kind]}
-								<li>
+								{@const rowResearch = research.byEntity.get(row.id)}
+								<li
+									class="flex min-w-0 items-stretch {picked.has(row.id)
+										? 'bg-accent/5'
+										: ''}"
+								>
+									<label
+										class="flex w-11 shrink-0 cursor-pointer items-center justify-center"
+									>
+										<input
+											type="checkbox"
+											class="h-4 w-4 rounded border-border"
+											aria-label="Select {row.name}"
+											checked={picked.has(row.id)}
+											onclick={(e) => togglePick(row, index, e)}
+										/>
+									</label>
 									<button
 										type="button"
-										class="flex min-h-12 w-full min-w-0 items-center gap-3 px-3 py-2 text-left pressable hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring {selected ===
+										class="flex min-h-12 w-full min-w-0 items-center gap-3 py-2 pl-1 pr-3 text-left pressable hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring {selected ===
 										row.id
 											? 'bg-muted'
 											: ''}"
@@ -484,6 +707,28 @@
 												>{row.summary ?? KIND_LABEL[row.kind].one}</span
 											>
 										</span>
+										{#if rowResearch && isActiveTarget(rowResearch)}
+											<Loader2
+												class="h-3.5 w-3.5 shrink-0 animate-spin text-accent motion-reduce:animate-none"
+												aria-label="Researching"
+											/>
+										{:else if row.researched_at}
+											<span
+												class="inline-flex shrink-0 items-center"
+												title="Researched {new Date(
+													row.researched_at
+												).toLocaleDateString(undefined, {
+													month: 'short',
+													day: 'numeric'
+												})}"
+											>
+												<Sparkles
+													class="h-3.5 w-3.5 text-accent"
+													aria-hidden="true"
+												/>
+												<span class="sr-only">Researched</span>
+											</span>
+										{/if}
 										{#if row.scope === 'public'}
 											<Share2
 												class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
@@ -545,6 +790,45 @@
 	>
 		{#if selected}{@render card(selected)}{/if}
 	</Modal>
+{/if}
+
+{#if pickedCount}
+	<div
+		class="fixed bottom-[calc(0.75rem+var(--app-bottom-dock,0px))] left-3 right-3 z-40 flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 shadow-ink-strong sm:right-auto sm:w-[22rem] lg:bottom-4 lg:left-6"
+		role="region"
+		aria-label="Selected entries"
+	>
+		<p class="min-w-0 flex-1 truncate text-sm text-foreground" aria-live="polite">
+			<span class="font-semibold">{pickedCount}</span> selected
+			{#if pickedCount > maxBatch}<span class="text-xs text-warning"
+					>· up to {maxBatch} at a time</span
+				>{/if}
+		</p>
+		<button
+			type="button"
+			class="rounded-md px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-muted"
+			onclick={clearPicked}>Clear</button
+		>
+		<button
+			type="button"
+			class="inline-flex min-h-9 items-center gap-1.5 rounded-md bg-accent px-3 text-sm font-medium text-accent-foreground pressable disabled:opacity-60"
+			disabled={pickedCount > maxBatch}
+			onclick={enrichPicked}
+		>
+			<Sparkles class="h-4 w-4" aria-hidden="true" /> Enrich {pickedCount}
+		</button>
+	</div>
+{/if}
+
+<KnowledgeResearchTray queue={research} onOpenEntity={(id) => open(id)} />
+
+{#if enrichEntries}
+	<KnowledgeEnrichDialog
+		entries={enrichEntries}
+		allowance={research.allowance}
+		onClose={() => (enrichEntries = null)}
+		onStarted={onEnrichStarted}
+	/>
 {/if}
 
 <KnowledgeImportDialog isOpen={importOpen} onClose={() => (importOpen = false)} {onImported} />
@@ -655,13 +939,14 @@
 					<button
 						type="button"
 						class="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground pressable"
-						onclick={() => void resolveDuplicate(candidate, true)}>Same person</button
+						onclick={() => void resolveDuplicate(candidate, true)}
+						>{candidate.a.kind === 'person' ? 'Same person' : 'Same one'}</button
 					>
 					<button
 						type="button"
 						class="rounded-md border border-border px-3 py-1.5 text-sm text-foreground pressable hover:bg-muted"
 						onclick={() => void resolveDuplicate(candidate, false)}
-						>Different people</button
+						>{candidate.a.kind === 'person' ? 'Different people' : 'Different'}</button
 					>
 				</div>
 			</div>

@@ -6,6 +6,7 @@ import {
 	enrichContextFrom,
 	enrichQueries,
 	enrichUserPrompt,
+	knowledgePanelPage,
 	validateEnrichment,
 	type EnrichPage
 } from './knowledgeEnrichPlan';
@@ -113,10 +114,17 @@ describe('enrichQueries', () => {
 		});
 		expect(enrichQueries(org, 'revenue')).toEqual(['"Acme" acme.example company revenue']);
 	});
+
+	it('looks for a contact page only when phone or email was asked for', () => {
+		expect(enrichQueries(enrichContextFrom(SAM), null, ['phone'])).toEqual([
+			'"Sam Rivera" Palantir',
+			'"Sam Rivera" Palantir contact email phone'
+		]);
+	});
 });
 
 describe('validateEnrichment', () => {
-	const fields = ['headline', 'works_at', 'located_in', 'email', 'phone', 'homepage'];
+	const fields = ['headline', 'works_at', 'located_in', 'email', 'address', 'homepage'];
 
 	it('keeps quoted, requested facts and drops everything unsupported', () => {
 		const raw = {
@@ -158,8 +166,8 @@ describe('validateEnrichment', () => {
 					quote: 'taco truck in Austin'
 				},
 				{
-					predicate: 'phone',
-					value: '555-0100',
+					predicate: 'address',
+					value: '12 Elm St',
 					page: 1,
 					quote: 'Sam Rivera is a Forward'
 				},
@@ -184,7 +192,7 @@ describe('validateEnrichment', () => {
 			'works_at: already known',
 			'homepage: quote not on the page',
 			'located_in: page is about someone else',
-			'phone: never researched for people',
+			'address: never researched for people',
 			'industry: not requested',
 			'headline: cites no page'
 		]);
@@ -205,6 +213,32 @@ describe('validateEnrichment', () => {
 			status: 'active',
 			sources: ['page1']
 		});
+	});
+
+	it("keeps a person's phone only when the run asked for it", () => {
+		const page: EnrichPage = {
+			url: 'https://example.org/team/sam',
+			title: 'Team',
+			content: 'Sam Rivera, Field Lead. Direct line: 410-555-0101.'
+		};
+		const raw = {
+			pages: [{ page: 1, about_entity: true }],
+			facts: [
+				{
+					predicate: 'phone',
+					value: '410-555-0101',
+					page: 1,
+					quote: 'Direct line: 410-555-0101'
+				}
+			]
+		};
+		const base = { entityId: ENTITY_ID, kind: 'person' as const, pages: [page], existing: [] };
+		const asked = validateEnrichment(raw, { ...base, fields: ['phone'] });
+		expect(asked.kept).toBe(1);
+		expect(asked.batch.facts[0]).toMatchObject({ predicate: 'phone', value: '410-555-0101' });
+		const notAsked = validateEnrichment(raw, { ...base, fields: ['headline'] });
+		expect(notAsked.kept).toBe(0);
+		expect(notAsked.dropped).toEqual([{ predicate: 'phone', reason: 'not requested' }]);
 	});
 
 	it('keeps a value the page never states only as a suggestion, and refuses tiny quotes', () => {
@@ -309,6 +343,84 @@ describe('prompting and page choice', () => {
 			'thumbnail_url',
 			'published_by',
 			'url'
+		]);
+	});
+});
+
+describe('knowledgePanelPage', () => {
+	const panel = {
+		title: 'Tim Ferriss',
+		type: 'American author',
+		website: 'https://tim.blog/',
+		description: 'Timothy Ferriss is an American entrepreneur and podcaster.',
+		descriptionSource: 'Wikipedia',
+		attributes: { Born: 'July 20, 1977', Spouse: 'Someone' }
+	};
+
+	it("is the provider's own text, quotable verbatim, with attributes only for non-people", () => {
+		const org = knowledgePanelPage({ ...panel, title: 'Acme' }, 'org')!;
+		expect(org.content.split('\n')).toEqual([
+			'Acme',
+			'American author',
+			'Timothy Ferriss is an American entrepreneur and podcaster. (Wikipedia)',
+			'Website: https://tim.blog/',
+			'Born: July 20, 1977',
+			'Spouse: Someone'
+		]);
+		const person = knowledgePanelPage(panel, 'person')!;
+		expect(person.content).not.toContain('Born');
+		expect(person.content).not.toContain('Spouse');
+		expect(person).toMatchObject({
+			url: 'https://www.google.com/search?q=Tim%20Ferriss',
+			title: 'Google knowledge panel: Tim Ferriss'
+		});
+	});
+
+	it('is nothing without a panel or with only a title', () => {
+		expect(knowledgePanelPage(null, 'org')).toBeNull();
+		expect(knowledgePanelPage({ title: 'Acme' }, 'org')).toBeNull();
+	});
+
+	it('goes through the same quote rule as any page', () => {
+		const page = knowledgePanelPage(panel, 'person')!;
+		const result = validateEnrichment(
+			{
+				facts: [
+					{
+						predicate: 'headline',
+						value: 'American entrepreneur and podcaster',
+						page: 1,
+						quote: 'an American entrepreneur and podcaster',
+						confidence: 0.9
+					},
+					{
+						predicate: 'headline',
+						value: 'Bestselling author',
+						page: 1,
+						quote: 'is a bestselling author of five books',
+						confidence: 0.9
+					},
+					{
+						predicate: 'birthday',
+						value: '1977-07-20',
+						page: 1,
+						quote: 'Timothy Ferriss is an American',
+						confidence: 0.9
+					}
+				]
+			},
+			{
+				entityId: ENTITY_ID,
+				kind: 'person',
+				fields: ['headline', 'birthday'],
+				pages: [page],
+				existing: []
+			}
+		);
+		expect(result.kept).toBe(1);
+		expect(result.dropped.map((d) => d.reason).sort()).toEqual([
+			'never researched for people',
+			'quote not on the page'
 		]);
 	});
 });

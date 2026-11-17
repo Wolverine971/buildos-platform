@@ -1,7 +1,7 @@
 -- supabase/tests/knowledge_graph.check.sql
 -- Knowledge graph privacy and guard checks (tasker 160).
 -- Run on the disposable production-schema rehearsal, never against production:
---   pnpm db:rehearse supabase/migrations/20261117010000_knowledge_graph_followups.sql \
+--   pnpm db:rehearse supabase/migrations/20261117100000_knowledge_research_queue.sql \
 --     --check supabase/tests/knowledge_graph.check.sql
 BEGIN;
 -- The rehearsal copies production's schema without data: seed the vocabulary (copied from
@@ -267,6 +267,63 @@ BEGIN
 		RAISE EXCEPTION 'negative cost unexpectedly accepted';
 	EXCEPTION WHEN check_violation THEN NULL;
 	END;
+
+	-- Research queue (20261117100000): per-target instructions and phase, researched filter + sort.
+	INSERT INTO public.knowledge_run_targets(run_id, owner_user_id, entity_id, status, instructions, finished_at)
+	SELECT id, alice, palantir, 'done', 'Where is their headquarters?', now() - interval '1 day'
+	FROM public.knowledge_runs WHERE owner_user_id = alice AND title = 'r1';
+	BEGIN
+		UPDATE public.knowledge_run_targets SET instructions = repeat('x', 1300) WHERE owner_user_id = alice;
+		RAISE EXCEPTION 'overlong target instructions unexpectedly accepted';
+	EXCEPTION WHEN check_violation THEN NULL;
+	END;
+	BEGIN
+		UPDATE public.knowledge_run_targets SET phase = 'daydreaming' WHERE owner_user_id = alice;
+		RAISE EXCEPTION 'unknown phase unexpectedly accepted';
+	EXCEPTION WHEN check_violation THEN NULL;
+	END;
+	-- Alice's entries: Sam (private), Palantir and Karp (public, she recorded facts on them).
+	listed := public.knowledge_list(NULL, 'all', NULL, 50, 0, alice, 'yes');
+	IF (listed->>'total')::int <> 1 OR listed->'entities'->0->>'id' <> palantir::text
+		OR listed->'entities'->0->>'researched_at' IS NULL THEN
+		RAISE EXCEPTION 'researched should be just Palantir (her own target): %', listed;
+	END IF;
+	listed := public.knowledge_list(NULL, 'all', NULL, 50, 0, alice, 'no');
+	IF (listed->>'total')::int <> 2 OR (listed->'researched'->>'yes')::int <> 1
+		OR (listed->'researched'->>'no')::int <> 2 THEN
+		RAISE EXCEPTION 'not researched should be Sam and Karp, with counts: %', listed;
+	END IF;
+	-- Bob never sees Alice's research as his.
+	listed := public.knowledge_list(NULL, 'all', NULL, 50, 0, bob, 'yes');
+	IF (listed->>'total')::int <> 0 THEN RAISE EXCEPTION 'bob sees alice''s research: %', listed; END IF;
+	-- A private entry's enriched_at counts too; sort by last researched puts it first.
+	UPDATE public.knowledge_entities SET enriched_at = now() WHERE id = alice_sam;
+	listed := public.knowledge_list(NULL, 'all', NULL, 50, 0, alice, 'any', 'researched');
+	IF listed->'entities'->0->>'id' <> alice_sam::text OR listed->'entities'->1->>'id' <> palantir::text
+		OR listed->'entities'->2->>'id' <> karp::text THEN
+		RAISE EXCEPTION 'researched sort should be Sam, Palantir, Karp: %', listed;
+	END IF;
+	listed := public.knowledge_list(NULL, 'all', NULL, 50, 0, alice, 'any', 'name');
+	IF listed->'entities'->0->>'name' <> 'Alex Karp' OR listed->'entities'->2->>'name' <> 'Sam Rivera' THEN
+		RAISE EXCEPTION 'name sort should be alphabetical: %', listed;
+	END IF;
+	BEGIN
+		PERFORM public.knowledge_list(NULL, 'all', NULL, 50, 0, alice, 'any', 'random');
+		RAISE EXCEPTION 'unknown sort unexpectedly accepted';
+	EXCEPTION WHEN invalid_parameter_value THEN NULL;
+	END;
+	-- Signed in: the list reads her own targets through RLS; targets stay server-written.
+	PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', alice, 'role', 'authenticated')::text, true);
+	SET LOCAL ROLE authenticated;
+	listed := public.knowledge_list(NULL, 'all', NULL, 50, 0, NULL, 'yes');
+	IF (listed->>'total')::int <> 2 THEN RAISE EXCEPTION 'signed-in researched list: %', listed; END IF;
+	BEGIN
+		UPDATE public.knowledge_run_targets SET status = 'cancelled' WHERE owner_user_id = alice;
+		RAISE EXCEPTION 'signed-in target update unexpectedly accepted';
+	EXCEPTION WHEN insufficient_privilege THEN NULL;
+	END;
+	RESET ROLE;
+	PERFORM set_config('request.jwt.claims', '', true);
 
 	-- Deleting a merge survivor takes its merged-away tombstone with it.
 	DELETE FROM public.knowledge_entities WHERE id = alice_sam;

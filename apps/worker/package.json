@@ -46,6 +46,7 @@
 		"@buildos/smart-llm": "workspace:*",
 		"@buildos/supabase-client": "workspace:*",
 		"@buildos/twilio-service": "workspace:*",
+		"@huggingface/transformers": "3.8.1",
 		"@supabase/supabase-js": "^2.89.0",
 		"cors": "^2.8.5",
 		"date-fns": "^4.1.0",

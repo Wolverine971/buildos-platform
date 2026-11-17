@@ -1322,6 +1322,127 @@ describe('AgenticChatStreamPublisher', () => {
 });
 
 describe('Supabase Agentic Chat publisher adapters', () => {
+	const semanticInput: Parameters<AgenticChatPersistencePortV1['persistSemantic']>[0] = {
+		turn_run_id: 'turn-1',
+		queue_job_id: 'job-1',
+		processing_token: 'token-1',
+		execution_generation: 2,
+		transition_id: 'transition-1',
+		assistant_text: 'Working',
+		phase: 'tool',
+		event_type: 'tool_call',
+		projection: { version: 'agentic_chat_ui_projection_v1' },
+		event_payload: { type: 'tool_call' }
+	};
+	const textBatches: AgenticChatTextBatchInputV1[] = [
+		{
+			turn_run_id: 'turn-1',
+			queue_job_id: 'job-1',
+			processing_token: 'token-1',
+			execution_generation: 2,
+			batch_id: 'batch-1',
+			text_delta: 'Hello',
+			assistant_text: 'Hello'
+		},
+		{
+			turn_run_id: 'turn-2',
+			queue_job_id: 'job-2',
+			processing_token: 'token-2',
+			execution_generation: 7,
+			batch_id: 'batch-2',
+			text_delta: 'world',
+			assistant_text: 'Hello world'
+		}
+	];
+
+	it('sends the complete semantic write fence and preserves a refusal to publish', async () => {
+		const receipt = {
+			outcome: 'stale_generation',
+			publish_allowed: false,
+			turn_run_id: 'turn-1',
+			queue_job_id: 'job-1',
+			execution_generation: 3,
+			requested_execution_generation: 2,
+			status: 'running'
+		} satisfies AgenticChatSemanticEventRpcResultV1;
+		const rpc = vi.fn().mockResolvedValue({ data: receipt, error: null });
+		const adapter = new SupabaseAgenticChatPersistenceAdapter({ rpc });
+
+		await expect(adapter.persistSemantic(semanticInput)).resolves.toEqual(receipt);
+		expect(rpc).toHaveBeenCalledExactlyOnceWith('persist_agentic_chat_semantic_event', {
+			p_turn_run_id: 'turn-1',
+			p_queue_job_id: 'job-1',
+			p_processing_token: 'token-1',
+			p_execution_generation: 2,
+			p_transition_id: 'transition-1',
+			p_assistant_text: 'Working',
+			p_phase: 'tool',
+			p_event_type: 'tool_call',
+			p_projection: semanticInput.projection,
+			p_event_payload: semanticInput.event_payload
+		});
+	});
+
+	it('preserves each text batch ownership fence and returns per-row rejections', async () => {
+		const receipt = {
+			outcome: 'flushed',
+			input_count: 2,
+			persisted_count: 0,
+			rejected_count: 2,
+			results: [0, 1].map((input_index) => ({
+				outcome: 'rejected' as const,
+				publish_allowed: false as const,
+				input_index,
+				error_code: '42501',
+				error_message: 'ownership denied'
+			}))
+		} satisfies AgenticChatTextBatchFlushRpcResultV1;
+		const rpc = vi.fn().mockResolvedValue({ data: receipt, error: null });
+		const adapter = new SupabaseAgenticChatPersistenceAdapter({ rpc });
+
+		await expect(adapter.flushTextBatches(textBatches)).resolves.toEqual(receipt);
+		expect(rpc).toHaveBeenCalledExactlyOnceWith('flush_agentic_chat_text_batches', {
+			p_batches: textBatches
+		});
+	});
+
+	it.each(['semantic', 'semantic batch', 'text batches', 'acknowledgement'] as const)(
+		'propagates denied ownership for %s without retry or fallback',
+		async (operation) => {
+			const rpc = vi.fn().mockResolvedValue({
+				data: null,
+				error: { code: '42501', message: 'ownership denied' }
+			});
+			const adapter = new SupabaseAgenticChatPersistenceAdapter({ rpc });
+			const request =
+				operation === 'semantic'
+					? adapter.persistSemantic(semanticInput)
+					: operation === 'semantic batch'
+						? adapter.persistSemanticBatch({
+								...semanticInput,
+								events: [
+									{
+										transition_id: semanticInput.transition_id,
+										phase: semanticInput.phase,
+										event_type: semanticInput.event_type,
+										event_payload: semanticInput.event_payload
+									}
+								],
+								first_visible_text_at: null,
+								first_visible_text_source: null
+							})
+						: operation === 'text batches'
+							? adapter.flushTextBatches(textBatches)
+							: adapter.acknowledge({ ...semanticInput, acknowledged_sequence: 8 });
+
+			await expect(request).rejects.toMatchObject({
+				name: 'AgenticChatPersistenceRpcError',
+				code: '42501'
+			});
+			expect(rpc).toHaveBeenCalledOnce();
+		}
+	);
+
 	it('maps the exact acknowledgement fence to the new RPC', async () => {
 		const receipt = {
 			outcome: 'acknowledged',

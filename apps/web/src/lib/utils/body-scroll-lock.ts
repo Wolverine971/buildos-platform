@@ -54,6 +54,18 @@ function handleFocusOut() {
 	}, 0);
 }
 
+/**
+ * Where the page is scrolled as the person sees it. While locked, `window.scrollY`
+ * reads 0 (the body is position:fixed and offset by `top`), so anything that records
+ * the scroll then, like SvelteKit's pushState, records the top of the page.
+ */
+export const pageScrollY = (): number => {
+	if (typeof window === 'undefined') return 0;
+	return lockCount > 0 && !inputFocused ? lockedScrollY : window.scrollY;
+};
+
+export const isBodyScrollLocked = (): boolean => lockCount > 0;
+
 export const lockBodyScroll = (): void => {
 	if (typeof document === 'undefined') return;
 

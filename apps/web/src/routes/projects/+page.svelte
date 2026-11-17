@@ -12,7 +12,7 @@
 		afterNavigate,
 		goto,
 		invalidate,
-		invalidateAll,
+		refreshAll,
 		preloadData,
 		pushState,
 		replaceState
@@ -123,7 +123,9 @@
 			toastService.success('Project created. It’s on your Workspace', {
 				duration: TOAST_DURATION.LONG
 			});
-			invalidateAll();
+			// refreshAll, not invalidateAll: invalidate wipes page.state, which holds the
+			// open project card and its reader.
+			void refreshAll();
 		}
 	}
 
@@ -153,7 +155,7 @@
 
 		isPullRefreshing = true;
 		try {
-			await invalidateAll();
+			await refreshAll();
 		} finally {
 			isPullRefreshing = false;
 		}

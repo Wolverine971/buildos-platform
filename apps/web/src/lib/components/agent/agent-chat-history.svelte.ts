@@ -2,6 +2,7 @@
 import { afterNavigate, beforeNavigate, pushState, replaceState } from '$app/navigation';
 import { navigating, page } from '$app/state';
 import { onDestroy, onMount, untrack } from 'svelte';
+import { isBodyScrollLocked, pageScrollY } from '$lib/utils/body-scroll-lock';
 import {
 	claimChatUrl,
 	isChatUrlSyncSuspended,
@@ -38,6 +39,10 @@ export function waitForChatHistorySettled(): Promise<void> {
  * cancel that work.
  */
 function popChatEntry(beforeResolve: () => void): Promise<void> {
+	// The chat pushed its entry while the modal held the page still, so SvelteKit saved
+	// the page's scroll as 0 and its Back would jump the page to the top. Put it back
+	// where the person left it.
+	const scrollY = pageScrollY();
 	const pop = new Promise<void>((resolve) => {
 		let settled = false;
 		const settle = () => {
@@ -46,6 +51,10 @@ function popChatEntry(beforeResolve: () => void): Promise<void> {
 			window.removeEventListener('popstate', onPop);
 			clearTimeout(fallback);
 			if (pendingPop === pop) pendingPop = null;
+			// SvelteKit's scrollTo(0) has just started (smoothly, under html's
+			// scroll-behavior); an instant scroll cancels it. While still locked, the
+			// unlock restores the same spot itself.
+			if (!isBodyScrollLocked()) window.scrollTo({ top: scrollY, behavior: 'instant' });
 			syncChatUrl();
 			try {
 				beforeResolve();

@@ -98,16 +98,26 @@
 	// Version token to guard against stale Promise resolution during rapid filter changes
 	let historyResolveVersion = 0;
 
+	// The list a load shows. A refetch of the same list (after a chat closes, a capture
+	// is deleted, or a capture opens) keeps the rows on screen and swaps them in place;
+	// only a new filter or page shows skeletons.
+	const listKey = (filters: PageData['filters']) =>
+		[filters.typeFilter, filters.status ?? '', filters.offset, filters.limit].join('|');
+	let resolvedKey: string | null = null;
+
 	// Resolve streamed data with staleness guard
 	$effect(() => {
 		const currentVersion = ++historyResolveVersion;
-		historyLoading = true;
+		const key = listKey(data.filters);
+		const refetch = untrack(() => resolvedData !== null) && key === resolvedKey;
+		if (!refetch) historyLoading = true;
 		historyError = null;
 		data.historyData
 			.then((result) => {
 				// Discard stale results from previous filter/pagination changes
 				if (currentVersion !== historyResolveVersion) return;
 				resolvedData = result;
+				resolvedKey = key;
 				historyLoading = false;
 			})
 			.catch((err) => {

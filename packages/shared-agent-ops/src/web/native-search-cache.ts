@@ -7,10 +7,13 @@ import {
 	type WebSearchCacheKeyInput
 } from './search-cache';
 import {
+	NATIVE_SEARCH_ADAPTER_VERSIONS,
 	NATIVE_SEARCH_DISCOVERY_CACHE_VERSION,
-	TAVILY_DISCOVERY_ADAPTER_VERSION,
+	NATIVE_SEARCH_PROVIDERS,
+	NativeSearchDiscoveryError,
 	parseNativeSearchDiscoveryResult,
-	type NativeSearchDiscoveryResult
+	type NativeSearchDiscoveryResult,
+	type NativeSearchProvider
 } from './native-search-discovery';
 
 export interface NativeSearchDurableCacheClaim<T> {
@@ -307,28 +310,37 @@ export function createNativeSearchDiscoveryCacheEntry(
 	return { discovery, fetchedAt };
 }
 
-function parseNativeSearchDiscoveryCacheEntry(value: unknown): NativeSearchDiscoveryCacheEntry {
+function parseNativeSearchDiscoveryCacheEntry(
+	value: unknown,
+	provider: NativeSearchProvider
+): NativeSearchDiscoveryCacheEntry {
 	const entry = asRecord(value);
 	const fetchedAt = typeof entry?.fetchedAt === 'string' ? entry.fetchedAt : '';
 	if (!fetchedAt || !Number.isFinite(Date.parse(fetchedAt))) {
 		throw new Error('Native search cache returned an invalid fetch timestamp');
 	}
-	return {
-		discovery: parseNativeSearchDiscoveryResult(
-			entry?.discovery,
-			TAVILY_DISCOVERY_ADAPTER_VERSION
-		),
-		fetchedAt
-	};
+	const discovery = parseNativeSearchDiscoveryResult(
+		entry?.discovery,
+		NATIVE_SEARCH_ADAPTER_VERSIONS[provider]
+	);
+	if (discovery.diagnostics.provider !== provider) {
+		throw new NativeSearchDiscoveryError(
+			"Native search cache returned another provider's discovery payload",
+			'INVALID_RESPONSE'
+		);
+	}
+	return { discovery, fetchedAt };
 }
 
+/** Durable discovery cache for one provider (Tavily unless named). */
 export function createSupabaseNativeSearchDiscoveryCacheStore(
-	client: NativeSearchCacheRpcClient
+	client: NativeSearchCacheRpcClient,
+	provider: NativeSearchProvider = 'tavily'
 ): NativeSearchDurableCacheStore<NativeSearchDiscoveryCacheEntry> {
 	return createSupabaseNativeSearchCacheStore(client, {
-		adapterVersion: TAVILY_DISCOVERY_ADAPTER_VERSION,
+		adapterVersion: NATIVE_SEARCH_ADAPTER_VERSIONS[provider],
 		responseVersion: NATIVE_SEARCH_DISCOVERY_CACHE_VERSION,
-		parseValue: parseNativeSearchDiscoveryCacheEntry,
+		parseValue: (value) => parseNativeSearchDiscoveryCacheEntry(value, provider),
 		metadataForValue: (value) => ({
 			provider: value.discovery.diagnostics.provider,
 			providerRequestId: value.discovery.diagnostics.providerRequestId,
@@ -337,10 +349,32 @@ export function createSupabaseNativeSearchDiscoveryCacheStore(
 	});
 }
 
-export function buildNativeSearchDiscoveryCacheKey(input: WebSearchCacheKeyInput): string {
+/** One durable discovery cache per provider, for ports that may use any of them. */
+export function createSupabaseNativeSearchDiscoveryCacheStores(
+	client: NativeSearchCacheRpcClient
+): Record<NativeSearchProvider, NativeSearchDurableCacheStore<NativeSearchDiscoveryCacheEntry>> {
+	return Object.fromEntries(
+		NATIVE_SEARCH_PROVIDERS.map((provider) => [
+			provider,
+			createSupabaseNativeSearchDiscoveryCacheStore(client, provider)
+		])
+	) as Record<
+		NativeSearchProvider,
+		NativeSearchDurableCacheStore<NativeSearchDiscoveryCacheEntry>
+	>;
+}
+
+/**
+ * Cache key for one provider's discovery. The provider's adapter version leads the key, so a
+ * Serper result is never served to a Tavily search (or the reverse). Tavily unless named.
+ */
+export function buildNativeSearchDiscoveryCacheKey(
+	input: WebSearchCacheKeyInput & { provider?: NativeSearchProvider }
+): string {
+	const { provider = 'tavily', ...rest } = input;
 	return buildWebSearchCacheKey({
-		...input,
-		adapterVersion: TAVILY_DISCOVERY_ADAPTER_VERSION,
+		...rest,
+		adapterVersion: NATIVE_SEARCH_ADAPTER_VERSIONS[provider],
 		responseVersion: NATIVE_SEARCH_DISCOVERY_CACHE_VERSION
 	});
 }

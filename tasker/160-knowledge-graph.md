@@ -72,6 +72,26 @@ tracker is the build that came out of the review.
   columns, `pnpm gen:all` for typed knowledge tables, ~$0.02 possible overshoot with 2 targets
   in flight.
 
+### 2026-11-17 AM: shipped + backfilled
+
+- DJ committed + deployed (269ff3f8a; Vercel + Railway worker 07:34).
+- Live backfill for DJ: 360 entries (120 people, 240 orgs), 134 details, 507 task links, 158
+  task sources, 0 problems. Re-run created nothing (safe to repeat).
+- Prod `/knowledge` checked in the browser: counts, search, card with "In your work" links OK.
+- Name matching is exact (case/space only), so "Cadre" / "The Cadre" / "thecadre" and
+  "Magnum-LPL" / "Magnum/LPL" stayed separate. Added 4 "same?" suggestions for DJ by SQL;
+  duplicates review now says "Same one / Different" for non-people (UNCOMMITTED, web deploy).
+  Later: match org names ignoring a leading "The" and punctuation (needs a new normalized column).
+- `pnpm gen:types` needs `SUPABASE_ACCESS_TOKEN` (CLI source); not run.
+- `/mcp` Reconnect reuses the old grant (allowed_ops snapshot, no knowledge ops); a fresh consent
+  (clear auth → sign in again) gets `knowledge.search/get/query`. Open fork: add knowledge reads to
+  existing grants for everyone.
+- Ingestion inventory (DJ): 631 tasks (342 never read by the people reader; dry run says ≤ $0.31,
+  realistic ~$0.05 at last measured $0.00015/task), 419 docs (no people reader), 164 events (no
+  attendees stored), 7 collaborators, 0 imported contacts.
+- Not yet: one paid Find more (Tavily basic ≈ $0.008/search, 1–2 searches + one DeepSeek V4
+  Flash call; capped at $0.03/entry). Existing Claude MCP connection must reconnect to see tools.
+
 ### Not in this round
 
 - Automatic promotion of facts to the shared public layer (schema, guards and tests are in place;

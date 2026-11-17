@@ -313,6 +313,7 @@ describe('SupabaseAgenticChatExecutionControlAdapter', () => {
 					p_turn_run_id: TURN_RUN_ID,
 					p_queue_job_id: QUEUE_JOB_ID,
 					p_processing_token: PROCESSING_TOKEN,
+					p_execution_generation: EXECUTION_GENERATION,
 					p_status: 'completed'
 				})
 			],
@@ -326,6 +327,27 @@ describe('SupabaseAgenticChatExecutionControlAdapter', () => {
 			]
 		]);
 	});
+
+	it.each(['begin', 'recover', 'recoverWorkflow', 'finalize'] as const)(
+		'%s propagates lost ownership without retrying the write',
+		async (operation) => {
+			const rpc = vi.fn(async () => ({
+				data: null,
+				error: { code: '42501', message: 'execution ownership denied' }
+			}));
+			const adapter = new SupabaseAgenticChatExecutionControlAdapter({ rpc });
+			const request = {
+				...finalizeInput(),
+				failureClass: 'transient_infra' as const,
+				errorMessage: 'connection lost'
+			};
+			await expect(adapter[operation](request)).rejects.toMatchObject({
+				name: 'AgenticChatExecutionControlRpcError',
+				code: '42501'
+			});
+			expect(rpc).toHaveBeenCalledOnce();
+		}
+	);
 
 	it('forwards the caller abort signal to the claim RPC only when the builder supports it', async () => {
 		const receipt = executionReceipt({

@@ -85,6 +85,23 @@ describe('LayeredNativeSearchCache', () => {
 		expect(hashNativeSearchCacheKey(key)).toBe(hash);
 	});
 
+	it('keys each provider separately so Serper and Tavily never share entries', () => {
+		const input = {
+			query: 'Brave Lizard company',
+			searchDepth: 'basic' as const,
+			maxResults: 5,
+			includeAnswer: false
+		};
+		const tavily = buildNativeSearchDiscoveryCacheKey(input);
+		const serper = buildNativeSearchDiscoveryCacheKey({ ...input, provider: 'serper' });
+
+		expect(buildNativeSearchDiscoveryCacheKey({ ...input, provider: 'tavily' })).toBe(tavily);
+		expect(tavily).toContain('tavily-v1');
+		expect(serper).toContain('serper-v1');
+		expect(serper).not.toBe(tavily);
+		expect(hashNativeSearchCacheKey(serper)).not.toBe(hashNativeSearchCacheKey(tavily));
+	});
+
 	it('uses a durable hit without invoking discovery and then serves it from L1', async () => {
 		const store = new MemoryDurableStore<string>();
 		store.value = 'durable';
@@ -216,6 +233,31 @@ describe('Supabase native search cache store', () => {
 				p_provider_credits: 2
 			}
 		});
+	});
+
+	it('gives Serper its own durable store version and refuses a Tavily payload in it', async () => {
+		const tavilyEntry = createNativeSearchDiscoveryCacheEntry(
+			{
+				query: 'x',
+				results: [],
+				diagnostics: { provider: 'tavily', adapterVersion: 'tavily-v1' }
+			},
+			'2026-08-02T12:00:00.000Z'
+		);
+		const calls: Array<Record<string, unknown>> = [];
+		const rpcClient: NativeSearchCacheRpcClient = {
+			rpc: async (functionName, args) => {
+				calls.push({ functionName, ...args });
+				return functionName === 'claim_native_search_cache'
+					? { data: { state: 'hit', response: tavilyEntry }, error: null }
+					: { data: true, error: null };
+			}
+		};
+		const store = createSupabaseNativeSearchDiscoveryCacheStore(rpcClient, 'serper');
+
+		await expect(store.claim('a'.repeat(64), 'owner-1')).rejects.toThrow();
+		expect(calls[0]).toMatchObject({ p_adapter_version: 'serper-v1' });
+		expect(calls[1]).toMatchObject({ functionName: 'invalidate_native_search_cache' });
 	});
 
 	it('rejects malformed stored discovery payloads', async () => {

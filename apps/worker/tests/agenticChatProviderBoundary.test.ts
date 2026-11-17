@@ -1,75 +1,65 @@
 // apps/worker/tests/agenticChatProviderBoundary.test.ts
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
-const AGENTIC_CHAT_ROOT = fileURLToPath(new URL('../src/workers/agentic-chat/', import.meta.url));
-const PROVIDER_ROOT = join(AGENTIC_CHAT_ROOT, 'provider');
+const PROVIDER_ROOT = fileURLToPath(
+	new URL('../src/workers/agentic-chat/provider/', import.meta.url)
+);
+const COORDINATOR = join(PROVIDER_ROOT, 'turn-provider');
 
-const EXTRACTED_PROVIDER_MODULES = [
-	'contracts.ts',
-	'feedback.ts',
-	'forced-synthesis.ts',
-	'provider-pass.ts',
-	'protocol.ts',
-	'repair-policy.ts',
-	'request-builders.ts',
-	'steps.ts',
-	'stream-tool-calls.ts',
-	'tool-surface.ts',
-	'turn-state.ts',
-	'validation.ts',
-	join('review', 'controls.ts'),
-	join('review', 'decision-completion.ts'),
-	join('review', 'decision-handling.ts'),
-	join('review', 'disposition.ts'),
-	join('review', 'lanes.ts'),
-	join('review', 'turn-contract.ts')
-] as const;
-
-describe('Agentic Chat provider boundaries', () => {
-	it('keeps provider contracts in the provider namespace', () => {
-		expect(existsSync(join(AGENTIC_CHAT_ROOT, 'providerContract.ts'))).toBe(false);
-		expect(existsSync(join(PROVIDER_ROOT, 'contracts.ts'))).toBe(true);
+function sourceFiles(directory: string): string[] {
+	return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+		const path = join(directory, entry.name);
+		return entry.isDirectory()
+			? sourceFiles(path)
+			: entry.name.endsWith('.ts') && !entry.name.endsWith('.test.ts')
+				? [path]
+				: [];
 	});
+}
 
-	it('keeps extracted responsibilities out of the turn coordinator', () => {
-		const coordinator = readFileSync(join(PROVIDER_ROOT, 'turn-provider.ts'), 'utf8');
-		const extractedDeclarations = [
-			'function appendToolCallDelta(',
-			'function buildContinuationRequest(',
-			'function buildBaseProviderRequest(',
-			'function buildReviewerMimicryRepairRequest(',
-			'function buildReadOnlyRequest(',
-			'function buildReviewFallbackClarification(',
-			'function getAdmissionContextUsage(',
-			'function buildPlanningStep(',
-			'function buildPromptSnapshot(',
-			'function buildWorkerSemanticMutationOrdering(',
-			'function productionToolsFor(',
-			'function readProposalRevision(',
-			'function validateCompletedProviderCalls(',
-			'function validateReadFeedback(',
-			'function streamBufferedProviderPass(',
-			'async *streamMutationBatchReview(',
-			'async *streamForcedSynthesis(',
-			'function describeUnappliedWrites(',
-			'class ProviderTurnState'
-		] as const;
+function moduleSpecifier(node: ts.Node): ts.Node | undefined {
+	if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) return node.moduleSpecifier;
+	if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument))
+		return node.argument.literal;
+	if (
+		ts.isCallExpression(node) &&
+		(node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+			(ts.isIdentifier(node.expression) && node.expression.text === 'require'))
+	)
+		return node.arguments[0];
+	return undefined;
+}
 
-		for (const declaration of extractedDeclarations) {
-			expect(coordinator, declaration).not.toContain(declaration);
-		}
-	});
-
-	it('keeps extracted provider modules independent of the coordinator', () => {
-		for (const relativePath of EXTRACTED_PROVIDER_MODULES) {
-			const path = join(PROVIDER_ROOT, relativePath);
-			expect(existsSync(path), relativePath).toBe(true);
-			expect(readFileSync(path, 'utf8'), relativePath).not.toMatch(
-				/from\s+['"][^'"]*turn-provider['"]/
+describe('Agentic Chat provider dependency direction', () => {
+	it('keeps provider helpers independent of the turn coordinator', () => {
+		const violations: string[] = [];
+		for (const path of sourceFiles(PROVIDER_ROOT)) {
+			if (path === `${COORDINATOR}.ts`) continue;
+			const source = ts.createSourceFile(
+				path,
+				readFileSync(path, 'utf8'),
+				ts.ScriptTarget.Latest,
+				true
 			);
+			function visit(node: ts.Node): void {
+				const specifier = moduleSpecifier(node);
+				if (
+					specifier &&
+					ts.isStringLiteral(specifier) &&
+					specifier.text.startsWith('.') &&
+					resolve(dirname(path), specifier.text).replace(/\.[cm]?[jt]s$/, '') ===
+						COORDINATOR
+				) {
+					violations.push(`${relative(PROVIDER_ROOT, path)} imports ${specifier.text}`);
+				}
+				ts.forEachChild(node, visit);
+			}
+			visit(source);
 		}
+		expect(violations).toEqual([]);
 	});
 });

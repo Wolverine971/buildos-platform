@@ -30,6 +30,17 @@ describe('the board folded into a list', () => {
 		expect(groups[0]!.tasks.map((t) => t.id)).toEqual(['urgent', 'sooner', 'later']);
 	});
 
+	it('keeps a task changed in the reader in the group it was in', () => {
+		const groups = groupTasksForReader(
+			[task('a', 'done'), task('b', 'in_progress'), task('c', 'todo')],
+			new Map([['a', 'backlog' as const]])
+		);
+		expect(groups.map((group) => [group.key, group.tasks.map((t) => t.id)])).toEqual([
+			['in_progress', ['b']],
+			['backlog', ['a', 'c']]
+		]);
+	});
+
 	it('walks only the rows on screen: Done joins once it is unfolded', () => {
 		const groups = groupTasksForReader([
 			task('a', 'todo'),

@@ -43,8 +43,8 @@ type QueryBuilder = PromiseLike<QueryResult> & {
 };
 
 beforeEach(() => {
-	vi.clearAllMocks();
-	schedulerMocks.queueAdd.mockResolvedValue({ queue_job_id: 'queue-job-1' });
+	schedulerMocks.supabaseFrom.mockReset();
+	schedulerMocks.queueAdd.mockReset().mockResolvedValue({ queue_job_id: 'queue-job-1' });
 });
 
 describe('Saved Operative scheduler', () => {
@@ -58,11 +58,11 @@ describe('Saved Operative scheduler', () => {
 		expect(schedulerMocks.queueAdd).not.toHaveBeenCalled();
 	});
 
-	it('claims a due schedule before creating and queueing its Agent Run', async () => {
+	it.each([0, 2])('claims and queues a due schedule with %i active runs', async (activeCount) => {
 		const operative = scheduledOperative();
 		const dueScan = query({ data: [operative], error: null });
 		const lockClaim = query({ data: operative, error: null });
-		const activeRunCheck = query({ count: 0, error: null });
+		const activeRunCheck = query({ count: activeCount, error: null });
 		const runInsert = query({
 			data: { id: '22222222-2222-4222-8222-222222222222' },
 			error: null
@@ -82,6 +82,8 @@ describe('Saved Operative scheduler', () => {
 			schedule_error: null
 		});
 		expect(lockClaim.is).toHaveBeenCalledWith('schedule_locked_at', null);
+		expect(lockClaim.eq).toHaveBeenCalledWith('id', operative.id);
+		expect(lockClaim.eq).toHaveBeenCalledWith('next_run_at', operative.next_run_at);
 		expect(runInsert.insert).toHaveBeenCalledWith(
 			expect.objectContaining({
 				operative_id: operative.id,
@@ -110,6 +112,133 @@ describe('Saved Operative scheduler', () => {
 				schedule_error: null
 			})
 		);
+	});
+
+	it('claims an abandoned lock only while its observed timestamp and schedule still match', async () => {
+		const operative = {
+			...scheduledOperative(),
+			schedule_locked_at: '2026-08-26T09:40:00.000Z'
+		};
+		const dueScan = query({ data: [operative], error: null });
+		const lostClaim = query({ data: null, error: null });
+		schedulerMocks.supabaseFrom.mockReturnValueOnce(dueScan).mockReturnValueOnce(lostClaim);
+
+		await checkAndScheduleAgentOperatives(new Date('2026-08-26T10:00:00.000Z'));
+
+		expect(dueScan.eq).toHaveBeenCalledWith('schedule_enabled', true);
+		expect(dueScan.or).toHaveBeenCalledWith(
+			'schedule_locked_at.is.null,schedule_locked_at.lt.2026-08-26T09:45:00.000Z'
+		);
+		expect(dueScan.lte).toHaveBeenCalledWith('next_run_at', '2026-08-26T10:05:00.000Z');
+		expect(lostClaim.eq.mock.calls).toEqual([
+			['id', operative.id],
+			['next_run_at', operative.next_run_at],
+			['schedule_locked_at', operative.schedule_locked_at]
+		]);
+		expect(lostClaim.is).not.toHaveBeenCalled();
+		expect(schedulerMocks.supabaseFrom).toHaveBeenCalledTimes(2);
+		expect(schedulerMocks.queueAdd).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{
+			label: 'active-run limit reached',
+			count: 3,
+			error: null,
+			message: '3 active agent runs'
+		},
+		{
+			label: 'active-run lookup failed',
+			count: null,
+			error: { message: 'database unavailable' },
+			message: 'Failed to check active runs'
+		}
+	])('defers without creating a run when $label', async ({ count, error, message }) => {
+		const operative = scheduledOperative();
+		const active = query({ count, error });
+		const defer = query({ error: null });
+		schedulerMocks.supabaseFrom
+			.mockReturnValueOnce(query({ data: [operative], error: null }))
+			.mockReturnValueOnce(query({ data: operative, error: null }))
+			.mockReturnValueOnce(active)
+			.mockReturnValueOnce(defer);
+
+		await checkAndScheduleAgentOperatives(new Date('2026-08-26T10:00:00.000Z'));
+
+		expect(active.eq).toHaveBeenCalledWith('user_id', operative.user_id);
+		expect(active.in).toHaveBeenCalledWith('status', [
+			'queued',
+			'running',
+			'paused',
+			'needs_input',
+			'proposal_ready'
+		]);
+		expect(defer.update).toHaveBeenCalledWith({
+			next_run_at: expect.any(String),
+			schedule_locked_at: null,
+			schedule_error: expect.stringContaining(message)
+		});
+		expect(defer.eq).toHaveBeenCalledWith('id', operative.id);
+		expect(schedulerMocks.supabaseFrom).toHaveBeenCalledTimes(4);
+		expect(schedulerMocks.supabaseFrom).toHaveBeenNthCalledWith(4, 'agent_operatives');
+		expect(active.insert).not.toHaveBeenCalled();
+		expect(schedulerMocks.queueAdd).not.toHaveBeenCalled();
+	});
+
+	it('marks the run failed and releases the schedule lock when queue admission fails', async () => {
+		const operative = scheduledOperative();
+		const runId = '22222222-2222-4222-8222-222222222222';
+		const failRun = query({ error: null });
+		const defer = query({ error: null });
+		schedulerMocks.supabaseFrom
+			.mockReturnValueOnce(query({ data: [operative], error: null }))
+			.mockReturnValueOnce(query({ data: operative, error: null }))
+			.mockReturnValueOnce(query({ count: 0, error: null }))
+			.mockReturnValueOnce(query({ data: { id: runId }, error: null }))
+			.mockReturnValueOnce(failRun)
+			.mockReturnValueOnce(defer);
+		schedulerMocks.queueAdd.mockRejectedValueOnce(new Error('queue unavailable'));
+
+		await checkAndScheduleAgentOperatives(new Date('2026-08-26T10:00:00.000Z'));
+
+		expect(failRun.update).toHaveBeenCalledWith({
+			status: 'failed',
+			error: 'queue_error: queue unavailable'
+		});
+		expect(failRun.eq).toHaveBeenCalledWith('id', runId);
+		expect(schedulerMocks.supabaseFrom).toHaveBeenNthCalledWith(5, 'agent_runs');
+		expect(defer.update).toHaveBeenCalledWith({
+			next_run_at: expect.any(String),
+			schedule_locked_at: null,
+			schedule_error: 'queue unavailable'
+		});
+		expect(defer.eq).toHaveBeenCalledWith('id', operative.id);
+		expect(schedulerMocks.supabaseFrom).toHaveBeenNthCalledWith(6, 'agent_operatives');
+		expect(schedulerMocks.queueAdd).toHaveBeenCalledOnce();
+	});
+
+	it('does not defer an already queued run when advancing the schedule fails', async () => {
+		const operative = scheduledOperative();
+		const scheduleUpdate = query({ error: { message: 'update unavailable' } });
+		schedulerMocks.supabaseFrom
+			.mockReturnValueOnce(query({ data: [operative], error: null }))
+			.mockReturnValueOnce(query({ data: operative, error: null }))
+			.mockReturnValueOnce(query({ count: 0, error: null }))
+			.mockReturnValueOnce(
+				query({ data: { id: '22222222-2222-4222-8222-222222222222' }, error: null })
+			)
+			.mockReturnValueOnce(scheduleUpdate);
+
+		await checkAndScheduleAgentOperatives(new Date('2026-08-26T10:00:00.000Z'));
+
+		expect(schedulerMocks.queueAdd).toHaveBeenCalledOnce();
+		expect(scheduleUpdate.update).toHaveBeenCalledWith(
+			expect.objectContaining({
+				next_run_at: '2026-08-27T09:00:00.000Z',
+				last_run_at: operative.next_run_at
+			})
+		);
+		expect(schedulerMocks.supabaseFrom).toHaveBeenCalledTimes(5);
 	});
 
 	it('disables the schedule instead of creating a paid run once the project is deleted', async () => {

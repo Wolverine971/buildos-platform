@@ -151,7 +151,7 @@ describe('Agentic Chat read-tool execution ledger', () => {
 		});
 	});
 
-	it.each(['dependency_failed', 'read_policy', 'read_failure'] as const)(
+	it.each(['mutation', 'dependency_failed', 'read_policy', 'read_failure'] as const)(
 		'keeps %s failures out of the validation counter',
 		async (failureKind) => {
 			const { adapter, rpc } = adapterFor(receipt());
@@ -161,7 +161,12 @@ describe('Agentic Chat read-tool execution ledger', () => {
 			).resolves.toBeUndefined();
 			expect(rpc).toHaveBeenCalledWith(
 				'persist_agentic_chat_tool_validation_failure',
-				expect.any(Object)
+				expect.objectContaining({
+					p_turn_run_id: TURN_RUN_ID,
+					p_queue_job_id: QUEUE_JOB_ID,
+					p_processing_token: PROCESSING_TOKEN,
+					p_execution_generation: 2
+				})
 			);
 		}
 	);
@@ -225,20 +230,43 @@ describe('Agentic Chat read-tool execution ledger', () => {
 		expect(deadlineSignal).toMatchObject({ aborted: true });
 	});
 
-	it('surfaces stale, cancelled, and terminal receipts as typed execution fences', async () => {
-		for (const [outcome, failureClass] of [
-			['stale_generation', 'unknown'],
-			['cancel_requested', 'cancelled'],
-			['already_terminal', 'unknown']
-		] as const) {
-			const { adapter } = adapterFor(receipt({ outcome }));
-			await expect(adapter.persistRead(input)).rejects.toMatchObject({
-				name: 'AgenticChatToolExecutionFenceError',
-				outcome,
-				failureClass
+	it.each(['read', 'validation', 'failure', 'mutation'] as const)(
+		'surfaces stale, cancelled, terminal, and denied ownership for the %s ledger',
+		async (kind) => {
+			const persist = (adapter: SupabaseAgenticChatToolExecutionAdapter) => {
+				if (kind === 'read') return adapter.persistRead(input);
+				if (kind === 'mutation') return adapter.persistMutation(mutationInput);
+				return adapter.persistFailure({
+					...validationFailureInput,
+					failureKind: kind === 'validation' ? 'validation' : 'read_failure'
+				});
+			};
+			for (const [outcome, failureClass] of [
+				['stale_generation', 'unknown'],
+				['cancel_requested', 'cancelled'],
+				['already_terminal', 'unknown']
+			] as const) {
+				const { adapter, rpc } = adapterFor(receipt({ outcome }));
+				await expect(persist(adapter)).rejects.toMatchObject({
+					name: 'AgenticChatToolExecutionFenceError',
+					outcome,
+					failureClass
+				});
+				expect(rpc).toHaveBeenCalledOnce();
+			}
+			const rpc = vi.fn(async () => ({
+				data: null,
+				error: { code: '42501', message: 'ownership denied' }
+			}));
+			await expect(
+				persist(new SupabaseAgenticChatToolExecutionAdapter({ rpc }))
+			).rejects.toMatchObject({
+				name: 'AgenticChatToolExecutionRpcError',
+				code: '42501'
 			});
+			expect(rpc).toHaveBeenCalledOnce();
 		}
-	});
+	);
 
 	it('rejects malformed identity, receipts, and RPC failures without publishing success', async () => {
 		const local = adapterFor(receipt());

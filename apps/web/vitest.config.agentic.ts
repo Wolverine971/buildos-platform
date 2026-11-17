@@ -16,7 +16,7 @@ loadDotenv({ path: fileURLToPath(new URL('.env', import.meta.url)), quiet: true 
 const sharedAgentOpsSrc = (sub: string) =>
 	fileURLToPath(new URL(`../../packages/shared-agent-ops/src/${sub}`, import.meta.url));
 
-const sharedAgentOpsTestAliases = [
+export const sharedAgentOpsTestAliases = [
 	'dates/civil-date',
 	'ontology/start-here',
 	'ontology/instantiation.service',

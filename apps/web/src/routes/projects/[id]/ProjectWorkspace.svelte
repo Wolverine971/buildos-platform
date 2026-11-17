@@ -44,6 +44,7 @@
 		groupTasksForReader,
 		taskReaderOrder
 	} from '$lib/components/projects/desktop/reader-task-groups';
+	import { TaskHold } from '$lib/components/projects/desktop/reader-task-hold.svelte';
 	import type {
 		ChatScope,
 		ReaderItem,
@@ -330,7 +331,9 @@
 	const readingWide = $derived(Boolean(readerItem) && !phone);
 	const readerHasList = $derived(activeTab === 'docs' || activeTab === 'work');
 
-	const taskGroups = $derived(groupTasksForReader(withoutRemoved(tasks)));
+	// A task changed in the reader keeps its row until the reader moves off tasks.
+	const taskHold = new TaskHold();
+	const taskGroups = $derived(groupTasksForReader(withoutRemoved(tasks), taskHold.held));
 	const docOrder = $derived.by(() => {
 		const ids: string[] = [];
 		const walk = (nodes: { id: string; children?: unknown[] }[]) => {
@@ -368,6 +371,14 @@
 	// The reader announces its own changes so the lists catch up; it already shows
 	// them (or reads the item again itself), so that announcement must not reload it.
 	let readerAnnouncing = false;
+	$effect(() => {
+		if (readerItem?.kind !== 'task') untrack(() => taskHold.release());
+	});
+	function readerTaskState(id: string, _state: string, previous: string) {
+		taskHold.change(id, previous);
+		readerChanged();
+	}
+
 	function readerChanged() {
 		readerAnnouncing = true;
 		try {
@@ -1506,6 +1517,7 @@
 				onOpenItem={(item) => openEntity(item.kind, item.id)}
 				onCloseItem={closeEntityEditor}
 				onChanged={readerChanged}
+				onTaskState={readerTaskState}
 			>
 				{#snippet list()}
 					{#if activeTab === 'work'}

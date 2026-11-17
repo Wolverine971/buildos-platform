@@ -764,7 +764,11 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 						void logTavilyCharge(
 							this.usage,
 							{
-								model: `tavily/search-${charge.credits === 1 ? 'basic' : 'advanced'}`,
+								model:
+									charge.provider === 'serper'
+										? 'serper/search'
+										: `tavily/search-${charge.credits === 1 ? 'basic' : 'advanced'}`,
+								provider: charge.provider,
 								credits: charge.credits,
 								costUsd: charge.cost_usd,
 								providerRequestId: charge.provider_request_id ?? null,

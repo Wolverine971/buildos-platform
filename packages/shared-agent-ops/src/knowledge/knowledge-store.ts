@@ -927,6 +927,18 @@ export class KnowledgeStore {
 			}
 		}
 
+		// A single-valued predicate ("headline") can arrive several times in one batch (research
+		// found three headlines). The most confident one becomes current; the rest are suggestions.
+		const singleKey = (plan: Planned) => `${plan.row.entity_id}|${plan.row.predicate}`;
+		const confidenceOf = (plan: Planned) => Number(plan.row.confidence ?? 0.5);
+		const bestSingle = new Map<string, Planned>();
+		for (const plan of planned) {
+			if (!plan.cardinalityOne || plan.row.status !== 'active') continue;
+			const best = bestSingle.get(singleKey(plan));
+			if (!best || confidenceOf(plan) > confidenceOf(best))
+				bestSingle.set(singleKey(plan), plan);
+		}
+
 		const toInsert: Planned[] = [];
 		const factIdFor = new Map<number, string>();
 		const supersede: string[] = [];
@@ -958,7 +970,15 @@ export class KnowledgeStore {
 				}
 				continue;
 			}
-			if (plan.cardinalityOne) {
+			if (
+				plan.cardinalityOne &&
+				plan.row.status === 'active' &&
+				bestSingle.get(singleKey(plan)) !== plan
+			) {
+				plan.row.status = 'suggested';
+				receipt.facts.suggested++;
+			}
+			if (plan.cardinalityOne && plan.row.status === 'active') {
 				const current = (
 					singleValued.get(`${plan.row.entity_id}|${plan.row.predicate}`) ?? []
 				).filter((row) => row.status === 'active');
@@ -1270,7 +1290,13 @@ export class KnowledgeStore {
 			p_query: options.query?.trim() || null,
 			p_limit: Math.min(Math.max(options.limit ?? 50, 1), 500),
 			p_offset: Math.max(options.offset ?? 0, 0),
-			p_viewer: this.userId
+			p_viewer: this.userId,
+			// Sent only when set, so the list keeps working against a database without the
+			// research filter yet (20261117100000).
+			...(options.researched && options.researched !== 'any'
+				? { p_researched: options.researched }
+				: {}),
+			...(options.sort && options.sort !== 'recent' ? { p_sort: options.sort } : {})
 		});
 		if (error) throw dbError('List entities', error);
 		const result = (data ?? {}) as Partial<KnowledgeListResult>;
@@ -1278,7 +1304,15 @@ export class KnowledgeStore {
 			entities: result.entities ?? [],
 			total: Number(result.total ?? 0),
 			counts: result.counts ?? {},
-			known_count: Number(result.known_count ?? 0)
+			known_count: Number(result.known_count ?? 0),
+			...(result.researched
+				? {
+						researched: {
+							yes: Number(result.researched.yes ?? 0),
+							no: Number(result.researched.no ?? 0)
+						}
+					}
+				: {})
 		};
 	}
 

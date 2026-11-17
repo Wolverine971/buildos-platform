@@ -46,6 +46,7 @@
 		"test:agentic:book": "AGENTIC_SCENARIOS=book-writing-journey vitest run --config vitest.config.agentic.ts",
 		"test:agentic:watch": "vitest --config vitest.config.agentic.ts",
 		"test:agentic:project-create:worker": "AGENTIC_SCENARIOS=project-create-contract vitest run --config vitest.config.agentic.ts src/lib/tests/agentic-e2e/__tests__/agentic-scenarios.test.ts --retry=0",
+		"test:layout-shift": "vitest run --config vitest.config.layout-shift.ts",
 		"test:agentic:modal": "playwright test --config playwright.config.agentic.ts",
 		"test:agentic:modal:wiring": "playwright test --config playwright.config.agentic.ts --grep @wiring",
 		"test:agentic:modal:live": "playwright test --config playwright.config.agentic.ts --grep @live",

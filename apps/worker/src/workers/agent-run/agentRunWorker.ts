@@ -54,7 +54,7 @@ import {
 } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import {
 	type NativeSearchCacheRpcClient,
-	createSupabaseNativeSearchDiscoveryCacheStore
+	createSupabaseNativeSearchDiscoveryCacheStores
 } from '@buildos/shared-agent-ops/web/native-search';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { PermanentQueueError } from '../../lib/queueErrors';
@@ -106,8 +106,9 @@ import {
 } from './agentRunPolicy';
 import {
 	createAgentRunWebResearchPort,
-	estimateTavilySearchCharge,
-	resolveTavilyCreditCostUsd
+	estimateWebSearchCharge,
+	resolveTavilyCreditCostUsd,
+	resolveWebSearchProviders
 } from './webResearchPort';
 
 type AgentRunRow = Database['public']['Tables']['agent_runs']['Row'];
@@ -539,17 +540,19 @@ async function executeAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>) {
 
 	const calendar = await createCalendarPortForRun(run.user_id);
 	const tavilyCreditCostUsd = resolveTavilyCreditCostUsd();
-	const searchCacheStore = booleanEnv('NATIVE_SEARCH_DURABLE_CACHE_ENABLED')
-		? createSupabaseNativeSearchDiscoveryCacheStore(
+	const searchProviders = resolveWebSearchProviders('agent_run');
+	const searchCacheStores = booleanEnv('NATIVE_SEARCH_DURABLE_CACHE_ENABLED')
+		? createSupabaseNativeSearchDiscoveryCacheStores(
 				supabase as unknown as NativeSearchCacheRpcClient
 			)
 		: undefined;
 	const web = createAgentRunWebResearchPort({
+		purpose: 'agent_run',
 		searchTimeoutMs: positiveIntegerEnv('AGENT_RUN_WEB_SEARCH_TIMEOUT_MS'),
 		visitTimeoutMs: positiveIntegerEnv('AGENT_RUN_WEB_VISIT_TIMEOUT_MS'),
 		visitMaxBytes: positiveIntegerEnv('AGENT_RUN_WEB_VISIT_MAX_BYTES'),
 		tavilyCreditCostUsd,
-		searchCacheStore,
+		searchCacheStores,
 		pageEvidenceSink: (page, signal) => persistAgentRunPageEvidence(page, run.user_id, signal),
 		onSearchDispatched: accounting.onSearchDispatched
 	});
@@ -1177,7 +1180,7 @@ async function executeAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>) {
 				searchIsPermitted &&
 				typeof web.search === 'function' &&
 				searchRequiresDispatch
-					? estimateTavilySearchCharge(args, tavilyCreditCostUsd)
+					? estimateWebSearchCharge(args, searchProviders, { tavilyCreditCostUsd })
 					: null;
 			if (
 				reservedPaidToolCharge &&

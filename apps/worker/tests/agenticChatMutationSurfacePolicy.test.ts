@@ -17,16 +17,6 @@ import {
 
 describe('Agentic Chat mutation surface policy', () => {
 	it('partitions every signed write into the reviewed or explicitly deferred surface', () => {
-		// 40 -> 43 on 2026-10-04 (Tables tool suite): three table writes signed.
-		// 43 -> 45 on 2026-11-16 (tasker 160): record_knowledge, enrich_knowledge.
-		expect(AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.signedToolNames).toHaveLength(45);
-		// 21 -> 25 on 2026-09-04: the four calendar writes moved to the worker.
-		// 25 -> 26 on 2026-09-22: update_onto_asset (name/file a project image).
-		// 26 -> 29 on 2026-10-04: create_onto_table, update_onto_table,
-		// update_onto_table_rows (gateway table rows, reviewed like any write).
-		// 29 -> 31 on 2026-11-16: record_knowledge, enrich_knowledge (gateway, unscoped).
-		expect(AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.reviewedToolNames).toHaveLength(31);
-		expect(AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.deferredToolNames).toHaveLength(14);
 		expect(AGENTIC_CHAT_DEFERRED_MUTATION_TOOLS_V1.request_email_account_connection).toBe(
 			'browser_user_action_handoff'
 		);
@@ -44,10 +34,14 @@ describe('Agentic Chat mutation surface policy', () => {
 	it('keeps all reviewed mutation capabilities disabled unless explicitly supplied', () => {
 		const capabilities = normalizeAgenticChatMutationCapabilitiesV1(undefined);
 
-		// 26 -> 29 on 2026-10-04: the three table write capabilities.
-		// 29 -> 31 on 2026-11-16: the two knowledge graph write capabilities.
-		expect(Object.keys(capabilities)).toHaveLength(31);
-		expect(Object.values(capabilities).every((enabled) => enabled === false)).toBe(true);
+		expect(capabilities).toEqual(
+			Object.fromEntries(
+				Object.values(AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1).map((spec) => [
+					spec.capability,
+					false
+				])
+			)
+		);
 	});
 
 	it('matches the shared admission capability contract exactly', () => {

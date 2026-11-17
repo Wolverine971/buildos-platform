@@ -32,19 +32,25 @@ const GROUPS: readonly { key: TaskGroupKey; label: string }[] = [
 	{ key: 'done', label: 'Done' }
 ];
 
-function groupOf(task: ReaderTask): TaskGroupKey {
+export function groupOf(task: Pick<ReaderTask, 'state_key'>): TaskGroupKey {
 	if (task.state_key === 'done') return 'done';
 	if (task.state_key === 'in_progress') return 'in_progress';
 	if (task.state_key === 'blocked') return 'blocked';
 	return 'backlog';
 }
 
-/** The non-empty groups, in order; archived and deleted tasks are left out. */
-export function groupTasksForReader<T extends ReaderTask>(tasks: readonly T[]): TaskGroup<T>[] {
+/**
+ * The non-empty groups, in order; archived and deleted tasks are left out. `held` keeps a
+ * task in a group other than its state's (one changed while it is open in the reader).
+ */
+export function groupTasksForReader<T extends ReaderTask>(
+	tasks: readonly T[],
+	held?: ReadonlyMap<string, TaskGroupKey>
+): TaskGroup<T>[] {
 	const byKey = new Map<TaskGroupKey, T[]>(GROUPS.map((group) => [group.key, []]));
 	for (const task of tasks) {
 		if (task.archived_at || task.deleted_at) continue;
-		byKey.get(groupOf(task))!.push(task);
+		byKey.get(held?.get(task.id) ?? groupOf(task))!.push(task);
 	}
 	return GROUPS.flatMap(({ key, label }) => {
 		const list = byKey.get(key)!;

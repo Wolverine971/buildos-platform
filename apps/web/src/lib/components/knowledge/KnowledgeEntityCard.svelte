@@ -2,8 +2,10 @@
 <!--
 	One entry in the personal knowledge graph: who or what it is, how to reach it, what it's
 	connected to (each relationship drills into the next card), where it shows up in BuildOS,
-	what research found, and where every detail came from. "Find more" queues paid web research
-	(capped server-side); "Ask in chat" opens chat with the entry named. Tasker 160.
+	what research found, and where every detail came from. "Find more" opens the "What should we
+	look for?" dialog (the page owns it); progress shows here and in the research tray, both fed by
+	the page's one research poll, and the card reloads when its research finishes (tasker 164).
+	"Ask in chat" opens chat with the entry named. Tasker 160.
 -->
 <script lang="ts">
 	import {
@@ -40,6 +42,7 @@
 		type KnowledgeFactView,
 		type KnowledgeKind
 	} from './knowledge-client';
+	import { isActiveTarget, researchStatusLine, type ResearchTarget } from './research-tray';
 
 	interface Props {
 		entityId: string;
@@ -51,17 +54,32 @@
 		/** Something changed that the list should reflect. */
 		onChanged?: () => void;
 		onAskChat?: (entity: { id: string; name: string; kind: KnowledgeKind }) => void;
+		/** This entry's latest research from the page's research queue, if any. */
+		research?: ResearchTarget | null;
+		/** Open the "What should we look for?" dialog for this entry. */
+		onFindMore?: (entity: {
+			id: string;
+			name: string;
+			kind: KnowledgeKind;
+			researched_at: string | null;
+		}) => void;
 	}
 
-	let { entityId, onOpen, onBack, onClose, onChanged, onAskChat }: Props = $props();
+	let {
+		entityId,
+		onOpen,
+		onBack,
+		onClose,
+		onChanged,
+		onAskChat,
+		research = null,
+		onFindMore
+	}: Props = $props();
 
 	let detail = $state<KnowledgeEntityPayload | null>(null);
 	let loading = $state(true);
 	let loadError = $state<string | null>(null);
 	let openSource = $state<string | null>(null);
-	let researchRunId = $state<string | null>(null);
-	let researchState = $state<'idle' | 'starting' | 'running' | 'done' | 'failed'>('idle');
-	let researchNote = $state<string | null>(null);
 	let editingName = $state(false);
 	let nameDraft = $state('');
 	let adding = $state(false);
@@ -74,6 +92,12 @@
 	const entity = $derived(detail?.entity ?? null);
 	const isOwn = $derived(entity?.scope === 'private');
 	const Icon = $derived(entity ? KIND_ICON[entity.kind] : null);
+	const researching = $derived(research ? isActiveTarget(research) : false);
+	const lastResearchedAt = $derived(
+		entity?.enriched_at ??
+			detail?.enrichment.find((t) => t.status === 'done')?.finished_at ??
+			null
+	);
 
 	const visibleFacts = $derived(
 		(detail?.facts ?? []).filter((f) => f.status === 'active' || f.status === 'disputed')
@@ -113,13 +137,6 @@
 		loadError = null;
 		try {
 			detail = await knowledgeApi.get(id);
-			const running = detail.enrichment.find(
-				(t) => t.status === 'queued' || t.status === 'running'
-			);
-			if (running && researchState === 'idle') {
-				researchRunId = running.run_id;
-				researchState = 'running';
-			}
 		} catch (error) {
 			loadError = error instanceof Error ? error.message : 'Could not load this entry';
 		} finally {
@@ -133,56 +150,18 @@
 		void load(entityId).then(() => heading?.focus());
 	});
 
-	// Poll a running research job until it finishes, then reload the card. Gives up after 15
-	// minutes (a job the worker never picked up stays queued).
+	// When this entry's research finishes (the page's queue sees it), reload to show what it
+	// found. Plain variable: only the transition matters, not a reactive value.
+	let lastResearchStatus: string | null = null;
 	$effect(() => {
-		const runId = researchRunId;
-		if (!runId || researchState !== 'running') return;
-		let stopped = false;
-		const deadline = Date.now() + 15 * 60 * 1000;
-		const timer = setInterval(async () => {
-			if (Date.now() > deadline) {
-				clearInterval(timer);
-				researchState = 'failed';
-				researchNote = 'Research is taking longer than expected. Check back later.';
-				return;
-			}
-			try {
-				const { run, targets } = await knowledgeApi.run(runId);
-				if (stopped || run.status === 'queued' || run.status === 'running') return;
-				const added = targets.reduce((sum, t) => sum + (t.facts_added ?? 0), 0);
-				researchState = run.status === 'failed' ? 'failed' : 'done';
-				researchNote =
-					run.status === 'failed'
-						? (run.error ?? 'Research failed.')
-						: added
-							? `Found ${added} new detail${added === 1 ? '' : 's'}.`
-							: 'Nothing new turned up.';
-				await load(entityId, true);
-				onChanged?.();
-			} catch {
-				// keep polling; a blip shouldn't end the wait
-			}
-		}, 4000);
-		return () => {
-			stopped = true;
-			clearInterval(timer);
-		};
-	});
-
-	async function findMore() {
-		if (!entity) return;
-		researchState = 'starting';
-		researchNote = null;
-		try {
-			const result = await knowledgeApi.enrich([entity.id]);
-			researchRunId = result.runId;
-			researchState = 'running';
-		} catch (error) {
-			researchState = 'failed';
-			researchNote = error instanceof Error ? error.message : 'Could not start research';
+		const status = research?.status ?? null;
+		const was = lastResearchStatus;
+		lastResearchStatus = status;
+		if (was && (was === 'queued' || was === 'running') && status && !researching) {
+			// The page refreshes the list itself when research settles.
+			void load(entityId, true);
 		}
-	}
+	});
 
 	async function copy(text: string) {
 		try {
@@ -477,10 +456,16 @@
 			<button
 				type="button"
 				class="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-foreground pressable hover:bg-muted disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-				disabled={researchState === 'starting' || researchState === 'running'}
-				onclick={() => void findMore()}
+				disabled={researching || !onFindMore}
+				onclick={() =>
+					onFindMore?.({
+						id: entity.id,
+						name: entity.name,
+						kind: entity.kind,
+						researched_at: lastResearchedAt
+					})}
 			>
-				{#if researchState === 'starting' || researchState === 'running'}
+				{#if researching}
 					<Loader2
 						class="h-4 w-4 animate-spin motion-reduce:animate-none"
 						aria-hidden="true"
@@ -500,19 +485,16 @@
 				</button>
 			{/if}
 		</div>
-		{#if researchNote}
+		{#if research}
 			<p
-				class="-mt-2 text-xs {researchState === 'failed'
+				class="-mt-2 text-xs {research.status === 'failed'
 					? 'text-destructive'
 					: 'text-muted-foreground'}"
 				role="status"
 			>
-				{researchNote}
-			</p>
-		{:else if researchState === 'running'}
-			<p class="-mt-2 text-xs text-muted-foreground" role="status">
-				Searching the web. New details land here with their sources, usually within a
-				minute.
+				{researching
+					? `${researchStatusLine(research)} New details land here with their sources.`
+					: `Last research: ${researchStatusLine(research)}`}
 			</p>
 		{/if}
 
@@ -769,12 +751,12 @@
 					{confirmDelete ? 'Delete for good?' : 'Delete'}
 				</button>
 			{/if}
-			{#if detail.enrichment.length}
+			{#if lastResearchedAt}
 				<span class="ml-auto text-xs text-muted-foreground">
-					Researched {new Date(detail.enrichment[0]!.created_at).toLocaleDateString(
-						undefined,
-						{ month: 'short', day: 'numeric' }
-					)}
+					Researched {new Date(lastResearchedAt).toLocaleDateString(undefined, {
+						month: 'short',
+						day: 'numeric'
+					})}
 				</span>
 			{/if}
 		</div>

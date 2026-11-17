@@ -459,6 +459,41 @@ describe('KnowledgeStore.record', () => {
 		expect(corrected.facts.superseded).toBe(1);
 	});
 
+	it('keeps one current value when a batch brings several for a single-valued detail', async () => {
+		const { db, store } = setup();
+		await store.record(
+			{
+				entities: [{ ref: 'tim', kind: 'person', name: 'Tim Ferriss' }],
+				facts: [
+					{
+						subject: 'tim',
+						predicate: 'headline',
+						value: 'Angel Investor',
+						confidence: 0.6
+					},
+					{
+						subject: 'tim',
+						predicate: 'headline',
+						value: 'Author and podcaster',
+						confidence: 0.9
+					},
+					{
+						subject: 'tim',
+						predicate: 'headline',
+						value: 'Author of The 4-Hour Workweek'
+					}
+				]
+			},
+			{ via: 'enrichment' }
+		);
+		const headlines = db.rows('knowledge_facts').filter((f) => f.predicate === 'headline');
+		expect(headlines.map((f) => [f.value_text, f.status]).sort()).toEqual([
+			['Angel Investor', 'suggested'],
+			['Author and podcaster', 'active'],
+			['Author of The 4-Hour Workweek', 'suggested']
+		]);
+	});
+
 	it('rejects facts that do not fit the vocabulary', async () => {
 		const { store } = setup();
 		const receipt = await store.record(

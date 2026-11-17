@@ -18,12 +18,16 @@ import {
 } from '@buildos/shared-agent-ops/knowledge';
 
 export const KNOWLEDGE_ENRICH_OPERATION = 'knowledge_enrich';
-export const KNOWLEDGE_ENRICH_PROMPT_VERSION = 1;
+export const KNOWLEDGE_ENRICH_PROMPT_VERSION = 2;
 export const MAX_PAGES_PER_TARGET = 3;
 export const PAGE_CHARS = 7_000;
 
-/** Predicates research may never fill for a person, whatever was asked. */
-const NEVER_FOR_PEOPLE = new Set(['phone', 'address', 'birthday', 'note', 'knows']);
+/**
+ * Predicates research may never fill for a person, whatever was asked. A person's phone and
+ * email are allowed only when the run asked for them (they reach `fields` only through the
+ * explicit "Phone & email" choice; see ENRICH_PERSON_CONTACT_FIELDS in shared-agent-ops).
+ */
+const NEVER_FOR_PEOPLE = new Set(['address', 'birthday', 'note', 'knows']);
 
 export interface EnrichPage {
 	url: string;
@@ -88,7 +92,11 @@ export function enrichContextFrom(detail: KnowledgeEntityDetail): EnrichContext 
 }
 
 /** One or two web searches, built from the entity's own structured facts. */
-export function enrichQueries(context: EnrichContext, instructions?: string | null): string[] {
+export function enrichQueries(
+	context: EnrichContext,
+	instructions?: string | null,
+	fields: readonly string[] = []
+): string[] {
 	const name = `"${context.name.replace(/"/g, '')}"`;
 	const employer = context.existing.find((e) => e.predicate === 'works_at')?.value;
 	const headline = context.existing.find((e) => e.predicate === 'headline')?.value;
@@ -98,7 +106,10 @@ export function enrichQueries(context: EnrichContext, instructions?: string | nu
 	switch (context.kind) {
 		case 'person':
 			queries.push([name, employer ?? headline ?? ''].join(' ').trim());
-			if (employer) queries.push(`${name} linkedin`);
+			// Asked for their phone or email: the second search goes after a contact page.
+			if (fields.includes('email') || fields.includes('phone'))
+				queries.push([name, employer ?? '', 'contact email phone'].join(' ').trim());
+			else if (employer) queries.push(`${name} linkedin`);
 			break;
 		case 'org':
 			queries.push([name, domain ?? '', 'company'].join(' ').replace(/\s+/g, ' ').trim());
@@ -124,7 +135,7 @@ Rules:
 - Values: plain text, URLs as written on the page, dates as YYYY or YYYY-MM-DD.
 - For relationships (value is another entity), give "object": {"kind": "...", "name": "..."} instead of "value".
 - Don't repeat facts listed as already known.
-- For a person: never report a phone number, home address, birthday or family details. Report an email only if the page publishes it as their professional contact.
+- For a person: never report a home address, birthday or family details. Report a phone number or email only when it is one of the predicates you are given, the page publishes it as this person's own contact (not a company switchboard or someone else's), and the quote contains it.
 
 Return JSON only:
 {"pages":[{"page":1,"about_entity":true}],"facts":[{"predicate":"...","value":"...","object":{"kind":"org","name":"..."},"qualifiers":{},"page":1,"quote":"...","confidence":0.9}]}`;
@@ -157,7 +168,7 @@ export function enrichUserPrompt(
 		context.known.length
 			? `Known facts:\n${context.known.map((k) => `- ${k}`).join('\n')}`
 			: 'Known facts: none',
-		instructions?.trim() ? `The user asked: ${instructions.trim().slice(0, 500)}` : '',
+		instructions?.trim() ? `The user asked: ${instructions.trim().slice(0, 1200)}` : '',
 		`Predicates to look for:\n${predicateLines.join('\n')}`,
 		pageBlocks.join('\n\n')
 	]
@@ -323,6 +334,53 @@ export function validateEnrichment(
 		kept++;
 	}
 	return { batch, kept, dropped };
+}
+
+/** Google's knowledge panel as Serper returns it (bounded by shared-agent-ops). */
+export interface EnrichKnowledgePanel {
+	title: string;
+	type?: string;
+	website?: string;
+	description?: string;
+	descriptionSource?: string;
+	attributes?: Record<string, string>;
+}
+
+export const KNOWLEDGE_PANEL_PAGE_TITLE = 'Google knowledge panel';
+
+/**
+ * The knowledge panel as one more page of evidence, so its facts go through the same rule as
+ * every page: the model must quote this text exactly or the fact is dropped. Nothing is
+ * paraphrased here; each line is the provider's own text.
+ *
+ * For a person only the name, type and description are offered. Panel attributes for people
+ * are where birth dates, spouses and children live, and those are never researched.
+ */
+export function knowledgePanelPage(
+	panel: EnrichKnowledgePanel | null | undefined,
+	kind: KnowledgeKind
+): EnrichPage | null {
+	if (!panel?.title) return null;
+	const lines = [panel.title];
+	if (panel.type) lines.push(panel.type);
+	if (panel.description)
+		lines.push(
+			panel.descriptionSource
+				? `${panel.description} (${panel.descriptionSource})`
+				: panel.description
+		);
+	if (panel.website) lines.push(`Website: ${panel.website}`);
+	if (kind !== 'person') {
+		for (const [key, value] of Object.entries(panel.attributes ?? {})) {
+			lines.push(`${key}: ${value}`);
+		}
+	}
+	if (lines.length < 2) return null; // a bare title proves nothing
+	return {
+		url: `https://www.google.com/search?q=${encodeURIComponent(panel.title)}`,
+		title: `${KNOWLEDGE_PANEL_PAGE_TITLE}: ${panel.title}`,
+		content: lines.join('\n').slice(0, PAGE_CHARS)
+	};
 }
 
 /** Pick which search results to read: the entity's own site first, then the provider's order. */

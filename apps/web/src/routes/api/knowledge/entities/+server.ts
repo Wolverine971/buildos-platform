@@ -1,8 +1,9 @@
 // apps/web/src/routes/api/knowledge/entities/+server.ts
 /**
  * GET  /api/knowledge/entities?kind=person&filter=known&q=sam&limit=50&offset=0
+ *        [&researched=yes|no][&sort=recent|name|researched]
  *      Browse the caller's knowledge graph (their private entries plus public ones they've
- *      recorded something about), with per-kind counts.
+ *      recorded something about), with per-kind counts and researched / not researched counts.
  * POST /api/knowledge/entities  { kind, name, summary?, know?, own?, facts? }
  *      Add an entry by hand. `know` records "I know them"; `own` records "I own this".
  */
@@ -21,6 +22,12 @@ import {
 } from '$lib/server/knowledge/knowledge.server';
 
 const FILTERS = ['all', 'known', 'owned'] as const;
+const RESEARCHED = ['any', 'yes', 'no'] as const;
+const SORTS = ['recent', 'name', 'researched'] as const;
+
+function pick<T extends string>(value: string | null, allowed: readonly T[], fallback: T): T {
+	return value && (allowed as readonly string[]).includes(value) ? (value as T) : fallback;
+}
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	const { user } = await locals.safeGetSession();
@@ -33,6 +40,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		? (filterParam as (typeof FILTERS)[number])
 		: 'all';
 	const q = (url.searchParams.get('q') ?? '').trim().slice(0, 200);
+	const researched = pick(url.searchParams.get('researched'), RESEARCHED, 'any');
+	const sort = pick(url.searchParams.get('sort'), SORTS, 'recent');
 	const limit = Number(url.searchParams.get('limit') ?? 50);
 	const offset = Number(url.searchParams.get('offset') ?? 0);
 
@@ -40,6 +49,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const result = await knowledgeStoreFor(locals.supabase, user.id).list({
 			...(kinds?.length ? { kinds } : {}),
 			filter,
+			researched,
+			sort,
 			...(q ? { query: q } : {}),
 			limit: Number.isFinite(limit) ? limit : 50,
 			offset: Number.isFinite(offset) ? offset : 0

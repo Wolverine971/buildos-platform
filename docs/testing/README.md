@@ -2,7 +2,7 @@
 
 # BuildOS testing
 
-- **Last updated:** 2026-10-26
+- **Last updated:** 2026-11-17
 - **Status:** Active
 - **Scope:** Free local/CI gates, separately approved live validation, and test selection
 
@@ -10,6 +10,10 @@ Start with the behavior that could fail, then choose the narrowest runner that e
 Use [the behavior risk matrix](./COVERAGE_MATRIX.md) and
 [the October audit](./TEST_AUDIT_2026-10-26.md) to choose missing contracts.
 Do not infer coverage from a count of test files or from a mock returning the expected value.
+For concrete keep/remove/rewrite decisions, see
+[the November test value audit](./TEST_VALUE_AUDIT_2026-11-17.md). The
+[chat failure scenario index](./AGENTIC_CHAT_FAILURE_SCENARIOS.md) maps failure cases to their
+owning tests without treating test names as executable coverage.
 
 ## Runner inventory
 
@@ -83,7 +87,13 @@ as **not run**, never passing.
 
 ## Test design
 
+- Name the plausible regression before adding a test. Keep a separate case for a distinct
+  failure branch, boundary, or timing; do not target a number of tests.
 - Assert persisted user outcomes, ownership, role fences, retries and failure recovery.
+- Test shared behavior in its owning package. Adapter tests should exercise what the host
+  adds: environment selection, authorization, translation, and actual wiring.
+- Before removing a duplicate, compare the production path, injected fault, and observable
+  outcome. Calling the same function or sharing a filename is not enough.
 - Use rendered components and accessibility roles for UI behavior. Use a browser for layout,
   hydration, navigation and reload persistence.
 - Keep source checks for actual dependency/security boundaries; avoid exact CSS ordering,

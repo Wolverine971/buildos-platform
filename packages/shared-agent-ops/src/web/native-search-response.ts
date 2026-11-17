@@ -1,6 +1,10 @@
 // packages/shared-agent-ops/src/web/native-search-response.ts
 import type { NativeSearchCandidate, NormalizedNativeSearchRequest } from './native-search';
-import type { NativeSearchDiscoveryResult, NativeSearchProvider } from './native-search-discovery';
+import type {
+	NativeSearchDiscoveryResult,
+	NativeSearchKnowledgePanel,
+	NativeSearchProvider
+} from './native-search-discovery';
 
 export type NativeSearchCacheStatus = 'miss' | 'hit' | 'shared';
 
@@ -25,8 +29,14 @@ export interface NativeSearchResponse {
 	answer?: string;
 	results: NativeSearchCandidate[];
 	follow_up_questions?: string[];
+	/** Google's knowledge panel (Serper only). Untrusted search-engine text, like snippets. */
+	knowledge_panel?: NativeSearchKnowledgePanel;
 	message: string;
 	info: NativeSearchResponseInfo;
+}
+
+function clonePanel(panel: NativeSearchKnowledgePanel): NativeSearchKnowledgePanel {
+	return { ...panel, ...(panel.attributes ? { attributes: { ...panel.attributes } } : {}) };
 }
 
 export interface BuildNativeSearchResponseInput {
@@ -48,6 +58,9 @@ export function buildNativeSearchResponse(
 		results: (input.results ?? discovery.results).map((result) => ({ ...result })),
 		...(discovery.followUpQuestions?.length
 			? { follow_up_questions: [...discovery.followUpQuestions] }
+			: {}),
+		...(discovery.knowledgePanel
+			? { knowledge_panel: clonePanel(discovery.knowledgePanel) }
 			: {}),
 		message: `Web search results for "${request.query}".`,
 		info: {
@@ -91,6 +104,7 @@ export function markNativeSearchResponseCacheStatus<T extends NativeSearchRespon
 		...(value.follow_up_questions
 			? { follow_up_questions: [...value.follow_up_questions] }
 			: {}),
+		...(value.knowledge_panel ? { knowledge_panel: clonePanel(value.knowledge_panel) } : {}),
 		info: { ...info, cache_status: status }
 	} as T;
 }

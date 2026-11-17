@@ -204,12 +204,21 @@ export interface KnowledgeListOptions {
 	query?: string;
 	limit?: number;
 	offset?: number;
+	/** yes = researched by this user (Find more finished, or enriched_at on their entry). */
+	researched?: KnowledgeResearchedFilter;
+	/** recent = last updated (default); name = A–Z; researched = last researched first. */
+	sort?: KnowledgeListSort;
 }
 
+export type KnowledgeResearchedFilter = 'any' | 'yes' | 'no';
+export type KnowledgeListSort = 'recent' | 'name' | 'researched';
+
 export interface KnowledgeListResult {
-	entities: Array<KnowledgeEntitySummary & { updated_at: string }>;
+	entities: Array<KnowledgeEntitySummary & { updated_at: string; researched_at?: string | null }>;
 	total: number;
 	counts: Partial<Record<KnowledgeKind, number>>;
+	/** Researched / not researched among the current kind and filter. */
+	researched?: { yes: number; no: number };
 	/** How many people the user knows, whatever the filters. */
 	known_count: number;
 }

@@ -131,10 +131,17 @@ describe('Agentic Chat private execution observations', () => {
 				new AbortController().signal
 			)
 		).resolves.toBeUndefined();
-		expect(rpc).toHaveBeenCalledWith(
-			'persist_agentic_chat_execution_observation',
-			expect.objectContaining({ p_event_type: 'provider_media_resolved' })
-		);
+		expect(rpc).toHaveBeenCalledWith('persist_agentic_chat_execution_observation', {
+			p_turn_run_id: TURN_RUN_ID,
+			p_queue_job_id: QUEUE_JOB_ID,
+			p_processing_token: PROCESSING_TOKEN,
+			p_execution_generation: 2,
+			p_user_id: USER_ID,
+			p_observation_key: observationKey,
+			p_phase: 'provider',
+			p_event_type: 'provider_media_resolved',
+			p_payload: mediaInput.payload
+		});
 	});
 
 	it('forwards the rejected-tool receipt keys unchanged on a provider attempt', async () => {
@@ -190,6 +197,30 @@ describe('Agentic Chat private execution observations', () => {
 			})
 		);
 	});
+
+	it.each(['provider_attempt_started', 'provider_media_resolved'] as const)(
+		'rejects stale receipts and permission errors for %s',
+		async (eventType) => {
+			const rpc = vi
+				.fn()
+				.mockResolvedValueOnce({
+					data: receipt({ event_type: eventType, execution_generation: 1 }),
+					error: null
+				})
+				.mockResolvedValueOnce({
+					data: null,
+					error: { code: '42501', message: 'ownership denied' }
+				});
+			const adapter = new SupabaseAgenticChatExecutionObservationAdapter({ rpc });
+			await expect(
+				adapter.observe({ ...input, eventType }, new AbortController().signal)
+			).rejects.toMatchObject({ code: 'execution_observation_protocol_error' });
+			await expect(
+				adapter.observe({ ...input, eventType }, new AbortController().signal)
+			).rejects.toMatchObject({ code: '42501' });
+			expect(rpc).toHaveBeenCalledTimes(2);
+		}
+	);
 
 	it('aborts a hung observation RPC at its local deadline', async () => {
 		let deadlineSignal: AbortSignal | null = null;
