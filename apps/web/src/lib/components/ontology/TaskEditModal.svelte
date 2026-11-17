@@ -54,6 +54,7 @@
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import TaskAssigneeSelector from './TaskAssigneeSelector.svelte';
+	import TaskAffectedWork from './TaskAffectedWork.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TaskEntityPopover from '$lib/components/task-entities/TaskEntityPopover.svelte';
 	import TaskKeyDetails from '$lib/components/task-entities/TaskKeyDetails.svelte';
@@ -1570,6 +1571,10 @@
 										<TagsDisplay props={task.props} size="sm" compact={true} />
 									</section>
 								{/if}
+
+								<div class="px-3 sm:px-4">
+									<TaskAffectedWork {taskId} />
+								</div>
 
 								<!-- Linked Entities (collapsible, default closed for density) -->
 								<section class="px-3 sm:px-4">

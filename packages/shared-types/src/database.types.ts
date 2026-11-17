@@ -28892,6 +28892,10 @@ export type Database = {
         Args: { p_document_id: string; p_table: Json }
         Returns: string
       }
+      onto_task_affected_work: {
+        Args: { p_task_id: string; p_max_depth?: number; p_max_tasks?: number }
+        Returns: Json
+      }
       onto_edge_link_atomic: {
         Args: {
           p_dst_id: string

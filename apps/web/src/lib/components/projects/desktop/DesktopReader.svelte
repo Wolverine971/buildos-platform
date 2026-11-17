@@ -57,6 +57,7 @@
 	import { fetchEntityModalData } from '$lib/components/project/entity-modal-data';
 	import TaskEntityPopover from '$lib/components/task-entities/TaskEntityPopover.svelte';
 	import TaskKeyDetails from '$lib/components/task-entities/TaskKeyDetails.svelte';
+	import TaskAffectedWork from '$lib/components/ontology/TaskAffectedWork.svelte';
 	import TaskMentionText from '$lib/components/task-entities/TaskMentionText.svelte';
 	import { entityMentions } from '$lib/components/task-entities/entity-mentions';
 	import { TaskEntities } from '$lib/components/task-entities/task-entities.svelte';
@@ -1349,6 +1350,9 @@
 					{/if}
 				{/snippet}
 				{@render textFrame(false, taskText)}
+				<div class="mt-4">
+					<TaskAffectedWork taskId={task.id} />
+				</div>
 				<section class="task-docs" aria-label="Docs for this task">
 					<div class="task-docs-head">
 						<h4 class="sec-title">

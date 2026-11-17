@@ -2,6 +2,15 @@
 
 # 147 — Builder profiles (build-os.com/@handle)
 
+> **2026-11-15 PM (Claude), after DJ deployed `47374107d`:** share card LIVE (200 `image/png`,
+> 1200×630, DJ's photo renders; cold 3.8 s, cached 0.14 s; og/twitter tags point at it). Draft
+> recheck on prod (DeepSeek V4 Flash, $0.0016, 12 s): all 4 owner pitches kept (0 drafted);
+> headline "Founder, BuildOS"; bio still says "teach long-range precision shooting" (from The
+> Cadre, whose own description is written as the instructor's first-person background). The prompt
+> rule isn't enough; nothing in the data marks a project as client work. Proposed fix (DJ's call):
+> a per-project "client work" flag on the builder page, passed to the draft as a field (and
+> optionally shown as "for a client"). Draft is a suggestion DJ reviews, so low risk meanwhile.
+>
 > **2026-11-15 (Claude), after DJ deployed `fa3db38bc`:**
 >
 > - **Share card was 500 on production:** `sharp` can't load on Vercel (`libvips-cpp.so.8.18.3:
@@ -21,7 +30,7 @@ cannot open shared object file`). Replaced with `@resvg/resvg-wasm` (SVG→PNG) 
 >   shooting"; BuildOS pitch "AI-first project organization…". Recheck after deploy (~$0.0014).
 > - Writing is off on the live page (no Julian), verified signed out.
 
-**Status:** Rounds 1–3 committed, pushed, deployed (web + worker). Round 4 "finish" (11-15) BUILT, UNCOMMITTED, not deployed; migration `20261115160000` APPLIED + recorded (see Round 4) · **Opened:** 2026-10-23 · **Owner:** Claude
+**Status:** Rounds 1–4 committed and deployed (`47374107d`, 11-15); migration `20261115160000` APPLIED + recorded (see Round 4) · **Opened:** 2026-10-23 · **Owner:** Claude
 **Spec:** `docs/specs/BUILDER_PROFILE_SPEC_2026-10-23.md` · **Mockup:** https://claude.ai/artifact/7zHm28L8Lty5pjR1s54Fez
 
 ## What users get

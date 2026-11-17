@@ -15,10 +15,16 @@ the migrations they need, one file at a time, following the repo migration rules
   rehearsal. Instead a signed-in smoke (as DJ + an editor, ROLLBACK) ran after every apply:
   normal edits OK; editor takeover/trash/publish, queue insert, email rewrite all refused.
   Railway: all 3 workers on node v22.23.4, no crash loop, no `RAILPACK_NODE_VERSION`.
-- §2 BUILT, NOT APPLIED: `supabase/migrations/20261115180000_collaborator_emails_private.sql`
-  (+ check SQL; rehearsed with `--role-probe`, prod dry run OK). App code switched in the same
-  change set. **Apply only after the web deploy carrying that code** (old web 500s on 13 reads).
+- §2 DONE 11-15 PM: web deploy `47374107d` live, then `20261115180000` re-rehearsed
+  (`--role-probe` PASSED), dry run with ROLLBACK, APPLIED + recorded. Checked: `authenticated`
+  has no SELECT on `onto_actors.email` / `onto_project_invites.invitee_email`; as a member of DJ's
+  Family Weekly Tasks the project load returns only their own email; as DJ (owner) the People hub,
+  members, invites, entity collaboration and 3 shared project pages all 200, owner still sees
+  member emails.
 - §3 DONE: `show_writing` was already false (set 11-14); logged-out /@djwayne shows no Writing.
+- 00:51 mystery deploy explained: §4's env change + "web redeployed" re-shipped the build that was
+  live then, over DJ's still-building `fa3db38bc` (rolled back by promote 11-15 AM). Lesson: after
+  setting Vercel env, wait for any in-flight production build, then redeploy the newest one.
 - §4 DJ chose "finish isolation": agent client env set on Vercel prod + agentic-chat-worker +
   daily-brief-worker, both redeployed, web redeployed. New `agent_access_required` code so chat
   says "turn on Agent access in Profile → Calendar/Email" (needs web + worker deploy).
