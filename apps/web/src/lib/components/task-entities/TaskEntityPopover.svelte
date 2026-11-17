@@ -15,6 +15,7 @@
 	import TablePopover from '$lib/components/tables/TablePopover.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import {
+		BookUser,
 		Building,
 		ChevronRight,
 		Copy,
@@ -98,6 +99,31 @@
 			.finally(() => {
 				if (!controller.signal.aborted) relatedLoading = false;
 			});
+		return () => controller.abort();
+	});
+
+	// The matching entry in the knowledge graph, if there is one (tasker 160).
+	const knowledgeCache = new Map<string, string | null>();
+	let knowledgeId = $state<string | null>(null);
+	$effect(() => {
+		const open = card;
+		knowledgeId = null;
+		if (!open || (open.kind !== 'person' && open.kind !== 'org')) return;
+		const cacheKey = `${taskId}|${open.kind}|${open.key}`;
+		if (knowledgeCache.has(cacheKey)) {
+			knowledgeId = knowledgeCache.get(cacheKey) ?? null;
+			return;
+		}
+		const controller = new AbortController();
+		const params = new URLSearchParams({ name: open.name, kind: open.kind, task_id: taskId });
+		fetch(`/api/knowledge/lookup?${params}`, { signal: controller.signal })
+			.then(async (response) => {
+				if (!response.ok) return;
+				const id = ((await response.json())?.data?.entity_id as string | null) ?? null;
+				knowledgeCache.set(cacheKey, id);
+				knowledgeId = id;
+			})
+			.catch(() => {});
 		return () => controller.abort();
 	});
 
@@ -340,6 +366,26 @@
 				</div>
 			{:else if relatedLoading}
 				<p class="text-xs text-muted-foreground" role="status">Looking for other tasks…</p>
+			{/if}
+
+			{#if knowledgeId}
+				<a
+					href="/knowledge?e={knowledgeId}"
+					class="-mx-2 flex min-h-9 min-w-0 items-center gap-2 rounded-md px-2 text-sm text-foreground pressable hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-8"
+					onclick={() => entities.close()}
+				>
+					<BookUser
+						class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+						aria-hidden="true"
+					/>
+					<span class="min-w-0 flex-1 truncate"
+						>Everything you know about {card.name}</span
+					>
+					<ChevronRight
+						class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+						aria-hidden="true"
+					/>
+				</a>
 			{/if}
 
 			{#if canEdit}

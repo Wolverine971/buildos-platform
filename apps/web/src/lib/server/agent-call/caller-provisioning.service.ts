@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto';
 import { isValidUUID } from '@buildos/shared-types';
 import type {
 	AgentCallSessionRecord,
+	BuildosAgentAllowedOp,
 	BuildosAgentCallerListResponse,
 	BuildosAgentCallerProvisionRequest,
 	BuildosAgentCallerProvisionResponse,
@@ -874,7 +875,13 @@ export type ConnectorProjectGrantContext = {
 };
 
 /** The bundle a read-only key gets when its person allows changes from a wall. */
-const ALLOW_CHANGES_OPS = [...BUILDOS_AGENT_READ_OPS, ...OPENCLAW_DEFAULT_WRITE_OPS];
+const ALLOW_CHANGES_OPS: BuildosAgentAllowedOp[] = [
+	...BUILDOS_AGENT_READ_OPS,
+	...OPENCLAW_DEFAULT_WRITE_OPS,
+	// Personal knowledge graph (tasker 160): user-private saves. Paid research
+	// (knowledge.enrich) is opt-in per key from Profile → Agent keys.
+	'knowledge.record'
+];
 
 const MAX_PROJECTS_PER_GRANT = 100;
 

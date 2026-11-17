@@ -17,3 +17,22 @@ export {
 	tableCsvPath,
 	type GatewayTableRowsPreviewResult
 } from './op-execution-gateway.tables';
+export {
+	KNOWLEDGE_ENRICH_INSTRUCTIONS_MAX,
+	KNOWLEDGE_ENRICH_MAX_ENTITIES,
+	KNOWLEDGE_QUERY_LIMIT_DEFAULT,
+	KNOWLEDGE_QUERY_LIMIT_MAX,
+	KNOWLEDGE_RECORD_MAX_ENTITIES,
+	KNOWLEDGE_RECORD_MAX_FACTS,
+	KNOWLEDGE_RECORD_MAX_SOURCES,
+	KNOWLEDGE_SEARCH_LIMIT_DEFAULT,
+	KNOWLEDGE_SEARCH_LIMIT_MAX,
+	KNOWLEDGE_TOOL_SOURCE_TYPES,
+	compactKnowledgeEntityDetail,
+	runKnowledgeEnrich,
+	runKnowledgeGet,
+	runKnowledgeQuery,
+	runKnowledgeRecord,
+	runKnowledgeSearch,
+	type KnowledgeOpVia
+} from './op-execution-gateway.knowledge';

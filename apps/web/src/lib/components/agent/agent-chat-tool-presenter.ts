@@ -266,7 +266,11 @@ const TOOL_CATALOG: Record<string, ToolCatalogEntry> = {
 
 	// Classified but untracked: the handoff only queues a background Agent Run,
 	// whose own writes surface through the run review/commit path.
-	delegate_task: { toast: false, trackMutation: false }
+	delegate_task: { toast: false, trackMutation: false },
+	// Personal knowledge graph (tasker 160): the user's own graph, not a project. A toast
+	// says it was saved or research started; tracking only counts the change (no project).
+	record_knowledge: { toast: true, trackMutation: true },
+	enrich_knowledge: { toast: true, trackMutation: true }
 };
 
 const DATA_MUTATION_TOOLS_SET: ReadonlySet<string> = new Set(
@@ -377,7 +381,9 @@ const TOOL_ACTION_PAST_TENSE: Record<string, string> = {
 	Combining: 'Checked combining',
 	// The Workspace cards (tasker 146) likewise only check and propose.
 	Sorting: 'Checked sorting',
-	Starting: 'Checked starting'
+	Starting: 'Checked starting',
+	// Knowledge research only starts here; it finishes in the background.
+	Beginning: 'Started'
 };
 
 const TOOL_ACTION_BASE_FORM: Record<string, string> = {
@@ -402,7 +408,9 @@ const TOOL_ACTION_BASE_FORM: Record<string, string> = {
 	Delegating: 'delegate',
 	Moving: 'move',
 	// The generic rule would strip "ing" and leave "combin".
-	Combining: 'combine'
+	Combining: 'combine',
+	Saving: 'save',
+	Beginning: 'start'
 };
 
 // ---------------------------------------------------------------------------
@@ -448,6 +456,17 @@ function arrayCount(value: unknown): number {
 
 function plural(count: number, noun: string): string {
 	return `${count} ${noun}${count === 1 ? '' : 's'}`;
+}
+
+/** "Sam Lee, Palantir +2" from record_knowledge's entities (names, never ids). */
+function knowledgeEntityNames(entities: unknown): string | undefined {
+	if (!Array.isArray(entities)) return undefined;
+	const names = entities
+		.map((entity) => normalizeEntityLabel(entity?.name))
+		.filter((name): name is string => Boolean(name));
+	if (names.length === 0) return undefined;
+	const shown = names.slice(0, 2).join(', ');
+	return names.length > 2 ? `${shown} +${names.length - 2}` : shown;
 }
 
 /** "Grouping table rows" / "Totaling table rows" / "Reading table rows" from structured args. */
@@ -1498,6 +1517,29 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 			action: 'Starting a project from Workspace items',
 			target: normalizeEntityLabel(args?.name)
 		}),
+		// Personal knowledge graph (tasker 160): plain words, "your knowledge".
+		search_knowledge: (args) => ({
+			action: 'Searching your knowledge',
+			target: normalizeEntityLabel(args?.query)
+		}),
+		get_knowledge_entity: () => ({ action: 'Reading a knowledge entry' }),
+		query_knowledge: (args) => ({
+			action: 'Looking through your knowledge',
+			target: normalizeEntityLabel(args?.start?.search)
+		}),
+		record_knowledge: (args) => ({
+			action: 'Saving to your knowledge',
+			target: knowledgeEntityNames(args?.entities)
+		}),
+		enrich_knowledge: (args) => {
+			const count = arrayCount(args?.entity_ids);
+			return {
+				action:
+					count > 1
+						? `Beginning research on ${count} entries`
+						: 'Beginning research on 1 entry'
+			};
+		},
 		delete_onto_task: (args) => ({
 			action: 'Deleting task',
 			target: resolveEntityName('task', args?.task_id)

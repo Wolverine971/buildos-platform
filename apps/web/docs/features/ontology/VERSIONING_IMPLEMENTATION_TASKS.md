@@ -2,6 +2,9 @@
 
 # Ontology Versioning Implementation Tasks
 
+**Last updated**: 2025-11-24
+**Status**: Historical planning checklist; unchecked tasks do not establish the current backlog. See [document versioning](./DOCUMENT_VERSIONING_CLUSTERING_SPEC.md) for the clustered snapshot design.
+
 ## Overview
 
 This document tracks all tasks required to implement proper versioning for the ontology system. Tasks are organized by phase with clear dependencies and acceptance criteria.

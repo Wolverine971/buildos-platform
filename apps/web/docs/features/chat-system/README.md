@@ -440,6 +440,7 @@ For complete admin monitoring documentation, see:
 
 ### Design Documents
 
+- [UI layer analysis](./UI_LAYER_ANALYSIS.md) - Historical chat UI and streaming-pattern analysis (2025); verify component APIs against current code.
 - [Chat Context & Tools Design](https://github.com/Wolverine971/buildos-platform/blob/f46e9090c774/docs/archive/thoughts/root/shared/archive/ideas/chat-context-and-tools-design.md)
 - [Chat Specification v2](https://github.com/Wolverine971/buildos-platform/blob/f46e9090c774/docs/archive/thoughts/root/shared/archive/ideas/chat-spec-improved-v2.md)
 - [Task Integration Notes](https://github.com/Wolverine971/buildos-platform/blob/f46e9090c774/docs/archive/thoughts/root/shared/archive/ideas/chat-task-integration.md)

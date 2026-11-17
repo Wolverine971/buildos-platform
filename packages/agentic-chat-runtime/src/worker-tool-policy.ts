@@ -37,6 +37,9 @@ export const AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1 = Object.free
 	'create_onto_table',
 	'update_onto_table',
 	'update_onto_table_rows',
+	// Personal knowledge graph (2026-11-16, tasker 160): reviewed gateway writes.
+	'record_knowledge',
+	'enrich_knowledge',
 	'delegate_task',
 	// Calendar writes moved to the worker on 2026-09-04. They call Google
 	// directly from Railway through the shared calendar write stack.

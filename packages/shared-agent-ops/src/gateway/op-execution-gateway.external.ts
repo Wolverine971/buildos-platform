@@ -126,6 +126,13 @@ import {
 } from './op-execution-gateway.documents';
 import { getProjectGraph, createProject } from './op-execution-gateway.projects';
 import { getEntityRelationships, getLinkedEntities } from './op-execution-gateway.relationships';
+import {
+	enrichKnowledge,
+	getKnowledgeEntity,
+	queryKnowledge,
+	recordKnowledge,
+	searchKnowledge
+} from './op-execution-gateway.knowledge';
 
 type GatewaySupabaseClient = SupabaseClient<Database>;
 
@@ -198,7 +205,13 @@ export const EXTERNAL_OP_HANDLERS: Record<
 	'onto.asset.update': updateAsset,
 	'onto.table.create': createTable,
 	'onto.table.update': updateTable,
-	'onto.table.rows.update': updateTableRows
+	'onto.table.rows.update': updateTableRows,
+	// Personal knowledge graph (tasker 160): user-private, never project-scoped.
+	'knowledge.search': searchKnowledge,
+	'knowledge.get': getKnowledgeEntity,
+	'knowledge.query': queryKnowledge,
+	'knowledge.record': recordKnowledge,
+	'knowledge.enrich': enrichKnowledge
 };
 
 export function buildRegistryVersion(registryVersion: string, opNames: string[]): string {
@@ -213,6 +226,9 @@ const EXTERNAL_WORKSPACE_CREATE_NOTICE =
 	"When no project clearly fits, use the user's Workspace project_id (get_buildos_permissions returns workspace.project_id): their loose notes and tasks, not a project.";
 
 export function buildExternalToolDescription(entry: RegistryOp): string {
+	// The knowledge graph is the user's own, not a project: no project-scope notice.
+	if (entry.op.startsWith('knowledge.')) return entry.description;
+
 	const scopeNotice =
 		'Only projects in the caller-approved BuildOS scope are visible; public project visibility does not grant connector access.';
 
@@ -543,16 +559,19 @@ export async function executeGatewayOp(params: {
 
 	try {
 		// Writes into projects someone else owns stay inside the guest-agent lane.
-		const callScope = isWriteOp(canonicalOp)
-			? await applyGuestAgentLane({
-					admin: params.admin,
-					userId: params.userId,
-					callerId: params.callerId,
-					op: canonicalOp,
-					args: opArgs,
-					scope: params.scope
-				})
-			: params.scope;
+		// Knowledge writes are private to the user and never touch a project, so the
+		// guest lane (shared-project write rules) has nothing to decide for them.
+		const callScope =
+			isWriteOp(canonicalOp) && !canonicalOp.startsWith('knowledge.')
+				? await applyGuestAgentLane({
+						admin: params.admin,
+						userId: params.userId,
+						callerId: params.callerId,
+						op: canonicalOp,
+						args: opArgs,
+						scope: params.scope
+					})
+				: params.scope;
 		const result = await entry.handler(
 			{
 				admin: params.admin,

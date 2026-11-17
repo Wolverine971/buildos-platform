@@ -2,6 +2,8 @@
 
 # BuildOS UI Patterns and Style Conventions - Complete Analysis
 
+**Status**: Historical 2025 component survey. Verify component APIs and examples against current code; the Inkprint reference below takes precedence for design guidance.
+
 > **⚠️ Design System Update (December 2025)**
 >
 > BuildOS now uses the **Inkprint Design System**.

@@ -174,6 +174,17 @@ export const TOOL_CATEGORIES = {
 		averageTokens: 350,
 		costTier: 'medium'
 	},
+	knowledge: {
+		tools: [
+			'search_knowledge',
+			'get_knowledge_entity',
+			'query_knowledge',
+			'record_knowledge',
+			'enrich_knowledge'
+		],
+		averageTokens: 400,
+		costTier: 'medium'
+	},
 	email: {
 		tools: [
 			'get_external_account_status',

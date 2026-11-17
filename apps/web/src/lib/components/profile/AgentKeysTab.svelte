@@ -177,6 +177,18 @@
 			op: 'onto.edge.unlink',
 			label: 'Unlink entities',
 			description: 'Allow the agent to remove graph relationships in permitted projects.'
+		},
+		{
+			op: 'knowledge.record',
+			label: 'Save to your knowledge',
+			description:
+				'Allow the agent to save people, companies, channels and cited facts to your private knowledge.'
+		},
+		{
+			op: 'knowledge.enrich',
+			label: 'Research knowledge entries',
+			description:
+				'Allow the agent to start background web research on your knowledge entries (paid, capped daily).'
 		}
 	];
 

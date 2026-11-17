@@ -2,6 +2,9 @@
 
 # Email Campaigns (admin) — 2026-10-25
 
+**As of**: 2026-10-25
+**Status**: Point-in-time specification and implementation notes; verify rollout progress against current code.
+
 Replaces the old `/admin/emails` composer (audit: memory `project_admin_email_client_audit_2026-10-25`).
 DJ picked the ambitious version: one flow from a shared template with optional per-person AI
 tailoring, a review screen showing every person's version, paced waves, and results that show

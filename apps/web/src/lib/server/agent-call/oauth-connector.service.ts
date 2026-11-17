@@ -64,7 +64,10 @@ export const BUILDOS_OAUTH_READ_WRITE_OPS = [
 	...BUILDOS_AGENT_READ_OPS,
 	...OPENCLAW_DEFAULT_WRITE_OPS,
 	'onto.project.create',
-	'onto.project.update'
+	'onto.project.update',
+	// Personal knowledge graph (tasker 160): private to the user. Paid research
+	// (knowledge.enrich) is opt-in per key, never part of a consent bundle.
+	'knowledge.record'
 ] as BuildosAgentAllowedOp[];
 
 type OAuthTokenIssueResult = {

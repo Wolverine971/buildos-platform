@@ -443,6 +443,11 @@
 			"import": "./dist/task-entities/index.mjs",
 			"require": "./dist/task-entities/index.js"
 		},
+		"./knowledge": {
+			"types": "./dist/knowledge/index.d.ts",
+			"import": "./dist/knowledge/index.mjs",
+			"require": "./dist/knowledge/index.js"
+		},
 		"./google/google-agent-oauth": {
 			"types": "./dist/google/google-agent-oauth.d.ts",
 			"import": "./dist/google/google-agent-oauth.mjs",

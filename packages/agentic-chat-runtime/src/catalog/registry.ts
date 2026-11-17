@@ -166,7 +166,14 @@ export const TOOL_OPERATIONS: Readonly<Record<string, ToolOperation>> = Object.f
 	read_table_rows: { op: 'onto.table.rows.query', kind: 'read' },
 	create_onto_table: { op: 'onto.table.create', kind: 'write' },
 	update_onto_table: { op: 'onto.table.update', kind: 'write' },
-	update_onto_table_rows: { op: 'onto.table.rows.update', kind: 'write' }
+	update_onto_table_rows: { op: 'onto.table.rows.update', kind: 'write' },
+	// --- Personal knowledge graph (2026-11-16, tasker 160). The user's own graph,
+	// never project-scoped; ops implemented by op-execution-gateway.knowledge.ts. ---
+	search_knowledge: { op: 'knowledge.search', kind: 'read' },
+	get_knowledge_entity: { op: 'knowledge.get', kind: 'read' },
+	query_knowledge: { op: 'knowledge.query', kind: 'read' },
+	record_knowledge: { op: 'knowledge.record', kind: 'write' },
+	enrich_knowledge: { op: 'knowledge.enrich', kind: 'write' }
 });
 
 let cachedRegistry: ToolRegistry | null = null;

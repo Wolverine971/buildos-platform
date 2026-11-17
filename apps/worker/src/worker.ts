@@ -49,6 +49,10 @@ import {
 	EXTRACT_TASK_ENTITIES_JOB_TYPE,
 	processExtractTaskEntitiesJob
 } from './workers/task-entities/extractTaskEntitiesWorker';
+import {
+	KNOWLEDGE_ENRICH_JOB_TYPE,
+	processKnowledgeEnrichJob
+} from './workers/knowledge/knowledgeEnrichWorker';
 import { processBriefAudio as processBriefAudioJob } from './workers/briefAudio/briefAudioWorker';
 import { processCycleRun } from './workers/cycle/cycleWorker';
 import { createLegacyJob } from './workers/shared/jobAdapter';
@@ -385,6 +389,23 @@ async function processTableAiFill(job: ProcessingJob) {
 }
 
 /**
+ * Knowledge graph research ("Find more"): web search + cited facts for up to 25 entries,
+ * two at a time, inside the run's budget (tasker 160).
+ */
+async function processKnowledgeEnrich(job: ProcessingJob) {
+	try {
+		const result = await processKnowledgeEnrichJob(job);
+		await job.log(
+			`Knowledge research ${result.runId}: ${result.status}, ${result.done} done, ${result.failed} failed, ${result.skipped} skipped, ${result.facts} facts, $${result.costUsd.toFixed(4)}`
+		);
+		return result;
+	} catch (error) {
+		await job.log(`Knowledge research failed: ${getErrorMessage(error)}`);
+		throw error;
+	}
+}
+
+/**
  * Task entities: people, places, times, phones, emails and links read from a task's text
  * (extract_task_entities, queued by a trigger when a task's title or description changes)
  */
@@ -503,6 +524,13 @@ export async function startWorker({
 		EXTRACT_TASK_ENTITIES_JOB_TYPE as string as QueueJobType,
 		processExtractTaskEntities
 	);
+
+	// Knowledge research runs. The cast goes away once `pnpm gen:all` picks up the queue_type
+	// value (migration 20261116230000).
+	// 25 entries, two at a time, ~30 s each: allow 20 minutes.
+	queue.process(KNOWLEDGE_ENRICH_JOB_TYPE as string as QueueJobType, processKnowledgeEnrich, {
+		workerTimeoutMs: 20 * 60 * 1000
+	});
 
 	// Register calendar sync projection processor
 	queue.process('sync_calendar', processCalendarSync);

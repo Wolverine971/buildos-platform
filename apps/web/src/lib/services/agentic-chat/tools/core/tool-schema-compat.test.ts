@@ -224,7 +224,10 @@ describe('Chat tool schema compatibility', () => {
 				run_template: undefined,
 				review: false
 			},
-			commit_change_set: { default_decision: 'approved' }
+			commit_change_set: { default_decision: 'approved' },
+			// Knowledge graph (tasker 160): the gateway runners use these same defaults.
+			search_knowledge: { limit: 10 },
+			query_knowledge: { limit: 50 }
 		};
 
 		for (const [toolName, expectedDefaults] of Object.entries(defaultsByTool)) {

@@ -1,3 +1,5 @@
+<!-- docs/technical/affected-work-postgres-graph.md -->
+
 # Affected work and how the Postgres graph is queried
 
 The prototype starts with one task and returns open tasks downstream of its recorded dependencies. It is read-only: it does not reschedule tasks or infer dependencies from their descriptions. Open a task in the desktop reader or task edit modal and expand **Affected work**. The section fetches only when opened; changing the step limit reruns the query.
@@ -98,7 +100,7 @@ Cycle prevention alone does not bound the number of alternative paths in a dense
 
 ## What the prototype actually executes
 
-The exact function is in [the migration](/Users/djwayne/buildos-platform/supabase/migrations/20261116205351_task_affected_work.sql). Each loop expands the current frontier using this relationship pattern:
+The exact function is in [the migration](../../supabase/migrations/20261116205351_task_affected_work.sql). Each loop expands the current frontier using this relationship pattern:
 
 ```sql
 -- f.id is one task in the current layer.
@@ -140,7 +142,7 @@ const { data, error } = await supabase.rpc('onto_task_affected_work', {
 });
 ```
 
-That is one request from the application; the repeated joins happen inside Postgres. The browser calls [the authenticated endpoint](/Users/djwayne/buildos-platform/apps/web/src/routes/api/onto/tasks/[id]/affected-work/+server.ts), which validates the UUID and limits and uses the caller's session client. It never constructs SQL by concatenating input. [Supabase RPC reference](https://supabase.com/docs/reference/javascript/rpc).
+That is one request from the application; the repeated joins happen inside Postgres. The browser calls [the authenticated endpoint](../../apps/web/src/routes/api/onto/tasks/[id]/affected-work/+server.ts), which validates the UUID and limits and uses the caller's session client. It never constructs SQL by concatenating input. [Supabase RPC reference](https://supabase.com/docs/reference/javascript/rpc).
 
 The frontend sends `GET /api/onto/tasks/<id>/affected-work?max_depth=3&max_tasks=50`. Selecting another task changes `<id>`; choosing another step limit changes `max_depth`. Late responses from a previously selected task are ignored.
 

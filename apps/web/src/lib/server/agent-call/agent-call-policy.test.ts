@@ -11,9 +11,10 @@ import { extractAllowedOpsFromPolicy } from './agent-call-policy';
 describe('extractAllowedOpsFromPolicy', () => {
 	it('returns mode defaults when the policy records no allowed_ops', () => {
 		expect(extractAllowedOpsFromPolicy(null, 'read_only')).toEqual([...BUILDOS_AGENT_READ_OPS]);
-		expect(extractAllowedOpsFromPolicy({}, 'read_write')).toEqual([
-			...BUILDOS_AGENT_SUPPORTED_OPS
-		]);
+		// Paid research is opt-in: never part of a default bundle.
+		expect(extractAllowedOpsFromPolicy({}, 'read_write')).toEqual(
+			BUILDOS_AGENT_SUPPORTED_OPS.filter((op) => op !== 'knowledge.enrich')
+		);
 		expect(extractAllowedOpsFromPolicy({ allowed_ops: null }, 'read_only')).toEqual([
 			...BUILDOS_AGENT_READ_OPS
 		]);

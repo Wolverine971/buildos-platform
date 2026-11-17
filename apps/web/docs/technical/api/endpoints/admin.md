@@ -3,6 +3,8 @@
 
 # Admin API
 
+**Status**: Historical 2025 API sketch, including unimplemented schema. Endpoint examples are not a current API contract; verify them against [the route reference](../routes-reference.md) and [admin route handlers](../../../../src/routes/api/admin/).
+
 **Base Path:** `/api/admin`
 
 The Admin API provides administrative functionality for managing users, monitoring system health, viewing analytics, and configuring system settings. All endpoints require admin-level authentication.

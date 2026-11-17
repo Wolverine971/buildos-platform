@@ -11,6 +11,9 @@ Welcome to the BuildOS API documentation.
 - [📋 Type Definitions](./types.md) - TypeScript interfaces and types
 - [📝 Request/Response Templates](./templates.md) - Standard formats and examples
 
+Historical material: [Admin API sketch](./endpoints/admin.md) describes the 2025 design,
+including unimplemented schema. Use the route reference and current route handlers to verify endpoints.
+
 ## Getting Started
 
 1. **Authentication**: Most endpoints require authentication via Supabase session cookies

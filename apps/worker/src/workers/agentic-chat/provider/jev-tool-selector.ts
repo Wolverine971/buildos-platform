@@ -181,6 +181,12 @@ const SUPPORTING_TOOLS: Readonly<Record<string, readonly string[]>> = {
 		'list_onto_tasks',
 		'search_onto_documents'
 	],
+	// Personal knowledge graph (tasker 160): saving or researching an entry starts from
+	// finding it (and reusing its id); a search result is read with get/query.
+	record_knowledge: ['search_knowledge'],
+	enrich_knowledge: ['search_knowledge'],
+	search_knowledge: ['get_knowledge_entity'],
+	query_knowledge: ['search_knowledge'],
 	// A search's results are start points to read or click through.
 	web_search: ['web_visit', 'web_navigate'],
 	web_visit: ['web_navigate'],

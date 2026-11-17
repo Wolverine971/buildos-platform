@@ -159,6 +159,41 @@ export function extractWriteEntityMeta(params: {
 		}
 	}
 
+	if (params.op === 'knowledge.record') {
+		// One write can touch many entries; the audit row points at the first.
+		const knowledge = params.result.knowledge;
+		const entities =
+			knowledge && typeof knowledge === 'object' && !Array.isArray(knowledge)
+				? (knowledge as Record<string, unknown>).entities
+				: null;
+		const first = Array.isArray(entities) ? entities[0] : null;
+		if (first && typeof first === 'object' && !Array.isArray(first)) {
+			const record = first as Record<string, unknown>;
+			const id = stringField(record, 'id');
+			if (id && isValidUUID(id)) {
+				return {
+					entityKind: 'knowledge_entity',
+					entityId: id,
+					entityTitle: stringField(record, 'name')
+				};
+			}
+		}
+		return { entityKind: 'knowledge_entity' };
+	}
+
+	if (params.op === 'knowledge.enrich') {
+		const run = params.result.knowledge_run;
+		const id =
+			run && typeof run === 'object' && !Array.isArray(run)
+				? stringField(run as Record<string, unknown>, 'id')
+				: undefined;
+		return id && isValidUUID(id)
+			? { entityKind: 'knowledge_run', entityId: id }
+			: { entityKind: 'knowledge_run' };
+	}
+
+	if (params.op.startsWith('knowledge.')) return {};
+
 	if (params.op.startsWith('onto.table.')) {
 		// Table results carry the table document as `table` (create/update/get)
 		// or nothing entity-shaped (list).

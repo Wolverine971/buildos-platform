@@ -9,6 +9,7 @@ import {
 } from './controls';
 import { GATEWAY_TOOL_DEFINITIONS } from './discovery';
 import { EMAIL_TOOL_DEFINITIONS } from './email';
+import { KNOWLEDGE_TOOL_DEFINITIONS } from './knowledge';
 import { ONTOLOGY_READ_TOOLS } from './ontology-read';
 import { ONTOLOGY_WRITE_TOOLS } from './ontology-write';
 import { PROPOSAL_TOOL_DEFINITIONS } from './proposals';
@@ -20,6 +21,7 @@ export * from './calendar';
 export * from './controls';
 export * from './discovery';
 export * from './email';
+export * from './knowledge';
 export * from './ontology-read';
 export * from './ontology-write';
 export * from './proposals';
@@ -43,7 +45,10 @@ export const CHAT_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 	// Proposal cards (2026-10-17, tasker 122): nest and combine. Appended too.
 	...PROPOSAL_TOOL_DEFINITIONS,
 	// Workspace (2026-10-23, tasker 146): suggestions, filing and graduate cards.
-	...WORKSPACE_TOOL_DEFINITIONS
+	...WORKSPACE_TOOL_DEFINITIONS,
+	// Personal knowledge graph (2026-11-16, tasker 160): people, orgs, websites,
+	// channels, videos; the user's own graph, not a project.
+	...KNOWLEDGE_TOOL_DEFINITIONS
 ];
 
 export const AGENTIC_CHAT_TOOL_DEFINITIONS = CHAT_TOOL_DEFINITIONS;

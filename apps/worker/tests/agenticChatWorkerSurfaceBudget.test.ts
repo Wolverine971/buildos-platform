@@ -223,9 +223,17 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		// their own schema were corrected (+~30 B). Tool counts are unchanged. Measured
 		// global 63,730 B, project 80,006 B, project_create 9,367 B. Caps at measured
 		// + ~0.1%.
-		expect(global.openingBytes).toBeLessThanOrEqual(63_800);
-		expect(project.openingBytes).toBeLessThanOrEqual(80_090);
-		expect(project.admittedBytes).toBeLessThanOrEqual(80_090);
+		// RE-BASELINED 2026-11-16 (tasker 160, personal knowledge graph): search_knowledge,
+		// get_knowledge_entity, query_knowledge, record_knowledge and enrich_knowledge
+		// joined both surfaces (the graph is the user's own, not a project). The kind and
+		// predicate enums carry the vocabulary so no describe tool is needed; descriptions
+		// and per-field limits were trimmed first (7.6 KB -> 6.3 KB of definitions). Jev
+		// mounts them only on turns about people, companies, channels or videos. Measured
+		// global 63 tools / 70,266 B (+6,536), project 75 tools / 86,542 B (+6,536),
+		// project_create unchanged. Caps at measured + ~0.1%.
+		expect(global.openingBytes).toBeLessThanOrEqual(70_340);
+		expect(project.openingBytes).toBeLessThanOrEqual(86_630);
+		expect(project.admittedBytes).toBeLessThanOrEqual(86_630);
 		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(9_380);
 	});
 

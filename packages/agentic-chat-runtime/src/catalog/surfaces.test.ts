@@ -136,7 +136,13 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 			// 2026-10-23 tasker 146: Workspace suggestions and cards, global only.
 			'list_workspace_suggestions',
 			'propose_workspace_filing',
-			'propose_workspace_project'
+			'propose_workspace_project',
+			// 2026-11-16 tasker 160: personal knowledge graph, both surfaces.
+			'search_knowledge',
+			'get_knowledge_entity',
+			'query_knowledge',
+			'record_knowledge',
+			'enrich_knowledge'
 		]);
 	});
 

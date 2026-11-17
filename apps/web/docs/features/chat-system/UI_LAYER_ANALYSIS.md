@@ -2,6 +2,8 @@
 
 # BuildOS UI Layer Analysis: Chat System & Component Patterns
 
+**Status**: Historical 2025 UI analysis. Component names, APIs, and measurements below are a snapshot, not current implementation guidance.
+
 ## Executive Summary
 
 BuildOS uses a sophisticated, modular UI architecture centered on **progressive disclosure** with heavy investment in **streaming UI patterns** for real-time feedback. The platform combines **Svelte 5 runes** for reactive state with **Tailwind CSS** for consistent styling. The chat system serves as a blueprint for extensible agent interfaces.

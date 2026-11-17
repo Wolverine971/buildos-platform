@@ -325,5 +325,6 @@ const actor = await ensureActorForUser(userId);
 
 - [COMMENTS_SPEC.md](./COMMENTS_SPEC.md) — comments: tables, routes, mentions, read states
 - [DOCUMENT_VERSIONING_CLUSTERING_SPEC.md](./DOCUMENT_VERSIONING_CLUSTERING_SPEC.md) — how document edits are grouped into versions
+- [Versioning implementation tasks](./VERSIONING_IMPLEMENTATION_TASKS.md) — historical 2025 checklist for broader ontology versioning; not a current delivery plan
 - [MIGRATION_DASHBOARD_SPEC.md](./MIGRATION_DASHBOARD_SPEC.md) — the `/admin/migration` dashboard (complete; only write-up of that page)
 - [PROJECTS_GRAPH_FILTERING_SPEC.md](./PROJECTS_GRAPH_FILTERING_SPEC.md) — workspace graph scope filters

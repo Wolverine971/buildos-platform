@@ -26,8 +26,10 @@ describe('shared read dispatch', () => {
 		// get_onto_table_details, read_table_rows) + the two proposal-card tools
 		// added 2026-10-17 (tasker 122: propose_project_parent, propose_project_combine)
 		// + the Workspace read and two cards added 2026-10-23 (tasker 146:
-		// list_workspace_suggestions, propose_workspace_filing, propose_workspace_project).
-		expect(AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1).toHaveLength(54);
+		// list_workspace_suggestions, propose_workspace_filing, propose_workspace_project)
+		// + the three knowledge graph reads added 2026-11-16 (tasker 160: search_knowledge,
+		// get_knowledge_entity, query_knowledge).
+		expect(AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1).toHaveLength(57);
 		for (const toolName of AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1) {
 			expect(TOOL_METADATA[toolName], `${toolName} is missing TOOL_METADATA`).toBeDefined();
 			expect(isAgenticChatSharedReadToolNameV1(toolName)).toBe(true);

@@ -177,7 +177,15 @@ const GLOBAL_DIRECT_TOOL_NAMES = [
 	// Global only, like the other cards: the target is another project.
 	'list_workspace_suggestions',
 	'propose_workspace_filing',
-	'propose_workspace_project'
+	'propose_workspace_project',
+	// Personal knowledge graph (2026-11-16, tasker 160): people, companies, websites,
+	// channels and videos the user knows about. The user's own graph, not a project,
+	// so both surfaces carry it. Jev drops these on turns that are not about them.
+	'search_knowledge',
+	'get_knowledge_entity',
+	'query_knowledge',
+	'record_knowledge',
+	'enrich_knowledge'
 ] as const;
 
 /** Global-only members the project surface drops (see the comment above each). */

@@ -31,6 +31,8 @@ export type AgenticChatMutationCapabilityNameV1 =
 	| 'createOntoTable'
 	| 'updateOntoTable'
 	| 'updateOntoTableRows'
+	| 'recordKnowledge'
+	| 'enrichKnowledge'
 	| 'delegateTask'
 	| 'createCalendarEvent'
 	| 'updateCalendarEvent'
@@ -114,7 +116,9 @@ export type AgenticChatMutationReceiptBuilderIdV1 =
 	| 'asset_update'
 	| 'table_change'
 	| 'calendar_event'
-	| 'project_calendar';
+	| 'project_calendar'
+	| 'knowledge_record'
+	| 'knowledge_enrich';
 
 export type AgenticChatMutationScopeSpecV1 =
 	/** The project fence comes from an argument; the turn context must agree. */
@@ -1195,6 +1199,40 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		directWriteSelectionPolicy: 'resolved_existing',
 		requiredNames: ['table_id'],
 		reviewedArgumentNames: ['table_id', 'add', 'update', 'delete', 'allow_large_deletion']
+	},
+	// Personal knowledge graph (2026-11-16, tasker 160). The user's own private graph,
+	// never a project, so the fence is unscoped; the gateway builds its store from the
+	// claim's user id and records via 'chat'. A turn that read web pages still goes to
+	// review (write-routing S1) before these run.
+	record_knowledge: {
+		capability: 'recordKnowledge',
+		operationName: 'knowledge.record',
+		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			scope: { mode: 'unscoped' },
+			receipt: { kind: 'builder', builder: 'knowledge_record' }
+		},
+		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'new_entity',
+		requiredNames: ['entities', 'facts'],
+		reviewedArgumentNames: ['entities', 'facts', 'sources']
+	},
+	enrich_knowledge: {
+		capability: 'enrichKnowledge',
+		operationName: 'knowledge.enrich',
+		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			scope: { mode: 'unscoped' },
+			receipt: { kind: 'builder', builder: 'knowledge_enrich' }
+		},
+		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'new_entity',
+		requiredNames: ['entity_ids'],
+		reviewedArgumentNames: ['entity_ids', 'fields', 'instructions']
 	},
 	delegate_task: {
 		capability: 'delegateTask',

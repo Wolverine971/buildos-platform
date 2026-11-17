@@ -9,6 +9,7 @@ export * from './access-port';
 export * from './activity-log-summary';
 export * from './calendar-reads';
 export * from './entity-field-info';
+export * from './knowledge-reads';
 export * from './milestone-state';
 export * from './ontology-asset-reads';
 export * from './email-reads';

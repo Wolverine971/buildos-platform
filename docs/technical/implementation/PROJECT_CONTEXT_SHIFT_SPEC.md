@@ -13,6 +13,9 @@ path: docs/technical/implementation/PROJECT_CONTEXT_SHIFT_SPEC.md
 
 # Project Context Shift After Creation - Implementation Specification
 
+**As of**: 2025-11-04
+**Status**: Historical implementation specification. The approval and file references above describe the original chat architecture; verify current code before applying the implementation steps.
+
 ## Executive Summary
 
 After a user successfully creates a project via the agent chat, the context must automatically shift from `project_create` to `project` mode. This enables seamless continuation where the user can immediately start managing their new project without manually switching contexts or navigating away.

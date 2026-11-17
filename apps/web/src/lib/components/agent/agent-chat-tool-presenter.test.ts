@@ -851,6 +851,31 @@ describe('agent-chat-tool-presenter — showToolResultToast', () => {
 		presenter.showToolResultToast('create_task_document', { task_id: 't-1' }, true);
 		expect(h.toastSuccess).not.toHaveBeenCalled();
 	});
+
+	it('says knowledge saves and research starts in plain words', () => {
+		const h = makeHarness();
+		const presenter = createToolPresenter(h.ctx);
+		const entities = [
+			{ ref: 'sam', kind: 'person', name: 'Sam Lee' },
+			{ ref: 'acme', kind: 'org', name: 'Acme' },
+			{ ref: 'pod', kind: 'channel', name: 'Acme Pod' }
+		];
+		presenter.showToolResultToast('record_knowledge', { entities, facts: [] }, true);
+		expect(h.toastSuccess).toHaveBeenLastCalledWith(
+			'Saved to your knowledge: "Sam Lee, Acme +1"'
+		);
+		presenter.showToolResultToast('enrich_knowledge', { entity_ids: ['a', 'b', 'c'] }, true);
+		expect(h.toastSuccess).toHaveBeenLastCalledWith('Started research on 3 entries');
+		presenter.showToolResultToast('enrich_knowledge', { entity_ids: ['a'] }, false);
+		expect(h.toastError).toHaveBeenLastCalledWith('Failed to start research on 1 entry');
+		expect(
+			presenter.formatToolMessage('search_knowledge', { query: 'Palantir' }, 'pending')
+		).toBe('Searching your knowledge: "Palantir"');
+		// Never names the tool-selection model or internal ids.
+		expect(
+			presenter.formatToolMessage('get_knowledge_entity', { entity_id: 'x' }, 'completed')
+		).toBe('Read a knowledge entry');
+	});
 });
 
 describe('agent-chat-tool-presenter — calendar formatters', () => {

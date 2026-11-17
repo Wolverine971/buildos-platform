@@ -2,7 +2,9 @@
 
 # Threads in real chat: cards, carry, project split (2026-11-05)
 
-**Status (2026-11-15):** A (turn cards) and C1 (Continue in project) shipped in `be960b5b2`; B (carry in the worker finder, 4 s deadline) in `024d1eb5d`; carry is on for every user. Document cards replaced bodies (`be960b5b2`) and the watch-it-sort rows and flight shipped in `89fcaf72f`; tracker 157 audited all of it and fixed what the display overstated. C2 (parallel read-only scouts) is parked: the 11-05 gate found 4 multi-project turns in 30 days. Tracker 153 (closed tracker, in git history).
+**Last updated**: 2026-11-15
+
+**Status**: A (turn cards) and C1 (Continue in project) shipped in `be960b5b2`; B (carry in the worker finder, 4 s deadline) in `024d1eb5d`; carry is on for every user. Document cards replaced bodies (`be960b5b2`) and the watch-it-sort rows and flight shipped in `89fcaf72f`; tracker 157 audited all of it and fixed what the display overstated. C2 (parallel read-only scouts) is parked: the 11-05 gate found 4 multi-project turns in 30 days. Tracker 153 (closed tracker, in git history).
 
 ## 0. The decision this plan follows
 

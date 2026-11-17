@@ -61,7 +61,12 @@ export const BUILDOS_AGENT_READ_OPS = [
 	'onto.search',
 	'cal.event.list',
 	'cal.event.get',
-	'cal.project.get'
+	'cal.project.get',
+	// Personal knowledge graph (tasker 160): people, orgs, websites, channels, videos and
+	// what is known about them. Not project-scoped: the user's own entries plus public ones.
+	'knowledge.search',
+	'knowledge.get',
+	'knowledge.query'
 ] as const;
 
 export const BUILDOS_AGENT_WRITE_OPS = [
@@ -94,7 +99,11 @@ export const BUILDOS_AGENT_WRITE_OPS = [
 	'cal.event.create',
 	'cal.event.update',
 	'cal.event.delete',
-	'cal.project.set'
+	'cal.project.set',
+	// Personal knowledge graph: save entities and cited facts (private to the user), and
+	// start capped background web research on chosen entries.
+	'knowledge.record',
+	'knowledge.enrich'
 ] as const;
 
 export const BUILDOS_AGENT_SUPPORTED_OPS = [

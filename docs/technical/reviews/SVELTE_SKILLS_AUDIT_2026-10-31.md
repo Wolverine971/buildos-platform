@@ -2,6 +2,9 @@
 
 # Svelte Skills Audit — 2026-10-31
 
+**As of**: 2026-10-31
+**Status**: Point-in-time audit. Findings describe the code before subsequent fixes; current Svelte requirements are in [the web app instructions](../../../apps/web/AGENTS.md).
+
 Audit of `apps/web` (Svelte 5.57.1, Kit 2.70.3) against the Svelte team's official AI skills
 (<https://svelte.dev/docs/ai/skills>, source `github.com/sveltejs/ai-tools/tools/skills`):
 `svelte-core-bestpractices` (+ 9 reference files), `svelte-code-writer`, `svelte-mcp-feedback`.

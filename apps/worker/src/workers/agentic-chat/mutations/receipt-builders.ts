@@ -445,6 +445,54 @@ export const AGENTIC_CHAT_MUTATION_RECEIPT_BUILDERS_V1: Readonly<
 		);
 	},
 
+	/**
+	 * Personal knowledge graph save (tasker 160). One write can touch many entries, so the
+	 * receipt proves each returned entry has a canonical id and carries the store's counts.
+	 */
+	knowledge_record: (value, context) => {
+		const toolName = context.toolName;
+		const knowledge = isRecord(value?.knowledge) ? value.knowledge : null;
+		if (!knowledge || !Array.isArray(knowledge.entities) || !isRecord(knowledge.facts)) {
+			throw invalidReceipt(toolName, 'returned no knowledge receipt');
+		}
+		const entities = knowledge.entities.filter(isRecord);
+		if (
+			entities.length !== knowledge.entities.length ||
+			entities.some((entity) => !canonicalUuid(entity.id))
+		) {
+			throw invalidReceipt(toolName, 'returned a knowledge entry without an id');
+		}
+		return canonicalMutationReceipt(
+			{
+				knowledge,
+				message:
+					typeof value?.message === 'string'
+						? value.message
+						: 'Saved to the knowledge graph.'
+			},
+			toolName
+		);
+	},
+
+	/** Background research started (tasker 160): the queued run and its targets. */
+	knowledge_enrich: (value, context) => {
+		const toolName = context.toolName;
+		const run = isRecord(value?.knowledge_run) ? value.knowledge_run : null;
+		if (!run || !canonicalUuid(run.id) || !Array.isArray(run.targets)) {
+			throw invalidReceipt(toolName, 'returned no research run');
+		}
+		return canonicalMutationReceipt(
+			{
+				knowledge_run: run,
+				message:
+					typeof value?.message === 'string'
+						? value.message
+						: 'Started background research.'
+			},
+			toolName
+		);
+	},
+
 	asset_update: (value, context) => {
 		const toolName = context.toolName;
 		if (!value || !isRecord(value.asset) || !isRecord(value.placement)) {

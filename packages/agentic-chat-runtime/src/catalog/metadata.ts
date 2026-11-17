@@ -999,5 +999,57 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		],
 		contexts: ['project'],
 		category: 'write'
+	},
+	// Personal knowledge graph (2026-11-16, tasker 160). The user's own graph of people,
+	// organizations, websites, channels, videos and topics; not a project.
+	search_knowledge: {
+		summary:
+			"Look up people, companies, websites, YouTube channels and videos in the user's personal knowledge graph (contacts, past research).",
+		capabilities: [
+			'For asks like who is X, do I know anyone at Y, what do we know about this company or video',
+			'Matches names, aliases, emails, domains, handles and URLs'
+		],
+		contexts: ['global', 'project'],
+		category: 'search'
+	},
+	get_knowledge_entity: {
+		summary:
+			'Read everything known about one person, company, website, channel or video: facts with sources, relationships, and whether the user knows them.',
+		capabilities: [
+			'Facts with source links, incoming relationships (who works there, who features them)',
+			'Linked BuildOS tasks, documents and projects'
+		],
+		contexts: ['global', 'project'],
+		category: 'read'
+	},
+	query_knowledge: {
+		summary:
+			'List people or things by following relationships in the knowledge graph, e.g. people the user knows who work at a company.',
+		capabilities: [
+			'Who do I know at X, which videos feature Y, people in a city',
+			'Returns requested fields per row with coverage of what is missing'
+		],
+		contexts: ['global', 'project'],
+		category: 'read'
+	},
+	record_knowledge: {
+		summary:
+			"Save people, companies, websites, channels or videos and cited facts to the user's private knowledge graph.",
+		capabilities: [
+			'For asks to remember, save or note who someone is, where they work, contact details',
+			'Saves researched facts with their source url and quote'
+		],
+		contexts: ['global', 'project'],
+		category: 'write'
+	},
+	enrich_knowledge: {
+		summary:
+			'Start paid background web research to fill in missing facts about specific people, companies, channels or videos.',
+		capabilities: [
+			'For asks to find out more, look up, or research someone or something saved in the knowledge graph',
+			'Runs in the background with a daily spending cap'
+		],
+		contexts: ['global', 'project'],
+		category: 'write'
 	}
 };

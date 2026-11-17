@@ -46,6 +46,7 @@ import { getFieldInfo, getProjectOverview, getWorkspaceOverview } from './overvi
 import { getProjectCleanup } from './project-cleanup-reads';
 import { proposeProjectCombine, proposeProjectParent } from './proposal-reads';
 import { getOntoTableDetails, readTableRows } from './table-reads';
+import { getKnowledgeEntity, queryKnowledge, searchKnowledge } from './knowledge-reads';
 import {
 	listWorkspaceSuggestions,
 	proposeWorkspaceFiling,
@@ -120,6 +121,11 @@ const AGENTIC_CHAT_SHARED_READ_TOOL_REGISTRY_V1 = Object.freeze({
 	list_workspace_suggestions: listWorkspaceSuggestions,
 	propose_workspace_filing: proposeWorkspaceFiling,
 	propose_workspace_project: proposeWorkspaceProject,
+	// Personal knowledge graph (tasker 160): the same runners as the MCP knowledge.* ops.
+	// The user's own graph, read with context.userId only.
+	search_knowledge: searchKnowledge,
+	get_knowledge_entity: getKnowledgeEntity,
+	query_knowledge: queryKnowledge,
 	// Calendar READS only. The calendar writes execute on the worker through
 	// the reviewed mutation catalog, not through this dispatch table.
 	list_calendar_events: listCalendarEvents,

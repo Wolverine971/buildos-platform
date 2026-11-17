@@ -2,7 +2,7 @@
 
 # BuildOS Domain + Work Capability Architecture
 
-Status: Phase 1 infrastructure implemented; Phase 2 research flow pending
+Status: Historical implementation snapshot (2026-05-19): Phase 1 infrastructure implemented; Phase 2 research flow pending at that date
 Date: 2026-05-18; updated 2026-05-19
 Owner: BuildOS agentic chat
 

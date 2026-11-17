@@ -635,13 +635,17 @@ function toolNameFor(op: BuildosAgentAllowedOp): string {
 	return name;
 }
 
-async function call(op: BuildosAgentAllowedOp, args: Record<string, unknown>) {
+async function call(
+	op: BuildosAgentAllowedOp,
+	args: Record<string, unknown>,
+	projectScopeMode: 'selected' | 'all_unrestricted' = 'selected'
+) {
 	return executeBuildosAgentGatewayTool({
 		credential: { kind: 'key', caller_id: CALLER, token_hash: 'hash' },
 		admin: db,
 		userId: USER.sam,
 		callerId: CALLER,
-		projectScopeMode: 'selected',
+		projectScopeMode,
 		callSessionId: SESSION,
 		scope,
 		toolName: toolNameFor(op),
@@ -885,7 +889,10 @@ const SEARCH_CASES: Array<{ op: BuildosAgentAllowedOp; args: Record<string, unkn
 describe('reads aimed at hidden projects (other user X, agents-off O, ungranted U)', () => {
 	it('every external read op is covered by this suite', () => {
 		const covered = new Set([...READ_CASES, ...SEARCH_CASES].map((entry) => entry.op));
-		const missing = BUILDOS_AGENT_READ_OPS.filter((op) => !covered.has(op));
+		// knowledge.* is the user's own graph, not a project: covered per user below.
+		const missing = BUILDOS_AGENT_READ_OPS.filter(
+			(op) => !covered.has(op) && !op.startsWith('knowledge.')
+		);
 		expect(missing).toEqual([]);
 	});
 
@@ -1114,7 +1121,7 @@ describe('writes aimed at projects the agent may not write (X, O, U, read-only S
 	it('every external write op except project.create is covered', () => {
 		const covered = new Set(WRITE_CASES.map((entry) => entry.op));
 		const missing = BUILDOS_AGENT_WRITE_OPS.filter(
-			(op) => op !== 'onto.project.create' && !covered.has(op)
+			(op) => op !== 'onto.project.create' && !op.startsWith('knowledge.') && !covered.has(op)
 		);
 		expect(missing).toEqual([]);
 	});
@@ -1798,5 +1805,142 @@ describe('asking the owner and checking back (tasker 140)', () => {
 			(entry) => entry.name === 'request_project_access'
 		);
 		expect(Object.keys(tool?.inputSchema?.properties ?? {})).not.toContain('user_id');
+	});
+});
+
+// Personal knowledge graph (tasker 160). Not project-scoped: the boundary is the user. The
+// store filters every read to public rows plus the caller's own private rows, and builds its
+// identity from the authenticated user, never from arguments.
+describe('knowledge graph: another person’s private entries stay invisible', () => {
+	const SAM_CONTACT = 'd1000000-0000-4000-8000-00000000c001';
+	const EVE_CONTACT = 'd3000000-0000-4000-8000-00000000c001';
+	const PUBLIC_ORG = 'd9000000-0000-4000-8000-00000000c001';
+	// The graph is the whole account's contact book: only connections to all projects use it.
+	const callWholeAccount = (op: BuildosAgentAllowedOp, args: Record<string, unknown>) =>
+		call(op, args, 'all_unrestricted');
+
+	function entity(id: string, name: string, owner: string | null, kind = 'person'): FakeRow {
+		return {
+			id,
+			kind,
+			name,
+			normalized_name: name.toLowerCase(),
+			summary: null,
+			scope: owner ? 'private' : 'public',
+			is_self: false,
+			image_url: null,
+			status: 'active',
+			merged_into_id: null,
+			owner_user_id: owner,
+			created_via: 'manual',
+			enriched_at: null,
+			created_at: '2026-11-16T00:00:00Z',
+			updated_at: '2026-11-16T00:00:00Z'
+		};
+	}
+
+	beforeEach(() => {
+		db.tables.knowledge_entities = [
+			entity(SAM_CONTACT, 'Ana Ruiz', USER.sam),
+			entity(EVE_CONTACT, 'SECRET Eve contact Ana', USER.eve),
+			entity(PUBLIC_ORG, 'Acme Analytics', null, 'org')
+		];
+		// The RPC filters by p_viewer in SQL; the fake models the same rule.
+		db.rpcs.knowledge_search = async (args) => ({
+			data: (db.tables.knowledge_entities ?? [])
+				.filter(
+					(row) =>
+						(row.scope === 'public' || row.owner_user_id === args.p_viewer) &&
+						String(row.normalized_name).includes(String(args.p_query).toLowerCase())
+				)
+				.map((row) => ({
+					entity_id: row.id,
+					kind: row.kind,
+					name: row.name,
+					summary: row.summary,
+					scope: row.scope,
+					is_self: row.is_self,
+					matched_on: 'name',
+					score: 1
+				})),
+			error: null
+		});
+		db.writes.length = 0;
+	});
+
+	it('search runs as the connected person and never returns Eve’s private entry', async () => {
+		const result = await callWholeAccount('knowledge.search', { query: 'ana' });
+		expect(failed(result), JSON.stringify(result).slice(0, 400)).toBe(false);
+		expectNoLeak(result, {});
+		expect(JSON.stringify(result)).toContain('Ana Ruiz');
+		const rpc = db.rpcCalls.filter((entry) => entry.name === 'knowledge_search');
+		expect(rpc.map((entry) => entry.args.p_viewer)).toEqual([USER.sam]);
+	});
+
+	it('refuses a user id argument instead of acting as someone else', async () => {
+		const result = await callWholeAccount('knowledge.search', {
+			query: 'ana',
+			user_id: USER.eve
+		});
+		expect(failed(result)).toBe(true);
+		expect(db.rpcCalls.filter((entry) => entry.name === 'knowledge_search')).toEqual([]);
+	});
+
+	it('get on Eve’s private entry fails with no data; Sam’s own entry reads', async () => {
+		const hidden = await callWholeAccount('knowledge.get', { entity_id: EVE_CONTACT });
+		expect(failed(hidden)).toBe(true);
+		expectNoLeak(hidden, { entity_id: EVE_CONTACT });
+
+		const own = await callWholeAccount('knowledge.get', { entity_id: SAM_CONTACT });
+		expect(failed(own), JSON.stringify(own).slice(0, 400)).toBe(false);
+		expect(JSON.stringify(own)).toContain('Ana Ruiz');
+	});
+
+	it('record cannot attach facts to Eve’s private entry and writes only Sam’s rows', async () => {
+		const result = await callWholeAccount('knowledge.record', {
+			entities: [{ ref: 'eve', id: EVE_CONTACT, kind: 'person', name: 'Ana' }],
+			facts: [{ subject: 'eve', predicate: 'headline', value: 'CTO' }]
+		});
+		expectNoLeak(result, { id: EVE_CONTACT });
+		for (const write of db.writes.filter((entry) => entry.table.startsWith('knowledge_'))) {
+			for (const row of write.rows) {
+				expect(row.id).not.toBe(EVE_CONTACT);
+				expect(row.entity_id).not.toBe(EVE_CONTACT);
+				if ('owner_user_id' in row) expect(row.owner_user_id).toBe(USER.sam);
+			}
+		}
+	});
+
+	it('a new save over MCP lands as Sam’s private rows, recorded via mcp', async () => {
+		const result = await callWholeAccount('knowledge.record', {
+			entities: [{ ref: 'lee', kind: 'person', name: 'Lee Park' }],
+			facts: [{ subject: 'lee', predicate: 'headline', value: 'Founder' }]
+		});
+		expect(failed(result), JSON.stringify(result).slice(0, 400)).toBe(false);
+		const inserted = db.writes
+			.filter((entry) => entry.table.startsWith('knowledge_') && entry.kind !== 'delete')
+			.flatMap((entry) => entry.rows);
+		expect(inserted.length).toBeGreaterThan(0);
+		for (const row of inserted) {
+			if ('owner_user_id' in row) expect(row.owner_user_id).toBe(USER.sam);
+			if ('created_via' in row) expect(row.created_via).toBe('mcp');
+		}
+	});
+
+	it('enrich refuses Eve’s private entry and queues nothing', async () => {
+		const result = await callWholeAccount('knowledge.enrich', { entity_ids: [EVE_CONTACT] });
+		expect(failed(result)).toBe(true);
+		expectNoLeak(result, { entity_ids: [EVE_CONTACT] });
+		expect(db.rpcCalls.filter((entry) => entry.name === 'add_queue_job')).toEqual([]);
+		expect(db.writes.filter((entry) => entry.table === 'knowledge_runs')).toEqual([]);
+	});
+
+	it('refuses every knowledge tool on a connection limited to selected projects', async () => {
+		for (const op of ['knowledge.search', 'knowledge.get', 'knowledge.record'] as const) {
+			const result = await call(op, { query: 'ana', entity_id: SAM_CONTACT, entities: [] });
+			expect(failed(result)).toBe(true);
+			expect(JSON.stringify(result)).not.toContain('Ana Ruiz');
+		}
+		expect(db.rpcCalls.filter((entry) => entry.name === 'knowledge_search')).toEqual([]);
 	});
 });

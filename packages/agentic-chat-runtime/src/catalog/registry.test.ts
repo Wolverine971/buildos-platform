@@ -14,6 +14,9 @@ import { TOOL_OPERATIONS, buildToolRegistry, getToolDiscoveryPolicyVersion } fro
  * 2026-10-04 (Tables tool suite): five table rows added (onto.table.get,
  * onto.table.rows.query, onto.table.create, onto.table.update,
  * onto.table.rows.update); no existing op moved.
+ *
+ * 2026-11-16 (tasker 160, personal knowledge graph): five knowledge.* rows added
+ * (search, get, query, record, enrich); no existing op moved.
  */
 const FROZEN_TOOL_OPERATION_ROWS_2026_09_04: readonly string[] = Object.freeze([
 	'call_corsair_mcp_tool util.corsair_mcp.tool.call write',
@@ -37,6 +40,7 @@ const FROZEN_TOOL_OPERATION_ROWS_2026_09_04: readonly string[] = Object.freeze([
 	'delete_onto_project onto.project.delete write',
 	'delete_onto_risk onto.risk.delete write',
 	'delete_onto_task onto.task.delete write',
+	'enrich_knowledge knowledge.enrich write',
 	'explore_project x.search.explore read',
 	'get_buildos_overview util.buildos.overview read',
 	'get_buildos_usage_guide util.buildos.usage_guide read',
@@ -48,6 +52,7 @@ const FROZEN_TOOL_OPERATION_ROWS_2026_09_04: readonly string[] = Object.freeze([
 	'get_entity_relationships onto.entity.relationships.get read',
 	'get_external_account_status email.accounts.status read',
 	'get_field_info util.schema.field_info read',
+	'get_knowledge_entity knowledge.get read',
 	'get_linked_entities onto.entity.links.get read',
 	'get_onto_asset onto.asset.get read',
 	'get_onto_document_details onto.document.get read',
@@ -89,14 +94,17 @@ const FROZEN_TOOL_OPERATION_ROWS_2026_09_04: readonly string[] = Object.freeze([
 	'propose_project_parent onto.project.parent.propose read',
 	'propose_workspace_filing onto.workspace.file.propose read',
 	'propose_workspace_project onto.workspace.project.propose read',
+	'query_knowledge knowledge.query read',
 	'read_document_section x.misc.read_document_section read',
 	'read_table_rows onto.table.rows.query read',
+	'record_knowledge knowledge.record write',
 	'reorganize_onto_project_graph onto.project.graph.reorganize write',
 	'request_email_account_connection email.accounts.connect write',
 	'resolve_user_contact_candidate util.contact.candidate.resolve write',
 	'scan_email_inbox email.messages.scan read',
 	'search_all_projects x.search.all_projects read',
 	'search_email_messages email.messages.search read',
+	'search_knowledge knowledge.search read',
 	'search_onto_assets onto.asset.search read',
 	'search_onto_documents onto.document.search read',
 	'search_onto_goals onto.goal.search read',

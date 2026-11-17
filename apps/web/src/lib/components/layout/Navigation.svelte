@@ -21,6 +21,7 @@
 	} from './agent-chat-launch-params';
 	import { onMount, tick } from 'svelte';
 	import {
+		BookUser,
 		FolderOpen,
 		StickyNote,
 		User,
@@ -224,7 +225,9 @@
 		// The Workspace: loose notes and tasks beside every project (/projects is its home).
 		{ href: '/projects', label: 'Workspace', icon: FolderOpen },
 		// { href: '/time-blocks', label: 'Time Blocks', icon: Clock },
-		{ href: '/history', label: 'History', icon: StickyNote }
+		{ href: '/history', label: 'History', icon: StickyNote },
+		// The personal knowledge graph: people you know, orgs, websites, videos (tasker 160).
+		{ href: '/knowledge', label: 'Knowledge', icon: BookUser }
 	];
 	const navItems = $derived(
 		workflowLabNavEnabled

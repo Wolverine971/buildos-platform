@@ -12,7 +12,12 @@ import type {
 	ProposedChangeAction
 } from '@buildos/shared-types';
 
-export type GatewayMutationEntityKind = ProjectLogEntityType | 'calendar' | 'asset';
+export type GatewayMutationEntityKind =
+	| ProjectLogEntityType
+	| 'calendar'
+	| 'asset'
+	| 'knowledge_entity'
+	| 'knowledge_run';
 
 export type GatewayMutationActivityConfig = {
 	entityType: ProjectLogEntityType;
@@ -166,6 +171,15 @@ export const GATEWAY_MUTATION_COMMANDS: Record<BuildosAgentWriteOp, GatewayMutat
 		entityKind: 'calendar',
 		proposedChangeAction: 'update',
 		activity: { entityType: 'project', action: 'updated' }
+	},
+	// Personal knowledge graph: user-private, no project, so no project activity row.
+	'knowledge.record': {
+		entityKind: 'knowledge_entity',
+		proposedChangeAction: 'create'
+	},
+	'knowledge.enrich': {
+		entityKind: 'knowledge_run',
+		proposedChangeAction: 'create'
 	}
 };
 

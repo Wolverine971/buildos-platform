@@ -70,6 +70,10 @@ export const AGENTIC_CHAT_TOOL_STORAGE_CLASSES_V1: Readonly<
 	propose_workspace_filing: 'workspace',
 	propose_workspace_project: 'workspace',
 	list_workspace_suggestions: 'workspace',
+	// The user's own knowledge graph rows (their contacts, research, cited facts).
+	search_knowledge: 'workspace',
+	get_knowledge_entity: 'workspace',
+	query_knowledge: 'workspace',
 	get_entity_relationships: 'workspace',
 	get_linked_entities: 'workspace',
 	search_user_contacts: 'workspace',

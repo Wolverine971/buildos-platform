@@ -2,7 +2,10 @@
 
 # Separate Google clients for agents
 
-Updated November 9, 2026. Code and a rehearsed migration are in this checkout. Both new Google
+**Last updated**: 2026-11-09
+**Status**: Implementation and rollout snapshot. Deployment statements below describe that date.
+
+Code and a rehearsed migration are in this checkout. Both new Google
 agent clients have been created with the user's approval. Existing human clients are unchanged.
 The four new credential values are staged in the gitignored, owner-only
 `.env.google-agents.local` file; downloaded credential JSON files are also owner-only.

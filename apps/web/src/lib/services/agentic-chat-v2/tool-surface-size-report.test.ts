@@ -217,7 +217,13 @@ describe('tool surface size report', () => {
 		// creates). get_workspace_overview's description now says the Workspace is listed
 		// apart (-6). Measured 57 → 60 tools, 63,223 → 65,158 chars (+1,935). Jev mounts
 		// the cards only on file/start-a-project turns. Cap at measured + ~0.3%.
-		expect(global?.totalChars).toBeLessThanOrEqual(65_350);
+		// RE-BASELINED 2026-11-16 (tasker 160, personal knowledge graph): search_knowledge,
+		// get_knowledge_entity, query_knowledge, record_knowledge and enrich_knowledge joined
+		// both surfaces; the kind/predicate enums carry the vocabulary (descriptions and
+		// per-field limits trimmed first). Measured 60 -> 65 tools, 65,158 -> 71,619 chars
+		// (+6,461). Jev mounts them only on people/company/channel/video turns. Cap at
+		// measured + ~0.3%.
+		expect(global?.totalChars).toBeLessThanOrEqual(71_840);
 		// Reviewed 2026-09-05 against the previous signed snapshot: +838 for
 		// contract reference/null handling, +321 for typed task estimates, +396
 		// for get_onto_document_details, +1,190 for link_onto_entities. These
@@ -232,7 +238,10 @@ describe('tool surface size report', () => {
 		// RE-BASELINED 2026-10-17 (pipeline audit S8): the same document-read
 		// schema changes plus list_onto_documents (-94). Measured 72 tools, 76,180
 		// → 75,996 chars (-184). Cap at measured + ~0.2%.
-		expect(project?.totalChars).toBeLessThanOrEqual(76_150);
+		// RE-BASELINED 2026-11-16 (tasker 160): the five knowledge graph tools joined the
+		// project surface too (the graph is the user's own, not a project). Measured
+		// 75,774 -> 82,235 chars (+6,461). Cap at measured + ~0.3%.
+		expect(project?.totalChars).toBeLessThanOrEqual(82_480);
 		// Bumped 2026-09-04: 15,250 → 15,700. Measured 15,458 — +426 from the
 		// create_onto_task description work noted above, and +516 already present
 		// on this branch from the control-tool descriptions (declare_turn_contract).

@@ -144,3 +144,15 @@ Source material:
 - [Blog draft: why I built BuildOS](blogs/why-I-built-buildos.md) and [positioning notes](blogs/todays-blog.md)
 - [Productivity in the future](philosophy/productivity-in-the-future.md)
 - [Structure-first blog editing process](writing/john-mcphee-editing.md)
+
+### Dated engineering records
+
+These documents preserve earlier designs, implementation evidence, and audit findings.
+Their status and rollout statements apply to the dates recorded in each document.
+
+- [Immutable session and context usage](plans/AGENTIC_CHAT_WORKER_PHASE_4_SLICE_4_IMMUTABLE_SESSION_CONTEXT_USAGE_PLAN_2026-08-04.md) — August 2026 worker snapshot contract and validation evidence
+- [Domain and work capability architecture](specs/buildos-domain-work-capability-architecture-2026-05-18.md) — May 2026 progressive-discovery design and implementation snapshot
+- [Question Tree experiment specification](specs/question-tree-admin-experiment-spec.md) and [test runbook](specs/question-tree-admin-experiment-runbook.md) — August 2026 admin experiment design and validation procedure
+- [Project context shift specification](technical/implementation/PROJECT_CONTEXT_SHIFT_SPEC.md) — November 2025 design for continuing chat after project creation
+- [Database schema and RPC audit](technical/reviews/DATABASE_SCHEMA_RPC_AUDIT_2026-07-30.md) — July/August 2026 findings and links to the resulting security work
+- [API and service quality audit](technical/reviews/api-service-quality-audit-2026-07-03.md) — July 2026 route, service, authorization, and worker findings

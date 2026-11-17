@@ -24,6 +24,8 @@ import type { JSONRequestOptions } from '@buildos/smart-llm';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { supabase as defaultSupabase } from '../../lib/supabase';
+import type { KnowledgeDataClient } from '@buildos/shared-agent-ops/knowledge';
+import { syncTaskEntitiesToKnowledge } from '../knowledge/taskEntityKnowledgeSync';
 import {
 	TASK_ENTITY_EXTRACTOR_VERSION,
 	TASK_ENTITY_MAX_COST_USD,
@@ -352,6 +354,14 @@ export async function processExtractTaskEntitiesJob(
 		entityCount: extracted.length,
 		model
 	});
+	// People and organizations in the task join the owner's knowledge graph (best effort).
+	if (extracted.length && !deps.supabase) {
+		await syncTaskEntitiesToKnowledge(supabase as unknown as KnowledgeDataClient, {
+			userId,
+			projectId,
+			task: { id: taskId, title: task.title ?? '' }
+		});
+	}
 	return done(extracted.length ? 'extracted' : 'empty', {
 		inserted: plan.insert.length,
 		updated: plan.update.length,

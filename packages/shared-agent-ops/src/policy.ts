@@ -53,8 +53,12 @@ export function normalizeScopeMode(
 	return value;
 }
 
+/** Ops a connection only gets when they are granted by name (paid background research). */
+const OPT_IN_OPS = new Set<BuildosAgentAllowedOp>(['knowledge.enrich']);
+
 export function defaultAllowedOpsForMode(mode: BuildosAgentScopeMode): BuildosAgentAllowedOp[] {
-	return mode === 'read_write' ? [...BUILDOS_AGENT_SUPPORTED_OPS] : [...BUILDOS_AGENT_READ_OPS];
+	const ops = mode === 'read_write' ? BUILDOS_AGENT_SUPPORTED_OPS : BUILDOS_AGENT_READ_OPS;
+	return ops.filter((op) => !OPT_IN_OPS.has(op));
 }
 
 export function minimumScopeMode(

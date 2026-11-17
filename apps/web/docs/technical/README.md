@@ -70,3 +70,26 @@ Documentation is automatically generated where possible and should be updated wh
 - [supabase-auth-permissions-validation.md](./deployment/runbooks/supabase-auth-permissions-validation.md) — SQL checks for shared-project access, invites and RLS
 - [CALENDAR_EVENT_TRACKING.md](./calendar/CALENDAR_EVENT_TRACKING.md) — organizer/attendee tracking on task calendar events (Oct 2025; the phase-generation section is obsolete)
 - [AGENT_CHAT_MINIMIZE_TO_NOTIFICATION_SPEC_2026-07-10.md](./audits/AGENT_CHAT_MINIMIZE_TO_NOTIFICATION_SPEC_2026-07-10.md) — spec for minimizing chat into the notification stack (built; its research section cites the removed stream route)
+
+## Historical audits and implementation notes
+
+These preserve findings and decisions from their stated dates. Verify them against current
+code before treating a finding as open or reusing an implementation pattern.
+
+### UI and performance
+
+- [Animation performance audit](./ANIMATION_PERFORMANCE_AUDIT.md) — 2025 findings; the shared animation utilities were removed in April 2026
+- [Modal lazy-loading progress](./MODAL_LAZY_LOADING_SUMMARY.md) — November 2025 conversion checklist and bundle-size estimates
+- [UI patterns and conventions](./components/UI_PATTERNS_AND_CONVENTIONS.md) — 2025 component survey; use the [Inkprint design system](./components/INKPRINT_DESIGN_SYSTEM.md) for current design guidance
+- [Marketing site design review](./audits/MARKETING_SITE_DESIGN_REVIEW_2026-04-29.md) — April 2026 landing-page review and design-review skill evaluation
+
+### Agentic Chat
+
+These July 2026 audits cover the former web stream orchestrator. For the worker runtime,
+start with the [worker chat documentation](../../../worker/src/workers/agentic-chat/README.md).
+
+- [Flow audit followups](./audits/AGENTIC_CHAT_FLOW_AUDIT_FOLLOWUPS_2026-07-06.md) — admission, prompt preparation, and lifecycle findings
+- [Prompt quality audit](./audits/AGENTIC_CHAT_PROMPT_QUALITY_AUDIT_2026-07-10.md) — prompt construction and tool-description findings
+- [Read-tool parallelization plan](./audits/AGENTIC_CHAT_READ_TOOL_PARALLELIZATION_PLAN_2026-07-06.md) — bounded read concurrency and write-ordering constraints
+- [Stream orchestrator simplification plan](./audits/AGENTIC_CHAT_STREAM_ORCHESTRATOR_SIMPLIFICATION_PLAN_2026-07-07.md) — extraction and correctness work
+- [Wave 4 correctness and cost plan](./audits/AGENTIC_CHAT_WAVE_4_CORRECTNESS_COST_PLAN_2026-07-06.md) — budget, context, and finalization work

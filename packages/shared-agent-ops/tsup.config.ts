@@ -99,7 +99,8 @@ export default defineConfig({
 		'src/tables/index.ts',
 		'src/tables/browser.ts',
 		// Task entities: browser-safe (chips, detector, merge rules).
-		'src/task-entities/index.ts'
+		'src/task-entities/index.ts',
+		'src/knowledge/index.ts'
 	],
 	format: ['cjs', 'esm'],
 	// Rollup's declaration bundler builds every entrypoint in one worker. This

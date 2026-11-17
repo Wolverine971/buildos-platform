@@ -441,6 +441,42 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 				expect(names).toContain(writeTool);
 			}
 		});
+
+		it('lists the knowledge graph tools by scope, saves marked as non-destructive writes', async () => {
+			const list = async (scope_mode: 'read_only' | 'read_write') => {
+				const response = await mcpPost(
+					staticKeyAdmin({ scope_mode }),
+					{ jsonrpc: '2.0', id: 22, method: 'tools/list' },
+					STATIC_KEY_HEADER
+				);
+				const body = await response.json();
+				return new Map<string, any>(
+					body.result.tools.map((tool: { name: string }) => [tool.name, tool])
+				);
+			};
+			const reads = ['search_knowledge', 'get_knowledge_entity', 'query_knowledge'];
+			const writes = ['record_knowledge'];
+
+			const readOnly = await list('read_only');
+			for (const name of reads)
+				expect(readOnly.get(name)?.annotations.readOnlyHint).toBe(true);
+			for (const name of writes) expect(readOnly.has(name)).toBe(false);
+
+			const readWrite = await list('read_write');
+			// Paid research is only listed when the key grants it by name.
+			expect(readWrite.has('enrich_knowledge')).toBe(false);
+			for (const name of writes) {
+				expect(readWrite.get(name)?.annotations).toMatchObject({
+					readOnlyHint: false,
+					destructiveHint: false
+				});
+			}
+			// The graph is the user's own: no project-scope notice, no project argument.
+			expect(readWrite.get('search_knowledge')?.description).not.toMatch(/project/i);
+			expect(readWrite.get('record_knowledge')?.inputSchema.properties).not.toHaveProperty(
+				'project_id'
+			);
+		});
 	});
 
 	describe('JSON-RPC protocol errors', () => {
