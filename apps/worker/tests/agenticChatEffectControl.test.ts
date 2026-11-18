@@ -240,8 +240,9 @@ describe('SupabaseAgenticChatEffectControlAdapter', () => {
 				downstreamReceipt: null,
 				failureCode: 'uncertain_external_commit'
 			};
-			await expect(adapter[operation](request)).rejects.toMatchObject({
-				name: AgenticChatEffectControlRpcError.name,
+			const pending = adapter[operation](request);
+			await expect(pending).rejects.toBeInstanceOf(AgenticChatEffectControlRpcError);
+			await expect(pending).rejects.toMatchObject({
 				code: '42501',
 				rpcName: `${operation}_agentic_chat_effect`
 			});

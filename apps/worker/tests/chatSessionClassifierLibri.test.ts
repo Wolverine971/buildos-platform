@@ -74,6 +74,7 @@ function configureLibri() {
 
 describe('processChatClassificationJob', () => {
 	let capturedSessionUpdate: Record<string, unknown> | null;
+	let classificationSaveError: { message: string } | null;
 	let sessionData: Record<string, unknown>;
 	let messageData: Array<Record<string, unknown>>;
 	/** queue_jobs rows the snapshot lookup returns, and the filters it was asked with. */
@@ -84,11 +85,13 @@ describe('processChatClassificationJob', () => {
 	afterEach(() => {
 		vi.unstubAllEnvs();
 		vi.unstubAllGlobals();
+		vi.useRealTimers();
 	});
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		capturedSessionUpdate = null;
+		classificationSaveError = null;
 		snapshotJobs = [];
 		snapshotLookupError = null;
 		snapshotLookupFilters = [];
@@ -195,6 +198,9 @@ describe('processChatClassificationJob', () => {
 					return query;
 				},
 				then(resolve: (value: unknown) => unknown) {
+					if (classificationSaveError && Object.hasOwn(payload, 'summary')) {
+						return Promise.resolve({ error: classificationSaveError }).then(resolve);
+					}
 					if (
 						filters.every(
 							([key, value]) => key === 'user_id' || sessionData[key] === value
@@ -336,6 +342,77 @@ describe('processChatClassificationJob', () => {
 		expect(result.success).toBe(true);
 		expect({ ...sessionData, ...capturedSessionUpdate }.title).toBe(
 			'My manually renamed conversation'
+		);
+	});
+
+	it('retries a failed synthesis save without handing off unsaved entities or reporting completion', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(new Date('2026-04-15T12:05:00.000Z'));
+		const fetchMock = configureLibri();
+		classificationSaveError = { message: 'database unavailable' };
+		const job = {
+			id: 'job-save-retry',
+			data: { sessionId: 'session-1', userId: 'user-1' },
+			attemptsMade: 0,
+			maxAttempts: 3
+		};
+		await expect(processChatClassificationJob(job as any)).rejects.toThrow(
+			'Failed to update session classification: database unavailable'
+		);
+		expect(capturedSessionUpdate).toBeNull();
+		expect(sessionData.last_classified_at).toBeNull();
+		expect(fetchMock).not.toHaveBeenCalled();
+		expect(processSessionActivityAndNextSteps).not.toHaveBeenCalled();
+		expect(mockQueueSnapshot).not.toHaveBeenCalled();
+		expect(mockUpdateJobStatus.mock.calls.some(([, status]) => status === 'completed')).toBe(
+			false
+		);
+
+		classificationSaveError = null;
+		await expect(
+			processChatClassificationJob({ ...job, attemptsMade: 1 } as any)
+		).resolves.toMatchObject({ success: true });
+		expect(sessionData).toMatchObject({
+			auto_title: 'Libri Resource Planning',
+			chat_topics: ['libri', 'books', 'youtube'],
+			summary: 'The user discussed James Clear, Atomic Habits, and a YouTube video.',
+			last_classified_at: '2026-04-15T12:02:00.000Z',
+			extracted_entities: expect.objectContaining({ libri_candidates: expect.any(Array) })
+		});
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(processSessionActivityAndNextSteps).toHaveBeenCalledExactlyOnceWith(
+			'session-1',
+			'user-1'
+		);
+		expect(mockQueueSnapshot).toHaveBeenCalledTimes(1);
+	});
+
+	it('leaves messages arriving during synthesis eligible for the next classification', async () => {
+		mockGetJSONResponse.mockImplementationOnce(async () => {
+			sessionData.last_message_at = '2026-04-15T12:04:00.000Z';
+			messageData.push({
+				id: 'msg-new',
+				role: 'user',
+				content: 'One more decision.',
+				created_at: '2026-04-15T12:04:00.000Z'
+			});
+			return {
+				title: 'Original discussion',
+				topics: ['planning'],
+				summary: 'The original discussion.'
+			};
+		});
+		const job = { id: 'job-message-race', data: { sessionId: 'session-1', userId: 'user-1' } };
+		await processChatClassificationJob(job as any);
+		expect(sessionData.last_classified_at).toBe('2026-04-15T12:02:00.000Z');
+		expect(sessionData.last_message_at).toBe('2026-04-15T12:04:00.000Z');
+
+		await processChatClassificationJob(job as any);
+		expect(mockGetJSONResponse).toHaveBeenCalledTimes(2);
+		expect(sessionData.last_classified_at).toBe('2026-04-15T12:04:00.000Z');
+		expect(mockGetJSONResponse.mock.calls[0][0].userPrompt).not.toContain('One more decision.');
+		expect(mockGetJSONResponse.mock.calls[1][0].userPrompt).toContain(
+			'User: One more decision.'
 		);
 	});
 

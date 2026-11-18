@@ -63,13 +63,22 @@ export const ENRICH_FOCUS_OPTIONS: ReadonlyArray<{
 	{ key: 'role', label: 'Role & company', fields: ['headline', 'works_at'] },
 	{ key: 'linkedin', label: 'LinkedIn & profiles', fields: ['profile_url'] },
 	{ key: 'location', label: 'Location', fields: ['located_in', 'address'] },
+	{ key: 'education', label: 'Education', fields: ['educated_at'] },
 	{ key: 'about', label: 'What they do', fields: ['description', 'industry', 'about'] },
 	{ key: 'contact', label: 'Phone & email', fields: ['email', 'phone'] }
 ];
 
 /** What to look for by kind when the caller does not name fields. */
 export const DEFAULT_ENRICH_FIELDS: Record<KnowledgeKind, string[]> = {
-	person: ['headline', 'works_at', 'homepage', 'profile_url', 'located_in', 'description'],
+	person: [
+		'headline',
+		'works_at',
+		'educated_at',
+		'homepage',
+		'profile_url',
+		'located_in',
+		'description'
+	],
 	org: [
 		'description',
 		'homepage',

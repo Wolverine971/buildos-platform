@@ -2,10 +2,17 @@
 <!--
 	Receipt for a chat checkpoint capture (tasker/95): what was saved, links to it,
 	a pending-review note, and Undo. Small and non-blocking; not a model message.
+	Tasker 164: also what the chat taught about people and organizations, saved to
+	the knowledge graph ("2 details about Sam Lee"), undone by the same Undo.
 -->
 <script lang="ts">
 	import { Check, LoaderCircle, RotateCcw } from '$lib/icons/lucide';
-	import { type CaptureReceipt, documentHref } from './capture-receipt';
+	import {
+		type CaptureReceipt,
+		documentHref,
+		knowledgeHref,
+		knowledgeNames
+	} from './capture-receipt';
 
 	let { receipt }: { receipt: CaptureReceipt } = $props();
 
@@ -18,6 +25,10 @@
 		receipt.startHereDocumentId !== null && receipt.appliedSections.length > 0
 	);
 	const reviewCount = $derived(receipt.reviewSections.length);
+	const savedDocs = $derived(
+		receipt.projectId !== null && (savedStartHere || receipt.thinkingLogDocumentId !== null)
+	);
+	const knowledge = $derived(receipt.knowledge);
 
 	async function undo() {
 		if (undoState === 'undoing' || undone) return;
@@ -60,7 +71,7 @@
 		{#if undone}
 			<span>Capture undone</span>
 		{:else}
-			{#if savedStartHere || receipt.thinkingLogDocumentId}
+			{#if savedDocs && receipt.projectId}
 				<span>
 					Saved to
 					{#if savedStartHere && receipt.startHereDocumentId}
@@ -79,10 +90,29 @@
 					{/if}
 				</span>
 			{/if}
+			{#if knowledge && knowledge.facts > 0}
+				{#if savedDocs}<span aria-hidden="true">·</span>{/if}
+				<span>
+					{#if !savedDocs}Saved{/if}
+					<a
+						class="font-medium text-foreground underline-offset-2 hover:underline"
+						href={knowledgeHref(knowledge)}
+						>{knowledge.facts === 1 ? '1 detail' : `${knowledge.facts} details`} about {knowledgeNames(
+							knowledge
+						)}</a
+					>
+				</span>
+			{/if}
+			{#if knowledge && knowledge.questions > 0}
+				{#if savedDocs || knowledge.facts > 0}<span aria-hidden="true">·</span>{/if}
+				<a class="underline-offset-2 hover:underline" href="/knowledge"
+					>{knowledge.questions === 1
+						? '1 “same one?” question'
+						: `${knowledge.questions} “same one?” questions`}</a
+				>
+			{/if}
 			{#if reviewCount > 0}
-				{#if savedStartHere || receipt.thinkingLogDocumentId}<span aria-hidden="true"
-						>·</span
-					>{/if}
+				{#if savedDocs || knowledge}<span aria-hidden="true">·</span>{/if}
 				<a class="underline-offset-2 hover:underline" href="/today"
 					>{reviewCount === 1 ? '1 change' : `${reviewCount} changes`} to review</a
 				>

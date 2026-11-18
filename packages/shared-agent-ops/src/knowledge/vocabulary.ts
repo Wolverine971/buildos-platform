@@ -306,6 +306,19 @@ export const KNOWLEDGE_PREDICATES: readonly KnowledgePredicateDefinition[] = [
 		200
 	),
 	p(
+		'educated_at',
+		'Studied at',
+		'Alumni',
+		'The person studied at the school, college or university (an organization). Use qualifiers for degree, field and years.',
+		'entity',
+		['person'],
+		['org'],
+		'many',
+		[],
+		['degree', 'field', 'start', 'end'],
+		205
+	),
+	p(
 		'knows',
 		'Knows',
 		'Known by',

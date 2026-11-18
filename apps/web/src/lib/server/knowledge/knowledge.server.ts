@@ -37,8 +37,9 @@ export function knowledgeErrorResponse(error: unknown, fallback: string) {
 }
 
 /**
- * Titles for an entity's linked tasks, documents and projects, read with the caller's client:
- * records they can no longer open simply drop out.
+ * Titles for an entity's linked tasks, documents, projects and chats, read with the caller's
+ * client: records they can no longer open simply drop out. A chat link comes from chat
+ * checkpoint capture (tasker 164) and opens that chat.
  */
 export async function loadLinkedRecords(
 	supabase: any,
@@ -46,7 +47,7 @@ export async function loadLinkedRecords(
 ): Promise<KnowledgeLinkedRecord[]> {
 	const ids = (kind: KnowledgeRecordKind) =>
 		links.filter((l) => l.record_kind === kind).map((l) => l.record_id);
-	const [tasks, documents, projects] = await Promise.all([
+	const [tasks, documents, projects, chats] = await Promise.all([
 		ids('task').length
 			? supabase
 					.from('onto_tasks')
@@ -67,8 +68,23 @@ export async function loadLinkedRecords(
 					.select('id, name')
 					.in('id', ids('project'))
 					.is('deleted_at', null)
+			: { data: [] },
+		ids('chat_session').length
+			? supabase
+					.from('chat_sessions')
+					.select('id, title, auto_title')
+					.in('id', ids('chat_session'))
 			: { data: [] }
 	]);
+	const chatTitles = new Map<string, string>(
+		(
+			(chats.data ?? []) as Array<{
+				id: string;
+				title: string | null;
+				auto_title: string | null;
+			}>
+		).map((chat) => [chat.id, chat.title?.trim() || chat.auto_title?.trim() || 'Chat'])
+	);
 	type Rec = {
 		id: string;
 		title?: string;
@@ -101,6 +117,22 @@ export async function loadLinkedRecords(
 
 	const out: KnowledgeLinkedRecord[] = [];
 	for (const link of links) {
+		if (link.record_kind === 'chat_session') {
+			const title = chatTitles.get(link.record_id);
+			if (!title) continue;
+			out.push({
+				id: link.id,
+				record_kind: link.record_kind,
+				record_id: link.record_id,
+				title,
+				project_id: null,
+				project_name: 'Chat',
+				state: null,
+				href: `/history?chat=${encodeURIComponent(link.record_id)}`,
+				quote: link.quote
+			});
+			continue;
+		}
 		const rec = byId.get(link.record_id);
 		if (!rec) continue;
 		const projectId = link.record_kind === 'project' ? rec.id : (rec.project_id ?? null);

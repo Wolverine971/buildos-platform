@@ -241,15 +241,20 @@ describe('planContactImport', () => {
 
 describe('vocabulary', () => {
 	it('matches the kinds and predicates seeded by the migration', () => {
-		const sql = readFileSync(
-			fileURLToPath(
-				new URL(
-					'../../../../supabase/migrations/20261116230000_knowledge_graph.sql',
-					import.meta.url
+		// The original seed plus later migrations that add predicates.
+		const sql = [
+			'20261116230000_knowledge_graph.sql',
+			'20261118120000_knowledge_educated_at.sql'
+		]
+			.map((file) =>
+				readFileSync(
+					fileURLToPath(
+						new URL(`../../../../supabase/migrations/${file}`, import.meta.url)
+					),
+					'utf8'
 				)
-			),
-			'utf8'
-		);
+			)
+			.join('\n');
 		const kindKeys = [
 			...sql.matchAll(
 				/^\t\('([a-z_]+)', '[^']+', '[^']+', '(?:[^']|'')+', (?:true|false), \d+\)/gm

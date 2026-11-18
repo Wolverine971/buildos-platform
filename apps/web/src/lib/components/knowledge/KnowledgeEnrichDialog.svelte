@@ -149,6 +149,10 @@
 				maxlength={MAX_ENRICH_INSTRUCTIONS_CHARS}
 				placeholder="e.g. Which podcasts have they been on? What does the company sell?"
 			></textarea>
+			<span class="text-xs text-muted-foreground"
+				>Looking for a phone number, email or school? Pick it above too, so research goes
+				after it.</span
+			>
 		</label>
 
 		{#if !single}
@@ -271,7 +275,8 @@
 				</p>
 			{/if}
 			<p class="text-xs text-muted-foreground">
-				Phone numbers, home addresses and birthdays are never looked up for people.
+				Home addresses and birthdays are never looked up for people. Phone numbers and
+				emails only when you pick Phone &amp; email, and they stay private to you.
 			</p>
 		</div>
 

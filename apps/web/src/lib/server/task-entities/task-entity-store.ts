@@ -11,6 +11,7 @@ import {
 	entityTextKey,
 	formatPhone
 } from '@buildos/shared-agent-ops/task-entities';
+import { normalizeKnowledgeName } from '@buildos/shared-agent-ops/knowledge';
 
 export const TASK_ENTITY_COLUMNS =
 	'id, task_id, project_id, kind, natural_key, value, display, role, about, quote, confidence, source, status, in_text, position, data, source_hash, extractor_version, status_changed_at, created_at, updated_at';
@@ -68,6 +69,128 @@ export async function loadTaskEntities(
 	if (entities.error) throw new Error(`Could not load task entities: ${entities.error.message}`);
 	if (states.error) throw new Error(`Could not load task entity state: ${states.error.message}`);
 	return { entities: entities.data ?? [], states: states.data ?? [] };
+}
+
+export type TaskKnowledgeLink = {
+	record_id: string;
+	quote: string | null;
+	entity: {
+		id: string;
+		kind: string;
+		name: string;
+		status: string;
+		merged_into_id: string | null;
+	} | null;
+};
+
+/**
+ * The caller's knowledge-graph links for these tasks, each with its entry (one query, owner-only
+ * RLS). Runs in parallel with loadTaskEntities; collaborators who don't own the links get [].
+ */
+export async function loadTaskKnowledgeLinks(
+	supabase: unknown,
+	userId: string,
+	taskIds: string[]
+): Promise<TaskKnowledgeLink[]> {
+	const ids = [...new Set(taskIds)].slice(0, MAX_TASK_IDS_PER_READ);
+	if (!ids.length) return [];
+	const { data, error } = await loose(supabase)
+		.from<TaskKnowledgeLink[]>('knowledge_record_links')
+		.select(
+			'record_id, quote, entity:knowledge_entities(id, kind, name, status, merged_into_id)'
+		)
+		.eq('owner_user_id', userId)
+		.eq('record_kind', 'task')
+		.in('record_id', ids);
+	if (error) throw new Error(`Could not load knowledge links: ${error.message}`);
+	return data ?? [];
+}
+
+/**
+ * Which knowledge-graph entry each person, organization or place on these tasks is (tasker 160), so a
+ * name in a task opens the full knowledge card on the first click with no extra lookup.
+ *
+ * The worker files every person/org it reads from a task as an entry linked to that task, with
+ * the words it was read from (task-entity-bridge.ts). A row matches, in order:
+ *   1. a link on the same task, same kind, with the same quote — survives the entry being
+ *      renamed or merged into another (merges repoint links to the kept entry);
+ *   2. a link on the same task, same kind, whose entry has the row's name;
+ *   3. the caller's own active entry with exactly that name and kind (tasks the worker never
+ *      linked, and collaborators' own entries) — only when exactly one entry has that name, so
+ *      two different "Chris"es never open the wrong card.
+ * Merged entries resolve to the entry they were merged into; hidden ones never match.
+ */
+export async function loadTaskKnowledgeIds(
+	supabase: unknown,
+	userId: string,
+	entities: TaskEntityRecord[],
+	links: TaskKnowledgeLink[]
+): Promise<Record<string, string>> {
+	const named = entities.filter(
+		(row) =>
+			(row.kind === 'person' || row.kind === 'org' || row.kind === 'place') &&
+			row.status !== 'dismissed'
+	);
+	if (!named.length) return {};
+	const live = (entity: TaskKnowledgeLink['entity']) => {
+		if (!entity || entity.status === 'hidden') return null;
+		return entity.status === 'merged' ? entity.merged_into_id : entity.id;
+	};
+	const byQuote = new Map<string, string>();
+	const byName = new Map<string, string>();
+	for (const link of links) {
+		const id = live(link.entity);
+		if (!id || !link.entity) continue;
+		const kind = link.entity.kind;
+		if (link.quote) {
+			const key = `${link.record_id}|${kind}|${link.quote}`;
+			if (!byQuote.has(key)) byQuote.set(key, id);
+		}
+		const nameKey = `${link.record_id}|${kind}|${normalizeKnowledgeName(link.entity.name)}`;
+		if (!byName.has(nameKey)) byName.set(nameKey, id);
+	}
+	const namesOf = (row: TaskEntityRecord) =>
+		[row.display, row.value, row.natural_key]
+			.filter((name): name is string => Boolean(name))
+			.map(normalizeKnowledgeName);
+
+	const result: Record<string, string> = {};
+	const unmatched: TaskEntityRecord[] = [];
+	for (const row of named) {
+		const hit =
+			(row.quote ? byQuote.get(`${row.task_id}|${row.kind}|${row.quote}`) : undefined) ??
+			namesOf(row)
+				.map((name) => byName.get(`${row.task_id}|${row.kind}|${name}`))
+				.find(Boolean);
+		if (hit) result[row.id] = hit;
+		else unmatched.push(row);
+	}
+	if (!unmatched.length) return result;
+
+	// 3. The caller's own entries by exact name (one small query, only when something is left).
+	const names = [...new Set(unmatched.flatMap(namesOf))].slice(0, 200);
+	const { data, error } = await loose(supabase)
+		.from<Array<{ id: string; kind: string; normalized_name: string }>>('knowledge_entities')
+		.select('id, kind, normalized_name')
+		.eq('owner_user_id', userId)
+		.eq('status', 'active')
+		.in('normalized_name', names);
+	if (error || !data?.length) return result;
+	const owned = new Map<string, string[]>();
+	for (const entry of data) {
+		const key = `${entry.kind}|${entry.normalized_name}`;
+		owned.set(key, [...(owned.get(key) ?? []), entry.id]);
+	}
+	for (const row of unmatched) {
+		for (const name of namesOf(row)) {
+			const ids = owned.get(`${row.kind}|${name}`);
+			if (ids?.length === 1) {
+				result[row.id] = ids[0]!;
+				break;
+			}
+		}
+	}
+	return result;
 }
 
 /** Sets one entity's status. Null when the row is missing or the caller may not change it. */

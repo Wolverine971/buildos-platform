@@ -46,6 +46,7 @@ function withGenerated(table: string, row: Row): Row {
 		out.dedupe_key = `${out.entity_id}|${out.predicate}|${out.object_entity_id ?? String(out.value_text).trim().toLowerCase()}`;
 	}
 	if (table === 'knowledge_sources') out.captured_at ??= now;
+	if (table === 'knowledge_merge_candidates') out.status ??= 'pending';
 	return out;
 }
 
@@ -685,5 +686,159 @@ Ann,Bee,https://www.linkedin.com/in/ann-100%-bee,,Acme,CTO,01 Jan 2024
 		await importFile(store, 'Connections.csv', csv);
 		await importFile(store, 'Connections.csv', csv);
 		expect(people(db, alice)).toEqual(['Ann Bee', 'John Smith', 'John Smith']);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Tasker 164, part A: know first, "Not this one", identity questions, circles.
+
+describe('know first: anchors, circles, identity questions, Not this one', () => {
+	async function codyWithWrongResearch() {
+		const { db, alice, store } = setup();
+		const taskId = randomUUID();
+		db.rows('onto_tasks').push({
+			id: taskId,
+			title: 'Cody Shooting Complex site refresh',
+			description:
+				'Update codyshootingcomplex.org events page for the Cody Shooting Complex. Questions: range@codyshootingcomplex.org or 307-555-0142.'
+		});
+		const runId = randomUUID();
+		const receipt = await store.record(
+			{
+				entities: [
+					{ ref: 'cody', kind: 'org', name: 'Cody Shooting Complex' },
+					{ ref: 'iowa', kind: 'place', name: 'Long Grove, IA' }
+				],
+				facts: [],
+				links: [
+					{
+						entity: 'cody',
+						record_kind: 'task',
+						record_id: taskId,
+						quote: 'Cody Shooting Complex site refresh'
+					}
+				]
+			},
+			{ via: 'task' }
+		);
+		const cody = receipt.entities.find((e) => e.ref === 'cody')!.id;
+		// A research run that found the Iowa range.
+		await store.record(
+			{
+				entities: [
+					{ ref: 'cody', id: cody, kind: 'org', name: 'Cody Shooting Complex' },
+					{ ref: 'town', kind: 'place', name: 'Long Grove, Iowa' }
+				],
+				sources: [
+					{
+						ref: 'p1',
+						type: 'web',
+						url: 'https://www.iowadnr.gov/places-to-go/cody',
+						title: 'Cody Shooting Complex | Iowa DNR'
+					}
+				],
+				facts: [
+					{
+						subject: 'cody',
+						predicate: 'located_in',
+						object: 'town',
+						sources: ['p1'],
+						quote: 'located near Long Grove, Iowa'
+					},
+					{
+						subject: 'cody',
+						predicate: 'industry',
+						value: 'Shooting range',
+						sources: ['p1'],
+						quote: 'public shooting range'
+					}
+				]
+			},
+			{ via: 'enrichment', runId }
+		);
+		return { db, alice, store, cody, runId, taskId };
+	}
+
+	it('gathers anchors from the graph and linked work, blanking contact details', async () => {
+		const { db, store, cody } = await codyWithWrongResearch();
+		const { gatherKnowledgeAnchors } = await import('./anchors');
+		const detail = (await store.getEntity(cody))!;
+		const anchors = await gatherKnowledgeAnchors(store, db, detail, { circle: 'inner' });
+		expect(anchors.domains).toEqual(['codyshootingcomplex.org']);
+		expect(anchors.mentions[0]!.text).toContain('Cody Shooting Complex');
+		expect(JSON.stringify(anchors)).not.toMatch(/307-555|range@/);
+		expect(anchors.circle).toBe('inner');
+	});
+
+	it('"Not this one" retracts the run, hides what it alone created, and remembers the hint', async () => {
+		const { db, store, cody, runId } = await codyWithWrongResearch();
+		const result = await store.rejectResearchRun(cody, runId);
+		expect(result.retracted).toBe(2);
+		expect(result.hidden).toBe(1); // "Long Grove, Iowa" was only used by that run
+		expect(result.hint).toMatchObject({
+			label: 'not the Cody Shooting Complex in Long Grove, Iowa',
+			domains: [],
+			urls: ['https://www.iowadnr.gov/places-to-go/cody']
+		});
+		const facts = db.rows('knowledge_facts').filter((f) => f.entity_id === cody);
+		expect(facts.every((f) => f.status === 'retracted')).toBe(true);
+		expect((await store.listResearchHints(cody)).map((h) => h.label)).toEqual([
+			'not the Cody Shooting Complex in Long Grove, Iowa'
+		]);
+		// The next research sees it as an anchor.
+		const { gatherKnowledgeAnchors } = await import('./anchors');
+		const anchors = await gatherKnowledgeAnchors(store, db, (await store.getEntity(cody))!);
+		expect(anchors.not[0]!.urls).toContain('https://www.iowadnr.gov/places-to-go/cody');
+	});
+
+	it("never touches another user's research", async () => {
+		const { db, cody, runId } = await codyWithWrongResearch();
+		const bob = new KnowledgeStore(db, randomUUID());
+		await expect(bob.rejectResearchRun(cody, runId)).rejects.toThrow('Entry not found');
+	});
+
+	it('files an identity question as a "same one?" pair, keeping the original on top', async () => {
+		const { store, cody } = await codyWithWrongResearch();
+		const { recordIdentityQuestion } = await import('./identity');
+		const { otherEntityId, created } = await recordIdentityQuestion(store, {
+			entityId: cody,
+			kind: 'org',
+			question:
+				'Is Cody Shooting Complex, from your work, the same organization as the one in Long Grove, IA?',
+			reason: 'Doesn’t fit what you know',
+			candidate: {
+				name: 'Cody Shooting Complex',
+				facts: [{ predicate: 'description', value: 'Public range in Iowa' }]
+			},
+			via: 'chat'
+		});
+		expect(created).toBe(true);
+		const [pair] = await store.listMergeCandidates();
+		expect(pair).toMatchObject({ origin: 'identity', keep_id: cody });
+		expect(pair!.question).toContain('Long Grove, IA');
+		const other = (await store.getEntity(otherEntityId))!;
+		expect(other.facts.map((f) => [f.predicate, f.status])).toEqual([
+			['description', 'suggested']
+		]);
+	});
+
+	it('resolves circles from signals and saves them, leaving ambiguous names unknown without a model', async () => {
+		const { db, alice, store, cody } = await codyWithWrongResearch();
+		await importLinkedIn(store);
+		const sam = db.rows('knowledge_entities').find((e) => e.name === 'Sam Rivera')!.id;
+		const { resolveCircles } = await import('./circles');
+		const result = await resolveCircles(db, alice, [cody, sam], { decider: null });
+		const byId = new Map(result.decisions.map((d) => [d.entityId, d]));
+		expect(byId.get(sam)).toMatchObject({ circle: 'inner', source: 'signals' });
+		expect(byId.get(cody)).toMatchObject({ circle: 'unknown', reason: 'model_unsure' });
+		expect(result.ambiguous).toBe(1);
+		expect(db.rows('knowledge_entities').find((e) => e.id === sam)).toMatchObject({
+			circle: 'inner',
+			circle_source: 'signals'
+		});
+		// "unknown" from a missing model is not stored, so the next run can still decide it.
+		expect(
+			db.rows('knowledge_entities').find((e) => e.id === cody)?.circle_source
+		).toBeUndefined();
 	});
 });

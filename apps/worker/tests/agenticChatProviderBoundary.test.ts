@@ -1,6 +1,6 @@
 // apps/worker/tests/agenticChatProviderBoundary.test.ts
 import { readdirSync, readFileSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
@@ -8,7 +8,16 @@ import { describe, expect, it } from 'vitest';
 const PROVIDER_ROOT = fileURLToPath(
 	new URL('../src/workers/agentic-chat/provider/', import.meta.url)
 );
-const COORDINATOR = join(PROVIDER_ROOT, 'turn-provider');
+const COORDINATOR = join(PROVIDER_ROOT, 'turn-provider.ts');
+const WORKER_CONFIG = fileURLToPath(new URL('../tsconfig.json', import.meta.url));
+const config = ts.readConfigFile(WORKER_CONFIG, ts.sys.readFile);
+if (config.error) throw new Error(ts.flattenDiagnosticMessageText(config.error.messageText, '\n'));
+const { options } = ts.parseJsonConfigFileContent(config.config, ts.sys, dirname(WORKER_CONFIG));
+const resolutionCache = ts.createModuleResolutionCache(
+	dirname(WORKER_CONFIG),
+	(path) => path,
+	options
+);
 
 function sourceFiles(directory: string): string[] {
 	return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -38,7 +47,7 @@ describe('Agentic Chat provider dependency direction', () => {
 	it('keeps provider helpers independent of the turn coordinator', () => {
 		const violations: string[] = [];
 		for (const path of sourceFiles(PROVIDER_ROOT)) {
-			if (path === `${COORDINATOR}.ts`) continue;
+			if (path === COORDINATOR) continue;
 			const source = ts.createSourceFile(
 				path,
 				readFileSync(path, 'utf8'),
@@ -47,14 +56,21 @@ describe('Agentic Chat provider dependency direction', () => {
 			);
 			function visit(node: ts.Node): void {
 				const specifier = moduleSpecifier(node);
-				if (
-					specifier &&
-					ts.isStringLiteral(specifier) &&
-					specifier.text.startsWith('.') &&
-					resolve(dirname(path), specifier.text).replace(/\.[cm]?[jt]s$/, '') ===
-						COORDINATOR
-				) {
-					violations.push(`${relative(PROVIDER_ROOT, path)} imports ${specifier.text}`);
+				if (specifier && ts.isStringLiteral(specifier)) {
+					// Use the worker's resolver so configured aliases cannot bypass
+					// the same dependency rule that applies to relative imports.
+					const resolved = ts.resolveModuleName(
+						specifier.text,
+						path,
+						options,
+						ts.sys,
+						resolutionCache
+					);
+					if (resolved.resolvedModule?.resolvedFileName === COORDINATOR) {
+						violations.push(
+							`${relative(PROVIDER_ROOT, path)} imports ${specifier.text}`
+						);
+					}
 				}
 				ts.forEachChild(node, visit);
 			}

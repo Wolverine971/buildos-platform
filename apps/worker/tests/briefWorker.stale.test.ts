@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
+	const mockBeforeRead = vi.fn<(table: string) => void>();
 	const mockResponses = {
 		user: {
 			data: {
@@ -57,6 +58,7 @@ const mocks = vi.hoisted(() => {
 	}>;
 
 	function makeResponse(table: string, filters: Array<{ column: string; value: unknown }>) {
+		mockBeforeRead(table);
 		if (table === 'users') return Promise.resolve(mockResponses.user);
 		if (table === 'user_notification_preferences') {
 			return Promise.resolve(mockResponses.notificationPrefs);
@@ -125,6 +127,7 @@ const mocks = vi.hoisted(() => {
 
 	return {
 		mockResponses,
+		mockBeforeRead,
 		mockUpdates,
 		mockFrom,
 		mockUpdateJobStatus,
@@ -189,6 +192,7 @@ describe('processBriefJob stale daily brief guard', () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date('2026-04-12T14:00:00Z'));
 		vi.clearAllMocks();
+		mocks.mockBeforeRead.mockReset();
 		mocks.mockUpdates.length = 0;
 		mocks.mockResponses.user = {
 			data: {
@@ -827,6 +831,73 @@ describe('processBriefJob stale daily brief guard', () => {
 			'brief_failed',
 			expect.not.objectContaining({ error: expect.anything() })
 		);
+	});
+
+	it.each(['new brief', 'saved brief'])(
+		'does not notify or complete a %s when ownership is lost during notification metadata reads',
+		async (kind) => {
+			const controller = new AbortController();
+			const job = createBriefJob({
+				userId: 'user-1',
+				briefDate: '2026-04-12',
+				timezone: 'America/New_York'
+			});
+			job.signal = controller.signal;
+			if (kind === 'saved brief') {
+				mocks.mockResponses.existingBrief = {
+					data: {
+						id: 'already-saved',
+						generation_status: 'completed',
+						updated_at: '2026-04-12T13:55:00.000Z'
+					},
+					error: null
+				};
+			}
+			mocks.mockBeforeRead.mockImplementation((table) => {
+				if (table === 'ontology_project_briefs')
+					controller.abort(new Error('delivery owner replaced'));
+			});
+
+			await expect(processBriefJob(job)).rejects.toThrow('delivery owner replaced');
+			expect(mocks.mockRpc).not.toHaveBeenCalled();
+			expect(mocks.mockBroadcastUserEvent).not.toHaveBeenCalled();
+			expect(mocks.mockRefreshTodayWaitingItemsAfterBrief).not.toHaveBeenCalled();
+			expect(
+				mocks.mockUpdateJobStatus.mock.calls.some(([, status]) => status === 'completed')
+			).toBe(false);
+		}
+	);
+
+	it('does not deliver or refresh a brief when ownership is lost while generation is in flight', async () => {
+		const controller = new AbortController();
+		const job = createBriefJob({
+			userId: 'user-1',
+			briefDate: '2026-04-12',
+			timezone: 'America/New_York'
+		});
+		job.signal = controller.signal;
+		// Even a provider that ignores cancellation may return a saved brief. The old
+		// job must leave delivery to the new owner, without announcing a false failure.
+		mocks.mockGenerateOntologyDailyBrief.mockImplementationOnce(async () => {
+			controller.abort(new Error('queue lease lost'));
+			return { id: 'saved-before-takeover' };
+		});
+
+		await expect(processBriefJob(job)).rejects.toThrow('queue lease lost');
+		expect(mocks.mockGenerateOntologyDailyBrief).toHaveBeenCalledWith(
+			'user-1',
+			'2026-04-12',
+			undefined,
+			'America/New_York',
+			job.id,
+			controller.signal
+		);
+		expect(mocks.mockRpc).not.toHaveBeenCalled();
+		expect(mocks.mockBroadcastUserEvent).not.toHaveBeenCalled();
+		expect(mocks.mockRefreshTodayWaitingItemsAfterBrief).not.toHaveBeenCalled();
+		expect(
+			mocks.mockUpdateJobStatus.mock.calls.some(([, status]) => status === 'completed')
+		).toBe(false);
 	});
 
 	it('stops before domain reads or provider work when queue ownership is already aborted', async () => {

@@ -16,6 +16,8 @@ import {
 } from './research-tray';
 
 export const RESEARCH_POLL_MS = 3000;
+/** After failed polls (offline, signed out) wait longer each time, up to a minute. */
+export const RESEARCH_POLL_MAX_BACKOFF_MS = 60_000;
 const DISMISSED_KEY = 'buildos:knowledge-research-cleared-at';
 
 function readDismissed(): number {
@@ -65,6 +67,7 @@ export class KnowledgeResearchQueue {
 
 	#timer: ReturnType<typeof setTimeout> | null = null;
 	#seq = 0;
+	#failures = 0;
 	#stopped = true;
 	#options: ResearchQueueOptions;
 
@@ -104,9 +107,11 @@ export class KnowledgeResearchQueue {
 			this.runs = next.runs;
 			this.allowance = next.allowance;
 			this.loaded = true;
+			this.#failures = 0;
 			if (settled.length) this.#options.onSettled?.(settled);
 		} catch {
-			// A failed poll keeps the last state; the next tick tries again.
+			// A failed poll keeps the last state; the next tick tries again, backing off.
+			if (seq === this.#seq) this.#failures += 1;
 		} finally {
 			if (seq === this.#seq) this.#schedule();
 		}
@@ -128,6 +133,17 @@ export class KnowledgeResearchQueue {
 		await this.refresh();
 	}
 
+	/** Forget everything (sign-out): stop polling and drop the last user's runs. */
+	reset(): void {
+		this.stop();
+		this.#seq += 1; // a poll still in flight lands nowhere
+		this.#failures = 0;
+		this.runs = [];
+		this.allowance = null;
+		this.loaded = false;
+		this.expanded = true;
+	}
+
 	/** Clear finished runs from the tray (they stay on each entry's card). */
 	clearFinished(now = Date.now()): void {
 		this.clearedAt = now;
@@ -141,7 +157,10 @@ export class KnowledgeResearchQueue {
 	#schedule(): void {
 		this.#clearTimer();
 		if (this.#stopped || !this.live) return;
-		this.#timer = setTimeout(() => this.#tick(), RESEARCH_POLL_MS);
+		const delay = this.#failures
+			? Math.min(RESEARCH_POLL_MS * 2 ** this.#failures, RESEARCH_POLL_MAX_BACKOFF_MS)
+			: RESEARCH_POLL_MS;
+		this.#timer = setTimeout(() => this.#tick(), delay);
 	}
 
 	#tick(): void {

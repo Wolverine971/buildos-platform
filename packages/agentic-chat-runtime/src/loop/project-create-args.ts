@@ -351,6 +351,14 @@ export function validateProjectCreateArgs(args: JsonRecord): string[] {
 		if (!toNonEmptyString(project.type_key)) {
 			errors.push('Missing required parameter: project.type_key');
 		}
+		// Use the mutation adapter's state semantics here so an invalid state
+		// enters validation repair before review/execution. Accepted aliases (for
+		// example "In Progress") must remain valid at both boundaries.
+		if (project.state_key !== undefined && !normalizeProjectState(project.state_key)) {
+			errors.push(
+				'Invalid project.state_key: must be planning, active, paused, completed, or cancelled. Use project.props.facets.stage for lifecycle stages such as launch.'
+			);
+		}
 		const facets = isRecord(project.props) ? project.props.facets : null;
 		if (isRecord(facets)) {
 			const stage = normalizeEnumToken(facets.stage);

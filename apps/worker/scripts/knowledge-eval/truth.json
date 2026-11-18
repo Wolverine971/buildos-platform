@@ -1,0 +1,844 @@
+{
+	"version": 1,
+	"status": "DRAFT: to confirm by DJ. Truth drafted from DJ's own tasks/docs; nothing here was web-searched.",
+	"drafted_at": "2026-11-17",
+	"fields": "homepage = bare domain (no scheme, no www); located_in = 'City, ST' or 'City, Country'; works_at = org name; headline = role/title words; profile_url = full URL",
+	"entries": [
+		{
+			"entity_id": "7fff8def-2674-4cbe-884c-2d9005471811",
+			"name": "LA Industrial",
+			"kind": "org",
+			"group": "client",
+			"circle": "inner",
+			"bakeoff": true,
+			"truth": {
+				"homepage": "laindustrialservices.com",
+				"located_in": "Wetumpka, AL",
+				"industry": "industrial maintenance: precipitators and air pollution control"
+			},
+			"truth_source": {
+				"homepage": "doc cf6fec94-c74b-4dfc-b9f2-490be35829a6: \"Website encoded by the QR assets:** https://laindustrialservices.com\"",
+				"located_in": "doc 079b5c45-dea7-4c9a-8a9c-69f0382e8b65: \"The published address is in Wetumpka, AL.\"",
+				"industry": "doc 079b5c45-dea7-4c9a-8a9c-69f0382e8b65: \"precipitator (ESP/WESP) and air pollution control maintenance, baghouses, RTOs, catalyst, wood yards\""
+			},
+			"not": [
+				{
+					"label": "LA Industrial Supplies & Services Ltd (PPE/safety supplier, Barry, Vale of Glamorgan, UK; founded 2007)",
+					"domains": [],
+					"urls": ["https://uk.linkedin.com/company/la-industrial-supplies-services"]
+				}
+			],
+			"notes": "Full name LA Industrial Services LLC, founded 2025 by Louis Arnette; customers are paper mills, power plants, refineries, LNG plants. \"LA\" = Louis Arnette, NOT Louisiana (task b0a18695-5be2-41d7-aaa0-9a089f13e0b4), so Louisiana/Gulf Coast hits are wrong too. Duplicate entity \"LA Industrial Services\" (5624ef9b-…) exists for the same company. All 4 enrichment facts (Barry UK, founded 2007, Construction, PPE description) came from the UK firm and are correctly retracted.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "de44920d-903d-42c9-81ed-ff42ad0f41d4",
+			"name": "Cody Shooting Complex",
+			"kind": "org",
+			"group": "client",
+			"circle": "inner",
+			"bakeoff": true,
+			"truth": {
+				"homepage": "codyshootingcomplex.org",
+				"located_in": "Cody, WY",
+				"industry": "shooting range"
+			},
+			"truth_source": {
+				"homepage": "doc 756d26c4-fbda-43e4-b881-94658ea967f4: \"Live website: https://codyshootingcomplex.org\"",
+				"located_in": "task aa4409cb-ad54-4ab3-9156-ff52e4e60efc: \"The Cody, WY class on Oct 19\"; doc f1082da3-44fe-5f4d-bacf-f6bc94b92066: \"The Cadre → **Cody Shooting Complex** (a Cadre host range)\"",
+				"industry": "doc f1082da3-44fe-5f4d-bacf-f6bc94b92066: \"Firearms training & ranges:** Cadre, UXM, Cody, Redline.\""
+			},
+			"not": [
+				{
+					"label": "Cody Shooting Complex in Long Grove, IA (former DLS Gun Club; Iowa DNR / Scott County Conservation)",
+					"domains": ["iowadnr.gov"],
+					"urls": ["https://www.iowadnr.gov/locations/cody-shooting-complex"]
+				}
+			],
+			"notes": "DJ built and runs the live site; club uses EZFacility (codyshootingcomplex.ezfacility.com); Phil Velayo is on the CSC board. SUSPECT: the ACTIVE enrichment fact industry=\"Shooting Range\" is sourced from the Iowa DNR page (wrong entity) - the value happens to match but its provenance is the Iowa range; re-source or retract. The active homepage/phone/email facts (codyshootingcomplex.org, 307 area code) are the right entity.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "3a2ab856-a39d-4482-a526-27cc9a9be401",
+			"name": "Brave Lizard",
+			"kind": "org",
+			"group": "contact",
+			"circle": "inner",
+			"bakeoff": true,
+			"truth": {
+				"homepage": "bravelizard.com",
+				"located_in": "Beryl, UT",
+				"industry": "shooting range and training complex"
+			},
+			"truth_source": {
+				"homepage": "task 4f701be7-6f7d-495b-b645-ff2f34b3d020: outreach draft is addressed to an events inbox on the bravelizard.com domain (address omitted)",
+				"located_in": "doc 1dea36b8-3728-45fc-a698-30ee405a5add: \"Cadre Team Gathering — June 1-2, 2026 | Brave Lizard Tactical, Beryl UT\"",
+				"industry": "task 65cc64e0-7ef8-4534-8247-ded694b28558: \"Ask host ranges for per-class pages linking to us\" (lists \"Brave Lizard: drafted, waits on Steve\")"
+			},
+			"notes": "Legal name Brave Lizard Tactical, LLC. Enrichment also found New Harmony, UT (LLC privacy-policy address) - same entity; accept New Harmony, UT as a located_in match. Enrichment looks right overall; the suggested homepage was stored as https://bravelizard.com/about-us (not a bare domain). Brave Lizard is Steve's relationship (Cadre).",
+			"confirmed": false
+		},
+		{
+			"entity_id": "2dd6e88e-c59a-4440-9d22-c8a847f7aeb8",
+			"name": "Tangled Balloons",
+			"kind": "org",
+			"group": "contact",
+			"circle": "inner",
+			"bakeoff": true,
+			"truth": {
+				"homepage": "tangledballoons.com",
+				"located_in": "Millersville, MD",
+				"industry": "balloon and event decor"
+			},
+			"truth_source": {
+				"homepage": "doc 328a3721-11d1-46f7-b88d-52a398cf74d2: outreach table lists Lola's business email on the tangledballoons.com domain (address omitted)",
+				"located_in": "doc 7a06e9cf-9767-4176-979e-76921dc4875d: \"Tangled Balloons studio intro,** if Lola agreed. […] Millersville; shop day 10–7.\"",
+				"industry": "general knowledge (business name; enrichment from tangledballoons.com agrees)"
+			},
+			"notes": "Owner Lola (Lola Tangle). The site calls itself \"Annapolis, MD's Premier Balloon Artist\" - accept Annapolis, MD too (same county; studio is in Millersville). DJ's task notes a footer mailto on a second domain (lolatanglelikestoparty.com) - same business. Enrichment looks right entity; suggested homepage carries a ?srsltid tracking param (normalize). Instagram tangledballoons_lola looks right.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "929d1433-7ff5-4eef-9937-67c96a98cd42",
+			"name": "NRL Hunter",
+			"kind": "org",
+			"group": "public_org",
+			"circle": "public",
+			"bakeoff": true,
+			"truth": {
+				"homepage": "nrlhunter.org",
+				"industry": "precision rifle hunting-style competition series"
+			},
+			"truth_source": {
+				"homepage": "task 3a40a2b8-e93e-4cd1-bfb2-532997ecf63f: NRL Hunter sponsor/partner ask goes to a contact on the nrlhunter.org domain (address omitted)",
+				"industry": "doc af4a9e07-b6cf-4b62-a596-a6c2f6d0a379: \"competition (PRS, NRL Hunter, NRL22, IPRF, ELR and similar matches\""
+			},
+			"notes": "Enrichment (Yorba Linda, CA from the nrlhunter.org footer, NRLH LLC; \"evolving competition series\" description) looks right entity. Separate entity \"NRL\" (411321e8-…) is the parent league - neither is the National Rugby League. Contact person there is Clint.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "72873a5d-4cd5-41f1-a1d1-cb8cef90f874",
+			"name": "Larry Fox",
+			"kind": "person",
+			"group": "contact",
+			"circle": "inner",
+			"bakeoff": true,
+			"truth": {
+				"works_at": "Twenty",
+				"headline": "recruiter"
+			},
+			"truth_source": {
+				"works_at": "task 78111b7b-8ef5-4eb9-925e-16a71b43c8ec: \"Prepare for the Twenty recruiter screen with Larry Fox\"",
+				"headline": "task 78111b7b-8ef5-4eb9-925e-16a71b43c8ec: \"Prepare for the Twenty recruiter screen with Larry Fox\""
+			},
+			"notes": "Twenty = Arlington, VA offensive-cyber startup (recruiter email on twenty.io), NOT Twenty the open-source CRM (twenty.com). Exact title unknown (recruiter / talent); score headline loosely. Enrichment located_in \"Washington, DC\" from linkedin.com/in/larryrfox (\"Larry Fox - Twenty\") looks like the right person; not scored because DJ's data has no city for him.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "dc14292c-5c57-489d-a3a5-502e5a1834ba",
+			"name": "Louis Arnette",
+			"kind": "person",
+			"group": "client",
+			"circle": "inner",
+			"bakeoff": true,
+			"truth": {
+				"works_at": "LA Industrial Services LLC",
+				"headline": "Founder"
+			},
+			"truth_source": {
+				"works_at": "doc 079b5c45-dea7-4c9a-8a9c-69f0382e8b65: \"Client:** Louis Arnette, founder of LA Industrial Services LLC.\"",
+				"headline": "doc 079b5c45-dea7-4c9a-8a9c-69f0382e8b65: \"Client:** Louis Arnette, founder of LA Industrial Services LLC.\""
+			},
+			"notes": "Enrichment (Founder & CEO, from laindustrialservices.com/about) is the right entity. Career industrial superintendent; company HQ Wetumpka, AL, but his own city is not recorded, so located_in is not scored.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "5527f225-8bb9-43cc-8802-03dbf73335bd",
+			"name": "Rod Chamberlin",
+			"kind": "person",
+			"group": "client",
+			"circle": "inner",
+			"bakeoff": true,
+			"truth": {
+				"works_at": "Magnum Wealth Management",
+				"located_in": "Irvine, CA"
+			},
+			"truth_source": {
+				"works_at": "task 304bd145-930d-4b23-9c21-b8641fc422b0: \"Rod (Bob/Rob) Chamberlin - Magnum Wealth Management kickoff\"",
+				"located_in": "task ea160811-b652-4049-8f0e-2afed8694a12: \"Location: Irvine, California, United States\" (setup note for his Beyond Exit Planning LinkedIn page)"
+			},
+			"notes": "Also author of the book Beyond Exit Planning (beyondexitplanning.com); Magnum is LPL-affiliated (DJ notes \"Magnum/LPL\" compliance review). Enrichment headline \"Wealth Manager\" from magnumwealthmanagement.com is right. DOUBT: active works_at \"Chamberlin & Associates\" (Crunchbase) is not in DJ's data - Irvine matches so it may be an older firm name for the same Rod, but it should not outrank Magnum. located_in is medium-confidence (company-page location, not his home).",
+			"confirmed": false
+		},
+		{
+			"entity_id": "a6410f1a-f284-4cf0-be76-e017e2695a2d",
+			"name": "Tim Ferriss",
+			"kind": "person",
+			"group": "public_figure",
+			"circle": "public",
+			"bakeoff": true,
+			"truth": {
+				"homepage": "tim.blog",
+				"headline": "author and podcast host (The Tim Ferriss Show)",
+				"located_in": "Austin, TX"
+			},
+			"truth_source": {
+				"homepage": "task cc425fd2-cd56-4ddd-b129-bd57fa292374: \"Channel: tim.blog/contact form.\"",
+				"headline": "general knowledge",
+				"located_in": "general knowledge"
+			},
+			"notes": "Enrichment looks right (tim.blog, Austin, author/podcast host).",
+			"confirmed": false
+		},
+		{
+			"entity_id": "f950506d-c964-4280-a7eb-500002f6a6c1",
+			"name": "Shaan Puri",
+			"kind": "person",
+			"group": "public_figure",
+			"circle": "public",
+			"bakeoff": true,
+			"truth": {
+				"works_at": "My First Million",
+				"headline": "co-host of My First Million"
+			},
+			"truth_source": {
+				"works_at": "doc 49e6fb9e-3916-4bb6-bd9e-9e72b2028091: \"My First Million, The Hustle      | MFM co-host with Shaan\"",
+				"headline": "general knowledge"
+			},
+			"notes": "Right person, but enrichment stored past roles (Bebo CEO, Twitch, Blab) as ACTIVE works_at - tense problem, not a wrong entity. LinkedIn currently says \"Stealth\". located_in San Francisco (LinkedIn) not scored.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "e8f1551f-e671-4915-8e36-6744c328ec13",
+			"name": "John Merson",
+			"kind": "person",
+			"group": "contact",
+			"circle": "inner",
+			"bakeoff": true,
+			"truth": {
+				"works_at": "JW Firearms Training",
+				"located_in": "Glen Burnie, MD"
+			},
+			"truth_source": {
+				"works_at": "task 9a7026da-d44f-490f-948b-1b7a89e03af3: \"John Merson — JW Firearms Training / Cindy's Hot Shots\"",
+				"located_in": "doc b4477200-009b-42a5-a53c-b0317fbdd0f4: \"Stop 3 · Cindy's Hot Shots: John Merson · 1:30–2:30 […] Glen Burnie.\""
+			},
+			"notes": "Teaches at Cindy's Hot Shots (Glen Burnie). No enrichment facts beyond a usconcealedcarry.com Maryland instructor listing that corroborates his existing contact details - right entity.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "eb0c4787-6b5f-48ca-8cda-37271cd131ec",
+			"name": "Tom Mann",
+			"kind": "person",
+			"group": "contact",
+			"circle": "inner",
+			"bakeoff": true,
+			"truth": {
+				"works_at": "Murtech",
+				"located_in": "Glen Burnie, MD"
+			},
+			"truth_source": {
+				"works_at": "task 1e9deafa-26b4-4db4-a5f9-c8b6a7cfbbb5: \"Follow up with Tom Mann — Murtech website\"",
+				"located_in": "doc fa596af7-4b1d-4aad-a031-aba5419a9315: \"Murtech / Tom Mann** — the local Glen Burnie connection\""
+			},
+			"notes": "SUSPECT enrichment: active phone fact \"+1703250\" is a truncated masked number scraped from a RocketReach page about a different person (Robert Murtha) - malformed, should be rejected. The suggested email from RocketReach uses a different pattern than the one in DJ's tasks (a guess). Headline \"VP of Administration\" (RocketReach) is unconfirmed; DJ's task says his current authority is unconfirmed, so headline is not scored.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "9ae825a8-3e3a-4b62-83e3-d505453f8004",
+			"name": "Wayne Strategies",
+			"kind": "org",
+			"group": "business",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"homepage": "waynestrategies.com",
+				"industry": "strategy and custom software consultancy",
+				"located_in": "Glen Burnie, MD"
+			},
+			"truth_source": {
+				"homepage": "task 1e9deafa-26b4-4db4-a5f9-c8b6a7cfbbb5: \"waynestrategies.com/work is gone from the signature.\"",
+				"industry": "doc 6fd61072-b7b5-4d9d-855e-cd6929d44713: \"Wayne Strategies is DJ Wayne's research-led, AI-assisted strategy practice.\"",
+				"located_in": "task 1e9deafa-26b4-4db4-a5f9-c8b6a7cfbbb5: \"I'm DJ Wayne, a software developer here in Glen Burnie\""
+			},
+			"notes": "DJ's own practice; Tacemus is its former identity. located_in is inferred from DJ's own location.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "b701636f-8f23-4360-954a-5b59ead70861",
+			"name": "BuildOS",
+			"kind": "org",
+			"group": "business",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"homepage": "build-os.com",
+				"industry": "productivity software"
+			},
+			"truth_source": {
+				"homepage": "doc f1082da3-44fe-5f4d-bacf-f6bc94b92066: \"Use their current tasks in the [Pitch Desk](https://build-os.com/projects/\"",
+				"industry": "general knowledge (DJ's own product)"
+			},
+			"notes": "Duplicate entity \"BuildOS Inc\" (0e3bd44c-…). Not to be confused with other \"BuildOS\"/\"Build OS\" construction or OS products.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "c72cc7a9-da0b-4ce8-b4b1-bccde8f38c29",
+			"name": "9takes",
+			"kind": "org",
+			"group": "business",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"homepage": "9takes.com",
+				"industry": "Enneagram personality platform"
+			},
+			"truth_source": {
+				"homepage": "task 0e559c2d-e70c-4f3f-b28a-842ba2d93ca5: \"Inventory all 9takes.com pages and blogs via sitemap.xml\"",
+				"industry": "doc 2749c083-7d44-4f3e-a88b-d233d4fba96f: \"9takes is a give-first Enneagram platform\""
+			},
+			"notes": "",
+			"confirmed": false
+		},
+		{
+			"entity_id": "e8e2dc22-8ee4-41a3-bb1b-cdec54ee0704",
+			"name": "Tacemus",
+			"kind": "org",
+			"group": "business",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"homepage": "tacemus.com",
+				"industry": "website design and content service"
+			},
+			"truth_source": {
+				"homepage": "doc 14258c79-8c3a-412f-ad58-5d4b1d7c179a: \"`tacemus.com` is nearly complete.\"",
+				"industry": "doc 14258c79-8c3a-412f-ad58-5d4b1d7c179a: \"Tacemus is a Maryland-based **website design + content service** (DBA under BuildOS).\""
+			},
+			"notes": "Former identity of Wayne Strategies; Maryland-based (city not stated, so located_in not scored).",
+			"confirmed": false
+		},
+		{
+			"entity_id": "e75e0d5f-e15d-450f-8af2-4f00f3591918",
+			"name": "The Cadre",
+			"kind": "org",
+			"group": "client",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"homepage": "thecadretraining.com",
+				"industry": "precision rifle training"
+			},
+			"truth_source": {
+				"homepage": "task cbdce89e-2f2c-440e-b956-6bd2486735ae: \"\"taught by Marine Scout Sniper instructors,\" linking to thecadretraining.com/classes\"",
+				"industry": "task cbdce89e-2f2c-440e-b956-6bd2486735ae: \"\"taught by Marine Scout Sniper instructors,\" linking to thecadretraining.com/classes\""
+			},
+			"notes": "Classes run at host ranges in several states (Cody WY, Beryl UT, Lipan TX, Maysville NC, Pala CA), so no single located_in. Generic name: research must not resolve to other \"Cadre\" companies (e.g. the Cadre real-estate investing platform). Duplicate entity \"Cadre\" (c41bd7d0-…).",
+			"confirmed": false
+		},
+		{
+			"entity_id": "499970ce-634c-4f94-acb9-18152c324a08",
+			"name": "UXM Training",
+			"kind": "org",
+			"group": "client",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"homepage": "uxmtraining.com",
+				"industry": "precision rifle training"
+			},
+			"truth_source": {
+				"homepage": "doc f322734f-a42e-4e5e-bb07-d1820b52e701: \"UXMtraining.com is connected and configured\"",
+				"industry": "doc f322734f-a42e-4e5e-bb07-d1820b52e701: \"Building a professional website for Ian Miner's precision rifle training company, UXM\""
+			},
+			"notes": "UXM = \"Un-Extraordinary MAN\"; owner Ian Miner is Wyoming-based (state only, so located_in not scored).",
+			"confirmed": false
+		},
+		{
+			"entity_id": "cf8dc8dc-1747-4afb-8972-f35bcbccac2f",
+			"name": "Redline Training Company",
+			"kind": "org",
+			"group": "client",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"located_in": "Cody, WY",
+				"industry": "pistol shooting instruction (USPSA)"
+			},
+			"truth_source": {
+				"located_in": "doc 7558d92f-768e-41bf-88ba-10d2dd966d4f: \"Location / initial market: Cody, Wyoming\"",
+				"industry": "doc 7558d92f-768e-41bf-88ba-10d2dd966d4f: \"Logan is a two-division USPSA Grand Master and the match director for his local USPSA section.\""
+			},
+			"notes": "No domain chosen yet (candidates discussed: redlinetrainingcompany.com, redlinetrainingco.com, redlinetraining.com) - any homepage research returns is probably a different \"Redline Training\"; treat a found homepage as wrong unless DJ confirms. Duplicate entity \"Redline\" (15d9fdf6-…).",
+			"confirmed": false
+		},
+		{
+			"entity_id": "2e7dd437-d2c4-41d5-8860-e9afc9fb6df4",
+			"name": "Beyond Exit Planning",
+			"kind": "org",
+			"group": "client",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"homepage": "beyondexitplanning.com",
+				"located_in": "Irvine, CA",
+				"industry": "business exit planning"
+			},
+			"truth_source": {
+				"homepage": "doc d9c2a184-5859-4c0e-a0c0-316fdac5f8f3: \"The [website](https://www.beyondexitplanning.com/)\"",
+				"located_in": "task ea160811-b652-4049-8f0e-2afed8694a12: \"Location: Irvine, California, United States\"",
+				"industry": "doc d63a102e-86ec-4150-b554-f31db74a2775: \"Beyond Exit Planning series\" (Rod Chamberlin's book and site on selling a business)"
+			},
+			"notes": "Rod Chamberlin's book/brand; DJ built the site.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "e3e8480e-b44e-45a8-9a67-a3f4736f9c63",
+			"name": "Magnum",
+			"kind": "org",
+			"group": "client",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"homepage": "magnumwealthmanagement.com",
+				"industry": "wealth management"
+			},
+			"truth_source": {
+				"homepage": "doc 40c72d1e-1a63-4f4b-a620-77b4910e6903: \"Domains: Ionos (magnumwealthmanagement.com, beyondexitplanning.com).\"",
+				"industry": "doc adb6bf06-2119-4765-bba4-7e96c9a01069: \"firm overview (Magnum Wealth Management)\""
+			},
+			"notes": "Entity name is the bare word \"Magnum\" = Rod Chamberlin's Magnum Wealth Management (LPL-affiliated). Highly ambiguous name: Magnum ice cream, Magnum Photos, Magnum Research firearms are all wrong.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "939bba02-4dc8-46c2-9dc5-08d3c9f55165",
+			"name": "Phillip Velayo",
+			"kind": "person",
+			"group": "colleague",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"works_at": "The Cadre",
+				"headline": "CEO"
+			},
+			"truth_source": {
+				"works_at": "doc e85799ab-3798-4db9-ae84-f674af070892: \"Phillip Velayo (CEO): Business operations/development.\"",
+				"headline": "doc e85799ab-3798-4db9-ae84-f674af070892: \"Phillip Velayo (CEO): Business operations/development.\""
+			},
+			"notes": "Former Marine Scout Sniper School instructor; YouTube channel (@Velayo_0317). Duplicate entities: \"Phil Velayo\" (1fb3fee3-…), \"Phil\" (877e20e0-…), and a misspelling \"Phil Vallejo\" (6cac3fe4-…). Also on the Cody Shooting Complex board.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "ebc0eae2-3bf5-4933-b267-b3a34e1549ff",
+			"name": "Logan Valcarce",
+			"kind": "person",
+			"group": "client",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"works_at": "Redline Training Company",
+				"located_in": "Cody, WY"
+			},
+			"truth_source": {
+				"works_at": "doc 7558d92f-768e-41bf-88ba-10d2dd966d4f: \"Client: Logan Valcarce […] Business: Redline Training Company\"",
+				"located_in": "doc 7558d92f-768e-41bf-88ba-10d2dd966d4f: \"Location / initial market: Cody, Wyoming\""
+			},
+			"notes": "USPSA Grand Master (two divisions). Duplicate entity \"Logan\" (c7dfa8f5-…).",
+			"confirmed": false
+		},
+		{
+			"entity_id": "9b80ea71-62d3-4752-93a2-57c62d29737b",
+			"name": "Ian Miner",
+			"kind": "person",
+			"group": "client",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"works_at": "UXM Training"
+			},
+			"truth_source": {
+				"works_at": "task 09e571fb-d13b-4016-9b80-eaa33cc6c4e3: \"Ian Miner is now an active Tacemus client (UXM Training precision-shooting site).\""
+			},
+			"notes": "Often misspelled \"Ian Minor\" in DJ's tasks. Wyoming hunting guide; also a Cadre / Gunwerks contract instructor in Cody - a Cadre or Gunwerks works_at is also true, not a wrong entity.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "ff309a53-5da3-4a28-b35d-5a67f559227a",
+			"name": "JW Firearms Training",
+			"kind": "org",
+			"group": "contact",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"homepage": "jwfirearmstraining.com",
+				"located_in": "Glen Burnie, MD",
+				"industry": "firearms training"
+			},
+			"truth_source": {
+				"homepage": "task 9a7026da-d44f-490f-948b-1b7a89e03af3: \"Checked November 16: [JW's site](https://www.jwfirearmstraining.com/) publishes the correct contact\"",
+				"located_in": "doc b4477200-009b-42a5-a53c-b0317fbdd0f4: \"Stop 3 · Cindy's Hot Shots: John Merson · 1:30–2:30 […] Glen Burnie.\"",
+				"industry": "task 9a7026da-d44f-490f-948b-1b7a89e03af3: \"Subject: Tech help for JW Firearms Training\""
+			},
+			"notes": "Owner/instructor John Merson; classes at Cindy's Hot Shots.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "21fc1a98-cd4b-4150-a95a-d6b4772b8172",
+			"name": "Murtech",
+			"kind": "org",
+			"group": "contact",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"homepage": "murtech.us",
+				"located_in": "Glen Burnie, MD",
+				"industry": "engineering, marine and logistics"
+			},
+			"truth_source": {
+				"homepage": "task 1e9deafa-26b4-4db4-a5f9-c8b6a7cfbbb5: Tom Mann's contact address is on the murtech.us domain (address omitted)",
+				"located_in": "doc fa596af7-4b1d-4aad-a031-aba5419a9315: \"Murtech / Tom Mann** — the local Glen Burnie connection\"",
+				"industry": "task 1e9deafa-26b4-4db4-a5f9-c8b6a7cfbbb5: \"a homepage that makes the engineering, marine and logistics work easy to see\""
+			},
+			"notes": "Murtech, Inc.; secured facility. Not murtech.com.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "92a9a13f-dd63-414b-a9e6-95e00a5cb10d",
+			"name": "Oceanetics",
+			"kind": "org",
+			"group": "contact",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"homepage": "oceanetics.com"
+			},
+			"truth_source": {
+				"homepage": "task 4466b795-11f4-4d1e-8bf5-55531e61a35f: \"Checked November 16: [leadership page](https://www.oceanetics.com/bios) lists Christopher\""
+			},
+			"notes": "Local (Maryland) prospect; city not stated in DJ's data.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "c2bec57b-0154-4735-96f2-c1a17d02b4b9",
+			"name": "Christopher Pfaff",
+			"kind": "person",
+			"group": "contact",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"works_at": "Oceanetics",
+				"headline": "VP of Business Development"
+			},
+			"truth_source": {
+				"works_at": "task 4466b795-11f4-4d1e-8bf5-55531e61a35f: \"Pitch Christopher Pfaff — Oceanetics\"",
+				"headline": "task 4466b795-11f4-4d1e-8bf5-55531e61a35f: \"Christopher is listed as VP of Business Development.\""
+			},
+			"notes": "",
+			"confirmed": false
+		},
+		{
+			"entity_id": "ba4c9dba-40c8-4dbd-99a9-0a67e6116779",
+			"name": "Cutlass Systems Engineering",
+			"kind": "org",
+			"group": "contact",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"homepage": "cutlass-se.com",
+				"industry": "systems engineering"
+			},
+			"truth_source": {
+				"homepage": "task c4aa3831-1a98-4ee0-8c91-b446c6d37fe9: \"Checked November 16: [HTTP home page](http://www.cutlass-se.com/)\"",
+				"industry": "task c4aa3831-1a98-4ee0-8c91-b446c6d37fe9: \"I came across Cutlass while looking into local engineering companies.\""
+			},
+			"notes": "Site served over HTTP only (HTTPS handshake failed on Nov 16).",
+			"confirmed": false
+		},
+		{
+			"entity_id": "189718da-f466-4849-b5ba-7a777007321a",
+			"name": "Richard Reading",
+			"kind": "person",
+			"group": "contact",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"works_at": "Cutlass Systems Engineering"
+			},
+			"truth_source": {
+				"works_at": "task c4aa3831-1a98-4ee0-8c91-b446c6d37fe9: \"Pitch Richard Reading — Cutlass Systems Engineering\""
+			},
+			"notes": "\"Reading\" is also a place name (Reading, PA / UK) - search-noise risk.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "68bb71d9-af5c-4694-b0b5-c2baaa821afe",
+			"name": "Sericore",
+			"kind": "org",
+			"group": "contact",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"homepage": "sericore.com",
+				"industry": "electronics hardware and software"
+			},
+			"truth_source": {
+				"homepage": "task a8d91e3b-7071-4e59-a3e3-7200fb147f33: \"the [home page](https://www.sericore.com/) exposed little explanatory text\"",
+				"industry": "task a8d91e3b-7071-4e59-a3e3-7200fb147f33: \"the [company page](https://www.sericore.com/company.html) describes electronics hardware/software\""
+			},
+			"notes": "",
+			"confirmed": false
+		},
+		{
+			"entity_id": "d7eb6e87-9b9b-435f-b903-d59c6979785d",
+			"name": "Steve Baker",
+			"kind": "person",
+			"group": "contact",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"works_at": "Sericore"
+			},
+			"truth_source": {
+				"works_at": "task a8d91e3b-7071-4e59-a3e3-7200fb147f33: \"Pitch Steve Baker — Sericore\""
+			},
+			"notes": "Very common name - high same-name risk; only accept profiles tied to Sericore.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "e7e7a8fe-1bae-4585-b755-864b511e17ad",
+			"name": "True North Roofing & Remodeling",
+			"kind": "org",
+			"group": "contact",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"homepage": "tnrmd.com",
+				"located_in": "Millersville, MD",
+				"industry": "roofing and remodeling"
+			},
+			"truth_source": {
+				"homepage": "task 56008263-76ca-4bc6-8873-234117b037b1: \"Original contact sources (not rechecked November 16): https://www.tnrmd.com/\"",
+				"located_in": "doc b4477200-009b-42a5-a53c-b0317fbdd0f4: \"Stop 4 · True North Roofing & Remodeling · ~3:00, only if booked […] Millersville\"",
+				"industry": "general knowledge (business name)"
+			},
+			"notes": "Owners Bruce Pugh / Anthony DeVita. Duplicate entity \"True North\" (8d1a9402-…). Many unrelated \"True North Roofing\" firms exist.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "d6e2dc8f-78a4-4e15-bdbc-69d774ec76f5",
+			"name": "Chesapeake Tax & Financial Services",
+			"kind": "org",
+			"group": "contact",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"homepage": "chesapeaketax.net",
+				"located_in": "Millersville, MD",
+				"industry": "tax and accounting"
+			},
+			"truth_source": {
+				"homepage": "doc 328a3721-11d1-46f7-b88d-52a398cf74d2: \"[Chesapeake Tax homepage](https://www.chesapeaketax.net/)\"",
+				"located_in": "task 15a500c2-596a-4a66-8ea3-ba063bef2ace: \"I saw the Millersville office in the county's expansion list.\"",
+				"industry": "doc 328a3721-11d1-46f7-b88d-52a398cf74d2: \"accounting, payroll and outsourced CFO work\""
+			},
+			"notes": "Second office in Catonsville, MD - accept either. Contacts Pat and Laura Svehla. Duplicate entity \"Chesapeake Tax\" (b5608f9a-…).",
+			"confirmed": false
+		},
+		{
+			"entity_id": "22d88d65-d17c-4213-87dc-617937162ae8",
+			"name": "Dauntless Dogs",
+			"kind": "org",
+			"group": "contact",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"homepage": "dauntlessdogtraining.com",
+				"located_in": "Curtis Bay, MD",
+				"industry": "dog training"
+			},
+			"truth_source": {
+				"homepage": "task 66e08b8a-e0a2-4365-81b1-3e70b5d9f2b1: \"Original contact sources (not rechecked November 16): https://www.dauntlessdogtraining.com/about-us\"",
+				"located_in": "task 66e08b8a-e0a2-4365-81b1-3e70b5d9f2b1: saved business address is in Curtis Bay, MD (street omitted)",
+				"industry": "task 66e08b8a-e0a2-4365-81b1-3e70b5d9f2b1: \"Pitch Casey Fenske — Dauntless Dogs\" (\"Make one training program easier to choose\")"
+			},
+			"notes": "Curtis Bay is part of Baltimore - accept Baltimore, MD. Owner Casey Fenske. Name is \"Dauntless Dogs\" but the domain is dauntlessdogtraining.com.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "6f959956-5c60-44ba-9c6b-befe07b1e60e",
+			"name": "Phantom IQ",
+			"kind": "org",
+			"group": "contact",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"homepage": "phantom-iq.com"
+			},
+			"truth_source": {
+				"homepage": "task a066ed82-5c8e-49a7-b06e-c9871c91451a: \"Official route: Phantom IQ's Contact / Get Started section at https://phantom-iq.com/.\""
+			},
+			"notes": "DJ met Tom Popomaronis (Phantom IQ) at the Arundel Biz Expo. Enrichment (Frederick, MD; executive positioning) is consistent with DJ's data - looks right.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "28360aa5-759e-4612-a641-b97dd5613bdc",
+			"name": "Griffin Davis",
+			"kind": "person",
+			"group": "contact",
+			"circle": "inner",
+			"bakeoff": false,
+			"truth": {
+				"works_at": "Breaking Points"
+			},
+			"truth_source": {
+				"works_at": "doc fa596af7-4b1d-4aad-a031-aba5419a9315: \"Griffin Davis — Breaking Points | Reply in the existing thread and ask to send the story-page sketch.\""
+			},
+			"notes": "Common name - only accept profiles tied to Breaking Points.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "def11e31-b1d0-4bd9-8107-b47267d65942",
+			"name": "Breaking Points",
+			"kind": "org",
+			"group": "public_org",
+			"circle": "public",
+			"bakeoff": false,
+			"truth": {
+				"homepage": "breakingpoints.com",
+				"industry": "independent political news show"
+			},
+			"truth_source": {
+				"homepage": "task 019fa612-22f1-4327-9658-ab27267873a2: Griffin Davis's contact address is on the breakingpoints.com domain (address omitted)",
+				"industry": "general knowledge"
+			},
+			"notes": "Hosted by Krystal Ball and Saagar Enjeti.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "f6e0f4d8-f60e-46b4-90a7-45b93ebba971",
+			"name": "Krystal Ball",
+			"kind": "person",
+			"group": "public_figure",
+			"circle": "public",
+			"bakeoff": false,
+			"truth": {
+				"works_at": "Breaking Points",
+				"headline": "political commentator and co-host of Breaking Points"
+			},
+			"truth_source": {
+				"works_at": "doc be423b4f-cc28-434f-b908-b911f45dac3e: \"Griffin Davis, Breaking Points · ready now\" (email subject: \"Krystal's Premium link…\"); general knowledge",
+				"headline": "general knowledge"
+			},
+			"notes": "Enrichment (Wikipedia) is the right person, but past employers (MSNBC, The Hill, HuffPost, The Atlantic, CGI Inc., People's House Project) are stored as ACTIVE works_at - tense problem.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "d7f67719-9b4f-44c5-b51c-cdb5661865df",
+			"name": "Kyle Kulinski",
+			"kind": "person",
+			"group": "public_figure",
+			"circle": "public",
+			"bakeoff": false,
+			"truth": {
+				"works_at": "Secular Talk",
+				"headline": "host of Secular Talk; co-host of Krystal Kyle & Friends"
+			},
+			"truth_source": {
+				"works_at": "task 22176d83-a57d-4a14-a323-5d9194a48dba: \"Kyle Kulinski — Secular Talk / Krystal Kyle & Friends\"",
+				"headline": "task 22176d83-a57d-4a14-a323-5d9194a48dba: \"Kyle Kulinski — Secular Talk / Krystal Kyle & Friends\""
+			},
+			"notes": "",
+			"confirmed": false
+		},
+		{
+			"entity_id": "b914cc10-dfa3-48fa-b7ac-97af4732b2ac",
+			"name": "Ian Morgan Cron",
+			"kind": "person",
+			"group": "public_figure",
+			"circle": "public",
+			"bakeoff": false,
+			"truth": {
+				"works_at": "Typology",
+				"headline": "author, Enneagram teacher, host of the Typology podcast"
+			},
+			"truth_source": {
+				"works_at": "task 1809a045-6856-4586-a321-5d55ac118334: \"Ian Morgan Cron / Typology — “Jimmy Carter: a One or a Two?”\"",
+				"headline": "general knowledge"
+			},
+			"notes": "",
+			"confirmed": false
+		},
+		{
+			"entity_id": "dedfdc12-54e1-4acc-a56e-2b96a02b842a",
+			"name": "Chris Heuertz",
+			"kind": "person",
+			"group": "public_figure",
+			"circle": "public",
+			"bakeoff": false,
+			"truth": {
+				"headline": "Enneagram author and teacher"
+			},
+			"truth_source": {
+				"headline": "general knowledge"
+			},
+			"notes": "SUSPECT existing fact: backfill works_at = \"Enneagram Monthly\". DJ's tasks only say Chris Heuertz forwarded DJ's form submission and introduced him to editor Jack Labanauskas (task 1809a045-6856-4586-a321-5d55ac118334) - that does not establish he works there. Verify before trusting.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "f89c595a-901c-4c78-bdf6-4fb76a96a0ae",
+			"name": "Shawn Ryan",
+			"kind": "person",
+			"group": "public_figure",
+			"circle": "public",
+			"bakeoff": false,
+			"truth": {
+				"works_at": "Vigilance Elite",
+				"headline": "host of the Shawn Ryan Show"
+			},
+			"truth_source": {
+				"works_at": "task 976ce9c1-0060-4eca-aee2-bc403ef62b1a: outreach channel is an inbox on the vigilanceelite.com domain (address omitted); general knowledge",
+				"headline": "general knowledge"
+			},
+			"notes": "Former Navy SEAL / CIA contractor. Common-ish name.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "27f02e7c-f73b-4423-acfb-28bd4df8c3c0",
+			"name": "Twenty",
+			"kind": "org",
+			"group": "public_org",
+			"circle": "public",
+			"bakeoff": false,
+			"truth": {
+				"homepage": "twenty.io",
+				"located_in": "Arlington, VA",
+				"industry": "offensive cyber / defense technology"
+			},
+			"truth_source": {
+				"homepage": "task 78111b7b-8ef5-4eb9-925e-16a71b43c8ec: recruiter Larry Fox's email is on the twenty.io domain (address omitted)",
+				"located_in": "doc 5baea1fb-f5fa-45d9-b429-f2ae2bde707c: \"Twenty Senior Frontend Software Engineer (Arlington, VA, onsite; US citizenship required)\"",
+				"industry": "doc e3762acc-c17e-4d0d-81c2-f6583da25bc5: \"An offensive cyber startup supporting warfighters.\""
+			},
+			"notes": "Likely same-name confuser: Twenty, the open-source CRM (twenty.com) - that is the WRONG entity. homepage is inferred from the recruiter email domain; DJ should confirm.",
+			"confirmed": false
+		},
+		{
+			"entity_id": "6d9650c6-f750-4969-922c-a1e13f5e0c99",
+			"name": "EZFacility",
+			"kind": "org",
+			"group": "public_org",
+			"circle": "public",
+			"bakeoff": false,
+			"truth": {
+				"homepage": "ezfacility.com",
+				"industry": "facility management and booking software"
+			},
+			"truth_source": {
+				"homepage": "task f5516324-6f68-47f6-a33f-297f388fda18: \"Developer Portal sign-in: https://developers.ezfacility.com/login\"",
+				"industry": "general knowledge"
+			},
+			"notes": "Booking/membership system used by Cody Shooting Complex.",
+			"confirmed": false
+		}
+	]
+}

@@ -10,7 +10,7 @@ import {
 	validateEnrichment,
 	type EnrichPage
 } from './knowledgeEnrichPlan';
-import { oembedBatch } from '@buildos/shared-agent-ops/knowledge';
+import { DEFAULT_ENRICH_FIELDS, oembedBatch } from '@buildos/shared-agent-ops/knowledge';
 
 const ENTITY_ID = '11111111-1111-4111-8111-111111111111';
 
@@ -119,6 +119,18 @@ describe('enrichQueries', () => {
 		expect(enrichQueries(enrichContextFrom(SAM), null, ['phone'])).toEqual([
 			'"Sam Rivera" Palantir',
 			'"Sam Rivera" Palantir contact email phone'
+		]);
+	});
+
+	it('searches for schooling when Education was picked, not on every default run', () => {
+		expect(enrichQueries(enrichContextFrom(SAM), null, ['educated_at'])).toEqual([
+			'"Sam Rivera" Palantir',
+			'"Sam Rivera" Palantir university college alumni'
+		]);
+		// The default person research also extracts schooling, but adds no extra (paid) search.
+		expect(enrichQueries(enrichContextFrom(SAM), null, DEFAULT_ENRICH_FIELDS.person)).toEqual([
+			'"Sam Rivera" Palantir',
+			'"Sam Rivera" linkedin'
 		]);
 	});
 });

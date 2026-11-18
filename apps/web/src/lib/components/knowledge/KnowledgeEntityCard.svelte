@@ -6,6 +6,9 @@
 	look for?" dialog (the page owns it); progress shows here and in the research tray, both fed by
 	the page's one research poll, and the card reloads when its research finishes (tasker 164).
 	"Ask in chat" opens chat with the entry named. Tasker 160.
+	"Not this one" (tasker 164): when research latched onto a different entity with the same name,
+	one action retracts everything that research run added and remembers what this entry is not,
+	so the next research skips it.
 -->
 <script lang="ts">
 	import {
@@ -63,6 +66,13 @@
 			kind: KnowledgeKind;
 			researched_at: string | null;
 		}) => void;
+		/**
+		 * "All people" / "All organizations": show every entry of this kind with this one picked.
+		 * Without it the button links to /knowledge?kind=…&e=…, which does the same on arrival.
+		 */
+		onBrowseKind?: (entity: { id: string; kind: KnowledgeKind }) => void;
+		/** This entry was hidden or deleted here (a task card then stops pointing at it). */
+		onRemoved?: (id: string) => void;
 	}
 
 	let {
@@ -73,7 +83,9 @@
 		onChanged,
 		onAskChat,
 		research = null,
-		onFindMore
+		onFindMore,
+		onBrowseKind,
+		onRemoved
 	}: Props = $props();
 
 	let detail = $state<KnowledgeEntityPayload | null>(null);
@@ -87,6 +99,8 @@
 	let addValue = $state('');
 	let saving = $state(false);
 	let confirmDelete = $state(false);
+	let confirmNotThis = $state(false);
+	let rejecting = $state(false);
 	let heading = $state<HTMLElement | null>(null);
 
 	const entity = $derived(detail?.entity ?? null);
@@ -112,6 +126,18 @@
 			.filter((f) => !(f.predicate === 'headline' && f.value === entity?.summary))
 	);
 	const notes = $derived(visibleFacts.filter((f) => f.predicate === 'note'));
+	/** The latest research run that still has details on this entry (for "Not this one"). */
+	const researchRun = $derived.by(() => {
+		const runs: Record<string, { runId: string; count: number; at: string }> = {};
+		for (const fact of detail?.facts ?? []) {
+			if (fact.created_via !== 'enrichment' || !fact.run_id) continue;
+			if (fact.status === 'retracted' || fact.status === 'superseded') continue;
+			const run = (runs[fact.run_id] ??= { runId: fact.run_id, count: 0, at: '' });
+			run.count++;
+			if (fact.observed_at > run.at) run.at = fact.observed_at;
+		}
+		return Object.values(runs).sort((a, b) => b.at.localeCompare(a.at))[0] ?? null;
+	});
 
 	type Group = { label: string; facts: KnowledgeFactView[] };
 	function group(facts: KnowledgeFactView[]): Group[] {
@@ -147,7 +173,8 @@
 	// The parent keys this card by entity id, so each entry gets a fresh card: load it once and
 	// move focus to its name.
 	$effect(() => {
-		void load(entityId).then(() => heading?.focus());
+		// preventScroll: the card may sit off-screen beside a long list or inside a task's popover.
+		void load(entityId).then(() => heading?.focus({ preventScroll: true }));
 	});
 
 	// When this entry's research finishes (the page's queue sees it), reload to show what it
@@ -227,11 +254,33 @@
 		}
 	}
 
+	async function notThisOne() {
+		if (!entity || !researchRun || rejecting) return;
+		rejecting = true;
+		try {
+			const result = await knowledgeApi.rejectResearch(entity.id, researchRun.runId);
+			confirmNotThis = false;
+			toastService.success(
+				`Removed ${result.retracted} detail${result.retracted === 1 ? '' : 's'}.` +
+					(result.hint ? ` Next research will skip ${result.hint.label}.` : '')
+			);
+			await load(entity.id, true);
+			onChanged?.();
+		} catch (error) {
+			toastService.error(
+				error instanceof Error ? error.message : 'Could not undo that research'
+			);
+		} finally {
+			rejecting = false;
+		}
+	}
+
 	async function hide() {
 		if (!entity) return;
 		try {
 			await knowledgeApi.update(entity.id, { status: 'hidden' });
 			toastService.success(`Hid ${entity.name}`);
+			onRemoved?.(entity.id);
 			onChanged?.();
 			onClose?.();
 		} catch (error) {
@@ -244,6 +293,7 @@
 		try {
 			await knowledgeApi.remove(entity.id);
 			toastService.success(`Deleted ${entity.name}`);
+			onRemoved?.(entity.id);
 			onChanged?.();
 			onClose?.();
 		} catch (error) {
@@ -484,6 +534,21 @@
 					<MessageSquare class="h-4 w-4" aria-hidden="true" /> Ask in chat
 				</button>
 			{/if}
+			{#if Icon}
+				<a
+					href="/knowledge?kind={entity.kind}&e={entity.id}"
+					class="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-muted-foreground pressable hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					onclick={(event) => {
+						if (!onBrowseKind) return;
+						event.preventDefault();
+						onBrowseKind({ id: entity.id, kind: entity.kind });
+					}}
+				>
+					<Icon class="h-4 w-4" aria-hidden="true" />
+					All {KIND_LABEL[entity.kind].many.toLowerCase()}
+					<ChevronRight class="h-3.5 w-3.5" aria-hidden="true" />
+				</a>
+			{/if}
 		</div>
 		{#if research}
 			<p
@@ -495,6 +560,27 @@
 				{researching
 					? `${researchStatusLine(research)} New details land here with their sources.`
 					: `Last research: ${researchStatusLine(research)}`}
+			</p>
+		{/if}
+		{#if researchRun && !researching}
+			<p class="-mt-2 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+				<span
+					>{researchRun.count} detail{researchRun.count === 1 ? '' : 's'} from the last research.</span
+				>
+				<button
+					type="button"
+					class="font-medium text-foreground underline-offset-2 hover:underline disabled:opacity-60"
+					disabled={rejecting}
+					title="Research found a different {entity.kind === 'person'
+						? 'person'
+						: 'one'} with the same name"
+					onclick={() => (confirmNotThis ? void notThisOne() : (confirmNotThis = true))}
+					onblur={() => (confirmNotThis = false)}
+				>
+					{confirmNotThis
+						? `Remove ${researchRun.count === 1 ? 'it' : `all ${researchRun.count}`}?`
+						: 'Not this one'}
+				</button>
 			</p>
 		{/if}
 

@@ -13,6 +13,7 @@ import {
 	type AgenticChatRealtimeSubscribeStatus
 } from './worker-realtime-channel';
 import { AgenticChatWorkerRealtimeInbox } from './worker-realtime-inbox';
+import { AgentChatWorkerUiAdapter } from './agent-chat-worker-ui-adapter';
 
 const USER_ID = 'd1000000-0000-4000-8000-000000000001';
 const SESSION_ID = 'd2000000-0000-4000-8000-000000000001';
@@ -74,11 +75,36 @@ function harness(harnessOptions: { createChannel?: () => FakeChannel } = {}) {
 		streamRunId: 'worker-stream-1',
 		clientTurnId: 'worker-client-1'
 	};
+	let displayedText = '';
+	const finishTurn = vi.fn();
+	const errors: unknown[] = [];
+	const adapter = new AgentChatWorkerUiAdapter({
+		handle,
+		onTerminal: () => undefined,
+		port: {
+			beginGeneration: () => {
+				displayedText = '';
+			},
+			replaceAssistantSnapshot: (snapshot) => {
+				displayedText = snapshot.text;
+			},
+			appendAssistantText: (delta) => {
+				displayedText += delta.text;
+			},
+			applySemanticEvent: () => undefined,
+			updateTurnState: () => undefined,
+			finishTurn,
+			onError: (error) => errors.push(error)
+		}
+	});
 	inbox.registerTurn({
 		handle,
 		observer: {
-			applyLiveEvent: (event) => applied.push(event.sequence_index),
-			applyReconciliation: vi.fn(),
+			applyLiveEvent: (event) => {
+				applied.push(event.sequence_index);
+				adapter.applyLiveEvent(event);
+			},
+			applyReconciliation: (value) => adapter.applyReconciliation(value),
 			requestReconciliation: (request) => reasons.push(request.reason)
 		}
 	});
@@ -94,7 +120,29 @@ function harness(harnessOptions: { createChannel?: () => FakeChannel } = {}) {
 		removed,
 		reasons,
 		applied,
-		statuses
+		statuses,
+		text: () => displayedText,
+		finishTurn,
+		errors
+	};
+}
+
+function textEvent(sequence: number, content: string, overrides: Record<string, unknown> = {}) {
+	return {
+		contract_version: AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
+		event_id: `${TURN_ID}:1:${sequence}`,
+		stream_run_id: 'worker-stream-1',
+		client_turn_id: 'worker-client-1',
+		session_id: SESSION_ID,
+		turn_run_id: TURN_ID,
+		execution_generation: 1,
+		sequence_index: sequence,
+		phase: 'stream',
+		event_type: 'text_delta',
+		durable: true,
+		type: 'text_delta',
+		content,
+		...overrides
 	};
 }
 
@@ -130,6 +178,79 @@ function receipt(watermark: number, requestedGeneration = 0) {
 }
 
 describe('AgenticChatWorkerRealtimeChannel', () => {
+	it('renders broadcast text only after baseline recovery, once and in order', async () => {
+		const h = harness();
+		await h.transport.connect(USER_ID);
+		const channel = h.channels[0]!;
+		channel.status('SUBSCRIBED');
+		channel.emit(AGENTIC_CHAT_REALTIME_STREAM_EVENT, textEvent(2, '🌱'));
+		channel.emit(AGENTIC_CHAT_REALTIME_STREAM_EVENT, textEvent(2, '🌱'));
+		channel.emit(
+			AGENTIC_CHAT_REALTIME_STREAM_EVENT,
+			textEvent(1, 'Wrong chat', {
+				session_id: 'd2000000-0000-4000-8000-000000000099'
+			})
+		);
+		expect(h.text()).toBe('');
+		h.inbox.applyReconciliation(TURN_ID, { ...receipt(1), text: 'Garden ' });
+		expect(h.text()).toBe('Garden 🌱');
+		channel.emit(AGENTIC_CHAT_REALTIME_STREAM_EVENT, textEvent(1, 'Garden '));
+		channel.emit(AGENTIC_CHAT_REALTIME_STREAM_EVENT, textEvent(3, '\nReady.'));
+		expect(h.text()).toBe('Garden 🌱\nReady.');
+		expect(h.applied).toEqual([2, 3]);
+		expect(h.errors).toEqual([]);
+		await h.transport.close();
+	});
+
+	it('repairs a lost chunk on reconnect and finishes from saved text without appending late frames', async () => {
+		const h = harness();
+		await h.transport.connect(USER_ID);
+		const channel = h.channels[0]!;
+		channel.status('SUBSCRIBED');
+		h.inbox.applyReconciliation(TURN_ID, receipt(0));
+		channel.emit(AGENTIC_CHAT_REALTIME_STREAM_EVENT, textEvent(1, 'A'));
+		channel.emit(AGENTIC_CHAT_REALTIME_STREAM_EVENT, textEvent(3, 'C'));
+		expect(h.text()).toBe('A');
+		expect(h.reasons).toContain('sequence_gap');
+		channel.status('CHANNEL_ERROR', new Error('offline'));
+		channel.status('SUBSCRIBED');
+		h.inbox.applyReconciliation(TURN_ID, { ...receipt(2, 1), text: 'AB' });
+		expect(h.text()).toBe('ABC');
+		expect(h.finishTurn).not.toHaveBeenCalled();
+
+		expect(
+			h.inbox.applyReconciliation(TURN_ID, {
+				...receipt(4, 1),
+				text: 'ABC!',
+				status: 'completed',
+				terminal_event_id: `${TURN_ID}:1:4`,
+				terminalized_at: '2026-08-02T23:00:01.000Z',
+				finished_reason: 'stop',
+				assistant_message: {
+					id: 'd5000000-0000-4000-8000-000000000001',
+					role: 'assistant',
+					content: 'ABC!',
+					created_at: '2026-08-02T23:00:01.000Z',
+					metadata: { turn_run_id: TURN_ID, execution_generation: 1 },
+					prompt_tokens: null,
+					completion_tokens: null,
+					total_tokens: null
+				}
+			})
+		).toBe(true);
+		channel.emit(AGENTIC_CHAT_REALTIME_STREAM_EVENT, textEvent(5, 'late'));
+		expect(h.text()).toBe('ABC!');
+		expect(h.finishTurn).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({
+				status: 'completed',
+				finishedReason: 'stop',
+				failureCode: null
+			})
+		);
+		expect(h.errors).toEqual([]);
+		await h.transport.close();
+	});
+
 	it('opens one exact private user channel with both shared Broadcast event names', async () => {
 		const h = harness();
 		await Promise.all([h.transport.connect(USER_ID), h.transport.connect(USER_ID)]);

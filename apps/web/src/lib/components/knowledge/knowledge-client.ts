@@ -260,11 +260,23 @@ export const knowledgeApi = {
 				reason: string;
 				a: KnowledgeEntitySummary;
 				b: KnowledgeEntitySummary;
+				/** Set when an identity check asked ("Is Jev, your friend, the same person as…?"). */
+				question?: string | null;
+				origin?: 'name' | 'identity';
+				/** The entry the user already had: kept when they answer "Same". */
+				keep_id?: string | null;
 			}>;
 		}>(`/api/knowledge/merge`);
 	},
 	merge(keep: string, merge: string) {
 		return call<Record<string, unknown>>(`/api/knowledge/merge`, json({ keep, merge }));
+	},
+	/** "Not this one": retract a research run's details and remember what the entry is not. */
+	rejectResearch(entityId: string, runId: string) {
+		return call<{ retracted: number; hidden: number; hint: { label: string } | null }>(
+			`/api/knowledge/entities/${entityId}/not-this-one`,
+			json({ run_id: runId })
+		);
 	},
 	rejectCandidate(candidateId: string) {
 		return call<{ ok: true }>(`/api/knowledge/merge`, {

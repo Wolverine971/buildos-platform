@@ -73,6 +73,10 @@
 	// Tables (web-data stream): "Save as table" on tables the agent renders.
 	import SaveAsTableHost from '$lib/components/table-surfaces/SaveAsTableHost.svelte';
 	import { chatTableSaveButtons } from '$lib/components/table-surfaces/chat-table-save';
+	import {
+		entityMentions,
+		type MentionTarget
+	} from '$lib/components/task-entities/entity-mentions';
 
 	interface Props {
 		messages: UIMessage[];
@@ -114,6 +118,12 @@
 		compact?: boolean;
 		/** Workspace chat: move the chat into the one project the last turn was about. */
 		onContinueInProject?: (project: TurnCardProject) => void | Promise<void>;
+		/**
+		 * People, organizations and places this chat was filed under in your knowledge (tasker
+		 * 160): their names in finished replies open the knowledge card.
+		 */
+		knowledgeTargets?: MentionTarget[];
+		onOpenKnowledge?: (entityId: string, trigger: HTMLElement) => void;
 	}
 
 	let {
@@ -139,6 +149,8 @@
 		streamingMessageId = null,
 		livePreview = null,
 		compact = false,
+		knowledgeTargets = [],
+		onOpenKnowledge,
 		onContinueInProject
 	}: Props = $props();
 
@@ -1139,6 +1151,15 @@
 								<div
 									class="agent-markdown {proseClasses} min-w-0 break-words"
 									class:agent-live-preview={hasLivePreview(message)}
+									{@attach knowledgeTargets.length &&
+									onOpenKnowledge &&
+									message.id !== streamingMessageId
+										? entityMentions({
+												html: body.blocks.at(-1) ?? '',
+												targets: knowledgeTargets,
+												onOpen: onOpenKnowledge
+											})
+										: undefined}
 								>
 									{#each body.blocks as blockHtml, blockIndex (blockIndex)}
 										{@html blockHtml}

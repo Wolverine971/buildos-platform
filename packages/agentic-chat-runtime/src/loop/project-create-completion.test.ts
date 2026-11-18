@@ -115,6 +115,32 @@ describe('project-create request completion', () => {
 		).toBe(false);
 	});
 
+	it('does not claim completion from failed creation even when its partial receipt contains project ids', () => {
+		const failed = projectCreate();
+		failed.result.success = false;
+		failed.result.error = 'START HERE save failed after the project row was inserted';
+		const contract = reviewerChecklist();
+
+		expect(
+			resolveRequestExpectationOutcome({ contract, toolExecutions: [failed] }).fulfilled
+		).toBe(false);
+		expect(buildWriteLedger([failed])).toMatchObject([{ status: 'failure' }]);
+		expect(
+			describePendingCleanupItems(
+				buildCleanupManifest({ contract, toolExecutions: [failed] })
+			)
+		).not.toEqual([]);
+
+		// Only a confirmed successful execution can discharge the requested work.
+		const recovered = projectCreate();
+		recovered.toolCall.id = 'call-recovered';
+		recovered.result.tool_call_id = 'call-recovered';
+		expect(
+			resolveRequestExpectationOutcome({ contract, toolExecutions: [failed, recovered] })
+				.fulfilled
+		).toBe(true);
+	});
+
 	it('does not prove facets or fields the create call never wrote', () => {
 		const executions = [
 			projectCreate({

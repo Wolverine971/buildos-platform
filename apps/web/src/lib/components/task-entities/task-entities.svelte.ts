@@ -37,6 +37,8 @@ export class TaskEntities {
 	#overrides = $state<Record<string, TaskEntityStatus>>({});
 	/** The card the popover shows and the element it hangs from. */
 	open = $state<{ cardId: string; anchor: HTMLElement } | null>(null);
+	/** Task entity id → the viewer's knowledge-graph entry for that person or org (tasker 160). */
+	knowledge = $state.raw<Record<string, string>>({});
 
 	readonly entities: TaskEntityRecord[] = $derived(
 		this.#rows.map((row) => {
@@ -74,6 +76,7 @@ export class TaskEntities {
 			const id = this.#taskId;
 			this.#rows = [];
 			this.#overrides = {};
+			this.knowledge = {};
 			this.open = null;
 			if (!id) return;
 			const controller = new AbortController();
@@ -105,12 +108,14 @@ export class TaskEntities {
 	async #load(taskId: string, signal?: AbortSignal) {
 		try {
 			const response = await fetch(
-				`/api/onto/task-entities?task_ids=${encodeURIComponent(taskId)}`,
+				`/api/onto/task-entities?task_ids=${encodeURIComponent(taskId)}&knowledge=1`,
 				{ signal }
 			);
 			if (!response.ok || this.#taskId !== taskId) return;
 			const body = await response.json();
 			this.#rows = Array.isArray(body?.data?.entities) ? body.data.entities : [];
+			const knowledge = body?.data?.knowledge;
+			this.knowledge = knowledge && typeof knowledge === 'object' ? knowledge : {};
 			this.#overrides = {};
 		} catch {
 			// A convenience: the text and its links still show without it.
@@ -128,6 +133,45 @@ export class TaskEntities {
 
 	close() {
 		this.open = null;
+	}
+
+	/**
+	 * "Add to People" (Organizations / Places): file this name into the viewer's own knowledge,
+	 * linked to the task, then open its knowledge card in place of the task card.
+	 */
+	async addToKnowledge(card: TaskEntityCard): Promise<string | null> {
+		try {
+			const response = await fetch('/api/knowledge/from-task-entity', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ task_entity_id: card.id })
+			});
+			const body = await response.json().catch(() => null);
+			const id = body?.data?.entity_id as string | undefined;
+			if (!response.ok || !id) throw new Error(body?.error ?? 'Could not add that');
+			this.knowledge = { ...this.knowledge, [card.id]: id };
+			toastService.success(
+				body?.data?.matched === 'created'
+					? `Added ${card.name}. Only you can see it.`
+					: `${card.name} was already in your knowledge, now linked to this task.`
+			);
+			return id;
+		} catch (error) {
+			toastService.error(error instanceof Error ? error.message : 'Could not add that');
+			return null;
+		}
+	}
+
+	/** Dismiss a name without the Undo toast (it was deleted from knowledge on purpose). */
+	async dismissQuietly(cardId: string): Promise<void> {
+		await this.#setStatus(cardId, 'dismissed');
+	}
+
+	/** A knowledge entry was hidden or deleted: names pointing at it go back to the task card. */
+	forgetKnowledge(entryId: string) {
+		this.knowledge = Object.fromEntries(
+			Object.entries(this.knowledge).filter(([, id]) => id !== entryId)
+		);
 	}
 
 	/** Hide a wrong entity for good (its mention link goes away), with Undo. */

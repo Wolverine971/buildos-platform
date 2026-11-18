@@ -42,7 +42,7 @@ export type WebSearchPurpose = 'chat' | 'agent_run' | 'table_fill' | 'knowledge_
  */
 export const WEB_SEARCH_PROVIDER_ORDER: Record<WebSearchPurpose, readonly NativeSearchProvider[]> =
 	{
-		chat: ['tavily'],
+		chat: ['serper', 'tavily'],
 		agent_run: ['tavily'],
 		table_fill: ['tavily'],
 		knowledge_research: ['serper', 'tavily']

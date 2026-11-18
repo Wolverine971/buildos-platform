@@ -27,6 +27,9 @@ vi.mock('@buildos/shared-agent-ops/knowledge', async (importOriginal) => {
 			return { facts: { added: batch.facts.length, suggested: 0 } };
 		}
 		async updateEntity() {}
+		async listResearchHints() {
+			return [];
+		}
 	}
 	return { ...actual, KnowledgeStore: FakeStore };
 });
@@ -204,7 +207,8 @@ function deps(db: FakeDb, onSearch?: (query: string) => void) {
 			llm: llm as unknown as KnowledgeEnrichDeps['llm'],
 			makePort: makePort as unknown as KnowledgeEnrichDeps['makePort'],
 			fetchFn: vi.fn() as unknown as typeof fetch,
-			now: () => new Date('2026-11-17T12:00:00Z')
+			now: () => new Date('2026-11-17T12:00:00Z'),
+			decider: null
 		} satisfies Partial<KnowledgeEnrichDeps>
 	};
 }
@@ -334,7 +338,8 @@ describe('processKnowledgeEnrichJob with Serper results', () => {
 				} as unknown as KnowledgeEnrichDeps['llm'],
 				makePort: makePort as unknown as KnowledgeEnrichDeps['makePort'],
 				fetchFn: vi.fn() as unknown as typeof fetch,
-				now: () => new Date('2026-11-17T12:00:00Z')
+				now: () => new Date('2026-11-17T12:00:00Z'),
+				decider: null
 			} satisfies Partial<KnowledgeEnrichDeps>
 		};
 	}

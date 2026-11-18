@@ -20,6 +20,7 @@ import { supabase } from '../../../lib/supabase';
 import type { ProcessingJob } from '../../../lib/supabaseQueue';
 import { type CheckpointTrigger, runChatCheckpointCapture } from './checkpointCapture';
 import { createSupabaseCheckpointPorts } from './supabaseCheckpointPorts';
+import { chatKnowledgeCaptureEnabled } from './knowledgeCapture';
 
 export const CAPTURE_CHAT_CHECKPOINT_JOB = 'capture_chat_checkpoint' as const;
 export const CHECKPOINT_USER_CHARS = 1500;
@@ -91,7 +92,12 @@ export function decideCheckpoint(params: {
 	return { due: false };
 }
 
-/** Scheduler entry: enqueue a capture for every recently active project session that is due. */
+/**
+ * Scheduler entry: enqueue a capture for every recently active project session that is due,
+ * and every global session. A global session feeds a project only for allowlisted users
+ * (globalAttribution.ts); knowledge is user-level, so with the knowledge output on, every
+ * user's global chats are swept for it (tasker 164).
+ */
 export async function sweepChatCheckpoints(now = new Date()): Promise<{
 	scanned: number;
 	enqueued: number;
@@ -101,6 +107,15 @@ export async function sweepChatCheckpoints(now = new Date()): Promise<{
 	// Global chats of allowlisted users feed projects too; capture attributes each batch to one
 	// project from the turns' Jev receipts, or skips it (globalAttribution.ts).
 	const globalUsers = globalCaptureUserIds();
+	const knowledgeOn = chatKnowledgeCaptureEnabled();
+	let globalQuery = supabase
+		.from('chat_sessions')
+		.select('id, user_id, last_message_at, capture_watermark_at')
+		.eq('context_type', 'global')
+		.gte('last_message_at', since)
+		.order('last_message_at', { ascending: false })
+		.limit(SWEEP_SESSION_LIMIT);
+	if (!knowledgeOn) globalQuery = globalQuery.in('user_id', globalUsers);
 	const [projectSessions, globalSessions] = await Promise.all([
 		supabase
 			.from('chat_sessions')
@@ -110,16 +125,7 @@ export async function sweepChatCheckpoints(now = new Date()): Promise<{
 			.gte('last_message_at', since)
 			.order('last_message_at', { ascending: false })
 			.limit(SWEEP_SESSION_LIMIT),
-		globalUsers.length
-			? supabase
-					.from('chat_sessions')
-					.select('id, user_id, last_message_at, capture_watermark_at')
-					.eq('context_type', 'global')
-					.in('user_id', globalUsers)
-					.gte('last_message_at', since)
-					.order('last_message_at', { ascending: false })
-					.limit(SWEEP_SESSION_LIMIT)
-			: Promise.resolve({ data: [], error: null })
+		knowledgeOn || globalUsers.length ? globalQuery : Promise.resolve({ data: [], error: null })
 	]);
 	if (projectSessions.error) throw projectSessions.error;
 	if (globalSessions.error) throw globalSessions.error;
@@ -228,14 +234,16 @@ export async function processCaptureChatCheckpointJob(
 			return { success: true, status: outcome.status, reason: outcome.reason };
 		}
 		const record = outcome.record;
+		const knowledge = record.knowledge;
 		await job.log(
-			`Checkpoint ${outcome.status}: log ${record.thinkingLog?.passageCount ?? 0} passage(s), applied [${record.startHere?.appliedSections.join(', ') ?? ''}], review [${record.review?.sections.join(', ') ?? ''}]`
+			`Checkpoint ${outcome.status}: log ${record.thinkingLog?.passageCount ?? 0} passage(s), applied [${record.startHere?.appliedSections.join(', ') ?? ''}], review [${record.review?.sections.join(', ') ?? ''}], knowledge ${knowledge ? `${knowledge.status} (${knowledge.fact_ids.length} fact(s), ${knowledge.entities.length} entr${knowledge.entities.length === 1 ? 'y' : 'ies'}${knowledge.gate.ran ? `, gate p=${knowledge.gate.p_some ?? knowledge.gate.error}` : ''}${knowledge.error ? `, error: ${knowledge.error}` : ''})` : 'off'}`
 		);
 		return {
 			success: true,
 			status: outcome.status,
 			appliedSections: record.startHere?.appliedSections ?? [],
-			reviewRunId: record.review?.runId ?? null
+			reviewRunId: record.review?.runId ?? null,
+			knowledgeFacts: record.knowledge?.fact_ids.length ?? 0
 		};
 	} catch (error) {
 		// A failed row stops the sweep from queueing this session again, so it is written

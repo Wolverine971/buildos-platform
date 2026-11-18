@@ -5,6 +5,7 @@ import {
 	type TurnHandleV1
 } from '@buildos/shared-types';
 import { describe, expect, it, vi } from 'vitest';
+import { AgentChatWorkerUiAdapter } from './agent-chat-worker-ui-adapter';
 import {
 	AgenticChatWorkerRealtimeInbox,
 	type AgenticChatWorkerReconciledReceipt,
@@ -104,6 +105,196 @@ function observer() {
 	};
 	return { value, applied, reconciled, reasons, applicationOrder };
 }
+
+// Exercise the real inbox and UI adapter together. Only the view/store port is
+// replaced: its observable text is the result, never a mocked adapter result.
+function composedTurn() {
+	let text = '';
+	const liveIds: string[] = [];
+	const errors: unknown[] = [];
+	const adapter = new AgentChatWorkerUiAdapter({
+		handle,
+		now: () => 0,
+		onTerminal: () => undefined,
+		port: {
+			beginGeneration: () => {
+				text = '';
+			},
+			replaceAssistantSnapshot: (snapshot) => {
+				text = snapshot.text;
+			},
+			appendAssistantText: (delta) => {
+				text += delta.text;
+			},
+			applySemanticEvent: () => undefined,
+			updateTurnState: () => undefined,
+			finishTurn: () => undefined,
+			onError: (error) => errors.push(error)
+		}
+	});
+	const inbox = new AgenticChatWorkerRealtimeInbox({ onError: (error) => errors.push(error) });
+	inbox.registerTurn({
+		handle,
+		executionGeneration: 2,
+		observer: {
+			applyLiveEvent: (next) => {
+				liveIds.push(next.event_id);
+				adapter.applyLiveEvent(next);
+			},
+			applyReconciliation: (next) => adapter.applyReconciliation(next),
+			requestReconciliation: () => undefined
+		}
+	});
+	return { inbox, liveIds, errors, text: () => text };
+}
+
+function permutations<T>(items: readonly T[]): T[][] {
+	if (items.length === 0) return [[]];
+	return items.flatMap((item, index) =>
+		items.indexOf(item) !== index
+			? []
+			: permutations(items.filter((_, other) => other !== index)).map((tail) => [
+					item,
+					...tail
+				])
+	);
+}
+
+describe('chat text across delivery interleavings', () => {
+	it('shows an ordered, duplicate-free prefix and converges for every bounded delivery order', () => {
+		expect.hasAssertions();
+		const chunks = ['A', 'β', '🙂'];
+		const orders = permutations([
+			'first',
+			'second',
+			'third',
+			'second',
+			'stale',
+			'baseline'
+		] as const);
+		for (const order of orders) {
+			const h = composedTurn();
+			let previousSequence = 0;
+			for (const action of order) {
+				if (action === 'baseline') {
+					expect(
+						h.inbox.applyReconciliation(TURN_ID, receipt(2, 0)),
+						order.join(' → ')
+					).toBe(true);
+				} else {
+					const sequence = action === 'first' ? 1 : action === 'third' ? 3 : 2;
+					h.inbox.receiveStreamEvent(
+						event(sequence, action === 'stale' ? 1 : 2, {
+							content: action === 'stale' ? 'STALE' : chunks[sequence - 1]
+						})
+					);
+				}
+				const state = h.inbox.getSnapshot(TURN_ID)!;
+				const trace = `${order.join(' → ')}; after ${action}`;
+				expect(state.executionGeneration, trace).toBe(2);
+				expect(state.lastAppliedSequence, trace).toBeGreaterThanOrEqual(previousSequence);
+				expect(h.text(), trace).toBe(chunks.slice(0, state.lastAppliedSequence).join(''));
+				expect(new Set(h.liveIds).size, trace).toBe(h.liveIds.length);
+				expect(h.errors, trace).toEqual([]);
+				previousSequence = state.lastAppliedSequence;
+			}
+			// The durable log already contains all three chunks. Retained deltas
+			// above the client's cursor accompany the snapshot; never append them twice.
+			const accepted = h.inbox.applyReconciliation(
+				TURN_ID,
+				receipt(2, 3, {
+					text: chunks.join(''),
+					projection_durable_sequence: 0,
+					durable_events: chunks
+						.map((content, index) => event(index + 1, 2, { content }))
+						.slice(previousSequence)
+				})
+			);
+			expect(accepted, order.join(' → ')).toBe(true);
+			expect(h.text(), order.join(' → ')).toBe('Aβ🙂');
+			expect(h.inbox.getSnapshot(TURN_ID), order.join(' → ')).toMatchObject({
+				lastAppliedSequence: 3,
+				buffering: false,
+				bufferedEvents: 0
+			});
+			expect(h.errors, order.join(' → ')).toEqual([]);
+		}
+	});
+
+	it('never mixes attempts or returns to an old generation across takeover delivery orders', () => {
+		expect.hasAssertions();
+		const oldChunks = ['old-A', 'old-B'];
+		const newChunks = ['new-A', 'new-B'];
+		const orders = permutations([
+			'old-event',
+			'old-receipt',
+			'future-first',
+			'future-second',
+			'future-first',
+			'adopt'
+		] as const);
+		for (const order of orders) {
+			const h = composedTurn();
+			expect(h.inbox.applyReconciliation(TURN_ID, receipt(2, 0))).toBe(true);
+			let previous = h.inbox.getSnapshot(TURN_ID)!;
+			for (const action of order) {
+				if (action === 'old-receipt') {
+					h.inbox.applyReconciliation(
+						TURN_ID,
+						receipt(2, 2, { text: oldChunks.join('') })
+					);
+				} else if (action === 'adopt') {
+					expect(
+						h.inbox.applyReconciliation(
+							TURN_ID,
+							receipt(3, 1, {
+								requested_execution_generation: 2,
+								generation_changed: true,
+								text: newChunks[0]
+							})
+						),
+						order.join(' → ')
+					).toBe(true);
+				} else {
+					const generation = action === 'old-event' ? 2 : 3;
+					const sequence = action === 'future-second' ? 2 : 1;
+					h.inbox.receiveStreamEvent(
+						event(sequence, generation, {
+							content: (generation === 2 ? oldChunks : newChunks)[sequence - 1]
+						})
+					);
+				}
+				const state = h.inbox.getSnapshot(TURN_ID)!;
+				const trace = `${order.join(' → ')}; after ${action}`;
+				expect(state.executionGeneration, trace).toBeGreaterThanOrEqual(
+					previous.executionGeneration
+				);
+				if (state.executionGeneration === previous.executionGeneration) {
+					expect(state.lastAppliedSequence, trace).toBeGreaterThanOrEqual(
+						previous.lastAppliedSequence
+					);
+				}
+				const chunks = state.executionGeneration === 2 ? oldChunks : newChunks;
+				expect(h.text(), trace).toBe(chunks.slice(0, state.lastAppliedSequence).join(''));
+				expect(new Set(h.liveIds).size, trace).toBe(h.liveIds.length);
+				expect(h.errors, trace).toEqual([]);
+				previous = state;
+			}
+			expect(
+				h.inbox.applyReconciliation(TURN_ID, receipt(3, 2, { text: newChunks.join('') })),
+				order.join(' → ')
+			).toBe(true);
+			expect(h.text(), order.join(' → ')).toBe('new-Anew-B');
+			expect(h.inbox.getSnapshot(TURN_ID), order.join(' → ')).toMatchObject({
+				executionGeneration: 3,
+				lastAppliedSequence: 2,
+				buffering: false,
+				bufferedEvents: 0
+			});
+			expect(h.errors, order.join(' → ')).toEqual([]);
+		}
+	});
+});
 
 describe('AgenticChatWorkerRealtimeInbox', () => {
 	it('buffers from registration until durable baseline truth is applied', () => {

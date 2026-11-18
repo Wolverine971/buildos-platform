@@ -57,6 +57,8 @@
 	import { PendingChangeController, turnHadFailedStep } from './agent-chat-pending-change.svelte';
 	import { PENDING_CHANGE_FINISH_MESSAGE } from '$lib/services/agentic-chat-v2/pending-change';
 	import AgentMessageList from './AgentMessageList.svelte';
+	import RecordKnowledgePopover from '$lib/components/knowledge/RecordKnowledgePopover.svelte';
+	import { RecordKnowledgeMentions } from '$lib/components/knowledge/record-knowledge-mentions.svelte';
 	import AgentChatActivityTabs from './AgentChatActivityTabs.svelte';
 	import BrainDumpContextPanel from './BrainDumpContextPanel.svelte';
 	import ChatConsolidationPanel from './ChatConsolidationPanel.svelte';
@@ -374,6 +376,12 @@
 		initialBrainDumpContext?.id ? initialBrainDumpContext : null
 	);
 	let currentSession = $state<ChatSession | null>(null);
+	// People, organizations and places this chat was filed under in your knowledge (tasker 160):
+	// their names in finished replies open the knowledge card. Loaded when a chat opens.
+	const chatKnowledge = new RecordKnowledgeMentions(() => ({
+		kind: 'chat_session',
+		id: currentSession?.id ?? null
+	}));
 	// A duplicate check or review a card opened beside the chat (tasker 122):
 	// the person stays in the conversation instead of navigating to its page.
 	let reviewRunId = $state<string | null>(null);
@@ -3116,6 +3124,8 @@
 		{reviewProjectId}
 		{reviewDisabled}
 		{compact}
+		knowledgeTargets={chatKnowledge.targets}
+		onOpenKnowledge={(id, trigger) => chatKnowledge.openFor(id, trigger)}
 	/>
 {/snippet}
 
@@ -3483,3 +3493,5 @@
 		</div>
 	</Modal>
 {/if}
+
+<RecordKnowledgePopover mentions={chatKnowledge} />

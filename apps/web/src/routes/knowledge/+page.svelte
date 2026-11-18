@@ -14,9 +14,9 @@
 	id (?e=) is in the URL so a chat card can link straight to it.
 -->
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { page } from '$app/state';
-	import { replaceState } from '$app/navigation';
+	import { afterNavigate, replaceState } from '$app/navigation';
 	import ErrorBoundary from '$lib/components/ui/ErrorBoundary.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import { loadAgentChatModal } from '$lib/components/agent/load-agent-chat-modal';
@@ -24,7 +24,13 @@
 	import KnowledgeImportDialog from '$lib/components/knowledge/KnowledgeImportDialog.svelte';
 	import KnowledgeEnrichDialog from '$lib/components/knowledge/KnowledgeEnrichDialog.svelte';
 	import KnowledgeResearchTray from '$lib/components/knowledge/KnowledgeResearchTray.svelte';
-	import { KnowledgeResearchQueue } from '$lib/components/knowledge/research-queue.svelte';
+	import {
+		knowledgeResearch,
+		knowledgeResearchStarted,
+		onKnowledgeResearchSettled,
+		watchKnowledgeResearch
+	} from '$lib/components/knowledge/research-session.svelte';
+	import { wantResearchDock } from '$lib/components/knowledge/research-dock-flag.svelte';
 	import {
 		isActiveTarget,
 		type EnrichEntry,
@@ -79,9 +85,9 @@
 	let stack = $state<string[]>([]);
 	let importOpen = $state(false);
 	let addOpen = $state(false);
-	let duplicates = $state<
-		Array<{ id: string; reason: string; a: KnowledgeEntitySummary; b: KnowledgeEntitySummary }>
-	>([]);
+	let duplicates = $state<Awaited<ReturnType<typeof knowledgeApi.mergeCandidates>>['candidates']>(
+		[]
+	);
 	let duplicatesOpen = $state(false);
 	let chatOpen = $state(false);
 	let chatDraft = $state('');
@@ -94,8 +100,12 @@
 		!loading && everythingCount === 0 && !query && filter === 'all' && researched === 'any'
 	);
 
-	// Research: one queue for the tray, the dialog and the cards.
-	const research = new KnowledgeResearchQueue({ onSettled: onResearchSettled });
+	// Research: one queue for the tray, the dialog and the cards, shared with the rest of the app
+	// (a task card can start research; the app-wide dock pings when it lands).
+	const research = knowledgeResearch;
+	$effect(() => {
+		if (research.live) wantResearchDock();
+	});
 	let enrichEntries = $state<EnrichEntry[] | null>(null);
 	/** Ticked entries (kept across filters and pages), by id. */
 	let picked = $state.raw<Map<string, Row>>(new Map());
@@ -216,7 +226,7 @@
 				`${result.not_queued.length} not started yet${result.refused ? `: ${result.refused}` : ''}`
 			);
 		}
-		void research.started();
+		knowledgeResearchStarted();
 	}
 
 	/** Research finished for some entries: mark them researched without losing the scroll. */
@@ -250,8 +260,98 @@
 		const url = new URL(page.url);
 		if (id) url.searchParams.set('e', id);
 		else url.searchParams.delete('e');
+		// ?kind= is only a way in ("All people" on a card); the chips own it after that.
+		url.searchParams.delete('kind');
 		replaceState(url, page.state);
 	}
+
+	let listEl = $state<HTMLElement | null>(null);
+
+	/** The row a card's "All people" jumped to, briefly highlighted. */
+	let flashId = $state<string | null>(null);
+	let flashTimer: ReturnType<typeof setTimeout> | undefined;
+	/** Pages to load looking for the row before pinning it at the top instead. */
+	const MAX_REVEAL_PAGES = 3;
+
+	/**
+	 * "All people" from Kyle's card: show every entry of that kind, find Kyle's row (loading a
+	 * couple more pages, else pinning his row at the top), center + highlight it, and open his
+	 * card beside the list. On phones the card would open as a sheet over the list, so the row is
+	 * only scrolled to and highlighted; a tap opens it.
+	 */
+	async function reveal(
+		id: string,
+		revealKind: KnowledgeKind,
+		options: { arriving?: boolean } = {}
+	) {
+		const wideNow = window.innerWidth >= 1024;
+		stack = wideNow ? [id] : [];
+		query = '';
+		filter = 'all';
+		kind = revealKind;
+		researched = 'any';
+		await refresh();
+		syncUrl(wideNow ? id : null);
+		for (
+			let pages = 1;
+			!rows.some((r) => r.id === id) && rows.length < total && pages < MAX_REVEAL_PAGES;
+			pages++
+		) {
+			await refresh({ append: true });
+		}
+		if (!rows.some((r) => r.id === id)) {
+			// Far down a long list (or newer than the list's sort): pin it at the top.
+			try {
+				const { entity } = await knowledgeApi.get(id);
+				if (entity.kind === revealKind && entity.status === 'active') {
+					rows = [{ ...entity, researched_at: entity.enriched_at }, ...rows];
+				}
+			} catch {
+				return; // gone or not yours: the card shows why
+			}
+		}
+		await tick();
+		const row = document.getElementById(`knowledge-row-${id}`);
+		if (!row) return;
+		// Arriving from another page jumps straight there (a smooth scroll gets cut off by the
+		// page settling in); moving within the page glides. ('instant', not 'auto': the app's
+		// CSS makes 'auto' smooth.)
+		const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		const behavior: ScrollBehavior = reduce || options.arriving ? 'instant' : 'smooth';
+		if (wideNow && listEl) {
+			// Bring the list + card into view, then center the row inside the list.
+			window.scrollTo({
+				top: listEl.getBoundingClientRect().top + window.scrollY - 16,
+				behavior
+			});
+			listEl.scrollTo({
+				top: row.offsetTop - listEl.clientHeight / 2 + row.offsetHeight / 2,
+				behavior
+			});
+		} else {
+			row.scrollIntoView({ block: 'center', behavior });
+		}
+		flashId = id;
+		clearTimeout(flashTimer);
+		flashTimer = setTimeout(() => (flashId = null), 2400);
+	}
+
+	const isKind = (value: string | null): value is KnowledgeKind =>
+		Boolean(value && (KIND_ORDER as readonly string[]).includes(value));
+
+	// Arrivals: a fresh load, a "found new details" toast, a chat link, "All people" from a task
+	// card. afterNavigate (not an effect on page.url) because replaceState never updates
+	// page.url, so an effect would keep snapping the card back to the arrival entry.
+	afterNavigate(({ to, type }) => {
+		const url = to?.url;
+		if (!url || !url.pathname.startsWith('/knowledge')) return;
+		const fromUrl = url.searchParams.get('e');
+		const id = fromUrl && /^[0-9a-f-]{36}$/i.test(fromUrl) ? fromUrl : null;
+		if (!id) return;
+		const kindFromUrl = url.searchParams.get('kind');
+		if (isKind(kindFromUrl)) void reveal(id, kindFromUrl, { arriving: type !== 'goto' });
+		else if (stack.at(-1) !== id) stack = [id];
+	});
 
 	function open(id: string, options: { drill?: boolean } = {}) {
 		stack = options.drill ? [...stack, id] : [id];
@@ -286,12 +386,14 @@
 
 	onMount(() => {
 		void refreshDuplicates();
-		const fromUrl = page.url.searchParams.get('e');
-		if (fromUrl && /^[0-9a-f-]{36}$/i.test(fromUrl)) stack = [fromUrl];
-		const stopResearch = research.start();
+		const stopListening = onKnowledgeResearchSettled(onResearchSettled);
+		watchKnowledgeResearch();
+		// The shared queue keeps polling only while research runs, so leaving the page while it
+		// runs keeps the app-wide tray and its "found N new details" ping going.
 		return () => {
 			clearTimeout(searchTimer);
-			stopResearch();
+			clearTimeout(flashTimer);
+			stopListening();
 		};
 	});
 
@@ -379,13 +481,18 @@
 	async function resolveDuplicate(candidate: (typeof duplicates)[number], same: boolean) {
 		try {
 			if (same) {
-				// Keep the one that is not yours if it is shared; otherwise keep the first.
+				// An identity question keeps the entry you already had; otherwise keep the shared
+				// one if there is one, else the first.
 				const keep =
-					candidate.a.scope === 'public'
-						? candidate.a
-						: candidate.b.scope === 'public'
-							? candidate.b
-							: candidate.a;
+					candidate.keep_id === candidate.b.id
+						? candidate.b
+						: candidate.keep_id === candidate.a.id
+							? candidate.a
+							: candidate.a.scope === 'public'
+								? candidate.a
+								: candidate.b.scope === 'public'
+									? candidate.b
+									: candidate.a;
 				const merge = keep.id === candidate.a.id ? candidate.b : candidate.a;
 				await knowledgeApi.merge(keep.id, merge.id);
 			} else {
@@ -422,6 +529,7 @@
 				onAskChat={askInChat}
 				research={research.byEntity.get(id) ?? null}
 				onFindMore={(entity) => (enrichEntries = [entity])}
+				onBrowseKind={(entity) => void reveal(entity.id, entity.kind)}
 			/>
 		{/key}
 	</ErrorBoundary>
@@ -628,7 +736,14 @@
 			</div>
 
 			<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_26rem]">
-				<section aria-label="Entries" aria-busy={loading} class="min-w-0">
+				<!-- Wide screens: the list scrolls in its own column so the card beside it stays in
+					view (position: sticky is inert app-wide; see the layout's overflow-x). -->
+				<section
+					bind:this={listEl}
+					aria-label="Entries"
+					aria-busy={loading}
+					class="min-w-0 lg:relative lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto lg:pr-1"
+				>
 					{#if !rows.length && !loading}
 						<p
 							class="rounded-md border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground"
@@ -667,9 +782,13 @@
 								{@const RowIcon = KIND_ICON[row.kind]}
 								{@const rowResearch = research.byEntity.get(row.id)}
 								<li
-									class="flex min-w-0 items-stretch {picked.has(row.id)
-										? 'bg-accent/5'
-										: ''}"
+									id="knowledge-row-{row.id}"
+									class="flex min-w-0 scroll-mt-24 items-stretch transition-colors duration-700 {flashId ===
+									row.id
+										? 'bg-accent/15'
+										: picked.has(row.id)
+											? 'bg-accent/5'
+											: ''}"
 								>
 									<label
 										class="flex w-11 shrink-0 cursor-pointer items-center justify-center"
@@ -923,6 +1042,9 @@
 		{/if}
 		{#each duplicates as candidate (candidate.id)}
 			<div class="flex flex-col gap-2 rounded-md border border-border p-3">
+				{#if candidate.question}
+					<p class="text-sm font-medium text-foreground">{candidate.question}</p>
+				{/if}
 				<p class="text-sm text-foreground">
 					<span class="font-medium">{candidate.a.name}</span
 					>{#if candidate.a.summary}<span class="text-muted-foreground">

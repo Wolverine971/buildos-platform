@@ -61,6 +61,8 @@
 	import TaskMentionText from '$lib/components/task-entities/TaskMentionText.svelte';
 	import { entityMentions } from '$lib/components/task-entities/entity-mentions';
 	import { TaskEntities } from '$lib/components/task-entities/task-entities.svelte';
+	import RecordKnowledgePopover from '$lib/components/knowledge/RecordKnowledgePopover.svelte';
+	import { RecordKnowledgeMentions } from '$lib/components/knowledge/record-knowledge-mentions.svelte';
 	import ReaderChip from './ReaderChip.svelte';
 	import {
 		DATE_PRESETS,
@@ -257,6 +259,11 @@
 		taskId: current?.task?.id ?? null,
 		title: current?.task?.title ?? '',
 		description: current?.task?.description ?? null
+	}));
+	// People, organizations and places a doc was filed under in your knowledge open their card.
+	const docKnowledge = new RecordKnowledgeMentions(() => ({
+		kind: 'document',
+		id: current?.doc?.id ?? null
 	}));
 
 	// ---------- Tables ----------
@@ -1218,6 +1225,11 @@
 								onMakeLiveTable: canWrite ? handleMakeLiveTable : undefined,
 								onOpenTable: (tableId) => onStep(tableId)
 							})}
+							{@attach entityMentions({
+								html: bodyHtml,
+								targets: docKnowledge.targets,
+								onOpen: (id, trigger) => docKnowledge.openFor(id, trigger)
+							})}
 						>
 							{@html bodyHtml}
 						</div>
@@ -1757,6 +1769,9 @@
 
 {#if current?.task}
 	<TaskEntityPopover entities={taskEntities} taskId={current.task.id} canEdit={canWrite} />
+{/if}
+{#if current?.doc}
+	<RecordKnowledgePopover mentions={docKnowledge} />
 {/if}
 
 {#if tablePickerOpen && editing}

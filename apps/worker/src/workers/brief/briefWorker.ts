@@ -52,7 +52,7 @@ export interface BriefJobExecutionResult {
 	notificationOutcome?: BriefNotificationOutcome;
 }
 
-function throwIfJobAborted(job: LegacyJob<BriefJobData>): void {
+function throwIfJobAborted(job: { signal?: AbortSignal }): void {
 	// Some direct legacy/test callers predate queue cancellation. Adapter-backed
 	// production jobs always provide the signal.
 	if (!job.signal?.aborted) return;
@@ -172,8 +172,10 @@ async function emitBriefCompletedEvent(params: {
 	notificationScheduledFor?: string;
 	useOntology: boolean;
 	cycleRunId?: string;
+	signal?: AbortSignal;
 }): Promise<boolean> {
 	const { userId, briefId, briefDate, timezone, useOntology } = params;
+	throwIfJobAborted(params);
 
 	try {
 		const serviceClient = createServiceClient();
@@ -264,6 +266,9 @@ async function emitBriefCompletedEvent(params: {
 			`🔗 Generated correlation ID: ${correlationId} for brief.completed notification`
 		);
 
+		// Metadata reads can outlive the queue lease. Recheck immediately before
+		// delivery, including recovery of an already-saved brief.
+		throwIfJobAborted(params);
 		const { data: notificationEventId, error: notificationEventError } =
 			await serviceClient.rpc('emit_notification_event', {
 				p_event_type: 'brief.completed',
@@ -311,6 +316,9 @@ async function emitBriefCompletedEvent(params: {
 		console.log(`📬 Emitted brief.completed notification event for user ${userId}`);
 		return true;
 	} catch (notificationError) {
+		// Cancellation belongs to the attempt, not the notification outcome. Do
+		// not turn it into a successful brief job with a failed notification.
+		if (params.signal?.aborted) throw notificationError;
 		// Log error but don't fail the brief job
 		console.error('Failed to emit notification event:', notificationError);
 		return false;
@@ -451,7 +459,8 @@ export async function processBriefJob(
 						timezone,
 						notificationScheduledFor: job.data.notificationScheduledFor,
 						useOntology: true,
-						cycleRunId: options.cycleRunId
+						cycleRunId: options.cycleRunId,
+						signal: job.signal
 					});
 					notificationOutcome = notificationEmitted ? 'emitted' : 'failed';
 				} else if (
@@ -634,7 +643,8 @@ export async function processBriefJob(
 				timezone,
 				notificationScheduledFor: job.data.notificationScheduledFor,
 				useOntology,
-				cycleRunId: options.cycleRunId
+				cycleRunId: options.cycleRunId,
+				signal: job.signal
 			});
 			notificationOutcome = notificationEmitted ? 'emitted' : 'failed';
 		}

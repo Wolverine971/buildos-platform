@@ -18,43 +18,32 @@ import {
 	KNOWLEDGE_UUID_PATTERN,
 	KnowledgeStore,
 	fetchYouTubeOEmbed,
+	gatherKnowledgeAnchors,
 	oembedBatch,
+	resolveCircles,
 	youtubeVideoId,
+	type IdentityDecider,
+	type KnowledgeAnchors,
+	type KnowledgeCircle,
 	type KnowledgeDataClient,
 	type KnowledgeWriteBatch
 } from '@buildos/shared-agent-ops/knowledge';
-import type { JSONRequestOptions } from '@buildos/smart-llm';
+import { JevClient, LLMUsageLogger } from '@buildos/smart-llm';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { supabase as defaultSupabase } from '../../lib/supabase';
+import { createAgentRunWebResearchPort, type PaidToolCharge } from '../agent-run/webResearchPort';
+import { enrichContextFrom } from './knowledgeEnrichPlan';
 import {
-	createAgentRunWebResearchPort,
-	readPaidToolCharge,
-	type PaidToolCharge
-} from '../agent-run/webResearchPort';
-import {
-	choosePages,
-	enrichContextFrom,
-	knowledgePanelPage,
-	enrichQueries,
-	enrichUserPrompt,
-	KNOWLEDGE_ENRICH_OPERATION,
-	KNOWLEDGE_ENRICH_SYSTEM_PROMPT,
-	PAGE_CHARS,
-	validateEnrichment,
-	type EnrichKnowledgePanel,
-	type EnrichPage
-} from './knowledgeEnrichPlan';
+	researchEntity,
+	researchSummary,
+	type JsonCaller,
+	type ResearchPhase,
+	type SearchPort
+} from './knowledgeResearch';
 
 export const KNOWLEDGE_ENRICH_JOB_TYPE = 'knowledge_enrich';
 const CONCURRENCY = 2;
-const MAX_LLM_COST_PER_TARGET_USD = 0.01;
-
-type JsonCaller = { getJSONResponse<T>(options: JSONRequestOptions): Promise<T> };
-type SearchPort = {
-	search?: (args: Record<string, unknown>, signal?: AbortSignal) => Promise<unknown>;
-	visit?: (args: Record<string, unknown>, signal?: AbortSignal) => Promise<unknown>;
-};
 
 export interface KnowledgeEnrichDeps {
 	db: KnowledgeDataClient;
@@ -62,6 +51,33 @@ export interface KnowledgeEnrichDeps {
 	makePort: (onCharge: (charge: PaidToolCharge) => void) => SearchPort;
 	fetchFn: typeof fetch;
 	now: () => Date;
+	/**
+	 * The cheap structured decision model for circles and "same one?" checks. Undefined → the
+	 * worker's own (needs PRIVATE_OPENROUTER_API_KEY); null → none (pages it can't confirm by
+	 * rules keep their findings as suggestions).
+	 */
+	decider: IdentityDecider | null;
+}
+
+let knowledgeJev: JevClient | null | undefined;
+
+/** The decision model for research identity checks, built once; null without an OpenRouter key. */
+export function getKnowledgeDecider(): IdentityDecider | null {
+	if (knowledgeJev !== undefined) return knowledgeJev as IdentityDecider | null;
+	const apiKey = process.env.PRIVATE_OPENROUTER_API_KEY?.trim();
+	knowledgeJev = apiKey
+		? new JevClient({
+				apiKey,
+				timeoutMs: 8_000,
+				maxRequestBytes: 96_000,
+				retryOnce: false,
+				// Jev latency is bimodal; one hedge rescues most slow calls.
+				hedgeAfterMs: 2_000,
+				title: 'BuildOS Knowledge (same one?)',
+				usage: new LLMUsageLogger({ supabase: defaultSupabase as never })
+			})
+		: null;
+	return knowledgeJev as IdentityDecider | null;
 }
 
 export interface KnowledgeEnrichResult {
@@ -95,8 +111,6 @@ interface TargetRow {
 	instructions?: string | null;
 }
 
-type ResearchPhase = 'searching' | 'reading' | 'extracting' | 'saving';
-
 /** The user cancelled this target while it was being researched. */
 class ResearchCancelled extends Error {}
 
@@ -109,6 +123,7 @@ export async function processKnowledgeEnrichJob(
 	const llm = deps.llm ?? (sharedLlm ??= new SmartLLMService());
 	const fetchFn = deps.fetchFn ?? fetch;
 	const now = deps.now ?? (() => new Date());
+	const decider = deps.decider === undefined ? getKnowledgeDecider() : deps.decider;
 	const iso = () => now().toISOString();
 
 	const { data: run, error: runError } = await db
@@ -178,6 +193,31 @@ export async function processKnowledgeEnrichJob(
 		if (!((data ?? []) as unknown[]).length) throw new ResearchCancelled();
 	}
 
+	/** Circle (signals, the decision model only if ambiguous) + anchors. Never throws. */
+	async function knowFirst(
+		detail: NonNullable<Awaited<ReturnType<KnowledgeStore['getEntity']>>>,
+		charge: (usd: number) => void
+	): Promise<KnowledgeAnchors | null> {
+		let circle: KnowledgeCircle = 'unknown';
+		if (detail.entity.scope === 'private') {
+			try {
+				const resolved = await resolveCircles(db, userId, [detail.entity.id], {
+					decider: budget - spent > 0.003 ? decider : null,
+					signal: job.signal
+				});
+				charge(resolved.costUsd);
+				circle = resolved.decisions[0]?.circle ?? 'unknown';
+			} catch {
+				// circles are context; research goes on without one
+			}
+		}
+		try {
+			return await gatherKnowledgeAnchors(store, db, detail, { circle, signal: job.signal });
+		} catch {
+			return null;
+		}
+	}
+
 	async function research(target: TargetRow): Promise<void> {
 		if (spent >= budget - 0.002) {
 			counts.skipped++;
@@ -216,7 +256,6 @@ export async function processKnowledgeEnrichJob(
 			const detail = await store.getEntity(target.entity_id);
 			if (!detail) throw new Error('Entry not found');
 			const context = enrichContextFrom(detail);
-			const pages: EnrichPage[] = [];
 			const free: KnowledgeWriteBatch = { entities: [], facts: [], sources: [] };
 
 			// YouTube: free metadata first.
@@ -244,105 +283,33 @@ export async function processKnowledgeEnrichJob(
 				}
 			}
 
-			// Web search (paid) unless the budget is too thin for it. The port reserves the most a
-			// search can cost (Tavily, if Serper fails over) before dispatch; settle to what the
-			// provider that answered actually billed.
+			// Know first (free reads): the entry's circle and what the user's graph and work
+			// already say about it. Neither may fail the research.
+			const anchors = await knowFirst(detail, (usd) => charge(usd));
+
 			let reservedUsd = 0;
 			const port = makePort((c) => {
 				reservedUsd += c.cost_usd;
 				charge(c.cost_usd);
 			});
-			const queries = enrichQueries(context, instructions, target.fields);
-			const results: Array<{ url: string; title: string; content: string | null }> = [];
-			let panel: EnrichKnowledgePanel | null = null;
-			for (const query of queries) {
-				if (!port.search || spent >= budget - 0.01) break;
-				reservedUsd = 0;
-				const response = (await port.search(
-					{ query, max_results: 5, search_depth: 'basic' },
-					job.signal
-				)) as {
-					results?: Array<{
-						url: string;
-						title: string;
-						snippet?: string;
-						page_content?: string;
-					}>;
-					knowledge_panel?: EnrichKnowledgePanel;
-				};
-				const billed = readPaidToolCharge(response);
-				if (billed && reservedUsd > 0) charge(billed.cost_usd - reservedUsd);
-				panel ??= response.knowledge_panel ?? null;
-				for (const r of response.results ?? []) {
-					results.push({ url: r.url, title: r.title, content: r.page_content ?? null });
-				}
-			}
-			// Serper's knowledge panel names the entity's website: read it first. Whether the
-			// panel is about this entity at all is the model's per-page call, as for any page.
-			const panelSite = panel?.website ?? null;
-			if (panelSite) results.unshift({ url: panelSite, title: panel!.title, content: null });
-			const chosen = choosePages(results, context.homepage ?? panelSite);
-			if (chosen.length) await advance(target, 'reading');
-			for (const result of chosen) {
-				let content = result.content;
-				let title: string | null = result.title || null;
-				if (!content && port.visit) {
-					try {
-						const page = (await port.visit(
-							{ url: result.url, max_chars: PAGE_CHARS },
-							job.signal
-						)) as {
-							content?: string;
-							title?: string;
-							final_url?: string;
-						};
-						content = page.content ?? null;
-						title = page.title ?? title;
-					} catch {
-						continue; // unreadable page: skip it
-					}
-				}
-				if (content?.trim())
-					pages.push({ url: result.url, title, content: content.slice(0, PAGE_CHARS) });
-			}
-			const pagesRead = pages.length;
-			// The panel itself is evidence only through a verbatim quote, like any page.
-			const panelPage = knowledgePanelPage(panel, detail.entity.kind);
-			if (panelPage) pages.push(panelPage);
-
-			let batch: KnowledgeWriteBatch = free;
-			let dropped = 0;
-			if (pages.length && spent < budget - 0.001) {
-				await advance(target, 'extracting');
-				const raw = await llm.getJSONResponse<unknown>({
-					systemPrompt: KNOWLEDGE_ENRICH_SYSTEM_PROMPT,
-					userPrompt: enrichUserPrompt(context, target.fields, pages, instructions),
-					userId,
-					profile: 'fast',
-					temperature: 0.1,
-					reasoning: { enabled: false },
-					maxTokens: 1_800,
-					timeoutMs: 45_000,
-					operationType: KNOWLEDGE_ENRICH_OPERATION,
-					signal: job.signal,
-					spendLimit: {
-						maxCostUsd: Math.min(
-							MAX_LLM_COST_PER_TARGET_USD,
-							Math.max(budget - spent, 0.001)
-						)
+			const outcome = await researchEntity(
+				{ detail, anchors, fields: target.fields, instructions, userId, context },
+				{
+					llm,
+					port,
+					decider,
+					charge,
+					takeReserved: () => {
+						const r = reservedUsd;
+						reservedUsd = 0;
+						return r;
 					},
-					onUsage: (usage) => charge(usage.totalCost ?? 0)
-				});
-				const validated = validateEnrichment(raw, {
-					entityId: target.entity_id,
-					kind: detail.entity.kind,
-					fields: target.fields,
-					pages,
-					existing: context.existing
-				});
-				dropped = validated.dropped.length;
-				batch = mergeBatch(free, validated.batch);
-			}
+					budgetLeft: () => budget - spent,
+					advance: (phase) => advance(target, phase),
+					signal: job.signal
+				}
+			);
+			const batch = mergeBatch(free, outcome.batch);
 
 			if (batch.facts.length) await advance(target, 'saving');
 			const receipt = batch.facts.length
@@ -359,10 +326,12 @@ export async function processKnowledgeEnrichJob(
 					updated_at: iso(),
 					facts_added: added,
 					cost_usd: Number(targetCost.toFixed(6)),
-					summary:
-						`${pagesRead} page${pagesRead === 1 ? '' : 's'} read, ${added} new detail${added === 1 ? '' : 's'}` +
-						(receipt.facts.suggested ? `, ${receipt.facts.suggested} to check` : '') +
-						(dropped ? `, ${dropped} unsupported dropped` : ''),
+					summary: researchSummary(
+						outcome,
+						added,
+						receipt.facts.suggested,
+						outcome.dropped.length
+					),
 					finished_at: iso()
 				})
 				.eq('id', target.id)

@@ -714,9 +714,32 @@ const handleSecurityHeaders: Handle = async ({ event, resolve }) => {
 	return response;
 };
 
+const handleDeploymentSkew: Handle = async ({ event, resolve }) => {
+	const response = await resolve(event);
+	const deploymentId = process.env.VERCEL_DEPLOYMENT_ID;
+	if (
+		deploymentId &&
+		process.env.VERCEL_SKEW_PROTECTION_ENABLED === '1' &&
+		event.request.method === 'GET' &&
+		response.headers.get('content-type')?.split(';')[0]?.trim() === 'text/html'
+	) {
+		// A service worker's fetch(navigationRequest) sends Sec-Fetch-Dest: empty.
+		// Vercel serves fresh HTML, but the adapter only updates __vdpl for
+		// Sec-Fetch-Dest: document. An old cookie then routes this page's new JS/CSS
+		// to an older deployment and every changed asset 404s. Pin HTML to the
+		// deployment that rendered it, including service-worker navigations.
+		// Append after resolve: SvelteKit has already serialized its auth cookies.
+		response.headers.append(
+			'Set-Cookie',
+			`__vdpl=${encodeURIComponent(deploymentId)}; Path=/; SameSite=Strict; Secure; HttpOnly`
+		);
+	}
+	return response;
+};
+
 // Export handle — security headers wrap handleSupabase so they apply to every
 // response, including handleSupabase's early returns.
-export const handle = sequence(handleSecurityHeaders, handleSupabase);
+export const handle = sequence(handleSecurityHeaders, handleDeploymentSkew, handleSupabase);
 
 // PERFORMANCE: Optimized error handler with minimal logging overhead
 export const handleError: HandleServerError = async ({ error, event }) => {

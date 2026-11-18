@@ -45,6 +45,10 @@
 	import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 	import { LOGOUT_REDIRECT_STORAGE_KEY } from '$lib/utils/auth';
 	import { clearedPile } from '$lib/stores/inbox-cleared-pile.svelte';
+	import {
+		researchDock,
+		researchWasRecentlyLive
+	} from '$lib/components/knowledge/research-dock-flag.svelte';
 	import { registerFindPalette, requestFind } from '$lib/components/workspace/find-bridge';
 
 	// FIXED: Convert to $props() for Svelte 5 runes mode compatibility
@@ -68,6 +72,21 @@
 		if (ClearedPile || !clearedPile.entries.length) return;
 		void import('$lib/components/inbox/InboxClearedPile.svelte').then(
 			(module) => (ClearedPile = module.default)
+		);
+	});
+
+	// Knowledge research follows you (tasker 160): the tray + "found N new details" ping load
+	// only once research starts in this tab, or after a reload while research was running.
+	let ResearchDock = $state<
+		typeof import('$lib/components/knowledge/KnowledgeResearchDock.svelte').default | null
+	>(null);
+	onMount(() => {
+		if (researchWasRecentlyLive()) researchDock.wanted = true;
+	});
+	$effect(() => {
+		if (ResearchDock || !researchDock.wanted || !data.user) return;
+		void import('$lib/components/knowledge/KnowledgeResearchDock.svelte').then(
+			(module) => (ResearchDock = module.default)
 		);
 	});
 
@@ -1238,6 +1257,10 @@
 
 	{#if user && NotificationStackManager}
 		<NotificationStackManager />
+	{/if}
+
+	{#if ResearchDock && user}
+		<ResearchDock />
 	{/if}
 
 	{#if ClearedPile}

@@ -1365,10 +1365,12 @@ describe('Supabase Agentic Chat publisher adapters', () => {
 			requested_execution_generation: 2,
 			status: 'running'
 		} satisfies AgenticChatSemanticEventRpcResultV1;
-		const rpc = vi.fn().mockResolvedValue({ data: receipt, error: null });
+		const rpc = vi.fn().mockResolvedValue({ data: structuredClone(receipt), error: null });
 		const adapter = new SupabaseAgenticChatPersistenceAdapter({ rpc });
 
-		await expect(adapter.persistSemantic(semanticInput)).resolves.toEqual(receipt);
+		await expect(adapter.persistSemantic(structuredClone(semanticInput))).resolves.toEqual(
+			receipt
+		);
 		expect(rpc).toHaveBeenCalledExactlyOnceWith('persist_agentic_chat_semantic_event', {
 			p_turn_run_id: 'turn-1',
 			p_queue_job_id: 'job-1',
@@ -1397,10 +1399,14 @@ describe('Supabase Agentic Chat publisher adapters', () => {
 				error_message: 'ownership denied'
 			}))
 		} satisfies AgenticChatTextBatchFlushRpcResultV1;
-		const rpc = vi.fn().mockResolvedValue({ data: receipt, error: null });
+		const rpc = vi.fn().mockResolvedValue({ data: structuredClone(receipt), error: null });
 		const adapter = new SupabaseAgenticChatPersistenceAdapter({ rpc });
 
-		await expect(adapter.flushTextBatches(textBatches)).resolves.toEqual(receipt);
+		// Keep the expected rows independent: an in-place rewrite of another
+		// turn's ownership must not rewrite the assertion's expected value too.
+		await expect(adapter.flushTextBatches(structuredClone(textBatches))).resolves.toEqual(
+			receipt
+		);
 		expect(rpc).toHaveBeenCalledExactlyOnceWith('flush_agentic_chat_text_batches', {
 			p_batches: textBatches
 		});

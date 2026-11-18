@@ -1,5 +1,5 @@
 // apps/web/src/hooks.server.test.ts
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Handle, RequestEvent } from '@sveltejs/kit';
 
 const mocks = vi.hoisted(() => ({
@@ -120,6 +120,71 @@ beforeEach(() => {
 	mocks.adminRpc.mockReset();
 	mocks.upgrade.mockResolvedValue({ upgraded: false });
 	mocks.logError.mockResolvedValue(undefined);
+});
+
+describe('deployment cookies through the real server hook', () => {
+	beforeEach(() => {
+		vi.stubEnv('VERCEL_DEPLOYMENT_ID', 'dpl_current');
+		vi.stubEnv('VERCEL_SKEW_PROTECTION_ENABLED', '1');
+	});
+	afterEach(() => vi.unstubAllEnvs());
+
+	it.each(['empty', 'document'])(
+		'keeps HTML and its assets on the same deployment with Sec-Fetch-Dest: %s',
+		async (destination) => {
+			const f = fixture('/today', 'GET', {
+				'sec-fetch-dest': destination,
+				'sec-fetch-mode': 'navigate',
+				cookie: '__vdpl=dpl_previous'
+			});
+			const response = await handle({
+				event: f.event,
+				resolve: async () =>
+					new Response('<main>Today</main>', {
+						headers: {
+							'content-type': 'text/html; charset=utf-8',
+							'set-cookie': 'session=refreshed; Path=/; HttpOnly'
+						}
+					})
+			});
+			expect(response.headers.getSetCookie()).toEqual([
+				'session=refreshed; Path=/; HttpOnly',
+				'__vdpl=dpl_current; Path=/; SameSite=Strict; Secure; HttpOnly'
+			]);
+			expect(await response.text()).toBe('<main>Today</main>');
+		}
+	);
+
+	it.each(['/today/__data.json', '/api/notifications/unread-count'])(
+		'does not repin an open app on a background data request to %s',
+		async (path) => {
+			const response = await handle({
+				event: fixture(path).event,
+				resolve: async () => Response.json({ ok: true })
+			});
+			expect(response.headers.has('set-cookie')).toBe(false);
+		}
+	);
+
+	it('does not create a deployment cookie outside Vercel', async () => {
+		vi.stubEnv('VERCEL_DEPLOYMENT_ID', undefined);
+		const response = await handle({
+			event: fixture().event,
+			resolve: async () =>
+				new Response('<main>Today</main>', { headers: { 'content-type': 'text/html' } })
+		});
+		expect(response.headers.has('set-cookie')).toBe(false);
+	});
+
+	it('respects disabled skew protection', async () => {
+		vi.stubEnv('VERCEL_SKEW_PROTECTION_ENABLED', undefined);
+		const response = await handle({
+			event: fixture().event,
+			resolve: async () =>
+				new Response('<main>Today</main>', { headers: { 'content-type': 'text/html' } })
+		});
+		expect(response.headers.has('set-cookie')).toBe(false);
+	});
 });
 
 describe('server hook session verification', () => {

@@ -5,7 +5,9 @@
 // does not apply. Every write is private to the user. Database triggers enforce the same
 // privacy rules for every writer as a second line.
 
+import type { KnowledgeCircle, KnowledgeResearchHint } from './anchors';
 import {
+	domainOf,
 	isSpecificPersonName,
 	KNOWLEDGE_UUID_PATTERN,
 	keysForKnowledgeValue,
@@ -1218,6 +1220,276 @@ export class KnowledgeStore {
 		return (data ?? {}) as Record<string, unknown>;
 	}
 
+	/**
+	 * A new private entry, never matched to an existing one by name (identity questions need a
+	 * separate entry for "the other Jev"). Returns its id.
+	 */
+	async createEntry(input: {
+		kind: KnowledgeKind;
+		name: string;
+		via: KnowledgeCreatedVia;
+		summary?: string | null;
+		circle?: KnowledgeCircle;
+	}): Promise<string> {
+		if (!isKnowledgeKind(input.kind)) throw new KnowledgeStoreError('Unknown kind.', 'INVALID');
+		const name = input.name.trim();
+		if (!name || name.length > 300)
+			throw new KnowledgeStoreError('Name must be 1–300 characters.', 'INVALID');
+		const row: Record<string, unknown> = {
+			kind: input.kind,
+			name,
+			summary: input.summary?.trim().slice(0, 300) || null,
+			scope: 'private',
+			owner_user_id: this.userId,
+			created_via: input.via
+		};
+		const circle = input.circle
+			? {
+					circle: input.circle,
+					circle_source: 'signals',
+					circle_set_at: new Date().toISOString()
+				}
+			: {};
+		let res = await this.db
+			.from('knowledge_entities')
+			.insert({ ...row, ...circle })
+			.select('id')
+			.single();
+		// Before the circles migration (20261118100000): create without the circle.
+		if (res.error && input.circle && (res.error as { code?: string }).code === '42703')
+			res = await this.db.from('knowledge_entities').insert(row).select('id').single();
+		if (res.error) throw dbError('Create entry', res.error);
+		return res.data.id as string;
+	}
+
+	/**
+	 * Ask the user whether two entries are the same (the duplicates review on /knowledge). An
+	 * existing pending question for the pair is left as it is.
+	 */
+	async addMergeCandidate(
+		a: string,
+		b: string,
+		options: {
+			reason: string;
+			question?: string | null;
+			origin?: 'name' | 'identity';
+			score?: number;
+		}
+	): Promise<void> {
+		if (!UUID.test(a) || !UUID.test(b) || a === b)
+			throw new KnowledgeStoreError('Pick two different entries.', 'INVALID');
+		const rows = await this.loadEntities([a, b]);
+		if (!rows.get(a) || !rows.get(b))
+			throw new KnowledgeStoreError('Entry not found.', 'NOT_FOUND');
+		const [first, second] = a < b ? [a, b] : [b, a];
+		const base = {
+			owner_user_id: this.userId,
+			entity_a: first,
+			entity_b: second,
+			reason: options.reason.trim().slice(0, 500) || 'Same one?',
+			score: Math.min(Math.max(options.score ?? 0.5, 0), 1)
+		};
+		const extra = {
+			...(options.question?.trim()
+				? { question: options.question.trim().slice(0, 300) }
+				: {}),
+			origin: options.origin ?? 'name'
+		};
+		let { error } = await this.db.from('knowledge_merge_candidates').upsert(
+			{ ...base, ...extra },
+			{
+				onConflict: 'owner_user_id,entity_a,entity_b',
+				ignoreDuplicates: true
+			}
+		);
+		if (error && (error as { code?: string }).code === '42703') {
+			({ error } = await this.db.from('knowledge_merge_candidates').upsert(base, {
+				onConflict: 'owner_user_id,entity_a,entity_b',
+				ignoreDuplicates: true
+			}));
+		}
+		if (error) throw dbError('Save merge candidate', error);
+	}
+
+	/** "Not this one" hints for an entry (and for entries merged into it). Newest first. */
+	async listResearchHints(entityId: string): Promise<KnowledgeResearchHint[]> {
+		if (!UUID.test(entityId)) return [];
+		const { data: merged } = await this.db
+			.from('knowledge_entities')
+			.select('id')
+			.eq('merged_into_id', entityId)
+			.eq('owner_user_id', this.userId);
+		const ids = [entityId, ...((merged ?? []) as Array<{ id: string }>).map((r) => r.id)];
+		const { data, error } = await this.db
+			.from('knowledge_research_hints')
+			.select('id, label, domains, urls, run_id, created_at')
+			.in('entity_id', ids)
+			.eq('owner_user_id', this.userId)
+			.order('created_at', { ascending: false })
+			.limit(20);
+		if (error) {
+			// Before the migration (20261118100000) there are no hints.
+			if ((error as { code?: string }).code === '42P01') return [];
+			throw dbError('Load research hints', error);
+		}
+		return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+			id: row.id as string,
+			label: row.label as string,
+			domains: (row.domains as string[] | null) ?? [],
+			urls: (row.urls as string[] | null) ?? [],
+			run_id: (row.run_id as string | null) ?? null,
+			created_at: row.created_at as string
+		}));
+	}
+
+	/**
+	 * "Not this one": retract every fact one research run added to this entry, hide entries that
+	 * run created which nothing else uses, and remember what the entry is not (a label from the
+	 * retracted place and website, the run's website domain, and the pages it read) so the next
+	 * research skips it. Returns what changed.
+	 */
+	async rejectResearchRun(
+		entityId: string,
+		runId: string
+	): Promise<{ retracted: number; hidden: number; hint: KnowledgeResearchHint | null }> {
+		if (!UUID.test(entityId) || !UUID.test(runId))
+			throw new KnowledgeStoreError('Invalid id.', 'INVALID');
+		const entity = (await this.loadEntities([entityId])).get(entityId);
+		if (!entity) throw new KnowledgeStoreError('Entry not found.', 'NOT_FOUND');
+		const { data: factData, error } = await this.db
+			.from('knowledge_facts')
+			.select('id, predicate, object_entity_id, value_text, status')
+			.eq('entity_id', entity.id)
+			.eq('run_id', runId)
+			.eq('owner_user_id', this.userId);
+		if (error) throw dbError('Load research facts', error);
+		const facts = (
+			(factData ?? []) as Array<{
+				id: string;
+				predicate: string;
+				object_entity_id: string | null;
+				value_text: string | null;
+				status: KnowledgeFactStatus;
+			}>
+		).filter((f) => f.status !== 'retracted');
+
+		const sources = await this.loadCitations(facts.map((f) => f.id));
+		const objectIds = unique(
+			facts.map((f) => f.object_entity_id).filter((x): x is string => Boolean(x))
+		);
+		const objects = await this.loadEntities(objectIds);
+		let place: string | null = null;
+		let homepage: string | null = null;
+		for (const fact of facts) {
+			if (fact.predicate === 'located_in' && fact.object_entity_id && !place)
+				place = objects.get(fact.object_entity_id)?.name ?? null;
+			if (fact.predicate === 'homepage' && fact.value_text && !homepage)
+				homepage = domainOf(fact.value_text);
+		}
+		const pageUrls = unique(
+			[...sources.values()]
+				.flat()
+				.map((s) => s.url)
+				.filter((u): u is string => Boolean(u))
+		).filter((u) => !u.startsWith('https://www.google.com/search'));
+		if (!homepage && !place && !pageUrls.length && !facts.length)
+			return { retracted: 0, hidden: 0, hint: null };
+
+		if (facts.length) {
+			for (const group of chunk(
+				facts.map((f) => f.id),
+				ID_CHUNK
+			)) {
+				const { error: retractError } = await this.db
+					.from('knowledge_facts')
+					.update({ status: 'retracted' })
+					.in('id', group)
+					.eq('owner_user_id', this.userId);
+				if (retractError) throw dbError('Retract research', retractError);
+			}
+		}
+
+		// Entries this run created (e.g. the wrong company's town) that nothing else uses.
+		let hidden = 0;
+		if (objectIds.length) {
+			const { data: ownRows } = await this.db
+				.from('knowledge_entities')
+				.select('id, created_via, status')
+				.in('id', objectIds)
+				.eq('owner_user_id', this.userId);
+			const candidates = (
+				(ownRows ?? []) as Array<{ id: string; created_via: string; status: string }>
+			)
+				.filter((r) => r.created_via === 'enrichment' && r.status === 'active')
+				.map((r) => r.id);
+			for (const id of candidates) {
+				const [asSubject, asObject, links] = await Promise.all([
+					this.db
+						.from('knowledge_facts')
+						.select('id')
+						.eq('entity_id', id)
+						.in('status', VISIBLE_FACT_STATUSES)
+						.limit(1),
+					this.db
+						.from('knowledge_facts')
+						.select('id')
+						.eq('object_entity_id', id)
+						.in('status', VISIBLE_FACT_STATUSES)
+						.limit(1),
+					this.db.from('knowledge_record_links').select('id').eq('entity_id', id).limit(1)
+				]);
+				const used = [asSubject, asObject, links].some(
+					(r) => ((r.data ?? []) as unknown[]).length > 0
+				);
+				if (used) continue;
+				const { error: hideError } = await this.db
+					.from('knowledge_entities')
+					.update({ status: 'hidden' })
+					.eq('id', id)
+					.eq('owner_user_id', this.userId);
+				if (!hideError) hidden++;
+			}
+		}
+
+		const label =
+			`not the ${entity.name}${place ? ` in ${place}` : ''}${homepage ? ` (${homepage})` : ''}`.slice(
+				0,
+				300
+			);
+		const hintRow = {
+			owner_user_id: this.userId,
+			entity_id: entity.id,
+			label,
+			// A whole domain only when the run claimed it as the entry's website; the pages it read
+			// are excluded one by one (a directory or LinkedIn page must not block the whole site).
+			domains: homepage ? [homepage] : [],
+			urls: pageUrls.slice(0, 20),
+			run_id: runId
+		};
+		const { data: hintData, error: hintError } = await this.db
+			.from('knowledge_research_hints')
+			.insert(hintRow)
+			.select('id, label, domains, urls, run_id, created_at')
+			.single();
+		if (hintError) {
+			if ((hintError as { code?: string }).code === '42P01')
+				return { retracted: facts.length, hidden, hint: null };
+			throw dbError('Save research hint', hintError);
+		}
+		return {
+			retracted: facts.length,
+			hidden,
+			hint: {
+				id: hintData.id,
+				label: hintData.label,
+				domains: hintData.domains ?? [],
+				urls: hintData.urls ?? [],
+				run_id: hintData.run_id ?? null,
+				created_at: hintData.created_at
+			}
+		};
+	}
+
 	async resolveMergeCandidate(id: string, status: 'rejected'): Promise<void> {
 		const { error } = await this.db
 			.from('knowledge_merge_candidates')
@@ -1500,24 +1772,52 @@ export class KnowledgeStore {
 			score: number;
 			a: KnowledgeEntitySummary;
 			b: KnowledgeEntitySummary;
+			/** The question to show, when an identity check asked it. */
+			question: string | null;
+			origin: 'name' | 'identity';
+			/** For identity questions: the entry the user already had (keep it on "Same"). */
+			keep_id: string | null;
 		}>
 	> {
-		const { data, error } = await this.db
-			.from('knowledge_merge_candidates')
-			.select('id, entity_a, entity_b, reason, score')
-			.eq('owner_user_id', this.userId)
-			.eq('status', 'pending')
-			.order('created_at', { ascending: false })
-			.limit(Math.min(limit, 200));
-		if (error) throw dbError('Load merge candidates', error);
-		const rows = (data ?? []) as Array<{
+		type Row = {
 			id: string;
 			entity_a: string;
 			entity_b: string;
 			reason: string;
 			score: number;
-		}>;
-		const summaries = await this.getSummaries(rows.flatMap((r) => [r.entity_a, r.entity_b]));
+			question?: string | null;
+			origin?: 'name' | 'identity';
+		};
+		const read = (columns: string) =>
+			this.db
+				.from('knowledge_merge_candidates')
+				.select(columns)
+				.eq('owner_user_id', this.userId)
+				.eq('status', 'pending')
+				.order('created_at', { ascending: false })
+				.limit(Math.min(limit, 200));
+		let res = await read('id, entity_a, entity_b, reason, score, question, origin');
+		// Before 20261118100000 there is no question/origin.
+		if (res.error && (res.error as { code?: string }).code === '42703')
+			res = await read('id, entity_a, entity_b, reason, score');
+		if (res.error) throw dbError('Load merge candidates', res.error);
+		const rows = (res.data ?? []) as Row[];
+		const ids = rows.flatMap((r) => [r.entity_a, r.entity_b]);
+		const summaries = await this.getSummaries(ids);
+		// Which side is the original: not the public identity the check created, else the older.
+		const created = new Map<string, string>();
+		if (rows.some((r) => r.origin === 'identity')) {
+			const { data } = await this.db
+				.from('knowledge_entities')
+				.select('id, created_at, circle')
+				.in('id', unique(ids));
+			for (const row of (data ?? []) as Array<{
+				id: string;
+				created_at: string;
+				circle?: string;
+			}>)
+				created.set(row.id, `${row.circle === 'public' ? '1' : '0'}|${row.created_at}`);
+		}
 		return rows
 			.filter(
 				(r) =>
@@ -1525,13 +1825,27 @@ export class KnowledgeStore {
 					summaries.has(r.entity_b) &&
 					summaries.get(r.entity_a)!.id !== summaries.get(r.entity_b)!.id
 			)
-			.map((r) => ({
-				id: r.id,
-				reason: r.reason,
-				score: r.score,
-				a: summaries.get(r.entity_a)!,
-				b: summaries.get(r.entity_b)!
-			}));
+			.map((r) => {
+				const a = summaries.get(r.entity_a)!;
+				const b = summaries.get(r.entity_b)!;
+				const origin = r.origin ?? 'name';
+				const keep =
+					origin === 'identity'
+						? (created.get(r.entity_a) ?? '') <= (created.get(r.entity_b) ?? '')
+							? a.id
+							: b.id
+						: null;
+				return {
+					id: r.id,
+					reason: r.reason,
+					score: r.score,
+					a,
+					b,
+					question: r.question ?? null,
+					origin,
+					keep_id: keep
+				};
+			});
 	}
 
 	// -------------------------------------------------------------------------

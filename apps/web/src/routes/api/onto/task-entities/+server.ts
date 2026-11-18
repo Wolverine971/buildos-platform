@@ -1,6 +1,8 @@
 // apps/web/src/routes/api/onto/task-entities/+server.ts
 /**
  * GET /api/onto/task-entities?task_ids=<id>,<id>  - Entities read from these tasks' text
+ *     &knowledge=1 also returns `knowledge`: task entity id → the caller's knowledge-graph
+ *     entry for that person or organization (the reader's card opens it directly).
  *
  * One request for a whole list (Today) or a single task (reader, modal). RLS limits rows to
  * tasks the caller can read. `states` says which tasks a model has read; a task without one
@@ -10,7 +12,9 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import {
 	MAX_TASK_IDS_PER_READ,
-	loadTaskEntities
+	loadTaskEntities,
+	loadTaskKnowledgeIds,
+	loadTaskKnowledgeLinks
 } from '$lib/server/task-entities/task-entity-store';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -30,7 +34,22 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	if (!taskIds.every((id) => UUID.test(id))) return ApiResponse.badRequest('Invalid task id');
 
 	try {
-		return ApiResponse.success(await loadTaskEntities(locals.supabase, taskIds));
+		if (url.searchParams.get('knowledge') !== '1') {
+			return ApiResponse.success(await loadTaskEntities(locals.supabase, taskIds));
+		}
+		// The knowledge links load alongside the entities. Best effort: the task-only card
+		// still works without them.
+		const [result, links] = await Promise.all([
+			loadTaskEntities(locals.supabase, taskIds),
+			loadTaskKnowledgeLinks(locals.supabase, session.user.id, taskIds).catch(() => [])
+		]);
+		const knowledge = await loadTaskKnowledgeIds(
+			locals.supabase,
+			session.user.id,
+			result.entities,
+			links
+		).catch(() => ({}));
+		return ApiResponse.success({ ...result, knowledge });
 	} catch (error) {
 		return ApiResponse.internalError(error, 'Could not load task entities');
 	}

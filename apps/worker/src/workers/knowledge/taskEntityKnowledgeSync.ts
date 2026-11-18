@@ -4,11 +4,14 @@
 // task owner's private knowledge graph, linked back to the task (tasker 160). Best effort:
 // the task read already succeeded, so a failure here is logged, never thrown. Skipped when the
 // owner can no longer open the project (removed from a shared project): other people's edits
-// must not keep feeding names and contact details into their graph.
+// must not keep feeding names and contact details into their graph. Names the owner hid in
+// their knowledge ("not a thing") are never filed again.
 
 import {
 	KnowledgeStore,
+	normalizeKnowledgeName,
 	planTaskEntityKnowledge,
+	withoutTaskEntityRefs,
 	type KnowledgeDataClient,
 	type TaskEntityRowForKnowledge
 } from '@buildos/shared-agent-ops/knowledge';
@@ -24,9 +27,13 @@ export async function syncTaskEntitiesToKnowledge(
 			.select('id, kind, natural_key, value, display, role, about, quote, status')
 			.eq('task_id', input.task.id);
 		if (error) throw new Error(error.message);
-		const batch = planTaskEntityKnowledge(
+		const planned = planTaskEntityKnowledge(
 			input.task,
 			(data ?? []) as TaskEntityRowForKnowledge[]
+		);
+		const batch = withoutTaskEntityRefs(
+			planned,
+			await hiddenRefs(db, input.userId, planned.entities)
 		);
 		if (!batch.entities.length) return { entities: 0, facts: 0 };
 		const receipt = await new KnowledgeStore(db, input.userId).record(batch, { via: 'task' });
@@ -36,6 +43,33 @@ export async function syncTaskEntitiesToKnowledge(
 		console.warn('[knowledge] task entity sync failed', input.task.id, message);
 		return null;
 	}
+}
+
+/** Batch refs whose name and kind the owner already has as a hidden entry. */
+async function hiddenRefs(
+	db: KnowledgeDataClient,
+	userId: string,
+	entities: Array<{ ref: string; kind?: string; name?: string }>
+): Promise<Set<string>> {
+	const named = entities.filter((e) => e.name && e.kind);
+	if (!named.length) return new Set();
+	const { data, error } = await db
+		.from('knowledge_entities')
+		.select('kind, normalized_name')
+		.eq('owner_user_id', userId)
+		.eq('status', 'hidden')
+		.in('normalized_name', [...new Set(named.map((e) => normalizeKnowledgeName(e.name!)))]);
+	if (error) throw new Error(error.message);
+	const hidden = new Set(
+		((data ?? []) as Array<{ kind: string; normalized_name: string }>).map(
+			(row) => `${row.kind}|${row.normalized_name}`
+		)
+	);
+	return new Set(
+		named
+			.filter((e) => hidden.has(`${e.kind}|${normalizeKnowledgeName(e.name!)}`))
+			.map((e) => e.ref)
+	);
 }
 
 /** The user created the project or is a current member of it. */

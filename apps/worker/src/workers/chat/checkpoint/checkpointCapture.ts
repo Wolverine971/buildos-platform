@@ -5,7 +5,7 @@
 // threshold or goes idle. Each run reads only the messages after the session's
 // watermark, so each message is captured once.
 //
-// Two outputs per checkpoint:
+// Three outputs per checkpoint:
 // - Thinking log: the user's own words, near-verbatim, dated, newest first.
 //   It applies automatically because it is the user's own content.
 // - START HERE: the model rewrites the doc's real sections. Code applies the
@@ -13,6 +13,9 @@
 //   wait in one reviewable proposal per project. Managed fences, unique
 //   headings, valid links and code-owned decision dates are enforced here.
 //   Current state and Decisions change only on cited evidence.
+// - Knowledge (tasker 164): important facts about named people and orgs go to the user's
+//   private knowledge graph (knowledgeCapture.ts). It is user-level, so it also runs for chats
+//   with no project (global, Workspace), and it runs last so a retry never repeats it.
 //
 // A run that fails after the thinking log is saved is retried over the same
 // messages (the watermark moves only at the end), so the log write recognises
@@ -55,6 +58,7 @@ import {
 	passageFidelity,
 	prependThinkingLogEntry
 } from '@buildos/shared-agent-ops/ontology/thinking-log';
+import type { ChatKnowledgeReceipt } from './knowledgeCapture';
 
 export type CheckpointTrigger = 'threshold' | 'idle' | 'close' | 'backfill' | 'manual';
 
@@ -100,6 +104,8 @@ export type CheckpointRecord = {
 		appliedSections: string[];
 	} | null;
 	review: { runId: string; sections: string[] } | null;
+	/** What the knowledge output wrote (or why not); null when it did not run. */
+	knowledge: ChatKnowledgeReceipt | null;
 	skipped: Array<{ heading: string; reason: string }>;
 	invariantViolations: string[];
 	droppedLinks: number;
@@ -131,7 +137,7 @@ export type CheckpointCapturePorts = {
 		systemPrompt: string;
 		userPrompt: string;
 		userId: string;
-		operation: 'thinking_log' | 'start_here_synthesis';
+		operation: 'thinking_log' | 'start_here_synthesis' | 'knowledge';
 		/** The chat and project the call is for, so its cost log links to both. */
 		sessionId?: string;
 		projectId?: string;
@@ -157,6 +163,16 @@ export type CheckpointCapturePorts = {
 		session: CheckpointSession & { projectId: string };
 		runIds: string[];
 	}): Promise<void>;
+	/**
+	 * The knowledge output (knowledgeCapture.ts) over the same new messages. Absent or switched
+	 * off: no knowledge output. Never throws; a failure is recorded in its receipt.
+	 */
+	captureKnowledge?(params: {
+		session: CheckpointSession;
+		newMessages: PromptMessage[];
+		priorMessages: PromptMessage[];
+		throughMessageId: string;
+	}): Promise<ChatKnowledgeReceipt | null>;
 	/** Persist the checkpoint and advance the session watermark to its last message. */
 	finishCheckpoint(record: CheckpointRecord): Promise<void>;
 	/**
@@ -305,11 +321,26 @@ export async function runChatCheckpointCapture(
 		thinkingLog: null,
 		startHere: null,
 		review: null,
+		knowledge: null,
 		skipped: [],
 		invariantViolations: [],
 		droppedLinks: 0,
 		restatedAdditions: 0,
 		error: null
+	};
+	// Knowledge runs for every session with new user words, project or not, just before the
+	// checkpoint is saved: every earlier step that can fail (and be retried) is done by then.
+	const finish = async () => {
+		if (userMessages.length && ports.captureKnowledge) {
+			record.knowledge = await ports.captureKnowledge({
+				session,
+				newMessages,
+				priorMessages,
+				throughMessageId: last.id
+			});
+			if (record.knowledge?.fact_ids.length) record.status = 'captured';
+		}
+		await ports.finishCheckpoint(record);
 	};
 	// A global chat feeds a project only when its new turns were clearly about that one project.
 	const projectId =
@@ -319,8 +350,8 @@ export async function runChatCheckpointCapture(
 			: null);
 	record.projectId = projectId;
 	if (userMessages.length === 0 || !projectId) {
-		await ports.finishCheckpoint(record);
-		return { status: 'noop', record };
+		await finish();
+		return { status: record.status === 'captured' ? 'captured' : 'noop', record };
 	}
 	const projectSession = { ...session, projectId };
 	const project = await ports.loadProject(projectSession);
@@ -328,8 +359,8 @@ export async function runChatCheckpointCapture(
 		// The project may be hard-deleted while its session still points at it; that id
 		// would break the checkpoint row's foreign key and fail every retry.
 		record.projectId = null;
-		await ports.finishCheckpoint(record);
-		return { status: 'noop', record };
+		await finish();
+		return { status: record.status === 'captured' ? 'captured' : 'noop', record };
 	}
 
 	const timezone = project.timezone;
@@ -601,6 +632,6 @@ export async function runChatCheckpointCapture(
 	}
 
 	record.status = record.thinkingLog || record.startHere || record.review ? 'captured' : 'noop';
-	await ports.finishCheckpoint(record);
+	await finish();
 	return { status: record.status === 'captured' ? 'captured' : 'noop', record };
 }

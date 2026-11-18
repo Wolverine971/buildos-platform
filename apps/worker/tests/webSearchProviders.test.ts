@@ -62,16 +62,17 @@ function mockFetch(handler: (url: string) => Response | Promise<Response>) {
 }
 
 describe('web search provider order', () => {
-	it('puts knowledge research on Serper first and keeps chat, agent runs and tables on Tavily', () => {
+	it('puts knowledge research and chat on Serper first and keeps agent runs and tables on Tavily', () => {
 		expect(WEB_SEARCH_PROVIDER_ORDER).toEqual({
-			chat: ['tavily'],
+			chat: ['serper', 'tavily'],
 			agent_run: ['tavily'],
 			table_fill: ['tavily'],
 			knowledge_research: ['serper', 'tavily']
 		});
 		const keys = { tavilyApiKey: 't', serperApiKey: 's' };
 		expect(resolveWebSearchProviders('knowledge_research', keys)).toEqual(['serper', 'tavily']);
-		expect(resolveWebSearchProviders('chat', keys)).toEqual(['tavily']);
+		expect(resolveWebSearchProviders('chat', keys)).toEqual(['serper', 'tavily']);
+		expect(resolveWebSearchProviders('agent_run', keys)).toEqual(['tavily']);
 		// No Serper key: knowledge research falls back to today's Tavily-only behaviour.
 		expect(
 			resolveWebSearchProviders('knowledge_research', {
@@ -226,15 +227,15 @@ describe('knowledge research port with Serper', () => {
 		warn.mockRestore();
 	});
 
-	it('uses Tavily only for chat even when a Serper key is set', async () => {
+	it('uses Tavily only for agent runs even when a Serper key is set', async () => {
 		const { calls, fetchFn } = mockFetch(() => tavilyOk());
 		const port = createAgentRunWebResearchPort({
-			purpose: 'chat',
+			purpose: 'agent_run',
 			apiKey: 'tavily-key',
 			serperApiKey: 'serper-key',
 			fetchFn
 		});
-		await port.search!({ query: 'Acme chat only' });
+		await port.search!({ query: 'Acme agent run only' });
 		expect(calls.map((c) => c.url)).toEqual([TAVILY]);
 	});
 

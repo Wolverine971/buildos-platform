@@ -45,6 +45,13 @@ import type {
 	CheckpointSession
 } from './checkpointCapture';
 import { createCheckpointCompleteJson } from './checkpointLlm';
+import { JevClient, LLMUsageLogger } from '@buildos/smart-llm';
+import {
+	type ChatKnowledgePorts,
+	chatKnowledgeCaptureEnabled,
+	runChatKnowledgeCapture
+} from './knowledgeCapture';
+import { type ChatWebPage, uniqueWebPages, webPagesFromToolResult } from './knowledgePrompt';
 import { THINKING_LOG_TYPE_KEY } from '@buildos/shared-agent-ops/ontology/thinking-log';
 
 export const START_HERE_CAPTURE_RUN_LABEL = 'Update project START HERE';
@@ -52,6 +59,30 @@ const THINKING_LOG_TITLE = 'Thinking log';
 const NEW_MESSAGE_BATCH = 60;
 const PRIOR_CONTEXT_MESSAGES = 4;
 const SAVED_CHANGE_ROWS = 200;
+/** Chat tools whose stored results name the pages the chat read (their text is never stored). */
+const WEB_TOOL_NAMES = ['web_search', 'web_visit', 'web_navigate'];
+const WEB_TOOL_ROWS = 40;
+
+let knowledgeGate: JevClient | null | undefined;
+
+/** The knowledge gate, built once; null without an OpenRouter key (extraction runs ungated). */
+function getKnowledgeGate(): JevClient | null {
+	if (knowledgeGate !== undefined) return knowledgeGate;
+	const apiKey = process.env.PRIVATE_OPENROUTER_API_KEY?.trim();
+	knowledgeGate = apiKey
+		? new JevClient({
+				apiKey,
+				timeoutMs: 6_000,
+				maxRequestBytes: 96_000,
+				retryOnce: false,
+				// Jev latency is bimodal; one hedge rescues most slow calls (chat finder data).
+				hedgeAfterMs: 1_500,
+				title: 'BuildOS Chat Checkpoint (knowledge gate)',
+				usage: new LLMUsageLogger({ supabase: supabase as never })
+			})
+		: null;
+	return knowledgeGate;
+}
 
 type AgentRunInsert = Database['public']['Tables']['agent_runs']['Insert'];
 
@@ -205,8 +236,35 @@ async function supersedeRuns(userId: string, runIds: string[], supersededBy: str
 export function createSupabaseCheckpointPorts(options?: {
 	completeJson?: CheckpointCapturePorts['completeJson'];
 	signal?: AbortSignal;
+	/** Tests and scripts: replace the knowledge gate / identity seam. */
+	knowledge?: Partial<Pick<ChatKnowledgePorts, 'decider' | 'resolveIdentity'>>;
 }): CheckpointCapturePorts {
 	const watermarks = new Map<string, { at: string | null }>();
+	const completeJson =
+		options?.completeJson ?? createCheckpointCompleteJson({ signal: options?.signal });
+
+	/** Pages the chat's web tools returned between the watermark and the batch's last message. */
+	async function loadWebPages(sessionId: string, throughAt: string): Promise<ChatWebPage[]> {
+		const watermarkAt = watermarks.get(sessionId)?.at ?? null;
+		let query = supabase
+			.from('chat_tool_executions')
+			.select('tool_name, result, created_at')
+			.eq('session_id', sessionId)
+			.eq('success', true)
+			.in('tool_name', WEB_TOOL_NAMES)
+			.lte('created_at', throughAt)
+			.order('created_at', { ascending: true })
+			.limit(WEB_TOOL_ROWS);
+		if (watermarkAt) query = query.gt('created_at', watermarkAt);
+		const { data, error } = await query;
+		if (error) throw error;
+		return uniqueWebPages(
+			(data ?? []).flatMap((row) =>
+				webPagesFromToolResult((row as { result: unknown }).result)
+			)
+		);
+	}
+
 	return {
 		async loadSession({ sessionId, userId }) {
 			const { data, error } = await supabase
@@ -422,8 +480,42 @@ export function createSupabaseCheckpointPorts(options?: {
 			};
 		},
 
-		completeJson:
-			options?.completeJson ?? createCheckpointCompleteJson({ signal: options?.signal }),
+		completeJson,
+
+		async captureKnowledge({ session, newMessages, priorMessages, throughMessageId }) {
+			if (!chatKnowledgeCaptureEnabled()) return null;
+			const through = newMessages.find((message) => message.id === throughMessageId);
+			let webPages: ChatWebPage[] = [];
+			try {
+				webPages = through ? await loadWebPages(session.id, through.created_at) : [];
+			} catch (error) {
+				// Without the page list, web facts can't cite a page and are dropped; user facts still count.
+				console.warn(
+					`⚠️ Knowledge capture could not read web results for ${session.id}:`,
+					error instanceof Error ? error.message : error
+				);
+			}
+			return runChatKnowledgeCapture(
+				{
+					db: supabase as never,
+					decider:
+						options?.knowledge && 'decider' in options.knowledge
+							? (options.knowledge.decider ?? null)
+							: getKnowledgeGate(),
+					completeJson: (params) => completeJson(params),
+					...(options?.knowledge?.resolveIdentity
+						? { resolveIdentity: options.knowledge.resolveIdentity }
+						: {})
+				},
+				{
+					session: { id: session.id, userId: session.userId, title: session.title },
+					newMessages,
+					priorMessages,
+					webPages,
+					throughMessageId
+				}
+			);
+		},
 
 		async saveThinkingLog({ session, document, content }) {
 			if (document) await assertUnchanged(document);
@@ -602,7 +694,8 @@ export function createSupabaseCheckpointPorts(options?: {
 						dropped_links: record.droppedLinks,
 						restated_additions: record.restatedAdditions,
 						log_passages: record.thinkingLog?.passageCount ?? 0,
-						error: record.error
+						error: record.error,
+						knowledge: record.knowledge
 					} as unknown as Json
 				});
 				if (error) throw error;

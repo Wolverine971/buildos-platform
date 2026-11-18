@@ -167,20 +167,12 @@ const CASES = EXAMPLES.flatMap((example) =>
 );
 
 describe('skill turn-contract examples', () => {
-	it('finds the contract examples in every operational playbook', () => {
-		const counts = Object.fromEntries(
-			Object.keys(SKILL_SURFACES).map((skillId) => [
-				skillId,
-				EXAMPLES.filter((example) => example.skillId === skillId).length
-			])
+	it('exercises a contract example from every operational playbook', () => {
+		// Prevent empty discovery from passing the behavioral checks below, without
+		// freezing how many examples a playbook is allowed to teach.
+		expect(new Set(CASES.map((example) => example.skillId))).toEqual(
+			new Set(Object.keys(SKILL_SURFACES))
 		);
-		expect(counts).toEqual({
-			task_management: 1,
-			document_workspace: 2,
-			calendar_management: 2,
-			plan_management: 2,
-			project_creation: 1
-		});
 	});
 
 	it.each(CASES)('$label passes the worker contract validator', ({ raw, profile }) => {

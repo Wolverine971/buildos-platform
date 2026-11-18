@@ -7,3 +7,6 @@ export { KnowledgeStore, KnowledgeStoreError } from './knowledge-store';
 export * from './enrichment';
 export * from './task-entity-bridge';
 export * from './youtube';
+export * from './anchors';
+export * from './circles';
+export * from './identity';

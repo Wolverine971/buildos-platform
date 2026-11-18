@@ -4,6 +4,13 @@
 	Dauntless Dogs, 410-360-6761), the people around it, and the other tasks that name it, with
 	numbers those tasks know (docs/research/task-entity-layer-2026-10-07.md). Anchored on desktop,
 	a bottom sheet on phones (TablePopover).
+
+	When the person, organization or place is in the viewer's knowledge graph (tasker 160), the
+	card is the same knowledge card /knowledge shows (KnowledgeCardPopover): contact details,
+	connections you can click through (org → person → back), where it shows up in your work, Find
+	more, and "All people", under a line with what this task said. A name that isn't filed yet
+	keeps the task-only card with "Add to People" (Organizations / Places), which files it into
+	the viewer's own graph and switches to the knowledge card.
 -->
 <script lang="ts">
 	import {
@@ -76,7 +83,8 @@
 		const open = card;
 		related = null;
 		relatedLoading = false;
-		if (!open) return;
+		// The knowledge card lists every task that names them ("In your work"); skip the read.
+		if (!open || entities.knowledge[open.id]) return;
 		const cacheKey = `${taskId}|${open.kind}|${open.key}`;
 		const cached = relatedCache.get(cacheKey);
 		if (cached) {
@@ -102,30 +110,31 @@
 		return () => controller.abort();
 	});
 
-	// The matching entry in the knowledge graph, if there is one (tasker 160).
-	const knowledgeCache = new Map<string, string | null>();
-	let knowledgeId = $state<string | null>(null);
+	// The knowledge-graph entry this name is (resolved with the task's entities, tasker 160).
+	const knowledgeRoot = $derived(card ? (entities.knowledge[card.id] ?? null) : null);
+
+	// The knowledge card (and its dialog + research queue) load in their own chunk once this task
+	// has a name in the knowledge graph, in the background before anyone clicks.
+	let deps = $state<typeof import('./task-knowledge-deps') | null>(null);
 	$effect(() => {
-		const open = card;
-		knowledgeId = null;
-		if (!open || (open.kind !== 'person' && open.kind !== 'org')) return;
-		const cacheKey = `${taskId}|${open.kind}|${open.key}`;
-		if (knowledgeCache.has(cacheKey)) {
-			knowledgeId = knowledgeCache.get(cacheKey) ?? null;
-			return;
-		}
-		const controller = new AbortController();
-		const params = new URLSearchParams({ name: open.name, kind: open.kind, task_id: taskId });
-		fetch(`/api/knowledge/lookup?${params}`, { signal: controller.signal })
-			.then(async (response) => {
-				if (!response.ok) return;
-				const id = ((await response.json())?.data?.entity_id as string | null) ?? null;
-				knowledgeCache.set(cacheKey, id);
-				knowledgeId = id;
-			})
-			.catch(() => {});
-		return () => controller.abort();
+		if (deps || !Object.keys(entities.knowledge).length) return;
+		void import('./task-knowledge-deps').then((module) => (deps = module));
 	});
+
+	const ADD_LABEL: Record<TaskEntityCard['kind'], string> = {
+		person: 'Add to People',
+		org: 'Add to Organizations',
+		place: 'Add to Places'
+	};
+	let adding = $state(false);
+	async function addToKnowledge(target: TaskEntityCard) {
+		adding = true;
+		try {
+			await entities.addToKnowledge(target);
+		} finally {
+			adding = false;
+		}
+	}
 
 	const KIND_LABEL: Record<TaskEntityCard['kind'], string> = {
 		person: 'Person',
@@ -213,7 +222,53 @@
 	</li>
 {/snippet}
 
-{#if card && entities.open}
+{#if deps}
+	<deps.KnowledgeCardPopover
+		anchor={card && knowledgeRoot ? (entities.open?.anchor ?? null) : null}
+		rootId={knowledgeRoot}
+		label="About {card?.name ?? ''}"
+		onClose={() => entities.close()}
+		context={card
+			? {
+					label: 'In this task',
+					quote: card.quote,
+					mapUrl: card.kind === 'place' ? mapsSearchUrl(card.value) : null
+				}
+			: null}
+		onRemoved={(id) => {
+			const row = card;
+			entities.forgetKnowledge(id);
+			// Deleted or hidden from inside a task: not a thing here either.
+			if (row) void entities.dismissQuietly(row.id);
+		}}
+	>
+		{#snippet footer({ depth })}
+			{#if canEdit && card && depth === 1}
+				<div
+					class="mx-4 mb-3 flex items-center justify-between gap-2 border-t border-border pt-2"
+				>
+					<span class="min-w-0 truncate text-xs text-muted-foreground"
+						>{card.status === 'confirmed'
+							? 'Kept on this task'
+							: 'Linked from this task'}</span
+					>
+					<button
+						type="button"
+						class="inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground pressable hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						title="Not a real {KIND_LABEL[
+							card.kind
+						].toLowerCase()}? Stop linking it on this task."
+						onclick={() => void entities.hide(card)}
+					>
+						<EyeOff class="h-3.5 w-3.5" /> Hide here
+					</button>
+				</div>
+			{/if}
+		{/snippet}
+	</deps.KnowledgeCardPopover>
+{/if}
+
+{#if card && entities.open && !knowledgeRoot}
 	<TablePopover
 		anchor={entities.open.anchor}
 		label="About {card.name}"
@@ -368,25 +423,18 @@
 				<p class="text-xs text-muted-foreground" role="status">Looking for other tasks…</p>
 			{/if}
 
-			{#if knowledgeId}
-				<a
-					href="/knowledge?e={knowledgeId}"
-					class="-mx-2 flex min-h-9 min-w-0 items-center gap-2 rounded-md px-2 text-sm text-foreground pressable hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-8"
-					onclick={() => entities.close()}
+			<button
+				type="button"
+				class="-mx-2 flex min-h-9 min-w-0 items-center gap-2 rounded-md px-2 text-left text-sm font-medium text-foreground pressable hover:bg-muted disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-8"
+				disabled={adding}
+				title="Keep {card.name} in your knowledge, with what this task says about them. Only you see it."
+				onclick={() => void addToKnowledge(card)}
+			>
+				<BookUser class="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden="true" />
+				<span class="min-w-0 flex-1 truncate"
+					>{adding ? 'Adding…' : ADD_LABEL[card.kind]}</span
 				>
-					<BookUser
-						class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-						aria-hidden="true"
-					/>
-					<span class="min-w-0 flex-1 truncate"
-						>Everything you know about {card.name}</span
-					>
-					<ChevronRight
-						class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-						aria-hidden="true"
-					/>
-				</a>
-			{/if}
+			</button>
 
 			{#if canEdit}
 				<div class="flex items-center justify-between gap-2 border-t border-border pt-2">
