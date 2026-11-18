@@ -169,5 +169,17 @@ export async function undoChatKnowledgeCapture(params: {
 				.eq('is_self', false)
 		);
 	}
-	return changed > 0 ? 'retracted' : 'none';
+	if (changed > 0) return 'retracted';
+	// Nothing changed now: an earlier Undo may have retracted the facts and then failed on a
+	// later step. Its facts are retracted either way, so the knowledge part reads as undone and
+	// the receipt can settle instead of offering an Undo that does nothing.
+	const existing = check(
+		await admin
+			.from('knowledge_facts')
+			.select('id')
+			.eq('owner_user_id', userId)
+			.in('id', receipt.fact_ids)
+			.limit(1)
+	);
+	return ((existing.data as unknown[]) ?? []).length ? 'retracted' : 'none';
 }

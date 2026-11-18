@@ -715,7 +715,9 @@
 		} catch (err) {
 			toastService.error(err instanceof Error ? err.message : 'Could not undo that.');
 		} finally {
-			await invalidate('ontology:projects');
+			// Not a raw invalidate(): it resets page.state and would close whatever card
+			// is open (the graduate toast stays up long after the new card was opened).
+			refreshProjects();
 			void refreshWorkspace();
 		}
 	}

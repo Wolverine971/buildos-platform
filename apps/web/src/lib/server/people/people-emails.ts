@@ -38,26 +38,26 @@ const PAPER = '#FAF9F7';
 const RULE = '#DCD9D1';
 const ACCENT = '#D96C1E';
 
-function longDate(value: string | null | undefined): string {
+export function longDate(value: string | null | undefined): string {
 	if (!value) return '';
 	const date = new Date(value);
 	if (Number.isNaN(date.getTime())) return '';
 	return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' });
 }
 
-function paragraph(text: string, options: { muted?: boolean; size?: number } = {}): string {
+export function paragraph(text: string, options: { muted?: boolean; size?: number } = {}): string {
 	const color = options.muted ? MUTED : INK;
 	const size = options.size ?? 15;
 	return `<p style="margin: 0 0 14px 0; font-size: ${size}px; color: ${color}; line-height: 1.6;">${escapeHtmlText(text)}</p>`;
 }
 
-function button(label: string, url: string): string {
+export function button(label: string, url: string): string {
 	return `<div style="margin: 24px 0;">
 	<a href="${escapeHtmlText(url)}" style="display: inline-block; background-color: ${ACCENT}; color: ${PAPER}; font-size: 16px; font-weight: 600; text-decoration: none; padding: 13px 28px; border-radius: 8px;">${escapeHtmlText(label)}</a>
 </div>`;
 }
 
-function fallbackLink(url: string): string {
+export function fallbackLink(url: string): string {
 	return `<p style="margin: 0 0 14px 0; font-size: 13px; color: ${MUTED}; line-height: 1.6;">Button not working? Paste this link into your browser:<br /><a href="${escapeHtmlText(url)}" style="color: ${ACCENT}; word-break: break-all;">${escapeHtmlText(url)}</a></p>`;
 }
 
@@ -68,11 +68,11 @@ function quote(label: string, text: string): string {
 </div>`;
 }
 
-function heading(text: string): string {
+export function heading(text: string): string {
 	return `<h1 style="margin: 0 0 16px 0; font-size: 22px; color: ${INK}; font-weight: 700; line-height: 1.3;">${escapeHtmlText(text)}</h1>`;
 }
 
-function render(subject: string, blocks: string[]): string {
+export function render(subject: string, blocks: string[]): string {
 	return generateMinimalEmailHTML({
 		subject: escapeHtmlText(subject),
 		content: blocks.join('\n')
@@ -146,8 +146,8 @@ export function buildProjectInviteEmail(input: ProjectInviteEmailInput): EmailPa
 // Access requests
 // ---------------------------------------------------------------------------
 
-type AdminClient = ReturnType<typeof createAdminSupabaseClient>;
-type Mailer = Pick<EmailService, 'sendEmail'>;
+export type AdminClient = ReturnType<typeof createAdminSupabaseClient>;
+export type Mailer = Pick<EmailService, 'sendEmail'>;
 
 export type PeopleEmailDeps = {
 	admin?: AdminClient;
@@ -155,7 +155,7 @@ export type PeopleEmailDeps = {
 	baseUrl?: string;
 };
 
-type PersonRow = {
+export type PersonRow = {
 	id: string;
 	name: string | null;
 	username: string | null;
@@ -164,7 +164,7 @@ type PersonRow = {
 	access_restricted: boolean | null;
 };
 
-function displayName(person: Pick<PersonRow, 'name' | 'username'>): string {
+export function displayName(person: Pick<PersonRow, 'name' | 'username'>): string {
 	return person.name?.trim() || (person.username ? `@${person.username}` : '') || 'Someone';
 }
 
@@ -174,11 +174,14 @@ function withHandle(person: Pick<PersonRow, 'name' | 'username'>): string {
 	return displayName(person);
 }
 
-function redact(error: unknown): string {
+export function redact(error: unknown): string {
 	return error instanceof Error ? error.message.replace(/\S+@\S+/g, '[redacted]') : 'unknown';
 }
 
-async function loadPeople(admin: AdminClient, ids: string[]): Promise<Map<string, PersonRow>> {
+export async function loadPeople(
+	admin: AdminClient,
+	ids: string[]
+): Promise<Map<string, PersonRow>> {
 	const { data, error } = await (admin as any)
 		.from('users')
 		.select('id, name, username, email, deletion_status, access_restricted')
@@ -188,7 +191,7 @@ async function loadPeople(admin: AdminClient, ids: string[]): Promise<Map<string
 }
 
 /** An address we may mail: a live account, not hard-bounced or complained. */
-async function emailableAddress(admin: AdminClient, person: PersonRow | undefined) {
+export async function emailableAddress(admin: AdminClient, person: PersonRow | undefined) {
 	const email = person?.email?.trim().toLowerCase();
 	if (!person || !email || person.deletion_status || person.access_restricted === true) {
 		return null;

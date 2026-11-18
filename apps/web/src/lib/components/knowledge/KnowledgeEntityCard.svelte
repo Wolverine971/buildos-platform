@@ -46,6 +46,8 @@
 		type KnowledgeKind
 	} from './knowledge-client';
 	import { isActiveTarget, researchStatusLine, type ResearchTarget } from './research-tray';
+	import KnowledgeNameUpdates from './KnowledgeNameUpdates.svelte';
+	import KnowledgeSharePanel from './KnowledgeSharePanel.svelte';
 
 	interface Props {
 		entityId: string;
@@ -465,6 +467,11 @@
 		{/if}
 	</div>
 
+	{#if entity && isOwn}
+		<!-- Tags still spelling another full name (after a rename or a fold, tasker 167). -->
+		<KnowledgeNameUpdates entityId={entity.id} name={entity.name} />
+	{/if}
+
 	{#if loadError}
 		<p
 			class="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
@@ -474,11 +481,23 @@
 	{/if}
 
 	{#if entity && detail}
+		{#if detail.sharing}
+			<KnowledgeSharePanel
+				part="asks"
+				entityId={entity.id}
+				entityName={entity.name}
+				sharing={detail.sharing}
+				predicates={detail.facts.map((f) => f.predicate)}
+				onChanged={() => void load(entity.id, true)}
+			/>
+		{/if}
 		<div class="flex flex-wrap items-center gap-2">
 			<span
 				class="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground"
 				title={isOwn
-					? 'Only you can see this entry'
+					? detail.sharing?.projects.length
+						? 'Your notes and contact details are only yours. People in your shared projects see the public details; see "Who can see this".'
+						: 'Only you can see this entry'
 					: 'A shared entry. Your notes and contact details on it stay private.'}
 			>
 				{#if isOwn}<Lock class="h-3 w-3" aria-hidden="true" /> Only you{:else}<Share2
@@ -766,6 +785,17 @@
 					{/each}
 				</ul>
 			</section>
+		{/if}
+
+		{#if detail.sharing}
+			<KnowledgeSharePanel
+				part="who"
+				entityId={entity.id}
+				entityName={entity.name}
+				sharing={detail.sharing}
+				predicates={detail.facts.map((f) => f.predicate)}
+				onChanged={() => void load(entity.id, true)}
+			/>
 		{/if}
 
 		{#if adding}

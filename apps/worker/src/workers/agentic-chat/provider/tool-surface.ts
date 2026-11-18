@@ -358,6 +358,7 @@ function workerReadOpForToolName(toolName: string): string {
 		search_knowledge: 'knowledge.search',
 		get_knowledge_entity: 'knowledge.get',
 		query_knowledge: 'knowledge.query',
+		get_project_knowledge_lens: 'knowledge.project_lens',
 		get_field_info: 'util.schema.field_info',
 		get_workspace_overview: 'util.workspace.overview',
 		get_project_overview: 'util.project.overview',

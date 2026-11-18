@@ -142,7 +142,10 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 			'get_knowledge_entity',
 			'query_knowledge',
 			'record_knowledge',
-			'enrich_knowledge'
+			'enrich_knowledge',
+			// 2026-11-18 tasker 168: knowledge in shared projects, both surfaces.
+			'get_project_knowledge_lens',
+			'request_knowledge_access'
 		]);
 	});
 

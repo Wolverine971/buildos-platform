@@ -71,7 +71,9 @@ type LooseQuery = {
 	upsert(
 		values: Record<string, unknown> | Record<string, unknown>[],
 		options?: { onConflict?: string; ignoreDuplicates?: boolean }
-	): Promise<{ error: { message: string } | null }>;
+	): Promise<{ error: { message: string } | null }> & {
+		select(columns: string): Promise<{ data: unknown; error: { message: string } | null }>;
+	};
 	then: Promise<{ data: unknown; error: { message: string } | null }>['then'];
 };
 type LooseDb = { from(table: string): LooseQuery };
@@ -184,6 +186,14 @@ export async function processExtractTaskEntitiesJob(
 
 	if (!text.trim()) {
 		await writeState('empty');
+		// Names deleted with the text lose their tags and reader-made links (tasker 167).
+		if (!deps.supabase) {
+			await syncTaskEntitiesToKnowledge(supabase as unknown as KnowledgeDataClient, {
+				userId,
+				projectId,
+				task: { id: taskId, title: task.title ?? '', description: task.description ?? null }
+			});
+		}
 		return done('empty', { reason: 'no text' });
 	}
 
@@ -342,24 +352,33 @@ export async function processExtractTaskEntitiesJob(
 			.eq('id', id);
 		if (error) throw new Error(`Could not update entity: ${error.message}`);
 	}
+	// Rows this edit added: a collaborator editing someone else's task files only these.
+	let newRowIds: string[] = [];
 	if (plan.insert.length) {
-		const { error } = await db.from('onto_task_entities').upsert(
-			plan.insert.map((entity) => rowFor(entity, { taskId, projectId }, hash, stamp)),
-			{ onConflict: 'task_id,kind,natural_key', ignoreDuplicates: true }
-		);
+		const { data: inserted, error } = await db
+			.from('onto_task_entities')
+			.upsert(
+				plan.insert.map((entity) => rowFor(entity, { taskId, projectId }, hash, stamp)),
+				{ onConflict: 'task_id,kind,natural_key', ignoreDuplicates: true }
+			)
+			.select('id');
 		if (error) throw new Error(`Could not save entities: ${error.message}`);
+		newRowIds = ((inserted ?? []) as Array<{ id: string }>).map((row) => row.id);
 	}
 
 	await writeState(extracted.length ? 'extracted' : 'empty', {
 		entityCount: extracted.length,
 		model
 	});
-	// People and organizations in the task join the owner's knowledge graph (best effort).
-	if (extracted.length && !deps.supabase) {
+	// People and organizations in the task join the owner's knowledge graph, and the task's
+	// mentions follow the new text: moved, corrected, or deleted (best effort, no model calls).
+	// Runs on an empty read too, so a name removed from the task loses its tag and link.
+	if (!deps.supabase) {
 		await syncTaskEntitiesToKnowledge(supabase as unknown as KnowledgeDataClient, {
 			userId,
 			projectId,
-			task: { id: taskId, title: task.title ?? '' }
+			task: { id: taskId, title: task.title ?? '', description: task.description ?? null },
+			newRowIds
 		});
 	}
 	return done(extracted.length ? 'extracted' : 'empty', {

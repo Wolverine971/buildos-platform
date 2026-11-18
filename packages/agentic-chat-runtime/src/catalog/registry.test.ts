@@ -68,6 +68,8 @@ const FROZEN_TOOL_OPERATION_ROWS_2026_09_04: readonly string[] = Object.freeze([
 	// Added 2026-09-29 (tasker 112): chat reads the nightly Project cleanup change set.
 	// Chat-only; no external agent-call op exists for it.
 	'get_project_cleanup onto.project.cleanup.get read',
+	// Added 2026-11-18 (tasker 168): knowledge in shared projects. New ops; none moved.
+	'get_project_knowledge_lens knowledge.project_lens read',
 	'get_project_overview util.project.overview read',
 	'get_workspace_overview util.workspace.overview read',
 	'link_onto_entities onto.edge.link write',
@@ -100,6 +102,7 @@ const FROZEN_TOOL_OPERATION_ROWS_2026_09_04: readonly string[] = Object.freeze([
 	'record_knowledge knowledge.record write',
 	'reorganize_onto_project_graph onto.project.graph.reorganize write',
 	'request_email_account_connection email.accounts.connect write',
+	'request_knowledge_access knowledge.request_access write',
 	'resolve_user_contact_candidate util.contact.candidate.resolve write',
 	'scan_email_inbox email.messages.scan read',
 	'search_all_projects x.search.all_projects read',

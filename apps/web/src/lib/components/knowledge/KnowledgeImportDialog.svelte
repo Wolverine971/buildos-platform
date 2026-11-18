@@ -1,13 +1,22 @@
 <!-- apps/web/src/lib/components/knowledge/KnowledgeImportDialog.svelte -->
 <!--
 	Import contacts into the knowledge graph: pick a phone export (.vcf), LinkedIn's
-	Connections.csv or a Google Contacts CSV → see what's in it → import. Nothing is saved until
-	the second step, and the file itself is never stored. Tasker 160.
+	Connections.csv or a Google Contacts CSV → see what's in it → import. The file is read in the
+	browser: the preview needs no upload, and the import sends only the contacts (no photos).
+	Nothing is saved until the second step, and the file itself is never stored. Tasker 160.
 -->
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import { Check, Loader2, Lock, Upload } from '$lib/icons/lucide';
+	import {
+		parseContactFile,
+		summarizeContactFile,
+		type ParsedContactFile
+	} from '@buildos/shared-agent-ops/knowledge';
 	import { knowledgeApi, type ImportSummary } from './knowledge-client';
+
+	/** Reading a file this big would stall the tab; no phone or LinkedIn export gets close. */
+	const MAX_FILE_BYTES = 100 * 1024 * 1024;
 
 	interface Props {
 		isOpen: boolean;
@@ -18,6 +27,7 @@
 	let { isOpen, onClose, onImported }: Props = $props();
 
 	let file = $state<File | null>(null);
+	let parsed: ParsedContactFile | null = null;
 	let preview = $state<ImportSummary | null>(null);
 	let result = $state<ImportSummary | null>(null);
 	let busy = $state<'reading' | 'importing' | null>(null);
@@ -27,6 +37,7 @@
 
 	function reset() {
 		file = null;
+		parsed = null;
 		preview = null;
 		result = null;
 		busy = null;
@@ -45,7 +56,15 @@
 		file = next;
 		busy = 'reading';
 		try {
-			preview = await knowledgeApi.importFile(next, true);
+			if (next.size > MAX_FILE_BYTES) throw new Error('That file is too big to read here.');
+			const read = parseContactFile(next.name, await next.text());
+			if (!read)
+				throw new Error(
+					"Couldn't read this file. Use a .vcf exported from your phone, LinkedIn's Connections.csv, or a Google Contacts CSV."
+				);
+			if (!read.contacts.length) throw new Error('No contacts found in that file.');
+			parsed = read;
+			preview = { preview: true, ...summarizeContactFile(read) };
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Could not read that file';
 			file = null;
@@ -55,11 +74,11 @@
 	}
 
 	async function runImport() {
-		if (!file) return;
+		if (!file || !parsed) return;
 		busy = 'importing';
 		error = null;
 		try {
-			result = await knowledgeApi.importFile(file, false);
+			result = await knowledgeApi.importContacts(parsed, file.name);
 			onImported(result);
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'The import stopped';

@@ -420,7 +420,9 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 					![
 						'request_buildos_permission',
 						'request_buildos_access',
-						'request_project_access'
+						'request_project_access',
+						// Tasker 168: an ask about a shared-project knowledge entry.
+						'request_knowledge_access'
 					].includes(tool.name)
 				);
 			}
@@ -476,6 +478,25 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 			expect(readWrite.get('record_knowledge')?.inputSchema.properties).not.toHaveProperty(
 				'project_id'
 			);
+		});
+
+		it('lists the shared-project knowledge tools to read-only grants, the ask as a non-read', async () => {
+			const response = await mcpPost(
+				staticKeyAdmin({ scope_mode: 'read_only' }),
+				{ jsonrpc: '2.0', id: 23, method: 'tools/list' },
+				STATIC_KEY_HEADER
+			);
+			const body = await response.json();
+			const tools = new Map<string, any>(
+				body.result.tools.map((tool: { name: string }) => [tool.name, tool])
+			);
+			expect(tools.get('get_project_knowledge_lens')?.annotations.readOnlyHint).toBe(true);
+			expect(tools.get('get_project_knowledge_lens')?.description).toMatch(/shared_by/);
+			// Asking needs only read scope, like request_project_access, but is not read-only.
+			const ask = tools.get('request_knowledge_access');
+			expect(ask?.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: false });
+			expect(ask?.securitySchemes?.[0]?.scopes).toEqual(['buildos.read']);
+			expect(ask?.inputSchema.required).toEqual(['entity_id', 'project_id']);
 		});
 	});
 

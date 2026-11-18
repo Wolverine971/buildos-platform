@@ -40,6 +40,8 @@ export const AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1 = Object.free
 	// Personal knowledge graph (2026-11-16, tasker 160): reviewed gateway writes.
 	'record_knowledge',
 	'enrich_knowledge',
+	// Knowledge in shared projects (2026-11-18, tasker 168): the ask, a reviewed gateway write.
+	'request_knowledge_access',
 	'delegate_task',
 	// Calendar writes moved to the worker on 2026-09-04. They call Google
 	// directly from Railway through the shared calendar write stack.

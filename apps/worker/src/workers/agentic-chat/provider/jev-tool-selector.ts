@@ -187,6 +187,8 @@ const SUPPORTING_TOOLS: Readonly<Record<string, readonly string[]>> = {
 	enrich_knowledge: ['search_knowledge'],
 	search_knowledge: ['get_knowledge_entity'],
 	query_knowledge: ['search_knowledge'],
+	// Knowledge in shared projects (tasker 168): an ask names an entry the lens showed.
+	request_knowledge_access: ['get_project_knowledge_lens'],
 	// A search's results are start points to read or click through.
 	web_search: ['web_visit', 'web_navigate'],
 	web_visit: ['web_navigate'],

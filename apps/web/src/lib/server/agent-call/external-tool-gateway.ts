@@ -6,6 +6,7 @@ import {
 	PermissionRequestService
 } from './permission-requests.service';
 import { executePeopleTool, PEOPLE_TOOL_NAMES, PEOPLE_TOOLS } from './people-tools.service';
+import { sendShareAskedEmail } from '$lib/server/knowledge/sharing.server';
 // apps/web/src/lib/server/agent-call/external-tool-gateway.ts
 //
 // Web-side adapter + discovery surface for the BuildOS agent-call gateway.
@@ -146,7 +147,7 @@ function buildExternalGatewayRegistry(scope: AgentCallScope): ExternalGatewayReg
  * Executes a gateway op against the shared dispatcher, wiring the web registry
  * and the concrete calendar/task-sync ports.
  */
-function runGatewayOp(params: {
+async function runGatewayOp(params: {
 	admin: any;
 	userId: string;
 	callerId?: string;
@@ -157,7 +158,7 @@ function runGatewayOp(params: {
 	arguments?: Record<string, unknown>;
 	securityEventOptions?: SecurityEventLogOptions;
 }): Promise<Record<string, unknown>> {
-	return executeGatewayOp({
+	const response = await executeGatewayOp({
 		...params,
 		registryOps: getRegistryOps(),
 		registryVersion: getRegistryVersion(),
@@ -169,6 +170,21 @@ function runGatewayOp(params: {
 		}),
 		taskSync: createTaskSyncPort(params.admin)
 	});
+	notifyNewKnowledgeAsk(params.admin, params.arguments?.op, response);
+	return response;
+}
+
+/**
+ * Tasker 168: a brand-new ask an agent sent to see more of someone's knowledge entry emails
+ * the entry's owner, like the web Ask button (the email never names the entry or a value).
+ * A merged or refused ask sends nothing. Fire and forget; the sender never throws.
+ */
+function notifyNewKnowledgeAsk(admin: any, op: unknown, response: Record<string, unknown>): void {
+	if (op !== 'knowledge.request_access' || response.ok !== true) return;
+	const result = isRecord(response.result) ? response.result : null;
+	const ask = result && isRecord(result.knowledge_ask) ? result.knowledge_ask : null;
+	if (!ask || ask.new_request !== true || typeof ask.id !== 'string') return;
+	void sendShareAskedEmail(ask.id, { admin });
 }
 
 // ---------------------------------------------------------------------------

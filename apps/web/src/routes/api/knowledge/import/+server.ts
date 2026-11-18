@@ -1,18 +1,23 @@
 // apps/web/src/routes/api/knowledge/import/+server.ts
 /**
- * POST /api/knowledge/import  (multipart: file, preview?=1)
+ * POST /api/knowledge/import
+ *   multipart: contacts (gzipped JSON from the browser's parser) + file_name  ← the app
+ *   multipart: file, preview?=1                                              ← raw file
  *
  * Import contacts from a phone export (.vcf), LinkedIn's Connections.csv, or a Google Contacts
  * CSV. Everyone becomes a private person the caller knows; companies become organizations.
- * With preview=1 nothing is saved: the response says what the file holds.
- * The file text is parsed in memory and never stored.
+ * The app parses the file in the browser and sends only the contacts, compressed: phone exports
+ * with photos easily pass Vercel's ~4.5 MB request limit as raw files. With preview=1 nothing
+ * is saved: the response says what the file holds. The file text is never stored.
  */
 import type { RequestHandler } from './$types';
 import {
-	MAX_IMPORT_CONTACTS,
+	CONTACT_FORMAT_LABELS,
 	parseContactFile,
 	planContactImport,
-	type ContactFileFormat
+	readParsedContactPayload,
+	summarizeContactFile,
+	type ParsedContactFile
 } from '@buildos/shared-agent-ops/knowledge';
 import { ApiResponse } from '$lib/utils/api-response';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
@@ -28,11 +33,28 @@ export const config = { maxDuration: 120 };
 const CONTACTS_PER_WRITE = 1500;
 
 const MAX_BYTES = 8 * 1024 * 1024;
-const FORMAT_LABEL: Record<ContactFileFormat, string> = {
-	vcard: 'Phone contacts (vCard)',
-	linkedin_csv: 'LinkedIn connections',
-	google_csv: 'Google Contacts'
-};
+/** Unzipped contact JSON: 10,000 contacts with notes stay well under this. */
+const MAX_CONTACTS_JSON_BYTES = 40 * 1024 * 1024;
+const UNREADABLE =
+	"Couldn't read this file. Use a .vcf exported from your phone, LinkedIn's Connections.csv, or a Google Contacts CSV.";
+
+async function readGzipJson(blob: Blob): Promise<unknown> {
+	const stream = blob.stream().pipeThrough(new DecompressionStream('gzip'));
+	const reader = stream.getReader();
+	const chunks: Uint8Array[] = [];
+	let size = 0;
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		size += value.byteLength;
+		if (size > MAX_CONTACTS_JSON_BYTES) {
+			await reader.cancel();
+			throw new Error('too large');
+		}
+		chunks.push(value);
+	}
+	return JSON.parse(new TextDecoder().decode(Buffer.concat(chunks)));
+}
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const { user } = await locals.safeGetSession();
@@ -44,38 +66,32 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	} catch {
 		return ApiResponse.badRequest('Upload a file');
 	}
+	let parsed: ParsedContactFile | null;
+	let fileName: string;
+	const contacts = form.get('contacts');
 	const file = form.get('file');
-	if (!(file instanceof File)) return ApiResponse.badRequest('Upload a file');
-	if (file.size > MAX_BYTES)
-		return ApiResponse.badRequest('That file is over 8 MB. Export fewer contacts at a time.');
-
-	// vCards can carry photos as base64; they're skipped by the parser but still read here.
-	const text = await file.text();
-	const parsed = parseContactFile(file.name, text);
-	if (!parsed) {
-		return ApiResponse.badRequest(
-			"Couldn't read this file. Use a .vcf exported from your phone, LinkedIn's Connections.csv, or a Google Contacts CSV."
-		);
+	if (contacts instanceof Blob) {
+		fileName = String(form.get('file_name') ?? 'contacts').slice(0, 200);
+		try {
+			parsed = readParsedContactPayload(await readGzipJson(contacts));
+		} catch {
+			parsed = null;
+		}
+	} else if (file instanceof File) {
+		if (file.size > MAX_BYTES)
+			return ApiResponse.badRequest(
+				'That file is over 8 MB. Export fewer contacts at a time.'
+			);
+		fileName = file.name;
+		// vCards can carry photos as base64; they're skipped by the parser but still read here.
+		parsed = parseContactFile(file.name, await file.text());
+	} else {
+		return ApiResponse.badRequest('Upload a file');
 	}
+	if (!parsed) return ApiResponse.badRequest(UNREADABLE);
 	if (!parsed.contacts.length) return ApiResponse.badRequest('No contacts found in that file.');
 
-	const summary = {
-		format: parsed.format,
-		format_label: FORMAT_LABEL[parsed.format],
-		contacts: parsed.contacts.length,
-		skipped: parsed.skipped,
-		with_email: parsed.contacts.filter((c) => c.emails.length).length,
-		with_phone: parsed.contacts.filter((c) => c.phones.length).length,
-		with_company: parsed.contacts.filter((c) => c.org).length,
-		capped: parsed.contacts.length >= MAX_IMPORT_CONTACTS,
-		sample: parsed.contacts.slice(0, 5).map((c) => ({
-			name: c.name,
-			detail:
-				c.title && c.org
-					? `${c.title} at ${c.org}`
-					: (c.org ?? c.title ?? c.emails[0]?.value ?? null)
-		}))
-	};
+	const summary = summarizeContactFile(parsed);
 	if (form.get('preview') === '1') return ApiResponse.success({ preview: true, ...summary });
 
 	const supabase = knowledgeDb(locals.supabase);
@@ -88,8 +104,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			owner_user_id: user.id,
 			run_type: 'import',
 			status: 'running',
-			title: `Imported ${FORMAT_LABEL[parsed.format]}`,
-			input: { format: parsed.format, file_name: file.name.slice(0, 200) },
+			title: `Imported ${CONTACT_FORMAT_LABELS[parsed.format]}`,
+			input: { format: parsed.format, file_name: fileName.slice(0, 200) },
 			started_at: new Date().toISOString()
 		})
 		.select('id')
@@ -119,7 +135,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				{
 					ref: 'file',
 					type: 'import',
-					title: file.name.slice(0, 200),
+					title: fileName.slice(0, 200),
 					meta: { format: parsed.format, contacts: parsed.contacts.length }
 				}
 			];

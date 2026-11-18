@@ -221,6 +221,24 @@ export function readChoice(
 const VISIBLE = ['active', 'suggested', 'disputed'];
 const CHUNK = 150;
 
+interface PagedQuery {
+	order(column: string): PagedQuery;
+	range(
+		from: number,
+		to: number
+	): PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>;
+}
+
+async function readAllRows<T>(label: string, build: () => unknown): Promise<T[]> {
+	const rows: T[] = [];
+	for (let from = 0; ; from += 1000) {
+		const { data, error } = await (build() as PagedQuery).order('id').range(from, from + 999);
+		if (error) throw new Error(`${label}: ${error.message}`);
+		rows.push(...((data ?? []) as T[]));
+		if ((data ?? []).length < 1000) return rows;
+	}
+}
+
 function chunks<T>(items: T[], size = CHUNK): T[][] {
 	const out: T[][] = [];
 	for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
@@ -281,24 +299,23 @@ export async function gatherCircleSignals(
 		.maybeSingle();
 	const selfId = (selfRow?.id as string | undefined) ?? null;
 
+	// Every read pages past PostgREST's 1,000-row cap: a 12k-contact import gives the self
+	// entry 12k `knows` facts.
 	const known = new Set<string>();
 	const owned = new Set<string>();
 	if (selfId) {
-		const { data, error } = await db
-			.from('knowledge_facts')
-			.select('predicate, object_entity_id')
-			.eq('entity_id', selfId)
-			.eq('owner_user_id', userId)
-			.in('predicate', ['knows', 'owns'])
-			.in('status', VISIBLE);
-		if (error) throw new Error(`Load your relationships: ${error.message}`);
-		for (const row of (data ?? []) as Array<{
-			predicate: string;
-			object_entity_id: string | null;
-		}>) {
-			if (!row.object_entity_id) continue;
-			(row.predicate === 'knows' ? known : owned).add(row.object_entity_id);
-		}
+		const rows = await readAllRows<{ object_entity_id: string | null }>(
+			'Load what you own',
+			() =>
+				db
+					.from('knowledge_facts')
+					.select('object_entity_id')
+					.eq('entity_id', selfId)
+					.eq('owner_user_id', userId)
+					.eq('predicate', 'owns')
+					.in('status', VISIBLE)
+		);
+		for (const row of rows) if (row.object_entity_id) owned.add(row.object_entity_id);
 	}
 
 	const contacts = new Set<string>();
@@ -306,32 +323,45 @@ export async function gatherCircleSignals(
 	const linkCounts = new Map<string, number>();
 	const quotes = new Map<string, string[]>();
 	for (const group of chunks(ids)) {
-		const [facts, links] = await Promise.all([
-			db
-				.from('knowledge_facts')
-				.select('entity_id, predicate, object_entity_id')
-				.in('entity_id', group)
-				.eq('owner_user_id', userId)
-				.in('predicate', ['email', 'phone', 'works_at', 'part_of'])
-				.in('status', VISIBLE),
-			db
-				.from('knowledge_record_links')
-				.select('entity_id, quote')
-				.in('entity_id', group)
-				.eq('owner_user_id', userId)
+		const [facts, links, knows] = await Promise.all([
+			readAllRows<{ entity_id: string; predicate: string; object_entity_id: string | null }>(
+				'Load facts',
+				() =>
+					db
+						.from('knowledge_facts')
+						.select('entity_id, predicate, object_entity_id')
+						.in('entity_id', group)
+						.eq('owner_user_id', userId)
+						.in('predicate', ['email', 'phone', 'works_at', 'part_of'])
+						.in('status', VISIBLE)
+			),
+			readAllRows<{ entity_id: string; quote: string | null }>('Load links', () =>
+				db
+					.from('knowledge_record_links')
+					.select('entity_id, quote')
+					.in('entity_id', group)
+					.eq('owner_user_id', userId)
+			),
+			selfId
+				? readAllRows<{ object_entity_id: string | null }>('Load who you know', () =>
+						db
+							.from('knowledge_facts')
+							.select('object_entity_id')
+							.eq('entity_id', selfId)
+							.eq('owner_user_id', userId)
+							.eq('predicate', 'knows')
+							.in('object_entity_id', group)
+							.in('status', VISIBLE)
+					)
+				: Promise.resolve([])
 		]);
-		if (facts.error) throw new Error(`Load facts: ${facts.error.message}`);
-		if (links.error) throw new Error(`Load links: ${links.error.message}`);
-		for (const f of (facts.data ?? []) as Array<{
-			entity_id: string;
-			predicate: string;
-			object_entity_id: string | null;
-		}>) {
+		for (const row of knows) if (row.object_entity_id) known.add(row.object_entity_id);
+		for (const f of facts) {
 			if (f.predicate === 'email' || f.predicate === 'phone') contacts.add(f.entity_id);
 			else if (f.object_entity_id && owned.has(f.object_entity_id))
 				worksForMine.add(f.entity_id);
 		}
-		for (const l of (links.data ?? []) as Array<{ entity_id: string; quote: string | null }>) {
+		for (const l of links) {
 			linkCounts.set(l.entity_id, (linkCounts.get(l.entity_id) ?? 0) + 1);
 			if (l.quote?.trim()) {
 				const list = quotes.get(l.entity_id) ?? [];

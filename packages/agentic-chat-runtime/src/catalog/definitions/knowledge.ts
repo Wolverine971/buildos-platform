@@ -36,6 +36,7 @@ export const KNOWLEDGE_TOOL_PREDICATES = [
 	'birthday',
 	'note',
 	'works_at',
+	'educated_at',
 	'knows',
 	'part_of',
 	'located_in',
@@ -54,6 +55,7 @@ export const KNOWLEDGE_TOOL_PREDICATES = [
 /** Predicates whose object is another entity (the ones query_knowledge can follow). */
 export const KNOWLEDGE_TOOL_RELATIONSHIP_PREDICATES = [
 	'works_at',
+	'educated_at',
 	'knows',
 	'part_of',
 	'located_in',
@@ -301,6 +303,52 @@ export const KNOWLEDGE_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					instructions: { type: 'string', maxLength: 500 }
 				},
 				required: ['entity_ids']
+			}
+		}
+	},
+	// Knowledge in shared projects (tasker 168): other members' entries, never the user's.
+	{
+		type: 'function',
+		function: {
+			name: 'get_project_knowledge_lens',
+			description:
+				'What OTHER members of a shared project know about the people and orgs named in its tasks or documents (who does everyone on this project know). Every fact has shared_by and scope: say "DJ\'s People say…"; never present it as the user\'s own knowledge or save it with record_knowledge. hidden counts details the owner has not shared.',
+			parameters: {
+				type: 'object',
+				additionalProperties: false,
+				properties: {
+					project_id: { type: 'string', format: 'uuid' },
+					record_kind: {
+						type: 'string',
+						enum: ['task', 'document'],
+						description: 'Omit for both.'
+					},
+					record_ids: {
+						type: 'array',
+						maxItems: 100,
+						items: { type: 'string', format: 'uuid' },
+						description: 'Specific tasks or documents; omit for the 100 most recent.'
+					}
+				},
+				required: ['project_id']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'request_knowledge_access',
+			description:
+				"Ask the member who holds an entry (from get_project_knowledge_lens, can_ask true) to share its hidden details with the user. Only when the user asks for it. Goes out in the user's name; nothing is shared until the owner chooses in BuildOS. You cannot approve.",
+			parameters: {
+				type: 'object',
+				additionalProperties: false,
+				properties: {
+					entity_id: ENTITY_ID,
+					project_id: { type: 'string', format: 'uuid' },
+					what: { type: 'string', enum: ['contact', 'all'], default: 'contact' }
+				},
+				required: ['entity_id', 'project_id']
 			}
 		}
 	}

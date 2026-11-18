@@ -19,6 +19,7 @@ import {
 	KnowledgeStore,
 	getKnowledgePredicate,
 	isKnowledgeKind,
+	normalizeKnowledgeValue,
 	startKnowledgeEnrichment,
 	type KnowledgeDataClient,
 	type KnowledgeEntityDetail,
@@ -596,6 +597,440 @@ export async function runKnowledgeEnrich(
 }
 
 // ---------------------------------------------------------------------------
+// Knowledge in shared projects (tasker 168; 20261118300000_knowledge_project_sharing.sql)
+//
+//   knowledge.project_lens   → get_project_knowledge_lens
+//   knowledge.request_access → request_knowledge_access
+//
+// Everyone keeps a private graph. Inside a project with other members, the lens shows what
+// OTHER current members' entries hold about the names on this project's tasks/docs: public or
+// project-sourced facts, plus whatever the owner granted this viewer. The database decides
+// every rule (membership, per-fact level, live grants); these runners pass p_viewer = the
+// trusted user id (service role) and label every fact with who shared it, so a model says
+// "DJ's People say…" and never presents it as the user's own knowledge.
+//
+// Agents may ASK the owner for more (knowledge_request_share, via 'agent'); approve, decline
+// and revoke are revoked from service_role in the migration, so no agent can grant.
+
+export const KNOWLEDGE_LENS_RECORD_LIMIT = 100;
+const LENS_ENTRY_LIMIT = 60;
+const LENS_FACT_LIMIT = 30;
+const LENS_RECORD_ID_LIMIT = 10;
+const LENS_QUOTE_LIMIT = 3;
+
+export const KNOWLEDGE_LENS_GUIDANCE =
+	"Other members' notes, not the user's. Attribute every fact to its shared_by person (\"DJ's People say…\"). Never present it as the user's own knowledge and never save it with record_knowledge. hidden counts details the owner has not shared; request_knowledge_access asks them (only when the user wants it).";
+
+type LensRecordKind = 'task' | 'document';
+
+type RawLensFact = {
+	id?: unknown;
+	predicate?: unknown;
+	value?: unknown;
+	object_name?: unknown;
+	object_kind?: unknown;
+	qualifiers?: unknown;
+	source_url?: unknown;
+	via?: unknown;
+};
+
+type RawLensEntry = {
+	owner?: { user_id?: unknown; name?: unknown } | null;
+	entity?: { id?: unknown; kind?: unknown; name?: unknown; summary?: unknown } | null;
+	record_ids?: unknown;
+	quotes?: unknown;
+	facts?: unknown;
+	hidden?: { contact?: unknown; other?: unknown } | null;
+	ask?: { status?: unknown; created_at?: unknown } | null;
+	grant?: { what?: unknown; duration?: unknown; expires_at?: unknown } | null;
+};
+
+type RpcError = { message?: string; code?: string } | null;
+
+function uuidArg(value: unknown, field: string): string {
+	if (typeof value !== 'string' || !UUID.test(value.trim())) {
+		throw invalid(`${field} must be a UUID`);
+	}
+	return value.trim().toLowerCase();
+}
+
+function text(value: unknown): string | null {
+	return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function count(value: unknown): number {
+	const number = typeof value === 'number' ? value : Number(value);
+	return Number.isFinite(number) && number > 0 ? Math.trunc(number) : 0;
+}
+
+function rpcFailure(error: NonNullable<RpcError>, fallback: string): ExternalToolGatewayError {
+	if (error.code === '42501') {
+		return new ExternalToolGatewayError(
+			'FORBIDDEN',
+			'The user is not a current member of this project, so its shared knowledge is not visible.'
+		);
+	}
+	if (error.code === '22023') {
+		return new ExternalToolGatewayError('VALIDATION_ERROR', error.message || fallback);
+	}
+	return new ExternalToolGatewayError('INTERNAL', fallback);
+}
+
+/**
+ * The shared-project knowledge ops are project-scoped, unlike the personal graph ops. The
+ * viewer is always the authenticated user on the context (never an argument). A connection
+ * limited to chosen projects may use the lens on those projects only, and never the ask.
+ * Any connection whose scope lists projects must name one of them.
+ */
+function trustedProjectViewer(
+	context: Pick<ToolExecutionContext, 'userId' | 'projectScopeMode' | 'scope'>,
+	projectId: string,
+	op: 'knowledge.project_lens' | 'knowledge.request_access'
+): string {
+	if (typeof context.userId !== 'string' || !UUID.test(context.userId)) {
+		throw new ExternalToolGatewayError('FORBIDDEN', 'Knowledge tools need a signed-in user.');
+	}
+	const projectIds = Array.isArray(context.scope?.project_ids)
+		? context.scope.project_ids.map((id) => String(id).toLowerCase())
+		: null;
+	if (context.projectScopeMode === 'selected') {
+		if (op !== 'knowledge.project_lens') {
+			throw new ExternalToolGatewayError(
+				'FORBIDDEN',
+				'This connection is limited to selected projects, so it can read what other members share there but cannot send asks. The user can press Ask on the card in BuildOS.'
+			);
+		}
+		if (!projectIds) {
+			throw new ExternalToolGatewayError(
+				'FORBIDDEN',
+				'This connection is limited to selected projects and none are selected.'
+			);
+		}
+	}
+	if (projectIds && !projectIds.includes(projectId)) {
+		throw new ExternalToolGatewayError('FORBIDDEN', 'This connection cannot see that project.');
+	}
+	return context.userId;
+}
+
+/**
+ * Refuses when the project's owner turned this member's agents off there (same rule as
+ * people_layer_effective_agent_access). No member row (e.g. no actor yet) is left to the
+ * lens's own membership check.
+ */
+async function assertMemberAgentsAllowed(
+	client: KnowledgeDataClient,
+	userId: string,
+	projectId: string
+): Promise<void> {
+	const db = client as any;
+	const { data: actor, error: actorError } = await db
+		.from('onto_actors')
+		.select('id')
+		.eq('user_id', userId)
+		.maybeSingle();
+	if (actorError) throw new ExternalToolGatewayError('INTERNAL', 'Could not check agent access');
+	if (!actor?.id) return;
+	const { data, error } = await db.rpc('people_layer_effective_agent_access', {
+		p_project_id: projectId,
+		p_actor_id: actor.id
+	});
+	if (error) throw new ExternalToolGatewayError('INTERNAL', 'Could not check agent access');
+	if (data === 'off') {
+		throw new ExternalToolGatewayError(
+			'FORBIDDEN',
+			"The project's owner turned off agents for this person in this project, so agents cannot read or ask about what other members know there. Only the owner can turn it back on."
+		);
+	}
+}
+
+async function recentRecordIds(
+	client: KnowledgeDataClient,
+	kind: LensRecordKind,
+	projectId: string
+): Promise<string[]> {
+	const { data, error } = await (client as any)
+		.from(kind === 'task' ? 'onto_tasks' : 'onto_documents')
+		.select('id')
+		.eq('project_id', projectId)
+		.is('deleted_at', null)
+		.order('updated_at', { ascending: false })
+		.limit(KNOWLEDGE_LENS_RECORD_LIMIT);
+	if (error)
+		throw new ExternalToolGatewayError('INTERNAL', `Could not list the project's ${kind}s`);
+	return ((data ?? []) as Array<{ id: string }>).map((row) => row.id);
+}
+
+function compactLensFact(
+	raw: RawLensFact,
+	sharedBy: string,
+	projectScope: string
+): Record<string, unknown> | null {
+	const predicate = text(raw.predicate);
+	if (!predicate) return null;
+	const value = text(raw.value);
+	const objectName = text(raw.object_name);
+	if (!value && !objectName) return null;
+	const qualifiers = isRecord(raw.qualifiers) ? nonEmpty(raw.qualifiers) : undefined;
+	const sourceUrl = text(raw.source_url);
+	return {
+		predicate,
+		...(value ? { value } : {}),
+		...(objectName
+			? {
+					object: {
+						name: objectName,
+						...(text(raw.object_kind) ? { kind: raw.object_kind } : {})
+					}
+				}
+			: {}),
+		...(qualifiers ? { qualifiers } : {}),
+		...(sourceUrl ? { source_url: sourceUrl } : {}),
+		shared_by: sharedBy,
+		scope: raw.via === 'grant' ? 'grant' : projectScope
+	};
+}
+
+function compactLensEntry(raw: RawLensEntry, projectScope: string): Record<string, unknown> | null {
+	const entityId = text(raw.entity?.id);
+	const name = text(raw.entity?.name);
+	if (!entityId || !name) return null;
+	const sharedBy = text(raw.owner?.name) ?? 'Another member';
+	const facts = (Array.isArray(raw.facts) ? (raw.facts as RawLensFact[]) : [])
+		.map((fact) => compactLensFact(fact, sharedBy, projectScope))
+		.filter((fact): fact is Record<string, unknown> => fact !== null);
+	const recordIds = Array.isArray(raw.record_ids)
+		? raw.record_ids.filter((id): id is string => typeof id === 'string')
+		: [];
+	const quotes = Array.isArray(raw.quotes)
+		? raw.quotes
+				.filter((quote): quote is string => typeof quote === 'string' && !!quote.trim())
+				.slice(0, LENS_QUOTE_LIMIT)
+		: [];
+	const hidden = { contact: count(raw.hidden?.contact), other: count(raw.hidden?.other) };
+	const askStatus = text(raw.ask?.status);
+	const grant = raw.grant
+		? {
+				what: text(raw.grant.what) ?? 'contact',
+				duration: text(raw.grant.duration) ?? 'membership',
+				...(text(raw.grant.expires_at) ? { expires_at: raw.grant.expires_at } : {})
+			}
+		: null;
+	const hasHidden = hidden.contact + hidden.other > 0;
+	return {
+		entity: {
+			id: entityId,
+			kind: text(raw.entity?.kind) ?? 'person',
+			name,
+			...(text(raw.entity?.summary) ? { summary: raw.entity!.summary } : {})
+		},
+		shared_by: sharedBy,
+		facts: facts.slice(0, LENS_FACT_LIMIT),
+		...(facts.length > LENS_FACT_LIMIT ? { facts_truncated: true } : {}),
+		...(hasHidden ? { hidden } : {}),
+		...(askStatus
+			? {
+					ask: {
+						status: askStatus,
+						...(text(raw.ask?.created_at) ? { asked_at: raw.ask!.created_at } : {})
+					}
+				}
+			: {}),
+		...(grant ? { grant } : {}),
+		// One ask per entry at a time; a recent no stays quiet for 30 days.
+		can_ask: hasHidden && !askStatus,
+		on_records: recordIds.slice(0, LENS_RECORD_ID_LIMIT),
+		...(quotes.length ? { quotes } : {})
+	};
+}
+
+export async function runKnowledgeProjectLens(
+	client: KnowledgeDataClient,
+	userId: string,
+	args: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+	const projectId = uuidArg(args.project_id, 'project_id');
+	const kindArg = args.record_kind;
+	if (kindArg !== undefined && kindArg !== null && kindArg !== 'task' && kindArg !== 'document') {
+		throw invalid('record_kind must be task or document');
+	}
+	const explicitIds = arrayArg(args.record_ids, 'record_ids', KNOWLEDGE_LENS_RECORD_LIMIT).map(
+		(id, index) => uuidArg(id, `record_ids[${index}]`)
+	);
+	if (explicitIds.length && !kindArg) throw invalid('record_ids needs record_kind');
+	const kinds: LensRecordKind[] = kindArg ? [kindArg as LensRecordKind] : ['task', 'document'];
+	const db = client as any;
+
+	const [{ data: project, error: projectError }] = await Promise.all([
+		db.from('onto_projects').select('id, name').eq('id', projectId).maybeSingle(),
+		assertMemberAgentsAllowed(client, userId, projectId)
+	]);
+	if (projectError) throw new ExternalToolGatewayError('INTERNAL', 'Could not load the project');
+	if (!project) throw new ExternalToolGatewayError('NOT_FOUND', 'Project not found');
+	const projectName = text(project.name) ?? 'this project';
+	const projectScope = `project:${projectName}`;
+
+	const recordSets = await Promise.all(
+		kinds.map(async (kind) => ({
+			kind,
+			ids: explicitIds.length ? explicitIds : await recentRecordIds(client, kind, projectId)
+		}))
+	);
+	// The lens checks membership itself, so it runs at least once even with no records.
+	const lensSets = recordSets.filter((set) => set.ids.length > 0);
+	const lenses = await Promise.all(
+		(lensSets.length ? lensSets : [{ kind: kinds[0]!, ids: [] as string[] }]).map(
+			async (set) => {
+				const { data, error } = await db.rpc('knowledge_project_lens', {
+					p_project: projectId,
+					p_record_kind: set.kind,
+					p_record_ids: set.ids,
+					p_viewer: userId
+				});
+				if (error) throw rpcFailure(error, 'Could not read shared knowledge');
+				return isRecord(data) && Array.isArray(data.entries)
+					? (data.entries as RawLensEntry[])
+					: [];
+			}
+		)
+	);
+
+	// One row per (owner, entity): the same entry may sit on both tasks and documents.
+	const byKey = new Map<string, Record<string, unknown>>();
+	for (const raw of lenses.flat()) {
+		const entry = compactLensEntry(raw, projectScope);
+		if (!entry) continue;
+		const key = `${text(raw.owner?.user_id) ?? ''}|${(entry.entity as { id: string }).id}`;
+		const existing = byKey.get(key);
+		if (existing) {
+			existing.on_records = [
+				...new Set([
+					...(existing.on_records as string[]),
+					...(entry.on_records as string[])
+				])
+			].slice(0, LENS_RECORD_ID_LIMIT);
+			continue;
+		}
+		byKey.set(key, entry);
+	}
+	const entries = [...byKey.values()];
+	const recordsChecked = recordSets.reduce((sum, set) => sum + set.ids.length, 0);
+	return {
+		project: { id: projectId, name: projectName },
+		record_kind: kinds.length === 1 ? kinds[0] : 'task+document',
+		records_checked: recordsChecked,
+		guidance: KNOWLEDGE_LENS_GUIDANCE,
+		entries: entries.slice(0, LENS_ENTRY_LIMIT),
+		total: entries.length,
+		...(entries.length > LENS_ENTRY_LIMIT ? { truncated: true } : {}),
+		...(entries.length === 0
+			? {
+					message:
+						recordsChecked === 0
+							? 'This project has no tasks or documents to look at yet.'
+							: 'No other member has shared anything about the names on these records.'
+				}
+			: {})
+	};
+}
+
+const ASK_MESSAGES: Record<string, string> = {
+	sent: 'Asked. Nothing is shared until they choose; if they say yes, it shows on the card wherever the name appears in the project.',
+	already_waiting:
+		'An ask is already waiting with them for this entry (added to it). Nothing is shared until they answer.',
+	owner_said_no:
+		'They said no to this recently, so no new ask was sent. Do not ask again for now.',
+	already_shared:
+		'This is already shared with the user. Read get_project_knowledge_lens again to see it.',
+	not_found:
+		"Only names another current member linked to this project's tasks or documents can be asked about. Check the entity_id from get_project_knowledge_lens.",
+	rate_limited: 'The user has too many open asks. Wait for some answers first.'
+};
+
+export async function runKnowledgeRequestAccess(
+	client: KnowledgeDataClient,
+	userId: string,
+	args: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+	const entity = entityId(args.entity_id, 'entity_id');
+	const projectId = uuidArg(args.project_id, 'project_id');
+	const what = args.what ?? 'contact';
+	if (what !== 'contact' && what !== 'all') throw invalid('what must be contact or all');
+
+	await assertMemberAgentsAllowed(client, userId, projectId);
+	const { data, error } = await (client as any).rpc('knowledge_request_share', {
+		p_entity: entity,
+		p_project: projectId,
+		p_what: what,
+		p_viewer: userId,
+		p_via: 'agent'
+	});
+	if (error) throw rpcFailure(error, 'Could not send the ask');
+
+	const outcome = isRecord(data) ? data : {};
+	const raw = typeof outcome.status === 'string' ? outcome.status : 'not_found';
+	const shareId = typeof outcome.id === 'string' ? outcome.id : null;
+	const status =
+		raw === 'requested'
+			? outcome.merged === true
+				? 'already_waiting'
+				: 'sent'
+			: raw === 'declined'
+				? 'owner_said_no'
+				: raw;
+	return {
+		knowledge_ask: {
+			status,
+			entity_id: entity,
+			project_id: projectId,
+			what,
+			...(shareId ? { id: shareId } : {}),
+			// Only a brand-new ask notifies the owner (the web host sends the email).
+			new_request: status === 'sent'
+		},
+		message: ASK_MESSAGES[status] ?? 'The ask could not be sent.'
+	};
+}
+
+/**
+ * A stable, content-free key for a granted value: the predicate's value type plus a 32-bit
+ * hash of the normalized value. Chat storage keeps these keys instead of the granted values,
+ * and the wrap-up capture drops a candidate fact whose key matches (a value the turn only
+ * learned from someone else's grant must not be copied into the user's own graph). Structured
+ * value comparison only; a rare hash collision just skips one capture.
+ */
+export function knowledgeGrantValueKey(predicate: string, value: string | number): string | null {
+	const def = getKnowledgePredicate(predicate);
+	const valueType = def && def.valueType !== 'entity' ? def.valueType : 'text';
+	const normalized = normalizeKnowledgeValue(valueType, value);
+	if (!normalized) return null;
+	const key =
+		valueType === 'text' || valueType === 'json' ? normalized.toLowerCase() : normalized;
+	let hash = 2166136261;
+	for (let i = 0; i < key.length; i += 1) {
+		hash ^= key.charCodeAt(i);
+		hash = Math.imul(hash, 16777619);
+	}
+	return `${valueType}:${(hash >>> 0).toString(16)}`;
+}
+
+/** Keys of every granted (scope 'grant') fact value in a get_project_knowledge_lens result. */
+export function lensGrantedValueKeys(result: unknown): string[] {
+	if (!isRecord(result) || !Array.isArray(result.entries)) return [];
+	const keys = new Set<string>();
+	for (const entry of result.entries) {
+		if (!isRecord(entry) || !Array.isArray(entry.facts)) continue;
+		for (const fact of entry.facts) {
+			if (!isRecord(fact) || fact.scope !== 'grant') continue;
+			if (typeof fact.predicate !== 'string' || typeof fact.value !== 'string') continue;
+			const key = knowledgeGrantValueKey(fact.predicate, fact.value);
+			if (key) keys.add(key);
+		}
+	}
+	return [...keys];
+}
+
+// ---------------------------------------------------------------------------
 // Gateway handlers (EXTERNAL_OP_HANDLERS). `via` comes from the execution context, never
 // from arguments: an external agent call carries callerId; internal chat never does.
 
@@ -642,4 +1077,22 @@ export async function enrichKnowledge(
 	return runKnowledgeEnrich(context.admin, trustedUserId(context), args, {
 		via: knowledgeViaForContext(context)
 	});
+}
+
+export async function projectKnowledgeLens(
+	context: ToolExecutionContext,
+	args: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+	const projectId = uuidArg(args.project_id, 'project_id');
+	const viewer = trustedProjectViewer(context, projectId, 'knowledge.project_lens');
+	return runKnowledgeProjectLens(context.admin, viewer, { ...args, project_id: projectId });
+}
+
+export async function requestKnowledgeAccess(
+	context: ToolExecutionContext,
+	args: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+	const projectId = uuidArg(args.project_id, 'project_id');
+	const viewer = trustedProjectViewer(context, projectId, 'knowledge.request_access');
+	return runKnowledgeRequestAccess(context.admin, viewer, { ...args, project_id: projectId });
 }

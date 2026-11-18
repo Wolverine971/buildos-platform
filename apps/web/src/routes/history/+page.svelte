@@ -123,8 +123,13 @@
 			.catch((err) => {
 				// Discard stale errors from previous filter/pagination changes
 				if (currentVersion !== historyResolveVersion) return;
-				historyError = err?.message || 'Failed to load history';
 				historyLoading = false;
+				// A background refetch of the list already on screen keeps its rows.
+				if (refetch) {
+					console.warn('[history] Refresh failed; keeping the current list', err);
+					return;
+				}
+				historyError = err?.message || 'Failed to load history';
 			});
 	});
 

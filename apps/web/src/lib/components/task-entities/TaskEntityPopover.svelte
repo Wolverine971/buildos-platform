@@ -117,9 +117,13 @@
 	// has a name in the knowledge graph, in the background before anyone clicks.
 	let deps = $state<typeof import('./task-knowledge-deps') | null>(null);
 	$effect(() => {
-		if (deps || !Object.keys(entities.knowledge).length) return;
+		if (deps || (!Object.keys(entities.knowledge).length && !entities.lens?.entries.length))
+			return;
 		void import('./task-knowledge-deps').then((module) => (deps = module));
 	});
+
+	// What other members of a shared project hold about this name (tasker 168).
+	const lensEntries = $derived(entities.lensFor(card));
 
 	const ADD_LABEL: Record<TaskEntityCard['kind'], string> = {
 		person: 'Add to People',
@@ -243,6 +247,13 @@
 		}}
 	>
 		{#snippet footer({ depth })}
+			{#if deps && depth === 1 && lensEntries.length && entities.lens}
+				<deps.KnowledgeLensSection
+					entries={lensEntries}
+					projectId={entities.lens.projectId}
+					heading="also"
+				/>
+			{/if}
 			{#if canEdit && card && depth === 1}
 				<div
 					class="mx-4 mb-3 flex items-center justify-between gap-2 border-t border-border pt-2"
@@ -421,6 +432,15 @@
 				</div>
 			{:else if relatedLoading}
 				<p class="text-xs text-muted-foreground" role="status">Looking for other tasks…</p>
+			{/if}
+
+			{#if deps && lensEntries.length && entities.lens}
+				<div class="-mx-3.5">
+					<deps.KnowledgeLensSection
+						entries={lensEntries}
+						projectId={entities.lens.projectId}
+					/>
+				</div>
 			{/if}
 
 			<button

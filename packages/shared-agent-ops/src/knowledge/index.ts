@@ -10,3 +10,5 @@ export * from './youtube';
 export * from './anchors';
 export * from './circles';
 export * from './identity';
+export * from './mentions';
+export * from './mention-sync';

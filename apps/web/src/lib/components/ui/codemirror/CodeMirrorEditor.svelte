@@ -37,6 +37,11 @@
 		hideVoiceInsertHint as hideVoiceInsertHintEffect,
 		type VoiceDictationTarget
 	} from './voice-widget';
+	import {
+		mentionHighlightsExtension,
+		setMentionHighlights,
+		type MentionHighlight
+	} from './mention-highlights';
 
 	interface Props {
 		/** The markdown text content (two-way bindable) */
@@ -59,6 +64,11 @@
 		onSelectionChange?: (selection: { from: number; to: number }) => void;
 		/** Additional CSS classes for the wrapper */
 		class?: string;
+		/**
+		 * Tagged names to underline (offsets into `value` when they are set). They follow
+		 * edits; setting a new array replaces them.
+		 */
+		highlights?: MentionHighlight[];
 	}
 
 	let {
@@ -71,7 +81,8 @@
 		onSave,
 		onDocChange,
 		onSelectionChange,
-		class: className = ''
+		class: className = '',
+		highlights
 	}: Props = $props();
 
 	let containerElement = $state<HTMLDivElement | null>(null);
@@ -128,6 +139,7 @@
 			additionalExtensions: [
 				updateListener,
 				voiceWidgetExtension,
+				mentionHighlightsExtension,
 				editableCompartment.of(EditorView.editable.of(isEditable))
 			]
 		});
@@ -169,6 +181,13 @@
 				}
 			});
 		}
+	});
+
+	// Tagged names: a new array replaces the set; CodeMirror maps them through edits after.
+	$effect(() => {
+		const next = highlights;
+		if (!view || !next) return;
+		view.dispatch({ effects: setMentionHighlights.of(next) });
 	});
 
 	// Sync readOnly/disabled changes via compartment

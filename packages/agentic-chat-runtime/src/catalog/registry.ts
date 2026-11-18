@@ -173,7 +173,12 @@ export const TOOL_OPERATIONS: Readonly<Record<string, ToolOperation>> = Object.f
 	get_knowledge_entity: { op: 'knowledge.get', kind: 'read' },
 	query_knowledge: { op: 'knowledge.query', kind: 'read' },
 	record_knowledge: { op: 'knowledge.record', kind: 'write' },
-	enrich_knowledge: { op: 'knowledge.enrich', kind: 'write' }
+	enrich_knowledge: { op: 'knowledge.enrich', kind: 'write' },
+	// --- Knowledge in shared projects (2026-11-18, tasker 168). Project-scoped. The ask is
+	// a write in chat (reviewed mutation lane, receipt) but read-tier for external callers
+	// (like request_project_access: it creates a request the owner answers). ---
+	get_project_knowledge_lens: { op: 'knowledge.project_lens', kind: 'read' },
+	request_knowledge_access: { op: 'knowledge.request_access', kind: 'write' }
 });
 
 let cachedRegistry: ToolRegistry | null = null;

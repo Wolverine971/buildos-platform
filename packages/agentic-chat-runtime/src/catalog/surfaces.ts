@@ -185,7 +185,11 @@ const GLOBAL_DIRECT_TOOL_NAMES = [
 	'get_knowledge_entity',
 	'query_knowledge',
 	'record_knowledge',
-	'enrich_knowledge'
+	'enrich_knowledge',
+	// Knowledge in shared projects (2026-11-18, tasker 168): other members' entries on a
+	// project's names, and the ask. Both surfaces; Jev mounts them only on such turns.
+	'get_project_knowledge_lens',
+	'request_knowledge_access'
 ] as const;
 
 /** Global-only members the project surface drops (see the comment above each). */

@@ -28,11 +28,17 @@ export {
 	KNOWLEDGE_SEARCH_LIMIT_DEFAULT,
 	KNOWLEDGE_SEARCH_LIMIT_MAX,
 	KNOWLEDGE_TOOL_SOURCE_TYPES,
+	KNOWLEDGE_LENS_GUIDANCE,
+	KNOWLEDGE_LENS_RECORD_LIMIT,
 	compactKnowledgeEntityDetail,
+	knowledgeGrantValueKey,
+	lensGrantedValueKeys,
 	runKnowledgeEnrich,
 	runKnowledgeGet,
+	runKnowledgeProjectLens,
 	runKnowledgeQuery,
 	runKnowledgeRecord,
+	runKnowledgeRequestAccess,
 	runKnowledgeSearch,
 	type KnowledgeOpVia
 } from './op-execution-gateway.knowledge';

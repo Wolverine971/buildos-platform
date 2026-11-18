@@ -45,3 +45,41 @@ describe('splitMentions', () => {
 		expect(segments.filter((segment) => segment.kind === 'mention')).toHaveLength(1);
 	});
 });
+
+describe('placeTags', () => {
+	it('finds each stored tag in the rendered text by its words and context', async () => {
+		const { placeTags } = await import('./entity-mentions');
+		// Stored markdown said "**Phil Velayo**"; the page shows plain words.
+		const page = 'Phil Velayo builds rifles. Ask Phil Velayo about the 7 Devils match.';
+		const placed = placeTags(page, [
+			{
+				tagId: 't2',
+				id: 'e1',
+				label: 'Phillip Velayo',
+				text: 'Phil Velayo',
+				prefix: 'rifles. Ask ',
+				suffix: ' about the 7'
+			},
+			{
+				tagId: 't1',
+				id: 'e1',
+				label: 'Phillip Velayo',
+				text: 'Phil Velayo',
+				prefix: '',
+				suffix: '** builds rifles.'
+			},
+			{
+				tagId: 't3',
+				id: 'e2',
+				label: 'Rod',
+				text: 'Rod Chamberlin',
+				prefix: 'x',
+				suffix: 'y'
+			}
+		]);
+		expect(placed.map((p) => [p.tag.tagId, page.slice(p.start, p.end), p.start])).toEqual([
+			['t1', 'Phil Velayo', 0],
+			['t2', 'Phil Velayo', 31]
+		]);
+	});
+});

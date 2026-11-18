@@ -21,6 +21,7 @@
 	import PeopleSection from '$lib/components/people/hub/PeopleSection.svelte';
 	import PeopleRequests from '$lib/components/people/PeopleRequests.svelte';
 	import AccessHistory from '$lib/components/people/AccessHistory.svelte';
+	import SharedKnowledgeSection from '$lib/components/knowledge/SharedKnowledgeSection.svelte';
 	import type { PeopleHubData } from '$lib/components/people/hub/hub-types';
 
 	let {
@@ -160,6 +161,8 @@
 			/>
 		</div>
 	{/if}
+
+	<SharedKnowledgeSection />
 
 	{#if loading && !hub}
 		<div

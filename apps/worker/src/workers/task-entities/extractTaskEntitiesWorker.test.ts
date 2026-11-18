@@ -75,14 +75,23 @@ function fakeDb(
 				},
 				upsert: (values: Row | Row[], options?: { onConflict?: string }) => {
 					const keys = (options?.onConflict ?? 'id').split(',');
+					const added: Row[] = [];
 					for (const value of Array.isArray(values) ? values : [values]) {
 						const found = rows.find((row) =>
 							keys.every((key) => row[key] === value[key])
 						);
 						if (found) Object.assign(found, value);
-						else rows.push({ id: `row-${rows.length + 1}`, ...value });
+						else {
+							const row = { id: `row-${rows.length + 1}`, ...value };
+							rows.push(row);
+							added.push(row);
+						}
 					}
-					return Promise.resolve({ error: null });
+					const result = { data: added.map((row) => ({ id: row.id })), error: null };
+					// Like PostgREST: awaitable directly, or with .select() for the new rows.
+					return Object.assign(Promise.resolve({ error: null }), {
+						select: () => Promise.resolve(result)
+					});
 				},
 				then: (resolve: (value: unknown) => unknown) => Promise.resolve(run()).then(resolve)
 			};

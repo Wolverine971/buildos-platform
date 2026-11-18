@@ -18,6 +18,8 @@ import {
 } from '@buildos/shared-agent-ops/task-entities';
 import { toastService } from '$lib/stores/toast.store';
 import type { MentionLink, MentionTarget } from './entity-mentions';
+import type { LensEntry } from '$lib/components/knowledge/sharing-types';
+import { lensEntriesFor } from '$lib/components/knowledge/lens-match';
 
 export type TaskEntitySource = {
 	taskId: string | null;
@@ -39,6 +41,8 @@ export class TaskEntities {
 	open = $state<{ cardId: string; anchor: HTMLElement } | null>(null);
 	/** Task entity id → the viewer's knowledge-graph entry for that person or org (tasker 160). */
 	knowledge = $state.raw<Record<string, string>>({});
+	/** In a project other people are in: what their People hold about these names (tasker 168). */
+	lens = $state.raw<{ projectId: string; entries: LensEntry[] } | null>(null);
 
 	readonly entities: TaskEntityRecord[] = $derived(
 		this.#rows.map((row) => {
@@ -77,6 +81,7 @@ export class TaskEntities {
 			this.#rows = [];
 			this.#overrides = {};
 			this.knowledge = {};
+			this.lens = null;
 			this.open = null;
 			if (!id) return;
 			const controller = new AbortController();
@@ -116,10 +121,21 @@ export class TaskEntities {
 			this.#rows = Array.isArray(body?.data?.entities) ? body.data.entities : [];
 			const knowledge = body?.data?.knowledge;
 			this.knowledge = knowledge && typeof knowledge === 'object' ? knowledge : {};
+			const lens = body?.data?.lens;
+			this.lens =
+				lens && typeof lens.project_id === 'string' && Array.isArray(lens.entries)
+					? { projectId: lens.project_id, entries: lens.entries }
+					: null;
 			this.#overrides = {};
 		} catch {
 			// A convenience: the text and its links still show without it.
 		}
+	}
+
+	/** Other members' entries for one card's name (its display name and the words it appears as). */
+	lensFor(card: TaskEntityCard | null): LensEntry[] {
+		if (!card || !this.lens) return [];
+		return lensEntriesFor(this.lens.entries, [card.name, ...card.mentions]);
 	}
 
 	openCardFor(cardId: string, anchor: HTMLElement) {
@@ -150,9 +166,10 @@ export class TaskEntities {
 			const id = body?.data?.entity_id as string | undefined;
 			if (!response.ok || !id) throw new Error(body?.error ?? 'Could not add that');
 			this.knowledge = { ...this.knowledge, [card.id]: id };
+			const copied = await this.#adoptLens(card, id);
 			toastService.success(
 				body?.data?.matched === 'created'
-					? `Added ${card.name}. Only you can see it.`
+					? `Added ${card.name}${copied ? ` with ${copied} public detail${copied === 1 ? '' : 's'} others had` : ''}. Only you can see it.`
 					: `${card.name} was already in your knowledge, now linked to this task.`
 			);
 			return id;
@@ -160,6 +177,35 @@ export class TaskEntities {
 			toastService.error(error instanceof Error ? error.message : 'Could not add that');
 			return null;
 		}
+	}
+
+	/** Copy the public-web details other members' entries show for this name (tasker 168). */
+	async #adoptLens(card: TaskEntityCard, into: string): Promise<number> {
+		const lens = this.lens;
+		const taskId = this.#taskId;
+		const from = this.lensFor(card).filter((e) => e.facts.some((f) => f.source_url));
+		if (!lens || !taskId || !from.length) return 0;
+		let copied = 0;
+		for (const entry of from) {
+			try {
+				const response = await fetch('/api/knowledge/lens/adopt', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						project_id: lens.projectId,
+						record_kind: 'task',
+						record_id: taskId,
+						from_entity_id: entry.entity.id,
+						into_entity_id: into
+					})
+				});
+				const body = await response.json().catch(() => null);
+				copied += Number(body?.data?.copied ?? 0);
+			} catch {
+				// The entry exists either way; the details can be added by hand.
+			}
+		}
+		return copied;
 	}
 
 	/** Dismiss a name without the Undo toast (it was deleted from knowledge on purpose). */

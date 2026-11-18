@@ -1051,5 +1051,26 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		],
 		contexts: ['global', 'project'],
 		category: 'write'
+	},
+	// Knowledge in shared projects (2026-11-18, tasker 168): other members' entries.
+	get_project_knowledge_lens: {
+		summary:
+			'See what other members of a shared project know about the people and organizations named in its tasks and documents, labelled by who shared it.',
+		capabilities: [
+			'For asks like who does everyone on this project know, what does my teammate have on this person',
+			'Shows shared facts, counts of details the owner has not shared, and whether an ask is waiting'
+		],
+		contexts: ['global', 'project'],
+		category: 'read'
+	},
+	request_knowledge_access: {
+		summary:
+			'Ask the project member who holds a person or organization entry to share its contact details or more with the user.',
+		capabilities: [
+			"Sends one ask in the user's name; the owner decides in BuildOS",
+			'Never shares anything by itself'
+		],
+		contexts: ['global', 'project'],
+		category: 'write'
 	}
 };

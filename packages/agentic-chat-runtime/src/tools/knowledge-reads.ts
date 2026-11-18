@@ -8,8 +8,13 @@
 // The worker reads with a service-role client. KnowledgeStore filters every read to public
 // rows plus this user's private rows in code, and it is built from `context.userId` — the
 // turn's trusted auth user — never from model arguments.
+//
+// get_project_knowledge_lens (tasker 168) reads what OTHER members of a shared project hold
+// about its names. The turn must be able to read the project; the runner then passes
+// p_viewer = context.userId and the database checks membership and every sharing rule.
 import {
 	runKnowledgeGet,
+	runKnowledgeProjectLens,
 	runKnowledgeQuery,
 	runKnowledgeSearch
 } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
@@ -58,4 +63,20 @@ export function queryKnowledge(
 	args: SharedQueryKnowledgeArgs
 ): Promise<Record<string, unknown>> {
 	return runKnowledgeQuery(context.client, context.userId, { ...args });
+}
+
+export interface SharedGetProjectKnowledgeLensArgs {
+	project_id: string;
+	record_kind?: 'task' | 'document';
+	record_ids?: string[];
+}
+
+export async function getProjectKnowledgeLens(
+	context: AgenticChatSharedReadContextV1,
+	args: SharedGetProjectKnowledgeLensArgs
+): Promise<Record<string, unknown>> {
+	const projectId = typeof args.project_id === 'string' ? args.project_id.trim() : '';
+	// The runner validates the id shape; an unreadable project stops here.
+	if (projectId) await context.access.assertProjectAccess(projectId, 'read');
+	return runKnowledgeProjectLens(context.client, context.userId, { ...args });
 }

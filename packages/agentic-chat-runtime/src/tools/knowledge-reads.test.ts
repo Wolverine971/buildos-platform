@@ -142,3 +142,74 @@ describe('knowledge reads', () => {
 		expect(rpc).not.toHaveBeenCalled();
 	});
 });
+
+describe('shared-project knowledge lens on the chat read lane (tasker 168)', () => {
+	const PROJECT = '44444444-4444-4444-8444-444444444444';
+
+	function lensClient() {
+		const rpc = vi.fn(async (fn: string, _args: Record<string, unknown>) => {
+			if (fn === 'people_layer_effective_agent_access') return { data: 'read', error: null };
+			if (fn === 'knowledge_project_lens') return { data: { entries: [] }, error: null };
+			return { data: null, error: { message: `unexpected rpc ${fn}` } };
+		});
+		const chain: any = new Proxy(
+			{},
+			{
+				get(_target, prop) {
+					if (prop === 'then') {
+						return (resolve: (value: unknown) => void) =>
+							resolve({ data: [{ id: SAM }], error: null });
+					}
+					if (prop === 'maybeSingle' || prop === 'single') {
+						return async () => ({ data: { id: SAM, name: 'Launch' }, error: null });
+					}
+					return () => chain;
+				}
+			}
+		);
+		return { client: { rpc, from: vi.fn(() => chain) }, rpc };
+	}
+
+	it('is a pass-through shared read that checks project access and reads as the turn user', async () => {
+		expect(isAgenticChatSharedReadToolNameV1('get_project_knowledge_lens')).toBe(true);
+		expect(AGENTIC_CHAT_TOOL_STORAGE_CLASSES_V1.get_project_knowledge_lens).toBe(
+			'pass_through'
+		);
+		const { client, rpc } = lensClient();
+		const assertProjectAccess = vi.fn(async () => undefined);
+		const result = await executeAgenticChatSharedReadToolV1({
+			toolName: 'get_project_knowledge_lens',
+			context: {
+				...context(client),
+				access: {
+					assertProjectAccess
+				} as unknown as AgenticChatSharedReadContextV1['access']
+			},
+			arguments: { project_id: PROJECT, record_kind: 'task', p_viewer: OTHER_USER } as never
+		});
+		expect(assertProjectAccess).toHaveBeenCalledWith(PROJECT, 'read');
+		const lensCall = rpc.mock.calls.find(([fn]) => fn === 'knowledge_project_lens');
+		expect(lensCall![1]).toMatchObject({ p_project: PROJECT, p_viewer: USER });
+		expect(result).toMatchObject({ project: { id: PROJECT, name: 'Launch' }, total: 0 });
+	});
+
+	it('stops when the turn cannot read the project', async () => {
+		const { client, rpc } = lensClient();
+		const assertProjectAccess = vi.fn(async () => {
+			throw Object.assign(new Error('Project not found'), { code: 'NOT_FOUND' });
+		});
+		await expect(
+			executeAgenticChatSharedReadToolV1({
+				toolName: 'get_project_knowledge_lens',
+				context: {
+					...context(client),
+					access: {
+						assertProjectAccess
+					} as unknown as AgenticChatSharedReadContextV1['access']
+				},
+				arguments: { project_id: PROJECT }
+			})
+		).rejects.toThrow('Project not found');
+		expect(rpc).not.toHaveBeenCalled();
+	});
+});

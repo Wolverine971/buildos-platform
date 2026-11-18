@@ -113,6 +113,8 @@
 		/** Document bodies: offer "Make live table" on markdown tables in Preview. */
 		onMakeLiveTable?: (click: MakeLiveTableClick) => void | Promise<void>;
 		/** Called on every document change (replaces onchange/oninput) */
+		/** Tagged names to underline while editing (tasker 167); offsets into `value`. */
+		highlights?: import('./codemirror/mention-highlights').MentionHighlight[];
 		onDocChange?: (value: string) => void;
 		/** Launch an agent proposal for the currently selected Markdown. */
 		onProposeSelection?: (selection: {
@@ -162,6 +164,7 @@
 		embedProjectId,
 		onMakeLiveTable,
 		onDocChange,
+		highlights,
 		onProposeSelection,
 		// Bindable voice state
 		isRecording = $bindable(false),
@@ -759,6 +762,7 @@
 					onDocChange?.(next);
 				}}
 				onSelectionChange={handleSelectionChange}
+				{highlights}
 				class={fillHeight ? 'flex-1' : ''}
 			/>
 		{:else}

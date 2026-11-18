@@ -396,6 +396,44 @@ const factsOf = (fake: FakeDb, entityId: string) =>
 // ---------------------------------------------------------------------------
 
 describe('chat knowledge capture', () => {
+	it('a retry after the checkpoint failed to save returns the full receipt, Undo data included', async () => {
+		const fake = db();
+		const messages = [
+			message(
+				'm-1',
+				'user',
+				'My friend Dana Whitfield is the COO at Harbor Lane Logistics.',
+				1
+			),
+			message('m-2', 'assistant', 'Noted.', 2)
+		];
+		const { ports: p, decider } = ports(fake, {
+			entities: [
+				{ ref: 'e1', kind: 'person', name: 'Dana Whitfield' },
+				{ ref: 'e2', kind: 'org', name: 'Harbor Lane Logistics' }
+			],
+			facts: [
+				{
+					subject: 'e1',
+					predicate: 'works_at',
+					object: 'e2',
+					message: 'm1',
+					quote: 'Dana Whitfield is the COO at Harbor Lane Logistics',
+					from: 'user'
+				}
+			]
+		});
+
+		const first = (await runChatKnowledgeCapture(p, input(messages)))!;
+		expect(first.created_entity_ids).toHaveLength(2);
+		expect(first.link_ids.length).toBeGreaterThan(0);
+		const calls = decider.decide.mock.calls.length;
+
+		const retry = (await runChatKnowledgeCapture(p, input(messages)))!;
+		expect(retry).toEqual(first);
+		expect(decider.decide.mock.calls.length).toBe(calls); // nothing paid again
+	});
+
 	it('captures what the user said about someone: role, employer, how they know them', async () => {
 		const fake = db();
 		const messages = [
@@ -1155,7 +1193,7 @@ describe('identity check on claims about existing entries', () => {
 			message(
 				'm-1',
 				'user',
-				"The Iowa Cody Shooting Complex's website is codyiowa.example, not ours.",
+				"Dana Ruiz runs the Iowa Cody Shooting Complex. The Iowa Cody Shooting Complex's website is codyiowa.example, not ours.",
 				1
 			),
 			message('m-2', 'assistant', 'Got it.', 2)
@@ -1163,8 +1201,19 @@ describe('identity check on claims about existing entries', () => {
 		const { ports: p } = ports(
 			fake,
 			{
-				entities: [{ ref: 'e1', kind: 'org', name: 'Cody Shooting Complex' }],
+				entities: [
+					{ ref: 'e1', kind: 'org', name: 'Cody Shooting Complex' },
+					{ ref: 'e2', kind: 'person', name: 'Dana Ruiz' }
+				],
 				facts: [
+					{
+						subject: 'e2',
+						predicate: 'works_at',
+						object: 'e1',
+						message: 'm1',
+						quote: 'Dana Ruiz runs the Iowa Cody Shooting Complex',
+						from: 'user'
+					},
 					{
 						subject: 'e1',
 						predicate: 'homepage',
@@ -1205,6 +1254,51 @@ describe('identity check on claims about existing entries', () => {
 		]);
 		expect(receipt.identity.different).toBe(1);
 		expect(receipt.created_entity_ids).toContain(other.id);
+		// The chat's other mention of that name (as Dana's employer) lands on the same new entry.
+		const dana = fake.rows('knowledge_entities').find((e) => e.name === 'Dana Ruiz')!;
+		expect(factsOf(fake, dana.id)).toEqual([
+			expect.objectContaining({ predicate: 'works_at', object_entity_id: other.id })
+		]);
+		expect(receipt.entities.map((e) => e.id)).toContain(other.id);
+	});
+
+	it('skips a name the user already has on two entries instead of adding a third', async () => {
+		const fake = db();
+		for (const via of ['task', 'chat'])
+			fake.seed('knowledge_entities', {
+				kind: 'org',
+				name: 'Cody Shooting Complex',
+				scope: 'private',
+				owner_user_id: USER,
+				created_via: via,
+				created_at: OLD
+			});
+		const messages = [
+			message('m-1', 'user', 'Cody Shooting Complex opens at 9 on Saturdays.', 1),
+			message('m-2', 'assistant', 'Noted.', 2)
+		];
+		const { ports: p } = ports(fake, {
+			entities: [{ ref: 'e1', kind: 'org', name: 'Cody Shooting Complex' }],
+			facts: [
+				{
+					subject: 'e1',
+					predicate: 'description',
+					value: 'Opens at 9 on Saturdays',
+					message: 'm1',
+					quote: 'Cody Shooting Complex opens at 9 on Saturdays',
+					from: 'user'
+				}
+			]
+		});
+
+		const receipt = (await runChatKnowledgeCapture(p, input(messages)))!;
+
+		expect(receipt.skipped_entities).toEqual([
+			{ name: 'Cody Shooting Complex', reason: 'several entries with this name' }
+		]);
+		expect(
+			fake.rows('knowledge_entities').filter((e) => e.name === 'Cody Shooting Complex')
+		).toHaveLength(2);
 	});
 
 	it('web facts: suggested for an entry nothing anchors, active for one the graph anchors', async () => {

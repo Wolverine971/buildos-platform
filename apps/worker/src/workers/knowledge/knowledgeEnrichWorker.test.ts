@@ -67,6 +67,10 @@ class Query {
 		this.filters.push((r) => values.includes(r[col]));
 		return this;
 	}
+	lt(col: string, value: string) {
+		this.filters.push((r) => r[col] !== undefined && String(r[col]) < value);
+		return this;
+	}
 	order() {
 		return this;
 	}
@@ -229,6 +233,49 @@ beforeEach(() => {
 });
 
 describe('processKnowledgeEnrichJob queue behaviour', () => {
+	it('a retry leaves a target a live attempt is researching, and resumes one that went quiet', async () => {
+		const db = seed([
+			{ id: 't-acme', entity: ACME },
+			{ id: 't-beta', entity: BETA }
+		]);
+		db.rows('knowledge_runs')[0]!.status = 'running';
+		// Acme: moved 1 minute ago (live). Beta: silent for an hour (its attempt died).
+		Object.assign(db.target('t-acme'), {
+			status: 'running',
+			phase: 'reading',
+			updated_at: '2026-11-17T11:59:00.000Z'
+		});
+		Object.assign(db.target('t-beta'), {
+			status: 'running',
+			phase: 'searching',
+			updated_at: '2026-11-17T11:00:00.000Z'
+		});
+		const run = deps(db);
+		await processKnowledgeEnrichJob(job, run.deps);
+		expect(run.queries.some((q) => q.includes('Acme'))).toBe(false);
+		expect(run.queries.some((q) => q.includes('Beta Labs'))).toBe(true);
+		expect(db.target('t-beta').status).toBe('done');
+	});
+
+	it('does not reopen a run cancelled after it was loaded', async () => {
+		const db = seed([{ id: 't-acme', entity: ACME }]);
+		const from = db.from.bind(db);
+		let loaded = false;
+		db.from = (table: string) => {
+			// The cancel lands right after the job read the run.
+			if (table === 'knowledge_runs' && loaded)
+				db.rows('knowledge_runs')[0]!.status = 'cancelled';
+			if (table === 'knowledge_runs') loaded = true;
+			return from(table);
+		};
+		await processKnowledgeEnrichJob(job, deps(db).deps);
+		expect(db.rows('knowledge_runs')[0]!.status).toBe('cancelled');
+		// Never flipped back to running, not even briefly (the tray would show it running).
+		expect(
+			db.history.filter((h) => h.table === 'knowledge_runs' && h.patch.status === 'running')
+		).toEqual([]);
+	});
+
 	it("uses each target's own instructions, else the run's, and reports its phases", async () => {
 		const db = seed([
 			{ id: 't-acme', entity: ACME, instructions: 'Which podcasts?' },

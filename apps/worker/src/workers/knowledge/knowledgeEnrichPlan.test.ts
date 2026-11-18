@@ -227,6 +227,30 @@ describe('validateEnrichment', () => {
 		});
 	});
 
+	it('matches a straight-quoted model quote against curly quotes and dashes on the page', () => {
+		const page = {
+			...PAGES[0]!,
+			content: 'Sam Rivera — he’s the Forward Deployed lead at Palantir.'
+		};
+		const result = validateEnrichment(
+			{
+				pages: [{ page: 1, about_entity: true }],
+				facts: [
+					{
+						predicate: 'headline',
+						value: 'Forward Deployed lead at Palantir',
+						page: 1,
+						quote: "Sam Rivera - he's the Forward Deployed lead at Palantir"
+					}
+				]
+			},
+			{ entityId: ENTITY_ID, kind: 'person', fields, pages: [page], existing: [] }
+		);
+		expect(result.dropped).toEqual([]);
+		expect(result.kept).toBe(1);
+		expect(result.batch.facts[0]).toMatchObject({ predicate: 'headline', status: 'active' });
+	});
+
 	it("keeps a person's phone only when the run asked for it", () => {
 		const page: EnrichPage = {
 			url: 'https://example.org/team/sam',

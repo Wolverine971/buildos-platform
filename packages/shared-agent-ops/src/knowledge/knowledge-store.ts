@@ -337,7 +337,9 @@ export class KnowledgeStore {
 			refs.add(entity.ref);
 		}
 
-		const resolved = await this.resolveEntities(batch, options, receipt);
+		const resolved = await serializePerUser(this.userId, () =>
+			this.resolveEntities(batch, options, receipt)
+		);
 		const sourceIds = await this.insertSources(batch, receipt);
 		// Entities created by this batch can't have facts yet: skip loading theirs.
 		const created = new Set(
@@ -658,13 +660,34 @@ export class KnowledgeStore {
 				.from('knowledge_entities')
 				.select(ENTITY_COLUMNS + ', normalized_name, created_via')
 				.eq('owner_user_id', this.userId)
-				.eq('status', 'active')
+				.in('status', ['active', 'merged'])
 				.in('normalized_name', group);
 			if (error) throw dbError('Look up names', error);
 			return (data ?? []) as Array<EntityRow & { normalized_name: string }>;
 		});
 		for (const row of rows) {
+			if (row.status !== 'active') continue;
 			out.set(row.normalized_name, [...(out.get(row.normalized_name) ?? []), row]);
+		}
+		// A name that was folded into another entry ("Phil Valeo" merged into "Phillip Velayo",
+		// tasker 167) resolves to the survivor, so re-reading the old spelling never brings the
+		// old entry back. An active entry with the exact name still wins.
+		const merged = rows.filter(
+			(row) => row.status === 'merged' && row.merged_into_id && !out.has(row.normalized_name)
+		);
+		if (merged.length) {
+			const targets = await this.loadEntities(merged.map((row) => row.id));
+			for (const row of merged) {
+				const target = targets.get(row.id);
+				if (!target || target.owner_user_id !== this.userId || target.status !== 'active')
+					continue;
+				const list = out.get(row.normalized_name) ?? [];
+				if (!list.some((r) => r.id === target.id))
+					out.set(row.normalized_name, [
+						...list,
+						{ ...target, created_via: row.created_via }
+					]);
+			}
 		}
 		return out;
 	}
@@ -911,6 +934,7 @@ export class KnowledgeStore {
 					.select(FACT_COLUMNS)
 					.in('entity_id', group)
 					.eq('owner_user_id', this.userId)
+					.order('id')
 					.range(from, from + 999);
 				if (error) throw dbError('Load existing facts', error);
 				rows.push(...((data ?? []) as FactRow[]));
@@ -943,8 +967,17 @@ export class KnowledgeStore {
 
 		const toInsert: Planned[] = [];
 		const factIdFor = new Map<number, string>();
-		const supersede: string[] = [];
+		// Values a new one-value fact replaces, retired only once the new row is saved (a failed
+		// insert must not leave the field empty).
+		const supersedeFor = new Map<number, string[]>();
+		// Values a reactivated old fact replaces ("A, then B, then A again" keeps one current).
+		const supersedeAfterReactivation: string[] = [];
+		const newSummaries: Array<{ entityId: string; value: string }> = [];
 		const priorUpdates: Array<{ id: string; patch: Record<string, unknown> }> = [];
+		const activeOthers = (entityId: string, predicate: string, exceptId?: string) =>
+			(singleValued.get(`${entityId}|${predicate}`) ?? [])
+				.filter((row) => row.status === 'active' && row.id !== exceptId)
+				.map((row) => row.id);
 		for (const plan of planned) {
 			const prior = existing.get(plan.identity);
 			if (prior) {
@@ -955,6 +988,7 @@ export class KnowledgeStore {
 					...(plan.row.qualifiers as Record<string, unknown>)
 				};
 				const reactivate = prior.status === 'superseded' || prior.status === 'retracted';
+				const nowActive = reactivate && HUMAN_VIA.has(options.via);
 				if (
 					reactivate ||
 					JSON.stringify(merged) !== JSON.stringify(prior.qualifiers ?? {})
@@ -964,11 +998,16 @@ export class KnowledgeStore {
 						patch: {
 							qualifiers: merged,
 							observed_at: new Date().toISOString(),
-							...(reactivate && HUMAN_VIA.has(options.via)
-								? { status: 'active' }
-								: {})
+							...(nowActive ? { status: 'active' } : {})
 						}
 					});
+				}
+				if (nowActive && plan.cardinalityOne) {
+					supersedeAfterReactivation.push(
+						...activeOthers(prior.entity_id, prior.predicate, prior.id)
+					);
+					if (prior.predicate === 'headline' && prior.value_text)
+						newSummaries.push({ entityId: prior.entity_id, value: prior.value_text });
 				}
 				continue;
 			}
@@ -990,12 +1029,28 @@ export class KnowledgeStore {
 						plan.row.status = 'suggested';
 						receipt.facts.suggested++;
 					} else {
-						supersede.push(...current.map((row) => row.id));
+						supersedeFor.set(
+							plan.index,
+							current.map((row) => row.id)
+						);
 					}
 				}
 			}
 			toInsert.push(plan);
 		}
+
+		const supersedeIds = async (ids: string[]) => {
+			const distinct = unique(ids);
+			for (const group of chunk(distinct, ID_CHUNK)) {
+				const { error } = await this.db
+					.from('knowledge_facts')
+					.update({ status: 'superseded', valid_to: null })
+					.in('id', group)
+					.eq('owner_user_id', this.userId);
+				if (error) throw dbError('Supersede facts', error);
+			}
+			receipt.facts.superseded += distinct.length;
+		};
 
 		await inParallel(priorUpdates, async ({ id, patch }) => {
 			const { error } = await this.db
@@ -1006,17 +1061,7 @@ export class KnowledgeStore {
 			if (error) throw dbError('Update facts', error);
 		});
 
-		if (supersede.length) {
-			for (const group of chunk(unique(supersede), ID_CHUNK)) {
-				const { error } = await this.db
-					.from('knowledge_facts')
-					.update({ status: 'superseded', valid_to: null })
-					.in('id', group)
-					.eq('owner_user_id', this.userId);
-				if (error) throw dbError('Supersede facts', error);
-			}
-			receipt.facts.superseded += unique(supersede).length;
-		}
+		await supersedeIds(supersedeAfterReactivation);
 
 		for (const group of chunk(toInsert, PAGE)) {
 			const { data, error } = await this.db
@@ -1050,6 +1095,13 @@ export class KnowledgeStore {
 			}
 		}
 
+		// Retire replaced values only for new values that were actually saved.
+		await supersedeIds(
+			toInsert.flatMap((plan) =>
+				factIdFor.has(plan.index) ? (supersedeFor.get(plan.index) ?? []) : []
+			)
+		);
+
 		const citations: Array<Record<string, unknown>> = [];
 		for (const plan of planned) {
 			const factId = factIdFor.get(plan.index);
@@ -1071,23 +1123,31 @@ export class KnowledgeStore {
 		const rowsById = new Map(
 			[...byRef.values(), ...direct.values()].map((row) => [row.id, row])
 		);
-		const headlineUpdates = toInsert.filter((plan) => {
-			if (plan.row.predicate !== 'headline' || plan.row.status !== 'active') return false;
-			const subject = rowsById.get(plan.row.entity_id as string);
+		for (const plan of toInsert) {
+			if (
+				plan.row.predicate === 'headline' &&
+				plan.row.status === 'active' &&
+				factIdFor.has(plan.index)
+			)
+				newSummaries.push({
+					entityId: plan.row.entity_id as string,
+					value: String(plan.row.value_text)
+				});
+		}
+		const headlineUpdates = newSummaries.filter(({ entityId, value }) => {
+			const subject = rowsById.get(entityId);
 			return Boolean(
-				subject &&
-					subject.owner_user_id === this.userId &&
-					subject.summary !== plan.row.value_text
+				subject && subject.owner_user_id === this.userId && subject.summary !== value
 			);
 		});
-		await inParallel(headlineUpdates, async (plan) => {
-			const summary = String(plan.row.value_text).slice(0, 300);
+		await inParallel(headlineUpdates, async ({ entityId, value }) => {
+			const summary = value.slice(0, 300);
 			await this.db
 				.from('knowledge_entities')
 				.update({ summary })
-				.eq('id', plan.row.entity_id)
+				.eq('id', entityId)
 				.eq('owner_user_id', this.userId);
-			const subject = rowsById.get(plan.row.entity_id as string);
+			const subject = rowsById.get(entityId);
 			if (subject) subject.summary = summary;
 		});
 	}
@@ -1146,12 +1206,20 @@ export class KnowledgeStore {
 			update.summary = patch.summary?.trim().slice(0, 300) || null;
 		if (patch.status !== undefined) update.status = patch.status;
 		if (!Object.keys(update).length) return;
-		const { data, error } = await this.db
-			.from('knowledge_entities')
-			.update(update)
-			.eq('id', id)
-			.eq('owner_user_id', this.userId)
-			.select('id');
+		// Showing an entry again (or hiding it on purpose) clears "hidden as an orphan"
+		// (tasker 167); before migration 20261118200000 the column doesn't exist.
+		const write = (values: Record<string, unknown>) =>
+			this.db
+				.from('knowledge_entities')
+				.update(values)
+				.eq('id', id)
+				.eq('owner_user_id', this.userId)
+				.select('id');
+		let { data, error } = await write(
+			patch.status !== undefined ? { ...update, hidden_reason: null } : update
+		);
+		if (error && (error as { code?: string }).code === '42703' && patch.status !== undefined)
+			({ data, error } = await write(update));
 		if (error) throw dbError('Update entity', error);
 		if (!data?.length)
 			throw new KnowledgeStoreError('You can only edit your own entities.', 'NOT_FOUND');
@@ -1407,6 +1475,7 @@ export class KnowledgeStore {
 					.eq('owner_user_id', this.userId);
 				if (retractError) throw dbError('Retract research', retractError);
 			}
+			await this.restoreReplacedValues(entity, facts);
 		}
 
 		// Entries this run created (e.g. the wrong company's town) that nothing else uses.
@@ -1490,6 +1559,80 @@ export class KnowledgeStore {
 		};
 	}
 
+	/**
+	 * After wrong research is retracted, bring back what it replaced: for each one-value field
+	 * (headline, birthday…) the run had made current, the newest earlier value becomes current
+	 * again, and the card summary follows the headline.
+	 */
+	private async restoreReplacedValues(
+		entity: EntityRow,
+		retracted: Array<{
+			id: string;
+			predicate: string;
+			object_entity_id: string | null;
+			value_text: string | null;
+			status: KnowledgeFactStatus;
+		}>
+	): Promise<void> {
+		const retractedIds = new Set(retracted.map((f) => f.id));
+		const predicates = unique(
+			retracted
+				.filter(
+					(f) =>
+						f.status === 'active' &&
+						!f.object_entity_id &&
+						getKnowledgePredicate(f.predicate)?.cardinality === 'one'
+				)
+				.map((f) => f.predicate)
+		);
+		for (const predicate of predicates) {
+			const { data, error } = await this.db
+				.from('knowledge_facts')
+				.select('id, value_text, status')
+				.eq('entity_id', entity.id)
+				.eq('predicate', predicate)
+				.eq('owner_user_id', this.userId)
+				.in('status', ['active', 'superseded'])
+				.order('created_at', { ascending: false })
+				.limit(20);
+			if (error) throw dbError('Load replaced values', error);
+			const rows = (
+				(data ?? []) as Array<{
+					id: string;
+					value_text: string | null;
+					status: KnowledgeFactStatus;
+				}>
+			).filter((row) => !retractedIds.has(row.id));
+			let current = rows.find((row) => row.status === 'active') ?? null;
+			if (!current) {
+				const previous = rows.find((row) => row.status === 'superseded') ?? null;
+				if (previous) {
+					const { error: restoreError } = await this.db
+						.from('knowledge_facts')
+						.update({ status: 'active' })
+						.eq('id', previous.id)
+						.eq('owner_user_id', this.userId);
+					if (restoreError) throw dbError('Restore replaced value', restoreError);
+					current = previous;
+				}
+			}
+			if (predicate !== 'headline' || entity.owner_user_id !== this.userId) continue;
+			const summary = current?.value_text?.slice(0, 300) ?? null;
+			const wrongSummary = retracted.some(
+				(f) => f.predicate === 'headline' && f.value_text?.slice(0, 300) === entity.summary
+			);
+			// Only undo a summary the wrong headline wrote; a hand-edited one stays.
+			if (!wrongSummary || summary === entity.summary) continue;
+			const { error: summaryError } = await this.db
+				.from('knowledge_entities')
+				.update({ summary })
+				.eq('id', entity.id)
+				.eq('owner_user_id', this.userId);
+			if (summaryError) throw dbError('Restore summary', summaryError);
+			entity.summary = summary;
+		}
+	}
+
 	async resolveMergeCandidate(id: string, status: 'rejected'): Promise<void> {
 		const { error } = await this.db
 			.from('knowledge_merge_candidates')
@@ -1539,6 +1682,7 @@ export class KnowledgeStore {
 				.eq('predicate', predicate)
 				.eq('owner_user_id', this.userId)
 				.in('status', VISIBLE_FACT_STATUSES)
+				.order('id')
 				.range(from, from + 999);
 			if (error) throw dbError('Load self relationships', error);
 			for (const row of (data ?? []) as Array<{ object_entity_id: string | null }>) {
@@ -2042,6 +2186,29 @@ export class KnowledgeStore {
 }
 
 /** Run small independent writes a few at a time. */
+/**
+ * Entity resolution is lookup-then-insert across several requests, so two writes for the same
+ * user at once (a brain dump queues one task-entity job per task, and the queue runs several
+ * jobs in parallel) would each miss the other's new "Louis Arnette" and create a twin. Writes
+ * for one user take turns within this process. Writers in other processes (web, chat worker)
+ * can still race; a database-side resolve would close that gap.
+ */
+const resolveTurns = new Map<string, Promise<unknown>>();
+async function serializePerUser<T>(userId: string, run: () => Promise<T>): Promise<T> {
+	const previous = resolveTurns.get(userId) ?? Promise.resolve();
+	const turn = previous.then(run, run);
+	const settled = turn.then(
+		() => undefined,
+		() => undefined
+	);
+	resolveTurns.set(userId, settled);
+	try {
+		return await turn;
+	} finally {
+		if (resolveTurns.get(userId) === settled) resolveTurns.delete(userId);
+	}
+}
+
 async function inParallel<T>(
 	items: T[],
 	fn: (item: T) => Promise<void>,

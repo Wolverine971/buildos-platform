@@ -59,7 +59,7 @@
 	import TaskKeyDetails from '$lib/components/task-entities/TaskKeyDetails.svelte';
 	import TaskAffectedWork from '$lib/components/ontology/TaskAffectedWork.svelte';
 	import TaskMentionText from '$lib/components/task-entities/TaskMentionText.svelte';
-	import { entityMentions } from '$lib/components/task-entities/entity-mentions';
+	import { entityMentions, placeTags } from '$lib/components/task-entities/entity-mentions';
 	import { TaskEntities } from '$lib/components/task-entities/task-entities.svelte';
 	import RecordKnowledgePopover from '$lib/components/knowledge/RecordKnowledgePopover.svelte';
 	import { RecordKnowledgeMentions } from '$lib/components/knowledge/record-knowledge-mentions.svelte';
@@ -265,6 +265,34 @@
 		kind: 'document',
 		id: current?.doc?.id ?? null
 	}));
+	// Every place a person or org is tagged in the task's description (tasker 167); names the
+	// knowledge graph doesn't have yet keep the task card on their first mention.
+	const taskKnowledge = new RecordKnowledgeMentions(() => ({
+		kind: 'task',
+		id: current?.task?.id ?? null,
+		text: `${current?.task?.title ?? ''}\n\n${current?.task?.description ?? ''}`
+	}));
+	const taskDescriptionTags = $derived(taskKnowledge.tagsFor('description'));
+	const taskCardTargets = $derived.by(() => {
+		const tagged = new Set(taskDescriptionTags.map((tag) => tag.id));
+		if (!tagged.size) return taskEntities.targets;
+		return taskEntities.targets.filter(
+			(target) => !tagged.has(taskEntities.knowledge[target.id] ?? '')
+		);
+	});
+	// Tagged names underlined while editing; CodeMirror carries them through the edits.
+	const editorHighlights = $derived.by(() => {
+		if (!editing) return undefined;
+		const tags = current?.doc ? docKnowledge.tagsFor('content') : taskDescriptionTags;
+		const text = untrack(() => draft);
+		return placeTags(text, tags)
+			.filter((place) => !place.tag.removed)
+			.map((place) => ({
+				from: place.start,
+				to: place.end,
+				title: `Tagged: ${place.tag.label}`
+			}));
+	});
 
 	// ---------- Tables ----------
 
@@ -1228,7 +1256,9 @@
 							{@attach entityMentions({
 								html: bodyHtml,
 								targets: docKnowledge.targets,
-								onOpen: (id, trigger) => docKnowledge.openFor(id, trigger)
+								tags: docKnowledge.tagsFor('content'),
+								onOpen: (id, trigger) => docKnowledge.openFor(id, trigger),
+								onPeek: (id, trigger) => docKnowledge.peekAt(id, trigger)
 							})}
 						>
 							{@html bodyHtml}
@@ -1347,8 +1377,17 @@
 							class="{prose} text-foreground"
 							{@attach entityMentions({
 								html: descriptionHtml,
-								targets: taskEntities.targets,
-								onOpen: (id, trigger) => taskEntities.openCardFor(id, trigger)
+								targets: taskCardTargets,
+								tags: taskDescriptionTags,
+								onOpen: (id, trigger) =>
+									trigger.dataset.mentionId
+										? taskKnowledge.openFor(id, trigger)
+										: taskEntities.openCardFor(id, trigger),
+								onPeek: (id, trigger) =>
+									taskKnowledge.peekAt(
+										trigger?.dataset.mentionId ? id : null,
+										trigger
+									)
 							})}
 						>
 							{@html descriptionHtml}
@@ -1721,6 +1760,7 @@
 				placeholder={isDoc ? undefined : 'What does done look like? Steps, links, notes…'}
 				helpText=""
 				fillHeight={isDoc}
+				highlights={editorHighlights}
 			/>
 		{:else}
 			<div class="h-64 animate-pulse rounded-lg bg-muted motion-reduce:animate-none"></div>
@@ -1772,6 +1812,9 @@
 {/if}
 {#if current?.doc}
 	<RecordKnowledgePopover mentions={docKnowledge} />
+{/if}
+{#if current?.task}
+	<RecordKnowledgePopover mentions={taskKnowledge} where="task" />
 {/if}
 
 {#if tablePickerOpen && editing}

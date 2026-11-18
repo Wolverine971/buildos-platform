@@ -1,7 +1,8 @@
 // apps/web/src/routes/api/knowledge/entities/[id]/+server.ts
 /**
  * GET    /api/knowledge/entities/:id  → the entry, its facts with sources, relationships both
- *        ways, linked tasks/docs the caller can still open, and research runs.
+ *        ways, linked tasks/docs the caller can still open, and research runs. For your own
+ *        entry, also `sharing` (tasker 168): shared projects it shows in, asks and grants.
  * PATCH  /api/knowledge/entities/:id  { name?, summary?, status?: 'active'|'hidden' }
  * DELETE /api/knowledge/entities/:id  (own entries only)
  */
@@ -13,6 +14,7 @@ import {
 	loadLinkedRecords,
 	UUID_PATTERN
 } from '$lib/server/knowledge/knowledge.server';
+import { loadEntityShares } from '$lib/server/knowledge/sharing.server';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	const { user } = await locals.safeGetSession();
@@ -22,8 +24,13 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
 		const detail = await knowledgeStoreFor(locals.supabase, user.id).getEntity(params.id);
 		if (!detail) return ApiResponse.notFound('Entry');
-		const records = await loadLinkedRecords(locals.supabase, detail.links);
-		return ApiResponse.success({ ...detail, records });
+		const [records, sharing] = await Promise.all([
+			loadLinkedRecords(locals.supabase, detail.links),
+			detail.entity.scope === 'private'
+				? loadEntityShares(locals.supabase, params.id).catch(() => null)
+				: Promise.resolve(null)
+		]);
+		return ApiResponse.success({ ...detail, records, sharing });
 	} catch (error) {
 		return knowledgeErrorResponse(error, 'Could not load this entry');
 	}

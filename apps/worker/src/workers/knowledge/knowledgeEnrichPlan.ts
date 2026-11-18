@@ -13,8 +13,10 @@ import {
 	getKnowledgePredicate,
 	hostMatchesDomain,
 	isKnowledgeKind,
+	KNOWLEDGE_MIN_QUOTE_CHARS,
 	normalizeUrl,
 	normalizeKnowledgeName,
+	squashQuoteText,
 	youtubeChannelKey,
 	youtubeVideoId,
 	type KnowledgeAnchors,
@@ -251,12 +253,8 @@ function anchorPromptBlock(anchors: KnowledgeAnchors): string {
 		.join('\n\n');
 }
 
-/** A quote shorter than this ("about", "CEO") proves nothing about the fact. */
-const MIN_QUOTE_CHARS = 12;
-
-function squash(text: string): string {
-	return text.replace(/\s+/g, ' ').trim().toLowerCase();
-}
+const MIN_QUOTE_CHARS = KNOWLEDGE_MIN_QUOTE_CHARS;
+const squash = squashQuoteText;
 
 export interface ValidatedEnrichment {
 	batch: KnowledgeWriteBatch;

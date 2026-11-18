@@ -53,6 +53,11 @@ import {
 	KNOWLEDGE_ENRICH_JOB_TYPE,
 	processKnowledgeEnrichJob
 } from './workers/knowledge/knowledgeEnrichWorker';
+import {
+	KNOWLEDGE_DOC_MENTIONS_JOB_TYPE,
+	enqueueDocumentMentions,
+	processDocumentMentionsJob
+} from './workers/knowledge/documentMentionsWorker';
 import { processBriefAudio as processBriefAudioJob } from './workers/briefAudio/briefAudioWorker';
 import { processCycleRun } from './workers/cycle/cycleWorker';
 import { createLegacyJob } from './workers/shared/jobAdapter';
@@ -286,8 +291,11 @@ async function processEmbedEntity(job: ProcessingJob<EmbedOntoEntityJobMetadata>
 	try {
 		// Every document content change lands here, whoever wrote it; keep its heading
 		// outline fresh for the context finder (tasker 150). Best effort, never throws.
-		if (job.data.entityType === 'document')
+		if (job.data.entityType === 'document') {
 			await refreshDocumentOutline(supabase as never, job.data.entityId);
+			// Names in the doc follow the edit ~5 min after typing stops (tasker 167).
+			await enqueueDocumentMentions(supabase as never, job.data.entityId);
+		}
 		const legacyJob = createLegacyJob<EmbedOntoEntityJobMetadata>(job);
 		return await processEmbedOntoEntity(legacyJob);
 	} catch (error) {
@@ -401,6 +409,29 @@ async function processKnowledgeEnrich(job: ProcessingJob) {
 		return result;
 	} catch (error) {
 		await job.log(`Knowledge research failed: ${getErrorMessage(error)}`);
+		throw error;
+	}
+}
+
+/**
+ * Document mentions: re-anchor names after a doc edit with the free local name finder
+ * (knowledge_doc_mentions, queued after the doc's embedding job; tasker 167)
+ */
+async function processDocumentMentions(job: ProcessingJob) {
+	try {
+		const result = await processDocumentMentionsJob(job, { db: supabase as never });
+		const reports = result.reports ?? [];
+		await job.log(
+			`Doc mentions: ${result.outcome}${result.reason ? ` (${result.reason})` : ''}${reports
+				.map(
+					(r) =>
+						` +${r.counts.added} ~${r.counts.moved} edited ${r.counts.edited} -${r.counts.deleted}; ${r.corrections.length} corrections, ${r.linksRemoved.length} links removed, ${r.hidden.length} hidden, ${r.questions.length} questions`
+				)
+				.join(' |')}`
+		);
+		return result;
+	} catch (error) {
+		await job.log(`Doc mentions job failed: ${getErrorMessage(error)}`);
 		throw error;
 	}
 }
@@ -523,6 +554,14 @@ export async function startWorker({
 	queue.process(
 		EXTRACT_TASK_ENTITIES_JOB_TYPE as string as QueueJobType,
 		processExtractTaskEntities
+	);
+
+	// Document mentions (tasker 167). The cast goes away once `pnpm gen:all` picks up the
+	// queue_type value (migration 20261118200000). Loads the local name finder (~150 MB) once
+	// per process on first use; KNOWLEDGE_DOC_MENTIONS=off stops queueing new reads.
+	queue.process(
+		KNOWLEDGE_DOC_MENTIONS_JOB_TYPE as string as QueueJobType,
+		processDocumentMentions
 	);
 
 	// Knowledge research runs. The cast goes away once `pnpm gen:all` picks up the queue_type

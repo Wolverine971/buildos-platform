@@ -25,9 +25,17 @@ type GatewaySupabaseClient = SupabaseClient<Database>;
 
 // Worker gateway adapter catalogs
 
+/**
+ * Ops in the read tier that are not reads: an ask creates a request someone else answers
+ * (read scope, like request_project_access). Background Agent Runs never send asks.
+ */
+const READ_TIER_ASK_OPS = new Set<string>(['knowledge.request_access']);
+
 /** Non-calendar read ops backed by the shared gateway handler map. */
 export const AGENT_OP_GATEWAY_READ_CATALOG: readonly string[] = Object.freeze(
-	Object.keys(EXTERNAL_OP_HANDLERS).filter((op) => isReadOp(op) && !op.startsWith('cal.'))
+	Object.keys(EXTERNAL_OP_HANDLERS).filter(
+		(op) => isReadOp(op) && !op.startsWith('cal.') && !READ_TIER_ASK_OPS.has(op)
+	)
 );
 
 /** Calendar read ops that can run in a worker only when a CalendarPort is present. */
@@ -96,7 +104,7 @@ export async function runGatewayReadOp(params: {
 		typeof params.op === 'string' ? params.op.trim() : ''
 	) as BuildosAgentAllowedOp;
 	const handler = EXTERNAL_OP_HANDLERS[canonicalOp];
-	if (!handler || !isReadOp(canonicalOp)) {
+	if (!handler || !isReadOp(canonicalOp) || READ_TIER_ASK_OPS.has(canonicalOp)) {
 		return {
 			ok: false,
 			error: { code: 'NOT_FOUND', message: `No worker read handler for op: ${canonicalOp}` }

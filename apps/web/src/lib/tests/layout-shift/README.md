@@ -19,7 +19,9 @@ Free: no model calls. Takes about two minutes.
 1. Signs in as the dedicated test user (`AGENTIC_TEST_USER_*` in `apps/web/.env`), never
    a real account, and seeds one throwaway project (`LSH · …`, eight tasks with due dates
    so they also show on Today). The project is deleted afterwards; leftovers older than
-   six hours are swept on the next run.
+   six hours are swept on the next run. Seeding fires the task triggers that queue background
+   jobs (entity extraction, embeddings); the harness drops those pending jobs right after the
+   seed, before a worker claims them.
 2. On each reader surface it opens a task and walks: In progress → Done → To do →
    Blocked → Done → next task → Archive → Undo → open "Chat about this" and Esc → close.
    On History (needs a past chat on the test user) it refetches the list the way closing

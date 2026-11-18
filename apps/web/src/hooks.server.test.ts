@@ -176,6 +176,20 @@ describe('deployment cookies through the real server hook', () => {
 		expect(response.headers.has('set-cookie')).toBe(false);
 	});
 
+	it.each(['public, max-age=60, s-maxage=300', 'max-age=0, s-maxage=300'])(
+		'keeps CDN-cached pages cookie-free (cache-control: %s)',
+		async (cacheControl) => {
+			const response = await handle({
+				event: fixture('/@someone', 'GET', { 'sec-fetch-dest': 'document' }).event,
+				resolve: async () =>
+					new Response('<main>Profile</main>', {
+						headers: { 'content-type': 'text/html', 'cache-control': cacheControl }
+					})
+			});
+			expect(response.headers.has('set-cookie')).toBe(false);
+		}
+	);
+
 	it('respects disabled skew protection', async () => {
 		vi.stubEnv('VERCEL_SKEW_PROTECTION_ENABLED', undefined);
 		const response = await handle({

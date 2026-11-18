@@ -270,7 +270,10 @@ const TOOL_CATALOG: Record<string, ToolCatalogEntry> = {
 	// Personal knowledge graph (tasker 160): the user's own graph, not a project. A toast
 	// says it was saved or research started; tracking only counts the change (no project).
 	record_knowledge: { toast: true, trackMutation: true },
-	enrich_knowledge: { toast: true, trackMutation: true }
+	enrich_knowledge: { toast: true, trackMutation: true },
+	// Knowledge in shared projects (tasker 168): the toast says the ask went out (or why
+	// not); the owner decides in BuildOS.
+	request_knowledge_access: { toast: true, trackMutation: true }
 };
 
 const DATA_MUTATION_TOOLS_SET: ReadonlySet<string> = new Set(
@@ -1540,6 +1543,14 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 						: 'Beginning research on 1 entry'
 			};
 		},
+		// Knowledge in shared projects (tasker 168): other members' People, and the ask.
+		get_project_knowledge_lens: (args) => ({
+			action: 'Checking who your teammates know',
+			target: resolveEntityName('project', args?.project_id)
+		}),
+		request_knowledge_access: (args) => ({
+			action: args?.what === 'all' ? 'Asking to see more' : 'Asking for contact details'
+		}),
 		delete_onto_task: (args) => ({
 			action: 'Deleting task',
 			target: resolveEntityName('task', args?.task_id)

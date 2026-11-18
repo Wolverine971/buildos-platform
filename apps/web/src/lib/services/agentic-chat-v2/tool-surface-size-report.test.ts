@@ -223,7 +223,12 @@ describe('tool surface size report', () => {
 		// per-field limits trimmed first). Measured 60 -> 65 tools, 65,158 -> 71,619 chars
 		// (+6,461). Jev mounts them only on people/company/channel/video turns. Cap at
 		// measured + ~0.3%.
-		expect(global?.totalChars).toBeLessThanOrEqual(71_840);
+		// RE-BASELINED 2026-11-18 (tasker 168, knowledge in shared projects):
+		// get_project_knowledge_lens and request_knowledge_access joined both surfaces
+		// (other members' entries on a project's names, labelled by who shared them, and
+		// the ask; agents never grant). Measured 65 -> 67 tools, 71,619 -> 73,098 chars
+		// (+1,479). Jev mounts them only on such turns. Cap at measured + ~0.3%.
+		expect(global?.totalChars).toBeLessThanOrEqual(73_320);
 		// Reviewed 2026-09-05 against the previous signed snapshot: +838 for
 		// contract reference/null handling, +321 for typed task estimates, +396
 		// for get_onto_document_details, +1,190 for link_onto_entities. These
@@ -241,7 +246,10 @@ describe('tool surface size report', () => {
 		// RE-BASELINED 2026-11-16 (tasker 160): the five knowledge graph tools joined the
 		// project surface too (the graph is the user's own, not a project). Measured
 		// 75,774 -> 82,235 chars (+6,461). Cap at measured + ~0.3%.
-		expect(project?.totalChars).toBeLessThanOrEqual(82_480);
+		// RE-BASELINED 2026-11-18 (tasker 168): get_project_knowledge_lens and
+		// request_knowledge_access joined the project surface too. Measured 82,235 ->
+		// 83,714 chars (+1,479). Cap at measured + ~0.3%.
+		expect(project?.totalChars).toBeLessThanOrEqual(83_970);
 		// Bumped 2026-09-04: 15,250 → 15,700. Measured 15,458 — +426 from the
 		// create_onto_task description work noted above, and +516 already present
 		// on this branch from the control-tool descriptions (declare_turn_contract).

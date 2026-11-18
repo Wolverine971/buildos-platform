@@ -493,6 +493,26 @@ export const AGENTIC_CHAT_MUTATION_RECEIPT_BUILDERS_V1: Readonly<
 		);
 	},
 
+	/**
+	 * An ask to see more of another member's entry (tasker 168). Every database answer is a
+	 * valid outcome (sent, already waiting, said no, already shared, not found, rate limited);
+	 * only `sent` created a new ask. The owner is notified in the app; no email from here.
+	 */
+	knowledge_access_request: (value, context) => {
+		const toolName = context.toolName;
+		const ask = isRecord(value?.knowledge_ask) ? value.knowledge_ask : null;
+		if (!ask || typeof ask.status !== 'string' || ask.entity_id !== context.args.entity_id) {
+			throw invalidReceipt(toolName, 'returned no ask receipt');
+		}
+		return canonicalMutationReceipt(
+			{
+				knowledge_ask: ask,
+				message: typeof value?.message === 'string' ? value.message : 'Ask sent.'
+			},
+			toolName
+		);
+	},
+
 	asset_update: (value, context) => {
 		const toolName = context.toolName;
 		if (!value || !isRecord(value.asset) || !isRecord(value.placement)) {

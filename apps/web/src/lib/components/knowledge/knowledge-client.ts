@@ -8,9 +8,13 @@ import type {
 	KnowledgeKind,
 	KnowledgeListResult
 } from '@buildos/shared-agent-ops/knowledge';
-import { KNOWLEDGE_KIND_DEFINITIONS } from '@buildos/shared-agent-ops/knowledge';
+import {
+	KNOWLEDGE_KIND_DEFINITIONS,
+	type ParsedContactFile
+} from '@buildos/shared-agent-ops/knowledge';
 import { requireApiData } from '$lib/utils/api-client-helpers';
 import type { ResearchTrayPayload } from './research-tray';
+import type { EntityShares } from './sharing-types';
 import {
 	BookUser,
 	Building,
@@ -44,7 +48,11 @@ export interface KnowledgeLinkedRecord {
 	quote: string | null;
 }
 
-export type KnowledgeEntityPayload = KnowledgeEntityDetail & { records: KnowledgeLinkedRecord[] };
+export type KnowledgeEntityPayload = KnowledgeEntityDetail & {
+	records: KnowledgeLinkedRecord[];
+	/** Your own entry in shared projects: who sees it, asks and grants (tasker 168). */
+	sharing?: EntityShares | null;
+};
 
 export interface KnowledgeRun {
 	id: string;
@@ -247,10 +255,18 @@ export const knowledgeApi = {
 	runs(limit = 10) {
 		return call<{ runs: KnowledgeRun[] }>(`/api/knowledge/runs?limit=${limit}`);
 	},
-	importFile(file: File, preview: boolean) {
+	/**
+	 * Import contacts the browser already parsed. Only the contacts go up, gzipped: a phone
+	 * export's photos never leave the device and big files stay under the upload limit.
+	 */
+	async importContacts(parsed: ParsedContactFile, fileName: string) {
+		const json = new Blob([JSON.stringify(parsed)], { type: 'application/json' });
+		const gzipped = await new Response(
+			json.stream().pipeThrough(new CompressionStream('gzip'))
+		).blob();
 		const form = new FormData();
-		form.set('file', file);
-		if (preview) form.set('preview', '1');
+		form.set('contacts', gzipped, 'contacts.json.gz');
+		form.set('file_name', fileName.slice(0, 200));
 		return call<ImportSummary>(`/api/knowledge/import`, { method: 'POST', body: form });
 	},
 	mergeCandidates() {

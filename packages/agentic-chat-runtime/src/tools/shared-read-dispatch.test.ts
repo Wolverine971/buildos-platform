@@ -28,8 +28,9 @@ describe('shared read dispatch', () => {
 		// + the Workspace read and two cards added 2026-10-23 (tasker 146:
 		// list_workspace_suggestions, propose_workspace_filing, propose_workspace_project)
 		// + the three knowledge graph reads added 2026-11-16 (tasker 160: search_knowledge,
-		// get_knowledge_entity, query_knowledge).
-		expect(AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1).toHaveLength(57);
+		// get_knowledge_entity, query_knowledge) + the shared-project knowledge lens added
+		// 2026-11-18 (tasker 168: get_project_knowledge_lens).
+		expect(AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1).toHaveLength(58);
 		for (const toolName of AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1) {
 			expect(TOOL_METADATA[toolName], `${toolName} is missing TOOL_METADATA`).toBeDefined();
 			expect(isAgenticChatSharedReadToolNameV1(toolName)).toBe(true);

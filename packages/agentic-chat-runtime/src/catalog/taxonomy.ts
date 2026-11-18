@@ -180,7 +180,9 @@ export const TOOL_CATEGORIES = {
 			'get_knowledge_entity',
 			'query_knowledge',
 			'record_knowledge',
-			'enrich_knowledge'
+			'enrich_knowledge',
+			'get_project_knowledge_lens',
+			'request_knowledge_access'
 		],
 		averageTokens: 400,
 		costTier: 'medium'

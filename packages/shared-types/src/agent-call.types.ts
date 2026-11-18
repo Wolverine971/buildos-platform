@@ -66,7 +66,14 @@ export const BUILDOS_AGENT_READ_OPS = [
 	// what is known about them. Not project-scoped: the user's own entries plus public ones.
 	'knowledge.search',
 	'knowledge.get',
-	'knowledge.query'
+	'knowledge.query',
+	// Knowledge in shared projects (tasker 168): what OTHER members' entries hold about the
+	// names in one project's tasks/docs, labelled by who shared it. Project-scoped.
+	'knowledge.project_lens',
+	// Ask an entry's owner to share more (contact details or everything). Like
+	// request_project_access it needs only read scope: it creates a request the owner
+	// answers in BuildOS and changes nothing until they do. Agents can never approve.
+	'knowledge.request_access'
 ] as const;
 
 export const BUILDOS_AGENT_WRITE_OPS = [

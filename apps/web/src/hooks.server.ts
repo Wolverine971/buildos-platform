@@ -714,6 +714,13 @@ const handleSecurityHeaders: Handle = async ({ event, resolve }) => {
 	return response;
 };
 
+// Vercel's CDN never caches a response that sets a cookie, so pages cached for
+// everyone (public profiles, `s-maxage`) must not carry the deployment pin.
+function isSharedCacheable(response: Response): boolean {
+	const cacheControl = response.headers.get('cache-control')?.toLowerCase() ?? '';
+	return /(^|[\s,])(public|s-maxage=)/.test(cacheControl);
+}
+
 const handleDeploymentSkew: Handle = async ({ event, resolve }) => {
 	const response = await resolve(event);
 	const deploymentId = process.env.VERCEL_DEPLOYMENT_ID;
@@ -721,7 +728,8 @@ const handleDeploymentSkew: Handle = async ({ event, resolve }) => {
 		deploymentId &&
 		process.env.VERCEL_SKEW_PROTECTION_ENABLED === '1' &&
 		event.request.method === 'GET' &&
-		response.headers.get('content-type')?.split(';')[0]?.trim() === 'text/html'
+		response.headers.get('content-type')?.split(';')[0]?.trim() === 'text/html' &&
+		!isSharedCacheable(response)
 	) {
 		// A service worker's fetch(navigationRequest) sends Sec-Fetch-Dest: empty.
 		// Vercel serves fresh HTML, but the adapter only updates __vdpl for

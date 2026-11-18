@@ -28,6 +28,24 @@ export function collapseWhitespace(value: string): string {
 	return value.replace(/\s+/g, ' ').trim();
 }
 
+/** A cited quote shorter than this ("about", "CEO") proves nothing about the fact. */
+export const KNOWLEDGE_MIN_QUOTE_CHARS = 12;
+
+/**
+ * How cited quotes are compared with their source (chat message or fetched page): lowercase,
+ * straight quotes, plain dashes, single spaces. Pages use curly quotes and dashes while models
+ * usually write straight ones, so both sides must fold the same way.
+ */
+export function squashQuoteText(text: string): string {
+	return text
+		.replace(/[‘’ʼ′]/g, "'")
+		.replace(/[“”″]/g, '"')
+		.replace(/[‐‑‒–—]/g, '-')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.toLowerCase();
+}
+
 /** Same rule as the generated knowledge_entities.normalized_name column. */
 export function normalizeKnowledgeName(value: string): string {
 	return collapseWhitespace(value).toLowerCase();

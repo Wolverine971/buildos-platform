@@ -34,6 +34,7 @@ import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { supabase as defaultSupabase } from '../../lib/supabase';
 import { createAgentRunWebResearchPort, type PaidToolCharge } from '../agent-run/webResearchPort';
 import { enrichContextFrom } from './knowledgeEnrichPlan';
+import { promoteOrgFacts, publicOrgFacts } from './publicOrgLayer';
 import {
 	researchEntity,
 	researchSummary,
@@ -44,6 +45,8 @@ import {
 
 export const KNOWLEDGE_ENRICH_JOB_TYPE = 'knowledge_enrich';
 const CONCURRENCY = 2;
+/** A `running` target with no phase change for this long was left by a dead attempt. */
+const STALE_TARGET_MS = 10 * 60_000;
 
 export interface KnowledgeEnrichDeps {
 	db: KnowledgeDataClient;
@@ -148,16 +151,29 @@ export async function processKnowledgeEnrichJob(
 			? ((run.input as Record<string, unknown>).instructions as string)
 			: null;
 
+	// Only a run still waiting or running: a cancel that landed since the load stays cancelled.
 	await db
 		.from('knowledge_runs')
 		.update({ status: 'running', started_at: iso(), updated_at: iso() })
-		.eq('id', runId);
+		.eq('id', runId)
+		.in('status', ['queued', 'running']);
+
+	// A retry of this job picks up targets an earlier attempt left `running` only once they have
+	// gone quiet (every phase change refreshes updated_at). One still moving belongs to a live
+	// attempt; claiming it again would pay for the same research twice.
+	const { error: requeueError } = await db
+		.from('knowledge_run_targets')
+		.update({ status: 'queued', phase: null, updated_at: iso() })
+		.eq('run_id', runId)
+		.eq('status', 'running')
+		.lt('updated_at', new Date(now().getTime() - STALE_TARGET_MS).toISOString());
+	if (requeueError) throw new Error(`Requeue stalled targets: ${requeueError.message}`);
 
 	const { data: targetData, error: targetError } = await db
 		.from('knowledge_run_targets')
 		.select('id, entity_id, fields, status, instructions')
 		.eq('run_id', runId)
-		.in('status', ['queued', 'running'])
+		.eq('status', 'queued')
 		.order('created_at');
 	if (targetError) throw new Error(`Load targets: ${targetError.message}`);
 	const targets = (targetData ?? []) as TargetRow[];
@@ -244,7 +260,7 @@ export async function processKnowledgeEnrichJob(
 			.from('knowledge_run_targets')
 			.update({ status: 'running', phase: 'searching', started_at: iso(), updated_at: iso() })
 			.eq('id', target.id)
-			.in('status', ['queued', 'running'])
+			.eq('status', 'queued')
 			.select('id');
 		if (claimError) throw new Error(`Claim target: ${claimError.message}`);
 		if (!((claimed ?? []) as unknown[]).length) {
@@ -283,6 +299,37 @@ export async function processKnowledgeEnrichJob(
 				}
 			}
 
+			// Organizations: what BuildOS already verified on the org's own site (tasker 168),
+			// matched by its exact domain. Copied into this entry with the original sources; the
+			// web search then only looks for what is still missing, or is skipped.
+			const lent = await publicOrgFacts(db, detail, target.fields);
+			mergeBatch(free, lent.batch);
+			const stillWanted = target.fields.filter((field) => !lent.covered.includes(field));
+			if (lent.covered.length && !stillWanted.length && !instructions) {
+				const receipt = await store.record(free, { via: 'enrichment', runId });
+				counts.done++;
+				counts.facts += receipt.facts.added;
+				await db
+					.from('knowledge_run_targets')
+					.update({
+						status: 'done',
+						phase: null,
+						updated_at: iso(),
+						facts_added: receipt.facts.added,
+						cost_usd: Number(targetCost.toFixed(6)),
+						summary: `Already known from its website, no search needed: ${receipt.facts.added} new detail${receipt.facts.added === 1 ? '' : 's'}`,
+						finished_at: iso()
+					})
+					.eq('id', target.id)
+					.eq('status', 'running');
+				await db
+					.from('knowledge_entities')
+					.update({ enriched_at: iso() })
+					.eq('id', target.entity_id)
+					.eq('owner_user_id', userId);
+				return;
+			}
+
 			// Know first (free reads): the entry's circle and what the user's graph and work
 			// already say about it. Neither may fail the research.
 			const anchors = await knowFirst(detail, (usd) => charge(usd));
@@ -293,7 +340,14 @@ export async function processKnowledgeEnrichJob(
 				charge(c.cost_usd);
 			});
 			const outcome = await researchEntity(
-				{ detail, anchors, fields: target.fields, instructions, userId, context },
+				{
+					detail,
+					anchors,
+					fields: lent.covered.length && stillWanted.length ? stillWanted : target.fields,
+					instructions,
+					userId,
+					context
+				},
 				{
 					llm,
 					port,
@@ -341,6 +395,12 @@ export async function processKnowledgeEnrichJob(
 				.update({ enriched_at: iso() })
 				.eq('id', target.entity_id)
 				.eq('owner_user_id', userId);
+			// What this research confirmed on the organization's own site joins the public
+			// organization layer, so the next person's research can skip the search.
+			if (added && detail.entity.kind === 'org') {
+				const saved = await store.getEntity(target.entity_id);
+				if (saved) await promoteOrgFacts(db, saved);
+			}
 		} catch (error) {
 			if (error instanceof ResearchCancelled) {
 				// Already marked cancelled by the user; just record what it cost so far.
@@ -379,19 +439,28 @@ export async function processKnowledgeEnrichJob(
 	// Two at a time; check for cancellation between targets.
 	let cancelled = false;
 	const queue = [...targets];
+	// A lane that throws (a failed claim) stops the other one from taking more targets, and the
+	// job fails only after both lanes have stopped: a retry never overlaps a lane still paying.
+	let laneError: unknown = null;
 	await Promise.all(
 		Array.from({ length: Math.min(CONCURRENCY, queue.length) }, async () => {
-			// Take the next target before awaiting anything: two lanes waiting on the cancel
-			// check could otherwise both pass `queue.length` and one would get undefined.
-			for (let next = queue.shift(); next; next = queue.shift()) {
-				if (cancelled || (await isCancelled())) {
-					cancelled = true; // `next` is still queued; the sweep below cancels it
-					return;
+			try {
+				// Take the next target before awaiting anything: two lanes waiting on the cancel
+				// check could otherwise both pass `queue.length` and one would get undefined.
+				for (let next = queue.shift(); next; next = queue.shift()) {
+					if (cancelled || (await isCancelled())) {
+						cancelled = true; // `next` is still queued; the sweep below cancels it
+						return;
+					}
+					await research(next);
 				}
-				await research(next);
+			} catch (error) {
+				laneError ??= error;
+				queue.length = 0;
 			}
 		})
 	);
+	if (laneError) throw laneError;
 	if (cancelled) {
 		await db
 			.from('knowledge_run_targets')

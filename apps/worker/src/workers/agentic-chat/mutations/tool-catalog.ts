@@ -33,6 +33,7 @@ export type AgenticChatMutationCapabilityNameV1 =
 	| 'updateOntoTableRows'
 	| 'recordKnowledge'
 	| 'enrichKnowledge'
+	| 'requestKnowledgeAccess'
 	| 'delegateTask'
 	| 'createCalendarEvent'
 	| 'updateCalendarEvent'
@@ -118,7 +119,8 @@ export type AgenticChatMutationReceiptBuilderIdV1 =
 	| 'calendar_event'
 	| 'project_calendar'
 	| 'knowledge_record'
-	| 'knowledge_enrich';
+	| 'knowledge_enrich'
+	| 'knowledge_access_request';
 
 export type AgenticChatMutationScopeSpecV1 =
 	/** The project fence comes from an argument; the turn context must agree. */
@@ -1233,6 +1235,26 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		directWriteSelectionPolicy: 'new_entity',
 		requiredNames: ['entity_ids'],
 		reviewedArgumentNames: ['entity_ids', 'fields', 'instructions']
+	},
+	// Knowledge in shared projects (2026-11-18, tasker 168): ask another member to share
+	// more of one entry. It shares nothing (the owner decides in BuildOS), so it runs as an
+	// ordinary write with a receipt. The project fence comes from the argument; the gateway
+	// passes the claim's user as the viewer and refuses when agents are off there.
+	request_knowledge_access: {
+		capability: 'requestKnowledgeAccess',
+		operationName: 'knowledge.request_access',
+		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			scope: { mode: 'argument_project', argument: 'project_id', required: true },
+			requiredUuidArguments: ['entity_id', 'project_id'],
+			receipt: { kind: 'builder', builder: 'knowledge_access_request' }
+		},
+		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'new_entity',
+		requiredNames: ['entity_id', 'project_id'],
+		reviewedArgumentNames: ['entity_id', 'project_id', 'what']
 	},
 	delegate_task: {
 		capability: 'delegateTask',

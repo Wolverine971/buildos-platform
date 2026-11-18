@@ -30,6 +30,7 @@ import {
 	normalizeKnowledgeValue,
 	recordIdentityQuestion
 } from '@buildos/shared-agent-ops/knowledge';
+import { knowledgeGrantValueKey } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import type { JevDecider } from '@buildos/smart-llm';
 import type { PromptMessage } from './capturePrompts';
 import {
@@ -145,6 +146,12 @@ export type ChatKnowledgeInput = {
 	priorMessages: readonly PromptMessage[];
 	webPages: readonly ChatWebPage[];
 	throughMessageId: string;
+	/**
+	 * Content-free keys (knowledgeGrantValueKey) of values this chat only saw because another
+	 * project member granted them (get_project_knowledge_lens, tasker 168). A candidate fact
+	 * with the same normalized value is not copied into the user's own graph.
+	 */
+	grantedValueKeys?: ReadonlySet<string>;
 };
 
 type FactRow = {
@@ -235,6 +242,63 @@ async function selectSessionLinks(db: KnowledgeDataClient, userId: string, sessi
 	return (data ?? []) as Array<{ id: string; entity_id: string }>;
 }
 
+/**
+ * Keep the finished receipt on this capture's chat source. If saving the checkpoint fails after
+ * the knowledge was written, the retry returns this copy, with everything Undo needs (created
+ * entries, links, restored statuses, summaries, questions), instead of a thinner rebuild.
+ */
+async function keepReceiptCopy(
+	db: KnowledgeDataClient,
+	userId: string,
+	receipt: ChatKnowledgeReceipt
+): Promise<void> {
+	if (!receipt.source_ids.length) return;
+	try {
+		const { data } = await db
+			.from('knowledge_sources')
+			.select('id, source_type, meta')
+			.eq('owner_user_id', userId)
+			.in('id', receipt.source_ids);
+		const chat = (
+			(data ?? []) as Array<{ id: string; source_type: string; meta: unknown }>
+		).find((row) => row.source_type === 'chat');
+		if (!chat) return;
+		await db
+			.from('knowledge_sources')
+			.update({ meta: { ...(asObject(chat.meta) ?? {}), receipt } })
+			.eq('id', chat.id)
+			.eq('owner_user_id', userId);
+	} catch {
+		// Best effort: a retry falls back to rebuilding from the facts.
+	}
+}
+
+function asObject(value: unknown): Record<string, unknown> | null {
+	return value && typeof value === 'object' && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: null;
+}
+
+/** The receipt an earlier attempt of this capture kept (see keepReceiptCopy). */
+async function keptReceipt(
+	db: KnowledgeDataClient,
+	userId: string,
+	captureKey: string
+): Promise<ChatKnowledgeReceipt | null> {
+	const { data, error } = await db
+		.from('knowledge_sources')
+		.select('meta')
+		.eq('owner_user_id', userId)
+		.eq('source_type', 'chat')
+		.contains('meta', { capture_key: captureKey });
+	if (error) throw error;
+	for (const row of (data ?? []) as Array<{ meta: unknown }>) {
+		const kept = asObject(asObject(row.meta)?.receipt);
+		if (kept && kept.capture_key === captureKey) return kept as ChatKnowledgeReceipt;
+	}
+	return null;
+}
+
 /** The facts this capture's sources support that were created after the sources: its additions. */
 async function addedFactsFor(
 	db: KnowledgeDataClient,
@@ -297,6 +361,8 @@ export async function runChatKnowledgeCapture(
 	try {
 		// A retry of a checkpoint whose knowledge was already written: rebuild the receipt from
 		// what that attempt recorded instead of writing (and paying) again.
+		const kept = await keptReceipt(db, session.userId, captureKey);
+		if (kept) return kept;
 		const earlier = await addedFactsFor(db, session.userId, captureKey);
 		if (earlier.sourceIds.length) {
 			receipt.source_ids = earlier.sourceIds;
@@ -382,6 +448,23 @@ export async function runChatKnowledgeCapture(
 			priorMessages,
 			webPages: input.webPages
 		});
+		// 3b. Never copy another member's granted value into the user's own graph: structured
+		// comparison of the normalized value against the keys the lens reads left in storage.
+		const granted = input.grantedValueKeys;
+		if (granted?.size) {
+			validated.facts = validated.facts.filter((fact) => {
+				const key =
+					fact.value !== undefined
+						? knowledgeGrantValueKey(fact.predicate, fact.value)
+						: null;
+				if (!key || !granted.has(key)) return true;
+				validated.dropped.push({
+					predicate: fact.predicate,
+					reason: 'shared_by_another_member'
+				});
+				return false;
+			});
+		}
 		receipt.dropped = validated.dropped.slice(0, MAX_DROPS_IN_RECEIPT);
 		if (!validated.facts.length) return receipt;
 
@@ -506,10 +589,28 @@ export async function runChatKnowledgeCapture(
 				receipt.created_entity_ids.push(newId);
 			}
 		}
-		const subjectFor = (index: number, entityId: string) =>
-			identity.verdicts.get(index)?.verdict === 'different'
-				? (elsewhere.get(entityId) ?? entityId)
-				: entityId;
+		// A chat name every checked claim placed on the new entry means that entry wherever the
+		// chat names it, including as the object of other facts ("me knows X", "Y works at X").
+		const twinForRef = new Map<string, string>();
+		for (const entity of entities) {
+			const matchedId = idOf(entity.ref);
+			const twinId = matchedId ? elsewhere.get(matchedId) : undefined;
+			if (!twinId) continue;
+			const verdicts = facts.flatMap((fact, index) =>
+				fact.subject === entity.ref && identity.verdicts.has(index)
+					? [identity.verdicts.get(index)!.verdict]
+					: []
+			);
+			if (verdicts.length && verdicts.every((verdict) => verdict === 'different'))
+				twinForRef.set(entity.ref, twinId);
+		}
+		const entryOf = (ref: string) => twinForRef.get(ref) ?? idOf(ref);
+		const subjectFor = (index: number, entityId: string) => {
+			const verdict = identity.verdicts.get(index)?.verdict;
+			if (verdict === 'different') return elsewhere.get(entityId) ?? entityId;
+			if (verdict) return entityId;
+			return entryOf(facts[index]!.subject) ?? entityId;
+		};
 		const held = new Set([...asks.values()].flat());
 		receipt.identity.different = elsewhere.size;
 
@@ -553,7 +654,7 @@ export async function runChatKnowledgeCapture(
 			if (held.has(index)) continue;
 			const matchedId = idOf(fact.subject);
 			const subjectId = matchedId ? subjectFor(index, matchedId) : null;
-			const objectId = fact.object ? idOf(fact.object) : null;
+			const objectId = fact.object ? entryOf(fact.object) : null;
 			const def = getKnowledgePredicate(fact.predicate)!;
 			if (!subjectId || (fact.object && !objectId)) continue;
 			let normalized: string | null = null;
@@ -638,7 +739,7 @@ export async function runChatKnowledgeCapture(
 				candidate: {
 					name: entity.name,
 					facts: asked.flatMap((fact) => {
-						const objectId = fact.object ? idOf(fact.object) : null;
+						const objectId = fact.object ? entryOf(fact.object) : null;
 						if (fact.object && !objectId) return [];
 						return [
 							{
@@ -741,7 +842,11 @@ export async function runChatKnowledgeCapture(
 
 		const created = new Set(receipt.created_entity_ids);
 		const shown = new Map<string, ChatKnowledgeReceipt['entities'][number]>();
-		for (const entity of resolved.entities) {
+		const twins = [...elsewhere].flatMap(([matchedId, twinId]) => {
+			const entity = resolved.entities.find((e) => e.id === matchedId);
+			return entity ? [{ ...entity, id: twinId }] : [];
+		});
+		for (const entity of [...resolved.entities, ...twins]) {
 			const count = added.facts.filter((fact) => fact.entity_id === entity.id).length;
 			if (!count && !created.has(entity.id)) continue;
 			const existing = shown.get(entity.id);
@@ -765,6 +870,7 @@ export async function runChatKnowledgeCapture(
 		}
 		receipt.entities = [...shown.values()].sort((a, b) => b.facts - a.facts);
 		receipt.status = receipt.fact_ids.length ? 'written' : 'nothing';
+		await keepReceiptCopy(db, session.userId, receipt);
 		return receipt;
 	} catch (error) {
 		receipt.status = 'failed';
@@ -781,6 +887,7 @@ export async function runChatKnowledgeCapture(
 		} catch {
 			// The receipt keeps the error; nothing more to recover.
 		}
+		await keepReceiptCopy(db, session.userId, receipt);
 		return receipt;
 	}
 }

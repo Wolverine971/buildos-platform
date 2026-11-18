@@ -7,7 +7,9 @@ import {
 	parseContactFile,
 	parseCsv,
 	parseLinkedInDate,
-	planContactImport
+	planContactImport,
+	readParsedContactPayload,
+	summarizeContactFile
 } from './contacts-import';
 import {
 	linkedinKey,
@@ -299,5 +301,46 @@ describe('vocabulary', () => {
 				qualifiers: [...def!.qualifierKeys]
 			});
 		}
+	});
+});
+
+describe('contacts parsed in the browser', () => {
+	it('come back to the server unchanged, and plan the same import as the raw file', () => {
+		const parsed = parseContactFile('contacts.vcf', IPHONE_VCF)!;
+		const sent = JSON.parse(JSON.stringify(parsed));
+		const read = readParsedContactPayload(sent)!;
+		expect(read).toEqual(parsed);
+		expect(planContactImport(read.contacts, { format: read.format })).toEqual(
+			planContactImport(parsed.contacts, { format: parsed.format })
+		);
+		expect(summarizeContactFile(read)).toMatchObject({
+			format_label: 'Phone contacts (vCard)',
+			contacts: parsed.contacts.length,
+			with_email: 1
+		});
+	});
+
+	it('drop malformed contacts and refuse payloads that are not a contact list', () => {
+		expect(readParsedContactPayload({ format: 'csv', contacts: [] })).toBeNull();
+		expect(readParsedContactPayload({ format: 'vcard', contacts: 'x' })).toBeNull();
+		const read = readParsedContactPayload({
+			format: 'linkedin_csv',
+			skipped: -4,
+			contacts: [
+				null,
+				{ name: '   ' },
+				{ name: 'Maya Chen', emails: [{ value: 42 }, { value: 'maya@x.example' }], org: 7 }
+			]
+		})!;
+		expect(read.skipped).toBe(0);
+		expect(read.contacts).toEqual([
+			{
+				name: 'Maya Chen',
+				emails: [{ value: 'maya@x.example' }],
+				phones: [],
+				urls: [],
+				addresses: []
+			}
+		]);
 	});
 });

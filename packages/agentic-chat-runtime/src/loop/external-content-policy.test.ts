@@ -23,6 +23,8 @@ describe('agenticChatReadIngestsExternalContentV1 (S1)', () => {
 	it('names exactly the email content, web, and calendar event reads', () => {
 		expect([...AGENTIC_CHAT_EXTERNAL_CONTENT_TOOL_NAMES_V1].sort()).toEqual([
 			'get_email_message',
+			// Other members' entries in a shared project (tasker 168).
+			'get_project_knowledge_lens',
 			'scan_email_inbox',
 			'search_email_messages',
 			'web_navigate',

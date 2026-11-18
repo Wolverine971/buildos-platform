@@ -9,10 +9,12 @@
 // fact must cite a page the chat's own search or browsing returned. Nothing here classifies
 // language.
 import {
+	KNOWLEDGE_MIN_QUOTE_CHARS,
 	type KnowledgeKind,
 	getKnowledgePredicate,
 	isKnowledgeKind,
-	normalizeKnowledgeName
+	normalizeKnowledgeName,
+	squashQuoteText
 } from '@buildos/shared-agent-ops/knowledge';
 import type { PromptMessage } from './capturePrompts';
 
@@ -50,7 +52,7 @@ const ALLOWED = new Set<string>(CHAT_KNOWLEDGE_PREDICATES);
 const USER_ONLY_FOR_PEOPLE = new Set(['email', 'phone', 'address', 'birthday', 'note']);
 const USER_ONLY = new Set(['knows', 'note']);
 
-export const MIN_QUOTE_CHARS = 12;
+export const MIN_QUOTE_CHARS = KNOWLEDGE_MIN_QUOTE_CHARS;
 export const MAX_CAPTURE_FACTS = 15;
 export const MAX_CAPTURE_ENTITIES = 10;
 /** The gate reads at most this much of the stretch. */
@@ -235,15 +237,7 @@ export type ValidatedChatKnowledge = {
 };
 
 /** Lowercase, straight quotes, single spaces: how quotes and names are compared. */
-export function squashText(text: string): string {
-	return text
-		.replace(/[‘’ʼ]/g, "'")
-		.replace(/[“”]/g, '"')
-		.replace(/[–—]/g, '-')
-		.replace(/\s+/g, ' ')
-		.trim()
-		.toLowerCase();
-}
+export const squashText = squashQuoteText;
 
 function asRecord(value: unknown): Record<string, unknown> {
 	return value && typeof value === 'object' && !Array.isArray(value)

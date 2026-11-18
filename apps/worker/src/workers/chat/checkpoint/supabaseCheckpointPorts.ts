@@ -62,6 +62,9 @@ const SAVED_CHANGE_ROWS = 200;
 /** Chat tools whose stored results name the pages the chat read (their text is never stored). */
 const WEB_TOOL_NAMES = ['web_search', 'web_visit', 'web_navigate'];
 const WEB_TOOL_ROWS = 40;
+/** Shared-project knowledge reads (tasker 168) whose stored trace lists granted-value keys. */
+const LENS_TOOL_NAME = 'get_project_knowledge_lens';
+const LENS_TOOL_ROWS = 50;
 
 let knowledgeGate: JevClient | null | undefined;
 
@@ -263,6 +266,36 @@ export function createSupabaseCheckpointPorts(options?: {
 				webPagesFromToolResult((row as { result: unknown }).result)
 			)
 		);
+	}
+
+	/**
+	 * Keys of values the chat only saw through another member's grant, from every lens read in
+	 * the session up to the batch's last message (not just since the watermark: the assistant
+	 * may repeat a granted value later). The stored trace holds keys, never the values.
+	 */
+	async function loadGrantedValueKeys(
+		sessionId: string,
+		throughAt: string
+	): Promise<Set<string>> {
+		const { data, error } = await supabase
+			.from('chat_tool_executions')
+			.select('result')
+			.eq('session_id', sessionId)
+			.eq('success', true)
+			.eq('tool_name', LENS_TOOL_NAME)
+			.lte('created_at', throughAt)
+			.order('created_at', { ascending: false })
+			.limit(LENS_TOOL_ROWS);
+		if (error) throw error;
+		const keys = new Set<string>();
+		for (const row of (data ?? []) as Array<{ result: unknown }>) {
+			const result = row.result as { granted_value_keys?: unknown } | null;
+			if (!Array.isArray(result?.granted_value_keys)) continue;
+			for (const key of result.granted_value_keys) {
+				if (typeof key === 'string') keys.add(key);
+			}
+		}
+		return keys;
 	}
 
 	return {
@@ -495,6 +528,19 @@ export function createSupabaseCheckpointPorts(options?: {
 					error instanceof Error ? error.message : error
 				);
 			}
+			let grantedValueKeys: Set<string>;
+			try {
+				grantedValueKeys = through
+					? await loadGrantedValueKeys(session.id, through.created_at)
+					: new Set();
+			} catch (error) {
+				// Fail closed: without the keys a granted value could be copied, so capture nothing.
+				console.warn(
+					`⚠️ Knowledge capture could not read shared-project reads for ${session.id}:`,
+					error instanceof Error ? error.message : error
+				);
+				return null;
+			}
 			return runChatKnowledgeCapture(
 				{
 					db: supabase as never,
@@ -512,7 +558,8 @@ export function createSupabaseCheckpointPorts(options?: {
 					newMessages,
 					priorMessages,
 					webPages,
-					throughMessageId
+					throughMessageId,
+					grantedValueKeys
 				}
 			);
 		},

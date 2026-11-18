@@ -24,6 +24,10 @@
 //   is external when its result carries a Google-sourced event. Events BuildOS
 //   stores itself (`source: 'ontology'`) are the user's data.
 //
+// - Other members' knowledge entries (`get_project_knowledge_lens`, tasker 168): another
+//   person's notes, quotes and researched facts about the names in a shared project, read
+//   live from their private graph. An ask or save that follows needs review.
+//
 // Not external: the user's own BuildOS records (projects, tasks, documents,
 // goals, plans, milestones, risks, assets, BuildOS calendar rows), field
 // metadata, skills, and control tools. Content that came from outside and was
@@ -39,7 +43,8 @@ const EXTERNAL_CONTENT_TOOL_NAMES = [
 	'get_email_message',
 	'web_search',
 	'web_visit',
-	'web_navigate'
+	'web_navigate',
+	'get_project_knowledge_lens'
 ] as const;
 
 const CALENDAR_EVENT_READ_TOOL_NAMES = [

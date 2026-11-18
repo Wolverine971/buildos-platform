@@ -41,6 +41,101 @@ export interface ParsedContactFile {
 
 export const MAX_IMPORT_CONTACTS = 10_000;
 
+export const CONTACT_FORMAT_LABELS: Record<ContactFileFormat, string> = {
+	vcard: 'Phone contacts (vCard)',
+	linkedin_csv: 'LinkedIn connections',
+	google_csv: 'Google Contacts'
+};
+
+export interface ContactFileSummary {
+	format: ContactFileFormat;
+	format_label: string;
+	contacts: number;
+	skipped: number;
+	with_email: number;
+	with_phone: number;
+	with_company: number;
+	capped: boolean;
+	sample: Array<{ name: string; detail: string | null }>;
+}
+
+/** What a parsed file holds: the import preview, computed where the file was parsed. */
+export function summarizeContactFile(parsed: ParsedContactFile): ContactFileSummary {
+	return {
+		format: parsed.format,
+		format_label: CONTACT_FORMAT_LABELS[parsed.format],
+		contacts: parsed.contacts.length,
+		skipped: parsed.skipped,
+		with_email: parsed.contacts.filter((c) => c.emails.length).length,
+		with_phone: parsed.contacts.filter((c) => c.phones.length).length,
+		with_company: parsed.contacts.filter((c) => c.org).length,
+		capped: parsed.contacts.length >= MAX_IMPORT_CONTACTS,
+		sample: parsed.contacts.slice(0, 5).map((c) => ({
+			name: c.name,
+			detail:
+				c.title && c.org
+					? `${c.title} at ${c.org}`
+					: (c.org ?? c.title ?? c.emails[0]?.value ?? null)
+		}))
+	};
+}
+
+/**
+ * Contacts parsed in the browser and sent as JSON, checked back into shape. Anything malformed
+ * is dropped; values are capped like the parsers cap them. Returns null when the payload is not
+ * a contact list at all.
+ */
+export function readParsedContactPayload(value: unknown): ParsedContactFile | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+	const raw = value as Record<string, unknown>;
+	const format = raw.format;
+	if (format !== 'vcard' && format !== 'linkedin_csv' && format !== 'google_csv') return null;
+	if (!Array.isArray(raw.contacts)) return null;
+	const text = (v: unknown, max = 500): string | undefined =>
+		typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : undefined;
+	const values = (v: unknown): ImportedContactValue[] =>
+		(Array.isArray(v) ? v : []).slice(0, 20).flatMap((item) => {
+			const entry = item as Record<string, unknown> | null;
+			const value = text(entry?.value);
+			if (!value) return [];
+			const label = text(entry?.label, 60);
+			return [label ? { value, label } : { value }];
+		});
+	const contacts: ImportedContact[] = [];
+	for (const item of raw.contacts.slice(0, MAX_IMPORT_CONTACTS)) {
+		if (!item || typeof item !== 'object') continue;
+		const c = item as Record<string, unknown>;
+		const name = text(c.name, 300);
+		if (!name) continue;
+		const contact: ImportedContact = {
+			name,
+			emails: values(c.emails),
+			phones: values(c.phones),
+			urls: values(c.urls),
+			addresses: values(c.addresses)
+		};
+		for (const key of [
+			'givenName',
+			'familyName',
+			'nickname',
+			'org',
+			'title',
+			'linkedinUrl',
+			'birthday',
+			'connectedOn'
+		] as const) {
+			const v = text(c[key], 300);
+			if (v) contact[key] = v;
+		}
+		const note = text(c.note, 4000);
+		if (note) contact.note = note;
+		contacts.push(contact);
+	}
+	const skipped =
+		typeof raw.skipped === 'number' && raw.skipped >= 0 ? Math.floor(raw.skipped) : 0;
+	return { format, contacts, skipped };
+}
+
 export function detectContactFileFormat(fileName: string, text: string): ContactFileFormat | null {
 	const head = text.slice(0, 4000);
 	if (/BEGIN:VCARD/i.test(head) || /\.vcf$/i.test(fileName)) return 'vcard';

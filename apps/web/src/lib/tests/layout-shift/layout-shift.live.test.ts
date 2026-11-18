@@ -262,7 +262,7 @@ const SURFACES: Surface[] = [
 						await tasksTab.click({ timeout: 10_000 });
 						return tasksTab.getAttribute('aria-selected');
 					},
-					{ timeout: 30_000, intervals: [500, 1000, 2000] }
+					{ timeout: 30_000, interval: 500 }
 				)
 				.toBe('true');
 			await page.getByText(FIRST, { exact: true }).first().waitFor({ timeout: 30_000 });

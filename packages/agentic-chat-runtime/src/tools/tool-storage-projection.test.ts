@@ -36,6 +36,58 @@ function readToolNames(): string[] {
 	].sort();
 }
 
+describe('shared-project knowledge lens storage (tasker 168)', () => {
+	const lens = {
+		project: { id: 'p1', name: 'Launch' },
+		record_kind: 'task',
+		records_checked: 12,
+		guidance: "Other members' notes.",
+		entries: [
+			{
+				entity: { id: 'e1', kind: 'person', name: 'Kyle Reed', summary: 'Investor' },
+				shared_by: 'DJ',
+				facts: [
+					{
+						predicate: 'works_at',
+						object: { name: 'Acme' },
+						shared_by: 'DJ',
+						scope: 'project:Launch'
+					},
+					{
+						predicate: 'email',
+						value: 'Kyle@Example.com',
+						shared_by: 'DJ',
+						scope: 'grant'
+					}
+				],
+				hidden: { contact: 1, other: 0 },
+				can_ask: true,
+				on_records: ['t1']
+			}
+		],
+		total: 1
+	};
+
+	it('keeps no names, values or quotes, only ids, counts and granted-value keys', () => {
+		const stored = projectAgenticChatToolResultForStorageV1('get_project_knowledge_lens', lens);
+		const text = JSON.stringify(stored);
+		for (const secret of ['Kyle', 'kyle@example.com', 'Acme', 'Investor', 'DJ', 'Launch']) {
+			expect(text.toLowerCase()).not.toContain(secret.toLowerCase());
+		}
+		expect(stored).toMatchObject({
+			content_redacted: true,
+			project_id: 'p1',
+			records_checked: 12,
+			entries: [{ entity_id: 'e1', fact_count: 2, hidden: { contact: 1, other: 0 } }]
+		});
+		// Only the granted value is keyed (the shared works_at fact is not).
+		expect((stored as { granted_value_keys: string[] }).granted_value_keys).toHaveLength(1);
+		expect((stored as { granted_value_keys: string[] }).granted_value_keys[0]).toMatch(
+			/^email:[0-9a-f]+$/
+		);
+	});
+});
+
 describe('tool storage class registry', () => {
 	it('classifies every read tool', () => {
 		const missing = readToolNames().filter((name) => !getAgenticChatToolStorageClassV1(name));
@@ -53,6 +105,7 @@ describe('tool storage class registry', () => {
 		expect([...AGENTIC_CHAT_PASS_THROUGH_TOOL_NAMES_V1].sort()).toEqual([
 			'get_calendar_event_details',
 			'get_email_message',
+			'get_project_knowledge_lens',
 			'list_calendar_events',
 			'scan_email_inbox',
 			'search_email_messages',

@@ -58,43 +58,52 @@ export type ResolveKnowledgeIdentity = (input: {
 	candidates: readonly KnowledgeIdentityCandidate[];
 }) => Promise<KnowledgeIdentityDecision[]>;
 
-/** Current behaviour: the store decides, except one-word person names (see above). */
+/**
+ * Current behaviour: the store decides, except one-word person names (see above), and any name
+ * the user already has on two or more entries: the store would add yet another twin, so the
+ * chat skips it rather than guess which one it means.
+ */
 export const storeKnowledgeIdentity: ResolveKnowledgeIdentity = async ({
 	db,
 	userId,
 	candidates
 }) => {
-	const vague = candidates.filter(
-		(candidate) => candidate.kind === 'person' && !isSpecificPersonName(candidate.name)
-	);
+	const keyOf = (kind: string, name: string) => `${kind}|${normalizeKnowledgeName(name)}`;
 	const matches = new Map<string, string[]>();
-	if (vague.length) {
+	if (candidates.length) {
 		const { data, error } = await db
 			.from('knowledge_entities')
-			.select('id, normalized_name')
+			.select('id, kind, normalized_name')
 			.eq('owner_user_id', userId)
-			.eq('kind', 'person')
+			.in('kind', [...new Set(candidates.map((candidate) => candidate.kind))])
 			.eq('status', 'active')
 			.eq('is_self', false)
-			.in(
-				'normalized_name',
-				vague.map((candidate) => normalizeKnowledgeName(candidate.name))
-			);
+			.in('normalized_name', [
+				...new Set(candidates.map((candidate) => normalizeKnowledgeName(candidate.name)))
+			]);
 		if (error) throw error;
-		for (const row of (data ?? []) as Array<{ id: string; normalized_name: string }>) {
-			matches.set(row.normalized_name, [...(matches.get(row.normalized_name) ?? []), row.id]);
+		for (const row of (data ?? []) as Array<{
+			id: string;
+			kind: string;
+			normalized_name: string;
+		}>) {
+			const key = keyOf(row.kind, row.normalized_name);
+			matches.set(key, [...(matches.get(key) ?? []), row.id]);
 		}
 	}
 	return candidates.map((candidate): KnowledgeIdentityDecision => {
-		if (!vague.includes(candidate)) return { ref: candidate.ref, action: 'default' };
-		const ids = matches.get(normalizeKnowledgeName(candidate.name)) ?? [];
+		const ids = matches.get(keyOf(candidate.kind, candidate.name)) ?? [];
+		const vague = candidate.kind === 'person' && !isSpecificPersonName(candidate.name);
+		if (ids.length > 1)
+			return {
+				ref: candidate.ref,
+				action: 'skip',
+				reason: vague ? 'several people with this name' : 'several entries with this name'
+			};
+		if (!vague) return { ref: candidate.ref, action: 'default' };
 		return ids.length === 1
 			? { ref: candidate.ref, action: 'use', entityId: ids[0]! }
-			: {
-					ref: candidate.ref,
-					action: 'skip',
-					reason: ids.length ? 'several people with this name' : 'first name only'
-				};
+			: { ref: candidate.ref, action: 'skip', reason: 'first name only' };
 	});
 };
 

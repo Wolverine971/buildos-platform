@@ -13,6 +13,7 @@ import {
 import {
 	KNOWLEDGE_ENRICH_INSTRUCTIONS_MAX,
 	KNOWLEDGE_ENRICH_MAX_ENTITIES,
+	KNOWLEDGE_LENS_RECORD_LIMIT,
 	KNOWLEDGE_QUERY_LIMIT_DEFAULT,
 	KNOWLEDGE_QUERY_LIMIT_MAX,
 	KNOWLEDGE_RECORD_MAX_ENTITIES,
@@ -41,6 +42,8 @@ const NAMES = [
 	'record_knowledge',
 	'enrich_knowledge'
 ];
+/** Knowledge in shared projects (tasker 168): project-scoped by design. */
+const SHARED_PROJECT_NAMES = ['get_project_knowledge_lens', 'request_knowledge_access'];
 
 function params(name: string): Record<string, any> {
 	return KNOWLEDGE_TOOL_DEFINITIONS.find((tool) => tool.function.name === name)!.function
@@ -62,8 +65,11 @@ describe('knowledge tool catalog', () => {
 		expect(sourceTypes.length).toBeGreaterThan(0);
 	});
 
-	it('defines the five tools once, with metadata and knowledge.* ops', () => {
-		expect(KNOWLEDGE_TOOL_DEFINITIONS.map((tool) => tool.function.name)).toEqual(NAMES);
+	it('defines the seven tools once, with metadata and knowledge.* ops', () => {
+		expect(KNOWLEDGE_TOOL_DEFINITIONS.map((tool) => tool.function.name)).toEqual([
+			...NAMES,
+			...SHARED_PROJECT_NAMES
+		]);
 		const catalogNames = CHAT_TOOL_DEFINITIONS.map((tool) => tool.function.name);
 		const registry = getToolRegistry();
 		for (const name of NAMES) {
@@ -81,6 +87,34 @@ describe('knowledge tool catalog', () => {
 		expect(TOOL_METADATA.enrich_knowledge!.category).toBe('write');
 		expect(registry.byToolName.record_knowledge!.kind).toBe('write');
 		expect(registry.byToolName.query_knowledge!.kind).toBe('read');
+	});
+
+	it("scopes the shared-project tools to one project and labels them as other members' notes", () => {
+		const catalogNames = CHAT_TOOL_DEFINITIONS.map((tool) => tool.function.name);
+		const registry = getToolRegistry();
+		for (const name of SHARED_PROJECT_NAMES) {
+			expect(
+				catalogNames.filter((entry) => entry === name),
+				name
+			).toHaveLength(1);
+			expect(params(name).required, name).toContain('project_id');
+			expect(params(name).additionalProperties, name).toBe(false);
+			// The viewer is always the trusted user: no tool argument names a user.
+			expect(Object.keys(params(name).properties).join(' '), name).not.toMatch(/user/);
+		}
+		expect(registry.byToolName.get_project_knowledge_lens!.op).toBe('knowledge.project_lens');
+		expect(registry.byToolName.get_project_knowledge_lens!.kind).toBe('read');
+		expect(registry.byToolName.request_knowledge_access!.op).toBe('knowledge.request_access');
+		expect(TOOL_METADATA.request_knowledge_access!.category).toBe('write');
+		const lens = KNOWLEDGE_TOOL_DEFINITIONS.find(
+			(tool) => tool.function.name === 'get_project_knowledge_lens'
+		)!.function.description;
+		expect(lens).toMatch(/shared_by/);
+		expect(lens).toMatch(/never present it as the user's own/);
+		expect(params('get_project_knowledge_lens').properties.record_ids.maxItems).toBe(
+			KNOWLEDGE_LENS_RECORD_LIMIT
+		);
+		expect(params('request_knowledge_access').properties.what.enum).toEqual(['contact', 'all']);
 	});
 
 	it('promises the limits the gateway enforces', () => {

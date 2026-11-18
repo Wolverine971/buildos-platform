@@ -16,6 +16,7 @@
 // `chat_turn_stream_state.projection`), terminal records, and admin views of
 // older rows. Keyed on tool_name only; nothing here reads the text it drops.
 // Tool arguments are stored as written.
+import { lensGrantedValueKeys } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import { redactAgenticChatEmailToolResultForStorageV1 } from './email-reads';
 
 export type AgenticChatToolStorageClassV1 = 'workspace' | 'pass_through';
@@ -96,7 +97,12 @@ export const AGENTIC_CHAT_TOOL_STORAGE_CLASSES_V1: Readonly<
 	get_calendar_event_details: 'pass_through',
 	web_search: 'pass_through',
 	web_visit: 'pass_through',
-	web_navigate: 'pass_through'
+	web_navigate: 'pass_through',
+	// Other members' entries in a shared project (tasker 168). Recomputed live on every read
+	// (leaving, revoking or editing takes effect next read), so storage keeps a content-free
+	// trace plus content-free keys of granted values, which the chat wrap-up capture uses to
+	// avoid copying a granted contact detail into the user's own graph.
+	get_project_knowledge_lens: 'pass_through'
 });
 
 export const AGENTIC_CHAT_PASS_THROUGH_TOOL_NAMES_V1: readonly string[] = Object.freeze(
@@ -111,6 +117,8 @@ export const AGENTIC_CHAT_WEB_REDACTION_NOTICE_V1 =
 	'Web content is not stored; it was available to the assistant only during the turn.';
 export const AGENTIC_CHAT_EMAIL_REDACTION_NOTICE_V1 =
 	'Email content is not stored; it was available to the assistant only during the turn.';
+export const AGENTIC_CHAT_PROJECT_KNOWLEDGE_REDACTION_NOTICE_V1 =
+	'What other project members share is not stored; it was available to the assistant only during the turn.';
 
 /** A projector's answer for a result that is workspace data after all. */
 const KEEP = Symbol('keep');
@@ -138,7 +146,8 @@ const REDACTION_NOTICE_BY_TOOL: Readonly<Record<string, string>> = Object.freeze
 	get_calendar_event_details: AGENTIC_CHAT_CALENDAR_REDACTION_NOTICE_V1,
 	web_search: AGENTIC_CHAT_WEB_REDACTION_NOTICE_V1,
 	web_visit: AGENTIC_CHAT_WEB_REDACTION_NOTICE_V1,
-	web_navigate: AGENTIC_CHAT_WEB_REDACTION_NOTICE_V1
+	web_navigate: AGENTIC_CHAT_WEB_REDACTION_NOTICE_V1,
+	get_project_knowledge_lens: AGENTIC_CHAT_PROJECT_KNOWLEDGE_REDACTION_NOTICE_V1
 });
 
 export function redactionNoticeForAgenticChatToolV1(toolName: unknown): string {
@@ -179,7 +188,9 @@ export function projectAgenticChatToolResultForStorageV1(
 						? projectWebVisit(result)
 						: normalized === 'web_navigate'
 							? projectWebNavigate(result)
-							: redactAgenticChatEmailToolResultForStorageV1(normalized, result);
+							: normalized === 'get_project_knowledge_lens'
+								? projectProjectKnowledgeLens(result)
+								: redactAgenticChatEmailToolResultForStorageV1(normalized, result);
 	// get_calendar_event_details of a BuildOS-created event is workspace data.
 	if (projected === KEEP) return result;
 	const trace = projected ?? minimalTrace(normalized);
@@ -242,6 +253,31 @@ function minimalTrace(toolName: string): Record<string, unknown> {
 		content_redacted: true,
 		tool_name: toolName,
 		redaction_notice: redactionNoticeForAgenticChatToolV1(toolName)
+	};
+}
+
+/**
+ * get_project_knowledge_lens: which entries were shown (ids and counts only) and the
+ * content-free keys of granted values (`granted_value_keys`, see knowledgeGrantValueKey).
+ */
+function projectProjectKnowledgeLens(result: Record<string, unknown>): Record<string, unknown> {
+	const project = isRecord(result.project) ? result.project : null;
+	return {
+		...(typeof project?.id === 'string' ? { project_id: project.id } : {}),
+		...pickDefined(result, ['record_kind', 'records_checked', 'total', 'truncated']),
+		entries: asRecordArray(result.entries).map((entry) => ({
+			...(isRecord(entry.entity) && typeof entry.entity.id === 'string'
+				? { entity_id: entry.entity.id }
+				: {}),
+			fact_count: Array.isArray(entry.facts) ? entry.facts.length : 0,
+			...(isRecord(entry.hidden) ? { hidden: entry.hidden } : {}),
+			...(isRecord(entry.ask) && typeof entry.ask.status === 'string'
+				? { ask_status: entry.ask.status }
+				: {})
+		})),
+		granted_value_keys: lensGrantedValueKeys(result),
+		content_redacted: true,
+		redaction_notice: AGENTIC_CHAT_PROJECT_KNOWLEDGE_REDACTION_NOTICE_V1
 	};
 }
 

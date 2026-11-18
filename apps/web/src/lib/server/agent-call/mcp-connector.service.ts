@@ -318,7 +318,9 @@ function toMcpTool(tool: ReturnType<typeof getPublicBuildosAgentTools>[number]) 
 	const asks =
 		tool.name === 'request_buildos_permission' ||
 		tool.name === 'request_buildos_access' ||
-		tool.name === 'request_project_access';
+		tool.name === 'request_project_access' ||
+		// Tasker 168: ask a project member to share more of one knowledge entry.
+		tool.name === 'request_knowledge_access';
 	const write = asks || requiredScopeMode === 'read_write' || isWriteOp(op);
 	const title = titleFromToolName(tool.name);
 

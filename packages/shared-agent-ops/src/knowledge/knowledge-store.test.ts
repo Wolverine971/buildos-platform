@@ -495,6 +495,93 @@ describe('KnowledgeStore.record', () => {
 		]);
 	});
 
+	it('keeps one current value when an old value is restated (A, then B, then A)', async () => {
+		const { db, store } = setup();
+		const say = (value: string, subject: string | { ref: string }) =>
+			store.record(
+				{
+					entities:
+						typeof subject === 'string'
+							? []
+							: [{ ...subject, kind: 'person', name: 'Ana' }],
+					facts: [
+						{
+							subject: typeof subject === 'string' ? subject : subject.ref,
+							predicate: 'headline',
+							value
+						}
+					]
+				},
+				{ via: 'manual' }
+			);
+		const first = await say('Teacher', { ref: 'ana' });
+		const ana = first.entities[0]!.id;
+		await say('Principal', ana);
+		await say('Teacher', ana);
+		const headlines = db.rows('knowledge_facts').filter((f) => f.predicate === 'headline');
+		expect(headlines.map((f) => [f.value_text, f.status]).sort()).toEqual([
+			['Principal', 'superseded'],
+			['Teacher', 'active']
+		]);
+		expect(db.rows('knowledge_entities').find((e) => e.id === ana)!.summary).toBe('Teacher');
+	});
+
+	it('creates one entry when two writes name the same new person at once', async () => {
+		const { db, store, alice } = setup();
+		const other = new KnowledgeStore(db, alice);
+		const batch = (task: string) => ({
+			entities: [{ ref: 'louis', kind: 'person' as const, name: 'Louis Arnette' }],
+			facts: [{ subject: 'louis', predicate: 'headline', value: `Mentioned in ${task}` }]
+		});
+		await Promise.all([
+			store.record(batch('task 1'), { via: 'task' }),
+			other.record(batch('task 2'), { via: 'task' })
+		]);
+		const louis = db.rows('knowledge_entities').filter((e) => e.name === 'Louis Arnette');
+		expect(louis).toHaveLength(1);
+	});
+
+	it('keeps the current value when its replacement fails to save', async () => {
+		const { db, store } = setup();
+		const first = await store.record(
+			{
+				entities: [{ ref: 'ana', kind: 'person', name: 'Ana' }],
+				facts: [{ subject: 'ana', predicate: 'headline', value: 'Teacher' }]
+			},
+			{ via: 'manual' }
+		);
+		const ana = first.entities[0]!.id;
+		const from = db.from.bind(db);
+		db.from = (table: string) => {
+			const query = from(table);
+			if (table !== 'knowledge_facts') return query;
+			const insert = query.insert.bind(query);
+			query.insert = (payload: unknown) => {
+				insert(payload);
+				return {
+					select: () => ({
+						then: (ok: any) =>
+							ok({ data: null, error: { code: '22001', message: 'too long' } }),
+						single: () => ({
+							then: (ok: any) =>
+								ok({ data: null, error: { code: '22001', message: 'too long' } })
+						})
+					})
+				} as any;
+			};
+			return query;
+		};
+		const receipt = await store.record(
+			{ entities: [], facts: [{ subject: ana, predicate: 'headline', value: 'Principal' }] },
+			{ via: 'manual' }
+		);
+		db.from = from;
+		expect(receipt.problems).toHaveLength(1);
+		expect(receipt.facts.superseded).toBe(0);
+		const headlines = db.rows('knowledge_facts').filter((f) => f.predicate === 'headline');
+		expect(headlines.map((f) => [f.value_text, f.status])).toEqual([['Teacher', 'active']]);
+	});
+
 	it('rejects facts that do not fit the vocabulary', async () => {
 		const { store } = setup();
 		const receipt = await store.record(
@@ -789,6 +876,38 @@ describe('know first: anchors, circles, identity questions, Not this one', () =>
 		const { gatherKnowledgeAnchors } = await import('./anchors');
 		const anchors = await gatherKnowledgeAnchors(store, db, (await store.getEntity(cody))!);
 		expect(anchors.not[0]!.urls).toContain('https://www.iowadnr.gov/places-to-go/cody');
+	});
+
+	it('"Not this one" brings back the headline and summary the wrong research replaced', async () => {
+		const { db, store } = setup();
+		const first = await store.record(
+			{
+				entities: [{ ref: 'sam', kind: 'person', name: 'Sam Rivera' }],
+				facts: [{ subject: 'sam', predicate: 'headline', value: 'Chef in Baltimore' }]
+			},
+			{ via: 'task' }
+		);
+		const sam = first.entities[0]!.id;
+		db.rows('knowledge_facts').find((f) => f.predicate === 'headline')!.created_at =
+			'2026-01-01T00:00:00.000Z';
+		const runId = randomUUID();
+		await store.record(
+			{
+				entities: [],
+				facts: [{ subject: sam, predicate: 'headline', value: 'Engineer at Palantir' }]
+			},
+			{ via: 'enrichment', runId }
+		);
+		const card = () => db.rows('knowledge_entities').find((e) => e.id === sam)!;
+		expect(card().summary).toBe('Engineer at Palantir');
+
+		await store.rejectResearchRun(sam, runId);
+		const headlines = db.rows('knowledge_facts').filter((f) => f.predicate === 'headline');
+		expect(headlines.map((f) => [f.value_text, f.status]).sort()).toEqual([
+			['Chef in Baltimore', 'active'],
+			['Engineer at Palantir', 'retracted']
+		]);
+		expect(card().summary).toBe('Chef in Baltimore');
 	});
 
 	it("never touches another user's research", async () => {

@@ -54,10 +54,28 @@ export async function seedFixture(db: DbView): Promise<Fixture> {
 		})),
 		relationships: []
 	} as ProjectSpec;
+	const seededFrom = new Date().toISOString();
 	const { project_id } = await instantiateProject(db.admin, spec, db.userId, {
 		activityLog: { changeSource: 'api' }
 	});
+	await cancelSeedJobs(db, seededFrom);
 	return { projectId: project_id, projectName };
+}
+
+/**
+ * Inserting tasks fires the database triggers that queue background work for them (entity
+ * extraction is a paid model call; embeddings too). The fixture is throwaway, so the jobs its
+ * seed queued for the test user are dropped before a worker picks them up (they wait ~15 s).
+ */
+async function cancelSeedJobs(db: DbView, since: string): Promise<void> {
+	const { error } = await db.admin
+		.from('queue_jobs')
+		.delete()
+		.eq('user_id', db.userId)
+		.eq('status', 'pending')
+		.gte('created_at', since);
+	if (error)
+		console.warn(`[layout-shift] could not drop the seed's queued jobs: ${error.message}`);
 }
 
 export async function teardownFixture(db: DbView, fixture: Fixture | null): Promise<void> {

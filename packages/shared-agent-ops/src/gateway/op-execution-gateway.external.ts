@@ -129,8 +129,10 @@ import { getEntityRelationships, getLinkedEntities } from './op-execution-gatewa
 import {
 	enrichKnowledge,
 	getKnowledgeEntity,
+	projectKnowledgeLens,
 	queryKnowledge,
 	recordKnowledge,
+	requestKnowledgeAccess,
 	searchKnowledge
 } from './op-execution-gateway.knowledge';
 
@@ -211,7 +213,11 @@ export const EXTERNAL_OP_HANDLERS: Record<
 	'knowledge.get': getKnowledgeEntity,
 	'knowledge.query': queryKnowledge,
 	'knowledge.record': recordKnowledge,
-	'knowledge.enrich': enrichKnowledge
+	'knowledge.enrich': enrichKnowledge,
+	// Knowledge in shared projects (tasker 168): project-scoped, so they check the
+	// connection's project list. The ask is read-tier like request_project_access.
+	'knowledge.project_lens': projectKnowledgeLens,
+	'knowledge.request_access': requestKnowledgeAccess
 };
 
 export function buildRegistryVersion(registryVersion: string, opNames: string[]): string {

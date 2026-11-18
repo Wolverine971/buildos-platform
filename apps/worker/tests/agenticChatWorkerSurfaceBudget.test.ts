@@ -231,9 +231,15 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		// mounts them only on turns about people, companies, channels or videos. Measured
 		// global 63 tools / 70,266 B (+6,536), project 75 tools / 86,542 B (+6,536),
 		// project_create unchanged. Caps at measured + ~0.1%.
-		expect(global.openingBytes).toBeLessThanOrEqual(70_340);
-		expect(project.openingBytes).toBeLessThanOrEqual(86_630);
-		expect(project.admittedBytes).toBeLessThanOrEqual(86_630);
+		// RE-BASELINED 2026-11-18 (tasker 168, knowledge in shared projects):
+		// get_project_knowledge_lens (what other members' entries hold about a project's names,
+		// labelled by who shared it) and request_knowledge_access (ask the owner; never grants)
+		// joined both surfaces. Jev mounts them only on such turns. Measured global 65 tools /
+		// 71,997 B (+1,731), project 77 tools / 88,273 B (+1,731), project_create unchanged.
+		// Caps at measured + ~0.1%.
+		expect(global.openingBytes).toBeLessThanOrEqual(72_070);
+		expect(project.openingBytes).toBeLessThanOrEqual(88_360);
+		expect(project.admittedBytes).toBeLessThanOrEqual(88_360);
 		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(9_380);
 	});
 
