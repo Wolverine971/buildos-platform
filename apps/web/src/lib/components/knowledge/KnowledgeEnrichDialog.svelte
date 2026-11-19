@@ -244,11 +244,6 @@
 						>· {toRun.length} × {money(allowance.per_entry_usd)} at most each</span
 					>
 				</p>
-				<p class="text-xs text-muted-foreground">
-					Today: <span class="stamp">{money(allowance.spent_today)}</span> of
-					<span class="stamp">{money(allowance.daily_cap)}</span> used. Most entries cost less
-					than the cap.
-				</p>
 				{#if overBatch}
 					<p class="text-xs text-warning">
 						Up to {allowance.max_batch} entries at a time. Pick fewer.
@@ -273,14 +268,13 @@
 					{/if}
 					{#if estimate.covered < toRun.length}
 						<p class="text-xs text-warning">
-							Today's allowance covers about {estimate.covered}. Any past that are
-							skipped.
+							Today's allowance covers about {estimate.covered}.
 						</p>
 					{/if}
 				{/if}
 			{:else}
 				<p class="text-muted-foreground">
-					Up to {money(toRun.length * 0.03)} · capped per entry, per batch and per day.
+					Up to {money(toRun.length * 0.03)}.
 				</p>
 			{/if}
 			<p class="text-xs text-muted-foreground">
