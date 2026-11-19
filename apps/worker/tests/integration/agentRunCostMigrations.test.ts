@@ -552,8 +552,10 @@ describePostgres('Agent Run cost-ledger PostgreSQL guardrails', () => {
 		).toThrow();
 		// Money records must outlive runs: deleting a run with ledger entries is
 		// blocked by the ON DELETE RESTRICT foreign keys.
-		expect(psqlError(`DELETE FROM public.agent_runs WHERE id = '${rootId}'`)).toContain(
-			'violates foreign key constraint'
+		// PostgreSQL 18 (the CI runner) words it "violates RESTRICT setting of foreign key
+		// constraint"; 15-17 (production is 15) "violates foreign key constraint".
+		expect(psqlError(`DELETE FROM public.agent_runs WHERE id = '${rootId}'`)).toMatch(
+			/violates (RESTRICT setting of )?foreign key constraint/
 		);
 		expect(psql('SELECT COUNT(*) FROM public.agent_run_cost_entries')).toBe('1');
 	});
