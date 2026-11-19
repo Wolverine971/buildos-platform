@@ -7076,12 +7076,48 @@ export type Database = {
           },
         ]
       }
+      builder_profile_stat_visitors: {
+        Row: {
+          day: string
+          hits: number
+          kind: string
+          subject: string
+          user_id: string
+          visitor: string
+        }
+        Insert: {
+          day: string
+          hits?: number
+          kind: string
+          subject?: string
+          user_id: string
+          visitor: string
+        }
+        Update: {
+          day?: string
+          hits?: number
+          kind?: string
+          subject?: string
+          user_id?: string
+          visitor?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "builder_profile_stat_visitors_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       builder_profile_stats_daily: {
         Row: {
           asks: number
           day: string
           follows: number
           link_taps: number
+          project_views: number
           user_id: string
           views: number
         }
@@ -7090,6 +7126,7 @@ export type Database = {
           day: string
           follows?: number
           link_taps?: number
+          project_views?: number
           user_id: string
           views?: number
         }
@@ -7098,6 +7135,7 @@ export type Database = {
           day?: string
           follows?: number
           link_taps?: number
+          project_views?: number
           user_id?: string
           views?: number
         }
@@ -7162,6 +7200,42 @@ export type Database = {
           },
         ]
       }
+      builder_profile_writing: {
+        Row: {
+          created_at: string
+          page_id: string
+          position: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          page_id: string
+          position?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          page_id?: string
+          position?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "builder_profile_writing_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "onto_public_pages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "builder_profile_writing_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       builder_profiles: {
         Row: {
           activity_refreshed_at: string | null
@@ -7170,9 +7244,11 @@ export type Database = {
           cover_url: string | null
           created_at: string
           headline: string | null
+          links_rev: number
           location: string | null
           now_text: string | null
           now_updated_at: string | null
+          projects_rev: number
           published_at: string | null
           show_agent_split: boolean
           show_build_log: boolean
@@ -7191,9 +7267,11 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           headline?: string | null
+          links_rev?: number
           location?: string | null
           now_text?: string | null
           now_updated_at?: string | null
+          projects_rev?: number
           published_at?: string | null
           show_agent_split?: boolean
           show_build_log?: boolean
@@ -7212,9 +7290,11 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           headline?: string | null
+          links_rev?: number
           location?: string | null
           now_text?: string | null
           now_updated_at?: string | null
+          projects_rev?: number
           published_at?: string | null
           show_agent_split?: boolean
           show_build_log?: boolean
@@ -14438,6 +14518,121 @@ export type Database = {
           },
         ]
       }
+      google_agent_grants: {
+        Row: {
+          access_token_ciphertext: string
+          access_token_expires_at: string | null
+          connection_id: string
+          connection_kind: string
+          created_at: string
+          granted_scopes: string[]
+          id: string
+          oauth_client_id: string
+          provider_account_id: string
+          refresh_token_ciphertext: string
+          refresh_token_expires_at: string | null
+          revision: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token_ciphertext: string
+          access_token_expires_at?: string | null
+          connection_id: string
+          connection_kind: string
+          created_at?: string
+          granted_scopes: string[]
+          id?: string
+          oauth_client_id: string
+          provider_account_id: string
+          refresh_token_ciphertext: string
+          refresh_token_expires_at?: string | null
+          revision?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token_ciphertext?: string
+          access_token_expires_at?: string | null
+          connection_id?: string
+          connection_kind?: string
+          created_at?: string
+          granted_scopes?: string[]
+          id?: string
+          oauth_client_id?: string
+          provider_account_id?: string
+          refresh_token_ciphertext?: string
+          refresh_token_expires_at?: string | null
+          revision?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_agent_grants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      google_agent_oauth_states: {
+        Row: {
+          code_verifier: string
+          connection_id: string
+          connection_kind: string
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          nonce: string
+          oauth_client_id: string
+          provider_account_id: string
+          redirect_uri: string
+          state_hash: string
+          user_id: string
+        }
+        Insert: {
+          code_verifier: string
+          connection_id: string
+          connection_kind: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at: string
+          nonce: string
+          oauth_client_id: string
+          provider_account_id: string
+          redirect_uri: string
+          state_hash: string
+          user_id: string
+        }
+        Update: {
+          code_verifier?: string
+          connection_id?: string
+          connection_kind?: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          nonce?: string
+          oauth_client_id?: string
+          provider_account_id?: string
+          redirect_uri?: string
+          state_hash?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_agent_oauth_states_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       homework_run_events: {
         Row: {
           created_at: string
@@ -14787,6 +14982,965 @@ export type Database = {
           {
             foreignKeyName: "invoices_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_entities: {
+        Row: {
+          circle: string
+          circle_set_at: string | null
+          circle_source: string | null
+          created_at: string
+          created_via: string
+          enriched_at: string | null
+          hidden_reason: string | null
+          id: string
+          image_url: string | null
+          is_self: boolean
+          kind: string
+          merged_into_id: string | null
+          name: string
+          normalized_name: string | null
+          owner_user_id: string | null
+          scope: string
+          status: string
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          circle?: string
+          circle_set_at?: string | null
+          circle_source?: string | null
+          created_at?: string
+          created_via?: string
+          enriched_at?: string | null
+          hidden_reason?: string | null
+          id?: string
+          image_url?: string | null
+          is_self?: boolean
+          kind: string
+          merged_into_id?: string | null
+          name: string
+          normalized_name?: string | null
+          owner_user_id?: string | null
+          scope: string
+          status?: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          circle?: string
+          circle_set_at?: string | null
+          circle_source?: string | null
+          created_at?: string
+          created_via?: string
+          enriched_at?: string | null
+          hidden_reason?: string | null
+          id?: string
+          image_url?: string | null
+          is_self?: boolean
+          kind?: string
+          merged_into_id?: string | null
+          name?: string
+          normalized_name?: string | null
+          owner_user_id?: string | null
+          scope?: string
+          status?: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_entities_kind_fkey"
+            columns: ["kind"]
+            isOneToOne: false
+            referencedRelation: "knowledge_kinds"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "knowledge_entities_merged_into_id_fkey"
+            columns: ["merged_into_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_entities_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_entity_keys: {
+        Row: {
+          created_at: string
+          entity_id: string
+          id: string
+          key_type: string
+          key_value: string
+          owner_user_id: string | null
+          scope: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          id?: string
+          key_type: string
+          key_value: string
+          owner_user_id?: string | null
+          scope: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          id?: string
+          key_type?: string
+          key_value?: string
+          owner_user_id?: string | null
+          scope?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_entity_keys_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_entity_keys_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_fact_sources: {
+        Row: {
+          created_at: string
+          fact_id: string
+          quote: string | null
+          source_id: string
+        }
+        Insert: {
+          created_at?: string
+          fact_id: string
+          quote?: string | null
+          source_id: string
+        }
+        Update: {
+          created_at?: string
+          fact_id?: string
+          quote?: string | null
+          source_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_fact_sources_fact_id_fkey"
+            columns: ["fact_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_facts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_fact_sources_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_facts: {
+        Row: {
+          confidence: number
+          created_at: string
+          created_via: string
+          dedupe_key: string | null
+          entity_id: string
+          id: string
+          object_entity_id: string | null
+          observed_at: string
+          owner_user_id: string | null
+          predicate: string
+          qualifiers: Json
+          run_id: string | null
+          scope: string
+          status: string
+          updated_at: string
+          valid_from: string | null
+          valid_to: string | null
+          value: Json | null
+          value_text: string | null
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string
+          created_via?: string
+          dedupe_key?: string | null
+          entity_id: string
+          id?: string
+          object_entity_id?: string | null
+          observed_at?: string
+          owner_user_id?: string | null
+          predicate: string
+          qualifiers?: Json
+          run_id?: string | null
+          scope: string
+          status?: string
+          updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
+          value?: Json | null
+          value_text?: string | null
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          created_via?: string
+          dedupe_key?: string | null
+          entity_id?: string
+          id?: string
+          object_entity_id?: string | null
+          observed_at?: string
+          owner_user_id?: string | null
+          predicate?: string
+          qualifiers?: Json
+          run_id?: string | null
+          scope?: string
+          status?: string
+          updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
+          value?: Json | null
+          value_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_facts_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_facts_object_entity_id_fkey"
+            columns: ["object_entity_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_facts_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_facts_predicate_fkey"
+            columns: ["predicate"]
+            isOneToOne: false
+            referencedRelation: "knowledge_predicates"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "knowledge_facts_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_kinds: {
+        Row: {
+          created_at: string
+          description: string
+          key: string
+          label: string
+          plural_label: string
+          shareable: boolean
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          key: string
+          label: string
+          plural_label: string
+          shareable?: boolean
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          key?: string
+          label?: string
+          plural_label?: string
+          shareable?: boolean
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      knowledge_mention_reads: {
+        Row: {
+          content_hash: string
+          owner_user_id: string
+          read_at: string
+          reader_version: number
+          record_id: string
+          record_kind: string
+        }
+        Insert: {
+          content_hash: string
+          owner_user_id: string
+          read_at?: string
+          reader_version?: number
+          record_id: string
+          record_kind: string
+        }
+        Update: {
+          content_hash?: string
+          owner_user_id?: string
+          read_at?: string
+          reader_version?: number
+          record_id?: string
+          record_kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_mention_reads_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_mentions: {
+        Row: {
+          content_hash: string | null
+          created_at: string
+          end_offset: number
+          entity_id: string
+          field: string
+          id: string
+          made_by: string
+          owner_user_id: string
+          prefix: string
+          record_id: string
+          record_kind: string
+          start_offset: number
+          status: string
+          suffix: string
+          text: string
+          updated_at: string
+        }
+        Insert: {
+          content_hash?: string | null
+          created_at?: string
+          end_offset: number
+          entity_id: string
+          field: string
+          id?: string
+          made_by?: string
+          owner_user_id: string
+          prefix?: string
+          record_id: string
+          record_kind: string
+          start_offset: number
+          status?: string
+          suffix?: string
+          text: string
+          updated_at?: string
+        }
+        Update: {
+          content_hash?: string | null
+          created_at?: string
+          end_offset?: number
+          entity_id?: string
+          field?: string
+          id?: string
+          made_by?: string
+          owner_user_id?: string
+          prefix?: string
+          record_id?: string
+          record_kind?: string
+          start_offset?: number
+          status?: string
+          suffix?: string
+          text?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_mentions_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_mentions_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_merge_candidates: {
+        Row: {
+          created_at: string
+          entity_a: string
+          entity_b: string
+          id: string
+          origin: string
+          owner_user_id: string
+          question: string | null
+          reason: string
+          resolved_at: string | null
+          score: number
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          entity_a: string
+          entity_b: string
+          id?: string
+          origin?: string
+          owner_user_id: string
+          question?: string | null
+          reason: string
+          resolved_at?: string | null
+          score?: number
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          entity_a?: string
+          entity_b?: string
+          id?: string
+          origin?: string
+          owner_user_id?: string
+          question?: string | null
+          reason?: string
+          resolved_at?: string | null
+          score?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_merge_candidates_entity_a_fkey"
+            columns: ["entity_a"]
+            isOneToOne: false
+            referencedRelation: "knowledge_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_merge_candidates_entity_b_fkey"
+            columns: ["entity_b"]
+            isOneToOne: false
+            referencedRelation: "knowledge_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_merge_candidates_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_predicates: {
+        Row: {
+          cardinality: string
+          created_at: string
+          description: string
+          inverse_label: string | null
+          key: string
+          label: string
+          object_kinds: string[]
+          qualifier_keys: string[]
+          shareable_subject_kinds: string[]
+          sort_order: number
+          subject_kinds: string[]
+          value_type: string
+        }
+        Insert: {
+          cardinality?: string
+          created_at?: string
+          description: string
+          inverse_label?: string | null
+          key: string
+          label: string
+          object_kinds?: string[]
+          qualifier_keys?: string[]
+          shareable_subject_kinds?: string[]
+          sort_order?: number
+          subject_kinds?: string[]
+          value_type: string
+        }
+        Update: {
+          cardinality?: string
+          created_at?: string
+          description?: string
+          inverse_label?: string | null
+          key?: string
+          label?: string
+          object_kinds?: string[]
+          qualifier_keys?: string[]
+          shareable_subject_kinds?: string[]
+          sort_order?: number
+          subject_kinds?: string[]
+          value_type?: string
+        }
+        Relationships: []
+      }
+      knowledge_record_links: {
+        Row: {
+          created_at: string
+          created_via: string
+          entity_id: string
+          id: string
+          owner_user_id: string
+          quote: string | null
+          record_id: string
+          record_kind: string
+        }
+        Insert: {
+          created_at?: string
+          created_via?: string
+          entity_id: string
+          id?: string
+          owner_user_id: string
+          quote?: string | null
+          record_id: string
+          record_kind: string
+        }
+        Update: {
+          created_at?: string
+          created_via?: string
+          entity_id?: string
+          id?: string
+          owner_user_id?: string
+          quote?: string | null
+          record_id?: string
+          record_kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_record_links_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_record_links_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_research_hints: {
+        Row: {
+          created_at: string
+          domains: string[]
+          entity_id: string
+          id: string
+          label: string
+          owner_user_id: string
+          polarity: string
+          run_id: string | null
+          urls: string[]
+        }
+        Insert: {
+          created_at?: string
+          domains?: string[]
+          entity_id: string
+          id?: string
+          label: string
+          owner_user_id: string
+          polarity?: string
+          run_id?: string | null
+          urls?: string[]
+        }
+        Update: {
+          created_at?: string
+          domains?: string[]
+          entity_id?: string
+          id?: string
+          label?: string
+          owner_user_id?: string
+          polarity?: string
+          run_id?: string | null
+          urls?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_research_hints_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_research_hints_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_research_hints_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_run_targets: {
+        Row: {
+          cost_usd: number
+          created_at: string
+          entity_id: string
+          error: string | null
+          facts_added: number
+          fields: string[]
+          finished_at: string | null
+          id: string
+          instructions: string | null
+          owner_user_id: string
+          phase: string | null
+          run_id: string
+          started_at: string | null
+          status: string
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          cost_usd?: number
+          created_at?: string
+          entity_id: string
+          error?: string | null
+          facts_added?: number
+          fields?: string[]
+          finished_at?: string | null
+          id?: string
+          instructions?: string | null
+          owner_user_id: string
+          phase?: string | null
+          run_id: string
+          started_at?: string | null
+          status?: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cost_usd?: number
+          created_at?: string
+          entity_id?: string
+          error?: string | null
+          facts_added?: number
+          fields?: string[]
+          finished_at?: string | null
+          id?: string
+          instructions?: string | null
+          owner_user_id?: string
+          phase?: string | null
+          run_id?: string
+          started_at?: string | null
+          status?: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_run_targets_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_run_targets_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_run_targets_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_runs: {
+        Row: {
+          budget_usd: number | null
+          cost_usd: number
+          created_at: string
+          error: string | null
+          finished_at: string | null
+          id: string
+          input: Json
+          owner_user_id: string
+          run_type: string
+          started_at: string | null
+          stats: Json
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          budget_usd?: number | null
+          cost_usd?: number
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          input?: Json
+          owner_user_id: string
+          run_type: string
+          started_at?: string | null
+          stats?: Json
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          budget_usd?: number | null
+          cost_usd?: number
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          input?: Json
+          owner_user_id?: string
+          run_type?: string
+          started_at?: string | null
+          stats?: Json
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_runs_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_share_events: {
+        Row: {
+          actor_user_id: string | null
+          created_at: string
+          detail: Json
+          event: string
+          id: string
+          owner_user_id: string
+          share_id: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          created_at?: string
+          detail?: Json
+          event: string
+          id?: string
+          owner_user_id: string
+          share_id: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          created_at?: string
+          detail?: Json
+          event?: string
+          id?: string
+          owner_user_id?: string
+          share_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_share_events_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_share_events_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_share_events_share_id_fkey"
+            columns: ["share_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_shares"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_shares: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          duration: string
+          entity_id: string
+          expires_at: string | null
+          grantee_user_id: string | null
+          id: string
+          owner_user_id: string
+          predicates: string[]
+          project_id: string | null
+          requested_by_user_id: string | null
+          revoked_at: string | null
+          status: string
+          updated_at: string
+          via: string
+          what: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          duration?: string
+          entity_id: string
+          expires_at?: string | null
+          grantee_user_id?: string | null
+          id?: string
+          owner_user_id: string
+          predicates?: string[]
+          project_id?: string | null
+          requested_by_user_id?: string | null
+          revoked_at?: string | null
+          status: string
+          updated_at?: string
+          via?: string
+          what?: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          duration?: string
+          entity_id?: string
+          expires_at?: string | null
+          grantee_user_id?: string | null
+          id?: string
+          owner_user_id?: string
+          predicates?: string[]
+          project_id?: string | null
+          requested_by_user_id?: string | null
+          revoked_at?: string | null
+          status?: string
+          updated_at?: string
+          via?: string
+          what?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_shares_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_shares_grantee_user_id_fkey"
+            columns: ["grantee_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_shares_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_shares_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_shares_requested_by_user_id_fkey"
+            columns: ["requested_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_sources: {
+        Row: {
+          captured_at: string
+          content_hash: string | null
+          created_at: string
+          id: string
+          meta: Json
+          owner_user_id: string | null
+          published_at: string | null
+          record_id: string | null
+          scope: string
+          source_type: string
+          title: string | null
+          url: string | null
+        }
+        Insert: {
+          captured_at?: string
+          content_hash?: string | null
+          created_at?: string
+          id?: string
+          meta?: Json
+          owner_user_id?: string | null
+          published_at?: string | null
+          record_id?: string | null
+          scope: string
+          source_type: string
+          title?: string | null
+          url?: string | null
+        }
+        Update: {
+          captured_at?: string
+          content_hash?: string | null
+          created_at?: string
+          id?: string
+          meta?: Json
+          owner_user_id?: string | null
+          published_at?: string | null
+          record_id?: string | null
+          scope?: string
+          source_type?: string
+          title?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_sources_owner_user_id_fkey"
+            columns: ["owner_user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -26199,8 +27353,13 @@ export type Database = {
         Returns: boolean
       }
       bump_builder_profile_stat: {
-        Args: { p_kind: string; p_user_id: string }
-        Returns: undefined
+        Args: {
+          p_kind: string
+          p_subject?: string
+          p_user_id: string
+          p_visitor?: string
+        }
+        Returns: boolean
       }
       cancel_brief_jobs_for_date: {
         Args: {
@@ -26916,6 +28075,29 @@ export type Database = {
           state_id: string
         }[]
       }
+      consume_google_agent_oauth_state: {
+        Args: { p_state_hash: string; p_user_id: string }
+        Returns: {
+          code_verifier: string
+          connection_id: string
+          connection_kind: string
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          nonce: string
+          oauth_client_id: string
+          provider_account_id: string
+          redirect_uri: string
+          state_hash: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "google_agent_oauth_states"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       consume_legal_acceptance_intent: {
         Args: { p_surface: string; p_token_hash: string; p_user_id: string }
         Returns: boolean
@@ -27247,6 +28429,10 @@ export type Database = {
       create_tracking_link: {
         Args: { p_delivery_id: string; p_destination_url: string }
         Returns: string
+      }
+      current_actor_can_link_task_id: {
+        Args: { p_task_id: string }
+        Returns: boolean
       }
       current_actor_has_project_access: {
         Args: { p_project_id: string; p_required_access?: string }
@@ -28568,6 +29754,10 @@ export type Database = {
       is_admin:
         | { Args: never; Returns: boolean }
         | { Args: { user_id: string }; Returns: boolean }
+      is_admin_only_notification_event: {
+        Args: { p_event_type: string }
+        Returns: boolean
+      }
       is_email_suppressed: {
         Args: { p_email: string; p_scope: string }
         Returns: boolean
@@ -28580,6 +29770,166 @@ export type Database = {
         Args: { p_counts: Json; p_increment?: number; p_key: string }
         Returns: Json
       }
+      knowledge_cancel_share_request: {
+        Args: { p_share: string; p_viewer?: string }
+        Returns: Json
+      }
+      knowledge_decide_share: {
+        Args: {
+          p_decision: string
+          p_duration?: string
+          p_expires_at?: string
+          p_predicates?: string[]
+          p_share: string
+          p_what?: string
+        }
+        Returns: Json
+      }
+      knowledge_entity_shares: { Args: { p_entity: string }; Returns: Json }
+      knowledge_entity_visibility: {
+        Args: {
+          p_entity: string
+          p_owner: string
+          p_project: string
+          p_viewer: string
+        }
+        Returns: {
+          id: string
+          level: string
+          object_kind: string
+          object_name: string
+          predicate: string
+          qualifiers: Json
+          shown_via: string
+          source_url: string
+          value_text: string
+        }[]
+      }
+      knowledge_fact_share_level: {
+        Args: {
+          p_has_project_source: boolean
+          p_has_public_source: boolean
+          p_predicate: string
+          p_qualifiers: Json
+          p_status: string
+          p_subject_kind: string
+        }
+        Returns: string
+      }
+      knowledge_list: {
+        Args: {
+          p_filter?: string
+          p_kinds?: string[]
+          p_limit?: number
+          p_offset?: number
+          p_place?: string
+          p_query?: string
+          p_researched?: string
+          p_sort?: string
+          p_view?: string
+          p_viewer?: string
+        }
+        Returns: Json
+      }
+      knowledge_merge_entities: {
+        Args: { p_keep: string; p_merge: string; p_viewer?: string }
+        Returns: Json
+      }
+      knowledge_project_lens: {
+        Args: {
+          p_project: string
+          p_record_ids: string[]
+          p_record_kind: string
+          p_viewer?: string
+        }
+        Returns: Json
+      }
+      knowledge_project_member_users: {
+        Args: { p_project: string }
+        Returns: string[]
+      }
+      knowledge_record_still_says: {
+        Args: {
+          p_kind: string
+          p_object_name: string
+          p_predicate: string
+          p_quote: string
+          p_record: string
+          p_value: string
+        }
+        Returns: boolean
+      }
+      knowledge_request_share: {
+        Args: {
+          p_entity: string
+          p_project: string
+          p_via?: string
+          p_viewer?: string
+          p_what?: string
+        }
+        Returns: Json
+      }
+      knowledge_require_signed_in: { Args: never; Returns: string }
+      knowledge_reserve_enrichment_run: {
+        Args: {
+          p_active_max: number
+          p_daily_max: number
+          p_input: Json
+          p_requested_budget: number
+          p_run_max: number
+          p_stats: Json
+          p_title: string
+          p_user: string
+        }
+        Returns: Json
+      }
+      knowledge_revoke_share: { Args: { p_share: string }; Returns: Json }
+      knowledge_search: {
+        Args: {
+          p_kinds?: string[]
+          p_limit?: number
+          p_query: string
+          p_viewer?: string
+        }
+        Returns: {
+          entity_id: string
+          is_self: boolean
+          kind: string
+          matched_on: string
+          name: string
+          scope: string
+          score: number
+          summary: string
+        }[]
+      }
+      knowledge_share_entity: {
+        Args: {
+          p_duration?: string
+          p_entity: string
+          p_expires_at?: string
+          p_grantee?: string
+          p_predicates?: string[]
+          p_project: string
+          p_what?: string
+        }
+        Returns: Json
+      }
+      knowledge_share_inbox: { Args: never; Returns: Json }
+      knowledge_share_is_live: {
+        Args: { p_share: string; p_viewer: string }
+        Returns: boolean
+      }
+      knowledge_validate_share_terms: {
+        Args: {
+          p_duration: string
+          p_expires_at: string
+          p_predicates: string[]
+          p_project: string
+          p_what: string
+        }
+        Returns: undefined
+      }
+      knowledge_viewer: { Args: { p_viewer: string }; Returns: string }
       list_account_deletion_storage_objects: {
         Args: { p_libri_library_ids?: string[]; p_user_id: string }
         Returns: {
@@ -28892,10 +30242,6 @@ export type Database = {
         Args: { p_document_id: string; p_table: Json }
         Returns: string
       }
-      onto_task_affected_work: {
-        Args: { p_task_id: string; p_max_depth?: number; p_max_tasks?: number }
-        Returns: Json
-      }
       onto_edge_link_atomic: {
         Args: {
           p_dst_id: string
@@ -28907,6 +30253,23 @@ export type Database = {
           p_src_kind: string
         }
         Returns: Json
+      }
+      onto_find_items: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: {
+          due_at: string
+          id: string
+          in_workspace: boolean
+          kind: string
+          project_id: string
+          project_name: string
+          score: number
+          snippet: string
+          state_key: string
+          title: string
+          type_key: string
+          updated_at: string
+        }[]
       }
       onto_goal_create_atomic: {
         Args: { p_goal: Json; p_relationship_plan: Json }
@@ -29056,6 +30419,10 @@ export type Database = {
         }[]
       }
       onto_table_cell_text: { Args: { p_value: Json }; Returns: string }
+      onto_task_affected_work: {
+        Args: { p_max_depth?: number; p_max_tasks?: number; p_task_id: string }
+        Returns: Json
+      }
       onto_task_create_atomic: {
         Args: {
           p_assigned_by_actor_id?: string
@@ -30273,6 +31640,18 @@ export type Database = {
         }
       }
       safe_inet: { Args: { p_value: string }; Returns: unknown }
+      save_google_agent_grant: {
+        Args: {
+          p_access_token_ciphertext: string
+          p_access_token_expires_at: string
+          p_granted_scopes: string[]
+          p_refresh_token_ciphertext: string
+          p_refresh_token_expires_at: string
+          p_state_hash: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       save_specialist_workbench_draft_v1: {
         Args: {
           p_draft: Json
@@ -31076,6 +32455,8 @@ export type Database = {
         | "extract_task_entities"
         | "workspace_suggest"
         | "about_you_refresh"
+        | "knowledge_enrich"
+        | "knowledge_doc_mentions"
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -31355,6 +32736,8 @@ export const Constants = {
         "extract_task_entities",
         "workspace_suggest",
         "about_you_refresh",
+        "knowledge_enrich",
+        "knowledge_doc_mentions",
       ],
       recurrence_end_reason: [
         "indefinite",

@@ -35,9 +35,14 @@ const executable = resolve(
 	'bin',
 	'tsc'
 );
+// The web test project outgrew Node's default ~4 GB heap on CI runners (the generated
+// database types alone are 30k+ lines); give tsc the same 8 GB `svelte-check` already gets.
+const heapFlag = /--max-old-space-size=/.test(process.env.NODE_OPTIONS ?? '')
+	? []
+	: [`--max-old-space-size=${config.maxOldSpaceMb ?? 8192}`];
 const result = spawnSync(
 	process.execPath,
-	[executable, '-p', config.tsconfig, '--noEmit', '--pretty', 'false'],
+	[...heapFlag, executable, '-p', config.tsconfig, '--noEmit', '--pretty', 'false'],
 	{
 		cwd: process.cwd(),
 		encoding: 'utf8',
