@@ -13,10 +13,11 @@
 	dragged in from the dock goes inside.
 -->
 <script lang="ts" module>
-	export type CardTab = 'inside' | 'docs' | 'tasks' | 'goals' | 'chats';
+	export type CardTab = 'inside' | 'docs' | 'tasks' | 'goals' | 'chats' | 'people';
 </script>
 
 <script lang="ts">
+	import ProjectPeopleTab from '$lib/components/knowledge/ProjectPeopleTab.svelte';
 	import {
 		ArrowUpRight,
 		ChevronRight,
@@ -241,7 +242,9 @@
 					chats.status === 'ready'
 						? `${chats.rows.length}${chats.hasMore ? '+' : ''}`
 						: null
-			}
+			},
+			// Everyone the project's tasks and docs name, and who knows them (tasker 168).
+			...(workspace ? [] : [{ key: 'people' as const, label: 'People', count: null }])
 		];
 		if (!canHold) return list;
 		const nested = { key: 'inside' as const, label: 'Nested projects', count: inside.length };
@@ -615,6 +618,8 @@
 							)}
 						</div>
 					{/if}
+				{:else if tab === 'people'}
+					<ProjectPeopleTab projectId={project.id} projectName={project.name} />
 				{:else if tab === 'chats'}
 					{#if chats.status === 'error'}
 						<div class="empty-drop grid justify-items-center gap-2" role="alert">

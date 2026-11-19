@@ -616,16 +616,40 @@ export async function syncRecordMentions(
 		});
 	}
 	if (!dryRun) {
-		const { error: deleteError } = await db
+		// Replace the record's tags without a window where a failed write leaves it with none:
+		// write the new rows first, then delete the old ones by id. If a write fails, the old
+		// tags stay (the record keeps its highlights) and the next re-read tries again.
+		const { data: oldRows, error: oldError } = await db
 			.from('knowledge_mentions')
-			.delete()
+			.select('id')
 			.eq('owner_user_id', userId)
 			.eq('record_kind', record.kind)
 			.eq('record_id', record.id);
-		if (deleteError) fail('Clear mentions', deleteError);
-		for (const group of chunk(rows, 500)) {
-			const { error } = await db.from('knowledge_mentions').insert(group);
-			if (error) fail('Save mentions', error);
+		if (oldError) fail('Load mentions', oldError);
+		const oldIds = ((oldRows ?? []) as Array<{ id: string }>).map((r) => r.id);
+		const insertedIds: string[] = [];
+		try {
+			for (const group of chunk(rows, 500)) {
+				const { data, error } = await db
+					.from('knowledge_mentions')
+					.insert(group)
+					.select('id');
+				if (error) fail('Save mentions', error);
+				insertedIds.push(...((data ?? []) as Array<{ id: string }>).map((r) => r.id));
+			}
+		} catch (error) {
+			// Undo a partial write so the record doesn't end up with old + half of the new tags.
+			for (const group of chunk(insertedIds, 500)) {
+				await db.from('knowledge_mentions').delete().in('id', group);
+			}
+			throw error;
+		}
+		for (const group of chunk(oldIds, 500)) {
+			const { error: deleteError } = await db
+				.from('knowledge_mentions')
+				.delete()
+				.in('id', group);
+			if (deleteError) fail('Clear old mentions', deleteError);
 		}
 	}
 

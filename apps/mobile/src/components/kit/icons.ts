@@ -49,3 +49,6 @@ export { default as Undo2 } from 'lucide-react-native/icons/undo-2';
 export { default as UserRound } from 'lucide-react-native/icons/user-round';
 export { default as X } from 'lucide-react-native/icons/x';
 export { default as Zap } from 'lucide-react-native/icons/zap';
+export { default as AlarmClock } from 'lucide-react-native/icons/alarm-clock';
+export { default as Mail } from 'lucide-react-native/icons/mail';
+export { default as MessageCircle } from 'lucide-react-native/icons/message-circle';

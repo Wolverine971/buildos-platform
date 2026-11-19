@@ -77,12 +77,18 @@ export function pickTodayFocus({
 	tasks,
 	waiting,
 	doneIds,
+	skipped = [],
 	weekdayOf
 }: {
 	tasks: readonly TodayTask[];
 	waiting: readonly TodayWaitingItem[];
 	/** Tasks finished this visit; they leave the picks at once. */
 	doneIds: ReadonlySet<string>;
+	/**
+	 * Pick keys the person passed on with "Not this" today. They drop out before the
+	 * one-per-project spread, so the next-best item (even from the same project) moves up.
+	 */
+	skipped?: readonly string[];
 	/** Short weekday of a due date ("Fri") in the person's timezone. */
 	weekdayOf: (dueAt: string) => string | null;
 }): TodayPick[] {
@@ -158,11 +164,13 @@ export function pickTodayFocus({
 	}
 
 	// Stable: equal scores keep feed order, as the web's Array.sort does.
-	scored.sort((a, b) => b.score - a.score);
+	const skippedKeys = new Set(skipped);
+	const candidates = scored.filter(({ pick }) => !skippedKeys.has(pick.key));
+	candidates.sort((a, b) => b.score - a.score);
 	const picks: TodayPick[] = [];
 	const usedProjects = new Set<string>();
 	const usedTasks = new Set<string>();
-	for (const { pick } of scored) {
+	for (const { pick } of candidates) {
 		if (pick.projectId && usedProjects.has(pick.projectId)) continue;
 		if (pick.task && usedTasks.has(pick.task.id)) continue;
 		if (pick.projectId) usedProjects.add(pick.projectId);

@@ -5,6 +5,12 @@
 	the next (org → people → person). On phones the card opens as a sheet. Chat is the main way
 	in; "Ask in chat" hands an entry to it.
 
+	What matters to you (tasker 169): the list opens on "Your world". Names that only come up in
+	passing (a company in a research brief) sit under "Just mentioned", still found by search;
+	the sorter's "not a name" picks sit under "Not names" until restored. Places are a filter on
+	people and orgs, not list entries. The card's "Just a mention" / "Part of my world" is the
+	user's answer, which the sorter then learns from.
+
 	Research at scale (tasker 164): filter and sort by researched / not researched, tick entries
 	(shift-click for a range) and press Enrich N; the "What should we look for?" dialog starts
 	the research and the bottom-right tray shows it running while you keep browsing. One poll
@@ -24,6 +30,19 @@
 	import KnowledgeImportDialog from '$lib/components/knowledge/KnowledgeImportDialog.svelte';
 	import KnowledgeEnrichDialog from '$lib/components/knowledge/KnowledgeEnrichDialog.svelte';
 	import KnowledgeResearchTray from '$lib/components/knowledge/KnowledgeResearchTray.svelte';
+	import KnowledgeWherePills from '$lib/components/knowledge/KnowledgeWherePills.svelte';
+	import KnowledgeWhereLine from '$lib/components/knowledge/KnowledgeWhereLine.svelte';
+	import KnowledgeWhereProjectModal from '$lib/components/knowledge/KnowledgeWhereProjectModal.svelte';
+	import {
+		emptyWhere,
+		isWhereEmpty,
+		whereApi,
+		type KnowledgeProjectEntries,
+		type KnowledgeWhere,
+		type KnowledgeWhereProject,
+		type KnowledgeWhereRecord
+	} from '$lib/components/knowledge/where-types';
+	import { fly } from 'svelte/transition';
 	import {
 		knowledgeResearch,
 		knowledgeResearchStarted,
@@ -55,7 +74,8 @@
 		Share2,
 		Sparkles,
 		Upload,
-		X
+		X,
+		ListFilter
 	} from '$lib/icons/lucide';
 	import { toastService } from '$lib/stores/toast.store';
 	import type { PageData } from './$types';
@@ -63,9 +83,14 @@
 	let { data }: { data: PageData } = $props();
 
 	type Filter = 'all' | 'known' | 'owned';
+	type View = 'world' | 'reference' | 'dropped';
 	type Researched = 'any' | 'yes' | 'no';
 	type Sort = 'recent' | 'name' | 'researched';
-	type Row = KnowledgeEntitySummary & { updated_at: string; researched_at?: string | null };
+	type Row = KnowledgeEntitySummary & {
+		updated_at: string;
+		researched_at?: string | null;
+		circle?: string | null;
+	};
 
 	// First paint only; the page reloads its own list after.
 	// svelte-ignore state_referenced_locally
@@ -74,6 +99,12 @@
 	let total = $state(initial?.total ?? 0);
 	let counts = $state<Partial<Record<KnowledgeKind, number>>>(initial?.counts ?? {});
 	let knownCount = $state<number | null>(initial?.known_count ?? null);
+	let view = $state<View>('world');
+	let views = $state<{ world: number; reference: number; dropped: number } | null>(
+		initial?.views ?? null
+	);
+	let place = $state<string | null>(null);
+	let places = $state<Array<{ id: string; name: string; count: number }>>(initial?.places ?? []);
 	let filter = $state<Filter>('all');
 	let kind = $state<KnowledgeKind | null>(null);
 	let query = $state('');
@@ -93,11 +124,111 @@
 	let chatDraft = $state('');
 	let innerWidth = $state(1280);
 
+	// Where each entry shows up (projects, tasks, docs): one request per page of rows.
+	let whereById = $state.raw<Map<string, KnowledgeWhere>>(new Map());
+	const whereInFlight = new Set<string>();
+	/** "Kyle Smith in Cadre": the project modal. */
+	let whereFor = $state<{ entity: Row; project: KnowledgeWhereProject } | null>(null);
+	/** A task or doc opened in place from a pill. */
+	let openRecord = $state<KnowledgeWhereRecord | null>(null);
+	/** Phones: the row whose "where" line is open. */
+	let expandedWhere = $state<string | null>(null);
+	/** "Everything in Cadre": the list narrowed to one project's entries. */
+	let projectLens = $state<{ id: string; name: string } | null>(null);
+	let lensData: KnowledgeProjectEntries | null = null;
+
+	async function loadWhere(ids: string[]) {
+		for (const id of ids) whereInFlight.add(id);
+		try {
+			for (let i = 0; i < ids.length; i += 100) {
+				const found = await whereApi.forEntities(ids.slice(i, i + 100));
+				whereById = new Map([...whereById, ...Object.entries(found)]);
+			}
+		} catch {
+			// The columns are a nicety; the list still works without them.
+		} finally {
+			for (const id of ids) whereInFlight.delete(id);
+		}
+	}
+
+	$effect(() => {
+		const missing = rows
+			.map((r) => r.id)
+			.filter((id) => !whereById.has(id) && !whereInFlight.has(id));
+		if (missing.length) void loadWhere(missing);
+	});
+
+	/** Something changed (a card edit, a renamed task): refetch where these entries show up. */
+	function forgetWhere(match: (id: string, where: KnowledgeWhere) => boolean) {
+		const next = new Map(whereById);
+		for (const [id, where] of whereById) if (match(id, where)) next.delete(id);
+		if (next.size !== whereById.size) whereById = next;
+		lensData = null;
+	}
+
+	function openWhereRecord(record: KnowledgeWhereRecord) {
+		if (!record.project_id) {
+			toastService.info("That one isn't in a project you can open");
+			return;
+		}
+		whereFor = null;
+		openRecord = record;
+	}
+
+	function recordChanged() {
+		const id = openRecord?.id;
+		if (id)
+			forgetWhere(
+				(_, w) => w.tasks.some((t) => t.id === id) || w.documents.some((d) => d.id === id)
+			);
+	}
+
+	function setProjectLens(project: { id: string; name: string }) {
+		whereFor = null;
+		projectLens = project;
+		lensData = null;
+		kind = null;
+		query = '';
+		researched = 'any';
+		lastPickIndex = null;
+		void refresh();
+		window.scrollTo({ top: 0, behavior: 'smooth' });
+	}
+
+	function clearProjectLens() {
+		projectLens = null;
+		lensData = null;
+		void refresh();
+	}
+
+	function onWindowKeydown(event: KeyboardEvent) {
+		// The slide-over card closes on Escape unless a dialog above it took the key.
+		if (event.key !== 'Escape' || event.defaultPrevented || !wide || !selected) return;
+		if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+		closeCard();
+	}
+
 	const wide = $derived(innerWidth >= 1024);
 	const selected = $derived(stack.at(-1) ?? null);
 	const everythingCount = $derived(Object.values(counts).reduce((sum, n) => sum + (n ?? 0), 0));
+	const viewTabs = $derived<Array<{ key: View; label: string }>>([
+		{ key: 'world', label: 'Your world' },
+		{ key: 'reference', label: 'Just mentioned' },
+		// Only once the sorter has dropped something (or you're looking at it).
+		...(views?.dropped || view === 'dropped'
+			? [{ key: 'dropped' as const, label: 'Not names' }]
+			: [])
+	]);
+	const graphSize = $derived(
+		views ? views.world + views.reference + views.dropped : everythingCount
+	);
 	const isEmpty = $derived(
-		!loading && everythingCount === 0 && !query && filter === 'all' && researched === 'any'
+		!loading &&
+			graphSize === 0 &&
+			everythingCount === 0 &&
+			!query &&
+			filter === 'all' &&
+			researched === 'any'
 	);
 
 	// Research: one queue for the tray, the dialog and the cards, shared with the rest of the app
@@ -121,11 +252,38 @@
 		if (options.append) loadingMore = true;
 		else loading = true;
 		try {
+			if (projectLens) {
+				const lens = projectLens;
+				if (!lensData || lensData.project.id !== lens.id)
+					lensData = await whereApi.inProject(lens.id);
+				if (seq !== requestSeq) return;
+				const data = lensData;
+				whereById = new Map([...whereById, ...Object.entries(data.where)]);
+				const all = data.entities as Row[];
+				const nextCounts: Partial<Record<KnowledgeKind, number>> = {};
+				for (const r of all) nextCounts[r.kind] = (nextCounts[r.kind] ?? 0) + 1;
+				counts = nextCounts;
+				// Names only (substring), like a find-in-list; the full search is server-side.
+				const q = query.trim().toLowerCase();
+				rows = all.filter(
+					(r) =>
+						(!kind || r.kind === kind) &&
+						(!q ||
+							r.name.toLowerCase().includes(q) ||
+							(r.summary ?? '').toLowerCase().includes(q)) &&
+						(researched === 'any' ||
+							(researched === 'yes') === Boolean(r.researched_at))
+				);
+				total = rows.length;
+				return;
+			}
 			const result = await knowledgeApi.list({
 				kind,
 				filter,
 				researched,
 				sort,
+				view,
+				place,
 				q: query.trim() || undefined,
 				limit: 60,
 				offset: options.append ? rows.length : 0
@@ -134,6 +292,8 @@
 			rows = options.append ? [...rows, ...result.entities] : result.entities;
 			total = result.total;
 			knownCount = result.known_count;
+			if (result.views) views = result.views;
+			if (result.places) places = result.places;
 			researchedCounts = result.researched ?? null;
 			if (!kind) counts = result.counts;
 		} catch (error) {
@@ -166,7 +326,19 @@
 		kind?: KnowledgeKind | null;
 		researched?: Researched;
 		sort?: Sort;
+		view?: View;
+		place?: string | null;
 	}) {
+		if (
+			next.view !== undefined ||
+			next.place !== undefined ||
+			(next.filter !== undefined && next.filter !== 'all')
+		) {
+			projectLens = null;
+			lensData = null;
+		}
+		if (next.view !== undefined) view = next.view;
+		if (next.place !== undefined) place = next.place;
 		if (next.filter !== undefined) filter = next.filter;
 		if (next.kind !== undefined) kind = next.kind;
 		if (next.researched !== undefined) researched = next.researched;
@@ -290,6 +462,10 @@
 		filter = 'all';
 		kind = revealKind;
 		researched = 'any';
+		view = 'world';
+		place = null;
+		projectLens = null;
+		lensData = null;
 		await refresh();
 		syncUrl(wideNow ? id : null);
 		for (
@@ -318,19 +494,8 @@
 		// CSS makes 'auto' smooth.)
 		const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 		const behavior: ScrollBehavior = reduce || options.arriving ? 'instant' : 'smooth';
-		if (wideNow && listEl) {
-			// Bring the list + card into view, then center the row inside the list.
-			window.scrollTo({
-				top: listEl.getBoundingClientRect().top + window.scrollY - 16,
-				behavior
-			});
-			listEl.scrollTo({
-				top: row.offsetTop - listEl.clientHeight / 2 + row.offsetHeight / 2,
-				behavior
-			});
-		} else {
-			row.scrollIntoView({ block: 'center', behavior });
-		}
+		// The list scrolls with the page; the card slides over it on wide screens.
+		row.scrollIntoView({ block: 'center', behavior });
 		flashId = id;
 		clearTimeout(flashTimer);
 		flashTimer = setTimeout(() => (flashId = null), 2400);
@@ -380,6 +545,7 @@
 		toastService.success(`Imported ${summary.contacts.toLocaleString()} contacts`);
 		filter = 'known';
 		kind = null;
+		view = 'world';
 		void refresh();
 		void refreshDuplicates();
 	}
@@ -505,6 +671,10 @@
 		}
 	}
 
+	const WHERE_GROUPS = ['projects', 'tasks', 'documents'] as const;
+	/** The wide-screen table: tick, name, projects, tasks, docs. */
+	const tableCols =
+		'lg:grid-cols-[2.75rem_minmax(15rem,1.4fr)_minmax(9rem,0.8fr)_minmax(10rem,1fr)_minmax(10rem,1fr)]';
 	const chip =
 		'inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 	const chipOn = 'border-accent bg-accent/10 font-medium text-foreground';
@@ -515,7 +685,7 @@
 	<title>Knowledge · BuildOS</title>
 </svelte:head>
 
-<svelte:window bind:innerWidth onfocus={onWindowFocus} />
+<svelte:window bind:innerWidth onfocus={onWindowFocus} onkeydown={onWindowKeydown} />
 
 {#snippet card(id: string)}
 	<ErrorBoundary area="knowledge entry">
@@ -525,7 +695,10 @@
 				onOpen={(next) => open(next, { drill: true })}
 				onBack={stack.length > 1 ? back : undefined}
 				onClose={closeCard}
-				onChanged={() => void refresh()}
+				onChanged={() => {
+					forgetWhere((entryId) => entryId === id);
+					void refresh();
+				}}
 				onAskChat={askInChat}
 				research={research.byEntity.get(id) ?? null}
 				onFindMore={(entity) => (enrichEntries = [entity])}
@@ -598,6 +771,38 @@
 			</section>
 		{:else}
 			<div class="flex flex-col gap-3">
+				<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+					<div
+						class="inline-flex w-fit rounded-md border border-border bg-card p-0.5"
+						role="tablist"
+						aria-label="What to show"
+					>
+						{#each viewTabs as tab (tab.key)}
+							<button
+								type="button"
+								role="tab"
+								aria-selected={view === tab.key}
+								class="inline-flex min-h-8 items-center gap-1.5 rounded px-3 text-sm pressable {view ===
+								tab.key
+									? 'bg-muted font-medium text-foreground'
+									: 'text-muted-foreground hover:text-foreground'}"
+								onclick={() => choose({ view: tab.key })}
+							>
+								{tab.label}
+								{#if views}<span class="stamp text-xs text-muted-foreground"
+										>{views[tab.key]}</span
+									>{/if}
+							</button>
+						{/each}
+					</div>
+					<p class="text-xs text-muted-foreground">
+						{view === 'world'
+							? 'People and organizations you deal with.'
+							: view === 'reference'
+								? 'Names that only come up in passing. Still found by search and chat.'
+								: "Words the sorter decided aren't people or organizations."}
+					</p>
+				</div>
 				<label class="relative block">
 					<span class="sr-only">Search your knowledge</span>
 					<Search
@@ -709,6 +914,23 @@
 								>{/if}
 						</button>
 					</div>
+					{#if places.length}
+						<label
+							class="flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground"
+						>
+							Where
+							<select
+								class="min-h-8 max-w-44 rounded-md border border-border bg-card px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+								value={place ?? ''}
+								onchange={(e) => choose({ place: e.currentTarget.value || null })}
+							>
+								<option value="">Anywhere</option>
+								{#each places as p (p.id)}
+									<option value={p.id}>{p.name} ({p.count})</option>
+								{/each}
+							</select>
+						</label>
+					{/if}
 					<label class="flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground">
 						Sort
 						<select
@@ -722,6 +944,30 @@
 						</select>
 					</label>
 				</div>
+				{#if projectLens}
+					<div
+						class="flex items-center gap-2 rounded-md border border-accent/30 bg-accent/5 px-3 py-2 text-sm text-foreground"
+						role="status"
+					>
+						<ListFilter class="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+						<span class="min-w-0 flex-1 truncate">
+							Everything in
+							<a
+								href="/projects/{projectLens.id}"
+								class="font-medium underline-offset-2 hover:underline"
+								>{projectLens.name}</a
+							>
+							<span class="stamp text-xs text-muted-foreground">{total}</span>
+						</span>
+						<button
+							type="button"
+							class="inline-flex min-h-8 items-center gap-1 rounded-md px-2 text-sm text-muted-foreground pressable hover:bg-muted hover:text-foreground"
+							onclick={clearProjectLens}
+						>
+							<X class="h-3.5 w-3.5" aria-hidden="true" /> Clear
+						</button>
+					</div>
+				{/if}
 				{#if duplicates.length}
 					<button
 						type="button"
@@ -735,14 +981,14 @@
 				{/if}
 			</div>
 
-			<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_26rem]">
-				<!-- Wide screens: the list scrolls in its own column so the card beside it stays in
-					view (position: sticky is inert app-wide; see the layout's overflow-x). -->
+			<div>
+				<!-- Wide screens: a full-width table (name, projects, tasks, docs); the entry card
+					slides over it from the right. -->
 				<section
 					bind:this={listEl}
 					aria-label="Entries"
 					aria-busy={loading}
-					class="min-w-0 lg:relative lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto lg:pr-1"
+					class="min-w-0"
 				>
 					{#if !rows.length && !loading}
 						<p
@@ -750,9 +996,13 @@
 						>
 							{query
 								? `Nothing matches "${query}".`
-								: filter === 'known'
-									? 'No people you know yet. Import your contacts to fill this in.'
-									: 'Nothing here yet.'}
+								: view === 'reference'
+									? 'Nothing here. Names that only come up in passing land here.'
+									: view === 'dropped'
+										? 'Nothing here.'
+										: filter === 'known'
+											? 'No people you know yet. Import your contacts to fill this in.'
+											: 'Nothing here yet.'}
 						</p>
 					{:else}
 						<div
@@ -773,92 +1023,159 @@
 									: 'Select all shown, or tick a few to research them at once'}
 							</label>
 						</div>
-						<ul
-							class="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card {loading
+						<div
+							class="overflow-hidden rounded-lg border border-border bg-card {loading
 								? 'opacity-60'
 								: ''}"
 						>
-							{#each rows as row, index (row.id)}
-								{@const RowIcon = KIND_ICON[row.kind]}
-								{@const rowResearch = research.byEntity.get(row.id)}
-								<li
-									id="knowledge-row-{row.id}"
-									class="flex min-w-0 scroll-mt-24 items-stretch transition-colors duration-700 {flashId ===
-									row.id
-										? 'bg-accent/15'
-										: picked.has(row.id)
-											? 'bg-accent/5'
-											: ''}"
-								>
-									<label
-										class="flex w-11 shrink-0 cursor-pointer items-center justify-center"
-									>
-										<input
-											type="checkbox"
-											class="h-4 w-4 rounded border-border"
-											aria-label="Select {row.name}"
-											checked={picked.has(row.id)}
-											onclick={(e) => togglePick(row, index, e)}
-										/>
-									</label>
-									<button
-										type="button"
-										class="flex min-h-12 w-full min-w-0 items-center gap-3 py-2 pl-1 pr-3 text-left pressable hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring {selected ===
+							<div
+								class="hidden border-b border-border text-xs font-medium text-muted-foreground lg:grid {tableCols}"
+								aria-hidden="true"
+							>
+								<span></span>
+								<span class="py-2 pl-1">Name</span>
+								<span class="py-2">Projects</span>
+								<span class="py-2">Tasks</span>
+								<span class="py-2">Docs</span>
+							</div>
+							<ul class="divide-y divide-border">
+								{#each rows as row, index (row.id)}
+									{@const RowIcon = KIND_ICON[row.kind]}
+									{@const rowResearch = research.byEntity.get(row.id)}
+									{@const rowWhere = whereById.get(row.id)}
+									<li
+										id="knowledge-row-{row.id}"
+										class="flex min-w-0 scroll-mt-24 flex-wrap items-stretch transition-colors duration-700 lg:grid lg:items-center {tableCols} {flashId ===
 										row.id
-											? 'bg-muted'
-											: ''}"
-										aria-current={selected === row.id ? 'true' : undefined}
-										onclick={() => open(row.id)}
+											? 'bg-accent/15'
+											: picked.has(row.id)
+												? 'bg-accent/5'
+												: ''}"
 									>
-										<span
-											class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
-											aria-hidden="true"
+										<label
+											class="flex w-11 shrink-0 cursor-pointer items-center justify-center"
 										>
-											<RowIcon class="h-4 w-4" />
-										</span>
-										<span class="min-w-0 flex-1">
-											<span
-												class="block truncate text-sm font-medium text-foreground"
-												>{row.name}</span
-											>
-											<span
-												class="block truncate text-xs text-muted-foreground"
-												>{row.summary ?? KIND_LABEL[row.kind].one}</span
-											>
-										</span>
-										{#if rowResearch && isActiveTarget(rowResearch)}
-											<Loader2
-												class="h-3.5 w-3.5 shrink-0 animate-spin text-accent motion-reduce:animate-none"
-												aria-label="Researching"
+											<input
+												type="checkbox"
+												class="h-4 w-4 rounded border-border"
+												aria-label="Select {row.name}"
+												checked={picked.has(row.id)}
+												onclick={(e) => togglePick(row, index, e)}
 											/>
-										{:else if row.researched_at}
+										</label>
+										<button
+											type="button"
+											class="flex min-h-12 min-w-0 flex-1 items-center gap-3 py-2 pl-1 pr-3 text-left pressable hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring {selected ===
+											row.id
+												? 'bg-muted'
+												: ''}"
+											aria-current={selected === row.id ? 'true' : undefined}
+											onclick={() => open(row.id)}
+										>
 											<span
-												class="inline-flex shrink-0 items-center"
-												title="Researched {new Date(
-													row.researched_at
-												).toLocaleDateString(undefined, {
-													month: 'short',
-													day: 'numeric'
-												})}"
+												class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
+												aria-hidden="true"
 											>
-												<Sparkles
-													class="h-3.5 w-3.5 text-accent"
-													aria-hidden="true"
-												/>
-												<span class="sr-only">Researched</span>
+												<RowIcon class="h-4 w-4" />
 											</span>
+											<span class="min-w-0 flex-1">
+												<span
+													class="block truncate text-sm font-medium text-foreground"
+													>{row.name}</span
+												>
+												<span
+													class="block truncate text-xs text-muted-foreground"
+													>{row.summary ?? KIND_LABEL[row.kind].one}</span
+												>
+											</span>
+											{#if view === 'world' && row.circle === 'public'}
+												<span
+													class="shrink-0 rounded border border-border px-1.5 text-xs text-muted-foreground"
+													>Just mentioned</span
+												>
+											{/if}
+											{#if rowResearch && isActiveTarget(rowResearch)}
+												<Loader2
+													class="h-3.5 w-3.5 shrink-0 animate-spin text-accent motion-reduce:animate-none"
+													aria-label="Researching"
+												/>
+											{:else if row.researched_at}
+												<span
+													class="inline-flex shrink-0 items-center"
+													title="Researched {new Date(
+														row.researched_at
+													).toLocaleDateString(undefined, {
+														month: 'short',
+														day: 'numeric'
+													})}"
+												>
+													<Sparkles
+														class="h-3.5 w-3.5 text-accent"
+														aria-hidden="true"
+													/>
+													<span class="sr-only">Researched</span>
+												</span>
+											{/if}
+											{#if row.scope === 'public'}
+												<Share2
+													class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+													aria-label="Shared entry"
+												/>
+											{/if}
+										</button>
+										{#each WHERE_GROUPS as group (group)}
+											<div class="hidden min-w-0 pr-3 lg:block">
+												{#if rowWhere && rowWhere[group].length}
+													{#if group === 'projects'}
+														<KnowledgeWherePills
+															group="projects"
+															items={rowWhere.projects}
+															label="Projects naming {row.name}"
+															onPick={(project) =>
+																(whereFor = {
+																	entity: row,
+																	project
+																})}
+														/>
+													{:else}
+														<KnowledgeWherePills
+															{group}
+															items={rowWhere[group]}
+															label="{group === 'tasks'
+																? 'Tasks'
+																: 'Docs'} naming {row.name}"
+															onPick={openWhereRecord}
+														/>
+													{/if}
+												{:else if rowWhere}
+													<span
+														class="text-xs text-muted-foreground/50"
+														aria-hidden="true">—</span
+													>
+												{/if}
+											</div>
+										{/each}
+										{#if !wide && rowWhere && !isWhereEmpty(rowWhere)}
+											<div class="-mt-2 w-full min-w-0 pb-1.5">
+												<KnowledgeWhereLine
+													where={rowWhere}
+													expanded={expandedWhere === row.id}
+													onToggle={() =>
+														(expandedWhere =
+															expandedWhere === row.id
+																? null
+																: row.id)}
+													onProject={(project) =>
+														(whereFor = { entity: row, project })}
+													onRecord={openWhereRecord}
+												/>
+											</div>
 										{/if}
-										{#if row.scope === 'public'}
-											<Share2
-												class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-												aria-label="Shared entry"
-											/>
-										{/if}
-									</button>
-								</li>
-							{/each}
-						</ul>
-						{#if rows.length < total}
+									</li>
+								{/each}
+							</ul>
+						</div>
+						{#if rows.length < total && !projectLens}
 							<div class="mt-3 flex justify-center">
 								<button
 									type="button"
@@ -876,27 +1193,64 @@
 						{/if}
 					{/if}
 				</section>
-
-				{#if wide}
-					<aside class="min-w-0" aria-label="Selected entry">
-						<div
-							class="max-h-[calc(100vh-7rem)] overflow-y-auto rounded-lg border border-border bg-card lg:sticky lg:top-4"
-						>
-							{#if selected}
-								{@render card(selected)}
-							{:else}
-								<p class="p-6 text-sm text-muted-foreground">
-									Pick someone or something to see what you know, how it's
-									connected, and where it came from.
-								</p>
-							{/if}
-						</div>
-					</aside>
-				{/if}
 			</div>
 		{/if}
 	</div>
 </div>
+
+{#if wide && selected}
+	<aside
+		aria-label="Selected entry"
+		class="fixed bottom-3 right-3 top-[4.5rem] z-40 flex w-[26rem] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-ink-strong"
+		transition:fly={{ x: 24, duration: 180 }}
+	>
+		<div class="min-h-0 flex-1 overflow-y-auto">{@render card(selected)}</div>
+	</aside>
+{/if}
+
+{#if whereFor}
+	<KnowledgeWhereProjectModal
+		entityName={whereFor.entity.name}
+		project={whereFor.project}
+		where={whereById.get(whereFor.entity.id) ?? emptyWhere()}
+		onClose={() => (whereFor = null)}
+		onOpenRecord={openWhereRecord}
+		onFilterProject={setProjectLens}
+	/>
+{/if}
+
+{#if openRecord?.project_id}
+	{@const record = openRecord}
+	{@const recordProject = openRecord.project_id}
+	{#if record.kind === 'task'}
+		{#await import('$lib/components/ontology/TaskEditModal.svelte') then { default: TaskEditModal }}
+			<TaskEditModal
+				taskId={record.id}
+				projectId={recordProject}
+				onClose={() => (openRecord = null)}
+				onUpdated={recordChanged}
+				onDeleted={() => {
+					recordChanged();
+					openRecord = null;
+				}}
+			/>
+		{/await}
+	{:else}
+		{#await import('$lib/components/ontology/DocumentModal.svelte') then { default: DocumentModal }}
+			<DocumentModal
+				isOpen={true}
+				projectId={recordProject}
+				documentId={record.id}
+				onClose={() => (openRecord = null)}
+				onSaved={recordChanged}
+				onDeleted={() => {
+					recordChanged();
+					openRecord = null;
+				}}
+			/>
+		{/await}
+	{/if}
+{/if}
 
 {#if !wide}
 	<Modal

@@ -18,6 +18,7 @@ export { useNow } from './use-now';
 export * from './picks';
 export { readDayFlag, writeDayFlag, type DayFlag } from './day-flags';
 export { PickCard } from './pick-card';
+export { cachedPickSkips, loadPickSkips, savePickSkips } from './pick-skips';
 export { CloseOut, CloseOutPrompt } from './close-out';
 export { WaitingOnSection } from './waiting-on';
 export { MoreWaysIn, RepeatedSuggestions } from './repeated';

@@ -22,6 +22,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import LlmUsageStatsPanel from '$lib/components/admin/chat/LlmUsageStatsPanel.svelte';
+	import KnowledgeSpendPanel from '$lib/components/admin/chat/KnowledgeSpendPanel.svelte';
 	import { browser } from '$app/environment';
 
 	type DashboardTimeframe = '24h' | '7d' | '30d' | '90d' | '365d';
@@ -1497,6 +1498,10 @@
 			{/if}
 		</div>
 	{/if}
+
+	<div class="mt-8">
+		<KnowledgeSpendPanel refreshKey={llmRefreshKey} />
+	</div>
 
 	<div class="mt-8">
 		<LlmUsageStatsPanel days={llmDays} refreshKey={llmRefreshKey} />

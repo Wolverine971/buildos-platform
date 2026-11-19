@@ -11,7 +11,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	try {
 		const store = knowledgeStoreFor(locals.supabase, user.id);
-		const all = await store.list({ limit: 60 });
+		// Opens on "Your world" (tasker 169): no places, no names only mentioned in passing.
+		const all = await store.list({ limit: 60, view: 'world' });
 		return { initial: all, unavailable: false };
 	} catch (error) {
 		console.error('[knowledge] initial load failed', error);

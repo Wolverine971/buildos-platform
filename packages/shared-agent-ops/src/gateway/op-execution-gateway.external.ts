@@ -1,8 +1,14 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.external.ts
-import type { AgentCallScope, BuildosAgentAllowedOp, Database } from '@buildos/shared-types';
+import type {
+	AgentCallScope,
+	BuildosAgentAllowedOp,
+	BuildosAgentOptInReadOp,
+	Database
+} from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
 	defaultAllowedOpsForMode,
+	isUserOnlyOp,
 	isSupportedOp,
 	isWriteOp,
 	requiredScopeModeForOp
@@ -138,13 +144,17 @@ import {
 
 type GatewaySupabaseClient = SupabaseClient<Database>;
 
+type ExternalOpHandler = (
+	context: ToolExecutionContext,
+	args: Record<string, unknown>
+) => Promise<Record<string, unknown>>;
+
+/** Every tool op has a handler; permission-only ops (knowledge.contacts) have none. */
 export const EXTERNAL_OP_HANDLERS: Record<
-	BuildosAgentAllowedOp,
-	(
-		context: ToolExecutionContext,
-		args: Record<string, unknown>
-	) => Promise<Record<string, unknown>>
-> = {
+	Exclude<BuildosAgentAllowedOp, BuildosAgentOptInReadOp>,
+	ExternalOpHandler
+> &
+	Partial<Record<BuildosAgentOptInReadOp, ExternalOpHandler>> = {
 	'onto.project.list': listProjects,
 	'onto.project.search': searchProjects,
 	'onto.project.get': getProject,
@@ -316,8 +326,8 @@ export function buildExternalGatewayRegistry(
 	registryOps: Record<string, RegistryOp>,
 	registryVersion: string
 ): ExternalGatewayRegistry {
-	const allowedOps = (scope.allowed_ops ?? defaultAllowedOpsForMode(scope.mode)).filter((op) =>
-		scope.mode === 'read_write' ? true : !isWriteOp(op)
+	const allowedOps = (scope.allowed_ops ?? defaultAllowedOpsForMode(scope.mode)).filter(
+		(op) => (scope.mode === 'read_write' ? true : !isWriteOp(op)) && !isUserOnlyOp(op)
 	);
 	const ops: Record<string, ExternalGatewayRegistryEntry> = {};
 

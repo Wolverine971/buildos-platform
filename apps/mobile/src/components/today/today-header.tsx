@@ -1,10 +1,10 @@
 // apps/mobile/src/components/today/today-header.tsx
 // The top of Today, as on the website: "Today" with the date, "N events · N tasks", and a chip
-// row that scrolls sideways (Up next, overdue) over a hairline.
+// row that scrolls sideways (Up next, N to review, overdue) over a hairline.
 import type { ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { AlertTriangle, Clock, PageTitle, playHaptic, Stamp } from '@/components/kit';
+import { AlertTriangle, Clock, Inbox, PageTitle, playHaptic, Stamp } from '@/components/kit';
 import { SCREEN_PADDING } from '@/components/screen';
 import { useInk } from '@/providers/theme-provider';
 import { colorMix, typeScale, withAlpha } from '@/theme';
@@ -24,11 +24,14 @@ export type TodayHeaderProps = {
 	counts: { events: number; tasks: number } | null;
 	overdueCount: number;
 	upNext: UpNext | null;
+	/** "N to review": the AI Inbox's pending count; hidden at zero. */
+	inbox?: { count: number; onPress: () => void } | null;
 };
 
-export function TodayHeader({ dateLabel, counts, overdueCount, upNext }: TodayHeaderProps) {
+export function TodayHeader({ dateLabel, counts, overdueCount, upNext, inbox }: TodayHeaderProps) {
 	const { colors } = useInk();
-	const hasChips = Boolean(upNext) || overdueCount > 0;
+	const reviewCount = inbox?.count ?? 0;
+	const hasChips = Boolean(upNext) || overdueCount > 0 || reviewCount > 0;
 
 	return (
 		<View>
@@ -38,7 +41,9 @@ export function TodayHeader({ dateLabel, counts, overdueCount, upNext }: TodayHe
 					maxFontSizeMultiplier={1.6}
 					style={[typeScale.meta, styles.counts, { color: colors.mutedForeground }]}
 				>
-					<Text style={[styles.count, { color: colors.foreground }]}>{counts.events}</Text>
+					<Text style={[styles.count, { color: colors.foreground }]}>
+						{counts.events}
+					</Text>
 					{counts.events === 1 ? ' event' : ' events'}
 					<Text style={{ color: withAlpha(colors.mutedForeground, 0.5) }}>{'  ·  '}</Text>
 					<Text style={[styles.count, { color: colors.foreground }]}>{counts.tasks}</Text>
@@ -54,10 +59,28 @@ export function TodayHeader({ dateLabel, counts, overdueCount, upNext }: TodayHe
 					contentContainerStyle={styles.chips}
 				>
 					{upNext ? <UpNextChip {...upNext} /> : null}
+					{inbox && reviewCount > 0 ? (
+						<Chip
+							onPress={inbox.onPress}
+							accessibilityLabel={`${reviewCount} to review in the inbox`}
+							accessibilityHint="Opens the AI Inbox"
+						>
+							<Inbox size={15} strokeWidth={2} color={colors.mutedForeground} />
+							<Text
+								maxFontSizeMultiplier={1.4}
+								style={[styles.chipText, { color: colors.foreground }]}
+							>
+								{reviewCount} to review
+							</Text>
+						</Chip>
+					) : null}
 					{overdueCount > 0 ? (
 						<Chip tone="warning" accessibilityLabel={`${overdueCount} overdue tasks`}>
 							<AlertTriangle size={15} strokeWidth={2} color={colors.warning} />
-							<Text maxFontSizeMultiplier={1.4} style={[styles.chipText, { color: colors.foreground }]}>
+							<Text
+								maxFontSizeMultiplier={1.4}
+								style={[styles.chipText, { color: colors.foreground }]}
+							>
 								{overdueCount} overdue
 							</Text>
 						</Chip>
@@ -77,7 +100,10 @@ function UpNextChip({ title, time, onPress }: UpNext) {
 			accessibilityHint={onPress ? 'Opens the task' : undefined}
 		>
 			<Clock size={15} strokeWidth={2} color={colors.accent} />
-			<Text maxFontSizeMultiplier={1.4} style={[styles.chipText, { color: colors.foreground }]}>
+			<Text
+				maxFontSizeMultiplier={1.4}
+				style={[styles.chipText, { color: colors.foreground }]}
+			>
 				Up next
 			</Text>
 			<Text
@@ -132,7 +158,11 @@ function Chip({
 				playHaptic('selection');
 				onPress();
 			}}
-			style={({ pressed }) => [styles.chip, face, pressed && { backgroundColor: colors.muted }]}
+			style={({ pressed }) => [
+				styles.chip,
+				face,
+				pressed && { backgroundColor: colors.muted }
+			]}
 		>
 			{children}
 		</Pressable>

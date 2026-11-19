@@ -318,6 +318,38 @@ describe('syncRecordMentions', () => {
 		expect(db.rows('knowledge_entities').filter((e) => e.name === 'Phil Valeo')).toHaveLength(
 			1
 		);
+
+		// A failed write never leaves the record without tags: the old ones stay.
+		const before = db.rows('knowledge_mentions').map((m) => m.id);
+		const realFrom = db.from.bind(db);
+		db.from = ((table: string) => {
+			const query = realFrom(table) as any;
+			if (table !== 'knowledge_mentions') return query;
+			return new Proxy(query, {
+				get(target, prop) {
+					if (prop === 'insert')
+						return () => ({
+							select: async () => ({ data: null, error: { message: 'write failed' } })
+						});
+					const value = target[prop];
+					return typeof value === 'function' ? value.bind(target) : value;
+				}
+			});
+		}) as typeof db.from;
+		await expect(
+			syncRecordMentions(
+				db,
+				user,
+				{
+					record,
+					fields: { content: `Intro line.\n${DOC_FIXED}` },
+					reader: [],
+					readerComplete: false
+				},
+				{ via: 'system' }
+			)
+		).rejects.toThrow('write failed');
+		expect(db.rows('knowledge_mentions').map((m) => m.id)).toEqual(before);
 	});
 
 	it('asks instead of folding when the user added details to the old entry', async () => {

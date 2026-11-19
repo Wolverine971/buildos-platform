@@ -12,6 +12,7 @@ import { createAuthEndpoints } from './endpoints/auth';
 import { createBriefEndpoints } from './endpoints/briefs';
 import { createChatEndpoints } from './endpoints/chat';
 import { createDocumentEndpoints } from './endpoints/documents';
+import { createInboxEndpoints } from './endpoints/inbox';
 import { createProjectEndpoints } from './endpoints/projects';
 import { createPushEndpoints } from './endpoints/push';
 import { createTableEndpoints } from './endpoints/tables';
@@ -43,12 +44,15 @@ export {
 } from './client';
 export * from './types';
 export * from './realtime';
+export * from './inbox-types';
+export { INBOX_SNOOZE_MS } from './endpoints/inbox';
 export type { ActivityEndpoints } from './endpoints/activity';
 export type { AgentEndpoints } from './endpoints/agent';
 export type { AuthEndpoints } from './endpoints/auth';
 export type { BriefEndpoints } from './endpoints/briefs';
 export type { ChatEndpoints } from './endpoints/chat';
 export type { DocumentEndpoints } from './endpoints/documents';
+export type { InboxEndpoints } from './endpoints/inbox';
 export type { ProjectEndpoints } from './endpoints/projects';
 export type { PushEndpoints } from './endpoints/push';
 export type { TableEndpoints } from './endpoints/tables';
@@ -78,6 +82,8 @@ export interface BuildOsClient extends BuildOsHttp {
 	chat: ReturnType<typeof createChatEndpoints>;
 	/** Quick capture into the person's Workspace (loose notes and tasks). */
 	workspace: ReturnType<typeof createWorkspaceEndpoints>;
+	/** The AI Inbox: items, decisions, project cleanup, check-ins, email updates. */
+	inbox: ReturnType<typeof createInboxEndpoints>;
 }
 
 export function createBuildOsClient(options: BuildOsClientOptions): BuildOsClient {
@@ -99,6 +105,7 @@ export function createBuildOsClient(options: BuildOsClientOptions): BuildOsClien
 		push: createPushEndpoints(http),
 		agent: createAgentEndpoints(http),
 		chat: createChatEndpoints(http),
-		workspace: createWorkspaceEndpoints(http)
+		workspace: createWorkspaceEndpoints(http),
+		inbox: createInboxEndpoints(http)
 	};
 }

@@ -7,14 +7,19 @@
 import { describe, expect, it } from 'vitest';
 import { BUILDOS_AGENT_READ_OPS, BUILDOS_AGENT_SUPPORTED_OPS } from '@buildos/shared-types';
 import { extractAllowedOpsFromPolicy } from './agent-call-policy';
+import { normalizeAllowedOps } from './agent-call-policy';
 
 describe('extractAllowedOpsFromPolicy', () => {
 	it('returns mode defaults when the policy records no allowed_ops', () => {
 		expect(extractAllowedOpsFromPolicy(null, 'read_only')).toEqual([...BUILDOS_AGENT_READ_OPS]);
-		// Paid research is opt-in: never part of a default bundle.
-		expect(extractAllowedOpsFromPolicy({}, 'read_write')).toEqual(
-			BUILDOS_AGENT_SUPPORTED_OPS.filter((op) => op !== 'knowledge.enrich')
+		// Paid research and people's contact details are opt-in: never part of a default.
+		const defaults = extractAllowedOpsFromPolicy({}, 'read_write');
+		expect(defaults).toEqual(
+			BUILDOS_AGENT_SUPPORTED_OPS.filter(
+				(op) => op !== 'knowledge.enrich' && op !== 'knowledge.contacts'
+			)
 		);
+		expect(defaults).not.toContain('knowledge.contacts');
 		expect(extractAllowedOpsFromPolicy({ allowed_ops: null }, 'read_only')).toEqual([
 			...BUILDOS_AGENT_READ_OPS
 		]);
@@ -57,5 +62,21 @@ describe('extractAllowedOpsFromPolicy', () => {
 
 	it('returns an empty surface for an explicitly empty allowlist', () => {
 		expect(extractAllowedOpsFromPolicy({ allowed_ops: [] }, 'read_write')).toEqual([]);
+	});
+
+	it('never stores paid research on a connection, even when a key lists it', () => {
+		expect(
+			normalizeAllowedOps(
+				['knowledge.search', 'knowledge.record', 'knowledge.enrich'],
+				'allowed_ops',
+				'read_write'
+			)
+		).toEqual(['knowledge.search', 'knowledge.record']);
+		expect(
+			extractAllowedOpsFromPolicy(
+				{ allowed_ops: ['knowledge.record', 'knowledge.enrich'] },
+				'read_write'
+			)
+		).toEqual(['knowledge.record']);
 	});
 });

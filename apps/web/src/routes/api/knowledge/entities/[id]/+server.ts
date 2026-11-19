@@ -3,7 +3,8 @@
  * GET    /api/knowledge/entities/:id  → the entry, its facts with sources, relationships both
  *        ways, linked tasks/docs the caller can still open, and research runs. For your own
  *        entry, also `sharing` (tasker 168): shared projects it shows in, asks and grants.
- * PATCH  /api/knowledge/entities/:id  { name?, summary?, status?: 'active'|'hidden' }
+ * PATCH  /api/knowledge/entities/:id  { name?, summary?, status?: 'active'|'hidden',
+ *          circle?: 'inner'|'public' }  (circle: the user's answer, part of my world / just mentioned)
  * DELETE /api/knowledge/entities/:id  (own entries only)
  */
 import type { RequestHandler } from './$types';
@@ -41,7 +42,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	if (!user) return ApiResponse.unauthorized('Authentication required');
 	if (!UUID_PATTERN.test(params.id)) return ApiResponse.badRequest('Invalid id');
 
-	let body: { name?: string; summary?: string | null; status?: string };
+	let body: { name?: string; summary?: string | null; status?: string; circle?: string };
 	try {
 		body = await request.json();
 	} catch {
@@ -50,12 +51,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	if (body.status !== undefined && body.status !== 'active' && body.status !== 'hidden') {
 		return ApiResponse.badRequest('Invalid status');
 	}
+	if (body.circle !== undefined && body.circle !== 'inner' && body.circle !== 'public') {
+		return ApiResponse.badRequest('Invalid circle');
+	}
 
 	try {
 		await knowledgeStoreFor(locals.supabase, user.id).updateEntity(params.id, {
 			...(typeof body.name === 'string' ? { name: body.name } : {}),
 			...(body.summary !== undefined ? { summary: body.summary } : {}),
-			...(body.status ? { status: body.status as 'active' | 'hidden' } : {})
+			...(body.status ? { status: body.status as 'active' | 'hidden' } : {}),
+			...(body.circle ? { circle: body.circle as 'inner' | 'public' } : {})
 		});
 		return ApiResponse.success({ ok: true });
 	} catch (error) {

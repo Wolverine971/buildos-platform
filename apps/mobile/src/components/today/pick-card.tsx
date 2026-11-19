@@ -1,9 +1,7 @@
 // apps/mobile/src/components/today/pick-card.tsx
 // The one thing to work on, on top of Today (the web's TodayPickCard): "Start here" in the
-// morning, "Next up" later or after a Done. Open it, mark it Done, or "Not this" for the next
-// suggestion. After noon, "Today went sideways" clears the plan for the day without pushing
-// anything onto tomorrow.
-import { useState } from 'react';
+// morning, "Next up" later or after a Done. Open it, mark it Done, or "Not this" to send it to
+// the bottom for the rest of the day (the screen remembers it across app restarts).
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Check, Key, MicroLabel } from '@/components/kit';
@@ -16,28 +14,28 @@ import { PICK_TAGS, type TimeOfDay, type TodayPick } from './picks';
 export function PickCard({
 	picks,
 	time,
-	sideways,
+	skippedCount,
 	lastDone,
 	onOpen,
 	onDone,
-	onSideways,
-	onBack
+	onSkip,
+	onShowSkipped
 }: {
+	/** Best first, with anything passed on today already left out. */
 	picks: TodayPick[];
 	time: TimeOfDay;
-	sideways: boolean;
+	/** How many picks were passed on today. */
+	skippedCount: number;
 	/** Title of the pick just marked done, shown once above the next one. */
 	lastDone: string | null;
 	onOpen: (pick: TodayPick) => void;
 	onDone: (pick: TodayPick) => void;
-	onSideways: () => void;
-	onBack: () => void;
+	onSkip: (pick: TodayPick) => void;
+	onShowSkipped: () => void;
 }) {
 	const ink = useInk();
 	const { colors } = ink;
-	const [skipped, setSkipped] = useState<string[]>([]);
-	const live = picks.filter((pick) => !skipped.includes(pick.key));
-	const pick = live[0] ?? null;
+	const pick = picks[0] ?? null;
 	const heading = lastDone ? 'Next up' : time === 'morning' ? 'Start here' : 'Next up';
 	useAnnounce(lastDone ? `Marked done: ${lastDone}` : null);
 
@@ -45,29 +43,6 @@ export function PickCard({
 		styles.card,
 		{ backgroundColor: colors.card, borderColor: colors.border, boxShadow: ink.shadows.ink }
 	];
-
-	if (sideways) {
-		return (
-			<View style={card} accessibilityLabel="What to work on">
-				<MicroLabel>Plan cleared for today</MicroLabel>
-				<Text
-					maxFontSizeMultiplier={1.5}
-					style={[styles.title, { color: colors.foreground }]}
-				>
-					OK. Today's off. Nothing gets pushed onto tomorrow.
-				</Text>
-				<Text
-					maxFontSizeMultiplier={1.6}
-					style={[typeScale.meta, { color: colors.mutedForeground }]}
-				>
-					Your tasks keep their own dates. Come back whenever you're ready.
-				</Text>
-				<View style={styles.keys}>
-					<Key title="Actually, I'm back" size="sm" onPress={onBack} />
-				</View>
-			</View>
-		);
-	}
 
 	return (
 		<View style={card}>
@@ -121,7 +96,7 @@ export function PickCard({
 					</Text>
 					<View style={styles.keys}>
 						<Key
-							title="Open it"
+							title="Open"
 							variant="primary"
 							size="sm"
 							haptic="selection"
@@ -139,22 +114,14 @@ export function PickCard({
 							variant="ghost"
 							size="sm"
 							haptic="selection"
-							onPress={() => setSkipped((current) => [...current, pick.key])}
+							onPress={() => onSkip(pick)}
 						/>
-						{time !== 'morning' ? (
-							<Key
-								title="Today went sideways"
-								variant="ghost"
-								size="sm"
-								onPress={onSideways}
-							/>
-						) : null}
 					</View>
 				</>
 			) : (
 				<>
 					<MicroLabel>
-						{picks.length > 0 ? "That's all I'd suggest" : 'Nothing pressing'}
+						{skippedCount > 0 ? "That's all I'd suggest" : 'Nothing pressing'}
 					</MicroLabel>
 					<Text
 						maxFontSizeMultiplier={1.5}
@@ -163,13 +130,13 @@ export function PickCard({
 						Nothing else stands out. Pick anything below, or capture what's on your
 						mind.
 					</Text>
-					{skipped.length > 0 ? (
+					{skippedCount > 0 ? (
 						<View style={styles.keys}>
 							<Key
 								title="Show the suggestions again"
 								variant="ghost"
 								size="sm"
-								onPress={() => setSkipped([])}
+								onPress={onShowSkipped}
 							/>
 						</View>
 					) : null}

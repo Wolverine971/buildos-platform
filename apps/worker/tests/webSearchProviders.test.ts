@@ -195,6 +195,45 @@ describe('knowledge research port with Serper', () => {
 		expect(result.results[0].title).toBe('Acme (Tavily)');
 	});
 
+	it('gives a slow Serper 10 s, then falls back to Tavily', async () => {
+		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+		const urls: string[] = [];
+		const fetchFn = vi.fn(
+			(input: string | URL | Request, init?: Parameters<typeof fetch>[1]) => {
+				const url = String(input);
+				urls.push(url);
+				if (url !== SERPER) return Promise.resolve(tavilyOk());
+				// Serper hangs until the port gives up on it.
+				return new Promise<Response>((_, reject) => {
+					init?.signal?.addEventListener('abort', () =>
+						reject(new DOMException('aborted', 'AbortError'))
+					);
+				});
+			}
+		) as unknown as typeof fetch;
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+		try {
+			const port = createAgentRunWebResearchPort({
+				purpose: 'knowledge_research',
+				apiKey: 'tavily-key',
+				serperApiKey: 'serper-key',
+				fetchFn,
+				now: () => NOW,
+				onSearchDispatched: () => undefined
+			});
+			const pending = port.search!({ query: 'Acme slow serper', search_depth: 'basic' });
+			await vi.advanceTimersByTimeAsync(9_999);
+			expect(urls).toEqual([SERPER]);
+			await vi.advanceTimersByTimeAsync(1);
+			const result = (await pending) as any;
+			expect(urls).toEqual([SERPER, TAVILY]);
+			expect(result.info.provider).toBe('tavily');
+		} finally {
+			warn.mockRestore();
+			vi.useRealTimers();
+		}
+	});
+
 	it('does not fall back when the reservation is refused (budget), and never dispatches', async () => {
 		const { calls, fetchFn } = mockFetch(() => tavilyOk());
 		const port = createAgentRunWebResearchPort({

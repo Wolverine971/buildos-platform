@@ -1,5 +1,6 @@
 // packages/shared-agent-ops/src/knowledge/types.ts
 
+import type { KnowledgeCircle, KnowledgeCircleSource } from './anchors';
 import type { KnowledgeKey } from './normalize';
 import type { KnowledgeKind } from './vocabulary';
 
@@ -185,6 +186,11 @@ export interface KnowledgeEntityDetail {
 		enriched_at: string | null;
 		created_at: string;
 		updated_at: string;
+		/** Own entries: inner = your world, public = just mentioned (tasker 169). */
+		circle?: KnowledgeCircle;
+		circle_source?: KnowledgeCircleSource | null;
+		/** Why a hidden entry is hidden: orphan, not_a_name (the sorter), or null (the user). */
+		hidden_reason?: string | null;
 	};
 	/** Facts where this entity is the subject (properties and outgoing relationships). */
 	facts: KnowledgeFactView[];
@@ -208,19 +214,40 @@ export interface KnowledgeListOptions {
 	researched?: KnowledgeResearchedFilter;
 	/** recent = last updated (default); name = A–Z; researched = last researched first. */
 	sort?: KnowledgeListSort;
+	/**
+	 * all = everything active (default); world = what matters to the user (no places, no "just
+	 * mentioned" names unless searching); reference = "just mentioned"; dropped = hidden by the
+	 * sorter as not a name.
+	 */
+	view?: KnowledgeListView;
+	/** Only entries located in this place (a place entity id). */
+	place?: string;
 }
+
+export type KnowledgeListView = 'all' | 'world' | 'reference' | 'dropped';
 
 export type KnowledgeResearchedFilter = 'any' | 'yes' | 'no';
 export type KnowledgeListSort = 'recent' | 'name' | 'researched';
 
 export interface KnowledgeListResult {
-	entities: Array<KnowledgeEntitySummary & { updated_at: string; researched_at?: string | null }>;
+	entities: Array<
+		KnowledgeEntitySummary & {
+			updated_at: string;
+			researched_at?: string | null;
+			/** The viewer's own entries only: inner = your world, public = just mentioned. */
+			circle?: KnowledgeCircle | null;
+		}
+	>;
 	total: number;
 	counts: Partial<Record<KnowledgeKind, number>>;
 	/** Researched / not researched among the current kind and filter. */
 	researched?: { yes: number; no: number };
 	/** How many people the user knows, whatever the filters. */
 	known_count: number;
+	/** Whole-graph totals per view (after migration 20261118400000). */
+	views?: { world: number; reference: number; dropped: number };
+	/** Places the user's people and orgs are in, most first: the place filter's choices. */
+	places?: Array<{ id: string; name: string; count: number }>;
 }
 
 export interface KnowledgeQueryStep {

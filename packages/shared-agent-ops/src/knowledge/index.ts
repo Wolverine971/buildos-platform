@@ -12,3 +12,4 @@ export * from './circles';
 export * from './identity';
 export * from './mentions';
 export * from './mention-sync';
+export * from './spend';

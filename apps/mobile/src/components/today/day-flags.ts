@@ -1,8 +1,8 @@
 // apps/mobile/src/components/today/day-flags.ts
-// Choices that last for one day: "Today went sideways" and a dismissed close-out. Kept in
+// Choices that last for one day: a dismissed close-out. Kept in
 // memory (the web keeps them in localStorage): they survive tab switches and reopening Today,
 // and a cold start the next morning begins clean anyway.
-export type DayFlag = 'sideways' | 'closeout-hidden';
+export type DayFlag = 'closeout-hidden';
 
 const flags = new Set<string>();
 

@@ -106,6 +106,20 @@
 			"import": "./dist/agent-chat-step-details.mjs",
 			"require": "./dist/agent-chat-step-details.js"
 		},
+		"./inbox-cleanup-presentation": {
+			"types": "./dist/inbox-cleanup-presentation.d.ts",
+			"react-native": "./src/inbox-cleanup-presentation.ts",
+			"development": "./src/inbox-cleanup-presentation.ts",
+			"import": "./dist/inbox-cleanup-presentation.mjs",
+			"require": "./dist/inbox-cleanup-presentation.js"
+		},
+		"./inbox-cleanup-triage": {
+			"types": "./dist/inbox-cleanup-triage.d.ts",
+			"react-native": "./src/inbox-cleanup-triage.ts",
+			"development": "./src/inbox-cleanup-triage.ts",
+			"import": "./dist/inbox-cleanup-triage.mjs",
+			"require": "./dist/inbox-cleanup-triage.js"
+		},
 		"./agent-chat-workflow.fixture": {
 			"types": "./dist/agent-chat-workflow.fixture.d.ts",
 			"react-native": "./src/agent-chat-workflow.fixture.ts",

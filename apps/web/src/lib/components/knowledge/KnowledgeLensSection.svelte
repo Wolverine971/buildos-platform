@@ -117,8 +117,10 @@
 				};
 			} else if (result.status === 'already_shared') {
 				toastService.info('Already shared with you. Reopen the card to see it.');
+			} else if (result.status === 'nothing_to_ask') {
+				toastService.info('Nothing here is held back from you.');
 			} else if (result.status === 'rate_limited') {
-				toastService.info('You have a lot of open asks. Try again once some are answered.');
+				toastService.info('You have asked a lot today. Try again tomorrow.');
 			} else {
 				toastService.info('That entry is no longer in this project.');
 			}

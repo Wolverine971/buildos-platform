@@ -66,7 +66,7 @@ export const BUILDOS_OAUTH_READ_WRITE_OPS = [
 	'onto.project.create',
 	'onto.project.update',
 	// Personal knowledge graph (tasker 160): private to the user. Paid research
-	// (knowledge.enrich) is opt-in per key, never part of a consent bundle.
+	// (knowledge.enrich) is user-only: no connection may hold it (policy.ts USER_ONLY_OPS).
 	'knowledge.record'
 ] as BuildosAgentAllowedOp[];
 

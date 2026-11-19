@@ -98,6 +98,35 @@ describe('pickTodayFocus', () => {
 		expect(picks[0]!.kind).toBe('waiting');
 		expect(picks[0]!.task?.id).toBe('linked');
 	});
+
+	it('"Not this" drops a pick so the next-best one, even from the same project, moves up', () => {
+		const tasks = [
+			task('a', { project_id: 'same', due_in_days: 0 }),
+			task('b', { project_id: 'same', due_in_days: 1 }),
+			task('c', { due_in_days: 3 }),
+			task('d', { bucket: 'in_progress' })
+		];
+		const before = pickTodayFocus({ tasks, waiting: [], doneIds: new Set(), weekdayOf });
+		expect(before.map((pick) => pick.key)).toEqual(['task:a', 'task:c', 'task:d']);
+
+		const after = pickTodayFocus({
+			tasks,
+			waiting: [],
+			doneIds: new Set(),
+			skipped: ['task:a'],
+			weekdayOf
+		});
+		expect(after.map((pick) => pick.key)).toEqual(['task:b', 'task:c', 'task:d']);
+
+		const allSkipped = pickTodayFocus({
+			tasks,
+			waiting: [],
+			doneIds: new Set(),
+			skipped: ['task:a', 'task:b', 'task:c', 'task:d'],
+			weekdayOf
+		});
+		expect(allSkipped).toEqual([]);
+	});
 });
 
 describe('words', () => {

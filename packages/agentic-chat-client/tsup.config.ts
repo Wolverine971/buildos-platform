@@ -19,6 +19,8 @@ export default defineConfig({
 		'src/agent-chat-worker-ui-adapter.ts',
 		'src/agent-chat-turn-cards.ts',
 		'src/agent-chat-step-details.ts',
+		'src/inbox-cleanup-presentation.ts',
+		'src/inbox-cleanup-triage.ts',
 		'src/agent-chat-workflow.fixture.ts'
 	],
 	format: ['cjs', 'esm'],

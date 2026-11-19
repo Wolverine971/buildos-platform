@@ -1,9 +1,9 @@
 # BuildOS Database Schema Reference
 
-Complete column listing for all 299 tables, grouped by domain.
+Complete column listing for all 319 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-11-18T02:14:55.786Z
+**Schema generated:** 2026-11-19T01:59:09.512Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -28,7 +28,7 @@ For enum values, constraints, and RLS, check migrations in `supabase/migrations/
 - [Daily Briefs](#daily-briefs) (5 tables)
 - [Monitoring & Analytics](#monitoring--analytics) (11 tables)
 - [Web & Webhooks](#web--webhooks) (4 tables)
-- [Other](#other) (66 tables)
+- [Other](#other) (86 tables)
 
 ---
 
@@ -1082,17 +1082,25 @@ audience `string` · created_at `string` · id `string` · kind `string` · labe
 
 audience `string` · created_at `string` · goal_ids `string[]` · level `string` · link_url `string?` · looking_for `string?` · pitch `string?` · position `number` · project_id `string` · public_name `string?` · reply_url `string?` · show_next_milestone `boolean` · this_week `string?` · this_week_at `string?` · updated_at `string` · user_id `string`
 
+### builder_profile_stat_visitors
+
+day `string` · hits `number` · kind `string` · subject `string` · user_id `string` · visitor `string`
+
 ### builder_profile_stats_daily
 
-asks `number` · day `string` · follows `number` · link_taps `number` · user_id `string` · views `number`
+asks `number` · day `string` · follows `number` · link_taps `number` · project_views `number` · user_id `string` · views `number`
 
 ### builder_profile_updates
 
 body `string` · created_at `string` · decided_at `string?` · id `string` · project_id `string?` · source `string` · status `string` · user_id `string` · week_of `string`
 
+### builder_profile_writing
+
+created_at `string` · page_id `string` · position `number` · user_id `string`
+
 ### builder_profiles
 
-activity_refreshed_at `string?` · avatar_url `string?` · build_log_includes_private `boolean` · cover_url `string?` · created_at `string` · headline `string?` · location `string?` · now_text `string?` · now_updated_at `string?` · published_at `string?` · show_agent_split `boolean` · show_build_log `boolean` · show_builds_with `boolean` · show_on_collaborator_pages `boolean` · show_writing `boolean` · status `string` · updated_at `string` · user_id `string` · weekly_drafts `boolean`
+activity_refreshed_at `string?` · avatar_url `string?` · build_log_includes_private `boolean` · cover_url `string?` · created_at `string` · headline `string?` · links_rev `number` · location `string?` · now_text `string?` · now_updated_at `string?` · projects_rev `number` · published_at `string?` · show_agent_split `boolean` · show_build_log `boolean` · show_builds_with `boolean` · show_on_collaborator_pages `boolean` · show_writing `boolean` · status `string` · updated_at `string` · user_id `string` · weekly_drafts `boolean`
 
 ### consolidation_merges
 
@@ -1166,6 +1174,14 @@ candidates_evaluated `number` · candidates_total `number` · card_message_id `s
 
 answers `Json` · created_at `string` · evidence_probability `number?` · facts `Json` · gauge `string` · id `string` · model_used `string?` · outcome `string?` · outcome_at `string?` · previous_gauge `string?` · project_id `string` · question_set_version `string` · scan_id `string` · score `number?` · score_confidence `number?` · subject_id `string` · subject_kind `string` · subject_title `string` · target_at `string?` · user_id `string`
 
+### google_agent_grants
+
+access_token_ciphertext `string` · access_token_expires_at `string?` · connection_id `string` · connection_kind `string` · created_at `string` · granted_scopes `string[]` · id `string` · oauth_client_id `string` · provider_account_id `string` · refresh_token_ciphertext `string` · refresh_token_expires_at `string?` · revision `string` · status `string` · updated_at `string` · user_id `string`
+
+### google_agent_oauth_states
+
+code_verifier `string` · connection_id `string` · connection_kind `string` · consumed_at `string?` · created_at `string` · expires_at `string` · nonce `string` · oauth_client_id `string` · provider_account_id `string` · redirect_uri `string` · state_hash `string` · user_id `string`
+
 ### homework_run_events
 
 created_at `string` · event `Json` · id `string` · iteration `number` · run_id `string` · seq `number`
@@ -1181,6 +1197,70 @@ budgets `Json` · chat_session_id `string?` · completed_at `string?` · complet
 ### inbox_items
 
 action_kinds `string[]` · audience `string` · blocked_reason `string?` · created_at `string` · decided_at `string?` · expires_at `string?` · freshness_checked_at `string?` · freshness_flag_id `string?` · freshness_note `string?` · freshness_state `string` · id `string` · project_id `string?` · risk_tier `number?` · snoozed_until `string?` · source_ref_id `string` · source_status `string?` · source_type `string` · status `string` · summary `string?` · title `string` · updated_at `string` · user_id `string?`
+
+### knowledge_entities
+
+circle `string` · circle_set_at `string?` · circle_source `string?` · created_at `string` · created_via `string` · enriched_at `string?` · hidden_reason `string?` · id `string` · image_url `string?` · is_self `boolean` · kind `string` · merged_into_id `string?` · name `string` · normalized_name `string?` · owner_user_id `string?` · scope `string` · status `string` · summary `string?` · updated_at `string`
+
+### knowledge_entity_keys
+
+created_at `string` · entity_id `string` · id `string` · key_type `string` · key_value `string` · owner_user_id `string?` · scope `string`
+
+### knowledge_fact_sources
+
+created_at `string` · fact_id `string` · quote `string?` · source_id `string`
+
+### knowledge_facts
+
+confidence `number` · created_at `string` · created_via `string` · dedupe_key `string?` · entity_id `string` · id `string` · object_entity_id `string?` · observed_at `string` · owner_user_id `string?` · predicate `string` · qualifiers `Json` · run_id `string?` · scope `string` · status `string` · updated_at `string` · valid_from `string?` · valid_to `string?` · value `Json?` · value_text `string?`
+
+### knowledge_kinds
+
+created_at `string` · description `string` · key `string` · label `string` · plural_label `string` · shareable `boolean` · sort_order `number`
+
+### knowledge_mention_reads
+
+content_hash `string` · owner_user_id `string` · read_at `string` · reader_version `number` · record_id `string` · record_kind `string`
+
+### knowledge_mentions
+
+content_hash `string?` · created_at `string` · end_offset `number` · entity_id `string` · field `string` · id `string` · made_by `string` · owner_user_id `string` · prefix `string` · record_id `string` · record_kind `string` · start_offset `number` · status `string` · suffix `string` · text `string` · updated_at `string`
+
+### knowledge_merge_candidates
+
+created_at `string` · entity_a `string` · entity_b `string` · id `string` · origin `string` · owner_user_id `string` · question `string?` · reason `string` · resolved_at `string?` · score `number` · status `string`
+
+### knowledge_predicates
+
+cardinality `string` · created_at `string` · description `string` · inverse_label `string?` · key `string` · label `string` · object_kinds `string[]` · qualifier_keys `string[]` · shareable_subject_kinds `string[]` · sort_order `number` · subject_kinds `string[]` · value_type `string`
+
+### knowledge_record_links
+
+created_at `string` · created_via `string` · entity_id `string` · id `string` · owner_user_id `string` · quote `string?` · record_id `string` · record_kind `string`
+
+### knowledge_research_hints
+
+created_at `string` · domains `string[]` · entity_id `string` · id `string` · label `string` · owner_user_id `string` · polarity `string` · run_id `string?` · urls `string[]`
+
+### knowledge_run_targets
+
+cost_usd `number` · created_at `string` · entity_id `string` · error `string?` · facts_added `number` · fields `string[]` · finished_at `string?` · id `string` · instructions `string?` · owner_user_id `string` · phase `string?` · run_id `string` · started_at `string?` · status `string` · summary `string?` · updated_at `string`
+
+### knowledge_runs
+
+budget_usd `number?` · cost_usd `number` · created_at `string` · error `string?` · finished_at `string?` · id `string` · input `Json` · owner_user_id `string` · run_type `string` · started_at `string?` · stats `Json` · status `string` · title `string` · updated_at `string`
+
+### knowledge_share_events
+
+actor_user_id `string?` · created_at `string` · detail `Json` · event `string` · id `string` · owner_user_id `string` · share_id `string`
+
+### knowledge_shares
+
+created_at `string` · decided_at `string?` · duration `string` · entity_id `string` · expires_at `string?` · grantee_user_id `string?` · id `string` · owner_user_id `string` · predicates `string[]` · project_id `string?` · requested_by_user_id `string?` · revoked_at `string?` · status `string` · updated_at `string` · via `string` · what `string`
+
+### knowledge_sources
+
+captured_at `string` · content_hash `string?` · created_at `string` · id `string` · meta `Json` · owner_user_id `string?` · published_at `string?` · record_id `string?` · scope `string` · source_type `string` · title `string?` · url `string?`
 
 ### legacy_entity_mappings
 

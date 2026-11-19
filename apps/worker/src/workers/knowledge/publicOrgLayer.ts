@@ -53,11 +53,56 @@ export function isOwnSite(pageUrl: string | null | undefined, domain: string): b
 	return Boolean(host && (host === domain || host.endsWith(`.${domain}`)));
 }
 
-/** The domain of an organization entry's own (active) homepage fact. */
+/**
+ * Hosts that hold many organizations' pages (a LinkedIn or Facebook page as a "website"): never
+ * a key, or every company with a LinkedIn homepage would share one public organization.
+ */
+const SHARED_PLATFORM_HOSTS = [
+	'linkedin.com',
+	'facebook.com',
+	'instagram.com',
+	'x.com',
+	'twitter.com',
+	'youtube.com',
+	'tiktok.com',
+	'linktr.ee',
+	'google.com',
+	'goo.gl',
+	'github.com',
+	'medium.com',
+	'substack.com',
+	'yelp.com',
+	'wikipedia.org',
+	'crunchbase.com',
+	'bit.ly',
+	'wixsite.com',
+	'squarespace.com',
+	'wordpress.com',
+	'blogspot.com',
+	'carrd.co',
+	'notion.site'
+];
+
+/**
+ * The domain of an organization entry's own (active) homepage fact, when that homepage is a
+ * site of its own: the root of a domain that isn't a shared platform. Otherwise null (no cache).
+ */
 export function orgDomain(detail: Pick<KnowledgeEntityDetail, 'entity' | 'facts'>): string | null {
 	if (detail.entity.kind !== 'org') return null;
 	const homepage = detail.facts.find((f) => f.predicate === 'homepage' && f.status === 'active');
-	return hostOf(homepage?.value ?? null);
+	const host = hostOf(homepage?.value ?? null);
+	if (!host || !homepage?.value) return null;
+	if (
+		SHARED_PLATFORM_HOSTS.some((platform) => host === platform || host.endsWith(`.${platform}`))
+	)
+		return null;
+	try {
+		const path = new URL(homepage.value).pathname.replace(/\/+$/, '');
+		if (path && !/^\/(index\.html?|home|en(-[a-z]{2})?)$/i.test(path)) return null;
+	} catch {
+		return null;
+	}
+	return host;
 }
 
 type PublicFactRow = {
@@ -148,14 +193,30 @@ export async function publicOrgFacts(
  */
 export async function promoteOrgFacts(
 	db: KnowledgeDataClient,
-	detail: Pick<KnowledgeEntityDetail, 'entity' | 'facts'>
+	detail: Pick<KnowledgeEntityDetail, 'entity' | 'facts'>,
+	run: {
+		/** Only facts this research run wrote (never typed-in or chat facts with a made-up URL). */
+		runId: string;
+		/** Facts this run borrowed from the public layer: not re-promoted (they'd never go stale). */
+		borrowed?: ReadonlyArray<{ predicate: string; value: string }>;
+	}
 ): Promise<number> {
 	try {
 		const domain = orgDomain(detail);
 		if (!domain || detail.entity.scope !== 'private') return 0;
+		const lent = new Set(
+			(run.borrowed ?? []).map((b) => `${b.predicate}|${b.value.trim().toLowerCase()}`)
+		);
 		const own = detail.facts.filter(
 			(fact) =>
 				fact.status === 'active' &&
+				fact.created_via === 'enrichment' &&
+				fact.run_id === run.runId &&
+				!lent.has(
+					`${fact.predicate}|${String(fact.value ?? '')
+						.trim()
+						.toLowerCase()}`
+				) &&
 				PROMOTABLE.has(fact.predicate) &&
 				typeof fact.value === 'string' &&
 				fact.value.trim() &&
@@ -172,16 +233,27 @@ export async function promoteOrgFacts(
 			const source = (fact.sources ?? []).find(
 				(s) => s.type === 'web' && isOwnSite(s.url, domain)
 			)!;
-			const { data: sourceRow } = await (db as any)
+			// One public source row per page, reused across promotions.
+			let { data: sourceRow } = await (db as any)
 				.from('knowledge_sources')
-				.insert({
-					scope: 'public',
-					source_type: 'web',
-					url: source.url,
-					title: source.title ?? null
-				})
 				.select('id')
-				.single();
+				.eq('scope', 'public')
+				.eq('source_type', 'web')
+				.eq('url', source.url)
+				.limit(1)
+				.maybeSingle();
+			if (!sourceRow) {
+				({ data: sourceRow } = await (db as any)
+					.from('knowledge_sources')
+					.insert({
+						scope: 'public',
+						source_type: 'web',
+						url: source.url,
+						title: source.title ?? null
+					})
+					.select('id')
+					.single());
+			}
 			const { data: factRow } = await (db as any)
 				.from('knowledge_facts')
 				.upsert(

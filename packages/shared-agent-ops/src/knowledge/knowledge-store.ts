@@ -5,7 +5,7 @@
 // does not apply. Every write is private to the user. Database triggers enforce the same
 // privacy rules for every writer as a second line.
 
-import type { KnowledgeCircle, KnowledgeResearchHint } from './anchors';
+import type { KnowledgeCircle, KnowledgeCircleSource, KnowledgeResearchHint } from './anchors';
 import {
 	domainOf,
 	isSpecificPersonName,
@@ -1193,9 +1193,22 @@ export class KnowledgeStore {
 
 	async updateEntity(
 		id: string,
-		patch: { name?: string; summary?: string | null; status?: 'active' | 'hidden' }
+		patch: {
+			name?: string;
+			summary?: string | null;
+			status?: 'active' | 'hidden';
+			/** The user's own answer: inner = part of my world, public = just mentioned. */
+			circle?: 'inner' | 'public';
+		}
 	): Promise<void> {
 		const update: Record<string, unknown> = {};
+		if (patch.circle !== undefined) {
+			if (patch.circle !== 'inner' && patch.circle !== 'public')
+				throw new KnowledgeStoreError('Pick inner or public.', 'INVALID');
+			update.circle = patch.circle;
+			update.circle_source = 'user';
+			update.circle_set_at = new Date().toISOString();
+		}
 		if (patch.name !== undefined) {
 			const name = patch.name.trim();
 			if (!name || name.length > 300)
@@ -1712,7 +1725,10 @@ export class KnowledgeStore {
 			...(options.researched && options.researched !== 'any'
 				? { p_researched: options.researched }
 				: {}),
-			...(options.sort && options.sort !== 'recent' ? { p_sort: options.sort } : {})
+			...(options.sort && options.sort !== 'recent' ? { p_sort: options.sort } : {}),
+			// Same for views and places (20261118400000).
+			...(options.view && options.view !== 'all' ? { p_view: options.view } : {}),
+			...(options.place && UUID.test(options.place) ? { p_place: options.place } : {})
 		});
 		if (error) throw dbError('List entities', error);
 		const result = (data ?? {}) as Partial<KnowledgeListResult>;
@@ -1721,6 +1737,16 @@ export class KnowledgeStore {
 			total: Number(result.total ?? 0),
 			counts: result.counts ?? {},
 			known_count: Number(result.known_count ?? 0),
+			...(result.views
+				? {
+						views: {
+							world: Number(result.views.world ?? 0),
+							reference: Number(result.views.reference ?? 0),
+							dropped: Number(result.views.dropped ?? 0)
+						}
+					}
+				: {}),
+			...(result.places ? { places: result.places } : {}),
 			...(result.researched
 				? {
 						researched: {
@@ -1736,7 +1762,10 @@ export class KnowledgeStore {
 		if (!UUID.test(id)) return null;
 		const { data: entityRow, error } = await this.db
 			.from('knowledge_entities')
-			.select(ENTITY_COLUMNS + ', created_via, enriched_at, created_at, updated_at')
+			.select(
+				ENTITY_COLUMNS +
+					', created_via, enriched_at, created_at, updated_at, circle, circle_source, hidden_reason'
+			)
 			.eq('id', id)
 			.or(this.visible)
 			.maybeSingle();
@@ -1747,7 +1776,11 @@ export class KnowledgeStore {
 			enriched_at: string | null;
 			created_at: string;
 			updated_at: string;
+			circle?: KnowledgeCircle;
+			circle_source?: KnowledgeCircleSource | null;
+			hidden_reason?: string | null;
 		};
+		const own = row.owner_user_id === this.userId;
 		if (row.status === 'merged' && row.merged_into_id)
 			return this.getEntity(row.merged_into_id);
 		if (row.status === 'hidden' && row.owner_user_id !== this.userId) return null;
@@ -1848,7 +1881,15 @@ export class KnowledgeStore {
 				created_via: row.created_via,
 				enriched_at: row.enriched_at,
 				created_at: row.created_at,
-				updated_at: row.updated_at
+				updated_at: row.updated_at,
+				// The viewer's own entries only: what the sorter (or they) decided.
+				...(own && row.circle
+					? {
+							circle: row.circle,
+							circle_source: row.circle_source ?? null,
+							hidden_reason: row.hidden_reason ?? null
+						}
+					: {})
 			},
 			facts: outRows
 				.filter((f) => !f.object_entity_id || related.has(f.object_entity_id))

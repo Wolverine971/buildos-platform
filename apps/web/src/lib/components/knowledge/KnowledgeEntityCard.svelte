@@ -16,7 +16,9 @@
 		Check,
 		ChevronRight,
 		Copy,
+		Eye,
 		EyeOff,
+		Globe,
 		Info,
 		Loader2,
 		Lock,
@@ -274,6 +276,36 @@
 			);
 		} finally {
 			rejecting = false;
+		}
+	}
+
+	/** The user's answer to the sorter: part of my world, or only mentioned in passing. */
+	const sortable = $derived(
+		Boolean(entity && isOwn && (entity.kind === 'person' || entity.kind === 'org'))
+	);
+	const droppedAsNotName = $derived(
+		entity?.status === 'hidden' && entity.hidden_reason === 'not_a_name'
+	);
+	let sorting = $state(false);
+	async function setCircle(circle: 'inner' | 'public') {
+		if (!entity || sorting) return;
+		sorting = true;
+		try {
+			await knowledgeApi.update(entity.id, {
+				circle,
+				...(droppedAsNotName ? { status: 'active' as const } : {})
+			});
+			toastService.success(
+				circle === 'public'
+					? `${entity.name} moved to Just mentioned`
+					: `${entity.name} is part of your world`
+			);
+			await load(entity.id, true);
+			onChanged?.();
+		} catch (error) {
+			toastService.error(error instanceof Error ? error.message : 'Could not move this');
+		} finally {
+			sorting = false;
 		}
 	}
 
@@ -849,6 +881,30 @@
 			>
 				<Plus class="h-3.5 w-3.5" aria-hidden="true" /> Add detail
 			</button>
+			{#if sortable}
+				{#if droppedAsNotName || entity?.circle === 'public'}
+					<button
+						type="button"
+						class="inline-flex min-h-8 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground pressable hover:bg-muted hover:text-foreground disabled:opacity-60"
+						disabled={sorting}
+						title="Show it in Your world"
+						onclick={() => void setCircle('inner')}
+					>
+						<Eye class="h-3.5 w-3.5" aria-hidden="true" />
+						{droppedAsNotName ? 'Show again' : 'Part of my world'}
+					</button>
+				{:else}
+					<button
+						type="button"
+						class="inline-flex min-h-8 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground pressable hover:bg-muted hover:text-foreground disabled:opacity-60"
+						disabled={sorting}
+						title="Only mentioned in passing: keep it searchable, off your list"
+						onclick={() => void setCircle('public')}
+					>
+						<Globe class="h-3.5 w-3.5" aria-hidden="true" /> Just a mention
+					</button>
+				{/if}
+			{/if}
 			{#if isOwn}
 				<button
 					type="button"

@@ -34,7 +34,10 @@ vi.mock('../knowledge', async (importOriginal) => {
 	};
 });
 
-import { EXTERNAL_OP_HANDLERS } from './op-execution-gateway.external';
+import {
+	EXTERNAL_OP_HANDLERS,
+	buildExternalGatewayRegistry
+} from './op-execution-gateway.external';
 import { extractWriteEntityMeta } from './op-execution-gateway.responses';
 import type { ToolExecutionContext } from './op-execution-gateway.types';
 
@@ -182,7 +185,7 @@ describe('knowledge.record', () => {
 });
 
 describe('knowledge.enrich', () => {
-	it('starts research for the context user with the right trigger', async () => {
+	it('starts research for the person from BuildOS chat', async () => {
 		startKnowledgeEnrichment.mockResolvedValue({
 			runId: RUN,
 			targets: [{ entity_id: ENTITY, name: 'Sam Lee', kind: 'person', fields: ['headline'] }],
@@ -190,7 +193,7 @@ describe('knowledge.enrich', () => {
 			budget_usd: 0.03
 		});
 
-		const viaMcp = await EXTERNAL_OP_HANDLERS['knowledge.enrich'](mcpContext(), {
+		const viaChat = await EXTERNAL_OP_HANDLERS['knowledge.enrich'](chatContext(), {
 			entity_ids: [ENTITY],
 			fields: ['headline'],
 			instructions: 'Focus on current role',
@@ -200,22 +203,46 @@ describe('knowledge.enrich', () => {
 			entityIds: [ENTITY],
 			fields: ['headline'],
 			instructions: 'Focus on current role',
-			trigger: 'mcp'
+			trigger: 'chat'
 		});
-		expect(viaMcp).toMatchObject({
+		expect(viaChat).toMatchObject({
 			knowledge_run: { id: RUN, status: 'queued', targets: [{ name: 'Sam Lee' }] },
 			message: expect.stringContaining('Sam Lee')
 		});
-		expect(extractWriteEntityMeta({ op: 'knowledge.enrich', result: viaMcp })).toEqual({
+		expect(extractWriteEntityMeta({ op: 'knowledge.enrich', result: viaChat })).toEqual({
 			entityKind: 'knowledge_run',
 			entityId: RUN
 		});
+	});
 
-		await EXTERNAL_OP_HANDLERS['knowledge.enrich'](chatContext(), { entity_ids: [ENTITY] });
-		expect(startKnowledgeEnrichment).toHaveBeenLastCalledWith(admin, USER, {
-			entityIds: [ENTITY],
-			trigger: 'chat'
-		});
+	it('never lets a connected AI tool or a background run start paid research', async () => {
+		const handler = EXTERNAL_OP_HANDLERS['knowledge.enrich'];
+		// A key that somehow lists the op still can't use it.
+		const withOp = {
+			...mcpContext(),
+			scope: { mode: 'read_write' as const, allowed_ops: ['knowledge.enrich' as const] }
+		};
+		const backgroundRun = { ...chatContext(), chatSessionId: undefined };
+		for (const context of [mcpContext(), withOp, backgroundRun]) {
+			await expect(handler(context, { entity_ids: [ENTITY] })).rejects.toMatchObject({
+				code: 'FORBIDDEN'
+			});
+		}
+		expect(startKnowledgeEnrichment).not.toHaveBeenCalled();
+	});
+
+	it('is never listed to a connected tool, even when its scope names it', () => {
+		const entry = (op: string) =>
+			({ op, tool_name: op, parameters_schema: { type: 'object', properties: {} } }) as never;
+		const registry = buildExternalGatewayRegistry(
+			{ mode: 'read_write', allowed_ops: ['knowledge.search', 'knowledge.enrich'] },
+			{
+				'knowledge.search': entry('knowledge.search'),
+				'knowledge.enrich': entry('knowledge.enrich')
+			},
+			'test'
+		);
+		expect(Object.keys(registry.ops)).toEqual(['knowledge.search']);
 	});
 
 	it('caps a run at 10 entries and refuses non-ids', async () => {
@@ -254,7 +281,10 @@ describe('knowledge reads', () => {
 		expect(search).toHaveBeenCalledWith('sam@acme.example', { kinds: ['person'], limit: 25 });
 		expect(result).toEqual({
 			query: 'sam@acme.example',
-			results: [{ id: ENTITY, kind: 'person', name: 'Sam Lee', matched_on: 'email' }],
+			// A connected AI tool without the contacts permission isn't told which field matched.
+			results: [
+				{ id: ENTITY, kind: 'person', name: 'Sam Lee', matched_on: 'contact detail' }
+			],
 			total: 1
 		});
 	});
@@ -310,6 +340,107 @@ describe('knowledge reads', () => {
 				follow: [{ predicate: 'headline' }]
 			})
 		).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+	});
+
+	describe("people's contact details over a connection", () => {
+		const fact = (predicate: string, value: string) => ({
+			id: `${predicate}-fact`,
+			predicate,
+			label: predicate,
+			value,
+			entity: null,
+			qualifiers: {},
+			status: 'active',
+			valid_from: null,
+			valid_to: null,
+			sources: []
+		});
+		const entity = (kind: 'person' | 'org', name: string) => ({
+			entity: {
+				id: ENTITY,
+				kind,
+				name,
+				summary: null,
+				scope: 'private',
+				is_self: false,
+				image_url: null,
+				enriched_at: null
+			},
+			known_by_me: true,
+			facts: [
+				fact('headline', 'CTO at Acme'),
+				fact('email', 'sam@acme.example'),
+				fact('phone', '+14105550101'),
+				fact('birthday', '1990-04-01')
+			],
+			incoming: [],
+			incoming_truncated: false,
+			links: [],
+			enrichment: []
+		});
+		const contactsContext = (): ToolExecutionContext => ({
+			...mcpContext(),
+			scope: { mode: 'read_only', allowed_ops: ['knowledge.get', 'knowledge.contacts'] }
+		});
+		const predicates = (result: Record<string, unknown>) =>
+			(result.facts as Array<{ predicate: string }>).map((f) => f.predicate);
+
+		it('hides them from a connected AI tool whose key did not opt in', async () => {
+			getEntity.mockResolvedValue(entity('person', 'Sam Lee'));
+			const result = await EXTERNAL_OP_HANDLERS['knowledge.get'](mcpContext(), {
+				entity_id: ENTITY
+			});
+			expect(predicates(result)).toEqual(['headline']);
+			expect(result).toMatchObject({ contact_details_hidden: 3 });
+			expect(JSON.stringify(result)).not.toMatch(/sam@acme|4105550101|1990-04-01/);
+		});
+
+		it('shows them to a key that opted in, and to BuildOS chat', async () => {
+			getEntity.mockResolvedValue(entity('person', 'Sam Lee'));
+			for (const context of [contactsContext(), chatContext()]) {
+				const result = await EXTERNAL_OP_HANDLERS['knowledge.get'](context, {
+					entity_id: ENTITY
+				});
+				expect(predicates(result)).toEqual(['headline', 'email', 'phone', 'birthday']);
+				expect(result).not.toHaveProperty('contact_details_hidden');
+			}
+		});
+
+		it("keeps an organization's public phone and email visible", async () => {
+			getEntity.mockResolvedValue(entity('org', 'Acme'));
+			const result = await EXTERNAL_OP_HANDLERS['knowledge.get'](mcpContext(), {
+				entity_id: ENTITY
+			});
+			expect(predicates(result)).toContain('email');
+		});
+
+		it('drops contact fields from query rows and says why', async () => {
+			query.mockResolvedValue({
+				rows: [
+					{
+						entity: { ...entity('person', 'Sam Lee').entity },
+						path: [],
+						fields: {
+							headline: [{ value: 'CTO', qualifiers: {}, status: 'active' }],
+							email: [{ value: 'sam@acme.example', qualifiers: {}, status: 'active' }]
+						}
+					}
+				],
+				coverage: {},
+				start_count: 1,
+				truncated: false,
+				notes: []
+			});
+			const result = await EXTERNAL_OP_HANDLERS['knowledge.query'](mcpContext(), {
+				start: { known_by_me: true },
+				fields: ['headline', 'email']
+			});
+			expect(result.rows).toEqual([
+				expect.objectContaining({ fields: { headline: ['CTO'] } })
+			]);
+			expect(JSON.stringify(result)).not.toContain('sam@acme.example');
+			expect((result.notes as string[]).join(' ')).toMatch(/Share contact details/);
+		});
 	});
 
 	it('returns NOT_FOUND for an entry the user cannot see', async () => {

@@ -493,6 +493,19 @@ export const KNOWLEDGE_PREDICATE_MAP: ReadonlyMap<string, KnowledgePredicateDefi
 	KNOWLEDGE_PREDICATES.map((def) => [def.key, def])
 );
 
+/**
+ * A person's contact details and private notes. BuildOS's own chat shows them; a connected AI
+ * tool (MCP, agent keys) sees them only when its key opts in to `knowledge.contacts` (DJ,
+ * 2026-11-18). Organizations' public phone and email are not covered.
+ */
+export const KNOWLEDGE_CONTACT_PREDICATES: ReadonlySet<string> = new Set([
+	'email',
+	'phone',
+	'address',
+	'birthday',
+	'note'
+]);
+
 export function isKnowledgeKind(value: unknown): value is KnowledgeKind {
 	return typeof value === 'string' && (KNOWLEDGE_KINDS as readonly string[]).includes(value);
 }

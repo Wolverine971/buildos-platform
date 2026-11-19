@@ -4,7 +4,13 @@
 import { describe, expect, it } from 'vitest';
 import { hostOf, isOwnSite, orgDomain, promoteOrgFacts, publicOrgFacts } from './publicOrgLayer';
 
-const fact = (predicate: string, value: string, url: string | null, status = 'active') => ({
+const fact = (
+	predicate: string,
+	value: string,
+	url: string | null,
+	status = 'active',
+	via: { created_via?: string; run_id?: string | null } = {}
+) => ({
 	id: `${predicate}-${value}`,
 	predicate,
 	label: predicate,
@@ -17,8 +23,8 @@ const fact = (predicate: string, value: string, url: string | null, status = 'ac
 	valid_from: null,
 	valid_to: null,
 	observed_at: '2026-11-17T00:00:00Z',
-	created_via: 'enrichment',
-	run_id: null,
+	created_via: via.created_via ?? 'enrichment',
+	run_id: via.run_id === undefined ? 'run1' : via.run_id,
 	sources: url
 		? [
 				{
@@ -48,6 +54,17 @@ describe('hosts', () => {
 		expect(isOwnSite('https://en.wikipedia.org/wiki/Secular_Talk', 'secular-talk.com')).toBe(
 			false
 		);
+	});
+
+	it('never keys on a shared platform page or a deep link', () => {
+		expect(
+			orgDomain(org([fact('homepage', 'https://www.linkedin.com/company/acme', null)]))
+		).toBeNull();
+		expect(
+			orgDomain(org([fact('homepage', 'https://acme.wixsite.com/home', null)]))
+		).toBeNull();
+		expect(orgDomain(org([fact('homepage', 'https://acme.com/team/bob', null)]))).toBeNull();
+		expect(orgDomain(org([fact('homepage', 'https://acme.com/', null)]))).toBe('acme.com');
 	});
 
 	it('takes the domain only from an active homepage', () => {
@@ -113,8 +130,21 @@ describe('promoteOrgFacts', () => {
 				fact('description', 'A daily politics show', 'https://secular-talk.com/about'),
 				fact('industry', 'Media', 'https://en.wikipedia.org/wiki/Secular_Talk'),
 				fact('email', 'kyle@secular-talk.com', 'https://secular-talk.com/contact'),
-				fact('founded', '2008', 'https://secular-talk.com/about', 'suggested')
-			])
+				fact('founded', '2008', 'https://secular-talk.com/about', 'suggested'),
+				// typed in through chat/MCP with a made-up "own site" URL: never promoted
+				fact('address', '1 Fake St', 'https://secular-talk.com/contact', 'active', {
+					created_via: 'mcp',
+					run_id: null
+				}),
+				// an earlier run's fact: only this run's findings are promoted
+				fact('alias', 'ST', 'https://secular-talk.com/', 'active', { run_id: 'older' }),
+				// borrowed from the public layer in this run: not re-promoted
+				fact('profile_url', 'https://secular-talk.com/links', 'https://secular-talk.com/')
+			]),
+			{
+				runId: 'run1',
+				borrowed: [{ predicate: 'profile_url', value: 'https://secular-talk.com/links' }]
+			}
 		);
 		expect(written).toBe(2);
 		const facts = writes.filter((w) => w.table === 'knowledge_facts').map((w) => w.value);
@@ -130,7 +160,13 @@ describe('promoteOrgFacts', () => {
 	it('writes nothing without a homepage to anchor the domain', async () => {
 		const { db, writes } = recordingDb();
 		expect(
-			await promoteOrgFacts(db, org([fact('description', 'x', 'https://secular-talk.com/')]))
+			await promoteOrgFacts(
+				db,
+				org([fact('description', 'x', 'https://secular-talk.com/')]),
+				{
+					runId: 'run1'
+				}
+			)
 		).toBe(0);
 		expect(writes).toEqual([]);
 	});

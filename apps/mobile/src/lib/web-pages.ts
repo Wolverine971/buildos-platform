@@ -10,7 +10,9 @@ import { isBuildOsApiError } from '@buildos/api-client';
 
 export const WEB_PAGES = {
 	/** Profile → Account: email, password, exports and "Delete My Account" (App Review 5.1.1). */
-	account: '/profile?tab=account'
+	account: '/profile?tab=account',
+	/** Profile → Email: reconnect Gmail (a browser sign-in the app can't run itself). */
+	email: '/profile?tab=email'
 } as const;
 
 /** Opens a same-origin path signed in, and resolves when the in-app browser closes. */

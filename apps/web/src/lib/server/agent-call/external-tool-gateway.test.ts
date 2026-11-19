@@ -2087,7 +2087,8 @@ describe('external tool gateway', () => {
 				allowed_ops: [...BUILDOS_AGENT_READ_OPS, ...BUILDOS_AGENT_WRITE_OPS]
 			};
 
-		for (const op of scope.allowed_ops) {
+		// Paid research is user-only: a connection never gets its schema (checked below).
+		for (const op of scope.allowed_ops.filter((entry) => entry !== 'knowledge.enrich')) {
 			const result = await executeBuildosAgentGatewayTool({
 				admin: createAdminMock({
 					documents: [],
@@ -2107,6 +2108,12 @@ describe('external tool gateway', () => {
 				op
 			});
 		}
+
+		// Even a key whose stored list names paid research gets no tool for it.
+		const { getBuildosAgentGatewayTools } = await import('./external-tool-gateway');
+		const names = getBuildosAgentGatewayTools(scope).map((tool) => tool.name);
+		expect(names).toContain('record_knowledge');
+		expect(names).not.toContain('enrich_knowledge');
 	});
 
 	it('hides write tools for read-only external callers even when write ops are present', async () => {

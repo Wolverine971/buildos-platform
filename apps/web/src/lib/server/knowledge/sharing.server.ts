@@ -212,6 +212,7 @@ export function cancelShareRequest(client: unknown, shareId: string) {
 
 type ShareRow = {
 	id: string;
+	entity_id: string;
 	owner_user_id: string;
 	requested_by_user_id: string | null;
 	grantee_user_id: string | null;
@@ -225,7 +226,7 @@ async function loadShare(admin: AdminClient, id: string): Promise<ShareRow | nul
 	const { data, error } = await (admin as any)
 		.from('knowledge_shares')
 		.select(
-			'id, owner_user_id, requested_by_user_id, grantee_user_id, project_id, status, what, duration'
+			'id, entity_id, owner_user_id, requested_by_user_id, grantee_user_id, project_id, status, what, duration'
 		)
 		.eq('id', id)
 		.maybeSingle();
@@ -289,6 +290,15 @@ export async function sendShareAskedEmail(
 		const admin = deps.admin ?? createAdminSupabaseClient();
 		const share = await loadShare(admin, shareId);
 		if (!share || share.status !== 'requested' || !share.requested_by_user_id) return 'skipped';
+		// At most one email per asker and entry a week, however often they ask and withdraw.
+		const { count: recent } = await (admin as any)
+			.from('knowledge_shares')
+			.select('id', { count: 'exact', head: true })
+			.eq('requested_by_user_id', share.requested_by_user_id)
+			.eq('entity_id', share.entity_id)
+			.neq('id', share.id)
+			.gte('created_at', new Date(Date.now() - 7 * 86_400_000).toISOString());
+		if ((recent ?? 0) > 0) return 'skipped';
 		const people = await loadPeople(admin, [share.owner_user_id, share.requested_by_user_id]);
 		const owner = people.get(share.owner_user_id);
 		const requester = people.get(share.requested_by_user_id);

@@ -1,4 +1,4 @@
-// apps/web/src/lib/components/inbox/project-cleanup-presentation.test.ts
+// packages/agentic-chat-client/src/inbox-cleanup-presentation.test.ts
 import { describe, expect, it } from 'vitest';
 import type { ProjectCleanupItem, ProjectCleanupView } from '@buildos/shared-types';
 import {
@@ -21,7 +21,7 @@ import {
 	isCleanupItemSelectable,
 	orderedCleanupGroups,
 	summarizeCleanupItemOutcome
-} from './project-cleanup-presentation';
+} from './inbox-cleanup-presentation';
 
 function item(overrides: Partial<ProjectCleanupItem> = {}): ProjectCleanupItem {
 	return {

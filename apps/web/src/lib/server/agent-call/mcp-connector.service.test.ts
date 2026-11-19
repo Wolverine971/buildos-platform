@@ -465,7 +465,7 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 			for (const name of writes) expect(readOnly.has(name)).toBe(false);
 
 			const readWrite = await list('read_write');
-			// Paid research is only listed when the key grants it by name.
+			// Paid research is user-only: never listed to a connected tool.
 			expect(readWrite.has('enrich_knowledge')).toBe(false);
 			for (const name of writes) {
 				expect(readWrite.get(name)?.annotations).toMatchObject({

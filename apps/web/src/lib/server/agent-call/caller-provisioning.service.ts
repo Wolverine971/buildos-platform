@@ -879,7 +879,7 @@ const ALLOW_CHANGES_OPS: BuildosAgentAllowedOp[] = [
 	...BUILDOS_AGENT_READ_OPS,
 	...OPENCLAW_DEFAULT_WRITE_OPS,
 	// Personal knowledge graph (tasker 160): user-private saves. Paid research
-	// (knowledge.enrich) is opt-in per key from Profile → Agent keys.
+	// (knowledge.enrich) is user-only: no connection may hold it (policy.ts USER_ONLY_OPS).
 	'knowledge.record'
 ];
 

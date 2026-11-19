@@ -20,8 +20,6 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import TodayAgendaRow from '$lib/components/today/TodayAgendaRow.svelte';
-	import WorkspaceCapture from '$lib/components/workspace/WorkspaceCapture.svelte';
-	import type { CaptureSortResult } from '$lib/components/workspace/workspace-model';
 	import TodayTaskGroups from '$lib/components/today/TodayTaskGroups.svelte';
 	import WhatChangedSection from '$lib/components/today/WhatChangedSection.svelte';
 	import TodayPickCard from '$lib/components/today/TodayPickCard.svelte';
@@ -514,19 +512,23 @@
 	const waitingItems = $derived(
 		(attention?.waiting ?? []).filter((item) => !settledWaiting.has(item.id))
 	);
+	// Picks passed on with "Not this" today, oldest first (saved per day below).
+	let skippedPicks = $state<string[]>([]);
 	const picks = $derived(
 		feed
 			? pickTodayFocus({
 					tasks: withoutRemoved(feed.tasks),
 					waiting: waitingItems,
 					doneIds,
+					skipped: skippedPicks,
 					weekdayOf: dueWeekday
 				})
 			: []
 	);
 	let lastPickDone = $state<string | null>(null);
 
-	// "Today went sideways" and a hidden close-out last for the day (this browser only).
+	// A hidden close-out and the picks passed on with "Not this" last for the day (this
+	// browser only), so reopening Today doesn't bring back what you already said no to.
 	const dayKey = (name: string) => `buildos:today:${name}:${feed?.date ?? ''}`;
 	function readDayFlag(name: string): boolean {
 		try {
@@ -543,7 +545,6 @@
 			// Storage unavailable: the choice lasts until reload.
 		}
 	}
-	let sideways = $state(false);
 	let closeHidden = $state(false);
 	let closeOpen = $state(false);
 	let closePicks = $state<TodayPick[]>([]);
@@ -551,16 +552,39 @@
 	let seenAgents = $state<string[]>([]);
 	let layoutOpen = $state(false);
 	onMount(() => {
-		sideways = readDayFlag('sideways');
 		closeHidden = readDayFlag('closeout-hidden');
 	});
 
-	function setSideways(on: boolean) {
-		sideways = on;
-		writeDayFlag('sideways', on);
+	function readSkippedPicks(): string[] {
+		try {
+			const saved: unknown = JSON.parse(localStorage.getItem(dayKey('skipped')) ?? '[]');
+			return Array.isArray(saved)
+				? saved.filter((key): key is string => typeof key === 'string')
+				: [];
+		} catch {
+			return [];
+		}
+	}
+	function writeSkippedPicks(keys: string[]) {
+		skippedPicks = keys;
+		try {
+			if (keys.length > 0) localStorage.setItem(dayKey('skipped'), JSON.stringify(keys));
+			else localStorage.removeItem(dayKey('skipped'));
+		} catch {
+			// Storage unavailable: the skips last until reload.
+		}
+	}
+	// Keyed to the feed's date, so a tab left open past midnight starts the new day clean.
+	$effect(() => {
+		if (!feed?.date) return;
+		skippedPicks = readSkippedPicks();
+	});
+
+	function skipPick(pick: TodayPick) {
+		writeSkippedPicks([...skippedPicks.filter((key) => key !== pick.key), pick.key]);
 		trackLoopEvent('loop_decision_made', 'today', {
-			source_type: 'day',
-			action: on ? 'sideways' : 'sideways_undo'
+			source_type: 'pick',
+			action: 'not_this'
 		});
 	}
 
@@ -1217,24 +1241,6 @@
 		});
 	}
 
-	// Today's capture box sorts in place; a jot that stays a note says where it went.
-	function handleTodayCaptureSorted(_documentId: string, result: CaptureSortResult) {
-		if (
-			result.outcome === 'sorted' ||
-			result.outcome === 'moved' ||
-			result.outcome === 'partial'
-		) {
-			void refresh();
-			return;
-		}
-		if (result.lines.length) return;
-		toastService.add({
-			type: 'success',
-			message: 'Saved to your Workspace',
-			action: { label: 'Open', onClick: () => void goto('/projects') }
-		});
-	}
-
 	// Park the text in the Workspace as a note: no model call, no project to pick.
 	let workspaceSaving = $state(false);
 	async function saveCaptureToWorkspace() {
@@ -1682,24 +1688,14 @@
 					<TodayPickCard
 						{picks}
 						time={dayPart}
-						{sideways}
+						skippedCount={skippedPicks.length}
 						lastDone={lastPickDone}
 						onOpen={openPick}
 						onDone={(pick) => void completePick(pick)}
-						onSideways={() => setSideways(true)}
-						onBack={() => setSideways(false)}
+						onSkip={skipPick}
+						onShowSkipped={() => writeSkippedPicks([])}
 					/>
 				</ErrorBoundary>
-				<!-- One capture box, same as the Workspace: it saves instantly and BuildOS sorts
-				     it (tasks, notes, or a done/rescheduled task in a project), with Undo. -->
-				<section class="mt-3" aria-label="Capture">
-					<h2 class="sr-only">Capture</h2>
-					<WorkspaceCapture
-						source="today"
-						onSorted={handleTodayCaptureSorted}
-						onUndone={() => void refresh()}
-					/>
-				</section>
 			{/if}
 		{/if}
 
@@ -1922,16 +1918,14 @@
 								</section>
 							{/if}
 
-							{#if !sideways}
-								<ErrorBoundary area="today-waiting">
-									<TodayWaitingSection
-										items={waitingItems}
-										onOpen={openWaiting}
-										onNudge={(item) => void nudgeWaiting(item)}
-										onSetStatus={setWaitingStatus}
-									/>
-								</ErrorBoundary>
-							{/if}
+							<ErrorBoundary area="today-waiting">
+								<TodayWaitingSection
+									items={waitingItems}
+									onOpen={openWaiting}
+									onNudge={(item) => void nudgeWaiting(item)}
+									onSetStatus={setWaitingStatus}
+								/>
+							</ErrorBoundary>
 
 							{#if isClearDay && hasProjects && !activationProject}
 								{#if waitingProjects.length > 0}

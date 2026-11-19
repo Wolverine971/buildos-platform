@@ -15,6 +15,7 @@
 // Chat reads call the `run*` functions directly (agentic-chat-runtime knowledge-reads.ts) so
 // chat and MCP return the same shapes. Results are compact on purpose: models read them.
 import {
+	KNOWLEDGE_CONTACT_PREDICATES,
 	KNOWLEDGE_UUID_PATTERN,
 	KnowledgeStore,
 	getKnowledgePredicate,
@@ -182,10 +183,28 @@ function nonEmpty(value: Record<string, unknown> | null | undefined) {
 // ---------------------------------------------------------------------------
 // Reads
 
+/**
+ * How much of a person's contact details a caller may see. BuildOS's own chat sees them; a
+ * connected AI tool only when its key opted in to `knowledge.contacts`.
+ */
+export type KnowledgeReadOptions = { hideContacts?: boolean };
+
+const CONTACTS_HIDDEN_NOTE =
+	"People's contact details (phone, email, address, birthday, notes) are not shared with connected AI tools. The user can allow them for this connection in BuildOS: Profile → Agent keys → Share contact details.";
+
+function isHiddenContact(kind: string, predicate: string, options: KnowledgeReadOptions): boolean {
+	return (
+		Boolean(options.hideContacts) &&
+		kind === 'person' &&
+		KNOWLEDGE_CONTACT_PREDICATES.has(predicate)
+	);
+}
+
 export async function runKnowledgeSearch(
 	client: KnowledgeDataClient,
 	userId: string,
-	args: Record<string, unknown>
+	args: Record<string, unknown>,
+	options: KnowledgeReadOptions = {}
 ): Promise<Record<string, unknown>> {
 	const query = requiredString(args.query, 'query', 300);
 	const kinds = kindList(args.kinds, 'kinds');
@@ -198,7 +217,13 @@ export async function runKnowledgeSearch(
 	const hits = await guard(() => store.search(query, { ...(kinds ? { kinds } : {}), limit }));
 	return {
 		query,
-		results: hits.map((hit) => ({ ...compactEntity(hit), matched_on: hit.matched_on })),
+		results: hits.map((hit) => ({
+			...compactEntity(hit),
+			// The caller typed the value, but which contact field matched stays private.
+			matched_on: isHiddenContact(hit.kind, hit.matched_on, options)
+				? 'contact detail'
+				: hit.matched_on
+		})),
 		total: hits.length,
 		...(hits.length === 0
 			? {
@@ -242,9 +267,14 @@ function compactFact(fact: KnowledgeFactView): Record<string, unknown> {
 
 /** What a model needs from one entity: who/what it is, its facts, and what points at it. */
 export function compactKnowledgeEntityDetail(
-	detail: KnowledgeEntityDetail
+	detail: KnowledgeEntityDetail,
+	options: KnowledgeReadOptions = {}
 ): Record<string, unknown> {
-	const facts = detail.facts.slice(0, ENTITY_FACT_LIMIT);
+	const visibleFacts = detail.facts.filter(
+		(fact) => !isHiddenContact(detail.entity.kind, fact.predicate, options)
+	);
+	const hiddenContacts = detail.facts.length - visibleFacts.length;
+	const facts = visibleFacts.slice(0, ENTITY_FACT_LIMIT);
 	const incoming = detail.incoming.slice(0, ENTITY_INCOMING_LIMIT);
 	const latestResearch = detail.enrichment[0];
 	return {
@@ -254,7 +284,10 @@ export function compactKnowledgeEntityDetail(
 		},
 		known_by_me: detail.known_by_me,
 		facts: facts.map(compactFact),
-		...(detail.facts.length > facts.length ? { facts_truncated: true } : {}),
+		...(visibleFacts.length > facts.length ? { facts_truncated: true } : {}),
+		...(hiddenContacts
+			? { contact_details_hidden: hiddenContacts, contact_details_note: CONTACTS_HIDDEN_NOTE }
+			: {}),
 		incoming: incoming.map(compactFact),
 		...(detail.incoming_truncated || detail.incoming.length > incoming.length
 			? { incoming_truncated: true }
@@ -278,13 +311,14 @@ export function compactKnowledgeEntityDetail(
 export async function runKnowledgeGet(
 	client: KnowledgeDataClient,
 	userId: string,
-	args: Record<string, unknown>
+	args: Record<string, unknown>,
+	options: KnowledgeReadOptions = {}
 ): Promise<Record<string, unknown>> {
 	const id = entityId(args.entity_id, 'entity_id');
 	const store = new KnowledgeStore(client, userId);
 	const detail = await guard(() => store.getEntity(id));
 	if (!detail) throw new ExternalToolGatewayError('NOT_FOUND', 'Knowledge entry not found');
-	return compactKnowledgeEntityDetail(detail);
+	return compactKnowledgeEntityDetail(detail, options);
 }
 
 function parseQuerySpec(args: Record<string, unknown>): KnowledgeQuerySpec {
@@ -346,12 +380,21 @@ function parseQuerySpec(args: Record<string, unknown>): KnowledgeQuerySpec {
 	};
 }
 
-function compactQueryResult(result: KnowledgeQueryResult): Record<string, unknown> {
+function compactQueryResult(
+	result: KnowledgeQueryResult,
+	options: KnowledgeReadOptions = {}
+): Record<string, unknown> {
+	let hiddenContacts = 0;
 	return {
 		rows: result.rows.map((row) => {
 			const fields = Object.fromEntries(
 				Object.entries(row.fields)
 					.filter(([, values]) => values.length > 0)
+					.filter(([key, values]) => {
+						if (!isHiddenContact(row.entity.kind, key, options)) return true;
+						hiddenContacts += values.length;
+						return false;
+					})
 					.map(([key, values]) => [
 						key,
 						values.map((value) =>
@@ -394,18 +437,23 @@ function compactQueryResult(result: KnowledgeQueryResult): Record<string, unknow
 		start_count: result.start_count,
 		total: result.rows.length,
 		...(result.truncated ? { truncated: true } : {}),
-		...(result.notes.length ? { notes: result.notes } : {})
+		...(result.notes.length || hiddenContacts
+			? {
+					notes: [...result.notes, ...(hiddenContacts ? [CONTACTS_HIDDEN_NOTE] : [])]
+				}
+			: {})
 	};
 }
 
 export async function runKnowledgeQuery(
 	client: KnowledgeDataClient,
 	userId: string,
-	args: Record<string, unknown>
+	args: Record<string, unknown>,
+	options: KnowledgeReadOptions = {}
 ): Promise<Record<string, unknown>> {
 	const spec = parseQuerySpec(args);
 	const store = new KnowledgeStore(client, userId);
-	return compactQueryResult(await guard(() => store.query(spec)));
+	return compactQueryResult(await guard(() => store.query(spec)), options);
 }
 
 // ---------------------------------------------------------------------------
@@ -944,7 +992,10 @@ const ASK_MESSAGES: Record<string, string> = {
 		'This is already shared with the user. Read get_project_knowledge_lens again to see it.',
 	not_found:
 		"Only names another current member linked to this project's tasks or documents can be asked about. Check the entity_id from get_project_knowledge_lens.",
-	rate_limited: 'The user has too many open asks. Wait for some answers first.'
+	nothing_to_ask:
+		'Nothing about this entry is held back from the user, so there is nothing to ask for.',
+	rate_limited:
+		'Too many asks right now (at most 2 about one entry and 5 to one person a day). Wait for answers first.'
 };
 
 export async function runKnowledgeRequestAccess(
@@ -1040,25 +1091,52 @@ export function knowledgeViaForContext(
 	return context.callerId ? 'mcp' : 'chat';
 }
 
+/**
+ * A connected AI tool (an external caller) sees people's contact details only when its key
+ * opted in to `knowledge.contacts`; BuildOS's own chat carries no callerId and sees them.
+ */
+export function knowledgeReadOptionsForContext(
+	context: Pick<ToolExecutionContext, 'callerId' | 'scope'>
+): KnowledgeReadOptions {
+	if (!context.callerId) return {};
+	const allowed = (context.scope?.allowed_ops ?? []) as readonly string[];
+	return { hideContacts: !allowed.includes('knowledge.contacts') };
+}
+
 export async function searchKnowledge(
 	context: ToolExecutionContext,
 	args: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
-	return runKnowledgeSearch(context.admin, trustedUserId(context), args);
+	return runKnowledgeSearch(
+		context.admin,
+		trustedUserId(context),
+		args,
+		knowledgeReadOptionsForContext(context)
+	);
 }
 
 export async function getKnowledgeEntity(
 	context: ToolExecutionContext,
 	args: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
-	return runKnowledgeGet(context.admin, trustedUserId(context), args);
+	return runKnowledgeGet(
+		context.admin,
+		trustedUserId(context),
+		args,
+		knowledgeReadOptionsForContext(context)
+	);
 }
 
 export async function queryKnowledge(
 	context: ToolExecutionContext,
 	args: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
-	return runKnowledgeQuery(context.admin, trustedUserId(context), args);
+	return runKnowledgeQuery(
+		context.admin,
+		trustedUserId(context),
+		args,
+		knowledgeReadOptionsForContext(context)
+	);
 }
 
 export async function recordKnowledge(
@@ -1070,10 +1148,21 @@ export async function recordKnowledge(
 	});
 }
 
+/**
+ * Paid web research starts only from the person in BuildOS: Find more on a card, or asking in
+ * BuildOS chat (DJ, 2026-11-18). A connected AI tool (callerId) or a background run with no
+ * chat session is refused, whatever its key or policy lists.
+ */
 export async function enrichKnowledge(
 	context: ToolExecutionContext,
 	args: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
+	if (context.callerId || !context.chatSessionId) {
+		throw new ExternalToolGatewayError(
+			'FORBIDDEN',
+			'Research runs only when the person starts it in BuildOS: Find more on the entry, or asking in BuildOS chat. Tell the user they can do that.'
+		);
+	}
 	return runKnowledgeEnrich(context.admin, trustedUserId(context), args, {
 		via: knowledgeViaForContext(context)
 	});

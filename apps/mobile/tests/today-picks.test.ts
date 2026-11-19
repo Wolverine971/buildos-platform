@@ -99,6 +99,20 @@ describe('pickTodayFocus', () => {
 		});
 		expect(picks).toEqual([]);
 	});
+
+	it('"Not this" drops a pick so the next-best one, even from the same project, moves up', () => {
+		const tasks = [
+			task('a', 'due_today', { due_in_days: 0, project_id: 'p1' }),
+			task('b', 'due_today', { due_in_days: 1, project_id: 'p1' }),
+			task('c', 'new', { created_by_you: true })
+		];
+		expect(pick({ tasks }).map((p) => p.key)).toEqual(['task:a', 'task:c']);
+		expect(pick({ tasks, skipped: ['task:a'] }).map((p) => p.key)).toEqual([
+			'task:b',
+			'task:c'
+		]);
+		expect(pick({ tasks, skipped: ['task:a', 'task:b', 'task:c'] })).toEqual([]);
+	});
 });
 
 describe('task rows and words', () => {

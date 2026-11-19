@@ -183,13 +183,9 @@
 			label: 'Save to your knowledge',
 			description:
 				'Allow the agent to save people, companies, channels and cited facts to your private knowledge.'
-		},
-		{
-			op: 'knowledge.enrich',
-			label: 'Research knowledge entries',
-			description:
-				'Allow the agent to start background web research on your knowledge entries (paid, capped daily).'
 		}
+		// Paid research (knowledge.enrich) is never offered: only the person starts it, in
+		// BuildOS (DJ, 2026-11-18).
 	];
 
 	type PermissionBundleId = 'read_only' | 'author_docs_tasks' | 'full_write' | 'custom';
@@ -223,7 +219,10 @@
 			label: 'Full read/write',
 			description: 'Every exposed write op. Use for trusted automations you control.',
 			scopeMode: 'read_write',
-			writeOps: [...BUILDOS_AGENT_WRITE_OPS] as BuildosAgentAllowedOp[]
+			// Every write a key can hold: paid research is user-only, never on a key.
+			writeOps: BUILDOS_AGENT_WRITE_OPS.filter(
+				(op) => op !== 'knowledge.enrich'
+			) as BuildosAgentAllowedOp[]
 		}
 	];
 	const USAGE_PERIODS: BuildosAgentUsagePeriod[] = ['day', 'week', 'month'];
@@ -299,6 +298,8 @@
 	let scopeMode = $state<BuildosAgentScopeMode>('read_only');
 	let selectedWriteOps = $state<BuildosAgentAllowedOp[]>([]);
 	let showAdvancedPermissions = $state(false);
+	/** Opt-in `knowledge.contacts`: people's phone, email, address, birthday and notes. */
+	let shareContacts = $state(false);
 
 	let activeBundleId = $derived(detectBundleId(scopeMode, selectedWriteOps));
 	let selectedProfile = $derived(getAgentClientProfile(selectedProfileId));
@@ -534,11 +535,13 @@
 	}
 
 	function selectedAllowedOps(): BuildosAgentAllowedOp[] | undefined {
+		const contacts: BuildosAgentAllowedOp[] = shareContacts ? ['knowledge.contacts'] : [];
 		if (scopeMode === 'read_only') {
-			return undefined;
+			// Default read ops unless the key also opts in to contact details.
+			return contacts.length ? [...BUILDOS_AGENT_READ_OPS, ...contacts] : undefined;
 		}
 
-		return [...BUILDOS_AGENT_READ_OPS, ...selectedWriteOps];
+		return [...BUILDOS_AGENT_READ_OPS, ...contacts, ...selectedWriteOps];
 	}
 
 	function enabledWriteOps(caller: BuildosAgentCallerSummary): BuildosAgentAllowedOp[] {
@@ -584,6 +587,7 @@
 
 	function clearForm() {
 		editingCaller = null;
+		shareContacts = false;
 		installationName = '';
 		selectedProjectIds = [];
 		projectScopeMode = 'all_unrestricted';
@@ -616,6 +620,7 @@
 		projectScopeMode = caller.project_scope_mode;
 		scopeMode = caller.scope_mode;
 		selectedWriteOps = enabledWriteOps(caller);
+		shareContacts = (caller.allowed_ops ?? []).includes('knowledge.contacts');
 		showGenerateModal = true;
 	}
 
@@ -626,7 +631,11 @@
 			provider: caller.provider,
 			caller_key: caller.caller_key,
 			scope_mode: caller.scope_mode,
-			allowed_ops: caller.scope_mode === 'read_write' ? caller.allowed_ops : undefined,
+			allowed_ops:
+				caller.scope_mode === 'read_write' ||
+				(caller.allowed_ops ?? []).includes('knowledge.contacts')
+					? caller.allowed_ops
+					: undefined,
 			project_scope_mode: caller.project_scope_mode,
 			allowed_project_ids: filterAvailableProjectIds(caller.allowed_project_ids ?? []),
 			metadata: {
@@ -2236,6 +2245,24 @@
 					{/if}
 				</div>
 			</div>
+
+			<label
+				class="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 hover:bg-muted/50"
+			>
+				<input
+					type="checkbox"
+					class="mt-0.5 h-3.5 w-3.5 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+					bind:checked={shareContacts}
+				/>
+				<div>
+					<div class="text-sm font-medium text-foreground">Share contact details</div>
+					<div class="text-xs text-muted-foreground">
+						Let this agent see people's phone numbers, emails, addresses, birthdays and
+						notes from your knowledge. Off by default; without it the agent sees who
+						people are, not how to reach them.
+					</div>
+				</div>
+			</label>
 
 			<div class="space-y-2">
 				<button

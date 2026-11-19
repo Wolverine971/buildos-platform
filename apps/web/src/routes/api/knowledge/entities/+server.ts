@@ -2,6 +2,9 @@
 /**
  * GET  /api/knowledge/entities?kind=person&filter=known&q=sam&limit=50&offset=0
  *        [&researched=yes|no][&sort=recent|name|researched]
+ *        [&view=all|world|reference|dropped][&place=<place id>]
+ *      view: world = what matters to you (default on the page), reference = just mentioned,
+ *      dropped = hidden by the sorter as not a name. place: entries located in that place.
  *      Browse the caller's knowledge graph (their private entries plus public ones they've
  *      recorded something about), with per-kind counts and researched / not researched counts.
  * POST /api/knowledge/entities  { kind, name, summary?, know?, own?, facts? }
@@ -24,6 +27,7 @@ import {
 const FILTERS = ['all', 'known', 'owned'] as const;
 const RESEARCHED = ['any', 'yes', 'no'] as const;
 const SORTS = ['recent', 'name', 'researched'] as const;
+const VIEWS = ['all', 'world', 'reference', 'dropped'] as const;
 
 function pick<T extends string>(value: string | null, allowed: readonly T[], fallback: T): T {
 	return value && (allowed as readonly string[]).includes(value) ? (value as T) : fallback;
@@ -42,6 +46,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	const q = (url.searchParams.get('q') ?? '').trim().slice(0, 200);
 	const researched = pick(url.searchParams.get('researched'), RESEARCHED, 'any');
 	const sort = pick(url.searchParams.get('sort'), SORTS, 'recent');
+	const view = pick(url.searchParams.get('view'), VIEWS, 'all');
+	const place = url.searchParams.get('place') ?? '';
 	const limit = Number(url.searchParams.get('limit') ?? 50);
 	const offset = Number(url.searchParams.get('offset') ?? 0);
 
@@ -51,6 +57,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			filter,
 			researched,
 			sort,
+			view,
+			...(UUID_PATTERN.test(place) ? { place } : {}),
 			...(q ? { query: q } : {}),
 			limit: Number.isFinite(limit) ? limit : 50,
 			offset: Number.isFinite(offset) ? offset : 0

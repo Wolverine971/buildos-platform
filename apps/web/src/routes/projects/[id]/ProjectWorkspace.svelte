@@ -98,6 +98,7 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import { onReturnAfterAway } from '$lib/utils/return-refresh';
 	import { trackLoopEvent } from '$lib/services/loop-telemetry';
+	import ProjectPeopleTab from '$lib/components/knowledge/ProjectPeopleTab.svelte';
 	import type { Document, Goal, Milestone, Plan, Project, Risk, Task } from '$lib/types/onto';
 	import type { DocStructure, OntoDocument } from '$lib/types/onto-api';
 	import type {
@@ -129,7 +130,7 @@
 	import ProjectWorkspaceEntityModals from './ProjectWorkspaceEntityModals.svelte';
 	import ProjectWorkspaceOptionsMenu from './ProjectWorkspaceOptionsMenu.svelte';
 
-	type WorkspaceTab = 'work' | 'overview' | 'docs' | 'activity';
+	type WorkspaceTab = 'work' | 'overview' | 'docs' | 'activity' | 'people';
 	type WorkspaceCreateKind = 'goal' | 'plan' | 'milestone' | 'risk' | 'event';
 	type WorkspaceEditTarget = Extract<EntityOpenAction, { kind: WorkspaceCreateKind | 'project' }>;
 	const START_HERE_REFRESH_RECHECK_DELAYS_MS = [350, 750, 1500] as const;
@@ -154,7 +155,7 @@
 		currentActorId: null
 	};
 
-	const TAB_ORDER: WorkspaceTab[] = ['overview', 'work', 'docs', 'activity'];
+	const TAB_ORDER: WorkspaceTab[] = ['overview', 'work', 'docs', 'activity', 'people'];
 
 	let { data }: { data: PageData } = $props();
 	const initialData = untrack(() => data);
@@ -1405,6 +1406,21 @@
 						<Activity class="hidden h-4 w-4 sm:block" />
 						Activity
 					</button>
+					<button
+						bind:this={tabButtons[4]}
+						type="button"
+						id="workspace-tab-people"
+						role="tab"
+						aria-selected={activeTab === 'people'}
+						aria-controls="workspace-people"
+						tabindex={activeTab === 'people' ? 0 : -1}
+						onclick={() => selectTab('people')}
+						onkeydown={(event) => handleTabKeydown(event, 4)}
+						class="workspace-tab {activeTab === 'people' ? 'workspace-tab-active' : ''}"
+					>
+						<Users class="hidden h-4 w-4 sm:block" />
+						People
+					</button>
 				</div>
 			</nav>
 		</div>
@@ -2183,6 +2199,23 @@
 										/>
 									{/await}
 								{/if}
+							</div>
+						</div>
+					{:else if activeTab === 'people'}
+						<!-- Everyone this project's tasks and docs name, and who knows them (tasker 168). -->
+						<div
+							id="workspace-people"
+							class="workspace-panel"
+							role="tabpanel"
+							aria-labelledby="workspace-tab-people"
+							tabindex="0"
+						>
+							<h2 class="sr-only">People in this project</h2>
+							<div class="mx-auto max-w-3xl py-2">
+								<ProjectPeopleTab
+									projectId={project.id}
+									projectName={project.name}
+								/>
 							</div>
 						</div>
 					{:else}

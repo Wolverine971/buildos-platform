@@ -67,7 +67,13 @@ export type ShareTerms = {
 };
 
 export type AskResult = {
-	status: 'requested' | 'declined' | 'already_shared' | 'not_found' | 'rate_limited';
+	status:
+		| 'requested'
+		| 'declined'
+		| 'already_shared'
+		| 'nothing_to_ask'
+		| 'not_found'
+		| 'rate_limited';
 	id?: string;
 	merged?: boolean;
 };

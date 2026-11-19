@@ -30,6 +30,9 @@ import {
 	MoreWaysIn,
 	nudgeDraft,
 	PickCard,
+	cachedPickSkips,
+	loadPickSkips,
+	savePickSkips,
 	pickTodayFocus,
 	readDayFlag,
 	type RepeatedChoice,
@@ -61,6 +64,7 @@ import {
 	walkOrder
 } from '@/components/today';
 import { useUpdateTask } from '@/hooks/use-entities';
+import { INBOX_QUERY_ROOT } from '@/hooks/use-inbox';
 import { useTabStack } from '@/hooks/use-tab-stack';
 import { type ChatTarget, GLOBAL_TARGET, targetParams } from '@/lib/chat/context';
 import { api, unreachableMessage } from '@/lib/api';
@@ -94,6 +98,15 @@ export default function TodayScreen() {
 		placeholderData: keepPreviousData
 	});
 	const feed = today.data?.feed;
+	// "N to review" — the same count as the web's Today chip and nav badge.
+	const inboxCount = useQuery({
+		queryKey: [INBOX_QUERY_ROOT, 'count', session?.user.id, timezone],
+		queryFn: () => api.inbox.count({ timezone }),
+		enabled: Boolean(session),
+		staleTime: 60_000
+	});
+	const refetchInboxCount = inboxCount.refetch;
+	const openInbox = useCallback(() => router.push('/inbox'), []);
 	const attention = today.data?.attention ?? null;
 	const refetch = today.refetch;
 
@@ -101,8 +114,9 @@ export default function TodayScreen() {
 	const [pulling, setPulling] = useState(false);
 	const onRefresh = useCallback(() => {
 		setPulling(true);
+		void refetchInboxCount();
 		void refetch().finally(() => setPulling(false));
-	}, [refetch]);
+	}, [refetch, refetchInboxCount]);
 	const retry = useCallback(() => void refetch(), [refetch]);
 
 	// The task last opened (and, via FollowReader, wherever Prev/Next walked it) gets the bar.
@@ -199,6 +213,18 @@ export default function TodayScreen() {
 		() => new Set((feed?.tasks ?? []).filter(isDone).map((task) => task.id)),
 		[feed]
 	);
+	// "Not this" lasts the day and survives closing the app (pick-skips.ts).
+	const [skippedPicks, setSkippedPicks] = useState<string[]>(() => cachedPickSkips(date));
+	useEffect(() => {
+		let live = true;
+		setSkippedPicks(cachedPickSkips(date));
+		void loadPickSkips(date).then((keys) => {
+			if (live) setSkippedPicks(keys);
+		});
+		return () => {
+			live = false;
+		};
+	}, [date]);
 	const picks = useMemo(
 		() =>
 			feed
@@ -206,34 +232,38 @@ export default function TodayScreen() {
 						tasks: feed.tasks,
 						waiting: openWaitingItems,
 						doneIds,
+						skipped: skippedPicks,
 						weekdayOf: (dueAt) => dueWeekday(dueAt, feed.timezone)
 					})
 				: [],
-		[doneIds, feed, openWaitingItems]
+		[doneIds, feed, openWaitingItems, skippedPicks]
 	);
 	const [lastPickDone, setLastPickDone] = useState<string | null>(null);
 
-	const [sideways, setSidewaysState] = useState(() => readDayFlag(date, 'sideways'));
 	const [closeHidden, setCloseHidden] = useState(() => readDayFlag(date, 'closeout-hidden'));
 	const [closeOpen, setCloseOpen] = useState(false);
 	const [closePicks, setClosePicks] = useState<TodayPick[]>([]);
 	const [seen, setSeen] = useState<DaySeen | null>(null);
 	// A new day (screen left open past midnight) starts with its own flags.
 	useEffect(() => {
-		setSidewaysState(readDayFlag(date, 'sideways'));
 		setCloseHidden(readDayFlag(date, 'closeout-hidden'));
 		setCloseOpen(false);
 		setLastPickDone(null);
 		setSettledWaiting(new Set());
 	}, [date]);
 
-	const setSideways = useCallback(
-		(on: boolean) => {
-			setSidewaysState(on);
-			writeDayFlag(date, 'sideways', on);
+	const skipPick = useCallback(
+		(pick: TodayPick) => {
+			const next = [...skippedPicks.filter((key) => key !== pick.key), pick.key];
+			setSkippedPicks(next);
+			savePickSkips(date, next);
 		},
-		[date]
+		[date, skippedPicks]
 	);
+	const showSkippedPicks = useCallback(() => {
+		setSkippedPicks([]);
+		savePickSkips(date, []);
+	}, [date]);
 
 	const openChat = useCallback(
 		(target: ChatTarget, draft?: string) =>
@@ -479,6 +509,7 @@ export default function TodayScreen() {
 					}
 					overdueCount={feed?.overdueCount ?? 0}
 					upNext={upNext}
+					inbox={{ count: inboxCount.data?.total ?? 0, onPress: openInbox }}
 				/>
 
 				<BriefCard />
@@ -503,12 +534,12 @@ export default function TodayScreen() {
 					<PickCard
 						picks={picks}
 						time={dayPart}
-						sideways={sideways}
+						skippedCount={skippedPicks.length}
 						lastDone={lastPickDone}
 						onOpen={openPick}
 						onDone={completePick}
-						onSideways={() => setSideways(true)}
-						onBack={() => setSideways(false)}
+						onSkip={skipPick}
+						onShowSkipped={showSkippedPicks}
 					/>
 				) : null}
 
@@ -570,14 +601,12 @@ export default function TodayScreen() {
 					/>
 				) : null}
 
-				{!sideways ? (
-					<WaitingOnSection
-						items={allWaiting}
-						onOpen={openWaiting}
-						onNudge={nudgeWaiting}
-						onSetStatus={setWaitingStatus}
-					/>
-				) : null}
+				<WaitingOnSection
+					items={allWaiting}
+					onOpen={openWaiting}
+					onNudge={nudgeWaiting}
+					onSetStatus={setWaitingStatus}
+				/>
 
 				{clear && feed ? (
 					waiting.length > 0 ? (

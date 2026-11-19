@@ -7,6 +7,7 @@
 // the web agent-call gateway AND the worker Agent Run runner share one policy path.
 // Pure logic: depends only on @buildos/shared-types.
 import {
+	BUILDOS_AGENT_OPT_IN_READ_OPS,
 	BUILDOS_AGENT_READ_OPS,
 	BUILDOS_AGENT_SUPPORTED_OPS,
 	BUILDOS_AGENT_WRITE_OPS,
@@ -53,12 +54,23 @@ export function normalizeScopeMode(
 	return value;
 }
 
-/** Ops a connection only gets when they are granted by name (paid background research). */
-const OPT_IN_OPS = new Set<BuildosAgentAllowedOp>(['knowledge.enrich']);
+/**
+ * Ops only the person starts themselves, in BuildOS: paid web research (DJ, 2026-11-18:
+ * "only user-driven if I manually trigger research"). No key, connector, consent or agent run
+ * may hold them, whatever its stored policy says; the gateway handler refuses them too.
+ */
+const USER_ONLY_OPS = new Set<BuildosAgentAllowedOp>(['knowledge.enrich']);
+
+export function isUserOnlyOp(op: string): boolean {
+	return USER_ONLY_OPS.has(op as BuildosAgentAllowedOp);
+}
+
+/** Ops a connection only gets when granted by name: seeing people's contact details. */
+const OPT_IN_OPS = new Set<BuildosAgentAllowedOp>(BUILDOS_AGENT_OPT_IN_READ_OPS);
 
 export function defaultAllowedOpsForMode(mode: BuildosAgentScopeMode): BuildosAgentAllowedOp[] {
 	const ops = mode === 'read_write' ? BUILDOS_AGENT_SUPPORTED_OPS : BUILDOS_AGENT_READ_OPS;
-	return ops.filter((op) => !OPT_IN_OPS.has(op));
+	return ops.filter((op) => !OPT_IN_OPS.has(op) && !USER_ONLY_OPS.has(op));
 }
 
 export function minimumScopeMode(
@@ -113,7 +125,8 @@ export function normalizeAllowedOps(
 			throw new Error(`${fieldName} cannot include write ops when scope_mode is read_only`);
 		}
 
-		if (seen.has(entry)) {
+		// Never stored on a connection (an old key or a hand-written request may still list it).
+		if (seen.has(entry) || USER_ONLY_OPS.has(entry)) {
 			continue;
 		}
 
@@ -165,7 +178,7 @@ export function extractAllowedOpsFromPolicy(
 	for (const entry of raw) {
 		if (typeof entry !== 'string' || !isSupportedOp(entry)) continue;
 		if (mode === 'read_only' && isWriteOp(entry)) continue;
-		if (seen.has(entry)) continue;
+		if (seen.has(entry) || USER_ONLY_OPS.has(entry)) continue;
 		seen.add(entry);
 		normalized.push(entry);
 	}

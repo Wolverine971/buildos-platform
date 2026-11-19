@@ -64,6 +64,8 @@ import {
 	sweepChatClassifications
 } from './workers/chat/classificationSweep';
 import { runDocumentDigestSweep } from './workers/document-digest/documentDigest';
+import { knowledgeSortUsers, runKnowledgeSortSweep } from './workers/knowledge/knowledgeSortSweep';
+import { runKnowledgeSpendAlerts } from './workers/knowledge/knowledgeSpendAlerts';
 import { SmartLLMService } from './lib/services/smart-llm-service';
 
 export {
@@ -463,6 +465,48 @@ export function startScheduler() {
 		});
 		console.log('📝 Document summary sweep scheduled (every 5 minutes)');
 	}
+
+	// Knowledge sorter (tasker 169): hourly, sort new people/orgs into "your world" or "just
+	// mentioned" once 25 wait or the oldest waited a day. Paid (~$0.0006 per 20 entries), so off
+	// unless KNOWLEDGE_SORT_USER_IDS lists users (or *).
+	const sortUsers = knowledgeSortUsers();
+	if (sortUsers) {
+		let sortRunning = false;
+		cron.schedule('23 * * * *', async () => {
+			if (sortRunning) return;
+			sortRunning = true;
+			try {
+				const result = await runKnowledgeSortSweep({
+					db: supabase as never,
+					users: sortUsers,
+					log: (message, detail) => console.log(message, detail ?? '')
+				});
+				if (result.users || result.failed) console.log('🗂️ Knowledge sort sweep:', result);
+			} catch (error) {
+				console.error('🗂️ Knowledge sort sweep failed:', error);
+			} finally {
+				sortRunning = false;
+			}
+		});
+		console.log('🗂️ Knowledge sort sweep scheduled (hourly at :23)');
+	}
+
+	// Knowledge spend (DJ, 2026-11-18): alert admins in-app when someone's chat wrap-up or
+	// research spend reaches today's cap, or everyone's together passes the daily total. Free.
+	let spendAlertsRunning = false;
+	cron.schedule('*/15 * * * *', async () => {
+		if (spendAlertsRunning) return;
+		spendAlertsRunning = true;
+		try {
+			const result = await runKnowledgeSpendAlerts({ db: supabase as never });
+			if (result.sent) console.log('💸 Knowledge spend alerts:', result);
+		} catch (error) {
+			console.error('💸 Knowledge spend alerts failed:', error);
+		} finally {
+			spendAlertsRunning = false;
+		}
+	});
+	console.log('💸 Knowledge spend alerts scheduled (every 15 minutes)');
 
 	// Saved Operatives: enqueue due Agent Runs through the normal agent_run queue.
 	cron.schedule('*/5 * * * *', async () => {

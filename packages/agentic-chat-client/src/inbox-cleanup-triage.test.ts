@@ -1,4 +1,4 @@
-// apps/web/src/lib/components/inbox/cleanup-triage.test.ts
+// packages/agentic-chat-client/src/inbox-cleanup-triage.test.ts
 import { describe, expect, it } from 'vitest';
 import type { ProjectCleanupItem, ProjectCleanupView } from '@buildos/shared-types';
 import {
@@ -11,7 +11,7 @@ import {
 	triageItemCount,
 	triageVerdictsFor,
 	type TriageProject
-} from './cleanup-triage';
+} from './inbox-cleanup-triage';
 
 function item(overrides: Partial<ProjectCleanupItem>): ProjectCleanupItem {
 	return {

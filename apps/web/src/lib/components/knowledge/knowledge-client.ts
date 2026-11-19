@@ -148,6 +148,8 @@ export const knowledgeApi = {
 		q?: string;
 		researched?: 'any' | 'yes' | 'no';
 		sort?: 'recent' | 'name' | 'researched';
+		view?: 'all' | 'world' | 'reference' | 'dropped';
+		place?: string | null;
 		limit?: number;
 		offset?: number;
 	}) {
@@ -158,6 +160,8 @@ export const knowledgeApi = {
 		if (params.researched && params.researched !== 'any')
 			search.set('researched', params.researched);
 		if (params.sort && params.sort !== 'recent') search.set('sort', params.sort);
+		if (params.view && params.view !== 'all') search.set('view', params.view);
+		if (params.place) search.set('place', params.place);
 		search.set('limit', String(params.limit ?? 60));
 		if (params.offset) search.set('offset', String(params.offset));
 		return call<KnowledgeListResult>(`/api/knowledge/entities?${search}`);
@@ -177,7 +181,12 @@ export const knowledgeApi = {
 	},
 	update(
 		id: string,
-		body: { name?: string; summary?: string | null; status?: 'active' | 'hidden' }
+		body: {
+			name?: string;
+			summary?: string | null;
+			status?: 'active' | 'hidden';
+			circle?: 'inner' | 'public';
+		}
 	) {
 		return call<{ ok: true }>(`/api/knowledge/entities/${id}`, {
 			...json(body),

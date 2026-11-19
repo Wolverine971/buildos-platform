@@ -21,3 +21,5 @@ export * from './agent-chat.types';
 export * from './agent-chat-worker-ui-adapter';
 export * from './agent-chat-turn-cards';
 export * from './agent-chat-step-details';
+export * from './inbox-cleanup-presentation';
+export * from './inbox-cleanup-triage';

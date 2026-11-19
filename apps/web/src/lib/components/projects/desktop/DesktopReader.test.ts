@@ -42,6 +42,19 @@ const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
 				updated_at: '2026-10-06T12:00:00.000Z'
 			}
 		});
+	if (url.startsWith('/api/onto/tasks/t2/full'))
+		return ok({
+			task: {
+				id: 't2',
+				title: 'Write the release note',
+				description: 'Short and plain.',
+				state_key: 'todo',
+				priority: null,
+				due_at: null,
+				start_at: null,
+				updated_at: '2026-10-06T12:00:00.000Z'
+			}
+		});
 	// The Details panel's own reads (members, links, collaboration) answer empty.
 	if (url.startsWith('/api/')) return ok({});
 	throw new Error(`Unexpected fetch ${url}`);
@@ -236,5 +249,60 @@ describe('DesktopReader on Today', () => {
 		);
 		expect(detailsTab).toHaveAttribute('aria-expanded', 'false');
 		expect(screen.getByRole('button', { name: 'Expand details' })).toBe(detailsTab);
+	}, 15000);
+
+	it('on a phone, opens Details from the fact row over the reader, never as a side rail', async () => {
+		const props = {
+			item: { kind: 'task', id: 't1' },
+			projectId: 'p1',
+			canWrite: true,
+			order: ['t1', 't2'],
+			fallbackTitle: 'Ship the phone Today',
+			layout: 'peek',
+			listShown: false,
+			chatOn: false,
+			phone: true,
+			onClose: vi.fn(),
+			onStep: vi.fn(),
+			onToggleFocus: vi.fn(),
+			onToggleList: vi.fn(),
+			onChat: vi.fn(),
+			onChanged: vi.fn()
+		} as const;
+		// A desktop visit that left Details open must not open it on the phone.
+		localStorage.setItem('buildos:reader-details-open', '1');
+		const { rerender } = render(DesktopReader, { props });
+
+		await screen.findByRole('heading', { name: 'Plan' });
+		// The rail (which took the right edge of a phone) is gone.
+		expect(screen.queryByRole('button', { name: 'Expand details' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('complementary', { name: 'Details' })).not.toBeInTheDocument();
+
+		const chip = screen.getByRole('button', { name: 'Details' });
+		expect(chip).toHaveAttribute('aria-expanded', 'false');
+		await fireEvent.click(chip);
+		await vi.dynamicImportSettled();
+		const panel = await screen.findByRole(
+			'complementary',
+			{ name: 'Details' },
+			{ timeout: 5000 }
+		);
+		expect(panel).toHaveTextContent('Assignees');
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Back to task' }));
+		await waitFor(() =>
+			expect(screen.queryByRole('complementary', { name: 'Details' })).not.toBeInTheDocument()
+		);
+
+		// Open again, then walk to the next task: it opens on the task, not on Details.
+		await fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+		await screen.findByRole('complementary', { name: 'Details' }, { timeout: 5000 });
+		await rerender({ ...props, item: { kind: 'task', id: 't2' } });
+		await screen.findByText('Short and plain.');
+		expect(screen.queryByRole('complementary', { name: 'Details' })).not.toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Details' })).toHaveAttribute(
+			'aria-expanded',
+			'false'
+		);
 	}, 15000);
 });

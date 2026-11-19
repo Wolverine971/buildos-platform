@@ -399,7 +399,14 @@ export async function processKnowledgeEnrichJob(
 			// organization layer, so the next person's research can skip the search.
 			if (added && detail.entity.kind === 'org') {
 				const saved = await store.getEntity(target.entity_id);
-				if (saved) await promoteOrgFacts(db, saved);
+				if (saved)
+					await promoteOrgFacts(db, saved, {
+						runId,
+						borrowed: lent.batch.facts.map((f) => ({
+							predicate: f.predicate,
+							value: String(f.value ?? '')
+						}))
+					});
 			}
 		} catch (error) {
 			if (error instanceof ResearchCancelled) {

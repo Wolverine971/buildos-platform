@@ -12,6 +12,7 @@
 	import { AlertTriangle, ChevronDown, ChevronUp, Loader2, Sparkles } from '$lib/icons/lucide';
 	import {
 		ENRICH_FOCUS_OPTIONS,
+		KNOWLEDGE_PREDICATE_MAP,
 		MAX_ENRICH_ENTRY_NOTE_CHARS,
 		MAX_ENRICH_INSTRUCTIONS_CHARS
 	} from '@buildos/shared-agent-ops/knowledge';
@@ -45,10 +46,18 @@
 	const fresh = $derived(entries.length - researched.length);
 	const toRun = $derived(skipResearched ? entries.filter((e) => !e.researched_at) : entries);
 	const reResearching = $derived(toRun.some((e) => e.researched_at));
-	const fields = $derived([
-		...new Set(
-			ENRICH_FOCUS_OPTIONS.filter((o) => focus.includes(o.key)).flatMap((o) => o.fields)
+	// Only what fits the kinds being researched (an organization has no school or job title).
+	const kinds = $derived(new Set(entries.map((e) => e.kind)));
+	const focusOptions = $derived(
+		ENRICH_FOCUS_OPTIONS.filter((option) =>
+			option.fields.some((field) => {
+				const subjects = KNOWLEDGE_PREDICATE_MAP.get(field)?.subjectKinds ?? [];
+				return !subjects.length || subjects.some((kind) => kinds.has(kind));
+			})
 		)
+	);
+	const fields = $derived([
+		...new Set(focusOptions.filter((o) => focus.includes(o.key)).flatMap((o) => o.fields))
 	]);
 	const saidWhat = $derived(focus.length > 0 || instructions.trim().length > 0);
 	const estimate = $derived(allowance ? estimateEnrich(toRun.length, allowance) : null);
@@ -118,7 +127,7 @@
 				>What should we look for?</legend
 			>
 			<div class="flex flex-wrap gap-2">
-				{#each ENRICH_FOCUS_OPTIONS as option (option.key)}
+				{#each focusOptions as option (option.key)}
 					{@const on = focus.includes(option.key)}
 					<button
 						type="button"

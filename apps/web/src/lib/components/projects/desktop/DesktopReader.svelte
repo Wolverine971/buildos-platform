@@ -33,6 +33,7 @@
 		Minimize2,
 		PanelLeftClose,
 		PanelLeftOpen,
+		PanelRightOpen,
 		Pencil,
 		RefreshCw,
 		Table2 as Table,
@@ -826,18 +827,27 @@
 		}
 	}
 	let detailsOpen = $state(readDetailsOpen());
+	// Phones: no side rail (it ate the width). Details opens over the reader for
+	// the item it was opened on, and closes by itself when you walk to the next.
+	let phoneDetailsFor = $state<string | null>(null);
 	type DetailsComponent = typeof import('./ReaderDetailsPanel.svelte').default;
 	let DetailsPanel = $state<DetailsComponent | null>(null);
 	$effect(() => {
-		if (detailsOpen && !DetailsPanel) {
+		if (showDetails && !DetailsPanel) {
 			void import('./ReaderDetailsPanel.svelte').then(
 				(module) => (DetailsPanel = module.default)
 			);
 		}
 	});
-	const showDetails = $derived(detailsOpen && Boolean(current) && !isTable);
+	const showDetails = $derived(
+		(phone ? phoneDetailsFor === key : detailsOpen) && Boolean(current) && !isTable
+	);
 
 	function toggleDetails() {
+		if (phone) {
+			phoneDetailsFor = phoneDetailsFor === key ? null : key;
+			return;
+		}
 		detailsOpen = !detailsOpen;
 		try {
 			localStorage.setItem(DETAILS_KEY, detailsOpen ? '1' : '0');
@@ -1239,6 +1249,7 @@
 								{/each}
 							{/snippet}
 						</ReaderChip>
+						{@render phoneDetailsChip()}
 					</div>
 					{@render removeControl()}
 				</div>
@@ -1362,6 +1373,7 @@
 						</ReaderChip>
 					{/if}
 					<span class="tag">Updated {shortDate(task.updated_at)}</span>
+					{@render phoneDetailsChip()}
 				</div>
 				{#if !editing}
 					<TaskKeyDetails
@@ -1523,6 +1535,7 @@
 					</ReaderChip>
 					<span class="tag">Updated {shortDate(goal.updated_at)}</span>
 					{@render removeControl()}
+					{@render phoneDetailsChip()}
 				</div>
 				{#snippet goalText()}
 					{#if description.trim()}
@@ -1542,21 +1555,31 @@
 		</div>
 		{#if current && !isTable}
 			{@const entity = current.task ?? current.goal ?? current.doc}
-			<div class={['details-dock', { open: showDetails }]}>
-				<button
-					type="button"
-					class="details-tab"
-					onclick={toggleDetails}
-					aria-expanded={showDetails}
-					aria-controls={detailsId}
-					aria-label={showDetails ? 'Collapse details' : 'Expand details'}
-					title={showDetails ? 'Collapse details (D)' : 'Expand details (D)'}
-				>
-					{#if showDetails}<ChevronRight class="h-4 w-4" />{:else}<ChevronLeft
-							class="h-4 w-4"
-						/>{/if}
-					<span>Details</span>
-				</button>
+			<div class={['details-dock', { open: showDetails }]} hidden={phone && !showDetails}>
+				{#if phone}
+					<div class="details-back">
+						<button type="button" onclick={toggleDetails} aria-controls={detailsId}>
+							<ChevronLeft class="h-4 w-4" aria-hidden="true" />
+							Back to {word}
+						</button>
+						<span>Details</span>
+					</div>
+				{:else}
+					<button
+						type="button"
+						class="details-tab"
+						onclick={toggleDetails}
+						aria-expanded={showDetails}
+						aria-controls={detailsId}
+						aria-label={showDetails ? 'Collapse details' : 'Expand details'}
+						title={showDetails ? 'Collapse details (D)' : 'Expand details (D)'}
+					>
+						{#if showDetails}<ChevronRight class="h-4 w-4" />{:else}<ChevronLeft
+								class="h-4 w-4"
+							/>{/if}
+						<span>Details</span>
+					</button>
+				{/if}
 				<div id={detailsId} class="details-col" hidden={!showDetails}>
 					{#if showDetails && DetailsPanel}
 						{#key key}
@@ -1668,6 +1691,22 @@
 
 <!-- Archive (or delete) sits beside the item's state, apart from it; the toast has Undo.
      Phones keep it in the bottom bar. -->
+<!-- Phones open Details from the item's fact row; wider screens use the side tab. -->
+{#snippet phoneDetailsChip()}
+	{#if phone && current && !isTable}
+		<button
+			type="button"
+			class="details-chip"
+			onclick={toggleDetails}
+			aria-expanded={showDetails}
+			aria-controls={detailsId}
+		>
+			<PanelRightOpen class="h-3.5 w-3.5" aria-hidden="true" />
+			Details
+		</button>
+	{/if}
+{/snippet}
+
 {#snippet removeControl()}
 	{#if canWrite && current && !phone}
 		<button
@@ -2037,8 +2076,73 @@
 		width: var(--details-tab-width);
 		min-height: 0;
 	}
-	.phone .details-dock {
-		--details-tab-width: 44px;
+	/* Phones: no rail. Details covers the reader, full width, with a way back. */
+	.phone .details-dock.open {
+		position: absolute;
+		inset: 0;
+		z-index: 6;
+		display: flex;
+		width: auto;
+		flex-direction: column;
+		background: hsl(var(--background));
+	}
+	.phone .details-col {
+		position: static;
+		flex: 1;
+		min-height: 0;
+		border-left: 0;
+		box-shadow: none;
+	}
+	.details-back {
+		display: flex;
+		flex: none;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		border-bottom: 1px solid hsl(var(--border));
+		padding: 4px 16px 4px 4px;
+	}
+	.details-back button {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		min-height: 44px;
+		border-radius: 8px;
+		padding: 0 12px 0 8px;
+		font-size: 14px;
+		font-weight: 500;
+		color: hsl(var(--foreground));
+	}
+	.details-back button:hover {
+		background: hsl(var(--muted));
+	}
+	.details-back button:focus-visible,
+	.details-chip:focus-visible {
+		outline: 2px solid hsl(var(--ring));
+		outline-offset: 1px;
+	}
+	.details-back span {
+		font-size: 12px;
+		color: hsl(var(--muted-foreground));
+	}
+	/* Sized and drawn like the fact chips beside it. */
+	.details-chip {
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		gap: 6px;
+		min-height: 28px;
+		border: 1px solid hsl(var(--border));
+		border-radius: 8px;
+		padding: 0 10px;
+		font-size: 12px;
+		font-weight: 500;
+		color: hsl(var(--muted-foreground));
+	}
+	.details-chip:hover,
+	.details-chip[aria-expanded='true'] {
+		background: hsl(var(--muted));
+		color: hsl(var(--foreground));
 	}
 	.details-dock.open {
 		width: calc(300px + var(--details-tab-width));

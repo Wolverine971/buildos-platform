@@ -113,8 +113,16 @@ export const BUILDOS_AGENT_WRITE_OPS = [
 	'knowledge.enrich'
 ] as const;
 
+/**
+ * Read permissions a key gets only when granted by name; never part of a default, bundle or
+ * OAuth consent. `knowledge.contacts`: see people's phone, email, address, birthday and notes
+ * in knowledge results (DJ, 2026-11-18). It is a permission, not a tool.
+ */
+export const BUILDOS_AGENT_OPT_IN_READ_OPS = ['knowledge.contacts'] as const;
+
 export const BUILDOS_AGENT_SUPPORTED_OPS = [
 	...BUILDOS_AGENT_READ_OPS,
+	...BUILDOS_AGENT_OPT_IN_READ_OPS,
 	...BUILDOS_AGENT_WRITE_OPS
 ] as const;
 
@@ -143,6 +151,8 @@ export const LEGACY_OPENCLAW_DEFAULT_WRITE_OPS = [
 export type BuildosAgentReadOp = (typeof BUILDOS_AGENT_READ_OPS)[number];
 export type BuildosAgentWriteOp = (typeof BUILDOS_AGENT_WRITE_OPS)[number];
 export type BuildosAgentAllowedOp = (typeof BUILDOS_AGENT_SUPPORTED_OPS)[number];
+/** Permissions that are not tools (no gateway handler), e.g. `knowledge.contacts`. */
+export type BuildosAgentOptInReadOp = (typeof BUILDOS_AGENT_OPT_IN_READ_OPS)[number];
 export type BuildosAgentProjectScopeMode = 'all_unrestricted' | 'selected';
 export type BuildosAgentProjectAccessMode = 'read_only' | 'read_write';
 export type BuildosProjectExternalAgentAccess = 'standard' | 'restricted';

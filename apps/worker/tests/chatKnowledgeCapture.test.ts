@@ -364,6 +364,7 @@ function ports(
 		db: fake,
 		decider,
 		completeJson,
+		wrapUpSpendToday: async () => 0,
 		// Anchors come from the fixture, not from reading the graph.
 		loadAnchors: async ({ entityIds }) =>
 			new Map(
@@ -396,6 +397,35 @@ const factsOf = (fake: FakeDb, entityId: string) =>
 // ---------------------------------------------------------------------------
 
 describe('chat knowledge capture', () => {
+	it("skips silently, paying nothing, once the person's wrap-up spend reaches today's cap", async () => {
+		const fake = db();
+		const messages = [
+			message(
+				'm-1',
+				'user',
+				'My friend Dana Whitfield is the COO at Harbor Lane Logistics.',
+				1
+			),
+			message('m-2', 'assistant', 'Noted.', 2)
+		];
+		const {
+			ports: p,
+			decider,
+			completeJson
+		} = ports(fake, {
+			entities: [{ ref: 'e1', kind: 'person', name: 'Dana Whitfield' }],
+			facts: []
+		});
+		p.wrapUpSpendToday = async () => 0.1;
+
+		const receipt = (await runChatKnowledgeCapture(p, input(messages)))!;
+
+		expect(receipt).toMatchObject({ status: 'nothing', held: 'daily_cap', fact_ids: [] });
+		expect(decider.decide).not.toHaveBeenCalled();
+		expect(completeJson).not.toHaveBeenCalled();
+		expect(fake.rows('knowledge_entities')).toHaveLength(0);
+	});
+
 	it('a retry after the checkpoint failed to save returns the full receipt, Undo data included', async () => {
 		const fake = db();
 		const messages = [

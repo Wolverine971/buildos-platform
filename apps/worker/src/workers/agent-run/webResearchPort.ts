@@ -24,6 +24,12 @@ import {
 } from '@buildos/shared-agent-ops/web/native-search';
 
 const DEFAULT_SEARCH_TIMEOUT_MS = 30_000;
+/**
+ * A provider with another one behind it gets this long before the chain moves on (DJ,
+ * 2026-11-18: Serper normally answers in under 2 s; waiting the full 30 s and then trying
+ * Tavily could run a chat search past its 60 s budget). The last provider keeps the full time.
+ */
+const FALLBACK_AFTER_MS = 10_000;
 const DEFAULT_VISIT_MAX_CHARS = 6_000;
 const MAX_VISIT_CHARS = 12_000;
 const DEFAULT_SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -716,8 +722,12 @@ export function createAgentRunWebResearchPort(
 									apiKey: providerApiKey(provider, keys)!,
 									fetchFn,
 									now,
-									searchTimeoutMs:
+									searchTimeoutMs: Math.min(
 										options.searchTimeoutMs ?? DEFAULT_SEARCH_TIMEOUT_MS,
+										index < providers.length - 1
+											? FALLBACK_AFTER_MS
+											: Number.POSITIVE_INFINITY
+									),
 									reserve
 								}),
 							{ durableStore: storeFor(provider) }

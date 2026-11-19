@@ -20,12 +20,14 @@
 // Web page text is never stored (chat tool results keep only URLs and titles), so a web fact's
 // quote comes from the assistant message that reported it, and its source keeps the page URL.
 import {
+	CHAT_WRAP_UP_DAILY_CAP_USD,
 	type IdentityDecider,
 	type KnowledgeDataClient,
 	KnowledgeStore,
 	type KnowledgeWriteBatch,
 	type KnowledgeWriteFact,
 	type KnowledgeWriteSource,
+	chatWrapUpSpendToday,
 	getKnowledgePredicate,
 	normalizeKnowledgeValue,
 	recordIdentityQuestion
@@ -115,6 +117,8 @@ export type ChatKnowledgeReceipt = {
 		cost_usd: number;
 	};
 	skipped_entities: Array<{ name: string; reason: string }>;
+	/** Not run: the person's wrap-up spend reached today's silent cap (admin-only signal). */
+	held?: 'daily_cap';
 	dropped: ChatKnowledgeDrop[];
 	error: string | null;
 };
@@ -137,6 +141,8 @@ export type ChatKnowledgePorts = {
 	resolveIdentity?: ResolveKnowledgeIdentity;
 	/** Tests: anchors per existing entry instead of reading the graph. */
 	loadAnchors?: LoadChatAnchors;
+	/** Today's wrap-up spend for the user (default: llm_usage_logs, knowledge/spend.ts). */
+	wrapUpSpendToday?: (userId: string) => Promise<number>;
 	now?: () => Date;
 };
 
@@ -394,6 +400,18 @@ export async function runChatKnowledgeCapture(
 					}));
 			}
 			receipt.status = receipt.fact_ids.length ? 'written' : 'nothing';
+			return receipt;
+		}
+
+		// 0. The silent daily cap (DJ, 2026-11-18): past it the wrap-up adds no knowledge for the
+		// rest of the day. The user sees nothing; the admin sees it on /admin/chat and gets an
+		// alert from the spend sweep. A failed spend read never blocks capture.
+		const spentToday = await (
+			ports.wrapUpSpendToday ??
+			((userId: string) => chatWrapUpSpendToday(db, userId, ports.now?.() ?? new Date()))
+		)(session.userId).catch(() => 0);
+		if (spentToday >= CHAT_WRAP_UP_DAILY_CAP_USD) {
+			receipt.held = 'daily_cap';
 			return receipt;
 		}
 
