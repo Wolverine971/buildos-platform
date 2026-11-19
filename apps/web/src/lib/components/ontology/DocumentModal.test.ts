@@ -320,7 +320,9 @@ describe('DocumentModal document loading', () => {
 			'false'
 		);
 		expect(interactDock).toHaveAttribute('aria-hidden', 'false');
-	}, 10_000);
+		// ~1.7 s locally; CI's coverage run awaits the AgentChatModal import here and took
+		// 10.2 s on 2026-11-18, so 10 s was a flaky ceiling, not a behaviour check.
+	}, 30_000);
 
 	it('opens full agentic chat from the header with this document in focus', async () => {
 		await agentChatModalModule;

@@ -283,7 +283,9 @@ describe('service worker launch', () => {
 
 	it('shows the last Today read-only with Retry when the phone is offline', async () => {
 		const seeded = loadWorker(cssFetch());
-		await seedSnapshot(seeded.launch, YESTERDAY);
+		// handleTodayNavigation reads the real clock and drops saved screens over 30 days old,
+		// so a fixed date here stopped working a month later (it failed from 2026-11-16).
+		await seedSnapshot(seeded.launch, Date.now() - 24 * 60 * 60 * 1000);
 		const offline = loadWorker(
 			vi.fn(async () => {
 				throw new TypeError('Load failed');

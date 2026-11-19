@@ -170,7 +170,8 @@ describe('Authenticated Pages', () => {
 					supabase,
 					serverTiming: null
 				},
-				depends
+				depends,
+				url: new URL('https://build-os.com/projects')
 			} as any);
 			if (!result) throw new Error('Expected authenticated projects page data');
 

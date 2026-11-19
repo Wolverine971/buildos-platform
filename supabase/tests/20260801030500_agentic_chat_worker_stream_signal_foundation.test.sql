@@ -572,7 +572,9 @@ BEGIN
 		DELETE FROM public.chat_turn_runs
 		WHERE id = 'e3000000-0000-4000-8000-000000000001';
 	EXCEPTION
-		WHEN foreign_key_violation THEN v_rejected := true;
+		-- PostgreSQL 18 reports ON DELETE RESTRICT as restrict_violation (23001); earlier
+		-- versions (production runs 15) as foreign_key_violation (23503).
+		WHEN foreign_key_violation OR restrict_violation THEN v_rejected := true;
 	END;
 	PERFORM pg_temp.assert_true(
 		v_rejected,
