@@ -26,16 +26,21 @@ claude plugin install buildos@buildos
 Then run `/mcp` inside Claude Code, pick **buildos**, and approve the BuildOS consent screen
 (scope and projects). Tools appear as `mcp__plugin_buildos_buildos__*`.
 
-## Codex / ChatGPT
+## Codex
 
-The Codex manifest references the published BuildOS app, so ChatGPT and Codex authenticate
-through the BuildOS OAuth connector on first use. Register this repo as a marketplace and
-enable `buildos`:
+The Codex plugin loads the bundled skill and uses the published BuildOS app for OAuth.
+Register this repository as a marketplace and enable the plugin.
 
 ```bash
 codex plugin marketplace add /absolute/path/to/buildos-platform
 codex plugin add buildos@buildos
 ```
+
+## ChatGPT
+
+Connect the BuildOS app in ChatGPT. ChatGPT receives its instructions and tool schemas from
+the remote connector. The read-only data profile offers `search` and `fetch`. A general
+connection exposes tools according to its grants.
 
 ## Headless / personal use
 
@@ -43,6 +48,7 @@ If you would rather not go through OAuth on your own machine, point the client a
 stdio bridge launcher instead; it reads your agent key from the macOS Keychain:
 
 ```bash
+pnpm --filter @buildos/mcp-server build
 security add-generic-password -a "$USER" -s buildos-agent-token -w 'boca_...'
 claude mcp add --scope user --transport stdio buildos -- \
   /abs/path/to/buildos-platform/packages/buildos-mcp-server/bin/buildos-mcp-bridge.sh

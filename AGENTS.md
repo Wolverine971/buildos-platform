@@ -32,6 +32,18 @@ These are repository-wide defaults unless the user asks for a different approach
 
 ## Run validation without hurting the machine
 
+### Choose checks by the failure they can expose
+
+- For changed behavior, name the user-visible failure, the input/fault that triggers it, and
+  the independent expected result before choosing a test. Use the
+  [verification workflow](docs/testing/README.md#verification-workflow) and existing risk matrix.
+- For interacting state transitions, prefer a small deterministic set of event orders or
+  invariant checks over more isolated happy paths. Keep a readable reproducer for any failure.
+- When replacing a critical check, demonstrate that a plausible broken variant fails it.
+  Keep expected values separate from mutable inputs and do not mock the behavior being judged.
+- Report the tested revision (or scoped working-tree fingerprint), commands, outcomes, and
+  limits. Recheck affected behavior if those files change; an older pass does not cover new edits.
+
 ### Paid tests require explicit approval
 
 - Ask the user before every test run that incurs monetary costs, including live model/API

@@ -8,7 +8,7 @@ seoDescription: Connect Claude Code, ChatGPT, Codex, OpenClaw, and custom MCP or
 seoKeywords: BuildOS agents, MCP connector, Claude Code MCP, ChatGPT Actions, ChatGPT remote MCP, Codex MCP, OpenClaw, agent keys, OAuth remote MCP
 icon: Plug
 order: 9
-lastUpdated: 2026-10-23
+lastUpdated: 2026-11-18
 path: apps/web/src/content/docs/connect-agents.md
 ---
 
@@ -20,12 +20,11 @@ Per-project scope. Per-op write whitelist. Audit log. Rotate or revoke any time.
 
 ## What agents should do first
 
-BuildOS is usually a workspace with many projects. After an agent connects, it should:
+Use the tools offered by the current connection. A JSON-RPC gateway client calls `call.dial` before `tools/list`.
 
-1. If using MCP, initialize the MCP connection and call `tools/list`. If using the JSON-RPC gateway, call `call.dial` first, then `tools/list`.
-2. Use the direct tool names returned by `tools/list`.
-3. If it is about to work inside an existing project, call `get_onto_project_status` with the `project_id` first.
-4. If the project it needs is missing, or a call fails with `project_not_granted_to_connector`, give you the `grant_url` from the response and retry after you approve. See [When an agent can't see a project](#when-an-agent-cant-see-a-project).
+- For a project briefing, call `get_onto_project_status` with the project ID or the name in `query`. For a specific task or document, its detail tool may answer the question directly.
+- On a read-only `search`/`fetch` connection, search for a record and pass the complete returned ID to `fetch`.
+- To save a loose note or task, use `workspace.project_id` from `get_buildos_permissions` when available. If access is missing, follow the next action in the response. [How project access works](#when-an-agent-hits-a-wall)
 
 `get_onto_project_status` is the BuildOS equivalent of `git status` for a project. It returns the compact snapshot an agent needs before deeper reads or writes: START HERE orientation context, project description, task/document/plan/goal/collaborator counts, active collaborators, recent changes, overdue and due-soon tasks, and upcoming events.
 
@@ -72,7 +71,7 @@ The MCP endpoint supports three profiles:
 
 ## Install as a plugin (Claude Code and Codex)
 
-The BuildOS repository is also a plugin marketplace. The same `plugins/buildos` directory carries a Claude Code manifest, a Codex manifest, and a skill that teaches the agent how to work inside a BuildOS workspace (find the project, call `get_onto_project_status`, then read or write).
+Claude Code and Codex both install the `buildos-context` skill from this repository's plugin marketplace. Claude Code connects to the remote MCP server directly. Codex uses the BuildOS app. In ChatGPT, connect the app to receive instructions from its MCP server.
 
 ```bash
 # Claude Code
@@ -384,7 +383,7 @@ Notes:
 - Content is stored as-is. No H1/H2 tree parsing; the markdown you send is the markdown we save.
 - Content cap is **200 KB** per document. Larger bodies return `VALIDATION_ERROR`.
 - Use `content` for document bodies. External direct tools reject legacy compatibility parameters such as `body_markdown` and `parent_id` with `VALIDATION_ERROR` so agents learn the canonical schema.
-- `onto.document.update` defaults to **replace**. It also accepts `update_strategy: "append"` and `update_strategy: "merge_llm"`; on the external gateway, `merge_llm` gracefully falls back to append when no merge worker is available.
+- For partial edits, use `edits` or `section_edits` on the direct update tool. When sending `content` through the general document write schema, `update_strategy` defaults to `replace`. Set it to `append` to add text at the end.
 - `parent_document_id` is optional; omit it to land at the project root.
 - Use `parent_document_id` for tree placement; `parent_id` is not accepted on the external direct tool.
 - `position` is optional on create for sibling ordering within the project document tree.

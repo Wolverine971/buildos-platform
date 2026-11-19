@@ -753,18 +753,49 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 			expect(names).toEqual(['search', 'fetch']);
 		});
 
+		it.each(['initialize', 'server/discover'])(
+			'%s gives the data app instructions for its available tools',
+			async (method) => {
+				const modern = method === 'server/discover';
+				const response = await mcpPostProfile(
+					staticKeyAdmin({ scope_mode: 'read_write' }),
+					{
+						jsonrpc: '2.0',
+						id: 1,
+						method,
+						params: modern ? { _meta: MODERN_MCP_META } : {}
+					},
+					'chatgpt_data_app',
+					modern
+						? {
+								...STATIC_KEY_HEADER,
+								'Mcp-Method': method,
+								'MCP-Protocol-Version': MODERN_MCP_PROTOCOL_VERSION
+							}
+						: STATIC_KEY_HEADER
+				);
+				const { instructions } = (await response.json()).result;
+				expect(instructions).toContain('fetch');
+				expect(instructions).not.toContain('get_buildos_permissions');
+			}
+		);
+
 		it('search transforms gateway results into the ChatGPT result shape', async () => {
 			gatewayMocks.executeBuildosAgentGatewayTool.mockResolvedValue({
-				query: 'roadmap',
-				results: [
-					{
-						type: 'task',
-						id: 't1',
-						title: 'Roadmap task',
-						snippet: 'do the thing',
-						project_id: 'p1'
-					}
-				]
+				op: 'onto.search',
+				ok: true,
+				result: {
+					query: 'roadmap',
+					results: [
+						{
+							type: 'task',
+							id: 't1',
+							title: 'Roadmap task',
+							snippet: 'do the thing',
+							project_id: 'p1'
+						}
+					]
+				}
 			});
 
 			const response = await mcpPostProfile(
@@ -796,14 +827,18 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 
 		it('fetch normalizes a gateway get result by composite id', async () => {
 			gatewayMocks.executeBuildosAgentGatewayTool.mockResolvedValue({
-				task: {
-					id: 't1',
-					project_id: 'p1',
-					title: 'Roadmap task',
-					description: 'full body',
-					state_key: 'todo',
-					type_key: 'task.default',
-					updated_at: '2026-06-12T00:00:00Z'
+				op: 'onto.task.get',
+				ok: true,
+				result: {
+					task: {
+						id: 't1',
+						project_id: 'p1',
+						title: 'Roadmap task',
+						description: 'full body',
+						state_key: 'todo',
+						type_key: 'task.default',
+						updated_at: '2026-06-12T00:00:00Z'
+					}
 				}
 			});
 
@@ -928,6 +963,31 @@ describe('MCP spec compliance fixes', () => {
 		expect(payload.error.data.uri).toBe(
 			'buildos://document/11111111-1111-1111-1111-111111111111'
 		);
+	});
+
+	it('reads project orientation through the same scoped fetch used by resources', async () => {
+		gatewayMocks.executeBuildosAgentGatewayTool.mockResolvedValue({
+			op: 'onto.project.get',
+			ok: true,
+			result: {
+				project: { id: 'p1', name: 'Launch', description: 'Ship the pilot.' },
+				start_here: { content: 'Start with the field notes.' }
+			}
+		});
+		const uri = 'buildos://project/p1';
+		const response = await mcpPost(
+			staticKeyAdmin({ scope_mode: 'read_only' }),
+			{ jsonrpc: '2.0', id: 3, method: 'resources/read', params: { uri } },
+			STATIC_KEY_HEADER
+		);
+		const payload = await response.json();
+		expect(payload.result.contents).toEqual([
+			{
+				uri,
+				mimeType: 'text/markdown',
+				text: 'Start with the field notes.\n\n---\n\nShip the pilot.'
+			}
+		]);
 	});
 
 	it('sanitizes unexpected legacy dispatcher failures as internal errors', async () => {

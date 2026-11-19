@@ -146,8 +146,14 @@ export function circleFromSignals(s: CircleSignals): CircleDecision | null {
 // The model, for ambiguous entries only
 
 export const CIRCLE_DECISION_OPERATION = 'knowledge_circle';
-/** Entries per decision call: one question each, sized well under the 96 KB request limit. */
-export const CIRCLE_BATCH_SIZE = 20;
+/**
+ * Entries per decision call. Each entry carries up to four labelled mentions, a "same one?"
+ * question and the rules, so 12 keeps a worst-case call near 55 KB, well under the client's
+ * 96 KB request limit (20 measured 89 KB: one batch over the limit would fail every hour).
+ */
+export const CIRCLE_BATCH_SIZE = 12;
+/** The decision client's request limit (knowledgeEnrichWorker: maxRequestBytes). */
+export const CIRCLE_MAX_REQUEST_BYTES = 96_000;
 /** Below this the pick is too unsure to store as anything but unknown. */
 const MIN_CIRCLE_PROBABILITY = 0.55;
 /** Hiding and merge suggestions need a surer pick: the user has to undo a wrong one. */
@@ -837,7 +843,13 @@ export async function findEntriesToSort(
 		} else if (r.circle_source === 'model' && decidedBeforeCurrentQuestion(r.circle_set_at)) {
 			since.set(r.id, 0);
 			why.old_question++;
-		} else if (r.circle_source === 'model' && r.circle !== 'inner' && r.circle_set_at) {
+		} else if (
+			r.circle_set_at &&
+			r.circle !== 'inner' &&
+			// Model picks, and entries signals left unknown (nothing linked when they were sorted).
+			(r.circle_source === 'model' ||
+				(r.circle_source === 'signals' && r.circle === 'unknown'))
+		) {
 			recheck.push(r);
 		}
 	}
@@ -999,9 +1011,12 @@ export async function sortKnowledgeEntries(
 		return result;
 	}
 
-	// A failed or missing model leaves its entries for the next run.
+	// A failed or missing model leaves its entries for the next run. The user's own answers are
+	// already stored; rewriting them would restamp them (and reorder the examples).
 	const answered = all.filter(
-		(d) => !(d.source === 'model' && d.reason === 'model_unsure' && d.confidence === undefined)
+		(d) =>
+			d.source !== 'user' &&
+			!(d.source === 'model' && d.reason === 'model_unsure' && d.confidence === undefined)
 	);
 	await saveCircleDecisions(db, userId, answered, options.now);
 
@@ -1017,8 +1032,10 @@ export async function sortKnowledgeEntries(
 		if (error && !missingColumn(error)) throw new Error(`Hide non-names: ${error.message}`);
 	}
 
+	const hiddenNow = new Set(notNames);
 	for (const d of answered) {
-		if (!d.sameAs || d.notAName) continue;
+		// Never suggest merging into (or out of) an entry just hidden as not a name.
+		if (!d.sameAs || d.notAName || hiddenNow.has(d.sameAs)) continue;
 		const [a, b] = d.entityId < d.sameAs ? [d.entityId, d.sameAs] : [d.sameAs, d.entityId];
 		const { error } = await db.from('knowledge_merge_candidates').upsert(
 			{

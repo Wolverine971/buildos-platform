@@ -38,14 +38,16 @@ async function forwardRemoteMcpRequest<T>(
 	}
 }
 
-function createBridgeServer(client: BuildosRemoteMcpClient): Server {
+function createBridgeServer(client: BuildosRemoteMcpClient, profile?: string): Server {
 	const server = new Server(
 		{ name: 'buildos', title: 'BuildOS', version: BRIDGE_VERSION },
 		{
 			supportedProtocolVersions: SUPPORTED_PROTOCOL_VERSIONS,
 			capabilities: { tools: {}, resources: {} },
 			instructions:
-				"Use BuildOS to search, inspect, and update the authenticated user's projects and tasks. To save a note, doc, or task that no project clearly fits, put it in the user's Workspace (loose notes and tasks, not a project; get_buildos_permissions returns workspace.project_id) and say so. Never create a project to hold a single item.",
+				profile === 'chatgpt_data_app'
+					? 'Use search to find records in connected BuildOS projects. Pass the full result id to fetch and cite the returned title and URL. This profile is read-only.'
+					: "Use the tools available on this BuildOS connection. For a project briefing, use get_onto_project_status with project_id or query when available. Save loose notes and tasks in the user's Workspace with workspace.project_id from get_buildos_permissions and tell the user where they went. If Workspace is unavailable, ask for a writable destination. Never create a project just to hold one item.",
 			// Keep identity/schema calls cheap while live resource data remains fresh.
 			cacheHints: {
 				'tools/list': { ttlMs: 60_000, cacheScope: 'private' },
@@ -92,7 +94,7 @@ function main(): void {
 	const config = loadConfig(process.env);
 	const client = new BuildosRemoteMcpClient(config);
 
-	serveStdio(() => createBridgeServer(client), {
+	serveStdio(() => createBridgeServer(client, config.profile), {
 		legacy: 'serve',
 		onerror: (error) => {
 			console.error('[buildos-mcp] protocol error:', error.message);

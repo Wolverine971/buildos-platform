@@ -280,8 +280,13 @@
 	}
 
 	/** The user's answer to the sorter: part of my world, or only mentioned in passing. */
+	// circle is only sent for the viewer's own entries (a shared one belongs to someone else).
 	const sortable = $derived(
-		Boolean(entity && isOwn && (entity.kind === 'person' || entity.kind === 'org'))
+		Boolean(
+			entity &&
+				entity.circle !== undefined &&
+				(entity.kind === 'person' || entity.kind === 'org')
+		)
 	);
 	const droppedAsNotName = $derived(
 		entity?.status === 'hidden' && entity.hidden_reason === 'not_a_name'

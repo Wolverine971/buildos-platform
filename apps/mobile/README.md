@@ -47,6 +47,7 @@ _layout.tsx                    root Stack: sign-in | (tabs) | reader (form sheet
   project/[id].tsx             the project page, pushed on the tab it was opened from
 (tabs)/(today)/index.tsx       Today          /
 (tabs)/(today)/brief.tsx       Your brief     /brief, /brief?date=YYYY-MM-DD (pushed on Today's stack)
+(tabs)/(today)/inbox.tsx       AI Inbox       /inbox (pushed on Today's stack; dev-only ?skip=N jumps past sections)
 (tabs)/(workspace)/projects.tsx Workspace     /projects
 reader.tsx, sign-in.tsx
 chat.tsx                       chat with BuildOS: picks its context first (Workspace or a project), as the web does
@@ -58,7 +59,7 @@ A project keeps the tab bar and stays in its tab: links build group-qualified hr
 Re-tapping the current tab pops its stack to the root, then scrolls the root to the top.
 
 - **Today** (`src/app/(tabs)/(today)/index.tsx`, pieces in `src/components/today/`): title + date, "N
-  events · N tasks", a sideways chip row (overdue, Up next), then All day, Schedule (mono time
+  events · N tasks", a sideways chip row (Up next, N to review, overdue), then All day, Schedule (mono time
   rail with an accent "now" line), Anytime today (Due today / Starts today / In progress, by
   project) and "Here's what's waiting". Tap a row to open the reader and walk the day with
   Prev/Next. Capture box docked at the bottom. When a brief exists, a card under the header
@@ -74,6 +75,21 @@ Re-tapping the current tab pops its stack to the root, then scrolls the root to 
   folded behind "Show project details · N". Links in the brief open the project, task or doc
   in the app; others open in the in-app browser. The phone never asks for a brief to be
   written (that runs a model); the page polls every 10 s while one is being written.
+- **AI Inbox** (`src/app/(tabs)/(today)/inbox.tsx`, pieces in `src/components/inbox/`, logic in
+  `src/lib/inbox/` and `src/hooks/use-inbox.ts`): the web's Assistant's Desk. Today's chip row
+  shows "N to review" (`GET /api/inbox/count`, the same number as the web's chip) and opens it.
+  One section per project (Account first, then most recently touched), each with "Open project":
+  the project's check-ins first ("Did this happen?" per due day, folded after 5 tasks, Done /
+  Tomorrow / Drop or swipe; "Still on?" for a quiet project: Pause it / It's finished / Still on),
+  then its cleanup list in the web's blocks (Pick a path, Tidy-ups with swipe and "Apply all N",
+  Out of date, Want me to…?, Done for you with Undo), then other cards (review items, calendar
+  suggestions: Approve change / Dismiss / Snooze; agent runs and briefs: Talk it through /
+  Dismiss / Snooze, never a blind approve; Gmail reconnect opens the website). Email updates
+  ("From your email": Apply / Not now) sit above the projects. Every answer leaves its card at
+  once and waits 5 s in the bar at the bottom with Undo (`src/lib/inbox/pile.ts`); then it saves
+  in the background, one project's cleanup answers merged into one request. A failed save puts
+  the item back on its card with the reason. "Talk it through" asks the server for a chat seeded
+  with the item (`POST /api/inbox/:id/chat-session`) and opens it in the project's context.
 - **Workspace** (`src/app/(tabs)/(workspace)/projects.tsx`; the URL stays `/projects`): search, `LOOSE · N`
   (loose notes, docs and tasks; tap opens the reader), `PROJECTS · N` with Recent | By activity
   and the ⓘ legend, then the 4-column tile grid (`src/components/workspace/`). Long-press a tile
@@ -168,6 +184,15 @@ drops the bounces.
   store through the same port (no turn is sent): `pick`/`projects` are the opening screens,
   `idle` the empty chat after choosing, `focus` a project chat with the focus sheet open;
   `&autofocus=<any>` opens the keyboard, `&history=1` opens earlier chats.
+- **Inbox** reads `GET /api/inbox` (with payloads), check-ins, email updates and done-for-you in
+  parallel through `api.inbox.*`; a side list that fails (not enabled, offline) just stays empty.
+  Cleanup decisions go to `POST /api/onto/projects/:id/cleanup`, check-ins to
+  `POST /api/inbox/check-ins`, everything else to `POST /api/inbox/decide`. The rules for which
+  cleanup line goes in which block, and what each answer sends, are the web's own code, shared
+  from `@buildos/agentic-chat-client/inbox-cleanup-presentation` (and `…/inbox-cleanup-triage`).
+  The pile and what the screen hides while answers wait are module-level
+  (`src/lib/inbox/inbox-store.ts`), so leaving the inbox mid-hold loses nothing, and going to the
+  background sends whatever is still waiting.
 - **Design tokens** come from the web's Inkprint CSS: `pnpm gen:mobile-theme` regenerates
   `src/theme/inkprint.generated.ts`.
 
@@ -175,7 +200,7 @@ drops the bounces.
 
 ```sh
 pnpm --filter @buildos/mobile typecheck   # tsc
-pnpm --filter @buildos/mobile test:run    # vitest (pure TS: storage, capture queue, chat store, kit math, tiles, agenda)
+pnpm --filter @buildos/mobile test:run    # vitest (pure TS: storage, capture queue, chat store, inbox pile + model, kit math, tiles, agenda)
 pnpm --filter @buildos/mobile doctor      # expo-doctor
 pnpm --filter @buildos/mobile export      # Metro bundle for iOS (the install-layout smoke test)
 ```

@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-11-18T18:13:12.326Z
+// Generated on: 2026-11-19T18:41:39.715Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -727,11 +727,20 @@ export type DatabaseSchema = {
 		updated_at: string;
 		user_id: string;
 	};
+	builder_profile_stat_visitors: {
+		day: string;
+		hits: number;
+		kind: string;
+		subject: string;
+		user_id: string;
+		visitor: string;
+	};
 	builder_profile_stats_daily: {
 		asks: number;
 		day: string;
 		follows: number;
 		link_taps: number;
+		project_views: number;
 		user_id: string;
 		views: number;
 	};
@@ -746,6 +755,12 @@ export type DatabaseSchema = {
 		user_id: string;
 		week_of: string;
 	};
+	builder_profile_writing: {
+		created_at: string;
+		page_id: string;
+		position: number;
+		user_id: string;
+	};
 	builder_profiles: {
 		activity_refreshed_at: string | null;
 		avatar_url: string | null;
@@ -753,9 +768,11 @@ export type DatabaseSchema = {
 		cover_url: string | null;
 		created_at: string;
 		headline: string | null;
+		links_rev: number;
 		location: string | null;
 		now_text: string | null;
 		now_updated_at: string | null;
+		projects_rev: number;
 		published_at: string | null;
 		show_agent_split: boolean;
 		show_build_log: boolean;
@@ -2571,6 +2588,37 @@ export type DatabaseSchema = {
 		target_at: string | null;
 		user_id: string;
 	};
+	google_agent_grants: {
+		access_token_ciphertext: string;
+		access_token_expires_at: string | null;
+		connection_id: string;
+		connection_kind: string;
+		created_at: string;
+		granted_scopes: string[];
+		id: string;
+		oauth_client_id: string;
+		provider_account_id: string;
+		refresh_token_ciphertext: string;
+		refresh_token_expires_at: string | null;
+		revision: string;
+		status: string;
+		updated_at: string;
+		user_id: string;
+	};
+	google_agent_oauth_states: {
+		code_verifier: string;
+		connection_id: string;
+		connection_kind: string;
+		consumed_at: string | null;
+		created_at: string;
+		expires_at: string;
+		nonce: string;
+		oauth_client_id: string;
+		provider_account_id: string;
+		redirect_uri: string;
+		state_hash: string;
+		user_id: string;
+	};
 	homework_run_events: {
 		created_at: string;
 		event: Json;
@@ -2656,6 +2704,221 @@ export type DatabaseSchema = {
 		stripe_invoice_id: string;
 		subscription_id: string | null;
 		user_id: string;
+	};
+	knowledge_entities: {
+		circle: string;
+		circle_set_at: string | null;
+		circle_source: string | null;
+		created_at: string;
+		created_via: string;
+		enriched_at: string | null;
+		hidden_reason: string | null;
+		id: string;
+		image_url: string | null;
+		is_self: boolean;
+		kind: string;
+		merged_into_id: string | null;
+		name: string;
+		normalized_name: string | null;
+		owner_user_id: string | null;
+		scope: string;
+		status: string;
+		summary: string | null;
+		updated_at: string;
+	};
+	knowledge_entity_keys: {
+		created_at: string;
+		entity_id: string;
+		id: string;
+		key_type: string;
+		key_value: string;
+		owner_user_id: string | null;
+		scope: string;
+	};
+	knowledge_fact_sources: {
+		created_at: string;
+		fact_id: string;
+		quote: string | null;
+		source_id: string;
+	};
+	knowledge_facts: {
+		confidence: number;
+		created_at: string;
+		created_via: string;
+		dedupe_key: string | null;
+		entity_id: string;
+		id: string;
+		object_entity_id: string | null;
+		observed_at: string;
+		owner_user_id: string | null;
+		predicate: string;
+		qualifiers: Json;
+		run_id: string | null;
+		scope: string;
+		status: string;
+		updated_at: string;
+		valid_from: string | null;
+		valid_to: string | null;
+		value: Json | null;
+		value_text: string | null;
+	};
+	knowledge_kinds: {
+		created_at: string;
+		description: string;
+		key: string;
+		label: string;
+		plural_label: string;
+		shareable: boolean;
+		sort_order: number;
+	};
+	knowledge_mention_reads: {
+		content_hash: string;
+		owner_user_id: string;
+		read_at: string;
+		reader_version: number;
+		record_id: string;
+		record_kind: string;
+	};
+	knowledge_mentions: {
+		content_hash: string | null;
+		created_at: string;
+		end_offset: number;
+		entity_id: string;
+		field: string;
+		id: string;
+		made_by: string;
+		owner_user_id: string;
+		prefix: string;
+		record_id: string;
+		record_kind: string;
+		start_offset: number;
+		status: string;
+		suffix: string;
+		text: string;
+		updated_at: string;
+	};
+	knowledge_merge_candidates: {
+		created_at: string;
+		entity_a: string;
+		entity_b: string;
+		id: string;
+		origin: string;
+		owner_user_id: string;
+		question: string | null;
+		reason: string;
+		resolved_at: string | null;
+		score: number;
+		status: string;
+	};
+	knowledge_predicates: {
+		cardinality: string;
+		created_at: string;
+		description: string;
+		inverse_label: string | null;
+		key: string;
+		label: string;
+		object_kinds: string[];
+		qualifier_keys: string[];
+		shareable_subject_kinds: string[];
+		sort_order: number;
+		subject_kinds: string[];
+		value_type: string;
+	};
+	knowledge_record_links: {
+		created_at: string;
+		created_via: string;
+		entity_id: string;
+		id: string;
+		owner_user_id: string;
+		quote: string | null;
+		record_id: string;
+		record_kind: string;
+	};
+	knowledge_research_hints: {
+		created_at: string;
+		domains: string[];
+		entity_id: string;
+		id: string;
+		label: string;
+		owner_user_id: string;
+		polarity: string;
+		run_id: string | null;
+		urls: string[];
+	};
+	knowledge_run_targets: {
+		cost_usd: number;
+		created_at: string;
+		entity_id: string;
+		error: string | null;
+		facts_added: number;
+		fields: string[];
+		finished_at: string | null;
+		id: string;
+		instructions: string | null;
+		owner_user_id: string;
+		phase: string | null;
+		run_id: string;
+		started_at: string | null;
+		status: string;
+		summary: string | null;
+		updated_at: string;
+	};
+	knowledge_runs: {
+		budget_usd: number | null;
+		cost_usd: number;
+		created_at: string;
+		error: string | null;
+		finished_at: string | null;
+		id: string;
+		input: Json;
+		owner_user_id: string;
+		run_type: string;
+		started_at: string | null;
+		stats: Json;
+		status: string;
+		title: string;
+		updated_at: string;
+	};
+	knowledge_share_events: {
+		actor_user_id: string | null;
+		created_at: string;
+		detail: Json;
+		event: string;
+		id: string;
+		owner_user_id: string;
+		share_id: string;
+	};
+	knowledge_shares: {
+		created_at: string;
+		decided_at: string | null;
+		duration: string;
+		entity_id: string;
+		expires_at: string | null;
+		grantee_user_id: string | null;
+		id: string;
+		owner_user_id: string;
+		predicates: string[];
+		project_id: string | null;
+		requested_by_user_id: string | null;
+		revoked_at: string | null;
+		status: string;
+		updated_at: string;
+		via: string;
+		what: string;
+	};
+	knowledge_sources: {
+		captured_at: string;
+		content_hash: string | null;
+		created_at: string;
+		id: string;
+		meta: Json;
+		owner_user_id: string | null;
+		published_at: string | null;
+		record_id: string | null;
+		scope: string;
+		source_type: string;
+		title: string | null;
+		url: string | null;
 	};
 	legacy_entity_mappings: {
 		checksum: string | null;
@@ -5225,8 +5488,10 @@ export const tableNames = [
 	'builder_profile_activity_daily',
 	'builder_profile_links',
 	'builder_profile_projects',
+	'builder_profile_stat_visitors',
 	'builder_profile_stats_daily',
 	'builder_profile_updates',
+	'builder_profile_writing',
 	'builder_profiles',
 	'calendar_access_audit_events',
 	'calendar_analyses',
@@ -5320,11 +5585,29 @@ export const tableNames = [
 	'freshness_radar_signals',
 	'freshness_scans',
 	'freshness_track_scores',
+	'google_agent_grants',
+	'google_agent_oauth_states',
 	'homework_run_events',
 	'homework_run_iterations',
 	'homework_runs',
 	'inbox_items',
 	'invoices',
+	'knowledge_entities',
+	'knowledge_entity_keys',
+	'knowledge_fact_sources',
+	'knowledge_facts',
+	'knowledge_kinds',
+	'knowledge_mention_reads',
+	'knowledge_mentions',
+	'knowledge_merge_candidates',
+	'knowledge_predicates',
+	'knowledge_record_links',
+	'knowledge_research_hints',
+	'knowledge_run_targets',
+	'knowledge_runs',
+	'knowledge_share_events',
+	'knowledge_shares',
+	'knowledge_sources',
 	'legacy_entity_mappings',
 	'legal_acceptance_intents',
 	'legal_acceptances',

@@ -2,7 +2,7 @@
 
 # 148 — BuildOS iPhone app (Expo): Phase 0 groundwork + Phase 1 shell
 
-**Status (2026-11-13):** Phases 0–4 (native chat rounds 1–2), the daily brief and the Account & data entry are COMMITTED (`39bdf26ac`, 11-01). Never run on a real iPhone; no Apple Developer or Expo account yet. The web has moved ahead since (new Today, chat turn cards, threads, inbox). · **Opened:** 2026-10-28 · **Owner:** Claude
+**Status (2026-11-18):** Phases 0–4, native chat, the daily brief, the new Today and the Account & data entry are COMMITTED (latest `c3eba8749`, 11-13). The AI Inbox on the phone is BUILT 11-18, UNCOMMITTED (see the last two sections). Never run on a real iPhone; no Apple Developer or Expo account yet. · **Opened:** 2026-10-28 · **Owner:** Claude
 **Plan:** `docs/specs/MOBILE_APP_PLAN_2026-10-23.md` · **App:** `apps/mobile/README.md` · **Auth design:** `docs/architecture/AUTHENTICATION_AND_PERMISSIONS.md` → "Native app sessions"
 
 ## What users get
@@ -935,3 +935,46 @@ Done / Came through, left = Remove). Keys stay. Feel unverified: the simulator r
 Checks: api-client 45 tests + build; package 160 + build; mobile tsc, 290 tests, Metro export;
 simulator screenshots light + dark (shots/10–13). Not exercised: a real upload, a real move, a
 real turn's cards (all need a device run / paid turn); swipe feel.
+
+## AI Inbox on the phone (2026-11-18, BUILT, UNCOMMITTED)
+
+DJ picked "Inbox on the phone". Today shows "N to review" (GET /api/inbox/count, same as the web
+chip) → `/inbox` on Today's stack. Sections per project (Account first, check-ins inside their
+project), cleanup lists in the web's blocks (Pick a path, Tidy-ups with swipe + Apply all, Out of
+date, Want me to…?, Done for you w/ Undo), other kinds as cards (agent runs and briefs → Talk it
+through, never blind approve), email updates (Apply / Not now). Answers wait 5 s in a pile with
+Undo, then save (cleanup merged per project). Pure cleanup rules moved to
+`@buildos/agentic-chat-client` (web shims). Verified on the simulator against prod, view only.
+
+**Files:** `apps/mobile/src/app/(tabs)/(today)/inbox.tsx`, `src/components/inbox/*`,
+`src/hooks/use-inbox.ts`, `src/lib/inbox/{pile,model,inbox-store}.ts`, tests
+`inbox-pile.test.ts` + `inbox-model.test.ts`; Today chip in `components/today/today-header.tsx`;
+`packages/api-client/src/{inbox-types.ts,endpoints/inbox.ts,endpoints/inbox.test.ts}`;
+`packages/agentic-chat-client/src/inbox-cleanup-{presentation,triage}.ts` (+ tests, git mv'd from
+`apps/web/src/lib/components/inbox/`, which now holds one-line re-export shims).
+
+**Checks (11-18):** mobile tsc clean + 306 tests; api-client 51 + build; agentic-chat-client 202 +
+build; web 35 inbox tests through the shims (InboxCleanupTriage, InboxProjectCleanup,
+InboxChangeDetails, cleanup route, check-ins modal). Simulator (Expo Go 58, iPhone 18 Pro, app
+pointed at build-os.com, view only) light + dark: chip "17 to review", check-ins with fold,
+tidy-up line, Pick a path card, counts agree with the web (17). Web `svelte-check` NOT run (build
+`@buildos/agentic-chat-client` first). Not felt: any tap, swipe, the pile bar, Talk it through.
+
+## Next (2026-11-18)
+
+1. [ ] Commit the inbox chunk (pathspec: the files above; `git status` shows the web renames as
+       `RM` plus the two new shim files).
+2. [ ] Web `svelte-check` after the package move (`pnpm --filter @buildos/agentic-chat-client build`
+       first).
+3. [ ] DJ on a real iPhone: answer one cleanup line, swipe a check-in, Undo once, Talk it through
+       (writes prod, free).
+4. [ ] Inbox: date picker for Move; free-text "Add a note" on cleanup lines; Mark handled /
+       Dismiss after Talk it through (`POST /api/inbox/:id/resolve-from-chat`); "What happened"
+       feed (`/api/inbox/activity`); calendar-suggestion detail; native change-set review for
+       agent runs (only if DJ wants Approve on the phone).
+5. [ ] Polish: a long project name wraps away from its count in the inbox section head.
+6. [ ] Phase 5 (needs Apple Developer + Expo accounts): dev build, native push, morning push →
+       `/brief?autoplay=1`, inbox badge, Google/Apple sign-in.
+7. [ ] Account deletion proof with DJ (tracker 103) before App Review.
+8. [ ] Later: brief lock-screen controls, Chats tab, knowledge cards in the reader, web adopts
+       `@buildos/api-client`.

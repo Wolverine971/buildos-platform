@@ -1,6 +1,6 @@
 {
 	"name": "buildos",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Connect ChatGPT and Codex to persistent BuildOS project context through the BuildOS app.",
 	"author": {
 		"name": "BuildOS",

@@ -918,13 +918,13 @@
 						<label
 							class="flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground"
 						>
-							Where
+							Place
 							<select
 								class="min-h-8 max-w-44 rounded-md border border-border bg-card px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 								value={place ?? ''}
 								onchange={(e) => choose({ place: e.currentTarget.value || null })}
 							>
-								<option value="">Anywhere</option>
+								<option value="">Any place</option>
 								{#each places as p (p.id)}
 									<option value={p.id}>{p.name} ({p.count})</option>
 								{/each}

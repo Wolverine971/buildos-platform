@@ -2,11 +2,14 @@
 
 # BuildOS iPhone app: plan
 
-Status: **Phases 0–3, the Inkprint kit, chat round 1, the chat polish and the daily brief are committed and
-pushed (`867aba900`, 2026-10-31). Chat round 2 (context picker on open, proposal cards, the changes row
-with Undo) and the in-app Account & data entry are built 2026-10-31, uncommitted.** DJ chose Expo + React
-Native and the "native core + web pages for the rest" shape on 2026-10-23. Build status and the remaining
-checks live in `tasker/148-mobile-app.md` (untracked); the app itself is `apps/mobile/` (README there).
+Status (2026-11-18): **Phases 0–4, the Inkprint kit, native chat (rounds 1–2 plus the 11-13
+catch-up: turn cards, Continue in, image attachments), the daily brief, the new Today (pick card,
+close-out, waiting lists, swipe rows) and the Account & data entry are committed (latest
+`c3eba8749`, 2026-11-13). The AI Inbox on the phone is built 2026-11-18, uncommitted.** Never run on
+a real iPhone yet; Phase 5 waits on the Apple Developer and Expo accounts. DJ chose Expo + React
+Native and the "native core + web pages for the rest" shape on 2026-10-23. Build status, checks
+and the next-work list live in `tasker/148-mobile-app.md` (untracked); the app itself is
+`apps/mobile/` (README there).
 
 ## The vision (DJ, 2026-10-23)
 
@@ -85,7 +88,8 @@ spacing become a token file that produces CSS variables for web and a theme obje
 ## Screens
 
 **Native (v1):** Today · Capture (type or talk) · Projects · Project reader with tasks and docs ·
-Task and doc view/edit · Agent chat · Notifications · Daily briefs.
+Task and doc view/edit · Agent chat · Notifications · Daily briefs · AI Inbox (added 2026-11-18:
+DJ picked it as the most phone-shaped job, clearing decisions in 30 seconds).
 
 **Web pages inside the app, already signed in:** Profile and settings · Billing · Calendar and Gmail
 connect · Agent keys · Invites · Onboarding extras · Account deletion (Apple requires it to be
@@ -148,6 +152,16 @@ button until Phase 4.
 
 Same turn endpoints and live channel as web. Expo's `fetch` supports streaming responses.
 
+**Built:** round 1 (2026-10-30), round 2 (10-31: context on open, proposal cards, changes row
+with Undo), catch-up (11-13: turn cards, Continue in, image attachments).
+
+### Phase 4b: AI Inbox (2026-11-18, built, uncommitted)
+
+The web's Assistant's Desk on the phone, behind a "N to review" chip on Today: check-ins inside
+their project, cleanup lists in the web's blocks with swipe answers, simple cards answered in
+place, change sets and briefs sent to "Talk it through", and a 5-second cleared pile with Undo.
+Details in `apps/mobile/README.md` → Screens → AI Inbox.
+
 ### Phase 5: notifications and sign-in (needs the Apple Developer account)
 
 - Development build (no longer Expo Go): native push, notification tap → the right screen,
@@ -159,6 +173,25 @@ Same turn endpoints and live channel as web. Expo's `fetch` supports streaming r
 
 Web pages inside the app, TestFlight for DJ and testers, App Store listing and privacy labels, a
 demo account for App Review, then submission.
+
+## What's next (2026-11-18)
+
+In order; the live checklist is `tasker/148-mobile-app.md` → "Next".
+
+1. **Commit the inbox chunk**, then **DJ's first real-device run**: answer one cleanup line, swipe
+   a check-in, use Undo, open Talk it through. Answers write production (free; no model call
+   except a "note" answer, which runs the server's note reader).
+2. **Inbox gaps:** a date picker for "Move" on check-ins (only Tomorrow today); free-text "Add a
+   note" on cleanup lines (`api.inbox.cleanupNote` exists); after Talk it through, "Mark handled"
+   / "Dismiss" through `resolve-from-chat`; the "What happened" feed (`/api/inbox/activity`);
+   calendar-suggestion detail (events, suggested tasks); a native change-set review for agent
+   runs if DJ wants Approve on the phone.
+3. **Phase 5** once the Apple Developer and Expo accounts exist: development build, native push,
+   the morning push opening `/brief?autoplay=1`, an inbox badge, Google and Apple sign-in.
+4. **Account deletion proof** end to end on a test account, with DJ watching (tracker 103), before
+   App Review.
+5. Smaller: lock-screen controls for the brief audio, a Chats tab (user-wide chat list), knowledge
+   cards (people and orgs) in the task reader, the web adopting `@buildos/api-client`.
 
 ## Landmines
 

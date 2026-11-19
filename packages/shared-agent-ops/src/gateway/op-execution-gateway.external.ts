@@ -252,7 +252,16 @@ export function buildExternalToolDescription(entry: RegistryOp): string {
 		return `${entry.description} Not for a single note, doc, or task: those go to the user's Workspace. Project creation requires read_write access with onto.project.create whitelisted. A project-scoped key may create projects; each project it creates is automatically added to the key's scope. ${scopeNotice}`;
 	}
 
-	if (entry.op === 'onto.task.create' || entry.op === 'onto.document.create') {
+	// The chat catalog uses a different placement field and a chat-only edit review card.
+	if (entry.op === 'onto.document.create') {
+		return `Create a Markdown document with title and content. Use parent_document_id for tree placement. ${EXTERNAL_WORKSPACE_CREATE_NOTICE} ${scopeNotice}`;
+	}
+
+	if (entry.op === 'onto.document.update') {
+		return `Update an existing document by document_id. Use edits or section_edits for partial changes. Use content for whole-body replacement or append. ${scopeNotice}`;
+	}
+
+	if (entry.op === 'onto.task.create') {
 		return `${entry.description} ${EXTERNAL_WORKSPACE_CREATE_NOTICE} ${scopeNotice}`;
 	}
 

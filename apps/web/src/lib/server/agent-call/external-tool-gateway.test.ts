@@ -3375,6 +3375,8 @@ describe('external tool gateway', () => {
 		});
 		expect(createDocumentTool?.inputSchema.properties).not.toHaveProperty('body_markdown');
 		expect(createDocumentTool?.inputSchema.properties).not.toHaveProperty('parent_id');
+		expect(createDocumentTool?.description).toContain('parent_document_id');
+		expect(createDocumentTool?.description).not.toContain('parent_id');
 	});
 
 	it('exposes canonical content strategy fields on external document update tools', async () => {

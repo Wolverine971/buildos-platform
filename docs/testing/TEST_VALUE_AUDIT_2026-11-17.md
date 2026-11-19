@@ -106,9 +106,9 @@ behavior suites, rather than creating another suite that repeats them.
   roster. Source analysis is appropriate here because the import itself is the violation.
 - **Shared markdown:** moved the web re-export's cases into the
   [owning package](../../packages/shared-agent-ops/src/utils/markdown-normalization.test.ts).
-  Eleven cases across two suites became nine distinct cases: null/non-string/empty input,
-  escaped line breaks and quotes in single/mixed payloads, fenced-code preservation, `/n`
-  markers, and the compound plan fixture. Removed only the two overlapping shared cases and
+  Eleven cases across two suites became ten distinct cases: null/non-string/empty input,
+  escaped line breaks and quotes separately and together, single/mixed payloads, fenced-code preservation, `/n`
+  markers, and the compound plan fixture. Removed the duplicate fenced-code case and `/n` assertion, plus
   the redundant web test location; the runtime re-exports are unchanged.
 
 Further comparisons did **not** justify deleting the web versioning, instantiation, or
@@ -160,7 +160,7 @@ test calls the same function. Do not use a test-count reduction as the success m
 
 - **335 worker tests passed across 15 focused files**, including the modified suites and
   existing table-adapter, workflow-recovery, and batched-persistence contracts.
-- **9 shared markdown tests passed**. Follow-up total: **344 passing tests**.
+- **10 shared markdown tests passed**. Follow-up total: **345 passing tests**.
 - Focused native TypeScript checking passed for the 12 modified worker test files and their
   imports. Temporary configuration was kept outside the repository.
 - Runs used one Vitest worker through `test-gate`. No paid models, live services, database,
@@ -170,3 +170,122 @@ test calls the same function. Do not use a test-count reduction as the success m
   failed on the missing token; the other seven cases passed. The transform lived in `/tmp`
   and did not edit production source. This catches a defect the former helper-call counts
   would have accepted.
+- Prettier, `git diff --check`, and strict documentation health checking passed; the latter
+  found no issues across 1,677 Markdown files.
+
+### Independent review
+
+A second agent independently reviewed the test changes, deletions, retained production
+contracts, and scenario documentation. The review confirmed that all 53 scenario IDs and
+24 owning-file mappings remain. Two test weaknesses were corrected:
+
+- The provider dependency check skipped the worker's configured `@/` alias. It now resolves
+  imports with the worker's TypeScript configuration before comparing the target module.
+- Stream-adapter assertions shared mutable inputs and receipts with their expectations.
+  The adapter now receives independent fixture copies, so an in-place ownership rewrite or
+  publication-outcome change cannot also rewrite the expected value.
+
+The effect-control denial test also again requires `AgenticChatEffectControlRpcError`
+instances, retaining the prior error-class guarantee alongside the code/RPC-name assertions.
+
+Temporary transforms injected an aliased coordinator import and overwrote the second text
+batch's token/generation with the first batch's values. The corrected tests rejected both
+faults; the other 47 cases passed. Production source was not edited by these experiments.
+All **58 tests in the three affected suites passed** with the normal configuration, and
+focused native TypeScript checking passed. The reviewer rechecked the fixes and reported
+no remaining material findings in the reviewed changes.
+
+### Verification approach refinement
+
+The [verification workflow](./README.md#verification-workflow) now starts from the changed
+behavior, plausible failure, and independent expected result. Repository collaboration
+instructions point to it. It includes scoped validation evidence, bounded invariant checks,
+independent comparisons for refactors, and negative controls for critical replacement checks.
+No new dependency, commit hook, blocking gate, or live validation requirement was added.
+
+The [chat inbox suite](../../packages/agentic-chat-client/src/worker-realtime-inbox.test.ts)
+now composes the real inbox and UI adapter. Two generated checks enumerate 360 distinct
+delivery orders each, treating repeated deliveries as identical when generating permutations:
+
+- Initial reconciliation, out-of-order text, duplicate delivery, and stale-generation events
+  must preserve an ordered prefix and converge to the durable text snapshot.
+- Attempt takeover, future events, duplicate delivery, and old reconciliation replies must
+  keep each attempt's text separate and never move back to an older generation. Sequence
+  numbers may reset across generations; within a generation they cannot move backward.
+
+All **19 inbox tests passed** after the additions (about 0.3 seconds total, 0.12 seconds in
+tests on this machine). The two new checks also failed as intended when temporary transforms
+replayed retained text after a snapshot and removed the receipt-generation checks. Failures
+reported the offending delivery order, repeated text, and generation rollback. The normal
+run passed again afterward. Focused native TypeScript checking passed.
+
+Validation used base revision `68bd7f4606a4e22e158f1bdf2630b196f7c6cf65` plus the working-tree
+test edit (SHA-256 `7033f6143a6c4c0d6b5e7169b7829d06a5b3aab8cfdf8897f9393e0f2704be76`).
+Client package sources/configuration and the lockfile were fingerprinted around the run.
+These are bounded client-state checks with a view/store port, not browser rendering, HTTP
+polling, database concurrency, or live-model evidence. Production code was unchanged.
+
+### Five-flow hardening follow-up
+
+Added **16 failure-focused cases** across the areas requested after the verification review:
+
+| Flow                           | New behavior exercised                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tool definitions and calls     | Interleaved streamed arguments across 1/2/7/64-character fragments preserve Unicode, escaping, scheduling references and call identity. Actual worker definitions accept valid calls, identify the invalid call in a mixed batch, and reject duplicate ids before returning a completed batch.                                                                                                                               |
+| Project creation               | A failed create carrying partial project ids cannot satisfy the request or clear pending work. A subsequent confirmed success can.                                                                                                                                                                                                                                                                                           |
+| Frontend streaming             | Real channel → inbox → UI adapter composition buffers until baseline recovery, ignores wrong-session data, deduplicates text, repairs a gap on reconnect, and finishes with authoritative saved text despite late frames.                                                                                                                                                                                                    |
+| Daily brief                    | Losing queue ownership during generation or notification metadata reads prevents notification, waiting-item refresh, and successful completion by the retired attempt; both new and already-saved briefs are exercised.                                                                                                                                                                                                      |
+| Closing and synthesizing chats | Cross-user session access is rejected; failed context saves stop follow-ups; stale activity counters do not hide messages; unchanged synthesis is not queued again; explicit project detach saves before queueing. A failed synthesis save does not hand off entities or mark completion, and succeeds on retry. Messages arriving during the model call are included in the next synthesis, not stamped as already covered. |
+
+The new tool-validation test **failed before the production fix**: `project.state_key:
+"launch"` passed preflight even though the project mutation adapter rejected it. The shared
+project-create validator now uses the same state normalizer as the adapter, giving invalid
+values a validation-repair opportunity before mutation execution. The regression also
+checks that the supported `In Progress` alias remains accepted.
+
+Two additional daily-brief tests failed before a second production fix: when ownership was
+lost during the notification helper's metadata reads, both a newly generated brief and an
+already-saved brief still emitted `brief.completed` and reported success. The helper now
+receives the job signal, checks it immediately before delivery, and propagates cancellation
+instead of swallowing it as a notification failure. The existing Cycle Run tests also pass.
+
+Removed another exact source-count assertion from the playbook example suite. Every
+operational playbook must still supply a discovered example, and every discovered example
+still runs through real validation and capability/field checks; adding a valid example no
+longer fails an arbitrary example-count expectation.
+
+Validation: **177 tests in 12 focused files passed** (worker 110, runtime 31, client 27,
+web close route 9). The modified playbook guard was rerun separately. Focused native
+TypeScript checks passed for the worker tests, client composition, runtime change and
+close-route test. No paid model tests, production calls, browser run or full suite was used.
+The [behavior risk matrix](./COVERAGE_MATRIX.md) records the evidence boundaries: database,
+queue and model ports remain mocked, and frontend composition stops at the view/store port.
+
+A temporary transform made the close route refresh the old project after an explicit
+detach. The new regression failed as intended (the other eight cases passed); the ordinary
+run passed afterward. The route's database fixture returns independent read snapshots so
+later writes cannot accidentally mutate the loaded session and hide this bug. No production
+source was changed by this negative control.
+
+These runs used base `68bd7f4606a4e22e158f1bdf2630b196f7c6cf65` plus the working tree.
+The nine edited code/test files were fingerprinted after validation in
+`/tmp/buildos-five-flow-validated-files.json`; their combined SHA-256 is
+`3ca14a36716f4b0043ace20c640964d511382571e5456ad7fe5ea453efae9e97`.
+This fingerprints this follow-up's edits, not every transitive dependency in the workspace.
+
+Successful test commands (the two worker reruns reflect the later brief fix and playbook
+guard change, rather than one additional full run):
+
+```sh
+test-gate run env VITEST_MAX_WORKERS=1 pnpm --filter @buildos/worker exec vitest run tests/agenticChatStreamedToolValidation.test.ts tests/chatSessionClassifierLibri.test.ts tests/briefWorker.stale.test.ts tests/agenticChatCreateOntoProjectMutationAdapter.test.ts tests/agenticChatSkillContractExamples.test.ts
+test-gate run env VITEST_MAX_WORKERS=1 pnpm --filter @buildos/worker exec vitest run tests/briefWorker.stale.test.ts tests/dailyBriefCycleHandler.test.ts
+test-gate run env VITEST_MAX_WORKERS=1 pnpm --filter @buildos/worker exec vitest run tests/agenticChatSkillContractExamples.test.ts
+test-gate run env VITEST_MAX_WORKERS=1 pnpm --filter @buildos/agentic-chat-runtime exec vitest run src/loop/project-create-args.test.ts src/loop/project-create-completion.test.ts src/loop/tool-validation.test.ts
+test-gate run env VITEST_MAX_WORKERS=1 pnpm --filter @buildos/agentic-chat-client exec vitest run src/worker-realtime-channel.test.ts src/worker-realtime-inbox.test.ts
+test-gate run 'env VITEST_MAX_WORKERS=1 pnpm --filter @buildos/web exec vitest run "src/routes/api/chat/sessions/[id]/close/server.test.ts"'
+```
+
+Focused type checks ran `test-gate run node apps/worker/node_modules/@typescript/native/bin/tsc
+-p /tmp/buildos-five-flow-<scope>-types.json --pretty false` separately for `worker`,
+`client`, `runtime`, and `web`. These temporary configs extend each package's configuration
+and include the changed tests/source, rather than running a full workspace typecheck.

@@ -638,10 +638,8 @@ describe('ProjectWorkspace edge states', () => {
 			}
 		});
 
-		await waitFor(() => {
-			expect(
-				screen.getByRole('navigation', { name: 'Project workspace views' })
-			).toBeInTheDocument();
+		const navigation = await screen.findByRole('navigation', {
+			name: 'Project workspace views'
 		});
 
 		const briefButton = screen.getByRole('button', {
@@ -650,11 +648,13 @@ describe('ProjectWorkspace edge states', () => {
 		expect(briefButton).toBeInTheDocument();
 		expect(screen.getByTitle('Open project graph')).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Project options' })).toBeInTheDocument();
-		expect(screen.getAllByRole('tab').map((tab) => tab.textContent?.trim())).toEqual([
+		const tabs = within(navigation).getAllByRole('tab');
+		expect(tabs.map((tab) => tab.textContent?.trim())).toEqual([
 			'Overview',
 			'Tasks',
 			'Docs',
-			'Activity'
+			'Activity',
+			'People'
 		]);
 
 		expect(container.querySelector('[aria-label="Project focus"]')).not.toBeInTheDocument();

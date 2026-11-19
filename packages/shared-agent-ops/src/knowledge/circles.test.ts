@@ -7,6 +7,8 @@
 // data, and that the user's own answers always win.
 import { describe, expect, it } from 'vitest';
 import {
+	CIRCLE_BATCH_SIZE,
+	CIRCLE_MAX_REQUEST_BYTES,
 	CIRCLE_QUESTION_SINCE,
 	circleFromSignals,
 	decideCirclesWithModel,
@@ -336,6 +338,57 @@ describe('when the sorter runs', () => {
 	});
 });
 
+describe('review fixes', () => {
+	it("does not restamp the user's own answers", async () => {
+		const tables = graph();
+		const { decider } = fakeDecider({});
+		await sortKnowledgeEntries(fakeDb(tables), USER, ['lyft', 'cnn'], {
+			decider,
+			now: () => new Date('2026-12-01T00:00:00Z')
+		});
+		const lyft = tables.knowledge_entities.find((e) => e.id === 'lyft')!;
+		expect(lyft.circle_set_at).toBe(AFTER);
+	});
+
+	it('rechecks an entry signals left unknown once work links to it', async () => {
+		const tables = graph();
+		tables.knowledge_entities.push(
+			entity('sys', 'Comer Construction', {
+				created_via: 'system',
+				circle: 'unknown',
+				circle_source: 'signals',
+				circle_set_at: AFTER
+			})
+		);
+		tables.knowledge_record_links.push(
+			link('sys', 'task', 't1', 'Comer Construction', '2026-11-20T00:00:00Z')
+		);
+		const found = await findEntriesToSort(
+			fakeDb(tables),
+			USER,
+			() => new Date('2026-11-22T00:00:00Z')
+		);
+		expect(found.ids).toContain('sys');
+	});
+
+	it('never suggests merging into an entry hidden as not a name', async () => {
+		const tables = graph();
+		// e1 = Anduril (same as Anduril Industries), e2 = Anduril Industries' twin is hidden
+		tables.knowledge_entities.find((e) => e.id === 'anduril-inc')!.circle_source = null;
+		const { decider } = fakeDecider({
+			e1: ['public', 0.9],
+			e1_same: ['s1', 0.9],
+			e2: ['not_a_name', 0.9]
+		});
+		await sortKnowledgeEntries(fakeDb(tables), USER, ['anduril', 'anduril-inc'], { decider });
+		expect(tables.knowledge_merge_candidates).toEqual([]);
+		expect(tables.knowledge_entities.find((e) => e.id === 'anduril-inc')).toMatchObject({
+			status: 'hidden',
+			hidden_reason: 'not_a_name'
+		});
+	});
+});
+
 describe('circle signals and the question version', () => {
 	const base: CircleSignals = {
 		entityId: 'e1',
@@ -395,5 +448,46 @@ describe('similar names', () => {
 		expect(findSimilarEntries(all[2]!, all)).toEqual([{ id: 'd', name: 'Phillip Velayo' }]);
 		expect(findSimilarEntries(all[6]!, all)).toEqual([{ id: 'h', name: 'Cadre' }]);
 		expect(findSimilarEntries(all[4]!, all)).toEqual([]);
+	});
+});
+
+describe('request size', () => {
+	it('keeps a worst-case batch well under the request limit', async () => {
+		const sizes: number[] = [];
+		const decider: IdentityDecider = {
+			async decide(request) {
+				sizes.push(JSON.stringify(request).length);
+				return { ok: false, error: 'probe', receipt: { costUsd: 0 } };
+			}
+		};
+		const long = 'x'.repeat(1000); // trimmed to the per-mention cap
+		const entries: CircleSignals[] = Array.from({ length: CIRCLE_BATCH_SIZE * 2 }, (_, i) => ({
+			entityId: `e${i}`,
+			name: `${'Very Long Organization Name '.repeat(4)}${i}`,
+			kind: 'org',
+			isSelf: false,
+			createdVia: 'backfill',
+			knownByMe: false,
+			ownedByMe: false,
+			hasPrivateContact: false,
+			worksForMine: false,
+			linkedRecords: 40,
+			mentions: [long, long, long, long, long],
+			appearances: { your_tasks: 9, your_documents: 9, research_briefs: 30, your_chats: 2 },
+			similar: [1, 2, 3, 4].map((n) => ({
+				id: `s${n}`,
+				name: `${'Similar Long Name '.repeat(3)}${n}`
+			})),
+			current: null
+		}));
+		const examples = Array.from({ length: 40 }, (_, i) => ({
+			name: `${'Example Organization '.repeat(3)}${i}`,
+			kind: 'org' as const,
+			answer: 'public' as const
+		}));
+		await decideCirclesWithModel(entries, decider, { examples });
+		expect(sizes).toHaveLength(2);
+		// Headroom for the client's own wrapping and longer real names.
+		expect(Math.max(...sizes)).toBeLessThan(CIRCLE_MAX_REQUEST_BYTES * 0.7);
 	});
 });

@@ -82,9 +82,6 @@ const MCP_SERVER_INFO = {
 	title: BUILDOS_MCP_SERVER_NAME,
 	version: '2026-08-10'
 } as const;
-// Workspace rule (2026-10-23): the agent's project_id is the decision.
-const MCP_SERVER_INSTRUCTIONS =
-	"Use BuildOS tools to read scoped project context. Write tools are available only when the user approved write access. To save a note, doc, or task that no project clearly fits, put it in the user's Workspace (loose notes and tasks, not a project; get_buildos_permissions returns workspace.project_id) and say so. Never create a project to hold a single item. When a call is refused with details.access_needed, show the user its say_to_user. If next.open_url is set, give them that link and retry after they tap it. If next.tool is request_project_access, ask the user first and call it only on their yes; then pause and use check_project_access to pick the task back up once the owner answers.";
 
 /**
  * Legacy MCP-Protocol-Version values accepted by the hand-rolled compatibility
@@ -508,12 +505,23 @@ function parseMcpProfile(url: URL): McpToolProfile {
 	return 'general';
 }
 
+function mcpServerInstructions(url: URL): string {
+	if (parseMcpProfile(url) === 'chatgpt_data_app') {
+		return 'Search records in connected BuildOS projects with search. Pass the full returned id, including its type prefix, to fetch. Cite the returned title and URL. This connection is read-only. Edits require an action-capable BuildOS connection.';
+	}
+	return [
+		'Use the tools offered by this connection. For a project briefing, call get_onto_project_status with project_id or a project name in query when available.',
+		"Save a loose note, document or task in the user's Workspace using workspace.project_id from get_buildos_permissions. Tell the user where it went. If Workspace is unavailable, follow its grant link when supplied or ask for a writable destination. Never create a project just to hold one item.",
+		'On a refusal, show error.details.access_needed.say_to_user. Offer next.open_url when supplied. If next.tool is request_project_access, get the user’s yes before contacting the owner, then check_project_access when resuming.'
+	].join(' ');
+}
+
 const MCP_SEARCH_FETCH_TOOLS = [
 	{
 		name: 'search',
 		title: 'Search',
 		description:
-			'Search BuildOS projects, tasks, plans, goals, documents, milestones, and risks within the connected scope. Returns matching records with ids to pass to fetch.',
+			'Search tasks, plans, goals, documents, milestones, and risks in connected BuildOS projects. Pass a matching record id to fetch.',
 		inputSchema: {
 			type: 'object',
 			additionalProperties: false,
@@ -551,7 +559,7 @@ const MCP_SEARCH_FETCH_TOOLS = [
 		name: 'fetch',
 		title: 'Fetch',
 		description:
-			'Fetch the full scoped content of a single BuildOS record by id (the id returned by search, e.g. "task:<uuid>").',
+			'Read a BuildOS record using the full id returned by search, including its type prefix.',
 		inputSchema: {
 			type: 'object',
 			additionalProperties: false,
@@ -682,8 +690,14 @@ async function runMcpSearch(params: {
 	if (result.ok === false || result.error) {
 		return result;
 	}
-	const rawResults = Array.isArray(result.results) ? result.results : [];
-	const results = rawResults
+	const payload = result.result;
+	if (!isRecord(payload) || !Array.isArray(payload.results)) {
+		return {
+			ok: false,
+			error: { code: 'INTERNAL', message: 'Missing BuildOS search results' }
+		};
+	}
+	const results = payload.results
 		.filter((row): row is Record<string, unknown> => isRecord(row))
 		.map((row) => ({
 			id: `${String(row.type)}:${String(row.id)}`,
@@ -736,10 +750,13 @@ async function runMcpFetch(params: {
 		securityEventOptions: params.securityEventOptions,
 		connectorOrigin: params.origin
 	});
-	const entity = result[config.resultKey];
-	if (!isRecord(entity)) {
-		// Pass through the gateway's error/not-found shape unchanged.
+	if (result.ok === false || result.error) {
 		return result;
+	}
+	const payload = isRecord(result.result) ? result.result : {};
+	const entity = payload[config.resultKey];
+	if (!isRecord(entity)) {
+		return { ok: false, error: { code: 'INTERNAL', message: 'Missing BuildOS record' } };
 	}
 	const title =
 		(typeof entity.title === 'string' && entity.title) ||
@@ -753,7 +770,7 @@ async function runMcpFetch(params: {
 				: '';
 	// For a project fetch, lead with the START HERE orientation document so the
 	// agent gets the "lay of the land" instead of just the one-line description.
-	const startHere = isRecord(result.start_here) ? result.start_here : null;
+	const startHere = isRecord(payload.start_here) ? payload.start_here : null;
 	if (type === 'project' && startHere && typeof startHere.content === 'string') {
 		text = text ? `${startHere.content}\n\n---\n\n${text}` : startHere.content;
 	}
@@ -771,6 +788,7 @@ async function runMcpFetch(params: {
 			project_id: entity.project_id ?? null,
 			type_key: entity.type_key ?? null,
 			state_key: entity.state_key ?? null,
+			...(entity.content_truncated === true ? { content_truncated: true } : {}),
 			updated_at: entity.updated_at ?? null
 		}
 	};
@@ -904,7 +922,7 @@ async function dispatchAuthenticatedMcpMethod(params: {
 					resources: { listChanged: false }
 				},
 				serverInfo: MCP_SERVER_INFO,
-				instructions: MCP_SERVER_INSTRUCTIONS
+				instructions: mcpServerInstructions(params.url)
 			};
 		}
 
@@ -1207,7 +1225,7 @@ function createAuthenticatedModernMcpServer(params: {
 			tools: { listChanged: false },
 			resources: { listChanged: false }
 		},
-		instructions: MCP_SERVER_INSTRUCTIONS,
+		instructions: mcpServerInstructions(params.url),
 		// Discovery and schemas are stable enough to remove repeat round trips. Tool
 		// visibility is auth-scoped, so every cacheable result stays private; live
 		// resource data remains uncached.

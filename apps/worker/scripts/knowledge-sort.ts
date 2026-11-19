@@ -30,8 +30,12 @@ const arg = (name: string) => {
 	return index > 0 ? process.argv[index + 1] : undefined;
 };
 
-/** Measured decision-model cost per call (llm_usage_logs, 621 calls, 30 days to 2026-11-17). */
-const USD_PER_CALL = 0.0006;
+/**
+ * Decision-model cost per call. The old 20-entry circle call measured $0.000314 (7.5k prompt
+ * tokens, llm_usage_logs, 25 calls to 2026-11-18); the new 12-entry call carries titles, a
+ * "same one?" question and examples, so this budgets about 1.5× that. Check after a run.
+ */
+const USD_PER_CALL = 0.0005;
 
 async function main() {
 	const preview = process.argv.includes('--preview');

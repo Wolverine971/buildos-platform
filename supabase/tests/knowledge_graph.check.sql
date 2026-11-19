@@ -1,7 +1,7 @@
 -- supabase/tests/knowledge_graph.check.sql
 -- Knowledge graph privacy and guard checks (tasker 160).
 -- Run on the disposable production-schema rehearsal, never against production:
---   pnpm db:rehearse supabase/migrations/20261117100000_knowledge_research_queue.sql \
+--   pnpm db:rehearse supabase/migrations/20261118100000_knowledge_circles_identity.sql \
 --     --check supabase/tests/knowledge_graph.check.sql
 BEGIN;
 -- The rehearsal copies production's schema without data: seed the vocabulary (copied from
@@ -62,6 +62,14 @@ DECLARE
 	merged jsonb;
 	listed jsonb;
 	reserved jsonb;
+	circle_txt text;
+	stamp timestamptz;
+	hint_id uuid;
+	ask_id uuid;
+	ment_keep uuid;
+	ment_old uuid;
+	ment_id uuid;
+	ment_rec uuid := gen_random_uuid();
 BEGIN
 	INSERT INTO auth.users(id, email) VALUES
 		(alice, 'kg-alice@example.com'), (bob, 'kg-bob@example.com');
@@ -324,6 +332,181 @@ BEGIN
 	END;
 	RESET ROLE;
 	PERFORM set_config('request.jwt.claims', '', true);
+
+	-- Circles, identity questions and "Not this one" hints (20261118100000).
+	SELECT circle INTO circle_txt FROM public.knowledge_entities WHERE id = alice_sam;
+	IF circle_txt <> 'unknown' THEN RAISE EXCEPTION 'new entries start unknown, got %', circle_txt; END IF;
+	BEGIN
+		UPDATE public.knowledge_entities SET circle = 'friends' WHERE id = alice_sam;
+		RAISE EXCEPTION 'unknown circle unexpectedly accepted';
+	EXCEPTION WHEN check_violation THEN NULL;
+	END;
+	BEGIN
+		UPDATE public.knowledge_entities SET circle_source = 'guess' WHERE id = alice_sam;
+		RAISE EXCEPTION 'unknown circle source unexpectedly accepted';
+	EXCEPTION WHEN check_violation THEN NULL;
+	END;
+	-- Backdate with triggers off (now() is fixed inside this transaction).
+	PERFORM set_config('session_replication_role', 'replica', true);
+	UPDATE public.knowledge_entities SET updated_at = now() - interval '3 days' WHERE id = alice_sam;
+	PERFORM set_config('session_replication_role', 'origin', true);
+	SELECT updated_at INTO stamp FROM public.knowledge_entities WHERE id = alice_sam;
+	UPDATE public.knowledge_entities
+	SET circle = 'inner', circle_source = 'signals', circle_set_at = now() WHERE id = alice_sam;
+	IF (SELECT updated_at FROM public.knowledge_entities WHERE id = alice_sam) <> stamp THEN
+		RAISE EXCEPTION 'a circle-only change must keep updated_at';
+	END IF;
+	UPDATE public.knowledge_entities SET summary = 'Engineer' WHERE id = alice_sam;
+	IF (SELECT updated_at FROM public.knowledge_entities WHERE id = alice_sam) <= stamp THEN
+		RAISE EXCEPTION 'a real change must still bump updated_at';
+	END IF;
+
+	-- An identity question rides on a merge candidate; bad origin or an empty question is refused.
+	INSERT INTO public.knowledge_entities(kind, name, scope, owner_user_id, created_via, circle, circle_source)
+	VALUES ('person', 'Sam Rivera (famous)', 'private', alice, 'chat', 'public', 'model') RETURNING id INTO ask_id;
+	INSERT INTO public.knowledge_merge_candidates(owner_user_id, entity_a, entity_b, reason, score, question, origin)
+	VALUES (alice, LEAST(alice_sam, ask_id), GREATEST(alice_sam, ask_id), 'Public-sounding claim', 0.5,
+		'Is Sam Rivera, someone you know, the same person as Sam Rivera (famous)?', 'identity');
+	BEGIN
+		UPDATE public.knowledge_merge_candidates SET origin = 'vibes' WHERE ask_id IN (entity_a, entity_b);
+		RAISE EXCEPTION 'unknown candidate origin unexpectedly accepted';
+	EXCEPTION WHEN check_violation THEN NULL;
+	END;
+	BEGIN
+		UPDATE public.knowledge_merge_candidates SET question = '' WHERE ask_id IN (entity_a, entity_b);
+		RAISE EXCEPTION 'empty question unexpectedly accepted';
+	EXCEPTION WHEN check_violation THEN NULL;
+	END;
+	SELECT origin INTO circle_txt FROM public.knowledge_merge_candidates WHERE entity_a = alice_sam AND entity_b = alice_sam_dupe;
+	IF circle_txt IS NOT NULL AND circle_txt <> 'name' THEN RAISE EXCEPTION 'old candidates default to name, got %', circle_txt; END IF;
+
+	-- Research hints: the owner writes and reads her own; bob sees none and cannot hint her entry.
+	PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', alice, 'role', 'authenticated')::text, true);
+	SET LOCAL ROLE authenticated;
+	INSERT INTO public.knowledge_research_hints(owner_user_id, entity_id, label, domains, urls)
+	VALUES (alice, alice_sam, 'not the Sam Rivera in Long Grove, IA', '{rivera-iowa.example}', '{https://rivera-iowa.example/about}')
+	RETURNING id INTO hint_id;
+	SELECT count(*) INTO n FROM public.knowledge_research_hints;
+	IF n <> 1 THEN RAISE EXCEPTION 'alice should read her hint, got %', n; END IF;
+	BEGIN
+		UPDATE public.knowledge_research_hints SET label = 'changed' WHERE id = hint_id;
+		RAISE EXCEPTION 'hint update unexpectedly accepted';
+	EXCEPTION WHEN insufficient_privilege THEN NULL;
+	END;
+	BEGIN
+		INSERT INTO public.knowledge_research_hints(owner_user_id, entity_id, label)
+		VALUES (alice, alice_sam, '   ');
+		RAISE EXCEPTION 'blank hint label unexpectedly accepted';
+	EXCEPTION WHEN check_violation THEN NULL;
+	END;
+	PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', bob, 'role', 'authenticated')::text, true);
+	SELECT count(*) INTO n FROM public.knowledge_research_hints;
+	IF n <> 0 THEN RAISE EXCEPTION 'bob must not see alice''s hints, got %', n; END IF;
+	BEGIN
+		INSERT INTO public.knowledge_research_hints(owner_user_id, entity_id, label)
+		VALUES (bob, alice_sam, 'not hers');
+		RAISE EXCEPTION 'bob hinted alice''s private entry';
+	EXCEPTION WHEN insufficient_privilege THEN NULL;
+	END;
+	BEGIN
+		INSERT INTO public.knowledge_research_hints(owner_user_id, entity_id, label)
+		VALUES (alice, bob_private, 'spoofed owner');
+		RAISE EXCEPTION 'bob wrote a hint as alice';
+	EXCEPTION WHEN insufficient_privilege THEN NULL;
+	END;
+	-- Signed-in users may set their own entry's circle (their answer outranks every guess).
+	PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', alice, 'role', 'authenticated')::text, true);
+	UPDATE public.knowledge_entities SET circle = 'public', circle_source = 'user' WHERE id = ask_id;
+	GET DIAGNOSTICS n = ROW_COUNT;
+	IF n <> 1 THEN RAISE EXCEPTION 'alice should set her own circle'; END IF;
+	RESET ROLE;
+	PERFORM set_config('request.jwt.claims', '', true);
+
+	-- Mentions (tasker 167): spans checked, merges carry mentions, owner-only for signed-in
+	-- callers, reads are server-written, only the orphan hidden reason exists.
+	INSERT INTO public.knowledge_entities(kind, name, scope, owner_user_id, created_via)
+	VALUES ('person', 'Phillip Velayo', 'private', alice, 'backfill') RETURNING id INTO ment_keep;
+	INSERT INTO public.knowledge_entities(kind, name, scope, owner_user_id, created_via)
+	VALUES ('person', 'Phil Valeo', 'private', alice, 'backfill') RETURNING id INTO ment_old;
+	INSERT INTO public.knowledge_mentions(owner_user_id, entity_id, record_kind, record_id, field,
+		start_offset, end_offset, text, prefix, suffix, content_hash)
+	VALUES (alice, ment_old, 'document', ment_rec, 'content', 10, 20, 'Phil Valeo', 'referred by ', ' from', 'abc')
+	RETURNING id INTO ment_id;
+	BEGIN
+		INSERT INTO public.knowledge_mentions(owner_user_id, entity_id, record_kind, record_id, field, start_offset, end_offset, text)
+		VALUES (alice, ment_old, 'document', ment_rec, 'content', 20, 20, 'x');
+		RAISE EXCEPTION 'empty mention span unexpectedly accepted';
+	EXCEPTION WHEN check_violation THEN NULL;
+	END;
+	BEGIN
+		INSERT INTO public.knowledge_mentions(owner_user_id, entity_id, record_kind, record_id, field, start_offset, end_offset, text)
+		VALUES (alice, ment_old, 'project', ment_rec, 'content', 0, 1, 'x');
+		RAISE EXCEPTION 'mention on a project unexpectedly accepted';
+	EXCEPTION WHEN check_violation THEN NULL;
+	END;
+	BEGIN
+		INSERT INTO public.knowledge_mentions(owner_user_id, entity_id, record_kind, record_id, field, start_offset, end_offset, text, status)
+		VALUES (alice, ment_old, 'task', ment_rec, 'notes', 0, 1, 'x', 'active');
+		RAISE EXCEPTION 'unknown mention field unexpectedly accepted';
+	EXCEPTION WHEN check_violation THEN NULL;
+	END;
+	merged := public.knowledge_merge_entities(ment_keep, ment_old, alice);
+	IF (SELECT entity_id FROM public.knowledge_mentions WHERE id = ment_id) <> ment_keep THEN
+		RAISE EXCEPTION 'a merge should move mentions to the kept entry';
+	END IF;
+	BEGIN
+		UPDATE public.knowledge_entities SET hidden_reason = 'stale' WHERE id = ment_keep;
+		RAISE EXCEPTION 'unknown hidden reason unexpectedly accepted';
+	EXCEPTION WHEN check_violation THEN NULL;
+	END;
+	UPDATE public.knowledge_entities SET status = 'hidden', hidden_reason = 'orphan' WHERE id = ment_keep;
+	UPDATE public.knowledge_entities SET status = 'active', hidden_reason = NULL WHERE id = ment_keep;
+	INSERT INTO public.knowledge_mention_reads(owner_user_id, record_kind, record_id, content_hash)
+	VALUES (alice, 'document', ment_rec, 'abc');
+
+	PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', alice, 'role', 'authenticated')::text, true);
+	SET LOCAL ROLE authenticated;
+	SELECT count(*) INTO n FROM public.knowledge_mentions WHERE record_id = ment_rec;
+	IF n <> 1 THEN RAISE EXCEPTION 'alice should read her mention, got %', n; END IF;
+	SELECT count(*) INTO n FROM public.knowledge_mention_reads WHERE record_id = ment_rec;
+	IF n <> 1 THEN RAISE EXCEPTION 'alice should read her mention read, got %', n; END IF;
+	UPDATE public.knowledge_mentions SET status = 'removed', made_by = 'user' WHERE id = ment_id;
+	GET DIAGNOSTICS n = ROW_COUNT;
+	IF n <> 1 THEN RAISE EXCEPTION 'alice should remove her own tag'; END IF;
+	BEGIN
+		INSERT INTO public.knowledge_mention_reads(owner_user_id, record_kind, record_id, content_hash)
+		VALUES (alice, 'task', ment_rec, 'x');
+		RAISE EXCEPTION 'signed-in mention read write unexpectedly accepted';
+	EXCEPTION WHEN insufficient_privilege THEN NULL;
+	END;
+	PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', bob, 'role', 'authenticated')::text, true);
+	SELECT count(*) INTO n FROM public.knowledge_mentions WHERE record_id = ment_rec;
+	IF n <> 0 THEN RAISE EXCEPTION 'bob must not see alice''s mentions, got %', n; END IF;
+	SELECT count(*) INTO n FROM public.knowledge_mention_reads WHERE record_id = ment_rec;
+	IF n <> 0 THEN RAISE EXCEPTION 'bob must not see alice''s mention reads, got %', n; END IF;
+	UPDATE public.knowledge_mentions SET status = 'active' WHERE id = ment_id;
+	GET DIAGNOSTICS n = ROW_COUNT;
+	IF n <> 0 THEN RAISE EXCEPTION 'bob changed alice''s mention'; END IF;
+	DELETE FROM public.knowledge_mentions WHERE id = ment_id;
+	GET DIAGNOSTICS n = ROW_COUNT;
+	IF n <> 0 THEN RAISE EXCEPTION 'bob deleted alice''s mention'; END IF;
+	BEGIN
+		INSERT INTO public.knowledge_mentions(owner_user_id, entity_id, record_kind, record_id, field, start_offset, end_offset, text)
+		VALUES (bob, ment_keep, 'task', ment_rec, 'title', 0, 4, 'Phil');
+		RAISE EXCEPTION 'bob tagged alice''s private entry';
+	EXCEPTION WHEN insufficient_privilege THEN NULL;
+	END;
+	BEGIN
+		INSERT INTO public.knowledge_mentions(owner_user_id, entity_id, record_kind, record_id, field, start_offset, end_offset, text)
+		VALUES (alice, ment_keep, 'task', ment_rec, 'title', 0, 4, 'Phil');
+		RAISE EXCEPTION 'bob wrote a mention as alice';
+	EXCEPTION WHEN insufficient_privilege THEN NULL;
+	END;
+	RESET ROLE;
+	PERFORM set_config('request.jwt.claims', '', true);
+	IF (SELECT status FROM public.knowledge_mentions WHERE id = ment_id) <> 'removed' THEN
+		RAISE EXCEPTION 'alice''s removed tag should stay removed';
+	END IF;
 
 	-- Deleting a merge survivor takes its merged-away tombstone with it.
 	DELETE FROM public.knowledge_entities WHERE id = alice_sam;
