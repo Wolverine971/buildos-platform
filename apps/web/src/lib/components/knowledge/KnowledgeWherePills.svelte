@@ -93,7 +93,7 @@
 				>
 					<Folder class="h-3 w-3 shrink-0 text-accent" aria-hidden="true" />
 					<span class="truncate">{item.name}</span>
-					{#if item.count > 1}<span class="stamp text-[10px] text-muted-foreground"
+					{#if item.count > 1}<span class="stamp text-2xs text-muted-foreground"
 							>{item.count}</span
 						>{/if}
 				</button>
