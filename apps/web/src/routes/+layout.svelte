@@ -9,6 +9,7 @@
 	import { browser } from '$app/environment';
 	import { syncBrowserTimezone } from '$lib/utils/browser-timezone-sync';
 	import { goto, onNavigate, afterNavigate, invalidate, invalidateAll } from '$app/navigation';
+	import { invalidateKeepingState } from '$lib/utils/invalidate-keeping-state';
 	import { navigationStore } from '$lib/stores/navigation.store';
 	import Navigation from '$lib/components/layout/Navigation.svelte';
 	import {
@@ -1117,7 +1118,8 @@
 				throw new Error('Failed to dismiss payment warning');
 			}
 
-			await invalidate('app:billing');
+			// The banner sits above every page; a project card may be open under it.
+			await invalidateKeepingState('app:billing');
 		} catch (error) {
 			console.error('Error dismissing payment warning:', error);
 			billingContext = {

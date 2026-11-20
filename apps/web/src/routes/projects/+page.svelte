@@ -11,7 +11,6 @@
 	import {
 		afterNavigate,
 		goto,
-		invalidate,
 		refreshAll,
 		preloadData,
 		pushState,
@@ -147,8 +146,12 @@
 		}
 	}
 
+	// After the overdue, inbox or brief-chat window changed something: the Today numbers, the
+	// tiles and the Workspace list are each re-read on their own. (This used to be
+	// invalidate('dashboard:analytics'), which re-ran the page's whole load and reset
+	// page.state, so the project card open under the window snapped shut.)
 	async function refreshToday() {
-		await invalidate('dashboard:analytics');
+		await Promise.all([refreshDashboard(), refreshProjects(), refreshWorkspace()]);
 	}
 
 	async function handlePullRefresh() {
@@ -825,6 +828,24 @@
 			})
 			.catch(() => undefined);
 	});
+	let dashboardRefresh = 0;
+	async function refreshDashboard() {
+		const request = ++dashboardRefresh;
+		const stream = dashboardStreamVersion;
+		try {
+			const { dashboard: next } = await workspaceRequest<{
+				dashboard: UserDashboardAnalytics;
+			}>('/api/projects/dashboard');
+			// A newer refresh, or a full page load, has the say.
+			if (request !== dashboardRefresh || stream !== dashboardStreamVersion) return;
+			if (!next) return;
+			// The first load's payload, should it still be on its way, is older than this one.
+			dashboardStreamVersion += 1;
+			dashboard = next;
+		} catch (err) {
+			console.error('[Projects] Today refresh failed', err);
+		}
+	}
 	// Admin-only ontology facets stay available inside the secondary filter panel.
 	const availableContexts = $derived(
 		Array.from(

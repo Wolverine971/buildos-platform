@@ -12,6 +12,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { goto, invalidate, preloadCode } from '$app/navigation';
+	import { invalidateKeepingState } from '$lib/utils/invalidate-keeping-state';
 	import { onMount } from 'svelte';
 	import {
 		AlertTriangle,
@@ -422,7 +423,8 @@
 					: row
 			);
 			toastService.success('Invite declined. You can still accept it for 48 hours.');
-			void invalidate('app:invites');
+			// Not a bare invalidate: a project card can be open under this row.
+			void invalidateKeepingState('app:invites');
 		} catch (error) {
 			console.error('[TodayRow] Failed to decline invite:', error);
 			inviteActionError = error instanceof Error ? error.message : 'Failed to decline invite';

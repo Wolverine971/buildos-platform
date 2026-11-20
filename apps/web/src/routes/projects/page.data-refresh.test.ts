@@ -6,7 +6,7 @@
 // re-run then: `data.projects` and `data.workspace` are the same, already-answered promises.
 // The page must not treat that as fresh data: doing so put the first load's list back over
 // every change made since, and asked the server to auto-file the same notes again.
-import { cleanup, render, waitFor } from '@testing-library/svelte';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { invalidate } from '$app/navigation';
 import ProjectsPage from './+page.svelte';
@@ -28,6 +28,10 @@ vi.mock('$app/navigation', () => ({
 vi.mock('$app/state', () => ({
 	page: { state: {}, url: new URL('http://localhost/projects'), data: {} },
 	navigating: { to: null }
+}));
+
+vi.mock('$lib/components/dashboard/TodayRow.svelte', async () => ({
+	default: (await import('./__fixtures__/TodayRowStub.svelte')).default
 }));
 
 const WORKSPACE_ID = '11111111-1111-4111-8111-111111111111';
@@ -258,4 +262,45 @@ describe('/projects: a new data object with the same loads', () => {
 			expect(calls('/projects/trash')).toBe(reads);
 		});
 	}
+
+	// Closing the overdue, inbox or brief-chat window after a change. invalidate() re-ran
+	// the page's whole load and emptied page.state, closing the project card open under it.
+	it('re-reads Today, the tiles and the Workspace on their own, without invalidate', async () => {
+		const asked = () => vi.mocked(fetch).mock.calls.map(([url]) => String(url));
+		vi.mocked(fetch).mockImplementation(async (input) => {
+			const url = String(input);
+			let data: unknown = { filed: [] };
+			if (url === '/api/projects/dashboard') {
+				data = { dashboard: { attention: { overdueTasks: 3 }, recent: null } };
+			} else if (url === '/api/projects/summaries') data = { projects: [tileProject()] };
+			else if (url === '/api/workspace') data = { ...workspaceHome(), suggestions: [] };
+			return new Response(JSON.stringify({ success: true, data }), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' }
+			});
+		});
+		render(ProjectsPage, {
+			props: {
+				data: {
+					...pageData(),
+					projects: Promise.resolve([tileProject()]),
+					projectCount: 1
+				} as never
+			}
+		});
+		// The first load streamed no Today numbers.
+		expect((await screen.findByTestId('overdue-count')).textContent).toBe('none');
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Something changed in Today' }));
+
+		await waitFor(() => expect(screen.getByTestId('overdue-count').textContent).toBe('3'));
+		expect(asked()).toEqual(
+			expect.arrayContaining([
+				'/api/projects/dashboard',
+				'/api/projects/summaries',
+				'/api/workspace'
+			])
+		);
+		expect(invalidate).not.toHaveBeenCalled();
+	});
 });

@@ -18,7 +18,7 @@
  */
 
 import { writable, derived, get } from 'svelte/store';
-import { browser } from '$app/environment';
+import { browser, dev } from '$app/environment';
 import type {
 	Notification,
 	NotificationStoreState,
@@ -227,6 +227,14 @@ function createInitialState(): NotificationStoreState {
 	};
 }
 
+/**
+ * Step-by-step trace of the stack, for development. Off in production: it ran on every
+ * card update there and printed each card's contents to the visitor's console.
+ */
+function debugLog(...args: unknown[]): void {
+	if (dev) console.log(...args);
+}
+
 // ============================================================================
 // Store Implementation
 // ============================================================================
@@ -308,7 +316,7 @@ export function createNotificationStore() {
 
 		// Set new timer
 		const timer = setTimeout(() => {
-			console.log(`[NotificationStore] Auto-closing notification ${id}`);
+			debugLog(`[NotificationStore] Auto-closing notification ${id}`);
 			remove(id);
 			autoCloseTimers.delete(id);
 		}, durationMs);
@@ -352,7 +360,7 @@ export function createNotificationStore() {
 			const newNotifications = new Map(state.notifications);
 			newNotifications.set(id, notification);
 
-			console.log(`[NotificationStore] Added notification ${id} (${notification.type})`);
+			debugLog(`[NotificationStore] Added notification ${id} (${notification.type})`);
 
 			// Auto-close if configured
 			if (notification.autoCloseMs && notification.autoCloseMs > 0) {
@@ -399,7 +407,7 @@ export function createNotificationStore() {
 			const newNotifications = new Map(state.notifications);
 			newNotifications.set(id, updated);
 
-			console.log(`[NotificationStore] Updated notification ${id}`, updates);
+			debugLog(`[NotificationStore] Updated notification ${id}`, updates);
 
 			return {
 				...state,
@@ -434,7 +442,7 @@ export function createNotificationStore() {
 				? [...state.history, notification].slice(-50) // Keep max 50
 				: state.history;
 
-			console.log(`[NotificationStore] Removed notification ${id}`);
+			debugLog(`[NotificationStore] Removed notification ${id}`);
 
 			// Clear auto-close timer
 			clearAutoCloseTimer(id);
@@ -491,7 +499,7 @@ export function createNotificationStore() {
 				updatedAt: Date.now()
 			});
 
-			console.log(`[NotificationStore] Expanded notification ${id}`);
+			debugLog(`[NotificationStore] Expanded notification ${id}`);
 
 			return {
 				...state,
@@ -522,7 +530,7 @@ export function createNotificationStore() {
 				updatedAt: Date.now()
 			});
 
-			console.log(`[NotificationStore] Minimized notification ${id}`);
+			debugLog(`[NotificationStore] Minimized notification ${id}`);
 
 			return {
 				...state,
@@ -551,7 +559,7 @@ export function createNotificationStore() {
 				});
 			}
 
-			console.log('[NotificationStore] Minimized all notifications');
+			debugLog('[NotificationStore] Minimized all notifications');
 
 			return {
 				...state,
@@ -610,7 +618,7 @@ export function createNotificationStore() {
 			const newNotifications = new Map(state.notifications);
 			newNotifications.set(id, updated);
 
-			console.log(`[NotificationStore] Set error for notification ${id}:`, error);
+			debugLog(`[NotificationStore] Set error for notification ${id}:`, error);
 
 			return {
 				...state,
@@ -644,7 +652,7 @@ export function createNotificationStore() {
 
 		persist();
 
-		console.log('[NotificationStore] Cleared all notifications');
+		debugLog('[NotificationStore] Cleared all notifications');
 	}
 
 	/**
@@ -671,7 +679,7 @@ export function createNotificationStore() {
 			// Create new stack without completed ids
 			const newStack = state.stack.filter((id) => !completedIds.has(id));
 
-			console.log(`[NotificationStore] Cleared ${completed.length} completed notifications`);
+			debugLog(`[NotificationStore] Cleared ${completed.length} completed notifications`);
 
 			return {
 				...state,
@@ -688,7 +696,7 @@ export function createNotificationStore() {
 	 */
 	function clearHistory(): void {
 		update((state) => {
-			console.log('[NotificationStore] Cleared history');
+			debugLog('[NotificationStore] Cleared history');
 			return {
 				...state,
 				history: []
@@ -742,7 +750,7 @@ export function createNotificationStore() {
 		try {
 			const stored = sessionStorage.getItem(STORAGE_KEY);
 			if (!stored) {
-				console.log('[NotificationStore] No stored state to hydrate');
+				debugLog('[NotificationStore] No stored state to hydrate');
 				hydrationComplete = true;
 				isHydrating = false;
 				return;
@@ -786,7 +794,7 @@ export function createNotificationStore() {
 				// Only restore if current state is empty (initial state)
 				// This prevents overwriting notifications added during hydration
 				if (currentState.notifications.size > 0) {
-					console.log(
+					debugLog(
 						'[NotificationStore] Notifications already exist, merging with hydrated state'
 					);
 
@@ -821,7 +829,7 @@ export function createNotificationStore() {
 				};
 			});
 
-			console.log('[NotificationStore] Hydrated from session storage');
+			debugLog('[NotificationStore] Hydrated from session storage');
 		} catch (error) {
 			console.warn('[NotificationStore] Failed to hydrate from session storage:', error);
 			if (typeof sessionStorage !== 'undefined') {
