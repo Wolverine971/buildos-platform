@@ -31,23 +31,6 @@ export const emailSchema = z
 	);
 
 /**
- * Optional email schema - allows empty string or null, but validates if provided
- */
-export const optionalEmailSchema = z
-	.string()
-	.optional()
-	.refine(
-		(email) => {
-			if (!email || email.trim() === '') return true;
-			const result = emailSchema.safeParse(email);
-			return result.success;
-		},
-		{
-			message: 'Please enter a valid email address'
-		}
-	);
-
-/**
  * Validate an email address
  *
  * @param email - Email address to validate

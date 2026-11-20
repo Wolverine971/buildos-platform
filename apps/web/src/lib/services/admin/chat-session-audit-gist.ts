@@ -48,12 +48,6 @@ export const stringOrDash = (value: unknown): string => {
 	return String(value);
 };
 
-export const boolLabel = (value: unknown): string => {
-	if (value === true) return 'yes';
-	if (value === false) return 'no';
-	return '-';
-};
-
 export const toJson = (value: unknown): string => {
 	try {
 		return JSON.stringify(value, null, 2);

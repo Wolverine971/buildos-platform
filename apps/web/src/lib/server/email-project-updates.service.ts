@@ -127,10 +127,6 @@ export function emailProjectUpdatesUserIds(raw: string | undefined | null): stri
 		.filter((value) => /^[0-9a-f-]{36}$/i.test(value));
 }
 
-export function isEmailProjectUpdatesUser(userId: string, raw: string | undefined | null) {
-	return emailProjectUpdatesUserIds(raw).includes(userId);
-}
-
 // ---------------------------------------------------------------------------
 // Nightly read
 // ---------------------------------------------------------------------------

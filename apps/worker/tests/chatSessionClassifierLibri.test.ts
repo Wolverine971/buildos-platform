@@ -6,6 +6,23 @@ const mockUpdateJobStatus = vi.hoisted(() => vi.fn());
 const mockSupabaseFrom = vi.hoisted(() => vi.fn());
 const mockSupabaseRpc = vi.hoisted(() => vi.fn());
 const mockQueueSnapshot = vi.hoisted(() => vi.fn());
+const mockOwnerCanReachProject = vi.hoisted(() => vi.fn());
+
+// The session's scope is user-written; the worker follows it only when the owner can reach
+// the project. These tests decide that answer here; tests/projectAccess.test.ts covers the lookup.
+vi.mock('../src/lib/projectAccess', () => ({
+	accessibleSessionProjectId: async (
+		_client: unknown,
+		userId: string,
+		session: { context_type?: string | null; entity_id?: string | null } | null,
+		level?: string
+	) =>
+		session?.context_type === 'project' &&
+		session.entity_id &&
+		(await mockOwnerCanReachProject(userId, session.entity_id, level ?? 'read'))
+			? session.entity_id
+			: null
+}));
 
 vi.mock('../src/lib/supabase', () => ({
 	supabase: {
@@ -98,6 +115,7 @@ describe('processChatClassificationJob', () => {
 		mockUpdateJobStatus.mockResolvedValue(undefined);
 		mockSupabaseRpc.mockResolvedValue({ data: {}, error: null });
 		mockQueueSnapshot.mockResolvedValue({ queued: true, reason: 'queued' });
+		mockOwnerCanReachProject.mockResolvedValue(true);
 		// Production today: the hand-off is not configured.
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'false');
 
@@ -891,6 +909,17 @@ describe('processChatClassificationJob', () => {
 					['gte', ['created_at', at]]
 				])
 			);
+		});
+
+		// A session row can name any project id (its owner writes that column).
+		it('queue no snapshot for a project the chat owner cannot reach', async () => {
+			endChatAt(justNow());
+			mockOwnerCanReachProject.mockResolvedValue(false);
+
+			await run();
+
+			expect(mockOwnerCanReachProject).toHaveBeenCalledWith('user-1', 'project-1', 'read');
+			expect(mockQueueSnapshot).not.toHaveBeenCalled();
 		});
 
 		it('queue no second snapshot when the close route already queued one', async () => {

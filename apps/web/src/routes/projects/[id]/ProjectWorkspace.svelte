@@ -124,7 +124,6 @@
 		Workflow
 	} from '$lib/icons/lucide';
 	import type { PageData } from './$types';
-	import ProjectBriefHubModal from './ProjectBriefHubModal.svelte';
 	import ProjectProgressOverview from './ProjectProgressOverview.svelte';
 	import ProjectRecentChats from './ProjectRecentChats.svelte';
 	import ProjectWorkspaceEntityModals from './ProjectWorkspaceEntityModals.svelte';
@@ -2403,15 +2402,19 @@
 	onMutated={handleWorkspaceEntityMutated}
 />
 
+<!-- Loaded when opened: it renders markdown, and the renderer and its sanitizer are a quarter
+     of this page's script. -->
 {#if showProjectBriefModal}
-	<ProjectBriefHubModal
-		isOpen={showProjectBriefModal}
-		projectId={project.id}
-		{contextDocument}
-		{canEdit}
-		onClose={() => (showProjectBriefModal = false)}
-		onOpenStartHere={openStartHereDocument}
-	/>
+	{#await import('./ProjectBriefHubModal.svelte') then { default: ProjectBriefHubModal }}
+		<ProjectBriefHubModal
+			isOpen={showProjectBriefModal}
+			projectId={project.id}
+			{contextDocument}
+			{canEdit}
+			onClose={() => (showProjectBriefModal = false)}
+			onOpenStartHere={openStartHereDocument}
+		/>
+	{/await}
 {/if}
 
 <Modal

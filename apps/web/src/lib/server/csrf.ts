@@ -2,6 +2,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestEvent } from '@sveltejs/kit';
 import { readUserBearerToken } from '$lib/server/bearer-auth';
+import { routedPathname } from '$lib/server/routed-pathname';
 
 const CROSS_ORIGIN_FORM_POST_ALLOWED_PATHS = new Set(['/oauth/token', '/oauth/revoke']);
 
@@ -45,8 +46,15 @@ function isFormContentType(contentType: string | null): boolean {
  * request never reads them (hooks.server.ts builds a cookie-free client, and a bad token
  * gets no session rather than a cookie fallback), and a browser cannot attach an
  * Authorization header to a cross-site form post on its own.
+ *
+ * The exemptions are matched against the decoded path SvelteKit routes on, so an exempt
+ * request is always one that reaches an exempt route. A path that cannot be decoded is
+ * never exempt.
  */
-export function createCrossSiteFormPostResponse(event: RequestEvent): Response | null {
+export function createCrossSiteFormPostResponse(
+	event: RequestEvent,
+	pathname: string | null = routedPathname(event.url)
+): Response | null {
 	const method = event.request.method.toUpperCase();
 	if (method !== 'POST' && method !== 'PUT' && method !== 'PATCH' && method !== 'DELETE') {
 		return null;
@@ -56,7 +64,7 @@ export function createCrossSiteFormPostResponse(event: RequestEvent): Response |
 		return null;
 	}
 
-	if (isCrossOriginFormPostAllowed(event.url.pathname)) {
+	if (pathname !== null && isCrossOriginFormPostAllowed(pathname)) {
 		return null;
 	}
 

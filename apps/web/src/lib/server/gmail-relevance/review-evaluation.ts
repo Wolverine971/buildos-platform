@@ -8,8 +8,6 @@ import {
 	GmailRelevanceMetadataGateway,
 	GmailRelevanceMetadataGatewayError
 } from './metadata-gateway';
-
-export const EMAIL_RELEVANCE_REVIEW_SAMPLING_VERSION = 'email-relevance-review-sampling-v1';
 export const EMAIL_RELEVANCE_REVIEW_CONTRACT_VERSION = 'email-relevance-review-contract-v1';
 export const EMAIL_RELEVANCE_REVIEW_TARGET_PER_ACCOUNT = 100;
 export const EMAIL_RELEVANCE_QUICK_REVIEW_TARGET = 20;

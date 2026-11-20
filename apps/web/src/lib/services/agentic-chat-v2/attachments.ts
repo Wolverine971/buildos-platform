@@ -6,7 +6,6 @@ import {
 	buildAgenticChatAttachmentDisplayTextV1,
 	shouldUseAgenticChatLiveVisionV1,
 	type AgenticChatLiveVisionEligibilityV1,
-	type AgenticChatLiveVisionIneligibilityReasonV1,
 	type ChatAttachmentRef,
 	type ChatImageAttachmentCaps,
 	type FrozenChatAttachmentV1,
@@ -32,8 +31,6 @@ export type ChatAttachmentAssetRow = {
 	extraction_summary: string | null;
 	extracted_text: string | null;
 };
-
-export type LiveVisionImageIneligibilityReason = AgenticChatLiveVisionIneligibilityReasonV1;
 
 export type LiveVisionImageEligibilityResult = AgenticChatLiveVisionEligibilityV1;
 

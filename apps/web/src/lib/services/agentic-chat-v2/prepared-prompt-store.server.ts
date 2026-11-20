@@ -43,24 +43,3 @@ export async function readPreparedPromptContent(params: {
 		error
 	};
 }
-
-export async function claimPreparedPromptContent(params: {
-	supabase: PreparedPromptStoreClient;
-	id: string;
-	userId: string;
-	consumedAt: string;
-}): Promise<{ claimed: boolean; error: unknown | null }> {
-	const { data, error } = await params.supabase
-		.from('agentic_chat_prepared_prompts')
-		.update({ consumed_at: params.consumedAt, updated_at: params.consumedAt })
-		.eq('id', params.id)
-		.eq('user_id', params.userId)
-		.is('consumed_at', null)
-		.select('id')
-		.maybeSingle();
-
-	return {
-		claimed: Boolean(data?.id),
-		error
-	};
-}

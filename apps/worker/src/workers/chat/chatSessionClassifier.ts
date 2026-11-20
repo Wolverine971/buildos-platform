@@ -5,6 +5,7 @@
 
 import type { Database } from '@buildos/shared-types';
 import { supabase } from '../../lib/supabase';
+import { accessibleSessionProjectId } from '../../lib/projectAccess';
 import { logWorkerError } from '../../lib/errorLogger';
 import { TransientQueueError } from '../../lib/queueErrors';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
@@ -618,12 +619,20 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			updatePayload
 		);
 
+		// The scope on the session row is user-written. Follow-ups run with the service role, so
+		// they only use a project the session's owner can reach.
+		const sessionProjectId = await accessibleSessionProjectId(
+			supabase,
+			validatedData.userId,
+			session
+		);
+
 		const libriHandoffStatus = libriConfigured
 			? await processLibriEntityHandoff({
 					sessionId: validatedData.sessionId,
 					userId: validatedData.userId,
 					contextType: session.context_type,
-					projectId: session.context_type === 'project' ? session.entity_id : null,
+					projectId: sessionProjectId,
 					extractedEntities,
 					jobId: job.id
 				})
@@ -639,8 +648,6 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 		};
 		const projectFollowUpsDue =
 			!lastMessageAt || Date.now() - lastMessageAt.getTime() <= PROJECT_FOLLOW_UP_MAX_IDLE_MS;
-		const sessionProjectId =
-			session.context_type === 'project' && session.entity_id ? session.entity_id : null;
 		try {
 			if (projectFollowUpsDue) {
 				nextStepResult = await processSessionActivityAndNextSteps(

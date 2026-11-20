@@ -102,15 +102,6 @@ export interface EmailGenerationContext {
 	tone?: 'professional' | 'friendly' | 'casual';
 }
 
-export interface EmailTemplate {
-	id: string;
-	name: string;
-	description: string;
-	prompt_template: string;
-	default_tone: 'professional' | 'friendly' | 'casual';
-	created_at: string;
-}
-
 const EMAIL_CONFIG = {
 	llm: {
 		// Note: Model selection is now handled by SmartLLMService profiles

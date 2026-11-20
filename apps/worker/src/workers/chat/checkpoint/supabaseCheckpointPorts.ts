@@ -32,6 +32,7 @@ import {
 } from '@buildos/shared-agent-ops/ontology/start-here';
 import { ensureProjectStartHereDocument } from '@buildos/shared-agent-ops/ontology/start-here.service';
 import { supabase } from '../../../lib/supabase';
+import { accessibleSessionProjectId } from '../../../lib/projectAccess';
 import {
 	type PromptEntity,
 	type PromptMessage,
@@ -314,7 +315,9 @@ export function createSupabaseCheckpointPorts(options?: {
 			return {
 				id: data.id,
 				userId: data.user_id,
-				projectId: data.context_type === 'project' ? data.entity_id : null,
+				// The scope on the row is user-written; capture reads the project with the
+				// service role, so it only follows a project the session's owner can reach.
+				projectId: await accessibleSessionProjectId(supabase, data.user_id, data),
 				title: data.title?.trim() || data.auto_title?.trim() || null
 			};
 		},

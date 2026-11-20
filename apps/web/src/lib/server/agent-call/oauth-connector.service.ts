@@ -32,8 +32,6 @@ export const BUILDOS_MCP_PATH = '/mcp/buildos';
 export const BUILDOS_MCP_CLIENT_PROFILE_ID = 'claude-browser';
 export const BUILDOS_CONNECTOR_PUBLIC_NAME = 'BuildOS Connector';
 export const BUILDOS_MCP_SERVER_NAME = 'BuildOS MCP';
-export const BUILDOS_CONNECTOR_SUPPORT_EMAIL = 'dj@build-os.com';
-export const BUILDOS_CONNECTOR_ICON_PATH = '/brain-bolt-80.png';
 export const BUILDOS_OAUTH_SCOPES = [
 	'buildos.read',
 	'buildos.write',

@@ -106,3 +106,52 @@ describe('dashboard parent labels', () => {
 		expect(analytics.recent.projects[0]).not.toHaveProperty('parent_project_name');
 	});
 });
+
+// The recent panels show a title, a project and a time. Descriptions were sent along anyway:
+// 65 KB of the 87 KB this payload added to the projects page for a 51-project account.
+describe('dashboard recent items', () => {
+	it('leaves descriptions out of what the page receives', async () => {
+		const at = '2026-09-30T12:00:00.000Z';
+		const row = { project_id: 'redline', state_key: 'todo', created_at: at, updated_at: at };
+		const supabase = client([]);
+		supabase.rpc.mockResolvedValueOnce({
+			data: {
+				snapshot: {},
+				attention: {},
+				recent: {
+					projects: [
+						{ ...recentProject('redline', 'Redline'), description: 'Long text' }
+					],
+					tasks: [
+						{ ...row, id: 'task-1', title: 'Call the venue', description: 'Long text' }
+					],
+					documents: [
+						{ ...row, id: 'doc-1', title: 'Run sheet', description: 'Long text' }
+					],
+					goals: [{ ...row, id: 'goal-1', name: 'Sell out', description: 'Long text' }]
+				}
+			},
+			error: null
+		} as never);
+
+		const { recent } = await getUserDashboardAnalytics(
+			supabase as never,
+			'user-1',
+			undefined,
+			'actor-1',
+			{ projectParents: false }
+		);
+
+		expect(recent.tasks.map((task) => task.title)).toEqual(['Call the venue']);
+		expect(recent.documents.map((document) => document.title)).toEqual(['Run sheet']);
+		expect(recent.goals.map((goal) => goal.name)).toEqual(['Sell out']);
+		for (const item of [
+			...recent.projects,
+			...recent.tasks,
+			...recent.documents,
+			...recent.goals
+		]) {
+			expect(item).not.toHaveProperty('description');
+		}
+	});
+});

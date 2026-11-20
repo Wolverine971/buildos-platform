@@ -82,30 +82,3 @@ export async function routeErrorResponse(
 		{ requestId: getRouteRequestId(event) }
 	);
 }
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return Boolean(value) && typeof value === 'object';
-}
-
-export async function routeDatabaseErrorResponse(
-	event: RequestEvent,
-	error: unknown,
-	options: Omit<RouteErrorResponseOptions, 'status' | 'code' | 'message'> & {
-		message?: string;
-	}
-): Promise<Response> {
-	if (isRecord(error) && error.code === '23505') {
-		return ApiResponse.conflict(options.message ?? 'Resource already exists');
-	}
-
-	if (isRecord(error) && error.code === 'PGRST116') {
-		return ApiResponse.notFound();
-	}
-
-	return routeErrorResponse(event, error, {
-		...options,
-		message: options.message ?? 'Database operation failed',
-		status: HttpStatus.INTERNAL_SERVER_ERROR,
-		code: ErrorCode.DATABASE_ERROR
-	});
-}

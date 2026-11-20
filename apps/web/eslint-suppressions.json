@@ -265,11 +265,6 @@
 			"count": 1
 		}
 	},
-	"src/lib/components/test/LogoutTest.svelte": {
-		"svelte/require-each-key": {
-			"count": 1
-		}
-	},
 	"src/lib/components/time-blocks/CalendarEventDetailModal.svelte": {
 		"svelte/require-each-key": {
 			"count": 1
@@ -422,26 +417,6 @@
 			"count": 3
 		}
 	},
-	"src/routes/debug/auth/+page.svelte": {
-		"svelte/require-each-key": {
-			"count": 1
-		}
-	},
-	"src/routes/design-system/tech-spec-project-v2/+page.svelte": {
-		"svelte/require-each-key": {
-			"count": 2
-		}
-	},
-	"src/routes/design-system/tech-spec-project/+page.svelte": {
-		"svelte/require-each-key": {
-			"count": 2
-		}
-	},
-	"src/routes/design-system/tech-spec/+page.svelte": {
-		"svelte/no-useless-mustaches": {
-			"count": 1
-		}
-	},
 	"src/routes/skills/+page.svelte": {
 		"svelte/no-at-html-tags": {
 			"count": 1
@@ -501,11 +476,6 @@
 		},
 		"svelte/require-each-key": {
 			"count": 5
-		}
-	},
-	"src/routes/test-realtime/+page.svelte": {
-		"svelte/require-each-key": {
-			"count": 1
 		}
 	}
 }

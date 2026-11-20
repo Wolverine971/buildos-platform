@@ -312,6 +312,31 @@ describe('server hook session verification', () => {
 		expect(resolve).not.toHaveBeenCalled();
 	});
 
+	// SvelteKit routes on the decoded path, so `/%61dmin/users` reaches the admin route while
+	// `event.url.pathname` still reads `/%61dmin/users`. A data request can also skip the admin
+	// layout's own check, which leaves this hook as the only gate.
+	it.each([
+		['the matched route', '/admin/users'],
+		['no matched route', null]
+	])('gates an admin page requested with an encoded path (%s)', async (_label, routeId) => {
+		const f = fixture('/%61dmin/users');
+		Object.assign(f.event, { isDataRequest: true, route: { id: routeId } });
+		const resolve = vi.fn();
+		await expect(handle({ event: f.event, resolve })).rejects.toMatchObject({
+			status: 303,
+			location: '/today'
+		});
+		expect(resolve).not.toHaveBeenCalled();
+	});
+
+	it('answers a path that cannot be decoded without running the route', async () => {
+		const f = fixture('/admin/%E0%A4%A');
+		const resolve = vi.fn();
+		const response = await handle({ event: f.event, resolve });
+		expect(response.status).toBe(400);
+		expect(resolve).not.toHaveBeenCalled();
+	});
+
 	it('does not fall back to claims after live Auth rejects a sensitive request', async () => {
 		const f = adminDataRequest();
 		f.auth.getUser.mockResolvedValue({ data: { user: null }, error: new Error('Revoked') });
@@ -451,6 +476,19 @@ describe('consumption billing through the real server hook', () => {
 			'evaluate_user_consumption_gate',
 			expect.objectContaining({ p_user_id: 'verified-user' })
 		);
+	});
+	it('blocks a frozen mutation whose path is percent-encoded', async () => {
+		mocks.adminRpc.mockResolvedValue({
+			data: [{ is_frozen: true, billing_tier: 'explorer' }],
+			error: null
+		});
+		const f = fixture('/%61pi/agent/v2/stream', 'POST');
+		f.event.route.id = '/api/agent/v2/stream';
+		const resolve = vi.fn(async () => new Response('should not run'));
+		const response = await handle({ event: f.event, resolve });
+		expect(response.status).toBe(402);
+		expect(await response.json()).toMatchObject({ blocked_capability: 'ai_compute' });
+		expect(resolve).not.toHaveBeenCalled();
 	});
 	it.each([
 		['/api/onto/tasks/task-1', 'GET'],

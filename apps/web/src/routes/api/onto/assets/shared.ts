@@ -2,6 +2,7 @@
 import { ApiResponse } from '$lib/utils/api-response';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
+import { isPlainStorageObjectPath } from '@buildos/supabase-client';
 
 export type OntoAssetRow = Database['public']['Tables']['onto_assets']['Row'];
 
@@ -144,7 +145,8 @@ export function isCanonicalAssetStorageLocation(asset: {
 		asset.storage_bucket === 'onto-assets' &&
 		typeof asset.storage_path === 'string' &&
 		asset.storage_path.startsWith(prefix) &&
-		!asset.storage_path.includes('..')
+		// Plain segments only: an encoded `%2e%2e` is resolved by fetch just like `..`.
+		isPlainStorageObjectPath(asset.storage_path)
 	);
 }
 

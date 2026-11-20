@@ -325,7 +325,6 @@
 			status.currentStep === 'completed' &&
 			previousStatus?.isGenerating
 		) {
-			console.log('Generation completed, refreshing data...');
 			wasGenerating = false;
 		}
 
@@ -343,7 +342,6 @@
 	// Subscribe to completion events
 	const unsubscribeCompletion = briefGenerationCompleted.subscribe(async (event) => {
 		if (event && event.briefDate === currentDate) {
-			console.log('Brief generation completed event received');
 			await handleGenerationComplete();
 		}
 	});
@@ -363,7 +361,6 @@
 
 			// If still no data, try once more after a longer delay
 			if (!dailyBrief && isToday) {
-				console.log('No data after first refresh, trying again...');
 				await new Promise((resolve) => setTimeout(resolve, 2000));
 				await refreshPageData();
 			}
@@ -481,7 +478,6 @@
 
 	async function refreshPageData() {
 		try {
-			console.log('Refreshing page data...');
 			await fetchBriefData();
 		} catch (err) {
 			console.error('Error refreshing page data:', err);

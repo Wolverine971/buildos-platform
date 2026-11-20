@@ -24,6 +24,29 @@ function makeEvent(
 }
 
 describe('createCrossSiteFormPostResponse', () => {
+	it('matches exemptions on the path SvelteKit routes, not the raw encoding', () => {
+		const crossSiteForm = {
+			origin: 'https://attacker.example',
+			contentType: 'application/x-www-form-urlencoded'
+		};
+		// Reaches the webhook route, so it is exempt like its plain spelling.
+		expect(
+			createCrossSiteFormPostResponse(makeEvent('/api/%77ebhooks/twilio/status', crossSiteForm))
+		).toBeNull();
+		// An encoded slash stays inside one segment for the router, so this is not a webhook path.
+		expect(
+			createCrossSiteFormPostResponse(makeEvent('/api/webhooks%2Fx', crossSiteForm))?.status
+		).toBe(403);
+		expect(
+			createCrossSiteFormPostResponse(makeEvent('/%61uth/logout', crossSiteForm))?.status
+		).toBe(403);
+		// A path that cannot be decoded is never exempt.
+		expect(
+			createCrossSiteFormPostResponse(makeEvent('/api/webhooks/%E0%A4%A', crossSiteForm))
+				?.status
+		).toBe(403);
+	});
+
 	it('rejects cross-origin form mutations', () => {
 		const response = createCrossSiteFormPostResponse(
 			makeEvent('/auth/logout', {

@@ -25,8 +25,6 @@ import {
 	type EmailRelevanceScoringRule
 } from './metadata-scorer';
 import type { ProjectEmailProfileGroups } from './project-email-profile';
-
-export const EMAIL_RELEVANCE_METADATA_POLICY_VERSION = 'email-relevance-metadata-policy-v1';
 export const EMAIL_RELEVANCE_METADATA_DRIVER_VERSION = 'email-relevance-metadata-driver-v1';
 
 const UUID_SCHEMA = z.string().uuid();

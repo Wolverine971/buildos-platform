@@ -16,6 +16,7 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CONTAINMENT_RELS } from '$lib/services/ontology/containment-organizer';
 
@@ -108,6 +109,11 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 		if (!isValidKind(sourceKind)) {
 			return ApiResponse.badRequest(`Invalid sourceKind: ${sourceKind}`);
+		}
+
+		// Both ids are placed in PostgREST filter strings below, where `,` and `.` are syntax.
+		if (!isValidUUID(sourceId) || !isValidUUID(projectId)) {
+			return ApiResponse.badRequest('sourceId and projectId must be UUIDs');
 		}
 
 		const supabase = locals.supabase;

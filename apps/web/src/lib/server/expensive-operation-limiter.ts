@@ -157,10 +157,6 @@ function retryAfterSecondsFromMs(ms: number): number {
 	return Math.max(1, Math.ceil(ms / 1000));
 }
 
-export function estimateFastChatReservation(message: string): number {
-	return clampCost(Math.max(6_000, Math.min(30_000, Math.ceil(message.length * 12))), 12_000);
-}
-
 export function estimateTranscriptionReservation(bytes: number): number {
 	return clampCost(
 		Math.max(512 * 1024, Math.min(25 * 1024 * 1024, Math.ceil(bytes))),

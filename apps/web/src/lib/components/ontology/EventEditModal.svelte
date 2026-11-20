@@ -483,8 +483,6 @@
 			case 'document':
 				openDocumentModal(id);
 				break;
-			default:
-				console.log(`No modal handler for entity kind: ${kind}`);
 		}
 	}
 </script>

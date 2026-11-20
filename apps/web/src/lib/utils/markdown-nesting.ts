@@ -98,29 +98,6 @@ export function normalizeMarkdownHeadings(content: string, targetBaseLevel: numb
 }
 
 /**
- * Check if content has inflated headings (headings that are deeper than expected)
- */
-export function hasInflatedHeadings(content: string, expectedMaxDepth: number = 3): boolean {
-	if (!content) return false;
-
-	const lines = content.split('\n');
-	const headingLevels: number[] = [];
-
-	lines.forEach((line) => {
-		const headerMatch = line.match(/^(#{1,6})\s+(.*)$/);
-		if (headerMatch && headerMatch[1]) {
-			headingLevels.push(headerMatch[1].length);
-		}
-	});
-
-	if (headingLevels.length === 0) return false;
-
-	// Check if any headings are deeper than expected
-	const maxLevel = Math.max(...headingLevels);
-	return maxLevel > expectedMaxDepth;
-}
-
-/**
  * Updated formatProjectForPrompt with heading normalization
  */
 export function formatProjectForPrompt(
@@ -334,40 +311,6 @@ export function formatTasksForPrompt(tasks: Task[], baseLevel: number = 2): stri
 	return output;
 }
 
-/**
- * Generate status-based task collections with proper nesting
- */
-export function formatTasksByStatus(tasks: Task[], baseLevel: number = 2): string {
-	if (!tasks.length) return '';
-
-	const tasksByStatus = {
-		in_progress: tasks.filter((t) => t.status === 'in_progress'),
-		blocked: tasks.filter((t) => t.status === 'blocked'),
-		backlog: tasks.filter((t) => t.status === 'backlog'),
-		done: tasks.filter((t) => t.status === 'done')
-	};
-
-	let output = '';
-
-	// Process each status group
-	Object.entries(tasksByStatus).forEach(([status, statusTasks]) => {
-		if (statusTasks.length === 0) return;
-
-		const statusConfig = getStatusConfig(status);
-		const hierarchy = buildTaskHierarchy(statusTasks);
-
-		if (hierarchy.length > 0) {
-			output += formatTaskHierarchy(
-				hierarchy,
-				`${statusConfig.emoji} ${statusConfig.title} (${statusTasks.length})`,
-				baseLevel + 1
-			);
-		}
-	});
-
-	return output;
-}
-
 // Helper functions
 
 function getTaskStatusEmoji(status: string): string {
@@ -378,16 +321,6 @@ function getTaskStatusEmoji(status: string): string {
 		backlog: '📋'
 	};
 	return statusMap[status] || '📋';
-}
-
-function getStatusConfig(status: string) {
-	const configs: Record<string, { emoji: string; title: string }> = {
-		in_progress: { emoji: '🔄', title: 'In Progress' },
-		blocked: { emoji: '🚫', title: 'Blocked' },
-		backlog: { emoji: '📋', title: 'Backlog' },
-		done: { emoji: '✅', title: 'Completed' }
-	};
-	return configs[status] || { emoji: '📋', title: 'Unknown' };
 }
 
 function buildTaskMetadata(task: Task, showDependencies: boolean): string[] {

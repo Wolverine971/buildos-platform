@@ -28,7 +28,6 @@ export interface DashboardAttention {
 export interface DashboardProjectActivity {
 	id: string;
 	name: string;
-	description: string | null;
 	state_key: string;
 	is_shared: boolean;
 	updated_at: string;
@@ -47,7 +46,6 @@ export interface DashboardTaskActivity {
 	project_id: string;
 	project_name: string;
 	title: string;
-	description: string | null;
 	state_key: string;
 	due_at: string | null;
 	created_at: string | null;
@@ -61,7 +59,6 @@ export interface DashboardDocumentActivity {
 	project_id: string;
 	project_name: string;
 	title: string;
-	description: string | null;
 	state_key: string;
 	created_at: string | null;
 	updated_at: string;
@@ -73,7 +70,6 @@ export interface DashboardGoalActivity {
 	project_id: string;
 	project_name: string;
 	name: string;
-	description: string | null;
 	state_key: string;
 	target_date: string | null;
 	created_at: string | null;

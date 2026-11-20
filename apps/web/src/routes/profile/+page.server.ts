@@ -1,6 +1,6 @@
 // apps/web/src/routes/profile/+page.server.ts
 import { redirectToLogin } from '$lib/server/auth-redirects';
-import { redirect, fail, type Actions, type RequestEvent } from '@sveltejs/kit';
+import { redirect, fail, type Actions, type ServerLoadEvent } from '@sveltejs/kit';
 import { CalendarService } from '$lib/services/calendar-service';
 import { ActivityLogger } from '$lib/utils/activityLogger';
 import { StripeService } from '$lib/services/stripe-service';
@@ -49,10 +49,11 @@ function getCalendarReturnPath(): string {
 	return '/profile?tab=calendar&calendar=1';
 }
 
-export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
+export const load = async (event: ServerLoadEvent): Promise<PageLoadReturn> => {
 	const {
 		locals: { safeGetSession, supabase },
-		url
+		url,
+		untrack
 	} = event;
 	const { user } = await safeGetSession();
 
@@ -133,11 +134,18 @@ export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
 		isFeatureEnabled(supabase, user.id, FEATURE_KEYS.cyclesProfileSettings)
 	]);
 
-	// Check if coming from completed onboarding
-	const justCompletedOnboarding = url.searchParams.get('onboarding') === 'complete';
+	// Both are read untracked. The page picks its tab from the address itself, so a tab click
+	// must not re-run this load (a live session check and four queries the new tab never reads).
+	const query = untrack(() => ({
+		onboarding: url.searchParams.get('onboarding'),
+		tab: url.searchParams.get('tab')
+	}));
 
-	// Get active tab from URL params
-	const activeTab = resolveProfileTab(url.searchParams.get('tab'), {
+	// Check if coming from completed onboarding
+	const justCompletedOnboarding = query.onboarding === 'complete';
+
+	// The tab the first render opens on
+	const activeTab = resolveProfileTab(query.tab, {
 		cyclesProfileEnabled,
 		stripeEnabled
 	});

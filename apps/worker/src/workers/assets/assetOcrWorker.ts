@@ -9,6 +9,7 @@ import {
 	shouldPreserveManualExtractedText
 } from '@buildos/shared-types';
 import { OPENROUTER_PRIVATE_PROVIDER } from '@buildos/smart-llm';
+import { isPlainStorageObjectPath } from '@buildos/supabase-client';
 import { logWorkerError } from '../../lib/errorLogger';
 import { PermanentQueueError } from '../../lib/queueErrors';
 import { supabase } from '../../lib/supabase';
@@ -214,6 +215,9 @@ export async function processAssetOcrJob(job: LegacyJob<AssetOcrJobMetadata>) {
 		);
 
 		stage = 'signed_url';
+		if (!isPlainStorageObjectPath(asset.storage_path)) {
+			throw new Error('Asset storage path is not a plain object path');
+		}
 		const { data: signedData, error: signedError } = await supabase.storage
 			.from(asset.storage_bucket)
 			.createSignedUrl(asset.storage_path, 60 * 15);

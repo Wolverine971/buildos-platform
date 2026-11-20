@@ -18,6 +18,13 @@ describe('isCanonicalAssetStorageLocation', () => {
 		['another project', 'projects/project-2/assets/asset-9/original.png'],
 		['another asset in the same project', 'projects/project-1/assets/asset-2/original.png'],
 		['a traversal out of the asset folder', 'projects/project-1/assets/asset-1/../../x.png'],
+		// fetch resolves `%2e%2e` like `..`, so the signed link would name another bucket.
+		[
+			'an encoded traversal out of the bucket',
+			'projects/project-1/assets/asset-1/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/voice_notes/u/v.webm'
+		],
+		['a half-encoded traversal', 'projects/project-1/assets/asset-1/.%2E/x.png'],
+		['a query string', 'projects/project-1/assets/asset-1/original.png?download=x'],
 		['a prefix look-alike', 'projects/project-1/assets/asset-10/original.png']
 	])('rejects %s', (_label, storage_path) => {
 		expect(isCanonicalAssetStorageLocation({ ...ASSET, storage_path })).toBe(false);

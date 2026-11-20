@@ -150,20 +150,12 @@ export function getSkillByReference(reference: string): SkillDefinition | undefi
 	return buildSkillsByReference(getEnabledSkills())[reference];
 }
 
-export function getSkillByPath(path: string): SkillDefinition | undefined {
-	return getSkillByReference(path);
-}
-
 export function listAllSkills(): SkillDefinition[] {
 	return [...getEnabledSkills()];
 }
 
 export function listRootSkills(): SkillDefinition[] {
 	return getEnabledSkills().filter((skill) => !skill.parentId);
-}
-
-export function listChildSkills(): SkillDefinition[] {
-	return getEnabledSkills().filter((skill) => Boolean(skill.parentId));
 }
 
 export function listChildSkillsForSkill(skillOrId: SkillDefinition | string): SkillDefinition[] {
@@ -175,30 +167,4 @@ export function listChildSkillsForSkill(skillOrId: SkillDefinition | string): Sk
 
 export function isRegisteredSkillReference(reference: string): boolean {
 	return Boolean(getSkillByReference(reference));
-}
-
-export function isRegisteredSkillPath(path: string): boolean {
-	return isRegisteredSkillReference(path);
-}
-
-export function listSkillsForDirectory(
-	path: string
-): Array<{ name: string; type: 'skill'; summary: string }> {
-	const prefix = path.endsWith('.') ? path : `${path}.`;
-	return getEnabledSkills()
-		.filter((skill) => {
-			return skill.legacyPaths.some((legacyPath) => {
-				if (!legacyPath.startsWith(prefix)) return false;
-				const remainder = legacyPath.slice(prefix.length);
-				if (remainder.length === 0) return false;
-				const segments = remainder.split('.');
-				return segments.length === 1 || (segments.length === 2 && segments[1] === 'skill');
-			});
-		})
-		.map((skill) => ({
-			name: skill.id,
-			type: 'skill' as const,
-			summary: skill.summary
-		}))
-		.sort((a, b) => a.name.localeCompare(b.name));
 }

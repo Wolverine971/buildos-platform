@@ -1,7 +1,5 @@
 // apps/web/src/lib/utils/timezone.ts
 
-import { fromZonedTime } from 'date-fns-tz';
-
 /**
  * Get the user's timezone from various sources
  */
@@ -72,22 +70,6 @@ export function isTodayInTimezone(dateString: string, timezone: string): boolean
 }
 
 /**
- * Format time in user's timezone with sensible defaults
- */
-export function formatTimeInTimezone(
-	date: Date | string,
-	timezone: string,
-	options?: Intl.DateTimeFormatOptions
-): string {
-	return formatInTimezone(date, timezone, {
-		hour: 'numeric',
-		minute: '2-digit',
-		hour12: true,
-		...options
-	});
-}
-
-/**
  * Format date in user's timezone with sensible defaults
  */
 export function formatDateInTimezone(
@@ -100,26 +82,6 @@ export function formatDateInTimezone(
 		year: 'numeric',
 		month: 'short',
 		day: 'numeric',
-		...options
-	});
-}
-
-/**
- * Format full date and time in user's timezone
- */
-export function formatDateTimeInTimezone(
-	date: Date | string,
-	timezone: string,
-	options?: Intl.DateTimeFormatOptions
-): string {
-	return formatInTimezone(date, timezone, {
-		weekday: 'short',
-		year: 'numeric',
-		month: 'short',
-		day: 'numeric',
-		hour: 'numeric',
-		minute: '2-digit',
-		hour12: true,
 		...options
 	});
 }
@@ -160,53 +122,6 @@ export function getRelativeTime(date: Date | string, timezone: string): string {
 }
 
 /**
- * Parse a date string considering timezone
- */
-export function parseDateInTimezone(dateString: string, timezone: string): Date {
-	// If it's just a date (YYYY-MM-DD), append midnight in the target timezone
-	if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-		return fromZonedTime(`${dateString}T00:00:00`, timezone);
-	}
-
-	// Otherwise, parse normally
-	return new Date(dateString);
-}
-
-/**
- * Get timezone abbreviation (e.g., "PST", "EDT")
- */
-export function getTimezoneAbbreviation(timezone: string): string {
-	try {
-		const date = new Date();
-		const formatter = new Intl.DateTimeFormat('en-US', {
-			timeZone: timezone,
-			timeZoneName: 'short'
-		});
-
-		const parts = formatter.formatToParts(date);
-		const timeZonePart = parts.find((part) => part.type === 'timeZoneName');
-
-		return timeZonePart?.value || timezone;
-	} catch (err) {
-		console.error('Error getting timezone abbreviation:', err);
-		return timezone;
-	}
-}
-
-/**
- * Store timezone preference
- */
-export function storeTimezonePreference(timezone: string): void {
-	if (typeof window !== 'undefined' && window.localStorage) {
-		try {
-			localStorage.setItem('userTimezone', timezone);
-		} catch (e) {
-			console.warn('Failed to store timezone preference:', e);
-		}
-	}
-}
-
-/**
  * Get stored timezone preference
  */
 export function getStoredTimezonePreference(): string | null {
@@ -218,16 +133,4 @@ export function getStoredTimezonePreference(): string | null {
 		}
 	}
 	return null;
-}
-
-/**
- * Get the best available timezone
- */
-export function getBestTimezone(): string {
-	// First, check stored preference
-	const stored = getStoredTimezonePreference();
-	if (stored) return stored;
-
-	// Then, get from browser
-	return getUserTimezone();
 }

@@ -21,31 +21,7 @@ const BADGE_MUTED = 'bg-muted text-muted-foreground border-border';
 const BADGE_ACCENT = 'bg-accent/15 text-accent border-accent/30';
 const BADGE_PROGRESS = 'bg-info/15 text-info border-info/30';
 const BADGE_SUCCESS = 'bg-success/15 text-success border-success/30';
-const BADGE_WARNING = 'bg-warning/15 text-warning border-warning/30';
 const BADGE_DANGER = 'bg-destructive/15 text-destructive border-destructive/30';
-
-/**
- * Get Tailwind CSS classes for project state badges
- */
-export function getProjectStateBadgeClass(stateKey: string): string {
-	const normalized = stateKey?.toLowerCase();
-
-	switch (normalized) {
-		case 'draft':
-			return BADGE_MUTED;
-		case 'todo':
-		case 'planning':
-			return BADGE_ACCENT;
-		case 'active':
-		case 'in_progress':
-			return BADGE_PROGRESS;
-		case 'completed':
-		case 'done':
-			return BADGE_SUCCESS;
-		default:
-			return BADGE_MUTED;
-	}
-}
 
 /**
  * Get Tailwind CSS classes for task state badges
@@ -63,69 +39,6 @@ export function getTaskStateBadgeClass(stateKey: string): string {
 			return BADGE_SUCCESS;
 		case 'blocked':
 			return BADGE_DANGER;
-		default:
-			return BADGE_MUTED;
-	}
-}
-
-/**
- * Get Tailwind CSS classes for plan state badges
- */
-export function getPlanStateBadgeClass(stateKey: string): string {
-	const normalized = stateKey?.toLowerCase();
-
-	switch (normalized) {
-		case 'draft':
-			return BADGE_MUTED;
-		case 'planning':
-			return BADGE_WARNING;
-		case 'active':
-			return BADGE_PROGRESS;
-		case 'completed':
-			return BADGE_SUCCESS;
-		default:
-			return BADGE_MUTED;
-	}
-}
-
-/**
- * Get Tailwind CSS classes for goal state badges
- */
-export function getGoalStateBadgeClass(stateKey: string): string {
-	const normalized = stateKey?.toLowerCase();
-
-	switch (normalized) {
-		case 'draft':
-			return BADGE_MUTED;
-		case 'active':
-			return BADGE_ACCENT;
-		case 'on_track':
-			return BADGE_PROGRESS;
-		case 'at_risk':
-			return BADGE_WARNING;
-		case 'achieved':
-			return BADGE_SUCCESS;
-		case 'missed':
-			return BADGE_DANGER;
-		default:
-			return BADGE_MUTED;
-	}
-}
-
-/**
- * Get Tailwind CSS classes for priority badges
- */
-export function getPriorityBadgeClass(priority?: string): string {
-	const normalized = priority?.toLowerCase();
-
-	switch (normalized) {
-		case 'urgent':
-		case 'high':
-			return BADGE_DANGER;
-		case 'medium':
-			return BADGE_WARNING;
-		case 'low':
-			return BADGE_MUTED;
 		default:
 			return BADGE_MUTED;
 	}

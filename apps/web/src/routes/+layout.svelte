@@ -919,11 +919,9 @@
 		// Subscribe to navigation store for global navigation handling
 		const unsubscribeNav = navigationStore.subscribe(async (request) => {
 			if (request && request.url) {
-				console.log('[Layout] Navigation request received:', request.url);
 				try {
 					// Perform navigation at the root level
 					await goto(request.url);
-					console.log('[Layout] Navigation successful to:', request.url);
 				} catch (error) {
 					console.error('[Layout] Navigation failed:', error);
 					// Fallback to hard navigation

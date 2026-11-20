@@ -14,8 +14,6 @@ import {
 	resolveGatewaySurfaceProfileForContextType,
 	type GatewaySurfaceProfileName
 } from '@buildos/agentic-chat-runtime/catalog';
-
-export const PREPARED_PROMPT_CACHE_VERSION = 1;
 export const PREPARED_PROMPT_KEY_PREFIX = 'pp_v1';
 export const PREPARED_PROMPT_TTL_MS = 90 * 1000;
 const PREPARED_PROMPT_FOCUS_STRING_MAX_CHARS = 1_500;

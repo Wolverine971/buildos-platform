@@ -44,6 +44,7 @@ import { createCrossSiteFormPostResponse } from '$lib/server/csrf';
 import { sanitizeLogData, sanitizeLogText } from '$lib/utils/logging-helpers';
 import { getLegacyRedirectPath } from '$lib/utils/legacy-redirects';
 import { describeServerRuntimeVersions } from '$lib/server/runtime-versions';
+import { routedPathname } from '$lib/server/routed-pathname';
 
 console.info(describeServerRuntimeVersions());
 
@@ -150,9 +151,21 @@ function logHookError(
 	}
 }
 
+function isAdminPagePath(path: string | null | undefined): boolean {
+	return path === '/admin' || !!path?.startsWith('/admin/');
+}
+
 // Main handle for Supabase and session management
 const handleSupabase: Handle = async ({ event, resolve }) => {
-	const crossSiteFormPostResponse = createCrossSiteFormPostResponse(event);
+	// Every path decision below reads the decoded path SvelteKit routes on. The raw
+	// `event.url.pathname` keeps percent-encoding, so `/%61dmin/users` would pass a raw prefix
+	// check while still reaching the admin route.
+	const pathname = routedPathname(event.url);
+	if (pathname === null) {
+		return new Response('Malformed URI', { status: 400 });
+	}
+
+	const crossSiteFormPostResponse = createCrossSiteFormPostResponse(event, pathname);
 	if (crossSiteFormPostResponse) {
 		return crossSiteFormPostResponse;
 	}
@@ -215,21 +228,21 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		user: typeof event.locals.user;
 	}> | null = null;
 
-	// PERFORMANCE: Skip session loading for static assets and API routes that don't need auth
-	const pathname = event.url.pathname;
-	const legacyRedirectPath = getLegacyRedirectPath(pathname);
+	// Redirect targets keep the request's own encoding, so they are built from the raw path.
+	const rawPathname = event.url.pathname;
+	const legacyRedirectPath = getLegacyRedirectPath(rawPathname);
 	const shouldRedirectToApexDomain = event.url.hostname === 'www.build-os.com';
 
 	if (legacyRedirectPath || shouldRedirectToApexDomain) {
 		const search = getRequestSearch(event);
-		const targetPath = `${legacyRedirectPath ?? pathname}${search}`;
+		const targetPath = `${legacyRedirectPath ?? rawPathname}${search}`;
 		if (shouldRedirectToApexDomain) {
 			throw redirect(308, `https://build-os.com${targetPath}`);
 		}
 		throw redirect(308, targetPath);
 	}
 
-	// Skip auth for static assets and certain API routes
+	// PERFORMANCE: Skip session loading for static assets and API routes that don't need auth
 	if (
 		pathname.startsWith('/_app/') ||
 		pathname.startsWith('/static/') ||
@@ -458,7 +471,8 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 	// the client marks invalidated, so the admin layout's check can be skipped and a page load
 	// that uses the service-role client answers anyone. Gate the whole tree here, where every
 	// page, data, and form-action request passes. (/api/admin handlers check for themselves.)
-	if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+	// The matched route is checked as well as the decoded path, so the gate follows the router.
+	if (isAdminPagePath(pathname) || isAdminPagePath(event.route.id)) {
 		if (!event.locals.user) redirectToLogin(event.url);
 		if (!event.locals.user.is_admin) throw redirect(303, '/today');
 	}

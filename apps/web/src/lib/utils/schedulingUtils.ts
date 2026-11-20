@@ -1,15 +1,7 @@
 // apps/web/src/lib/utils/schedulingUtils.ts
 
-import {
-	format,
-	startOfDay,
-	addMinutes,
-	isWithinInterval,
-	getDay,
-	setHours,
-	setMinutes
-} from 'date-fns';
-import type { PhaseWithTasks, TaskWithCalendarEvents } from '$lib/types/project-page.types';
+import { format, startOfDay, getDay, setHours, setMinutes } from 'date-fns';
+import type { TaskWithCalendarEvents } from '$lib/types/project-page.types';
 
 export interface ProposedTaskSchedule {
 	task: TaskWithCalendarEvents;
@@ -110,13 +102,6 @@ export function formatDateTime(date: Date): string {
 }
 
 /**
- * Format task time for display
- */
-export function formatTaskTime(date: Date): string {
-	return format(date, 'MMM d, h:mm a');
-}
-
-/**
  * Format datetime for HTML datetime-local input
  */
 export function formatDateTimeForInput(date: Date): string {
@@ -128,106 +113,6 @@ export function formatDateTimeForInput(date: Date): string {
  */
 export function parseDateTimeFromInput(value: string): Date {
 	return new Date(value);
-}
-
-/**
- * Validate a task schedule against phase and project boundaries
- */
-export function validateTaskSchedule(
-	schedule: ProposedTaskSchedule,
-	phase: PhaseWithTasks,
-	project?: { start_date?: string; end_date?: string },
-	existingEvents?: any[]
-): ValidationResult {
-	const conflicts: ConflictInfo[] = [];
-	const warnings: string[] = [];
-	let isValid = true;
-
-	// Check phase boundaries
-	const phaseStart = getLocalStartOfDay(phase.start_date);
-	const phaseEnd = getLocalEndOfDay(phase.end_date);
-
-	if (schedule.proposedStart < phaseStart || schedule.proposedEnd > phaseEnd) {
-		conflicts.push({
-			type: 'phase_boundary',
-			description: `Task "${schedule.task.title}" scheduled outside phase dates`,
-			severity: 'error',
-			taskId: schedule.task.id,
-			taskName: schedule.task.title,
-			date: schedule.proposedStart
-		});
-		isValid = false;
-	}
-
-	// Check project boundaries if provided
-	if (project) {
-		if (project.start_date) {
-			const projectStart = getLocalStartOfDay(project.start_date);
-			if (schedule.proposedStart < projectStart) {
-				conflicts.push({
-					type: 'project_boundary',
-					description: `Task "${schedule.task.title}" scheduled before project start date`,
-					severity: 'error',
-					taskId: schedule.task.id,
-					taskName: schedule.task.title,
-					date: schedule.proposedStart
-				});
-				isValid = false;
-			}
-		}
-
-		if (project.end_date) {
-			const projectEnd = getLocalEndOfDay(project.end_date);
-			if (schedule.proposedEnd > projectEnd) {
-				conflicts.push({
-					type: 'project_boundary',
-					description: `Task "${schedule.task.title}" scheduled after project end date`,
-					severity: 'error',
-					taskId: schedule.task.id,
-					taskName: schedule.task.title,
-					date: schedule.proposedEnd
-				});
-				isValid = false;
-			}
-		}
-	}
-
-	// Check conflicts with existing calendar events
-	if (existingEvents && existingEvents.length > 0) {
-		const conflictingEvent = existingEvents.find((event) => {
-			const eventStart = new Date(event.start?.dateTime || event.start?.date);
-			const eventEnd = new Date(event.end?.dateTime || event.end?.date);
-
-			// Check if there's any overlap
-			return schedule.proposedStart < eventEnd && schedule.proposedEnd > eventStart;
-		});
-
-		if (conflictingEvent) {
-			conflicts.push({
-				type: 'calendar',
-				description: `Task "${schedule.task.title}" conflicts with: ${conflictingEvent.summary}`,
-				severity: 'warning',
-				taskId: schedule.task.id,
-				taskName: schedule.task.title,
-				date: schedule.proposedStart
-			});
-			warnings.push(
-				`Task "${schedule.task.title}" overlaps with existing calendar event: ${conflictingEvent.summary}`
-			);
-		}
-	}
-
-	// Check for past scheduling
-	const now = new Date();
-	if (schedule.proposedStart < now) {
-		warnings.push('Task is scheduled in the past');
-	}
-
-	return {
-		isValid,
-		conflicts,
-		warnings
-	};
 }
 
 /**
@@ -251,106 +136,6 @@ export function getWorkingHoursForDay(
 	const dayEnd = setMinutes(setHours(startOfDay(date), endHour!), endMin || 0);
 
 	return { start: dayStart, end: dayEnd };
-}
-
-/**
- * Generate time slots for scheduling
- */
-export function generateTimeSlots(
-	startDate: Date,
-	endDate: Date,
-	workingHours: WorkingHours,
-	existingEvents: any[] = [],
-	slotDurationMinutes: number = 30
-): Array<{ start: Date; end: Date; available: boolean }> {
-	const slots = [];
-	const current = new Date(startDate);
-
-	while (current <= endDate) {
-		const workHours = getWorkingHoursForDay(current, workingHours);
-
-		if (workHours) {
-			const slotStart = new Date(workHours.start);
-
-			while (slotStart < workHours.end) {
-				const slotEnd = addMinutes(slotStart, slotDurationMinutes);
-
-				// Check if slot overlaps with any existing event
-				const hasConflict = existingEvents.some((event) => {
-					const eventStart = new Date(event.start?.dateTime || event.start?.date);
-					const eventEnd = new Date(event.end?.dateTime || event.end?.date);
-
-					return (
-						isWithinInterval(slotStart, { start: eventStart, end: eventEnd }) ||
-						isWithinInterval(slotEnd, { start: eventStart, end: eventEnd }) ||
-						(slotStart <= eventStart && slotEnd >= eventEnd)
-					);
-				});
-
-				slots.push({
-					start: new Date(slotStart),
-					end: new Date(slotEnd),
-					available: !hasConflict
-				});
-
-				slotStart.setMinutes(slotStart.getMinutes() + slotDurationMinutes);
-			}
-		}
-
-		current.setDate(current.getDate() + 1);
-		current.setHours(0, 0, 0, 0);
-	}
-
-	return slots;
-}
-
-/**
- * Find the next available slot for a task
- */
-export function findNextAvailableSlot(
-	slots: Array<{ start: Date; end: Date; available: boolean }>,
-	preferredDate: Date,
-	durationMinutes: number
-): { start: Date; end: Date } | null {
-	const slotsNeeded = Math.ceil(durationMinutes / 30);
-	const availableSlots = slots.filter((s) => s.available);
-
-	// Sort by distance from preferred date
-	availableSlots.sort((a, b) => {
-		const distA = Math.abs(a.start.getTime() - preferredDate.getTime());
-		const distB = Math.abs(b.start.getTime() - preferredDate.getTime());
-		return distA - distB;
-	});
-
-	// Find consecutive slots
-	for (let i = 0; i < availableSlots.length; i++) {
-		const consecutiveSlots = [availableSlots[i]!];
-
-		for (
-			let j = i + 1;
-			j < availableSlots.length && consecutiveSlots.length < slotsNeeded;
-			j++
-		) {
-			const lastSlot = consecutiveSlots[consecutiveSlots.length - 1]!;
-			const currentSlot = availableSlots[j]!;
-
-			// Check if slots are consecutive
-			if (currentSlot.start.getTime() === lastSlot.end.getTime()) {
-				consecutiveSlots.push(currentSlot);
-			} else {
-				break;
-			}
-		}
-
-		if (consecutiveSlots.length >= slotsNeeded) {
-			return {
-				start: consecutiveSlots[0]!.start,
-				end: consecutiveSlots[consecutiveSlots.length - 1]!.end
-			};
-		}
-	}
-
-	return null;
 }
 
 /**
@@ -396,54 +181,8 @@ export function getMonthDates(date: Date): Date[] {
 }
 
 /**
- * Sort tasks by dependencies
- */
-export function sortTasksByDependencies(tasks: any[]): any[] {
-	const sorted: any[] = [];
-	const visited = new Set<string>();
-
-	function visit(task: any) {
-		if (visited.has(task.id)) return;
-		visited.add(task.id);
-
-		// Visit dependencies first
-		if (task.dependencies && Array.isArray(task.dependencies)) {
-			for (const depId of task.dependencies) {
-				const dep = tasks.find((t) => t.id === depId);
-				if (dep) visit(dep);
-			}
-		}
-
-		sorted.push(task);
-	}
-
-	// Visit all tasks
-	for (const task of tasks) {
-		visit(task);
-	}
-
-	return sorted;
-}
-
-/**
  * Calculate duration in minutes between two dates
  */
 export function calculateDuration(start: Date, end: Date): number {
 	return Math.round((end.getTime() - start.getTime()) / 60000);
-}
-
-/**
- * Check if a date is in the past
- */
-export function isInPast(date: Date): boolean {
-	return date < new Date();
-}
-
-/**
- * Get conflict severity color
- */
-export function getConflictSeverityColor(severity: string): string {
-	return severity === 'error'
-		? 'text-red-600 dark:text-red-400'
-		: 'text-amber-600 dark:text-amber-400';
 }

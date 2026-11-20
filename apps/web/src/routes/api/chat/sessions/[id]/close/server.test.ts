@@ -145,6 +145,28 @@ describe('chat-close project freshness', () => {
 			expect(mocks.snapshot).not.toHaveBeenCalled();
 		}
 	);
+	// The worker later acts on whatever project the session names, with the service role.
+	it('does not save a project scope the person cannot see', async () => {
+		const h = closeHarness({
+			context: 'global',
+			session: { entity_id: null },
+			accessible: false,
+			payload: { context_type: 'project', entity_id: projectId, has_messages_sent: true }
+		});
+		expect((await h.close()).status).toBe(200);
+		expect(h.writes).toEqual([]);
+		expect(h.session).toMatchObject({ context_type: 'global', entity_id: null });
+		expect(mocks.snapshot).not.toHaveBeenCalled();
+	});
+	it('saves a project scope the person can see', async () => {
+		const h = closeHarness({
+			context: 'global',
+			session: { entity_id: null },
+			payload: { context_type: 'project', entity_id: projectId, has_messages_sent: true }
+		});
+		expect((await h.close()).status).toBe(200);
+		expect(h.session).toMatchObject({ context_type: 'project', entity_id: projectId });
+	});
 	it("cannot synthesize or change another user's session", async () => {
 		const h = closeHarness({
 			session: { user_id: 'another-user' },

@@ -1,8 +1,6 @@
 // apps/web/src/lib/utils/overdue-task-batches.ts
 import type { LaneKey, OverdueProjectBatch, OverdueTask } from '$lib/types/overdue-triage';
 
-export const LANE_ORDER: LaneKey[] = ['assigned_collab', 'assigned_other', 'other'];
-
 const LANE_WEIGHT: Record<LaneKey, number> = {
 	assigned_collab: 0,
 	assigned_other: 1,

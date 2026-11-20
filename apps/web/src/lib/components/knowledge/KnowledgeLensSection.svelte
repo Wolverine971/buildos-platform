@@ -10,6 +10,7 @@
 	import { KNOWLEDGE_PREDICATE_MAP } from '@buildos/shared-agent-ops/knowledge';
 	import { Check, Clock, Copy, Lock, Mail, MapPin, Link, Phone } from '$lib/icons/lucide';
 	import { toastService } from '$lib/stores/toast.store';
+	import { safeHref } from '$lib/components/tables/table-cell-format';
 	import { contactAction, contactHref, displayPhone, displayUrl } from './knowledge-client';
 	import type { AskResult, LensEntry, LensFact } from './sharing-types';
 
@@ -182,9 +183,9 @@
 				{#each details as fact (fact.id)}
 					<p class="min-w-0 text-sm text-foreground">
 						{detailText(fact)}
-						{#if fact.source_url}
+						{#if fact.source_url && safeHref(fact.source_url)}
 							<a
-								href={fact.source_url}
+								href={safeHref(fact.source_url)}
 								target="_blank"
 								rel="noopener noreferrer"
 								class="ml-1 text-xs text-muted-foreground underline decoration-border underline-offset-2 hover:text-foreground"
@@ -198,7 +199,7 @@
 						{#each links as fact (fact.id)}
 							<li>
 								<a
-									href={fact.value}
+									href={safeHref(fact.value) ?? undefined}
 									target="_blank"
 									rel="noopener noreferrer"
 									class="flex min-h-8 min-w-0 items-center gap-2 rounded-md px-2 text-sm text-foreground pressable hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

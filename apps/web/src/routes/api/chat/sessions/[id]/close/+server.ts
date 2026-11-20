@@ -63,6 +63,24 @@ export const POST: RequestHandler = async ({
 		updates.entity_id = payload.entity_id ?? null;
 	}
 
+	// The scope comes from the request, and the worker later acts on the project it names.
+	// Only save a project scope for a project this person can see (checked through RLS).
+	const requestedContextType = updates.context_type ?? session.context_type;
+	const requestedEntityId = hasEntityId ? updates.entity_id : session.entity_id;
+	let scopeRefused = false;
+	if (Object.keys(updates).length > 0 && requestedContextType === 'project' && requestedEntityId) {
+		const { data: visibleProject } = await supabase
+			.from('onto_projects')
+			.select('id')
+			.eq('id', requestedEntityId)
+			.maybeSingle();
+		if (!visibleProject) {
+			scopeRefused = true;
+			delete updates.context_type;
+			delete updates.entity_id;
+		}
+	}
+
 	if (Object.keys(updates).length > 0) {
 		updates.updated_at = new Date().toISOString();
 		const { error: updateError } = await supabase
@@ -165,7 +183,8 @@ export const POST: RequestHandler = async ({
 	// coalesced by session revision and runs at close, not per tool mutation.
 	let snapshotQueued = false;
 	const effectiveContextType = updates.context_type ?? session.context_type;
-	const effectiveEntityId = hasEntityId ? updates.entity_id : session.entity_id;
+	const effectiveEntityId =
+		hasEntityId && !scopeRefused ? updates.entity_id : session.entity_id;
 	if (shouldQueueClassification && effectiveContextType === 'project' && effectiveEntityId) {
 		try {
 			// The client may change the session context. Check access through RLS

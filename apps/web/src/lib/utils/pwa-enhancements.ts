@@ -160,31 +160,6 @@ export function initializePWAEnhancements(): (() => void) | void {
 }
 
 /**
- * Request app installation (for supported browsers)
- */
-export async function requestInstall() {
-	if (!browser) return;
-
-	// Check if installation is available
-	const beforeInstallPromptEvent = (window as any).deferredPrompt;
-
-	if (beforeInstallPromptEvent) {
-		// Show the install prompt
-		beforeInstallPromptEvent.prompt();
-
-		// Wait for the user's response
-		const { outcome } = await beforeInstallPromptEvent.userChoice;
-
-		// Clear the deferred prompt
-		(window as any).deferredPrompt = null;
-
-		return outcome === 'accepted';
-	}
-
-	return false;
-}
-
-/**
  * Set up install prompt handling
  * @returns Cleanup function to remove event listeners
  */

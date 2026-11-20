@@ -12,14 +12,6 @@ export interface ApiError {
 	timestamp: string;
 }
 
-export interface ApiSuccess<T = unknown> {
-	success: true;
-	data?: T;
-	message?: string;
-	warnings?: ApiWarning[];
-	timestamp: string;
-}
-
 // Cache configuration interface
 export interface CacheConfig {
 	maxAge?: number; // in seconds, default 300 (5 minutes)
@@ -291,19 +283,6 @@ export class ApiResponse {
 	}
 }
 
-// Helper to validate required fields
-export function validateRequiredFields(
-	data: Record<string, unknown>,
-	fields: string[]
-): { valid: boolean; missing?: string } {
-	for (const field of fields) {
-		if (!data[field]) {
-			return { valid: false, missing: field };
-		}
-	}
-	return { valid: true };
-}
-
 // Helper to safely parse JSON request body
 export async function parseRequestBody<T = any>(request: Request): Promise<T | null> {
 	try {
@@ -332,29 +311,4 @@ export async function requireAuth(locals: App.Locals) {
 	}
 
 	return { user };
-}
-
-// Helper to handle conditional requests (304 Not Modified)
-export function handleConditionalRequest(request: Request, data: any): Response | null {
-	const ifNoneMatch = request.headers.get('if-none-match');
-
-	if (ifNoneMatch && data) {
-		const currentETag = generateETag(data);
-
-		// Check if ETags match (remove quotes for comparison)
-		const clientETag = ifNoneMatch.replace(/"/g, '');
-		const serverETag = currentETag.replace(/"/g, '');
-
-		if (clientETag === serverETag) {
-			return new Response(null, {
-				status: 304,
-				headers: {
-					ETag: currentETag,
-					'Cache-Control': 'public, max-age=300'
-				}
-			});
-		}
-	}
-
-	return null;
 }

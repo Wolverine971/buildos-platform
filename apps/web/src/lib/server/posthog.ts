@@ -105,24 +105,3 @@ export async function captureServerEvent(
 		await logCaptureFailure(error, distinctId, event, properties);
 	}
 }
-
-/**
- * Set person properties (e.g. signup attribution) without an accompanying
- * event. $set_once semantics for first-touch fields.
- */
-export async function setPersonPropertiesOnce(
-	distinctId: string,
-	properties: Record<string, unknown>
-): Promise<void> {
-	const posthog = getClient();
-	if (!posthog) return;
-	try {
-		await posthog.captureImmediate({
-			distinctId,
-			event: '$set',
-			properties: { $set_once: properties }
-		});
-	} catch (error) {
-		console.error('[posthog] failed to set person properties:', error);
-	}
-}

@@ -31,6 +31,7 @@
 		X
 	} from '$lib/icons/lucide';
 	import { toastService } from '$lib/stores/toast.store';
+	import { safeHref } from '$lib/components/tables/table-cell-format';
 	import {
 		addablePredicates,
 		CONTACT_PREDICATES,
@@ -388,9 +389,9 @@
 				{#if source.quote}<p class="mt-1 italic text-foreground/80">
 						“{source.quote}”
 					</p>{/if}
-				{#if source.url}
+				{#if safeHref(source.url)}
 					<a
-						href={source.url}
+						href={safeHref(source.url)}
 						target="_blank"
 						rel="noopener noreferrer"
 						class="mt-1 block truncate text-accent underline-offset-2 hover:underline"

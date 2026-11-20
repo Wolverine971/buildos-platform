@@ -59,16 +59,3 @@ export function haptic(pattern: HapticPattern = 'light'): boolean {
 		return false;
 	}
 }
-
-/**
- * Cancel any ongoing vibration
- */
-export function cancelHaptic(): void {
-	if (isHapticSupported()) {
-		try {
-			navigator.vibrate(0);
-		} catch {
-			// Ignore errors
-		}
-	}
-}

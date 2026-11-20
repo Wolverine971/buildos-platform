@@ -102,8 +102,6 @@ export const skillFrontmatterSchema = z
 		}
 	});
 
-export type SkillFrontmatter = z.infer<typeof skillFrontmatterSchema>;
-
 /**
  * Lightweight reference-module frontmatter (§8.2 / decision #3). Present only on modules that opt
  * in; the loader strips it before serving. `provenance_required` is the crown-jewel hook (§2.5):
@@ -117,8 +115,6 @@ export const referenceModuleFrontmatterSchema = z
 		updated: z.union([z.string(), z.date()]).optional()
 	})
 	.passthrough();
-
-export type ReferenceModuleFrontmatter = z.infer<typeof referenceModuleFrontmatterSchema>;
 
 /** Closed provenance vocabulary (§11 decision 5). Three confidence tags + two audit markers. */
 export const PROVENANCE_CONFIDENCE_TAGS = ['PRIMARY', 'practitioner', 'internal-default'] as const;

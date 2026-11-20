@@ -29,8 +29,6 @@ export const EMAIL_RELEVANCE_SCAN_OPERATION_CODES = [
 	'metadata_batch'
 ] as const;
 
-export type EmailRelevanceScanOperationCode = (typeof EMAIL_RELEVANCE_SCAN_OPERATION_CODES)[number];
-
 export type EmailRelevanceScanOperationReservation = {
 	operation_code: 'list_page' | 'metadata_batch';
 	gmail_quota_units: number;

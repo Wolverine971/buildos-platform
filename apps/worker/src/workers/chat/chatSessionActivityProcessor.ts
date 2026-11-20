@@ -3,6 +3,7 @@
 // project, write the project's next step from where the project now stands.
 
 import { supabase } from '../../lib/supabase';
+import { accessibleSessionProjectId } from '../../lib/projectAccess';
 import { logWorkerError } from '../../lib/errorLogger';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import {
@@ -158,13 +159,14 @@ export async function processSessionActivityAndNextSteps(
 		return { nextStepUpdated: false, projectId: null, skippedReason: 'not_project_session' };
 	}
 
-	// Only process project-related sessions
-	if (sessionContext.context_type !== 'project' || !sessionContext.entity_id) {
+	// Only process project-related sessions. The scope on the session row is user-written, and
+	// this updates the project's next step with the service role, so the owner must be able to
+	// write to that project.
+	const projectId = await accessibleSessionProjectId(supabase, userId, sessionContext, 'write');
+	if (!projectId) {
 		console.log(`⏭️ Session ${sessionId} is not project-related, skipping next step`);
 		return { nextStepUpdated: false, projectId: null, skippedReason: 'not_project_session' };
 	}
-
-	const projectId = sessionContext.entity_id;
 
 	try {
 		// 2. What the chat saved, from its write receipts

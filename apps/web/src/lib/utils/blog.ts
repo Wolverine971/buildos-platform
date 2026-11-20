@@ -460,16 +460,3 @@ export async function getRelatedPosts(
 	const categoryPosts = await loadBlogPostsByCategory(category as BlogCategory);
 	return categoryPosts.filter((post) => post.slug !== currentSlug).slice(0, limit);
 }
-
-// Search posts by title, description, or tags
-export async function searchBlogPosts(query: string): Promise<BlogPost[]> {
-	const allPosts = await loadBlogPosts();
-	const searchTerm = query.toLowerCase();
-
-	return allPosts.filter(
-		(post) =>
-			post.title.toLowerCase().includes(searchTerm) ||
-			post.description.toLowerCase().includes(searchTerm) ||
-			post.tags.some((tag) => tag.toLowerCase().includes(searchTerm))
-	);
-}

@@ -67,61 +67,10 @@ export function createGmailTransporter(senderType: SenderType = 'dj') {
 }
 
 /**
- * Create Gmail transporter by email address
- */
-export function createGmailTransporterByEmail(email: string) {
-	const sender = getSenderByEmail(email);
-
-	if (!sender) {
-		throw new Error(`No sender configuration found for email: ${email}`);
-	}
-
-	if (!sender.password) {
-		throw new Error(`Gmail app password not configured for ${email}`);
-	}
-
-	return createTransport({
-		service: 'gmail',
-		auth: {
-			user: sender.email,
-			pass: sender.password
-		},
-		...GMAIL_TIMEOUTS
-	});
-}
-
-/**
  * Get default sender (DJ)
  */
 export function getDefaultSender(): EmailSender {
 	return EMAIL_SENDERS.dj;
-}
-
-/**
- * Check if sender credentials are available
- */
-export function isSenderConfigured(senderType: SenderType): boolean {
-	const sender = getSenderByType(senderType);
-	return !!(sender.email && sender.password);
-}
-
-/**
- * Get all available senders
- */
-export function getAvailableSenders(): Array<{
-	type: SenderType;
-	email: string;
-	name: string;
-	configured: boolean;
-}> {
-	return (Object.entries(EMAIL_SENDERS) as Array<[SenderType, EmailSender]>).map(
-		([type, config]) => ({
-			type: type as SenderType,
-			email: config.email,
-			name: config.name || config.email,
-			configured: !!(config.email && config.password)
-		})
-	);
 }
 
 /**

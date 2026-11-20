@@ -1230,13 +1230,3 @@ IMPORTANT:
 // ============================================
 // FACTORY FUNCTION
 // ============================================
-
-/**
- * Create a BatchTaskMigrationService instance
- */
-export function createBatchTaskMigrationService(
-	client: TypedSupabaseClient,
-	llm: SmartLLMService
-): BatchTaskMigrationService {
-	return new BatchTaskMigrationService(client, llm);
-}

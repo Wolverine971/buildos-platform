@@ -29,7 +29,6 @@ type TaskRow = Pick<
 	| 'id'
 	| 'project_id'
 	| 'title'
-	| 'description'
 	| 'state_key'
 	| 'updated_at'
 	| 'due_at'
@@ -39,7 +38,7 @@ type TaskRow = Pick<
 
 type DocumentRow = Pick<
 	Database['public']['Tables']['onto_documents']['Row'],
-	'id' | 'project_id' | 'title' | 'description' | 'state_key' | 'updated_at' | 'created_at'
+	'id' | 'project_id' | 'title' | 'state_key' | 'updated_at' | 'created_at'
 >;
 
 type GoalRow = Pick<
@@ -47,7 +46,6 @@ type GoalRow = Pick<
 	| 'id'
 	| 'project_id'
 	| 'name'
-	| 'description'
 	| 'state_key'
 	| 'updated_at'
 	| 'target_date'
@@ -136,7 +134,6 @@ function normalizeRecentProjects(raw: unknown): DashboardProjectActivity[] {
 					toTrimmedString(entry.name) ??
 					toTrimmedString(entry.project_name) ??
 					'Untitled project',
-				description: toNullableString(entry.description),
 				state_key: toTrimmedString(entry.state_key) ?? 'active',
 				is_shared: toBooleanFlag(entry.is_shared),
 				updated_at: toIsoTimestamp(entry.updated_at),
@@ -169,7 +166,6 @@ function normalizeRecentTasks(raw: unknown): DashboardTaskActivity[] {
 				project_id: projectId,
 				project_name: toTrimmedString(entry.project_name) ?? 'Unknown project',
 				title: toTrimmedString(entry.title) ?? 'Untitled task',
-				description: toNullableString(entry.description),
 				state_key: toTrimmedString(entry.state_key) ?? '',
 				due_at: toNullableString(entry.due_at),
 				created_at: createdAt,
@@ -200,7 +196,6 @@ function normalizeRecentDocuments(raw: unknown): DashboardDocumentActivity[] {
 				project_id: projectId,
 				project_name: toTrimmedString(entry.project_name) ?? 'Unknown project',
 				title: toTrimmedString(entry.title) ?? 'Untitled document',
-				description: toNullableString(entry.description),
 				state_key: toTrimmedString(entry.state_key) ?? '',
 				created_at: createdAt,
 				updated_at: updatedAt,
@@ -230,7 +225,6 @@ function normalizeRecentGoals(raw: unknown): DashboardGoalActivity[] {
 				project_id: projectId,
 				project_name: toTrimmedString(entry.project_name) ?? 'Unknown project',
 				name: toTrimmedString(entry.name) ?? 'Untitled goal',
-				description: toNullableString(entry.description),
 				state_key: toTrimmedString(entry.state_key) ?? '',
 				target_date: toNullableString(entry.target_date),
 				created_at: createdAt,
@@ -677,7 +671,6 @@ export async function getUserDashboardAnalytics(
 			.map((project) => ({
 				id: project.id,
 				name: project.name,
-				description: project.description,
 				state_key: project.state_key,
 				is_shared: project.is_shared,
 				updated_at: project.updated_at,
@@ -751,7 +744,7 @@ export async function getUserDashboardAnalytics(
 				const { data, error } = await client
 					.from('onto_tasks')
 					.select(
-						'id, project_id, title, description, state_key, due_at, created_at, completed_at, updated_at'
+						'id, project_id, title, state_key, due_at, created_at, completed_at, updated_at'
 					)
 					.in('project_id', projectIds)
 					.is('deleted_at', null)
@@ -769,7 +762,7 @@ export async function getUserDashboardAnalytics(
 				if (projectIds.length === 0) return [] as DocumentRow[];
 				const { data, error } = await client
 					.from('onto_documents')
-					.select('id, project_id, title, description, state_key, created_at, updated_at')
+					.select('id, project_id, title, state_key, created_at, updated_at')
 					.in('project_id', projectIds)
 					.is('deleted_at', null)
 					.order('updated_at', { ascending: false })
@@ -787,7 +780,7 @@ export async function getUserDashboardAnalytics(
 				const { data, error } = await client
 					.from('onto_goals')
 					.select(
-						'id, project_id, name, description, state_key, target_date, created_at, completed_at, updated_at'
+						'id, project_id, name, state_key, target_date, created_at, completed_at, updated_at'
 					)
 					.in('project_id', projectIds)
 					.is('deleted_at', null)
@@ -823,7 +816,6 @@ export async function getUserDashboardAnalytics(
 				project_id: task.project_id,
 				project_name: projectById.get(task.project_id)?.name ?? 'Unknown project',
 				title: task.title,
-				description: task.description,
 				state_key: task.state_key,
 				due_at: task.due_at,
 				created_at: task.created_at,
@@ -840,7 +832,6 @@ export async function getUserDashboardAnalytics(
 				project_id: document.project_id,
 				project_name: projectById.get(document.project_id)?.name ?? 'Unknown project',
 				title: document.title,
-				description: document.description,
 				state_key: document.state_key,
 				created_at: document.created_at,
 				updated_at: updatedAt,
@@ -855,7 +846,6 @@ export async function getUserDashboardAnalytics(
 				project_id: goal.project_id,
 				project_name: projectById.get(goal.project_id)?.name ?? 'Unknown project',
 				name: goal.name,
-				description: goal.description,
 				state_key: goal.state_key,
 				target_date: goal.target_date,
 				created_at: goal.created_at,

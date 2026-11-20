@@ -5,6 +5,13 @@ import {
 	createServerClient as createSSRServerClient
 } from '@supabase/ssr';
 import type { Database } from '@buildos/shared-types';
+import { refuseDotSegmentFetch } from './request-path-guard';
+
+export {
+	isPlainStorageObjectPath,
+	refuseDotSegmentFetch,
+	urlHasDotSegment
+} from './request-path-guard';
 
 export type TypedSupabaseClient = SupabaseClient<Database>;
 
@@ -60,6 +67,7 @@ export function createServiceClient(): TypedSupabaseClient {
 	}
 
 	return createClient<Database>(supabaseUrl, supabaseKey, {
+		global: { fetch: refuseDotSegmentFetch },
 		auth: {
 			autoRefreshToken: false,
 			persistSession: false
@@ -173,6 +181,7 @@ export function createSupabaseServer(
 
 	return createSSRServerClient<Database>(supabaseUrl, supabaseAnonKey, {
 		cookies,
+		global: { fetch: refuseDotSegmentFetch },
 		auth: {
 			flowType: 'pkce',
 			autoRefreshToken: false,
@@ -210,7 +219,10 @@ export function createSupabaseBearer(
 	}
 
 	return createClient<Database>(supabaseUrl, supabaseAnonKey, {
-		global: { headers: { Authorization: `Bearer ${accessToken}` } },
+		global: {
+			headers: { Authorization: `Bearer ${accessToken}` },
+			fetch: refuseDotSegmentFetch
+		},
 		auth: {
 			autoRefreshToken: false,
 			persistSession: false,
@@ -224,7 +236,8 @@ export function createSupabaseBearer(
  * Use this when you need full control over the client configuration
  */
 export function createCustomClient(url: string, key: string): TypedSupabaseClient {
-	return createClient<Database>(url, key);
+	// Most callers pass the service-role key, so this client gets the same request guard.
+	return createClient<Database>(url, key, { global: { fetch: refuseDotSegmentFetch } });
 }
 
 /**

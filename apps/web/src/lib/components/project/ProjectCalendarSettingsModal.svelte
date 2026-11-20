@@ -756,7 +756,7 @@
 	<!-- dvh (not vh) so the fixed pane never exceeds the visible iOS viewport;
 	     subtract --keyboard-height so internal scroll stays usable while typing -->
 	<div
-		class="flex h-[calc(72dvh-var(--keyboard-height,0px))] max-h-[calc(72dvh-var(--keyboard-height,0px))] flex-col bg-background tx tx-frame tx-weak"
+		class="calendar-settings-body flex h-[calc(72dvh-var(--keyboard-height,0px))] max-h-[calc(72dvh-var(--keyboard-height,0px))] flex-col bg-background tx tx-frame tx-weak"
 	>
 		<div class="px-3 sm:px-4 pt-2 border-b border-border">
 			<TabNav
@@ -1321,7 +1321,7 @@
 	</div>
 
 	{#snippet footer()}
-		<div class="border-t border-border px-4 py-3 bg-card sm:px-5">
+		<div class="calendar-settings-body border-t border-border px-4 py-3 bg-card sm:px-5">
 			{#if activeTab === 'settings'}
 				<div class="flex items-center justify-between gap-2">
 					{#if calendarExists}
@@ -1414,15 +1414,17 @@
 {/if}
 
 <style>
-	:global(.modal-content button),
-	:global(.modal-content input),
-	:global(.modal-content textarea),
-	:global(.modal-content select) {
+	/* Scoped to this window: as bare `.modal-content` rules these restyled every modal in the
+	   app once this component's CSS had loaded. */
+	.calendar-settings-body :global(button),
+	.calendar-settings-body :global(input),
+	.calendar-settings-body :global(textarea),
+	.calendar-settings-body :global(select) {
 		transition: all 0.15s cubic-bezier(0.22, 1, 0.36, 1);
 	}
 
 	@media (max-width: 640px) {
-		:global(.modal-content button:not(.aspect-square)) {
+		.calendar-settings-body :global(button:not(.aspect-square)) {
 			min-height: 44px;
 		}
 	}

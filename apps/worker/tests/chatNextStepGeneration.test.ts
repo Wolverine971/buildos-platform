@@ -7,8 +7,25 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockGetJSONResponse = vi.hoisted(() => vi.fn());
 const mockSupabaseFrom = vi.hoisted(() => vi.fn());
+const mockOwnerCanReachProject = vi.hoisted(() => vi.fn());
 
 vi.mock('../src/lib/supabase', () => ({ supabase: { from: mockSupabaseFrom } }));
+
+// The session's scope is user-written; the worker follows it only when the owner can reach
+// the project. These tests decide that answer here; tests/projectAccess.test.ts covers the lookup.
+vi.mock('../src/lib/projectAccess', () => ({
+	accessibleSessionProjectId: async (
+		_client: unknown,
+		userId: string,
+		session: { context_type?: string | null; entity_id?: string | null } | null,
+		level?: string
+	) =>
+		session?.context_type === 'project' &&
+		session.entity_id &&
+		(await mockOwnerCanReachProject(userId, session.entity_id, level ?? 'read'))
+			? session.entity_id
+			: null
+}));
 vi.mock('../src/lib/services/smart-llm-service', () => ({
 	SmartLLMService: vi.fn().mockImplementation(function () {
 		return { getJSONResponse: mockGetJSONResponse };
@@ -51,6 +68,24 @@ function writeExecution(entity: Record<string, unknown>, tool = 'create_onto_tas
 }
 
 describe('processSessionActivityAndNextSteps', () => {
+	// A session row can name any project id (its owner writes that column). Without write
+	// access to the project, the worker must not read it, call the model, or set its next step.
+	it('leaves a project alone when the chat owner cannot write to it', async () => {
+		mockOwnerCanReachProject.mockResolvedValue(false);
+
+		const result = await processSessionActivityAndNextSteps('session-1', 'user-1');
+
+		expect(mockOwnerCanReachProject).toHaveBeenCalledWith('user-1', PROJECT_ID, 'write');
+		expect(result).toEqual({
+			nextStepUpdated: false,
+			projectId: null,
+			skippedReason: 'not_project_session'
+		});
+		expect(tablesRead).toEqual(['chat_sessions']);
+		expect(mockGetJSONResponse).not.toHaveBeenCalled();
+		expect(projectUpdates).toEqual([]);
+	});
+
 	let session: Record<string, unknown> | null;
 	let executions: Array<Record<string, unknown>>;
 	let executionsError: { message: string } | null;
@@ -67,6 +102,7 @@ describe('processSessionActivityAndNextSteps', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockOwnerCanReachProject.mockResolvedValue(true);
 		session = {
 			id: 'session-1',
 			context_type: 'project',

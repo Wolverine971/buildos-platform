@@ -213,38 +213,15 @@ export default defineConfig(({ mode }) => {
 			reportCompressedSize: isProd,
 
 			// CSS code splitting
-			cssCodeSplit: true,
+			cssCodeSplit: true
 
-			// NOTE: keep this key as `rollupOptions`, not `rolldownOptions`.
-			// In Vite 8 the two are aliases, but the alias is only installed
-			// after config merging: `rolldownOptions ??= rollupOptions`. Because
-			// SvelteKit sets `build.rollupOptions` from its own config hook,
-			// declaring `rolldownOptions` here would win the `??=` and silently
-			// drop Kit's options (server input, asset file names). `build.*`
-			// is also not on Vite's deprecation-warning path - only
-			// `optimizeDeps.rollupOptions` warns.
-			rollupOptions: {
-				output: {
-					// Manual chunks for better caching (client-side chunks only).
-					// Vite 8 / Rolldown replaces the `manualChunks` callback with
-					// declarative `codeSplitting.groups`. Server-only packages here
-					// are SSR externals and simply never match on the client.
-					codeSplitting: {
-						groups: [
-							{
-								name: 'ui-vendor',
-								test: /node_modules[\\/]@tiptap[\\/](core|starter-kit|extension)/
-							},
-							{ name: 'ai-vendor', test: /node_modules[\\/]openai[\\/]/ },
-							{
-								name: 'google-vendor',
-								test: /node_modules[\\/](googleapis|google-auth-library)[\\/]/
-							},
-							{ name: 'stripe-vendor', test: /node_modules[\\/]stripe[\\/]/ }
-						]
-					}
-				}
-			}
+			// No vendor chunk groups. A group takes its members' dependencies with it, so the old
+			// Tiptap group (the admin email editor) also held a key table CodeMirror needs, and
+			// every first document open downloaded about 100 KB (gzipped) of Tiptap. The other
+			// groups named server-only packages and never matched in the browser.
+			// If chunk options return: use `rollupOptions`, not `rolldownOptions`. SvelteKit sets
+			// `build.rollupOptions` itself, and Vite 8 only aliases the two after merging, so a
+			// `rolldownOptions` here would silently drop Kit's server input and asset names.
 		},
 
 		// Worker options

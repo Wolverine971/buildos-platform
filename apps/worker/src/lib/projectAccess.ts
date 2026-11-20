@@ -32,3 +32,23 @@ export async function userHasProjectAccess(
 	if (error) throw new Error(`Failed to check project access: ${error.message}`);
 	return data === true;
 }
+
+/**
+ * The project a chat session is scoped to, or null unless the session's owner can reach it.
+ *
+ * `chat_sessions.context_type` and `entity_id` are written by the signed-in user (the close
+ * route takes them from the request, and the table's own-row policy allows a direct update), so
+ * a session can name any project id. Processors run with the service role, so they must not
+ * read or write a project on the strength of that column alone.
+ */
+export async function accessibleSessionProjectId(
+	client: SupabaseClient<Database>,
+	userId: string | null | undefined,
+	session: { context_type?: string | null; entity_id?: string | null } | null | undefined,
+	requiredAccess: ProjectAccessLevel = 'read'
+): Promise<string | null> {
+	if (session?.context_type !== 'project' || !session.entity_id) return null;
+	return (await userHasProjectAccess(client, userId, session.entity_id, requiredAccess))
+		? session.entity_id
+		: null;
+}

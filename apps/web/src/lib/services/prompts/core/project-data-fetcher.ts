@@ -406,13 +406,3 @@ export class ProjectDataFetcher {
 		}
 	}
 }
-
-// Export singleton factory for convenience
-let instance: ProjectDataFetcher | null = null;
-
-export function getProjectDataFetcher(supabase: SupabaseClient<Database>): ProjectDataFetcher {
-	if (!instance) {
-		instance = new ProjectDataFetcher(supabase);
-	}
-	return instance;
-}

@@ -192,118 +192,9 @@ export function convertUTCToDateOnly(isoString: string | null | undefined): stri
 }
 
 /**
- * Check if a date is in the past (comparing dates in user's timezone)
- * @param dateString - ISO date string from database
- * @returns true if the date is before today
- */
-export function isDateInPast(dateString: string | null | undefined): boolean {
-	if (!dateString) return false;
-
-	try {
-		const date = new Date(dateString);
-		if (isNaN(date.getTime())) return false;
-
-		// Compare dates in user's local timezone
-		const today = new Date();
-		const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-		const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-
-		return dateOnly < todayOnly;
-	} catch (error) {
-		console.warn('Failed to check if date is in past:', dateString, error);
-		return false;
-	}
-}
-
-/**
- * Get the number of days between two dates
- * @param startDate - ISO date string
- * @param endDate - ISO date string
- * @returns Number of days between dates
- */
-export function getDaysBetween(
-	startDate: string | null | undefined,
-	endDate: string | null | undefined
-): number {
-	if (!startDate || !endDate) return 0;
-
-	try {
-		const start = new Date(startDate);
-		const end = new Date(endDate);
-
-		if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
-
-		const diffTime = Math.abs(end.getTime() - start.getTime());
-		const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-		return diffDays;
-	} catch (error) {
-		console.warn('Failed to calculate days between:', startDate, endDate, error);
-		return 0;
-	}
-}
-
-/**
  * Format a UTC date for Google Calendar API
  * Preserves the UTC time while formatting for calendar events
  */
-// Replace your function with this more explicit approach:
-export function formatDateForGoogleCalendar(dateString: string): string {
-	if (!dateString) {
-		throw new Error('Date string is required');
-	}
-
-	const date = new Date(dateString);
-	if (isNaN(date.getTime())) {
-		throw new Error('Invalid date string provided');
-	}
-
-	return date.toISOString();
-}
-
-/**
- * Calculate end time for a calendar event in UTC
- */
-export function calculateEndTime(startTime: string, durationMinutes: number): string {
-	const start = new Date(startTime);
-	if (isNaN(start.getTime())) return '';
-
-	// Add duration in milliseconds
-	const endTime = new Date(start.getTime() + durationMinutes * 60 * 1000);
-	return endTime.toISOString();
-}
-
-/**
- * Get today's date at midnight UTC
- * @returns Date object set to midnight UTC
- */
-export function getTodayUTC(): Date {
-	const today = new Date();
-	const todayUTC = new Date(today.toISOString().split('T')[0] + 'T00:00:00Z');
-	return todayUTC;
-}
-
-/**
- * Add days to a date (preserving UTC)
- * @param dateString - ISO date string
- * @param days - Number of days to add (can be negative)
- * @returns ISO string of the new date
- */
-export function addDaysToDate(dateString: string | null | undefined, days: number): string | null {
-	if (!dateString) return null;
-
-	try {
-		const date = new Date(dateString);
-		if (isNaN(date.getTime())) return null;
-
-		date.setDate(date.getDate() + days);
-		return date.toISOString();
-	} catch (error) {
-		console.warn('Failed to add days to date:', dateString, days, error);
-		return null;
-	}
-}
-
 // Legacy functions - updated to use UTC properly
 
 // Helper function to check if a task is overdue
@@ -312,30 +203,7 @@ export function isTaskOverdue(startDate: string, timezone?: string): boolean {
 	return isDateBeforeToday(startDate, timezone);
 }
 
-// Helper function to get days overdue (only for actually overdue tasks)
-export function getDaysOverdue(startDate: string, timezone?: string): number {
-	if (!isTaskOverdue(startDate, timezone)) return 0;
-
-	const tz = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-	const taskDate = toZonedTime(parseISO(startDate), tz);
-	const today = toZonedTime(new Date(), tz);
-
-	const diffTime = startOfDay(today).getTime() - startOfDay(taskDate).getTime();
-	const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-	return Math.max(0, diffDays);
-}
-
 // Helper function to categorize task by date
-
-export function categorizeTaskByDate(startDate: string | null, timezone?: string): string {
-	if (!startDate) return 'unscheduled';
-
-	if (isDateBeforeToday(startDate, timezone)) return 'overdue';
-	if (isDateToday(startDate, timezone)) return 'today';
-	if (isDateTomorrow(startDate, timezone)) return 'tomorrow';
-	return 'upcoming';
-}
 
 /**
  * Format time only from UTC date string
@@ -393,47 +261,6 @@ export function formatDateShort(dateString: string | null | undefined): string {
 		return `${month} ${day}`;
 	} catch (error) {
 		console.warn('Failed to format short date:', dateString, error);
-		return '';
-	}
-}
-
-/**
- * Format date for mobile display
- * @param dateString - ISO date string from database
- * @returns Formatted mobile date (e.g., "7/24")
- */
-export function formatDateMobile(dateString: string | null | undefined): string {
-	if (!dateString) return '';
-
-	try {
-		const date = new Date(dateString);
-		if (isNaN(date.getTime())) return '';
-
-		const month = date.getMonth() + 1;
-		const day = date.getDate();
-
-		return `${month}/${day}`;
-	} catch (error) {
-		console.warn('Failed to format mobile date:', dateString, error);
-		return '';
-	}
-}
-
-/**
- * Format date with time in a compact format
- * @param dateString - ISO date string from database
- * @returns Formatted date with time (e.g., "Jul 24 at 3:30 PM")
- */
-export function formatDateWithTime(dateString: string | null | undefined): string {
-	if (!dateString) return '';
-
-	try {
-		const dateStr = formatDateShort(dateString);
-		const timeStr = formatTimeOnly(dateString);
-
-		return `${dateStr} at ${timeStr}`;
-	} catch (error) {
-		console.warn('Failed to format date with time:', dateString, error);
 		return '';
 	}
 }
@@ -517,42 +344,6 @@ export function parseDateTimeFromInput(inputValue: string | null | undefined): s
  */
 
 /**
- * Get today's date in user's timezone as YYYY-MM-DD
- */
-export function getTodayInUserTimezone(timezone?: string): string {
-	const tz = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-	const now = new Date();
-	const zonedDate = toZonedTime(now, tz);
-	return format(startOfDay(zonedDate), 'yyyy-MM-dd');
-}
-
-/**
- * Get tomorrow's date in user's timezone as YYYY-MM-DD
- */
-export function getTomorrowInUserTimezone(): string {
-	const tomorrow = new Date();
-	tomorrow.setDate(tomorrow.getDate() + 1);
-	return (
-		tomorrow.getFullYear() +
-		'-' +
-		String(tomorrow.getMonth() + 1).padStart(2, '0') +
-		'-' +
-		String(tomorrow.getDate()).padStart(2, '0')
-	);
-}
-
-/**
- * Get date N days from today in user's timezone as YYYY-MM-DD
- */
-export function getDatePlusDays(days: number, timezone?: string): string {
-	const tz = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-	const now = new Date();
-	const zonedDate = toZonedTime(now, tz);
-	const futureDate = addDays(startOfDay(zonedDate), days);
-	return format(futureDate, 'yyyy-MM-dd');
-}
-
-/**
  * Convert a timestamptz from Supabase to user's local date (YYYY-MM-DD)
  * This accounts for timezone differences
  */
@@ -611,22 +402,6 @@ export function isDateTomorrow(dateString: string, timezone?: string): boolean {
 		zonedDate.getMonth() === tomorrowInTz.getMonth() &&
 		zonedDate.getDate() === tomorrowInTz.getDate()
 	);
-}
-
-/**
- * Get date ranges for queries (in user's timezone)
- */
-export function getTaskDateRanges(timezone?: string) {
-	const tz = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-	const now = new Date();
-	const zonedNow = toZonedTime(now, tz);
-	const today = format(startOfDay(zonedNow), 'yyyy-MM-dd');
-	const weekEnd = format(addDays(startOfDay(zonedNow), 7), 'yyyy-MM-dd');
-
-	return {
-		today,
-		weekEnd
-	};
 }
 
 /**
@@ -696,44 +471,7 @@ export function differenceInDays(startDate: Date | string, endDate: Date | strin
 	}
 }
 
-/**
- * Calculate difference in hours between two dates
- * @param startDate - Start date
- * @param endDate - End date
- * @returns Number of hours difference
- */
-export function differenceInHours(startDate: Date | string, endDate: Date | string): number {
-	try {
-		const start = typeof startDate === 'string' ? new Date(startDate) : startDate;
-		const end = typeof endDate === 'string' ? new Date(endDate) : endDate;
-
-		if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
-
-		const diffTime = Math.abs(end.getTime() - start.getTime());
-		const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
-
-		return diffHours;
-	} catch (error) {
-		console.warn('Failed to calculate hours difference:', startDate, endDate, error);
-		return 0;
-	}
-}
-
 // Add this to your existing date-utils.ts file
-
-export function isWithinLast24Hours(dateString: string | null): boolean {
-	if (!dateString) return false;
-
-	try {
-		const date = new Date(dateString);
-		const now = new Date();
-		const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-		return date > twentyFourHoursAgo;
-	} catch {
-		return false;
-	}
-}
 
 export function getHoursAgo(dateString: string): number {
 	try {
@@ -744,19 +482,6 @@ export function getHoursAgo(dateString: string): number {
 	} catch {
 		return -1;
 	}
-}
-
-export function getTimeAgoText(dateString: string): string {
-	const hours = getHoursAgo(dateString);
-
-	if (hours < 0) return '';
-	if (hours === 0) return 'Just now';
-	if (hours === 1) return '1 hour ago';
-	if (hours < 24) return `${hours} hours ago`;
-
-	const days = Math.floor(hours / 24);
-	if (days === 1) return '1 day ago';
-	return `${days} days ago`;
 }
 
 /**
@@ -954,98 +679,4 @@ export function parseNaturalLanguageDate(
 		console.warn('Failed to parse natural language date:', dateExpression, error);
 		return null;
 	}
-}
-
-/**
- * Extract timeline information from source text
- * Looks for common patterns that indicate project timelines
- * @param sourceText - The source content
- * @returns Object with parsed start and end dates
- */
-export function extractTimelineFromText(sourceText: string): {
-	startDate: string | null;
-	endDate: string | null;
-	detectedPhrases: string[];
-} {
-	if (!sourceText) {
-		return { startDate: null, endDate: null, detectedPhrases: [] };
-	}
-
-	const text = sourceText.toLowerCase();
-	const detectedPhrases: string[] = [];
-	let startDate: string | null = null;
-	let endDate: string | null = null;
-
-	// Timeline patterns to look for
-	const timelinePatterns = [
-		// Duration patterns
-		/(\d+)\s+(days?|weeks?|months?)\s+(long|duration|timeline)/gi,
-		/(for|over)\s+(\d+)\s+(days?|weeks?|months?)/gi,
-
-		// End date patterns
-		/(by|due|complete\s+by|finish\s+by|done\s+by)\s+([^.!?\n]+)/gi,
-		/(deadline|due\s+date|end\s+date|completion)\s*:?\s*([^.!?\n]+)/gi,
-
-		// Start date patterns
-		/(start|begin|starting|launch)\s+(next\s+week|tomorrow|on\s+[^.!?\n]+)/gi,
-
-		// Duration from now patterns
-		/(in|within)\s+the\s+next\s+(\d+)\s+(days?|weeks?|months?)/gi,
-		/(next|this)\s+(\d+)\s+(days?|weeks?|months?)/gi
-	];
-
-	// Extract potential date phrases
-	for (const pattern of timelinePatterns) {
-		const matches = Array.from(text.matchAll(pattern));
-		for (const match of matches) {
-			const fullMatch = match[0];
-			detectedPhrases.push(fullMatch);
-
-			// Try to parse the date phrase
-			let datePhrase = '';
-			if (match[2]) {
-				datePhrase = match[2].trim();
-			} else if (match[1]) {
-				datePhrase = match[1].trim();
-			}
-
-			if (datePhrase) {
-				const parsedDate = parseNaturalLanguageDate(datePhrase);
-				if (parsedDate) {
-					// Determine if this is likely a start or end date based on context
-					const context = fullMatch.toLowerCase();
-					if (
-						context.includes('by') ||
-						context.includes('due') ||
-						context.includes('complete') ||
-						context.includes('deadline') ||
-						context.includes('finish') ||
-						context.includes('done')
-					) {
-						endDate = parsedDate;
-					} else if (
-						context.includes('start') ||
-						context.includes('begin') ||
-						context.includes('launch')
-					) {
-						startDate = parsedDate;
-					} else {
-						// Default to end date for duration patterns
-						endDate = parsedDate;
-					}
-				}
-			}
-		}
-	}
-
-	// If we don't have a start date but have an end date, set start to today
-	if (!startDate && endDate) {
-		startDate = formatDateForInput(new Date().toISOString());
-	}
-
-	return {
-		startDate,
-		endDate,
-		detectedPhrases
-	};
 }

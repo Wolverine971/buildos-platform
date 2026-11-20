@@ -6,6 +6,7 @@
 // llm_usage_logs, OAuth tokens, connection credentials, calendar or email content.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
+import { isPlainStorageObjectPath } from '@buildos/supabase-client';
 import { isOwnVoiceNoteObject } from '../voice-notes/voiceNoteStorage';
 
 export type ExportDb = SupabaseClient<Database>;
@@ -188,6 +189,9 @@ function extensionOf(
 }
 
 async function download(db: ExportDb, bucket: string, path: string): Promise<Uint8Array | null> {
+	// The path comes from a row its owner can write, and this client reads with the service
+	// role. Anything but plain segments could leave the bucket, so it is treated as missing.
+	if (!isPlainStorageObjectPath(path)) return null;
 	const { data, error } = await db.storage.from(bucket).download(path);
 	if (error || !data) return null;
 	return new Uint8Array(await data.arrayBuffer());

@@ -105,24 +105,3 @@ export function validateOptionalEmailClient(email?: string): {
 	// Otherwise validate as normal
 	return validateEmailClient(email);
 }
-
-/**
- * Quick check if email is valid (returns boolean only)
- *
- * @param email - Email address to check
- * @returns boolean
- */
-export function isValidEmailClient(email: string): boolean {
-	return validateEmailClient(email).valid;
-}
-
-/**
- * Get a user-friendly error message for an email validation error
- *
- * @param email - Email address that failed validation
- * @returns string - User-friendly error message
- */
-export function getEmailErrorMessage(email: string): string {
-	const result = validateEmailClient(email);
-	return result.error || 'Invalid email address';
-}

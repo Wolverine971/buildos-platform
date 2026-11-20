@@ -227,35 +227,3 @@ export function keyboardAvoiding(
 		}
 	};
 }
-
-/**
- * Check if visualViewport API is supported
- */
-export function isVisualViewportSupported(): boolean {
-	return browser && 'visualViewport' in window && window.visualViewport !== null;
-}
-
-/**
- * Get current keyboard state
- */
-export function getKeyboardState(): KeyboardAvoidingState {
-	if (!browser || !window.visualViewport) {
-		return {
-			isKeyboardVisible: false,
-			keyboardHeight: 0,
-			viewportHeight: browser ? window.innerHeight : 0
-		};
-	}
-
-	const viewportHeight = window.visualViewport.height;
-	const windowHeight = window.innerHeight;
-	const offsetTop = window.visualViewport.offsetTop || 0;
-	const heightDiff = Math.max(0, windowHeight - viewportHeight - offsetTop);
-	const isKeyboardVisible = heightDiff > 100;
-
-	return {
-		isKeyboardVisible,
-		keyboardHeight: isKeyboardVisible ? heightDiff : 0,
-		viewportHeight
-	};
-}

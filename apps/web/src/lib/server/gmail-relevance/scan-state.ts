@@ -78,9 +78,6 @@ export const EMAIL_RELEVANCE_SCAN_CONNECTION_TERMINAL_STATES = [
 	'expired'
 ] as const satisfies readonly EmailRelevanceScanConnectionState[];
 
-const RUN_TERMINAL_STATE_SET = new Set<EmailRelevanceScanRunState>(
-	EMAIL_RELEVANCE_SCAN_RUN_TERMINAL_STATES
-);
 const CONNECTION_TERMINAL_STATE_SET = new Set<EmailRelevanceScanConnectionState>(
 	EMAIL_RELEVANCE_SCAN_CONNECTION_TERMINAL_STATES
 );
@@ -134,10 +131,6 @@ const CONNECTION_TRANSITIONS: Record<
 	failed: new Set(),
 	expired: new Set()
 };
-
-export function isEmailRelevanceScanRunTerminal(state: EmailRelevanceScanRunState): boolean {
-	return RUN_TERMINAL_STATE_SET.has(state);
-}
 
 export function isEmailRelevanceScanConnectionTerminal(
 	state: EmailRelevanceScanConnectionState

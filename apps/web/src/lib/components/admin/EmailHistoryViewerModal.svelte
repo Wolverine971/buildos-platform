@@ -140,7 +140,7 @@
 		<!-- Email Content (scrollable) -->
 		<div class="p-4 sm:p-5 md:p-6">
 			<div
-				class="bg-muted/50 rounded-lg p-4 sm:p-5 md:p-6 border border-border prose dark:prose-invert max-w-none"
+				class="bg-muted/50 rounded-lg p-4 sm:p-5 md:p-6 border border-border prose dark:prose-invert max-w-none email-body"
 			>
 				{#if email.html}
 					<!-- Render sanitized HTML email content -->
@@ -171,53 +171,53 @@
 
 <style lang="postcss">
 	/* Safe HTML email styles */
-	:global(.prose) {
+	.email-body {
 		@apply text-foreground;
 	}
 
-	:global(.prose p) {
+	.email-body :global(p) {
 		@apply mb-4;
 	}
 
-	:global(.prose h1),
-	:global(.prose h2),
-	:global(.prose h3),
-	:global(.prose h4),
-	:global(.prose h5),
-	:global(.prose h6) {
+	.email-body :global(h1),
+	.email-body :global(h2),
+	.email-body :global(h3),
+	.email-body :global(h4),
+	.email-body :global(h5),
+	.email-body :global(h6) {
 		@apply font-semibold mt-6 mb-3;
 	}
 
-	:global(.prose a) {
+	.email-body :global(a) {
 		@apply text-info hover:underline;
 	}
 
-	:global(.prose img) {
+	.email-body :global(img) {
 		@apply max-w-full h-auto rounded;
 	}
 
-	:global(.prose table) {
+	.email-body :global(table) {
 		@apply w-full border-collapse border border-border mt-4 mb-4;
 	}
 
-	:global(.prose table td),
-	:global(.prose table th) {
+	.email-body :global(table td),
+	.email-body :global(table th) {
 		@apply border border-border p-2;
 	}
 
-	:global(.prose blockquote) {
+	.email-body :global(blockquote) {
 		@apply border-l-4 border-border pl-4 italic text-foreground my-4;
 	}
 
-	:global(.prose code) {
+	.email-body :global(code) {
 		@apply bg-muted px-2 py-1 rounded text-sm font-mono;
 	}
 
-	:global(.prose pre) {
+	.email-body :global(pre) {
 		@apply bg-muted p-4 rounded overflow-x-auto mb-4;
 	}
 
-	:global(.prose pre code) {
+	.email-body :global(pre code) {
 		@apply bg-transparent p-0;
 	}
 </style>

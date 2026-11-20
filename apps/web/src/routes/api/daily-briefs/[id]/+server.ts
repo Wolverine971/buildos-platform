@@ -2,7 +2,6 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { mapOntologyDailyBriefRow } from '$lib/services/dailyBrief/ontology-mappers';
-import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 
 export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -24,38 +23,6 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 	} catch (error) {
 		console.error('Error fetching daily brief:', error);
 		return ApiResponse.notFound('Brief');
-	}
-};
-
-export const PUT: RequestHandler = async ({
-	params,
-	request,
-	locals: { supabase, safeGetSession }
-}) => {
-	const { user } = await safeGetSession();
-	if (!user) {
-		return ApiResponse.unauthorized();
-	}
-
-	try {
-		const parsed = await parseJsonRequest(request, jsonObjectSchema);
-		if (!parsed.ok) return parsed.response;
-		const updates = parsed.data;
-
-		const { data, error } = await supabase
-			.from('ontology_daily_briefs')
-			.update({ ...updates, updated_at: new Date().toISOString() })
-			.eq('id', params.id)
-			.eq('user_id', user.id)
-			.select()
-			.single();
-
-		if (error) throw error;
-
-		return ApiResponse.success({ brief: mapOntologyDailyBriefRow(data) });
-	} catch (error) {
-		console.error('Error updating daily brief:', error);
-		return ApiResponse.internalError(error, 'Failed to update brief');
 	}
 };
 

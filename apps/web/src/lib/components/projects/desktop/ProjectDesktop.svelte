@@ -423,7 +423,13 @@
 		const id = openId;
 		void tick().then(() => {
 			if (id && openedEl) {
-				openedEl.scrollIntoView({ block: 'start' });
+				// The glide is asked for here: the page no longer smooth-scrolls by default.
+				openedEl.scrollIntoView({
+					block: 'start',
+					behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+						? 'auto'
+						: 'smooth'
+				});
 				openedEl.querySelector<HTMLElement>('h2')?.focus({ preventScroll: true });
 			} else if (!id && restoreFocusTo) {
 				const tile = root?.querySelector<HTMLElement>(`[data-tile-id="${restoreFocusTo}"]`);

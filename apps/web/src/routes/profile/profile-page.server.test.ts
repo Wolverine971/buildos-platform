@@ -39,10 +39,31 @@ function eventFor(tab: string | null) {
 			throw new Error(`Unexpected table: ${table}`);
 		})
 	};
-	const url = new URL('https://build-os.com/profile');
-	if (tab) url.searchParams.set('tab', tab);
+	const address = new URL('https://build-os.com/profile');
+	if (tab) address.searchParams.set('tab', tab);
+
+	// SvelteKit re-runs a load whenever a query parameter it read outside `untrack` changes.
+	// `trackedReads` counts those reads.
+	let untracking = false;
+	let trackedReads = 0;
+	const url = new Proxy(address, {
+		get(target, key) {
+			if (key === 'searchParams' && !untracking) trackedReads += 1;
+			const value = Reflect.get(target, key);
+			return typeof value === 'function' ? value.bind(target) : value;
+		}
+	});
 
 	return {
+		trackedReads: () => trackedReads,
+		untrack: <T>(read: () => T): T => {
+			untracking = true;
+			try {
+				return read();
+			} finally {
+				untracking = false;
+			}
+		},
 		locals: {
 			safeGetSession: vi.fn(async () => ({
 				user: {
@@ -90,5 +111,16 @@ describe('profile Settings server load', () => {
 
 		expect(briefs.activeTab).toBe('briefs');
 		expect(unknown.activeTab).toBe('account');
+	});
+
+	it('does not depend on the tab in the address, so a tab click reloads nothing', async () => {
+		isFeatureEnabled.mockResolvedValue(false);
+		const { load } = await import('./+page.server');
+		const event = eventFor('briefs');
+
+		const result = await load(event as never);
+
+		expect(result.activeTab).toBe('briefs');
+		expect(event.trackedReads()).toBe(0);
 	});
 });

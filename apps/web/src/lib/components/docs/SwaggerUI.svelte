@@ -42,7 +42,6 @@
 				docExpansion: 'list',
 				filter: true,
 				onComplete: function () {
-					console.log('Swagger UI loaded successfully');
 					isLoading = false;
 				},
 				onFailure: function (err: any) {

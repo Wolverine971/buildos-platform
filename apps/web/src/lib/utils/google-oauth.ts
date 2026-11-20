@@ -19,12 +19,6 @@ import { consumeLegalAcceptanceIntent } from '$lib/server/legal-acceptance';
 import { launchSkillIdFromRedirect, skillSignupSource } from '$lib/utils/agent-chat-launch';
 import { decodeOAuthStateRedirect, withPostLoginRedirect } from '$lib/server/auth-redirects';
 
-export interface GoogleOAuthConfig {
-	redirectUri: string;
-	scope?: string;
-	prompt?: string;
-}
-
 export interface GoogleProfile {
 	id: string;
 	email: string;

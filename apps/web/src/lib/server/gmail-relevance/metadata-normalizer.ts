@@ -3,8 +3,6 @@
 // Restricted strings returned by this module must never be persisted or logged.
 import sanitizeHtml from 'sanitize-html';
 
-export const EMAIL_RELEVANCE_METADATA_NORMALIZER_VERSION = 'email-relevance-metadata-normalizer-v1';
-
 const MAX_SUBJECT_CHARACTERS = 500;
 const MAX_SNIPPET_CHARACTERS = 500;
 const MAX_HEADER_CHARACTERS = 4_000;

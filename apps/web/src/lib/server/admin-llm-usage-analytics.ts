@@ -92,8 +92,6 @@ type NumericSummary = {
 	values: number[];
 };
 
-export type AdminLlmUsageStats = Awaited<ReturnType<typeof getAdminLlmUsageStats>>;
-
 function dateKey(value: string | null | undefined): string {
 	if (!value) return 'unknown';
 	return value.split('T')[0] ?? 'unknown';

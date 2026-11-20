@@ -529,16 +529,11 @@
 
 		try {
 			isSaving = true;
-			console.log('[OntologyProjectEditModal] Starting save...', {
-				hasProjectChanges,
-				hasContextDocChanges
-			});
 
 			let updatedProject = project;
 
 			// Update project if there are changes
 			if (hasProjectChanges) {
-				console.log('[OntologyProjectEditModal] Updating project with payload:', payload);
 				lastEndpoint = `/api/onto/projects/${project.id}`;
 				lastMethod = 'PATCH';
 				const response = await fetch(`/api/onto/projects/${project.id}`, {
@@ -548,11 +543,6 @@
 				});
 
 				const result = await response.json().catch(() => ({}));
-				console.log('[OntologyProjectEditModal] Project update response:', {
-					ok: response.ok,
-					status: response.status,
-					result
-				});
 
 				if (!response.ok) {
 					throw new Error(result.error ?? 'Failed to update project');
@@ -565,10 +555,6 @@
 
 			// Update context document if it exists and changed
 			if (hasContextDocChanges && contextDocument) {
-				console.log(
-					'[OntologyProjectEditModal] Updating context document:',
-					contextDocument.id
-				);
 				lastEndpoint = `/api/onto/documents/${contextDocument.id}`;
 				lastMethod = 'PATCH';
 				const docResponse = await fetch(`/api/onto/documents/${contextDocument.id}`, {
@@ -581,18 +567,12 @@
 				});
 
 				const docResult = await docResponse.json().catch(() => ({}));
-				console.log('[OntologyProjectEditModal] Document update response:', {
-					ok: docResponse.ok,
-					status: docResponse.status,
-					result: docResult
-				});
 
 				if (!docResponse.ok) {
 					throw new Error(docResult.error ?? 'Failed to update context document');
 				}
 			}
 
-			console.log('[OntologyProjectEditModal] Save completed successfully');
 			toastService.success('Project updated');
 			onSaved?.(updatedProject);
 			onClose?.();

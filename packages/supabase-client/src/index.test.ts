@@ -18,6 +18,7 @@ vi.mock('@supabase/ssr', () => ({
 }));
 
 const {
+	refuseDotSegmentFetch,
 	createCustomClient,
 	createServiceClient,
 	createSupabaseBrowser,
@@ -60,6 +61,7 @@ describe('supabase-client factories', () => {
 			'https://example.supabase.co',
 			'service-key',
 			{
+				global: { fetch: refuseDotSegmentFetch },
 				auth: {
 					autoRefreshToken: false,
 					persistSession: false
@@ -119,7 +121,8 @@ describe('supabase-client factories', () => {
 		});
 		expect(supabaseMocks.createClient).toHaveBeenCalledWith(
 			'https://example.supabase.co',
-			'custom-key'
+			'custom-key',
+			{ global: { fetch: refuseDotSegmentFetch } }
 		);
 	});
 

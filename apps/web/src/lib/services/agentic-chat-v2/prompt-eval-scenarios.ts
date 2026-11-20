@@ -320,9 +320,3 @@ export function getPromptEvalScenario(slug: string | null | undefined): PromptEv
 	if (!normalized) return null;
 	return SCENARIOS.find((scenario) => scenario.slug === normalized) ?? null;
 }
-
-export function isPromptEvalScenarioReplayable(
-	scenario: PromptEvalScenario | null | undefined
-): boolean {
-	return Boolean(scenario?.replayRequest?.message?.trim());
-}

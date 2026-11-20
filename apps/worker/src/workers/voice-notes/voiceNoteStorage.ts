@@ -1,4 +1,5 @@
 // apps/worker/src/workers/voice-notes/voiceNoteStorage.ts
+import { isPlainStorageObjectPath } from '@buildos/supabase-client';
 
 /**
  * A voice note row names its own Storage object, and users write those rows.
@@ -15,6 +16,7 @@ export function isOwnVoiceNoteObject(
 		typeof path === 'string' &&
 		path.startsWith(`${userId}/`) &&
 		path.length > userId.length + 1 &&
-		!path.includes('..')
+		// Plain segments only: an encoded `%2e%2e` is resolved by fetch just like `..`.
+		isPlainStorageObjectPath(path)
 	);
 }

@@ -2,15 +2,6 @@
 import type { Database } from '@buildos/shared-types';
 import type { MigrationServiceContext } from '../migration.types';
 
-// Entity scope taxonomy (template-free classification)
-export type EntityScope =
-	| 'project'
-	| 'task'
-	| 'plan'
-	| 'document'
-	| 'goal'
-	| 'requirement';
-
 // ============================================
 // MIGRATION CONTEXT TYPES
 // ============================================
@@ -29,8 +20,6 @@ export interface MigrationContext extends MigrationServiceContext {
 export type LegacyProject = Database['public']['Tables']['projects']['Row'];
 export type LegacyTask = Database['public']['Tables']['tasks']['Row'];
 export type LegacyPhase = Database['public']['Tables']['phases']['Row'];
-
-export type LegacyEntity = LegacyProject | LegacyTask | LegacyPhase;
 
 // ============================================
 // MIGRATION RESULT TYPES (Enhanced, template-free)

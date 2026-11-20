@@ -345,6 +345,11 @@ function seed(): Record<string, Row[]> {
 	};
 }
 
+// fetch resolves `%2e%2e` like `..`, so a real download of these paths with the worker's
+// service-role client would leave the bucket and read the database API.
+const CLIMBING_ASSET_PATH = `projects/${PROJECT}/assets/a2/${'%2e%2e/'.repeat(8)}rest/v1/users?select=*`;
+const CLIMBING_VOICE_PATH = `${USER}/${'%2e%2e/'.repeat(5)}rest/v1/users?select=*`;
+
 function fakeDb(
 	tables: Record<string, Row[]>,
 	options: {
@@ -357,6 +362,9 @@ function fakeDb(
 	const removed: string[] = [];
 	const rpcCalls: Array<{ name: string; args: Row }> = [];
 	const objects = new Map<string, Uint8Array>([
+		// Stands in for whatever the climbing paths below would reach if they were requested.
+		[`onto-assets/${CLIMBING_ASSET_PATH}`, new Uint8Array([9, 9, 9])],
+		[`voice_notes/${CLIMBING_VOICE_PATH}`, new Uint8Array([9, 9, 9])],
 		[`voice_notes/${USER}/v1.webm`, new Uint8Array([1, 2, 3, 4, 5])],
 		[`voice_notes/${USER}/v2.webm`, new TextEncoder().encode(`${SECRET}_deleted_audio`)],
 		[`onto-assets/projects/${PROJECT}/a1.png`, new Uint8Array(64).fill(9)]
@@ -617,6 +625,46 @@ describe('user data export worker', () => {
 		expect(files.has('voice-notes/2026-09-22-v3000000.webm')).toBe(false);
 		expect(files.has('voice-notes/2026-09-22-v3000000.png')).toBe(false);
 		expect(files.get('voice-notes/2026-09-22-v3000000.md')).toContain('Audio: not available');
+	});
+
+	it('never requests a stored path that would climb out of its bucket', async () => {
+		const tables = seed();
+		tables.voice_notes!.push({
+			id: 'v4000000-0000',
+			user_id: USER,
+			transcript: 'Climbing pointer',
+			storage_bucket: 'voice_notes',
+			storage_path: CLIMBING_VOICE_PATH,
+			mime_type: 'audio/webm',
+			created_at: '2026-09-22T11:00:00Z',
+			deleted_at: null
+		});
+		tables.onto_assets!.push({
+			id: 'a2000000-0000',
+			project_id: PROJECT,
+			kind: 'image',
+			original_filename: 'climb.json',
+			content_type: 'application/json',
+			storage_bucket: 'onto-assets',
+			storage_path: CLIMBING_ASSET_PATH,
+			caption: null,
+			alt_text: null,
+			extracted_text: null,
+			created_at: '2026-09-11',
+			created_by: ACTOR,
+			deleted_at: null
+		});
+		const { db, uploads } = fakeDb(tables);
+
+		await processUserDataExportJob(job(), { db });
+
+		const files = unzipAll(uploads);
+		const leaked = [...files.entries()].filter(([, content]) => content === '\t\t\t');
+		expect(leaked).toEqual([]);
+		expect([...files.keys()].some((name) => name.startsWith('uploads/launch-plan/climb'))).toBe(
+			false
+		);
+		expect(files.get('voice-notes/2026-09-22-v4000000.md')).toContain('Audio: not available');
 	});
 
 	it('splits a large export into complete zip parts with stable names', async () => {
