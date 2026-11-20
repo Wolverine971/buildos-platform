@@ -75,6 +75,17 @@ const WORKING_STATUSES: ReadonlySet<AgentRunStatus> = new Set<AgentRunStatus>([
 /** Map of runId → latest run row, for runs the client is currently tracking. */
 export const agentRunsStore = writable<Map<string, AgentRunRow>>(new Map());
 
+/**
+ * True once the first read of the user's runs has landed. Until then an empty store means
+ * "not read yet", not "no runs", so nothing should treat the first runs as news.
+ */
+export const agentRunsLoaded = writable(false);
+
+/** Rows are plain JSON (the endpoint, or a realtime payload), so their text compares them. */
+function sameRow(before: AgentRunRow, after: AgentRunRow): boolean {
+	return before === after || JSON.stringify(before) === JSON.stringify(after);
+}
+
 /** All non-terminal runs, including runs waiting for input or proposal review. */
 export const activeAgentRunCount = derived(agentRunsStore, ($runs) => {
 	let count = 0;
@@ -136,6 +147,13 @@ interface ServiceState {
 	pollSkips: number;
 	/** runId → epoch ms when it was first observed in a terminal status. */
 	terminalSince: Map<string, number>;
+	/**
+	 * Finished runs already dropped from the store, by id → the `updated_at` they had. The
+	 * endpoint keeps returning them (its window is the 25 latest), and without this each
+	 * one was put back by the next poll and dropped again a minute later, for as long as
+	 * the tab stayed open.
+	 */
+	dropped: Map<string, string | null>;
 }
 
 export class AgentRunsRealtimeService {
@@ -147,28 +165,52 @@ export class AgentRunsRealtimeService {
 		realtimeHealthy: false,
 		pollTimer: null,
 		pollSkips: 0,
-		terminalSince: new Map()
+		terminalSince: new Map(),
+		dropped: new Map()
 	};
 
 	static isInitialized(): boolean {
 		return this.state.userId !== null;
 	}
 
+	/** The start in flight, so a second caller joins it instead of starting again. */
+	private static starting: { userId: string; done: Promise<void> } | null = null;
+
 	static async initialize(userId: string, supabaseClient: SupabaseClient): Promise<void> {
 		if (!browser || !userId || !supabaseClient) return;
 
 		// Already tracking this user — nothing to do.
 		if (this.state.userId === userId && this.state.supabaseClient) return;
+		// The layout calls this from more than one place as the page starts. Starting is
+		// async, so without this each call read the runs and opened its own channel (two or
+		// three identical requests on every page load, and a channel nothing ever closed).
+		if (this.starting?.userId === userId) return this.starting.done;
 
+		const done = this.start(userId, supabaseClient);
+		this.starting = { userId, done };
+		try {
+			await done;
+		} finally {
+			if (this.starting?.done === done) this.starting = null;
+		}
+	}
+
+	private static async start(userId: string, supabaseClient: SupabaseClient): Promise<void> {
 		await this.cleanup();
 
 		this.state.userId = userId;
 		this.state.supabaseClient = supabaseClient;
+		// A sign-out or another user's start while this one waits ends it.
+		const current = () =>
+			this.state.userId === userId && this.state.supabaseClient === supabaseClient;
 
 		// Seed immediately so existing in-flight runs surface on load, then set up
 		// the realtime channel + polling fallback.
 		await this.refresh();
+		if (!current()) return;
+		agentRunsLoaded.set(true);
 		await this.setupSubscription();
+		if (!current()) return;
 		this.startPolling();
 	}
 
@@ -320,35 +362,49 @@ export class AgentRunsRealtimeService {
 			this.pruneTerminal();
 			return;
 		}
-		agentRunsStore.update((current) => {
-			const next = new Map(current);
-			for (const run of runs) {
-				if (!run?.id) continue;
-				next.set(run.id, mergeAgentRunRows(next.get(run.id), run));
-				this.trackTerminal(run);
-			}
-			return next;
-		});
+		this.land(runs);
 		this.pruneTerminal();
 	}
 
 	private static upsertRun(run: AgentRunRow): void {
-		agentRunsStore.update((current) => {
-			const next = new Map(current);
-			next.set(run.id, mergeAgentRunRows(next.get(run.id), run));
-			return next;
-		});
-		this.trackTerminal(run);
+		this.land([run]);
 		this.pruneTerminal();
 	}
 
+	/**
+	 * Put rows in the store. A row that says what the store already holds is left alone,
+	 * and the store is not written when nothing changed: a store tells everything reading
+	 * it on every write, and the reconciling poll re-reads the same 25 rows each time.
+	 */
+	private static land(runs: AgentRunRow[]): void {
+		const current = get(agentRunsStore);
+		let next: Map<string, AgentRunRow> | null = null;
+		for (const run of runs) {
+			if (!run?.id) continue;
+			const held = (next ?? current).get(run.id);
+			if (
+				!held &&
+				!isActiveAgentRunStatus(run.status) &&
+				this.state.dropped.get(run.id) === (run.updated_at ?? null)
+			)
+				continue;
+			this.state.dropped.delete(run.id);
+			this.trackTerminal(run);
+			const merged = mergeAgentRunRows(held, run);
+			if (held && sameRow(held, merged)) continue;
+			next ??= new Map(current);
+			next.set(run.id, merged);
+		}
+		if (next) agentRunsStore.set(next);
+	}
+
 	private static removeRun(id: string): void {
-		agentRunsStore.update((current) => {
-			if (!current.has(id)) return current;
+		const current = get(agentRunsStore);
+		if (current.has(id)) {
 			const next = new Map(current);
 			next.delete(id);
-			return next;
-		});
+			agentRunsStore.set(next);
+		}
 		this.state.terminalSince.delete(id);
 	}
 
@@ -370,15 +426,15 @@ export class AgentRunsRealtimeService {
 		}
 		if (expired.length === 0) return;
 
-		agentRunsStore.update((current) => {
-			let mutated = false;
-			const next = new Map(current);
-			for (const id of expired) {
-				if (next.delete(id)) mutated = true;
-				this.state.terminalSince.delete(id);
-			}
-			return mutated ? next : current;
-		});
+		const next = new Map(get(agentRunsStore));
+		let mutated = false;
+		for (const id of expired) {
+			const row = next.get(id);
+			if (row) this.state.dropped.set(id, row.updated_at ?? null);
+			if (next.delete(id)) mutated = true;
+			this.state.terminalSince.delete(id);
+		}
+		if (mutated) agentRunsStore.set(next);
 	}
 
 	static async cleanup(): Promise<void> {
@@ -398,8 +454,10 @@ export class AgentRunsRealtimeService {
 			realtimeHealthy: false,
 			pollTimer: null,
 			pollSkips: 0,
-			terminalSince: new Map()
+			terminalSince: new Map(),
+			dropped: new Map()
 		};
-		agentRunsStore.set(new Map());
+		agentRunsLoaded.set(false);
+		if (get(agentRunsStore).size > 0) agentRunsStore.set(new Map());
 	}
 }

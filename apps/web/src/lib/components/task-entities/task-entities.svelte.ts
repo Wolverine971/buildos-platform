@@ -16,6 +16,7 @@ import {
 	detectTaskTextEntities,
 	pickKeyTaskEntityChips
 } from '@buildos/shared-agent-ops/task-entities';
+import { untrack } from 'svelte';
 import { toastService } from '$lib/stores/toast.store';
 import type { MentionLink, MentionTarget } from './entity-mentions';
 import type { LensEntry } from '$lib/components/knowledge/sharing-types';
@@ -110,13 +111,34 @@ export class TaskEntities {
 		});
 	}
 
+	#read(taskId: string, signal?: AbortSignal) {
+		return fetch(`/api/onto/task-entities?task_ids=${encodeURIComponent(taskId)}&knowledge=1`, {
+			signal
+		});
+	}
+
+	/** A read started ahead of its task, kept for that task's load to pick up. */
+	#early: { taskId: string; response: Promise<Response | null> } | null = null;
+
+	/**
+	 * Start reading a task's entities before the task itself has loaded. The source only
+	 * names a task once its record is in, so this read used to start after the task's own
+	 * (one after the other), and the key details landed late and pushed the text down.
+	 * Started alongside, they are usually there when the text first shows.
+	 */
+	prefetch(taskId: string) {
+		// Untracked: the caller is an effect that loads the task, and must not run again
+		// (and load it again) just because that task then became the one shown here.
+		if (untrack(() => this.#taskId) === taskId || this.#early?.taskId === taskId) return;
+		this.#early = { taskId, response: this.#read(taskId).catch(() => null) };
+	}
+
 	async #load(taskId: string, signal?: AbortSignal) {
 		try {
-			const response = await fetch(
-				`/api/onto/task-entities?task_ids=${encodeURIComponent(taskId)}&knowledge=1`,
-				{ signal }
-			);
-			if (!response.ok || this.#taskId !== taskId) return;
+			const early = this.#early?.taskId === taskId ? this.#early.response : null;
+			this.#early = null;
+			const response = (await early) ?? (await this.#read(taskId, signal));
+			if (!response.ok || this.#taskId !== taskId || signal?.aborted) return;
 			const body = await response.json();
 			this.#rows = Array.isArray(body?.data?.entities) ? body.data.entities : [];
 			const knowledge = body?.data?.knowledge;

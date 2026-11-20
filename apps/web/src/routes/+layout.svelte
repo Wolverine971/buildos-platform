@@ -903,9 +903,9 @@
 		pwaCleanup = initializePWAEnhancements();
 		installPromptCleanup = setupInstallPrompt();
 
-		// A signed-in browser teaches the server its timezone once per page load, so a
-		// new account has a local morning before its first daily brief is scheduled.
-		if (user) void syncBrowserTimezone();
+		// A signed-in browser teaches the server its timezone (once per account and zone),
+		// so a new account has a local morning before its first daily brief is scheduled.
+		if (user) void syncBrowserTimezone({ userId: user.id });
 
 		// Pre-load authenticated resources if user is already available
 		if (user && !resourcesLoaded && !resourcesLoadPromise) {

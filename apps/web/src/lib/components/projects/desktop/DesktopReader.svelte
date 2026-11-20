@@ -239,6 +239,8 @@
 		if (untrack(() => (editing || titleEditing) && loaded?.key === k)) return;
 		const controller = new AbortController();
 		loadError = '';
+		// The task's key details are read alongside it, not after it.
+		if (kind === 'task') taskEntities.prefetch(id);
 		fetchEntityModalData(kind, id, controller.signal, { withTaskDocuments: true })
 			.then(async (response) => {
 				const payload = await response.json().catch(() => null);

@@ -46,12 +46,37 @@ function pumpUploads() {
 	}
 }
 
-/** Unattached drafts older than a day are removed once per page load. */
+const DRAFT_CLEANUP_KEY = 'buildos:voice-draft-cleanup-at';
+const DRAFT_CLEANUP_EVERY_MS = 12 * 60 * 60 * 1000;
+
+function cleanedUpRecently(): boolean {
+	try {
+		const at = Number(localStorage.getItem(DRAFT_CLEANUP_KEY));
+		return Number.isFinite(at) && at > 0 && Date.now() - at < DRAFT_CLEANUP_EVERY_MS;
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Unattached drafts older than a day are removed. Asked at most twice a day per browser
+ * (it was once per page load, a request on nearly every page for something that changes
+ * daily).
+ */
 export function scheduleVoiceDraftCleanup(): void {
 	if (draftCleanupScheduled || typeof window === 'undefined') return;
 	draftCleanupScheduled = true;
+	if (cleanedUpRecently()) return;
 	const run = () => {
-		cleanupVoiceNoteGroups({ maxAgeHours: 24 }).catch(() => undefined);
+		cleanupVoiceNoteGroups({ maxAgeHours: 24 })
+			.then(() => {
+				try {
+					localStorage.setItem(DRAFT_CLEANUP_KEY, String(Date.now()));
+				} catch {
+					// Blocked storage: it simply asks again next load.
+				}
+			})
+			.catch(() => undefined);
 	};
 	const idle = (window as Window & { requestIdleCallback?: (cb: () => void) => void })
 		.requestIdleCallback;

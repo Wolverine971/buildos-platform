@@ -66,6 +66,43 @@ function workspaceHome() {
 	};
 }
 
+/** A project as the tiles read it. */
+function tileProject() {
+	return {
+		id: PROJECT_ID,
+		name: 'Launch event',
+		kind: 'project',
+		description: null,
+		icon_svg: null,
+		icon_concept: null,
+		icon_generated_at: null,
+		icon_generation_source: null,
+		icon_generation_prompt: null,
+		type_key: 'project.business.event',
+		state_key: 'active',
+		props: {},
+		facet_context: null,
+		facet_scale: null,
+		facet_stage: null,
+		created_at: at,
+		updated_at: at,
+		task_count: 2,
+		goal_count: 0,
+		plan_count: 0,
+		document_count: 1,
+		owner_actor_id: 'actor-1',
+		access_role: 'owner',
+		access_level: 'admin',
+		is_shared: false,
+		next_step_short: null,
+		next_step_long: null,
+		next_step_source: null,
+		next_step_updated_at: null,
+		has_collaborators: false,
+		parent_project_id: null
+	};
+}
+
 function pageData() {
 	return {
 		user: { id: 'user-1', email: 'person@example.com', is_admin: false },
@@ -156,4 +193,69 @@ describe('/projects: a new data object with the same loads', () => {
 		// invalidate() re-runs every load on the page and resets page.state (an open card).
 		expect(invalidate).not.toHaveBeenCalled();
 	});
+
+	// The trash is read once when the page opens. It used to be read again every time a
+	// project card closed; now only a project leaving the list (deleted by a chat, say)
+	// reads it again.
+	for (const { name, afterRefresh, reads } of [
+		{
+			name: 'reads the trash again when a project leaves the list',
+			afterRefresh: [],
+			reads: 2
+		},
+		{
+			name: 'does not read the trash again when every project is still there',
+			afterRefresh: [tileProject()],
+			reads: 1
+		}
+	]) {
+		it(name, async () => {
+			let answerAutoFile!: () => void;
+			const autoFileHeld = new Promise<void>((resolve) => (answerAutoFile = resolve));
+			const calls = (path: string) =>
+				vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes(path)).length;
+			vi.mocked(fetch).mockImplementation(async (input) => {
+				const url = String(input);
+				let data: unknown = workspaceHome();
+				if (url.includes('/projects/trash')) data = { projects: [] };
+				else if (url.includes('/api/projects/summaries')) data = { projects: afterRefresh };
+				else if (url.includes('/suggestions/auto-file')) {
+					// Filing a note is what makes the page re-read its tiles; held until the
+					// trash has been read the first time.
+					await autoFileHeld;
+					data = {
+						filed: [
+							{
+								suggestion_id: 'suggestion-1',
+								project_id: PROJECT_ID,
+								batch_id: 'batch-1',
+								item_ids: [NOTE_ID],
+								titles: ['Call the venue']
+							}
+						]
+					};
+				}
+				return new Response(JSON.stringify({ success: true, data }), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				});
+			});
+			render(ProjectsPage, {
+				props: {
+					data: {
+						...pageData(),
+						projects: Promise.resolve([tileProject()]),
+						projectCount: 1
+					} as never
+				}
+			});
+			await waitFor(() => expect(calls('/projects/trash')).toBe(1));
+
+			answerAutoFile();
+			await waitFor(() => expect(calls('/api/projects/summaries')).toBe(1));
+			await new Promise((resolve) => setTimeout(resolve, 20));
+
+			expect(calls('/projects/trash')).toBe(reads);
+		});
+	}
 });

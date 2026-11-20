@@ -29,26 +29,34 @@
 	};
 
 	// The Projects page re-reads its tiles itself; anywhere else falls back to a page reload.
-	let { onRestored }: { onRestored?: () => void } = $props();
+	// `hidden` keeps the section (and what it read) while something else has the page.
+	let { onRestored, hidden = false }: { onRestored?: () => void; hidden?: boolean } = $props();
 
 	let items = $state<TrashedProject[]>([]);
 	let restoringId = $state<string | null>(null);
 	let summaryEl = $state<HTMLElement | null>(null);
 
+	let reading: AbortController | null = null;
+
+	/** Read the trash again: the page calls this when a project leaves its list. */
+	export function reload() {
+		reading?.abort();
+		reading = new AbortController();
+		void loadTrash(reading.signal);
+	}
+
 	onMount(() => {
-		const controller = new AbortController();
-		const start = () => void loadTrash(controller.signal);
 		const idleWindow = window as IdleWindow;
 		if (typeof idleWindow.requestIdleCallback === 'function') {
-			const handle = idleWindow.requestIdleCallback(start, { timeout: 2000 });
+			const handle = idleWindow.requestIdleCallback(reload, { timeout: 2000 });
 			return () => {
-				controller.abort();
+				reading?.abort();
 				idleWindow.cancelIdleCallback?.(handle);
 			};
 		}
-		const timeout = window.setTimeout(start, 300);
+		const timeout = window.setTimeout(reload, 300);
 		return () => {
-			controller.abort();
+			reading?.abort();
 			window.clearTimeout(timeout);
 		};
 	});
@@ -132,7 +140,7 @@
 </script>
 
 {#if items.length > 0}
-	<details class="group/trash border-t border-border pt-3">
+	<details class="group/trash border-t border-border pt-3" {hidden}>
 		<summary
 			bind:this={summaryEl}
 			class="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden [@media(pointer:fine)]:min-h-8"

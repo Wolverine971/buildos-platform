@@ -612,6 +612,24 @@ describe('ProjectDesktop', () => {
 		).toBe(true);
 	});
 
+	it('keeps the tiles and the Workspace list built under an open card', async () => {
+		renderDesktop();
+		const tile = screen.getByRole('link', { name: /^Wayne Strategies/ });
+		const home = tile.closest<HTMLElement>('.home')!;
+
+		await fireEvent.click(tile);
+		await screen.findByRole('heading', { name: 'Wayne Strategies' });
+		// Hidden under the card (so nothing in it can be reached), not removed.
+		expect(home.hidden).toBe(true);
+		expect(tile.isConnected).toBe(true);
+		expect(screen.queryByRole('link', { name: /^Wayne Strategies/ })).toBeNull();
+
+		// Back out of the card: the same tile, not a rebuilt one.
+		page.state = {};
+		await waitFor(() => expect(home.hidden).toBe(false));
+		expect(screen.getByRole('link', { name: /^Wayne Strategies/ })).toBe(tile);
+	});
+
 	it('collapses back past every card it pushed', async () => {
 		const go = vi.spyOn(history, 'go').mockImplementation(() => undefined);
 		page.state = { desktopCard: 'redline', desktopDepth: 2 };

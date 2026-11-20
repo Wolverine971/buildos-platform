@@ -60,6 +60,7 @@
 	} from '$lib/components/agent/agent-chat.types';
 	import {
 		agentRunNeedsInputCount,
+		agentRunsLoaded,
 		agentRunsStore,
 		agentWorkAttentionCount,
 		workingAgentRunCount
@@ -724,6 +725,10 @@
 
 	$effect(() => {
 		if (!user?.id) return;
+		// Until the runs have been read once, an empty store is not a snapshot: taking one
+		// then made the runs already waiting at page load look new, and the inbox count
+		// (read a moment earlier, with them in it) was fetched a second time.
+		if (!$agentRunsLoaded) return;
 		const nextFingerprint = Array.from($agentRunsStore.values())
 			.filter((run) => run.user_id === user.id && run.status === 'proposal_ready')
 			.map((run) => run.id)
@@ -732,7 +737,6 @@
 		if (!hasProposalReadySnapshot) {
 			hasProposalReadySnapshot = true;
 			proposalReadyFingerprint = nextFingerprint;
-			if (nextFingerprint) void loadAiInboxCount({ force: true });
 			return;
 		}
 		if (nextFingerprint === proposalReadyFingerprint) return;

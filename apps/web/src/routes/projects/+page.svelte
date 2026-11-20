@@ -279,7 +279,7 @@
 			incoming
 				.then((result) => {
 					if (currentVersion !== projectsStreamVersion) return;
-					projectSummaries = Array.isArray(result) ? result : [];
+					landProjects(Array.isArray(result) ? result : []);
 					projectsLoading = false;
 				})
 				.catch((err) => {
@@ -291,9 +291,21 @@
 			return;
 		}
 
-		projectSummaries = Array.isArray(incoming) ? (incoming as ProjectListSummary[]) : [];
+		const landed = Array.isArray(incoming) ? (incoming as ProjectListSummary[]) : [];
+		untrack(() => landProjects(landed));
 		projectsLoading = false;
 	});
+
+	// The server's list, merged by id so only the tiles that changed get a new object and
+	// the rest are left alone. A project that left the list may have been deleted (by a
+	// chat, say), so the trash below is read again; otherwise it is read once per visit.
+	let trash = $state<{ reload: () => void } | null>(null);
+	function landProjects(next: ProjectListSummary[]) {
+		const before = projectSummaries;
+		projectSummaries = mergeProjectSummaries(before, next);
+		const kept = new Set(next.map((project) => project.id));
+		if (before.some((project) => !kept.has(project.id))) trash?.reload();
+	}
 
 	const projects = $derived(projectSummaries);
 	// The Workspace rides in the summaries (kind = 'workspace') so the desktop's drop rules
@@ -457,7 +469,7 @@
 			);
 			// A newer refresh, or a full page load, has the say.
 			if (request !== projectsRefresh || stream !== projectsStreamVersion) return;
-			projectSummaries = mergeProjectSummaries(projectSummaries, next ?? []);
+			landProjects(next ?? []);
 		} catch (err) {
 			console.error('[Projects] refresh failed', err);
 		}
@@ -1264,8 +1276,9 @@
 							</Button>
 						</div>
 					</div>
-				{:else if !desktopCardOpen}
-					<div class="space-y-2">
+				{:else}
+					<!-- Hidden, not removed, under an open card, like the capture box above. -->
+					<div class="space-y-2" hidden={desktopCardOpen}>
 						<div class="flex min-w-0 items-stretch gap-2">
 							<div class="relative min-w-0 flex-1">
 								<Search
@@ -1546,18 +1559,24 @@
 			{/if}
 
 			<!-- What moved lately across every project, and the latest chats. Hidden while a
-			     card has the page and for an empty account (nothing to show yet). -->
-			{#if !desktopCardOpen && !(realProjects.length === 0 && !projectsLoading)}
-				<div class="border-t border-border pt-4">
+			     card has the page; left out for an empty account (nothing to show yet). -->
+			{#if !(realProjects.length === 0 && !projectsLoading)}
+				<div class="border-t border-border pt-4" hidden={desktopCardOpen}>
 					<RecentActivityPanels recent={dashboard?.recent ?? null} />
 				</div>
 			{/if}
 
 			<!-- Deleted projects (30 days to restore). Mounts once the tiles have landed and
 			     reads the trash on its own, so it stays off the page's critical load. Shown
-			     even with no projects left, so deleting the last one is never a dead end. -->
-			{#if !desktopCardOpen && !projectsLoading}
-				<ProjectTrashSection onRestored={() => void refreshProjects()} />
+			     even with no projects left, so deleting the last one is never a dead end.
+			     Hidden under an open card and read again only when a project leaves the list
+			     (it used to be rebuilt, and the trash re-read, every time a card closed). -->
+			{#if !projectsLoading}
+				<ProjectTrashSection
+					bind:this={trash}
+					hidden={desktopCardOpen}
+					onRestored={() => void refreshProjects()}
+				/>
 			{/if}
 			<!-- Graph view - Admin Only -->
 		{:else if isAdmin}

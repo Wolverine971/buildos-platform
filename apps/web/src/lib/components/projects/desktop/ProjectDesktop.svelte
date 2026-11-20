@@ -1064,123 +1064,127 @@
 				onToggleSpring={toggleSpring}
 			/>
 		</div>
-	{:else}
-		<!-- Workspace beside the projects (tasker 159, direction C): the loose list and search
-		     results on the left, tiles on the right. Narrower screens get a Workspace / Projects
-		     switch (Workspace first); a search shows both, results first. -->
-		<div class={['home', { split: Boolean(loose) }]} data-show={searching ? 'both' : show}>
-			{#if loose}
-				{#if !searching}
-					<div class="switch" role="group" aria-label="Show">
-						<button
-							type="button"
-							aria-pressed={show === 'workspace'}
-							onclick={() => setShow('workspace')}
-						>
-							Workspace{#if looseCount !== null}<span class="n">{looseCount}</span
-								>{/if}
-						</button>
-						<button
-							type="button"
-							aria-pressed={show === 'projects'}
-							onclick={() => setShow('projects')}
-						>
-							Projects<span class="n">{tiles.length}</span>
-						</button>
-					</div>
-				{/if}
-				<aside class="pane" aria-label="Your Workspace">
-					{@render loose(looseApi)}
-				</aside>
+	{/if}
+	<!-- Workspace beside the projects (tasker 159, direction C): the loose list and search
+	     results on the left, tiles on the right. Narrower screens get a Workspace / Projects
+	     switch (Workspace first); a search shows both, results first.
+	     Hidden, not removed, while a card is open: the Workspace list keeps its filter and
+	     picked items, and closing the card shows the tiles again without rebuilding them. -->
+	<div
+		class={['home', { split: Boolean(loose) }]}
+		data-show={searching ? 'both' : show}
+		hidden={Boolean(openProject)}
+	>
+		{#if loose}
+			{#if !searching}
+				<div class="switch" role="group" aria-label="Show">
+					<button
+						type="button"
+						aria-pressed={show === 'workspace'}
+						onclick={() => setShow('workspace')}
+					>
+						Workspace{#if looseCount !== null}<span class="n">{looseCount}</span>{/if}
+					</button>
+					<button
+						type="button"
+						aria-pressed={show === 'projects'}
+						onclick={() => setShow('projects')}
+					>
+						Projects<span class="n">{tiles.length}</span>
+					</button>
+				</div>
 			{/if}
-			<div class="tiles-col">
-				{#if emptyTiles && !tiles.length && !completedTiles.length}
+			<aside class="pane" aria-label="Your Workspace">
+				{@render loose(looseApi)}
+			</aside>
+		{/if}
+		<div class="tiles-col">
+			{#if emptyTiles && !tiles.length && !completedTiles.length}
+				{#if loose}
+					<h2 class="section-title -mb-3">Projects</h2>
+				{/if}
+				{@render emptyTiles()}
+			{:else}
+				{#if searching}
+					<p class="text-xs text-muted-foreground">
+						{tiles.length}
+						{tiles.length === 1 ? 'match' : 'matches'} across all states
+					</p>
+				{/if}
+				<div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
 					{#if loose}
-						<h2 class="section-title -mb-3">Projects</h2>
+						<h2 class="section-title self-center">
+							Projects <span class="section-count">{tiles.length}</span>
+						</h2>
 					{/if}
-					{@render emptyTiles()}
-				{:else}
-					{#if searching}
-						<p class="text-xs text-muted-foreground">
-							{tiles.length}
-							{tiles.length === 1 ? 'match' : 'matches'} across all states
-						</p>
-					{/if}
-					<div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-						{#if loose}
-							<h2 class="section-title self-center">
-								Projects <span class="section-count">{tiles.length}</span>
+					<DesktopKey />
+					<div
+						class="inline-flex rounded-lg bg-muted p-0.5 text-xs font-medium"
+						role="group"
+						aria-label="Arrange projects"
+					>
+						{#each SORTS as { value, label } (value)}
+							<button
+								type="button"
+								class="min-h-9 rounded-md px-3 pressable [@media(pointer:fine)]:min-h-7 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {sort ===
+								value
+									? 'bg-card text-foreground shadow-sm'
+									: 'text-muted-foreground hover:text-foreground'}"
+								aria-pressed={sort === value}
+								onclick={() => setSort(value)}
+							>
+								{label}
+							</button>
+						{/each}
+					</div>
+				</div>
+
+				{#each groups as group (group.key)}
+					<section
+						class="grid gap-2"
+						aria-label={sort === 'activity' ? group.label : 'Projects'}
+					>
+						{#if sort === 'activity'}
+							<h2 class="section-title">
+								{group.label}
+								<span class="section-count">{group.projects.length}</span>
 							</h2>
 						{/if}
-						<DesktopKey />
-						<div
-							class="inline-flex rounded-lg bg-muted p-0.5 text-xs font-medium"
-							role="group"
-							aria-label="Arrange projects"
-						>
-							{#each SORTS as { value, label } (value)}
-								<button
-									type="button"
-									class="min-h-9 rounded-md px-3 pressable [@media(pointer:fine)]:min-h-7 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {sort ===
-									value
-										? 'bg-card text-foreground shadow-sm'
-										: 'text-muted-foreground hover:text-foreground'}"
-									aria-pressed={sort === value}
-									onclick={() => setSort(value)}
-								>
-									{label}
-								</button>
+						<div class="grid-tiles">
+							{#each group.projects as project (project.id)}
+								{@render tile(project)}
 							{/each}
 						</div>
-					</div>
+					</section>
+				{/each}
 
-					{#each groups as group (group.key)}
-						<section
-							class="grid gap-2"
-							aria-label={sort === 'activity' ? group.label : 'Projects'}
+				{#if completedTiles.length}
+					<section class="grid gap-2">
+						<button
+							type="button"
+							class="section-title flex min-h-9 items-center gap-1.5 self-start rounded-md px-1 text-left !text-muted-foreground transition-colors hover:!text-foreground"
+							aria-expanded={completedOpen}
+							onclick={() => (completedOpen = !completedOpen)}
 						>
-							{#if sort === 'activity'}
-								<h2 class="section-title">
-									{group.label}
-									<span class="section-count">{group.projects.length}</span>
-								</h2>
-							{/if}
+							<ChevronRight
+								class="h-3.5 w-3.5 transition-transform motion-reduce:transition-none {completedOpen
+									? 'rotate-90'
+									: ''}"
+							/>
+							Completed <span class="section-count">{completedTiles.length}</span>
+						</button>
+						{#if completedOpen}
 							<div class="grid-tiles">
-								{#each group.projects as project (project.id)}
+								{#each completedTiles as project (project.id)}
 									{@render tile(project)}
 								{/each}
 							</div>
-						</section>
-					{/each}
-
-					{#if completedTiles.length}
-						<section class="grid gap-2">
-							<button
-								type="button"
-								class="section-title flex min-h-9 items-center gap-1.5 self-start rounded-md px-1 text-left !text-muted-foreground transition-colors hover:!text-foreground"
-								aria-expanded={completedOpen}
-								onclick={() => (completedOpen = !completedOpen)}
-							>
-								<ChevronRight
-									class="h-3.5 w-3.5 transition-transform motion-reduce:transition-none {completedOpen
-										? 'rotate-90'
-										: ''}"
-								/>
-								Completed <span class="section-count">{completedTiles.length}</span>
-							</button>
-							{#if completedOpen}
-								<div class="grid-tiles">
-									{#each completedTiles as project (project.id)}
-										{@render tile(project)}
-									{/each}
-								</div>
-							{/if}
-						</section>
-					{/if}
+						{/if}
+					</section>
 				{/if}
-			</div>
+			{/if}
 		</div>
-	{/if}
+	</div>
 </div>
 
 {#snippet tile(project: ProjectListSummary)}
@@ -1283,6 +1287,9 @@
 		gap: 24px;
 		min-width: 0;
 		align-content: start;
+	}
+	.home[hidden] {
+		display: none;
 	}
 	.pane {
 		display: grid;
