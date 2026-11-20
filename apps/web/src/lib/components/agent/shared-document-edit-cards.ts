@@ -40,10 +40,22 @@ function findCardReceipt(value: unknown, depth = 0): Record<string, unknown> | n
 	return findCardReceipt(record.result, depth + 1) ?? findCardReceipt(record.data, depth + 1);
 }
 
+// One parse per activity. Activities are replaced, never edited in place (the chat's
+// copy-on-write rule), so an activity object always yields the same card, and the same card
+// OBJECT: the message list relies on that to leave finished turns untouched.
+const extractedCards = new WeakMap<ActivityEntry, SharedDocumentEditCardView | null>();
+
 export function extractSharedDocumentEditCard(
 	activity: ActivityEntry
 ): SharedDocumentEditCardView | null {
 	if (activity.status !== 'completed') return null;
+	if (extractedCards.has(activity)) return extractedCards.get(activity) ?? null;
+	const card = parseSharedDocumentEditCard(activity);
+	extractedCards.set(activity, card);
+	return card;
+}
+
+function parseSharedDocumentEditCard(activity: ActivityEntry): SharedDocumentEditCardView | null {
 	const receipt =
 		findCardReceipt(activity.metadata?.result) ??
 		findCardReceipt(activity.metadata?.response) ??

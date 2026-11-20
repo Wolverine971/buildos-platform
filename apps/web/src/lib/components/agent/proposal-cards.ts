@@ -74,13 +74,21 @@ function findCardEnvelope(value: unknown, depth = 0): Record<string, unknown> | 
 	return findCardEnvelope(record.result, depth + 1) ?? findCardEnvelope(record.data, depth + 1);
 }
 
+// One parse per activity. Activities are replaced, never edited in place (the chat's
+// copy-on-write rule), so an activity object always yields the same card, and the same card
+// OBJECT: the message list relies on that to leave finished turns untouched.
+const extractedCards = new WeakMap<ActivityEntry, ProposalCardEnvelopeV1 | null>();
+
 export function extractProposalCard(activity: ActivityEntry): ProposalCardEnvelopeV1 | null {
 	if (activity.status !== 'completed') return null;
+	if (extractedCards.has(activity)) return extractedCards.get(activity) ?? null;
 	const envelope =
 		findCardEnvelope(activity.metadata?.result) ??
 		findCardEnvelope(activity.metadata?.response) ??
 		findCardEnvelope(activity.metadata);
-	return envelope ? parseProposalCardEnvelope(envelope) : null;
+	const card = envelope ? parseProposalCardEnvelope(envelope) : null;
+	extractedCards.set(activity, card);
+	return card;
 }
 
 /** How far a copy of the card has got: an undo outranks a decision, which outranks none. */

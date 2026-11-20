@@ -28,6 +28,9 @@
 		cancelIdleCallback?: (handle: number) => void;
 	};
 
+	// The Projects page re-reads its tiles itself; anywhere else falls back to a page reload.
+	let { onRestored }: { onRestored?: () => void } = $props();
+
 	let items = $state<TrashedProject[]>([]);
 	let restoringId = $state<string | null>(null);
 	let summaryEl = $state<HTMLElement | null>(null);
@@ -113,7 +116,8 @@
 			}
 			items = items.filter((entry) => entry.id !== item.id);
 			toastService.success(`${item.name} is back`);
-			void invalidate('ontology:projects');
+			if (onRestored) onRestored();
+			else void invalidate('ontology:projects');
 			// The row's button is gone; keep keyboard focus in the section.
 			await tick();
 			summaryEl?.focus();

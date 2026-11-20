@@ -13,13 +13,9 @@ import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import {
 	ensureActorId,
-	ensureWorkspaceProjectId,
-	fetchProjectSummaries
+	ensureWorkspaceProjectId
 } from '$lib/services/ontology/ontology-projects.service';
-import { addProjectCollaborationFlags } from '$lib/components/projects/project-list';
-import { loadVisibleParentIds } from '$lib/services/ontology/project-hierarchy.service';
-import { loadProjectSignals } from '$lib/server/projects/desktop-signals';
-import { loadProjectEmojis } from '$lib/server/projects/project-emoji';
+import { loadProjectListSummaries } from '$lib/server/projects/project-list-summaries';
 import { getUserDashboardAnalytics } from '$lib/services/dashboard/user-dashboard-analytics.service';
 import { createEmptyUserDashboardAnalytics } from '$lib/types/dashboard-analytics';
 import { loadWorkspaceHome } from '$lib/server/workspace/workspace.service';
@@ -86,65 +82,12 @@ export const load: PageServerLoad = async ({ locals, depends, url }) => {
 
 	// STREAMED: Full project data loaded in background
 	// Skeletons will be hydrated when this resolves
-	const projects = fetchProjectSummaries(locals.supabase, actorId, locals.serverTiming)
-		.then(async (loaded) => {
-			if (loaded.length === 0) {
-				return addProjectCollaborationFlags(
-					loaded.map((project) => ({
-						...project,
-						parent_project_id: null as string | null
-					})),
-					[]
-				);
-			}
-			const projectIds = loaded.map((project) => project.id);
-
-			const [{ data: memberRows, error: memberRowsError }, parentIds, signals, emojis] =
-				await Promise.all([
-					measure('db.project_members.collaboration_flags', () =>
-						locals.supabase
-							.from('onto_project_members')
-							.select('project_id, actor_id')
-							.in('project_id', projectIds)
-							.is('removed_at', null)
-					),
-					// Nesting: a parent is named only when it's also in this viewer's list.
-					measure('db.project_parents', () =>
-						loadVisibleParentIds(locals.supabase, projectIds)
-					),
-					// Desktop tiles: last real change and the open-task mix per project.
-					measure('db.project_desktop_signals', () =>
-						loadProjectSignals(locals.supabase, projectIds).catch((err) => {
-							console.error('[Projects] Failed to load desktop signals:', err);
-							return null;
-						})
-					),
-					// Tile emojis (picked automatically or by the owner); without one, initials.
-					measure('db.project_emojis', () =>
-						loadProjectEmojis(locals.supabase, projectIds).catch((err) => {
-							console.error('[Projects] Failed to load project emojis:', err);
-							return null;
-						})
-					)
-				]);
-			const summaries = loaded.map((project) => ({
-				...project,
-				parent_project_id: parentIds.get(project.id) ?? null,
-				signals: signals?.get(project.id) ?? null,
-				emoji: emojis?.get(project.id) ?? null
-			}));
-
-			if (memberRowsError) {
-				console.error('[Projects] Failed to load collaborator metadata:', memberRowsError);
-				return addProjectCollaborationFlags(summaries, null);
-			}
-
-			return addProjectCollaborationFlags(summaries, memberRows ?? []);
-		})
-		.catch((err) => {
+	const projects = loadProjectListSummaries(locals.supabase, actorId, locals.serverTiming).catch(
+		(err) => {
 			console.error('[Ontology Dashboard] Failed to load project summaries', err);
 			throw err;
-		});
+		}
+	);
 
 	// STREAMED: the Today row's overdue count and the recent activity / chats panels
 	// under the desktop (what the old dashboard showed). One RPC, never blocks the tiles.

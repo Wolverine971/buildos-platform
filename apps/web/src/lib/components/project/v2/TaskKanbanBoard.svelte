@@ -44,7 +44,7 @@
 -->
 <script lang="ts">
 	import { preloadEntityModal } from '$lib/attachments/preload-entity-modal';
-	import { onMount, untrack, type Snippet } from 'svelte';
+	import { onMount, type Snippet } from 'svelte';
 	import { dataMutationEvents, mutationAffectsProject } from '$lib/stores/projectDataMutations';
 	import { slide } from 'svelte/transition';
 	import {
@@ -175,24 +175,72 @@
 	} = $props();
 
 	// ----------------------------------------------------------------
-	// Local mirror so optimistic edits don't mutate parent state
+	// What the board shows
 	// ----------------------------------------------------------------
-	let localTasks = $state<Task[]>([]);
+	// The page's `tasks` are the active ones; archived tasks load here when their column
+	// opens. A drag shows at once as a "move": the task as it will be, laid over whichever
+	// of those two lists the task comes from. Nothing is copied, so every card is the page's
+	// own task object unless it is mid-move, and a refresh of one task re-renders one card.
+	// (An earlier version cloned the whole list on every page update, which rebuilt every
+	// card and could overwrite a move still in flight.)
+	type Move = {
+		/** The task as the drag left it. */
+		value: Task;
+		/** The task object the move was laid over; null once the server moved it between lists. */
+		base: Task | null;
+	};
+	let archivedTasks = $state.raw<Task[]>([]);
+	let moves = $state.raw<ReadonlyMap<string, Move>>(new Map());
 
-	// Sync from props when the parent gives us a new list, but keep any
-	// locally-archived tasks (we own them after a drag-to-archive until the
-	// parent refreshes from the API).
-	//
-	// `localTasks` is read inside `untrack` so the assignment doesn't
-	// re-trigger this effect — otherwise rebuilding `localTasks` would create
-	// a new array identity and the effect would loop forever.
-	$effect(() => {
-		const incomingIds = new Set(tasks.map((t) => t.id));
-		untrack(() => {
-			const localArchived = localTasks.filter((t) => t.archived_at && !incomingIds.has(t.id));
-			localTasks = [...tasks.map((t) => ({ ...t })), ...localArchived];
-		});
+	function sourceOf(taskId: string): Task | null {
+		return (
+			tasks.find((task) => task.id === taskId) ??
+			archivedTasks.find((task) => task.id === taskId) ??
+			null
+		);
+	}
+
+	// A move stands while its request is in flight, and after that until the page (or the
+	// archived list) hands the task over again: that newer object is what the server has.
+	function moveStands(taskId: string, move: Move, source: Task | null): boolean {
+		return pendingTaskIds.has(taskId) || move.base === source;
+	}
+
+	const boardTasks = $derived.by(() => {
+		const seen = new Set<string>();
+		const shown: Task[] = [];
+		const add = (task: Task) => {
+			if (seen.has(task.id)) return;
+			seen.add(task.id);
+			const move = moves.get(task.id);
+			shown.push(move && moveStands(task.id, move, task) ? move.value : task);
+		};
+		for (const task of tasks) add(task);
+		for (const task of archivedTasks) add(task);
+		// A task that is in neither list right now (restored from the archive and not yet
+		// in the page's tasks, say) still shows where it was dropped.
+		for (const [taskId, move] of moves) {
+			if (!seen.has(taskId) && moveStands(taskId, move, null)) shown.push(move.value);
+		}
+		return shown;
 	});
+
+	function setMove(taskId: string, move: Move | undefined) {
+		const next = new Map<string, Move>();
+		// Moves the page has since caught up with are dropped here.
+		for (const [id, known] of moves) {
+			if (id !== taskId && moveStands(id, known, sourceOf(id))) next.set(id, known);
+		}
+		if (move) next.set(taskId, move);
+		moves = next;
+	}
+
+	// The request landed. Whatever the page holds for this task right now may have been read
+	// before the change (a refresh can land mid-drag), so the move is laid over that and
+	// waits for the next handover, which the caller's `onTaskMoved` asks for.
+	function settleMove(taskId: string, value = moves.get(taskId)?.value) {
+		if (value) setMove(taskId, { value, base: sourceOf(taskId) });
+	}
 
 	// ----------------------------------------------------------------
 	// Archived (lazy-loaded from server when the column is first opened)
@@ -263,12 +311,11 @@
 			archivedTotal = body?.data?.total ?? fetched.length;
 			archivedServerReturned = offset + fetched.length;
 			archivedHasMore = body?.data?.hasMore ?? archivedServerReturned < archivedTotal;
-			// Merge: drop any local copy of these IDs, then add server rows.
+			// A first page replaces the list; a later page is added to it.
 			const fetchedIds = new Set(fetched.map((t) => t.id));
-			localTasks = [
-				...localTasks.filter((t) => !fetchedIds.has(t.id) && (loadMore || !t.archived_at)),
-				...fetched.map((t) => ({ ...t }))
-			];
+			archivedTasks = loadMore
+				? [...archivedTasks.filter((t) => !fetchedIds.has(t.id)), ...fetched]
+				: fetched;
 			archivedLoaded = true;
 		} catch (err) {
 			archivedError = err instanceof Error ? err.message : 'Failed to load archived';
@@ -320,7 +367,7 @@
 			archived: []
 		};
 
-		for (const task of localTasks) {
+		for (const task of boardTasks) {
 			if (task.deleted_at && !task.archived_at) continue;
 			const column = taskWorkflowColumn(task);
 			if (column === 'archived' || matchesDueFilters(task)) grouped[column].push(task);
@@ -346,7 +393,7 @@
 	function dueFilterCount(filter: DueFilterKey): number {
 		return (
 			tasksCoverage?.buckets[filter]?.total ??
-			localTasks.filter((task) => getProjectTaskBoardBucket(task, asOfMs) === filter).length
+			boardTasks.filter((task) => getProjectTaskBoardBucket(task, asOfMs) === filter).length
 		);
 	}
 
@@ -474,9 +521,11 @@
 		draggingTaskId = null;
 		if (!taskId) return;
 
-		const idx = localTasks.findIndex((t) => t.id === taskId);
-		if (idx === -1) return;
-		const before = { ...localTasks[idx]! };
+		const before = boardTasks.find((t) => t.id === taskId);
+		if (!before) return;
+		const base = sourceOf(taskId);
+		// What stood before this drop, to put back if the request fails.
+		const earlierMove = moves.get(taskId);
 		const wasArchived = !!before.archived_at;
 
 		// No-op guard: dropping on the column the task already lives in.
@@ -488,12 +537,13 @@
 		// ----- Archive (kept until restored or deleted) -----
 		if (col.dropAction === 'archive') {
 			const archivedAt = new Date().toISOString();
-			localTasks[idx] = {
+			const archivedTask = {
 				...before,
 				deleted_at: archivedAt,
 				archived_at: archivedAt
 			} as Task;
 			pendingTaskIds = new Set(pendingTaskIds).add(taskId);
+			setMove(taskId, { value: archivedTask, base });
 			try {
 				const res = await fetch(`/api/onto/tasks/${taskId}`, {
 					method: 'DELETE',
@@ -506,10 +556,13 @@
 					throw new Error(body?.error || `Archive failed (${res.status})`);
 				}
 				archivedTotal = archivedTotal + 1;
+				// It is archived on the server now, so it belongs to the archived list. The
+				// move keeps it in place until the page drops it from the active tasks.
+				archivedTasks = [...archivedTasks.filter((t) => t.id !== taskId), archivedTask];
+				settleMove(taskId);
 				onTaskMoved?.(taskId, 'archived');
 			} catch (err) {
-				const rollbackIdx = localTasks.findIndex((t) => t.id === taskId);
-				if (rollbackIdx !== -1) localTasks[rollbackIdx] = before;
+				setMove(taskId, earlierMove);
 				toastService.error(err instanceof Error ? err.message : 'Could not archive task');
 			} finally {
 				const next = new Set(pendingTaskIds);
@@ -522,15 +575,24 @@
 		// ----- State change (with optional restore-from-archive first) -----
 		if (col.dropAction === 'state' && col.targetState) {
 			const target = col.targetState;
-			localTasks[idx] = {
-				...before,
-				deleted_at: wasArchived ? null : before.deleted_at,
-				archived_at: wasArchived ? null : before.archived_at,
-				state_key: target,
-				completed_at:
-					target === 'done' ? (before.completed_at ?? new Date().toISOString()) : null
-			} as Task;
 			pendingTaskIds = new Set(pendingTaskIds).add(taskId);
+			setMove(taskId, {
+				value: {
+					...before,
+					deleted_at: wasArchived ? null : before.deleted_at,
+					archived_at: wasArchived ? null : before.archived_at,
+					state_key: target,
+					completed_at:
+						target === 'done' ? (before.completed_at ?? new Date().toISOString()) : null
+				} as Task,
+				base
+			});
+
+			// Restored on the server: it is no longer an archived task. Its move, with no
+			// list behind it, keeps showing it until the page's tasks include it.
+			const leaveArchive = () => {
+				archivedTasks = archivedTasks.filter((t) => t.id !== taskId);
+			};
 
 			// Track server-side success per step so a partial-failure rollback
 			// can mirror server truth instead of clobbering it with `before`.
@@ -576,7 +638,9 @@
 				// Both server steps succeeded — only now sync the count.
 				if (restoredOnServer) {
 					archivedTotal = Math.max(0, archivedTotal - 1);
+					leaveArchive();
 				}
+				settleMove(taskId);
 				if (target === 'done') celebrateCompletion(taskId);
 				onTaskMoved?.(taskId, target);
 			} catch (err) {
@@ -584,13 +648,11 @@
 				//   - restore failed → still archived, original state
 				//   - restore succeeded but PATCH failed → restored, original state
 				//   - both succeeded → unreachable (we'd be in the success path)
-				const rollbackIdx = localTasks.findIndex((t) => t.id === taskId);
-				if (rollbackIdx !== -1) {
-					localTasks[rollbackIdx] = {
-						...before,
-						deleted_at: restoredOnServer ? null : before.deleted_at,
-						archived_at: restoredOnServer ? null : before.archived_at
-					} as Task;
+				if (restoredOnServer) {
+					leaveArchive();
+					settleMove(taskId, { ...before, deleted_at: null, archived_at: null } as Task);
+				} else {
+					setMove(taskId, earlierMove);
 				}
 				// Decrement archivedTotal here (instead of after restore) so the
 				// count reflects server truth even on a partial failure.
@@ -625,7 +687,8 @@
 				const body = (await res.json().catch(() => null)) as { error?: string } | null;
 				throw new Error(body?.error || `Delete failed (${res.status})`);
 			}
-			localTasks = localTasks.filter((t) => t.id !== task.id);
+			archivedTasks = archivedTasks.filter((t) => t.id !== task.id);
+			setMove(task.id, undefined);
 			archivedTotal = Math.max(0, archivedTotal - 1);
 			archivedServerReturned = Math.max(0, archivedServerReturned - 1);
 			deleteCandidate = null;

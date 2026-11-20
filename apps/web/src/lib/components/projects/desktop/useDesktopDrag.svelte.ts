@@ -65,9 +65,15 @@ export function createDesktopDrag(options: {
 	/** A started drag ended; `dropped` when a confirm follows (onDrop runs next). */
 	onEnd?: (dropped: boolean) => void;
 }) {
-	let ghost = $state<DragGhost | null>(null);
-	let over = $state<{ key: string; ok: boolean } | null>(null);
+	// The pointer moves many times a second; only the ghost follows every move. `over` is
+	// written when the drop target (or its verdict) changes, and `dragging` when a drag
+	// starts or ends, so the tiles, the dock and the page-wide drag class are not redone on
+	// each move. (Before, every move re-evaluated every tile and took the body's drag class
+	// off and on again, which restyled the whole page.)
+	let ghost = $state.raw<DragGhost | null>(null);
+	let over = $state.raw<{ key: string; ok: boolean } | null>(null);
 	let lifted = $state<string | null>(null);
+	let dragging = $state(false);
 	let session: Session | null = null;
 	let suppressClicksUntil = 0;
 
@@ -136,6 +142,7 @@ export function createDesktopDrag(options: {
 		const current = session;
 		if (!current) return;
 		current.started = true;
+		dragging = true;
 		lifted = itemKey(current.item);
 		options.onStart?.(current.item);
 		track();
@@ -155,7 +162,8 @@ export function createDesktopDrag(options: {
 		}
 		current.target = target;
 		current.verdict = verdict;
-		over = target && verdict ? { key: targetKey(target), ok: verdict.ok } : null;
+		const nextOver = target && verdict ? { key: targetKey(target), ok: verdict.ok } : null;
+		if (nextOver?.key !== over?.key || nextOver?.ok !== over?.ok) over = nextOver;
 		ghost = {
 			x: current.x,
 			y: current.y,
@@ -208,6 +216,7 @@ export function createDesktopDrag(options: {
 		ghost = null;
 		over = null;
 		lifted = null;
+		dragging = false;
 		window.removeEventListener('pointermove', move);
 		window.removeEventListener('pointerup', up);
 		window.removeEventListener('pointercancel', cancel);
@@ -226,7 +235,7 @@ export function createDesktopDrag(options: {
 			return lifted;
 		},
 		get dragging() {
-			return ghost !== null;
+			return dragging;
 		},
 		/** A finger is down on a draggable: its long press belongs to the drag, not a menu. */
 		get touchPressed() {

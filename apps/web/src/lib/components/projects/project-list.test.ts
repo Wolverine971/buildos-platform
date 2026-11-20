@@ -5,6 +5,7 @@ import {
 	formatProjectResumeCue,
 	getProjectListScopeLabel,
 	matchesProjectListScope,
+	mergeProjectSummaries,
 	normalizeProjectListScope
 } from './project-list';
 
@@ -68,5 +69,39 @@ describe('project list scope', () => {
 		expect(matchesProjectListScope('cancelled', 'all')).toBe(true);
 		expect(matchesProjectListScope('completed', 'completed')).toBe(true);
 		expect(getProjectListScopeLabel('completed')).toBe('Completed');
+	});
+});
+
+describe('merging a refreshed project list', () => {
+	const row = (id: string, name: string, open = 1) => ({
+		id,
+		name,
+		signals: { open_tasks: open, mix: [open, 0] }
+	});
+
+	it('keeps the held object for every project that came back the same', () => {
+		const held = [row('a', 'Alpha'), row('b', 'Beta'), row('c', 'Gamma')];
+		// A fresh read: every row is a new object; only Beta's content differs.
+		const merged = mergeProjectSummaries(held, [
+			row('a', 'Alpha'),
+			row('b', 'Beta', 4),
+			row('c', 'Gamma')
+		]);
+		expect(merged[0]).toBe(held[0]);
+		expect(merged[2]).toBe(held[2]);
+		expect(merged[1]).not.toBe(held[1]);
+		expect(merged[1]).toEqual(row('b', 'Beta', 4));
+	});
+
+	it('returns the held list itself when nothing changed', () => {
+		const held = [row('a', 'Alpha'), row('b', 'Beta')];
+		expect(mergeProjectSummaries(held, [row('a', 'Alpha'), row('b', 'Beta')])).toBe(held);
+	});
+
+	it('follows the server for added, removed and reordered projects', () => {
+		const held = [row('a', 'Alpha'), row('b', 'Beta')];
+		const merged = mergeProjectSummaries(held, [row('c', 'Gamma'), row('a', 'Alpha')]);
+		expect(merged.map((project) => project.id)).toEqual(['c', 'a']);
+		expect(merged[1]).toBe(held[0]);
 	});
 });

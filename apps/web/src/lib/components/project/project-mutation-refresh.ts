@@ -66,6 +66,24 @@ function replaceRecords<T extends { id: string; project_id: string; deleted_at?:
 	return [...byId.values()];
 }
 
+const timeOf = (value: string | null | undefined) => (value ? Date.parse(value) : null);
+
+/**
+ * True when an edit left alone everything its bucket is ordered by ahead of `updated_at`
+ * (see compareProjectTasksForBucket, which mirrors the server). Such a task keeps its place
+ * or moves up, so the rows loaded for the bucket are still its first rows.
+ */
+function keepsItsPlace(bucket: ProjectActiveTaskBucketKey, old: Task, record: Task): boolean {
+	const priority = (task: Task) => (typeof task.priority === 'number' ? task.priority : 5);
+	if (priority(old) !== priority(record)) return false;
+	const sameDates =
+		bucket === 'done'
+			? timeOf(old.completed_at) === timeOf(record.completed_at)
+			: timeOf(old.due_at) === timeOf(record.due_at) &&
+				timeOf(old.start_at) === timeOf(record.start_at);
+	return sameDates && (timeOf(record.updated_at) ?? 0) >= (timeOf(old.updated_at) ?? 0);
+}
+
 async function refreshTasks(
 	projectId: string,
 	mutations: DataMutation[],
@@ -104,26 +122,47 @@ async function refreshTasks(
 	}
 
 	// Offset pagination only stays valid when each bucket remains a contiguous
-	// server-ordered prefix. Refill affected buckets without shrinking loaded pages.
-	const buckets = new Set<ProjectActiveTaskBucketKey>();
+	// server-ordered prefix. What a change costs depends on what it did to a bucket:
+	//  - a fully loaded bucket has every row here already: it is recounted, with no request;
+	//  - a loaded task that only LEFT a partly loaded bucket leaves the rest a contiguous
+	//    prefix: the rows that take its place are read, not the whole bucket;
+	//  - a task edited without touching what its bucket is ordered by keeps its place or
+	//    moves up (a newer `updated_at` is the last tie-break), so the prefix is unchanged;
+	//  - anything else (a task entered a partly loaded bucket, or its order changed) refills
+	//    that bucket without shrinking its loaded pages.
+	// Untouched rows keep their object identity in all but the refill, so the board and the
+	// lists re-render only what changed.
+	const refill = new Set<ProjectActiveTaskBucketKey>();
+	const recount = new Set<ProjectActiveTaskBucketKey>();
+	const left = new Map<ProjectActiveTaskBucketKey, number>();
+	const activeBucket = (task: Task | null | undefined): ProjectActiveTaskBucketKey | null => {
+		if (!task || task.project_id !== projectId) return null;
+		const bucket = getProjectTaskBoardBucket(task, asOfMs);
+		return bucket === 'archived' ? null : bucket;
+	};
 	for (const { id, record } of changes) {
 		const old = previous.find((task) => task.id === id);
-		for (const task of [old, record]) {
-			if (!task || task.project_id !== projectId) continue;
-			const bucket = getProjectTaskBoardBucket(task, asOfMs);
-			if (bucket !== 'archived') buckets.add(bucket);
+		const from = activeBucket(old);
+		const to = activeBucket(record);
+		if (from && from !== to) {
+			if (coverage.buckets[from].complete) recount.add(from);
+			else left.set(from, (left.get(from) ?? 0) + 1);
+		}
+		if (to) {
+			if (coverage.buckets[to].complete) recount.add(to);
+			else if (from !== to || !keepsItsPlace(to, old!, record!)) refill.add(to);
 		}
 		if (!old) {
 			// The old bucket of an off-screen task is unknown. Only incomplete
 			// buckets can contain it; keep their counts and offsets authoritative.
 			for (const bucket of PROJECT_ACTIVE_TASK_BUCKET_KEYS) {
-				if (!coverage.buckets[bucket].complete) buckets.add(bucket);
+				if (!coverage.buckets[bucket].complete) refill.add(bucket);
 			}
 		}
 	}
 	const nextBuckets = { ...coverage.buckets };
-	await Promise.all(
-		[...buckets].map(async (bucket) => {
+	await Promise.all([
+		...[...refill].map(async (bucket) => {
 			const target = Math.max(
 				coverage.limit_per_bucket ?? 20,
 				coverage.buckets[bucket].returned
@@ -149,8 +188,34 @@ async function refreshTasks(
 				...records
 			];
 			nextBuckets[bucket] = { returned: records.length, total, complete: !hasMore };
-		})
-	);
+		}),
+		...[...left]
+			.filter(([bucket]) => !refill.has(bucket))
+			.map(async ([bucket, count]) => {
+				const kept = Math.max(0, coverage.buckets[bucket].returned - count);
+				const page = await fetchProjectTaskBucket({
+					projectId,
+					bucket,
+					offset: kept,
+					limit: count,
+					asOf: coverage.as_of
+				});
+				const have = new Set(tasks.map((task) => task.id));
+				tasks = [...tasks, ...page.tasks.filter((task) => !have.has(task.id))];
+				nextBuckets[bucket] = {
+					returned: kept + page.tasks.length,
+					total: page.total,
+					complete: !page.hasMore
+				};
+			})
+	]);
+	for (const bucket of recount) {
+		if (refill.has(bucket)) continue;
+		const total = tasks.filter(
+			(task) => getProjectTaskBoardBucket(task, asOfMs) === bucket
+		).length;
+		nextBuckets[bucket] = { returned: total, total, complete: true };
+	}
 	return {
 		...patch,
 		tasks,

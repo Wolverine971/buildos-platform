@@ -24,7 +24,7 @@
 		mutationAffectsProject,
 		notifyDataMutation
 	} from '$lib/stores/projectDataMutations';
-	import type { DataMutation } from '$lib/components/agent/agent-chat.types';
+	import type { DataMutation, DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 	import {
 		collectProjectMutations,
 		createProjectRefreshQueue,
@@ -273,10 +273,11 @@
 	);
 	let familyRequest = 0;
 
-	let docTreeStructure = $state<DocStructure | null>(null);
-	let docTreeDocuments = $state<Record<string, OntoDocument>>({});
-	let docTreeUnlinked = $state<OntoDocument[]>([]);
-	let docTreeArchived = $state<OntoDocument[]>([]);
+	// Replaced whole, never edited in place, like every other collection on this page.
+	let docTreeStructure = $state.raw<DocStructure | null>(null);
+	let docTreeDocuments = $state.raw<Record<string, OntoDocument>>({});
+	let docTreeUnlinked = $state.raw<OntoDocument[]>([]);
+	let docTreeArchived = $state.raw<OntoDocument[]>([]);
 
 	let showTaskCreateModal = $state(false);
 	let editingTaskId = $state<string | null>(null);
@@ -330,6 +331,16 @@
 	const phone = $derived(phoneQuery.current);
 	/** Wide screens read beside a list; the page then holds still and its panes scroll. */
 	const readingWide = $derived(Boolean(readerItem) && !phone);
+	// Tabs opened so far in this view (plain closure memory; see the panels in the markup).
+	// The first render shows the default tab before the URL's `?view=` is read; that
+	// placeholder is not remembered, so a link straight to Docs does not keep Overview built.
+	const openedTabs = new Set<WorkspaceTab>();
+	let urlViewApplied = $state(false);
+	const tabBuilt = $derived.by(() => {
+		if (urlViewApplied) openedTabs.add(activeTab);
+		const built = (tab: WorkspaceTab) => tab === activeTab || openedTabs.has(tab);
+		return { work: built('work'), overview: built('overview'), docs: built('docs') };
+	});
 	const readerHasList = $derived(activeTab === 'docs' || activeTab === 'work');
 
 	// A task changed in the reader keeps its row until the reader moves off tasks.
@@ -643,7 +654,10 @@
 				hydrationError = null;
 				void hydrateContextDocument();
 			}
-			if (summaries && contextDocument)
+			// Only a change from outside this page (a chat closing, an agent run) can have
+			// queued a Project memory refresh on the server. After the page's own edits there
+			// is nothing to wait for, and waiting means six reads of the page's largest record.
+			if (summaries?.some((summary) => !ownEdits.has(summary)) && contextDocument)
 				void recheckStartHereAfterSnapshot(contextDocument, previousRefresh);
 			refreshError = false;
 		},
@@ -686,18 +700,31 @@
 		openEntity('document', copied.id);
 	}
 
+	/** Change receipts this page published for its own edits (board, reader, modals). */
+	const ownEdits = new WeakSet<DataMutationSummary>();
+
 	function refreshEntity(
 		entityKind: DataMutation['entityKind'],
 		entityId: string | null,
 		operation: DataMutation['operation'] = 'update'
 	) {
-		notifyDataMutation({
+		const summary: DataMutationSummary = {
 			hasChanges: true,
 			totalMutations: 1,
 			affectedProjectIds: [project.id],
 			hasMessagesSent: false,
 			mutations: [{ entityKind, entityId, operation, projectIds: [project.id] }]
-		});
+		};
+		ownEdits.add(summary);
+		notifyDataMutation(summary);
+	}
+
+	/** Whether a change could have touched the item open in the reader. */
+	function mutationTouchesReaderItem(summary: DataMutationSummary, item: ReaderItem): boolean {
+		const mutations = summary.mutations;
+		// No list, or a write with no id: the scope is unknown, so assume it did.
+		if (!mutations?.length) return true;
+		return mutations.some((mutation) => !mutation.entityId || mutation.entityId === item.id);
 	}
 
 	function selectTab(tab: WorkspaceTab, updateUrl = true) {
@@ -1195,6 +1222,7 @@
 		const openShare = startUrl.searchParams.get('share') === '1';
 		startUrl.searchParams.delete('share');
 		syncWorkspaceFromUrl(startUrl);
+		urlViewApplied = true;
 		if (openShare) {
 			pendingShareOpen = true;
 			void tick().then(() =>
@@ -1216,7 +1244,14 @@
 				return;
 			}
 			if (!event || !mutationAffectsProject(event.summary, project.id)) return;
-			if (readerItem && !readerAnnouncing) readerReload += 1;
+			// The open item reloads only for a change that could be about it: an agent
+			// editing five other tasks is not a reason to fetch this one again.
+			if (
+				readerItem &&
+				!readerAnnouncing &&
+				mutationTouchesReaderItem(event.summary, readerItem)
+			)
+				readerReload += 1;
 			void refreshQueue.enqueue(event.summary);
 			freshness.scheduleRefresh();
 		});
@@ -1536,10 +1571,15 @@
 				onTaskState={readerTaskState}
 			>
 				{#snippet list()}
-					{#if activeTab === 'work'}
+					<!-- Work, Overview and Docs stay built once opened and are only hidden when another
+					     tab shows, so the board's filters and archived column and the doc tree's open
+					     folders survive a tab switch and nothing is rebuilt or refetched on the way back.
+					     Activity and People are built on each visit: opening them is how they refresh. -->
+					{#if tabBuilt.work}
 						<div
 							id="workspace-work"
 							class="workspace-panel"
+							hidden={activeTab !== 'work'}
 							role="tabpanel"
 							aria-labelledby="workspace-tab-work"
 							aria-busy={isHydrating}
@@ -1551,7 +1591,7 @@
 									aria-label="Loading task board"
 								></div>
 							{:else if workspaceReady}
-								{#if readingWide}
+								{#if readingWide && activeTab === 'work'}
 									<ReaderTaskList
 										groups={taskGroups}
 										selectedId={readerItem?.kind === 'task'
@@ -1618,10 +1658,12 @@
 								</div>
 							{/if}
 						</div>
-					{:else if activeTab === 'overview'}
+					{/if}
+					{#if tabBuilt.overview}
 						<div
 							id="workspace-overview"
 							class="workspace-panel"
+							hidden={activeTab !== 'overview'}
 							role="tabpanel"
 							aria-labelledby="workspace-tab-overview"
 							aria-busy={isHydrating}
@@ -2149,10 +2191,12 @@
 								</div>
 							{/if}
 						</div>
-					{:else if activeTab === 'docs'}
+					{/if}
+					{#if tabBuilt.docs}
 						<div
 							id="workspace-docs"
 							class="workspace-panel"
+							hidden={activeTab !== 'docs'}
 							role="tabpanel"
 							aria-labelledby="workspace-tab-docs"
 							aria-busy={isHydrating}
@@ -2190,7 +2234,7 @@
 											initialUnlinked={docTreeUnlinked}
 											initialArchived={docTreeArchived}
 											maxInitialDepth={1}
-											pollInterval={30000}
+											pollInterval={activeTab === 'docs' ? 30000 : 0}
 											variant="workspace"
 											{family}
 											onOpenInheritedDocument={(id) =>
@@ -2201,7 +2245,8 @@
 								{/if}
 							</div>
 						</div>
-					{:else if activeTab === 'people'}
+					{/if}
+					{#if activeTab === 'people'}
 						<!-- Everyone this project's tasks and docs name, and who knows them (tasker 168). -->
 						<div
 							id="workspace-people"
@@ -2218,7 +2263,7 @@
 								/>
 							</div>
 						</div>
-					{:else}
+					{:else if activeTab === 'activity'}
 						<div
 							id="workspace-activity"
 							class="workspace-panel"

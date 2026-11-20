@@ -403,6 +403,8 @@
 	// identity, not the object assignment, or the replay tears down and re-adopts
 	// the same worker observer between reconcile ticks.
 	const currentSessionId = $derived(currentSession?.id ?? null);
+	// A boolean, so the history effect below does not re-run on every streamed message change.
+	const hasMessages = $derived(messages.length > 0);
 	const chatHistory = createChatHistory({
 		// randomUUID is missing outside secure contexts (http on a LAN IP during phone testing).
 		instanceId:
@@ -412,7 +414,7 @@
 		// Embedded hosts (document dock, brief chat) toggle isOpen while staying mounted.
 		isVisible: () => isOpen && !hidden,
 		isEmbedded: () => embedded,
-		sessionId: () => (messages.length > 0 ? currentSessionId : null),
+		sessionId: () => (hasMessages ? currentSessionId : null),
 		onBack: () => handleClose()
 	});
 	// Checkpoint capture receipts (tasker/95) live beside the conversation, not in
@@ -431,7 +433,7 @@
 	const exportableStepCount = $derived.by(
 		() => agentTimelineItems.filter((item) => item.kind !== 'message').length
 	);
-	const canExportAgentSteps = $derived(messages.length > 0);
+	const canExportAgentSteps = $derived(hasMessages);
 	const canExportSupportPacket = $derived(
 		messages.length > 0 || agentTimelineItems.length > 0 || Boolean(currentSession?.id)
 	);

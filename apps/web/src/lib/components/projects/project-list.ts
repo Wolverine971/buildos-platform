@@ -104,3 +104,30 @@ export function addProjectCollaborationFlags<T extends ProjectCollaborationField
 		};
 	});
 }
+
+/**
+ * A freshly loaded project list, keeping the object the page already holds for every project
+ * that came back the same. A refresh after one project changed then hands a new object to one
+ * tile, not to all of them. Returns `previous` itself when nothing changed at all.
+ */
+export function mergeProjectSummaries<T extends { id: string }>(
+	previous: readonly T[],
+	next: readonly T[]
+): T[] {
+	const known = new Map(previous.map((project) => [project.id, project]));
+	// Summaries are plain JSON from the server, so their text is a fair equality check.
+	const text = new Map<T, string>();
+	const textOf = (project: T) => {
+		let value = text.get(project);
+		if (value === undefined) text.set(project, (value = JSON.stringify(project)));
+		return value;
+	};
+	let unchanged = previous.length === next.length;
+	const merged = next.map((project, index) => {
+		const before = known.get(project.id);
+		const kept = before && textOf(before) === textOf(project) ? before : project;
+		if (kept !== previous[index]) unchanged = false;
+		return kept;
+	});
+	return unchanged ? (previous as T[]) : merged;
+}

@@ -921,6 +921,109 @@ describe('ProjectWorkspace edge states', () => {
 		expect(screen.queryByText('RECENTLY UPDATED')).not.toBeInTheDocument();
 	});
 
+	it('waits for a Project memory refresh after a chat changes the project, never after an edit made on the page', async () => {
+		window.history.replaceState({}, '', '/workspace?view=work');
+		const task = {
+			id: 'task-1',
+			project_id: PROJECT_ID,
+			title: 'Draft the email',
+			state_key: 'todo',
+			props: {},
+			deleted_at: null,
+			start_at: null,
+			due_at: null,
+			priority: 3
+		};
+		render(ProjectWorkspace, {
+			props: {
+				data: projectData({
+					tasks: [task],
+					tasks_coverage: createCompleteProjectTasksCoverage([task] as any),
+					context_document: contextDocument()
+				}) as any
+			}
+		});
+		const inProgress = await screen.findByRole('region', { name: 'In progress column' });
+		vi.mocked(fetch).mockImplementation(async (input) =>
+			String(input).includes(`/api/onto/documents/${CONTEXT_DOCUMENT_ID}`)
+				? apiResponse({ document: contextDocument() })
+				: apiResponse({ task: { ...task, state_key: 'in_progress' } })
+		);
+		const startHereReads = () =>
+			vi
+				.mocked(fetch)
+				.mock.calls.filter(([url]) =>
+					String(url).includes(`/api/onto/documents/${CONTEXT_DOCUMENT_ID}`)
+				).length;
+		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+		try {
+			vi.mocked(fetch).mockClear();
+			// The page's own edit: a card dragged to another column. Nothing on the server
+			// refreshes Project memory for it, so the page must not sit re-reading it.
+			await fireEvent.drop(inProgress, {
+				dataTransfer: { getData: () => task.id, setData: () => undefined }
+			});
+			await vi.advanceTimersByTimeAsync(61_000);
+			expect(fetch).toHaveBeenCalledWith('/api/onto/tasks/task-1', expect.anything());
+			expect(startHereReads()).toBe(0);
+
+			// A chat closing can queue that refresh: the page looks for it.
+			notifyDataMutation({
+				hasChanges: true,
+				totalMutations: 1,
+				affectedProjectIds: [PROJECT_ID],
+				hasMessagesSent: true,
+				sessionId: 'chat-1',
+				mutations: [
+					{
+						entityKind: 'task',
+						entityId: task.id,
+						operation: 'update',
+						projectIds: [PROJECT_ID]
+					}
+				]
+			});
+			await vi.advanceTimersByTimeAsync(1_500);
+			expect(startHereReads()).toBe(1);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('keeps the board built while another tab shows, so coming back rebuilds nothing', async () => {
+		window.history.replaceState({}, '', '/workspace?view=work');
+		const task = {
+			id: 'task-1',
+			project_id: PROJECT_ID,
+			title: 'Draft the email',
+			state_key: 'todo',
+			props: {},
+			deleted_at: null,
+			start_at: null,
+			due_at: null,
+			priority: 3
+		};
+		render(ProjectWorkspace, {
+			props: {
+				data: projectData({
+					tasks: [task],
+					tasks_coverage: createCompleteProjectTasksCoverage([task] as any)
+				}) as any
+			}
+		});
+		const backlog = await screen.findByRole('region', { name: 'Backlog column' });
+
+		await fireEvent.click(screen.getByRole('tab', { name: 'Docs' }));
+		expect(await screen.findByRole('tabpanel', { name: 'Docs' })).toBeInTheDocument();
+		// Hidden, not gone: only the tab that shows is exposed.
+		expect(screen.queryByRole('tabpanel', { name: /Tasks/ })).not.toBeInTheDocument();
+		expect(backlog.isConnected).toBe(true);
+
+		await fireEvent.click(screen.getByRole('tab', { name: /Tasks/ }));
+		expect(screen.getByRole('region', { name: 'Backlog column' })).toBe(backlog);
+		expect(screen.queryByRole('tabpanel', { name: 'Docs' })).not.toBeInTheDocument();
+	});
+
 	it('gives documents one full-width hierarchy without a duplicate recent list', async () => {
 		const document = projectDocument();
 		render(ProjectWorkspace, {

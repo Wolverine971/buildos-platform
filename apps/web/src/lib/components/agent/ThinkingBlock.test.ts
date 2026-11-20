@@ -462,6 +462,38 @@ describe('ThinkingBlock', () => {
 		expect(container.querySelector('.thinking-body')).not.toHaveClass('thinking-body-settle');
 	});
 
+	it('builds the rows of a restored, folded log only when it is first opened', async () => {
+		const restored = { ...thinkingBlock(), status: 'completed' as const, isCollapsed: true };
+		const { container, rerender } = render(ThinkingBlock, {
+			block: restored,
+			onToggleCollapse: vi.fn()
+		});
+		const rows = () => container.querySelectorAll('[data-step-slot]').length;
+		// The header still counts the steps; none of their rows exist yet.
+		expect(container.querySelector('.activity-count-badge')?.textContent).toContain('4 steps');
+		expect(rows()).toBe(0);
+
+		await rerender({ block: { ...restored, isCollapsed: false } });
+		expect(rows()).toBe(4);
+
+		// Folding again keeps them, so the close can animate and a reopen is instant.
+		await rerender({ block: { ...restored, isCollapsed: true } });
+		expect(rows()).toBe(4);
+	});
+
+	it('keeps the rows of a turn that ran in this view when the reply folds it', async () => {
+		const live = thinkingBlock();
+		const { container, rerender } = render(ThinkingBlock, {
+			block: { ...live, isCollapsed: true },
+			onToggleCollapse: vi.fn()
+		});
+		// Folded from the start but running: phrases still need a row to fly to.
+		expect(container.querySelectorAll('[data-step-slot]').length).toBe(4);
+
+		await rerender({ block: { ...live, status: 'completed', isCollapsed: true } });
+		expect(container.querySelectorAll('[data-step-slot]').length).toBe(4);
+	});
+
 	it('disables the replacement disclosure motion for reduced motion', () => {
 		const reducedMotion = source.slice(
 			source.indexOf('@media (prefers-reduced-motion: reduce)')

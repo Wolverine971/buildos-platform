@@ -195,8 +195,40 @@
 		return isLatest && isRunning ? 'pending' : 'done';
 	}
 
+	// A running turn replaces its block on every step event. Rows are remembered per activity
+	// object (activities are replaced, never edited in place), so only the step that changed
+	// gets a new row: the rest keep theirs and their markup is left alone.
+	const rowMemory = new WeakMap<ActivityEntry, StepRow>();
+	const detailsMemory = new WeakMap<
+		ActivityEntry,
+		{ projectId: string | null; details: StepDetails }
+	>();
+
+	function stepDetailsFor(activity: ActivityEntry, projectId: string | null): StepDetails {
+		const known = detailsMemory.get(activity);
+		if (known && known.projectId === projectId) return known.details;
+		const details = buildStepDetails(activity, { projectId });
+		detailsMemory.set(activity, { projectId, details });
+		return details;
+	}
+
+	function sameRow(before: StepRow, after: StepRow): boolean {
+		return (
+			before.tone === after.tone &&
+			before.verb === after.verb &&
+			before.target === after.target &&
+			before.quoted === after.quoted &&
+			before.outcome === after.outcome &&
+			before.error === after.error &&
+			before.details === after.details &&
+			before.settlement?.state === after.settlement?.state &&
+			before.settlement?.label === after.settlement?.label
+		);
+	}
+
 	const steps = $derived.by((): StepRow[] => {
 		const lastIndex = displayedActivities.length - 1;
+		const projectId = turnCards?.sessionProject?.id ?? null;
 		return displayedActivities.map((activity, index) => {
 			const line = readLine(activity);
 			const settlement = settled?.[activity.id] ?? null;
@@ -213,7 +245,7 @@
 							// may not have been saved, so the row claims neither.
 							'no result before the stop'
 						: undefined;
-			return {
+			const row: StepRow = {
 				activity,
 				tone,
 				verb,
@@ -221,11 +253,13 @@
 				quoted: line?.quoted === true,
 				...(outcome ? { outcome } : {}),
 				...(tone === 'failed' && line?.error ? { error: line.error } : {}),
-				details: buildStepDetails(activity, {
-					projectId: turnCards?.sessionProject?.id ?? null
-				}),
+				details: stepDetailsFor(activity, projectId),
 				settlement
 			};
+			const before = rowMemory.get(activity);
+			if (before && sameRow(before, row)) return before;
+			rowMemory.set(activity, row);
+			return row;
 		});
 	});
 	// "2 updated · 1 created · 6 opened" once the turn has changed something. Only changes
@@ -267,6 +301,15 @@
 	const stepById = $derived(new Map(steps.map((step) => [step.activity.id, step])));
 	// A card with only its context list still has something to open.
 	const hasBody = $derived(hasSteps || showCards);
+	// The log's rows are built the first time it is open or its turn is running in this view,
+	// and stay built after that (so it can fold and reopen smoothly). An earlier chat arrives
+	// with every log folded; building none of them is what keeps a long history quick to open.
+	// Plain closure flag: it only records that this view has shown the log.
+	let bodyBuilt = false;
+	const buildBody = $derived.by(() => {
+		if (isRunning || (hasBody && !block.isCollapsed)) bodyBuilt = true;
+		return bodyBuilt;
+	});
 
 	// Records are listed one per row (RecordList): the first two show, the rest open on request.
 	function ledgerRows(group: LedgerGroupView): RecordListRow[] {
@@ -777,7 +820,9 @@
 				class:thinking-body-settle-reopen={settleReopen}
 			>
 				<div class="thinking-body-inner">
-					{#if showCards && cards}
+					{#if !buildBody}
+						<!-- Folded and never opened in this view: nothing is built yet. -->
+					{:else if showCards && cards}
 						<div class="turn-cards p-2 sm:p-2.5" data-testid="turn-cards">
 							{#if cards.picked}
 								<p class="turn-cards-note" data-testid="turn-picked">

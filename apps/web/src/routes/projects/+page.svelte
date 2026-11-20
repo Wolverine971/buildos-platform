@@ -89,7 +89,8 @@
 		matchesProjectListScope,
 		normalizeProjectListScope,
 		type ProjectListScope,
-		type ProjectListSummary
+		type ProjectListSummary,
+		mergeProjectSummaries
 	} from '$lib/components/projects/project-list';
 
 	let { data } = $props();
@@ -246,16 +247,27 @@
 		isPromiseLike<ProjectListSummary[]>(initialProjects) ? true : false
 	);
 	let projectsError = $state<string | null>(null);
-	let projectSummaries = $state<ProjectListSummary[]>(
+	// Replaced whole (a load, or a `.map` patch), never edited in place: no deep tracking.
+	let projectSummaries = $state.raw<ProjectListSummary[]>(
 		Array.isArray(initialProjects) ? (initialProjects as ProjectListSummary[]) : []
 	);
+
+	// The three loads below are read through these, not straight off `data`. SvelteKit hands
+	// the page a new `data` object whenever ANY load re-runs, the root layout's included
+	// (declining an invite does that). An effect that read `data.projects` itself would run
+	// again on the same, already-answered promise and put the first load's list back over
+	// every change made since (a nest, a filed note, a shelf removal). A derived only
+	// reports a change when the promise itself is a new one.
+	const projectsSource = $derived(data.projects);
+	const workspaceSource = $derived(data.workspace);
+	const dashboardSource = $derived(data.dashboard);
 
 	// SKELETON LOADING: Show skeletons based on projectCount while loading
 	// Must be defined after projectsLoading to avoid temporal dead zone
 	const showSkeletons = $derived(projectsLoading && projectCount > 0);
 
 	$effect(() => {
-		const incoming = data.projects;
+		const incoming = projectsSource;
 		const currentVersion = ++projectsStreamVersion;
 		projectsError = null;
 
@@ -376,11 +388,11 @@
 
 	// ---------- Workspace (loose items, suggestions) ----------
 
-	let workspaceHome = $state<WorkspaceHome | null>(null);
+	let workspaceHome = $state.raw<WorkspaceHome | null>(null);
 	let workspaceLoading = $state(true);
 	let workspaceStreamVersion = 0;
 	$effect(() => {
-		const incoming = data.workspace;
+		const incoming = workspaceSource;
 		const currentVersion = ++workspaceStreamVersion;
 		void Promise.resolve(incoming)
 			.then((result) => {
@@ -430,17 +442,25 @@
 		return (payload?.data ?? payload) as T;
 	}
 
-	// invalidate() resets page.state, and the open card and its reader live there: a
-	// refresh while a card is open closed it (and the `?open` link then reopened it, the
-	// "page refreshed" flash). The card reads its own data fresh, so the tiles behind it
-	// wait and refresh once when it closes.
-	let projectsStale = false;
-	function refreshProjects() {
-		if (page.state.desktopCard) {
-			projectsStale = true;
-			return;
+	// After a change to a project the tiles are re-read on their own and merged by id: one
+	// request, and only the tiles that changed get a new object. (This used to be
+	// invalidate('ontology:projects'), which re-ran the page's whole load, the Workspace and
+	// the Today analytics included, and reset page.state, closing whatever card was open. So
+	// a refresh had to wait for the card to close. It no longer does.)
+	let projectsRefresh = 0;
+	async function refreshProjects() {
+		const request = ++projectsRefresh;
+		const stream = projectsStreamVersion;
+		try {
+			const { projects: next } = await workspaceRequest<{ projects: ProjectListSummary[] }>(
+				'/api/projects/summaries'
+			);
+			// A newer refresh, or a full page load, has the say.
+			if (request !== projectsRefresh || stream !== projectsStreamVersion) return;
+			projectSummaries = mergeProjectSummaries(projectSummaries, next ?? []);
+		} catch (err) {
+			console.error('[Projects] refresh failed', err);
 		}
-		void invalidate('ontology:projects');
 	}
 
 	async function refreshWorkspace() {
@@ -497,13 +517,13 @@
 			result.outcome === 'moved' ||
 			result.outcome === 'partial'
 		)
-			refreshProjects();
+			void refreshProjects();
 	}
 
 	function handleSortUndone(result: CaptureUndoResult) {
 		removeLoose(result.removed_ids);
 		if (result.restored) addLoose([result.restored]);
-		refreshProjects();
+		void refreshProjects();
 	}
 
 	function looseTitle(item: DesktopItem): string | null {
@@ -527,7 +547,7 @@
 				{ action: 'accept' }
 			);
 			removeLoose(suggestion.items.map((ref) => ref.id));
-			refreshProjects();
+			void refreshProjects();
 			const label = receipt.moved === 1 ? '1 item' : `${receipt.moved} items`;
 			const toastId: string = toastService.add({
 				type: 'success',
@@ -568,7 +588,7 @@
 			);
 			if (!filed.length) return;
 			removeLoose(filed.flatMap((entry) => entry.item_ids));
-			refreshProjects();
+			void refreshProjects();
 			for (const entry of filed) {
 				const name = projectsById.get(entry.project_id)?.name ?? 'a project';
 				const what =
@@ -617,7 +637,7 @@
 		} catch (err) {
 			toastService.error(err instanceof Error ? err.message : 'Could not undo that.');
 		} finally {
-			refreshProjects();
+			void refreshProjects();
 			void refreshWorkspace();
 		}
 	}
@@ -677,7 +697,7 @@
 					}
 				}
 			});
-			await invalidate('ontology:projects');
+			await refreshProjects();
 			void refreshWorkspace();
 			// Open the new project's card on the desktop.
 			pushState('', {
@@ -715,9 +735,7 @@
 		} catch (err) {
 			toastService.error(err instanceof Error ? err.message : 'Could not undo that.');
 		} finally {
-			// Not a raw invalidate(): it resets page.state and would close whatever card
-			// is open (the graduate toast stays up long after the new card was opened).
-			refreshProjects();
+			void refreshProjects();
 			void refreshWorkspace();
 		}
 	}
@@ -784,10 +802,10 @@
 
 	// Streamed analytics for the Today row and the activity panels. Null until the first
 	// payload lands; later refreshes keep the last payload until the new one arrives.
-	let dashboard = $state<UserDashboardAnalytics | null>(null);
+	let dashboard = $state.raw<UserDashboardAnalytics | null>(null);
 	let dashboardStreamVersion = 0;
 	$effect(() => {
-		const incoming = data.dashboard;
+		const incoming = dashboardSource;
 		const currentVersion = ++dashboardStreamVersion;
 		void Promise.resolve(incoming)
 			.then((result) => {
@@ -914,11 +932,6 @@
 	const isSearching = $derived(searchQuery.trim().length > 0);
 	// A desktop card takes the page; search and filters come back when it closes.
 	const desktopCardOpen = $derived(Boolean(page.state.desktopCard));
-	$effect(() => {
-		if (desktopCardOpen || !projectsStale) return;
-		projectsStale = false;
-		void invalidate('ontology:projects');
-	});
 
 	function applyProjectPatches(patches: ProjectPatch[]) {
 		const byId = new Map(patches.map(({ id, patch }) => [id, patch]));
@@ -1214,14 +1227,18 @@
 			{/if}
 		</header>
 
-		{#if activeTab === 'overview' && !desktopCardOpen}
-			<!-- Capture first: a thought lands in the Workspace instantly, no project to pick. -->
-			<WorkspaceCapture
-				onCaptured={handleCaptured}
-				onSorted={handleSorted}
-				onUndone={handleSortUndone}
-				autofocus={page.url.searchParams.get('capture') === '1'}
-			/>
+		{#if activeTab === 'overview'}
+			<!-- Capture first: a thought lands in the Workspace instantly, no project to pick.
+			     Hidden, not removed, while a project card is open: a note someone was halfway
+			     through typing is still there when the card closes. -->
+			<div hidden={desktopCardOpen}>
+				<WorkspaceCapture
+					onCaptured={handleCaptured}
+					onSorted={handleSorted}
+					onUndone={handleSortUndone}
+					autofocus={page.url.searchParams.get('capture') === '1'}
+				/>
+			</div>
 		{/if}
 
 		{#if activeTab === 'overview'}
@@ -1522,7 +1539,7 @@
 					onPatch={applyProjectPatches}
 					onOpenFull={handleProjectClick}
 					onDataChanged={() => {
-						refreshProjects();
+						void refreshProjects();
 						void refreshWorkspace();
 					}}
 				/>
@@ -1540,7 +1557,7 @@
 			     reads the trash on its own, so it stays off the page's critical load. Shown
 			     even with no projects left, so deleting the last one is never a dead end. -->
 			{#if !desktopCardOpen && !projectsLoading}
-				<ProjectTrashSection />
+				<ProjectTrashSection onRestored={() => void refreshProjects()} />
 			{/if}
 			<!-- Graph view - Admin Only -->
 		{:else if isAdmin}

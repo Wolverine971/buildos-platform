@@ -162,7 +162,8 @@ describe('targeted project data reads', () => {
 						offset: 0,
 						nextOffset: 40
 					})
-				: respond({ task: task('t-0', { title: 'Edited' }) })
+				: // A new priority can move the task past the loaded rows: the bucket is re-read.
+					respond({ task: task('t-0', { title: 'Edited', priority: 1 }) })
 		);
 		vi.stubGlobal('fetch', fetch);
 		const patch = await fetchProjectMutationPatch(projectId, [mutation('t-0')], {
@@ -177,6 +178,99 @@ describe('targeted project data reads', () => {
 			returned: 40,
 			total: 80,
 			complete: false
+		});
+	});
+	it('reads only the task when an edit leaves its place in a partly loaded bucket alone', async () => {
+		const tasks = Array.from({ length: 40 }, (_, i) => task(`t-${i}`));
+		const coverage = createCompleteProjectTasksCoverage(tasks, now);
+		coverage.complete = false;
+		coverage.total = 80;
+		coverage.buckets.backlog = { returned: 40, total: 80, complete: false };
+		const edited = task('t-7', { title: 'Renamed', updated_at: '2026-09-02' });
+		const fetch = vi.fn(async () => respond({ task: edited }));
+		vi.stubGlobal('fetch', fetch);
+		const patch = await fetchProjectMutationPatch(projectId, [mutation('t-7')], {
+			tasks,
+			tasks_coverage: coverage
+		});
+		// One read (the task). No bucket request, and every other row is the same object.
+		expect(fetch).toHaveBeenCalledTimes(1);
+		expect(patch.tasks).toHaveLength(40);
+		expect(patch.tasks?.find((row) => row.id === 't-7')).toEqual(edited);
+		expect(patch.tasks?.filter((row) => tasks.includes(row))).toHaveLength(39);
+		expect(patch.tasks_coverage?.buckets.backlog).toEqual(coverage.buckets.backlog);
+	});
+	it('recounts fully loaded buckets in place when a task moves between them', async () => {
+		const moving = task('moving');
+		const done = task('done-1', { state_key: 'done', completed_at: '2026-09-01' });
+		// Another bucket is partly loaded, so the page is on the paginated path.
+		const blocked = Array.from({ length: 20 }, (_, i) =>
+			task(`b-${i}`, { state_key: 'blocked' })
+		);
+		const tasks = [moving, done, ...blocked];
+		const coverage = createCompleteProjectTasksCoverage(tasks, now);
+		coverage.complete = false;
+		coverage.buckets.blocked = { returned: 20, total: 60, complete: false };
+		const fetch = vi.fn(async () =>
+			respond({ task: task('moving', { state_key: 'done', completed_at: '2026-09-05' }) })
+		);
+		vi.stubGlobal('fetch', fetch);
+		const patch = await fetchProjectMutationPatch(projectId, [mutation('moving')], {
+			tasks,
+			tasks_coverage: coverage
+		});
+		expect(fetch).toHaveBeenCalledTimes(1);
+		expect(patch.tasks_coverage?.buckets.backlog).toEqual({
+			returned: 0,
+			total: 0,
+			complete: true
+		});
+		expect(patch.tasks_coverage?.buckets.done).toEqual({
+			returned: 2,
+			total: 2,
+			complete: true
+		});
+		expect(patch.tasks_coverage?.buckets.blocked).toEqual(coverage.buckets.blocked);
+		expect(patch.tasks?.find((row) => row.id === 'done-1')).toBe(done);
+		expect(patch.tasks?.filter((row) => blocked.includes(row))).toHaveLength(20);
+	});
+	it('tops up a partly loaded bucket by the one row a task left, not the whole bucket', async () => {
+		const tasks = Array.from({ length: 20 }, (_, i) => task(`t-${i}`));
+		const coverage = createCompleteProjectTasksCoverage(tasks, now);
+		coverage.complete = false;
+		coverage.buckets.backlog = { returned: 20, total: 50, complete: false };
+		const next = task('t-20');
+		const fetch = vi.fn(async (url: string) =>
+			url.includes('/tasks?')
+				? respond({
+						bucket: 'backlog',
+						tasks: [next],
+						total: 49,
+						hasMore: true,
+						offset: 19,
+						nextOffset: 20
+					})
+				: respond({ task: task('t-3', { state_key: 'done', completed_at: '2026-09-05' }) })
+		);
+		vi.stubGlobal('fetch', fetch);
+		const patch = await fetchProjectMutationPatch(projectId, [mutation('t-3')], {
+			tasks,
+			tasks_coverage: coverage
+		});
+		expect(fetch).toHaveBeenCalledTimes(2);
+		expect(fetch.mock.calls[1]?.[0]).toContain('bucket=backlog&offset=19&limit=1');
+		// The 19 rows that stayed are the same objects; the row behind them was added.
+		expect(patch.tasks?.filter((row) => tasks.includes(row))).toHaveLength(19);
+		expect(patch.tasks?.some((row) => row.id === 't-20')).toBe(true);
+		expect(patch.tasks_coverage?.buckets.backlog).toEqual({
+			returned: 20,
+			total: 49,
+			complete: false
+		});
+		expect(patch.tasks_coverage?.buckets.done).toEqual({
+			returned: 1,
+			total: 1,
+			complete: true
 		});
 	});
 	it('refreshes both source and destination buckets after a status change', async () => {

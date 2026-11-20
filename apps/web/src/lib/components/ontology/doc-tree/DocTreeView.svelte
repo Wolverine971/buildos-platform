@@ -132,10 +132,11 @@
 	// State
 	let loading = $state(getInitialStructure() === null);
 	let error = $state<string | null>(null);
-	let structure = $state<DocStructure | null>(getInitialStructure());
-	let documents = $state<Record<string, OntoDocument>>(getInitialDocuments());
-	let unlinked = $state<OntoDocument[]>(getInitialUnlinked());
-	let archived = $state<OntoDocument[]>(getInitialArchived());
+	// Replaced whole on every load, never edited in place: no deep tracking needed.
+	let structure = $state.raw<DocStructure | null>(getInitialStructure());
+	let documents = $state.raw<Record<string, OntoDocument>>(getInitialDocuments());
+	let unlinked = $state.raw<OntoDocument[]>(getInitialUnlinked());
+	let archived = $state.raw<OntoDocument[]>(getInitialArchived());
 	let archivedExpanded = $state(false);
 	let expandedIds = $state<Set<string>>(new Set());
 	let currentVersion = $state(getInitialStructure()?.version ?? 0);
@@ -499,6 +500,19 @@
 		});
 		const unsubscribeMutations = dataMutationEvents.subscribe((event) => {
 			if (first || !event || !mutationAffectsProject(event.summary, projectId)) return;
+			// Images only move with documents. A receipt that lists nothing but task, goal,
+			// plan, milestone, risk or event writes cannot have changed them.
+			const mutations = event.summary.mutations;
+			if (
+				mutations?.length &&
+				mutations.every(
+					(mutation) =>
+						mutation.entityKind !== null &&
+						mutation.entityKind !== 'document' &&
+						mutation.entityKind !== 'project'
+				)
+			)
+				return;
 			void fetchImages();
 		});
 		first = false;

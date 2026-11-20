@@ -33,7 +33,13 @@
 		type PhraseMark
 	} from './agent-chat-phrase-marks';
 	import { flyPhrase } from './phrase-flight';
-	import { deriveStepSettlements } from './agent-chat-step-outcomes';
+	import { deriveStepSettlements, type StepSettlements } from './agent-chat-step-outcomes';
+	import {
+		reuseEqualEntries,
+		samePhraseMarks,
+		samePlacement,
+		sameSettlements
+	} from './agent-chat-stable-maps';
 	import { sharedDocumentEditCardResolutions } from './shared-document-edit-card-state.svelte';
 	import { proposalCardResolutions, proposalCardUndos } from './proposal-card-state.svelte';
 	import { getProseClasses } from '$lib/utils/markdown';
@@ -197,13 +203,27 @@
 	// What became of each change after its step ran (undone, approved, declined), from the
 	// cards below the reply. Step rows, the receipt and the lit phrases all read this, so none
 	// of them keeps claiming a change the person undid.
-	const stepSettlements = $derived(
-		deriveStepSettlements(messages, {
-			sharedEdit: (cardId) => sharedDocumentEditCardResolutions.get(cardId),
-			proposalResolution: (cardId) => proposalCardResolutions.get(cardId),
-			proposalUndo: (cardId) => proposalCardUndos.get(cardId)
-		})
-	);
+	//
+	// These four maps are rebuilt from the whole conversation whenever any message changes.
+	// Each keeps the previous object for every turn that came out the same (plain closure
+	// memory, see agent-chat-stable-maps), so a step in the live turn never hands a finished
+	// turn new props.
+	let lastSettlements: Map<string, StepSettlements> | undefined;
+	let lastPhraseMarks: Map<string, PhraseMark[]> | undefined;
+	let lastSharedEditCards: Map<string, SharedDocumentEditCardPlacement> | undefined;
+	let lastProposalCards: Map<string, ProposalCardPlacement> | undefined;
+	const stepSettlements = $derived.by(() => {
+		lastSettlements = reuseEqualEntries(
+			lastSettlements,
+			deriveStepSettlements(messages, {
+				sharedEdit: (cardId) => sharedDocumentEditCardResolutions.get(cardId),
+				proposalResolution: (cardId) => proposalCardResolutions.get(cardId),
+				proposalUndo: (cardId) => proposalCardUndos.get(cardId)
+			}),
+			sameSettlements
+		);
+		return lastSettlements;
+	});
 
 	// Watch it sort (tasker 155): the words of the user's messages that a change came from,
 	// read from the turn that answered them. Keyed by the user message's id. A quote is looked
@@ -236,7 +256,8 @@
 			}
 			earlier.unshift(own);
 		}
-		return byUser;
+		lastPhraseMarks = reuseEqualEntries(lastPhraseMarks, byUser, samePhraseMarks);
+		return lastPhraseMarks;
 	});
 
 	// A phrase seen running in this view flies to its row when its write lands. Restored
@@ -284,9 +305,23 @@
 	} | null>(null);
 
 	// Shared-document confirm cards render under the reply that showed them.
-	const sharedEditCards = $derived(placeSharedDocumentEditCards(messages));
+	const sharedEditCards = $derived.by(() => {
+		lastSharedEditCards = reuseEqualEntries(
+			lastSharedEditCards,
+			placeSharedDocumentEditCards(messages),
+			samePlacement
+		);
+		return lastSharedEditCards;
+	});
 	// Proposal cards (nest, combine) follow the same placement rule.
-	const proposalCards = $derived(placeProposalCards(messages));
+	const proposalCards = $derived.by(() => {
+		lastProposalCards = reuseEqualEntries(
+			lastProposalCards,
+			placeProposalCards(messages),
+			samePlacement
+		);
+		return lastProposalCards;
+	});
 
 	// ── Streaming text ──────────────────────────────────────────────────────
 	// Streaming and finalized assistant bubbles share one render branch: a
@@ -314,10 +349,12 @@
 	/** Follow-after-tap (scroll policy below): set only by the pill mid-stream. */
 	let followingLatest = false;
 
+	// The row check comes first on purpose: the preview changes about ten times a second, and
+	// a finished row that read it would rebuild its body (and its name links) on every tick.
 	function hasLivePreview(message: UIMessage): boolean {
 		return (
-			livePreview !== null &&
 			message.id === streamingMessageId &&
+			livePreview !== null &&
 			message.metadata?.turn_run_id === livePreview.turnRunId
 		);
 	}
