@@ -428,41 +428,42 @@
 			{/if}
 			<span class="truncate">{workspace ? 'Loose items' : shortName(project.name)}</span>
 		</nav>
-		<div class="flex items-start gap-3">
-			<DesktopTile {project} inside={canHold ? inside : []} size="md" />
-			<div class="min-w-0 flex-1">
-				<h2
-					tabindex="-1"
-					class="text-xl font-medium outline-none leading-tight text-foreground text-balance"
-				>
-					{workspace ? 'Loose items' : project.name}
-				</h2>
-				<div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-					{#if workspace}
-						<span
-							>Notes, docs and tasks that aren't in a project yet. Drag one onto a
-							project in the dock to file it.</span
-						>
-					{:else if look?.pulse}
-						<span class="pulse pulse-{look.pulse}" title={look.reason}>
-							<i class="pulse-dot" aria-hidden="true"></i>{PULSE_META[look.pulse]
-								.label}
-						</span>
-						<span>{look.reason}</span>
-					{:else}
-						<span>Updated {relativeDay(new Date(updatedAt).toISOString())}</span>
-					{/if}
-					{#if !workspace && projectState !== 'active'}
-						<span>· {PROJECT_STATE_META[projectState].label}</span>
-					{/if}
-					{#if parent}<span>· Part of {shortName(parent.name)}</span>{/if}
-				</div>
+		<div class="head">
+			<div class="head-tile">
+				<DesktopTile {project} inside={canHold ? inside : []} size="md" />
 			</div>
-			<div class="flex shrink-0 flex-wrap justify-end gap-2">
+			<h2
+				tabindex="-1"
+				class="head-title text-xl font-medium outline-none leading-tight text-foreground text-balance"
+			>
+				{workspace ? 'Loose items' : project.name}
+			</h2>
+			<div
+				class="head-meta flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground"
+			>
+				{#if workspace}
+					<span
+						>Notes, docs and tasks that aren't in a project yet. Drag one onto a project
+						in the dock to file it.</span
+					>
+				{:else if look?.pulse}
+					<span class="pulse pulse-{look.pulse}" title={look.reason}>
+						<i class="pulse-dot" aria-hidden="true"></i>{PULSE_META[look.pulse].label}
+					</span>
+					<span>{look.reason}</span>
+				{:else}
+					<span>Updated {relativeDay(new Date(updatedAt).toISOString())}</span>
+				{/if}
+				{#if !workspace && projectState !== 'active'}
+					<span>· {PROJECT_STATE_META[projectState].label}</span>
+				{/if}
+				{#if parent}<span>· Part of {shortName(parent.name)}</span>{/if}
+			</div>
+			<div class="head-actions flex shrink-0 flex-wrap justify-end gap-2">
 				{#if parent && canTakeOut}
 					<button
 						type="button"
-						class="action hidden sm:inline-flex"
+						class="action take-out-wide"
 						onclick={(event) => onTakeOut(event.currentTarget)}
 					>
 						Take out of {shortName(parent.name, 20)}
@@ -481,7 +482,7 @@
 				{#if !workspace}
 					<a
 						{href}
-						class="action"
+						class="action open-full"
 						onclick={onOpenFull}
 						data-sveltekit-preload-data="hover"
 					>
@@ -492,7 +493,7 @@
 				{/if}
 				<button
 					type="button"
-					class="action quiet"
+					class="action quiet collapse-wide"
 					onclick={onCollapse}
 					aria-label="Collapse and go back to your Workspace"
 				>
@@ -517,7 +518,7 @@
 		{#if parent && canTakeOut}
 			<button
 				type="button"
-				class="action justify-self-start sm:hidden"
+				class="action take-out-narrow justify-self-start"
 				onclick={(event) => onTakeOut(event.currentTarget)}
 			>
 				Take out of {shortName(parent.name, 24)}
@@ -1065,6 +1066,59 @@
 		width: 2.25rem;
 		justify-content: center;
 		padding: 0;
+	}
+	/* Header: tile | title | actions, with the status line under the title.
+	   Phones give the status line the full card width so the title isn't
+	   squeezed into a sliver beside the buttons. Visibility lives here, not in
+	   Tailwind's hidden/sm: utilities — this file's unlayered .action display
+	   would beat them. */
+	.head {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr) auto;
+		grid-template-areas:
+			'tile title actions'
+			'tile meta actions';
+		column-gap: 12px;
+		row-gap: 4px;
+		align-items: start;
+	}
+	.head-tile {
+		grid-area: tile;
+	}
+	.head-title {
+		grid-area: title;
+		min-width: 0;
+	}
+	.head-meta {
+		grid-area: meta;
+		min-width: 0;
+	}
+	.head-actions {
+		grid-area: actions;
+	}
+	.take-out-narrow {
+		display: none;
+	}
+	@media (max-width: 639px) {
+		.head {
+			grid-template-areas:
+				'tile title actions'
+				'meta meta meta';
+			align-items: center;
+			row-gap: 10px;
+		}
+		.take-out-wide,
+		.collapse-wide {
+			display: none;
+		}
+		.take-out-narrow {
+			display: inline-flex;
+		}
+		.action.open-full {
+			width: 2.25rem;
+			justify-content: center;
+			padding: 0;
+		}
 	}
 	.action.quiet {
 		border-color: transparent;

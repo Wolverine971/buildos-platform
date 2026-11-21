@@ -2127,10 +2127,16 @@
 		font-size: 12px;
 		color: hsl(var(--muted-foreground));
 	}
-	/* Sized and drawn like the fact chips beside it. */
+	/* Sized and drawn like the fact chips beside it, pinned to the row's right
+	   edge so it reads as a panel control, not another fact. The doc row nests
+	   its facts inside .lead, so that inner row stretches to give it room. */
+	.facts:has(> .details-chip) {
+		flex: 1 1 auto;
+	}
 	.details-chip {
 		display: inline-flex;
 		flex: none;
+		margin-left: auto;
 		align-items: center;
 		gap: 6px;
 		min-height: 28px;
