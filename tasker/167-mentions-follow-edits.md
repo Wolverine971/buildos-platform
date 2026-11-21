@@ -214,3 +214,31 @@ Not browser-verified (needs the migration + a deploy or local dev against prod w
 - Second "Phillip Velayo" in the Pistol doc wasn't tagged by the bulk pass; a re-read tags it (8 now).
 - Hid orphan place "Barry, Vale of Glamorgan" (left from the retracted UK LA Industrial facts).
 - Not verified: phone layout (Chrome resize is a no-op here).
+
+## 2026-11-21: duplicate entries from the doc re-reader — FIXED (UNCOMMITTED)
+
+- Symptom (DJ screenshot): Craig, John, Lola, Tom ×6 and Lucinda ×4 on /knowledge, all from the
+  "Pitch Desk — who to contact & what to say" doc; 41 possible duplicates.
+- Cause: the document re-read job (`documentMentionsWorker`, via 'system') files names through
+  `KnowledgeStore.record`, whose one-word person rule reused an existing entry only for via
+  task/backfill. Each edit of the doc → a new "Craig". Once 2+ existed, no via could reuse them, so
+  copies compounded. Another user has 20 and 15 copies of two people.
+- Fix (`knowledge-store.ts`): via 'system' counts as the user's own notes; and the user's own
+  notes naming someone with several same-name entries file under the oldest instead of creating
+  another. Two regression tests. Needs worker deploy.
+- DJ's data cleaned: the 'system' copies merged into the original entries (Craig/John/Lola/Tom 5
+  each, Lucinda 3). Pending questions 41 → 20. Other user's copies NOT touched (merges are final;
+  needs DJ's OK).
+
+## 2026-11-21: merge by hand (DJ picked the ambitious version) — BUILT (UNCOMMITTED)
+
+- Tick 2+ rows → "Merge N" in the bottom bar; "Merge…" on an entry's own card (search for the
+  other one); the duplicates review gains a "Same name" section (exact kind + name, e.g. "Craig" ×3)
+  with one-click merge, Review, and "Different people" (answers every pair so it never returns).
+- `KnowledgeMergeDialog.svelte`: each entry's tasks & docs / highlights / details, added date and
+  source; suggested keep = shared entry, else most attached, then oldest; untick "Same" per row;
+  states it can't be undone (the merge RPC drops duplicate details).
+- Store: `mergePreview`, `mergeMany` (≤25), `listNameTwins`, `markDifferent`; API
+  `/api/knowledge/merge` GET ?ids=, POST merge[], PATCH entity_ids. No migration. 7 new tests.
+- Verified: svelte-check 0 errors, 125 knowledge tests, local browser (opened the dialog from the
+  list and the card, untick, add-another search; did NOT click Merge on real data).

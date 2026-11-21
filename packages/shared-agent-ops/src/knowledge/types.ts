@@ -129,6 +129,33 @@ export interface KnowledgeEntitySummary {
 	image_url: string | null;
 }
 
+/** One entry in a merge preview: what folding it into another would carry over. */
+export interface KnowledgeMergePreviewEntry extends KnowledgeEntitySummary {
+	created_at: string;
+	created_via: string;
+	circle: string | null;
+	/** Your own private entry (only those can be folded away; a shared one can only be kept). */
+	mergeable: boolean;
+	facts: number;
+	/** Tasks, docs and other records it's attached to. */
+	links: number;
+	/** Highlighted names in your tasks and docs. */
+	mentions: number;
+}
+
+export interface KnowledgeMergePreview {
+	entries: KnowledgeMergePreviewEntry[];
+	suggested_keep: string | null;
+}
+
+/** Your own entries with the same kind and exact name. */
+export interface KnowledgeNameTwins {
+	kind: KnowledgeKind;
+	name: string;
+	/** Oldest first. */
+	ids: string[];
+}
+
 export interface KnowledgeSourceView {
 	id: string;
 	type: KnowledgeSourceType;
@@ -227,7 +254,7 @@ export interface KnowledgeListOptions {
 export type KnowledgeListView = 'all' | 'world' | 'reference' | 'dropped';
 
 export type KnowledgeResearchedFilter = 'any' | 'yes' | 'no';
-export type KnowledgeListSort = 'recent' | 'name' | 'researched';
+export type KnowledgeListSort = 'recent' | 'name' | 'researched' | 'connected';
 
 export interface KnowledgeListResult {
 	entities: Array<

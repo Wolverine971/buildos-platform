@@ -1,7 +1,7 @@
 // apps/web/src/routes/api/knowledge/entities/+server.ts
 /**
  * GET  /api/knowledge/entities?kind=person&filter=known&q=sam&limit=50&offset=0
- *        [&researched=yes|no][&sort=recent|name|researched]
+ *        [&researched=yes|no][&sort=recent|name|researched|connected]
  *        [&view=all|world|reference|dropped][&place=<place id>]
  *      view: world = what matters to you (default on the page), reference = just mentioned,
  *      dropped = hidden by the sorter as not a name. place: entries located in that place.
@@ -26,7 +26,7 @@ import {
 
 const FILTERS = ['all', 'known', 'owned'] as const;
 const RESEARCHED = ['any', 'yes', 'no'] as const;
-const SORTS = ['recent', 'name', 'researched'] as const;
+const SORTS = ['recent', 'name', 'researched', 'connected'] as const;
 const VIEWS = ['all', 'world', 'reference', 'dropped'] as const;
 
 function pick<T extends string>(value: string | null, allowed: readonly T[], fallback: T): T {

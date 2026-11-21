@@ -10,6 +10,7 @@ import {
 	anchorsForPrompt,
 	DEFAULT_ENRICH_FIELDS,
 	excludedDomains,
+	ENRICH_NEVER_FOR_PEOPLE,
 	getKnowledgePredicate,
 	hostMatchesDomain,
 	isKnowledgeKind,
@@ -45,7 +46,7 @@ export const PAGE_CHARS = 7_000;
  * email are allowed only when the run asked for them (they reach `fields` only through the
  * explicit "Phone & email" choice; see ENRICH_PERSON_CONTACT_FIELDS in shared-agent-ops).
  */
-const NEVER_FOR_PEOPLE = new Set(['address', 'birthday', 'note', 'knows']);
+const NEVER_FOR_PEOPLE = new Set(ENRICH_NEVER_FOR_PEOPLE);
 
 export interface EnrichPage {
 	url: string;

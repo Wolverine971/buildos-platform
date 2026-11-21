@@ -5,7 +5,13 @@
 // parses syntax, never meaning. planContactImport turns parsed contacts into one
 // KnowledgeWriteBatch for KnowledgeStore.record.
 
-import { collapseWhitespace, normalizeEmail, normalizePhone, normalizeUrl } from './normalize';
+import {
+	collapseWhitespace,
+	linkedinKey,
+	normalizeEmail,
+	normalizePhone,
+	normalizeUrl
+} from './normalize';
 import type { KnowledgeWriteBatch, KnowledgeWriteEntity, KnowledgeWriteFact } from './types';
 
 export type ContactFileFormat = 'vcard' | 'linkedin_csv' | 'google_csv';
@@ -69,7 +75,7 @@ export function summarizeContactFile(parsed: ParsedContactFile): ContactFileSumm
 		with_email: parsed.contacts.filter((c) => c.emails.length).length,
 		with_phone: parsed.contacts.filter((c) => c.phones.length).length,
 		with_company: parsed.contacts.filter((c) => c.org).length,
-		capped: parsed.contacts.length >= MAX_IMPORT_CONTACTS,
+		capped: parsed.format !== 'linkedin_csv' && parsed.contacts.length >= MAX_IMPORT_CONTACTS,
 		sample: parsed.contacts.slice(0, 5).map((c) => ({
 			name: c.name,
 			detail:
@@ -102,7 +108,9 @@ export function readParsedContactPayload(value: unknown): ParsedContactFile | nu
 			return [label ? { value, label } : { value }];
 		});
 	const contacts: ImportedContact[] = [];
-	for (const item of raw.contacts.slice(0, MAX_IMPORT_CONTACTS)) {
+	for (const item of format === 'linkedin_csv'
+		? raw.contacts
+		: raw.contacts.slice(0, MAX_IMPORT_CONTACTS)) {
 		if (!item || typeof item !== 'object') continue;
 		const c = item as Record<string, unknown>;
 		const name = text(c.name, 300);
@@ -511,12 +519,12 @@ export function parseLinkedInDate(value: string): string | undefined {
 	const dmy = v.match(/^(\d{1,2})\s+([A-Za-z]{3})[a-z]*\s+(\d{4})$/);
 	if (dmy) {
 		const month = MONTHS[dmy[2]!.toLowerCase()];
-		if (month) return `${dmy[3]}-${month}-${dmy[1]!.padStart(2, '0')}`;
+		if (month) return validIsoDay(`${dmy[3]}-${month}-${dmy[1]!.padStart(2, '0')}`);
 	}
 	const mdy = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
 	if (mdy) {
 		const year = mdy[3]!.length === 2 ? `20${mdy[3]}` : mdy[3];
-		return `${year}-${mdy[1]!.padStart(2, '0')}-${mdy[2]!.padStart(2, '0')}`;
+		return validIsoDay(`${year}-${mdy[1]!.padStart(2, '0')}-${mdy[2]!.padStart(2, '0')}`);
 	}
 	return undefined;
 }
@@ -576,9 +584,32 @@ export function parseLinkedInConnections(text: string): {
 		const connected = parseLinkedInDate(cell(iConnected));
 		if (connected) contact.connectedOn = connected;
 		contacts.push(contact);
-		if (contacts.length >= MAX_IMPORT_CONTACTS) break;
 	}
 	return { contacts, skipped };
+}
+
+/** The seven export columns, normalized for the atomic LinkedIn import. */
+export function linkedInImportRow(contact: ImportedContact) {
+	const url = contact.linkedinUrl ? normalizeUrl(contact.linkedinUrl) : null;
+	const key = url ? linkedinKey(url) : null;
+	return {
+		name: collapseWhitespace(contact.name).slice(0, 300),
+		given_name: contact.givenName ? collapseWhitespace(contact.givenName) : null,
+		profile_url: key ? url : null,
+		linkedin_key: key,
+		email: contact.emails[0] ? normalizeEmail(contact.emails[0].value) : null,
+		company: contact.org ? collapseWhitespace(contact.org).slice(0, 300) : null,
+		title: contact.title?.trim().slice(0, 300) || null,
+		connected_on: contact.connectedOn ? validIsoDay(contact.connectedOn) : null
+	};
+}
+
+function validIsoDay(value: string): string | undefined {
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+	const time = Date.parse(value);
+	return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === value
+		? value
+		: undefined;
 }
 
 export function parseGoogleContactsCsv(text: string): {
@@ -730,6 +761,14 @@ export function planContactImport(
 			},
 			sources
 		});
+		if (options.format === 'linkedin_csv' && contact.connectedOn) {
+			facts.push({
+				subject: ref,
+				predicate: 'connected_on',
+				value: contact.connectedOn,
+				sources
+			});
+		}
 		if (contact.nickname && contact.nickname !== contact.name) {
 			facts.push({ subject: ref, predicate: 'alias', value: contact.nickname, sources });
 		}

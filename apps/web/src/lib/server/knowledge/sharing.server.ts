@@ -128,7 +128,7 @@ export async function loadShareInbox(client: unknown): Promise<ShareInboxItem[]>
 // ---------------------------------------------------------------------------
 // Writes
 
-const NEVER_SHARED = new Set(['note', 'knows', 'birthday']);
+const NEVER_SHARED = new Set(['note', 'knows', 'birthday', 'connected_on']);
 
 export function readShareTerms(body: Record<string, unknown>): ShareTerms {
 	const what = body.what === 'all' || body.what === 'picked' ? body.what : 'contact';

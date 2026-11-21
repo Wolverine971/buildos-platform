@@ -3465,7 +3465,7 @@
 			role="note"
 			aria-label="Shared document"
 		>
-			<div class="flex min-w-0 flex-1 items-center gap-2">
+			<div class="flex min-w-0 flex-[1_1_12rem] items-center gap-2">
 				<Share2 class="h-3.5 w-3.5 shrink-0 text-info" aria-hidden="true" />
 				<p class="min-w-0 text-xs text-foreground">
 					From <span class="font-medium">{inheritance.ownerName}</span>

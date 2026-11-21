@@ -165,7 +165,9 @@
 	{#if btnType === 'container'}
 		{@render children?.()}
 	{:else}
-		<span class="inline-flex items-center {iconSpacingClass}">
+		<!-- min-w-0/max-w-full: a label wrapped in a `truncate` span can ellipsize
+		     when the button is width-capped; plain labels render as before. -->
+		<span class="inline-flex min-w-0 max-w-full items-center {iconSpacingClass}">
 			{#if loading}
 				<LoaderCircle class={iconClass} />
 			{:else if icon && iconPosition === 'left'}

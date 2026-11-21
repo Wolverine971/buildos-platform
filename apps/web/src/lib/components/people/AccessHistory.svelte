@@ -162,7 +162,7 @@
 			class="flex flex-wrap items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3"
 			role="alert"
 		>
-			<p class="flex-1 text-sm text-foreground">{error}</p>
+			<p class="min-w-0 flex-[1_1_12rem] text-sm text-foreground">{error}</p>
 			<Button variant="outline" size="sm" icon={RefreshCw} onclick={() => loadFirst()}>
 				Try again
 			</Button>

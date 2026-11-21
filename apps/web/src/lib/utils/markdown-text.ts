@@ -140,6 +140,8 @@ export function getProseClasses(
 
 	// break-words: a long unbroken string (a pasted URL) wraps instead of pushing
 	// the reader sideways. It leaves code blocks and table sizing alone.
+	// Phones: tables scroll sideways (block + overflow) instead of squeezing every
+	// column into the screen, so cells keep a readable minimum width.
 	return `${sizeClass} dark:prose-invert ${maxWidth} break-words
 		prose-headings:text-foreground prose-headings:font-semibold
 		prose-h1:text-lg prose-h1:font-bold prose-h1:mb-3 prose-h1:mt-4
@@ -156,6 +158,7 @@ export function getProseClasses(
 		prose-code:text-foreground prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-[0.85em] prose-code:before:content-none prose-code:after:content-none
 		prose-pre:bg-muted prose-pre:text-foreground prose-pre:overflow-x-auto
 		prose-table:overflow-x-auto prose-table:block
+		max-sm:prose-th:min-w-[7.5rem] max-sm:prose-td:min-w-[7.5rem]
 		prose-hr:border-border`.trim();
 }
 

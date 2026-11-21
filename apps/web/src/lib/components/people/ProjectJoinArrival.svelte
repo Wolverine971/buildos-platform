@@ -82,7 +82,7 @@
 		class="border-b border-border bg-card px-4 py-3"
 	>
 		<div class="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-2">
-			<div class="flex min-w-0 flex-1 items-start gap-2">
+			<div class="flex min-w-0 flex-[1_1_14rem] items-start gap-2">
 				<Bell class="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
 				<p class="text-sm text-muted-foreground">
 					Want updates on this device? You can enable push notifications anytime.

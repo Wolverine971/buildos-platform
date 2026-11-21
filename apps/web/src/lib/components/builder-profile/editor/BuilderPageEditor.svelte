@@ -167,7 +167,7 @@
 		<a href="/profile?tab=people" class={iconButtonClass} aria-label="Back to Profile">
 			<ArrowLeft class="h-5 w-5" aria-hidden="true" />
 		</a>
-		<div class="min-w-0 flex-1">
+		<div class="min-w-0 flex-[1_1_12rem]">
 			<div class="flex items-center gap-2">
 				<h1 class="whitespace-nowrap text-base font-semibold text-foreground">Your page</h1>
 				<span

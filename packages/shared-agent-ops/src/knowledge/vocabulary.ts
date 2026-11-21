@@ -332,6 +332,19 @@ export const KNOWLEDGE_PREDICATES: readonly KnowledgePredicateDefinition[] = [
 		210
 	),
 	p(
+		'connected_on',
+		'Connected on LinkedIn',
+		null,
+		'The date the owner connected with this person on LinkedIn.',
+		'date',
+		['person'],
+		[],
+		'one',
+		[],
+		[],
+		215
+	),
+	p(
 		'part_of',
 		'Part of',
 		'Includes',

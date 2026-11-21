@@ -100,6 +100,27 @@ class FakeDb {
 				}));
 			return { data, error: null };
 		}
+		if (fn === 'knowledge_merge_entities') {
+			// The parts of public.knowledge_merge_entities these tests read.
+			const merge = this.rows('knowledge_entities').find(
+				(e) =>
+					e.id === args.p_merge &&
+					e.owner_user_id === args.p_viewer &&
+					e.scope === 'private' &&
+					e.status !== 'merged'
+			);
+			if (!merge)
+				return {
+					data: null,
+					error: { code: '42501', message: 'You can only merge away your own entities' }
+				};
+			for (const table of ['knowledge_record_links', 'knowledge_mentions', 'knowledge_facts'])
+				for (const r of this.rows(table))
+					if (r.entity_id === args.p_merge) r.entity_id = args.p_keep;
+			merge.status = 'merged';
+			merge.merged_into_id = args.p_keep;
+			return { data: { kept: args.p_keep, merged: args.p_merge }, error: null };
+		}
 		if (fn === 'knowledge_list') {
 			// Mirrors public.knowledge_list (20261117010000).
 			const viewer = args.p_viewer;
@@ -276,6 +297,16 @@ class FakeQuery implements PromiseLike<{ data: any; error: any }> {
 				const k = key?.(row);
 				if (k && taken.has(k)) {
 					if (this.op === 'upsert' && this.ignoreDuplicates) continue;
+					if (this.op === 'upsert') {
+						// ON CONFLICT DO UPDATE: the given columns win, the rest stay.
+						const existing = all.find((r) => key?.(r) === k)!;
+						const given = (Array.isArray(this.payload) ? this.payload : [this.payload])[
+							prepared.indexOf(row)
+						]!;
+						Object.assign(existing, given);
+						accepted.push(existing);
+						continue;
+					}
 					return { data: null, error: { code: '23505', message: 'duplicate key' } };
 				}
 				if (k) taken.add(k);
@@ -756,6 +787,118 @@ describe('KnowledgeStore identity', () => {
 		for (let i = 0; i < 3; i++) await importFile(store, 'c.vcf', card);
 		expect(people(db, alice)).toEqual(['Plumber']);
 		expect(db.rows('knowledge_merge_candidates')).toHaveLength(0);
+	});
+
+	it('files a one-word name from a doc re-read under the same entry every time', async () => {
+		const { db, alice, store } = setup();
+		const craig = {
+			entities: [{ ref: 'c', kind: 'person' as const, name: 'Craig' }],
+			facts: []
+		};
+		await store.record(craig, { via: 'backfill' });
+		// The document re-reader runs on every edit (tasker 167); it used to add a Craig each time.
+		for (let i = 0; i < 3; i++) await store.record(craig, { via: 'system' });
+		expect(people(db, alice)).toEqual(['Craig']);
+	});
+
+	it('never adds another copy when several same-name entries already exist', async () => {
+		const { db, alice, store } = setup();
+		const craig = {
+			entities: [{ ref: 'c', kind: 'person' as const, name: 'Craig' }],
+			facts: []
+		};
+		await store.record(craig, { via: 'backfill' });
+		await store.record(craig, { via: 'chat' });
+		const before = people(db, alice).length;
+		const receipt = await store.record(craig, { via: 'system' });
+		expect(people(db, alice)).toHaveLength(before);
+		expect(receipt.entities[0]).toMatchObject({ matched: 'name' });
+	});
+
+	describe('merging by hand', () => {
+		const person = (name: string) => ({
+			entities: [{ ref: 'p', kind: 'person' as const, name }],
+			facts: []
+		});
+		async function twoCraigs(store: KnowledgeStore) {
+			const a = (await store.record(person('Craig'), { via: 'backfill' })).entities[0]!.id;
+			// A chat naming "Craig" doesn't reuse a one-word name: a second Craig.
+			const b = (await store.record(person('Craig'), { via: 'chat' })).entities[0]!.id;
+			return { a, b };
+		}
+
+		it('offers same-name entries as one group, until you say they are different', async () => {
+			const { db, alice, store } = setup();
+			const { a, b } = await twoCraigs(store);
+			await store.record(person('Dana Lee'), { via: 'chat' });
+			expect(await store.listNameTwins()).toEqual([
+				{ kind: 'person', name: 'Craig', ids: [a, b] }
+			]);
+			const pair = db
+				.rows('knowledge_merge_candidates')
+				.find((c) => c.owner_user_id === alice)!;
+			await store.resolveMergeCandidate(pair.id, 'rejected');
+			expect(await store.listNameTwins()).toEqual([]);
+		});
+
+		it('"Different people" on a same-name group keeps it from coming back', async () => {
+			const { store } = setup();
+			const { a, b } = await twoCraigs(store);
+			const c = (await store.record(person('Craig'), { via: 'chat' })).entities[0]!.id;
+			await store.markDifferent([a, b, c]);
+			expect(await store.listNameTwins()).toEqual([]);
+			// The pending "same person?" questions for those pairs are answered too.
+			expect(await store.listMergeCandidates()).toEqual([]);
+		});
+
+		it('never shows another user their own twins', async () => {
+			const { store, bobStore } = setup();
+			await twoCraigs(store);
+			expect(await bobStore.listNameTwins()).toEqual([]);
+		});
+
+		it('suggests keeping the entry with the most attached, and counts what moves', async () => {
+			const { db, alice, store } = setup();
+			const { a, b } = await twoCraigs(store);
+			for (let i = 0; i < 3; i++)
+				db.rows('knowledge_record_links').push({
+					entity_id: b,
+					owner_user_id: alice,
+					record_kind: 'task',
+					record_id: randomUUID()
+				});
+			db.rows('knowledge_mentions').push({ entity_id: a, owner_user_id: alice });
+			const preview = await store.mergePreview([a, b]);
+			expect(preview.suggested_keep).toBe(b);
+			expect(preview.entries.map((e) => [e.id, e.links, e.mentions, e.mergeable])).toEqual([
+				[a, 0, 1, true],
+				[b, 3, 0, true]
+			]);
+		});
+
+		it("can't preview someone else's entries", async () => {
+			const { store, bobStore } = setup();
+			const { a } = await twoCraigs(store);
+			expect((await bobStore.mergePreview([a])).entries).toEqual([]);
+		});
+
+		it('folds several into one and reports the ones it could not', async () => {
+			const { db, alice, store, bobStore } = setup();
+			const { a, b } = await twoCraigs(store);
+			const c = (await store.record(person('Craig'), { via: 'chat' })).entities[0]!.id;
+			const bobs = (await bobStore.record(person('Craig Bob'), { via: 'chat' })).entities[0]!
+				.id;
+			const result = await store.mergeMany(a, [b, c, bobs, a]);
+			expect(result.merged).toEqual([b, c]);
+			expect(result.failed.map((f) => f.id)).toEqual([bobs]);
+			const active = db
+				.rows('knowledge_entities')
+				.filter(
+					(e) => e.owner_user_id === alice && e.kind === 'person' && e.status === 'active'
+				);
+			expect(active.map((e) => e.id)).toEqual([a]);
+			expect(await store.listNameTwins()).toEqual([]);
+		});
 	});
 
 	it('never folds two LinkedIn profiles with the same name into one person', async () => {

@@ -18,6 +18,7 @@
 		Copy,
 		Eye,
 		EyeOff,
+		GitMerge,
 		Globe,
 		Info,
 		Loader2,
@@ -78,6 +79,8 @@
 		onBrowseKind?: (entity: { id: string; kind: KnowledgeKind }) => void;
 		/** This entry was hidden or deleted here (a task card then stops pointing at it). */
 		onRemoved?: (id: string) => void;
+		/** "Merge…": combine this entry with another (the page's merge dialog). */
+		onMerge?: (entity: { id: string; name: string; kind: KnowledgeKind }) => void;
 	}
 
 	let {
@@ -90,7 +93,8 @@
 		research = null,
 		onFindMore,
 		onBrowseKind,
-		onRemoved
+		onRemoved,
+		onMerge
 	}: Props = $props();
 
 	let detail = $state<KnowledgeEntityPayload | null>(null);
@@ -912,6 +916,16 @@
 				{/if}
 			{/if}
 			{#if isOwn}
+				{#if onMerge && !entity.is_self}
+					<button
+						type="button"
+						class="inline-flex min-h-8 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground pressable hover:bg-muted hover:text-foreground"
+						onclick={() =>
+							onMerge?.({ id: entity.id, name: entity.name, kind: entity.kind })}
+					>
+						<GitMerge class="h-3.5 w-3.5" aria-hidden="true" /> Merge…
+					</button>
+				{/if}
 				<button
 					type="button"
 					class="inline-flex min-h-8 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground pressable hover:bg-muted hover:text-foreground"

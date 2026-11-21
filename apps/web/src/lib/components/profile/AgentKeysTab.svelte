@@ -1355,7 +1355,7 @@
 
 <div class="space-y-4 sm:space-y-5">
 	<div class="flex flex-wrap items-start gap-3">
-		<div class="min-w-0 flex-1">
+		<div class="min-w-0 flex-[1_1_12rem]">
 			<h3 class="text-sm font-medium text-foreground sm:text-base">Agents</h3>
 			<p class="mt-1 text-xs text-muted-foreground">
 				Your connections, what each one reaches, and what it can do there. One key per tool;

@@ -32,6 +32,9 @@ import type {
 	KnowledgeFactView,
 	KnowledgeListOptions,
 	KnowledgeListResult,
+	KnowledgeMergePreview,
+	KnowledgeMergePreviewEntry,
+	KnowledgeNameTwins,
 	KnowledgeQueryPathStep,
 	KnowledgeQueryResult,
 	KnowledgeQueryRow,
@@ -47,6 +50,8 @@ const UUID = KNOWLEDGE_UUID_PATTERN;
 /** Stay under PostgREST's 1,000-row default and keep `in (...)` URLs short. */
 const PAGE = 500;
 const ID_CHUNK = 150;
+/** Entries folded into one in a single merge. */
+export const MERGE_MAX = 25;
 const MAX_BATCH_ENTITIES = 12_000;
 const MAX_BATCH_FACTS = 60_000;
 const MAX_INCOMING = 200;
@@ -453,7 +458,11 @@ export class KnowledgeStore {
 		// the same person, or when an earlier import made it (re-importing the same contact book);
 		// elsewhere it becomes a "same person?" suggestion. A name never matches an entry that
 		// already holds a different identifier of the same kind (two LinkedIn "John Smith"s).
-		const singleNamesOk = options.via === 'task' || options.via === 'backfill';
+		// 'system' is the document re-reader (tasker 167): the user's own notes, same rule as tasks.
+		// Before it was included here, every re-read of a doc made another "Craig".
+		const ownNotes =
+			options.via === 'task' || options.via === 'backfill' || options.via === 'system';
+		const singleNamesOk = ownNotes;
 		const unresolved = entities.filter(
 			(e) => !byRef.has(e.ref) && !aliasOf.has(e.ref) && !e.id && isKnowledgeKind(e.kind)
 		);
@@ -473,6 +482,19 @@ export class KnowledgeStore {
 					})
 			);
 			if (!existing.length) continue;
+			// The user's own notes naming someone who already has several same-name entries (two
+			// "Craig"s waiting in the duplicates review): file under the oldest one rather than
+			// making yet another. Contact imports (with their own identifiers) keep the old rule.
+			if (ownNotes && existing.length > 1 && !ownKeys.length) {
+				const oldest = [...existing].sort((a, b) =>
+					String((a as { created_at?: string }).created_at ?? '').localeCompare(
+						String((b as { created_at?: string }).created_at ?? '')
+					)
+				)[0]!;
+				byRef.set(e.ref, oldest);
+				match.set(e.ref, 'name');
+				continue;
+			}
 			const reusable =
 				e.kind !== 'person' ||
 				isSpecificPersonName(e.name) ||
@@ -658,7 +680,7 @@ export class KnowledgeStore {
 		const rows = await mapChunks(normalized, ID_CHUNK, async (group) => {
 			const { data, error } = await this.db
 				.from('knowledge_entities')
-				.select(ENTITY_COLUMNS + ', normalized_name, created_via')
+				.select(ENTITY_COLUMNS + ', normalized_name, created_via, created_at')
 				.eq('owner_user_id', this.userId)
 				.in('status', ['active', 'merged'])
 				.in('normalized_name', group);
@@ -935,7 +957,7 @@ export class KnowledgeStore {
 					.in('entity_id', group)
 					.eq('owner_user_id', this.userId)
 					.order('id')
-					.range(from, from + 999);
+					.range(from, from + PAGE - 1);
 				if (error) throw dbError('Load existing facts', error);
 				rows.push(...((data ?? []) as FactRow[]));
 				if ((data ?? []).length < 1000) break;
@@ -1301,6 +1323,152 @@ export class KnowledgeStore {
 		return (data ?? {}) as Record<string, unknown>;
 	}
 
+	/** Fold several entries into one, one at a time; a failure doesn't stop the rest. */
+	async mergeMany(
+		keepId: string,
+		mergeIds: string[]
+	): Promise<{ kept: string; merged: string[]; failed: Array<{ id: string; error: string }> }> {
+		const merged: string[] = [];
+		const failed: Array<{ id: string; error: string }> = [];
+		for (const id of unique(mergeIds)) {
+			if (id === keepId) continue;
+			try {
+				await this.merge(keepId, id);
+				merged.push(id);
+			} catch (error) {
+				failed.push({ id, error: error instanceof Error ? error.message : String(error) });
+			}
+		}
+		return { kept: keepId, merged, failed };
+	}
+
+	/**
+	 * What merging these entries would move: each one's links, tags and details, plus which one
+	 * to keep (a shared entry if there is one, since only your own can be folded away; else the
+	 * one with the most attached, then the oldest).
+	 */
+	async mergePreview(ids: string[]): Promise<KnowledgeMergePreview> {
+		const wanted = unique(ids).slice(0, MERGE_MAX + 1);
+		if (!wanted.length) return { entries: [], suggested_keep: null };
+		const { data, error } = await this.db
+			.from('knowledge_entities')
+			.select(ENTITY_COLUMNS + ', created_at, created_via, circle')
+			.in('id', wanted)
+			.eq('status', 'active');
+		if (error) throw dbError('Load entries to merge', error);
+		const rows = (
+			(data ?? []) as Array<
+				EntityRow & { created_at: string; created_via: string; circle?: string | null }
+			>
+		).filter((r) => r.scope === 'public' || r.owner_user_id === this.userId);
+		const found = rows.map((r) => r.id);
+		const countBy = async (table: string, liveFactsOnly = false) => {
+			const counts = new Map<string, number>();
+			if (!found.length) return counts;
+			const base = this.db
+				.from(table)
+				.select('entity_id')
+				.eq('owner_user_id', this.userId)
+				.in('entity_id', found);
+			const res = await (
+				liveFactsOnly ? base.in('status', ['active', 'suggested', 'disputed']) : base
+			).limit(5000);
+			if (res.error) throw dbError(`Count ${table}`, res.error);
+			for (const row of (res.data ?? []) as Array<{ entity_id: string }>)
+				counts.set(row.entity_id, (counts.get(row.entity_id) ?? 0) + 1);
+			return counts;
+		};
+		const [facts, links, mentions] = await Promise.all([
+			countBy('knowledge_facts', true),
+			countBy('knowledge_record_links'),
+			countBy('knowledge_mentions')
+		]);
+		const entries: KnowledgeMergePreviewEntry[] = rows
+			.map((r) => ({
+				...summarize(r),
+				created_at: r.created_at,
+				created_via: r.created_via,
+				circle: r.circle ?? null,
+				mergeable: r.scope === 'private' && r.owner_user_id === this.userId && !r.is_self,
+				facts: facts.get(r.id) ?? 0,
+				links: links.get(r.id) ?? 0,
+				mentions: mentions.get(r.id) ?? 0
+			}))
+			.sort((a, b) => wanted.indexOf(a.id) - wanted.indexOf(b.id));
+		const weight = (e: KnowledgeMergePreviewEntry) =>
+			// A shared entry can only be kept; "you" never absorbs someone else.
+			(e.is_self ? -1e10 : e.mergeable ? 0 : 1e9) + e.links + e.mentions + e.facts;
+		const best = [...entries].sort(
+			(a, b) => weight(b) - weight(a) || a.created_at.localeCompare(b.created_at)
+		)[0];
+		return { entries, suggested_keep: best?.id ?? null };
+	}
+
+	/**
+	 * Your own entries that share a kind and exact name ("Craig" ×2): the duplicates review offers
+	 * each group as one merge. A pair you already answered "Different" never comes back.
+	 */
+	async listNameTwins(limit = 50): Promise<KnowledgeNameTwins[]> {
+		type TwinRow = {
+			id: string;
+			kind: KnowledgeKind;
+			name: string;
+			normalized_name: string;
+			created_at: string;
+		};
+		const rows: TwinRow[] = [];
+		for (let from = 0; from < 20_000; from += PAGE) {
+			const { data, error } = await this.db
+				.from('knowledge_entities')
+				.select('id, kind, name, normalized_name, created_at')
+				.eq('owner_user_id', this.userId)
+				.eq('status', 'active')
+				.eq('scope', 'private')
+				.eq('is_self', false)
+				.order('created_at', { ascending: true })
+				.range(from, from + PAGE - 1);
+			if (error) throw dbError('Load names', error);
+			const page = (data ?? []) as TwinRow[];
+			rows.push(...page);
+			if (page.length < PAGE) break;
+		}
+		const groups = new Map<string, TwinRow[]>();
+		for (const row of rows) {
+			if (!row.normalized_name) continue;
+			const key = `${row.kind}|${row.normalized_name}`;
+			groups.set(key, [...(groups.get(key) ?? []), row]);
+		}
+		const twins = [...groups.values()].filter((g) => g.length > 1);
+		if (!twins.length) return [];
+		const ids = twins.flat().map((r) => r.id);
+		const rejected = new Set<string>();
+		await mapChunks(ids, ID_CHUNK, async (group) => {
+			const { data, error } = await this.db
+				.from('knowledge_merge_candidates')
+				.select('entity_a, entity_b')
+				.eq('owner_user_id', this.userId)
+				.eq('status', 'rejected')
+				.in('entity_a', group);
+			if (error) throw dbError('Load answered pairs', error);
+			for (const r of (data ?? []) as Array<{ entity_a: string; entity_b: string }>) {
+				rejected.add(`${r.entity_a}|${r.entity_b}`);
+				rejected.add(`${r.entity_b}|${r.entity_a}`);
+			}
+			return [];
+		});
+		return twins
+			.filter((g) => {
+				// Hidden only when every pair in the group was answered "Different".
+				for (let i = 0; i < g.length; i++)
+					for (let j = i + 1; j < g.length; j++)
+						if (!rejected.has(`${g[i]!.id}|${g[j]!.id}`)) return true;
+				return false;
+			})
+			.sort((a, b) => b.length - a.length || a[0]!.name.localeCompare(b[0]!.name))
+			.slice(0, limit)
+			.map((g) => ({ kind: g[0]!.kind, name: g[0]!.name, ids: g.map((r) => r.id) }));
+	}
+
 	/**
 	 * A new private entry, never matched to an existing one by name (identity questions need a
 	 * separate entry for "the other Jev"). Returns its id.
@@ -1646,6 +1814,35 @@ export class KnowledgeStore {
 		}
 	}
 
+	/** "Different people" for a same-name group: every pair is answered, so none comes back. */
+	async markDifferent(ids: string[]): Promise<void> {
+		const list = unique(ids).filter((id) => UUID.test(id));
+		if (list.length < 2 || list.length > MERGE_MAX + 1)
+			throw new KnowledgeStoreError('Pick two or more entries.', 'INVALID');
+		const own = await this.loadEntities(list);
+		if (list.some((id) => own.get(id)?.owner_user_id !== this.userId))
+			throw new KnowledgeStoreError('Entry not found.', 'NOT_FOUND');
+		const now = new Date().toISOString();
+		const rows: Array<Record<string, unknown>> = [];
+		for (let i = 0; i < list.length; i++)
+			for (let j = i + 1; j < list.length; j++) {
+				const [a, b] = list[i]! < list[j]! ? [list[i]!, list[j]!] : [list[j]!, list[i]!];
+				rows.push({
+					owner_user_id: this.userId,
+					entity_a: a,
+					entity_b: b,
+					reason: 'Same name',
+					score: 0.5,
+					status: 'rejected',
+					resolved_at: now
+				});
+			}
+		const { error } = await this.db
+			.from('knowledge_merge_candidates')
+			.upsert(rows, { onConflict: 'owner_user_id,entity_a,entity_b' });
+		if (error) throw dbError('Save answer', error);
+	}
+
 	async resolveMergeCandidate(id: string, status: 'rejected'): Promise<void> {
 		const { error } = await this.db
 			.from('knowledge_merge_candidates')
@@ -1696,7 +1893,7 @@ export class KnowledgeStore {
 				.eq('owner_user_id', this.userId)
 				.in('status', VISIBLE_FACT_STATUSES)
 				.order('id')
-				.range(from, from + 999);
+				.range(from, from + PAGE - 1);
 			if (error) throw dbError('Load self relationships', error);
 			for (const row of (data ?? []) as Array<{ object_entity_id: string | null }>) {
 				if (row.object_entity_id) ids.add(row.object_entity_id);

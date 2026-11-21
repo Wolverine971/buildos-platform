@@ -189,7 +189,23 @@ describe('contact file parsing', () => {
 		]);
 		expect(parseLinkedInDate('3 Feb 2025')).toBe('2025-02-03');
 		expect(parseLinkedInDate('11/16/26')).toBe('2026-11-16');
+		expect(parseLinkedInDate('31 Feb 2025')).toBeUndefined();
 	});
+});
+
+it('keeps LinkedIn connections after row 10,000 through browser preview and upload', () => {
+	const header = 'First Name,Last Name,URL,Email Address,Company,Position,Connected On';
+	const rows = Array.from({ length: 10_001 }, (_, i) => `Contact,${i},,,,,01 Jan 2024`);
+	const parsed = parseContactFile(
+		'Connections.csv',
+		[header, ...rows, ',,,,,,01 Jan 2024'].join('\n')
+	)!;
+	expect(summarizeContactFile(parsed)).toMatchObject({
+		contacts: 10_001,
+		skipped: 1,
+		capped: false
+	});
+	expect(readParsedContactPayload(parsed)?.contacts.at(-1)?.name).toBe('Contact 10000');
 });
 
 describe('planContactImport', () => {
@@ -246,7 +262,8 @@ describe('vocabulary', () => {
 		// The original seed plus later migrations that add predicates.
 		const sql = [
 			'20261116230000_knowledge_graph.sql',
-			'20261118120000_knowledge_educated_at.sql'
+			'20261118120000_knowledge_educated_at.sql',
+			'20261121231933_knowledge_linkedin_import.sql'
 		]
 			.map((file) =>
 				readFileSync(

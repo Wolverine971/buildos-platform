@@ -1,24 +1,47 @@
 // apps/web/src/routes/api/knowledge/merge/+server.ts
 /**
- * GET   /api/knowledge/merge                       → pending "same person?" suggestions
- * POST  /api/knowledge/merge { keep, merge }        → fold `merge` into `keep` (own entries)
+ * GET   /api/knowledge/merge                       → pending "same person?" suggestions, plus
+ *                                                    same-name groups ("Craig" ×2)
+ * GET   /api/knowledge/merge?ids=a,b,c              → what merging these would move
+ * POST  /api/knowledge/merge { keep, merge }        → fold `merge` (one id, or up to 25) into
+ *                                                    `keep` (own entries)
  * PATCH /api/knowledge/merge { candidate_id }        → "These are different"
+ * PATCH /api/knowledge/merge { entity_ids }          → "Different people" for a same-name group
  */
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { MERGE_MAX } from '@buildos/shared-agent-ops/knowledge';
 import {
 	knowledgeErrorResponse,
 	knowledgeStoreFor,
 	UUID_PATTERN
 } from '$lib/server/knowledge/knowledge.server';
 
-export const GET: RequestHandler = async ({ locals }) => {
+export const GET: RequestHandler = async ({ url, locals }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user) return ApiResponse.unauthorized('Authentication required');
+	const store = knowledgeStoreFor(locals.supabase, user.id);
+	const ids = url.searchParams.get('ids');
+	if (ids !== null) {
+		const list = ids.split(',').filter(Boolean);
+		if (
+			!list.length ||
+			list.length > MERGE_MAX + 1 ||
+			list.some((id) => !UUID_PATTERN.test(id))
+		)
+			return ApiResponse.badRequest('Invalid ids');
+		try {
+			return ApiResponse.success(await store.mergePreview(list));
+		} catch (error) {
+			return knowledgeErrorResponse(error, 'Could not load those entries');
+		}
+	}
 	try {
-		return ApiResponse.success({
-			candidates: await knowledgeStoreFor(locals.supabase, user.id).listMergeCandidates(50)
-		});
+		const [candidates, twins] = await Promise.all([
+			store.listMergeCandidates(50),
+			store.listNameTwins(50)
+		]);
+		return ApiResponse.success({ candidates, twins });
 	} catch (error) {
 		return knowledgeErrorResponse(error, 'Could not load suggestions');
 	}
@@ -27,24 +50,29 @@ export const GET: RequestHandler = async ({ locals }) => {
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user) return ApiResponse.unauthorized('Authentication required');
-	let body: { keep?: string; merge?: string };
+	let body: { keep?: string; merge?: string | string[] };
 	try {
 		body = await request.json();
 	} catch {
 		return ApiResponse.badRequest('Invalid JSON');
 	}
+	const keep = body.keep ?? '';
+	const merge = Array.isArray(body.merge) ? body.merge : [body.merge ?? ''];
 	if (
-		!UUID_PATTERN.test(body.keep ?? '') ||
-		!UUID_PATTERN.test(body.merge ?? '') ||
-		body.keep === body.merge
+		!UUID_PATTERN.test(keep) ||
+		!merge.length ||
+		merge.length > MERGE_MAX ||
+		merge.some((id) => typeof id !== 'string' || !UUID_PATTERN.test(id) || id === keep)
 	) {
 		return ApiResponse.badRequest('Pick two different entries');
 	}
 	try {
-		const result = await knowledgeStoreFor(locals.supabase, user.id).merge(
-			body.keep!,
-			body.merge!
-		);
+		const store = knowledgeStoreFor(locals.supabase, user.id);
+		if (!Array.isArray(body.merge))
+			return ApiResponse.success(await store.merge(keep, merge[0]!));
+		const result = await store.mergeMany(keep, merge);
+		if (!result.merged.length && result.failed.length)
+			return ApiResponse.badRequest('Could not combine these');
 		return ApiResponse.success(result);
 	} catch (error) {
 		return knowledgeErrorResponse(error, 'Could not combine these');
@@ -54,18 +82,32 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 export const PATCH: RequestHandler = async ({ request, locals }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user) return ApiResponse.unauthorized('Authentication required');
-	let body: { candidate_id?: string };
+	let body: { candidate_id?: string; entity_ids?: unknown };
 	try {
 		body = await request.json();
 	} catch {
 		return ApiResponse.badRequest('Invalid JSON');
 	}
+	const store = knowledgeStoreFor(locals.supabase, user.id);
+	if (body.entity_ids !== undefined) {
+		const ids = body.entity_ids;
+		if (
+			!Array.isArray(ids) ||
+			ids.length < 2 ||
+			ids.length > MERGE_MAX + 1 ||
+			ids.some((id) => typeof id !== 'string' || !UUID_PATTERN.test(id))
+		)
+			return ApiResponse.badRequest('Invalid ids');
+		try {
+			await store.markDifferent(ids as string[]);
+			return ApiResponse.success({ ok: true });
+		} catch (error) {
+			return knowledgeErrorResponse(error, 'Could not save that');
+		}
+	}
 	if (!UUID_PATTERN.test(body.candidate_id ?? '')) return ApiResponse.badRequest('Invalid id');
 	try {
-		await knowledgeStoreFor(locals.supabase, user.id).resolveMergeCandidate(
-			body.candidate_id!,
-			'rejected'
-		);
+		await store.resolveMergeCandidate(body.candidate_id!, 'rejected');
 		return ApiResponse.success({ ok: true });
 	} catch (error) {
 		return knowledgeErrorResponse(error, 'Could not save that');

@@ -118,3 +118,5 @@ practice-tests
 docs/marketing/visual-assets/projects
 
 .playwright-cli
+# Meeting transcripts and notes: private conversations and finances. This repo is public.
+docs/meetings/

@@ -6,10 +6,12 @@ import type {
 	KnowledgeEntitySummary,
 	KnowledgeFactView,
 	KnowledgeKind,
-	KnowledgeListResult
+	KnowledgeListResult,
+	KnowledgeMergePreviewEntry
 } from '@buildos/shared-agent-ops/knowledge';
 import {
 	KNOWLEDGE_KIND_DEFINITIONS,
+	type ContactFileSummary,
 	type ParsedContactFile
 } from '@buildos/shared-agent-ops/knowledge';
 import { requireApiData } from '$lib/utils/api-client-helpers';
@@ -35,6 +37,8 @@ export type {
 	KnowledgeKind,
 	KnowledgeListResult
 };
+export type KnowledgeMergeEntry = KnowledgeMergePreviewEntry;
+export { MERGE_MAX } from '@buildos/shared-agent-ops/knowledge';
 
 export interface KnowledgeLinkedRecord {
 	id: string;
@@ -66,20 +70,13 @@ export interface KnowledgeRun {
 	finished_at: string | null;
 }
 
-export interface ImportSummary {
+export interface ImportSummary extends ContactFileSummary {
 	preview?: boolean;
 	run_id?: string;
-	format_label: string;
-	contacts: number;
-	skipped: number;
-	with_email: number;
-	with_phone: number;
-	with_company: number;
-	capped: boolean;
-	sample: Array<{ name: string; detail: string | null }>;
 	people_created?: number;
 	people_matched?: number;
 	orgs?: number;
+	org_ids?: string[];
 	facts_added?: number;
 	possible_duplicates?: number;
 }
@@ -127,6 +124,7 @@ export const DETAIL_PREDICATES = [
 	'founded',
 	'published_at',
 	'duration_seconds',
+	'connected_on',
 	'birthday',
 	'alias'
 ];
@@ -147,7 +145,7 @@ export const knowledgeApi = {
 		filter?: string;
 		q?: string;
 		researched?: 'any' | 'yes' | 'no';
-		sort?: 'recent' | 'name' | 'researched';
+		sort?: 'recent' | 'name' | 'researched' | 'connected';
 		view?: 'all' | 'world' | 'reference' | 'dropped';
 		place?: string | null;
 		limit?: number;
@@ -291,10 +289,25 @@ export const knowledgeApi = {
 				/** The entry the user already had: kept when they answer "Same". */
 				keep_id?: string | null;
 			}>;
+			/** Your own entries with the same kind and exact name, oldest first. */
+			twins?: Array<{ kind: KnowledgeKind; name: string; ids: string[] }>;
 		}>(`/api/knowledge/merge`);
 	},
 	merge(keep: string, merge: string) {
 		return call<Record<string, unknown>>(`/api/knowledge/merge`, json({ keep, merge }));
+	},
+	/** What folding these entries together would move, and which one to keep. */
+	mergePreview(ids: string[]) {
+		return call<{ entries: KnowledgeMergeEntry[]; suggested_keep: string | null }>(
+			`/api/knowledge/merge?ids=${ids.map(encodeURIComponent).join(',')}`
+		);
+	},
+	mergeMany(keep: string, merge: string[]) {
+		return call<{
+			kept: string;
+			merged: string[];
+			failed: Array<{ id: string; error: string }>;
+		}>(`/api/knowledge/merge`, json({ keep, merge }));
 	},
 	/** "Not this one": retract a research run's details and remember what the entry is not. */
 	rejectResearch(entityId: string, runId: string) {
@@ -303,6 +316,13 @@ export const knowledgeApi = {
 			json({ run_id: runId })
 		);
 	},
+	/** "Different people" for a same-name group. */
+	markDifferent(entityIds: string[]) {
+		return call<{ ok: true }>(`/api/knowledge/merge`, {
+			...json({ entity_ids: entityIds }),
+			method: 'PATCH'
+		});
+	},
 	rejectCandidate(candidateId: string) {
 		return call<{ ok: true }>(`/api/knowledge/merge`, {
 			...json({ candidate_id: candidateId }),
@@ -310,6 +330,45 @@ export const knowledgeApi = {
 		});
 	}
 };
+
+/**
+ * Keep acknowledged batches when retrying a large LinkedIn export. Each request fits the
+ * import endpoint's write batch and returns the distinct org IDs that batch touched.
+ */
+export function prepareContactImport(
+	parsed: ParsedContactFile,
+	fileName: string,
+	summary: ContactFileSummary
+) {
+	const batchSize = 1_500;
+	let offset = 0;
+	const orgIds = new Set<string>();
+	const totals = { people_created: 0, people_matched: 0, possible_duplicates: 0, facts_added: 0 };
+	return async (onProgress: (saved: number) => void): Promise<ImportSummary> => {
+		if (parsed.format !== 'linkedin_csv' || parsed.contacts.length <= batchSize) {
+			return knowledgeApi.importContacts(parsed, fileName);
+		}
+		while (offset < parsed.contacts.length) {
+			const contacts = parsed.contacts.slice(offset, offset + batchSize);
+			const batch = await knowledgeApi.importContacts(
+				{
+					format: parsed.format,
+					contacts,
+					skipped: offset === 0 ? parsed.skipped : 0
+				},
+				fileName
+			);
+			totals.people_created += batch.people_created ?? 0;
+			totals.people_matched += batch.people_matched ?? 0;
+			totals.possible_duplicates += batch.possible_duplicates ?? 0;
+			totals.facts_added += batch.facts_added ?? 0;
+			for (const id of batch.org_ids ?? []) orgIds.add(id);
+			offset += contacts.length;
+			onProgress(offset);
+		}
+		return { ...summary, ...totals, orgs: orgIds.size };
+	};
+}
 
 export function contactHref(predicate: string, value: string): string | null {
 	if (predicate === 'email') return `mailto:${value}`;

@@ -195,7 +195,7 @@
 				class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-border bg-muted/40 px-3 py-2 tx tx-thread tx-weak"
 			>
 				<FolderUp class="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-				<div class="min-w-0 flex-1">
+				<div class="min-w-0 flex-[1_1_14rem]">
 					<p class="text-xs font-medium text-muted-foreground">Part of</p>
 					<p class="truncate text-sm font-medium text-foreground">
 						{currentParent.name || 'Untitled project'}
@@ -205,13 +205,14 @@
 					<Button
 						variant="outline"
 						size="sm"
+						class="max-w-full"
 						icon={X}
 						loading={saving === 'remove'}
 						disabled={saving !== null}
 						onclick={() =>
 							applyParent(null, currentParent?.name || 'the parent project')}
 					>
-						Remove from {currentParent.name || 'parent'}
+						<span class="truncate">Remove from {currentParent.name || 'parent'}</span>
 					</Button>
 					<p class="basis-full text-xs text-muted-foreground">
 						It keeps all its docs and tasks. It will stop showing {possessive(

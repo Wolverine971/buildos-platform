@@ -619,7 +619,7 @@
 							{/if}
 							{#if project.description}
 								<p
-									class="mt-1.5 hidden line-clamp-2 text-xs text-muted-foreground sm:block"
+									class="mt-1.5 hidden text-xs text-muted-foreground sm:line-clamp-2"
 								>
 									{project.description}
 								</p>
@@ -764,15 +764,6 @@
 
 	.overflow-y-auto::-webkit-scrollbar-thumb:hover {
 		background: hsl(var(--muted-foreground) / 0.5);
-	}
-
-	/* Line clamp utility */
-	.line-clamp-2 {
-		overflow: hidden;
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		line-clamp: 2;
-		-webkit-box-orient: vertical;
 	}
 
 	/* Recency group headers — mirrors styling on /projects page */

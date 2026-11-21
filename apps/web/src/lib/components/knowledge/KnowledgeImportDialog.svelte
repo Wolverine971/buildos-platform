@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/knowledge/KnowledgeImportDialog.svelte -->
 <!--
 	Import contacts into the knowledge graph: pick a phone export (.vcf), LinkedIn's
-	Connections.csv or a Google Contacts CSV → see what's in it → import. The file is read in the
+	Connections.csv or ZIP, or a Google Contacts CSV → see what's in it → import. The file is read in the
 	browser: the preview needs no upload, and the import sends only the contacts (no photos).
 	Nothing is saved until the second step, and the file itself is never stored. Tasker 160.
 -->
@@ -9,14 +9,11 @@
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import { Check, Loader2, Lock, Upload } from '$lib/icons/lucide';
 	import {
-		parseContactFile,
 		summarizeContactFile,
-		type ParsedContactFile
+		type ContactFileSummary
 	} from '@buildos/shared-agent-ops/knowledge';
-	import { knowledgeApi, type ImportSummary } from './knowledge-client';
-
-	/** Reading a file this big would stall the tab; no phone or LinkedIn export gets close. */
-	const MAX_FILE_BYTES = 100 * 1024 * 1024;
+	import { prepareContactImport, type ImportSummary } from './knowledge-client';
+	import { readContactExport } from './read-contact-export';
 
 	interface Props {
 		isOpen: boolean;
@@ -26,9 +23,19 @@
 
 	let { isOpen, onClose, onImported }: Props = $props();
 
-	let file = $state<File | null>(null);
-	let parsed: ParsedContactFile | null = null;
-	let preview = $state<ImportSummary | null>(null);
+	const fileTypes = {
+		auto: { accept: '.zip,.csv,.vcf', hint: 'LinkedIn ZIP · CSV · vCard (.vcf)' },
+		linkedin: { accept: '.zip,.csv', hint: 'LinkedIn ZIP or Connections.csv' },
+		phone: { accept: '.vcf', hint: 'vCard (.vcf)' },
+		google: { accept: '.csv,.vcf', hint: 'Google CSV or vCard (.vcf)' }
+	};
+	let source = $state<keyof typeof fileTypes>('auto');
+	let fileName = $state('');
+	let pendingImport: ReturnType<typeof prepareContactImport> | null = null;
+	let readSeq = 0;
+	let preview = $state.raw<ContactFileSummary | null>(null);
+	let dated = $state(0);
+	let saved = $state(0);
 	let result = $state<ImportSummary | null>(null);
 	let busy = $state<'reading' | 'importing' | null>(null);
 	let error = $state<string | null>(null);
@@ -36,9 +43,11 @@
 	let input = $state<HTMLInputElement | null>(null);
 
 	function reset() {
-		file = null;
-		parsed = null;
+		readSeq++;
+		fileName = '';
+		pendingImport = null;
 		preview = null;
+		saved = 0;
 		result = null;
 		busy = null;
 		error = null;
@@ -47,39 +56,50 @@
 	function close() {
 		if (busy === 'importing') return;
 		reset();
+		source = 'auto';
 		onClose();
 	}
 
 	async function pick(next: File | null | undefined) {
 		if (!next) return;
 		reset();
-		file = next;
+		const seq = readSeq;
 		busy = 'reading';
 		try {
-			if (next.size > MAX_FILE_BYTES) throw new Error('That file is too big to read here.');
-			const read = parseContactFile(next.name, await next.text());
-			if (!read)
-				throw new Error(
-					"Couldn't read this file. Use a .vcf exported from your phone, LinkedIn's Connections.csv, or a Google Contacts CSV."
-				);
-			if (!read.contacts.length) throw new Error('No contacts found in that file.');
-			parsed = read;
-			preview = { preview: true, ...summarizeContactFile(read) };
+			const read = await readContactExport(next);
+			if (seq !== readSeq) return;
+			if (source === 'linkedin' && read.format !== 'linkedin_csv')
+				throw new Error('Choose Connections.csv or the ZIP from your LinkedIn export.');
+			fileName = next.name;
+			preview = summarizeContactFile(read);
+			dated = read.contacts.filter((contact) => contact.connectedOn).length;
+			pendingImport = prepareContactImport(
+				read,
+				/\.zip$/i.test(next.name) ? 'Connections.csv' : next.name,
+				preview
+			);
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Could not read that file';
-			file = null;
+			if (seq === readSeq)
+				error = err instanceof Error ? err.message : 'Could not read that file';
 		} finally {
-			busy = null;
+			if (seq === readSeq) busy = null;
 		}
 	}
 
 	async function runImport() {
-		if (!file || !parsed) return;
+		if (!pendingImport || busy) return;
 		busy = 'importing';
 		error = null;
 		try {
-			result = await knowledgeApi.importContacts(parsed, file.name);
-			onImported(result);
+			const summary = await pendingImport((count) => (saved = count));
+			onImported(summary);
+			if (summary.format === 'linkedin_csv') {
+				reset();
+				source = 'auto';
+				onClose();
+			} else {
+				result = summary;
+			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'The import stopped';
 		} finally {
@@ -126,9 +146,9 @@
 					</button>
 				</div>
 			</div>
-		{:else if preview && file}
+		{:else if preview}
 			<div class="flex flex-col gap-3">
-				<p class="text-sm text-muted-foreground">{preview.format_label} · {file.name}</p>
+				<p class="text-sm text-muted-foreground">{preview.format_label} · {fileName}</p>
 				<p class="text-base font-semibold text-foreground">
 					{n(preview.contacts)} contacts
 				</p>
@@ -141,9 +161,15 @@
 					</li>
 					<li class="rounded-md bg-muted/50 px-2 py-2">
 						<span class="block text-base font-semibold text-foreground"
-							>{n(preview.with_phone)}</span
+							>{n(
+								preview.format === 'linkedin_csv' ? dated : preview.with_phone
+							)}</span
 						>
-						<span class="text-xs text-muted-foreground">with phone</span>
+						<span class="text-xs text-muted-foreground"
+							>{preview.format === 'linkedin_csv'
+								? 'with connection date'
+								: 'with phone'}</span
+						>
 					</li>
 					<li class="rounded-md bg-muted/50 px-2 py-2">
 						<span class="block text-base font-semibold text-foreground"
@@ -156,7 +182,9 @@
 					<ul
 						class="flex flex-col divide-y divide-border rounded-md border border-border text-sm"
 					>
-						{#each preview.sample as person, i (i)}
+						<!-- Contact previews may include identical names and details. -->
+						<!-- eslint-disable-next-line svelte/require-each-key -->
+						{#each preview.sample as person}
 							<li class="flex min-w-0 items-center gap-2 px-3 py-2">
 								<span class="truncate font-medium text-foreground"
 									>{person.name}</span
@@ -171,14 +199,27 @@
 				{/if}
 				{#if preview.capped}
 					<p class="text-xs text-muted-foreground">
-						Only the first 10,000 contacts are imported at a time.
+						This import accepts up to {n(preview.contacts)} contacts per file.
+					</p>
+				{/if}
+				{#if preview.skipped}
+					<p class="text-xs text-muted-foreground">
+						{n(preview.skipped)}
+						{preview.skipped === 1 ? 'row has' : 'rows have'} no contact name and will be
+						skipped.
 					</p>
 				{/if}
 				<p class="flex items-start gap-1.5 text-xs text-muted-foreground">
 					<Lock class="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-					Only you can see these people. Their emails and phone numbers are never shared. Importing
-					again updates the same people instead of adding copies.
+					Contacts are saved to your private knowledge graph. When a contact matches someone
+					already there, their details are added to that person.
 				</p>
+				{#if saved}
+					<p class="text-sm text-muted-foreground" role="status">
+						{n(saved)} of {n(preview.contacts)} contacts saved
+					</p>
+				{/if}
+				{#if error}<p class="text-sm text-destructive" role="alert">{error}</p>{/if}
 				<div class="flex justify-end gap-2">
 					<button
 						type="button"
@@ -197,11 +238,56 @@
 						{#if busy === 'importing'}<Loader2
 								class="h-4 w-4 animate-spin motion-reduce:animate-none"
 								aria-hidden="true"
-							/> Importing…{:else}Import {n(preview.contacts)} contacts{/if}
+							/> Importing…{:else if error}Retry import{:else}Import {n(
+								preview.contacts
+							)} contacts{/if}
 					</button>
 				</div>
 			</div>
 		{:else}
+			<label class="flex flex-col gap-1 text-sm font-medium text-foreground">
+				Contact source
+				<select
+					class="rounded-md border border-border bg-card px-3 py-2 font-normal"
+					bind:value={source}
+					disabled={busy === 'reading'}
+					onchange={() => (error = null)}
+				>
+					<option value="auto">Detect from file</option>
+					<option value="linkedin">LinkedIn connections</option>
+					<option value="phone">Phone contacts</option>
+					<option value="google">Google Contacts</option>
+				</select>
+			</label>
+			{#if source === 'linkedin'}
+				<ol class="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+					<li>
+						Open <a
+							href="https://www.linkedin.com/mypreferences/d/download-my-data"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="font-medium text-accent underline">Get a copy of your data</a
+						> in LinkedIn’s Settings → Data privacy.
+					</li>
+					<li>Select only <strong>Connections</strong> and request your archive.</li>
+					<li>
+						Download the ZIP from LinkedIn’s email. It may take a few minutes to a day.
+					</li>
+					<li>
+						Choose the ZIP below, or unzip it and choose <strong>Connections.csv</strong
+						>.
+					</li>
+				</ol>
+			{:else if source === 'phone'}
+				<p class="text-sm text-muted-foreground">
+					On iPhone, open Contacts → Lists, press and hold All Contacts, then tap Export.
+					On Android, export your contacts as a vCard (.vcf).
+				</p>
+			{:else if source === 'google'}
+				<p class="text-sm text-muted-foreground">
+					In Google Contacts, choose Export, then Google CSV or vCard.
+				</p>
+			{/if}
 			<button
 				type="button"
 				class="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed px-4 py-8 text-center transition-colors {dragging
@@ -231,44 +317,21 @@
 					<span class="text-sm font-medium text-foreground"
 						>Drop a contacts file here, or click to pick one</span
 					>
-					<span class="text-xs text-muted-foreground"
-						>.vcf from your phone · LinkedIn Connections.csv · Google Contacts CSV</span
-					>
+					<span class="text-xs text-muted-foreground">{fileTypes[source].hint}</span>
 				{/if}
 			</button>
 			<input
 				bind:this={input}
 				type="file"
-				accept=".vcf,.csv,text/vcard,text/csv"
+				accept={fileTypes[source].accept}
 				class="hidden"
-				onchange={(e) => void pick((e.currentTarget as HTMLInputElement).files?.[0])}
+				onchange={(e) => {
+					const next = e.currentTarget.files?.[0];
+					e.currentTarget.value = '';
+					void pick(next);
+				}}
 			/>
 			{#if error}<p class="text-sm text-destructive" role="alert">{error}</p>{/if}
-			<details class="text-sm text-muted-foreground">
-				<summary class="cursor-pointer font-medium text-foreground"
-					>How to export your contacts</summary
-				>
-				<dl class="mt-2 flex flex-col gap-2">
-					<div>
-						<dt class="font-medium text-foreground">iPhone</dt>
-						<dd>
-							Contacts app → Lists → press and hold All Contacts → Export. Or on
-							icloud.com/contacts, select all → Export vCard.
-						</dd>
-					</div>
-					<div>
-						<dt class="font-medium text-foreground">Android or Gmail</dt>
-						<dd>contacts.google.com → Export → Google CSV or vCard.</dd>
-					</div>
-					<div>
-						<dt class="font-medium text-foreground">LinkedIn</dt>
-						<dd>
-							Settings → Data privacy → Get a copy of your data → Connections.
-							LinkedIn emails you a Connections.csv, usually within 10 minutes.
-						</dd>
-					</div>
-				</dl>
-			</details>
 		{/if}
 	</div>
 </Modal>

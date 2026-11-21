@@ -13,6 +13,7 @@
 import type { RequestHandler } from './$types';
 import {
 	CONTACT_FORMAT_LABELS,
+	linkedInImportRow,
 	parseContactFile,
 	planContactImport,
 	readParsedContactPayload,
@@ -127,7 +128,24 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const orgIds = new Set<string>();
 		// Re-running is safe: people match on their email, phone or LinkedIn and facts dedupe.
 		for (let i = 0; i < parsed.contacts.length; i += CONTACTS_PER_WRITE) {
-			const batch = planContactImport(parsed.contacts.slice(i, i + CONTACTS_PER_WRITE), {
+			const contacts = parsed.contacts.slice(i, i + CONTACTS_PER_WRITE);
+			if (parsed.format === 'linkedin_csv') {
+				const { data, error } = await supabase.rpc('knowledge_import_linkedin', {
+					p_rows: contacts.map(linkedInImportRow),
+					p_file_name: fileName,
+					p_run_id: run.id
+				});
+				if (error || !data)
+					throw new Error('Could not save LinkedIn connections', { cause: error });
+				stats.people_created += data.people_created;
+				stats.people_matched += data.people_matched;
+				stats.possible_duplicates += data.possible_duplicates;
+				stats.facts_added += data.facts_added;
+				stats.facts_existing += data.facts_existing;
+				for (const id of data.org_ids) orgIds.add(id);
+				continue;
+			}
+			const batch = planContactImport(contacts, {
 				format: parsed.format,
 				sourceRef: 'file'
 			});
@@ -154,7 +172,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			.from('knowledge_runs')
 			.update({ status: 'completed', stats, finished_at: new Date().toISOString() })
 			.eq('id', run.id);
-		return ApiResponse.success({ run_id: run.id, ...summary, ...stats });
+		return ApiResponse.success({
+			run_id: run.id,
+			...summary,
+			...stats,
+			...(parsed.format === 'linkedin_csv' ? { org_ids: [...orgIds] } : {})
+		});
 	} catch (error) {
 		await runs
 			.from('knowledge_runs')

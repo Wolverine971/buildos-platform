@@ -15004,6 +15004,7 @@ export type Database = {
           merged_into_id: string | null
           name: string
           normalized_name: string | null
+          normalized_org_name: string | null
           owner_user_id: string | null
           scope: string
           status: string
@@ -15025,6 +15026,7 @@ export type Database = {
           merged_into_id?: string | null
           name: string
           normalized_name?: string | null
+          normalized_org_name?: string | null
           owner_user_id?: string | null
           scope: string
           status?: string
@@ -15046,6 +15048,7 @@ export type Database = {
           merged_into_id?: string | null
           name?: string
           normalized_name?: string | null
+          normalized_org_name?: string | null
           owner_user_id?: string | null
           scope?: string
           status?: string
@@ -29815,6 +29818,11 @@ export type Database = {
           p_subject_kind: string
         }
         Returns: string
+      }
+      knowledge_fold_org_name: { Args: { p_name: string }; Returns: string }
+      knowledge_import_linkedin: {
+        Args: { p_file_name: string; p_rows: Json; p_run_id: string }
+        Returns: Json
       }
       knowledge_list: {
         Args: {

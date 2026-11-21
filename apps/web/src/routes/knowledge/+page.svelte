@@ -11,6 +11,10 @@
 	people and orgs, not list entries. The card's "Just a mention" / "Part of my world" is the
 	user's answer, which the sorter then learns from.
 
+	Merging by hand: tick two or more and press Merge N, or "Merge…" on a card; the duplicates
+	review also offers same-name groups ("Craig" ×3) as one merge. KnowledgeMergeDialog shows
+	what moves and which one is kept.
+
 	Research at scale (tasker 164): filter and sort by researched / not researched, tick entries
 	(shift-click for a range) and press Enrich N; the "What should we look for?" dialog starts
 	the research and the bottom-right tray shows it running while you keep browsing. One poll
@@ -29,6 +33,7 @@
 	import KnowledgeEntityCard from '$lib/components/knowledge/KnowledgeEntityCard.svelte';
 	import KnowledgeImportDialog from '$lib/components/knowledge/KnowledgeImportDialog.svelte';
 	import KnowledgeEnrichDialog from '$lib/components/knowledge/KnowledgeEnrichDialog.svelte';
+	import KnowledgeMergeDialog from '$lib/components/knowledge/KnowledgeMergeDialog.svelte';
 	import KnowledgeResearchTray from '$lib/components/knowledge/KnowledgeResearchTray.svelte';
 	import KnowledgeWherePills from '$lib/components/knowledge/KnowledgeWherePills.svelte';
 	import KnowledgeWhereLine from '$lib/components/knowledge/KnowledgeWhereLine.svelte';
@@ -60,6 +65,7 @@
 		KIND_ICON,
 		KIND_LABEL,
 		KIND_ORDER,
+		MERGE_MAX,
 		knowledgeApi,
 		type ImportSummary,
 		type KnowledgeEntitySummary,
@@ -85,7 +91,7 @@
 	type Filter = 'all' | 'known' | 'owned';
 	type View = 'world' | 'reference' | 'dropped';
 	type Researched = 'any' | 'yes' | 'no';
-	type Sort = 'recent' | 'name' | 'researched';
+	type Sort = 'recent' | 'name' | 'researched' | 'connected';
 	type Row = KnowledgeEntitySummary & {
 		updated_at: string;
 		researched_at?: string | null;
@@ -120,6 +126,24 @@
 		[]
 	);
 	let duplicatesOpen = $state(false);
+	/** Same kind + exact name, your own ("Craig" ×3): one merge each. */
+	let twins = $state<Array<{ kind: KnowledgeKind; name: string; ids: string[] }>>([]);
+	/** The merge dialog's starting entries, while it's open. */
+	let mergeIds = $state<string[] | null>(null);
+	let twinBusy = $state<string | null>(null);
+	// A "same person?" pair inside a same-name group is answered by that group.
+	const twinOf = $derived(
+		new Map(twins.flatMap((t) => t.ids.map((id) => [id, t.ids[0]!] as const)))
+	);
+	const pairQuestions = $derived(
+		duplicates.filter(
+			(d) =>
+				d.origin === 'identity' ||
+				!twinOf.has(d.a.id) ||
+				twinOf.get(d.a.id) !== twinOf.get(d.b.id)
+		)
+	);
+	const reviewCount = $derived(pairQuestions.length + twins.length);
 	let chatOpen = $state(false);
 	let chatDraft = $state('');
 	let innerWidth = $state(1280);
@@ -309,7 +333,9 @@
 
 	async function refreshDuplicates() {
 		try {
-			duplicates = (await knowledgeApi.mergeCandidates()).candidates;
+			const result = await knowledgeApi.mergeCandidates();
+			duplicates = result.candidates;
+			twins = result.twins ?? [];
 		} catch {
 			// the duplicates banner is a nicety
 		}
@@ -381,6 +407,59 @@
 			kind: r.kind,
 			researched_at: r.researched_at ?? null
 		}));
+	}
+
+	function mergePicked() {
+		mergeIds = [...picked.keys()];
+	}
+
+	function onMerged(result: { kept: string; merged: string[] }) {
+		mergeIds = null;
+		const gone = new Set(result.merged);
+		picked = new Map([...picked].filter(([id]) => !gone.has(id)));
+		if (picked.size === 1) clearPicked();
+		toastService.success(
+			result.merged.length === 1 ? 'Merged' : `Merged ${result.merged.length + 1} into one`
+		);
+		// An open card on a merged entry now shows the one it became.
+		if (stack.some((id) => gone.has(id))) {
+			stack = [...new Set(stack.map((id) => (gone.has(id) ? result.kept : id)))];
+			syncUrl(stack.at(-1) ?? null);
+		}
+		forgetWhere((id) => id === result.kept || gone.has(id));
+		void refresh();
+		void refreshDuplicates();
+	}
+
+	/** One click on a same-name group: fold them into the suggested one. */
+	async function mergeTwins(group: { name: string; ids: string[] }) {
+		twinBusy = group.ids[0]!;
+		try {
+			const preview = await knowledgeApi.mergePreview(group.ids);
+			const keep = preview.suggested_keep;
+			const rest = preview.entries
+				.filter((e) => e.id !== keep && e.mergeable)
+				.map((e) => e.id);
+			if (!keep || !rest.length) throw new Error('Nothing left to merge there');
+			const result = await knowledgeApi.mergeMany(keep, rest);
+			onMerged(result);
+		} catch (error) {
+			toastService.error(error instanceof Error ? error.message : 'Could not merge those');
+		} finally {
+			twinBusy = null;
+		}
+	}
+
+	async function differentTwins(group: { ids: string[] }) {
+		twinBusy = group.ids[0]!;
+		try {
+			await knowledgeApi.markDifferent(group.ids);
+			void refreshDuplicates();
+		} catch (error) {
+			toastService.error(error instanceof Error ? error.message : 'Could not save that');
+		} finally {
+			twinBusy = null;
+		}
 	}
 
 	function onEnrichStarted(result: EnrichStarted) {
@@ -542,11 +621,21 @@
 	}
 
 	function onImported(summary: ImportSummary) {
-		toastService.success(`Imported ${summary.contacts.toLocaleString()} contacts`);
-		filter = 'known';
-		kind = null;
-		view = 'world';
-		void refresh();
+		const n = (value?: number) => (value ?? 0).toLocaleString();
+		toastService.success(
+			`${n(summary.people_created)} new, ${n(summary.people_matched)} matched, ${n(summary.possible_duplicates)} to review`
+		);
+		clearTimeout(searchTimer);
+		query = '';
+		if (selected) closeCard();
+		choose({
+			filter: 'known',
+			kind: null,
+			view: 'world',
+			place: null,
+			researched: 'any',
+			sort: summary.format === 'linkedin_csv' ? 'connected' : sort
+		});
 		void refreshDuplicates();
 	}
 
@@ -702,6 +791,7 @@
 				onAskChat={askInChat}
 				research={research.byEntity.get(id) ?? null}
 				onFindMore={(entity) => (enrichEntries = [entity])}
+				onMerge={(entity) => (mergeIds = [entity.id])}
 				onBrowseKind={(entity) => void reveal(entity.id, entity.kind)}
 			/>
 		{/key}
@@ -879,7 +969,7 @@
 				</div>
 				<div class="flex flex-wrap items-center gap-2">
 					<div
-						class="-mx-4 flex min-w-0 flex-1 gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0"
+						class="-mx-4 flex min-w-0 flex-[1_1_14rem] gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0"
 						role="toolbar"
 						aria-label="Research filter"
 					>
@@ -939,6 +1029,7 @@
 							onchange={(e) => choose({ sort: e.currentTarget.value as Sort })}
 						>
 							<option value="recent">Recently updated</option>
+							<option value="connected">Most recently connected</option>
 							<option value="name">Name A–Z</option>
 							<option value="researched">Recently researched</option>
 						</select>
@@ -968,15 +1059,14 @@
 						</button>
 					</div>
 				{/if}
-				{#if duplicates.length}
+				{#if reviewCount}
 					<button
 						type="button"
 						class="inline-flex w-fit items-center gap-1.5 rounded-md px-1 text-sm text-muted-foreground hover:text-foreground"
 						onclick={() => (duplicatesOpen = true)}
 					>
 						<GitMerge class="h-4 w-4" aria-hidden="true" />
-						{duplicates.length} possible duplicate{duplicates.length === 1 ? '' : 's'} to
-						review
+						{reviewCount} possible duplicate{reviewCount === 1 ? '' : 's'} to review
 					</button>
 				{/if}
 			</div>
@@ -1282,6 +1372,17 @@
 			class="rounded-md px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-muted"
 			onclick={clearPicked}>Clear</button
 		>
+		{#if pickedCount >= 2}
+			<button
+				type="button"
+				class="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium text-foreground pressable hover:bg-muted disabled:opacity-60"
+				disabled={pickedCount > MERGE_MAX + 1}
+				title={pickedCount > MERGE_MAX + 1 ? `Up to ${MERGE_MAX + 1} at a time` : undefined}
+				onclick={mergePicked}
+			>
+				<GitMerge class="h-4 w-4" aria-hidden="true" /> Merge {pickedCount}
+			</button>
+		{/if}
 		<button
 			type="button"
 			class="inline-flex min-h-9 items-center gap-1.5 rounded-md bg-accent px-3 text-sm font-medium text-accent-foreground pressable disabled:opacity-60"
@@ -1294,6 +1395,10 @@
 {/if}
 
 <KnowledgeResearchTray queue={research} onOpenEntity={(id) => open(id)} />
+
+{#if mergeIds}
+	<KnowledgeMergeDialog ids={mergeIds} onClose={() => (mergeIds = null)} {onMerged} />
+{/if}
 
 {#if enrichEntries}
 	<KnowledgeEnrichDialog
@@ -1391,10 +1496,61 @@
 	size="md"
 >
 	<div class="flex flex-col gap-2 p-4 sm:p-5">
-		{#if !duplicates.length}
+		{#if !reviewCount}
 			<p class="text-sm text-muted-foreground">All sorted.</p>
 		{/if}
-		{#each duplicates as candidate (candidate.id)}
+		{#if twins.length}
+			<h3 class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+				Same name
+			</h3>
+			{#each twins as group (group.ids[0])}
+				{@const busy = twinBusy === group.ids[0]}
+				<div class="flex flex-col gap-2 rounded-md border border-border p-3">
+					<p class="text-sm text-foreground">
+						<span class="font-medium">{group.name}</span>
+						<span class="text-muted-foreground">· {group.ids.length} entries</span>
+					</p>
+					<div class="flex flex-wrap gap-2">
+						<button
+							type="button"
+							class="inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground pressable disabled:opacity-60"
+							disabled={Boolean(twinBusy)}
+							onclick={() => void mergeTwins(group)}
+						>
+							{#if busy}<Loader2
+									class="h-4 w-4 animate-spin"
+									aria-hidden="true"
+								/>{/if}
+							{group.ids.length === 2
+								? 'Same one, merge'
+								: `All the same, merge ${group.ids.length}`}
+						</button>
+						<button
+							type="button"
+							class="rounded-md border border-border px-3 py-1.5 text-sm text-foreground pressable hover:bg-muted disabled:opacity-60"
+							disabled={Boolean(twinBusy)}
+							onclick={() => {
+								duplicatesOpen = false;
+								mergeIds = group.ids;
+							}}>Review</button
+						>
+						<button
+							type="button"
+							class="rounded-md border border-border px-3 py-1.5 text-sm text-foreground pressable hover:bg-muted disabled:opacity-60"
+							disabled={Boolean(twinBusy)}
+							onclick={() => void differentTwins(group)}
+							>{group.kind === 'person' ? 'Different people' : 'Different'}</button
+						>
+					</div>
+				</div>
+			{/each}
+			{#if pairQuestions.length}
+				<h3 class="mt-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+					Maybe the same
+				</h3>
+			{/if}
+		{/if}
+		{#each pairQuestions as candidate (candidate.id)}
 			<div class="flex flex-col gap-2 rounded-md border border-border p-3">
 				{#if candidate.question}
 					<p class="text-sm font-medium text-foreground">{candidate.question}</p>

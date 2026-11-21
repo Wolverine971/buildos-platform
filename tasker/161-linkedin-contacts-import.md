@@ -2,7 +2,7 @@
 
 # 161 — Import LinkedIn connections (the whole flow)
 
-**Status:** OPEN · **Opened:** 2026-11-17 · **Parent:** 160 (knowledge graph)
+**Status:** Implemented and rehearsed locally. Production acceptance deferred by DJ (2026-11-21) · **Opened:** 2026-11-17 · **Parent:** 160 (knowledge graph)
 **DJ (2026-11-17):** "A Tasker for importing contacts from LinkedIn and doing that whole thing."
 
 ## Goal
@@ -48,3 +48,42 @@ tasks.
 
 - Free (no model calls). Contact info stays private. Never edit applied migrations.
 - DJ does the LinkedIn export himself (account action on his LinkedIn).
+
+## November 21 rehearsal
+
+DJ chose to keep production untouched. The graph records used for matching were read from his
+account. The migration and all import writes ran in disposable local PostgreSQL databases.
+No contact names, URLs or email addresses are included here.
+
+The July 10 export contains 781 rows. All 767 named connections have a profile URL and a
+connection date. Of those, 758 have a company, 760 have a title, and 14 have an email address.
+The other 14 rows contain only a date. The preview shows them as skipped.
+
+| Run against DJ's graph snapshot        | New people | Matched people | New review pairs | New facts |
+| -------------------------------------- | ---------: | -------------: | ---------------: | --------: |
+| First import                           |        763 |              4 |                0 |     3,833 |
+| Concurrent submission of the same file |          0 |            767 |                0 |         0 |
+| Later re-import                        |          0 |            767 |                0 |         0 |
+
+The import linked 626 distinct employers. The snapshot included the identities, aliases, task
+links, employer and acquaintance relationships, and existing review pairs used for matching.
+The fact count describes that local fixture. Each web submission keeps an import history entry.
+The replay assertions cover people, organizations, identity keys, facts, citations, sources, and review pairs.
+
+The dialog guides the export, opens a CSV or extracts only Connections.csv from a ZIP, and
+previews everything before upload. Large LinkedIn files continue in batches of 1,500.
+The result opens People I know ordered by the private LinkedIn connection date. Company names
+with a leading article or different punctuation can reuse one employer. A joined spelling
+such as “thecadre” can raise a review pair. A task-derived one-word name needs matching
+employer evidence to raise a same-person question.
+
+### Verification
+
+Tested the working tree based on `9cb144680`. The SHA-256 fingerprint of the 22 implementation
+and test paths is `92b0bc4c5ba2a45c926ada0d9e1e34cd742787bdba54b31c4e4123e5861f6e06`.
+
+- `pnpm db:rehearse supabase/migrations/20261121231933_knowledge_linkedin_import.sql --role-probe --check supabase/tests/knowledge_linkedin_import.check.sql` passed on the November 21 production schema snapshot. The check covers exact and short-name matching, conflicting profile IDs, company folding, receipt and graph stability on replay, transaction rollback, privacy, and ordering across a page boundary. The standing checks passed. The role probe found no new failures. The index builds on a table estimated at 643 rows.
+- `pnpm --filter @buildos/shared-agent-ops exec vitest run src/knowledge/contacts-import.test.ts src/knowledge/enrichment.test.ts` passed 26 tests.
+- `pnpm --filter @buildos/worker exec vitest run src/workers/knowledge/knowledgeEnrichPlan.test.ts` passed 15 tests.
+- `pnpm --filter @buildos/web exec vitest run src/routes/api/knowledge/import/server.test.ts src/lib/components/knowledge/contact-export.test.ts src/lib/components/knowledge/KnowledgeImportDialog.test.ts src/lib/components/knowledge/KnowledgeSharePanel.test.ts` passed 9 tests covering the upload endpoint, ZIP selection, retry, rendered dialog, and sharing controls.
+- The shared package build, official Svelte autofixers and web type check cover the modified entry points. UI checks used the rendered components locally. A deployed browser import remains pending.

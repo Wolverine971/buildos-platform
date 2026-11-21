@@ -202,7 +202,7 @@
 	aria-labelledby="hub-people-heading"
 >
 	<div class="flex flex-wrap items-start gap-3 border-b border-border px-4 py-3 sm:px-5">
-		<div class="min-w-0 flex-1">
+		<div class="min-w-0 flex-[1_1_14rem]">
 			<h3
 				id="hub-people-heading"
 				class="flex items-center gap-2 text-sm font-medium text-foreground sm:text-base"
@@ -427,7 +427,9 @@
 										</Select>
 									</label>
 								{/if}
-								<span class="flex-1 text-xs text-muted-foreground">
+								<span
+									class="min-w-0 flex-[1_1_12rem] text-xs text-muted-foreground"
+								>
 									Their agents never get more than they have
 								</span>
 								{#if person.memberships.length > 1}

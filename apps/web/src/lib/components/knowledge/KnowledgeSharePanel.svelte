@@ -29,7 +29,7 @@
 
 	let { part, entityId, entityName, sharing, predicates, onChanged }: Props = $props();
 
-	const NEVER = new Set(['note', 'knows', 'birthday']);
+	const NEVER = new Set(['note', 'knows', 'birthday', 'connected_on']);
 	const pickable = $derived(
 		[...new Set(predicates)].filter((p) => !NEVER.has(p) && KNOWLEDGE_PREDICATE_MAP.has(p))
 	);
@@ -154,7 +154,7 @@
 	}
 
 	function whatText(share: Pick<Share, 'what' | 'predicates'>): string {
-		if (share.what === 'all') return 'everything except notes';
+		if (share.what === 'all') return 'all shareable details';
 		if (share.what === 'contact') return 'contact details';
 		return share.predicates
 			.map((p) => KNOWLEDGE_PREDICATE_MAP.get(p)?.label.toLowerCase() ?? p)
@@ -226,7 +226,7 @@
 					><input type="radio" bind:group={what} value="contact" /> Contact details</label
 				>
 				<label class={choice}
-					><input type="radio" bind:group={what} value="all" /> Everything except notes</label
+					><input type="radio" bind:group={what} value="all" /> All shareable details</label
 				>
 				{#if pickable.length}
 					<label class={choice}
@@ -259,7 +259,8 @@
 				>
 			</fieldset>
 			<p class="text-xs text-muted-foreground">
-				Notes, birthdays and who you know are never shared. You can stop sharing any time.
+				Your notes, birthdays, connections and LinkedIn connection dates stay private. You
+				can stop sharing any time.
 			</p>
 			<div class="flex justify-end gap-2">
 				<button

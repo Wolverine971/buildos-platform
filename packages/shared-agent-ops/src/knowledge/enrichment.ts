@@ -40,7 +40,13 @@ export const MAX_ENRICH_ENTRY_NOTE_CHARS = 500;
  * Never researched for a person, whatever was asked (the worker enforces the same list on the
  * model's answer).
  */
-export const ENRICH_NEVER_FOR_PEOPLE: readonly string[] = ['address', 'birthday', 'note', 'knows'];
+export const ENRICH_NEVER_FOR_PEOPLE: readonly string[] = [
+	'address',
+	'birthday',
+	'note',
+	'knows',
+	'connected_on'
+];
 
 /**
  * A person's phone and email are researched only when the user explicitly picks "Phone & email"
