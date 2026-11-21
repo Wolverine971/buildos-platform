@@ -482,8 +482,8 @@ describe('consumption billing through the real server hook', () => {
 			data: [{ is_frozen: true, billing_tier: 'explorer' }],
 			error: null
 		});
-		const f = fixture('/%61pi/agent/v2/stream', 'POST');
-		f.event.route.id = '/api/agent/v2/stream';
+		const f = fixture('/%61pi/agent/v2/turns', 'POST');
+		f.event.route.id = '/api/agent/v2/turns';
 		const resolve = vi.fn(async () => new Response('should not run'));
 		const response = await handle({ event: f.event, resolve });
 		expect(response.status).toBe(402);

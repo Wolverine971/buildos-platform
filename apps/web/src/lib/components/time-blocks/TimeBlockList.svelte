@@ -198,7 +198,7 @@
 												<span>{index + 1}. {suggestion.title}</span>
 												{#if suggestionMeta(block, suggestion)}
 													<span
-														class="rounded-full bg-card/70 px-1.5 py-0.5 text-xs font-medium text-muted-foreground shadow-ink/60 dark:text-muted-foreground"
+														class="rounded-full bg-card/70 px-1.5 py-0.5 text-xs font-medium text-muted-foreground shadow-ink dark:text-muted-foreground"
 													>
 														{suggestionMeta(block, suggestion)}
 													</span>

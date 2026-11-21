@@ -151,7 +151,7 @@
 				<button
 					name="decision"
 					value="retain_scoped"
-					class="rounded-md bg-primary px-4 py-2 text-primary-foreground"
+					class="rounded-md bg-accent px-4 py-2 text-accent-foreground"
 					>Reconnect with retained access</button
 				>
 			</form>

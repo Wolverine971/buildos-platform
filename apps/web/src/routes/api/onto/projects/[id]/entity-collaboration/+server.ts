@@ -474,10 +474,19 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 		if (membersResult.error) return ApiResponse.databaseError(membersResult.error);
 		if (assignmentsResult.error) return ApiResponse.databaseError(assignmentsResult.error);
 
+		// Members' addresses stay on the server (Tasker 158). The picker only needs to know
+		// whether a ping can be delivered by email.
+		const memberRows = membersResult.data ?? [];
+		const emails = await loadActorEmails(memberRows.map((member) => member.actor_id));
+		const members = memberRows.map((member) => ({
+			...member,
+			can_email: emails.has(member.actor_id)
+		}));
+
 		return ApiResponse.success({
 			entity,
 			projectName,
-			members: membersResult.data ?? [],
+			members,
 			assignments: assignmentsResult.data ?? [],
 			actorId: access.actorId
 		});
@@ -639,7 +648,12 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			action,
 			channel,
 			entity,
-			targetActor,
+			// The address was loaded only to deliver the ping; it never goes back to the sender.
+			targetActor: {
+				id: targetActor.id,
+				user_id: targetActor.user_id,
+				name: targetActor.name
+			},
 			assigned: action === 'assign',
 			delivered: Boolean(deliveryResult?.success)
 		});

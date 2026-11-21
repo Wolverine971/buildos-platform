@@ -68,7 +68,7 @@
 		{:else}
 			<a
 				href="/profile?tab=email"
-				class="mt-4 inline-flex min-h-11 items-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground"
+				class="mt-4 inline-flex min-h-11 items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-foreground"
 			>
 				Return to email settings
 			</a>

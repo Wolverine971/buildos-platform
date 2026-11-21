@@ -7,6 +7,8 @@ const LEGACY_PATH_REDIRECTS = new Map<string, string>([
 	['/community', '/contact'],
 	['/community/', '/contact'],
 	['/s-build-os.webp', '/twitter_card_light.webp'],
+	// A static copy of the API docs that loaded its viewer from a CDN; the app page replaced it.
+	['/docs/api.html', '/docs/api'],
 	// Merged into the irresistible-hooks deep-read (combined build formula + diagnostic).
 	[
 		'/blogs/source-analyses/kallaway-hooks-impossible-to-skip',

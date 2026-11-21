@@ -312,7 +312,7 @@
 		</label>
 		<button
 			type="submit"
-			class="rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-40"
+			class="rounded-md bg-accent px-3 py-2 text-xs font-medium text-accent-foreground disabled:opacity-40"
 			disabled={!sessionInput.trim()}>Open</button
 		>
 		{#if sessionId}

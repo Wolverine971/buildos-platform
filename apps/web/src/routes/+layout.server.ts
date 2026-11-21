@@ -137,6 +137,7 @@ const WORKFLOW_LAB_NAV_EMAIL = 'djwayne35@gmail.com';
 export const load: LayoutServerLoad = async ({
 	locals: { safeGetSession, supabase, serverTiming },
 	url,
+	route,
 	cookies,
 	depends
 }) => {
@@ -179,8 +180,13 @@ export const load: LayoutServerLoad = async ({
 
 	const completedOnboarding = Boolean(user.onboarding_completed_at);
 	const nowMs = Date.now();
-	const routePath = url.pathname;
-	const shouldLoadBillingContext = stripeEnabled && !routePath.startsWith('/auth');
+	// The route, not the address. Reading `url.pathname` makes SvelteKit re-run this load on
+	// every address change, query-only ones included: a Settings tab, a History search, a
+	// filter. Reading `route.id` re-runs it when the visitor moves to a different page, which
+	// is when the invite, billing and last-visit reads below are worth repeating. Read it on
+	// its own line: behind `stripeEnabled &&` it would go unread, and untracked, with Stripe off.
+	const routeId = route.id ?? '';
+	const shouldLoadBillingContext = stripeEnabled && !routeId.startsWith('/auth');
 
 	// Email suggestions is an allowlisted admin experiment: everyone else skips the lookup.
 	const emailSuggestionsAllowed =

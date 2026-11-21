@@ -31,6 +31,8 @@
 	type MemberRow = {
 		actor_id: string;
 		role_key: string | null;
+		// Whether a ping can reach this person by email. The address itself stays on the server.
+		can_email?: boolean;
 		actor: Actor | Actor[] | null;
 	};
 
@@ -46,6 +48,7 @@
 		userId: string | null;
 		name: string | null;
 		email: string | null;
+		canEmail: boolean;
 		roleKey: string | null;
 	};
 
@@ -99,7 +102,7 @@
 	const currentMember = $derived.by(() =>
 		members.find((member) => member.actorId === currentActorId)
 	);
-	const selectedMemberHasEmail = $derived(Boolean(selectedMember?.email));
+	const selectedMemberHasEmail = $derived(Boolean(selectedMember?.canEmail));
 	const selectedMemberLabel = $derived(
 		selectedMember
 			? getDisplayLabel(
@@ -189,6 +192,7 @@
 				userId: actor?.user_id ?? null,
 				name: actor?.name ?? null,
 				email: actor?.email ?? null,
+				canEmail: row.can_email === true,
 				roleKey: row.role_key ?? null
 			});
 		}
@@ -389,7 +393,7 @@
 						<option value="in_app">Notification (inside BuildOS)</option>
 					</Select>
 
-					{#if channel === 'email' && selectedMember && !selectedMember.email}
+					{#if channel === 'email' && selectedMember && !selectedMember.canEmail}
 						<p class="text-xs text-destructive">
 							This collaborator does not have an email address.
 						</p>

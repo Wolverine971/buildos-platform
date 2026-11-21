@@ -21,10 +21,12 @@
 		if (!browser) return;
 
 		try {
-			// Dynamically import Swagger UI
+			// Swagger UI's script and stylesheet both come from the installed package, so they are
+			// the same locked version and nothing on this page loads from a third-party host.
 			const [SwaggerUIBundle, SwaggerUIStandalonePreset] = await Promise.all([
 				import('swagger-ui-dist/swagger-ui-bundle.js'),
-				import('swagger-ui-dist/swagger-ui-standalone-preset.js')
+				import('swagger-ui-dist/swagger-ui-standalone-preset.js'),
+				import('swagger-ui-dist/swagger-ui.css')
 			]);
 
 			SwaggerUIBundle.default({
@@ -57,14 +59,6 @@
 		}
 	});
 </script>
-
-<svelte:head>
-	<link
-		rel="stylesheet"
-		type="text/css"
-		href="https://unpkg.com/swagger-ui-dist@latest/swagger-ui.css"
-	/>
-</svelte:head>
 
 <div class="swagger-ui-wrapper">
 	<div class="swagger-header">
