@@ -15,6 +15,7 @@ import {
 	getKnowledgePredicate,
 	hostMatchesDomain,
 	isKnowledgeKind,
+	isSpecificPersonName,
 	KNOWLEDGE_MIN_QUOTE_CHARS,
 	normalizeUrl,
 	normalizeKnowledgeName,
@@ -26,6 +27,13 @@ import {
 	type KnowledgeKind,
 	type KnowledgeWriteBatch
 } from '@buildos/shared-agent-ops/knowledge';
+import {
+	isSocialUrl,
+	parseSocialProfile,
+	profileFitsKind,
+	SOCIAL_PLATFORM_LABELS,
+	type SocialPlatform
+} from './socialProfiles';
 
 export const KNOWLEDGE_ENRICH_OPERATION = 'knowledge_enrich';
 
@@ -213,6 +221,8 @@ Rules:
 - Every fact needs "page" (the page number) and "quote": words copied exactly from that page (5 to 200 characters) that state the fact. One quote may support more than one fact.
 - When a page is itself the entry's profile or own website, report that page's url (from its page tag) as profile_url or homepage, and quote the words on the page that show whose it is. For a person, homepage is their own site, never their employer's.
 - When a page gives only a handle for a profile (@name), write the standard link for that platform without inventing anything else: instagram.com/name, x.com/name, youtube.com/@name.
+- Social accounts need proof, because many people and companies share a name. Report a profile_url only when this page is that account, or this page is about the entry and shows the link or handle as the entry's own. Never report an account because its name matches, and never one you only believe exists. One fact per account. A personal LinkedIn (linkedin.com/in/…) belongs to a person; a company page (linkedin.com/company/…) to an organization.
+- For an organization only: also list under "people" each person a page names as owning, founding, running or working at it, with their role there as "title" in the page's words. Full names only (first and last), at most 6, each with "page" and an exact "quote" that contains the name. Leave "people" out for anything that is not an organization.
 - Values: plain text, URLs as written on the page, dates as YYYY or YYYY-MM-DD.
 - For relationships (value is another entry, such as an employer), give "object": {"kind": "...", "name": "..."} and no "value". For everything else give "value" and no "object".
 - "qualifiers": only the keys listed for that predicate, when the page states them, for example {"title":"Producer","current":true}. Otherwise leave it out.
@@ -222,7 +232,7 @@ Rules:
 - For a person: never report a home address, birthday or family details. Report a phone number or email only when it is one of the predicates you are given, the page publishes it as this person's own contact (not a company switchboard or someone else's), and the quote contains it.
 
 Return JSON only:
-{"pages":[{"page":1,"about_entity":true}],"facts":[{"predicate":"headline","value":"...","page":1,"quote":"...","confidence":0.9},{"predicate":"works_at","object":{"kind":"org","name":"..."},"qualifiers":{"title":"..."},"page":1,"quote":"...","confidence":0.9}]}`;
+{"pages":[{"page":1,"about_entity":true}],"facts":[{"predicate":"headline","value":"...","page":1,"quote":"...","confidence":0.9},{"predicate":"works_at","object":{"kind":"org","name":"..."},"qualifiers":{"title":"..."},"page":1,"quote":"...","confidence":0.9}],"people":[{"name":"...","title":"...","page":1,"quote":"..."}]}`;
 
 const KIND_WORDS: Partial<Record<KnowledgeKind, string>> = {
 	person: 'a person',
@@ -488,7 +498,15 @@ export function validateEnrichment(
 				squash(quote).includes(claimed) ||
 				squashedPages[pageNumber - 1]!.includes(claimed) ||
 				(bare.length > 5 && squashedPages[pageNumber - 1]!.includes(bare)));
-		const common = {
+		const common: {
+			subject: string;
+			predicate: string;
+			sources: string[];
+			quote: string;
+			confidence: number;
+			status: 'active' | 'suggested';
+			qualifiers?: Record<string, unknown>;
+		} = {
 			subject: input.entityId,
 			predicate,
 			sources: [sourceRef],
@@ -530,13 +548,38 @@ export function validateEnrichment(
 			}
 			batch.facts.push({ ...common, object: ref });
 		} else {
-			const value =
+			let value =
 				typeof fact.value === 'string' || typeof fact.value === 'number'
 					? String(fact.value).trim()
 					: '';
 			if (!value) {
 				drop('no value');
 				continue;
+			}
+			let profileSupported = false;
+			if (predicate === 'profile_url' && isSocialUrl(value)) {
+				// An address on a social platform must be an account (not a post or a share
+				// button), of the right kind, and is saved in one standard form.
+				const profile = parseSocialProfile(value);
+				if (!profile) {
+					drop('not an account address');
+					continue;
+				}
+				if (!profileFitsKind(profile, input.kind)) {
+					drop('wrong kind of account');
+					continue;
+				}
+				value = profile.url;
+				common.qualifiers = {
+					...(common.qualifiers ?? {}),
+					platform: SOCIAL_PLATFORM_LABELS[profile.platform]
+				};
+				// The page shows the account name ("Instagram @name") or is the account itself.
+				profileSupported =
+					squashedPages[pageNumber - 1]!.includes(profile.handle) ||
+					parseSocialProfile(page.url)?.url === profile.url;
+				if (profileSupported && confidence >= 0.6 && !input.suggestOnly && !input.suggestPages?.has(pageNumber))
+					common.status = 'active';
 			}
 			if (existing.has(`${predicate}|${squash(value)}`)) {
 				drop('already known');
@@ -546,8 +589,74 @@ export function validateEnrichment(
 		}
 		kept++;
 	}
+
+	// An organization's people. A company's entry cannot hold "who runs it", so each person a
+	// page names with a role there becomes (or joins) their own entry, pointing at this one.
+	if (input.kind === 'org') {
+		const seen = new Set<string>();
+		for (const item of Array.isArray(answer.people) ? answer.people : []) {
+			if (seen.size >= MAX_PEOPLE_PER_ORG) break;
+			const person = (item && typeof item === 'object' ? item : {}) as Record<string, unknown>;
+			const name = typeof person.name === 'string' ? person.name.trim().slice(0, 120) : '';
+			const title = typeof person.title === 'string' ? person.title.trim().slice(0, 160) : '';
+			const pageNumber = typeof person.page === 'number' ? person.page : Number(person.page);
+			const quote = typeof person.quote === 'string' ? person.quote.trim() : '';
+			const page = input.pages[pageNumber - 1];
+			const drop = (reason: string) => dropped.push({ predicate: 'works_at', reason });
+			const key = normalizeKnowledgeName(name);
+			if (!name || !isSpecificPersonName(name) || seen.has(key)) {
+				if (name && !seen.has(key)) drop('not a full name');
+				continue;
+			}
+			if (!page || pageVerdicts.get(pageNumber) === false) {
+				drop('cites no page about this organization');
+				continue;
+			}
+			const pageText = squashedPages[pageNumber - 1]!;
+			if (
+				quote.length < MIN_QUOTE_CHARS ||
+				!pageText.includes(squash(quote)) ||
+				!pageText.includes(squash(name))
+			) {
+				drop('quote not on the page');
+				continue;
+			}
+			seen.add(key);
+			let sourceRef = sourceRefs.get(pageNumber);
+			if (!sourceRef) {
+				sourceRef = `page${pageNumber}`;
+				sourceRefs.set(pageNumber, sourceRef);
+				batch.sources!.push({
+					ref: sourceRef,
+					type: 'web',
+					url: page.url,
+					...(page.title ? { title: page.title.slice(0, 500) } : {})
+				});
+			}
+			const ref = `person${seen.size}`;
+			batch.entities.push({ ref, kind: 'person', name });
+			batch.facts.push({
+				subject: ref,
+				predicate: 'works_at',
+				object: input.entityId,
+				sources: [sourceRef],
+				quote: quote.slice(0, 1000),
+				confidence: 0.85,
+				// The title must be the page's own words to be taken as stated.
+				status:
+					input.suggestOnly || input.suggestPages?.has(pageNumber) ? 'suggested' : 'active',
+				...(title && pageText.includes(squash(title))
+					? { qualifiers: { title, current: true } }
+					: {})
+			});
+			kept++;
+		}
+	}
 	return { batch, kept, dropped };
 }
+
+/** How many people one research round may attach to an organization. */
+const MAX_PEOPLE_PER_ORG = 6;
 
 /** Google's knowledge panel as Serper returns it (bounded by shared-agent-ops). */
 export interface EnrichKnowledgePanel {
@@ -682,20 +791,68 @@ const PLAYBOOKS: Partial<Record<KnowledgeKind, { about: string[]; searching: str
 			'Goal: who this person is professionally, so the user can work with them.',
 			'- Bring back: current role and employer, a one-line description of what they do, a public profile (LinkedIn, a staff or author page, a personal site), the city they work from, schooling when a page states it, and a work email or phone only when it was asked for and a page publishes it as theirs. "Website" means the person\'s own site, never their employer\'s.',
 			'- Same-name people are the main risk. A page counts only when it agrees with a lead (employer, show, role, city, the work it appears in).',
+			'- Social accounts: their personal LinkedIn first, then Instagram or X when they use it publicly. A name match proves nothing: there are many accounts under one name. An account is theirs when a page that is certainly theirs links to it (their own site, a confirmed profile\'s bio, their employer\'s page about them), or when the account\'s own bio agrees with a lead.',
 			'- Never: home address, birthday, family, personal social accounts unrelated to work.'
 		],
 		searching:
-			'- Where it is found: the employer\'s team, staff, masthead or "about" page; LinkedIn; bylines and author pages; podcast or show credits; conference speaker pages; interviews. A bare name search is the weakest search there is: always pair the name with the employer, show, role or city. For an email or phone, look only where the person or their employer publishes it (their own site, a staff or contact page): never search people-finder or background-check sites.'
+			'- Where it is found: the employer\'s team, staff, masthead or "about" page; LinkedIn; bylines and author pages; podcast or show credits; conference speaker pages; interviews. A bare name search is the weakest search there is: always pair the name with the employer, show, role or city. For an email or phone, look only where the person or their employer publishes it (their own site, a staff or contact page): never search people-finder or background-check sites. For a social account, search the name WITH a lead and the platform ("Jane Roe" Acme instagram), never the bare name on the platform; an account name already confirmed on one platform is worth trying on another (janeroe on X, then janeroe instagram).'
 	},
 	org: {
 		about: [
 			'Goal: what this organization is and how to reach it.',
 			'- Bring back: its own website, what it does or sells in one line, industry, where it is based, when it was founded, a public profile (LinkedIn company page), a general contact email or phone, and what it is part of when a page says so.',
 			'- "Located in" is where it is based: its office, shop or home town. A place where it only runs a class or event, ships to, or has a customer is not where it is located: leave "Located in" out unless a page says where it is based.',
-			'- Same-name organizations are common. A page counts only when it agrees with a lead (website, city, industry, people who work there).'
+			'- Same-name organizations are common. A page counts only when it agrees with a lead (website, city, industry, people who work there).',
+			'- Social accounts: its LinkedIn company page first, then Instagram, YouTube, X or Facebook. Its own website is the surest source: the header and footer link to its accounts, and those links are read for you from any page of its site that gets opened.',
+			'- People: who owns, founded or runs it, when a page names them with their role (an about, team, leadership or instructors page).'
 		],
 		searching:
-			'- Where it is found: its own site first (home, about, contact, team pages), then its LinkedIn company page, press coverage, directories and registries. When the website is unknown, search the name with its city, industry or a person who works there to find it.'
+			'- Where it is found: its own site first (home, about, contact, team pages), then its LinkedIn company page, press coverage, directories and registries. When the website is unknown, search the name with its city, industry or a person who works there to find it. For its LinkedIn page search the name with "linkedin company" and a lead; for who runs it, its about, team or leadership page.'
+	},
+	website: {
+		about: [
+			'Goal: what this website is and who is behind it.',
+			'- Bring back: a one-line description of what it is for, the organization or person that publishes it, and its accounts on other platforms when the site links to them.',
+			'- The site itself is the source: its home, about and contact pages.'
+		],
+		searching:
+			'- Where it is found: the site\'s own pages first (use site: with its address), then coverage that names who runs it.'
+	},
+	channel: {
+		about: [
+			'Goal: what this channel or show covers and who makes it.',
+			'- Bring back: a one-line description, who hosts or publishes it, its address on the platform it lives on, and its website when it has one.',
+			'- Channels share names. A page counts only when it agrees with a lead (a host, the platform, a topic, the organization behind it).'
+		],
+		searching:
+			'- Where it is found: the channel\'s own page on its platform, the publisher\'s website, and coverage of the show. Pair the name with a host or the platform.'
+	},
+	place: {
+		about: [
+			'Goal: what this place is and where it is.',
+			'- Bring back: what kind of place it is in one line, its address or the town it is in, its website, and a public phone number when a page publishes one.',
+			'- Places share names across towns. A page counts only when the town or region agrees with a lead.'
+		],
+		searching:
+			'- Where it is found: its own website, a map or directory listing, and local coverage. Always pair the name with its town or region.'
+	},
+	product: {
+		about: [
+			'Goal: what this product is and who makes it.',
+			'- Bring back: a one-line description of what it does, the company that makes it, and its website.',
+			'- A page counts only when it agrees with a lead (the maker, the category, how the user uses it).'
+		],
+		searching:
+			'- Where it is found: the product\'s own site and its maker\'s site. Pair the name with the maker or the category.'
+	},
+	event: {
+		about: [
+			'Goal: what this event is, when and where.',
+			'- Bring back: a one-line description, the date, the place, who organizes it, and its website.',
+			'- Events repeat every year and share names. A page counts only when the year, place or organizer agrees with a lead.'
+		],
+		searching:
+			'- Where it is found: the event\'s own page and its organizer\'s site. Pair the name with the year, city or organizer.'
 	}
 };
 
@@ -729,7 +886,7 @@ Decide two things:
 1. "kind": what the entry really is: one of the allowed types. Use the user's own words and the records ("she runs the bakery" means a person, whatever the entry is filed as). If nothing contradicts the filed type, keep it. When the real type differs from the filed one, plan the searches for the real type: the guide and the list of details given for the filed type no longer apply, so search for who or what it really is.
 2. "queries": the web searches most likely to find what is listed under "What to find". Each one short (2 to 8 words plus quoted names), each one a different angle. Pair the quoted name with a lead from the records or the user's words: an employer, show, role, city, website or industry. Leads in the records are there to be searched. Use site: for a known website. Never write a sentence and never copy the user's words wholesale. Never put in a search: an email address, a phone number, a price or deal term, or the names of the user's other contacts and clients.
 
-Aim the searches at what is still missing: a detail already known needs no search. An "Earlier research" line in the records is a past run; when it lists its searches, do not repeat them.
+Aim the searches at what is still missing: a detail already known needs no search. When social accounts are still worth finding, give one search to the most wanted one, built the way the guide says (name, lead and platform together). Software reads the account links off the entry's own website for free, so a search that reaches that website is often the best way to find a company's accounts. An "Earlier research" line in the records is a past run; when it lists its searches, do not repeat them.
 
 On a second round, do not repeat a search that was already run, in any wording or word order. Follow what was found (a handle, a profile, an employer page, a new name) or try a different angle and a different kind of site for what is still missing. A page marked unreadable could not be opened and will not open on a second try: look for the same facts elsewhere (the employer's own site, an interview, a credits or speaker page). A page marked different was about someone else with the same name: add a lead to the search so it is not found again. Return no queries when nothing useful is left to try.
 
@@ -746,6 +903,8 @@ export interface ResearchPlanInput {
 	lookingFor: string[];
 	/** Labels of other details the entry can hold (see alsoWorthSaving). */
 	alsoWorthSaving?: string[];
+	/** Social accounts: the ones already on the entry, and the platforms still worth finding. */
+	profiles?: { have: string[]; want: string[] };
 	/** Second round: what the first round did. */
 	previous?: {
 		queries: string[];
@@ -772,6 +931,12 @@ export function researchPlanUserPrompt(input: ResearchPlanInput): string {
 				: 'Asked for specifically: the usual details for its type.',
 			input.alsoWorthSaving?.length
 				? `Also worth finding, because the entry can hold it: ${input.alsoWorthSaving.join(', ')}`
+				: '',
+			input.profiles?.have.length
+				? `Social accounts already on the entry: ${input.profiles.have.join(', ')}`
+				: '',
+			input.profiles?.want.length
+				? `Social accounts still worth finding: ${input.profiles.want.join(', ')}`
 				: ''
 		]
 			.filter(Boolean)
@@ -829,4 +994,15 @@ export function validateResearchPlan(
 		if (queries.length >= (input.limit ?? MAX_PLANNED_QUERIES)) break;
 	}
 	return { kind, queries };
+}
+
+/** "X (@name)" for each saved account and the platform names still worth finding. */
+export function profilesForPlanner(status: {
+	have: Array<{ platform: SocialPlatform; handle: string }>;
+	want: SocialPlatform[];
+}): { have: string[]; want: string[] } {
+	return {
+		have: status.have.map((p) => `${SOCIAL_PLATFORM_LABELS[p.platform]} (@${p.handle})`),
+		want: status.want.map((p) => SOCIAL_PLATFORM_LABELS[p])
+	};
 }

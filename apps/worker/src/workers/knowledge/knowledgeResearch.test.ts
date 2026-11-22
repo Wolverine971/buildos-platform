@@ -322,3 +322,79 @@ describe('researchEntity: pages that will not open', () => {
 	});
 });
 
+describe('researchEntity: social accounts', () => {
+	it("saves the accounts the entry's own website links to, and not a same-name account it could not confirm", async () => {
+		const outcome = await researchEntity(
+			{
+				detail: detail(),
+				anchors: anchors(),
+				fields: ['profile_url'],
+				instructions: null,
+				userId: '22222222-2222-4222-8222-222222222222',
+				queries: ['"Cody Shooting Complex" instagram']
+			},
+			{
+				llm: {
+					// The model volunteers the unconfirmed account: the rules take it back out.
+					getJSONResponse: async () => ({
+						pages: [],
+						facts: [
+							{
+								predicate: 'profile_url',
+								value: 'https://www.instagram.com/codyshooting',
+								page: 2,
+								quote: 'Cody Shooting (@codyshooting)',
+								confidence: 0.9
+							}
+						]
+					})
+				} as never,
+				port: {
+					search: async () => ({
+						results: [
+							{
+								url: 'https://codyshootingcomplex.org/about',
+								title: 'About',
+								page_content: `${OWN} About the range.`
+							},
+							{
+								url: 'https://www.instagram.com/codyshooting',
+								title: 'Cody Shooting (@codyshooting)',
+								page_content: 'Cody Shooting (@codyshooting) photos and videos'
+							}
+						]
+					})
+				},
+				decider: null, // no model: the own site passes by rule, the Instagram page is "ask"
+				charge: () => {},
+				takeReserved: () => 0,
+				budgetLeft: () => 0.03,
+				fetchHtml: async (url) =>
+					url.includes('codyshootingcomplex.org')
+						? '<footer><a href="https://www.facebook.com/codyshootingcomplex"><svg/></a></footer>'
+						: null
+			}
+		);
+		expect(outcome.socials).toEqual([
+			{
+				url: 'https://www.facebook.com/codyshootingcomplex',
+				platform: 'facebook',
+				ground: 'linked',
+				from: 'https://codyshootingcomplex.org/about'
+			}
+		]);
+		const profiles = outcome.batch.facts.filter((f) => f.predicate === 'profile_url');
+		expect(profiles).toHaveLength(1);
+		expect(profiles[0]).toMatchObject({
+			value: 'https://www.facebook.com/codyshootingcomplex',
+			status: 'active',
+			qualifiers: { platform: 'Facebook' }
+		});
+		expect(outcome.nameOnlyProfiles).toEqual(['https://www.instagram.com/codyshooting']);
+		expect(outcome.dropped).toContainEqual({
+			predicate: 'profile_url',
+			reason: 'matched on the name only'
+		});
+	});
+});
+

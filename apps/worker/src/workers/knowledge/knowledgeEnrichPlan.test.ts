@@ -645,5 +645,77 @@ describe('planned research', () => {
 		);
 		expect(picked.map((p) => p.url)).toEqual(['https://example.com/team']);
 	});
+
+	it('saves an account link in standard form, and refuses posts and the wrong kind of account', async () => {
+		const plan = await import('./knowledgeEnrichPlan');
+		const page = {
+			url: 'https://thecadretraining.com/press',
+			title: 'Press',
+			content: 'Follow us. Instagram @thecadre.training. See our latest post. The Cadre on LinkedIn.'
+		};
+		const fact = (value: string) => ({
+			predicate: 'profile_url',
+			value,
+			page: 1,
+			quote: 'Instagram @thecadre.training',
+			confidence: 0.9
+		});
+		const result = plan.validateEnrichment(
+			{
+				pages: [{ page: 1, about_entity: true }],
+				facts: [
+					fact('https://www.instagram.com/@thecadre.training'),
+					fact('https://www.instagram.com/p/C8abc123/'),
+					fact('https://www.linkedin.com/in/phil-someone')
+				]
+			},
+			{ entityId: 'e1', kind: 'org', fields: ['profile_url'], pages: [page], existing: [] }
+		);
+		expect(result.batch.facts).toHaveLength(1);
+		expect(result.batch.facts[0]).toMatchObject({
+			value: 'https://www.instagram.com/thecadre.training',
+			status: 'active',
+			qualifiers: { platform: 'Instagram' }
+		});
+		expect(result.dropped.map((d) => d.reason)).toEqual([
+			'not an account address',
+			'wrong kind of account'
+		]);
+	});
+
+	it("attaches the people a company's page names, each to their own entry", async () => {
+		const plan = await import('./knowledgeEnrichPlan');
+		const page = {
+			url: 'https://thecadretraining.com/instructors',
+			title: 'Instructors',
+			content: 'Phil Velayo, Lead Instructor, served as a Scout Sniper. Our team also thanks Steve.'
+		};
+		const result = plan.validateEnrichment(
+			{
+				pages: [{ page: 1, about_entity: true }],
+				facts: [],
+				people: [
+					{ name: 'Phil Velayo', title: 'Lead Instructor', page: 1, quote: 'Phil Velayo, Lead Instructor' },
+					{ name: 'Steve', title: 'Friend', page: 1, quote: 'Our team also thanks Steve.' },
+					{ name: 'Jane Madeup', title: 'CEO', page: 1, quote: 'Phil Velayo, Lead Instructor' }
+				]
+			},
+			{ entityId: 'org1', kind: 'org', fields: ['description'], pages: [page], existing: [] }
+		);
+		expect(result.batch.entities).toEqual([{ ref: 'person1', kind: 'person', name: 'Phil Velayo' }]);
+		expect(result.batch.facts[0]).toMatchObject({
+			subject: 'person1',
+			predicate: 'works_at',
+			object: 'org1',
+			status: 'active',
+			qualifiers: { title: 'Lead Instructor', current: true }
+		});
+		// A person entry never gets "people".
+		const asPerson = plan.validateEnrichment(
+			{ pages: [], facts: [], people: [{ name: 'Phil Velayo', page: 1, quote: 'Phil Velayo, Lead Instructor' }] },
+			{ entityId: 'p1', kind: 'person', fields: ['headline'], pages: [page], existing: [] }
+		);
+		expect(asPerson.batch.facts).toHaveLength(0);
+	});
 });
 

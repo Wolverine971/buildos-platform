@@ -15,7 +15,9 @@
 
 import {
 	checkIdentityBatch,
+	domainOf,
 	hasKnowledgeAnchors,
+	hostMatchesDomain,
 	type IdentityCheckResult,
 	type IdentityDecider,
 	type KnowledgeAnchors,
@@ -23,6 +25,13 @@ import {
 	type KnowledgeWriteBatch
 } from '@buildos/shared-agent-ops/knowledge';
 import type { JSONRequestOptions } from '@buildos/smart-llm';
+import {
+	findSocialProfiles,
+	parseSocialProfile,
+	SOCIAL_PLATFORM_LABELS,
+	type SocialFinding,
+	type SocialPage
+} from './socialProfiles';
 import { readPaidToolCharge } from '../agent-run/webResearchPort';
 import {
 	alsoWorthSaving,
@@ -81,6 +90,11 @@ export interface ResearchDeps {
 	/** Budget left for this target, after spend so far. */
 	budgetLeft: () => number;
 	advance?: (phase: ResearchPhase) => Promise<void>;
+	/**
+	 * Raw HTML of a page on the entry's own website (free). Footer icons link to a company's
+	 * accounts, and those links are not in the page's text. Null when it cannot be fetched.
+	 */
+	fetchHtml?: (url: string) => Promise<string | null>;
 	signal?: AbortSignal;
 }
 
@@ -102,6 +116,10 @@ export interface ResearchOutcome {
 	unread: string[];
 	/** Pages that would not open, read from the search engine's preview of them instead. */
 	previews: string[];
+	/** Social accounts taken as the entry's own this round, and on what ground. */
+	socials: Array<{ url: string; platform: string; ground: SocialFinding['ground']; from: string }>;
+	/** Profiles that matched on the name alone and were not saved. */
+	nameOnlyProfiles: string[];
 	/** What the identity check said about each page considered. */
 	verdicts: PageVerdict[];
 	/** Pages dropped as a different same-name entity. */
@@ -127,6 +145,8 @@ export async function researchEntity(
 		pages: [],
 		unread: [],
 		previews: [],
+		socials: [],
+		nameOnlyProfiles: [],
 		verdicts: [],
 		differentPages: 0,
 		// What the user just said about the entry counts as something known to check pages
@@ -240,6 +260,8 @@ export async function researchEntity(
 	// known (no anchors): then everything found is a suggestion for the user to check.
 	let pages: EnrichPage[] = candidates;
 	const suggestPages = new Set<number>();
+	// What the check said about each kept page, for deciding whose social accounts are whose.
+	const checked = new Map<string, { verdict: 'same' | 'ask'; ownSite: boolean }>();
 	if (anchors && !outcome.unanchored) {
 		const check = await checkIdentityBatch(
 			// What the user typed for this research is the best lead there is about who this is.
@@ -274,6 +296,10 @@ export async function researchEntity(
 				return;
 			}
 			pages.push(page);
+			checked.set(page.url, {
+				verdict: result.verdict === 'same' ? 'same' : 'ask',
+				ownSite: result.reason === 'own_site'
+			});
 			if (result.verdict === 'ask') suggestPages.add(pages.length);
 		});
 	}
@@ -319,7 +345,98 @@ export async function researchEntity(
 	});
 	outcome.batch = validated.batch;
 	outcome.dropped = validated.dropped;
+
+	// 5. Social accounts, decided by rules and never by a name match: what the entry's own
+	// website declares or links, a profile that was itself confirmed and what its bio links.
+	const confirmedSite = [
+		context.homepage,
+		...validated.batch.facts
+			.filter((f) => f.predicate === 'homepage' && f.status !== 'suggested')
+			.map((f) => String(f.value ?? ''))
+	]
+		.map((url) => (url ? domainOf(url) : null))
+		.filter((d): d is string => Boolean(d));
+	const socialPages: SocialPage[] = [];
+	let htmlFetches = 0;
+	for (const page of pages) {
+		if (page.site !== undefined) continue; // the knowledge panel is not a page of theirs
+		const state = checked.get(page.url) ?? { verdict: 'ask' as const, ownSite: false };
+		const host = domainOf(page.url);
+		const ownSite =
+			state.ownSite ||
+			(state.verdict === 'same' &&
+				Boolean(host) &&
+				confirmedSite.some((d) => hostMatchesDomain(host!, d)));
+		let html: string | null = null;
+		if (ownSite && deps.fetchHtml && htmlFetches < MAX_PAGES_PER_TARGET) {
+			htmlFetches++;
+			html = await deps.fetchHtml(page.url).catch(() => null);
+		}
+		socialPages.push({
+			url: page.url,
+			title: page.title,
+			text: page.content,
+			verdict: state.verdict,
+			ownSite,
+			html
+		});
+	}
+	const social = findSocialProfiles({
+		kind: detail.entity.kind,
+		pages: socialPages,
+		known: context.existing.filter((e) => e.predicate === 'profile_url').map((e) => e.value)
+	});
+	outcome.nameOnlyProfiles = social.nameOnly;
+	if (fields.includes('profile_url') || also.includes('profile_url'))
+		applySocialFindings(outcome, social, detail.entity.id);
 	return outcome;
+}
+
+/**
+ * Put the rule-decided accounts into the round's batch. They replace whatever the model said
+ * about the same account, and a profile that matched on the name alone is taken out.
+ */
+function applySocialFindings(
+	outcome: ResearchOutcome,
+	social: ReturnType<typeof findSocialProfiles>,
+	entityId: string
+): void {
+	const decided = new Set([...social.findings.map((f) => f.profile.url), ...social.nameOnly]);
+	const facts = outcome.batch.facts.filter((fact) => {
+		if (fact.predicate !== 'profile_url') return true;
+		const profile = parseSocialProfile(String(fact.value ?? ''));
+		if (!profile || !decided.has(profile.url)) return true;
+		if (social.nameOnly.includes(profile.url))
+			outcome.dropped.push({ predicate: 'profile_url', reason: 'matched on the name only' });
+		return false;
+	});
+	const sources = [...(outcome.batch.sources ?? [])];
+	social.findings.forEach((finding, i) => {
+		const ref = `social${i}`;
+		sources.push({
+			ref,
+			type: 'web',
+			url: finding.pageUrl,
+			...(finding.pageTitle ? { title: finding.pageTitle.slice(0, 500) } : {})
+		});
+		facts.push({
+			subject: entityId,
+			predicate: 'profile_url',
+			value: finding.profile.url,
+			qualifiers: { platform: SOCIAL_PLATFORM_LABELS[finding.profile.platform] },
+			sources: [ref],
+			quote: finding.evidence.slice(0, 1000),
+			confidence: finding.confirmed ? 0.95 : 0.5,
+			status: finding.confirmed && !outcome.unanchored ? 'active' : 'suggested'
+		});
+		outcome.socials.push({
+			url: finding.profile.url,
+			platform: finding.profile.platform,
+			ground: finding.ground,
+			from: finding.pageUrl
+		});
+	});
+	outcome.batch = { ...outcome.batch, facts, sources };
 }
 
 /** "3 pages read, 2 new details, 1 to check" plus what the identity check did. */

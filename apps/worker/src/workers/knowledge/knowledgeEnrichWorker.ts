@@ -35,6 +35,7 @@ import {
 	type KnowledgeKind,
 	type KnowledgeWriteBatch
 } from '@buildos/shared-agent-ops/knowledge';
+import { fetchPublicUrl } from '@buildos/shared-agent-ops/web/safe-fetch';
 import { JevClient, LLMUsageLogger } from '@buildos/smart-llm';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
@@ -44,6 +45,7 @@ import {
 	alsoWorthSaving,
 	describeFields,
 	enrichContextFrom,
+	profilesForPlanner,
 	KNOWLEDGE_PLAN_OPERATION,
 	KNOWLEDGE_PLAN_SYSTEM_PROMPT,
 	MAX_PLANNED_QUERIES,
@@ -54,6 +56,7 @@ import {
 	type ResearchPlanInput
 } from './knowledgeEnrichPlan';
 import { promoteOrgFacts, publicOrgFacts } from './publicOrgLayer';
+import { platformStatus, WANTED_PLATFORMS } from './socialProfiles';
 import {
 	researchEntity,
 	researchSummary,
@@ -72,6 +75,11 @@ export interface KnowledgeEnrichDeps {
 	llm: JsonCaller;
 	makePort: (onCharge: (charge: PaidToolCharge) => void) => SearchPort;
 	fetchFn: typeof fetch;
+	/**
+	 * Raw HTML of a page on an entry's own website, for reading the account links in its
+	 * header and footer (free). Undefined → a guarded public fetch.
+	 */
+	fetchHtml?: (url: string, signal?: AbortSignal) => Promise<string | null>;
 	now: () => Date;
 	/**
 	 * The cheap structured decision model for circles and "same one?" checks. Undefined → the
@@ -144,6 +152,17 @@ export async function processKnowledgeEnrichJob(
 	const db = deps.db ?? (defaultSupabase as unknown as KnowledgeDataClient);
 	const llm = deps.llm ?? (sharedLlm ??= new SmartLLMService());
 	const fetchFn = deps.fetchFn ?? fetch;
+	const fetchHtml =
+		deps.fetchHtml ??
+		(async (url: string, signal?: AbortSignal) => {
+			const page = await fetchPublicUrl(url, {
+				fetchFn,
+				timeoutMs: 6_000,
+				maxBytes: 700_000,
+				...(signal ? { signal } : {})
+			});
+			return page.status < 400 ? page.body : null;
+		});
 	const now = deps.now ?? (() => new Date());
 	const decider = deps.decider === undefined ? getKnowledgeDecider() : deps.decider;
 	const iso = () => now().toISOString();
@@ -371,6 +390,11 @@ export async function processKnowledgeEnrichJob(
 			const labelsOf = (keys: readonly string[]) =>
 				keys.map((key) => getKnowledgePredicate(key)?.label ?? key);
 
+			// Account links on the entry being researched, kept current as rounds find more.
+			let profileUrls = context.existing
+				.filter((e) => e.predicate === 'profile_url')
+				.map((e) => e.value);
+
 			/** One small structured call: what this really is, and the searches worth running. */
 			const planRound = async (
 				subjectEntity: { name: string; kind: KnowledgeKind },
@@ -387,6 +411,13 @@ export async function processKnowledgeEnrichJob(
 							brief: briefText,
 							instructions,
 							lookingFor: describeFields(lookingFor),
+							...(lookingFor.includes('profile_url')
+								? {
+										profiles: profilesForPlanner(
+											platformStatus(subjectEntity.kind, profileUrls)
+										)
+									}
+								: {}),
 							...(previous
 								? {}
 								: {
@@ -457,6 +488,9 @@ export async function processKnowledgeEnrichJob(
 					subjectFields = enrichFieldsFor(subject.entity.kind, runFields);
 					// The brief is told from the entry being researched: its own details and
 					// what is missing for its type, with the misfiled copy listed as a copy.
+					profileUrls = subjectContext.existing
+						.filter((e) => e.predicate === 'profile_url')
+						.map((e) => e.value);
 					const subjectBrief = await loadKnowledgeFocusBrief(
 						store,
 						db,
@@ -494,7 +528,15 @@ export async function processKnowledgeEnrichJob(
 			for (let round = 1; round <= MAX_RESEARCH_ROUNDS; round++) {
 				if (round > 1) {
 					// A second round only for what is still missing, and only with budget left.
-					const missing = subjectFields.filter((field) => !foundPredicates.has(field));
+					// One account does not finish "profiles": a person's LinkedIn or Instagram, or a
+					// company's, may still be worth a search.
+					const wanted = platformStatus(subject.entity.kind, profileUrls).want;
+					const mainPlatforms = (WANTED_PLATFORMS[subject.entity.kind] ?? []).slice(0, 2);
+					const missing = subjectFields.filter(
+						(field) =>
+							!foundPredicates.has(field) ||
+							(field === 'profile_url' && mainPlatforms.some((p) => wanted.includes(p)))
+					);
 					if (!missing.length || budget - spent < 0.012) break;
 					roundPlan = await planRound(subject.entity, missing, {
 						queries: trace.queries,
@@ -529,6 +571,7 @@ export async function processKnowledgeEnrichJob(
 						},
 						budgetLeft: () => budget - spent,
 						advance: (phase) => advance(target, phase),
+						fetchHtml: (url) => fetchHtml(url, job.signal),
 						signal: job.signal
 					}
 				);
@@ -556,12 +599,21 @@ export async function processKnowledgeEnrichJob(
 				totals.unanchored ||= outcome.unanchored;
 				totals.dropped += outcome.dropped.length;
 				for (const fact of outcome.batch.facts) {
+					// A person a page names at this organization: their fact, pointing here.
+					const person = outcome.batch.entities.find((e) => e.ref === fact.subject);
+					if (person) {
+						const title = (fact.qualifiers as { title?: string } | undefined)?.title;
+						found.push(`${person.name}${title ? `, ${title}` : ''} works here`);
+						continue;
+					}
 					foundPredicates.add(fact.predicate);
+					if (fact.predicate === 'profile_url') profileUrls.push(String(fact.value ?? ''));
 					const object = outcome.batch.entities.find((e) => e.ref === fact.object);
 					found.push(
 						`${getKnowledgePredicate(fact.predicate)?.label ?? fact.predicate}: ${object?.name ?? String(fact.value ?? '')}`
 					);
 				}
+				trace.socials = [...(trace.socials ?? []), ...outcome.socials].slice(0, 12);
 				// Each round is saved as it lands (free finds ride with the first).
 				const batch = round === 1 ? mergeBatch(free, outcome.batch) : outcome.batch;
 				if (batch.facts.length) {
@@ -737,6 +789,8 @@ function mergeBatch(into: KnowledgeWriteBatch, from: KnowledgeWriteBatch): Knowl
 interface ResearchTrace {
 	queries: string[];
 	pages: Array<{ url: string; title: string | null; verdict: string }>;
+	/** Social accounts taken as the entry's own, and the ground each was taken on. */
+	socials?: Array<{ url: string; platform: string; ground: string; from: string }>;
 	rounds: number;
 }
 
