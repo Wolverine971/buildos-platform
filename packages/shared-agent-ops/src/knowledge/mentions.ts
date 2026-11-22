@@ -569,13 +569,26 @@ export interface MentionCorrection {
 
 export interface MentionPlan {
 	mentions: MentionDraft[];
-	counts: { same: number; moved: number; edited: number; deleted: number; added: number };
+	counts: {
+		same: number;
+		moved: number;
+		edited: number;
+		deleted: number;
+		added: number;
+		/** Tags grown to the fuller name around them ("Strategies" → "Wayne Strategies"). */
+		widened: number;
+	};
 	corrections: MentionCorrection[];
 	deleted: Array<{ mentionId: string; entityId: string; text: string; field: MentionField }>;
 	/** Entries with at least one active mention after the plan. */
 	present: Set<string>;
 	/** Entries the user removed every tag of here. */
 	removedByUser: Set<string>;
+	/**
+	 * Entries left with no tag here because each of theirs sat inside a fuller name ("Strategies"
+	 * inside "Wayne Strategies"): the reader saw only part of that name.
+	 */
+	absorbed: Set<string>;
 }
 
 export interface PlanMentionsInput {
@@ -587,6 +600,11 @@ export interface PlanMentionsInput {
 	reader: MentionReaderName[];
 	/** Other entries linked to the record: every place their name appears is tagged too. */
 	linked?: MentionReaderName[];
+	/**
+	 * The owner's other entries whose names could complete a tag ("Wayne Strategies" for a tag on
+	 * "Strategies"). Used only to widen tags already placed, never to tag a new place.
+	 */
+	fuller?: MentionReaderName[];
 	/** The kind of each entry id (for spelling rules). */
 	kinds: Map<string, string>;
 }
@@ -640,7 +658,7 @@ export function planRecordMentions(input: PlanMentionsInput): MentionPlan {
 	const stored = new Map(input.existing.map((m) => [m.id, m]));
 	const seedById = new Map(seeds.map((s) => [s.id, s]));
 
-	const counts = { same: 0, moved: 0, edited: 0, deleted: 0, added: 0 };
+	const counts = { same: 0, moved: 0, edited: 0, deleted: 0, added: 0, widened: 0 };
 	const mentions: MentionDraft[] = [];
 	const corrections: MentionCorrection[] = [];
 	const deleted: MentionPlan['deleted'] = [];
@@ -790,6 +808,15 @@ export function planRecordMentions(input: PlanMentionsInput): MentionPlan {
 		counts.added++;
 	}
 
+	const fullerSpans: typeof readerSpans = [];
+	addSpans(input.fuller ?? [], fullerSpans);
+	const absorbedFrom = widenToFullerNames(input.fields, mentions, [
+		...readerSpans,
+		...linkedSpans,
+		...fullerSpans
+	]);
+	counts.widened = absorbedFrom.widened;
+
 	mentions.sort((a, b) => a.field.localeCompare(b.field) || a.start_offset - b.start_offset);
 	// A spot still tagged with the same name under another entry (two entries for one person)
 	// wasn't deleted; it was claimed by the other entry.
@@ -806,7 +833,80 @@ export function planRecordMentions(input: PlanMentionsInput): MentionPlan {
 			.filter((m) => m.status === 'removed' && m.entity_id && !present.has(m.entity_id))
 			.map((m) => m.entity_id!)
 	);
-	return { mentions, counts, corrections, deleted, present, removedByUser };
+	const absorbed = new Set([...absorbedFrom.entities].filter((id) => !present.has(id)));
+	return { mentions, counts, corrections, deleted, present, removedByUser, absorbed };
+}
+
+/**
+ * A reader often sees only part of a name: the doc model reads "Wayne Strategies" as the person
+ * "Wayne" and the organization "Strategies". When a reader-made tag sits inside a longer name
+ * the owner already has an entry for (or a longer spelling of its own entry, after a rename),
+ * the tag grows to cover that name and moves to that entry. Other reader tags inside the same
+ * name fold into it. The user's own tags and spots they removed a tag from are never touched.
+ * Pure span arithmetic on names from the database; nothing here reads what the prose means.
+ * Mutates `mentions`; returns the entries that gave up tags.
+ */
+/**
+ * The fuller span adds at least one word to the tag: not just a possessive ("Cindy" → "Cindy's")
+ * or punctuation ("Jr" → "Jr."), which are the same name written differently, not a longer one.
+ */
+export function addsWords(text: string, inner: MentionSpan, outer: MentionSpan): boolean {
+	const extra = `${text.slice(outer.start, inner.start)} ${text.slice(inner.end, outer.end)}`;
+	return /[\p{L}\p{N}]/u.test(extra.replace(/['’]s(?![\p{L}\p{N}])/gu, ''));
+}
+
+function widenToFullerNames(
+	fields: MentionFields,
+	mentions: MentionDraft[],
+	names: Array<{ entityId: string; field: MentionField; span: MentionSpan; length: number }>
+): { entities: Set<string>; widened: number } {
+	const entities = new Set<string>();
+	let widened = 0;
+	const spanOf = (m: MentionDraft) => ({ start: m.start_offset, end: m.end_offset });
+	for (const m of [...mentions]) {
+		if (!mentions.includes(m)) continue;
+		if (m.status !== 'active' || m.made_by !== 'reader' || !m.entity_id || m.pending_name)
+			continue;
+		const text = fields[m.field] ?? '';
+		const best = names
+			.filter(
+				(n) =>
+					n.field === m.field &&
+					n.span.start <= m.start_offset &&
+					n.span.end >= m.end_offset &&
+					n.length > m.end_offset - m.start_offset &&
+					addsWords(text, spanOf(m), n.span)
+			)
+			.sort((a, b) => b.length - a.length)[0];
+		if (!best) continue;
+		const others = mentions.filter(
+			(o) => o !== m && o.field === m.field && overlaps(spanOf(o), best.span)
+		);
+		const blocked = others.some(
+			(o) =>
+				o.made_by !== 'reader' ||
+				o.status !== 'active' ||
+				Boolean(o.pending_name) ||
+				o.start_offset < best.span.start ||
+				o.end_offset > best.span.end
+		);
+		if (blocked) continue;
+		for (const o of others) {
+			mentions.splice(mentions.indexOf(o), 1);
+			if (o.entity_id && o.entity_id !== best.entityId) entities.add(o.entity_id);
+		}
+		if (m.entity_id !== best.entityId) entities.add(m.entity_id);
+		Object.assign(
+			m,
+			draftFrom(anchorAt(text, best.span, m.field), best.entityId, {
+				...(m.id ? { id: m.id } : {}),
+				made_by: 'reader',
+				status: 'active'
+			})
+		);
+		widened++;
+	}
+	return { entities, widened };
 }
 
 // ---------------------------------------------------------------------------

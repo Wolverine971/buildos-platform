@@ -456,7 +456,8 @@ export async function processKnowledgeEnrichJob(
 			// the user said something for this run; an unprompted bulk run just reports it.
 			let subject = detail;
 			let subjectContext = context;
-			let subjectFields = lent.covered.length && stillWanted.length ? stillWanted : target.fields;
+			let subjectFields =
+				lent.covered.length && stillWanted.length ? stillWanted : target.fields;
 			let kindNote = '';
 			if (
 				plan &&
@@ -499,7 +500,9 @@ export async function processKnowledgeEnrichJob(
 					).catch(() => null);
 					if (subjectBrief) {
 						brief = subjectBrief;
-						briefText = renderKnowledgeFocusBrief(subjectBrief, { audience: 'research' });
+						briefText = renderKnowledgeFocusBrief(subjectBrief, {
+							audience: 'research'
+						});
 					}
 					// Searches for the right kind, with its own playbook.
 					plan = (await planRound(subject.entity, subjectFields)) ?? plan;
@@ -520,7 +523,9 @@ export async function processKnowledgeEnrichJob(
 			const readUrls = new Set<string>();
 			const found: string[] = [];
 			// Details already on the entry are not missing: a second round is not spent on them.
-			const foundPredicates = new Set<string>(subjectContext.existing.map((e) => e.predicate));
+			const foundPredicates = new Set<string>(
+				subjectContext.existing.map((e) => e.predicate)
+			);
 			const totals = { pagesRead: 0, differentPages: 0, unanchored: false, dropped: 0 };
 			let added = 0;
 			let suggested = 0;
@@ -535,7 +540,8 @@ export async function processKnowledgeEnrichJob(
 					const missing = subjectFields.filter(
 						(field) =>
 							!foundPredicates.has(field) ||
-							(field === 'profile_url' && mainPlatforms.some((p) => wanted.includes(p)))
+							(field === 'profile_url' &&
+								mainPlatforms.some((p) => wanted.includes(p)))
 					);
 					if (!missing.length || budget - spent < 0.012) break;
 					roundPlan = await planRound(subject.entity, missing, {
@@ -557,7 +563,8 @@ export async function processKnowledgeEnrichJob(
 						context: subjectContext,
 						...(roundPlan?.queries.length ? { queries: roundPlan.queries } : {}),
 						brief: briefText,
-						skipUrls: readUrls
+						skipUrls: readUrls,
+						laterRound: round > 1
 					},
 					{
 						llm,
@@ -607,7 +614,8 @@ export async function processKnowledgeEnrichJob(
 						continue;
 					}
 					foundPredicates.add(fact.predicate);
-					if (fact.predicate === 'profile_url') profileUrls.push(String(fact.value ?? ''));
+					if (fact.predicate === 'profile_url')
+						profileUrls.push(String(fact.value ?? ''));
 					const object = outcome.batch.entities.find((e) => e.ref === fact.object);
 					found.push(
 						`${getKnowledgePredicate(fact.predicate)?.label ?? fact.predicate}: ${object?.name ?? String(fact.value ?? '')}`
@@ -820,7 +828,8 @@ export function addBriefLeads(
 		for (const fact of twin.facts) {
 			if (fact.status !== 'active' || PRIVATE_LEAD_PREDICATES.has(fact.predicate)) continue;
 			const line = `${fact.label}: ${fact.value}`;
-			if (anchors.facts.length < 10 && !anchors.facts.includes(line)) anchors.facts.push(line);
+			if (anchors.facts.length < 10 && !anchors.facts.includes(line))
+				anchors.facts.push(line);
 			if (fact.predicate === 'works_at' && !anchors.employer) anchors.employer = fact.value;
 			if (
 				fact.predicate === 'located_in' &&

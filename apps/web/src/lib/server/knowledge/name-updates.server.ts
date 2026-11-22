@@ -71,7 +71,7 @@ export interface NameUpdateDeps {
 const MENTION_COLUMNS =
 	'id, entity_id, record_kind, record_id, field, start_offset, end_offset, text, prefix, suffix, status';
 
-async function loadTexts(
+export async function loadTexts(
 	db: KnowledgeDataClient,
 	refs: Array<{ kind: 'task' | 'document'; id: string }>
 ): Promise<Map<string, RecordText>> {

@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { documentNerText } from './documentEntityText';
 import { spansFromTokenLabels, type NerSpan, type TokenLabel } from './documentNer';
 import {
+	completeKnownNames,
+	joinSplitNames,
 	pickDocumentEntities,
 	planDocumentEntityKnowledge,
 	tidyEntityName,
@@ -170,5 +172,86 @@ describe('tidyEntityName / planDocumentEntityKnowledge', () => {
 			facts: [],
 			links: [{ entity: 'd0', record_kind: 'document', record_id: 'doc-1', quote: 'q' }]
 		});
+	});
+});
+
+// What the real model (Xenova/bert-base-NER, q8) returned for DJ's "Wayne Strategies Context"
+// doc on 2026-11-22: the firm's name read whole, split, or as a person depending on the sentence.
+describe('cut-short names (Wayne Strategies)', () => {
+	const chunks = [
+		'Wayne Strategies — current identity',
+		'DJ selected Wayne Strategies and reports purchasing the domain.',
+		'Should Wayne Strategies become a government vendor?',
+		'Referrals come from the Wayne Strategies site.',
+		'Murtech and Fortress Training are low priority. Fortress said no.'
+	];
+	const at = (chunk: number, text: string, type: NerSpan['type'], score: number): NerSpan => {
+		const start = chunks[chunk]!.indexOf(text);
+		return { type, text, score, chunk, start, end: start + text.length };
+	};
+	const modelSpans: NerSpan[] = [
+		at(0, 'Wayne Strategies', 'PER', 0.99),
+		at(1, 'Wayne', 'PER', 0.93),
+		at(1, 'Strategies', 'ORG', 0.48),
+		at(2, 'Wayne', 'PER', 0.78),
+		at(2, 'Strategies', 'ORG', 0.78),
+		at(3, 'Wayne Strategies', 'ORG', 1)
+	];
+	const base: DocumentEntityContext = {
+		selfNames: ['DJ Wayne'],
+		projectNames: ['Wayne Strategies'],
+		hiddenNames: [],
+		knownPeople: new Set()
+	};
+
+	it('joins a name the model split with only a space between the pieces', () => {
+		const joined = joinSplitNames(modelSpans, chunks);
+		expect(joined.map((s) => [s.chunk, s.type, s.text])).toEqual([
+			[0, 'PER', 'Wayne Strategies'],
+			[1, 'ORG', 'Wayne Strategies'],
+			[2, 'ORG', 'Wayne Strategies'],
+			[3, 'ORG', 'Wayne Strategies']
+		]);
+		// Not across other words.
+		const apart = joinSplitNames(
+			[at(4, 'Murtech', 'ORG', 0.9), at(4, 'Fortress Training', 'ORG', 0.9)],
+			chunks
+		);
+		expect(apart).toHaveLength(2);
+	});
+
+	it('links the whole name to the entry the user already has, never the fragment', () => {
+		const pick = pickDocumentEntities(modelSpans, chunks, [chunks[0]!], {
+			...base,
+			knownNames: [{ kind: 'org', name: 'Wayne Strategies' }],
+			existing: new Set(['org|wayne strategies'])
+		});
+		expect(pick.kept).toEqual([
+			expect.objectContaining({ kind: 'org', name: 'Wayne Strategies', mentions: 4 })
+		]);
+		expect(pick.dropped.map((d) => d.name)).not.toContain('Strategies');
+	});
+
+	it('with no entry yet, the fragment is never filed on its own', () => {
+		const pick = pickDocumentEntities(modelSpans, chunks, [chunks[0]!], base);
+		const names = [...pick.kept, ...pick.dropped].map((x) => x.name);
+		expect(names).not.toContain('Strategies');
+		expect(names).not.toContain('Wayne');
+		expect(pick.kept).toEqual([]);
+	});
+
+	it('grows a MISC or short span to the known name around it, taking its kind', () => {
+		const grown = completeKnownNames(
+			[
+				at(4, 'Fortress', 'MISC', 0.55),
+				{ ...at(4, 'Fortress', 'MISC', 0.6), start: 48, end: 56 }
+			],
+			chunks,
+			[{ kind: 'org', name: 'Fortress Training' }]
+		);
+		expect(grown.map((s) => [s.type, s.text, s.known ?? false])).toEqual([
+			['ORG', 'Fortress Training', true],
+			['MISC', 'Fortress', false]
+		]);
 	});
 });

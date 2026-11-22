@@ -27,12 +27,16 @@ describe('parseSocialProfile', () => {
 		expect(parseSocialProfile('https://twitter.com/GriffinPDavis?lang=en')?.url).toBe(
 			'https://x.com/griffinpdavis'
 		);
-		expect(parseSocialProfile('https://uk.linkedin.com/in/griffin-davis-67732976/')).toMatchObject({
+		expect(
+			parseSocialProfile('https://uk.linkedin.com/in/griffin-davis-67732976/')
+		).toMatchObject({
 			platform: 'linkedin',
 			owner: 'person',
 			url: 'https://www.linkedin.com/in/griffin-davis-67732976'
 		});
-		expect(parseSocialProfile('https://www.linkedin.com/company/the-cadre/about/')).toMatchObject({
+		expect(
+			parseSocialProfile('https://www.linkedin.com/company/the-cadre/about/')
+		).toMatchObject({
 			owner: 'org',
 			url: 'https://www.linkedin.com/company/the-cadre'
 		});
@@ -67,7 +71,9 @@ describe('parseSocialProfile', () => {
 		expect(profileFitsKind(person, 'person')).toBe(true);
 		expect(profileFitsKind(person, 'org')).toBe(false);
 		expect(profileFitsKind(company, 'person')).toBe(false);
-		expect(profileFitsKind(parseSocialProfile('https://instagram.com/acme')!, 'org')).toBe(true);
+		expect(profileFitsKind(parseSocialProfile('https://instagram.com/acme')!, 'org')).toBe(
+			true
+		);
 	});
 });
 
@@ -85,8 +91,12 @@ describe('harvestSocialLinks', () => {
 		const found = harvestSocialLinks(html);
 		const by = Object.fromEntries(found.map((p) => [p.platform, p]));
 		expect(Object.keys(by).sort()).toEqual(['facebook', 'instagram', 'x', 'youtube']);
-		expect(by.instagram).toMatchObject({ via: 'declared', handle: 'thecadre.training' });
-		expect(by.x!.via).toBe('declared');
+		expect(by.instagram).toMatchObject({
+			via: 'declared',
+			declaredOwner: 'org',
+			handle: 'thecadre.training'
+		});
+		expect(by.x!.via).toBe('linked'); // rel="me" is the page's subject, not always the entry
 		expect(by.facebook!.via).toBe('linked');
 	});
 
@@ -107,7 +117,11 @@ describe('ownAccounts', () => {
 
 	it("takes the footer account over a team member's, and refuses a tie", () => {
 		const footer = link('https://instagram.com/thecadre.training');
-		const teamPage = [footer, link('https://instagram.com/phil.personal'), link('https://instagram.com/corey.personal')];
+		const teamPage = [
+			footer,
+			link('https://instagram.com/phil.personal'),
+			link('https://instagram.com/corey.personal')
+		];
 		const own = ownAccounts([[footer], teamPage, [footer]]);
 		expect(own.map((p) => p.handle)).toEqual(['thecadre.training']);
 
@@ -116,7 +130,10 @@ describe('ownAccounts', () => {
 		// A declared account wins even when another is linked more often.
 		const declared = link('https://x.com/official', 'declared');
 		expect(
-			ownAccounts([[declared, link('https://x.com/other')], [link('https://x.com/other')]]).map((p) => p.handle)
+			ownAccounts([
+				[declared, link('https://x.com/other')],
+				[link('https://x.com/other')]
+			]).map((p) => p.handle)
 		).toEqual(['official']);
 	});
 });
@@ -144,7 +161,8 @@ describe('findSocialProfiles: whose account is it', () => {
 	});
 
 	it("takes a company's accounts from its own website's footer, never from someone else's page", () => {
-		const footer = '<footer><a href="https://www.instagram.com/thecadre.training/"></a><a href="https://www.linkedin.com/company/the-cadre"></a></footer>';
+		const footer =
+			'<footer><a href="https://www.instagram.com/thecadre.training/"></a><a href="https://www.linkedin.com/company/the-cadre"></a></footer>';
 		const { findings } = findSocialProfiles({
 			kind: 'org',
 			known: [],
@@ -158,7 +176,9 @@ describe('findSocialProfiles: whose account is it', () => {
 				})
 			]
 		});
-		expect(findings.map((f) => [f.profile.platform, f.profile.handle, f.ground, f.confirmed])).toEqual([
+		expect(
+			findings.map((f) => [f.profile.platform, f.profile.handle, f.ground, f.confirmed])
+		).toEqual([
 			['instagram', 'thecadre.training', 'linked', true],
 			['linkedin', 'the-cadre', 'linked', true]
 		]);
@@ -205,5 +225,76 @@ describe('findSocialProfiles: whose account is it', () => {
 		expect(findings[0]!.evidence).toContain('Same account name as their X');
 		expect(nameOnly).toEqual(['https://www.instagram.com/emilyj']);
 	});
-});
 
+	it("never takes a team member's accounts for the company's (The Cadre, 2026-11-22)", () => {
+		const footer =
+			'<a href="https://www.instagram.com/thecadre.training/"></a><a href="https://www.youtube.com/@TheCadre.Training"></a>';
+		const instructor = `<script type="application/ld+json">{"@type":"Person","name":"Matt Solowynsky","sameAs":["https://www.instagram.com/matt.solo006/","https://www.youtube.com/@matthewsolo5162"]}</script>${footer}`;
+		const { findings } = findSocialProfiles({
+			kind: 'org',
+			// Round one already found the company's Instagram and YouTube.
+			known: [
+				'https://www.instagram.com/thecadre.training',
+				'https://www.youtube.com/@thecadre.training'
+			],
+			pages: [
+				page({ url: 'https://thecadretraining.com/contact', ownSite: true, html: footer }),
+				page({
+					url: 'https://thecadretraining.com/instructors/matt-solowynsky',
+					ownSite: true,
+					html: instructor
+				})
+			]
+		});
+		expect(findings).toEqual([]);
+
+		// On his own entry, the same page's declaration is his.
+		const his = findSocialProfiles({
+			kind: 'person',
+			known: [],
+			pages: [page({ url: 'https://mattsolo.example/', ownSite: true, html: instructor })]
+		});
+		expect(his.findings.map((f) => f.profile.handle).sort()).toEqual([
+			'matt.solo006',
+			'matthewsolo5162'
+		]);
+	});
+
+	it('counts one account once when a site and a search name it under two addresses', () => {
+		const { findings } = findSocialProfiles({
+			kind: 'org',
+			known: [],
+			pages: [
+				page({
+					url: 'https://shop.breakingpoints.com/',
+					ownSite: true,
+					html: '<script type="application/ld+json">{"@type":"Organization","sameAs":["https://www.youtube.com/@breakingpoints"]}</script>'
+				}),
+				page({ url: 'https://www.youtube.com/c/breakingpoints', title: 'Breaking Points' })
+			]
+		});
+		expect(findings.map((f) => [f.profile.url, f.ground])).toEqual([
+			['https://www.youtube.com/@breakingpoints', 'declared']
+		]);
+	});
+
+	it("takes a person's accounts from their employer's page about them, when it declares them by name", () => {
+		const teamPage =
+			'<script type="application/ld+json">{"@graph":[{"@type":"Organization","sameAs":["https://www.instagram.com/thecadre.training/"]},{"@type":"Person","name":"Matt Solowynsky","sameAs":["https://www.instagram.com/matt.solo006/"]}]}</script>';
+		const run = (name: string) =>
+			findSocialProfiles({
+				kind: 'person',
+				name,
+				known: [],
+				pages: [
+					page({
+						url: 'https://thecadretraining.com/instructors/matt-solowynsky',
+						html: teamPage
+					})
+				]
+			}).findings.map((f) => [f.profile.handle, f.ground]);
+		expect(run('Matt Solowynsky')).toEqual([['matt.solo006', 'declared']]);
+		// Someone else researched from the same page gets nothing: not the company's, not Matt's.
+		expect(run('Phil Velayo')).toEqual([]);
+	});
+});

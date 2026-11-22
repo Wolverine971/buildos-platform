@@ -529,7 +529,7 @@ describe('planned research', () => {
 		});
 	});
 
-	it('gives the planner the user\'s words, the playbook for the kind, and round one on a second round', async () => {
+	it("gives the planner the user's words, the playbook for the kind, and round one on a second round", async () => {
 		const { researchPlanUserPrompt } = await import('./knowledgeEnrichPlan');
 		const prompt = researchPlanUserPrompt({
 			name: 'Griffin Davis',
@@ -565,7 +565,10 @@ describe('planned research', () => {
 
 	it('tells a cold model where it is working, and saves more than was ticked but never contact details', async () => {
 		const plan = await import('./knowledgeEnrichPlan');
-		for (const system of [plan.KNOWLEDGE_PLAN_SYSTEM_PROMPT, plan.KNOWLEDGE_ENRICH_SYSTEM_PROMPT]) {
+		for (const system of [
+			plan.KNOWLEDGE_PLAN_SYSTEM_PROMPT,
+			plan.KNOWLEDGE_ENRICH_SYSTEM_PROMPT
+		]) {
 			expect(system).toContain('private knowledge graph');
 			expect(system).toContain('research ONE entry on the public web');
 		}
@@ -578,7 +581,14 @@ describe('planned research', () => {
 		expect(plan.alsoWorthSaving('org', [])).not.toContain('email');
 
 		const prompt = plan.enrichUserPrompt(
-			{ name: 'Griffin Davis', kind: 'person', known: [], existing: [], homepage: null, youtubeUrl: null },
+			{
+				name: 'Griffin Davis',
+				kind: 'person',
+				known: [],
+				existing: [],
+				homepage: null,
+				youtubeUrl: null
+			},
 			['homepage'],
 			[{ url: 'https://example.com', title: 'T', content: 'text' }],
 			null,
@@ -586,13 +596,15 @@ describe('planned research', () => {
 			null,
 			also
 		);
-		expect(prompt).toContain('Asked for specifically (report every one a page states):\n- homepage');
+		expect(prompt).toContain(
+			'Asked for specifically (report every one a page states):\n- homepage'
+		);
 		expect(prompt).toContain('Also report when a page states it');
 		expect(prompt).toContain('- works_at');
 		expect(prompt).toContain('The user gave no note');
 	});
 
-	it('counts a profile page\'s own address as stated, and keeps search advice out of the page reader', async () => {
+	it("counts a profile page's own address as stated, and keeps search advice out of the page reader", async () => {
 		const plan = await import('./knowledgeEnrichPlan');
 		const page = {
 			url: 'https://www.linkedin.com/in/griffin-davis',
@@ -627,7 +639,10 @@ describe('planned research', () => {
 		const plan = validateResearchPlan(
 			{
 				kind: 'person',
-				queries: ['"Griffin Davis" "Breaking Points" LinkedIn', '"Griffin Davis" executive producer interview']
+				queries: [
+					'"Griffin Davis" "Breaking Points" LinkedIn',
+					'"Griffin Davis" executive producer interview'
+				]
 			},
 			{ filedKind: 'person', alreadyRun: ['"Griffin Davis" linkedin "Breaking Points"'] }
 		);
@@ -651,7 +666,8 @@ describe('planned research', () => {
 		const page = {
 			url: 'https://thecadretraining.com/press',
 			title: 'Press',
-			content: 'Follow us. Instagram @thecadre.training. See our latest post. The Cadre on LinkedIn.'
+			content:
+				'Follow us. Instagram @thecadre.training. See our latest post. The Cadre on LinkedIn.'
 		};
 		const fact = (value: string) => ({
 			predicate: 'profile_url',
@@ -688,21 +704,39 @@ describe('planned research', () => {
 		const page = {
 			url: 'https://thecadretraining.com/instructors',
 			title: 'Instructors',
-			content: 'Phil Velayo, Lead Instructor, served as a Scout Sniper. Our team also thanks Steve.'
+			content:
+				'Phil Velayo, Lead Instructor, served as a Scout Sniper. Our team also thanks Steve.'
 		};
 		const result = plan.validateEnrichment(
 			{
 				pages: [{ page: 1, about_entity: true }],
 				facts: [],
 				people: [
-					{ name: 'Phil Velayo', title: 'Lead Instructor', page: 1, quote: 'Phil Velayo, Lead Instructor' },
-					{ name: 'Steve', title: 'Friend', page: 1, quote: 'Our team also thanks Steve.' },
-					{ name: 'Jane Madeup', title: 'CEO', page: 1, quote: 'Phil Velayo, Lead Instructor' }
+					{
+						name: 'Phil Velayo',
+						title: 'Lead Instructor',
+						page: 1,
+						quote: 'Phil Velayo, Lead Instructor'
+					},
+					{
+						name: 'Steve',
+						title: 'Friend',
+						page: 1,
+						quote: 'Our team also thanks Steve.'
+					},
+					{
+						name: 'Jane Madeup',
+						title: 'CEO',
+						page: 1,
+						quote: 'Phil Velayo, Lead Instructor'
+					}
 				]
 			},
 			{ entityId: 'org1', kind: 'org', fields: ['description'], pages: [page], existing: [] }
 		);
-		expect(result.batch.entities).toEqual([{ ref: 'person1', kind: 'person', name: 'Phil Velayo' }]);
+		expect(result.batch.entities).toEqual([
+			{ ref: 'person1', kind: 'person', name: 'Phil Velayo' }
+		]);
 		expect(result.batch.facts[0]).toMatchObject({
 			subject: 'person1',
 			predicate: 'works_at',
@@ -712,10 +746,57 @@ describe('planned research', () => {
 		});
 		// A person entry never gets "people".
 		const asPerson = plan.validateEnrichment(
-			{ pages: [], facts: [], people: [{ name: 'Phil Velayo', page: 1, quote: 'Phil Velayo, Lead Instructor' }] },
+			{
+				pages: [],
+				facts: [],
+				people: [{ name: 'Phil Velayo', page: 1, quote: 'Phil Velayo, Lead Instructor' }]
+			},
 			{ entityId: 'p1', kind: 'person', fields: ['headline'], pages: [page], existing: [] }
 		);
 		expect(asPerson.batch.facts).toHaveLength(0);
 	});
-});
 
+	it('keeps one headline per round, and in a later round keeps the one already saved', async () => {
+		const plan = await import('./knowledgeEnrichPlan');
+		const page = {
+			url: 'https://example.com/a',
+			title: 'A',
+			content: 'Executive Producer - Breaking Points. Also: ep at breaking points, sketches.'
+		};
+		const answer = {
+			pages: [{ page: 1, about_entity: true }],
+			facts: [
+				{
+					predicate: 'headline',
+					value: 'Executive Producer - Breaking Points',
+					page: 1,
+					quote: 'Executive Producer - Breaking Points',
+					confidence: 0.9
+				},
+				{
+					predicate: 'headline',
+					value: 'ep at breaking points',
+					page: 1,
+					quote: 'ep at breaking points',
+					confidence: 0.9
+				}
+			]
+		};
+		const base = {
+			entityId: 'e1',
+			kind: 'person' as const,
+			fields: ['headline'],
+			pages: [page]
+		};
+		const first = plan.validateEnrichment(answer, { ...base, existing: [] });
+		expect(first.batch.facts.map((f) => f.value)).toEqual([
+			'Executive Producer - Breaking Points'
+		]);
+		const later = plan.validateEnrichment(answer, {
+			...base,
+			existing: [{ predicate: 'headline', value: 'Producer' }],
+			keepExistingSingles: true
+		});
+		expect(later.batch.facts).toHaveLength(0);
+	});
+});

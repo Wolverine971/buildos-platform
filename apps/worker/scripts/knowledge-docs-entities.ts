@@ -190,6 +190,11 @@ async function main() {
 				.in('kind', ['person', 'org'])
 				.range(from, to)
 		);
+		const existing = new Set(
+			entities
+				.filter((e) => e.status === 'active')
+				.map((e) => `${e.kind}|${e.normalized_name}`)
+		);
 		const context = {
 			selfNames: [user?.name ?? '', ...entities.filter((e) => e.is_self).map((e) => e.name)],
 			projectNames: [...projectNames.values()],
@@ -198,13 +203,12 @@ async function main() {
 				entities
 					.filter((e) => e.kind === 'person' && e.status === 'active' && !e.is_self)
 					.map((e) => e.normalized_name)
-			)
+			),
+			knownNames: entities
+				.filter((e) => e.status === 'active' && !e.is_self)
+				.map((e) => ({ kind: e.kind as 'person' | 'org', name: e.name })),
+			existing
 		};
-		const existing = new Set(
-			entities
-				.filter((e) => e.status === 'active')
-				.map((e) => `${e.kind}|${e.normalized_name}`)
-		);
 		// Names a link-only document may link: the graph plus what this run keeps elsewhere.
 		const linkable = new Set(existing);
 

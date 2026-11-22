@@ -13,10 +13,18 @@
 // A one-word person name that is the first or last word of exactly one fuller person name in the
 // same document counts toward that person ("Coogan" → "John Coogan").
 //
+// The model often cuts a name short or splits it: "Wayne Strategies" comes back as the person
+// "Wayne" plus the organization "Strategies". Two repairs run before anything is counted:
+// names the model split with only a space between them are joined, and a span that sits inside
+// a longer name the user already has an entry for grows to that name and takes that entry's
+// kind. A name already in the graph needs less model confidence (it was confirmed before) and
+// is never dropped for also being a project name ("Wayne Strategies" the project and the firm).
+//
 // Every string comparison here is on the model's own output (or on structured names from the
 // database), never a word list deciding what text means.
 
 import {
+	addsWords,
 	type KnowledgeWriteBatch,
 	normalizeKnowledgeName
 } from '@buildos/shared-agent-ops/knowledge';
@@ -34,7 +42,14 @@ export interface DocumentEntityContext {
 	hiddenNames: string[];
 	/** Normalized names of the user's existing private people (one-word names may reuse these). */
 	knownPeople: Set<string>;
+	/** The user's active people and organizations (not their own entry): names to complete. */
+	knownNames?: Array<{ kind: 'person' | 'org'; name: string }>;
+	/** `${kind}|${normalized name}` of every active entry. */
+	existing?: Set<string>;
 }
+
+/** Model confidence a name already in the user's graph needs (new names need the full bar). */
+export const DOCUMENT_ENTITY_KNOWN_MIN_SCORE = 0.5;
 
 export interface DocumentEntityCandidate {
 	kind: 'person' | 'org';
@@ -80,6 +95,121 @@ function quoteAround(chunk: string, start: number, end: number): string {
 	return `${from > 0 ? '…' : ''}${chunk.slice(from, to).replace(/\s+/g, ' ').trim()}${to < chunk.length ? '…' : ''}`;
 }
 
+const WORD = /[\p{L}\p{N}]/u;
+const isWordChar = (c: string | undefined) => Boolean(c) && WORD.test(c!);
+
+/** Every place `needle` appears in `haystack` on word boundaries, any case. */
+function wordSpans(haystack: string, needle: string): Array<{ start: number; end: number }> {
+	const out: Array<{ start: number; end: number }> = [];
+	const lower = haystack.toLowerCase();
+	const target = needle.toLowerCase();
+	if (!target || lower.length !== haystack.length) return out;
+	for (let at = lower.indexOf(target); at !== -1; at = lower.indexOf(target, at + 1)) {
+		const end = at + target.length;
+		if (!isWordChar(haystack[at - 1]) && !isWordChar(haystack[end]))
+			out.push({ start: at, end });
+	}
+	return out;
+}
+
+/**
+ * Join person/organization spans the model split with a single space between them ("Wayne" +
+ * "Strategies"). The joined span is an organization when either piece was one, and carries the
+ * mean probability (a weak piece keeps the whole name honest).
+ */
+export function joinSplitNames(spans: NerSpan[], chunks: string[]): NerSpan[] {
+	const sorted = [...spans].sort((a, b) => a.chunk - b.chunk || a.start - b.start);
+	const out: NerSpan[] = [];
+	for (const span of sorted) {
+		const prev = out[out.length - 1];
+		const named = (s: NerSpan) => s.type === 'PER' || s.type === 'ORG';
+		if (
+			prev &&
+			named(prev) &&
+			named(span) &&
+			prev.chunk === span.chunk &&
+			(chunks[span.chunk] ?? '').slice(prev.end, span.start) === ' '
+		) {
+			const chunk = chunks[span.chunk] ?? '';
+			out[out.length - 1] = {
+				type: prev.type === 'ORG' || span.type === 'ORG' ? 'ORG' : 'PER',
+				text: chunk.slice(prev.start, span.end),
+				score: (prev.score + span.score) / 2,
+				chunk: span.chunk,
+				start: prev.start,
+				end: span.end,
+				...(prev.known || span.known ? { known: true } : {})
+			};
+			continue;
+		}
+		out.push(span);
+	}
+	return out;
+}
+
+/**
+ * Grow each span to the longest name the user already has that is written around it ("Strategies"
+ * inside "Wayne Strategies"), taking that entry's kind; a span that already is such a name takes
+ * its kind too. Spans swallowed by one grown name collapse into it. Organizations, people and the
+ * model's MISC label all qualify (it called "Fortress" MISC inside "Fortress Training").
+ */
+export function completeKnownNames(
+	spans: NerSpan[],
+	chunks: string[],
+	known: Array<{ kind: 'person' | 'org'; name: string }>
+): NerSpan[] {
+	if (!known.length) return spans;
+	const names = known
+		.map((k) => ({ ...k, key: normalizeKnowledgeName(k.name) }))
+		.filter((k) => k.key.replace(/[^\p{L}]/gu, '').length >= 2);
+	const out: NerSpan[] = [];
+	for (const span of spans) {
+		const chunk = chunks[span.chunk] ?? '';
+		const key = normalizeKnowledgeName(tidyEntityName(span.text));
+		if (!key) {
+			out.push(span);
+			continue;
+		}
+		let best: { start: number; end: number; kind: 'person' | 'org' } | null = null;
+		for (const name of names) {
+			if (name.key.length < key.length || !wordSpans(name.key, key).length) continue;
+			for (const at of wordSpans(chunk, name.name.trim())) {
+				if (at.start > span.start || at.end < span.end) continue;
+				// Same length is a retype; longer must add a word, not just "'s" or a period.
+				if (at.end - at.start > span.end - span.start && !addsWords(chunk, span, at))
+					continue;
+				if (!best || at.end - at.start > best.end - best.start)
+					best = { ...at, kind: name.kind };
+			}
+		}
+		if (!best) {
+			out.push(span);
+			continue;
+		}
+		const grown: NerSpan = {
+			type: best.kind === 'person' ? 'PER' : 'ORG',
+			text: chunk.slice(best.start, best.end),
+			score: span.score,
+			chunk: span.chunk,
+			start: best.start,
+			end: best.end,
+			known: true
+		};
+		const last = out[out.length - 1];
+		if (
+			last &&
+			last.chunk === grown.chunk &&
+			last.start === grown.start &&
+			last.end === grown.end
+		) {
+			last.score = Math.max(last.score, grown.score);
+			continue;
+		}
+		out.push(grown);
+	}
+	return out;
+}
+
 export function pickDocumentEntities(
 	spans: NerSpan[],
 	chunks: string[],
@@ -104,9 +234,15 @@ export function pickDocumentEntities(
 		mentions: number;
 		scores: { PER: number[]; ORG: number[] };
 		first: NerSpan;
+		known: boolean;
 	};
+	const repaired = completeKnownNames(
+		joinSplitNames(spans, chunks),
+		chunks,
+		context.knownNames ?? []
+	);
 	const groups = new Map<string, Group>();
-	for (const span of spans) {
+	for (const span of repaired) {
 		if (span.type !== 'PER' && span.type !== 'ORG') continue;
 		const name = tidyEntityName(span.text);
 		if (name.replace(/[^\p{L}]/gu, '').length < 2 || name.length > 120) continue;
@@ -115,8 +251,10 @@ export function pickDocumentEntities(
 			name,
 			mentions: 0,
 			scores: { PER: [], ORG: [] },
-			first: span
+			first: span,
+			known: false
 		};
+		if (span.known) group.known = true;
 		group.mentions++;
 		group.scores[span.type].push(span.score);
 		groups.set(key, group);
@@ -171,7 +309,9 @@ export function pickDocumentEntities(
 			drop('self');
 			continue;
 		}
-		if (projects.has(key)) {
+		const inGraph = context.existing?.has(`${kind}|${key}`) ?? false;
+		// A project name is dropped unless the user already keeps it as an entry (their firm).
+		if (projects.has(key) && !inGraph) {
 			drop('project');
 			continue;
 		}
@@ -179,7 +319,7 @@ export function pickDocumentEntities(
 			drop('hidden');
 			continue;
 		}
-		if (score < minScore) {
+		if (score < (group.known || inGraph ? DOCUMENT_ENTITY_KNOWN_MIN_SCORE : minScore)) {
 			drop('low_confidence');
 			continue;
 		}

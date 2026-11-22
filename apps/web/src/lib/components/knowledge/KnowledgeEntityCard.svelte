@@ -226,11 +226,20 @@
 			editingName = false;
 			return;
 		}
+		const { id, kind } = entity;
 		try {
-			await knowledgeApi.update(entity.id, { name });
+			const { rename } = await knowledgeApi.update(id, { name });
 			editingName = false;
-			await load(entity.id, true);
+			await load(id, true);
 			onChanged?.();
+			const widened = rename?.widened ?? 0;
+			if (widened)
+				toastService.success(
+					`Now underlining “${name}” in full in ${widened} place${widened === 1 ? '' : 's'}`
+				);
+			// Another card already has this name: almost always one thing saved twice.
+			const twins = rename?.same_name ?? [];
+			if (twins.length) onMerge?.({ id, name, kind, with: twins.map((twin) => twin.id) });
 		} catch (error) {
 			toastService.error(error instanceof Error ? error.message : 'Could not rename');
 		}

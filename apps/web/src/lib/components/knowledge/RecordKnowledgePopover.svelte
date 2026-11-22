@@ -50,6 +50,7 @@
 		label="About {open?.name ?? ''}"
 		onClose={() => mentions.close()}
 		onRemoved={(id) => mentions.forget(id)}
+		onChanged={() => mentions.refresh()}
 	>
 		{#snippet footer({ depth }: { depth: number })}
 			{#if deps && depth === 1 && lensEntries.length && mentions.lens}

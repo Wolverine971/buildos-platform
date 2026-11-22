@@ -202,13 +202,19 @@ export const knowledgeApi = {
 			kind?: KnowledgeKind;
 		}
 	) {
-		return call<{ ok: true; kind_change?: KnowledgeKindChange }>(
-			`/api/knowledge/entities/${id}`,
-			{
-				...json(body),
-				method: 'PATCH'
-			}
-		);
+		return call<{
+			ok: true;
+			kind_change?: KnowledgeKindChange;
+			/** After a rename: tags grown to the new name, and entries that already had it. */
+			rename?: {
+				widened: number;
+				records: number;
+				same_name: Array<{ id: string; name: string }>;
+			};
+		}>(`/api/knowledge/entities/${id}`, {
+			...json(body),
+			method: 'PATCH'
+		});
 	},
 	remove(id: string) {
 		return call<{ ok: true }>(`/api/knowledge/entities/${id}`, { method: 'DELETE' });

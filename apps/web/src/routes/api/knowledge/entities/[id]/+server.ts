@@ -6,19 +6,27 @@
  * PATCH  /api/knowledge/entities/:id  { name?, summary?, status?: 'active'|'hidden',
  *          circle?: 'inner'|'public', kind? }  (circle: the user's answer, part of my world / just
  *          mentioned; kind: what the entry is, e.g. an "organization" that is really a person →
- *          `kind_change` says what was retracted and which same-name entries now look like duplicates)
+ *          `kind_change` says what was retracted and which same-name entries now look like duplicates;
+ *          name: `rename` says how many tags grew to the new name, e.g. "Strategies" → "Wayne
+ *          Strategies" where that is written, and which entries of the same kind already have it)
  * DELETE /api/knowledge/entities/:id  (own entries only)
  */
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import {
+	knowledgeDb,
 	knowledgeErrorResponse,
 	knowledgeStoreFor,
 	loadLinkedRecords,
 	UUID_PATTERN
 } from '$lib/server/knowledge/knowledge.server';
 import { loadEntityShares } from '$lib/server/knowledge/sharing.server';
-import { isKnowledgeKind, type KnowledgeKindChange } from '@buildos/shared-agent-ops/knowledge';
+import { widenTagsToName } from '$lib/server/knowledge/tag-widening.server';
+import {
+	isKnowledgeKind,
+	normalizeKnowledgeName,
+	type KnowledgeKindChange
+} from '@buildos/shared-agent-ops/knowledge';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	const { user } = await locals.safeGetSession();
@@ -78,9 +86,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			...(body.status ? { status: body.status as 'active' | 'hidden' } : {}),
 			...(body.circle ? { circle: body.circle as 'inner' | 'public' } : {})
 		});
+		const rename =
+			typeof body.name === 'string'
+				? await afterRename(locals.supabase, user.id, params.id)
+				: null;
 		return ApiResponse.success({
 			ok: true,
-			...(kindChange ? { kind_change: kindChange } : {})
+			...(kindChange ? { kind_change: kindChange } : {}),
+			...(rename ? { rename } : {})
 		});
 	} catch (error) {
 		return knowledgeErrorResponse(error, 'Could not update this entry');
@@ -99,3 +112,47 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		return knowledgeErrorResponse(error, 'Could not delete this entry');
 	}
 };
+
+/**
+ * After a rename: grow the entry's tags to the new name where it is written, and list entries of
+ * the same kind that already have the name (the card offers to combine them). Best effort: the
+ * rename itself already succeeded.
+ */
+async function afterRename(
+	supabase: App.Locals['supabase'],
+	userId: string,
+	entityId: string
+): Promise<{ widened: number; records: number; same_name: Array<{ id: string; name: string }> }> {
+	const db = knowledgeDb(supabase);
+	const result = { widened: 0, records: 0, same_name: [] as Array<{ id: string; name: string }> };
+	try {
+		const { data: entity } = await db
+			.from('knowledge_entities')
+			.select('id, kind, name')
+			.eq('id', entityId)
+			.eq('owner_user_id', userId)
+			.maybeSingle();
+		if (!entity) return result;
+		const [widen, twins] = await Promise.all([
+			widenTagsToName(db, userId, entityId).catch((error) => {
+				console.warn('[knowledge] widening tags after rename failed', error);
+				return { widened: 0, records: 0 };
+			}),
+			db
+				.from('knowledge_entities')
+				.select('id, name')
+				.eq('owner_user_id', userId)
+				.eq('kind', entity.kind)
+				.eq('normalized_name', normalizeKnowledgeName(entity.name))
+				.eq('status', 'active')
+				.neq('id', entityId)
+				.limit(10)
+		]);
+		result.widened = widen.widened;
+		result.records = widen.records;
+		result.same_name = (twins.data ?? []) as Array<{ id: string; name: string }>;
+	} catch (error) {
+		console.warn('[knowledge] after-rename checks failed', error);
+	}
+	return result;
+}

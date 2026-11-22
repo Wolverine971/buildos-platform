@@ -334,4 +334,108 @@ describe('one-word names', () => {
 			['Pistol', 43]
 		]);
 	});
+
+	describe('fuller names', () => {
+		const text = 'DJ selected Wayne Strategies. Wayne Strategies is his firm.';
+		const at = (word: string, nth = 0) => {
+			let i = -1;
+			for (let n = 0; n <= nth; n++) i = text.indexOf(word, i + 1);
+			return i;
+		};
+		const tag = (word: string, entity: string, nth = 0, extra: Partial<StoredMention> = {}) => {
+			const start = at(word, nth);
+			return {
+				id: `${entity}-${nth}-${word}`,
+				entity_id: entity,
+				field: 'content' as const,
+				start_offset: start,
+				end_offset: start + word.length,
+				text: word,
+				prefix: text.slice(Math.max(0, start - 32), start),
+				suffix: text.slice(start + word.length, start + word.length + 32),
+				made_by: 'reader' as const,
+				status: 'active' as const,
+				...extra
+			};
+		};
+		const fuller = [{ entityId: 'ws', kind: 'org', names: ['Wayne Strategies'] }];
+		const kinds = new Map([
+			['ws', 'org'],
+			['strat', 'org'],
+			['wayne', 'person']
+		]);
+
+		it('grows a cut-short tag and folds the other piece into it', () => {
+			const plan = planRecordMentions({
+				fields: { content: text },
+				existing: [tag('Wayne', 'wayne'), tag('Strategies', 'strat')],
+				reader: [],
+				fuller,
+				kinds
+			});
+			expect(plan.mentions.map((m) => [m.entity_id, m.text])).toEqual([
+				['ws', 'Wayne Strategies']
+			]);
+			expect(plan.counts.widened).toBe(1);
+			expect(plan.absorbed).toEqual(new Set(['wayne', 'strat']));
+			expect(plan.present).toEqual(new Set(['ws']));
+		});
+
+		it('never moves the user’s own tag or a spot they removed a tag from', () => {
+			const plan = planRecordMentions({
+				fields: { content: text },
+				existing: [
+					tag('Strategies', 'strat', 0, { made_by: 'user' }),
+					tag('Strategies', 'strat', 1, { made_by: 'user', status: 'removed' })
+				],
+				reader: [],
+				fuller,
+				kinds
+			});
+			expect(plan.mentions.map((m) => [m.entity_id, m.text, m.status])).toEqual([
+				['strat', 'Strategies', 'active'],
+				['strat', 'Strategies', 'removed']
+			]);
+			expect(plan.counts.widened).toBe(0);
+			expect(plan.absorbed.size).toBe(0);
+		});
+
+		it('does not grow over a possessive or punctuation alone', () => {
+			const said = "Cindy's van broke down. Martin Luther King Jr. spoke.";
+			const plan = planRecordMentions({
+				fields: { content: said },
+				existing: [],
+				reader: [
+					{ entityId: 'cindy', kind: 'person', names: ['Cindy'] },
+					{ entityId: 'mlk', kind: 'person', names: ['Martin Luther King Jr'] }
+				],
+				fuller: [
+					{ entityId: 'shop', kind: 'org', names: ["Cindy's"] },
+					{ entityId: 'mlk2', kind: 'person', names: ['Martin Luther King Jr.'] }
+				],
+				kinds
+			});
+			expect(plan.mentions.map((m) => [m.entity_id, m.text])).toEqual([
+				['cindy', 'Cindy'],
+				['mlk', 'Martin Luther King Jr']
+			]);
+			expect(plan.counts.widened).toBe(0);
+		});
+
+		it('keeps the shorter entry when it still has a tag of its own elsewhere', () => {
+			const plan = planRecordMentions({
+				fields: { content: `${text} Strategies alone.` },
+				existing: [],
+				reader: [{ entityId: 'strat', kind: 'org', names: ['Strategies'] }],
+				fuller,
+				kinds
+			});
+			expect(plan.mentions.map((m) => [m.entity_id, m.text])).toEqual([
+				['ws', 'Wayne Strategies'],
+				['ws', 'Wayne Strategies'],
+				['strat', 'Strategies']
+			]);
+			expect(plan.absorbed.size).toBe(0);
+		});
+	});
 });

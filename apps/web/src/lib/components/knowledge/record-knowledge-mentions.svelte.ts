@@ -229,6 +229,12 @@ export class RecordKnowledgeMentions {
 		this.open = null;
 	}
 
+	/** Load the record's names again (after a rename or merge in the card). */
+	refresh() {
+		const id = this.#recordId;
+		if (id) void this.#load(this.#recordKind, id);
+	}
+
 	/** Hidden or deleted from inside the card: stop linking that name here. */
 	forget(entityId: string) {
 		this.mentions = this.mentions.filter((m) => m.entity_id !== entityId);

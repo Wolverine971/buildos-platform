@@ -12,6 +12,9 @@
 //                    reading goes; an entry a reader made that has no link left and nothing the
 //                    user added is hidden (reversible, revived when the name shows up again)
 //   user-removed     a tag the user removed stays removed at that spot
+//   widened          a reader tag on part of a longer name the owner has an entry for
+//                    ("Strategies" inside "Wayne Strategies") grows to that name and entry; an
+//                    entry whose every tag was absorbed loses its reader-made link
 //
 // Similar names (spelling variants) that end up as separate entries become one "same person?"
 // question per pair, against one entry per group, never repeated once answered.
@@ -71,6 +74,12 @@ export interface MentionSyncOptions {
 	dryRun?: boolean;
 	/** Ask "same person?" for similar names that end up as separate entries (default true). */
 	askSimilar?: boolean;
+	/**
+	 * Record the read in knowledge_mention_reads (default true). Signed-in callers pass false:
+	 * that table is written by the server's readers only, and skipping it just means the next
+	 * scheduled read doesn't skip this record.
+	 */
+	rememberRead?: boolean;
 }
 
 type EntityInfo = {
@@ -107,7 +116,14 @@ export interface SimilarNameQuestion {
 
 export interface MentionSyncReport {
 	record: MentionRecordRef;
-	counts: { same: number; moved: number; edited: number; deleted: number; added: number };
+	counts: {
+		same: number;
+		moved: number;
+		edited: number;
+		deleted: number;
+		added: number;
+		widened: number;
+	};
 	mentions: Array<{
 		entityId: string | null;
 		name: string;
@@ -346,6 +362,64 @@ export async function reviveOrphanEntries(
 }
 
 // ---------------------------------------------------------------------------
+// Fuller names
+
+/** At most this many distinct words-to-complete are looked up per record. */
+const MAX_FULLER_LOOKUPS = 40;
+
+/** `needle` appears in `haystack` on word boundaries (both normalized). */
+function hasWords(haystack: string, needle: string): boolean {
+	const isWord = (c: string | undefined) => Boolean(c) && /[\p{L}\p{N}]/u.test(c!);
+	for (let at = haystack.indexOf(needle); at !== -1; at = haystack.indexOf(needle, at + 1)) {
+		if (!isWord(haystack[at - 1]) && !isWord(haystack[at + needle.length])) return true;
+	}
+	return false;
+}
+
+/**
+ * The owner's active people and organizations whose name contains one of `texts` as whole words
+ * and is longer ("Wayne Strategies" for "Strategies"), and that appears in the record's text.
+ * One query. Matching is on stored names only; nothing reads the prose's meaning.
+ */
+export async function loadFullerNames(
+	db: KnowledgeDataClient,
+	userId: string,
+	fields: MentionFields,
+	texts: string[]
+): Promise<Array<{ entityId: string; info: EntityInfo }>> {
+	const parts = [
+		...new Set(
+			texts
+				.map((t) => normalizeKnowledgeName(t))
+				.filter((t) => t.replace(/[^\p{L}\p{N}]/gu, '').length >= 2)
+		)
+	].slice(0, MAX_FULLER_LOOKUPS);
+	if (!parts.length) return [];
+	// Quoted PostgREST values; `*` is the wildcard, so a literal one in a name is dropped.
+	const contains = (part: string) => `"*${part.replace(/[*]/g, '').replace(/["\\]/g, '\\$&')}*"`;
+	const { data, error } = await db
+		.from('knowledge_entities')
+		.select(ENTITY_SELECT.replace(', circle, circle_source', ''))
+		.eq('owner_user_id', userId)
+		.eq('status', 'active')
+		.in('kind', ['person', 'org'])
+		.or(parts.map((p) => `normalized_name.ilike.${contains(p)}`).join(','))
+		.limit(200);
+	if (error) return [];
+	const all = Object.values(fields)
+		.map((t) => normalizeKnowledgeName(t ?? ''))
+		.join('\n');
+	return ((data ?? []) as EntityInfo[])
+		.filter((row) => {
+			const name = normalizeKnowledgeName(row.name);
+			return (
+				parts.some((p) => name.length > p.length && hasWords(name, p)) && all.includes(name)
+			);
+		})
+		.map((info) => ({ entityId: info.id, info }));
+}
+
+// ---------------------------------------------------------------------------
 // The sync
 
 export async function syncRecordMentions(
@@ -358,7 +432,7 @@ export async function syncRecordMentions(
 	const { record } = input;
 	const report: MentionSyncReport = {
 		record,
-		counts: { same: 0, moved: 0, edited: 0, deleted: 0, added: 0 },
+		counts: { same: 0, moved: 0, edited: 0, deleted: 0, added: 0, widened: 0 },
 		mentions: [],
 		corrections: [],
 		deleted: [],
@@ -442,6 +516,16 @@ export async function syncRecordMentions(
 			if (field) seeds.push({ entityId: link.entity_id, anchor: { ...anchor, field } });
 		}
 	}
+	// Fuller names the owner already has around words tagged here ("Wayne Strategies" around a
+	// tag on "Strategies"), so a tag the reader cut short grows to the whole name.
+	const fuller = await loadFullerNames(db, userId, input.fields, [
+		...existing
+			.filter((m) => m.status === 'active' && m.made_by === 'reader')
+			.map((m) => m.text),
+		...reader.flatMap((r) => r.names),
+		...linked.flatMap((l) => l.names)
+	]);
+	for (const f of fuller) if (!entities.has(f.entityId)) entities.set(f.entityId, f.info);
 	const kinds = new Map([...entities.values()].map((e) => [e.id, e.kind]));
 
 	const plan = planRecordMentions({
@@ -450,6 +534,11 @@ export async function syncRecordMentions(
 		seeds: seeds.map((s) => ({ ...s, entityId: live(s.entityId) })),
 		reader,
 		linked,
+		fuller: fuller.map((f) => ({
+			entityId: f.entityId,
+			kind: f.info.kind,
+			names: [f.info.name]
+		})),
 		kinds
 	});
 	report.counts = plan.counts;
@@ -627,9 +716,25 @@ export async function syncRecordMentions(
 			.eq('record_id', record.id);
 		if (oldError) fail('Load mentions', oldError);
 		const oldIds = ((oldRows ?? []) as Array<{ id: string }>).map((r) => r.id);
+		// Re-anchored tags keep their row (updated in place); new tags are inserted without an
+		// id. The two go in separate calls: a batch mixing rows with and without `id` sends
+		// null ids, and inserting a kept id again collides with the row still there.
+		const oldIdSet = new Set(oldIds);
+		const kept = rows.filter((r) => 'id' in r && oldIdSet.has(r.id as string));
+		const added = rows
+			.filter((r) => !('id' in r && oldIdSet.has(r.id as string)))
+			.map(({ id: _id, ...row }: Record<string, unknown>) => row);
+		const keptIds = new Set(kept.map((r) => r.id as string));
 		const insertedIds: string[] = [];
 		try {
-			for (const group of chunk(rows, 500)) {
+			for (const group of chunk(kept, 500)) {
+				const { error } = await db
+					.from('knowledge_mentions')
+					.upsert(group, { onConflict: 'id' })
+					.select('id');
+				if (error) fail('Save mentions', error);
+			}
+			for (const group of chunk(added, 500)) {
 				const { data, error } = await db
 					.from('knowledge_mentions')
 					.insert(group)
@@ -638,13 +743,16 @@ export async function syncRecordMentions(
 				insertedIds.push(...((data ?? []) as Array<{ id: string }>).map((r) => r.id));
 			}
 		} catch (error) {
-			// Undo a partial write so the record doesn't end up with old + half of the new tags.
+			// Undo new rows so the record doesn't end up with old + half of the new tags.
 			for (const group of chunk(insertedIds, 500)) {
 				await db.from('knowledge_mentions').delete().in('id', group);
 			}
 			throw error;
 		}
-		for (const group of chunk(oldIds, 500)) {
+		for (const group of chunk(
+			oldIds.filter((id) => !keptIds.has(id)),
+			500
+		)) {
 			const { error: deleteError } = await db
 				.from('knowledge_mentions')
 				.delete()
@@ -684,6 +792,8 @@ export async function syncRecordMentions(
 		const id = live(link.entity_id);
 		if (!READER_VIA.has(link.created_via) || present.has(id)) return false;
 		if (plan.removedByUser.has(id)) return true;
+		// Every tag sat inside a fuller name: the reader only ever saw part of that name.
+		if (plan.absorbed.has(id)) return true;
 		if (readerIds.has(id)) return false;
 		// A folded entry's link moved with the merge.
 		if (folded.has(link.entity_id)) return false;
@@ -779,7 +889,7 @@ export async function syncRecordMentions(
 	}
 
 	// 7. Remember what was anchored.
-	if (!dryRun) {
+	if (!dryRun && options.rememberRead !== false) {
 		const { error } = await db.from('knowledge_mention_reads').upsert(
 			{
 				owner_user_id: userId,

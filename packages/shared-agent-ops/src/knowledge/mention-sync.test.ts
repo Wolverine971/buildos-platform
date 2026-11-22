@@ -90,8 +90,22 @@ class Query implements PromiseLike<{ data: any; error: any }> {
 		return this;
 	}
 	or(expr: string) {
-		const parts = expr.split(',').map((p) => p.split('.eq.'));
-		this.filters.push((r) => parts.some(([c, v]) => String(r[c!]) === v));
+		// col.eq.value and col.ilike."*part*" (quoted, `*` wildcards), comma-separated.
+		const parts = expr.match(/[a-z_]+\.(?:eq|ilike)\.(?:"(?:[^"\\]|\\.)*"|[^,]*)/g) ?? [];
+		const tests = parts.map((part) => {
+			const [, col, op, raw] = /^([a-z_]+)\.(eq|ilike)\.(.*)$/.exec(part)!;
+			const value = raw!.startsWith('"') ? raw!.slice(1, -1).replace(/\\(.)/g, '$1') : raw!;
+			if (op === 'eq') return (r: Row) => String(r[col!]) === value;
+			const pattern = new RegExp(
+				`^${value
+					.split('*')
+					.map((bit) => bit.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+					.join('.*')}$`,
+				'i'
+			);
+			return (r: Row) => pattern.test(String(r[col!] ?? ''));
+		});
+		this.filters.push((r) => tests.some((t) => t(r)));
 		return this;
 	}
 	order() {
@@ -120,6 +134,32 @@ class Query implements PromiseLike<{ data: any; error: any }> {
 	run() {
 		const all = this.db.rows(this.table);
 		const match = (r: Row) => this.filters.every((f) => f(r));
+		if (this.table === 'knowledge_mentions' && this.op === 'upsert') {
+			// Like Postgres: a row whose id exists is updated in place.
+			const fresh: Row[] = [];
+			for (const r of this.payload) {
+				const hit = r.id ? all.find((x) => x.id === r.id) : undefined;
+				if (hit) Object.assign(hit, r);
+				else fresh.push({ id: randomUUID(), ...r });
+			}
+			all.push(...fresh);
+			return this.shape(this.payload);
+		}
+		if (this.table === 'knowledge_mentions' && this.op === 'insert') {
+			// Like PostgREST + Postgres: a batch mixing rows with and without `id` sends null for
+			// the missing ones, and an id already there is a duplicate key.
+			const withId = this.payload.filter((r) => 'id' in r);
+			if (withId.length && withId.length < this.payload.length)
+				return {
+					data: null,
+					error: { message: 'null value in column "id" violates not-null constraint' }
+				};
+			if (withId.some((r) => r.id == null || all.some((x) => x.id === r.id)))
+				return {
+					data: null,
+					error: { message: 'duplicate key value violates unique constraint' }
+				};
+		}
 		if (this.op === 'insert' || this.op === 'upsert') {
 			const added = this.payload.map((r) => {
 				const row: Row = { id: randomUUID(), status: 'active', ...r };
@@ -327,7 +367,7 @@ describe('syncRecordMentions', () => {
 			if (table !== 'knowledge_mentions') return query;
 			return new Proxy(query, {
 				get(target, prop) {
-					if (prop === 'insert')
+					if (prop === 'insert' || prop === 'upsert')
 						return () => ({
 							select: async () => ({ data: null, error: { message: 'write failed' } })
 						});
@@ -350,6 +390,146 @@ describe('syncRecordMentions', () => {
 			)
 		).rejects.toThrow('write failed');
 		expect(db.rows('knowledge_mentions').map((m) => m.id)).toEqual(before);
+	});
+
+	it('a re-read that keeps a tag and adds a new name saves both (prod: duplicate key / null id)', async () => {
+		const { db, user, doc, person, link, record } = setup();
+		const valeo = person('Phil Valeo');
+		link(
+			valeo,
+			doc,
+			'…client, referred by Phil Valeo from thecadretraining.com. Key decisions…'
+		);
+		await syncRecordMentions(
+			db,
+			user,
+			{ record, fields: { content: DOC_BEFORE }, reader: [], readerComplete: false },
+			{ via: 'system' }
+		);
+		const [first] = db.rows('knowledge_mentions');
+		const rod = person('Rod Chamberlin');
+		const text = `${DOC_BEFORE} Rod Chamberlin signed off.`;
+		const report = await syncRecordMentions(
+			db,
+			user,
+			{
+				record,
+				fields: { content: text },
+				reader: [{ entityId: rod.id, kind: 'person', names: ['Rod Chamberlin'] }],
+				readerComplete: false
+			},
+			{ via: 'system' }
+		);
+		expect(report.counts).toMatchObject({ same: 1, added: 1 });
+		const rows = db.rows('knowledge_mentions');
+		expect(rows.map((m) => m.text).sort()).toEqual(['Phil Valeo', 'Rod Chamberlin']);
+		expect(rows.find((m) => m.text === 'Phil Valeo')!.id).toBe(first!.id);
+	});
+
+	describe('fuller names', () => {
+		const WS_DOC =
+			'# Wayne Strategies — current identity\n\nDJ selected Wayne Strategies and bought the domain. Referrals come from the Wayne Strategies site.';
+		const org = (make: (n: string, e?: Row) => Row, name: string, extra: Row = {}) =>
+			make(name, { kind: 'org', ...extra });
+
+		it('a tag the reader cut short grows to the name the owner already has', async () => {
+			const { db, user, doc, person, record } = setup();
+			const full = org(person, 'Wayne Strategies', { created_via: 'manual' });
+			const part = org(person, 'Strategies', { created_via: 'system' });
+			db.rows('knowledge_record_links').push({
+				id: randomUUID(),
+				entity_id: part.id,
+				owner_user_id: user,
+				record_kind: 'document',
+				record_id: doc,
+				quote: 'Wayne Strategies — current identity',
+				created_via: 'system'
+			});
+			// The doc model still reports only "Strategies".
+			const report = await syncRecordMentions(
+				db,
+				user,
+				{
+					record,
+					fields: { content: WS_DOC },
+					reader: [{ entityId: part.id, kind: 'org', names: ['Strategies'] }],
+					readerComplete: false
+				},
+				{ via: 'system' }
+			);
+			expect(report.counts.widened).toBe(3);
+			const rows = db.rows('knowledge_mentions');
+			expect(rows).toHaveLength(3);
+			for (const row of rows)
+				expect(row).toMatchObject({ entity_id: full.id, text: 'Wayne Strategies' });
+			expect(db.rows('knowledge_record_links').map((l) => l.entity_id)).toEqual([full.id]);
+			expect(report.linksRemoved.map((l) => l.name)).toEqual(['Strategies']);
+			expect(part).toMatchObject({ status: 'hidden', hidden_reason: 'orphan' });
+			expect(full.status).toBe('active');
+		});
+
+		it('renaming an entry widens its existing tags where the new name is written', async () => {
+			const { db, user, person, record } = setup();
+			const part = org(person, 'Strategies', { created_via: 'system' });
+			const fields = { content: WS_DOC };
+			await syncRecordMentions(
+				db,
+				user,
+				{
+					record,
+					fields,
+					reader: [{ entityId: part.id, kind: 'org', names: ['Strategies'] }],
+					readerComplete: false
+				},
+				{ via: 'system' }
+			);
+			const ids = db.rows('knowledge_mentions').map((m) => m.id);
+			expect(db.rows('knowledge_mentions').map((m) => m.text)).toEqual([
+				'Strategies',
+				'Strategies',
+				'Strategies'
+			]);
+
+			// The user renames the card.
+			part.name = 'Wayne Strategies';
+			part.normalized_name = normalizeKnowledgeName(part.name);
+			const report = await syncRecordMentions(
+				db,
+				user,
+				{ record, fields, reader: [], readerComplete: false },
+				{ via: 'system' }
+			);
+			expect(report.counts.widened).toBe(3);
+			const rows = db.rows('knowledge_mentions');
+			expect(rows.map((m) => [m.entity_id, m.text])).toEqual([
+				[part.id, 'Wayne Strategies'],
+				[part.id, 'Wayne Strategies'],
+				[part.id, 'Wayne Strategies']
+			]);
+			expect(rows.map((m) => m.id).sort()).toEqual([...ids].sort());
+			expect(part.status).toBe('active');
+		});
+
+		it('leaves a tag alone when the fuller name is not written around it', async () => {
+			const { db, user, person, record } = setup();
+			org(person, 'Wayne Strategies', { created_via: 'manual' });
+			const part = org(person, 'Strategies', { created_via: 'system' });
+			const report = await syncRecordMentions(
+				db,
+				user,
+				{
+					record,
+					fields: { content: 'Strategies is a separate shop in Ohio.' },
+					reader: [{ entityId: part.id, kind: 'org', names: ['Strategies'] }],
+					readerComplete: false
+				},
+				{ via: 'system' }
+			);
+			expect(report.counts.widened).toBe(0);
+			expect(db.rows('knowledge_mentions')).toEqual([
+				expect.objectContaining({ entity_id: part.id, text: 'Strategies' })
+			]);
+		});
 	});
 
 	it('asks instead of folding when the user added details to the old entry', async () => {

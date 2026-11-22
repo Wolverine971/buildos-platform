@@ -12,10 +12,12 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { MERGE_MAX } from '@buildos/shared-agent-ops/knowledge';
 import {
+	knowledgeDb,
 	knowledgeErrorResponse,
 	knowledgeStoreFor,
 	UUID_PATTERN
 } from '$lib/server/knowledge/knowledge.server';
+import { widenTagsToName } from '$lib/server/knowledge/tag-widening.server';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	const { user } = await locals.safeGetSession();
@@ -68,12 +70,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 	try {
 		const store = knowledgeStoreFor(locals.supabase, user.id);
-		if (!Array.isArray(body.merge))
-			return ApiResponse.success(await store.merge(keep, merge[0]!));
+		// The folded entries' tags now belong to `keep`; any that sat on part of its name
+		// ("Strategies" inside "Wayne Strategies") grow to the whole name. Best effort.
+		const widen = () =>
+			widenTagsToName(knowledgeDb(locals.supabase), user.id, keep).catch((error) => {
+				console.warn('[knowledge] widening tags after merge failed', error);
+				return { widened: 0, records: 0 };
+			});
+		if (!Array.isArray(body.merge)) {
+			const merged = await store.merge(keep, merge[0]!);
+			return ApiResponse.success({ ...merged, widened: (await widen()).widened });
+		}
 		const result = await store.mergeMany(keep, merge);
 		if (!result.merged.length && result.failed.length)
 			return ApiResponse.badRequest('Could not combine these');
-		return ApiResponse.success(result);
+		return ApiResponse.success({ ...result, widened: (await widen()).widened });
 	} catch (error) {
 		return knowledgeErrorResponse(error, 'Could not combine these');
 	}

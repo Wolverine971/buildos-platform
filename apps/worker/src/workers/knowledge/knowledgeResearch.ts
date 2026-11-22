@@ -28,6 +28,8 @@ import type { JSONRequestOptions } from '@buildos/smart-llm';
 import {
 	findSocialProfiles,
 	parseSocialProfile,
+	platformStatus,
+	profileFitsKind,
 	SOCIAL_PLATFORM_LABELS,
 	type SocialFinding,
 	type SocialPage
@@ -60,6 +62,9 @@ export type SearchPort = {
 
 /** A search preview shorter than this says nothing worth reading. */
 const MIN_PREVIEW_CHARS = 60;
+/** Account pages checked beside the pages read, and how much of each is kept (its bio). */
+const MAX_PROFILE_CANDIDATES = 2;
+const PROFILE_CANDIDATE_CHARS = 1_500;
 
 export type ResearchPhase = 'searching' | 'reading' | 'extracting' | 'saving';
 
@@ -77,6 +82,8 @@ export interface ResearchInput {
 	brief?: string | null;
 	/** Pages an earlier round already read: never fetched or paid for twice. */
 	skipUrls?: ReadonlySet<string>;
+	/** A second round of the same run: single details it already found are not replaced. */
+	laterRound?: boolean;
 }
 
 export interface ResearchDeps {
@@ -117,7 +124,12 @@ export interface ResearchOutcome {
 	/** Pages that would not open, read from the search engine's preview of them instead. */
 	previews: string[];
 	/** Social accounts taken as the entry's own this round, and on what ground. */
-	socials: Array<{ url: string; platform: string; ground: SocialFinding['ground']; from: string }>;
+	socials: Array<{
+		url: string;
+		platform: string;
+		ground: SocialFinding['ground'];
+		from: string;
+	}>;
 	/** Profiles that matched on the name alone and were not saved. */
 	nameOnlyProfiles: string[];
 	/** What the identity check said about each page considered. */
@@ -250,6 +262,38 @@ export async function researchEntity(
 			outcome.unread.push(result.url);
 		}
 	}
+	// Profiles get their own lane. A search for someone's Instagram returns accounts, and each
+	// is short (a bio) and must be checked against what is known, so up to two of them ride
+	// along without taking a page's place. None is opened: the search engine's text is enough.
+	if (fields.includes('profile_url')) {
+		const wanted = new Set(
+			platformStatus(
+				detail.entity.kind,
+				context.existing.filter((e) => e.predicate === 'profile_url').map((e) => e.value)
+			).want
+		);
+		const taken = new Set(read.map((page) => page.url));
+		let lane = 0;
+		for (const result of fresh) {
+			if (lane >= MAX_PROFILE_CANDIDATES) break;
+			if (taken.has(result.url)) continue;
+			const profile = parseSocialProfile(result.url);
+			if (!profile || !wanted.has(profile.platform)) continue;
+			if (!profileFitsKind(profile, detail.entity.kind)) continue;
+			const text = result.content?.trim() || result.preview;
+			if (!text || text.length < MIN_PREVIEW_CHARS) continue;
+			taken.add(result.url);
+			read.push({
+				url: result.url,
+				title: result.title || null,
+				content: result.content?.trim()
+					? result.content.slice(0, PROFILE_CANDIDATE_CHARS)
+					: `[Search preview only: the page itself could not be opened.]\n${result.preview}`
+			});
+			if (!result.content?.trim()) outcome.previews.push(result.url);
+			lane++;
+		}
+	}
 	outcome.pagesRead = read.length;
 	outcome.pages = read.map((page) => ({ url: page.url, title: page.title }));
 	const panelPage = knowledgePanelPage(panel, detail.entity.kind);
@@ -341,20 +385,23 @@ export async function researchEntity(
 		pages,
 		existing: context.existing,
 		suggestOnly: outcome.unanchored,
-		suggestPages
+		suggestPages,
+		keepExistingSingles: Boolean(input.laterRound)
 	});
 	outcome.batch = validated.batch;
 	outcome.dropped = validated.dropped;
 
 	// 5. Social accounts, decided by rules and never by a name match: what the entry's own
 	// website declares or links, a profile that was itself confirmed and what its bio links.
-	const confirmedSite = [
+	const wantsProfiles = fields.includes('profile_url') || also.includes('profile_url');
+	const siteUrls = [
 		context.homepage,
 		...validated.batch.facts
 			.filter((f) => f.predicate === 'homepage' && f.status !== 'suggested')
 			.map((f) => String(f.value ?? ''))
-	]
-		.map((url) => (url ? domainOf(url) : null))
+	].filter((url): url is string => Boolean(url));
+	const confirmedSite = siteUrls
+		.map((url) => domainOf(url))
 		.filter((d): d is string => Boolean(d));
 	const socialPages: SocialPage[] = [];
 	let htmlFetches = 0;
@@ -368,7 +415,15 @@ export async function researchEntity(
 				Boolean(host) &&
 				confirmedSite.some((d) => hostMatchesDomain(host!, d)));
 		let html: string | null = null;
-		if (ownSite && deps.fetchHtml && htmlFetches < MAX_PAGES_PER_TARGET) {
+		// A company's own pages (footer links), and for a person any confirmed page that is not
+		// itself an account: an employer's page about them may declare their accounts.
+		const worthReading =
+			ownSite ||
+			(detail.entity.kind === 'person' &&
+				state.verdict === 'same' &&
+				!parseSocialProfile(page.url) &&
+				!outcome.previews.includes(page.url));
+		if (worthReading && wantsProfiles && deps.fetchHtml && htmlFetches < MAX_PAGES_PER_TARGET) {
 			htmlFetches++;
 			html = await deps.fetchHtml(page.url).catch(() => null);
 		}
@@ -381,14 +436,28 @@ export async function researchEntity(
 			html
 		});
 	}
+	// The website is known (or was just confirmed) but none of its pages was read this round:
+	// its home page is the surest place for its accounts, and reading its links is free.
+	if (wantsProfiles && deps.fetchHtml && siteUrls[0] && !socialPages.some((p) => p.ownSite)) {
+		const html = await deps.fetchHtml(siteUrls[0]).catch(() => null);
+		if (html)
+			socialPages.push({
+				url: siteUrls[0],
+				title: null,
+				text: '',
+				verdict: 'same',
+				ownSite: true,
+				html
+			});
+	}
 	const social = findSocialProfiles({
 		kind: detail.entity.kind,
+		name: detail.entity.name,
 		pages: socialPages,
 		known: context.existing.filter((e) => e.predicate === 'profile_url').map((e) => e.value)
 	});
 	outcome.nameOnlyProfiles = social.nameOnly;
-	if (fields.includes('profile_url') || also.includes('profile_url'))
-		applySocialFindings(outcome, social, detail.entity.id);
+	if (wantsProfiles) applySocialFindings(outcome, social, detail.entity.id);
 	return outcome;
 }
 

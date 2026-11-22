@@ -205,7 +205,7 @@ export const KNOWLEDGE_RESEARCH_CONTEXT = `Where you are working: BuildOS is a w
 The job: research ONE entry on the public web, so the entry can be filled in with sourced facts the user can rely on when they work with this person or organization. The work is split into steps done by separate models. Software runs the searches, fetches the pages and saves the facts.`;
 
 const PROMPT_ORDER =
-	'the entry, how to research that type of entry, what the user\'s records already hold on it, what to find, what the user said to guide the research';
+	"the entry, how to research that type of entry, what the user's records already hold on it, what to find, what the user said to guide the research";
 
 export const KNOWLEDGE_ENRICH_SYSTEM_PROMPT = `${KNOWLEDGE_RESEARCH_CONTEXT}
 
@@ -222,13 +222,15 @@ Rules:
 - When a page is itself the entry's profile or own website, report that page's url (from its page tag) as profile_url or homepage, and quote the words on the page that show whose it is. For a person, homepage is their own site, never their employer's.
 - When a page gives only a handle for a profile (@name), write the standard link for that platform without inventing anything else: instagram.com/name, x.com/name, youtube.com/@name.
 - Social accounts need proof, because many people and companies share a name. Report a profile_url only when this page is that account, or this page is about the entry and shows the link or handle as the entry's own. Never report an account because its name matches, and never one you only believe exists. One fact per account. A personal LinkedIn (linkedin.com/in/…) belongs to a person; a company page (linkedin.com/company/…) to an organization.
-- For an organization only: also list under "people" each person a page names as owning, founding, running or working at it, with their role there as "title" in the page's words. Full names only (first and last), at most 6, each with "page" and an exact "quote" that contains the name. Leave "people" out for anything that is not an organization.
+- For an organization only: also list under "people" each person a page names as owning, founding, running or working at it, with their role there as "title": a role as the page writes it (CEO, Co-host, Lead Instructor), left out when the page gives only a phrase like "hosted by". Full names only (first and last), at most 6, each with "page" and an exact "quote" that contains the name. Leave "people" out for anything that is not an organization.
 - Values: plain text, URLs as written on the page, dates as YYYY or YYYY-MM-DD.
 - For relationships (value is another entry, such as an employer), give "object": {"kind": "...", "name": "..."} and no "value". For everything else give "value" and no "object".
 - "qualifiers": only the keys listed for that predicate, when the page states them, for example {"title":"Producer","current":true}. Otherwise leave it out.
 - "confidence": 0 to 1. Use 0.9 when the quote states the fact outright about this entry, and below 0.6 when you are reading it from context or are not sure whose it is (it is then kept for the user to check).
 - Don't repeat facts listed as already known. A job title at an employer that is already known is new: report it as headline.
 - Report each fact once. When several pages say the same thing in different words (a city written three ways, the same job title on two profiles), report it once, from the page that states it most fully.
+- located_in for an organization comes only from words that say where it is based: "based in", "headquartered in", "located in", or its address. A town in a class, event or tour listing is where something happens, not where the organization is: do not report it.
+- An account name or handle (@name) is not another name for the entry: never report it as alias.
 - For a person: never report a home address, birthday or family details. Report a phone number or email only when it is one of the predicates you are given, the page publishes it as this person's own contact (not a company switchboard or someone else's), and the quote contains it.
 
 Return JSON only:
@@ -276,9 +278,7 @@ const ALSO_WORTH_SAVING: Partial<Record<KnowledgeKind, string[]>> = {
 export function alsoWorthSaving(kind: KnowledgeKind, asked: readonly string[]): string[] {
 	const pool = ALSO_WORTH_SAVING[kind] ?? DEFAULT_ENRICH_FIELDS[kind] ?? [];
 	const skip = new Set(asked);
-	return enrichFieldsFor(kind, pool).filter(
-		(key) => !skip.has(key) && !CONTACT_FIELDS.has(key)
-	);
+	return enrichFieldsFor(kind, pool).filter((key) => !skip.has(key) && !CONTACT_FIELDS.has(key));
 }
 
 function predicateLine(key: string): string | null {
@@ -288,7 +288,9 @@ function predicateLine(key: string): string | null {
 		def.valueType === 'entity'
 			? ` → object kinds: ${def.objectKinds.length ? def.objectKinds.join(', ') : 'any'}`
 			: ` (${def.valueType})`;
-	const qualifiers = def.qualifierKeys.length ? `; qualifiers: ${def.qualifierKeys.join(', ')}` : '';
+	const qualifiers = def.qualifierKeys.length
+		? `; qualifiers: ${def.qualifierKeys.join(', ')}`
+		: '';
 	return `- ${def.key}${target}: ${def.description}${qualifiers}`;
 }
 
@@ -329,7 +331,7 @@ export function enrichUserPrompt(
 		`## The entry\nName: ${context.name}\nType: ${kindWords(context.kind)} (${context.kind})`,
 		`## What matters about ${kindWords(context.kind)}\n${researchPlaybook(context.kind)}`,
 		[
-			'## What the user\'s records already hold on it',
+			"## What the user's records already hold on it",
 			// The brief opens with the entry's known details; without one, list them here.
 			hasBrief
 				? ''
@@ -368,8 +370,7 @@ function anchorPromptBlock(anchors: KnowledgeAnchors, full = true): string {
 	if (anchors.people.length) lines.push(`- People who work there: ${anchors.people.join(', ')}`);
 	if (anchors.places.length) lines.push(`- Places: ${anchors.places.join(', ')}`);
 	if (anchors.urls.length) lines.push(`- Links in the user's notes: ${anchors.urls.join(', ')}`);
-	if (full)
-		for (const mention of anchors.mentions) lines.push(`- Mentioned: "${mention.text}"`);
+	if (full) for (const mention of anchors.mentions) lines.push(`- Mentioned: "${mention.text}"`);
 	const not = (view.known_not_to_be as string[] | undefined) ?? [];
 	return [
 		lines.length
@@ -408,6 +409,11 @@ export function validateEnrichment(
 		suggestOnly?: boolean;
 		/** 1-based pages the identity check couldn't confirm: their facts are suggestions. */
 		suggestPages?: ReadonlySet<number>;
+		/**
+		 * A later round of one run: a single-valued detail the entry already has (a headline, a
+		 * description) is kept, not replaced by the same thing in other words.
+		 */
+		keepExistingSingles?: boolean;
 	}
 ): ValidatedEnrichment {
 	const dropped: ValidatedEnrichment['dropped'] = [];
@@ -422,6 +428,7 @@ export function validateEnrichment(
 	const squashedPages = input.pages.map((page) => squash(`${page.title ?? ''}\n${page.content}`));
 	const existing = new Set(input.existing.map((e) => `${e.predicate}|${squash(e.value)}`));
 	const allowed = new Set(input.fields);
+	const singles = new Set<string>();
 	const sourceRefs = new Map<number, string>();
 	const objectRefs = new Map<string, string>();
 	let kept = 0;
@@ -458,6 +465,21 @@ export function validateEnrichment(
 			drop('quote not on the page');
 			continue;
 		}
+		// A detail an entry has one of (headline, description) is reported once per round, by
+		// the first page that states it; two profiles wording a job title differently is one fact.
+		if (def.cardinality === 'one') {
+			if (singles.has(predicate)) {
+				drop('already reported this round');
+				continue;
+			}
+			if (
+				input.keepExistingSingles &&
+				input.existing.some((e) => e.predicate === predicate)
+			) {
+				drop('already known');
+				continue;
+			}
+		}
 
 		let sourceRef = sourceRefs.get(pageNumber);
 		if (!sourceRef) {
@@ -491,7 +513,9 @@ export function validateEnrichment(
 			normalizeUrl(fact.value) === normalizeUrl(page.url);
 		// Pages print links without the scheme ("instagram.com/name"): compare a link that way.
 		const bare =
-			def.valueType === 'url' ? claimed.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') : '';
+			def.valueType === 'url'
+				? claimed.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')
+				: '';
 		const supported =
 			claimed.length > 0 &&
 			(isPageUrl ||
@@ -578,7 +602,12 @@ export function validateEnrichment(
 				profileSupported =
 					squashedPages[pageNumber - 1]!.includes(profile.handle) ||
 					parseSocialProfile(page.url)?.url === profile.url;
-				if (profileSupported && confidence >= 0.6 && !input.suggestOnly && !input.suggestPages?.has(pageNumber))
+				if (
+					profileSupported &&
+					confidence >= 0.6 &&
+					!input.suggestOnly &&
+					!input.suggestPages?.has(pageNumber)
+				)
 					common.status = 'active';
 			}
 			if (existing.has(`${predicate}|${squash(value)}`)) {
@@ -587,6 +616,7 @@ export function validateEnrichment(
 			}
 			batch.facts.push({ ...common, value: value.slice(0, 2000) });
 		}
+		if (def.cardinality === 'one') singles.add(predicate);
 		kept++;
 	}
 
@@ -596,7 +626,10 @@ export function validateEnrichment(
 		const seen = new Set<string>();
 		for (const item of Array.isArray(answer.people) ? answer.people : []) {
 			if (seen.size >= MAX_PEOPLE_PER_ORG) break;
-			const person = (item && typeof item === 'object' ? item : {}) as Record<string, unknown>;
+			const person = (item && typeof item === 'object' ? item : {}) as Record<
+				string,
+				unknown
+			>;
 			const name = typeof person.name === 'string' ? person.name.trim().slice(0, 120) : '';
 			const title = typeof person.title === 'string' ? person.title.trim().slice(0, 160) : '';
 			const pageNumber = typeof person.page === 'number' ? person.page : Number(person.page);
@@ -644,7 +677,9 @@ export function validateEnrichment(
 				confidence: 0.85,
 				// The title must be the page's own words to be taken as stated.
 				status:
-					input.suggestOnly || input.suggestPages?.has(pageNumber) ? 'suggested' : 'active',
+					input.suggestOnly || input.suggestPages?.has(pageNumber)
+						? 'suggested'
+						: 'active',
 				...(title && pageText.includes(squash(title))
 					? { qualifiers: { title, current: true } }
 					: {})
@@ -744,7 +779,10 @@ export function choosePages<T extends { url: string }>(
 			.split('/')[0]
 			?.replace(/^www\./, '') ?? null;
 	const own = [...new Set([...(options.ownDomains ?? []), ...(homeDomain ? [homeDomain] : [])])];
-	const badDomains = [...(options.exclude ?? []).flatMap((h) => h.domains), ...PEOPLE_FINDER_DOMAINS];
+	const badDomains = [
+		...(options.exclude ?? []).flatMap((h) => h.domains),
+		...PEOPLE_FINDER_DOMAINS
+	];
 	const badUrls = new Set(
 		(options.exclude ?? []).flatMap((h) => h.urls.map((u) => normalizeUrl(u) ?? u))
 	);
@@ -791,7 +829,7 @@ const PLAYBOOKS: Partial<Record<KnowledgeKind, { about: string[]; searching: str
 			'Goal: who this person is professionally, so the user can work with them.',
 			'- Bring back: current role and employer, a one-line description of what they do, a public profile (LinkedIn, a staff or author page, a personal site), the city they work from, schooling when a page states it, and a work email or phone only when it was asked for and a page publishes it as theirs. "Website" means the person\'s own site, never their employer\'s.',
 			'- Same-name people are the main risk. A page counts only when it agrees with a lead (employer, show, role, city, the work it appears in).',
-			'- Social accounts: their personal LinkedIn first, then Instagram or X when they use it publicly. A name match proves nothing: there are many accounts under one name. An account is theirs when a page that is certainly theirs links to it (their own site, a confirmed profile\'s bio, their employer\'s page about them), or when the account\'s own bio agrees with a lead.',
+			"- Social accounts: their personal LinkedIn first, then Instagram or X when they use it publicly. A name match proves nothing: there are many accounts under one name. An account is theirs when a page that is certainly theirs links to it (their own site, a confirmed profile's bio, their employer's page about them), or when the account's own bio agrees with a lead.",
 			'- Never: home address, birthday, family, personal social accounts unrelated to work.'
 		],
 		searching:
@@ -816,7 +854,7 @@ const PLAYBOOKS: Partial<Record<KnowledgeKind, { about: string[]; searching: str
 			'- The site itself is the source: its home, about and contact pages.'
 		],
 		searching:
-			'- Where it is found: the site\'s own pages first (use site: with its address), then coverage that names who runs it.'
+			"- Where it is found: the site's own pages first (use site: with its address), then coverage that names who runs it."
 	},
 	channel: {
 		about: [
@@ -825,7 +863,7 @@ const PLAYBOOKS: Partial<Record<KnowledgeKind, { about: string[]; searching: str
 			'- Channels share names. A page counts only when it agrees with a lead (a host, the platform, a topic, the organization behind it).'
 		],
 		searching:
-			'- Where it is found: the channel\'s own page on its platform, the publisher\'s website, and coverage of the show. Pair the name with a host or the platform.'
+			"- Where it is found: the channel's own page on its platform, the publisher's website, and coverage of the show. Pair the name with a host or the platform."
 	},
 	place: {
 		about: [
@@ -843,7 +881,7 @@ const PLAYBOOKS: Partial<Record<KnowledgeKind, { about: string[]; searching: str
 			'- A page counts only when it agrees with a lead (the maker, the category, how the user uses it).'
 		],
 		searching:
-			'- Where it is found: the product\'s own site and its maker\'s site. Pair the name with the maker or the category.'
+			"- Where it is found: the product's own site and its maker's site. Pair the name with the maker or the category."
 	},
 	event: {
 		about: [
@@ -852,18 +890,21 @@ const PLAYBOOKS: Partial<Record<KnowledgeKind, { about: string[]; searching: str
 			'- Events repeat every year and share names. A page counts only when the year, place or organizer agrees with a lead.'
 		],
 		searching:
-			'- Where it is found: the event\'s own page and its organizer\'s site. Pair the name with the year, city or organizer.'
+			"- Where it is found: the event's own page and its organizer's site. Pair the name with the year, city or organizer."
 	}
 };
 
 /** The playbook for a kind; kinds without their own get the plain version. */
-export function researchPlaybook(kind: KnowledgeKind, options: { searching?: boolean } = {}): string {
+export function researchPlaybook(
+	kind: KnowledgeKind,
+	options: { searching?: boolean } = {}
+): string {
 	const playbook = PLAYBOOKS[kind];
 	if (!playbook)
 		return [
 			'Goal: what it is and where it lives online.',
 			'- Bring back the details listed under "What to find".',
-			'- A page counts only when it agrees with a lead from the user\'s records (a link, a place, the people or organization behind it).'
+			"- A page counts only when it agrees with a lead from the user's records (a link, a place, the people or organization behind it)."
 		].join('\n');
 	return [...playbook.about, ...(options.searching ? [playbook.searching] : [])].join('\n');
 }
@@ -978,7 +1019,13 @@ export function validateResearchPlan(
 	// The same words in another order, case or quoting is the same search (a query string is a
 	// structured format: this compares its tokens, it does not read meaning).
 	const keyOf = (query: string) =>
-		query.toLowerCase().replace(/["“”']/g, ' ').split(/\s+/).filter(Boolean).sort().join(' ');
+		query
+			.toLowerCase()
+			.replace(/["“”']/g, ' ')
+			.split(/\s+/)
+			.filter(Boolean)
+			.sort()
+			.join(' ');
 	const seen = new Set((input.alreadyRun ?? []).map(keyOf));
 	const queries: string[] = [];
 	for (const item of Array.isArray(answer.queries) ? answer.queries : []) {

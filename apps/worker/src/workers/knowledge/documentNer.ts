@@ -26,6 +26,8 @@ export interface NerSpan {
 	chunk: number;
 	start: number;
 	end: number;
+	/** The span was completed to (or matches) a name the user already has an entry for. */
+	known?: boolean;
 }
 
 export interface DocumentNer {

@@ -323,6 +323,9 @@ async function loadReaderContext(db: KnowledgeDataClient, userId: string) {
 		knownPeople: new Set(
 			active.filter((e) => e.kind === 'person' && !e.is_self).map((e) => e.normalized_name)
 		),
+		knownNames: active
+			.filter((e) => !e.is_self && (e.kind === 'person' || e.kind === 'org'))
+			.map((e) => ({ kind: e.kind as 'person' | 'org', name: e.name })),
 		existing: new Set(active.map((e) => `${e.kind}|${e.normalized_name}`)),
 		idByKey: new Map(active.map((e) => [`${e.kind}|${e.normalized_name}`, e.id]))
 	};

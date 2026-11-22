@@ -68,23 +68,125 @@ const HOSTS: Record<string, SocialPlatform> = {
 
 /** First path segments that are the platform's own pages, never an account. */
 const NOT_AN_ACCOUNT = new Set([
-	'p', 'reel', 'reels', 'explore', 'accounts', 'stories', 'tv', 'direct', 'about', 'legal',
-	'intent', 'share', 'sharer', 'sharer.php', 'home', 'search', 'hashtag', 'i', 'login', 'signup',
-	'privacy', 'tos', 'terms', 'help', 'settings', 'compose', 'messages', 'notifications',
-	'plugins', 'dialog', 'groups', 'events', 'watch', 'marketplace', 'pages', 'policies', 'policy',
-	'sharearticle', 'sharing', 'feed', 'posts', 'pulse', 'jobs', 'learning', 'authwall', 'checkpoint',
-	'playlist', 'embed', 'results', 'shorts', 'live', 'feeds', 'premium', 'gaming', 'music',
-	'discover', 'tag', 'foryou', 'following', 'video', 'features', 'topics', 'collections',
-	'marketplace', 'sponsors', 'orgs', 'apps', 'pricing', 'enterprise', 'download', 'business',
-	'developers', 'developer', 'ads', 'careers', 'press', 'blog', 'web', 'public', 'profile.php',
-	'people', 'pub', 'directory', 'school', 'showcase', 'in', 'company', 'channel', 'c', 'user'
+	'p',
+	'reel',
+	'reels',
+	'explore',
+	'accounts',
+	'stories',
+	'tv',
+	'direct',
+	'about',
+	'legal',
+	'intent',
+	'share',
+	'sharer',
+	'sharer.php',
+	'home',
+	'search',
+	'hashtag',
+	'i',
+	'login',
+	'signup',
+	'privacy',
+	'tos',
+	'terms',
+	'help',
+	'settings',
+	'compose',
+	'messages',
+	'notifications',
+	'plugins',
+	'dialog',
+	'groups',
+	'events',
+	'watch',
+	'marketplace',
+	'pages',
+	'policies',
+	'policy',
+	'sharearticle',
+	'sharing',
+	'feed',
+	'posts',
+	'pulse',
+	'jobs',
+	'learning',
+	'authwall',
+	'checkpoint',
+	'playlist',
+	'embed',
+	'results',
+	'shorts',
+	'live',
+	'feeds',
+	'premium',
+	'gaming',
+	'music',
+	'discover',
+	'tag',
+	'foryou',
+	'following',
+	'video',
+	'features',
+	'topics',
+	'collections',
+	'marketplace',
+	'sponsors',
+	'orgs',
+	'apps',
+	'pricing',
+	'enterprise',
+	'download',
+	'business',
+	'developers',
+	'developer',
+	'ads',
+	'careers',
+	'press',
+	'blog',
+	'web',
+	'public',
+	'profile.php',
+	'people',
+	'pub',
+	'directory',
+	'school',
+	'showcase',
+	'in',
+	'company',
+	'channel',
+	'c',
+	'user'
 ]);
 
 /** Accounts of website builders and link tools that sit in a site's footer. Never the entry's. */
 const NOT_THEIRS = new Set([
-	'squarespace', 'wix', 'shopify', 'wordpress', 'wordpressdotcom', 'godaddy', 'webflow',
-	'linktree', 'linktr.ee', 'weebly', 'mailchimp', 'substack', 'carrd', 'beacons', 'kajabi',
-	'google', 'youtube', 'instagram', 'facebook', 'meta', 'twitter', 'x', 'linkedin', 'tiktok', 'github'
+	'squarespace',
+	'wix',
+	'shopify',
+	'wordpress',
+	'wordpressdotcom',
+	'godaddy',
+	'webflow',
+	'linktree',
+	'linktr.ee',
+	'weebly',
+	'mailchimp',
+	'substack',
+	'carrd',
+	'beacons',
+	'kajabi',
+	'google',
+	'youtube',
+	'instagram',
+	'facebook',
+	'meta',
+	'twitter',
+	'x',
+	'linkedin',
+	'tiktok',
+	'github'
 ]);
 
 const HANDLE = /^[a-z0-9][a-z0-9._-]{1,98}$/;
@@ -125,7 +227,12 @@ export function parseSocialProfile(input: string): SocialProfile | null {
 	const ok = (handle: string) => HANDLE.test(handle) && !NOT_THEIRS.has(handle);
 
 	if (platform === 'linkedin') {
-		const section = first === 'in' ? 'person' : first === 'company' || first === 'school' || first === 'showcase' ? 'org' : null;
+		const section =
+			first === 'in'
+				? 'person'
+				: first === 'company' || first === 'school' || first === 'showcase'
+					? 'org'
+					: null;
 		const handle = clean(parts[1]);
 		if (!section || !ok(handle)) return null;
 		return {
@@ -138,13 +245,19 @@ export function parseSocialProfile(input: string): SocialProfile | null {
 	if (platform === 'youtube') {
 		if (first.startsWith('@')) {
 			const handle = clean(first);
-			return ok(handle) ? { platform, handle, url: `https://www.youtube.com/@${handle}` } : null;
+			return ok(handle)
+				? { platform, handle, url: `https://www.youtube.com/@${handle}` }
+				: null;
 		}
 		if ((first === 'channel' || first === 'c' || first === 'user') && parts[1]) {
 			// Channel ids are case-sensitive: keep the address as written.
 			const id = parts[1].replace(/^@/, '');
 			return /^[A-Za-z0-9_-]{2,100}$/.test(id)
-				? { platform, handle: id.toLowerCase(), url: `https://www.youtube.com/${first}/${id}` }
+				? {
+						platform,
+						handle: id.toLowerCase(),
+						url: `https://www.youtube.com/${first}/${id}`
+					}
 				: null;
 		}
 		return null;
@@ -173,7 +286,16 @@ export function parseSocialProfile(input: string): SocialProfile | null {
 	// A deeper path is a post or a section of the account, except a few profile tabs.
 	if (parts.length > 1 && platform !== 'github') {
 		const tab = parts[1]!.toLowerCase();
-		const profileTab = ['', 'about', 'tagged', 'reels', 'with_replies', 'media', 'photos', 'videos'];
+		const profileTab = [
+			'',
+			'about',
+			'tagged',
+			'reels',
+			'with_replies',
+			'media',
+			'photos',
+			'videos'
+		];
 		if (!profileTab.includes(tab)) return null;
 	}
 	if (platform === 'github' && parts.length > 1) return null; // a repository, not a profile
@@ -199,19 +321,41 @@ export interface HarvestedProfile extends SocialProfile {
 	via: 'declared' | 'linked';
 	/** The address exactly as the page wrote it (the evidence). */
 	found: string;
+	/**
+	 * For a declared account: whose it is declared to be. A team member's page on a company's
+	 * site declares that person's accounts, not the company's.
+	 */
+	declaredOwner?: 'person' | 'org';
+	/** The name the declaration carries ({"@type":"Person","name":"Matt Solowynsky"}). */
+	declaredName?: string;
 }
 
-function collectSameAs(node: unknown, out: string[], depth = 0): void {
+function collectSameAs(
+	node: unknown,
+	out: Array<{ url: string; owner: 'person' | 'org' | undefined; name: string | undefined }>,
+	depth = 0
+): void {
 	if (!node || depth > 6) return;
 	if (Array.isArray(node)) {
 		for (const item of node) collectSameAs(item, out, depth + 1);
 		return;
 	}
 	if (typeof node !== 'object') return;
-	for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+	const record = node as Record<string, unknown>;
+	// schema.org says what the node is: {"@type":"Person"} vs Organization, LocalBusiness…
+	const types = (Array.isArray(record['@type']) ? record['@type'] : [record['@type']]).filter(
+		(t): t is string => typeof t === 'string'
+	);
+	const owner = types.length ? (types.includes('Person') ? 'person' : 'org') : undefined;
+	for (const [key, value] of Object.entries(record)) {
 		if (key === 'sameAs') {
 			for (const item of Array.isArray(value) ? value : [value])
-				if (typeof item === 'string') out.push(item);
+				if (typeof item === 'string')
+					out.push({
+						url: item,
+						owner,
+						name: typeof record.name === 'string' ? record.name : undefined
+					});
 		} else if (value && typeof value === 'object') {
 			collectSameAs(value, out, depth + 1);
 		}
@@ -219,7 +363,11 @@ function collectSameAs(node: unknown, out: string[], depth = 0): void {
 }
 
 const decodeEntities = (text: string) =>
-	text.replace(/&amp;/g, '&').replace(/&#x2F;/gi, '/').replace(/&#47;/g, '/').replace(/&quot;/g, '"');
+	text
+		.replace(/&amp;/g, '&')
+		.replace(/&#x2F;/gi, '/')
+		.replace(/&#47;/g, '/')
+		.replace(/&quot;/g, '"');
 
 /**
  * Every social account a page's HTML points at, with how it points at it. The caller decides
@@ -227,21 +375,38 @@ const decodeEntities = (text: string) =>
  */
 export function harvestSocialLinks(html: string): HarvestedProfile[] {
 	const found = new Map<string, HarvestedProfile>();
-	const add = (raw: string, via: HarvestedProfile['via']) => {
+	const add = (
+		raw: string,
+		via: HarvestedProfile['via'],
+		owner?: 'person' | 'org',
+		name?: string
+	) => {
 		const profile = parseSocialProfile(decodeEntities(raw));
 		if (!profile) return;
 		const existing = found.get(profile.url);
 		if (existing && (existing.via === 'declared' || via === 'linked')) return;
-		found.set(profile.url, { ...profile, via, found: raw.slice(0, 300) });
+		found.set(profile.url, {
+			...profile,
+			via,
+			found: raw.slice(0, 300),
+			...(owner ? { declaredOwner: owner } : {}),
+			...(name ? { declaredName: name.slice(0, 160) } : {})
+		});
 	};
 	// schema.org: {"@type":"Organization","sameAs":["https://instagram.com/…"]}
 	for (const match of html.matchAll(
 		/<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
 	)) {
 		try {
-			const urls: string[] = [];
+			const urls: Array<{
+				url: string;
+				owner: 'person' | 'org' | undefined;
+				name: string | undefined;
+			}> = [];
 			collectSameAs(JSON.parse(match[1]!.trim()), urls);
-			for (const url of urls) add(url, 'declared');
+			// Declared only when the page says whose it is; otherwise it is just a link.
+			for (const { url, owner, name } of urls)
+				add(url, owner ? 'declared' : 'linked', owner, name);
 		} catch {
 			// malformed JSON-LD: the ordinary links below still count
 		}
@@ -251,9 +416,9 @@ export function harvestSocialLinks(html: string): HarvestedProfile[] {
 		const href = /\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(tag);
 		const url = href?.[1] ?? href?.[2] ?? href?.[3];
 		if (!url) continue;
-		const rel = /\brel\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(tag);
-		const relTokens = (rel?.[1] ?? rel?.[2] ?? rel?.[3] ?? '').toLowerCase().split(/\s+/);
-		add(url, relTokens.includes('me') ? 'declared' : 'linked');
+		// rel="me" says "this is the page's subject", and on a company's site the subject of a
+		// team page is that person: it is read as an ordinary link.
+		add(url, 'linked');
 	}
 	return [...found.values()];
 }
@@ -261,7 +426,9 @@ export function harvestSocialLinks(html: string): HarvestedProfile[] {
 /** Account addresses written out in a page's text (a profile's bio: "instagram.com/name"). */
 export function harvestSocialLinksFromText(text: string): HarvestedProfile[] {
 	const found = new Map<string, HarvestedProfile>();
-	const hosts = Object.keys(HOSTS).map((host) => host.replace('.', '\\.')).join('|');
+	const hosts = Object.keys(HOSTS)
+		.map((host) => host.replace('.', '\\.'))
+		.join('|');
 	const pattern = new RegExp(`(?:https?://)?(?:www\\.)?(?:${hosts})/[^\\s"'<>)\\]]{2,120}`, 'gi');
 	for (const match of text.matchAll(pattern)) {
 		const profile = parseSocialProfile(match[0]);
@@ -279,7 +446,10 @@ export function harvestSocialLinksFromText(text: string): HarvestedProfile[] {
  * ambiguous and neither is taken.
  */
 export function ownAccounts(pages: HarvestedProfile[][]): HarvestedProfile[] {
-	const byPlatform = new Map<SocialPlatform, Map<string, { profile: HarvestedProfile; pages: number }>>();
+	const byPlatform = new Map<
+		SocialPlatform,
+		Map<string, { profile: HarvestedProfile; pages: number }>
+	>();
 	for (const page of pages) {
 		const seen = new Set<string>();
 		for (const profile of page) {
@@ -379,8 +549,18 @@ const GROUND_RANK: Record<SocialGround, number> = {
 const BIO_CHARS = 900;
 const handleKey = (handle: string) => handle.replace(/[^a-z0-9]/g, '');
 
+/** Names compared letter for letter, ignoring case, spacing and punctuation. */
+const nameKey = (name: string) =>
+	name
+		.toLowerCase()
+		.normalize('NFKD')
+		.replace(/[^a-z0-9]+/g, ' ')
+		.trim();
+
 export function findSocialProfiles(input: {
 	kind: KnowledgeKind;
+	/** The entry's name, to match a declaration that names a person. */
+	name?: string;
 	pages: SocialPage[];
 	/** Profile addresses already saved on the entry. */
 	known: readonly string[];
@@ -399,10 +579,19 @@ export function findSocialProfiles(input: {
 
 	// 1 + 2. The entry's own website: what it declares and what its header and footer link to.
 	const sitePages = input.pages.filter((page) => page.ownSite);
+	// An account declared for a person is never a company's, and the other way round.
+	const declaredForUs = (link: HarvestedProfile) =>
+		!link.declaredOwner || (input.kind === 'person') === (link.declaredOwner === 'person');
 	const perPage = sitePages.map((page) =>
-		page.html ? harvestSocialLinks(page.html) : harvestSocialLinksFromText(page.text)
+		(page.html ? harvestSocialLinks(page.html) : harvestSocialLinksFromText(page.text)).filter(
+			declaredForUs
+		)
 	);
+	// One account per platform from a site: when the entry already has its Instagram, another
+	// Instagram linked on some page of the site is someone else's (a team member's).
+	const knownPlatforms = new Set(known.map((p) => p.platform));
 	for (const account of ownAccounts(perPage)) {
+		if (knownPlatforms.has(account.platform) && !knownUrls.has(account.url)) continue;
 		const at = perPage.findIndex((links) => links.some((l) => l.url === account.url));
 		const page = sitePages[at]!;
 		add({
@@ -413,6 +602,27 @@ export function findSocialProfiles(input: {
 			pageTitle: page.title,
 			evidence: account.found
 		});
+	}
+
+	// 2b. A person: a page about them on someone else's site (their employer's team page) that
+	// declares a Person of the same name declares that person's accounts.
+	if (input.kind === 'person' && input.name) {
+		const wanted = nameKey(input.name);
+		for (const page of input.pages) {
+			if (page.ownSite || page.verdict !== 'same' || !page.html) continue;
+			for (const link of harvestSocialLinks(page.html)) {
+				if (link.declaredOwner !== 'person' || !link.declaredName) continue;
+				if (nameKey(link.declaredName) !== wanted) continue;
+				add({
+					profile: link,
+					ground: 'declared',
+					confirmed: true,
+					pageUrl: page.url,
+					pageTitle: page.title,
+					evidence: link.found
+				});
+			}
+		}
 	}
 
 	// 3. A profile page that was itself checked and confirmed, plus the accounts its bio links.
@@ -472,8 +682,15 @@ export function findSocialProfiles(input: {
 		} else nameOnly.push(profile.url);
 	}
 
-	return {
-		findings: [...best.values()].filter((f) => !knownUrls.has(f.profile.url)),
-		nameOnly
-	};
+	// The same account under two addresses (youtube.com/@name and youtube.com/c/name) is one.
+	const knownAccounts = new Set(known.map((p) => `${p.platform}:${handleKey(p.handle)}`));
+	const byAccount = new Map<string, SocialFinding>();
+	for (const finding of best.values()) {
+		const key = `${finding.profile.platform}:${handleKey(finding.profile.handle)}`;
+		if (knownUrls.has(finding.profile.url) || knownAccounts.has(key)) continue;
+		const current = byAccount.get(key);
+		if (!current || GROUND_RANK[finding.ground] > GROUND_RANK[current.ground])
+			byAccount.set(key, finding);
+	}
+	return { findings: [...byAccount.values()], nameOnly };
 }

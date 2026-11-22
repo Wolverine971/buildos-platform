@@ -19,6 +19,7 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import KnowledgeEntityCard from './KnowledgeEntityCard.svelte';
 	import KnowledgeEnrichDialog from './KnowledgeEnrichDialog.svelte';
+	import KnowledgeMergeDialog from './KnowledgeMergeDialog.svelte';
 	import {
 		knowledgeResearch,
 		knowledgeResearchStarted,
@@ -40,9 +41,35 @@
 		footer?: Snippet<[{ depth: number }]>;
 		/** The entry was hidden or deleted from inside the card. */
 		onRemoved?: (id: string) => void;
+		/** The card renamed or combined entries: the host's highlights may have changed. */
+		onChanged?: () => void;
 	}
 
-	let { anchor, rootId, label, onClose, context = null, footer, onRemoved }: Props = $props();
+	let {
+		anchor,
+		rootId,
+		label,
+		onClose,
+		context = null,
+		footer,
+		onRemoved,
+		onChanged
+	}: Props = $props();
+
+	// "Merge…" (or a rename onto a name another card has): the dialog outlives the popover, like
+	// Find more's, so it isn't stacked under it.
+	let mergeIds = $state<string[] | null>(null);
+	function openMerge(entity: { id: string; with?: string[] }) {
+		onClose();
+		mergeIds = [entity.id, ...(entity.with ?? [])];
+	}
+	function onMerged(result: { kept: string; merged: string[] }) {
+		mergeIds = null;
+		toastService.success(
+			result.merged.length === 1 ? 'Merged' : `Merged ${result.merged.length + 1} into one`
+		);
+		onChanged?.();
+	}
 
 	// Writable derived: back to the root whenever another name opens; drilling pushes onto it.
 	let stack = $derived<string[]>(rootId ? [rootId] : []);
@@ -100,6 +127,8 @@
 					{onClose}
 					research={knowledgeResearch.byEntity.get(top) ?? null}
 					onFindMore={findMore}
+					{onChanged}
+					onMerge={openMerge}
 					onRemoved={(id) => {
 						onRemoved?.(id);
 						onClose();
@@ -109,6 +138,10 @@
 		</ErrorBoundary>
 		{@render footer?.({ depth: stack.length })}
 	</TablePopover>
+{/if}
+
+{#if mergeIds}
+	<KnowledgeMergeDialog ids={mergeIds} onClose={() => (mergeIds = null)} {onMerged} />
 {/if}
 
 {#if enrichEntries}
