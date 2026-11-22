@@ -621,4 +621,29 @@ describe('planned research', () => {
 		expect(plan.researchPlaybook('person')).not.toContain('Where it is found');
 		expect(plan.KNOWLEDGE_PLAN_SYSTEM_PROMPT).toContain('plan the searches for the real type');
 	});
+
+	it('treats the same search in another order, case or quoting as already run', async () => {
+		const { validateResearchPlan } = await import('./knowledgeEnrichPlan');
+		const plan = validateResearchPlan(
+			{
+				kind: 'person',
+				queries: ['"Griffin Davis" "Breaking Points" LinkedIn', '"Griffin Davis" executive producer interview']
+			},
+			{ filedKind: 'person', alreadyRun: ['"Griffin Davis" linkedin "Breaking Points"'] }
+		);
+		expect(plan.queries).toEqual(['"Griffin Davis" executive producer interview']);
+	});
+
+	it('never reads a people-finder site', async () => {
+		const { choosePages } = await import('./knowledgeEnrichPlan');
+		const picked = choosePages(
+			[
+				{ url: 'https://www.truepeoplesearch.com/find/person/abc' },
+				{ url: 'https://example.com/team' }
+			],
+			null
+		);
+		expect(picked.map((p) => p.url)).toEqual(['https://example.com/team']);
+	});
 });
+

@@ -101,7 +101,7 @@ export interface KnowledgeFocusBrief {
 	missing: string[];
 	twins: FocusBriefTwin[];
 	records: FocusBriefRecord[];
-	projects: Array<{ id: string; name: string; records: number }>;
+	projects: Array<{ id: string; name: string; records: number; description?: string | null }>;
 	research: Array<{ at: string | null; status: string; summary: string | null }>;
 	not: string[];
 }
@@ -415,14 +415,23 @@ export async function loadKnowledgeFocusBrief(
 	// Project names for everything listed.
 	const projectIds = [...new Set(records.map((r) => r.project_id).filter(Boolean))] as string[];
 	const projectNames = new Map<string, string>();
+	// What each project is, in the user's words: for an organization that has its own project,
+	// this is the best description of it BuildOS holds.
+	const projectAbout = new Map<string, string>();
 	if (projectIds.length) {
 		const { data } = await db
 			.from('onto_projects')
-			.select('id, name')
+			.select('id, name, description')
 			.in('id', projectIds)
 			.is('deleted_at', null);
-		for (const row of (data ?? []) as Array<{ id: string; name: string }>)
+		for (const row of (data ?? []) as Array<{
+			id: string;
+			name: string;
+			description?: string | null;
+		}>) {
 			projectNames.set(row.id, row.name);
+			if (row.description?.trim()) projectAbout.set(row.id, row.description.trim());
+		}
 	}
 	const projectCounts = new Map<string, number>();
 	for (const record of records) {
@@ -462,7 +471,12 @@ export async function loadKnowledgeFocusBrief(
 		})),
 		records,
 		projects: [...projectCounts.entries()]
-			.map(([id, count]) => ({ id, name: projectNames.get(id) ?? 'Project', records: count }))
+			.map(([id, count]) => ({
+				id,
+				name: projectNames.get(id) ?? 'Project',
+				records: count,
+				description: projectAbout.get(id) ?? null
+			}))
 			.sort((a, b) => b.records - a.records),
 		research: detail.enrichment.slice(0, FOCUS_BRIEF_LIMITS.research).map((run) => ({
 			at: run.finished_at ?? run.created_at ?? null,
@@ -531,13 +545,21 @@ export function renderKnowledgeFocusBrief(
 	const hideContacts = research || Boolean(options.hideContacts);
 	const id = (text: string) => (research ? '' : text);
 	const fact = (f: FocusBriefFact) => factLine(research ? { ...f, entity_id: undefined } : f);
-	const open = (facts: FocusBriefFact[]) =>
-		hideContacts ? facts.filter((f) => !PRIVATE_BRIEF_PREDICATES.has(f.predicate)) : facts;
+	// Another name for an organization ("The Cadre Training Group") is a public lead; a person's
+	// nickname is not.
+	const open = (facts: FocusBriefFact[], kind: KnowledgeKind) =>
+		hideContacts
+			? facts.filter(
+					(f) =>
+						!PRIVATE_BRIEF_PREDICATES.has(f.predicate) ||
+						(f.predicate === 'alias' && kind !== 'person')
+				)
+			: facts;
 	const brief: KnowledgeFocusBrief = hideContacts
 		? {
 				...input,
-				facts: open(input.facts),
-				twins: input.twins.map((twin) => ({ ...twin, facts: open(twin.facts) }))
+				facts: open(input.facts, input.entity.kind),
+				twins: input.twins.map((twin) => ({ ...twin, facts: open(twin.facts, twin.kind) }))
 			}
 		: input;
 	const { entity } = brief;
@@ -622,6 +644,17 @@ export function renderKnowledgeFocusBrief(
 			? ` across ${brief.projects.map((p) => `${p.name} (${p.records})`).join(', ')}`
 			: '';
 		work.push('', `Where it shows up in the user's work${spans}:`);
+		// A project named after the entry is about the entry: its description is the user's own
+		// account of what this organization or person is. Other projects' descriptions are about
+		// the user's work, not the entry, and stay out.
+		const names = new Set(
+			[entity.name, ...brief.twins.map((twin) => twin.name)].map(normalizeKnowledgeName)
+		);
+		for (const project of brief.projects)
+			if (project.description && names.has(normalizeKnowledgeName(project.name)))
+				work.push(
+					`- The user has a project named "${project.name}", which they describe as: ${clip(stripLinks(project.description), 320)}`
+				);
 		let used = fixed.length + work.join('\n').length;
 		let shown = 0;
 		for (const record of brief.records) {

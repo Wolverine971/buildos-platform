@@ -275,3 +275,50 @@ describe('researchEntity: same one?', () => {
 		expect(outcome.batch.facts.every((f) => f.status === 'suggested')).toBe(true);
 	});
 });
+
+describe('researchEntity: pages that will not open', () => {
+	it('reads the search preview of a page that cannot be opened, and names the ones with nothing to read', async () => {
+		const prompts: string[] = [];
+		const preview =
+			'Executive Producer at Example Show. Los Angeles, California. Education: State University.';
+		const outcome = await researchEntity(
+			{
+				detail: detail(),
+				anchors: anchors(),
+				fields: ['description'],
+				instructions: 'The range in Wyoming.',
+				userId: '22222222-2222-4222-8222-222222222222',
+				queries: ['"Cody Shooting Complex" Wyoming']
+			},
+			{
+				llm: {
+					getJSONResponse: async (options: any) => {
+						prompts.push(options.userPrompt);
+						return { pages: [], facts: [] };
+					}
+				} as never,
+				port: {
+					search: async () => ({
+						results: [
+							{ url: 'https://www.linkedin.com/in/someone', title: 'Someone | LinkedIn', snippet: preview },
+							{ url: 'https://walled.example/page', title: 'Walled' }
+						]
+					}),
+					visit: async () => {
+						throw new Error('blocked');
+					}
+				},
+				decider: null,
+				charge: () => {},
+				takeReserved: () => 0,
+				budgetLeft: () => 0.03
+			}
+		);
+		expect(outcome.previews).toEqual(['https://www.linkedin.com/in/someone']);
+		expect(outcome.unread).toEqual(['https://walled.example/page']);
+		expect(outcome.pagesRead).toBe(1);
+		expect(prompts[0]).toContain('[Search preview only: the page itself could not be opened.]');
+		expect(prompts[0]).toContain(preview);
+	});
+});
+

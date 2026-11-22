@@ -485,7 +485,8 @@ export async function processKnowledgeEnrichJob(
 			const trace: ResearchTrace = { queries: [], pages: [], rounds: 0 };
 			const readUrls = new Set<string>();
 			const found: string[] = [];
-			const foundPredicates = new Set<string>();
+			// Details already on the entry are not missing: a second round is not spent on them.
+			const foundPredicates = new Set<string>(subjectContext.existing.map((e) => e.predicate));
 			const totals = { pagesRead: 0, differentPages: 0, unanchored: false, dropped: 0 };
 			let added = 0;
 			let suggested = 0;
@@ -535,12 +536,20 @@ export async function processKnowledgeEnrichJob(
 				trace.queries.push(...outcome.queries);
 				for (const page of outcome.pages) {
 					readUrls.add(page.url);
+					const verdict =
+						outcome.verdicts.find((v) => v.url === page.url)?.verdict ?? 'read';
 					trace.pages.push({
 						url: page.url,
 						title: page.title,
-						verdict:
-							outcome.verdicts.find((v) => v.url === page.url)?.verdict ?? 'read'
+						verdict: outcome.previews.includes(page.url)
+							? `${verdict} (search preview only)`
+							: verdict
 					});
+				}
+				// Pages that would not open are part of what happened: "LinkedIn could not be read".
+				for (const url of outcome.unread) {
+					readUrls.add(url);
+					trace.pages.push({ url, title: null, verdict: 'unreadable' });
 				}
 				totals.pagesRead += outcome.pagesRead;
 				totals.differentPages += outcome.differentPages;
@@ -560,6 +569,15 @@ export async function processKnowledgeEnrichJob(
 					const receipt = await store.record(batch, { via: 'enrichment', runId });
 					added += receipt.facts.added;
 					suggested += receipt.facts.suggested;
+					// The next round reads the entry as it now stands, so it lists these as
+					// known and does not report them again in other words.
+					if (round < MAX_RESEARCH_ROUNDS) {
+						const saved = await store.getEntity(subject.entity.id).catch(() => null);
+						if (saved) {
+							subject = saved;
+							subjectContext = enrichContextFrom(saved);
+						}
+					}
 				}
 			}
 			traces[target.entity_id] = {

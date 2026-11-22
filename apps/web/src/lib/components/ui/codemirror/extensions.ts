@@ -6,7 +6,7 @@
  * and toolbar command helpers.
  */
 
-import { type Extension } from '@codemirror/state';
+import { EditorState, type Extension } from '@codemirror/state';
 import { type Command, EditorView, keymap, placeholder as cmPlaceholder } from '@codemirror/view';
 import { markdown } from '@codemirror/lang-markdown';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
@@ -170,6 +170,19 @@ export interface EditorExtensionOptions {
 	additionalExtensions?: Extension[];
 }
 
+/** Find/replace panel labels — CodeMirror's defaults are lowercase ("regexp", "by word"). */
+const searchPhrases = EditorState.phrases.of({
+	next: 'Next',
+	previous: 'Previous',
+	all: 'Select all',
+	'match case': 'Match case',
+	regexp: 'Regex',
+	'by word': 'Whole word',
+	replace: 'Replace',
+	'replace all': 'Replace all',
+	close: 'Close'
+});
+
 /**
  * Build the standard set of extensions for the markdown editor.
  * Returns an array that can be passed directly to EditorState.create().
@@ -200,6 +213,8 @@ export function buildExtensions(options: EditorExtensionOptions = {}): Extension
 			: []),
 		// Keymaps
 		keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
+		// Find/replace panel labels (CodeMirror defaults are lowercase dev-speak)
+		searchPhrases,
 		// Formatting shortcuts
 		formattingKeymap(onSave),
 		// Consumer-provided extensions (editable compartment, voice widget, listeners)

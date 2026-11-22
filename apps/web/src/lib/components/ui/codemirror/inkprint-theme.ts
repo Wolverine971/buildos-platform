@@ -28,6 +28,15 @@ export const inkprintEditorTheme = EditorView.theme({
 	'@media (max-width: 639px)': {
 		'&': {
 			fontSize: '16px'
+		},
+		// Same rule for the find/replace fields.
+		'&.cm-editor .cm-panel.cm-search .cm-textfield': {
+			fontSize: '16px',
+			height: '36px',
+			width: '100%'
+		},
+		'&.cm-editor .cm-panel.cm-search .cm-button': {
+			height: '36px'
 		}
 	},
 	'&.cm-focused': {
@@ -83,35 +92,143 @@ export const inkprintEditorTheme = EditorView.theme({
 			color: 'hsl(var(--foreground))'
 		}
 	},
-	// Search panel styling
-	'.cm-panels': {
-		backgroundColor: 'hsl(var(--muted))',
-		borderBottom: '1px solid hsl(var(--border))',
+	// Panels (sticky-scroll on top, find/replace on the bottom).
+	// CodeMirror's base theme ships `&light .cm-panels` / `&light .cm-button`
+	// rules (light gradients, #f5f5f5, black text) at higher specificity than a
+	// plain `.cm-panels` selector, and this editor never declares itself dark —
+	// so in dark mode those defaults showed through as white-on-light-grey
+	// buttons. Every rule below is anchored on `&.cm-editor` to outrank them.
+	'&.cm-editor .cm-panels': {
+		backgroundColor: 'hsl(var(--card))',
 		color: 'hsl(var(--foreground))'
 	},
-	'.cm-panels button': {
+	'&.cm-editor .cm-panels.cm-panels-top': {
+		borderBottom: '1px solid hsl(var(--border))'
+	},
+	'&.cm-editor .cm-panels.cm-panels-bottom': {
+		borderTop: '1px solid hsl(var(--border))'
+	},
+	'&.cm-editor .cm-panel.cm-search': {
+		padding: '8px 40px 8px 12px',
+		fontFamily: 'inherit',
+		fontSize: '13px',
+		lineHeight: '1'
+	},
+	'&.cm-editor .cm-panel.cm-search input, &.cm-editor .cm-panel.cm-search button, &.cm-editor .cm-panel.cm-search label':
+		{
+			margin: '3px 6px 3px 0',
+			verticalAlign: 'middle'
+		},
+	// Find / Replace text fields
+	'&.cm-editor .cm-panel.cm-search .cm-textfield': {
+		boxSizing: 'border-box',
+		height: '30px',
+		width: '240px',
+		maxWidth: '100%',
+		padding: '0 10px',
+		backgroundColor: 'hsl(var(--background))',
+		color: 'hsl(var(--foreground))',
+		border: '1px solid hsl(var(--border-strong))',
+		borderRadius: '6px',
+		fontFamily: 'inherit',
+		fontSize: '13px',
+		outline: 'none',
+		transition: 'border-color 0.12s, box-shadow 0.12s'
+	},
+	'&.cm-editor .cm-panel.cm-search .cm-textfield::placeholder': {
+		color: 'hsl(var(--muted-foreground))',
+		opacity: '1'
+	},
+	'&.cm-editor .cm-panel.cm-search .cm-textfield:focus': {
+		borderColor: 'hsl(var(--ring))',
+		boxShadow: '0 0 0 2px hsl(var(--ring) / 0.25)'
+	},
+	// Next / Previous / Select all / Replace / Replace all
+	'&.cm-editor .cm-panel.cm-search .cm-button': {
+		boxSizing: 'border-box',
+		height: '30px',
+		padding: '0 12px',
+		backgroundImage: 'none',
+		backgroundColor: 'hsl(var(--muted))',
+		color: 'hsl(var(--foreground))',
+		border: '1px solid hsl(var(--border-strong) / 0.6)',
+		borderRadius: '6px',
+		fontFamily: 'inherit',
+		fontSize: '12.5px',
+		fontWeight: '500',
 		cursor: 'pointer',
-		backgroundColor: 'hsl(var(--card))',
-		color: 'hsl(var(--foreground))',
-		border: '1px solid hsl(var(--border))',
-		borderRadius: '4px',
-		padding: '2px 8px',
-		fontSize: '12px'
+		transition: 'background-color 0.12s, border-color 0.12s'
 	},
-	'.cm-panels input, .cm-panels select': {
-		backgroundColor: 'hsl(var(--card))',
-		color: 'hsl(var(--foreground))',
-		border: '1px solid hsl(var(--border))',
-		borderRadius: '4px',
-		padding: '2px 6px',
-		fontSize: '12px'
+	'&.cm-editor .cm-panel.cm-search .cm-button:hover': {
+		backgroundColor: 'hsl(var(--border))',
+		borderColor: 'hsl(var(--border-strong))'
 	},
-	'.cm-searchMatch': {
-		backgroundColor: 'hsl(var(--accent) / 0.25)',
+	'&.cm-editor .cm-panel.cm-search .cm-button:active': {
+		backgroundImage: 'none',
+		backgroundColor: 'hsl(var(--border-strong) / 0.35)'
+	},
+	'&.cm-editor .cm-panel.cm-search .cm-button:focus-visible, &.cm-editor .cm-panel.cm-search button[name=close]:focus-visible':
+		{
+			outline: '2px solid hsl(var(--ring))',
+			outlineOffset: '1px'
+		},
+	// Match case / Regex / Whole word
+	'&.cm-editor .cm-panel.cm-search label': {
+		display: 'inline-flex',
+		alignItems: 'center',
+		gap: '6px',
+		height: '30px',
+		padding: '0 4px',
+		color: 'hsl(var(--muted-foreground))',
+		fontSize: '12.5px',
+		whiteSpace: 'nowrap',
+		cursor: 'pointer',
+		userSelect: 'none'
+	},
+	'&.cm-editor .cm-panel.cm-search label:hover': {
+		color: 'hsl(var(--foreground))'
+	},
+	'&.cm-editor .cm-panel.cm-search input[type=checkbox]': {
+		width: '14px',
+		height: '14px',
+		margin: '0',
+		accentColor: 'hsl(var(--accent))',
+		cursor: 'pointer'
+	},
+	// Close (×)
+	'&.cm-editor .cm-panel.cm-search button[name=close]': {
+		position: 'absolute',
+		top: '11px',
+		right: '10px',
+		width: '26px',
+		height: '26px',
+		margin: '0',
+		padding: '0',
+		display: 'inline-flex',
+		alignItems: 'center',
+		justifyContent: 'center',
+		backgroundColor: 'transparent',
+		color: 'hsl(var(--muted-foreground))',
+		border: 'none',
+		borderRadius: '6px',
+		fontSize: '18px',
+		lineHeight: '1',
+		cursor: 'pointer'
+	},
+	'&.cm-editor .cm-panel.cm-search button[name=close]:hover': {
+		backgroundColor: 'hsl(var(--muted))',
+		color: 'hsl(var(--foreground))'
+	},
+	// Match highlights: goldenrod for every hit, accent underline for the current
+	// one, so the current match stays distinguishable from the others without
+	// relying on hue alone.
+	'&.cm-editor .cm-searchMatch': {
+		backgroundColor: 'hsl(var(--warning) / 0.28)',
 		borderRadius: '2px'
 	},
-	'.cm-searchMatch.cm-searchMatch-selected': {
-		backgroundColor: 'hsl(var(--accent) / 0.45)'
+	'&.cm-editor .cm-searchMatch.cm-searchMatch-selected': {
+		backgroundColor: 'hsl(var(--accent) / 0.32)',
+		boxShadow: 'inset 0 -2px 0 hsl(var(--accent))'
 	},
 	// Placeholder
 	'.cm-placeholder': {
@@ -238,7 +355,10 @@ export const inkprintHighlightStyle = HighlightStyle.define([
 			'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
 		backgroundColor: 'hsl(var(--muted) / 0.5)',
 		borderRadius: '3px',
-		padding: '1px 4px',
+		// No horizontal padding: the backticks and any search-match/mention
+		// decoration split this token into several spans, and per-span padding
+		// opened visible gaps inside the code ("docs/founder/ sam os-…").
+		padding: '1px 0',
 		fontSize: '0.9em'
 	},
 	// Links

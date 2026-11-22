@@ -33,6 +33,7 @@ import {
 	KNOWLEDGE_ENRICH_OPERATION,
 	KNOWLEDGE_ENRICH_SYSTEM_PROMPT,
 	knowledgePanelPage,
+	MAX_PAGES_PER_TARGET,
 	PAGE_CHARS,
 	validateEnrichment,
 	type EnrichContext,
@@ -47,6 +48,9 @@ export type SearchPort = {
 	search?: (args: Record<string, unknown>, signal?: AbortSignal) => Promise<unknown>;
 	visit?: (args: Record<string, unknown>, signal?: AbortSignal) => Promise<unknown>;
 };
+
+/** A search preview shorter than this says nothing worth reading. */
+const MIN_PREVIEW_CHARS = 60;
 
 export type ResearchPhase = 'searching' | 'reading' | 'extracting' | 'saving';
 
@@ -94,6 +98,10 @@ export interface ResearchOutcome {
 	pagesRead: number;
 	/** Every page considered this round, for the trace the user sees. */
 	pages: Array<{ url: string; title: string | null }>;
+	/** Search results that could not be opened or came back empty. */
+	unread: string[];
+	/** Pages that would not open, read from the search engine's preview of them instead. */
+	previews: string[];
 	/** What the identity check said about each page considered. */
 	verdicts: PageVerdict[];
 	/** Pages dropped as a different same-name entity. */
@@ -117,6 +125,8 @@ export async function researchEntity(
 		queries: [],
 		pagesRead: 0,
 		pages: [],
+		unread: [],
+		previews: [],
 		verdicts: [],
 		differentPages: 0,
 		// What the user just said about the entry counts as something known to check pages
@@ -132,7 +142,13 @@ export async function researchEntity(
 	const queries = input.queries?.length
 		? input.queries
 		: enrichQueries(context, instructions, fields, anchors);
-	const results: Array<{ url: string; title: string; content: string | null }> = [];
+	const results: Array<{
+		url: string;
+		title: string;
+		content: string | null;
+		/** What the search engine shows for the page: title and a few lines of its text. */
+		preview: string | null;
+	}> = [];
 	let panel: EnrichKnowledgePanel | null = null;
 	for (const query of queries) {
 		if (!deps.port.search || deps.budgetLeft() < 0.01) break;
@@ -155,27 +171,39 @@ export async function researchEntity(
 		if (billed && reserved > 0) deps.charge(billed.cost_usd - reserved);
 		panel ??= response.knowledge_panel ?? null;
 		for (const r of response.results ?? []) {
-			results.push({ url: r.url, title: r.title, content: r.page_content ?? null });
+			results.push({
+				url: r.url,
+				title: r.title,
+				content: r.page_content ?? null,
+				preview: r.snippet?.trim() ? `${r.title}\n${r.snippet.trim()}` : null
+			});
 		}
 	}
 
 	// 2. Read. The panel's website goes first (whether the panel is about this entity is the
 	// identity check's call, as for any page); rejected pages and domains are never read.
 	const panelSite = panel?.website ?? null;
-	if (panelSite) results.unshift({ url: panelSite, title: panel!.title, content: null });
+	if (panelSite)
+		results.unshift({ url: panelSite, title: panel!.title, content: null, preview: null });
 	const fresh = input.skipUrls?.size
 		? results.filter((r) => !input.skipUrls!.has(r.url))
 		: results;
-	const chosen = choosePages(fresh, context.homepage ?? panelSite, undefined, {
+	// Ranked deeper than we read: a page that will not open (LinkedIn, a login wall) must not
+	// use up one of the few reads. Fetches are still capped.
+	const ranked = choosePages(fresh, context.homepage ?? panelSite, MAX_PAGES_PER_TARGET * 3, {
 		ownDomains: anchors?.domains ?? [],
 		exclude: anchors?.not ?? []
 	});
-	if (chosen.length) await deps.advance?.('reading');
+	if (ranked.length) await deps.advance?.('reading');
 	const read: EnrichPage[] = [];
-	for (const result of chosen) {
+	let fetches = 0;
+	for (const result of ranked) {
+		if (read.length >= MAX_PAGES_PER_TARGET) break;
 		let content = result.content;
 		let title: string | null = result.title || null;
 		if (!content && deps.port.visit) {
+			if (fetches >= MAX_PAGES_PER_TARGET) continue;
+			fetches++;
 			try {
 				const page = (await deps.port.visit(
 					{ url: result.url, max_chars: PAGE_CHARS },
@@ -184,11 +212,23 @@ export async function researchEntity(
 				content = page.content ?? null;
 				title = page.title ?? title;
 			} catch {
-				continue; // unreadable page: skip it
+				content = null; // unreadable page (LinkedIn, a login wall)
 			}
 		}
-		if (content?.trim())
+		if (content?.trim()) {
 			read.push({ url: result.url, title, content: content.slice(0, PAGE_CHARS) });
+		} else if (result.preview && result.preview.length >= MIN_PREVIEW_CHARS) {
+			// The page would not open, but the search engine quotes it: a profile's preview
+			// carries the role, employer and city. Read that, and say it was only a preview.
+			read.push({
+				url: result.url,
+				title,
+				content: `[Search preview only: the page itself could not be opened.]\n${result.preview}`
+			});
+			outcome.previews.push(result.url);
+		} else {
+			outcome.unread.push(result.url);
+		}
 	}
 	outcome.pagesRead = read.length;
 	outcome.pages = read.map((page) => ({ url: page.url, title: page.title }));
