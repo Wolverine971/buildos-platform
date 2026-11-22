@@ -11,6 +11,7 @@ const record = vi.fn();
 const search = vi.fn();
 const query = vi.fn();
 const getEntity = vi.fn();
+const getSummaries = vi.fn();
 const startKnowledgeEnrichment = vi.fn();
 
 vi.mock('../knowledge', async (importOriginal) => {
@@ -26,6 +27,7 @@ vi.mock('../knowledge', async (importOriginal) => {
 		search = search;
 		query = query;
 		getEntity = getEntity;
+		getSummaries = getSummaries;
 	}
 	return {
 		...actual,
@@ -213,6 +215,78 @@ describe('knowledge.enrich', () => {
 			entityKind: 'knowledge_run',
 			entityId: RUN
 		});
+	});
+
+	it('in chat, waits for the research and brings back what it searched, read and saved', async () => {
+		startKnowledgeEnrichment.mockResolvedValue({
+			runId: RUN,
+			targets: [{ entity_id: ENTITY, name: 'Griffin Davis', kind: 'person', fields: ['headline'] }],
+			skipped: [],
+			budget_usd: 0.03
+		});
+		const EMPLOYER = '55555555-5555-4555-8555-555555555555';
+		// The run finished by the time chat looks: its row, its target line and the facts it saved.
+		const tables: Record<string, unknown> = {
+			knowledge_runs: {
+				status: 'completed',
+				stats: {
+					trace: {
+						[ENTITY]: {
+							queries: ['"Griffin Davis" "Breaking Points" producer'],
+							pages: [
+								{ url: 'https://example.com/team', title: 'Team', verdict: 'same' },
+								{ url: 'https://example.com/other', title: 'Other', verdict: 'different' }
+							]
+						}
+					}
+				}
+			},
+			knowledge_run_targets: [
+				{ entity_id: ENTITY, status: 'done', summary: '2 pages read, 2 new details.' }
+			],
+			knowledge_facts: [
+				{ entity_id: ENTITY, predicate: 'headline', value_text: 'Producer', object_entity_id: null, status: 'active' },
+				{ entity_id: ENTITY, predicate: 'works_at', value_text: null, object_entity_id: EMPLOYER, status: 'suggested' },
+				{ entity_id: ENTITY, predicate: 'homepage', value_text: 'x', object_entity_id: null, status: 'retracted' }
+			]
+		};
+		admin.from.mockImplementation((table: string) => {
+			const builder: Record<string, unknown> = {};
+			for (const method of ['select', 'eq', 'limit'])
+				builder[method] = () => builder;
+			builder.maybeSingle = async () => ({ data: tables[table], error: null });
+			builder.then = (ok: (v: unknown) => unknown) =>
+				Promise.resolve({ data: tables[table], error: null }).then(ok);
+			return builder;
+		});
+		getSummaries.mockResolvedValue(
+			new Map([
+				[ENTITY, { name: 'Griffin Davis' }],
+				[EMPLOYER, { name: 'Breaking Points' }]
+			])
+		);
+
+		const result = (await EXTERNAL_OP_HANDLERS['knowledge.enrich'](chatContext(), {
+			entity_ids: [ENTITY],
+			instructions: 'He is the producer of Breaking Points.'
+		})) as { knowledge_run: Record<string, any>; message: string };
+
+		expect(result.knowledge_run).toMatchObject({
+			id: RUN,
+			status: 'completed',
+			targets: [{ name: 'Griffin Davis', status: 'done', summary: '2 pages read, 2 new details.' }],
+			searched: ['"Griffin Davis" "Breaking Points" producer']
+		});
+		expect(result.knowledge_run.found).toEqual([
+			{ entry: 'Griffin Davis', detail: 'Headline: Producer', confirmed: true },
+			{ entry: 'Griffin Davis', detail: 'Works at: Breaking Points', confirmed: false }
+		]);
+		expect(result.knowledge_run.pages.map((p: { verdict: string }) => p.verdict)).toEqual([
+			'same',
+			'different'
+		]);
+		expect(result.message).toContain('1 new detail saved, 1 to check');
+		admin.from.mockReset();
 	});
 
 	it('never lets a connected AI tool or a background run start paid research', async () => {

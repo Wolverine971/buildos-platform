@@ -321,7 +321,7 @@ export const KNOWLEDGE_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		function: {
 			name: 'enrich_knowledge',
 			description:
-				'Start background web research to fill gaps for specific entries (paid, capped per day). Use when the user asks to find more about someone or something. Results land on the entries in a few minutes; say so instead of waiting.',
+				'Web research on entries, saved with sources (paid, capped per day). Use when the user asks to find more about someone or something. Returns what it searched and saved, or that it is still running. Call it alone.',
 			parameters: {
 				type: 'object',
 				additionalProperties: false,

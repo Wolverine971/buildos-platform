@@ -483,3 +483,142 @@ describe('knowledgePanelPage', () => {
 		]);
 	});
 });
+
+describe('planned research', () => {
+	it('keeps short, distinct searches and never lets a contact detail through', async () => {
+		const { validateResearchPlan } = await import('./knowledgeEnrichPlan');
+		const plan = validateResearchPlan(
+			{
+				kind: 'person',
+				queries: [
+					'"Griffin Davis" "Breaking Points" producer',
+					'  "Griffin Davis"   Breaking Points   linkedin ',
+					'"Griffin Davis" "Breaking Points" producer', // repeated
+					'"Griffin Davis" griffin@breakingpoints.com', // an email
+					'"Griffin Davis" 410-555-0134 contact', // a phone number
+					'x', // too short
+					'a'.repeat(200), // a sentence, not a search
+					42,
+					'"Griffin Davis" Breaking Points staff',
+					'"Griffin Davis" podcast credits'
+				]
+			},
+			{ filedKind: 'org' }
+		);
+		expect(plan).toEqual({
+			kind: 'person',
+			queries: [
+				'"Griffin Davis" "Breaking Points" producer',
+				'"Griffin Davis" Breaking Points linkedin',
+				'"Griffin Davis" Breaking Points staff'
+			]
+		});
+	});
+
+	it('falls back to the filed kind and skips searches already run', async () => {
+		const { validateResearchPlan } = await import('./knowledgeEnrichPlan');
+		expect(
+			validateResearchPlan(
+				{ kind: 'company', queries: ['"Acme" Baltimore', '"Acme" roofing Baltimore'] },
+				{ filedKind: 'org', alreadyRun: ['"acme" baltimore'], limit: 2 }
+			)
+		).toEqual({ kind: 'org', queries: ['"Acme" roofing Baltimore'] });
+		expect(validateResearchPlan('nonsense', { filedKind: 'person' })).toEqual({
+			kind: 'person',
+			queries: []
+		});
+	});
+
+	it('gives the planner the user\'s words, the playbook for the kind, and round one on a second round', async () => {
+		const { researchPlanUserPrompt } = await import('./knowledgeEnrichPlan');
+		const prompt = researchPlanUserPrompt({
+			name: 'Griffin Davis',
+			filedKind: 'person',
+			brief: 'Works at: Breaking Points',
+			instructions: "He's the producer of Breaking Points.",
+			lookingFor: ['Role', 'Profile'],
+			previous: {
+				queries: ['"Griffin Davis" Breaking Points'],
+				pages: [{ url: 'https://example.com/team', title: 'Team', verdict: 'same' }],
+				found: ['Role: Producer'],
+				stillMissing: ['Profile']
+			}
+		});
+		// The five parts, in the order the model is told to expect them.
+		const order = [
+			'## The entry to research',
+			'## How to research a person',
+			"## What the user's records already hold on it",
+			'## What to find',
+			'## What the user said to guide this research',
+			'## Already tried (round 1)',
+			'## Now'
+		].map((heading) => prompt.indexOf(heading));
+		expect(order.every((at) => at >= 0)).toBe(true);
+		expect([...order].sort((a, b) => a - b)).toEqual(order);
+		expect(prompt).toContain('"He\'s the producer of Breaking Points."');
+		expect(prompt).toContain('Asked for specifically:\n- Role\n- Profile');
+		expect(prompt).toContain('Works at: Breaking Points');
+		expect(prompt).toContain('- Searches: ["Griffin Davis" Breaking Points]');
+		expect(prompt).toContain('- Still missing: Profile');
+	});
+
+	it('tells a cold model where it is working, and saves more than was ticked but never contact details', async () => {
+		const plan = await import('./knowledgeEnrichPlan');
+		for (const system of [plan.KNOWLEDGE_PLAN_SYSTEM_PROMPT, plan.KNOWLEDGE_ENRICH_SYSTEM_PROMPT]) {
+			expect(system).toContain('private knowledge graph');
+			expect(system).toContain('research ONE entry on the public web');
+		}
+		// The user ticked only "Website": the rest of what a person's entry holds is still saved.
+		const also = plan.alsoWorthSaving('person', ['homepage']);
+		expect(also).toEqual(expect.arrayContaining(['headline', 'works_at', 'profile_url']));
+		expect(also).not.toContain('homepage');
+		for (const never of ['email', 'phone', 'address', 'birthday'])
+			expect(also).not.toContain(never);
+		expect(plan.alsoWorthSaving('org', [])).not.toContain('email');
+
+		const prompt = plan.enrichUserPrompt(
+			{ name: 'Griffin Davis', kind: 'person', known: [], existing: [], homepage: null, youtubeUrl: null },
+			['homepage'],
+			[{ url: 'https://example.com', title: 'T', content: 'text' }],
+			null,
+			null,
+			null,
+			also
+		);
+		expect(prompt).toContain('Asked for specifically (report every one a page states):\n- homepage');
+		expect(prompt).toContain('Also report when a page states it');
+		expect(prompt).toContain('- works_at');
+		expect(prompt).toContain('The user gave no note');
+	});
+
+	it('counts a profile page\'s own address as stated, and keeps search advice out of the page reader', async () => {
+		const plan = await import('./knowledgeEnrichPlan');
+		const page = {
+			url: 'https://www.linkedin.com/in/griffin-davis',
+			title: 'Griffin Davis',
+			content: 'Griffin Davis. Producer at Breaking Points. Washington, DC.'
+		};
+		const result = plan.validateEnrichment(
+			{
+				pages: [{ page: 1, about_entity: true }],
+				facts: [
+					{
+						predicate: 'profile_url',
+						value: 'https://www.linkedin.com/in/griffin-davis',
+						page: 1,
+						quote: 'Producer at Breaking Points',
+						confidence: 0.9
+					}
+				]
+			},
+			{ entityId: 'e1', kind: 'person', fields: ['profile_url'], pages: [page], existing: [] }
+		);
+		expect(result.batch.facts).toHaveLength(1);
+		expect(result.batch.facts[0]).toMatchObject({ predicate: 'profile_url', status: 'active' });
+
+		expect(plan.researchPlaybook('person', { searching: true })).toContain('Where it is found');
+		expect(plan.researchPlaybook('person')).not.toContain('Where it is found');
+		expect(plan.KNOWLEDGE_PLAN_SYSTEM_PROMPT).toContain('plan the searches for the real type');
+	});
+});

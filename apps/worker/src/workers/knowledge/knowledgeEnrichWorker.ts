@@ -15,8 +15,13 @@
 // running at every phase change, so a cancelled target stops before the next paid step.
 
 import {
+	KNOWLEDGE_KIND_DEFINITIONS,
 	KNOWLEDGE_UUID_PATTERN,
 	KnowledgeStore,
+	enrichFieldsFor,
+	getKnowledgePredicate,
+	loadKnowledgeFocusBrief,
+	renderKnowledgeFocusBrief,
 	fetchYouTubeOEmbed,
 	gatherKnowledgeAnchors,
 	oembedBatch,
@@ -26,6 +31,8 @@ import {
 	type KnowledgeAnchors,
 	type KnowledgeCircle,
 	type KnowledgeDataClient,
+	type KnowledgeFocusBrief,
+	type KnowledgeKind,
 	type KnowledgeWriteBatch
 } from '@buildos/shared-agent-ops/knowledge';
 import { JevClient, LLMUsageLogger } from '@buildos/smart-llm';
@@ -33,7 +40,19 @@ import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { supabase as defaultSupabase } from '../../lib/supabase';
 import { createAgentRunWebResearchPort, type PaidToolCharge } from '../agent-run/webResearchPort';
-import { enrichContextFrom } from './knowledgeEnrichPlan';
+import {
+	alsoWorthSaving,
+	describeFields,
+	enrichContextFrom,
+	KNOWLEDGE_PLAN_OPERATION,
+	KNOWLEDGE_PLAN_SYSTEM_PROMPT,
+	MAX_PLANNED_QUERIES,
+	MAX_RESEARCH_ROUNDS,
+	researchPlanUserPrompt,
+	validateResearchPlan,
+	type ResearchPlan,
+	type ResearchPlanInput
+} from './knowledgeEnrichPlan';
 import { promoteOrgFacts, publicOrgFacts } from './publicOrgLayer';
 import {
 	researchEntity,
@@ -150,6 +169,17 @@ export async function processKnowledgeEnrichJob(
 		typeof (run.input as Record<string, unknown>).instructions === 'string'
 			? ((run.input as Record<string, unknown>).instructions as string)
 			: null;
+
+	/** The fields the run asked for (before fitting them to each entry's kind). */
+	const rawRunFields =
+		run.input && typeof run.input === 'object'
+			? (run.input as Record<string, unknown>).fields
+			: null;
+	const runFields = Array.isArray(rawRunFields)
+		? rawRunFields.filter((field): field is string => typeof field === 'string')
+		: [];
+	/** What each entry's research did (searches, pages, finds), kept on the run for the UI and chat. */
+	const traces: Record<string, unknown> = {};
 
 	// Only a run still waiting or running: a cancel that landed since the load stays cancelled.
 	await db
@@ -330,48 +360,224 @@ export async function processKnowledgeEnrichJob(
 				return;
 			}
 
+			// Everything BuildOS already holds on the entry, for free: copies saved under another
+			// kind, their employer and website, and the work that names it across projects.
+			let brief = await loadKnowledgeFocusBrief(store, db, userId, target.entity_id).catch(
+				() => null
+			);
+			let briefText = brief
+				? renderKnowledgeFocusBrief(brief, { audience: 'research' })
+				: null;
+			const labelsOf = (keys: readonly string[]) =>
+				keys.map((key) => getKnowledgePredicate(key)?.label ?? key);
+
+			/** One small structured call: what this really is, and the searches worth running. */
+			const planRound = async (
+				subjectEntity: { name: string; kind: KnowledgeKind },
+				lookingFor: readonly string[],
+				previous?: ResearchPlanInput['previous']
+			): Promise<ResearchPlan | null> => {
+				if (!briefText || budget - spent < 0.004) return null;
+				try {
+					const raw = await llm.getJSONResponse<unknown>({
+						systemPrompt: KNOWLEDGE_PLAN_SYSTEM_PROMPT,
+						userPrompt: researchPlanUserPrompt({
+							name: subjectEntity.name,
+							filedKind: subjectEntity.kind,
+							brief: briefText,
+							instructions,
+							lookingFor: describeFields(lookingFor),
+							...(previous
+								? {}
+								: {
+										alsoWorthSaving: labelsOf(
+											alsoWorthSaving(subjectEntity.kind, lookingFor)
+										)
+									}),
+							...(previous ? { previous } : {})
+						}),
+						userId,
+						profile: 'fast',
+						temperature: 0.1,
+						reasoning: { enabled: false },
+						maxTokens: 400,
+						timeoutMs: 15_000,
+						operationType: KNOWLEDGE_PLAN_OPERATION,
+						signal: job.signal,
+						spendLimit: { maxCostUsd: 0.003 },
+						onUsage: (usage) => charge(usage.totalCost ?? 0)
+					});
+					return validateResearchPlan(raw, {
+						filedKind: subjectEntity.kind,
+						alreadyRun: previous?.queries ?? [],
+						limit: previous ? 2 : MAX_PLANNED_QUERIES
+					});
+				} catch {
+					return null; // planning is an upgrade; the fixed search recipe still runs
+				}
+			};
+
+			let plan = await planRound(detail.entity, target.fields);
+
+			// The planner says the entry is filed under the wrong kind (a person read out of a
+			// list of companies). With a same-name entry of the right kind, that one is the real
+			// entry: research it and save there. Otherwise the type is corrected, but only when
+			// the user said something for this run; an unprompted bulk run just reports it.
+			let subject = detail;
+			let subjectContext = context;
+			let subjectFields = lent.covered.length && stillWanted.length ? stillWanted : target.fields;
+			let kindNote = '';
+			if (
+				plan &&
+				plan.kind !== detail.entity.kind &&
+				detail.entity.scope === 'private' &&
+				!detail.entity.is_self
+			) {
+				const from = KNOWLEDGE_KIND_DEFINITIONS[detail.entity.kind].pluralLabel;
+				const to = KNOWLEDGE_KIND_DEFINITIONS[plan.kind].pluralLabel;
+				const twin = brief?.twins.find(
+					(t) => t.kind === plan!.kind && t.why === 'same_name'
+				);
+				const twinDetail = twin ? await store.getEntity(twin.id).catch(() => null) : null;
+				if (twinDetail) {
+					subject = twinDetail;
+					kindNote = ` It is filed under ${from}, but you already have ${twinDetail.entity.name} under ${to}, so what was found is saved there. Merge the two from the card.`;
+				} else if (instructions) {
+					await store.changeEntityKind(detail.entity.id, plan.kind);
+					const changed = await store.getEntity(detail.entity.id);
+					if (changed) {
+						subject = changed;
+						kindNote = ` Moved from ${from} to ${to}, going by what you said.`;
+					}
+				} else {
+					kindNote = ` This looks like it belongs under ${to}, not ${from}: change its type on the card, then research again.`;
+				}
+				if (subject !== detail) {
+					subjectContext = enrichContextFrom(subject);
+					subjectFields = enrichFieldsFor(subject.entity.kind, runFields);
+					// The brief is told from the entry being researched: its own details and
+					// what is missing for its type, with the misfiled copy listed as a copy.
+					const subjectBrief = await loadKnowledgeFocusBrief(
+						store,
+						db,
+						userId,
+						subject.entity.id
+					).catch(() => null);
+					if (subjectBrief) {
+						brief = subjectBrief;
+						briefText = renderKnowledgeFocusBrief(subjectBrief, { audience: 'research' });
+					}
+					// Searches for the right kind, with its own playbook.
+					plan = (await planRound(subject.entity, subjectFields)) ?? plan;
+				}
+			}
+
 			// Know first (free reads): the entry's circle and what the user's graph and work
-			// already say about it. Neither may fail the research.
-			const anchors = await knowFirst(detail, (usd) => charge(usd));
+			// already say about it, plus leads from its copies. Neither may fail the research.
+			const anchors = await knowFirst(subject, (usd) => charge(usd));
+			if (anchors && brief) addBriefLeads(anchors, brief, subject.entity.id);
 
 			let reservedUsd = 0;
 			const port = makePort((c) => {
 				reservedUsd += c.cost_usd;
 				charge(c.cost_usd);
 			});
-			const outcome = await researchEntity(
-				{
-					detail,
-					anchors,
-					fields: lent.covered.length && stillWanted.length ? stillWanted : target.fields,
-					instructions,
-					userId,
-					context
-				},
-				{
-					llm,
-					port,
-					decider,
-					charge,
-					takeReserved: () => {
-						const r = reservedUsd;
-						reservedUsd = 0;
-						return r;
-					},
-					budgetLeft: () => budget - spent,
-					advance: (phase) => advance(target, phase),
-					signal: job.signal
+			const trace: ResearchTrace = { queries: [], pages: [], rounds: 0 };
+			const readUrls = new Set<string>();
+			const found: string[] = [];
+			const foundPredicates = new Set<string>();
+			const totals = { pagesRead: 0, differentPages: 0, unanchored: false, dropped: 0 };
+			let added = 0;
+			let suggested = 0;
+			let roundPlan = plan;
+			for (let round = 1; round <= MAX_RESEARCH_ROUNDS; round++) {
+				if (round > 1) {
+					// A second round only for what is still missing, and only with budget left.
+					const missing = subjectFields.filter((field) => !foundPredicates.has(field));
+					if (!missing.length || budget - spent < 0.012) break;
+					roundPlan = await planRound(subject.entity, missing, {
+						queries: trace.queries,
+						pages: trace.pages,
+						found,
+						stillMissing: labelsOf(missing)
+					});
+					if (!roundPlan?.queries.length) break;
+					await advance(target, 'searching');
 				}
-			);
-			const batch = mergeBatch(free, outcome.batch);
+				const outcome = await researchEntity(
+					{
+						detail: subject,
+						anchors,
+						fields: subjectFields,
+						instructions,
+						userId,
+						context: subjectContext,
+						...(roundPlan?.queries.length ? { queries: roundPlan.queries } : {}),
+						brief: briefText,
+						skipUrls: readUrls
+					},
+					{
+						llm,
+						port,
+						decider,
+						charge,
+						takeReserved: () => {
+							const r = reservedUsd;
+							reservedUsd = 0;
+							return r;
+						},
+						budgetLeft: () => budget - spent,
+						advance: (phase) => advance(target, phase),
+						signal: job.signal
+					}
+				);
+				trace.rounds = round;
+				trace.queries.push(...outcome.queries);
+				for (const page of outcome.pages) {
+					readUrls.add(page.url);
+					trace.pages.push({
+						url: page.url,
+						title: page.title,
+						verdict:
+							outcome.verdicts.find((v) => v.url === page.url)?.verdict ?? 'read'
+					});
+				}
+				totals.pagesRead += outcome.pagesRead;
+				totals.differentPages += outcome.differentPages;
+				totals.unanchored ||= outcome.unanchored;
+				totals.dropped += outcome.dropped.length;
+				for (const fact of outcome.batch.facts) {
+					foundPredicates.add(fact.predicate);
+					const object = outcome.batch.entities.find((e) => e.ref === fact.object);
+					found.push(
+						`${getKnowledgePredicate(fact.predicate)?.label ?? fact.predicate}: ${object?.name ?? String(fact.value ?? '')}`
+					);
+				}
+				// Each round is saved as it lands (free finds ride with the first).
+				const batch = round === 1 ? mergeBatch(free, outcome.batch) : outcome.batch;
+				if (batch.facts.length) {
+					await advance(target, 'saving');
+					const receipt = await store.record(batch, { via: 'enrichment', runId });
+					added += receipt.facts.added;
+					suggested += receipt.facts.suggested;
+				}
+			}
+			traces[target.entity_id] = {
+				...trace,
+				queries: trace.queries.slice(0, 8),
+				pages: trace.pages.slice(0, 10),
+				saved_on: subject.entity.id,
+				found: found.slice(0, 20)
+			};
 
-			if (batch.facts.length) await advance(target, 'saving');
-			const receipt = batch.facts.length
-				? await store.record(batch, { via: 'enrichment', runId })
-				: { facts: { added: 0, suggested: 0 } };
-			const added = receipt.facts.added;
 			counts.done++;
 			counts.facts += added;
+			const searched = trace.queries.length
+				? ` Searched: ${trace.queries
+						.slice(0, 5)
+						.map((q) => `“${q}”`)
+						.join('; ')}.`
+				: '';
 			await db
 				.from('knowledge_run_targets')
 				.update({
@@ -380,12 +586,12 @@ export async function processKnowledgeEnrichJob(
 					updated_at: iso(),
 					facts_added: added,
 					cost_usd: Number(targetCost.toFixed(6)),
-					summary: researchSummary(
-						outcome,
-						added,
-						receipt.facts.suggested,
-						outcome.dropped.length
-					),
+					summary: (
+						researchSummary(totals, added, suggested, totals.dropped) +
+						'.' +
+						searched +
+						kindNote
+					).slice(0, 1500),
 					finished_at: iso()
 				})
 				.eq('id', target.id)
@@ -393,12 +599,12 @@ export async function processKnowledgeEnrichJob(
 			await db
 				.from('knowledge_entities')
 				.update({ enriched_at: iso() })
-				.eq('id', target.entity_id)
+				.in('id', [...new Set([target.entity_id, subject.entity.id])])
 				.eq('owner_user_id', userId);
 			// What this research confirmed on the organization's own site joins the public
 			// organization layer, so the next person's research can skip the search.
-			if (added && detail.entity.kind === 'org') {
-				const saved = await store.getEntity(target.entity_id);
+			if (added && subject.entity.kind === 'org') {
+				const saved = await store.getEntity(subject.entity.id);
 				if (saved)
 					await promoteOrgFacts(db, saved, {
 						runId,
@@ -436,7 +642,7 @@ export async function processKnowledgeEnrichJob(
 				.from('knowledge_runs')
 				.update({
 					cost_usd: Number(spent.toFixed(6)),
-					stats: { targets: targets.length, ...counts },
+					stats: { targets: targets.length, ...counts, trace: traces },
 					updated_at: iso()
 				})
 				.eq('id', runId);
@@ -492,7 +698,7 @@ export async function processKnowledgeEnrichJob(
 		.update({
 			status,
 			cost_usd: Number(spent.toFixed(6)),
-			stats: { targets: targets.length, ...counts },
+			stats: { targets: targets.length, ...counts, trace: traces },
 			finished_at: iso(),
 			updated_at: iso(),
 			...(status === 'failed' ? { error: 'No entry could be researched.' } : {})
@@ -507,4 +713,58 @@ function mergeBatch(into: KnowledgeWriteBatch, from: KnowledgeWriteBatch): Knowl
 	into.facts.push(...from.facts);
 	into.sources = [...(into.sources ?? []), ...(from.sources ?? [])];
 	return into;
+}
+
+/** What one entry's research did, for the run's record. */
+interface ResearchTrace {
+	queries: string[];
+	pages: Array<{ url: string; title: string | null; verdict: string }>;
+	rounds: number;
+}
+
+/** Contact details and the user's own notes never become leads for a search or a model. */
+const PRIVATE_LEAD_PREDICATES = new Set([
+	'email',
+	'phone',
+	'address',
+	'birthday',
+	'note',
+	'knows',
+	'alias',
+	'related_to'
+]);
+
+/**
+ * Leads from the focus brief that the entry's own facts don't carry: what its copies know
+ * (an employer, a place) and the words around its name in linked work. Mutates `anchors`.
+ */
+export function addBriefLeads(
+	anchors: KnowledgeAnchors,
+	brief: KnowledgeFocusBrief,
+	subjectId: string
+): void {
+	for (const twin of brief.twins) {
+		if (twin.id === subjectId) continue;
+		for (const fact of twin.facts) {
+			if (fact.status !== 'active' || PRIVATE_LEAD_PREDICATES.has(fact.predicate)) continue;
+			const line = `${fact.label}: ${fact.value}`;
+			if (anchors.facts.length < 10 && !anchors.facts.includes(line)) anchors.facts.push(line);
+			if (fact.predicate === 'works_at' && !anchors.employer) anchors.employer = fact.value;
+			if (
+				fact.predicate === 'located_in' &&
+				anchors.places.length < 4 &&
+				!anchors.places.includes(fact.value)
+			)
+				anchors.places.push(fact.value);
+		}
+	}
+	for (const record of brief.records) {
+		if (anchors.mentions.length >= 5) break;
+		if (!record.snippet || anchors.mentions.some((m) => m.text === record.snippet)) continue;
+		anchors.mentions.push({
+			record_kind: record.record_kind,
+			title: record.title,
+			text: record.snippet
+		});
+	}
 }

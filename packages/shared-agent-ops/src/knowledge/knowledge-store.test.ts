@@ -5,7 +5,8 @@ import { parseContactFile, planContactImport } from './contacts-import';
 import {
 	KNOWLEDGE_FOCUS_GUIDANCE,
 	loadKnowledgeFocusBrief,
-	renderKnowledgeFocusBlock
+	renderKnowledgeFocusBlock,
+	renderKnowledgeFocusBrief
 } from './focus-brief';
 import { KnowledgeStore } from './knowledge-store';
 import { normalizeKnowledgeName } from './normalize';
@@ -1346,6 +1347,23 @@ describe('focus brief: everything known about one entry, before the chat starts'
 		expect(text).toContain('never researched');
 		expect(text.endsWith(KNOWLEDGE_FOCUS_GUIDANCE)).toBe(true);
 		expect(text.length).toBeLessThan(9_000 + KNOWLEDGE_FOCUS_GUIDANCE.length + 10);
+	});
+
+	it('opens by saying what the entry is, and gives a research model the leads without ids or chat wording', async () => {
+		const { db, alice, store, org, person } = await griffinWorld();
+		const brief = (await loadKnowledgeFocusBrief(store, db, alice, org, { textSearch: true }))!;
+		const chat = renderKnowledgeFocusBlock(brief);
+		expect(chat.startsWith("## This chat is about one entry in the user's knowledge graph")).toBe(
+			true
+		);
+		expect(chat.indexOf('## In focus:')).toBeLessThan(chat.indexOf('## Your job in this chat'));
+
+		const research = renderKnowledgeFocusBrief(brief, { audience: 'research' });
+		expect(research.startsWith('Entry: Griffin Davis · filed as organization')).toBe(true);
+		expect(research).toContain('Works at: Breaking Points');
+		expect(research).toContain('Their details are leads about this entry');
+		for (const noise of [org, person, 'entry id', 'opened this chat', 'tell the user'])
+			expect(research).not.toContain(noise);
 	});
 
 	it("is empty for another user's entry and for ids that are not entries", async () => {

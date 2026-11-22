@@ -35,6 +35,7 @@ vi.mock('@buildos/shared-agent-ops/knowledge', async (importOriginal) => {
 });
 
 import { processKnowledgeEnrichJob, type KnowledgeEnrichDeps } from './knowledgeEnrichWorker';
+import { KNOWLEDGE_PLAN_OPERATION } from './knowledgeEnrichPlan';
 
 type Row = Record<string, any>;
 const USER = '22222222-2222-4222-8222-222222222222';
@@ -173,8 +174,13 @@ function seed(targets: Array<{ id: string; entity: string; instructions?: string
 function deps(db: FakeDb, onSearch?: (query: string) => void) {
 	const queries: string[] = [];
 	const prompts: string[] = [];
+	/** Set `plan.next` to make the planner return a kind and searches. */
+	const plan: { next: unknown } = { next: null };
 	const llm = {
 		getJSONResponse: vi.fn(async (options: any) => {
+			// The planning call (what is this, which searches): by default it plans nothing,
+			// so the fixed search recipe runs. `prompts` holds the extraction prompts only.
+			if (options.operationType === KNOWLEDGE_PLAN_OPERATION) return plan.next ?? {};
 			prompts.push(options.userPrompt);
 			options.onUsage?.({ totalCost: 0.001 });
 			return {
@@ -205,6 +211,7 @@ function deps(db: FakeDb, onSearch?: (query: string) => void) {
 	return {
 		queries,
 		prompts,
+		plan,
 		llm,
 		deps: {
 			db,
@@ -289,9 +296,7 @@ describe('processKnowledgeEnrichJob queue behaviour', () => {
 		expect(run.queries.find((q) => q.includes('Beta Labs'))).toContain(
 			'Where is their headquarters?'
 		);
-		expect(run.prompts.find((p) => p.includes('Entity: Acme'))).toContain(
-			'The user asked: Which podcasts?'
-		);
+		expect(run.prompts.find((p) => p.includes('Name: Acme'))).toContain('"Which podcasts?"');
 		expect(db.phases('t-acme')).toEqual(['searching', 'reading', 'extracting', 'saving']);
 		expect(db.target('t-acme')).toMatchObject({ status: 'done', phase: null, facts_added: 1 });
 	});
@@ -302,7 +307,8 @@ describe('processKnowledgeEnrichJob queue behaviour', () => {
 		const run = deps(db, () => Object.assign(db.target('t-acme'), { status: 'cancelled' }));
 		const result = await processKnowledgeEnrichJob(job, run.deps);
 
-		expect(run.llm.getJSONResponse).not.toHaveBeenCalled();
+		// Only the free-of-search planning call ran: nothing was extracted.
+		expect(run.prompts).toHaveLength(0);
 		expect(store.recorded).toHaveLength(0);
 		expect(db.target('t-acme')).toMatchObject({ status: 'cancelled', cost_usd: 0.008 });
 		expect(result).toMatchObject({ status: 'cancelled', cancelled: 1, done: 0 });
@@ -378,6 +384,7 @@ describe('processKnowledgeEnrichJob with Serper results', () => {
 				db,
 				llm: {
 					getJSONResponse: async (options: any) => {
+						if (options.operationType === KNOWLEDGE_PLAN_OPERATION) return {};
 						prompts.push(options.userPrompt);
 						options.onUsage?.({ totalCost: 0.0004 });
 						return answer;
@@ -441,5 +448,47 @@ describe('processKnowledgeEnrichJob with Serper results', () => {
 		expect(run.prompts[0]).toContain('Google knowledge panel: Acme');
 		expect(run.prompts[0]).toContain('Acme is a widget maker founded in 1999.');
 		expect(run.prompts[0]).not.toContain('Headquarters');
+	});
+});
+
+describe('planned research (the Griffin run, 2026-11-21)', () => {
+	it('runs the searches the planner chose, records what it did, and says what it searched', async () => {
+		const db = seed([{ id: 't-acme', entity: ACME }]);
+		const run = deps(db);
+		run.plan.next = {
+			kind: 'org',
+			queries: ['"Acme" widgets Baltimore', '"Acme" site:acme.example', 'acme@acme.example']
+		};
+		const result = await processKnowledgeEnrichJob(job, run.deps);
+
+		// The planned searches ran (the one carrying an email address never left); the fixed
+		// recipe ("Acme" company) did not.
+		expect(run.queries.slice(0, 2)).toEqual([
+			'"Acme" widgets Baltimore',
+			'"Acme" site:acme.example'
+		]);
+		expect(run.queries.some((q) => q.includes('@'))).toBe(false);
+		expect(run.queries).not.toContain('"Acme" company');
+		expect(result).toMatchObject({ status: 'completed', done: 1 });
+		// What it did is kept: on the entry's line for the card, and on the run for chat.
+		expect(db.target('t-acme').summary).toContain('Searched: “"Acme" widgets Baltimore”');
+		const trace = (db.rows('knowledge_runs')[0]!.stats as any).trace[ACME];
+		expect(trace.queries).toContain('"Acme" widgets Baltimore');
+		expect(trace.pages[0]).toMatchObject({ url: 'https://acme.example/about' });
+		expect(trace.saved_on).toBe(ACME);
+	});
+
+	it('only reports a wrong type on a run where the user said nothing', async () => {
+		const db = seed([{ id: 't-acme', entity: ACME }]);
+		const run = deps(db);
+		run.plan.next = { kind: 'person', queries: ['"Acme" founder'] };
+		// A bulk run with no note: nobody said what this entry is.
+		db.rows('knowledge_runs')[0]!.input = {};
+		db.target('t-acme').instructions = null;
+		await processKnowledgeEnrichJob(job, run.deps);
+		// No note from the user: the type is left alone and the line says what to do.
+		expect(store.details.get(ACME)!.entity.kind).toBe('org');
+		expect(db.target('t-acme').status).toBe('done');
+		expect(db.target('t-acme').summary).toContain('change its type on the card');
 	});
 });

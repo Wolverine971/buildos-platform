@@ -25,6 +25,7 @@ import {
 import type { JSONRequestOptions } from '@buildos/smart-llm';
 import { readPaidToolCharge } from '../agent-run/webResearchPort';
 import {
+	alsoWorthSaving,
 	choosePages,
 	enrichContextFrom,
 	enrichQueries,
@@ -57,6 +58,12 @@ export interface ResearchInput {
 	userId: string;
 	/** Rename context (oEmbed title for bare YouTube links). */
 	context?: EnrichContext;
+	/** Planned searches for this round; without them the fixed recipe (enrichQueries) runs. */
+	queries?: string[];
+	/** The focus brief as text (contact details removed), for the extraction prompt. */
+	brief?: string | null;
+	/** Pages an earlier round already read: never fetched or paid for twice. */
+	skipUrls?: ReadonlySet<string>;
 }
 
 export interface ResearchDeps {
@@ -85,6 +92,8 @@ export interface ResearchOutcome {
 	queries: string[];
 	/** Pages read from the web (excludes the knowledge panel). */
 	pagesRead: number;
+	/** Every page considered this round, for the trace the user sees. */
+	pages: Array<{ url: string; title: string | null }>;
 	/** What the identity check said about each page considered. */
 	verdicts: PageVerdict[];
 	/** Pages dropped as a different same-name entity. */
@@ -107,9 +116,12 @@ export async function researchEntity(
 	const outcome: ResearchOutcome = {
 		queries: [],
 		pagesRead: 0,
+		pages: [],
 		verdicts: [],
 		differentPages: 0,
-		unanchored: !hasKnowledgeAnchors(anchors),
+		// What the user just said about the entry counts as something known to check pages
+		// against, exactly like a recorded fact.
+		unanchored: !hasKnowledgeAnchors(anchors) && !instructions?.trim(),
 		batch: empty,
 		dropped: [],
 		raw: null
@@ -117,7 +129,9 @@ export async function researchEntity(
 
 	// 1. Search (paid). The port reserves the most a search can cost before dispatch; settle to
 	// what the provider that answered actually billed.
-	const queries = enrichQueries(context, instructions, fields, anchors);
+	const queries = input.queries?.length
+		? input.queries
+		: enrichQueries(context, instructions, fields, anchors);
 	const results: Array<{ url: string; title: string; content: string | null }> = [];
 	let panel: EnrichKnowledgePanel | null = null;
 	for (const query of queries) {
@@ -149,7 +163,10 @@ export async function researchEntity(
 	// identity check's call, as for any page); rejected pages and domains are never read.
 	const panelSite = panel?.website ?? null;
 	if (panelSite) results.unshift({ url: panelSite, title: panel!.title, content: null });
-	const chosen = choosePages(results, context.homepage ?? panelSite, undefined, {
+	const fresh = input.skipUrls?.size
+		? results.filter((r) => !input.skipUrls!.has(r.url))
+		: results;
+	const chosen = choosePages(fresh, context.homepage ?? panelSite, undefined, {
 		ownDomains: anchors?.domains ?? [],
 		exclude: anchors?.not ?? []
 	});
@@ -174,6 +191,7 @@ export async function researchEntity(
 			read.push({ url: result.url, title, content: content.slice(0, PAGE_CHARS) });
 	}
 	outcome.pagesRead = read.length;
+	outcome.pages = read.map((page) => ({ url: page.url, title: page.title }));
 	const panelPage = knowledgePanelPage(panel, detail.entity.kind);
 	const candidates = panelPage ? [...read, panelPage] : read;
 	if (!candidates.length) return outcome;
@@ -223,9 +241,19 @@ export async function researchEntity(
 
 	// 4. Extract with exact quotes, then validate.
 	await deps.advance?.('extracting');
+	// Asked-for details first; anything else the entry can hold is saved when a page states it.
+	const also = alsoWorthSaving(detail.entity.kind, fields);
 	const raw = await deps.llm.getJSONResponse<unknown>({
 		systemPrompt: KNOWLEDGE_ENRICH_SYSTEM_PROMPT,
-		userPrompt: enrichUserPrompt(context, fields, pages, instructions, anchors),
+		userPrompt: enrichUserPrompt(
+			context,
+			fields,
+			pages,
+			instructions,
+			anchors,
+			input.brief,
+			also
+		),
 		userId: input.userId,
 		profile: 'fast',
 		temperature: 0.1,
@@ -243,7 +271,7 @@ export async function researchEntity(
 	const validated = validateEnrichment(raw, {
 		entityId: detail.entity.id,
 		kind: detail.entity.kind,
-		fields,
+		fields: [...fields, ...also],
 		pages,
 		existing: context.existing,
 		suggestOnly: outcome.unanchored,

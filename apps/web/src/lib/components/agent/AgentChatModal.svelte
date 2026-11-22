@@ -843,8 +843,10 @@
 		getReviewIntent: () => selectedReviewIntent,
 		getPublishedSpecialist: () => publishedSpecialist,
 		getRequestedSkillId: () => launchSkillId,
+		// Sent whatever the chat's scope: a chat that started about an entry is later filed
+		// under the project it mostly concerned, and it is still about that entry.
 		getKnowledgeFocus: () =>
-			shellRouter.knowledgeFocus && shellRouter.selectedContextType === 'global'
+			shellRouter.knowledgeFocus
 				? { entityId: shellRouter.knowledgeFocus.entity_id }
 				: null,
 		clearRequestedSkillId: () => {

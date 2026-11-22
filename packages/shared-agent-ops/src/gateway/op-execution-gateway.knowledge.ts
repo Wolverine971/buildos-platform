@@ -608,7 +608,15 @@ export async function runKnowledgeEnrich(
 	admin: KnowledgeDataClient,
 	userId: string,
 	args: Record<string, unknown>,
-	options: { via: KnowledgeOpVia }
+	options: {
+		via: KnowledgeOpVia;
+		/**
+		 * Wait this long for the run to finish and return what it found (BuildOS chat: the
+		 * user is watching). Without it, or when the run outlasts it, the call returns as soon
+		 * as the run is queued and the results land on the entries.
+		 */
+		waitMs?: number;
+	}
 ): Promise<Record<string, unknown>> {
 	const ids = arrayArg(args.entity_ids, 'entity_ids', KNOWLEDGE_ENRICH_MAX_ENTITIES).map(
 		(id, index) => entityId(id, `entity_ids[${index}]`)
@@ -634,6 +642,32 @@ export async function runKnowledgeEnrich(
 		})
 	);
 	const names = run.targets.map((target) => target.name);
+	const outcome = options.waitMs
+		? await waitForKnowledgeRun(admin, userId, run.runId, options.waitMs).catch(() => null)
+		: null;
+	if (outcome) {
+		const saved = outcome.found.filter((f) => f.confirmed).length;
+		const toCheck = outcome.found.length - saved;
+		return {
+			knowledge_run: {
+				id: run.runId,
+				status: outcome.status,
+				targets: run.targets.map((target) => ({
+					entity_id: target.entity_id,
+					kind: target.kind,
+					name: target.name,
+					fields: target.fields,
+					...(outcome.targets.get(target.entity_id) ?? {})
+				})),
+				found: outcome.found,
+				searched: outcome.searched,
+				pages: outcome.pages,
+				...(run.skipped.length ? { skipped: run.skipped } : {}),
+				budget_usd: run.budget_usd
+			},
+			message: `Research on ${names.length === 1 ? names[0] : `${names.length} entries`} finished: ${saved} new detail${saved === 1 ? '' : 's'} saved${toCheck ? `, ${toCheck} to check` : ''}, from ${outcome.searched.length} search${outcome.searched.length === 1 ? '' : 'es'} and ${outcome.pages.length} page${outcome.pages.length === 1 ? '' : 's'}.`
+		};
+	}
 	return {
 		knowledge_run: {
 			id: run.runId,
@@ -648,6 +682,111 @@ export async function runKnowledgeEnrich(
 			budget_usd: run.budget_usd
 		},
 		message: `Started background research on ${names.length === 1 ? names[0] : `${names.length} entries`}. New facts appear on each entry when it finishes, usually within a few minutes.`
+	};
+}
+
+/**
+ * How long BuildOS chat waits on a research run before answering "still running". A chat write
+ * tool is cut off at 20 s (AGENTIC_CHAT_WRITE_DEADLINE_MS in the worker), so this stays well
+ * under it; a one-round run usually finishes inside it, a two-round run usually does not.
+ */
+export const KNOWLEDGE_ENRICH_CHAT_WAIT_MS = 14_000;
+
+interface KnowledgeRunOutcome {
+	status: string;
+	targets: Map<string, { status: string; summary: string | null }>;
+	/** What was saved (confirmed) or kept as a suggestion to check. */
+	found: Array<{ entry: string; detail: string; confirmed: boolean }>;
+	searched: string[];
+	pages: Array<{ url: string; title: string | null; verdict: string }>;
+}
+
+/**
+ * Wait for a research run to finish and read back what it did. Null when it is still going at
+ * the deadline (the caller then reports it as queued). Reads only the user's own run.
+ */
+async function waitForKnowledgeRun(
+	admin: KnowledgeDataClient,
+	userId: string,
+	runId: string,
+	waitMs: number
+): Promise<KnowledgeRunOutcome | null> {
+	const deadline = Date.now() + waitMs;
+	let finished: { status: string; stats: unknown } | null = null;
+	for (;;) {
+		const { data } = await admin
+			.from('knowledge_runs')
+			.select('status, stats')
+			.eq('id', runId)
+			.eq('owner_user_id', userId)
+			.maybeSingle();
+		const status = (data as { status?: string } | null)?.status;
+		if (status && status !== 'queued' && status !== 'running') {
+			finished = data as { status: string; stats: unknown };
+			break;
+		}
+		if (Date.now() + 1_500 > deadline) return null;
+		await new Promise((resolve) => setTimeout(resolve, 1_500));
+	}
+	const [{ data: targetRows }, { data: factRows }] = await Promise.all([
+		admin
+			.from('knowledge_run_targets')
+			.select('entity_id, status, summary')
+			.eq('run_id', runId)
+			.eq('owner_user_id', userId),
+		admin
+			.from('knowledge_facts')
+			.select('entity_id, predicate, value_text, object_entity_id, status')
+			.eq('run_id', runId)
+			.eq('owner_user_id', userId)
+			.limit(60)
+	]);
+	const facts = (factRows ?? []) as Array<{
+		entity_id: string;
+		predicate: string;
+		value_text: string | null;
+		object_entity_id: string | null;
+		status: string;
+	}>;
+	const names = await new KnowledgeStore(admin, userId)
+		.getSummaries([
+			...new Set(
+				facts.flatMap((f) => [f.entity_id, f.object_entity_id]).filter(Boolean) as string[]
+			)
+		])
+		.catch(() => new Map<string, { name: string }>());
+	const stats = isRecord(finished.stats) ? finished.stats : {};
+	const traces = isRecord(stats.trace) ? Object.values(stats.trace).filter(isRecord) : [];
+	const strings = (value: unknown) =>
+		Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
+	return {
+		status: finished.status,
+		targets: new Map(
+			((targetRows ?? []) as Array<{ entity_id: string; status: string; summary: string | null }>).map(
+				(row) => [row.entity_id, { status: row.status, summary: row.summary }]
+			)
+		),
+		found: facts
+			.filter((f) => f.status === 'active' || f.status === 'suggested')
+			.map((f) => ({
+				entry: names.get(f.entity_id)?.name ?? 'Entry',
+				detail: `${getKnowledgePredicate(f.predicate)?.label ?? f.predicate}: ${
+					f.object_entity_id
+						? (names.get(f.object_entity_id)?.name ?? 'another entry')
+						: (f.value_text ?? '')
+				}`.slice(0, 300),
+				confirmed: f.status === 'active'
+			})),
+		searched: traces.flatMap((trace) => strings(trace.queries)).slice(0, 10),
+		pages: traces
+			.flatMap((trace) => (Array.isArray(trace.pages) ? trace.pages.filter(isRecord) : []))
+			.map((page) => ({
+				url: String(page.url ?? ''),
+				title: typeof page.title === 'string' ? page.title : null,
+				verdict: String(page.verdict ?? 'read')
+			}))
+			.filter((page) => page.url)
+			.slice(0, 12)
 	};
 }
 
@@ -1171,7 +1310,9 @@ export async function enrichKnowledge(
 		);
 	}
 	return runKnowledgeEnrich(context.admin, trustedUserId(context), args, {
-		via: knowledgeViaForContext(context)
+		via: knowledgeViaForContext(context),
+		// The user is in the chat watching: wait for the research and bring the findings back.
+		waitMs: KNOWLEDGE_ENRICH_CHAT_WAIT_MS
 	});
 }
 

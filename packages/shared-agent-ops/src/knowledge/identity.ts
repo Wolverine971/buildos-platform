@@ -237,7 +237,9 @@ export function identityByRules(
 		}
 		const own = hosts.find((h) => anchors.domains.some((d) => hostMatchesDomain(h, d)));
 		if (own) return rule(candidateId, 'same', 'own_site', `On their own website (${own})`);
-		if (!hasKnowledgeAnchors(anchors))
+		// Nothing recorded and nothing said: nothing to check a page against. What the user just
+		// said about the entry is enough for the model to judge with.
+		if (!hasKnowledgeAnchors(anchors) && !entry.userNote?.trim())
 			return rule(
 				candidateId,
 				'ask',
