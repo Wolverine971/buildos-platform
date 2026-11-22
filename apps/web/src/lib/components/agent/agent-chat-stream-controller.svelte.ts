@@ -96,6 +96,8 @@ export interface StreamControllerDeps {
 	onReviewAdmitted?(): void;
 	/** Skill the chat was launched with ("Try in BuildOS"); rides one admitted turn. */
 	getRequestedSkillId?(): string | null;
+	/** The knowledge entry this chat is about (a structured pick, never read from the message). */
+	getKnowledgeFocus?(): { entityId: string } | null;
 	/** The launch skill reached admission (or may have); stop sending it. */
 	clearRequestedSkillId?(): void;
 	setInputValue(value: string): void;
@@ -779,6 +781,10 @@ export class AgentChatStreamController {
 					message: trimmed,
 					attachments: streamAttachmentRefs,
 					projectFocus: requestProjectFocus,
+					// Workflow reviews run on their own lane; a focused entry rides ordinary turns.
+					knowledgeFocus: reviewIntent
+						? null
+						: (this.#deps.getKnowledgeFocus?.() ?? null),
 					voiceNoteGroupId: activeVoiceNoteGroupId,
 					preparedPromptKey: matchingPreparedPrompt?.key ?? null,
 					reviewIntent,

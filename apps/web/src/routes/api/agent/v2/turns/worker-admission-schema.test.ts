@@ -60,3 +60,31 @@ describe('worker admission ignores client-carried continuity', () => {
 		).toBe(false);
 	});
 });
+
+describe('a chat about one knowledge entry', () => {
+	const ENTRY = 'F307321B-17EB-4CED-B40C-AD946953D245';
+
+	it('accepts only an entry id, lower-cased, and defaults to no focus', () => {
+		const focused = workerAdmissionRequestSchema.safeParse({
+			...body(),
+			knowledgeFocus: { entityId: ENTRY }
+		});
+		expect(focused.success && focused.data.knowledgeFocus).toEqual({
+			entityId: ENTRY.toLowerCase()
+		});
+		const plain = workerAdmissionRequestSchema.safeParse(body());
+		expect(plain.success && plain.data.knowledgeFocus).toBeNull();
+	});
+
+	it('refuses a name or kind from the browser, and anything that is not an entry id', () => {
+		for (const knowledgeFocus of [
+			{ entityId: ENTRY, name: 'Griffin Davis', kind: 'person' },
+			{ entityId: 'griffin-davis' },
+			{}
+		]) {
+			expect(
+				workerAdmissionRequestSchema.safeParse({ ...body(), knowledgeFocus }).success
+			).toBe(false);
+		}
+	});
+});

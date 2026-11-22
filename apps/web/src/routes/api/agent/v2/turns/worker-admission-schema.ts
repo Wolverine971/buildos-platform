@@ -45,6 +45,16 @@ const projectFocusSchema = z
 		projectName: z.string().min(1).max(1000)
 	})
 	.strict();
+// A chat about one knowledge entry (a person, an organization…). Only the id: the server loads
+// the entry with the user's own access, so a name or kind from the browser is never trusted.
+const knowledgeFocusSchema = z
+	.object({
+		entityId: z
+			.string()
+			.uuid()
+			.transform((value) => value.toLowerCase())
+	})
+	.strict();
 const projectAttachmentSchema = z
 	.object({
 		attachmentKind: z.literal('onto_asset'),
@@ -148,6 +158,7 @@ export const workerAdmissionRequestSchema = z
 			.optional()
 			.default([]),
 		projectFocus: projectFocusSchema.nullable().optional().default(null),
+		knowledgeFocus: knowledgeFocusSchema.nullable().optional().default(null),
 		lastTurnContext: ignoredClientLastTurnContext,
 		voiceNoteGroupId: nullableUuid.optional().default(null),
 		preparedPromptKey: canonicalText(2048).nullable().optional().default(null),

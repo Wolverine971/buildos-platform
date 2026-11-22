@@ -237,9 +237,14 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		// joined both surfaces. Jev mounts them only on such turns. Measured global 65 tools /
 		// 71,997 B (+1,731), project 77 tools / 88,273 B (+1,731), project_create unchanged.
 		// Caps at measured + ~0.1%.
-		expect(global.openingBytes).toBeLessThanOrEqual(72_070);
-		expect(project.openingBytes).toBeLessThanOrEqual(88_360);
-		expect(project.admittedBytes).toBeLessThanOrEqual(88_360);
+		// RE-BASELINED 2026-11-21 (tasker 166, find connections): query_knowledge gained
+		// people filters (company, title, industry, place, in_records, related_to,
+		// bridge_to) and group_by, so "who do I know at / in / doing …" is one structured
+		// call; no new tool, descriptions trimmed first. Measured global 73,407 B (+1,410),
+		// project 89,683 B (+1,410), project_create unchanged. Caps at measured + ~0.1%.
+		expect(global.openingBytes).toBeLessThanOrEqual(73_480);
+		expect(project.openingBytes).toBeLessThanOrEqual(89_770);
+		expect(project.admittedBytes).toBeLessThanOrEqual(89_770);
 		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(9_380);
 	});
 

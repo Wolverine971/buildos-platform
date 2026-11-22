@@ -1,0 +1,94 @@
+{
+	"about": "Tasker 166 eval set: the questions 'find connections' must answer, each as the structured query_knowledge call a chat model should make. Free (SQL over the graph). Grow it from real asks. Names of private people stay out of this file: the person question takes its person from --person or from the top answer to 'across-work'.",
+	"questions": [
+		{
+			"id": "at-company",
+			"asks": "Who do I know at Curri?",
+			"args": { "start": { "known_by_me": true }, "where": { "company": ["Curri"] } }
+		},
+		{
+			"id": "used-to-work-there",
+			"asks": "Who used to work at Curri?",
+			"args": {
+				"start": { "known_by_me": true },
+				"where": { "company": ["Curri"], "employment": "former" }
+			}
+		},
+		{
+			"id": "in-area",
+			"asks": "Who do I know in the Baltimore / DC area?",
+			"args": {
+				"start": { "known_by_me": true },
+				"where": { "place": ["Maryland", "District of Columbia", "Virginia"] }
+			}
+		},
+		{
+			"id": "similar-companies",
+			"asks": "Which of my contacts work at similar companies (same industry)?",
+			"args": { "start": { "known_by_me": true }, "group_by": "industry" }
+		},
+		{
+			"id": "two-hops",
+			"asks": "Who do I know that knows someone at Anduril?",
+			"args": { "start": { "known_by_me": true }, "where": { "bridge_to": ["Anduril"] } }
+		},
+		{
+			"id": "across-work",
+			"asks": "Which people show up across my tasks, docs and contacts together?",
+			"args": {
+				"start": { "known_by_me": true },
+				"where": { "in_records": ["task", "document"] }
+			}
+		},
+		{
+			"id": "person-now",
+			"asks": "What is <person> doing now, and do I have their contact details?",
+			"person": true,
+			"args": { "start": { "kinds": ["person"] }, "where": { "employment": "any" } }
+		},
+		{
+			"id": "linkedin-role-industry",
+			"asks": "Find that person from my LinkedIn who recruits in tech.",
+			"args": {
+				"start": { "known_by_me": true },
+				"where": {
+					"via": "linkedin",
+					"title": ["recruiter", "talent"],
+					"industry": ["software", "technology"]
+				}
+			}
+		},
+		{
+			"id": "maryland-tech-companies",
+			"asks": "List the companies my friends work at in Maryland that have to do with tech.",
+			"args": {
+				"start": { "known_by_me": true },
+				"where": {
+					"place": ["Maryland"],
+					"place_of": "company",
+					"industry": ["software", "technology", "tech"]
+				},
+				"group_by": "company"
+			}
+		},
+		{
+			"id": "tech-people-by-company",
+			"asks": "Where do the engineers I know work?",
+			"args": {
+				"start": { "known_by_me": true },
+				"where": { "title": ["engineer", "developer", "software"] },
+				"group_by": "company"
+			}
+		},
+		{
+			"id": "top-companies",
+			"asks": "Which companies do I know the most people at?",
+			"args": { "start": { "known_by_me": true }, "group_by": "company" }
+		},
+		{
+			"id": "by-state",
+			"asks": "Where are the people I know?",
+			"args": { "start": { "known_by_me": true }, "group_by": "region" }
+		}
+	]
+}

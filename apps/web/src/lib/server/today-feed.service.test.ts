@@ -178,6 +178,59 @@ describe('getTodayFeed', () => {
 		expect(feed.degradedSections).toEqual([]);
 	});
 
+	it('reads two weeks of events once: today keeps its slice, the strip gets the rest', async () => {
+		// "Now" is Wednesday 2026-07-15 12:00 UTC; in New York the week opened Sunday July 12.
+		ontologyMocks.fetchProjectSummaries.mockResolvedValue([]);
+		const event = (id: string, start_at: string, end_at: string) => ({
+			calendar_item_id: id,
+			item_type: 'event',
+			title: id,
+			start_at,
+			end_at,
+			all_day: false,
+			props: { description: 'Private notes', external_link: 'https://example.test/e' }
+		});
+		const supabase = {
+			rpc: vi.fn().mockResolvedValue({
+				data: [
+					event('monday', '2026-07-13T15:00:00Z', '2026-07-13T16:00:00Z'),
+					event('today', '2026-07-15T15:00:00Z', '2026-07-15T16:00:00Z'),
+					// 11 PM tonight in New York: tomorrow in UTC, still today for the person.
+					event('tonight', '2026-07-16T03:00:00Z', '2026-07-16T03:30:00Z'),
+					event('next-week', '2026-07-22T15:00:00Z', '2026-07-22T16:00:00Z')
+				],
+				error: null
+			}),
+			from: vi.fn()
+		};
+
+		const feed = await getTodayFeed({
+			supabase: supabase as never,
+			userId: 'user-1',
+			timezone: 'America/New_York'
+		});
+
+		expect(supabase.rpc).toHaveBeenCalledTimes(1);
+		expect(supabase.rpc).toHaveBeenCalledWith(
+			'list_calendar_items',
+			expect.objectContaining({
+				p_start: '2026-07-12T04:00:00.000Z',
+				p_end: '2026-07-26T04:00:00.000Z'
+			})
+		);
+		expect(feed.events.map((item) => item.calendar_item_id)).toEqual(['today', 'tonight']);
+		expect(feed.twoWeeks.start).toBe('2026-07-12');
+		expect(feed.twoWeeks.items.map((item) => item.calendar_item_id)).toEqual([
+			'monday',
+			'today',
+			'tonight',
+			'next-week'
+		]);
+		expect(feed.twoWeeks.items[0]?.props).toEqual({
+			external_link: 'https://example.test/e'
+		});
+	});
+
 	it('marks view-only shares as not writable so the reader hides edit controls', async () => {
 		ontologyMocks.fetchProjectSummaries.mockResolvedValue([
 			{ ...project('owned', 'active'), access_role: 'owner', access_level: 'admin' },

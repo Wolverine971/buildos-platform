@@ -14,6 +14,7 @@
 	import {
 		ArrowLeft,
 		Check,
+		ChevronDown,
 		ChevronRight,
 		Copy,
 		Eye,
@@ -42,6 +43,7 @@
 		displayValue,
 		KIND_ICON,
 		KIND_LABEL,
+		KIND_OPTIONS,
 		knowledgeApi,
 		knownVia,
 		qualifierNote,
@@ -50,6 +52,7 @@
 		type KnowledgeKind
 	} from './knowledge-client';
 	import { isActiveTarget, researchStatusLine, type ResearchTarget } from './research-tray';
+	import KnowledgeConnectionChips from './KnowledgeConnectionChips.svelte';
 	import KnowledgeNameUpdates from './KnowledgeNameUpdates.svelte';
 	import KnowledgeSharePanel from './KnowledgeSharePanel.svelte';
 
@@ -79,8 +82,16 @@
 		onBrowseKind?: (entity: { id: string; kind: KnowledgeKind }) => void;
 		/** This entry was hidden or deleted here (a task card then stops pointing at it). */
 		onRemoved?: (id: string) => void;
-		/** "Merge…": combine this entry with another (the page's merge dialog). */
-		onMerge?: (entity: { id: string; name: string; kind: KnowledgeKind }) => void;
+		/**
+		 * "Merge…": combine this entry with another (the page's merge dialog). `with` names entries
+		 * to start the dialog with (a same-name entry found when this one's type was changed).
+		 */
+		onMerge?: (entity: {
+			id: string;
+			name: string;
+			kind: KnowledgeKind;
+			with?: string[];
+		}) => void;
 	}
 
 	let {
@@ -222,6 +233,36 @@
 			onChanged?.();
 		} catch (error) {
 			toastService.error(error instanceof Error ? error.message : 'Could not rename');
+		}
+	}
+
+	let changingKind = $state(false);
+	/** "This organization is really a person": change what the entry is. */
+	async function changeKind(kind: KnowledgeKind) {
+		if (!entity || changingKind || kind === entity.kind) return;
+		changingKind = true;
+		const { id, name } = entity;
+		try {
+			const { kind_change } = await knowledgeApi.update(id, { kind });
+			const dropped = kind_change?.retracted ?? 0;
+			toastService.success(
+				`${name} moved to ${KIND_LABEL[kind].many}` +
+					(dropped
+						? `. ${dropped} detail${dropped === 1 ? '' : 's'} that no longer fit${dropped === 1 ? 's' : ''} ${dropped === 1 ? 'was' : 'were'} removed.`
+						: '')
+			);
+			await load(id, true);
+			onChanged?.();
+			// The same name already exists as that type: almost always one thing saved twice.
+			const twins = kind_change?.same_name ?? [];
+			if (twins.length) onMerge?.({ id, name, kind, with: twins.map((twin) => twin.id) });
+		} catch (error) {
+			toastService.error(
+				error instanceof Error ? error.message : 'Could not change the type'
+			);
+			await load(id, true);
+		} finally {
+			changingKind = false;
 		}
 	}
 
@@ -488,7 +529,35 @@
 				<p
 					class="flex min-w-0 flex-wrap items-center gap-x-1 text-xs text-muted-foreground"
 				>
-					<span>{KIND_LABEL[entity.kind].one}</span>
+					{#if isOwn && !entity.is_self}
+						<!-- What the entry is. A list read from other people's names gets this wrong
+						     (a person filed as an organization), so it is one click to fix. -->
+						<label
+							class="relative inline-flex items-center rounded hover:text-foreground focus-within:ring-2 focus-within:ring-ring"
+						>
+							<span class="sr-only">Type of entry</span>
+							<select
+								class="cursor-pointer appearance-none border-0 bg-transparent py-0.5 pl-0 pr-4 text-xs text-inherit focus:outline-none focus:ring-0 disabled:cursor-wait"
+								value={entity.kind}
+								disabled={changingKind}
+								title="Change what this is"
+								onchange={(event) =>
+									void changeKind(event.currentTarget.value as KnowledgeKind)}
+							>
+								{#each KIND_OPTIONS as option (option)}
+									<option value={option} class="bg-card text-foreground"
+										>{KIND_LABEL[option].one}</option
+									>
+								{/each}
+							</select>
+							<ChevronDown
+								class="pointer-events-none absolute right-0 h-3 w-3"
+								aria-hidden="true"
+							/>
+						</label>
+					{:else}
+						<span>{KIND_LABEL[entity.kind].one}</span>
+					{/if}
 					{#if entity.summary}<span aria-hidden="true">·</span><span class="truncate"
 							>{entity.summary}</span
 						>{/if}
@@ -758,6 +827,13 @@
 					{/each}
 				</ul>
 			</section>
+		{/if}
+
+		{#if entity.kind === 'person' && !entity.is_self}
+			<!-- Who else is at their company or in their town (tasker 166). -->
+			{#key entity.id}
+				<KnowledgeConnectionChips entityId={entity.id} {onOpen} />
+			{/key}
 		{/if}
 
 		{#each [...outgoing, ...incoming] as section (section.label)}

@@ -42,3 +42,10 @@ export {
 	runKnowledgeSearch,
 	type KnowledgeOpVia
 } from './op-execution-gateway.knowledge';
+export {
+	KNOWLEDGE_CONNECTION_GROUPS_MAX,
+	KNOWLEDGE_CONNECTION_PEOPLE_MAX,
+	KNOWLEDGE_CONNECTION_WHERE_KEYS,
+	isKnowledgeConnectionQuery,
+	runKnowledgeConnectionsQuery
+} from './op-execution-gateway.knowledge-connections';

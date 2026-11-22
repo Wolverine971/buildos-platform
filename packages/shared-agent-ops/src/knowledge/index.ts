@@ -10,6 +10,8 @@ export * from './youtube';
 export * from './anchors';
 export * from './circles';
 export * from './identity';
+export * from './focus-brief';
 export * from './mentions';
 export * from './mention-sync';
 export * from './spend';
+export * from './connections';

@@ -143,6 +143,17 @@ export interface KnowledgeMergePreviewEntry extends KnowledgeEntitySummary {
 	mentions: number;
 }
 
+/** What changing an entry's kind did (KnowledgeStore.changeEntityKind). */
+export interface KnowledgeKindChange {
+	entity_id: string;
+	kind: KnowledgeKind;
+	previous_kind: KnowledgeKind;
+	/** Details that only fit the old kind and were retracted. */
+	retracted: number;
+	/** Entries of the new kind with the same name: probably the same one, saved twice. */
+	same_name: Array<{ id: string; name: string }>;
+}
+
 export interface KnowledgeMergePreview {
 	entries: KnowledgeMergePreviewEntry[];
 	suggested_keep: string | null;

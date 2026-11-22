@@ -29,6 +29,7 @@
 	id (?e=) is in the URL so a chat card can link straight to it.
 -->
 <script lang="ts">
+	import type { KnowledgeFocusRef } from '@buildos/shared-agent-ops/knowledge';
 	import { onMount, tick } from 'svelte';
 	import { page } from '$app/state';
 	import { afterNavigate, replaceState } from '$app/navigation';
@@ -36,6 +37,7 @@
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import { loadAgentChatModal } from '$lib/components/agent/load-agent-chat-modal';
 	import KnowledgeEntityCard from '$lib/components/knowledge/KnowledgeEntityCard.svelte';
+	import KnowledgeConnections from '$lib/components/knowledge/KnowledgeConnections.svelte';
 	import KnowledgeImportDialog from '$lib/components/knowledge/KnowledgeImportDialog.svelte';
 	import KnowledgeEnrichDialog from '$lib/components/knowledge/KnowledgeEnrichDialog.svelte';
 	import KnowledgeMergeDialog from '$lib/components/knowledge/KnowledgeMergeDialog.svelte';
@@ -99,7 +101,8 @@
 		Sparkles,
 		Upload,
 		X,
-		ListFilter
+		ListFilter,
+		Network
 	} from '$lib/icons/lucide';
 	import { toastService } from '$lib/stores/toast.store';
 	import type { PageData } from './$types';
@@ -128,6 +131,9 @@
 		initial?.views ?? null
 	);
 	let place = $state<string | null>(null);
+	/** The Connections tab (tasker 166): where your people cluster. Mounted on first open, then kept. */
+	let connectionsOpen = $state(false);
+	let connectionsSeen = $state(false);
 	let places = $state<Array<{ id: string; name: string; count: number }>>(initial?.places ?? []);
 	let filter = $state<Filter>('all');
 	let kind = $state<KnowledgeKind | null>(null);
@@ -165,6 +171,10 @@
 	const reviewCount = $derived(pairQuestions.length + twins.length);
 	let chatOpen = $state(false);
 	let chatDraft = $state('');
+	let chatFocus = $state<KnowledgeFocusRef | null>(null);
+	let chatAutoSend = $state(false);
+	/** Bumped when a chat about an entry closes, so the open card reloads what it saved. */
+	let cardVersion = $state(0);
 	let innerWidth = $state(1280);
 
 	// Where each entry shows up (projects, tasks, docs): one request per page of rows.
@@ -388,7 +398,10 @@
 			projectLens = null;
 			lensData = null;
 		}
-		if (next.view !== undefined) view = next.view;
+		if (next.view !== undefined) {
+			view = next.view;
+			connectionsOpen = false;
+		}
 		if (next.place !== undefined) place = next.place;
 		if (next.filter !== undefined) filter = next.filter;
 		if (next.kind !== undefined) kind = next.kind;
@@ -648,12 +661,27 @@
 		syncUrl(null);
 	}
 
-	function askInChat(entity: { name: string; kind: KnowledgeKind }) {
-		chatDraft =
-			entity.kind === 'person'
-				? `What do I know about ${entity.name}? `
-				: `Tell me what's in my knowledge about ${entity.name}. `;
+	/** A chat about this one entry: it opens with everything BuildOS holds on it loaded. */
+	function askInChat(
+		entity: { id: string; name: string; kind: KnowledgeKind },
+		options: { message?: string } = {}
+	) {
+		chatFocus = { entity_id: entity.id, name: entity.name, kind: entity.kind };
+		chatDraft = options.message ?? '';
+		// A request that arrives ready (Find more → Research in chat) sends itself.
+		chatAutoSend = Boolean(options.message);
 		chatOpen = true;
+	}
+
+	/** The chat may have saved details or a new type: show them on the card and the list. */
+	function closeChat() {
+		chatOpen = false;
+		if (!chatFocus) return;
+		chatFocus = null;
+		chatAutoSend = false;
+		cardVersion += 1;
+		forgetWhere(() => true);
+		void refresh();
 	}
 
 	function onImported(summary: ImportSummary) {
@@ -814,7 +842,7 @@
 
 {#snippet card(id: string)}
 	<ErrorBoundary area="knowledge entry">
-		{#key id}
+		{#key `${id}:${cardVersion}`}
 			<KnowledgeEntityCard
 				entityId={id}
 				onOpen={(next) => open(next, { drill: true })}
@@ -827,7 +855,7 @@
 				onAskChat={askInChat}
 				research={research.byEntity.get(id) ?? null}
 				onFindMore={(entity) => (enrichEntries = [entity])}
-				onMerge={(entity) => (mergeIds = [entity.id])}
+				onMerge={(entity) => (mergeIds = [entity.id, ...(entity.with ?? [])])}
 				onBrowseKind={(entity) => void reveal(entity.id, entity.kind)}
 			/>
 		{/key}
@@ -907,9 +935,9 @@
 							<button
 								type="button"
 								role="tab"
-								aria-selected={view === tab.key}
-								class="inline-flex min-h-8 items-center gap-1.5 rounded px-3 text-sm pressable {view ===
-								tab.key
+								aria-selected={!connectionsOpen && view === tab.key}
+								class="inline-flex min-h-8 items-center gap-1.5 rounded px-3 text-sm pressable {!connectionsOpen &&
+								view === tab.key
 									? 'bg-muted font-medium text-foreground'
 									: 'text-muted-foreground hover:text-foreground'}"
 								onclick={() => choose({ view: tab.key })}
@@ -920,198 +948,233 @@
 									>{/if}
 							</button>
 						{/each}
-					</div>
-					<p class="text-xs text-muted-foreground">
-						{view === 'world'
-							? 'People and organizations you deal with.'
-							: view === 'reference'
-								? 'Names that only come up in passing. Still found by search and chat.'
-								: "Words the sorter decided aren't people or organizations."}
-					</p>
-				</div>
-				<label class="relative block">
-					<span class="sr-only">Search your knowledge</span>
-					<Search
-						class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-						aria-hidden="true"
-					/>
-					<input
-						type="search"
-						class="w-full rounded-md border border-border bg-card py-2 pl-9 pr-9 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-						placeholder="Search names, companies, emails, links"
-						bind:value={query}
-						oninput={onSearchInput}
-					/>
-					{#if query}
 						<button
 							type="button"
-							class="absolute right-2 top-1/2 inline-grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:bg-muted"
-							aria-label="Clear search"
+							role="tab"
+							aria-selected={connectionsOpen}
+							class="inline-flex min-h-8 items-center gap-1.5 rounded px-3 text-sm pressable {connectionsOpen
+								? 'bg-muted font-medium text-foreground'
+								: 'text-muted-foreground hover:text-foreground'}"
 							onclick={() => {
-								query = '';
-								void refresh();
+								connectionsSeen = true;
+								connectionsOpen = true;
 							}}
 						>
-							<X class="h-3.5 w-3.5" />
-						</button>
-					{/if}
-				</label>
-				<div
-					class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:flex-wrap lg:px-0"
-					role="toolbar"
-					aria-label="Filter"
-				>
-					<button
-						type="button"
-						class="{chip} {filter === 'all' && !kind ? chipOn : chipOff}"
-						aria-pressed={filter === 'all' && !kind}
-						onclick={() => choose({ filter: 'all', kind: null })}
-					>
-						Everything <span class="stamp text-xs text-muted-foreground"
-							>{everythingCount}</span
-						>
-					</button>
-					<button
-						type="button"
-						class="{chip} {filter === 'known' ? chipOn : chipOff}"
-						aria-pressed={filter === 'known'}
-						onclick={() => choose({ filter: 'known', kind: null })}
-					>
-						People I know {#if knownCount !== null}<span
-								class="stamp text-xs text-muted-foreground">{knownCount}</span
-							>{/if}
-					</button>
-					<button
-						type="button"
-						class="{chip} {filter === 'owned' ? chipOn : chipOff}"
-						aria-pressed={filter === 'owned'}
-						onclick={() => choose({ filter: 'owned', kind: null })}
-					>
-						Mine
-					</button>
-					{#each KIND_ORDER.filter((k) => counts[k]) as k (k)}
-						{@const KindIcon = KIND_ICON[k]}
-						<button
-							type="button"
-							class="{chip} {filter === 'all' && kind === k ? chipOn : chipOff}"
-							aria-pressed={filter === 'all' && kind === k}
-							onclick={() => choose({ filter: 'all', kind: k })}
-						>
-							<KindIcon class="h-3.5 w-3.5" aria-hidden="true" />
-							{KIND_LABEL[k].many}
-							<span class="stamp text-xs text-muted-foreground">{counts[k]}</span>
-						</button>
-					{/each}
-				</div>
-				<div class="flex flex-wrap items-center gap-2">
-					<div
-						class="-mx-4 flex min-w-0 flex-[1_1_14rem] gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0"
-						role="toolbar"
-						aria-label="Research filter"
-					>
-						<button
-							type="button"
-							class="{chip} {researched === 'any' ? chipOn : chipOff}"
-							aria-pressed={researched === 'any'}
-							onclick={() => choose({ researched: 'any' })}
-						>
-							Any
-						</button>
-						<button
-							type="button"
-							class="{chip} {researched === 'yes' ? chipOn : chipOff}"
-							aria-pressed={researched === 'yes'}
-							onclick={() => choose({ researched: 'yes' })}
-						>
-							<Sparkles class="h-3.5 w-3.5" aria-hidden="true" /> Researched
-							{#if researchedCounts}<span class="stamp text-xs text-muted-foreground"
-									>{researchedCounts.yes}</span
-								>{/if}
-						</button>
-						<button
-							type="button"
-							class="{chip} {researched === 'no' ? chipOn : chipOff}"
-							aria-pressed={researched === 'no'}
-							onclick={() => choose({ researched: 'no' })}
-						>
-							Not researched
-							{#if researchedCounts}<span class="stamp text-xs text-muted-foreground"
-									>{researchedCounts.no}</span
-								>{/if}
+							<Network class="h-3.5 w-3.5" aria-hidden="true" />
+							Connections
 						</button>
 					</div>
-					{#if places.length}
+					<p class="text-xs text-muted-foreground">
+						{connectionsOpen
+							? 'Where your people work and live, and who overlaps.'
+							: view === 'world'
+								? 'People and organizations you deal with.'
+								: view === 'reference'
+									? 'Names that only come up in passing. Still found by search and chat.'
+									: "Words the sorter decided aren't people or organizations."}
+					</p>
+				</div>
+				{#if !connectionsOpen}
+					<label class="relative block">
+						<span class="sr-only">Search your knowledge</span>
+						<Search
+							class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+							aria-hidden="true"
+						/>
+						<input
+							type="search"
+							class="w-full rounded-md border border-border bg-card py-2 pl-9 pr-9 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+							placeholder="Search names, companies, emails, links"
+							bind:value={query}
+							oninput={onSearchInput}
+						/>
+						{#if query}
+							<button
+								type="button"
+								class="absolute right-2 top-1/2 inline-grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:bg-muted"
+								aria-label="Clear search"
+								onclick={() => {
+									query = '';
+									void refresh();
+								}}
+							>
+								<X class="h-3.5 w-3.5" />
+							</button>
+						{/if}
+					</label>
+					<div
+						class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:flex-wrap lg:px-0"
+						role="toolbar"
+						aria-label="Filter"
+					>
+						<button
+							type="button"
+							class="{chip} {filter === 'all' && !kind ? chipOn : chipOff}"
+							aria-pressed={filter === 'all' && !kind}
+							onclick={() => choose({ filter: 'all', kind: null })}
+						>
+							Everything <span class="stamp text-xs text-muted-foreground"
+								>{everythingCount}</span
+							>
+						</button>
+						<button
+							type="button"
+							class="{chip} {filter === 'known' ? chipOn : chipOff}"
+							aria-pressed={filter === 'known'}
+							onclick={() => choose({ filter: 'known', kind: null })}
+						>
+							People I know {#if knownCount !== null}<span
+									class="stamp text-xs text-muted-foreground">{knownCount}</span
+								>{/if}
+						</button>
+						<button
+							type="button"
+							class="{chip} {filter === 'owned' ? chipOn : chipOff}"
+							aria-pressed={filter === 'owned'}
+							onclick={() => choose({ filter: 'owned', kind: null })}
+						>
+							Mine
+						</button>
+						{#each KIND_ORDER.filter((k) => counts[k]) as k (k)}
+							{@const KindIcon = KIND_ICON[k]}
+							<button
+								type="button"
+								class="{chip} {filter === 'all' && kind === k ? chipOn : chipOff}"
+								aria-pressed={filter === 'all' && kind === k}
+								onclick={() => choose({ filter: 'all', kind: k })}
+							>
+								<KindIcon class="h-3.5 w-3.5" aria-hidden="true" />
+								{KIND_LABEL[k].many}
+								<span class="stamp text-xs text-muted-foreground">{counts[k]}</span>
+							</button>
+						{/each}
+					</div>
+					<div class="flex flex-wrap items-center gap-2">
+						<div
+							class="-mx-4 flex min-w-0 flex-[1_1_14rem] gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0"
+							role="toolbar"
+							aria-label="Research filter"
+						>
+							<button
+								type="button"
+								class="{chip} {researched === 'any' ? chipOn : chipOff}"
+								aria-pressed={researched === 'any'}
+								onclick={() => choose({ researched: 'any' })}
+							>
+								Any
+							</button>
+							<button
+								type="button"
+								class="{chip} {researched === 'yes' ? chipOn : chipOff}"
+								aria-pressed={researched === 'yes'}
+								onclick={() => choose({ researched: 'yes' })}
+							>
+								<Sparkles class="h-3.5 w-3.5" aria-hidden="true" /> Researched
+								{#if researchedCounts}<span
+										class="stamp text-xs text-muted-foreground"
+										>{researchedCounts.yes}</span
+									>{/if}
+							</button>
+							<button
+								type="button"
+								class="{chip} {researched === 'no' ? chipOn : chipOff}"
+								aria-pressed={researched === 'no'}
+								onclick={() => choose({ researched: 'no' })}
+							>
+								Not researched
+								{#if researchedCounts}<span
+										class="stamp text-xs text-muted-foreground"
+										>{researchedCounts.no}</span
+									>{/if}
+							</button>
+						</div>
+						{#if places.length}
+							<label
+								class="flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground"
+							>
+								Place
+								<select
+									class="min-h-8 max-w-44 rounded-md border border-border bg-card px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+									value={place ?? ''}
+									onchange={(e) =>
+										choose({ place: e.currentTarget.value || null })}
+								>
+									<option value="">Any place</option>
+									{#each places as p (p.id)}
+										<option value={p.id}>{p.name} ({p.count})</option>
+									{/each}
+								</select>
+							</label>
+						{/if}
 						<label
 							class="flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground"
 						>
-							Place
+							Sort
 							<select
-								class="min-h-8 max-w-44 rounded-md border border-border bg-card px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-								value={place ?? ''}
-								onchange={(e) => choose({ place: e.currentTarget.value || null })}
+								class="min-h-8 rounded-md border border-border bg-card px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+								value={sort}
+								onchange={(e) => choose({ sort: e.currentTarget.value as Sort })}
 							>
-								<option value="">Any place</option>
-								{#each places as p (p.id)}
-									<option value={p.id}>{p.name} ({p.count})</option>
+								{#each KNOWLEDGE_SORT_MENU as key (key)}
+									<option value={key}
+										>{knowledgeSortLabel(
+											key,
+											key === sort ? sortDir : undefined
+										)}</option
+									>
 								{/each}
 							</select>
 						</label>
-					{/if}
-					<label class="flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground">
-						Sort
-						<select
-							class="min-h-8 rounded-md border border-border bg-card px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-							value={sort}
-							onchange={(e) => choose({ sort: e.currentTarget.value as Sort })}
+					</div>
+					{#if projectLens}
+						<div
+							class="flex items-center gap-2 rounded-md border border-accent/30 bg-accent/5 px-3 py-2 text-sm text-foreground"
+							role="status"
 						>
-							{#each KNOWLEDGE_SORT_MENU as key (key)}
-								<option value={key}
-									>{knowledgeSortLabel(
-										key,
-										key === sort ? sortDir : undefined
-									)}</option
+							<ListFilter class="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+							<span class="min-w-0 flex-1 truncate">
+								Everything in
+								<a
+									href="/projects/{projectLens.id}"
+									class="font-medium underline-offset-2 hover:underline"
+									>{projectLens.name}</a
 								>
-							{/each}
-						</select>
-					</label>
-				</div>
-				{#if projectLens}
-					<div
-						class="flex items-center gap-2 rounded-md border border-accent/30 bg-accent/5 px-3 py-2 text-sm text-foreground"
-						role="status"
-					>
-						<ListFilter class="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
-						<span class="min-w-0 flex-1 truncate">
-							Everything in
-							<a
-								href="/projects/{projectLens.id}"
-								class="font-medium underline-offset-2 hover:underline"
-								>{projectLens.name}</a
+								<span class="stamp text-xs text-muted-foreground">{total}</span>
+							</span>
+							<button
+								type="button"
+								class="inline-flex min-h-8 items-center gap-1 rounded-md px-2 text-sm text-muted-foreground pressable hover:bg-muted hover:text-foreground"
+								onclick={clearProjectLens}
 							>
-							<span class="stamp text-xs text-muted-foreground">{total}</span>
-						</span>
+								<X class="h-3.5 w-3.5" aria-hidden="true" /> Clear
+							</button>
+						</div>
+					{/if}
+					{#if reviewCount}
 						<button
 							type="button"
-							class="inline-flex min-h-8 items-center gap-1 rounded-md px-2 text-sm text-muted-foreground pressable hover:bg-muted hover:text-foreground"
-							onclick={clearProjectLens}
+							class="inline-flex w-fit items-center gap-1.5 rounded-md px-1 text-sm text-muted-foreground hover:text-foreground"
+							onclick={() => (duplicatesOpen = true)}
 						>
-							<X class="h-3.5 w-3.5" aria-hidden="true" /> Clear
+							<GitMerge class="h-4 w-4" aria-hidden="true" />
+							{reviewCount} possible duplicate{reviewCount === 1 ? '' : 's'} to review
 						</button>
-					</div>
-				{/if}
-				{#if reviewCount}
-					<button
-						type="button"
-						class="inline-flex w-fit items-center gap-1.5 rounded-md px-1 text-sm text-muted-foreground hover:text-foreground"
-						onclick={() => (duplicatesOpen = true)}
-					>
-						<GitMerge class="h-4 w-4" aria-hidden="true" />
-						{reviewCount} possible duplicate{reviewCount === 1 ? '' : 's'} to review
-					</button>
+					{/if}
 				{/if}
 			</div>
 
-			<div>
+			{#if connectionsSeen}
+				<div class={{ hidden: !connectionsOpen }}>
+					<ErrorBoundary area="connections">
+						<KnowledgeConnections
+							onOpen={(id) => open(id)}
+							onResearch={(entries) => (enrichEntries = entries)}
+						/>
+					</ErrorBoundary>
+				</div>
+			{/if}
+
+			<div class={{ hidden: connectionsOpen }}>
 				<!-- Wide screens: a full-width table (name, projects, tasks, docs); the entry card
 					slides over it from the right. -->
 				<section
@@ -1477,6 +1540,10 @@
 		entries={enrichEntries}
 		allowance={research.allowance}
 		onClose={() => (enrichEntries = null)}
+		onResearchInChat={(entry, message) => {
+			enrichEntries = null;
+			askInChat(entry, { message });
+		}}
 		onStarted={onEnrichStarted}
 	/>
 {/if}
@@ -1662,8 +1729,10 @@
 	{#await loadAgentChatModal() then { default: AgentChatModal }}
 		<AgentChatModal
 			isOpen={chatOpen}
-			onClose={() => (chatOpen = false)}
+			onClose={closeChat}
 			initialDraft={chatDraft}
+			initialKnowledgeFocus={chatFocus}
+			autoSendInitialDraft={chatAutoSend}
 		/>
 	{/await}
 {/if}

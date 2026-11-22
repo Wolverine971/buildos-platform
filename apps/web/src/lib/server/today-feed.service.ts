@@ -19,9 +19,17 @@ import type {
 	TodayTaskBucket
 } from '$lib/types/today';
 import { getDateOnlyCalendarDate } from '$lib/utils/date-only-semantics';
+import {
+	itemOverlaps,
+	shiftDate,
+	slimCalendarItem,
+	TWO_WEEK_DAYS,
+	twoWeekStart
+} from '$lib/components/today/today-two-weeks';
 
 const ACTIVE_TASK_STATES = ['todo', 'in_progress', 'blocked'] as const;
-const EVENT_FETCH_LIMIT = 200;
+// Two weeks of events (this week and the next), read once for the day and the calendar strip.
+const EVENT_FETCH_LIMIT = 500;
 const TASK_FETCH_LIMIT = 200;
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Tasks added this recently show as "new" when nothing else puts them on the day. */
@@ -169,6 +177,13 @@ export async function getTodayFeed({
 	const weekStartIso = new Date(dayStart.getTime() - 2 * DAY_MS).toISOString();
 	const weekEndIso = new Date(dayStart.getTime() + 9 * DAY_MS).toISOString();
 	const newSinceIso = new Date(now.getTime() - NEW_TASK_DAYS * DAY_MS).toISOString();
+	// The calendar strip: Sunday of this week through Saturday of the next.
+	const twoWeeksStart = twoWeekStart(date);
+	const twoWeeksStartIso = fromZonedTime(`${twoWeeksStart}T00:00:00`, timezone).toISOString();
+	const twoWeeksEndIso = fromZonedTime(
+		`${shiftDate(twoWeeksStart, TWO_WEEK_DAYS)}T00:00:00`,
+		timezone
+	).toISOString();
 
 	const actorId = await measure('today.actor', () => ensureActorId(supabase, userId));
 	const projects = await measure('today.projects', () =>
@@ -180,8 +195,8 @@ export async function getTodayFeed({
 
 	const eventsPromise = measure('today.calendar_items', async () => {
 		const { data, error } = await supabase.rpc('list_calendar_items', {
-			p_start: dayStartIso,
-			p_end: dayEndIso,
+			p_start: twoWeeksStartIso,
+			p_end: twoWeeksEndIso,
 			p_include_events: true,
 			p_include_task_range: false,
 			p_include_task_start: false,
@@ -318,7 +333,14 @@ export async function getTodayFeed({
 		timezone,
 		dayStart: dayStartIso,
 		dayEnd: dayEndIso,
-		events: eventsResult.data,
+		// One read covers both: today's agenda is the slice of the two weeks that touches today.
+		events: eventsResult.data.filter((item) => itemOverlaps(item, dayStartMs, dayEndMs)),
+		twoWeeks: {
+			start: twoWeeksStart,
+			startAt: twoWeeksStartIso,
+			endAt: twoWeeksEndIso,
+			items: eventsResult.data.map(slimCalendarItem)
+		},
 		tasks,
 		overdueCount: overdueResult.data,
 		degradedSections,

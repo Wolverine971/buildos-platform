@@ -10,6 +10,9 @@ vi.mock('$lib/server/today-attention.service', () => ({
 	activeProjectNames: () => ({}),
 	getTodayAttention: vi.fn().mockResolvedValue({ waiting: [], repeated: [] })
 }));
+vi.mock('$lib/server/today-calendar-sources', () => ({
+	loadTodayCalendarSources: vi.fn().mockResolvedValue([])
+}));
 import { _CHAT_LAUNCH_GRACE_COOKIE, load } from './+page.server';
 
 function fakeCookies(initial: Record<string, string> = {}) {

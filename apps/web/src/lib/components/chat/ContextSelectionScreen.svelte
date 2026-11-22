@@ -15,8 +15,15 @@
 		ChevronRight,
 		LoaderCircle,
 		Search,
+		Users,
 		X
 	} from 'lucide-svelte';
+	import type { KnowledgeFocusRef } from '@buildos/shared-agent-ops/knowledge';
+	import {
+		KIND_ICON,
+		KIND_LABEL,
+		knowledgeApi
+	} from '$lib/components/knowledge/knowledge-client';
 	import type { ChatContextType } from '@buildos/shared-types';
 	import {
 		DEFAULT_PROJECT_SELECTOR_LIMIT,
@@ -34,7 +41,11 @@
 		contextType: ChatContextType;
 		entityId?: string;
 		label?: string;
+		/** Workspace chat about one person, organization or other knowledge entry. */
+		knowledgeFocus?: KnowledgeFocusRef | null;
 	}
+
+	type SelectionView = 'primary' | 'project-selection' | 'knowledge-selection';
 
 	interface Props {
 		/**
@@ -43,7 +54,7 @@
 		 * is shown (default true).
 		 */
 		active?: boolean;
-		onNavigationChange?: (view: 'primary' | 'project-selection') => void;
+		onNavigationChange?: (view: SelectionView) => void;
 		onSelect?: (selection: ContextSelection) => void;
 	}
 
@@ -51,7 +62,68 @@
 	let { active = true, onNavigationChange, onSelect }: Props = $props();
 
 	// State
-	let selectedView: 'primary' | 'project-selection' = $state('primary');
+	let selectedView: SelectionView = $state('primary');
+
+	// "Chat about a person or organization": pick an entry from the knowledge graph.
+	type KnowledgeChoice = {
+		id: string;
+		name: string;
+		kind: KnowledgeFocusRef['kind'];
+		summary: string | null;
+	};
+	let knowledgeQuery = $state('');
+	let knowledgeChoices = $state<KnowledgeChoice[]>([]);
+	let knowledgeLoading = $state(false);
+	let knowledgeError = $state<string | null>(null);
+	let knowledgeRequestId = 0;
+	let knowledgeSearchTimer: ReturnType<typeof setTimeout> | undefined;
+
+	async function loadKnowledgeChoices(query: string) {
+		const requestId = ++knowledgeRequestId;
+		knowledgeLoading = true;
+		knowledgeError = null;
+		try {
+			// No search: the entries from your world you touched last. Searching looks everywhere.
+			const result = await knowledgeApi.list({
+				q: query.trim() || undefined,
+				view: query.trim() ? 'all' : 'world',
+				limit: 30
+			});
+			if (requestId !== knowledgeRequestId) return;
+			knowledgeChoices = result.entities
+				.filter((entity) => !entity.is_self)
+				.map((entity) => ({
+					id: entity.id,
+					name: entity.name,
+					kind: entity.kind,
+					summary: entity.summary ?? null
+				}));
+		} catch (error) {
+			if (requestId !== knowledgeRequestId) return;
+			knowledgeError =
+				error instanceof Error ? error.message : 'Could not load your knowledge';
+		} finally {
+			if (requestId === knowledgeRequestId) knowledgeLoading = false;
+		}
+	}
+
+	function goToKnowledgeSelection() {
+		selectedView = 'knowledge-selection';
+		void loadKnowledgeChoices(knowledgeQuery);
+	}
+
+	function onKnowledgeSearchInput() {
+		clearTimeout(knowledgeSearchTimer);
+		knowledgeSearchTimer = setTimeout(() => void loadKnowledgeChoices(knowledgeQuery), 200);
+	}
+
+	function selectKnowledgeEntry(choice: KnowledgeChoice) {
+		onSelect?.({
+			contextType: 'global',
+			label: choice.name,
+			knowledgeFocus: { entity_id: choice.id, name: choice.name, kind: choice.kind }
+		});
+	}
 	let projects = $state<ProjectSelectionSummary[]>([]);
 	let isLoadingProjects = $state(false);
 	let projectsError = $state<string | null>(null);
@@ -184,6 +256,7 @@
 			projectListController.abort();
 			projectListController = null;
 		}
+		clearTimeout(knowledgeSearchTimer);
 	});
 
 	// Primary actions - Svelte 5 callback pattern
@@ -221,6 +294,8 @@
 	export function handleBackNavigation() {
 		if (selectedView === 'project-selection') {
 			backToPrimary();
+		} else if (selectedView === 'knowledge-selection') {
+			selectedView = 'primary';
 		}
 	}
 
@@ -469,6 +544,29 @@
 									<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />
 								</div>
 							</button>
+
+							<button onclick={goToKnowledgeSelection} class={primaryChatCardClasses}>
+								<div class="flex items-start gap-3">
+									<div class={optionIconClasses}>
+										<Users class="h-4 w-4 sm:h-5 sm:w-5" />
+									</div>
+									<div class="min-w-0 flex-1">
+										<p class="micro-label mb-1">PERSON OR ORGANIZATION</p>
+										<h3
+											class="text-sm font-semibold text-foreground sm:text-base"
+										>
+											Chat about someone
+										</h3>
+										<p
+											class="mt-1 text-xs leading-snug text-muted-foreground sm:text-sm"
+										>
+											Pick a person or company. It loads everything you have
+											on them, across projects, and can look up more.
+										</p>
+									</div>
+									<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />
+								</div>
+							</button>
 						</div>
 					</section>
 
@@ -507,6 +605,76 @@
 						</div>
 					</section>
 				</div>
+			{/if}
+		</div>
+	{/if}
+
+	<!-- PERSON / ORGANIZATION SELECTION VIEW -->
+	{#if selectedView === 'knowledge-selection'}
+		<div class="border-b border-border bg-card px-3 py-2.5 tx tx-strip tx-weak sm:p-4">
+			<h2 class="text-sm font-semibold text-foreground sm:text-base">Who is this about?</h2>
+			<p class="mt-0.5 text-xs text-muted-foreground sm:text-sm">
+				The chat opens with everything you have on them, across projects.
+			</p>
+			<label class="relative mt-3 block">
+				<span class="sr-only">Search people and organizations</span>
+				<Search
+					class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+				/>
+				<!-- svelte-ignore a11y_autofocus -->
+				<input
+					type="search"
+					class="w-full rounded-md border border-border bg-background py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+					placeholder="Search names and companies"
+					bind:value={knowledgeQuery}
+					oninput={onKnowledgeSearchInput}
+					autofocus
+				/>
+			</label>
+		</div>
+		<div class="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
+			{#if knowledgeError}
+				<p class="text-sm text-destructive" role="alert">{knowledgeError}</p>
+			{:else if knowledgeLoading && !knowledgeChoices.length}
+				<p class="flex items-center gap-2 text-sm text-muted-foreground">
+					<LoaderCircle class="h-4 w-4 animate-spin motion-reduce:animate-none" /> Loading…
+				</p>
+			{:else if !knowledgeChoices.length}
+				<p class="text-sm text-muted-foreground">
+					{knowledgeQuery.trim()
+						? `Nobody called “${knowledgeQuery.trim()}” in your knowledge yet.`
+						: 'No people or organizations saved yet.'}
+				</p>
+			{:else}
+				<ul class="flex flex-col gap-1.5">
+					{#each knowledgeChoices as choice (choice.id)}
+						{@const ChoiceIcon = KIND_ICON[choice.kind]}
+						<li>
+							<button
+								type="button"
+								class="flex w-full min-w-0 items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-left shadow-ink pressable hover:border-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								onclick={() => selectKnowledgeEntry(choice)}
+							>
+								<span
+									class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-foreground"
+								>
+									<ChoiceIcon class="h-4 w-4" aria-hidden="true" />
+								</span>
+								<span class="min-w-0 flex-1">
+									<span class="block truncate text-sm font-medium text-foreground"
+										>{choice.name}</span
+									>
+									<span class="block truncate text-xs text-muted-foreground"
+										>{KIND_LABEL[choice.kind].one}{choice.summary
+											? ` · ${choice.summary}`
+											: ''}</span
+									>
+								</span>
+								<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />
+							</button>
+						</li>
+					{/each}
+				</ul>
 			{/if}
 		</div>
 	{/if}

@@ -37,6 +37,8 @@ export type AgenticChatWorkerCommand = {
 	message: string;
 	attachments: ChatAttachmentRef[];
 	projectFocus: ProjectFocus | null;
+	/** The knowledge entry (person, organization…) this chat is about; the server loads it. */
+	knowledgeFocus?: { entityId: string } | null;
 	voiceNoteGroupId: string | null;
 	preparedPromptKey: string | null;
 	reviewIntent?: 'project_review' | 'document_organization' | null;
@@ -337,6 +339,9 @@ function buildWorkerAdmissionBody(command: AgenticChatWorkerCommand) {
 			: null,
 		voiceNoteGroupId: command.voiceNoteGroupId,
 		preparedPromptKey: command.preparedPromptKey,
+		...(command.knowledgeFocus
+			? { knowledgeFocus: { entityId: command.knowledgeFocus.entityId } }
+			: {}),
 		...(command.requestedSkillId ? { requestedSkillId: command.requestedSkillId } : {}),
 		...(command.reviewIntent ? { reviewIntent: command.reviewIntent } : {}),
 		...(command.reviewIntent === 'document_organization' && command.publishedSpecialist

@@ -6,6 +6,8 @@
 
 import type { ChatContextType } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
+import type { KnowledgeFocusRef } from '@buildos/shared-agent-ops/knowledge';
+import { KNOWLEDGE_KIND_DEFINITIONS } from '@buildos/shared-agent-ops/knowledge';
 import { CONTEXT_DESCRIPTORS } from './agent-chat.constants';
 import {
 	buildProjectFocusLabel,
@@ -25,6 +27,8 @@ export interface ContextSelectionDetail {
 	contextType: ChatContextType;
 	entityId?: string;
 	label?: string;
+	/** Workspace chat about one person, organization or other knowledge entry. */
+	knowledgeFocus?: KnowledgeFocusRef | null;
 }
 
 export interface AgentChatShellRouterDeps {
@@ -40,14 +44,22 @@ export class AgentChatShellRouter {
 	selectedEntityId = $state<string | undefined>(undefined);
 	selectedContextLabel = $state<string | null>(null);
 	projectFocus = $state<ProjectFocus | null>(null);
+	/**
+	 * The knowledge entry (person, organization…) this Workspace chat is about. Sent with every
+	 * turn as a structured id; the server loads everything BuildOS holds on it.
+	 */
+	knowledgeFocus = $state<KnowledgeFocusRef | null>(null);
 	showFocusSelector = $state(false);
 	showProjectActionSelector = $state(false);
 	showContextSelection = $state(true);
-	contextSelectionView = $state<'primary' | 'project-selection'>('primary');
+	contextSelectionView = $state<'primary' | 'project-selection' | 'knowledge-selection'>(
+		'primary'
+	);
 	contextSelectionRef = $state<any>(null);
 	autoInitDismissed = $state(false);
 	lastAutoInitProjectId = $state<string | null>(null);
 	private initialProjectFocusKey: string | null = null;
+	private initialKnowledgeFocusId: string | null = null;
 
 	// Memoized views of the routing state. `$derived` fields recompute only when
 	// their inputs change, so header/composer reads during streaming don't rebuild
@@ -63,12 +75,17 @@ export class AgentChatShellRouter {
 		if (isProjectContext(this.selectedContextType) && this.projectFocus) {
 			return buildProjectFocusLabel(this.projectFocus);
 		}
+		if (this.knowledgeFocus) return this.knowledgeFocus.name;
 		return this.selectedContextLabel ?? this.contextDescriptor?.title ?? 'Selected focus';
 	});
 
 	readonly displayContextSubtitle: string = $derived.by(() => {
 		if (!this.selectedContextType) {
 			return 'Choose what you want to work on before starting the conversation.';
+		}
+		if (this.knowledgeFocus) {
+			const kind = KNOWLEDGE_KIND_DEFINITIONS[this.knowledgeFocus.kind]?.label ?? 'Entry';
+			return `${kind} · everything you have on them, across projects`;
 		}
 		return this.contextDescriptor?.subtitle ?? '';
 	});
@@ -101,6 +118,7 @@ export class AgentChatShellRouter {
 			this.selectedEntityId = undefined;
 			this.selectedContextLabel = null;
 			this.projectFocus = null;
+			this.knowledgeFocus = null;
 		}
 	}
 
@@ -122,7 +140,9 @@ export class AgentChatShellRouter {
 		}
 	}
 
-	handleContextSelectionNavChange(view: 'primary' | 'project-selection'): void {
+	handleContextSelectionNavChange(
+		view: 'primary' | 'project-selection' | 'knowledge-selection'
+	): void {
 		this.contextSelectionView = view;
 	}
 
@@ -135,6 +155,7 @@ export class AgentChatShellRouter {
 		this.selectedContextLabel =
 			selection.label ?? CONTEXT_DESCRIPTORS[selection.contextType]?.title ?? null;
 		this.showContextSelection = false;
+		this.knowledgeFocus = selection.knowledgeFocus ?? null;
 
 		if (isProjectContext(selection.contextType) && selection.entityId) {
 			this.projectFocus = buildProjectWideFocus(selection.entityId, selection.label);
@@ -263,6 +284,25 @@ export class AgentChatShellRouter {
 		this.initialProjectFocusKey = null;
 	}
 
+	/** Open straight into a Workspace chat about one knowledge entry (no picker). */
+	initializeFromKnowledgeFocus(focus: KnowledgeFocusRef): void {
+		if (focus.entity_id === this.initialKnowledgeFocusId) return;
+		this.initialKnowledgeFocusId = focus.entity_id;
+		this.deps.resetConversation({ preserveContext: false });
+		this.setDirectContext({ contextType: 'global', label: focus.name, projectFocus: null });
+		this.knowledgeFocus = focus;
+	}
+
+	resetInitialKnowledgeFocus(): void {
+		this.initialKnowledgeFocusId = null;
+	}
+
+	/** Stop focusing on the entry; the chat carries on as a plain Workspace chat. */
+	clearKnowledgeFocus(): void {
+		this.knowledgeFocus = null;
+		this.selectedContextLabel = CONTEXT_DESCRIPTORS.global?.title ?? null;
+	}
+
 	setDirectContext(params: {
 		contextType: ChatContextType;
 		entityId?: string;
@@ -287,11 +327,13 @@ export class AgentChatShellRouter {
 		entityId?: string;
 		label: string;
 		projectFocus: ProjectFocus | null;
+		knowledgeFocus?: KnowledgeFocusRef | null;
 	}): void {
 		this.selectedContextType = params.contextType;
 		this.selectedEntityId = params.entityId;
 		this.selectedContextLabel = params.label;
 		this.projectFocus = params.projectFocus;
+		this.knowledgeFocus = params.knowledgeFocus ?? null;
 		this.showContextSelection = false;
 		this.showProjectActionSelector = false;
 	}
@@ -301,7 +343,12 @@ export class AgentChatShellRouter {
 		entityId?: string;
 		sessionTitle?: string | null;
 		metadataFocus?: ProjectFocus | null;
+		knowledgeFocus?: KnowledgeFocusRef | null;
 	}): void {
+		// A new chat's session row arrives after its first turn: keep the entry it is about.
+		if (params.knowledgeFocus && !this.knowledgeFocus) {
+			this.knowledgeFocus = params.knowledgeFocus;
+		}
 		if (!this.selectedContextType) {
 			this.selectedContextType = params.contextType;
 			this.selectedEntityId = params.entityId;

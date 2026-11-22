@@ -6,6 +6,7 @@ import type {
 	KnowledgeEntitySummary,
 	KnowledgeFactView,
 	KnowledgeKind,
+	KnowledgeKindChange,
 	KnowledgeListResult,
 	KnowledgeListSort,
 	KnowledgeMergePreviewEntry,
@@ -13,6 +14,7 @@ import type {
 } from '@buildos/shared-agent-ops/knowledge';
 import {
 	KNOWLEDGE_KIND_DEFINITIONS,
+	KNOWLEDGE_KINDS,
 	knowledgeSortDefaultDir,
 	type ContactFileSummary,
 	type ParsedContactFile
@@ -106,6 +108,9 @@ export const KIND_LABEL = Object.fromEntries(
 	])
 ) as Record<KnowledgeKind, { one: string; many: string }>;
 
+/** Every kind, in vocabulary order (the "what is this?" menu on a card). */
+export const KIND_OPTIONS: readonly KnowledgeKind[] = KNOWLEDGE_KINDS;
+
 export const KIND_ICON = {
 	person: User,
 	org: Building,
@@ -193,12 +198,17 @@ export const knowledgeApi = {
 			summary?: string | null;
 			status?: 'active' | 'hidden';
 			circle?: 'inner' | 'public';
+			/** What the entry is ("organization" → "person"). */
+			kind?: KnowledgeKind;
 		}
 	) {
-		return call<{ ok: true }>(`/api/knowledge/entities/${id}`, {
-			...json(body),
-			method: 'PATCH'
-		});
+		return call<{ ok: true; kind_change?: KnowledgeKindChange }>(
+			`/api/knowledge/entities/${id}`,
+			{
+				...json(body),
+				method: 'PATCH'
+			}
+		);
 	},
 	remove(id: string) {
 		return call<{ ok: true }>(`/api/knowledge/entities/${id}`, { method: 'DELETE' });

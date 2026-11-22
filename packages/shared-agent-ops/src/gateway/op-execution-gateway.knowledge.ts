@@ -36,6 +36,10 @@ import {
 	type KnowledgeWriteSource
 } from '../knowledge';
 import { ExternalToolGatewayError } from './op-execution-gateway.responses';
+import {
+	isKnowledgeConnectionQuery,
+	runKnowledgeConnectionsQuery
+} from './op-execution-gateway.knowledge-connections';
 import type { ToolExecutionContext } from './op-execution-gateway.types';
 
 export const KNOWLEDGE_SEARCH_LIMIT_DEFAULT = 10;
@@ -451,6 +455,9 @@ export async function runKnowledgeQuery(
 	args: Record<string, unknown>,
 	options: KnowledgeReadOptions = {}
 ): Promise<Record<string, unknown>> {
+	// People filters and group_by (tasker 166) are answered by one connections read.
+	if (isKnowledgeConnectionQuery(args))
+		return runKnowledgeConnectionsQuery(client, userId, args, options);
 	const spec = parseQuerySpec(args);
 	const store = new KnowledgeStore(client, userId);
 	return compactQueryResult(await guard(() => store.query(spec)), options);

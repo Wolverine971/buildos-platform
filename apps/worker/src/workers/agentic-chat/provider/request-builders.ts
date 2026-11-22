@@ -16,6 +16,10 @@ import {
 } from '@buildos/agentic-chat-runtime/loop';
 import { sha256Hex } from '../shared/identity-hash';
 import { workspaceProjectIdFromContextPayload } from '../shared/workspace-context';
+import {
+	KNOWLEDGE_FOCUS_TOOL_PINS,
+	readKnowledgeFocusSection
+} from '@buildos/shared-agent-ops/knowledge';
 import { collectLoadedEntityIds } from './review/grounded-ids';
 import type { AgenticChatWorkerExecutionInputV1 } from '../turn/execution-input';
 import type { AgenticChatProviderMutationCapabilitiesV1 } from '../mutations/tool-catalog';
@@ -367,7 +371,12 @@ export function buildBaseProviderRequest(
 			? STEWARD_PLANNING_TOOL_PINS
 			: []),
 		// A chat focused on a table keeps the table tools (structured focus).
-		...(focusedTableId ? FOCUSED_TABLE_TOOL_PINS : [])
+		...(focusedTableId ? FOCUSED_TABLE_TOOL_PINS : []),
+		// A chat about one knowledge entry keeps the knowledge and web tools: "find out more
+		// about him" names neither (structured focus: the admitted section, not the message).
+		...(readKnowledgeFocusSection(input.artifact.prepared.promptSections)
+			? KNOWLEDGE_FOCUS_TOOL_PINS
+			: [])
 	];
 	return {
 		admittedTools: tools,

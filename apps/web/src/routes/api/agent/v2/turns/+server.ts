@@ -163,6 +163,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			message: parsed.data.message,
 			attachments: parsed.data.attachments,
 			projectFocus: parsed.data.projectFocus as ProjectFocus | null,
+			knowledgeFocus: parsed.data.knowledgeFocus,
 			voiceNoteGroupId: parsed.data.voiceNoteGroupId,
 			preparedPromptKey: parsed.data.preparedPromptKey,
 			requestedSkillId: parsed.data.requestedSkillId

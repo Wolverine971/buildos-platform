@@ -408,12 +408,19 @@ describe('total assembled prompt size budget', () => {
 		// / 21,913 → 23,855 est tokens; tool schemas 20,723 est tokens per pass. Jev mounts
 		// them only on turns about people and orgs, so only unnarrowed passes pay all of it.
 		// Caps at measured + ~0.5%.
-		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(95_900);
-		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(23_975);
+		// RE-BASELINED 2026-11-21 (tasker 166, find connections): query_knowledge gained
+		// people filters (company, title, industry, place, in_records, related_to,
+		// bridge_to) and group_by, so "who do I know at / in / doing …" is one structured
+		// call; no new tool, descriptions trimmed first. Measured payload 95,420 → 96,828
+		// chars / 23,855 → 24,207 est tokens (+1,408 / +352); tool schemas 20,723 → 21,075
+		// est tokens per pass. Jev still mounts the knowledge tools only on turns about
+		// people and orgs. Caps at measured + ~0.5%.
+		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(97_310);
+		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(24_330);
 		// Per-turn multiplier guard: ratchet this down when the pass count drops
 		// instead of hiding pass-count drift.
-		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(71_925);
-		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(62_480);
+		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(72_990);
+		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(63_540);
 		// A single verbose schema can dominate every pass even while the aggregate
 		// surface remains under budget. Keep that failure attributable by tool.
 		// 2026-09-10: the batch lane removed the contract DSL from acting-model

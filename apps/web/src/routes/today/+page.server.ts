@@ -4,6 +4,7 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getTodayFeed } from '$lib/server/today-feed.service';
 import { activeProjectNames, getTodayAttention } from '$lib/server/today-attention.service';
+import { loadTodayCalendarSources } from '$lib/server/today-calendar-sources';
 import { needsOnboarding } from '$lib/server/project-visibility';
 import { readChatResumeSessionId } from '$lib/utils/agent-chat-resume';
 import { isAgentChatLaunch } from '$lib/utils/agent-chat-launch';
@@ -79,6 +80,9 @@ export const load: PageServerLoad = async ({
 		throw redirect(303, '/onboarding');
 	}
 
+	// Runs beside the feed; it never throws and resolves to [] with no connected calendars.
+	const calendarSourcesPromise = loadTodayCalendarSources(user.id);
+
 	try {
 		const feed = await getTodayFeed({
 			supabase,
@@ -98,12 +102,13 @@ export const load: PageServerLoad = async ({
 			user,
 			feed,
 			attention,
+			calendarSources: await calendarSourcesPromise,
 			activatedProjectId: feed.projects.some((project) => project.id === activatedProjectId)
 				? activatedProjectId
 				: null
 		};
 	} catch (error) {
 		console.error('[Today] Failed to load today feed:', error);
-		return { user, feed: null, attention: null, activatedProjectId: null };
+		return { user, feed: null, attention: null, calendarSources: [], activatedProjectId: null };
 	}
 };

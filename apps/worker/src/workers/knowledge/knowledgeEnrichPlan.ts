@@ -39,6 +39,8 @@ function askedFor(fields: readonly string[], field: string, kind: KnowledgeKind)
 }
 export const KNOWLEDGE_ENRICH_PROMPT_VERSION = 3;
 export const MAX_PAGES_PER_TARGET = 3;
+/** Searches per entry (about $0.001 each; the run's budget still caps the total). */
+export const MAX_QUERIES_PER_TARGET = 3;
 export const PAGE_CHARS = 7_000;
 
 /**
@@ -113,7 +115,7 @@ export function enrichContextFrom(detail: KnowledgeEntityDetail): EnrichContext 
 }
 
 /**
- * One or two web searches, built from structured facts and what the user's graph already knows
+ * Up to three web searches, built from structured facts and what the user's graph already knows
  * (tasker 164: know first). With an own website the first search reads that site; with people,
  * an employer or a place the name is searched together with them, so a same-name company
  * elsewhere ranks lower. Domains the user rejected ("Not this one") are excluded from every query.
@@ -145,14 +147,15 @@ export function enrichQueries(
 	switch (context.kind) {
 		case 'person':
 			queries.push([name, employer ?? headline ?? place ?? ''].join(' ').trim());
-			// The second search (two at most) goes after what was picked: a contact page for phone
-			// or email, schooling for Education; otherwise their profile.
+			// Their profile comes second (it carries role, employer and place); then what was
+			// picked: a contact page for phone or email, schooling for Education. The dialog now
+			// starts with everything ticked, so the profile search must not be the one cut.
+			if (anchors?.employerDomain) queries.push(`${name} site:${anchors.employerDomain}`);
+			else if (employer) queries.push(`${name} linkedin`);
 			if (fields.includes('email') || fields.includes('phone'))
 				queries.push([name, employer ?? '', 'contact email phone'].join(' ').trim());
 			if (askedFor(fields, 'educated_at', 'person'))
 				queries.push([name, employer ?? '', 'university college alumni'].join(' ').trim());
-			if (anchors?.employerDomain) queries.push(`${name} site:${anchors.employerDomain}`);
-			else if (employer) queries.push(`${name} linkedin`);
 			break;
 		case 'org':
 			if (anchors && ownDomain) {
@@ -177,7 +180,10 @@ export function enrichQueries(
 			queries.push(name);
 	}
 	if (extra) queries[0] = `${queries[0]} ${extra}`;
-	return [...new Set(queries.map((q) => (exclude ? `${q} ${exclude}` : q)))].slice(0, 2);
+	return [...new Set(queries.map((q) => (exclude ? `${q} ${exclude}` : q)))].slice(
+		0,
+		MAX_QUERIES_PER_TARGET
+	);
 }
 
 export const KNOWLEDGE_ENRICH_SYSTEM_PROMPT = `You fill in facts about ONE entity from web pages.

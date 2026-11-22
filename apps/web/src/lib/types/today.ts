@@ -49,6 +49,11 @@ export interface TodayFeed {
 	dayStart: string;
 	dayEnd: string;
 	events: CalendarItem[];
+	/**
+	 * BuildOS events for the calendar strip: this week (from Sunday) and the next. `start` is
+	 * that Sunday (YYYY-MM-DD); `startAt`/`endAt` bound the fourteen days as instants.
+	 */
+	twoWeeks: { start: string; startAt: string; endAt: string; items: CalendarItem[] };
 	tasks: TodayTask[];
 	overdueCount: number;
 	/** Queries that failed while the rest of the feed remained usable. */

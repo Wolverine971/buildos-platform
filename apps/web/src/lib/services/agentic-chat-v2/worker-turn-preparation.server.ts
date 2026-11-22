@@ -111,6 +111,8 @@ import type { AgenticChatWorkerAdmissionRpcArgs } from './worker-turn-admission.
 import { buildWorkerPromptScaffold, resolveWorkerPromptTools } from './worker-prompt-surface';
 import { runAfterResponse } from '$lib/server/background';
 import { createLogger } from '$lib/utils/logger';
+import { KNOWLEDGE_FOCUS_METADATA_KEY } from '@buildos/shared-agent-ops/knowledge';
+import { loadKnowledgeFocusForTurn } from './knowledge-focus.server';
 
 const logger = createLogger('AgenticChat:WorkerPreparation');
 
@@ -215,6 +217,11 @@ export type AgenticChatWorkerCommandInput = {
 	message: string;
 	attachments: ChatAttachmentRef[];
 	projectFocus: ProjectFocus | null;
+	/**
+	 * The knowledge entry this chat is about (a person, an organization…), picked by the user.
+	 * Only an id: the entry and everything known about it are loaded with the user's own access.
+	 */
+	knowledgeFocus?: { entityId: string } | null;
 	voiceNoteGroupId: string | null;
 	preparedPromptKey: string | null;
 	/**
@@ -357,6 +364,13 @@ async function prepareWorkerAdmission(
 			nowMs
 		})
 	);
+	// A chat about one knowledge entry: its brief is read with the user's own client (an entry
+	// they cannot see loads nothing) and never throws.
+	const knowledgeFocusRead = loadKnowledgeFocusForTurn({
+		userClient: input.userClient,
+		userId: input.userId,
+		entityId: input.command.knowledgeFocus?.entityId
+	});
 	const preparedAdmissionLeaseStartedAt = Date.now();
 	const preparedAdmissionLease = await inspectPreparedAdmissionLease({
 		client: input.serviceClient,
@@ -438,7 +452,16 @@ async function prepareWorkerAdmission(
 	const sessionIntent = await sessionIntentRead;
 	const conversationSummary =
 		typeof sessionIntent.session?.summary === 'string' ? sessionIntent.session.summary : null;
-	const agentMetadata = sessionIntent.session?.agent_metadata ?? sessionIntent.inlineMetadata;
+	const knowledgeFocus = await knowledgeFocusRead;
+	// A new chat remembers the entry it was started about, so it reopens about the same one.
+	const agentMetadata =
+		sessionIntent.session?.agent_metadata ??
+		(knowledgeFocus
+			? {
+					...sessionIntent.inlineMetadata,
+					[KNOWLEDGE_FOCUS_METADATA_KEY]: toJsonObject(knowledgeFocus.ref)
+				}
+			: sessionIntent.inlineMetadata);
 	const turnPreparation = resolveFastChatTurnPreparation({
 		contextType,
 		entityId,
@@ -778,6 +801,16 @@ async function prepareWorkerAdmission(
 			...preparedArtifact,
 			systemPrompt: overlaid.systemPrompt,
 			promptSections: [...overlaid.promptSections, ...playbookCandidateSections]
+		};
+	}
+
+	// The focused entry's brief rides the artifact as one more appended section on both history
+	// paths (the copy fence accepts appended sections). The worker places it after the user's
+	// message, so it is fresh every turn and the system prompt keeps its bytes.
+	if (knowledgeFocus) {
+		preparedArtifact = {
+			...preparedArtifact,
+			promptSections: [...preparedArtifact.promptSections, knowledgeFocus.section]
 		};
 	}
 
@@ -1128,7 +1161,12 @@ function buildWorkerSessionEventSnapshot(input: {
 		auto_title: input.session?.auto_title,
 		context_type: input.session?.context_type,
 		entity_id: input.session?.entity_id,
-		agent_metadata: isRecord(metadata) ? { focus: metadata.focus } : {}
+		agent_metadata: isRecord(metadata)
+			? {
+					focus: metadata.focus,
+					[KNOWLEDGE_FOCUS_METADATA_KEY]: metadata[KNOWLEDGE_FOCUS_METADATA_KEY]
+				}
+			: {}
 	}) as AgenticChatSessionEventSnapshotV1;
 }
 

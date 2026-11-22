@@ -9,7 +9,14 @@
 -->
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
-	import { AlertTriangle, ChevronDown, ChevronUp, Loader2, Sparkles } from '$lib/icons/lucide';
+	import {
+		AlertTriangle,
+		ChevronDown,
+		ChevronUp,
+		Loader2,
+		MessageSquare,
+		Sparkles
+	} from '$lib/icons/lucide';
 	import {
 		ENRICH_FOCUS_OPTIONS,
 		KNOWLEDGE_PREDICATE_MAP,
@@ -29,11 +36,18 @@
 		allowance: ResearchAllowance | null;
 		onClose: () => void;
 		onStarted: (result: EnrichStarted) => void;
+		/**
+		 * One entry only: research it live in a chat about that entry instead of in the
+		 * background. Gets the request in words (the ticked choices plus what the user typed).
+		 */
+		onResearchInChat?: (entry: EnrichEntry, message: string) => void;
 	}
 
-	let { entries, allowance, onClose, onStarted }: Props = $props();
+	let { entries, allowance, onClose, onStarted, onResearchInChat }: Props = $props();
 
-	let focus = $state<string[]>([]);
+	// Everything starts ticked; untick what you don't care about (DJ, 2026-11-21). Null until
+	// the user touches a choice, so the default follows the kinds being researched.
+	let focusPicked = $state<string[] | null>(null);
 	let instructions = $state('');
 	let notes = $state<Record<string, string>>({});
 	let notesOpen = $state(false);
@@ -56,6 +70,7 @@
 			})
 		)
 	);
+	const focus = $derived(focusPicked ?? focusOptions.map((option) => option.key));
 	const fields = $derived([
 		...new Set(focusOptions.filter((o) => focus.includes(o.key)).flatMap((o) => o.fields))
 	]);
@@ -87,7 +102,26 @@
 	}
 
 	function toggleFocus(key: string) {
-		focus = focus.includes(key) ? focus.filter((k) => k !== key) : [...focus, key];
+		focusPicked = focus.includes(key) ? focus.filter((k) => k !== key) : [...focus, key];
+	}
+
+	/** The request in words for a chat about this entry: the ticked choices, then the note. */
+	function researchInChat() {
+		const entry = entries[0];
+		if (!entry || !onResearchInChat) return;
+		const picked = focusOptions.filter((o) => focus.includes(o.key)).map((o) => o.label);
+		const everything = picked.length === focusOptions.length;
+		const note = instructions.trim();
+		const message = [
+			// Saving is part of the ask, in the user's own message: the chat only writes what a
+			// message asks for.
+			`Find out more about ${entry.name} and save what you find to their entry.`,
+			picked.length && !everything ? `Look for: ${picked.join(', ')}.` : '',
+			note
+		]
+			.filter(Boolean)
+			.join(' ');
+		onResearchInChat(entry, message);
 	}
 
 	async function start(event: SubmitEvent) {
@@ -143,8 +177,8 @@
 			</div>
 			<p class="text-xs text-muted-foreground">
 				{focus.length
-					? 'Research looks for these where they fit each entry.'
-					: 'Nothing picked: it looks for the usual details for each kind of entry.'}
+					? 'Everything ticked gets looked for. Untick what you don’t need.'
+					: 'Nothing ticked: it looks for the usual details for each kind of entry.'}
 			</p>
 		</fieldset>
 
@@ -159,8 +193,8 @@
 				placeholder="e.g. Which podcasts have they been on? What does the company sell?"
 			></textarea>
 			<span class="text-xs text-muted-foreground"
-				>Looking for a phone number, email or school? Pick it above too, so research goes
-				after it.</span
+				>Say who this is or what you already know (where they work, what they do). It is
+				used to tell them apart from others with the same name.</span
 			>
 		</label>
 
@@ -279,7 +313,7 @@
 			{/if}
 			<p class="text-xs text-muted-foreground">
 				Home addresses and birthdays are never looked up for people. Phone numbers and
-				emails only when you pick Phone &amp; email, and they stay private to you.
+				emails stay private to you; untick Phone &amp; email to skip them.
 			</p>
 		</div>
 
@@ -298,6 +332,19 @@
 				class="rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
 				onclick={onClose}>Cancel</button
 			>
+			{#if single && onResearchInChat}
+				<!-- Live and steerable: a chat about this entry that searches, saves what it finds
+				     and reports back. Chat spend, not the background allowance above. -->
+				<button
+					type="button"
+					class="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-foreground pressable hover:bg-muted disabled:opacity-60"
+					disabled={submitting}
+					title="Research it live in a chat about this entry, where you can steer it"
+					onclick={researchInChat}
+				>
+					<MessageSquare class="h-4 w-4" aria-hidden="true" /> Research in chat
+				</button>
+			{/if}
 			<button
 				type="submit"
 				class="inline-flex min-h-9 items-center gap-1.5 rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground pressable disabled:opacity-60"
@@ -312,7 +359,9 @@
 					<Sparkles class="h-4 w-4" aria-hidden="true" />
 				{/if}
 				{single
-					? 'Start research'
+					? onResearchInChat
+						? 'Run in background'
+						: 'Start research'
 					: `Research ${toRun.length} entr${toRun.length === 1 ? 'y' : 'ies'}`}
 			</button>
 		</div>

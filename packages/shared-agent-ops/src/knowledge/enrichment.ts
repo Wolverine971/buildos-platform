@@ -49,9 +49,11 @@ export const ENRICH_NEVER_FOR_PEOPLE: readonly string[] = [
 ];
 
 /**
- * A person's phone and email are researched only when the user explicitly picks "Phone & email"
- * for that run, never by default (DJ, 2026-11-17). Research writes are private to the user, and
- * the database never lets a person's contact facts become shared.
+ * A person's phone and email are researched only when the run names them. The Find more dialog
+ * starts with every choice ticked, "Phone & email" included, and the user unticks what they
+ * don't want (DJ, 2026-11-21; before that it was opt-in, DJ 2026-11-17). Runs that name no
+ * fields (chat, MCP) still leave a person's contact details out. Research writes are private to
+ * the user, and the database never lets a person's contact facts become shared.
  */
 export const ENRICH_PERSON_CONTACT_FIELDS: readonly string[] = ['email', 'phone'];
 
@@ -70,7 +72,11 @@ export const ENRICH_FOCUS_OPTIONS: ReadonlyArray<{
 	{ key: 'linkedin', label: 'LinkedIn & profiles', fields: ['profile_url'] },
 	{ key: 'location', label: 'Location', fields: ['located_in', 'address'] },
 	{ key: 'education', label: 'Education', fields: ['educated_at'] },
-	{ key: 'about', label: 'What they do', fields: ['description', 'industry', 'about'] },
+	{
+		key: 'about',
+		label: 'What they do',
+		fields: ['description', 'industry', 'about', 'founded']
+	},
 	{ key: 'contact', label: 'Phone & email', fields: ['email', 'phone'] }
 ];
 

@@ -48,6 +48,11 @@
 	import ProjectFocusSelector from './ProjectFocusSelector.svelte';
 	import ProjectActionSelector from './ProjectActionSelector.svelte';
 	import AgentChatHeader from './AgentChatHeader.svelte';
+	import {
+		KNOWLEDGE_FOCUS_METADATA_KEY,
+		readKnowledgeFocusRef,
+		type KnowledgeFocusRef
+	} from '@buildos/shared-agent-ops/knowledge';
 	import ChatResumeLink from './ChatResumeLink.svelte';
 	import ChatShareButton from './ChatShareButton.svelte';
 	import { createChatHistory } from './agent-chat-history.svelte';
@@ -239,6 +244,11 @@
 		initialChatSessionId?: string | null;
 		initialBrainDumpContext?: AgentBrainDumpContext | null;
 		initialProjectFocus?: ProjectFocus | null;
+		/**
+		 * Open as a Workspace chat about one knowledge entry (a person, an organization…): no
+		 * picker, and every turn loads everything BuildOS holds on it.
+		 */
+		initialKnowledgeFocus?: KnowledgeFocusRef | null;
 		initialDraft?: string | null;
 		/** Skill the launch named ("Try in BuildOS"). Sent as a structured field with
 		 * the first turn after initialDraft lands in the composer, then dropped. */
@@ -288,6 +298,7 @@
 		initialChatSessionId = null,
 		initialBrainDumpContext = null,
 		initialProjectFocus = null,
+		initialKnowledgeFocus = null,
 		initialDraft = null,
 		initialSkillId = null,
 		autoSendInitialDraft = false,
@@ -832,6 +843,10 @@
 		getReviewIntent: () => selectedReviewIntent,
 		getPublishedSpecialist: () => publishedSpecialist,
 		getRequestedSkillId: () => launchSkillId,
+		getKnowledgeFocus: () =>
+			shellRouter.knowledgeFocus && shellRouter.selectedContextType === 'global'
+				? { entityId: shellRouter.knowledgeFocus.entity_id }
+				: null,
 		clearRequestedSkillId: () => {
 			launchSkillId = null;
 		},
@@ -1219,7 +1234,9 @@
 		return id;
 	}
 
-	function handleContextSelectionNavChange(view: 'primary' | 'project-selection') {
+	function handleContextSelectionNavChange(
+		view: 'primary' | 'project-selection' | 'knowledge-selection'
+	) {
 		shellRouter.handleContextSelectionNavChange(view);
 	}
 
@@ -1579,6 +1596,18 @@
 		untrack(() => shellRouter.initializeFromProjectFocus(focus));
 	});
 
+	// Handle initialKnowledgeFocus prop - open straight into a chat about one knowledge entry
+	$effect(() => {
+		if (!isOpen) {
+			untrack(() => shellRouter.resetInitialKnowledgeFocus());
+			return;
+		}
+		if (initialChatSessionId || !initialKnowledgeFocus) return;
+		const focus = initialKnowledgeFocus;
+		// Launch props initialize once per entry/open, not whenever live focus changes.
+		untrack(() => shellRouter.initializeFromKnowledgeFocus(focus));
+	});
+
 	// Handle initialChatSessionId prop - when resuming a previous chat session from history
 	$effect(() => {
 		const sessionId = initialChatSessionId;
@@ -1621,7 +1650,8 @@
 			contextType: snapshot.contextType,
 			entityId: snapshot.selectedEntityId,
 			label: snapshot.selectedContextLabel,
-			projectFocus: snapshot.projectFocus
+			projectFocus: snapshot.projectFocus,
+			knowledgeFocus: snapshot.knowledgeFocus
 		});
 		// Persisted rows replace live/optimistic ones under new ids; keep their
 		// on-screen identity so the thread updates in place instead of remounting.
@@ -2479,7 +2509,12 @@
 			contextType: normalizedSessionContext,
 			entityId: sessionEvent.entity_id ?? undefined,
 			sessionTitle,
-			metadataFocus
+			metadataFocus,
+			knowledgeFocus: readKnowledgeFocusRef(
+				(sessionEvent.agent_metadata as Record<string, unknown> | null)?.[
+					KNOWLEDGE_FOCUS_METADATA_KEY
+				]
+			)
 		});
 	}
 

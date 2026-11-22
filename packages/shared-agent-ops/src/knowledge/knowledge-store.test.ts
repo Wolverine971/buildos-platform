@@ -2,6 +2,11 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { parseContactFile, planContactImport } from './contacts-import';
+import {
+	KNOWLEDGE_FOCUS_GUIDANCE,
+	loadKnowledgeFocusBrief,
+	renderKnowledgeFocusBlock
+} from './focus-brief';
 import { KnowledgeStore } from './knowledge-store';
 import { normalizeKnowledgeName } from './normalize';
 
@@ -251,9 +256,25 @@ class FakeQuery implements PromiseLike<{ data: any; error: any }> {
 		this.filters.push((r) => values.includes(r[col]));
 		return this;
 	}
+	is(col: string, value: unknown) {
+		this.filters.push((r) => (r[col] ?? null) === value);
+		return this;
+	}
 	or(expr: string) {
-		const parts = expr.split(',').map((p) => p.split('.eq.'));
-		this.filters.push((r) => parts.some(([col, value]) => String(r[col!]) === value));
+		// `col.eq.value` pairs, or `col.ilike."%phrase%"` (a quoted, case-insensitive contains).
+		const tests = expr.split(/,(?=[a-z_]+\.(?:eq|ilike)\.)/).map((part) => {
+			const like = /^([a-z_]+)\.ilike\."%(.*)%"$/.exec(part);
+			if (like) {
+				const needle = like[2]!.toLowerCase();
+				return (r: Row) =>
+					String(r[like[1]!] ?? '')
+						.toLowerCase()
+						.includes(needle);
+			}
+			const [col, value] = part.split('.eq.');
+			return (r: Row) => String(r[col!]) === value;
+		});
+		this.filters.push((r) => tests.some((test) => test(r)));
 		return this;
 	}
 	order(col: string, opts?: { ascending?: boolean }) {
@@ -1102,5 +1123,234 @@ describe('know first: anchors, circles, identity questions, Not this one', () =>
 		expect(
 			db.rows('knowledge_entities').find((e) => e.id === cody)?.circle_source
 		).toBeUndefined();
+	});
+});
+
+describe('changing what an entry is', () => {
+	// The Griffin case: a person read out of a list of companies and filed as an organization.
+	async function griffinAsOrg(store: KnowledgeStore) {
+		const receipt = await store.record(
+			{
+				entities: [
+					{ ref: 'g', kind: 'org', name: 'Griffin Davis' },
+					{ ref: 'k', kind: 'person', name: 'Krystal Ball' }
+				],
+				facts: [
+					{ subject: 'g', predicate: 'founded', value: '2021' },
+					{ subject: 'g', predicate: 'description', value: 'A warm follow-up' },
+					{ subject: 'k', predicate: 'works_at', object: 'g' }
+				]
+			},
+			{ via: 'chat' }
+		);
+		return receipt.entities.find((e) => e.name === 'Griffin Davis')!.id;
+	}
+	const statusOf = (db: FakeDb, predicate: string) =>
+		db.rows('knowledge_facts').find((f) => f.predicate === predicate)!.status;
+
+	it('makes an organization a person and retracts only what no longer fits', async () => {
+		const { db, store } = setup();
+		const id = await griffinAsOrg(store);
+		db.rows('knowledge_entities').find((e) => e.id === id)!.enriched_at =
+			'2026-11-22T01:46:30Z';
+
+		const change = await store.changeEntityKind(id, 'person');
+
+		expect(change).toMatchObject({ kind: 'person', previous_kind: 'org', retracted: 2 });
+		const row = db.rows('knowledge_entities').find((e) => e.id === id)!;
+		expect(row.kind).toBe('person');
+		// Researched as a company: it counts as not researched once it is a person.
+		expect(row.enriched_at).toBeNull();
+		expect(statusOf(db, 'founded')).toBe('retracted'); // a person has no founding year
+		expect(statusOf(db, 'works_at')).toBe('retracted'); // nobody works at a person
+		expect(statusOf(db, 'description')).toBe('active');
+	});
+
+	it('names the same-name entry of the new kind and asks whether they are the same', async () => {
+		const { db, alice, store } = setup();
+		const id = await griffinAsOrg(store);
+		const person = (
+			await store.record(
+				{ entities: [{ ref: 'p', kind: 'person', name: 'Griffin Davis' }], facts: [] },
+				{ via: 'backfill' }
+			)
+		).entities[0]!.id;
+		expect(person).not.toBe(id);
+
+		const change = await store.changeEntityKind(id, 'person');
+
+		expect(change.same_name).toEqual([{ id: person, name: 'Griffin Davis' }]);
+		const question = db
+			.rows('knowledge_merge_candidates')
+			.find((c) => c.owner_user_id === alice && [c.entity_a, c.entity_b].includes(id));
+		expect([question?.entity_a, question?.entity_b].sort()).toEqual([id, person].sort());
+	});
+
+	it('does nothing when the kind is already right', async () => {
+		const { db, store } = setup();
+		const id = await griffinAsOrg(store);
+		const change = await store.changeEntityKind(id, 'org');
+		expect(change).toMatchObject({ retracted: 0, same_name: [] });
+		expect(statusOf(db, 'founded')).toBe('active');
+	});
+
+	it("refuses someone else's entry, the user's own entry, and unknown kinds", async () => {
+		const { db, store, bobStore } = setup();
+		const id = await griffinAsOrg(store);
+		await expect(bobStore.changeEntityKind(id, 'person')).rejects.toMatchObject({
+			code: 'NOT_FOUND'
+		});
+		expect(db.rows('knowledge_entities').find((e) => e.id === id)!.kind).toBe('org');
+		const self = await store.ensureSelf();
+		await expect(store.changeEntityKind(self, 'org')).rejects.toMatchObject({
+			code: 'INVALID'
+		});
+		await expect(store.changeEntityKind(id, 'company' as never)).rejects.toMatchObject({
+			code: 'INVALID'
+		});
+	});
+});
+
+describe('focus brief: everything known about one entry, before the chat starts', () => {
+	// What production looked like on 2026-11-21: "Griffin Davis" filed as an organization from one
+	// line in a context doc, while a separate person entry held the employer and the real work.
+	async function griffinWorld() {
+		const world = setup();
+		const { db, alice, store } = world;
+		const project = randomUUID();
+		db.rows('onto_projects').push({ id: project, name: 'Wayne Strategies', deleted_at: null });
+		const doc = (title: string, content: string) => {
+			const id = randomUUID();
+			db.rows('onto_documents').push({
+				id,
+				title,
+				content,
+				project_id: project,
+				deleted_at: null,
+				updated_at: '2026-11-20T00:00:00Z'
+			});
+			return id;
+		};
+		const contextDoc = doc(
+			'Wayne Strategies Context',
+			'Sequence: Murtech → Oceanetics → Cutlass; Griffin is a warm follow-up.'
+		);
+		const pitchDoc = doc(
+			'Pitch Desk',
+			'Griffin Davis produces Breaking Points. Reach him at griffin@breakingpoints.com about the story page.'
+		);
+		const unlinkedDoc = doc(
+			'Email drafts',
+			'Draft for Griffin Davis: following up on the Breaking Points story page sketch.'
+		);
+		const task = randomUUID();
+		db.rows('onto_tasks').push({
+			id: task,
+			title: 'Follow up with Griffin Davis',
+			description: 'Breaking Points story page',
+			project_id: project,
+			deleted_at: null,
+			updated_at: '2026-11-19T00:00:00Z'
+		});
+
+		const org = (
+			await store.record(
+				{ entities: [{ ref: 'g', kind: 'org', name: 'Griffin Davis' }], facts: [] },
+				{ via: 'chat' }
+			)
+		).entities[0]!.id;
+		const saved = await store.record(
+			{
+				entities: [
+					{ ref: 'p', kind: 'person', name: 'Griffin Davis' },
+					{ ref: 'bp', kind: 'org', name: 'Breaking Points' }
+				],
+				facts: [{ subject: 'p', predicate: 'works_at', object: 'bp' }]
+			},
+			{ via: 'backfill' }
+		);
+		const person = saved.entities.find((e) => e.kind === 'person')!.id;
+		expect(person).not.toBe(org);
+		const link = (entity_id: string, record_kind: string, record_id: string, quote?: string) =>
+			db.rows('knowledge_record_links').push({
+				id: randomUUID(),
+				entity_id,
+				owner_user_id: alice,
+				record_kind,
+				record_id,
+				quote: quote ?? null,
+				created_via: 'system',
+				created_at: '2026-11-18T00:00:00Z'
+			});
+		link(org, 'document', contextDoc, '…Cutlass; Griffin is a warm follow-up…');
+		link(person, 'document', pitchDoc);
+		link(person, 'task', task);
+		return { ...world, org, person, contextDoc, pitchDoc, unlinkedDoc, task };
+	}
+
+	it('pulls in the same-name copy, its employer and its linked work', async () => {
+		const { db, alice, store, org, person, pitchDoc, task } = await griffinWorld();
+		const brief = (await loadKnowledgeFocusBrief(store, db, alice, org))!;
+
+		expect(brief.entity).toMatchObject({ id: org, kind: 'org', name: 'Griffin Davis' });
+		expect(brief.twins).toHaveLength(1);
+		expect(brief.twins[0]).toMatchObject({ id: person, kind: 'person', why: 'same_name' });
+		// The lead research never had: the copy says where he works.
+		expect(brief.twins[0]!.facts).toEqual([
+			expect.objectContaining({ predicate: 'works_at', value: 'Breaking Points' })
+		]);
+		expect(brief.records.map((r) => [r.id, r.via])).toEqual([
+			[expect.any(String), 'linked'],
+			[pitchDoc, 'twin'],
+			[task, 'twin']
+		]);
+		expect(brief.projects).toEqual([
+			expect.objectContaining({ name: 'Wayne Strategies', records: 3 })
+		]);
+	});
+
+	it('never puts an email address or phone number from a record into the brief', async () => {
+		const { db, alice, store, org } = await griffinWorld();
+		const text = renderKnowledgeFocusBlock(
+			(await loadKnowledgeFocusBrief(store, db, alice, org))!
+		);
+		expect(text).toContain('Griffin Davis produces Breaking Points');
+		expect(text).not.toContain('griffin@breakingpoints.com');
+		expect(text).toContain('[email]');
+	});
+
+	it('finds unlinked records by full name only when the client is user-scoped', async () => {
+		const { db, alice, store, org, unlinkedDoc } = await griffinWorld();
+		const without = (await loadKnowledgeFocusBrief(store, db, alice, org))!;
+		expect(without.records.some((r) => r.id === unlinkedDoc)).toBe(false);
+
+		const withText = (await loadKnowledgeFocusBrief(store, db, alice, org, {
+			textSearch: true
+		}))!;
+		const found = withText.records.find((r) => r.id === unlinkedDoc)!;
+		expect(found).toMatchObject({ via: 'text', title: 'Email drafts' });
+		// Already-listed records are not repeated as text matches.
+		expect(new Set(withText.records.map((r) => r.id)).size).toBe(withText.records.length);
+	});
+
+	it('renders the entry id, the copy, what is missing and how to work, within the budget', async () => {
+		const { db, alice, store, org, person } = await griffinWorld();
+		const text = renderKnowledgeFocusBlock(
+			(await loadKnowledgeFocusBrief(store, db, alice, org, { textSearch: true }))!
+		);
+		expect(text).toContain(`entry id ${org}`);
+		expect(text).toContain(`entry id ${person}`);
+		expect(text).toContain('Probably the same one, saved separately');
+		expect(text).toContain('Works at: Breaking Points');
+		expect(text).toContain('Still missing:');
+		expect(text).toContain('never researched');
+		expect(text.endsWith(KNOWLEDGE_FOCUS_GUIDANCE)).toBe(true);
+		expect(text.length).toBeLessThan(9_000 + KNOWLEDGE_FOCUS_GUIDANCE.length + 10);
+	});
+
+	it("is empty for another user's entry and for ids that are not entries", async () => {
+		const { db, bob, bobStore, org } = await griffinWorld();
+		expect(await loadKnowledgeFocusBrief(bobStore, db, bob, org)).toBeNull();
+		expect(await loadKnowledgeFocusBrief(bobStore, db, bob, 'not-an-id')).toBeNull();
 	});
 });

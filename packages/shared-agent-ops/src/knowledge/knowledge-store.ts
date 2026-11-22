@@ -20,6 +20,7 @@ import {
 	checkKnowledgeFactShape,
 	getKnowledgePredicate,
 	isKnowledgeKind,
+	KNOWLEDGE_KIND_DEFINITIONS,
 	type KnowledgeKind
 } from './vocabulary';
 import { knowledgeSortDefaultDir } from './types';
@@ -31,6 +32,7 @@ import type {
 	KnowledgeEntitySummary,
 	KnowledgeFactStatus,
 	KnowledgeFactView,
+	KnowledgeKindChange,
 	KnowledgeListOptions,
 	KnowledgeListResult,
 	KnowledgeMergePreview,
@@ -1259,6 +1261,110 @@ export class KnowledgeStore {
 		if (error) throw dbError('Update entity', error);
 		if (!data?.length)
 			throw new KnowledgeStoreError('You can only edit your own entities.', 'NOT_FOUND');
+	}
+
+	/**
+	 * Change what an entry is (an "organization" that is really a person). Own entries only, never
+	 * the user's own entry. Details that only fit the old kind (a company's "founded", someone
+	 * "works at" it) are retracted first, so the per-kind rules in the database keep holding. The
+	 * entry counts as not researched again: what research looked for depended on its kind.
+	 * Entries of the new kind with the same name are filed as possible duplicates and returned.
+	 */
+	async changeEntityKind(id: string, kind: KnowledgeKind): Promise<KnowledgeKindChange> {
+		if (!UUID.test(id)) throw new KnowledgeStoreError('Entity not found.', 'NOT_FOUND');
+		if (!isKnowledgeKind(kind)) throw new KnowledgeStoreError('Unknown kind.', 'INVALID');
+		const { data: found, error: loadError } = await this.db
+			.from('knowledge_entities')
+			.select('id, kind, name, normalized_name, is_self, status')
+			.eq('id', id)
+			.eq('owner_user_id', this.userId)
+			.maybeSingle();
+		if (loadError) throw dbError('Load entity', loadError);
+		const row = found as {
+			id: string;
+			kind: KnowledgeKind;
+			name: string;
+			normalized_name: string;
+			is_self: boolean;
+			status: string;
+		} | null;
+		if (!row || row.status === 'merged')
+			throw new KnowledgeStoreError('You can only edit your own entities.', 'NOT_FOUND');
+		if (row.is_self)
+			throw new KnowledgeStoreError('Your own entry is always a person.', 'INVALID');
+		const result: KnowledgeKindChange = {
+			entity_id: id,
+			kind,
+			previous_kind: row.kind,
+			retracted: 0,
+			same_name: []
+		};
+		if (row.kind === kind) return result;
+
+		// Facts that no longer fit, both ways: this entry as subject, and as someone else's object.
+		const [outgoing, incoming] = await Promise.all(
+			(['entity_id', 'object_entity_id'] as const).map(async (column) => {
+				const { data, error } = await this.db
+					.from('knowledge_facts')
+					.select('id, predicate')
+					.eq(column, id)
+					.eq('owner_user_id', this.userId)
+					.neq('status', 'retracted')
+					.limit(PAGE);
+				if (error) throw dbError('Load facts', error);
+				return (data ?? []) as Array<{ id: string; predicate: string }>;
+			})
+		);
+		const misfit = [
+			...outgoing!.filter((fact) => {
+				const kinds = getKnowledgePredicate(fact.predicate)?.subjectKinds ?? [];
+				return kinds.length > 0 && !kinds.includes(kind);
+			}),
+			...incoming!.filter((fact) => {
+				const kinds = getKnowledgePredicate(fact.predicate)?.objectKinds ?? [];
+				return kinds.length > 0 && !kinds.includes(kind);
+			})
+		].map((fact) => fact.id);
+		await mapChunks(unique(misfit), ID_CHUNK, async (group) => {
+			const { error } = await this.db
+				.from('knowledge_facts')
+				.update({ status: 'retracted' })
+				.in('id', group)
+				.eq('owner_user_id', this.userId);
+			if (error) throw dbError('Retract details', error);
+			return [];
+		});
+		result.retracted = unique(misfit).length;
+
+		const { data: updated, error } = await this.db
+			.from('knowledge_entities')
+			.update({ kind, enriched_at: null })
+			.eq('id', id)
+			.eq('owner_user_id', this.userId)
+			.select('id');
+		if (error) throw dbError('Change kind', error);
+		if (!updated?.length)
+			throw new KnowledgeStoreError('You can only edit your own entities.', 'NOT_FOUND');
+
+		// The same name already exists as the new kind: almost always the same one, saved twice.
+		const { data: twins } = await this.db
+			.from('knowledge_entities')
+			.select('id, name')
+			.eq('owner_user_id', this.userId)
+			.eq('status', 'active')
+			.eq('kind', kind)
+			.eq('normalized_name', row.normalized_name)
+			.neq('id', id)
+			.limit(5);
+		for (const twin of (twins ?? []) as Array<{ id: string; name: string }>) {
+			result.same_name.push({ id: twin.id, name: twin.name });
+			await this.addMergeCandidate(id, twin.id, {
+				reason: `Same name, and both are now a ${KNOWLEDGE_KIND_DEFINITIONS[kind].label.toLowerCase()}`,
+				origin: 'name',
+				score: 0.9
+			}).catch(() => undefined); // the question is a convenience; the change already happened
+		}
+		return result;
 	}
 
 	async deleteEntity(id: string): Promise<void> {

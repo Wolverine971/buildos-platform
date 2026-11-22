@@ -38,6 +38,7 @@ export const KNOWLEDGE_TOOL_PREDICATES = [
 	'works_at',
 	'educated_at',
 	'knows',
+	'connected_on',
 	'part_of',
 	'located_in',
 	'owns',
@@ -93,6 +94,14 @@ const KINDS: ToolJsonSchema = {
 
 const ENTITY_ID: ToolJsonSchema = { type: 'string', format: 'uuid' };
 
+/** query_knowledge's people filters (tasker 166); pinned to shared-agent-ops by the test. */
+export const KNOWLEDGE_TOOL_GROUP_BY = ['company', 'place', 'region', 'industry', 'title'] as const;
+export const KNOWLEDGE_TOOL_EMPLOYMENT = ['current', 'former', 'any'] as const;
+export const KNOWLEDGE_TOOL_PLACE_OF = ['any', 'person', 'company'] as const;
+export const KNOWLEDGE_TOOL_RECORD_KINDS = ['task', 'document', 'project'] as const;
+
+const WORDS: ToolJsonSchema = { type: 'array', maxItems: 12, items: { type: 'string' } };
+
 export const KNOWLEDGE_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 	{
 		type: 'function',
@@ -131,7 +140,7 @@ export const KNOWLEDGE_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		function: {
 			name: 'query_knowledge',
 			description:
-				"List entries by following relationships. direction out: subject→object (Sam works_at→Palantir); in: the reverse. People at Palantir: start {search:'Palantir', kinds:['org']}, follow [{predicate:'works_at', direction:'in', kinds:['person']}]; where {known_by_me:true} keeps people the user knows. fields adds those values per row; coverage counts gaps.",
+				"List entries by following relationships. direction out: subject→object (Sam works_at→Palantir); in: the reverse. People at Palantir: start {search:'Palantir', kinds:['org']}, follow [{predicate:'works_at', direction:'in', kinds:['person']}]; where {known_by_me:true} keeps people the user knows. fields adds those values per row; coverage counts gaps. People filters (no follow): start {known_by_me:true}, where {company, title, industry, place…} lists matching people with employer, title, place and contact details; group_by counts them per company, place or industry (where {place:['Maryland'], place_of:'company', industry:['software']}, group_by 'company'). Relay notes about missing data; never guess.",
 			parameters: {
 				type: 'object',
 				additionalProperties: false,
@@ -170,9 +179,33 @@ export const KNOWLEDGE_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 						additionalProperties: false,
 						properties: {
 							known_by_me: { type: 'boolean' },
-							owned_by_me: { type: 'boolean' }
+							owned_by_me: { type: 'boolean' },
+							company: { ...WORDS, description: 'Employer names.' },
+							employment: {
+								type: 'string',
+								enum: [...KNOWLEDGE_TOOL_EMPLOYMENT],
+								description: 'former: used to work there.'
+							},
+							title: { ...WORDS, description: 'Title words: engineer.' },
+							industry: WORDS,
+							place: { ...WORDS, description: 'City, state or country names.' },
+							place_of: { type: 'string', enum: [...KNOWLEDGE_TOOL_PLACE_OF] },
+							in_records: {
+								type: 'array',
+								items: { type: 'string', enum: [...KNOWLEDGE_TOOL_RECORD_KINDS] }
+							},
+							via: { type: 'string', description: 'e.g. linkedin' },
+							related_to: {
+								...ENTITY_ID,
+								description: 'Person: shares their employer or place.'
+							},
+							bridge_to: {
+								...WORDS,
+								description: 'Company names: people who lead to someone there.'
+							}
 						}
 					},
+					group_by: { type: 'string', enum: [...KNOWLEDGE_TOOL_GROUP_BY] },
 					fields: {
 						type: 'array',
 						maxItems: 12,

@@ -23,6 +23,15 @@
 	import TodayTaskGroups from '$lib/components/today/TodayTaskGroups.svelte';
 	import WhatChangedSection from '$lib/components/today/WhatChangedSection.svelte';
 	import TodayPickCard from '$lib/components/today/TodayPickCard.svelte';
+	import TodayTwoWeeks from '$lib/components/today/TodayTwoWeeks.svelte';
+	import { buildTwoWeeks } from '$lib/components/today/today-two-weeks';
+	import {
+		decorateDashboardCalendarItems,
+		mapConnectedGoogleEvent,
+		mergeDashboardCalendarItems
+	} from '$lib/services/dashboard-calendar-items';
+	import { fetchConnectedGoogleCalendarEvents } from '$lib/services/calendar-items.service';
+	import type { ConnectedGoogleCalendarEvent } from '$lib/types/google-calendar-integration';
 	import TodayWaitingSection from '$lib/components/today/TodayWaitingSection.svelte';
 	import TodayCloseOut from '$lib/components/today/TodayCloseOut.svelte';
 	import TodayRepeatedSuggestions from '$lib/components/today/TodayRepeatedSuggestions.svelte';
@@ -442,7 +451,57 @@
 	const openTaskCount = $derived(
 		feed ? withoutRemoved(feed.tasks).filter((task) => !doneIds.has(task.id)).length : 0
 	);
-	const eventCount = $derived(feed ? feed.events.length : 0);
+
+	// ── The two-week calendar: BuildOS events arrive with the feed; connected Google
+	// calendars are read once the page is up, so a slow provider never holds the day back. ──
+	const calendarSources = $derived(data.calendarSources ?? []);
+	const calendarSourceLookup = $derived(
+		new Map(calendarSources.map((source) => [source.id, source] as const))
+	);
+	let googleEvents = $state.raw<ConnectedGoogleCalendarEvent[]>([]);
+	/** Bumped by the Refresh button so the Google read runs again for the same two weeks. */
+	let calendarReadTick = $state(0);
+	const twoWeeksStartAt = $derived(feed?.twoWeeks?.startAt ?? null);
+	const twoWeeksEndAt = $derived(feed?.twoWeeks?.endAt ?? null);
+	$effect(() => {
+		void calendarReadTick;
+		const start = twoWeeksStartAt;
+		const end = twoWeeksEndAt;
+		if (!start || !end || calendarSources.length === 0) return;
+		let stale = false;
+		fetchConnectedGoogleCalendarEvents({ start, end, maxResults: 500 })
+			.then((payload) => {
+				if (!stale) googleEvents = payload.events ?? [];
+			})
+			.catch((error) => {
+				// BuildOS events still show; the strip just lacks the Google ones.
+				console.warn('[Today] Could not read connected calendars:', error);
+			});
+		return () => {
+			stale = true;
+		};
+	});
+	const twoWeekDays = $derived.by(() => {
+		if (!feed?.twoWeeks) return [];
+		const fromGoogle = googleEvents
+			.map((event) => mapConnectedGoogleEvent(event, calendarSourceLookup))
+			.filter((item): item is CalendarItem => item !== null);
+		return buildTwoWeeks({
+			start: feed.twoWeeks.start,
+			today: feed.date,
+			timezone: feed.timezone,
+			items: decorateDashboardCalendarItems(
+				mergeDashboardCalendarItems(feed.twoWeeks.items, fromGoogle),
+				calendarSourceLookup
+			)
+		});
+	});
+	const twoWeeksHaveEvents = $derived(twoWeekDays.some((day) => day.events.length > 0));
+	// Counts what the calendar shows for today, Google included, so the header and the
+	// strip never disagree.
+	const eventCount = $derived(
+		twoWeekDays.find((day) => day.isToday)?.events.length ?? feed?.events.length ?? 0
+	);
 
 	const nextEntry = $derived(
 		agenda.schedule.find(
@@ -597,6 +656,54 @@
 		lastPickDone = pick.title;
 		if (pick.task && !doneIds.has(pick.task.id)) await toggleDone(pick.task);
 		if (pick.waiting) await setWaitingStatus(pick.waiting, 'resolved');
+	}
+
+	// The pick's status menu. Done runs the same path as the row circle; any other status is
+	// saved in place (a blocked task leaves the picks, so the next one moves up).
+	async function setPickTaskState(pick: TodayPick, state: string) {
+		if (state === 'done') {
+			await completePick(pick);
+			return;
+		}
+		const task = pick.task;
+		if (!task || task.state_key === state) return;
+		const previous = task.state_key;
+		const show = (state_key: string) => {
+			if (!feed) return;
+			feed = {
+				...feed,
+				tasks: feed.tasks.map((entry) =>
+					entry.id === task.id ? { ...entry, state_key } : entry
+				)
+			};
+		};
+		show(state);
+		try {
+			const response = await fetch(`/api/onto/tasks/${task.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ state_key: state })
+			});
+			if (!response.ok) throw new Error(`Task update failed (${response.status})`);
+			trackLoopEvent('loop_decision_made', 'today', {
+				source_type: 'pick',
+				action: `state_${state}`,
+				source_ref_id: task.id,
+				project_id: task.project_id,
+				bucket: task.bucket
+			});
+			void loadChanges();
+		} catch {
+			show(previous);
+			toastService.error('Could not update the task');
+		}
+	}
+
+	// An ask with no task behind it: handled or not needed, either way it leaves the picks.
+	async function setPickAskStatus(pick: TodayPick, status: 'resolved' | 'dismissed') {
+		if (!pick.waiting) return;
+		if (status === 'resolved') lastPickDone = pick.title;
+		await setWaitingStatus(pick.waiting, status);
 	}
 
 	async function setWaitingStatus(
@@ -1092,6 +1199,20 @@
 		});
 	}
 
+	// A task named by the calendar: one already on the day opens as usual; any other opens
+	// in the reader by id, in its own project.
+	function openTaskById(taskId: string, projectId: string | null) {
+		const task = seenTasks.get(taskId);
+		if (task) {
+			openTask(task);
+			return;
+		}
+		if (!projectId) return;
+		readerProjectId = projectId;
+		prepareEntityModalData('task', taskId, { withTaskDocuments: true });
+		panes?.open({ kind: 'task', id: taskId });
+	}
+
 	// The reader already shows its own changes; the day's list and receipts catch up.
 	function handleReaderChanged() {
 		void refresh();
@@ -1501,7 +1622,11 @@
 					<ArrowUpRight class="h-4 w-4 shrink-0" />
 				</a>
 				<Button
-					onclick={refresh}
+					onclick={() => {
+						// Only the button re-reads Google; the many background refreshes don't.
+						calendarReadTick += 1;
+						void refresh();
+					}}
 					disabled={refreshing}
 					variant="ghost"
 					size="sm"
@@ -1691,7 +1816,8 @@
 						skippedCount={skippedPicks.length}
 						lastDone={lastPickDone}
 						onOpen={openPick}
-						onDone={(pick) => void completePick(pick)}
+						onTaskState={(pick, state) => void setPickTaskState(pick, state)}
+						onAskStatus={(pick, status) => void setPickAskStatus(pick, status)}
 						onSkip={skipPick}
 						onShowSkipped={() => writeSkippedPicks([])}
 					/>
@@ -1755,10 +1881,15 @@
 				>
 					{#snippet list()}
 						<div class="today-list">
-							{#if hasProjects && agenda.allDay.length === 0 && agenda.schedule.length === 0 && !hasIncompleteFeed}
-								<p class="mt-5 text-xs font-medium text-muted-foreground">
-									Calendar · nothing booked
-								</p>
+							{#if twoWeekDays.length > 0 && (hasProjects || twoWeeksHaveEvents)}
+								<ErrorBoundary area="today-two-weeks">
+									<TodayTwoWeeks
+										days={twoWeekDays}
+										compact={phoneQuery.current}
+										projectNameOf={projectNameFor}
+										onOpenTask={openTaskById}
+									/>
+								</ErrorBoundary>
 							{/if}
 							{#if agenda.allDay.length > 0}
 								<section class="mt-4" aria-label="All-day events">

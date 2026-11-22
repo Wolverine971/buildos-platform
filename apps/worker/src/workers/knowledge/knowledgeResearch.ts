@@ -184,7 +184,8 @@ export async function researchEntity(
 	const suggestPages = new Set<number>();
 	if (anchors && !outcome.unanchored) {
 		const check = await checkIdentityBatch(
-			{ anchors },
+			// What the user typed for this research is the best lead there is about who this is.
+			{ anchors, userNote: instructions },
 			candidates.map((page, i) => ({
 				type: 'page' as const,
 				id: `p${i + 1}`,

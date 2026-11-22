@@ -1,4 +1,9 @@
 // apps/web/src/lib/components/agent/agent-chat-session.ts
+import {
+	KNOWLEDGE_FOCUS_METADATA_KEY,
+	readKnowledgeFocusRef,
+	type KnowledgeFocusRef
+} from '@buildos/shared-agent-ops/knowledge';
 import type { RestoreHistoryWindow } from '$lib/types/chat-session-restore';
 import { buildWebNavigateTrailFromResult } from './agent-chat-tool-progress';
 import type { PendingChangeViewV1 } from '$lib/services/agentic-chat-v2/pending-change';
@@ -184,6 +189,8 @@ export interface AgentChatSessionSnapshot {
 	selectedEntityId?: string;
 	selectedContextLabel: string;
 	projectFocus: ProjectFocus | null;
+	/** The knowledge entry (person, organization…) the chat was started about, if any. */
+	knowledgeFocus: KnowledgeFocusRef | null;
 	messages: UIMessage[];
 	timelineItems: AgentTimelineItem[];
 	voiceNotesByGroupId: Record<string, VoiceNote[]>;
@@ -1288,6 +1295,10 @@ export function buildAgentChatSessionSnapshot(
 		(session.agent_metadata as { focus?: ProjectFocus | null })?.focus
 	);
 
+	const knowledgeFocus = readKnowledgeFocusRef(
+		(session.agent_metadata as Record<string, unknown> | null)?.[KNOWLEDGE_FOCUS_METADATA_KEY]
+	);
+
 	let projectFocus: ProjectFocus | null = null;
 	let selectedContextLabel = sessionTitle;
 	if (isProjectContext(contextType)) {
@@ -1369,6 +1380,7 @@ export function buildAgentChatSessionSnapshot(
 		selectedEntityId: projectFocus?.projectId || selectedEntityId,
 		selectedContextLabel,
 		projectFocus,
+		knowledgeFocus,
 		messages,
 		timelineItems,
 		voiceNotesByGroupId: groupVoiceNotesByGroupId(voiceNotes),

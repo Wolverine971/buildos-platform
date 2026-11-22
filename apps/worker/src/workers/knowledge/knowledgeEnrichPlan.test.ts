@@ -118,6 +118,7 @@ describe('enrichQueries', () => {
 	it('looks for a contact page only when phone or email was asked for', () => {
 		expect(enrichQueries(enrichContextFrom(SAM), null, ['phone'])).toEqual([
 			'"Sam Rivera" Palantir',
+			'"Sam Rivera" linkedin',
 			'"Sam Rivera" Palantir contact email phone'
 		]);
 	});
@@ -125,12 +126,34 @@ describe('enrichQueries', () => {
 	it('searches for schooling when Education was picked, not on every default run', () => {
 		expect(enrichQueries(enrichContextFrom(SAM), null, ['educated_at'])).toEqual([
 			'"Sam Rivera" Palantir',
+			'"Sam Rivera" linkedin',
 			'"Sam Rivera" Palantir university college alumni'
 		]);
 		// The default person research also extracts schooling, but adds no extra (paid) search.
 		expect(enrichQueries(enrichContextFrom(SAM), null, DEFAULT_ENRICH_FIELDS.person)).toEqual([
 			'"Sam Rivera" Palantir',
 			'"Sam Rivera" linkedin'
+		]);
+	});
+});
+
+describe('enrichQueries with every choice ticked (the Find more dialog default)', () => {
+	it('keeps the profile search and stops at three', () => {
+		const everything = [
+			'homepage',
+			'headline',
+			'works_at',
+			'profile_url',
+			'located_in',
+			'educated_at',
+			'description',
+			'email',
+			'phone'
+		];
+		expect(enrichQueries(enrichContextFrom(SAM), null, everything)).toEqual([
+			'"Sam Rivera" Palantir',
+			'"Sam Rivera" linkedin',
+			'"Sam Rivera" Palantir contact email phone'
 		]);
 	});
 });

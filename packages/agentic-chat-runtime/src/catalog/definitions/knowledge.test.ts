@@ -5,12 +5,18 @@
 // tool schemas promise match the gateway runners that enforce them.
 import { describe, expect, it } from 'vitest';
 import {
+	KNOWLEDGE_CONNECTION_EMPLOYMENT,
+	KNOWLEDGE_CONNECTION_FACETS,
+	KNOWLEDGE_CONNECTION_MAX_TERMS,
+	KNOWLEDGE_CONNECTION_PLACE_OF,
+	KNOWLEDGE_CONNECTION_RECORD_KINDS,
 	KNOWLEDGE_KINDS,
 	KNOWLEDGE_PREDICATES,
 	type KnowledgeKeyType,
 	type KnowledgeSourceType
 } from '@buildos/shared-agent-ops/knowledge';
 import {
+	KNOWLEDGE_CONNECTION_WHERE_KEYS,
 	KNOWLEDGE_ENRICH_INSTRUCTIONS_MAX,
 	KNOWLEDGE_ENRICH_MAX_ENTITIES,
 	KNOWLEDGE_LENS_RECORD_LIMIT,
@@ -115,6 +121,23 @@ describe('knowledge tool catalog', () => {
 			KNOWLEDGE_LENS_RECORD_LIMIT
 		);
 		expect(params('request_knowledge_access').properties.what.enum).toEqual(['contact', 'all']);
+	});
+
+	it("pins query_knowledge's people filters to the connections read", () => {
+		const query = params('query_knowledge').properties;
+		const where = query.where.properties;
+		// Every key that switches the gateway to the people path is in the schema, and nothing
+		// else is, so a model can't send a filter the gateway silently ignores.
+		expect(Object.keys(where).sort()).toEqual(
+			[...KNOWLEDGE_CONNECTION_WHERE_KEYS, 'known_by_me', 'owned_by_me'].sort()
+		);
+		expect(query.group_by.enum).toEqual([...KNOWLEDGE_CONNECTION_FACETS]);
+		expect(where.employment.enum).toEqual([...KNOWLEDGE_CONNECTION_EMPLOYMENT]);
+		expect(where.place_of.enum).toEqual([...KNOWLEDGE_CONNECTION_PLACE_OF]);
+		expect(where.in_records.items.enum).toEqual([...KNOWLEDGE_CONNECTION_RECORD_KINDS]);
+		for (const key of ['company', 'title', 'industry', 'place', 'bridge_to'])
+			expect(where[key].maxItems, key).toBe(KNOWLEDGE_CONNECTION_MAX_TERMS);
+		expect(query.where.additionalProperties).toBe(false);
 	});
 
 	it('promises the limits the gateway enforces', () => {
