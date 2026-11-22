@@ -783,7 +783,7 @@
 												onclick={() => classifyChatSession(item)}
 												disabled={classifyStatus === 'loading' ||
 													classifyStatus === 'queued'}
-												class="pointer-events-auto relative z-[2] inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs font-medium text-muted-foreground transition-colors pressable hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-70"
+												class="pointer-events-auto relative z-[2] inline-flex min-h-8 min-w-8 items-center justify-center gap-1 rounded-lg border border-border px-2 py-1 text-xs sm:min-h-0 sm:min-w-0 font-medium text-muted-foreground transition-colors pressable hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-70"
 												aria-label={classifyStatus === 'error'
 													? 'Retry summary'
 													: 'Summarize chat session'}

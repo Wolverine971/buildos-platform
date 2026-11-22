@@ -1,10 +1,13 @@
 // apps/web/src/routes/api/knowledge/entities/+server.ts
 /**
  * GET  /api/knowledge/entities?kind=person&filter=known&q=sam&limit=50&offset=0
- *        [&researched=yes|no][&sort=recent|name|researched|connected]
+ *        [&researched=yes|no][&sort=recent|name|researched|connected|projects|tasks|documents]
+ *        [&dir=asc|desc]
  *        [&view=all|world|reference|dropped][&place=<place id>]
  *      view: world = what matters to you (default on the page), reference = just mentioned,
  *      dropped = hidden by the sorter as not a name. place: entries located in that place.
+ *      sort projects / tasks / documents: how many of each name the entry, most first. dir flips
+ *      any sort (name is A–Z unless dir=desc; the rest lead with the newest or the most).
  *      Browse the caller's knowledge graph (their private entries plus public ones they've
  *      recorded something about), with per-kind counts and researched / not researched counts.
  * POST /api/knowledge/entities  { kind, name, summary?, know?, own?, facts? }
@@ -13,6 +16,7 @@
 import type { RequestHandler } from './$types';
 import {
 	isKnowledgeKind,
+	KNOWLEDGE_LIST_SORTS,
 	type KnowledgeKind,
 	type KnowledgeWriteBatch,
 	type KnowledgeWriteFact
@@ -26,7 +30,6 @@ import {
 
 const FILTERS = ['all', 'known', 'owned'] as const;
 const RESEARCHED = ['any', 'yes', 'no'] as const;
-const SORTS = ['recent', 'name', 'researched', 'connected'] as const;
 const VIEWS = ['all', 'world', 'reference', 'dropped'] as const;
 
 function pick<T extends string>(value: string | null, allowed: readonly T[], fallback: T): T {
@@ -45,7 +48,9 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		: 'all';
 	const q = (url.searchParams.get('q') ?? '').trim().slice(0, 200);
 	const researched = pick(url.searchParams.get('researched'), RESEARCHED, 'any');
-	const sort = pick(url.searchParams.get('sort'), SORTS, 'recent');
+	const sort = pick(url.searchParams.get('sort'), KNOWLEDGE_LIST_SORTS, 'recent');
+	const dirParam = url.searchParams.get('dir');
+	const dir = dirParam === 'asc' || dirParam === 'desc' ? dirParam : undefined;
 	const view = pick(url.searchParams.get('view'), VIEWS, 'all');
 	const place = url.searchParams.get('place') ?? '';
 	const limit = Number(url.searchParams.get('limit') ?? 50);
@@ -57,6 +62,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			filter,
 			researched,
 			sort,
+			...(dir ? { dir } : {}),
 			view,
 			...(UUID_PATTERN.test(place) ? { place } : {}),
 			...(q ? { query: q } : {}),

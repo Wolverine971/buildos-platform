@@ -443,7 +443,7 @@
 				<div class="mt-2 flex justify-end">
 					<a
 						href="/auth/forgot-password"
-						class="rounded text-sm font-medium text-accent transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						class="-my-2 inline-block rounded py-2 text-sm font-medium text-accent transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
 						Forgot password?
 					</a>

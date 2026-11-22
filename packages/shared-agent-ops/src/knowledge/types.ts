@@ -239,8 +239,14 @@ export interface KnowledgeListOptions {
 	offset?: number;
 	/** yes = researched by this user (Find more finished, or enriched_at on their entry). */
 	researched?: KnowledgeResearchedFilter;
-	/** recent = last updated (default); name = A–Z; researched = last researched first. */
+	/**
+	 * recent = last updated (default); name = A–Z; researched = last researched first;
+	 * connected = latest LinkedIn connection first; projects / tasks / documents = how many of
+	 * each name the entry, most first (needs migration 20261122004500).
+	 */
 	sort?: KnowledgeListSort;
+	/** Flips the sort. Left out, each sort keeps its usual direction (knowledgeSortDefaultDir). */
+	dir?: KnowledgeSortDir;
 	/**
 	 * all = everything active (default); world = what matters to the user (no places, no "just
 	 * mentioned" names unless searching); reference = "just mentioned"; dropped = hidden by the
@@ -254,7 +260,30 @@ export interface KnowledgeListOptions {
 export type KnowledgeListView = 'all' | 'world' | 'reference' | 'dropped';
 
 export type KnowledgeResearchedFilter = 'any' | 'yes' | 'no';
-export type KnowledgeListSort = 'recent' | 'name' | 'researched' | 'connected';
+export type KnowledgeListSort =
+	| 'recent'
+	| 'name'
+	| 'researched'
+	| 'connected'
+	| 'projects'
+	| 'tasks'
+	| 'documents';
+export type KnowledgeSortDir = 'asc' | 'desc';
+
+export const KNOWLEDGE_LIST_SORTS: readonly KnowledgeListSort[] = [
+	'recent',
+	'name',
+	'researched',
+	'connected',
+	'projects',
+	'tasks',
+	'documents'
+];
+
+/** Names read A–Z; every other sort leads with the newest or the most. */
+export function knowledgeSortDefaultDir(sort: KnowledgeListSort): KnowledgeSortDir {
+	return sort === 'name' ? 'asc' : 'desc';
+}
 
 export interface KnowledgeListResult {
 	entities: Array<

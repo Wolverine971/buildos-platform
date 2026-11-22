@@ -35,7 +35,7 @@
 	}
 </script>
 
-<div class="max-w-3xl mx-auto flex w-full items-center gap-3">
+<div class="max-w-3xl mx-auto flex w-full items-center gap-2 sm:gap-3">
 	{#if currentStep > 0 && onBack}
 		<button
 			type="button"
@@ -46,6 +46,9 @@
 		>
 			<ArrowLeft class="h-4 w-4" />
 		</button>
+	{:else if onBack}
+		<!-- Holds the back button's place on the first step so the steps don't jump sideways. -->
+		<span class="min-h-11 min-w-11 shrink-0 max-[359px]:hidden" aria-hidden="true"></span>
 	{/if}
 	<div class="relative min-w-0 flex-1">
 		<!-- Progress track -->

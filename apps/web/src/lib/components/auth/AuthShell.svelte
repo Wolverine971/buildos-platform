@@ -18,7 +18,12 @@
 	} = $props();
 </script>
 
-<div class="flex flex-1 flex-col bg-background">
+<!-- First visit: the consent bar covers the bottom of a phone screen; leave room so
+     "Continue with Google" and the sign-up/sign-in switch scroll clear of it. -->
+<div
+	class="flex flex-1 flex-col bg-background"
+	style="padding-bottom: var(--consent-bar-space, 0px)"
+>
 	<header class="flex shrink-0 items-center px-4 pt-4 sm:px-6 sm:pt-5">
 		<a
 			href="/"
@@ -38,13 +43,13 @@
 	<footer class="shrink-0 px-4 pb-5 text-center text-xs text-muted-foreground sm:pb-6">
 		<a
 			href="/privacy"
-			class="rounded hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+			class="-my-2 inline-block rounded py-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 			>Privacy</a
 		>
 		<span class="mx-2" aria-hidden="true">·</span>
 		<a
 			href="/terms"
-			class="rounded hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+			class="-my-2 inline-block rounded py-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 			>Terms</a
 		>
 	</footer>

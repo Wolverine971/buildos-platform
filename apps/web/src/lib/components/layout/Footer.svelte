@@ -63,10 +63,12 @@
 	let isAuthenticated = $derived(!!user);
 </script>
 
+<!-- While the first-visit consent bar shows, leave room so the footer links scroll clear of it. -->
 <footer
 	class="mt-auto border-t border-border bg-card no-print {isAuthenticated
 		? ''
 		: 'tx tx-frame tx-weak'}"
+	style="padding-bottom: var(--consent-bar-space, 0px)"
 >
 	<div class="mx-auto max-w-7xl">
 		{#if isAuthenticated}

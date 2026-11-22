@@ -143,7 +143,7 @@
 		<div class="mt-6 text-center">
 			<a
 				href="/auth/login"
-				class="text-sm font-medium text-accent hover:opacity-80 transition-opacity"
+				class="-my-2 inline-block py-2 text-sm font-medium text-accent hover:opacity-80 transition-opacity"
 			>
 				← Back to sign in
 			</a>

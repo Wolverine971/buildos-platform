@@ -2,7 +2,8 @@
 
 # 161 — Import LinkedIn connections (the whole flow)
 
-**Status:** Implemented and rehearsed locally. Production acceptance deferred by DJ (2026-11-21) · **Opened:** 2026-11-17 · **Parent:** 160 (knowledge graph)
+**Status:** Importer implemented and rehearsed. Confirmed identity corrections are live. DJ has the full production import and its migration on hold (2026-11-21). · **Opened:** 2026-11-17 · **Parent:** 160 (knowledge graph)
+**Tracking:** [LinkedIn import task in the BuildOS project](https://build-os.com/projects?open=task:ff201f29-c01c-4ffc-9498-707c559ff659) · [Owner-only list of corrected names, companies and profiles](https://build-os.com/projects?open=document:152dddf3-abfd-578c-9167-b8c65c98c803)
 **DJ (2026-11-17):** "A Tasker for importing contacts from LinkedIn and doing that whole thing."
 
 ## Goal
@@ -51,7 +52,7 @@ tasks.
 
 ## November 21 rehearsal
 
-DJ chose to keep production untouched. The graph records used for matching were read from his
+For the bulk import rehearsal, DJ chose to keep production untouched. The graph records used for matching were read from his
 account. The migration and all import writes ran in disposable local PostgreSQL databases.
 No contact names, URLs or email addresses are included here.
 
@@ -87,3 +88,18 @@ and test paths is `92b0bc4c5ba2a45c926ada0d9e1e34cd742787bdba54b31c4e4123e5861f6
 - `pnpm --filter @buildos/worker exec vitest run src/workers/knowledge/knowledgeEnrichPlan.test.ts` passed 15 tests.
 - `pnpm --filter @buildos/web exec vitest run src/routes/api/knowledge/import/server.test.ts src/lib/components/knowledge/contact-export.test.ts src/lib/components/knowledge/KnowledgeImportDialog.test.ts src/lib/components/knowledge/KnowledgeSharePanel.test.ts` passed 9 tests covering the upload endpoint, ZIP selection, retry, rendered dialog, and sharing controls.
 - The shared package build, official Svelte autofixers and web type check cover the modified entry points. UI checks used the rendered components locally. A deployed browser import remains pending.
+
+## November 21 confirmed corrections in live BuildOS
+
+DJ approved the reviewed identities and their supporting information. The main BuildOS project now tracks the remaining import as a blocked task. Its description links back to this Tasker. The private Workspace log lists each full name, its source projects, its company or affiliation, and the profile that was saved. [Project task](https://build-os.com/projects?open=task:ff201f29-c01c-4ffc-9498-707c559ff659) · [Private correction log](https://build-os.com/projects?open=document:152dddf3-abfd-578c-9167-b8c65c98c803)
+
+| Change | Verified live result |
+| --- | --- |
+| Project mentions | 133 first-name tags across 31 distinct tasks and documents now open eight existing full-name cards. They cover 34 person–record pairs. The ninth person already had the correct full name and links to both projects. The source wording was preserved. |
+| Employers and affiliations | Saved the verified roles and employer names from three July export rows. Two formal company names became aliases on existing organizations. One suggested employer relationship was confirmed from the dated export. Recorded the verified instructor and media affiliations. Existing company links for the two outreach prospects and the business founder were checked. |
+| Profiles | Saved four LinkedIn URLs with matching identity keys, one official instructor page and one biographical profile. One of the four LinkedIn URLs came directly from DJ after the export. |
+| Personal relationships | Verified five cards in People I know. Three are documented LinkedIn connections with their original connection dates. DJ confirmed the other two personally. The two media references and two outreach prospects have no personal-contact relationship on their cards. |
+| Uncertain identities | All 14 specifically excluded tags still point to their original cards. These include incidental mentions in other projects and references to different people within the same document. |
+| Data and provenance | Four private sources support 21 active facts. An independent read-back checked the mention identities, source passages, project membership, card links, profiles, identity keys and contact relationships. The owner's import-run count was identical before and after. |
+
+The full-file import of 767 named connections, its production migration, and acceptance through the deployed import dialog remain pending DJ’s authorization.

@@ -331,4 +331,26 @@ describe('KnowledgeStore.list research options', () => {
 			p_viewer: USER
 		});
 	});
+
+	it('sends a direction only when it flips the sort', async () => {
+		const db = new FakeDb();
+		const store = new KnowledgeStore(db, USER);
+		await store.list({ sort: 'name', dir: 'asc' });
+		await store.list({ sort: 'tasks', dir: 'desc' });
+		await store.list({ dir: 'desc' });
+		await store.list({ sort: 'name', dir: 'desc' });
+		await store.list({ sort: 'tasks', dir: 'asc' });
+		await store.list({ dir: 'asc' });
+		const sent = db.calls
+			.filter((c) => c.fn === 'knowledge_list')
+			.map((c) => [c.args.p_sort ?? null, c.args.p_dir ?? null]);
+		expect(sent).toEqual([
+			['name', null],
+			['tasks', null],
+			[null, null],
+			['name', 'desc'],
+			['tasks', 'asc'],
+			[null, 'asc']
+		]);
+	});
 });

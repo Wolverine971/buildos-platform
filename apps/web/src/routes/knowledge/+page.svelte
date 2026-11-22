@@ -20,6 +20,11 @@
 	the research and the bottom-right tray shows it running while you keep browsing. One poll
 	(KnowledgeResearchQueue) feeds the tray, the dialog's allowance and every card.
 
+	Sorting: on wide screens each column header (Name, Projects, Tasks, Docs) sorts the whole
+	list, not just the rows loaded so far; press it again to reverse. The Sort menu holds the
+	same sorts (phones have no headers) plus the date ones. The server orders the paged list;
+	"Everything in <project>" is loaded whole, so the browser orders it (knowledge-sort.ts).
+
 	PRIVACY: the search text stays in component state, never in the URL. Only the open entry's
 	id (?e=) is in the URL so a chat card can link straight to it.
 -->
@@ -69,10 +74,23 @@
 		knowledgeApi,
 		type ImportSummary,
 		type KnowledgeEntitySummary,
+		knowledgeSortDefaultDir,
 		type KnowledgeKind,
-		type KnowledgeListResult
+		type KnowledgeListResult,
+		type KnowledgeListSort,
+		type KnowledgeSortDir
 	} from '$lib/components/knowledge/knowledge-client';
 	import {
+		KNOWLEDGE_SORT_COLUMNS,
+		KNOWLEDGE_SORT_MENU,
+		knowledgeSortLabel,
+		nextKnowledgeSort,
+		sortKnowledgeRows
+	} from '$lib/components/knowledge/knowledge-sort';
+	import {
+		ArrowDown,
+		ArrowUp,
+		ChevronsUpDown,
 		GitMerge,
 		Loader2,
 		Plus,
@@ -91,7 +109,7 @@
 	type Filter = 'all' | 'known' | 'owned';
 	type View = 'world' | 'reference' | 'dropped';
 	type Researched = 'any' | 'yes' | 'no';
-	type Sort = 'recent' | 'name' | 'researched' | 'connected';
+	type Sort = KnowledgeListSort;
 	type Row = KnowledgeEntitySummary & {
 		updated_at: string;
 		researched_at?: string | null;
@@ -116,6 +134,7 @@
 	let query = $state('');
 	let researched = $state<Researched>('any');
 	let sort = $state<Sort>('recent');
+	let sortDir = $state<KnowledgeSortDir>('desc');
 	let researchedCounts = $state<{ yes: number; no: number } | null>(initial?.researched ?? null);
 	let loading = $state(false);
 	let loadingMore = $state(false);
@@ -289,14 +308,18 @@
 				counts = nextCounts;
 				// Names only (substring), like a find-in-list; the full search is server-side.
 				const q = query.trim().toLowerCase();
-				rows = all.filter(
-					(r) =>
-						(!kind || r.kind === kind) &&
-						(!q ||
-							r.name.toLowerCase().includes(q) ||
-							(r.summary ?? '').toLowerCase().includes(q)) &&
-						(researched === 'any' ||
-							(researched === 'yes') === Boolean(r.researched_at))
+				rows = sortKnowledgeRows(
+					all.filter(
+						(r) =>
+							(!kind || r.kind === kind) &&
+							(!q ||
+								r.name.toLowerCase().includes(q) ||
+								(r.summary ?? '').toLowerCase().includes(q)) &&
+							(researched === 'any' ||
+								(researched === 'yes') === Boolean(r.researched_at))
+					),
+					{ key: sort, dir: sortDir },
+					whereById
 				);
 				total = rows.length;
 				return;
@@ -306,6 +329,7 @@
 				filter,
 				researched,
 				sort,
+				dir: sortDir,
 				view,
 				place,
 				q: query.trim() || undefined,
@@ -352,6 +376,7 @@
 		kind?: KnowledgeKind | null;
 		researched?: Researched;
 		sort?: Sort;
+		dir?: KnowledgeSortDir;
 		view?: View;
 		place?: string | null;
 	}) {
@@ -368,9 +393,20 @@
 		if (next.filter !== undefined) filter = next.filter;
 		if (next.kind !== undefined) kind = next.kind;
 		if (next.researched !== undefined) researched = next.researched;
-		if (next.sort !== undefined) sort = next.sort;
+		if (next.sort !== undefined) {
+			// A different sort starts in its usual direction (names A–Z, the rest most first).
+			if (next.sort !== sort) sortDir = knowledgeSortDefaultDir(next.sort);
+			sort = next.sort;
+		}
+		if (next.dir !== undefined) sortDir = next.dir;
 		lastPickIndex = null;
 		void refresh();
+	}
+
+	/** A column header: sort by it, or reverse it when it already leads. */
+	function sortBy(key: Sort) {
+		const next = nextKnowledgeSort({ key: sort, dir: sortDir }, key);
+		choose({ sort: next.key, dir: next.dir });
 	}
 
 	function togglePick(row: Row, index: number, event: MouseEvent) {
@@ -1028,10 +1064,14 @@
 							value={sort}
 							onchange={(e) => choose({ sort: e.currentTarget.value as Sort })}
 						>
-							<option value="recent">Recently updated</option>
-							<option value="connected">Most recently connected</option>
-							<option value="name">Name A–Z</option>
-							<option value="researched">Recently researched</option>
+							{#each KNOWLEDGE_SORT_MENU as key (key)}
+								<option value={key}
+									>{knowledgeSortLabel(
+										key,
+										key === sort ? sortDir : undefined
+									)}</option
+								>
+							{/each}
 						</select>
 					</label>
 				</div>
@@ -1120,13 +1160,45 @@
 						>
 							<div
 								class="hidden border-b border-border text-xs font-medium text-muted-foreground lg:grid {tableCols}"
-								aria-hidden="true"
+								role="group"
+								aria-label="Sort by column"
 							>
 								<span></span>
-								<span class="py-2 pl-1">Name</span>
-								<span class="py-2">Projects</span>
-								<span class="py-2">Tasks</span>
-								<span class="py-2">Docs</span>
+								{#each KNOWLEDGE_SORT_COLUMNS as column (column.key)}
+									{@const active = sort === column.key}
+									<button
+										type="button"
+										class="group/sort flex min-w-0 items-center gap-1 py-2 pr-3 text-left pressable hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring {column.key ===
+										'name'
+											? 'pl-1'
+											: ''} {active ? 'text-foreground' : ''}"
+										aria-pressed={active}
+										title={active
+											? `${knowledgeSortLabel(column.key, sortDir)}. Press to reverse.`
+											: `Sort by ${column.label.toLowerCase()}`}
+										onclick={() => sortBy(column.key)}
+									>
+										{column.label}
+										{#if active}
+											{@const Arrow = sortDir === 'asc' ? ArrowUp : ArrowDown}
+											<Arrow
+												class="h-3 w-3 shrink-0 text-accent"
+												aria-hidden="true"
+											/>
+											<span class="sr-only"
+												>, sorted: {knowledgeSortLabel(
+													column.key,
+													sortDir
+												)}</span
+											>
+										{:else}
+											<ChevronsUpDown
+												class="h-3 w-3 shrink-0 opacity-40 group-hover/sort:opacity-100"
+												aria-hidden="true"
+											/>
+										{/if}
+									</button>
+								{/each}
 							</div>
 							<ul class="divide-y divide-border">
 								{#each rows as row, index (row.id)}

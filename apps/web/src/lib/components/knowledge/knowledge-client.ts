@@ -7,10 +7,13 @@ import type {
 	KnowledgeFactView,
 	KnowledgeKind,
 	KnowledgeListResult,
-	KnowledgeMergePreviewEntry
+	KnowledgeListSort,
+	KnowledgeMergePreviewEntry,
+	KnowledgeSortDir
 } from '@buildos/shared-agent-ops/knowledge';
 import {
 	KNOWLEDGE_KIND_DEFINITIONS,
+	knowledgeSortDefaultDir,
 	type ContactFileSummary,
 	type ParsedContactFile
 } from '@buildos/shared-agent-ops/knowledge';
@@ -35,8 +38,11 @@ export type {
 	KnowledgeEntitySummary,
 	KnowledgeFactView,
 	KnowledgeKind,
-	KnowledgeListResult
+	KnowledgeListResult,
+	KnowledgeListSort,
+	KnowledgeSortDir
 };
+export { knowledgeSortDefaultDir };
 export type KnowledgeMergeEntry = KnowledgeMergePreviewEntry;
 export { MERGE_MAX } from '@buildos/shared-agent-ops/knowledge';
 
@@ -145,7 +151,8 @@ export const knowledgeApi = {
 		filter?: string;
 		q?: string;
 		researched?: 'any' | 'yes' | 'no';
-		sort?: 'recent' | 'name' | 'researched' | 'connected';
+		sort?: KnowledgeListSort;
+		dir?: KnowledgeSortDir;
 		view?: 'all' | 'world' | 'reference' | 'dropped';
 		place?: string | null;
 		limit?: number;
@@ -158,6 +165,8 @@ export const knowledgeApi = {
 		if (params.researched && params.researched !== 'any')
 			search.set('researched', params.researched);
 		if (params.sort && params.sort !== 'recent') search.set('sort', params.sort);
+		if (params.dir && params.dir !== knowledgeSortDefaultDir(params.sort ?? 'recent'))
+			search.set('dir', params.dir);
 		if (params.view && params.view !== 'all') search.set('view', params.view);
 		if (params.place) search.set('place', params.place);
 		search.set('limit', String(params.limit ?? 60));

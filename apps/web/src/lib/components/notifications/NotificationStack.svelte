@@ -9,6 +9,8 @@
 	 *   out above it. A toggle under the deck opens every tile in a scrollable column
 	 *   (scrollbar hidden; edge fades show when more tiles are out of view).
 	 * - Phones only get the toggle while collapsed — even one tile covers the page there.
+	 * - The stack spans the screen width on phones but only its tiles and toggle take
+	 *   taps, so the empty strip beside the toggle never blocks the page under it.
 	 * - The toggle stays below the column so it sits under the pointer/thumb as the
 	 *   column opens upward; DOM order matches visual order for keyboard users.
 	 */
@@ -87,7 +89,7 @@
 
 {#if count > 0}
 	<div
-		class="pointer-events-auto fixed inset-x-3 bottom-[calc(0.75rem+var(--app-bottom-dock,0px))] z-50 flex flex-col gap-2 sm:left-auto sm:right-4 sm:bottom-[calc(1rem+var(--app-bottom-dock,0px))] sm:w-[380px]"
+		class="pointer-events-none fixed inset-x-3 bottom-[calc(0.75rem+var(--app-bottom-dock,0px))] z-50 flex flex-col gap-2 sm:left-auto sm:right-4 sm:bottom-[calc(1rem+var(--app-bottom-dock,0px))] sm:w-[380px]"
 		role="region"
 		aria-label="Notification stack"
 	>
@@ -97,7 +99,7 @@
 			id={LIST_ID}
 			onscroll={updateFades}
 			style={fadeMask}
-			class="-m-1.5 max-h-[min(70dvh,calc(100dvh-6rem-var(--app-bottom-dock,0px)))] flex-col gap-2 overflow-y-auto overscroll-contain p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden {open
+			class="pointer-events-auto -m-1.5 max-h-[min(70dvh,calc(100dvh-6rem-var(--app-bottom-dock,0px)))] flex-col gap-2 overflow-y-auto overscroll-contain p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden {open
 				? 'flex'
 				: 'hidden'} {collapsible ? '' : 'sm:flex'}"
 		>
@@ -112,7 +114,10 @@
 
 		<!-- Collapsed deck (sm+): newest tile in front, older ones peeking out above it. -->
 		{#if collapsible && !open && front}
-			<div class="relative hidden sm:block" style="margin-top: {peekCount * PEEK_OFFSET}px">
+			<div
+				class="pointer-events-auto relative hidden sm:block"
+				style="margin-top: {peekCount * PEEK_OFFSET}px"
+			>
 				{#each Array.from({ length: peekCount }, (_, index) => index + 1) as depth (depth)}
 					<div
 						class="absolute inset-0 rounded-lg border border-foreground/15 bg-muted shadow-ink"
@@ -131,7 +136,7 @@
 		<!-- Phones always get the toggle; from sm up only a collapsible stack needs it. -->
 		<button
 			type="button"
-			class="inline-flex items-center gap-1.5 self-end rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-ink-strong pressable transition-colors hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background {collapsible
+			class="pointer-events-auto inline-flex items-center gap-1.5 self-end rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-ink-strong pressable transition-colors hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background {collapsible
 				? ''
 				: 'sm:hidden'}"
 			aria-expanded={open}

@@ -22,6 +22,7 @@ import {
 	isKnowledgeKind,
 	type KnowledgeKind
 } from './vocabulary';
+import { knowledgeSortDefaultDir } from './types';
 import type {
 	KnowledgeCreatedVia,
 	KnowledgeDataClient,
@@ -1923,6 +1924,11 @@ export class KnowledgeStore {
 				? { p_researched: options.researched }
 				: {}),
 			...(options.sort && options.sort !== 'recent' ? { p_sort: options.sort } : {}),
+			// Sent only when it flips the sort, so the usual directions keep working against a
+			// database without p_dir yet (20261122004500).
+			...(options.dir && options.dir !== knowledgeSortDefaultDir(options.sort ?? 'recent')
+				? { p_dir: options.dir }
+				: {}),
 			// Same for views and places (20261118400000).
 			...(options.view && options.view !== 'all' ? { p_view: options.view } : {}),
 			...(options.place && UUID.test(options.place) ? { p_place: options.place } : {})
