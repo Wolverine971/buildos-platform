@@ -116,6 +116,11 @@ class FakeDb {
 		}
 		if (fn === 'knowledge_merge_entities') {
 			// The parts of public.knowledge_merge_entities these tests read.
+			if (args.p_keep === args.p_merge)
+				return {
+					data: null,
+					error: { code: '22023', message: 'Expected two different entities' }
+				};
 			const merge = this.rows('knowledge_entities').find(
 				(e) =>
 					e.id === args.p_merge &&
@@ -123,10 +128,26 @@ class FakeDb {
 					e.scope === 'private' &&
 					e.status !== 'merged'
 			);
-			if (!merge)
+			if (!merge || merge.is_self)
 				return {
 					data: null,
 					error: { code: '42501', message: 'You can only merge away your own entities' }
+				};
+			const keep = this.rows('knowledge_entities').find(
+				(e) =>
+					e.id === args.p_keep &&
+					e.status === 'active' &&
+					(e.scope === 'public' || e.owner_user_id === args.p_viewer)
+			);
+			if (!keep)
+				return {
+					data: null,
+					error: { code: '42501', message: 'Entity to keep not found' }
+				};
+			if (keep.kind !== merge.kind)
+				return {
+					data: null,
+					error: { code: '22023', message: 'Only entities of the same kind can merge' }
 				};
 			for (const table of ['knowledge_record_links', 'knowledge_mentions', 'knowledge_facts'])
 				for (const r of this.rows(table))
@@ -1055,6 +1076,246 @@ describe('KnowledgeStore identity', () => {
 				);
 			expect(active.map((e) => e.id)).toEqual([a]);
 			expect(await store.listNameTwins()).toEqual([]);
+		});
+
+		it('says why a merge was refused, in words you can act on', async () => {
+			const { store, bobStore } = setup();
+			const { a, b } = await twoCraigs(store);
+			const c = (await store.record(person('Craig'), { via: 'chat' })).entities[0]!.id;
+			const org = (
+				await store.record(
+					{ entities: [{ ref: 'o', kind: 'org', name: 'Craig Supply' }], facts: [] },
+					{ via: 'chat' }
+				)
+			).entities[0]!.id;
+			const bobs = (await bobStore.record(person('Craig Bob'), { via: 'chat' })).entities[0]!
+				.id;
+			await store.merge(a, b);
+
+			// Asked twice (a stale list): it already happened.
+			await expect(store.merge(a, b)).rejects.toThrow('"Craig" is already part of "Craig".');
+			// Folded into something else since the list was loaded.
+			await expect(store.merge(c, b)).rejects.toThrow(
+				'"Craig" was already merged into "Craig".'
+			);
+			// The one to keep is the one that went away.
+			await expect(store.merge(b, c)).rejects.toThrow('Merge into that one instead.');
+			await expect(store.merge(org, c)).rejects.toThrow(
+				'"Craig" is a person and "Craig Supply" is an organization. Change the type on one of them so they match, then merge.'
+			);
+			// Someone else's entry is invisible, so it reads as gone.
+			await expect(store.merge(a, bobs)).rejects.toThrow('One of these no longer exists');
+			await expect(store.merge(a, a)).rejects.toThrow('nothing to merge');
+
+			// Several at once: each failure carries its own reason.
+			const result = await store.mergeMany(a, [c, bobs, org]);
+			expect(result.merged).toEqual([c]);
+			expect(result.failed).toEqual([
+				{ id: bobs, error: expect.stringContaining('no longer exists') },
+				{
+					id: org,
+					error: expect.stringContaining('is an organization and "Craig" is a person')
+				}
+			]);
+		});
+
+		it('can keep "you", but never folds you into someone else', async () => {
+			const { db, alice, store } = setup();
+			const card = await store.createEntry({
+				kind: 'person',
+				name: 'Alice W',
+				via: 'import'
+			});
+			const me = randomUUID();
+			db.rows('knowledge_entities').push({
+				id: me,
+				kind: 'person',
+				name: 'Alice Wayne',
+				summary: null,
+				scope: 'private',
+				is_self: true,
+				image_url: null,
+				status: 'active',
+				merged_into_id: null,
+				owner_user_id: alice,
+				created_at: new Date().toISOString(),
+				created_via: 'system'
+			});
+			await expect(store.merge(card, me)).rejects.toThrow(
+				'"Alice Wayne" is you, so it can only be the one you keep.'
+			);
+			await expect(store.merge(me, card)).resolves.toMatchObject({ kept: me });
+		});
+
+		it('says what look-alikes share and where they differ', async () => {
+			const { db, alice, store } = setup();
+			const make = async (
+				name: string,
+				facts: Array<{ predicate: string; value?: string; org?: string }>
+			) => {
+				const id = await store.createEntry({ kind: 'person', name, via: 'import' });
+				for (const fact of facts) {
+					const org = fact.org
+						? (
+								await store.record(
+									{
+										entities: [{ ref: 'o', kind: 'org', name: fact.org }],
+										facts: []
+									},
+									{ via: 'import' }
+								)
+							).entities[0]!.id
+						: null;
+					db.rows('knowledge_facts').push({
+						id: randomUUID(),
+						entity_id: id,
+						predicate: fact.predicate,
+						object_entity_id: org,
+						value_text: fact.value ?? null,
+						qualifiers: {},
+						scope: 'private',
+						owner_user_id: alice,
+						status: 'active'
+					});
+				}
+				return id;
+			};
+			const linkedIn = await make('Dana Lee', [
+				{ predicate: 'email', value: 'Dana@Example.com' },
+				{ predicate: 'profile_url', value: 'https://www.linkedin.com/in/dana-lee/' },
+				{ predicate: 'works_at', org: 'Northwind' }
+			]);
+			const phone = await make('Dana Lee', [
+				{ predicate: 'email', value: 'dana@example.com' },
+				{ predicate: 'phone', value: '+1 (410) 555-0144' },
+				// A profile on another site is not a different LinkedIn profile.
+				{ predicate: 'profile_url', value: 'https://facebook.com/dana.lee.31' },
+				{ predicate: 'works_at', org: 'Northwind' }
+			]);
+			const other = await make('Dana Lee', [
+				{ predicate: 'profile_url', value: 'https://linkedin.com/in/dana-lee-2' },
+				{ predicate: 'phone', value: '4435550100' },
+				{ predicate: 'works_at', org: 'Globex' }
+			]);
+			const task = randomUUID();
+			for (const id of [linkedIn, phone])
+				db.rows('knowledge_record_links').push({
+					entity_id: id,
+					owner_user_id: alice,
+					record_kind: 'task',
+					record_id: task
+				});
+
+			// Same person twice: the phone sits on one side only, so it says nothing either way.
+			expect((await store.mergePreview([linkedIn, phone])).evidence).toEqual({
+				same: ['email Dana@Example.com', 'employer Northwind', 'a task or doc'],
+				different: []
+			});
+			// Two people who share a name.
+			expect((await store.mergePreview([linkedIn, other])).evidence).toEqual({
+				same: [],
+				different: ['LinkedIn profiles', 'employers (Northwind vs Globex)']
+			});
+			expect((await store.mergePreview([phone, other])).evidence).toEqual({
+				same: [],
+				different: ['phone numbers', 'employers (Northwind vs Globex)']
+			});
+
+			// The review list carries the same lines for the whole same-name group.
+			const review = await store.reviewList();
+			expect(review.twins).toHaveLength(1);
+			expect(review.twins[0]!.evidence.different).toContain('LinkedIn profiles');
+			expect(Object.keys(review.about).sort()).toEqual([linkedIn, phone, other].sort());
+		});
+
+		it('keeps the fuller name when a "same one?" question is answered Same', async () => {
+			const { db, alice, store } = setup();
+			const short = await store.createEntry({ kind: 'person', name: 'Laura', via: 'task' });
+			const full = await store.createEntry({
+				kind: 'person',
+				name: 'Laura Svehla',
+				via: 'import'
+			});
+			// The short name is the busier entry; the full name is still the better label.
+			for (let i = 0; i < 3; i++)
+				db.rows('knowledge_record_links').push({
+					entity_id: short,
+					owner_user_id: alice,
+					record_kind: 'task',
+					record_id: randomUUID()
+				});
+			await store.addMergeCandidate(short, full, {
+				reason: 'One-word name in the same project as Laura Svehla'
+			});
+			const review = await store.reviewList();
+			expect(review.candidates).toHaveLength(1);
+			expect(review.candidates[0]).toMatchObject({
+				keep_id: full,
+				reason: 'One-word name in the same project as Laura Svehla',
+				evidence: { same: [], different: [] }
+			});
+
+			// Names of the same length: the one on more tasks and docs stays.
+			const busy = await store.createEntry({
+				kind: 'person',
+				name: 'Jon Smyth',
+				via: 'task'
+			});
+			const quiet = await store.createEntry({
+				kind: 'person',
+				name: 'John Smith',
+				via: 'import'
+			});
+			db.rows('knowledge_record_links').push({
+				entity_id: busy,
+				owner_user_id: alice,
+				record_kind: 'task',
+				record_id: randomUUID()
+			});
+			await store.addMergeCandidate(quiet, busy, { reason: 'Similar spelling' });
+			const again = await store.reviewList();
+			expect(again.candidates.find((c) => [c.a.id, c.b.id].includes(busy))!.keep_id).toBe(
+				busy
+			);
+		});
+
+		it('says where each detail came from', async () => {
+			const { db, alice, store } = setup();
+			const run = randomUUID();
+			db.rows('knowledge_runs').push({
+				id: run,
+				owner_user_id: alice,
+				title: 'Imported LinkedIn connections'
+			});
+			const base = { run_id: null, sources: [] };
+			const origins = await store.factOrigins([
+				{ ...base, id: 'from-run', run_id: run, created_via: 'import' },
+				{
+					...base,
+					id: 'from-task',
+					created_via: 'backfill',
+					sources: [
+						{
+							id: randomUUID(),
+							type: 'task',
+							url: null,
+							title: 'Call Dana about the lease',
+							quote: null,
+							captured_at: new Date().toISOString(),
+							scope: 'private'
+						}
+					]
+				},
+				{ ...base, id: 'by-hand', created_via: 'manual' },
+				// A run that is gone (or someone else's) falls back to how the detail got in.
+				{ ...base, id: 'lost-run', run_id: randomUUID(), created_via: 'import' }
+			]);
+			expect(origins).toEqual({
+				'from-run': 'Imported LinkedIn connections',
+				'from-task': 'Task: Call Dana about the lease',
+				'by-hand': 'Added by you',
+				'lost-run': 'A contact import'
+			});
 		});
 	});
 

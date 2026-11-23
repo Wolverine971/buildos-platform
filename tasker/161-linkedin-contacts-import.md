@@ -156,3 +156,24 @@ Working tree on `4a3ed3f87`, uncommitted.
 - `pnpm --filter @buildos/worker exec vitest run src/workers/knowledge/documentMentionsWorker.test.ts` passed 3 tests. `pnpm --filter @buildos/web check` reported 0 errors.
 - Local app against the live graph: the review lists 8 same-name groups, none with a repeated entry, each showing both entries; "Review" opens both in the merge dialog. Nothing was merged.
 - Found, not fixed: DJ's own phone card did not land on his "you" entry, so "DJ Wayne · 2 entries" is in the review.
+
+## November 22, late: seeing what you are merging, and why a merge failed
+
+DJ asked to open up an entry in the review, to see why two entries were put side by side, to be
+told why when a merge fails, and to decide each one by hand.
+
+A dry run of every merge the review offers (102 attempts as his signed-in account, each rolled
+back) found no merge that fails on its own data. The gaps were in what the screens said.
+
+| Problem                                                                                                                                               | Fix                                                                                                                                                                                                                                                                                              |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| An entry in the review showed at most four short lines.                                                                                               | "Details" on every entry, in the review and in the merge dialog: each detail with the import, task, chat or research it came from and the date, other spellings, the tasks and docs it is on, its connections, and a link to the full card.                                                      |
+| A "same one?" question never said why it was asked. The stored reason was not shown.                                                                  | Each card says why it is there ("Same last name, similar first name"), then what the entries have in common and where they differ: email, phone, LinkedIn profile, employer, shared tasks and docs. A detail only one side has is not counted.                                                   |
+| A refused merge said "Could not combine these" or "Could not save that" in a toast. A partly failed merge closed the dialog, and its message with it. | The refusal says what happened: already merged into which entry, deleted, shared, "is you", or different kinds and what to change. It stays on the card or under the entry in the dialog, which now stays open. A merge button that is off says why.                                             |
+| A pair question offered only Same and Different, and "Same" kept whichever entry had the lower id.                                                    | Every card has Review, which opens the merge dialog on those entries and returns to the list afterwards. The entry that "Same" keeps is marked Keep: the fuller name, then the one on more tasks and docs, then the older. The dialog has "Different people" too. "You" can be the one you keep. |
+
+Working tree on `89c5173fb`, uncommitted. No migration.
+
+- `pnpm --filter @buildos/shared-agent-ops exec vitest run src/knowledge` passed 216 tests (5 new). Each new test fails against a broken variant: the database's own message, any profile treated as LinkedIn, the busier entry kept over the fuller name, a one-sided detail counted as a difference.
+- `pnpm --filter @buildos/web check` reported 0 errors; eslint and prettier are clean on the changed files.
+- Local app against the live graph, with every write to the merge endpoint pointed at an entry that does not exist: 8 groups and 41 questions before and after; the refusal reason showed on the pair card, the group card and in the dialog; Details loaded sources for each detail; Cancel in the dialog returned to the review. "Different people" inside the dialog was not pressed (it would have saved an answer).

@@ -1,11 +1,17 @@
 // apps/web/src/routes/api/knowledge/merge/+server.ts
 /**
- * GET   /api/knowledge/merge                       → pending "same person?" suggestions, plus
- *                                                    same-name groups ("Craig" ×2), and what
- *                                                    tells each entry apart (`about`, by id)
+ * GET   /api/knowledge/merge                       → pending "same person?" questions (why each
+ *                                                    was asked, which entry "Same" keeps), plus
+ *                                                    same-name groups ("Craig" ×2), what tells
+ *                                                    each entry apart (`about`, by id) and what
+ *                                                    each group shares (`evidence`)
  * GET   /api/knowledge/merge?ids=a,b,c              → what merging these would move
+ * GET   /api/knowledge/merge?detail=id              → one entry in full, for "Details" in the
+ *                                                    review: every detail with where it came
+ *                                                    from, and the tasks and docs it is on
  * POST  /api/knowledge/merge { keep, merge }        → fold `merge` (one id, or up to 25) into
- *                                                    `keep` (own entries)
+ *                                                    `keep` (own entries). A refusal comes back
+ *                                                    as a 400 whose message says why.
  * PATCH /api/knowledge/merge { candidate_id }        → "These are different"
  * PATCH /api/knowledge/merge { entity_ids }          → "Different people" for a same-name group
  */
@@ -16,6 +22,7 @@ import {
 	knowledgeDb,
 	knowledgeErrorResponse,
 	knowledgeStoreFor,
+	loadLinkedRecords,
 	UUID_PATTERN
 } from '$lib/server/knowledge/knowledge.server';
 import { widenTagsToName } from '$lib/server/knowledge/tag-widening.server';
@@ -24,6 +31,21 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user) return ApiResponse.unauthorized('Authentication required');
 	const store = knowledgeStoreFor(locals.supabase, user.id);
+	const detailId = url.searchParams.get('detail');
+	if (detailId !== null) {
+		if (!UUID_PATTERN.test(detailId)) return ApiResponse.badRequest('Invalid id');
+		try {
+			const detail = await store.getEntity(detailId);
+			if (!detail) return ApiResponse.notFound('Entry');
+			const [records, origins] = await Promise.all([
+				loadLinkedRecords(locals.supabase, detail.links),
+				store.factOrigins([...detail.facts, ...detail.incoming])
+			]);
+			return ApiResponse.success({ ...detail, records, origins });
+		} catch (error) {
+			return knowledgeErrorResponse(error, 'Could not load this entry');
+		}
+	}
 	const ids = url.searchParams.get('ids');
 	if (ids !== null) {
 		const list = ids.split(',').filter(Boolean);
@@ -40,16 +62,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		}
 	}
 	try {
-		const [candidates, twins] = await Promise.all([
-			store.listMergeCandidates(50),
-			store.listNameTwins(50)
-		]);
-		// What each entry is, so two look-alikes can be told apart without opening them.
-		const about = await store.describeForReview([
-			...twins.flatMap((group) => group.ids),
-			...candidates.flatMap((candidate) => [candidate.a.id, candidate.b.id])
-		]);
-		return ApiResponse.success({ candidates, twins, about });
+		return ApiResponse.success(await store.reviewList(50));
 	} catch (error) {
 		return knowledgeErrorResponse(error, 'Could not load suggestions');
 	}
@@ -88,8 +101,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.success({ ...merged, widened: (await widen()).widened });
 		}
 		const result = await store.mergeMany(keep, merge);
-		if (!result.merged.length && result.failed.length)
-			return ApiResponse.badRequest('Could not combine these');
+		if (!result.merged.length && result.failed.length) {
+			// Nothing merged: say why, one reason per entry (a long list is cut short).
+			const reasons = [...new Set(result.failed.map((f) => f.error))];
+			const more = reasons.length - 3;
+			return ApiResponse.badRequest(
+				reasons.slice(0, 3).join(' ') + (more > 0 ? ` (and ${more} more)` : ''),
+				{ failed: result.failed }
+			);
+		}
 		return ApiResponse.success({ ...result, widened: (await widen()).widened });
 	} catch (error) {
 		return knowledgeErrorResponse(error, 'Could not combine these');

@@ -186,6 +186,8 @@ export interface KnowledgeKindChange {
 export interface KnowledgeMergePreview {
 	entries: KnowledgeMergePreviewEntry[];
 	suggested_keep: string | null;
+	/** What the entries share and where they differ. */
+	evidence: KnowledgeReviewEvidence;
 }
 
 /** Your own entries with the same kind and exact name. */
@@ -194,6 +196,48 @@ export interface KnowledgeNameTwins {
 	name: string;
 	/** Oldest first. */
 	ids: string[];
+}
+
+/**
+ * Why two (or more) entries might be the same, from what is saved on them: contact details,
+ * LinkedIn profile, employer and the tasks and docs they are on. Short phrases that follow
+ * "In common:" and "Different:" on screen.
+ */
+export interface KnowledgeReviewEvidence {
+	/** "email maya@example.com", "employer Northwind", "2 tasks & docs". */
+	same: string[];
+	/** "LinkedIn profiles", "employers (Acme vs Globex)". */
+	different: string[];
+}
+
+/** One "same one?" question in the duplicates review. */
+export interface KnowledgeMergeQuestion {
+	id: string;
+	/** Why it was asked: "Same last name, similar first name". */
+	reason: string;
+	score: number;
+	a: KnowledgeEntitySummary;
+	b: KnowledgeEntitySummary;
+	/** The question to show, when an identity check asked it. */
+	question: string | null;
+	origin: 'name' | 'identity';
+	/** The entry that stays when the answer is "Same" (the other folds into it). */
+	keep_id: string | null;
+	evidence?: KnowledgeReviewEvidence;
+}
+
+/** Everything the duplicates review shows (KnowledgeStore.reviewList). */
+export interface KnowledgeReviewList {
+	candidates: KnowledgeMergeQuestion[];
+	twins: Array<KnowledgeNameTwins & { evidence: KnowledgeReviewEvidence }>;
+	/** What tells each entry apart, by id. */
+	about: Record<string, KnowledgeReviewAbout>;
+}
+
+/** A merge that did not happen, and why, in words the user can act on. */
+export interface KnowledgeMergeFailure {
+	id: string;
+	error: string;
 }
 
 export interface KnowledgeSourceView {

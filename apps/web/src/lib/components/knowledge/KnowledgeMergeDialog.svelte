@@ -4,12 +4,24 @@
 	"Merge…" on an entry's card (pick the other one by searching), and "Review" on a same-name
 	group in the duplicates review. Shows what each entry carries (tasks and docs it's on,
 	highlighted names, details), suggests which to keep, and lets you untick any that aren't the
-	same. Merging can't be undone (duplicate details are dropped), so the button says exactly
-	what happens. Mount it only while open (the parent wraps it in {#if}).
+	same. "Details" opens an entry up: every detail and where it came from. Above the list it
+	says what the entries share and where they differ. Merging can't be undone (duplicate details
+	are dropped), so the button says exactly what happens; an entry that can't be merged says why
+	under it, before and after you try. Mount it only while open (the parent wraps it in {#if}).
 -->
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
-	import { AlertTriangle, GitMerge, Loader2, Plus, Search } from '$lib/icons/lucide';
+	import KnowledgeReviewDetails from './KnowledgeReviewDetails.svelte';
+	import KnowledgeReviewWhy from './KnowledgeReviewWhy.svelte';
+	import {
+		AlertTriangle,
+		ChevronDown,
+		ChevronRight,
+		GitMerge,
+		Loader2,
+		Plus,
+		Search
+	} from '$lib/icons/lucide';
 	import {
 		KIND_ICON,
 		KIND_LABEL,
@@ -17,17 +29,31 @@
 		knowledgeAddedLine,
 		knowledgeApi,
 		type KnowledgeEntitySummary,
-		type KnowledgeMergeEntry
+		type KnowledgeKind,
+		type KnowledgeMergeEntry,
+		type KnowledgeReviewEvidence
 	} from './knowledge-client';
 
 	interface Props {
 		/** The entries to start with (one from a card, several from the list). */
 		ids: string[];
+		/** The entry to start out keeping (else the one with the most attached). */
+		initialKeep?: string | null;
 		onClose: () => void;
-		onMerged: (result: { kept: string; merged: string[] }) => void;
+		/**
+		 * Called after a merge. With `failed` non-empty the dialog stays open to show why, so the
+		 * parent should leave it mounted.
+		 */
+		onMerged: (result: {
+			kept: string;
+			merged: string[];
+			failed: Array<{ id: string; error: string }>;
+		}) => void;
+		/** Opened from the duplicates review: answer "these are different" and close. */
+		onDifferent?: () => Promise<void> | void;
 	}
 
-	let { ids, onClose, onMerged }: Props = $props();
+	let { ids, initialKeep = null, onClose, onMerged, onDifferent }: Props = $props();
 
 	let entries = $state<KnowledgeMergeEntry[]>([]);
 	let keepId = $state<string | null>(null);
@@ -36,6 +62,13 @@
 	let loading = $state(true);
 	let merging = $state(false);
 	let error = $state<string | null>(null);
+	/** What the entries share and where they differ. */
+	let evidence = $state.raw<KnowledgeReviewEvidence | null>(null);
+	/** Why an entry wasn't merged on the last try, by id. */
+	let failures = $state.raw<Record<string, string>>({});
+	/** Entries opened up ("Details"). */
+	let opened = $state.raw<Set<string>>(new Set());
+	let answering = $state(false);
 
 	let query = $state('');
 	let results = $state<KnowledgeEntitySummary[]>([]);
@@ -76,14 +109,37 @@
 		return parts.length ? parts.join(' · ') : 'Nothing attached yet';
 	}
 
+	/** "a person", "an organization". */
+	function aKind(kind: KnowledgeKind) {
+		const word = KIND_LABEL[kind].one.toLowerCase();
+		return `${/^[aeiou]/.test(word) ? 'an' : 'a'} ${word}`;
+	}
+
 	/** Why an entry can't be folded into the kept one, if it can't. */
 	function blocked(e: KnowledgeMergeEntry): string | null {
 		if (e.id === keepId) return null;
+		if (e.is_self) return "Can't be merged away: this is you. Pick it as the one to keep.";
+		if (!e.mergeable)
+			return "Can't be merged away: it's a shared entry. Pick it as the one to keep.";
 		if (keep && e.kind !== keep.kind)
-			return `Different kind (${KIND_LABEL[e.kind].one.toLowerCase()})`;
-		if (e.is_self) return "That's you";
-		if (!e.mergeable) return 'Shared entry: it can only be the one you keep';
+			return `Can't merge: this is ${aKind(e.kind)} and ${keep.name} is ${aKind(keep.kind)}. Change the type on one of them first.`;
 		return null;
+	}
+
+	/** Why the Merge button is off, when it is. */
+	const idleReason = $derived.by(() => {
+		if (!keep || entries.length < 2 || folding.length) return null;
+		const others = entries.filter((e) => e.id !== keepId);
+		return others.every((e) => blocked(e))
+			? `Nothing here can be merged into ${keep.name}. The reason is under each entry.`
+			: `Tick "Same" on the entries that are the same as ${keep.name}.`;
+	});
+
+	function toggleDetails(id: string) {
+		const next = new Set(opened);
+		if (next.has(id)) next.delete(id);
+		else next.add(id);
+		opened = next;
 	}
 
 	async function load(next: string[]) {
@@ -92,10 +148,18 @@
 		try {
 			const preview = await knowledgeApi.mergePreview(next);
 			entries = preview.entries;
-			// Keep the user's pick across reloads; otherwise the suggestion.
+			evidence = preview.evidence ?? null;
+			// Keep the user's pick across reloads; otherwise where the review said, then the suggestion.
 			if (!keepId || !entries.some((e) => e.id === keepId))
-				keepId = preview.suggested_keep ?? entries[0]?.id ?? null;
+				keepId =
+					(initialKeep && entries.some((e) => e.id === initialKeep)
+						? initialKeep
+						: preview.suggested_keep) ??
+					entries[0]?.id ??
+					null;
 			if (!entries.length) error = 'Those entries are gone (already merged or deleted).';
+			else if (next.length > 1 && entries.length === 1)
+				error = `Only ${entries[0]!.name} is left: the other was already merged or deleted.`;
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Could not load those entries';
 		} finally {
@@ -157,23 +221,45 @@
 		if (!keep || !folding.length || merging) return;
 		merging = true;
 		error = null;
+		failures = {};
+		const wanted = folding.length;
 		try {
 			const result = await knowledgeApi.mergeMany(
 				keep.id,
 				folding.map((e) => e.id)
 			);
-			if (result.failed.length && result.merged.length)
-				error = `Merged ${result.merged.length}; ${plural(result.failed.length, "one couldn't be", "couldn't be")}.`;
-			onMerged({ kept: result.kept, merged: result.merged });
+			onMerged(result);
+			if (result.failed.length) {
+				// Still open: show what is left, with the reason under each one that didn't merge.
+				const gone = new Set(result.merged);
+				await load(entries.filter((e) => !gone.has(e.id)).map((e) => e.id));
+				failures = Object.fromEntries(result.failed.map((f) => [f.id, f.error]));
+				error = `Merged ${result.merged.length} of ${wanted}. The rest are still here, with the reason under each.`;
+			}
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Could not merge those';
+			// Nothing merged: the message says why.
+			error = `Not merged. ${err instanceof Error ? err.message : 'Something went wrong; nothing was changed.'}`;
 		} finally {
 			merging = false;
 		}
 	}
+
+	async function different() {
+		if (!onDifferent || answering) return;
+		answering = true;
+		error = null;
+		try {
+			await onDifferent();
+			onClose();
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Could not save that';
+		} finally {
+			answering = false;
+		}
+	}
 </script>
 
-<Modal isOpen={true} {onClose} {title} size="md">
+<Modal isOpen={true} {onClose} {title} size="lg">
 	<form class="flex flex-col gap-4 p-4 sm:p-5" onsubmit={merge}>
 		{#if loading && !entries.length}
 			<p class="flex items-center gap-2 text-sm text-muted-foreground">
@@ -182,8 +268,10 @@
 		{:else}
 			{#if entries.length >= 2}
 				<p class="text-sm text-muted-foreground">
-					Pick the one to keep. The others fold into it.
+					Pick the one to keep. The others fold into it. Untick "Same" on any that should
+					stay separate.
 				</p>
+				<KnowledgeReviewWhy {evidence} />
 			{/if}
 			<ul class="flex flex-col gap-2" aria-label="Entries to merge">
 				{#each entries as entry (entry.id)}
@@ -201,7 +289,6 @@
 							name="keep"
 							class="mt-1 h-4 w-4 shrink-0 border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							checked={isKeep}
-							disabled={entry.is_self}
 							aria-label="Keep {entry.name}"
 							onchange={() => {
 								keepId = entry.id;
@@ -242,6 +329,28 @@
 							</p>
 							{#if why}
 								<p class="mt-1 text-xs text-warning">{why}</p>
+							{/if}
+							{#if failures[entry.id]}
+								<p class="mt-1 text-xs text-destructive" role="alert">
+									<span class="font-medium">Not merged.</span>
+									{failures[entry.id]}
+								</p>
+							{/if}
+							<button
+								type="button"
+								class="-ml-1 mt-1 inline-flex min-h-7 items-center gap-1 rounded-md px-1 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								aria-expanded={opened.has(entry.id)}
+								onclick={() => toggleDetails(entry.id)}
+							>
+								{#if opened.has(entry.id)}
+									<ChevronDown class="h-3.5 w-3.5" aria-hidden="true" />
+								{:else}
+									<ChevronRight class="h-3.5 w-3.5" aria-hidden="true" />
+								{/if}
+								Details<span class="sr-only"> for {entry.name}</span>
+							</button>
+							{#if opened.has(entry.id)}
+								<KnowledgeReviewDetails id={entry.id} />
 							{/if}
 						</div>
 						{#if !isKeep && !why}
@@ -336,8 +445,14 @@
 						will become part of <span class="font-medium">{keep.name}</span>. Tasks,
 						docs, highlights and details move over; other spellings stay searchable.
 						This can't be undone.
+						{#if keep.is_self}
+							You are keeping your own entry, so only fold in entries that are also
+							you.
+						{/if}
 					</span>
 				</p>
+			{:else if idleReason}
+				<p class="text-sm text-muted-foreground">{idleReason}</p>
 			{/if}
 		{/if}
 
@@ -345,7 +460,16 @@
 			<p class="text-sm text-destructive" role="alert">{error}</p>
 		{/if}
 
-		<div class="flex justify-end gap-2">
+		<div class="flex flex-wrap justify-end gap-2">
+			{#if onDifferent && entries.length >= 2}
+				<button
+					type="button"
+					class="mr-auto rounded-md border border-border px-3 py-2 text-sm text-foreground pressable hover:bg-muted disabled:opacity-60"
+					disabled={answering || merging}
+					onclick={() => void different()}
+					>{keep?.kind === 'person' ? 'Different people' : 'Different'}</button
+				>
+			{/if}
 			<button
 				type="button"
 				class="rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted"

@@ -36,9 +36,13 @@ import type {
 	KnowledgeKindChange,
 	KnowledgeListOptions,
 	KnowledgeListResult,
+	KnowledgeMergeFailure,
 	KnowledgeMergePreview,
 	KnowledgeMergePreviewEntry,
+	KnowledgeMergeQuestion,
 	KnowledgeReviewAbout,
+	KnowledgeReviewEvidence,
+	KnowledgeReviewList,
 	KnowledgeNameTwins,
 	KnowledgeQueryPathStep,
 	KnowledgeQueryResult,
@@ -191,6 +195,53 @@ function shortUrl(value: string): string {
 		.replace(/^https?:\/\/(www\.)?/i, '')
 		.replace(/[?#].*$/, '')
 		.replace(/\/+$/, '');
+}
+
+/** "a person", "an organization". */
+function aKind(kind: KnowledgeKind): string {
+	const word = (KNOWLEDGE_KIND_DEFINITIONS[kind]?.label ?? kind).toLowerCase();
+	return `${/^[aeiou]/.test(word) ? 'an' : 'a'} ${word}`;
+}
+
+/** Phone numbers compare by their last ten digits ("+1 (410) 555-0144" = "4105550144"). */
+function phoneKey(value: string): string {
+	return value.replace(/\D/g, '').slice(-10);
+}
+
+/** Where a detail came from when no import or research run made it. */
+const VIA_ORIGIN: Record<string, string> = {
+	import: 'A contact import',
+	chat: 'A chat',
+	mcp: 'An agent',
+	enrichment: 'Research',
+	task: 'Your tasks',
+	backfill: 'Your tasks',
+	system: 'Your docs',
+	manual: 'Added by you'
+};
+const SOURCE_ORIGIN: Record<string, string> = {
+	task: 'Task',
+	document: 'Doc',
+	chat: 'Chat',
+	web: 'Web',
+	youtube: 'YouTube'
+};
+
+/** What the duplicates review reads about each entry, loaded once (loadReviewMaterial). */
+interface ReviewMaterial {
+	rows: Array<{ id: string; summary: string | null; created_at: string; created_via: string }>;
+	facts: Map<
+		string,
+		Array<{
+			predicate: string;
+			object_entity_id: string | null;
+			value_text: string | null;
+			qualifiers: Record<string, unknown> | null;
+		}>
+	>;
+	/** entity id → "task:<id>" for every task, doc or other record it is on. */
+	records: Map<string, Set<string>>;
+	named: Map<string, EntityRow>;
 }
 
 function dbError(context: string, error: unknown): KnowledgeStoreError {
@@ -1582,23 +1633,87 @@ export class KnowledgeStore {
 		if (!data?.length) throw new KnowledgeStoreError('Fact not found.', 'NOT_FOUND');
 	}
 
+	/**
+	 * Fold `mergeId` into `keepId`. A refusal says why in the user's words (already merged,
+	 * shared, different kinds, …) rather than the database's.
+	 */
 	async merge(keepId: string, mergeId: string): Promise<Record<string, unknown>> {
 		const { data, error } = await this.db.rpc('knowledge_merge_entities', {
 			p_keep: keepId,
 			p_merge: mergeId,
 			p_viewer: this.userId
 		});
-		if (error) throw dbError('Merge', error);
+		if (error)
+			throw new KnowledgeStoreError(
+				await this.whyMergeFailed(keepId, mergeId, error),
+				'INVALID',
+				error
+			);
 		return (data ?? {}) as Record<string, unknown>;
+	}
+
+	/** Why the database refused a merge, worked out from the two entries as they are now. */
+	private async whyMergeFailed(keepId: string, mergeId: string, error: unknown): Promise<string> {
+		const raw =
+			error && typeof error === 'object' && 'message' in error
+				? String((error as { message: unknown }).message)
+				: String(error);
+		const fallback = `The merge was refused: ${raw}`;
+		try {
+			if (keepId === mergeId)
+				return 'Those are the same entry, so there is nothing to merge.';
+			const { data, error: readError } = await this.db
+				.from('knowledge_entities')
+				.select(ENTITY_COLUMNS)
+				.in('id', [keepId, mergeId])
+				.or(this.visible);
+			if (readError) return fallback;
+			const rows = (data ?? []) as EntityRow[];
+			const keep = rows.find((r) => r.id === keepId);
+			const gone = rows.find((r) => r.id === mergeId);
+			const survivorOf = async (row: EntityRow) =>
+				row.merged_into_id
+					? ((await this.loadEntities([row.merged_into_id])).get(row.merged_into_id)
+							?.name ?? null)
+					: null;
+			if (!gone)
+				return 'One of these no longer exists (it was deleted, or you can no longer see it).';
+			if (gone.status === 'merged') {
+				if (gone.merged_into_id === keepId && keep)
+					return `"${gone.name}" is already part of "${keep.name}".`;
+				const into = await survivorOf(gone);
+				return into
+					? `"${gone.name}" was already merged into "${into}".`
+					: `"${gone.name}" was already merged into another entry.`;
+			}
+			if (gone.is_self) return `"${gone.name}" is you, so it can only be the one you keep.`;
+			if (gone.scope !== 'private' || gone.owner_user_id !== this.userId)
+				return `"${gone.name}" is a shared entry, so it can only be the one you keep.`;
+			if (!keep)
+				return 'The entry to keep no longer exists (it was deleted, or you can no longer see it).';
+			if (keep.status === 'merged') {
+				const into = await survivorOf(keep);
+				return into
+					? `"${keep.name}" was already merged into "${into}". Merge into that one instead.`
+					: `"${keep.name}" was already merged into another entry.`;
+			}
+			if (keep.status !== 'active')
+				return `"${keep.name}" is hidden. Bring it back first, or keep the other one.`;
+			if (keep.kind !== gone.kind)
+				return `"${gone.name}" is ${aKind(gone.kind)} and "${keep.name}" is ${aKind(keep.kind)}. Change the type on one of them so they match, then merge.`;
+			return fallback;
+		} catch {
+			return fallback;
+		}
 	}
 
 	/** Fold several entries into one, one at a time; a failure doesn't stop the rest. */
 	async mergeMany(
 		keepId: string,
 		mergeIds: string[]
-	): Promise<{ kept: string; merged: string[]; failed: Array<{ id: string; error: string }> }> {
+	): Promise<{ kept: string; merged: string[]; failed: KnowledgeMergeFailure[] }> {
 		const merged: string[] = [];
-		const failed: Array<{ id: string; error: string }> = [];
+		const failed: KnowledgeMergeFailure[] = [];
 		for (const id of unique(mergeIds)) {
 			if (id === keepId) continue;
 			try {
@@ -1618,7 +1733,8 @@ export class KnowledgeStore {
 	 */
 	async mergePreview(ids: string[]): Promise<KnowledgeMergePreview> {
 		const wanted = unique(ids).slice(0, MERGE_MAX + 1);
-		if (!wanted.length) return { entries: [], suggested_keep: null };
+		if (!wanted.length)
+			return { entries: [], suggested_keep: null, evidence: { same: [], different: [] } };
 		const { data, error } = await this.db
 			.from('knowledge_entities')
 			.select(ENTITY_COLUMNS + ', created_at, created_via, circle')
@@ -1647,12 +1763,13 @@ export class KnowledgeStore {
 				counts.set(row.entity_id, (counts.get(row.entity_id) ?? 0) + 1);
 			return counts;
 		};
-		const [facts, links, mentions, about] = await Promise.all([
+		const [facts, links, mentions, material] = await Promise.all([
 			countBy('knowledge_facts', true),
 			countBy('knowledge_record_links'),
 			countBy('knowledge_mentions'),
-			this.describeForReview(found)
+			this.loadReviewMaterial(found)
 		]);
+		const about = this.aboutFrom(material);
 		const entries: KnowledgeMergePreviewEntry[] = rows
 			.map((r) => ({
 				...summarize(r),
@@ -1672,7 +1789,11 @@ export class KnowledgeStore {
 		const best = [...entries].sort(
 			(a, b) => weight(b) - weight(a) || a.created_at.localeCompare(b.created_at)
 		)[0];
-		return { entries, suggested_keep: best?.id ?? null };
+		return {
+			entries,
+			suggested_keep: best?.id ?? null,
+			evidence: this.evidenceFrom(material, found)
+		};
 	}
 
 	/**
@@ -1681,14 +1802,19 @@ export class KnowledgeStore {
 	 * a handful of queries for the whole review list.
 	 */
 	async describeForReview(ids: string[]): Promise<Record<string, KnowledgeReviewAbout>> {
+		return this.aboutFrom(await this.loadReviewMaterial(ids));
+	}
+
+	/** The entries, their identifying details and the records they are on: one read for many. */
+	private async loadReviewMaterial(ids: string[]): Promise<ReviewMaterial> {
 		const wanted = unique(ids.filter((id) => UUID.test(id)));
-		if (!wanted.length) return {};
-		type AboutRow = {
-			id: string;
-			summary: string | null;
-			created_at: string;
-			created_via: string;
+		const material: ReviewMaterial = {
+			rows: [],
+			facts: new Map(),
+			records: new Map(),
+			named: new Map()
 		};
+		if (!wanted.length) return material;
 		type DetailRow = {
 			id: string;
 			entity_id: string;
@@ -1706,7 +1832,7 @@ export class KnowledgeStore {
 					.eq('status', 'active')
 					.or(this.visible);
 				if (error) throw dbError('Load entries to compare', error);
-				return (data ?? []) as AboutRow[];
+				return (data ?? []) as ReviewMaterial['rows'];
 			}),
 			mapChunks(wanted, ID_CHUNK, async (group) => {
 				const out: DetailRow[] = [];
@@ -1731,26 +1857,40 @@ export class KnowledgeStore {
 			mapChunks(wanted, ID_CHUNK, async (group) => {
 				const { data, error } = await this.db
 					.from('knowledge_record_links')
-					.select('entity_id')
+					.select('entity_id, record_kind, record_id')
 					.eq('owner_user_id', this.userId)
 					.in('entity_id', group)
 					.limit(5000);
 				if (error) throw dbError('Count tasks and docs', error);
-				return (data ?? []) as Array<{ entity_id: string }>;
+				return (data ?? []) as Array<{
+					entity_id: string;
+					record_kind: string;
+					record_id: string;
+				}>;
 			})
 		]);
-		const named = await this.loadEntities(
+		material.rows = rows;
+		material.named = await this.loadEntities(
 			facts.flatMap((f) => (f.object_entity_id ? [f.object_entity_id] : []))
 		);
-		const links = new Map<string, number>();
-		for (const row of linkRows) links.set(row.entity_id, (links.get(row.entity_id) ?? 0) + 1);
-		const byEntity = new Map<string, DetailRow[]>();
+		for (const row of linkRows) {
+			const set = material.records.get(row.entity_id) ?? new Set<string>();
+			set.add(`${row.record_kind}:${row.record_id}`);
+			material.records.set(row.entity_id, set);
+		}
 		for (const fact of facts)
-			byEntity.set(fact.entity_id, [...(byEntity.get(fact.entity_id) ?? []), fact]);
+			material.facts.set(fact.entity_id, [
+				...(material.facts.get(fact.entity_id) ?? []),
+				fact
+			]);
+		return material;
+	}
 
+	private aboutFrom(material: ReviewMaterial): Record<string, KnowledgeReviewAbout> {
+		const { named } = material;
 		const out: Record<string, KnowledgeReviewAbout> = {};
-		for (const row of rows) {
-			const mine = byEntity.get(row.id) ?? [];
+		for (const row of material.rows) {
+			const mine = material.facts.get(row.id) ?? [];
 			const of = (predicate: string) => mine.filter((f) => f.predicate === predicate);
 			const details: string[] = [];
 			// A current job before a past one.
@@ -1781,9 +1921,164 @@ export class KnowledgeStore {
 				summary: row.summary,
 				created_at: row.created_at,
 				created_via: row.created_via,
-				links: links.get(row.id) ?? 0,
+				links: material.records.get(row.id)?.size ?? 0,
 				details: details.slice(0, REVIEW_DETAIL_MAX)
 			};
+		}
+		return out;
+	}
+
+	/**
+	 * What a group of look-alikes share and where they differ. A detail counts only when at
+	 * least two of them have it: "one has a phone, the other doesn't" says nothing either way.
+	 */
+	private evidenceFrom(material: ReviewMaterial, ids: string[]): KnowledgeReviewEvidence {
+		const evidence: KnowledgeReviewEvidence = { same: [], different: [] };
+		const present = new Set(material.rows.map((r) => r.id));
+		const group = unique(ids).filter((id) => present.has(id));
+		if (group.length < 2) return evidence;
+		/** key → the text to show, per entry, for one kind of detail. */
+		const valuesOf = (
+			predicate: string,
+			key: (value: string) => string,
+			objects = false
+		): Array<Map<string, string>> =>
+			group.map((id) => {
+				const out = new Map<string, string>();
+				for (const fact of material.facts.get(id) ?? []) {
+					if (fact.predicate !== predicate) continue;
+					if (objects) {
+						const name = fact.object_entity_id
+							? material.named.get(fact.object_entity_id)
+							: null;
+						// Two spellings of one employer that were merged count as the same.
+						if (name) out.set(name.id, name.name);
+					} else if (fact.value_text) {
+						const k = key(fact.value_text);
+						if (k) out.set(k, fact.value_text.trim());
+					}
+				}
+				return out;
+			});
+		const compare = (
+			sets: Array<Map<string, string>>,
+			same: (shown: string) => string,
+			different: (shown: string[]) => string
+		) => {
+			const holders = sets.filter((set) => set.size);
+			if (holders.length < 2) return;
+			const shared = [...holders[0]!.keys()].filter((k) => holders.every((h) => h.has(k)));
+			if (shared.length) evidence.same.push(same(holders[0]!.get(shared[0]!)!));
+			else evidence.different.push(different(holders.map((h) => [...h.values()][0]!)));
+		};
+		compare(
+			valuesOf('email', (v) => v.trim().toLowerCase()),
+			(email) => `email ${email}`,
+			() => 'emails'
+		);
+		compare(
+			valuesOf('phone', phoneKey),
+			(phone) => `phone ${phone}`,
+			() => 'phone numbers'
+		);
+		compare(
+			// Only LinkedIn against LinkedIn: a Facebook page next to a LinkedIn profile says nothing.
+			valuesOf('profile_url', (v) => {
+				const url = shortUrl(v).toLowerCase();
+				return url.startsWith('linkedin.com/') ? url : '';
+			}),
+			() => 'LinkedIn profile',
+			() => 'LinkedIn profiles'
+		);
+		compare(
+			valuesOf('works_at', (v) => v, true),
+			(employer) => `employer ${employer}`,
+			(names) => `employers (${names.slice(0, 3).join(' vs ')})`
+		);
+		const records = group.map((id) => material.records.get(id) ?? new Set<string>());
+		const sharedRecords = [...records[0]!].filter((r) => records.every((set) => set.has(r)));
+		if (sharedRecords.length)
+			evidence.same.push(
+				sharedRecords.length === 1
+					? 'a task or doc'
+					: `${sharedRecords.length} tasks & docs`
+			);
+		return evidence;
+	}
+
+	/**
+	 * The whole duplicates review in one call: same-name groups, "same one?" questions, what
+	 * tells each entry apart, what each group shares, and which entry a "Same" answer keeps.
+	 */
+	async reviewList(limit = 50): Promise<KnowledgeReviewList> {
+		const [questions, twins] = await Promise.all([
+			this.listMergeCandidates(limit),
+			this.listNameTwins(limit)
+		]);
+		const material = await this.loadReviewMaterial([
+			...twins.flatMap((group) => group.ids),
+			...questions.flatMap((q) => [q.a.id, q.b.id])
+		]);
+		const about = this.aboutFrom(material);
+		/** Which of two entries survives a "Same" answer, when the question itself doesn't say. */
+		const keepOf = (q: KnowledgeMergeQuestion): string => {
+			const { a, b } = q;
+			if (a.is_self !== b.is_self) return a.is_self ? a.id : b.id;
+			// A shared entry can only be kept.
+			if ((a.scope === 'public') !== (b.scope === 'public'))
+				return a.scope === 'public' ? a.id : b.id;
+			// "Laura Svehla" over "Laura": the fuller name is the better label, and the short one
+			// stays searchable as another spelling.
+			const words = (name: string) => name.trim().split(/\s+/).filter(Boolean).length;
+			if (words(a.name) !== words(b.name)) return words(a.name) > words(b.name) ? a.id : b.id;
+			const links = (id: string) => about[id]?.links ?? 0;
+			if (links(a.id) !== links(b.id)) return links(a.id) > links(b.id) ? a.id : b.id;
+			return (about[a.id]?.created_at ?? '') <= (about[b.id]?.created_at ?? '') ? a.id : b.id;
+		};
+		return {
+			candidates: questions.map((q) => ({
+				...q,
+				keep_id: q.keep_id ?? keepOf(q),
+				evidence: this.evidenceFrom(material, [q.a.id, q.b.id])
+			})),
+			twins: twins.map((group) => ({
+				...group,
+				evidence: this.evidenceFrom(material, group.ids)
+			})),
+			about
+		};
+	}
+
+	/**
+	 * Where each detail came from, by fact id: the import or research run that wrote it
+	 * ("Imported LinkedIn connections"), else the task, doc, chat or page it was read from,
+	 * else how it got in ("Added by you").
+	 */
+	async factOrigins(
+		facts: Array<Pick<KnowledgeFactView, 'id' | 'run_id' | 'created_via' | 'sources'>>
+	): Promise<Record<string, string>> {
+		const runIds = unique(facts.flatMap((f) => (f.run_id ? [f.run_id] : [])));
+		const titles = new Map<string, string>();
+		await mapChunks(runIds, ID_CHUNK, async (group) => {
+			const { data, error } = await this.db
+				.from('knowledge_runs')
+				.select('id, title')
+				.in('id', group)
+				.eq('owner_user_id', this.userId);
+			if (error) throw dbError('Load where details came from', error);
+			for (const run of (data ?? []) as Array<{ id: string; title: string | null }>)
+				if (run.title?.trim()) titles.set(run.id, run.title.trim());
+			return [];
+		});
+		const out: Record<string, string> = {};
+		for (const fact of facts) {
+			const run = fact.run_id ? titles.get(fact.run_id) : null;
+			const source = fact.sources.find((s) => s.title?.trim());
+			out[fact.id] =
+				run ??
+				(source
+					? `${SOURCE_ORIGIN[source.type] ? `${SOURCE_ORIGIN[source.type]}: ` : ''}${source.title!.trim()}`
+					: (VIA_ORIGIN[fact.created_via] ?? 'Saved earlier'));
 		}
 		return out;
 	}
@@ -2616,20 +2911,7 @@ export class KnowledgeStore {
 		return out;
 	}
 
-	async listMergeCandidates(limit = 50): Promise<
-		Array<{
-			id: string;
-			reason: string;
-			score: number;
-			a: KnowledgeEntitySummary;
-			b: KnowledgeEntitySummary;
-			/** The question to show, when an identity check asked it. */
-			question: string | null;
-			origin: 'name' | 'identity';
-			/** For identity questions: the entry the user already had (keep it on "Same"). */
-			keep_id: string | null;
-		}>
-	> {
+	async listMergeCandidates(limit = 50): Promise<KnowledgeMergeQuestion[]> {
 		type Row = {
 			id: string;
 			entity_a: string;

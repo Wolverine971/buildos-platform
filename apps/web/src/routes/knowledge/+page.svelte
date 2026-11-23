@@ -41,6 +41,8 @@
 	import KnowledgeImportDialog from '$lib/components/knowledge/KnowledgeImportDialog.svelte';
 	import KnowledgeEnrichDialog from '$lib/components/knowledge/KnowledgeEnrichDialog.svelte';
 	import KnowledgeMergeDialog from '$lib/components/knowledge/KnowledgeMergeDialog.svelte';
+	import KnowledgeReviewDetails from '$lib/components/knowledge/KnowledgeReviewDetails.svelte';
+	import KnowledgeReviewWhy from '$lib/components/knowledge/KnowledgeReviewWhy.svelte';
 	import KnowledgeResearchTray from '$lib/components/knowledge/KnowledgeResearchTray.svelte';
 	import KnowledgeWherePills from '$lib/components/knowledge/KnowledgeWherePills.svelte';
 	import KnowledgeWhereLine from '$lib/components/knowledge/KnowledgeWhereLine.svelte';
@@ -82,6 +84,7 @@
 		type KnowledgeListResult,
 		type KnowledgeListSort,
 		type KnowledgeReviewAbout,
+		type KnowledgeReviewList,
 		type KnowledgeSortDir
 	} from '$lib/components/knowledge/knowledge-client';
 	import {
@@ -94,6 +97,8 @@
 	import {
 		ArrowDown,
 		ArrowUp,
+		ChevronDown,
+		ChevronRight,
 		ChevronsUpDown,
 		GitMerge,
 		Loader2,
@@ -149,17 +154,28 @@
 	let stack = $state<string[]>([]);
 	let importOpen = $state(false);
 	let addOpen = $state(false);
-	let duplicates = $state<Awaited<ReturnType<typeof knowledgeApi.mergeCandidates>>['candidates']>(
-		[]
-	);
+	let duplicates = $state<KnowledgeReviewList['candidates']>([]);
 	let duplicatesOpen = $state(false);
 	/** Same kind + exact name, your own ("Craig" ×3): one merge each. */
-	let twins = $state<Array<{ kind: KnowledgeKind; name: string; ids: string[] }>>([]);
+	let twins = $state<KnowledgeReviewList['twins']>([]);
 	/** What tells each entry in the review apart (job, LinkedIn, phone, where it's used), by id. */
 	let reviewAbout = $state.raw<Record<string, KnowledgeReviewAbout>>({});
+	/** Entries opened up in the review ("Details"), by `<card>:<entry id>`. */
+	let reviewOpen = $state.raw<Set<string>>(new Set());
+	/** Why the last merge on a review card didn't (fully) happen, by card key. */
+	let reviewErrors = $state.raw<Record<string, string>>({});
 	/** The merge dialog's starting entries, while it's open. */
 	let mergeIds = $state<string[] | null>(null);
+	/**
+	 * Set while the merge dialog was opened from the duplicates review: which entry it starts
+	 * out keeping, how to answer "they're different" there, and that the review comes back after.
+	 */
+	let mergeReview = $state.raw<{ keep: string | null; different: () => Promise<void> } | null>(
+		null
+	);
+	/** The review card with a merge or an answer in flight. */
 	let twinBusy = $state<string | null>(null);
+	const twinKey = (group: { kind: string; name: string }) => `twin:${group.kind}:${group.name}`;
 	// A "same person?" pair inside a same-name group is answered by that group.
 	const twinOf = $derived(
 		new Map(twins.flatMap((t) => t.ids.map((id) => [id, t.ids[0]!] as const)))
@@ -375,6 +391,12 @@
 			duplicates = result.candidates;
 			twins = result.twins ?? [];
 			reviewAbout = result.about ?? {};
+			// Details opened on cards that are gone don't need to stay open.
+			const shown = new Set([
+				...result.candidates.flatMap((c) => [`${c.id}:${c.a.id}`, `${c.id}:${c.b.id}`]),
+				...(result.twins ?? []).flatMap((t) => t.ids.map((id) => `${twinKey(t)}:${id}`))
+			]);
+			reviewOpen = new Set([...reviewOpen].filter((key) => shown.has(key)));
 		} catch {
 			// the duplicates banner is a nicety
 		}
@@ -467,8 +489,23 @@
 		mergeIds = [...picked.keys()];
 	}
 
-	function onMerged(result: { kept: string; merged: string[] }) {
+	function closeMerge() {
 		mergeIds = null;
+		// Opened from the duplicates review: go back to the list.
+		if (mergeReview) {
+			mergeReview = null;
+			duplicatesOpen = true;
+		}
+	}
+
+	function onMerged(result: {
+		kept: string;
+		merged: string[];
+		failed?: Array<{ id: string; error: string }>;
+	}) {
+		// Some couldn't be merged: the dialog stays open and says why under each one.
+		if (!result.failed?.length) closeMerge();
+		if (!result.merged.length) return;
 		const gone = new Set(result.merged);
 		picked = new Map([...picked].filter(([id]) => !gone.has(id)));
 		if (picked.size === 1) clearPicked();
@@ -485,35 +522,82 @@
 		void refreshDuplicates();
 	}
 
+	/** A merge on a review card went wrong: say why on the card, and in a toast in case it leaves. */
+	function reviewFailed(key: string, error: unknown, fallback: string) {
+		const message = error instanceof Error && error.message ? error.message : fallback;
+		reviewErrors = { ...reviewErrors, [key]: message };
+		toastService.error(message);
+	}
+
+	function clearReviewError(key: string) {
+		if (!(key in reviewErrors)) return;
+		const { [key]: _gone, ...rest } = reviewErrors;
+		reviewErrors = rest;
+	}
+
+	function toggleReviewDetails(key: string) {
+		const next = new Set(reviewOpen);
+		if (next.has(key)) next.delete(key);
+		else next.add(key);
+		reviewOpen = next;
+	}
+
 	/** One click on a same-name group: fold them into the suggested one. */
-	async function mergeTwins(group: { name: string; ids: string[] }) {
-		twinBusy = group.ids[0]!;
+	async function mergeTwins(group: KnowledgeReviewList['twins'][number]) {
+		const key = twinKey(group);
+		twinBusy = key;
+		clearReviewError(key);
 		try {
 			const preview = await knowledgeApi.mergePreview(group.ids);
-			const keep = preview.suggested_keep;
-			const rest = preview.entries
-				.filter((e) => e.id !== keep && e.mergeable)
-				.map((e) => e.id);
-			if (!keep || !rest.length) throw new Error('Nothing left to merge there');
-			const result = await knowledgeApi.mergeMany(keep, rest);
-			onMerged(result);
+			const keep = preview.entries.find((e) => e.id === preview.suggested_keep);
+			if (!keep || preview.entries.length < 2) {
+				void refreshDuplicates();
+				throw new Error(
+					`Only one "${group.name}" is left: the other was already merged or deleted, so there is nothing to merge.`
+				);
+			}
+			const others = preview.entries.filter((e) => e.id !== keep.id);
+			const rest = others.filter((e) => e.mergeable);
+			const skipped = others
+				.filter((e) => !e.mergeable)
+				.map(
+					(e) =>
+						`"${e.name}" was left out: it is ${e.is_self ? 'you' : 'a shared entry'}, so it can only be the one you keep. Use Review to keep it instead.`
+				);
+			if (!rest.length) throw new Error(skipped.join(' '));
+			const result = await knowledgeApi.mergeMany(
+				keep.id,
+				rest.map((e) => e.id)
+			);
+			onMerged({ kept: result.kept, merged: result.merged });
+			const problems = [...result.failed.map((f) => f.error), ...skipped];
+			if (problems.length) reviewFailed(key, new Error(problems.join(' ')), '');
 		} catch (error) {
-			toastService.error(error instanceof Error ? error.message : 'Could not merge those');
+			reviewFailed(key, error, 'Could not merge those');
 		} finally {
 			twinBusy = null;
 		}
 	}
 
-	async function differentTwins(group: { ids: string[] }) {
-		twinBusy = group.ids[0]!;
+	async function differentTwins(group: KnowledgeReviewList['twins'][number]) {
+		const key = twinKey(group);
+		twinBusy = key;
+		clearReviewError(key);
 		try {
 			await knowledgeApi.markDifferent(group.ids);
 			void refreshDuplicates();
 		} catch (error) {
-			toastService.error(error instanceof Error ? error.message : 'Could not save that');
+			reviewFailed(key, error, 'Could not save that');
 		} finally {
 			twinBusy = null;
 		}
+	}
+
+	/** "Review" on a review card: the merge dialog, where you pick what to keep and what to leave. */
+	function reviewInDialog(ids: string[], keep: string | null, different: () => Promise<void>) {
+		duplicatesOpen = false;
+		mergeReview = { keep, different };
+		mergeIds = ids;
 	}
 
 	function onEnrichStarted(result: EnrichStarted) {
@@ -810,30 +894,38 @@
 		}
 	}
 
+	/** The entry a "Same" answer keeps: the server says which, and the card marks it "Keep". */
+	function keptOf(candidate: (typeof duplicates)[number]) {
+		return candidate.keep_id === candidate.b.id ? candidate.b : candidate.a;
+	}
+
 	async function resolveDuplicate(candidate: (typeof duplicates)[number], same: boolean) {
+		twinBusy = candidate.id;
+		clearReviewError(candidate.id);
 		try {
 			if (same) {
-				// An identity question keeps the entry you already had; otherwise keep the shared
-				// one if there is one, else the first.
-				const keep =
-					candidate.keep_id === candidate.b.id
-						? candidate.b
-						: candidate.keep_id === candidate.a.id
-							? candidate.a
-							: candidate.a.scope === 'public'
-								? candidate.a
-								: candidate.b.scope === 'public'
-									? candidate.b
-									: candidate.a;
+				const keep = keptOf(candidate);
 				const merge = keep.id === candidate.a.id ? candidate.b : candidate.a;
 				await knowledgeApi.merge(keep.id, merge.id);
+				toastService.success(`Merged into ${keep.name}`);
 			} else {
 				await knowledgeApi.rejectCandidate(candidate.id);
 			}
 			duplicates = duplicates.filter((d) => d.id !== candidate.id);
-			if (same) void refresh();
+			if (same) {
+				void refresh();
+				void refreshDuplicates();
+			}
 		} catch (error) {
-			toastService.error(error instanceof Error ? error.message : 'Could not save that');
+			reviewFailed(
+				candidate.id,
+				error,
+				same ? 'Could not merge those' : 'Could not save that'
+			);
+			// A refused merge usually means the list is out of date (one was merged already).
+			if (same) void refreshDuplicates();
+		} finally {
+			twinBusy = null;
 		}
 	}
 
@@ -1545,7 +1637,13 @@
 <KnowledgeResearchTray queue={research} onOpenEntity={(id) => open(id)} />
 
 {#if mergeIds}
-	<KnowledgeMergeDialog ids={mergeIds} onClose={() => (mergeIds = null)} {onMerged} />
+	<KnowledgeMergeDialog
+		ids={mergeIds}
+		initialKeep={mergeReview?.keep ?? null}
+		onDifferent={mergeReview?.different}
+		onClose={closeMerge}
+		{onMerged}
+	/>
 {/if}
 
 {#if enrichEntries}
@@ -1646,50 +1744,109 @@
 	</form>
 </Modal>
 
-<!-- One entry in the duplicates review: enough to tell it from its look-alike at a glance. -->
-{#snippet reviewEntry(id: string, name: string | null, fallbackSummary: string | null)}
+<!--
+	One entry in the duplicates review: enough to tell it from its look-alike at a glance, and
+	"Details" for everything saved on it and where each detail came from.
+-->
+{#snippet reviewEntry(
+	card: string,
+	id: string,
+	name: string | null,
+	fallbackSummary: string | null,
+	keep: boolean
+)}
 	{@const info = reviewAbout[id]}
 	{@const summary = info?.summary ?? fallbackSummary}
+	{@const openKey = `${card}:${id}`}
+	{@const isOpen = reviewOpen.has(openKey)}
 	<li class="min-w-0 rounded-md bg-muted/50 px-3 py-2">
-		{#if name}
-			<p class="truncate text-sm font-medium text-foreground">{name}</p>
-		{/if}
-		{#if summary}
-			<p class="line-clamp-2 text-sm text-foreground">{summary}</p>
-		{/if}
-		{#if info?.details.length}
-			<p class="mt-0.5 break-words text-xs text-foreground">{info.details.join(' · ')}</p>
-		{/if}
-		{#if info}
-			<p class="mt-0.5 text-xs text-muted-foreground">
-				{!summary && !info.details.length && !info.links
-					? 'No details yet · '
-					: ''}{info.links
-					? `On ${info.links} ${info.links === 1 ? 'task or doc' : 'tasks & docs'} · `
-					: ''}{knowledgeAddedLine(info.created_at, info.created_via)}
-			</p>
-		{:else if !summary}
-			<p class="text-xs text-muted-foreground">Nothing else recorded yet</p>
+		<div class="flex items-start gap-2">
+			<div class="min-w-0 flex-1">
+				{#if name}
+					<p class="flex items-center gap-1.5 text-sm font-medium text-foreground">
+						<span class="truncate">{name}</span>
+						{#if keep}
+							<span
+								class="shrink-0 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent"
+								>Keep</span
+							>
+						{/if}
+					</p>
+				{/if}
+				{#if summary}
+					<p class="line-clamp-2 text-sm text-foreground">{summary}</p>
+				{/if}
+				{#if info?.details.length}
+					<p class="mt-0.5 break-words text-xs text-foreground">
+						{info.details.join(' · ')}
+					</p>
+				{/if}
+				{#if info}
+					<p class="mt-0.5 text-xs text-muted-foreground">
+						{!summary && !info.details.length && !info.links
+							? 'No details yet · '
+							: ''}{info.links
+							? `On ${info.links} ${info.links === 1 ? 'task or doc' : 'tasks & docs'} · `
+							: ''}{knowledgeAddedLine(info.created_at, info.created_via)}
+					</p>
+				{:else if !summary}
+					<p class="text-xs text-muted-foreground">Nothing else recorded yet</p>
+				{/if}
+			</div>
+			<button
+				type="button"
+				class="inline-flex min-h-8 shrink-0 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground pressable hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				aria-expanded={isOpen}
+				onclick={() => toggleReviewDetails(openKey)}
+			>
+				{#if isOpen}
+					<ChevronDown class="h-3.5 w-3.5" aria-hidden="true" />
+				{:else}
+					<ChevronRight class="h-3.5 w-3.5" aria-hidden="true" />
+				{/if}
+				Details<span class="sr-only"> for {name ?? 'this entry'}</span>
+			</button>
+		</div>
+		{#if isOpen}
+			<KnowledgeReviewDetails {id} />
 		{/if}
 	</li>
 {/snippet}
 
+{#snippet reviewError(key: string)}
+	{#if reviewErrors[key]}
+		<p class="break-words text-sm text-destructive" role="alert">
+			<span class="font-medium">Not merged.</span>
+			{reviewErrors[key]}
+		</p>
+	{/if}
+{/snippet}
+
 <Modal
 	isOpen={duplicatesOpen}
-	onClose={() => (duplicatesOpen = false)}
+	onClose={() => {
+		duplicatesOpen = false;
+		reviewErrors = {};
+	}}
 	title="Possible duplicates"
-	size="md"
+	size="lg"
 >
 	<div class="flex flex-col gap-2 p-4 sm:p-5">
 		{#if !reviewCount}
 			<p class="text-sm text-muted-foreground">All sorted.</p>
+		{:else}
+			<p class="text-sm text-muted-foreground">
+				Nothing merges until you say so. Open Details on any entry to see everything saved
+				on it and where it came from.
+			</p>
 		{/if}
 		{#if twins.length}
 			<h3 class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
 				Same name
 			</h3>
-			{#each twins as group (group.ids[0])}
-				{@const busy = twinBusy === group.ids[0]}
+			{#each twins as group (twinKey(group))}
+				{@const key = twinKey(group)}
+				{@const busy = twinBusy === key}
 				<div class="flex flex-col gap-2 rounded-md border border-border p-3">
 					<p class="text-sm text-foreground">
 						<span class="font-medium">{group.name}</span>
@@ -1697,9 +1854,16 @@
 					</p>
 					<ul class="flex flex-col gap-1.5" aria-label="Entries named {group.name}">
 						{#each group.ids as id (id)}
-							{@render reviewEntry(id, null, null)}
+							{@render reviewEntry(key, id, null, null, false)}
 						{/each}
 					</ul>
+					<KnowledgeReviewWhy
+						reason="{group.ids.length === 2
+							? 'Both'
+							: `All ${group.ids.length}`} are saved under exactly this name."
+						evidence={group.evidence}
+					/>
+					{@render reviewError(key)}
 					<div class="flex flex-wrap gap-2">
 						<button
 							type="button"
@@ -1719,10 +1883,9 @@
 							type="button"
 							class="rounded-md border border-border px-3 py-1.5 text-sm text-foreground pressable hover:bg-muted disabled:opacity-60"
 							disabled={Boolean(twinBusy)}
-							onclick={() => {
-								duplicatesOpen = false;
-								mergeIds = group.ids;
-							}}>Review</button
+							onclick={() =>
+								reviewInDialog(group.ids, null, () => differentTwins(group))}
+							>Review</button
 						>
 						<button
 							type="button"
@@ -1741,24 +1904,53 @@
 			{/if}
 		{/if}
 		{#each pairQuestions as candidate (candidate.id)}
+			{@const keep = keptOf(candidate)}
+			{@const busy = twinBusy === candidate.id}
 			<div class="flex flex-col gap-2 rounded-md border border-border p-3">
 				{#if candidate.question}
 					<p class="text-sm font-medium text-foreground">{candidate.question}</p>
 				{/if}
 				<ul class="flex flex-col gap-1.5" aria-label="The two entries">
-					{@render reviewEntry(candidate.a.id, candidate.a.name, candidate.a.summary)}
-					{@render reviewEntry(candidate.b.id, candidate.b.name, candidate.b.summary)}
+					{@render reviewEntry(
+						candidate.id,
+						candidate.a.id,
+						candidate.a.name,
+						candidate.a.summary,
+						keep.id === candidate.a.id
+					)}
+					{@render reviewEntry(
+						candidate.id,
+						candidate.b.id,
+						candidate.b.name,
+						candidate.b.summary,
+						keep.id === candidate.b.id
+					)}
 				</ul>
-				<div class="flex gap-2">
+				<KnowledgeReviewWhy reason={candidate.reason} evidence={candidate.evidence} />
+				{@render reviewError(candidate.id)}
+				<div class="flex flex-wrap gap-2">
 					<button
 						type="button"
-						class="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground pressable"
+						class="inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground pressable disabled:opacity-60"
+						disabled={Boolean(twinBusy)}
 						onclick={() => void resolveDuplicate(candidate, true)}
-						>{candidate.a.kind === 'person' ? 'Same person' : 'Same one'}</button
+					>
+						{#if busy}<Loader2 class="h-4 w-4 animate-spin" aria-hidden="true" />{/if}
+						{candidate.a.kind === 'person' ? 'Same person, merge' : 'Same one, merge'}
+					</button>
+					<button
+						type="button"
+						class="rounded-md border border-border px-3 py-1.5 text-sm text-foreground pressable hover:bg-muted disabled:opacity-60"
+						disabled={Boolean(twinBusy)}
+						onclick={() =>
+							reviewInDialog([candidate.a.id, candidate.b.id], keep.id, () =>
+								resolveDuplicate(candidate, false)
+							)}>Review</button
 					>
 					<button
 						type="button"
-						class="rounded-md border border-border px-3 py-1.5 text-sm text-foreground pressable hover:bg-muted"
+						class="rounded-md border border-border px-3 py-1.5 text-sm text-foreground pressable hover:bg-muted disabled:opacity-60"
+						disabled={Boolean(twinBusy)}
 						onclick={() => void resolveDuplicate(candidate, false)}
 						>{candidate.a.kind === 'person' ? 'Different people' : 'Different'}</button
 					>

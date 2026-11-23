@@ -9,8 +9,12 @@ import type {
 	KnowledgeKindChange,
 	KnowledgeListResult,
 	KnowledgeListSort,
+	KnowledgeMergePreview,
 	KnowledgeMergePreviewEntry,
+	KnowledgeMergeQuestion,
 	KnowledgeReviewAbout,
+	KnowledgeReviewEvidence,
+	KnowledgeReviewList,
 	KnowledgeSortDir
 } from '@buildos/shared-agent-ops/knowledge';
 import {
@@ -47,7 +51,12 @@ export type {
 };
 export { knowledgeSortDefaultDir };
 export type KnowledgeMergeEntry = KnowledgeMergePreviewEntry;
-export type { KnowledgeReviewAbout };
+export type {
+	KnowledgeMergeQuestion,
+	KnowledgeReviewAbout,
+	KnowledgeReviewEvidence,
+	KnowledgeReviewList
+};
 
 /** Where an entry came from, in the user's words. */
 const ADDED_VIA: Record<string, string> = {
@@ -61,11 +70,16 @@ const ADDED_VIA: Record<string, string> = {
 	manual: 'you'
 };
 
-/** "Added Nov 22 from your contacts". */
-export function knowledgeAddedLine(createdAt: string, createdVia: string): string {
+/** "Added Nov 22 from your contacts" (`withYear`: "Added Nov 22, 2026 from your contacts"). */
+export function knowledgeAddedLine(
+	createdAt: string,
+	createdVia: string,
+	withYear = false
+): string {
 	const date = new Date(createdAt).toLocaleDateString(undefined, {
 		month: 'short',
-		day: 'numeric'
+		day: 'numeric',
+		...(withYear ? { year: 'numeric' } : {})
 	});
 	const via = ADDED_VIA[createdVia];
 	return via ? `Added ${date} from ${via}` : `Added ${date}`;
@@ -88,6 +102,13 @@ export type KnowledgeEntityPayload = KnowledgeEntityDetail & {
 	records: KnowledgeLinkedRecord[];
 	/** Your own entry in shared projects: who sees it, asks and grants (tasker 168). */
 	sharing?: EntityShares | null;
+};
+
+/** An entry opened up in the duplicates review. */
+export type KnowledgeReviewDetail = KnowledgeEntityDetail & {
+	records: KnowledgeLinkedRecord[];
+	/** Where each detail came from, by fact id: "Imported LinkedIn connections". */
+	origins: Record<string, string>;
 };
 
 export interface KnowledgeRun {
@@ -387,31 +408,20 @@ export const knowledgeApi = {
 			{ method: 'DELETE' }
 		);
 	},
+	/** The duplicates review: same-name groups, "same one?" questions and what tells them apart. */
 	mergeCandidates() {
-		return call<{
-			candidates: Array<{
-				id: string;
-				reason: string;
-				a: KnowledgeEntitySummary;
-				b: KnowledgeEntitySummary;
-				/** Set when an identity check asked ("Is Jev, your friend, the same person as…?"). */
-				question?: string | null;
-				origin?: 'name' | 'identity';
-				/** The entry the user already had: kept when they answer "Same". */
-				keep_id?: string | null;
-			}>;
-			/** Your own entries with the same kind and exact name, oldest first. */
-			twins?: Array<{ kind: KnowledgeKind; name: string; ids: string[] }>;
-			/** What tells each entry apart, by id. */
-			about?: Record<string, KnowledgeReviewAbout>;
-		}>(`/api/knowledge/merge`);
+		return call<KnowledgeReviewList>(`/api/knowledge/merge`);
+	},
+	/** One entry in full for the review: every detail, where each came from, tasks and docs. */
+	reviewDetail(id: string) {
+		return call<KnowledgeReviewDetail>(`/api/knowledge/merge?detail=${id}`);
 	},
 	merge(keep: string, merge: string) {
 		return call<Record<string, unknown>>(`/api/knowledge/merge`, json({ keep, merge }));
 	},
 	/** What folding these entries together would move, and which one to keep. */
 	mergePreview(ids: string[]) {
-		return call<{ entries: KnowledgeMergeEntry[]; suggested_keep: string | null }>(
+		return call<KnowledgeMergePreview>(
 			`/api/knowledge/merge?ids=${ids.map(encodeURIComponent).join(',')}`
 		);
 	},
