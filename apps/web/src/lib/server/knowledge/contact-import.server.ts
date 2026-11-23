@@ -221,3 +221,48 @@ export function toImportListItem(row: ImportRunRow) {
 		can_undo: row.stats?.undoable === true && !row.stats?.undone_at
 	};
 }
+
+/**
+ * A large LinkedIn export goes up in batches that all belong to one import, so one Undo takes
+ * back the whole file. A later batch names the run the first one started; it must be the
+ * caller's own LinkedIn import, not undone, and recent.
+ */
+export const CONTINUE_RUN_WINDOW_MS = 2 * 60 * 60 * 1000;
+
+export function continuableLinkedInRun(
+	run: Pick<ImportRunRow, 'status' | 'input' | 'stats' | 'created_at'> | null,
+	now = Date.now()
+): string | null {
+	if (!run) return 'That import was not found.';
+	if (run.input?.format !== 'linkedin_csv') return 'That import is not a LinkedIn import.';
+	if (run.stats?.undone_at) return 'That import was undone. Start the import again.';
+	if (!['running', 'completed', 'failed'].includes(run.status))
+		return 'That import can no longer take more connections.';
+	const created = Date.parse(run.created_at);
+	if (!Number.isFinite(created) || now - created > CONTINUE_RUN_WINDOW_MS)
+		return 'That import is too old to add to. Start the import again.';
+	return null;
+}
+
+const SUMMED_STATS = [
+	'contacts',
+	'people_created',
+	'people_matched',
+	'orgs',
+	'facts_added',
+	'facts_existing',
+	'facts_suggested',
+	'possible_duplicates',
+	'problems'
+] as const;
+
+/** One batch's counts added to what earlier batches of the same import recorded. */
+export function addBatchStats<T extends Record<string, unknown>>(
+	prior: Record<string, unknown> | null,
+	batch: T
+): T {
+	const total: Record<string, unknown> = { ...batch };
+	for (const key of SUMMED_STATS)
+		total[key] = (Number(prior?.[key] ?? 0) || 0) + (Number(batch[key] ?? 0) || 0);
+	return total as T;
+}

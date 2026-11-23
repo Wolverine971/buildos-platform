@@ -4,6 +4,7 @@ export * from './normalize';
 export * from './types';
 export * from './contacts-import';
 export * from './import-near-matches';
+export * from './similar-people';
 export { KnowledgeStore, KnowledgeStoreError, MERGE_MAX } from './knowledge-store';
 export * from './enrichment';
 export * from './task-entity-bridge';

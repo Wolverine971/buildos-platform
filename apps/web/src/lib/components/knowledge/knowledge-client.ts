@@ -15,6 +15,8 @@ import type {
 	KnowledgeReviewAbout,
 	KnowledgeReviewEvidence,
 	KnowledgeReviewList,
+	KnowledgeSimilarPerson,
+	KnowledgeSimilarSweep,
 	KnowledgeSortDir
 } from '@buildos/shared-agent-ops/knowledge';
 import {
@@ -55,7 +57,9 @@ export type {
 	KnowledgeMergeQuestion,
 	KnowledgeReviewAbout,
 	KnowledgeReviewEvidence,
-	KnowledgeReviewList
+	KnowledgeReviewList,
+	KnowledgeSimilarPerson,
+	KnowledgeSimilarSweep
 };
 
 /** Where an entry came from, in the user's words. */
@@ -386,8 +390,10 @@ export const knowledgeApi = {
 	 * Import contacts the browser already parsed. Only the contacts go up, gzipped: a phone
 	 * export's photos never leave the device and big files stay under the upload limit.
 	 */
-	async importContacts(parsed: ParsedContactFile, fileName: string) {
+	async importContacts(parsed: ParsedContactFile, fileName: string, runId?: string) {
 		const form = await contactUpload(parsed, fileName);
+		// A later batch of a large LinkedIn file joins the import its first batch started.
+		if (runId) form.set('run_id', runId);
 		return call<ImportSummary>(`/api/knowledge/import`, { method: 'POST', body: form });
 	},
 	/** How a phone or Google file lines up with who is already here. Saves nothing. */
@@ -439,6 +445,16 @@ export const knowledgeApi = {
 			json({ run_id: runId })
 		);
 	},
+	/** "Might also be": people who may be this one under another spelling. */
+	similarPeople(entityId: string) {
+		return call<{ people: KnowledgeSimilarPerson[] }>(
+			`/api/knowledge/entities/${entityId}/similar`
+		);
+	},
+	/** Look through every person for look-alikes and add them to the duplicates review. */
+	sweepDuplicates() {
+		return call<KnowledgeSimilarSweep>(`/api/knowledge/merge/sweep`, { method: 'POST' });
+	},
 	/** "Different people" for a same-name group. */
 	markDifferent(entityIds: string[]) {
 		return call<{ ok: true }>(`/api/knowledge/merge`, {
@@ -456,7 +472,8 @@ export const knowledgeApi = {
 
 /**
  * Keep acknowledged batches when retrying a large LinkedIn export. Each request fits the
- * import endpoint's write batch and returns the distinct org IDs that batch touched.
+ * import endpoint's write batch and returns the distinct org IDs that batch touched. Every
+ * batch after the first joins the first one's import, so one Undo takes back the whole file.
  */
 export function prepareContactImport(
 	parsed: ParsedContactFile,
@@ -467,6 +484,8 @@ export function prepareContactImport(
 	let offset = 0;
 	const orgIds = new Set<string>();
 	const totals = { people_created: 0, people_matched: 0, possible_duplicates: 0, facts_added: 0 };
+	let runId: string | undefined;
+	let undoable = false;
 	return async (onProgress: (saved: number) => void): Promise<ImportSummary> => {
 		if (parsed.format !== 'linkedin_csv' || parsed.contacts.length <= batchSize) {
 			return knowledgeApi.importContacts(parsed, fileName);
@@ -479,8 +498,11 @@ export function prepareContactImport(
 					contacts,
 					skipped: offset === 0 ? parsed.skipped : 0
 				},
-				fileName
+				fileName,
+				runId
 			);
+			runId ??= batch.run_id;
+			undoable = batch.undoable === true;
 			totals.people_created += batch.people_created ?? 0;
 			totals.people_matched += batch.people_matched ?? 0;
 			totals.possible_duplicates += batch.possible_duplicates ?? 0;
@@ -489,7 +511,7 @@ export function prepareContactImport(
 			offset += contacts.length;
 			onProgress(offset);
 		}
-		return { ...summary, ...totals, orgs: orgIds.size };
+		return { ...summary, ...totals, orgs: orgIds.size, run_id: runId, undoable };
 	};
 }
 

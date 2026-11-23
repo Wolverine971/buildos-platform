@@ -106,7 +106,13 @@ const SHORT_FIRST_NAMES: Record<string, string[]> = {
 	zach: ['zachary']
 };
 
-function sameFirstName(a: string, b: string): boolean {
+/** The full form a short first name usually stands for ("bill" → "william"), else itself. */
+export function canonicalFirstName(first: string): string {
+	return SHORT_FIRST_NAMES[first]?.[0] ?? first;
+}
+
+/** Two first names that can be one person's: "Matt"/"Matthew", "Bill"/"William". */
+export function sameFirstName(a: string, b: string): boolean {
 	if (a === b) return false;
 	const [short, long] = a.length <= b.length ? [a, b] : [b, a];
 	if (short.length >= 3 && long.startsWith(short)) return true;

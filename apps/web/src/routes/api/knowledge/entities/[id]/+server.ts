@@ -89,12 +89,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		let kindChange: KnowledgeKindChange | null = null;
 		if (isKnowledgeKind(body.kind))
 			kindChange = await store.changeEntityKind(params.id, body.kind);
-		await store.updateEntity(params.id, {
-			...(typeof body.name === 'string' ? { name: body.name } : {}),
-			...(body.summary !== undefined ? { summary: body.summary } : {}),
-			...(body.status ? { status: body.status as 'active' | 'hidden' } : {}),
-			...(body.circle ? { circle: body.circle as 'inner' | 'public' } : {})
-		});
+		await store.updateEntity(
+			params.id,
+			{
+				...(typeof body.name === 'string' ? { name: body.name } : {}),
+				...(body.summary !== undefined ? { summary: body.summary } : {}),
+				...(body.status ? { status: body.status as 'active' | 'hidden' } : {}),
+				...(body.circle ? { circle: body.circle as 'inner' | 'public' } : {})
+			},
+			{ byOwner: true }
+		);
 		const rename =
 			typeof body.name === 'string'
 				? await afterRename(locals.supabase, user.id, params.id)

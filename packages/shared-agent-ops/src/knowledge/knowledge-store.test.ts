@@ -1125,7 +1125,10 @@ describe('KnowledgeStore identity', () => {
 			const rpc = db.rpc.bind(db);
 			db.rpc = async (fn: string, args: Row) =>
 				fn === 'knowledge_merge_entities'
-					? { data: null, error: { message: 'canceling statement due to statement timeout' } }
+					? {
+							data: null,
+							error: { message: 'canceling statement due to statement timeout' }
+						}
 					: rpc(fn, args);
 			const failure = await store.merge(a, b).catch((error) => error);
 			expect(failure).toMatchObject({ code: 'DB' });
@@ -1575,6 +1578,24 @@ describe('changing what an entry is', () => {
 		expect(statusOf(db, 'founded')).toBe('retracted'); // a person has no founding year
 		expect(statusOf(db, 'works_at')).toBe('retracted'); // nobody works at a person
 		expect(statusOf(db, 'description')).toBe('active');
+		// A change the owner made by hand: an import's Undo keeps this entry.
+		expect(row.edited_at).toEqual(expect.any(String));
+	});
+
+	it('marks a rename or summary the owner typed, but not one a background job made', async () => {
+		const { db, store } = setup();
+		const id = await griffinAsOrg(store);
+		const row = () => db.rows('knowledge_entities').find((e) => e.id === id)!;
+
+		await store.updateEntity(id, { name: 'Griffin D.' });
+		expect(row().name).toBe('Griffin D.');
+		expect(row().edited_at ?? null).toBeNull();
+
+		await store.updateEntity(id, { circle: 'inner' }, { byOwner: true });
+		expect(row().edited_at ?? null).toBeNull();
+
+		await store.updateEntity(id, { summary: 'Met at the expo' }, { byOwner: true });
+		expect(row().edited_at).toEqual(expect.any(String));
 	});
 
 	it('names the same-name entry of the new kind and asks whether they are the same', async () => {
@@ -2083,6 +2104,8 @@ describe('"Don\'t save" on a web search\'s find', () => {
 			await expect(store.discardFoundEntry(id)).rejects.toThrow(/was kept/);
 			expect(has(db, id)).toBe(true);
 		}
-		expect(db.rows('knowledge_facts').filter((f) => f.object_entity_id === org)).toHaveLength(1);
+		expect(db.rows('knowledge_facts').filter((f) => f.object_entity_id === org)).toHaveLength(
+			1
+		);
 	});
 });

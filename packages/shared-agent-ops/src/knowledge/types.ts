@@ -172,6 +172,24 @@ export interface KnowledgeReviewAbout {
 	details: string[];
 }
 
+/** "Might also be" on a person's card: someone who may be the same person, and why. */
+export interface KnowledgeSimilarPerson extends KnowledgeEntitySummary {
+	rule: string;
+	/** Short, user-facing: "“Solo” could be short for “Solowynsky”". */
+	reason: string;
+	score: number;
+	/** What tells it apart: job, LinkedIn, phone, how it got here, tasks and docs it's on. */
+	about: KnowledgeReviewAbout | null;
+}
+
+/** What the duplicates sweep found across all of a user's people. */
+export interface KnowledgeSimilarSweep {
+	/** Look-alike pairs found. */
+	found: number;
+	/** New "same person?" questions (pairs never asked before). */
+	added: number;
+}
+
 /** What changing an entry's kind did (KnowledgeStore.changeEntityKind). */
 export interface KnowledgeKindChange {
 	entity_id: string;

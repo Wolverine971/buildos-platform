@@ -334,7 +334,8 @@ describe('ProjectWorkspace edge states', () => {
 				})
 			)
 		);
-		expect(await screen.findByText('After chat')).toBeInTheDocument();
+		// The full suite under coverage on CI renders slowly; the wait is generous, the check is not.
+		expect(await screen.findByText('After chat', {}, { timeout: 5_000 })).toBeInTheDocument();
 		expect(screen.queryByText('Before chat')).not.toBeInTheDocument();
 		expect(fetch).toHaveBeenCalledTimes(2);
 		expect(fetch).toHaveBeenLastCalledWith('/api/onto/tasks/task-1', undefined);
@@ -395,7 +396,8 @@ describe('ProjectWorkspace edge states', () => {
 				}
 			]
 		});
-		expect(await screen.findByText('After chat')).toBeInTheDocument();
+		// The full suite under coverage on CI renders slowly; the wait is generous, the check is not.
+		expect(await screen.findByText('After chat', {}, { timeout: 5_000 })).toBeInTheDocument();
 		expect(screen.queryByText('Before chat')).not.toBeInTheDocument();
 		expect(fetch).toHaveBeenCalledTimes(1);
 		expect(fetch).toHaveBeenCalledWith('/api/onto/tasks/task-1', undefined);
@@ -629,7 +631,9 @@ describe('ProjectWorkspace edge states', () => {
 				.mocked(fetch)
 				.mock.calls.some(([url]) => String(url).includes(`/projects/${PROJECT_ID}/full`))
 		).toBe(false);
-	});
+		// Three lazy imports (reader, details, full editor): cold transforms under CI coverage
+		// took over the 10 s default.
+	}, 30_000);
 
 	it('keeps the persistent shell focused on project identity, the brief, and workspace tabs', async () => {
 		const { container } = render(ProjectWorkspace, {

@@ -58,7 +58,9 @@ it('guides a LinkedIn export, previews it privately and retries a failed import 
 			})
 		)
 	);
-	expect(onClose).toHaveBeenCalledTimes(1);
+	// A LinkedIn import ends on its receipt like any other, so it can be undone right there.
+	expect(await screen.findByText(/Imported 1 contacts/)).toBeTruthy();
+	expect(onClose).not.toHaveBeenCalled();
 });
 
 it('shows how a phone file lines up with who is already here, then lets the import be undone', async () => {

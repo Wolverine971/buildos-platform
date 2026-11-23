@@ -2,6 +2,7 @@
 /**
  * POST /api/knowledge/import
  *   multipart: contacts (gzipped JSON from the browser's parser) + file_name  ← the app
+ *              + run_id: a later batch of the same LinkedIn file joins that import
  *   multipart: file, preview?=1                                              ← raw file
  * GET /api/knowledge/import            the caller's recent imports (for "Undo")
  * DELETE /api/knowledge/import?run_id= undo one import
@@ -41,6 +42,8 @@ import {
 	CONTACTS_PER_WRITE,
 	MAX_BYTES,
 	UNREADABLE,
+	addBatchStats,
+	continuableLinkedInRun,
 	isStaleRun,
 	missingRunColumn,
 	previewContactMatching,
@@ -112,22 +115,52 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	// Run rows are server-written (users can't edit cost or status); the entries themselves are
 	// written with the user's own client so RLS applies.
 	const runs = knowledgeDb(createAdminSupabaseClient());
-	const { data: run, error: runError } = await runs
-		.from('knowledge_runs')
-		.insert({
-			owner_user_id: user.id,
-			run_type: 'import',
-			status: 'running',
-			title: `Imported ${CONTACT_FORMAT_LABELS[parsed.format]}`,
-			input: { format: parsed.format, file_name: fileName },
-			// Set up front so an import cut off by the time limit can still be undone. LinkedIn's
-			// RPC doesn't stamp run_id yet, so those imports can't.
-			stats: { undoable: format !== 'linkedin_csv' },
-			started_at: new Date().toISOString()
-		})
-		.select('id')
-		.single();
-	if (runError || !run) return ApiResponse.internalError(runError, 'Could not start the import');
+	const startedAt = new Date().toISOString();
+	const continueId = String(form.get('run_id') ?? '');
+	// What earlier batches of this import recorded; null for a new import.
+	let prior: Record<string, unknown> | null = null;
+	let run: { id: string };
+	if (continueId) {
+		if (format !== 'linkedin_csv' || !UUID_PATTERN.test(continueId))
+			return ApiResponse.badRequest('Only a LinkedIn import continues in batches.');
+		const { data: existing, error } = await runs
+			.from('knowledge_runs')
+			.select('id, status, input, stats, created_at')
+			.eq('id', continueId)
+			.eq('owner_user_id', user.id)
+			.eq('run_type', 'import')
+			.maybeSingle();
+		if (error) return ApiResponse.databaseError(error);
+		const refused = continuableLinkedInRun(existing as ImportRunRow | null);
+		if (refused || !existing) return ApiResponse.badRequest(refused ?? 'Import not found.');
+		prior = (existing as ImportRunRow).stats ?? {};
+		// started_at is this batch's start: a run is stale only when its latest batch was cut off.
+		const { error: reopenError } = await runs
+			.from('knowledge_runs')
+			.update({ status: 'running', started_at: startedAt, finished_at: null })
+			.eq('id', continueId);
+		if (reopenError)
+			return ApiResponse.internalError(reopenError, 'Could not continue the import');
+		run = { id: continueId };
+	} else {
+		const { data: created, error: runError } = await runs
+			.from('knowledge_runs')
+			.insert({
+				owner_user_id: user.id,
+				run_type: 'import',
+				status: 'running',
+				title: `Imported ${CONTACT_FORMAT_LABELS[parsed.format]}`,
+				input: { format: parsed.format, file_name: fileName },
+				// Set up front so an import cut off by the time limit can still be undone.
+				stats: { undoable: true },
+				started_at: startedAt
+			})
+			.select('id')
+			.single();
+		if (runError || !created)
+			return ApiResponse.internalError(runError, 'Could not start the import');
+		run = created;
+	}
 
 	const stats = {
 		contacts: parsed.contacts.length,
@@ -141,7 +174,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		possible_duplicates: 0,
 		problems: 0,
 		// Whether this import stamped what it made, so it can be undone.
-		undoable: format !== 'linkedin_csv'
+		undoable: prior ? prior.undoable === true : true
 	};
 	try {
 		const store = knowledgeStoreFor(supabase, user.id);
@@ -176,7 +209,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				if (!trackRun || i > 0 || !missingRunColumn(error)) throw error;
 				trackRun = false;
 				stats.undoable = false;
-				await runs.from('knowledge_runs').update({ stats }).eq('id', run.id);
+				await runs
+					.from('knowledge_runs')
+					.update({ stats: addBatchStats(prior, stats) })
+					.eq('id', run.id);
 				saved = await saveContacts(store, contacts, people, options);
 			}
 			stats.undoable = trackRun;
@@ -192,7 +228,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		stats.orgs = orgIds.size;
 		const { error: doneError } = await runs
 			.from('knowledge_runs')
-			.update({ status: 'completed', stats, finished_at: new Date().toISOString() })
+			.update({
+				status: 'completed',
+				stats: addBatchStats(prior, stats),
+				finished_at: new Date().toISOString()
+			})
 			.eq('id', run.id);
 		if (doneError)
 			console.error('[knowledge import] could not mark the run completed', {
@@ -212,7 +252,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			.update({
 				status: 'failed',
 				// What was saved before it stopped can still be undone.
-				stats,
+				stats: addBatchStats(prior, stats),
 				error: error instanceof Error ? error.message.slice(0, 500) : 'Import failed',
 				finished_at: new Date().toISOString()
 			})
@@ -276,6 +316,24 @@ export const DELETE: RequestHandler = async ({ url, locals }) => {
 	if (run.status === 'running' && !isStaleRun(run))
 		return ApiResponse.badRequest('This import is still running. Try again in a minute.');
 	if (stats.undone_at) return ApiResponse.badRequest('This import was already undone.');
+	// The undo and an import batch also share a database lock; this just answers clearly.
+	const { data: saving, error: savingError } = await supabase
+		.from('knowledge_runs')
+		.select('id, status, started_at')
+		.eq('owner_user_id', user.id)
+		.eq('run_type', 'import')
+		.eq('status', 'running')
+		.neq('id', runId)
+		.limit(5);
+	if (savingError) return ApiResponse.databaseError(savingError);
+	if (
+		((saving ?? []) as Array<{ status: string; started_at: string | null }>).some(
+			(other) => !isStaleRun(other)
+		)
+	)
+		return ApiResponse.badRequest(
+			'Another import is still saving. Try again when it finishes.'
+		);
 	if (stats.undoable !== true)
 		return ApiResponse.badRequest(
 			"This import was saved before Undo existed and can't be undone here."

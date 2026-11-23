@@ -108,6 +108,8 @@ describe('POST /api/knowledge/import', () => {
 			]
 		});
 		expect(body.data).toMatchObject({
+			run_id: 'run-1',
+			undoable: true,
 			contacts: 2,
 			people_created: 1,
 			people_matched: 1,
@@ -116,6 +118,112 @@ describe('POST /api/knowledge/import', () => {
 			org_ids: ['o1'],
 			facts_added: 7,
 			facts_existing: 2
+		});
+		expect(history.insert).toHaveBeenCalledWith(
+			expect.objectContaining({ stats: { undoable: true } })
+		);
+	});
+
+	describe('a later batch of the same LinkedIn file', () => {
+		const RUN = '11111111-2222-4333-8444-555555555555';
+
+		function batchSetup(existing: unknown) {
+			const rpc = vi.fn().mockResolvedValue({
+				data: {
+					people_created: 2,
+					people_matched: 0,
+					possible_duplicates: 0,
+					org_ids: ['o2'],
+					facts_added: 5,
+					facts_existing: 0
+				},
+				error: null
+			});
+			const updates: unknown[] = [];
+			const history: any = {
+				insert: vi.fn(),
+				select: vi.fn().mockReturnThis(),
+				eq: vi.fn().mockReturnThis(),
+				maybeSingle: vi.fn().mockResolvedValue({ data: existing, error: null }),
+				update: vi.fn((values: unknown) => {
+					updates.push(values);
+					return { eq: vi.fn().mockResolvedValue({ error: null }) };
+				})
+			};
+			vi.mocked(knowledgeDb)
+				.mockReturnValueOnce({ rpc, from: vi.fn() })
+				.mockReturnValueOnce({ from: () => history, rpc: vi.fn() });
+			return { rpc, history, updates };
+		}
+
+		async function postBatch(runId: string) {
+			const form = new FormData();
+			form.set('file', new File([CSV], 'Connections.csv'));
+			form.set('run_id', runId);
+			return post(form);
+		}
+
+		it('joins the import the first batch started, so one Undo takes back the whole file', async () => {
+			const { rpc, history, updates } = batchSetup({
+				id: RUN,
+				status: 'completed',
+				input: { format: 'linkedin_csv' },
+				stats: { undoable: true, contacts: 1500, people_created: 900, facts_added: 4000 },
+				created_at: new Date().toISOString()
+			});
+			const { status, body } = await postBatch(RUN);
+			expect(status).toBe(200);
+			expect(history.insert).not.toHaveBeenCalled();
+			expect(rpc).toHaveBeenCalledWith(
+				'knowledge_import_linkedin',
+				expect.objectContaining({ p_run_id: RUN })
+			);
+			expect(updates[0]).toMatchObject({ status: 'running', finished_at: null });
+			// The run keeps the whole file's totals; the response is this batch's.
+			expect(updates.at(-1)).toMatchObject({
+				status: 'completed',
+				stats: { undoable: true, contacts: 1502, people_created: 902, facts_added: 4005 }
+			});
+			expect(body.data).toMatchObject({ run_id: RUN, undoable: true, people_created: 2 });
+		});
+
+		it.each([
+			[
+				'an undone import',
+				{
+					id: RUN,
+					status: 'cancelled',
+					input: { format: 'linkedin_csv' },
+					stats: { undoable: true, undone_at: '2026-11-23' },
+					created_at: new Date().toISOString()
+				}
+			],
+			[
+				'a phone import',
+				{
+					id: RUN,
+					status: 'completed',
+					input: { format: 'vcard' },
+					stats: { undoable: true },
+					created_at: new Date().toISOString()
+				}
+			],
+			[
+				'an import from yesterday',
+				{
+					id: RUN,
+					status: 'completed',
+					input: { format: 'linkedin_csv' },
+					stats: { undoable: true },
+					created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+				}
+			],
+			["someone else's import", null]
+		])('refuses to add to %s', async (_label, existing) => {
+			const { rpc } = batchSetup(existing);
+			const { status } = await postBatch(RUN);
+			expect(status).toBe(400);
+			expect(rpc).not.toHaveBeenCalled();
 		});
 	});
 
@@ -283,7 +391,7 @@ describe('POST /api/knowledge/import: a phone file', () => {
 describe('DELETE /api/knowledge/import (undo)', () => {
 	const RUN = '11111111-2222-4333-8444-555555555555';
 
-	function undoSetup(run: unknown) {
+	function undoSetup(run: unknown, otherRunning: unknown[] = []) {
 		const rpc = vi.fn().mockResolvedValue({
 			data: { people_removed: 380, orgs_removed: 41, details_removed: 2104, kept: 3 },
 			error: null
@@ -295,6 +403,8 @@ describe('DELETE /api/knowledge/import (undo)', () => {
 				filters.push([col, value]);
 				return lookup;
 			}),
+			neq: vi.fn().mockReturnThis(),
+			limit: vi.fn().mockResolvedValue({ data: otherRunning, error: null }),
 			maybeSingle: vi.fn().mockResolvedValue({ data: run, error: null })
 		};
 		const marked: any = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis() };
@@ -320,7 +430,7 @@ describe('DELETE /api/knowledge/import (undo)', () => {
 		});
 		const { status, body } = await undo(RUN);
 		expect(status).toBe(200);
-		expect(filters).toEqual([
+		expect(filters.slice(0, 3)).toEqual([
 			['id', RUN],
 			['owner_user_id', 'u1'],
 			['run_type', 'import']
@@ -383,6 +493,29 @@ describe('DELETE /api/knowledge/import (undo)', () => {
 		const { status } = await undo(RUN);
 		expect(status).toBe(expected);
 		expect(rpc).not.toHaveBeenCalled();
+	});
+
+	it('refuses while another import of the same owner is still saving', async () => {
+		const { rpc } = undoSetup({ id: RUN, status: 'completed', stats: { undoable: true } }, [
+			{ id: 'other', status: 'running', started_at: new Date().toISOString() }
+		]);
+		const { status, body } = await undo(RUN);
+		expect(status).toBe(400);
+		expect(body.error).toMatch(/still saving/);
+		expect(rpc).not.toHaveBeenCalled();
+	});
+
+	it('ignores another import that was cut off long ago', async () => {
+		const { rpc } = undoSetup({ id: RUN, status: 'completed', stats: { undoable: true } }, [
+			{
+				id: 'other',
+				status: 'running',
+				started_at: new Date(Date.now() - 60 * 60 * 1000).toISOString()
+			}
+		]);
+		const { status } = await undo(RUN);
+		expect(status).toBe(200);
+		expect(rpc).toHaveBeenCalled();
 	});
 
 	it('refuses a malformed id before touching the database', async () => {

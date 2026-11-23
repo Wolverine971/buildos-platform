@@ -402,6 +402,47 @@
 		}
 	}
 
+	/**
+	 * Look through every person for look-alike names ("Matt Solo" / "Matt Solowynsky") and add
+	 * the new pairs to the duplicates review. Free (no model). Runs by itself at most once a day
+	 * per browser and after an import; "Look again" in the review runs it on demand.
+	 */
+	const SWEPT_KEY = 'knowledge:duplicates-swept-at';
+	const SWEEP_EVERY_MS = 24 * 60 * 60 * 1000;
+	let sweeping = $state(false);
+	let sweepNote = $state<string | null>(null);
+	async function sweepDuplicates(quiet = false) {
+		if (sweeping) return;
+		sweeping = true;
+		try {
+			const result = await knowledgeApi.sweepDuplicates();
+			try {
+				localStorage.setItem(SWEPT_KEY, String(Date.now()));
+			} catch {
+				// storage off: it just runs again next visit
+			}
+			if (result.added) await refreshDuplicates();
+			if (!quiet)
+				sweepNote = result.added
+					? `Found ${result.added} more look-alike${result.added === 1 ? '' : 's'}.`
+					: 'No new look-alikes.';
+		} catch (error) {
+			if (!quiet)
+				sweepNote =
+					error instanceof Error ? error.message : 'Could not look for duplicates';
+		} finally {
+			sweeping = false;
+		}
+	}
+	function sweepIsDue(): boolean {
+		try {
+			const at = Number(localStorage.getItem(SWEPT_KEY) ?? 0);
+			return !at || Date.now() - at > SWEEP_EVERY_MS;
+		} catch {
+			return true;
+		}
+	}
+
 	let searchTimer: ReturnType<typeof setTimeout> | undefined;
 	function onSearchInput() {
 		clearTimeout(searchTimer);
@@ -789,7 +830,8 @@
 			researched: 'any',
 			sort: summary.format === 'linkedin_csv' ? 'connected' : sort
 		});
-		void refreshDuplicates();
+		// New people may be someone already here under another spelling.
+		void refreshDuplicates().then(() => sweepDuplicates(true));
 	}
 
 	/** An import was taken back: the list, the open card and the duplicate questions are stale. */
@@ -801,7 +843,9 @@
 	}
 
 	onMount(() => {
-		void refreshDuplicates();
+		void refreshDuplicates().then(() => {
+			if (sweepIsDue()) void sweepDuplicates(true);
+		});
 		const stopListening = onKnowledgeResearchSettled(onResearchSettled);
 		watchKnowledgeResearch();
 		// The shared queue keeps polling only while research runs, so leaving the page while it
@@ -1832,13 +1876,34 @@
 	size="lg"
 >
 	<div class="flex flex-col gap-2 p-4 sm:p-5">
-		{#if !reviewCount}
-			<p class="text-sm text-muted-foreground">All sorted.</p>
-		{:else}
-			<p class="text-sm text-muted-foreground">
-				Nothing merges until you say so. Open Details on any entry to see everything saved
-				on it and where it came from.
+		<div class="flex flex-wrap items-start gap-x-3 gap-y-1">
+			<p class="min-w-0 flex-1 text-sm text-muted-foreground">
+				{#if !reviewCount}
+					All sorted.
+				{:else}
+					Nothing merges until you say so. Open Details on any entry to see everything
+					saved on it and where it came from.
+				{/if}
 			</p>
+			<button
+				type="button"
+				class="inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-medium text-foreground pressable hover:bg-muted disabled:opacity-60"
+				disabled={sweeping}
+				title="Look through everyone for names that may be the same person (Matt Solo / Matt Solowynsky)"
+				onclick={() => void sweepDuplicates()}
+			>
+				{#if sweeping}
+					<Loader2
+						class="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
+						aria-hidden="true"
+					/> Looking…
+				{:else}
+					<Search class="h-3.5 w-3.5" aria-hidden="true" /> Look again
+				{/if}
+			</button>
+		</div>
+		{#if sweepNote}
+			<p class="text-xs text-muted-foreground" role="status">{sweepNote}</p>
 		{/if}
 		{#if twins.length}
 			<h3 class="text-xs font-medium uppercase tracking-wide text-muted-foreground">

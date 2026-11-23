@@ -168,13 +168,8 @@
 		try {
 			const summary = await pendingImport((count) => (saved = count));
 			onImported(summary);
-			if (summary.format === 'linkedin_csv') {
-				reset();
-				source = 'auto';
-				onClose();
-			} else {
-				result = summary;
-			}
+			// Every format ends on the receipt, with Undo while the import can still be taken back.
+			result = summary;
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'The import stopped';
 		} finally {

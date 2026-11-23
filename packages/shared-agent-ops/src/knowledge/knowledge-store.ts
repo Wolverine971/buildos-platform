@@ -25,6 +25,7 @@ import {
 	type KnowledgeKind
 } from './vocabulary';
 import { knowledgeSortDefaultDir } from './types';
+import { findSimilarPairs, findSimilarPeople } from './similar-people';
 import type {
 	KnowledgeCreatedVia,
 	KnowledgeDataClient,
@@ -49,6 +50,8 @@ import type {
 	KnowledgeQueryRow,
 	KnowledgeQuerySpec,
 	KnowledgeScope,
+	KnowledgeSimilarPerson,
+	KnowledgeSimilarSweep,
 	KnowledgeSourceView,
 	KnowledgeWriteBatch,
 	KnowledgeWriteEntity,
@@ -1419,7 +1422,11 @@ export class KnowledgeStore {
 			status?: 'active' | 'hidden';
 			/** The user's own answer: inner = part of my world, public = just mentioned. */
 			circle?: 'inner' | 'public';
-		}
+		},
+		options: {
+			/** The owner typed this edit. Stamps edited_at so an import's Undo keeps the entry. */
+			byOwner?: boolean;
+		} = {}
 	): Promise<void> {
 		const update: Record<string, unknown> = {};
 		if (patch.circle !== undefined) {
@@ -1439,6 +1446,8 @@ export class KnowledgeStore {
 			update.summary = patch.summary?.trim().slice(0, 300) || null;
 		if (patch.status !== undefined) update.status = patch.status;
 		if (!Object.keys(update).length) return;
+		if (options.byOwner && (patch.name !== undefined || patch.summary !== undefined))
+			update.edited_at = new Date().toISOString();
 		// Showing an entry again (or hiding it on purpose) clears "hidden as an orphan"
 		// (tasker 167); before migration 20261118200000 the column doesn't exist.
 		const write = (values: Record<string, unknown>) =>
@@ -1451,8 +1460,12 @@ export class KnowledgeStore {
 		let { data, error } = await write(
 			patch.status !== undefined ? { ...update, hidden_reason: null } : update
 		);
-		if (error && (error as { code?: string }).code === '42703' && patch.status !== undefined)
-			({ data, error } = await write(update));
+		// A database without hidden_reason (20261118200000) or edited_at (20261123120000).
+		if (error && (error as { code?: string }).code === '42703') {
+			const withoutStamp = { ...update };
+			delete withoutStamp.edited_at;
+			({ data, error } = await write(withoutStamp));
+		}
 		if (error) throw dbError('Update entity', error);
 		if (!data?.length)
 			throw new KnowledgeStoreError('You can only edit your own entities.', 'NOT_FOUND');
@@ -1533,7 +1546,7 @@ export class KnowledgeStore {
 
 		const { data: updated, error } = await this.db
 			.from('knowledge_entities')
-			.update({ kind, enriched_at: null })
+			.update({ kind, enriched_at: null, edited_at: new Date().toISOString() })
 			.eq('id', id)
 			.eq('owner_user_id', this.userId)
 			.select('id');
@@ -2362,6 +2375,90 @@ export class KnowledgeStore {
 			if ((data ?? []).length < PAGE) break;
 		}
 		return people;
+	}
+
+	/**
+	 * "Might also be" on a person's card: the user's people who may be this one under another
+	 * spelling ("Matt Solo" in the phone, "Matt Solowynsky" on LinkedIn and in tasks), with what
+	 * tells each apart. Pairs answered "Different" stay out. Free: names and employers, no model.
+	 */
+	async similarPeople(entityId: string, limit = 5): Promise<KnowledgeSimilarPerson[]> {
+		if (!UUID.test(entityId)) return [];
+		const target = (await this.loadEntities([entityId])).get(entityId);
+		// A merged entry redirects to the one it went into: that card asks for itself.
+		if (!target || target.id !== entityId || target.kind !== 'person' || target.is_self)
+			return [];
+		const [people, different] = await Promise.all([
+			this.listPeopleForNearMatch(),
+			this.answeredDifferent(entityId)
+		]);
+		const me = people.find((p) => p.id === entityId) ?? { id: entityId, name: target.name };
+		const matches = findSimilarPeople(me, people, { limit, exclude: different });
+		if (!matches.length) return [];
+		const ids = matches.map((m) => m.id);
+		const [summaries, about] = await Promise.all([
+			this.getSummaries(ids),
+			this.describeForReview(ids)
+		]);
+		return matches.flatMap((m) => {
+			const summary = summaries.get(m.id);
+			if (!summary || summary.id !== m.id) return [];
+			return [
+				{
+					...summary,
+					rule: m.rule,
+					reason: m.reason,
+					score: m.score,
+					about: about[m.id] ?? null
+				}
+			];
+		});
+	}
+
+	/** Entries the user said are not this one ("Different" / "Not them"). */
+	private async answeredDifferent(entityId: string): Promise<Set<string>> {
+		const { data, error } = await this.db
+			.from('knowledge_merge_candidates')
+			.select('entity_a, entity_b')
+			.eq('owner_user_id', this.userId)
+			.eq('status', 'rejected')
+			.or(`entity_a.eq.${entityId},entity_b.eq.${entityId}`)
+			.limit(1000);
+		if (error) throw dbError('Load answered pairs', error);
+		const out = new Set<string>();
+		for (const row of (data ?? []) as Array<{ entity_a: string; entity_b: string }>)
+			out.add(row.entity_a === entityId ? row.entity_b : row.entity_a);
+		return out;
+	}
+
+	/**
+	 * Look through all of the user's people for look-alikes ("Matt Solo" / "Matt Solowynsky",
+	 * "Mike" / "Michael Smith") and ask "same person?" about each pair never asked before, in
+	 * the duplicates review. Free: names and employers, no model. Nothing is merged.
+	 */
+	async sweepSimilarPeople(): Promise<KnowledgeSimilarSweep> {
+		const pairs = findSimilarPairs(await this.listPeopleForNearMatch());
+		if (!pairs.length) return { found: 0, added: 0 };
+		const asked = new Set<string>();
+		for (let from = 0; ; from += PAGE) {
+			const { data, error } = await this.db
+				.from('knowledge_merge_candidates')
+				.select('entity_a, entity_b')
+				.eq('owner_user_id', this.userId)
+				.order('id')
+				.range(from, from + PAGE - 1);
+			if (error) throw dbError('Load asked pairs', error);
+			for (const row of (data ?? []) as Array<{ entity_a: string; entity_b: string }>)
+				asked.add(`${row.entity_a}|${row.entity_b}`);
+			if ((data ?? []).length < PAGE) break;
+		}
+		// findSimilarPairs orders each pair the same way the table does (a < b).
+		const fresh = pairs.filter((p) => !asked.has(`${p.a}|${p.b}`));
+		if (fresh.length)
+			await this.addNameQuestions(
+				fresh.map((p) => ({ a: p.a, b: p.b, reason: p.reason, score: p.score }))
+			);
+		return { found: pairs.length, added: fresh.length };
 	}
 
 	/** "Not this one" hints for an entry (and for entries merged into it). Newest first. */

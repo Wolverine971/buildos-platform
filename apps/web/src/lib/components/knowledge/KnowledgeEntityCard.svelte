@@ -55,6 +55,7 @@
 	import KnowledgeConnectionChips from './KnowledgeConnectionChips.svelte';
 	import KnowledgeNameUpdates from './KnowledgeNameUpdates.svelte';
 	import KnowledgeSharePanel from './KnowledgeSharePanel.svelte';
+	import KnowledgeSimilarPeople from './KnowledgeSimilarPeople.svelte';
 
 	interface Props {
 		entityId: string;
@@ -1037,5 +1038,25 @@
 				</span>
 			{/if}
 		</div>
+
+		{#if entity.kind === 'person' && !entity.is_self}
+			<!-- The same person under another spelling: phone, LinkedIn, tasks. -->
+			{#key entity.id}
+				<KnowledgeSimilarPeople
+					entityId={entity.id}
+					entityName={entity.name}
+					{onOpen}
+					onMerge={isOwn && onMerge
+						? (otherId) =>
+								onMerge?.({
+									id: entity.id,
+									name: entity.name,
+									kind: entity.kind,
+									with: [otherId]
+								})
+						: undefined}
+				/>
+			{/key}
+		{/if}
 	{/if}
 </div>

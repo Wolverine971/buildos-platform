@@ -14995,6 +14995,7 @@ export type Database = {
           circle_source: string | null
           created_at: string
           created_via: string
+          edited_at: string | null
           enriched_at: string | null
           hidden_reason: string | null
           id: string
@@ -15018,6 +15019,7 @@ export type Database = {
           circle_source?: string | null
           created_at?: string
           created_via?: string
+          edited_at?: string | null
           enriched_at?: string | null
           hidden_reason?: string | null
           id?: string
@@ -15041,6 +15043,7 @@ export type Database = {
           circle_source?: string | null
           created_at?: string
           created_via?: string
+          edited_at?: string | null
           enriched_at?: string | null
           hidden_reason?: string | null
           id?: string

@@ -65,7 +65,7 @@ it('retries only the failed batch and counts the whole import, including distinc
 		skipped: 2,
 		contacts: Array.from({ length: 1502 }, (_, i) => ({ ...contact, name: `Contact ${i}` }))
 	};
-	const requests: Array<{ from: string; count: number; skipped: number }> = [];
+	const requests: Array<{ from: string; count: number; skipped: number; run: unknown }> = [];
 	vi.stubGlobal(
 		'fetch',
 		vi.fn(async (_url: string, init: RequestInit) => {
@@ -77,7 +77,8 @@ it('retries only the failed batch and counts the whole import, including distinc
 			requests.push({
 				from: batch.contacts[0]!.name,
 				count: batch.contacts.length,
-				skipped: batch.skipped
+				skipped: batch.skipped,
+				run: form.get('run_id')
 			});
 			if (requests.length === 2) throw new Error('Connection lost');
 			const first = requests.length === 1;
@@ -88,7 +89,9 @@ it('retries only the failed batch and counts the whole import, including distinc
 					people_matched: first ? 300 : 1,
 					possible_duplicates: first ? 20 : 1,
 					facts_added: first ? 823 : 5,
-					org_ids: first ? ['org-a', 'org-b'] : ['org-b', 'org-c']
+					org_ids: first ? ['org-a', 'org-b'] : ['org-b', 'org-c'],
+					run_id: 'run-1',
+					undoable: true
 				}
 			});
 		})
@@ -97,10 +100,11 @@ it('retries only the failed batch and counts the whole import, including distinc
 	const progress: number[] = [];
 	await expect(run((n) => progress.push(n))).rejects.toThrow('Connection lost');
 	const result = await run((n) => progress.push(n));
+	// Later batches (and the retry) join the first batch's import: one Undo for the whole file.
 	expect(requests).toEqual([
-		{ from: 'Contact 0', count: 1500, skipped: 2 },
-		{ from: 'Contact 1500', count: 2, skipped: 0 },
-		{ from: 'Contact 1500', count: 2, skipped: 0 }
+		{ from: 'Contact 0', count: 1500, skipped: 2, run: null },
+		{ from: 'Contact 1500', count: 2, skipped: 0, run: 'run-1' },
+		{ from: 'Contact 1500', count: 2, skipped: 0, run: 'run-1' }
 	]);
 	expect(progress).toEqual([1500, 1502]);
 	expect(result).toMatchObject({
@@ -111,6 +115,8 @@ it('retries only the failed batch and counts the whole import, including distinc
 		people_created: 1201,
 		people_matched: 301,
 		possible_duplicates: 21,
-		facts_added: 828
+		facts_added: 828,
+		run_id: 'run-1',
+		undoable: true
 	});
 });
