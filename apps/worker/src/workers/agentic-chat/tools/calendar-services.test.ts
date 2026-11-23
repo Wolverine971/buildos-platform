@@ -189,9 +189,11 @@ function fixture() {
 		])
 	);
 	const agentAuth = {
-		getAuthenticatedClient: vi.fn(async (_userId: string, connectionId: string) => ({
-			credentials: { access_token: `access-${connectionId.replace('connection-', '')}` }
-		}))
+		getAuthenticatedClient: vi.fn((_userId: string, connectionId: string) =>
+			Promise.resolve({
+				credentials: { access_token: `access-${connectionId.replace('connection-', '')}` }
+			})
+		)
 	};
 	const createCalendarApi = vi.fn((auth: unknown) => {
 		const token = String((auth as { credentials: Row }).credentials.access_token);

@@ -134,3 +134,25 @@ Working tree on `275b6858c`, uncommitted.
 - `node apps/web/scripts/knowledge-import-undo-e2e.mjs --base http://localhost:5176` passed 21 checks as the dedicated test account, through the local app against production: LinkedIn file, phone preview (nothing saved), phone import, the owner's later edit, undo, a refused second undo. Its rows were removed afterwards.
 
 Pending: DJ's real file through the preview and import (the terminal cannot read his Documents folder), then a web deploy. Company-name folding reaches tasks, documents and chat with the next worker deploy.
+
+## November 22, evening: the duplicates review after DJ's phone import
+
+DJ imported his 744 phone contacts (689 new people, 54 matched, 49 questions, Undo available).
+The review then listed dozens of "Same name · 2 entries" pairs, and opening one showed a single
+entry.
+
+| Problem                                                                                                                                                                                                                                             | Fix                                                                                                                                                                                                      |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The pairs were not duplicates. The LinkedIn import created 1,368 entries in one instant, and the review read entries a page at a time sorted only by creation time, so pages overlapped and one entry read twice looked like a pair. 8 real groups. | The read sorts by creation time, then id, and counts each entry once. Two other knowledge reads that paged with no sort order now sort by id.                                                            |
+| A real pair showed only the name and "2 entries".                                                                                                                                                                                                   | Every entry in the review shows what tells it apart: job, LinkedIn address, phone, email, place, how many tasks and docs it is on, and where it came from. The merge dialog shows the same lines.        |
+| The "what is already on this card" read stepped 1,000 rows over 500-row pages, so on a large import it missed details. The phone import's older jobs were then saved as current beside LinkedIn's instead of as suggestions.                        | The step matches the page size. In DJ's graph this affected 7 people with a second current employer and 2 with a second headline, all from the phone import. Not repaired yet; needs his OK (9 details). |
+
+Pressing "Same one, merge" or "Different people" on a phantom pair did nothing (both refuse a
+single entry), so no data was lost.
+
+Working tree on `4a3ed3f87`, uncommitted.
+
+- `pnpm --filter @buildos/shared-agent-ops exec vitest run src/knowledge` passed 211 tests, the store file ten times in a row. The fake database now returns tied rows in a different order on each read. With the old sort the new test reports 50 phantom pairs; with the old page step the headline test saves the phone's value as current.
+- `pnpm --filter @buildos/worker exec vitest run src/workers/knowledge/documentMentionsWorker.test.ts` passed 3 tests. `pnpm --filter @buildos/web check` reported 0 errors.
+- Local app against the live graph: the review lists 8 same-name groups, none with a repeated entry, each showing both entries; "Review" opens both in the merge dialog. Nothing was merged.
+- Found, not fixed: DJ's own phone card did not land on his "you" entry, so "DJ Wayne · 2 entries" is in the review.

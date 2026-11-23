@@ -2,13 +2,13 @@
 import { describe, expect, it } from 'vitest';
 import type { KnowledgeEntityDetail } from '@buildos/shared-agent-ops/knowledge';
 import {
+	type EnrichPage,
 	choosePages,
 	enrichContextFrom,
 	enrichQueries,
 	enrichUserPrompt,
 	knowledgePanelPage,
-	validateEnrichment,
-	type EnrichPage
+	validateEnrichment
 } from './knowledgeEnrichPlan';
 import { DEFAULT_ENRICH_FIELDS, oembedBatch } from '@buildos/shared-agent-ops/knowledge';
 

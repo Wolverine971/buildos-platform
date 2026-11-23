@@ -22,23 +22,23 @@ import type {
 	KnowledgeWriteBatch
 } from '@buildos/shared-agent-ops/knowledge';
 import {
-	createWorkerKnowledgeSearchPort,
 	type KnowledgeSearchCallContext,
-	type KnowledgeSearchPortDeps
+	type KnowledgeSearchPortDeps,
+	createWorkerKnowledgeSearchPort
 } from './knowledge-search';
 import {
 	EXPLORE_MAX_PAGES,
 	EXPLORE_MAX_SITE_PAGES,
+	type ExploreLane,
+	type ExplorePage,
+	type KnowledgeSearchStep,
 	buildExploreBatch,
 	flagPossibleTwins,
 	planExploreReading,
 	planSitePages,
 	planSiteWalks,
 	siteWalkGoal,
-	validateExploreAnswer,
-	type ExploreLane,
-	type ExplorePage,
-	type KnowledgeSearchStep
+	validateExploreAnswer
 } from './knowledge-search-plan';
 
 type Row = Record<string, any>;
@@ -71,16 +71,16 @@ class FakeDb {
 	from(table: string) {
 		return new FakeQuery(this, table);
 	}
-	async rpc(fn: string, args: Row) {
+	rpc(fn: string, args: Row) {
 		if (fn === 'knowledge_reserve_enrichment_run') {
 			this.reserveCalls.push(args);
 			if (this.reserve.id)
 				this.runs.push({ id: this.reserve.id, input: args.p_input, stats: args.p_stats });
-			return { data: this.reserve, error: null };
+			return Promise.resolve({ data: this.reserve, error: null });
 		}
 		if (fn === 'knowledge_connections') {
 			this.connectionArgs = args;
-			return {
+			return Promise.resolve({
 				data: {
 					people: this.people,
 					total: this.people.length,
@@ -99,9 +99,9 @@ class FakeDb {
 					gaps: { companies_without_place: [], companies_without_industry: [] }
 				},
 				error: null
-			};
+			});
 		}
-		return { data: null, error: { message: `rpc ${fn} not faked` } };
+		return Promise.resolve({ data: null, error: { message: `rpc ${fn} not faked` } });
 	}
 }
 
@@ -185,22 +185,23 @@ class FakeStore {
 	probes: KnowledgeWriteBatch[] = [];
 	private next = 0;
 
-	async getEntity(id: string) {
-		return this.details.get(id) ?? null;
+	getEntity(id: string) {
+		return Promise.resolve(this.details.get(id) ?? null);
 	}
-	async createEntry(input: Row) {
+	createEntry(input: Row) {
 		const id = `c0000000-0000-4000-8000-00000000000${this.created.length + 1}`;
 		this.created.push({ id, ...input });
-		return id;
+		return Promise.resolve(id);
 	}
-	async addMergeCandidate(a: string, b: string, options: Row) {
+	addMergeCandidate(a: string, b: string, options: Row) {
 		this.mergeQuestions.push({ a, b, ...options });
+		return Promise.resolve();
 	}
-	async record(batch: KnowledgeWriteBatch, options: Row) {
+	record(batch: KnowledgeWriteBatch, options: Row) {
 		if (options.dryRun) {
 			// What a real write would do, saving nothing: new entries get no real id.
 			this.probes.push(batch);
-			return {
+			return Promise.resolve({
 				entities: batch.entities.map((entity) => {
 					const id = this.existingByName.get(entity.name.toLowerCase());
 					return {
@@ -212,10 +213,10 @@ class FakeStore {
 					};
 				}),
 				facts: { added: 0, existing: 0, superseded: 0, suggested: 0 }
-			} as never;
+			} as never);
 		}
 		this.recorded.push({ batch, options });
-		return {
+		return Promise.resolve({
 			entities: batch.entities.map((entity) => ({
 				ref: entity.ref,
 				id: entity.id ?? `e0000000-0000-4000-8000-00000000000${++this.next}`,
@@ -224,7 +225,7 @@ class FakeStore {
 				matched: entity.id ? 'id' : 'created'
 			})),
 			facts: { added: batch.facts.length, existing: 0, superseded: 0, suggested: 0 }
-		} as never;
+		} as never);
 	}
 }
 
@@ -263,7 +264,7 @@ function decider(pick: (key: string, card: Row) => string = () => 'yes'): Identi
 	const questions: string[] = [];
 	return {
 		questions,
-		async decide(req) {
+		decide(req) {
 			const entries = (req.state as { entries: Record<string, Row> }).entries;
 			const answers: Row = {};
 			for (const key of Object.keys(req.questions)) {
@@ -277,7 +278,7 @@ function decider(pick: (key: string, card: Row) => string = () => 'yes'): Identi
 					confidence: 0.95
 				};
 			}
-			return { ok: true, answers, receipt: { costUsd: 0.0001 } } as never;
+			return Promise.resolve({ ok: true, answers, receipt: { costUsd: 0.0001 } } as never);
 		}
 	};
 }
@@ -310,9 +311,9 @@ function harness(
 			}
 		},
 		makeSearchPort: () => ({
-			async search(args) {
+			search(args) {
 				searches.push(String(args.query));
-				return {
+				return Promise.resolve({
 					results: overrides.searchResults ?? [
 						{ url: ABOUT_URL, title: 'Leadership | Tenable', snippet: 'Meet the team' }
 					],
@@ -325,12 +326,15 @@ function harness(
 							source: 'provider_reported'
 						}
 					}
-				};
+				});
 			},
-			async visit(args) {
+			visit(args) {
 				visits.push(String(args.url));
-				if (overrides.pageText === null) throw new Error('blocked');
-				return { content: overrides.pageText ?? ABOUT_PAGE, title: 'Leadership | Tenable' };
+				if (overrides.pageText === null) return Promise.reject(new Error('blocked'));
+				return Promise.resolve({
+					content: overrides.pageText ?? ABOUT_PAGE,
+					title: 'Leadership | Tenable'
+				});
 			}
 		}),
 		makeStore: () => store as never,
@@ -342,9 +346,9 @@ function harness(
 		chatSessionId: CHAT,
 		turnRunId: TURN,
 		onStep: (step) => steps.push(step),
-		authorizeQuery: async (query) => {
+		authorizeQuery: (query) => {
 			authorized.push(query);
-			return true;
+			return Promise.resolve(true);
 		}
 	};
 	return { db, store, port, context, searches, visits, prompts, steps, authorized };
@@ -558,9 +562,13 @@ describe('explore_knowledge: one hop outside', () => {
 		const h = harness({
 			searchResults: results,
 			decider: {
-				async decide(req) {
+				decide(req) {
 					asked.push(...Object.keys(req.questions));
-					return { ok: true, answers: {}, receipt: { costUsd: 0 } } as never;
+					return Promise.resolve({
+						ok: true,
+						answers: {},
+						receipt: { costUsd: 0 }
+					} as never);
 				}
 			}
 		});
@@ -825,10 +833,10 @@ describe('explore_knowledge: one hop outside', () => {
 		const h = harness({
 			answer: { entities: [] },
 			makeSearchPort: () => ({
-				async search(args) {
+				search(args) {
 					if (String(args.query).includes('broken'))
-						throw new Error('search provider down');
-					return {
+						return Promise.reject(new Error('search provider down'));
+					return Promise.resolve({
 						results: [
 							{
 								url: ABOUT_URL,
@@ -836,10 +844,10 @@ describe('explore_knowledge: one hop outside', () => {
 								snippet: 'Meet the team'
 							}
 						]
-					};
+					});
 				},
-				async visit() {
-					return { content: ABOUT_PAGE, title: 'Leadership | Tenable' };
+				visit() {
+					return Promise.resolve({ content: ABOUT_PAGE, title: 'Leadership | Tenable' });
 				}
 			})
 		});
@@ -859,9 +867,9 @@ describe('explore_knowledge: one hop outside', () => {
 		const controller = new AbortController();
 		const h = harness({
 			llm: {
-				async getJSONResponse() {
+				getJSONResponse() {
 					controller.abort();
-					return LEADERSHIP_ANSWER as never;
+					return Promise.resolve(LEADERSHIP_ANSWER as never);
 				}
 			}
 		});
@@ -929,7 +937,7 @@ describe('explore_knowledge: one hop outside', () => {
 		const h = harness({ answer: LEADERSHIP_ANSWER });
 		const result = await h.port.explore(
 			{ goal: 'g', searches: [{ query: 'private codename Falcon revenue' }] },
-			{ ...h.context, authorizeQuery: async () => false }
+			{ ...h.context, authorizeQuery: () => Promise.resolve(false) }
 		);
 		expect((result.knowledge_explore as Row).stopped.reason).toBe('not_allowed');
 		expect(h.searches).toEqual([]);
@@ -943,7 +951,7 @@ describe('explore_knowledge: one hop outside', () => {
 				goal: 'g',
 				searches: [{ query: 'software companies Baltimore' }, { query: 'secret thing' }]
 			},
-			{ ...h.context, authorizeQuery: async (query) => !query.includes('secret') }
+			{ ...h.context, authorizeQuery: (query) => Promise.resolve(!query.includes('secret')) }
 		);
 		expect(h.searches).toEqual(['software companies Baltimore']);
 		expect(h.db.reserveCalls[0]!.p_input.queries).toEqual(['software companies Baltimore']);
@@ -969,8 +977,8 @@ describe('explore_knowledge: one hop outside', () => {
 	it('closes the run as failed when the page-reading model throws', async () => {
 		const h = harness({
 			llm: {
-				async getJSONResponse() {
-					throw new Error('model down');
+				getJSONResponse() {
+					return Promise.reject(new Error('model down'));
 				}
 			}
 		});
@@ -1025,10 +1033,10 @@ describe('explore_knowledge: one click further in than the search went', () => {
 	type Walk = Parameters<NonNullable<KnowledgeSearchPortDeps['siteWalker']>>[0];
 	function walker(pages: Row[] | Error, costUsd = 0.0005) {
 		const calls: Walk[] = [];
-		const siteWalker: NonNullable<KnowledgeSearchPortDeps['siteWalker']> = async (input) => {
+		const siteWalker: NonNullable<KnowledgeSearchPortDeps['siteWalker']> = (input) => {
 			calls.push(input);
-			if (pages instanceof Error) throw pages;
-			return { pages: pages as never, decisions: pages.length, costUsd };
+			if (pages instanceof Error) return Promise.reject(pages);
+			return Promise.resolve({ pages: pages as never, decisions: pages.length, costUsd });
 		};
 		return { calls, siteWalker };
 	}
@@ -1043,8 +1051,20 @@ describe('explore_knowledge: one click further in than the search went', () => {
 		return detail;
 	}
 	const LEADERSHIP_WALK = [
-		{ url: HOME_URL, requestedUrl: 'https://www.tenable.com', title: 'Tenable', text: HOME_PAGE, answer: 0.08 },
-		{ url: ABOUT_URL, requestedUrl: ABOUT_URL, title: 'Leadership | Tenable', text: ABOUT_PAGE, answer: 0.93 }
+		{
+			url: HOME_URL,
+			requestedUrl: 'https://www.tenable.com',
+			title: 'Tenable',
+			text: HOME_PAGE,
+			answer: 0.08
+		},
+		{
+			url: ABOUT_URL,
+			requestedUrl: ABOUT_URL,
+			title: 'Leadership | Tenable',
+			text: ABOUT_PAGE,
+			answer: 0.93
+		}
 	];
 
 	it("walks a company's own site to the page that names who runs it, though no search returned that page", async () => {
@@ -1053,7 +1073,9 @@ describe('explore_knowledge: one click further in than the search went', () => {
 			answer: LEADERSHIP_ANSWER,
 			siteWalker: w.siteWalker,
 			// The search only found a news story, which names nobody.
-			searchResults: [{ url: NEWS_URL, title: 'Tenable results', snippet: 'Quarterly results' }],
+			searchResults: [
+				{ url: NEWS_URL, title: 'Tenable results', snippet: 'Quarterly results' }
+			],
 			pageText: NEWS_PAGE
 		});
 		h.store.details.set(TENABLE, withHomepage());
@@ -1105,7 +1127,9 @@ describe('explore_knowledge: one click further in than the search went', () => {
 		const alone = harness({ searchResults });
 		alone.store.details.set(TENABLE, withHomepage());
 		await alone.port.explore(EXPLORE_ARGS, alone.context);
-		expect(alone.steps.find((step) => step.kind === 'read')?.outcome).toBe('5 pages, 1 preview');
+		expect(alone.steps.find((step) => step.kind === 'read')?.outcome).toBe(
+			'5 pages, 1 preview'
+		);
 
 		const w = walker(LEADERSHIP_WALK);
 		const h = harness({ searchResults, siteWalker: w.siteWalker });
@@ -1114,7 +1138,8 @@ describe('explore_knowledge: one click further in than the search went', () => {
 		// The same five pages and one preview, plus the two the walk reached.
 		expect(h.steps.find((step) => step.kind === 'read')?.outcome).toBe('7 pages, 1 preview');
 		const prompt = h.prompts[0]!.userPrompt;
-		for (const result of searchResults) expect(prompt).toContain(`${result.url}\nFrom search 1`);
+		for (const result of searchResults)
+			expect(prompt).toContain(`${result.url}\nFrom search 1`);
 		expect(h.visits).toEqual(alone.visits);
 	});
 
@@ -1135,7 +1160,8 @@ describe('explore_knowledge: one click further in than the search went', () => {
 				{
 					url: 'https://www.linkedin.com/company/tenableinc',
 					title: 'Tenable | LinkedIn',
-					snippet: 'Tenable on LinkedIn: the exposure management company, 2,000 employees.'
+					snippet:
+						'Tenable on LinkedIn: the exposure management company, 2,000 employees.'
 				},
 				{
 					url: 'https://www.tenable.com/about',
@@ -1156,7 +1182,10 @@ describe('explore_knowledge: one click further in than the search went', () => {
 		const w = walker(LEADERSHIP_WALK);
 		const h = harness({ siteWalker: w.siteWalker });
 		await h.port.explore(
-			{ goal: 'Software companies near Baltimore', searches: [{ query: 'Baltimore software companies' }] },
+			{
+				goal: 'Software companies near Baltimore',
+				searches: [{ query: 'Baltimore software companies' }]
+			},
 			h.context
 		);
 		expect(w.calls).toEqual([]);
@@ -1173,6 +1202,105 @@ describe('explore_knowledge: one click further in than the search went', () => {
 			'Steve Vintz'
 		);
 		expect(h.db.runs.find((row) => row.id === 'run-1')!.status).toBe('completed');
+	});
+});
+
+describe('explore_knowledge: a page with text aimed at AI tools', () => {
+	/** Flags the pages whose address is listed; records what it was asked about. */
+	function contentCheck(flaggedUrls: string[], fail = false) {
+		const asked: Row[] = [];
+		const check: NonNullable<KnowledgeSearchPortDeps['contentCheck']> = {
+			check(items, context) {
+				asked.push({ items, context });
+				if (fail) return Promise.reject(new Error('check down'));
+				return Promise.resolve({
+					verdicts: items.map((item) => ({
+						url: item.url,
+						flagged: flaggedUrls.includes(item.url),
+						checked: true,
+						scores: null
+					})),
+					costUsd: 0.0001
+				});
+			}
+		};
+		return { asked, check };
+	}
+
+	it('still reads a flagged page, tells the reader, and keeps its entries without the summary line', async () => {
+		const c = contentCheck([ABOUT_URL]);
+		const h = harness({ answer: LEADERSHIP_ANSWER, contentCheck: c.check });
+		h.store.details.set(TENABLE, orgDetail(TENABLE, 'Tenable'));
+
+		const result = await h.port.explore(EXPLORE_ARGS, h.context);
+		const body = result.knowledge_explore as Row;
+
+		// Every page the reader is about to get was checked, under this user and chat.
+		expect(c.asked).toHaveLength(1);
+		expect(c.asked[0]!.items).toEqual([{ url: ABOUT_URL, text: ABOUT_PAGE }]);
+		expect(c.asked[0]!.context).toMatchObject({
+			surface: 'explore_knowledge',
+			userId: USER,
+			chatSessionId: CHAT
+		});
+
+		// The page is not dropped: the reader gets it, marked.
+		const prompt = h.prompts[0]!.userPrompt;
+		expect(prompt).toContain(ABOUT_PAGE);
+		expect(prompt).toContain('FLAGGED: this page has text written to steer an AI');
+
+		// Who it names is still found and saved, with the quoted facts...
+		const steve = body.entities.find((entity: Row) => entity.name === 'Steve Vintz');
+		expect(steve).toMatchObject({ kind: 'person', sources: [ABOUT_URL] });
+		const { batch } = h.store.recorded[0]!;
+		expect(batch.facts).toContainEqual(
+			expect.objectContaining({ predicate: 'works_at', object: TENABLE })
+		);
+		// ...but nothing the reader wrote in its own words about them is kept.
+		expect(steve.summary).toBeUndefined();
+		expect(steve.note).toContain('text aimed at AI tools');
+		expect(JSON.stringify(batch)).not.toContain('Co-CEO and CFO of Tenable');
+
+		// The chat model, the person and the turn's write review are all told.
+		expect(result.content_warnings).toEqual([
+			{ url: ABOUT_URL, warning: expect.stringContaining('written to steer an AI assistant') }
+		]);
+		expect(result.message).toContain('Flagged: tenable.com');
+		expect(body.pages).toEqual([
+			{ url: ABOUT_URL, title: 'Leadership | Tenable', flagged: true }
+		]);
+		expect(h.steps.find((step) => step.kind === 'flag')).toMatchObject({
+			verb: 'Flagged',
+			target: 'tenable.com'
+		});
+		// What the check cost is part of the hop.
+		expect(h.db.runs.find((row) => row.id === 'run-1')!.cost_usd).toBeCloseTo(0.0031, 6);
+	});
+
+	it('changes nothing when no page is flagged', async () => {
+		const c = contentCheck([]);
+		const h = harness({ answer: LEADERSHIP_ANSWER, contentCheck: c.check });
+		h.store.details.set(TENABLE, orgDetail(TENABLE, 'Tenable'));
+		const result = await h.port.explore(EXPLORE_ARGS, h.context);
+		const steve = (result.knowledge_explore as Row).entities.find(
+			(entity: Row) => entity.name === 'Steve Vintz'
+		);
+		expect(steve.summary).toBe('Co-CEO and CFO of Tenable');
+		expect(steve.note).toBeUndefined();
+		expect(result.content_warnings).toBeUndefined();
+		expect(h.prompts[0]!.userPrompt).not.toContain('FLAGGED');
+		expect(h.steps.some((step) => step.kind === 'flag')).toBe(false);
+	});
+
+	it('reads on unchecked when the check cannot run', async () => {
+		const c = contentCheck([ABOUT_URL], true);
+		const h = harness({ answer: LEADERSHIP_ANSWER, contentCheck: c.check });
+		h.store.details.set(TENABLE, orgDetail(TENABLE, 'Tenable'));
+		const result = await h.port.explore(EXPLORE_ARGS, h.context);
+		expect((result.knowledge_explore as Row).entities.map((e: Row) => e.name)).toContain(
+			'Steve Vintz'
+		);
+		expect(result.content_warnings).toBeUndefined();
 	});
 });
 
@@ -1407,9 +1535,9 @@ describe('find_in_knowledge: inside the graph', () => {
 				cards.push(card);
 				return card.industry?.includes('fintech') ? 'yes' : 'unknown';
 			}),
-			readEntryPool: async (userId, options) => {
+			readEntryPool: (userId, options) => {
 				poolCalls.push({ userId, ...options });
-				return {
+				return Promise.resolve({
 					total: 3,
 					entries: [
 						entry(MURTECH, 'org', 'Murtech', {
@@ -1438,7 +1566,7 @@ describe('find_in_knowledge: inside the graph', () => {
 							}
 						})
 					]
-				};
+				});
 			}
 		});
 		const result = await h.port.find(
@@ -1488,29 +1616,32 @@ describe('find_in_knowledge: inside the graph', () => {
 
 	it('narrows other kinds by the exact words that describe them, and mixes them with people', async () => {
 		const h = harness({
-			readEntryPool: async () => ({
-				total: 2,
-				entries: [
-					entry(MURTECH, 'org', 'Murtech', { places: ['Baltimore, MD'] }),
-					entry(ACME, 'org', 'Acme Logistics', { places: ['Denver, CO'] })
-				]
-			}),
-			readEntryFacts: async () =>
-				new Map([
-					[
-						'a0000000-0000-4000-8000-000000000001',
-						{
-							...entry('x', 'person', 'x'),
-							on_file: {
-								phone: false,
-								email: false,
-								website: false,
-								social: true,
-								address: false
-							}
-						}
+			readEntryPool: () =>
+				Promise.resolve({
+					total: 2,
+					entries: [
+						entry(MURTECH, 'org', 'Murtech', { places: ['Baltimore, MD'] }),
+						entry(ACME, 'org', 'Acme Logistics', { places: ['Denver, CO'] })
 					]
-				])
+				}),
+			readEntryFacts: () =>
+				Promise.resolve(
+					new Map([
+						[
+							'a0000000-0000-4000-8000-000000000001',
+							{
+								...entry('x', 'person', 'x'),
+								on_file: {
+									phone: false,
+									email: false,
+									website: false,
+									social: true,
+									address: false
+								}
+							}
+						]
+					])
+				)
 		});
 		h.db.people = [person('a0000000-0000-4000-8000-000000000001', 'Ann', { tasks: 2 })];
 		const result = await h.port.find(

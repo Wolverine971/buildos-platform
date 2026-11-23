@@ -712,7 +712,7 @@ export async function generateOntologyProjectBrief(
 
 	if (!llmDecision.shouldUseLlm) {
 		llmSkippedReason = 'low_signal_project';
-	} else if (reuseDecision && reuseDecision.reuse) {
+	} else if (reuseDecision?.reuse) {
 		// Nothing the write-up is written from has changed: show the same write-up and
 		// leave the project's next step exactly as it is.
 		briefContent = reuseDecision.briefContent;

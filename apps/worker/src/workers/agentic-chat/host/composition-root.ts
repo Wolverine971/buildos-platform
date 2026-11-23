@@ -16,6 +16,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { AGENTIC_CHAT_TURN_LEASE_POLICY_V1, type Database } from '@buildos/shared-types';
 import type { WebResearchPort } from '@buildos/shared-agent-ops';
 import { createAgentRunWebResearchPort } from '../../agent-run/webResearchPort';
+import type { WebContentCheck } from '../../agent-run/webContentCheck';
 import type { TavilyUsageLogger } from '../tools/tavily-usage';
 import type { WebNavigatePort } from '../tools/web-navigate';
 import type { KnowledgeSearchPort } from '../tools/knowledge-search';
@@ -233,6 +234,7 @@ export function createAgenticChatCompositionRoot(options: {
 	/** Records chat web_search spend in llm_usage_logs. */
 	usage?: TavilyUsageLogger;
 	webNavigator?: WebNavigatePort;
+	webContentCheck?: WebContentCheck;
 	/** Guided search: `find_in_knowledge` and `explore_knowledge`. */
 	knowledgeSearch?: KnowledgeSearchPort;
 	/** Jev relevance scores for `scan_email_inbox`. */
@@ -404,6 +406,7 @@ export function createAgenticChatCompositionRoot(options: {
 		webResearch: options.webResearch ?? createAgentRunWebResearchPort({ purpose: 'chat' }),
 		...(options.usage ? { usage: options.usage } : {}),
 		...(options.webNavigator ? { webNavigator: options.webNavigator } : {}),
+		...(options.webContentCheck ? { webContentCheck: options.webContentCheck } : {}),
 		...(options.knowledgeSearch ? { knowledgeSearch: options.knowledgeSearch } : {}),
 		...(options.emailRelevanceDecider
 			? { emailRelevanceDecider: options.emailRelevanceDecider }

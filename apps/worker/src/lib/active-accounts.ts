@@ -9,10 +9,11 @@
 // Record updated_at is deliberately not a signal: background jobs (document outlines and
 // digests, project next steps) rewrite rows of people who have not been back in months.
 
-/** Any Supabase client (typed or not); only reads. */
-export interface ActiveAccountsClient {
-	from(relation: string): any;
-	auth?: { admin?: { listUsers(params: { page: number; perPage: number }): Promise<any> } };
+import type { TypedSupabaseClient } from '@buildos/supabase-client';
+
+/** The account tables can be read even when the client has no Auth admin API. */
+export interface ActiveAccountsClient extends Pick<TypedSupabaseClient, 'from'> {
+	auth?: { admin?: Pick<TypedSupabaseClient['auth']['admin'], 'listUsers'> };
 }
 
 export const ACTIVE_ACCOUNT_DAYS = 30;
@@ -90,13 +91,19 @@ export function activeAccountsFromSignals(
 	return out;
 }
 
-async function readAll<T>(build: (from: number, to: number) => PromiseLike<any>): Promise<T[]> {
+async function readAll<T>(
+	build: (
+		from: number,
+		to: number
+	) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>
+): Promise<T[]> {
 	const rows: T[] = [];
 	for (let from = 0; ; from += PAGE) {
 		const { data, error } = await build(from, from + PAGE - 1);
 		if (error) throw new Error(error.message);
-		rows.push(...((data ?? []) as T[]));
-		if ((data ?? []).length < PAGE) return rows;
+		const page = data ?? [];
+		rows.push(...page);
+		if (page.length < PAGE) return rows;
 	}
 }
 
@@ -109,7 +116,7 @@ export async function findActiveAccounts(
 	const since = new Date(now.getTime() - (options.days ?? ACTIVE_ACCOUNT_DAYS) * MS_PER_DAY);
 	const cutoff = since.toISOString();
 
-	const accounts = await readAll<AccountRow>((from, to) =>
+	const accounts = await readAll((from, to) =>
 		db
 			.from('users')
 			.select('id, last_visit, deletion_status, access_restricted')
@@ -125,7 +132,7 @@ export async function findActiveAccounts(
 		for (let page = 1; page <= 100; page++) {
 			const { data, error } = await admin.listUsers({ page, perPage: PAGE });
 			if (error) throw new Error(`List sign-ins: ${error.message}`);
-			const users = (data?.users ?? []) as Array<{ id: string; last_sign_in_at?: string }>;
+			const users = data?.users ?? [];
 			for (const user of users) {
 				if (user.last_sign_in_at)
 					signals.push({ userId: user.id, signal: 'sign_in', at: user.last_sign_in_at });
@@ -134,7 +141,7 @@ export async function findActiveAccounts(
 		}
 	}
 
-	const chats = await readAll<{ user_id: string; last_message_at: string }>((from, to) =>
+	const chats = await readAll((from, to) =>
 		db
 			.from('chat_sessions')
 			.select('user_id, last_message_at')
@@ -142,8 +149,10 @@ export async function findActiveAccounts(
 			.order('id')
 			.range(from, to)
 	);
-	for (const chat of chats)
-		signals.push({ userId: chat.user_id, signal: 'chat', at: chat.last_message_at });
+	for (const chat of chats) {
+		if (chat.last_message_at)
+			signals.push({ userId: chat.user_id, signal: 'chat', at: chat.last_message_at });
+	}
 
 	const created: Array<{ actor: string; signal: ActiveAccountSignal; at: string }> = [];
 	for (const [table, signal] of [
@@ -151,7 +160,7 @@ export async function findActiveAccounts(
 		['onto_tasks', 'task'],
 		['onto_documents', 'document']
 	] as const) {
-		const rows = await readAll<{ created_by: string; created_at: string }>((from, to) =>
+		const rows = await readAll((from, to) =>
 			db
 				.from(table)
 				.select('created_by, created_at')
@@ -169,7 +178,7 @@ export async function findActiveAccounts(
 			.select('id, user_id')
 			.in('id', actorIds.slice(i, i + 150));
 		if (error) throw new Error(error.message);
-		for (const actor of (data ?? []) as Array<{ id: string; user_id: string | null }>) {
+		for (const actor of data ?? []) {
 			if (actor.user_id) userByActor.set(actor.id, actor.user_id);
 		}
 	}

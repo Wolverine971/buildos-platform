@@ -65,6 +65,11 @@ import { createWorkerAgenticChatEmailReadPort } from './email-read-port';
 import { loadEmailScanProjectBrief } from './email-scan';
 import { type EmailScanLedger, SupabaseEmailScanLedger } from './email-scan-ledger';
 import { readPaidToolCharge } from '../../agent-run/webResearchPort';
+import {
+	type WebContentCheck,
+	checkWebToolResult,
+	describeWebContentFlag
+} from '../../agent-run/webContentCheck';
 import { type TavilyUsageLogger, logTavilyCharge } from './tavily-usage';
 import type { EmailSearchProvenanceJudge } from './email-search-provenance';
 import type { AgenticChatWebSearchReviewPort } from './web-search-review';
@@ -389,6 +394,11 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			/** Logs each paid web_search under the user and turn. */
 			usage?: TavilyUsageLogger;
 			webNavigator?: WebNavigatePort;
+			/**
+			 * The tripwire on web text (webContentCheck.ts). Absent → web results are
+			 * returned unchecked.
+			 */
+			webContentCheck?: WebContentCheck;
 			/** Guided search: find_in_knowledge and explore_knowledge. */
 			knowledgeSearch?: KnowledgeSearchPort;
 			webSearchReviewer?: AgenticChatWebSearchReviewPort;
@@ -444,6 +454,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		this.webResearch = options.webResearch;
 		this.usage = options.usage;
 		this.webNavigator = options.webNavigator;
+		this.webContentCheck = options.webContentCheck;
 		this.knowledgeSearch = options.knowledgeSearch;
 		this.webSearchReviewer = options.webSearchReviewer;
 		this.createAccessAdapter =
@@ -756,7 +767,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 							);
 						}
 						const claim = input.executionInput.claim;
-						return requireResultRecord(
+						const navigated = requireResultRecord(
 							await this.webNavigator.navigate(webArguments, {
 								signal: deadlineSignal,
 								...(input.onProgress
@@ -781,6 +792,12 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 									}
 								}
 							})
+						);
+						return this.flagWebContent(
+							'web_navigate',
+							navigated,
+							input,
+							deadlineSignal
 						);
 					}
 					const executeWebResearch =
@@ -871,7 +888,12 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 							}
 						);
 					}
-					return researched;
+					return this.flagWebContent(
+						input.toolName === 'web_search' ? 'web_search' : 'web_visit',
+						researched,
+						input,
+						deadlineSignal
+					);
 				}
 			});
 		} catch (error) {
@@ -1046,20 +1068,21 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		if (!review) {
 			if (state.searchReviews.size >= 32 || state.reviewIndex >= 32)
 				throw providerError('read_tool_egress_security_capacity_exceeded', 'permanent');
-			const started = this.webSearchReviewer.authorize({
+			review = this.webSearchReviewer.authorize({
 				arguments: normalized,
 				executionInput: input.executionInput,
 				processingToken: input.processingToken,
 				reviewIndex: ++state.reviewIndex,
 				signal
 			});
-			review = started;
-			state.searchReviews.set(key, started);
-			started.catch(() => {
-				if (state.searchReviews.get(key) === started) state.searchReviews.delete(key);
-			});
+			state.searchReviews.set(key, review);
 		}
-		return review;
+		try {
+			return await review;
+		} catch (error) {
+			if (state.searchReviews.get(key) === review) state.searchReviews.delete(key);
+			throw error;
+		}
 	}
 
 	private async authorizeMailboxSearch(
@@ -1292,6 +1315,49 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 	private readonly webResearch: WebResearchPort | undefined;
 	private readonly usage: TavilyUsageLogger | undefined;
 	private readonly webNavigator: WebNavigatePort | undefined;
+	private readonly webContentCheck: WebContentCheck | undefined;
+
+	/**
+	 * Ask the decision model whether the web text a tool is about to return has anything
+	 * written to steer an AI. A page that trips is kept and marked (`content_warnings`), and
+	 * the person sees it in the work log. The check is extra: if it cannot run, the result
+	 * goes back as it was.
+	 */
+	private async flagWebContent(
+		tool: 'web_search' | 'web_visit' | 'web_navigate',
+		result: Record<string, unknown>,
+		input: {
+			executionInput: {
+				claim: { userId: string; sessionId: string; turnRunId: string };
+				streamRunId: string;
+				clientTurnId: string;
+			};
+			providerToolCallId: string;
+			onProgress?: (progress: { message: string; data: Record<string, string> }) => void;
+		},
+		signal: AbortSignal
+	): Promise<Record<string, unknown>> {
+		if (!this.webContentCheck) return result;
+		try {
+			const claim = input.executionInput.claim;
+			const checked = await checkWebToolResult(tool, result, this.webContentCheck, {
+				userId: claim.userId,
+				chatSessionId: claim.sessionId,
+				metadata: {
+					turnRunId: claim.turnRunId,
+					streamRunId: input.executionInput.streamRunId,
+					clientTurnId: input.executionInput.clientTurnId,
+					providerToolCallId: input.providerToolCallId
+				},
+				signal
+			});
+			for (const verdict of checked.flagged)
+				input.onProgress?.(describeWebContentFlag(verdict.url));
+			return checked.result;
+		} catch {
+			return result;
+		}
+	}
 	private readonly knowledgeSearch: KnowledgeSearchPort | undefined;
 	private readonly emailSearchProvenance: EmailSearchProvenanceJudge | undefined;
 	private readonly webSearchReviewer: AgenticChatWebSearchReviewPort | undefined;

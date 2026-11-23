@@ -14,6 +14,7 @@
 		KIND_ICON,
 		KIND_LABEL,
 		MERGE_MAX,
+		knowledgeAddedLine,
 		knowledgeApi,
 		type KnowledgeEntitySummary,
 		type KnowledgeMergeEntry
@@ -62,17 +63,6 @@
 		entries.length < 2 && keep ? `Merge ${keep.name} with…` : 'Merge entries'
 	);
 
-	const VIA: Record<string, string> = {
-		import: 'your contacts',
-		chat: 'a chat',
-		mcp: 'an agent',
-		enrichment: 'research',
-		task: 'your tasks',
-		backfill: 'your tasks',
-		system: 'your docs',
-		manual: 'you'
-	};
-
 	function plural(n: number, one: string, many = `${one}s`) {
 		return `${n} ${n === 1 ? one : many}`;
 	}
@@ -84,15 +74,6 @@
 			e.facts ? plural(e.facts, 'detail') : null
 		].filter(Boolean);
 		return parts.length ? parts.join(' · ') : 'Nothing attached yet';
-	}
-
-	function added(e: KnowledgeMergeEntry) {
-		const date = new Date(e.created_at).toLocaleDateString(undefined, {
-			month: 'short',
-			day: 'numeric'
-		});
-		const via = VIA[e.created_via];
-		return via ? `Added ${date} from ${via}` : `Added ${date}`;
 	}
 
 	/** Why an entry can't be folded into the kept one, if it can't. */
@@ -248,8 +229,16 @@
 									{entry.summary}
 								</p>
 							{/if}
+							{#if entry.details?.length}
+								<p class="mt-1 text-xs text-foreground">
+									{entry.details.join(' · ')}
+								</p>
+							{/if}
 							<p class="mt-1 text-xs text-muted-foreground">
-								{carries(entry)} · {added(entry)}
+								{carries(entry)} · {knowledgeAddedLine(
+									entry.created_at,
+									entry.created_via
+								)}
 							</p>
 							{#if why}
 								<p class="mt-1 text-xs text-warning">{why}</p>

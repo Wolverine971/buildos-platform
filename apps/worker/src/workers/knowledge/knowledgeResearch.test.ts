@@ -156,7 +156,7 @@ function harness(opts: { decider?: IdentityDecider | null; anchors?: KnowledgeAn
 	const llm = {
 		getJSONResponse: vi.fn(async (options: any) => {
 			prompts.push(options.userPrompt);
-			options.onUsage?.({ totalCost: 0.0004 });
+			await options.onUsage?.({ totalCost: 0.0004 });
 			// Cites whichever page (after the identity check) holds the quote.
 			const quote = 'offers trap, skeet and rifle ranges';
 			const blocks = String(options.userPrompt).split('<page number="').slice(1);
@@ -176,9 +176,9 @@ function harness(opts: { decider?: IdentityDecider | null; anchors?: KnowledgeAn
 		})
 	};
 	const port = {
-		search: async (args: Record<string, unknown>) => {
+		search: (args: Record<string, unknown>) => {
 			queries.push(String(args.query));
-			return {
+			return Promise.resolve({
 				results: [
 					{
 						url: 'https://county.example/cody-range',
@@ -191,7 +191,7 @@ function harness(opts: { decider?: IdentityDecider | null; anchors?: KnowledgeAn
 						page_content: `${OWN} Story.`
 					}
 				]
-			};
+			});
 		}
 	};
 	const run = () =>
@@ -219,7 +219,7 @@ describe('researchEntity: same one?', () => {
 	it('drops a same-name page before extraction and keeps facts from the right one', async () => {
 		const asked: any[] = [];
 		const decider: IdentityDecider = {
-			async decide(request) {
+			decide(request) {
 				asked.push(request);
 				const pick = (n: number) => (n === 1 ? 'different' : 'same');
 				const answers = Object.fromEntries(
@@ -237,7 +237,7 @@ describe('researchEntity: same one?', () => {
 						}
 					])
 				);
-				return { ok: true, answers, receipt: { costUsd: 0.0005 } };
+				return Promise.resolve({ ok: true, answers, receipt: { costUsd: 0.0005 } });
 			}
 		};
 		const h = harness({ decider });
@@ -292,21 +292,24 @@ describe('researchEntity: pages that will not open', () => {
 			},
 			{
 				llm: {
-					getJSONResponse: async (options: any) => {
+					getJSONResponse: (options: any) => {
 						prompts.push(options.userPrompt);
-						return { pages: [], facts: [] };
+						return Promise.resolve({ pages: [], facts: [] });
 					}
 				} as never,
 				port: {
-					search: async () => ({
-						results: [
-							{ url: 'https://www.linkedin.com/in/someone', title: 'Someone | LinkedIn', snippet: preview },
-							{ url: 'https://walled.example/page', title: 'Walled' }
-						]
-					}),
-					visit: async () => {
-						throw new Error('blocked');
-					}
+					search: () =>
+						Promise.resolve({
+							results: [
+								{
+									url: 'https://www.linkedin.com/in/someone',
+									title: 'Someone | LinkedIn',
+									snippet: preview
+								},
+								{ url: 'https://walled.example/page', title: 'Walled' }
+							]
+						}),
+					visit: () => Promise.reject(new Error('blocked'))
 				},
 				decider: null,
 				charge: () => {},
@@ -336,43 +339,47 @@ describe('researchEntity: social accounts', () => {
 			{
 				llm: {
 					// The model volunteers the unconfirmed account: the rules take it back out.
-					getJSONResponse: async () => ({
-						pages: [],
-						facts: [
-							{
-								predicate: 'profile_url',
-								value: 'https://www.instagram.com/codyshooting',
-								page: 2,
-								quote: 'Cody Shooting (@codyshooting)',
-								confidence: 0.9
-							}
-						]
-					})
+					getJSONResponse: () =>
+						Promise.resolve({
+							pages: [],
+							facts: [
+								{
+									predicate: 'profile_url',
+									value: 'https://www.instagram.com/codyshooting',
+									page: 2,
+									quote: 'Cody Shooting (@codyshooting)',
+									confidence: 0.9
+								}
+							]
+						})
 				} as never,
 				port: {
-					search: async () => ({
-						results: [
-							{
-								url: 'https://codyshootingcomplex.org/about',
-								title: 'About',
-								page_content: `${OWN} About the range.`
-							},
-							{
-								url: 'https://www.instagram.com/codyshooting',
-								title: 'Cody Shooting (@codyshooting)',
-								page_content: 'Cody Shooting (@codyshooting) photos and videos'
-							}
-						]
-					})
+					search: () =>
+						Promise.resolve({
+							results: [
+								{
+									url: 'https://codyshootingcomplex.org/about',
+									title: 'About',
+									page_content: `${OWN} About the range.`
+								},
+								{
+									url: 'https://www.instagram.com/codyshooting',
+									title: 'Cody Shooting (@codyshooting)',
+									page_content: 'Cody Shooting (@codyshooting) photos and videos'
+								}
+							]
+						})
 				},
 				decider: null, // no model: the own site passes by rule, the Instagram page is "ask"
 				charge: () => {},
 				takeReserved: () => 0,
 				budgetLeft: () => 0.03,
-				fetchHtml: async (url) =>
-					url.includes('codyshootingcomplex.org')
-						? '<footer><a href="https://www.facebook.com/codyshootingcomplex"><svg/></a></footer>'
-						: null
+				fetchHtml: (url) =>
+					Promise.resolve(
+						url.includes('codyshootingcomplex.org')
+							? '<footer><a href="https://www.facebook.com/codyshootingcomplex"><svg/></a></footer>'
+							: null
+					)
 			}
 		);
 		expect(outcome.socials).toEqual([
@@ -397,4 +404,3 @@ describe('researchEntity: social accounts', () => {
 		});
 	});
 });
-

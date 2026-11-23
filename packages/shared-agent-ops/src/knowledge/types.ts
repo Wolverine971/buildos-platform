@@ -157,6 +157,19 @@ export interface KnowledgeMergePreviewEntry extends KnowledgeEntitySummary {
 	links: number;
 	/** Highlighted names in your tasks and docs. */
 	mentions: number;
+	/** Short lines that tell it apart: job, LinkedIn, phone, email, place. */
+	details: string[];
+}
+
+/** What tells one entry from another in the duplicates review (KnowledgeStore.describeForReview). */
+export interface KnowledgeReviewAbout {
+	summary: string | null;
+	created_at: string;
+	created_via: string;
+	/** Tasks, docs and other records it's attached to. */
+	links: number;
+	/** Short lines that tell it apart: job, LinkedIn, phone, email, place. Four at most. */
+	details: string[];
 }
 
 /** What changing an entry's kind did (KnowledgeStore.changeEntityKind). */

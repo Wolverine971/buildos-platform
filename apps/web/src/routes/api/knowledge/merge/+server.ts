@@ -1,7 +1,8 @@
 // apps/web/src/routes/api/knowledge/merge/+server.ts
 /**
  * GET   /api/knowledge/merge                       → pending "same person?" suggestions, plus
- *                                                    same-name groups ("Craig" ×2)
+ *                                                    same-name groups ("Craig" ×2), and what
+ *                                                    tells each entry apart (`about`, by id)
  * GET   /api/knowledge/merge?ids=a,b,c              → what merging these would move
  * POST  /api/knowledge/merge { keep, merge }        → fold `merge` (one id, or up to 25) into
  *                                                    `keep` (own entries)
@@ -43,7 +44,12 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			store.listMergeCandidates(50),
 			store.listNameTwins(50)
 		]);
-		return ApiResponse.success({ candidates, twins });
+		// What each entry is, so two look-alikes can be told apart without opening them.
+		const about = await store.describeForReview([
+			...twins.flatMap((group) => group.ids),
+			...candidates.flatMap((candidate) => [candidate.a.id, candidate.b.id])
+		]);
+		return ApiResponse.success({ candidates, twins, about });
 	} catch (error) {
 		return knowledgeErrorResponse(error, 'Could not load suggestions');
 	}

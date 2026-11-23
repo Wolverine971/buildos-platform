@@ -948,6 +948,8 @@ export async function askSimilarNames(
 			.eq('kind', 'person')
 			.eq('status', 'active')
 			.eq('is_self', false)
+			// A unique sort key, so pages never overlap or skip rows.
+			.order('id')
 			.range(from, from + 999);
 		if (res.error && res.error.code === '42703')
 			res = await db
@@ -957,6 +959,7 @@ export async function askSimilarNames(
 				.eq('kind', 'person')
 				.eq('status', 'active')
 				.eq('is_self', false)
+				.order('id')
 				.range(from, from + 999);
 		if (res.error) fail('Load people', res.error);
 		people.push(...((res.data ?? []) as PersonRow[]));

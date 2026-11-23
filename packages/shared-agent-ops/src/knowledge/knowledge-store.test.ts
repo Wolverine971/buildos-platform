@@ -60,6 +60,12 @@ function withGenerated(table: string, row: Row): Row {
 
 class FakeDb {
 	tables = new Map<string, Row[]>();
+	/**
+	 * PostgreSQL may return rows that tie on the sort keys in a different order on every query.
+	 * When set, each ordered read flips its tied rows, so paging on a non-unique key shows up.
+	 */
+	unstableTies = false;
+	reads = 0;
 	rows(table: string): Row[] {
 		if (!this.tables.has(table)) this.tables.set(table, []);
 		return this.tables.get(table)!;
@@ -211,7 +217,7 @@ class FakeQuery implements PromiseLike<{ data: any; error: any }> {
 	private payload: Row[] = [];
 	private patch: Row = {};
 	private mode: 'many' | 'single' | 'maybe' = 'many';
-	private orderBy: { col: string; asc: boolean } | null = null;
+	private orderBy: Array<{ col: string; asc: boolean }> = [];
 	private from_ = 0;
 	private to_ = Infinity;
 	private ignoreDuplicates = false;
@@ -281,7 +287,7 @@ class FakeQuery implements PromiseLike<{ data: any; error: any }> {
 		return this;
 	}
 	order(col: string, opts?: { ascending?: boolean }) {
-		this.orderBy = { col, asc: opts?.ascending ?? true };
+		this.orderBy.push({ col, asc: opts?.ascending ?? true });
 		return this;
 	}
 	range(from: number, to: number) {
@@ -359,11 +365,17 @@ class FakeQuery implements PromiseLike<{ data: any; error: any }> {
 			return this.shape(hit);
 		}
 		let rows = all.filter(match);
-		if (this.orderBy) {
-			const { col, asc } = this.orderBy;
-			rows = [...rows].sort(
-				(a, b) => (a[col] < b[col] ? -1 : a[col] > b[col] ? 1 : 0) * (asc ? 1 : -1)
-			);
+		if (this.orderBy.length) {
+			const compare = (a: Row, b: Row) => {
+				for (const { col, asc } of this.orderBy) {
+					const order = (a[col] < b[col] ? -1 : a[col] > b[col] ? 1 : 0) * (asc ? 1 : -1);
+					if (order) return order;
+				}
+				return 0;
+			};
+			// Every other read sees tied rows the other way round.
+			const flip = this.db.unstableTies && this.db.reads++ % 2 === 1;
+			rows = (flip ? [...rows].reverse() : [...rows]).sort(compare);
 		}
 		rows = rows.slice(this.from_, this.to_ === Infinity ? undefined : this.to_ + 1);
 		if (this.embedSource) {
@@ -857,8 +869,10 @@ describe('KnowledgeStore identity', () => {
 			const { db, alice, store } = setup();
 			const { a, b } = await twoCraigs(store);
 			await store.record(person('Dana Lee'), { via: 'chat' });
-			expect(await store.listNameTwins()).toEqual([
-				{ kind: 'person', name: 'Craig', ids: [a, b] }
+			// Oldest first; these two can share a millisecond, and then the order is by id.
+			const twins = await store.listNameTwins();
+			expect(twins.map((t) => ({ ...t, ids: [...t.ids].sort() }))).toEqual([
+				{ kind: 'person', name: 'Craig', ids: [a, b].sort() }
 			]);
 			const pair = db
 				.rows('knowledge_merge_candidates')
@@ -875,6 +889,123 @@ describe('KnowledgeStore identity', () => {
 			expect(await store.listNameTwins()).toEqual([]);
 			// The pending "same person?" questions for those pairs are answered too.
 			expect(await store.listMergeCandidates()).toEqual([]);
+		});
+
+		it('does not call one entry a pair when hundreds were created in the same instant', async () => {
+			const { db, alice, store } = setup();
+			// One import transaction: every row has the same creation time, and more rows than
+			// one page holds.
+			const at = '2026-11-22T19:25:31.000Z';
+			await db.from('knowledge_entities').insert(
+				Array.from({ length: 1201 }, (_, i) => ({
+					kind: 'org',
+					name: `Company ${i}`,
+					scope: 'private',
+					owner_user_id: alice,
+					created_via: 'import',
+					created_at: at
+				}))
+			);
+			db.unstableTies = true;
+			expect(await store.listNameTwins()).toEqual([]);
+			// A real pair among them is still found, once, with two different entries.
+			const { a, b } = await twoCraigs(store);
+			for (const row of db.rows('knowledge_entities'))
+				if (row.id === a || row.id === b) row.created_at = at;
+			const twins = await store.listNameTwins();
+			expect(twins.map((t) => [t.name, [...t.ids].sort()])).toEqual([
+				['Craig', [a, b].sort()]
+			]);
+		});
+
+		it('says what tells two same-name entries apart', async () => {
+			const { db, alice, store } = setup();
+			const first = await store.record(
+				{
+					entities: [
+						{ ref: 'p', kind: 'person', name: 'Dana Lee' },
+						{ ref: 'o', kind: 'org', name: 'Northwind' },
+						{ ref: 'old', kind: 'org', name: 'OldCo' }
+					],
+					facts: [
+						{
+							subject: 'p',
+							predicate: 'works_at',
+							object: 'old',
+							qualifiers: { title: 'Intern', current: false }
+						},
+						{
+							subject: 'p',
+							predicate: 'works_at',
+							object: 'o',
+							qualifiers: { title: 'Head of Sales', current: true }
+						},
+						{
+							subject: 'p',
+							predicate: 'profile_url',
+							value: 'https://www.linkedin.com/in/dana-lee/',
+							qualifiers: { platform: 'linkedin' }
+						},
+						{ subject: 'p', predicate: 'headline', value: 'Head of Sales at Northwind' }
+					]
+				},
+				{ via: 'import' }
+			);
+			expect(first.problems).toEqual([]);
+			const linkedIn = first.entities.find((e) => e.ref === 'p')!.id;
+			const phone = await store.createEntry({
+				kind: 'person',
+				name: 'Dana Lee',
+				via: 'import'
+			});
+			await store.record(
+				{
+					entities: [{ ref: 'p', id: phone }],
+					facts: [
+						{ subject: 'p', predicate: 'phone', value: '+14105550144' },
+						{ subject: 'p', predicate: 'email', value: 'dana@example.com' }
+					]
+				},
+				{ via: 'import' }
+			);
+			db.rows('knowledge_record_links').push({
+				entity_id: phone,
+				owner_user_id: alice,
+				record_kind: 'task',
+				record_id: randomUUID()
+			});
+
+			const about = await store.describeForReview([linkedIn, phone]);
+			expect(about[linkedIn]).toMatchObject({
+				summary: 'Head of Sales at Northwind',
+				created_via: 'import',
+				links: 0,
+				// The job is the summary already, so it isn't repeated; the profile loses its scheme.
+				details: ['linkedin.com/in/dana-lee']
+			});
+			// Without a summary the current job leads, not the past one.
+			for (const row of db.rows('knowledge_entities'))
+				if (row.id === linkedIn) row.summary = null;
+			expect((await store.describeForReview([linkedIn]))[linkedIn]!.details).toEqual([
+				'Head of Sales at Northwind',
+				'linkedin.com/in/dana-lee'
+			]);
+			expect(about[phone]).toMatchObject({
+				links: 1,
+				details: ['+14105550144', 'dana@example.com']
+			});
+			// The merge dialog's entries carry the same lines.
+			const preview = await store.mergePreview([linkedIn, phone]);
+			expect(preview.entries.map((e) => e.details)).toEqual([
+				['Head of Sales at Northwind', 'linkedin.com/in/dana-lee'],
+				['+14105550144', 'dana@example.com']
+			]);
+		});
+
+		it('describes only what the asker can see', async () => {
+			const { store, bobStore } = setup();
+			const { a } = await twoCraigs(store);
+			expect(await bobStore.describeForReview([a])).toEqual({});
 		});
 
 		it('never shows another user their own twins', async () => {
@@ -1460,6 +1591,40 @@ Michael,Smith,https://www.linkedin.com/in/michael-smith,,Palantir,Engineer,16 No
 			.rows('knowledge_facts')
 			.find((f) => f.entity_id === me.id && f.object_entity_id === maya.id)!;
 		expect(knows.qualifiers.via).toBe('linkedin');
+	});
+
+	it('still protects a headline that sits past the first page of existing details', async () => {
+		const ctx = setup();
+		await importLinkedIn(ctx.store);
+		const maya = entity(ctx.db, 'Maya Chen')[0]!;
+		// A long-lived card: more details than one page of the "what is already here" read, with
+		// the LinkedIn headline last in id order.
+		await ctx.db.from('knowledge_facts').insert(
+			Array.from({ length: 620 }, (_, i) => ({
+				entity_id: maya.id,
+				predicate: 'alias',
+				value_text: `alias ${i}`,
+				scope: 'private',
+				owner_user_id: ctx.alice,
+				created_via: 'manual'
+			}))
+		);
+		const headline = ctx.db
+			.rows('knowledge_facts')
+			.find((f) => f.entity_id === maya.id && f.predicate === 'headline')!;
+		headline.id = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+		await ctx.store.record(
+			{
+				entities: [{ ref: 'p', id: maya.id }],
+				facts: [{ subject: 'p', predicate: 'headline', value: 'Analyst at OldCo' }]
+			},
+			{ via: 'import', fillOnly: true }
+		);
+		expect(
+			factsOf(ctx.db, maya.id, 'headline')
+				.map((f) => `${f[0]}: ${f[1]}`)
+				.sort()
+		).toEqual(['Analyst at OldCo: suggested', 'Deployment Strategist at Palantir: active']);
 	});
 
 	it('without fillOnly the phone would replace the LinkedIn job (the guard is what protects it)', async () => {

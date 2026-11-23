@@ -102,11 +102,12 @@ function recordingDb(reads: Record<string, unknown> = {}) {
 					writes.push({ table, op, value: v });
 					return query;
 				},
-				maybeSingle: async () => ({
-					data: op === 'select' ? (reads[table] ?? null) : { id: `${table}-id` },
-					error: null
-				}),
-				single: async () => ({ data: { id: `${table}-id` }, error: null }),
+				maybeSingle: () =>
+					Promise.resolve({
+						data: op === 'select' ? (reads[table] ?? null) : { id: `${table}-id` },
+						error: null
+					}),
+				single: () => Promise.resolve({ data: { id: `${table}-id` }, error: null }),
 				then: (resolve: (v: unknown) => void) =>
 					resolve({
 						data: op === 'select' ? (reads[`${table}[]`] ?? []) : null,

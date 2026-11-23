@@ -18,6 +18,7 @@
 		Globe,
 		Network,
 		Sparkles,
+		TriangleAlert,
 		UserCheck,
 		X
 	} from '$lib/icons/lucide';
@@ -380,10 +381,19 @@
 					href={page.url}
 					target="_blank"
 					rel="noopener noreferrer"
-					title={page.title ?? page.url}
-					class="inline-flex max-w-[14rem] items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-2xs font-medium text-muted-foreground hover:border-accent hover:text-accent"
+					title={page.flagged
+						? 'Flagged: this page has text aimed at AI tools. It was read with that in mind.'
+						: (page.title ?? page.url)}
+					class="inline-flex max-w-[14rem] items-center gap-1 rounded-full border px-2 py-0.5 text-2xs font-medium {page.flagged
+						? 'border-warning/40 bg-warning/10 text-foreground hover:border-warning'
+						: 'border-border bg-card text-muted-foreground hover:border-accent hover:text-accent'}"
 				>
-					<Globe class="h-3 w-3 shrink-0" aria-hidden="true" />
+					{#if page.flagged}
+						<TriangleAlert class="h-3 w-3 shrink-0 text-warning" aria-hidden="true" />
+						<span class="sr-only">Flagged:</span>
+					{:else}
+						<Globe class="h-3 w-3 shrink-0" aria-hidden="true" />
+					{/if}
 					<span class="truncate">{siteName(page.url)}</span>
 				</a>
 			{/each}

@@ -65,14 +65,14 @@ function harness(
 	const loaded: string[] = [];
 	const asked: NavigatorDecisionRequest[] = [];
 	const walk = createKnowledgeSiteWalker({
-		jev: { decide: async () => ({ ok: false, error: 'unused' }) } as never,
+		jev: { decide: () => Promise.resolve({ ok: false, error: 'unused' }) } as never,
 		loadPage:
 			loadPage ??
-			(async (url) => {
+			((url) => {
 				loaded.push(url);
 				const page = SITE[url];
-				if (!page) throw new Error(`not found: ${url}`);
-				return page;
+				if (!page) return Promise.reject(new Error(`not found: ${url}`));
+				return Promise.resolve(page);
 			}),
 		decide: async (request) => {
 			asked.push(request);

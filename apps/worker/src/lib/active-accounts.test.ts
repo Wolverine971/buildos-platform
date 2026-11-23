@@ -1,8 +1,56 @@
 // apps/worker/src/lib/active-accounts.test.ts
 import { describe, expect, it } from 'vitest';
-import { activeAccountsFromSignals, parseSince, type AccountRow } from './active-accounts';
+import type { Database } from '@buildos/shared-types';
+import { createClient } from '@supabase/supabase-js';
+import {
+	type AccountRow,
+	activeAccountsFromSignals,
+	findActiveAccounts,
+	parseSince
+} from './active-accounts';
 
 const now = new Date('2026-11-17T12:00:00Z');
+
+it('reads beyond a full account page and attributes document activity without an Auth admin API', async () => {
+	const idle: AccountRow = {
+		id: 'idle',
+		last_visit: null,
+		deletion_status: null,
+		access_restricted: false
+	};
+	const createdAt = '2026-11-10T00:00:00Z';
+	const tables: Record<string, unknown[]> = {
+		users: [
+			...Array.from({ length: 1000 }, (_, i) => ({ ...idle, id: `idle-${i}` })),
+			{ ...idle, id: 'writer' }
+		],
+		onto_documents: [{ created_by: 'actor', created_at: createdAt }],
+		onto_actors: [{ id: 'actor', user_id: 'writer' }],
+		chat_sessions: [],
+		onto_projects: [],
+		onto_tasks: []
+	};
+	const accountOffsets: number[] = [];
+	const fetchRows: typeof fetch = (input) => {
+		const url = new URL(input instanceof Request ? input.url : input.toString());
+		const table = url.pathname.split('/').at(-1)!;
+		const rows = tables[table];
+		if (!rows) return Promise.reject(new Error(`Unexpected table ${table}`));
+		const offset = Number(url.searchParams.get('offset') ?? 0);
+		const limit = Number(url.searchParams.get('limit') ?? rows.length);
+		if (table === 'users') accountOffsets.push(offset);
+		return Promise.resolve(Response.json(rows.slice(offset, offset + limit)));
+	};
+	const client = createClient<Database>('https://buildos.test', 'test-key', {
+		global: { fetch: fetchRows },
+		auth: { persistSession: false, autoRefreshToken: false }
+	});
+	const accounts = await findActiveAccounts({ from: client.from.bind(client) }, { now });
+	expect(accountOffsets).toEqual([0, 1000]);
+	expect([...accounts.values()]).toEqual([
+		{ userId: 'writer', signals: ['document'], lastActiveAt: createdAt }
+	]);
+});
 
 describe('parseSince', () => {
 	it('reads spans back from now and ISO dates', () => {

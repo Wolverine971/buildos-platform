@@ -40,13 +40,13 @@ describe('knowledge sort sweep', () => {
 	});
 
 	it('sorts only users whose batch is ripe, and one failure does not stop the rest', async () => {
-		find.mockImplementation(async (_db: unknown, userId: string) => {
-			if (userId === 'boom') throw new Error('db down');
-			return {
+		find.mockImplementation((_db: unknown, userId: string) => {
+			if (userId === 'boom') return Promise.reject(new Error('db down'));
+			return Promise.resolve({
 				ids: ['x'],
 				ripe: userId !== 'waiting',
 				why: { never_sorted: 1, old_question: 0, new_work: 0 }
-			};
+			});
 		});
 		sort.mockResolvedValue(sorted(1));
 		const result = await runKnowledgeSortSweep({

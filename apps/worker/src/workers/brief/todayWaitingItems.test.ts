@@ -469,9 +469,9 @@ describe('refreshTodayWaitingItems', () => {
 			})
 		);
 		const llm = {
-			getJSONResponse: vi.fn().mockImplementation(async () => {
+			getJSONResponse: vi.fn().mockImplementation(() => {
 				controller.abort(new Error('time cap reached'));
-				return {
+				return Promise.resolve({
 					resolved_keys: ['cody-balance'],
 					items: [
 						{
@@ -485,7 +485,7 @@ describe('refreshTodayWaitingItems', () => {
 							since: '2026-10-08'
 						}
 					]
-				};
+				});
 			})
 		};
 

@@ -59,6 +59,8 @@ import {
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { PermanentQueueError } from '../../lib/queueErrors';
 import { supabase } from '../../lib/supabase';
+import { withWebContentCheck } from './webContentCheck';
+import { getWorkerWebContentCheck } from './workerWebContentCheck';
 import {
 	DEEPSEEK_V4_FLASH_MODEL,
 	OpenRouterEmptyContentError,
@@ -546,7 +548,7 @@ async function executeAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>) {
 				supabase as unknown as NativeSearchCacheRpcClient
 			)
 		: undefined;
-	const web = createAgentRunWebResearchPort({
+	const uncheckedWeb = createAgentRunWebResearchPort({
 		purpose: 'agent_run',
 		searchTimeoutMs: positiveIntegerEnv('AGENT_RUN_WEB_SEARCH_TIMEOUT_MS'),
 		visitTimeoutMs: positiveIntegerEnv('AGENT_RUN_WEB_VISIT_TIMEOUT_MS'),
@@ -556,6 +558,17 @@ async function executeAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>) {
 		pageEvidenceSink: (page, signal) => persistAgentRunPageEvidence(page, run.user_id, signal),
 		onSearchDispatched: accounting.onSearchDispatched
 	});
+	// Every page a run reads off the web is checked for text written to steer an AI. A page
+	// that trips is still returned, marked with a warning the run's model sees, and recorded
+	// as a security event (webContentCheck.ts).
+	const webContentCheck = getWorkerWebContentCheck();
+	const web = webContentCheck
+		? withWebContentCheck(uncheckedWeb, webContentCheck, {
+				surface: 'agent_run',
+				userId: run.user_id,
+				metadata: { agentRunId: runId }
+			})
+		: uncheckedWeb;
 	const runnableOps = buildAgentRunOpCatalog({
 		scope,
 		mutationMode,

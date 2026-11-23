@@ -5,10 +5,10 @@ import {
 	KNOWLEDGE_FOCUS_TOOL_PINS,
 	KNOWLEDGE_SELECTION_GUIDANCE,
 	KNOWLEDGE_SELECTION_TOOL_PINS,
+	type KnowledgeFocusBrief,
 	buildKnowledgeFocusSection,
 	buildKnowledgeSelectionSection,
-	readKnowledgeFocusSection,
-	type KnowledgeFocusBrief
+	readKnowledgeFocusSection
 } from '@buildos/shared-agent-ops/knowledge';
 import type { AgenticChatTurnProviderRequestV1 } from './contracts';
 import {

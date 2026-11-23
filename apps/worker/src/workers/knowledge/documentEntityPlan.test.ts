@@ -1,14 +1,14 @@
 // apps/worker/src/workers/knowledge/documentEntityPlan.test.ts
 import { describe, expect, it } from 'vitest';
 import { documentNerText } from './documentEntityText';
-import { spansFromTokenLabels, type NerSpan, type TokenLabel } from './documentNer';
+import { type NerSpan, type TokenLabel, spansFromTokenLabels } from './documentNer';
 import {
+	type DocumentEntityContext,
 	completeKnownNames,
 	joinSplitNames,
 	pickDocumentEntities,
 	planDocumentEntityKnowledge,
-	tidyEntityName,
-	type DocumentEntityContext
+	tidyEntityName
 } from './documentEntityPlan';
 
 describe('documentNerText', () => {

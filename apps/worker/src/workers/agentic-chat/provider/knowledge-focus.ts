@@ -9,9 +9,9 @@
 // Structured only: the section exists because the user picked an entry; nothing reads the message.
 
 import {
+	type KnowledgeFocusRef,
 	readKnowledgeFocusSection,
-	readKnowledgeSelectionSection,
-	type KnowledgeFocusRef
+	readKnowledgeSelectionSection
 } from '@buildos/shared-agent-ops/knowledge';
 import type { AgenticChatTurnProviderRequestV1 } from './contracts';
 import { appendSystemInstruction } from './request-builders';

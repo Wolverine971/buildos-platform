@@ -9,12 +9,9 @@ import {
 const DOC = '44444444-4444-4444-8444-444444444444';
 
 /** Minimal PostgREST stand-in: every query on a table resolves to its canned rows. */
-function db(
-	tables: Record<string, any[]>,
-	rpc = vi.fn(async () => ({ data: 'job-1', error: null }))
-) {
+function db(tables: Record<string, any[]>) {
 	return {
-		rpc,
+		rpc: vi.fn().mockResolvedValue({ data: 'job-1', error: null }),
 		from(table: string) {
 			const filters: Array<(r: any) => boolean> = [];
 			let one = false;
@@ -46,19 +43,15 @@ describe('document mentions job', () => {
 	});
 
 	it('queues one debounced read per document text, 5 minutes out', async () => {
-		const rpc = vi.fn(async () => ({ data: 'job-1', error: null }));
-		const client = db(
-			{
-				onto_documents: [
-					{ id: DOC, content_hash: 'h1', created_by: 'actor-1', deleted_at: null }
-				],
-				onto_actors: [{ id: 'actor-1', user_id: 'user-1' }]
-			},
-			rpc
-		);
+		const client = db({
+			onto_documents: [
+				{ id: DOC, content_hash: 'h1', created_by: 'actor-1', deleted_at: null }
+			],
+			onto_actors: [{ id: 'actor-1', user_id: 'user-1' }]
+		});
 		const now = new Date('2026-11-18T10:00:00Z');
 		await enqueueDocumentMentions(client, DOC, now);
-		expect(rpc).toHaveBeenCalledWith(
+		expect(client.rpc).toHaveBeenCalledWith(
 			'add_queue_job',
 			expect.objectContaining({
 				p_user_id: 'user-1',

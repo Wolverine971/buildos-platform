@@ -17,8 +17,9 @@
 //
 // Service-role only (the worker's client). No model calls, no web requests.
 
+import type { Json } from '@buildos/shared-types';
+import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type {
-	KnowledgeDataClient,
 	KnowledgeEntityDetail,
 	KnowledgeWriteBatch
 } from '@buildos/shared-agent-ops/knowledge';
@@ -105,21 +106,14 @@ export function orgDomain(detail: Pick<KnowledgeEntityDetail, 'entity' | 'facts'
 	return host;
 }
 
-type PublicFactRow = {
-	id: string;
-	predicate: string;
-	value_text: string | null;
-	qualifiers: Record<string, unknown> | null;
-	updated_at: string;
-	sources: Array<{ source: { url: string | null; title: string | null } | null }> | null;
-};
+type PublicOrgClient = Pick<TypedSupabaseClient, 'from'>;
 
 /**
  * Fresh public facts for this organization's domain, as a batch on the user's own entry, and
  * which requested fields they already answer. Never throws (the cache is an optimization).
  */
 export async function publicOrgFacts(
-	db: KnowledgeDataClient,
+	db: PublicOrgClient,
 	detail: Pick<KnowledgeEntityDetail, 'entity' | 'facts'>,
 	fields: string[]
 ): Promise<{ batch: KnowledgeWriteBatch; covered: string[]; publicId: string | null }> {
@@ -127,18 +121,18 @@ export async function publicOrgFacts(
 	try {
 		const domain = orgDomain(detail);
 		if (!domain || detail.entity.scope !== 'private') return empty;
-		const { data: key } = await (db as any)
+		const { data: key } = await db
 			.from('knowledge_entity_keys')
 			.select('entity_id, entity:knowledge_entities!inner(id, kind, status, scope)')
 			.eq('key_type', 'domain')
 			.eq('key_value', domain)
 			.eq('scope', 'public')
 			.maybeSingle();
-		const entity = key?.entity as { id: string; kind: string; status: string } | undefined;
+		const entity = key?.entity;
 		if (!entity || entity.kind !== 'org' || entity.status !== 'active') return empty;
 
 		const since = new Date(Date.now() - FRESH_DAYS * 86_400_000).toISOString();
-		const { data: rows } = await (db as any)
+		const { data: rows } = await db
 			.from('knowledge_facts')
 			.select(
 				'id, predicate, value_text, qualifiers, updated_at, sources:knowledge_fact_sources(source:knowledge_sources(url, title))'
@@ -152,7 +146,7 @@ export async function publicOrgFacts(
 		const batch: KnowledgeWriteBatch = { entities: [], facts: [], sources: [] };
 		const sourceRefs = new Map<string, string>();
 		const covered = new Set<string>();
-		for (const row of (rows ?? []) as PublicFactRow[]) {
+		for (const row of rows ?? []) {
 			if (!PROMOTABLE.has(row.predicate) || !row.value_text) continue;
 			const source = (row.sources ?? []).map((s) => s.source).find((s) => s?.url);
 			if (!source?.url) continue;
@@ -172,7 +166,8 @@ export async function publicOrgFacts(
 				subject: detail.entity.id,
 				predicate: row.predicate,
 				value: row.value_text,
-				qualifiers: row.qualifiers ?? undefined,
+				// knowledge_facts constrains this JSON column to objects.
+				qualifiers: row.qualifiers as Record<string, unknown>,
 				sources: [ref]
 			});
 			covered.add(row.predicate);
@@ -192,7 +187,7 @@ export async function publicOrgFacts(
  * layer. Returns how many facts were written. Never throws.
  */
 export async function promoteOrgFacts(
-	db: KnowledgeDataClient,
+	db: PublicOrgClient,
 	detail: Pick<KnowledgeEntityDetail, 'entity' | 'facts'>,
 	run: {
 		/** Only facts this research run wrote (never typed-in or chat facts with a made-up URL). */
@@ -232,9 +227,10 @@ export async function promoteOrgFacts(
 		for (const fact of own) {
 			const source = (fact.sources ?? []).find(
 				(s) => s.type === 'web' && isOwnSite(s.url, domain)
-			)!;
+			);
+			if (!source?.url) continue;
 			// One public source row per page, reused across promotions.
-			let { data: sourceRow } = await (db as any)
+			let { data: sourceRow } = await db
 				.from('knowledge_sources')
 				.select('id')
 				.eq('scope', 'public')
@@ -243,7 +239,7 @@ export async function promoteOrgFacts(
 				.limit(1)
 				.maybeSingle();
 			if (!sourceRow) {
-				({ data: sourceRow } = await (db as any)
+				({ data: sourceRow } = await db
 					.from('knowledge_sources')
 					.insert({
 						scope: 'public',
@@ -254,14 +250,14 @@ export async function promoteOrgFacts(
 					.select('id')
 					.single());
 			}
-			const { data: factRow } = await (db as any)
+			const { data: factRow } = await db
 				.from('knowledge_facts')
 				.upsert(
 					{
 						entity_id: publicId,
 						predicate: fact.predicate,
 						value_text: String(fact.value).slice(0, 4000),
-						qualifiers: fact.qualifiers ?? {},
+						qualifiers: (fact.qualifiers ?? {}) as Json,
 						scope: 'public',
 						status: 'active',
 						confidence: 0.9,
@@ -273,7 +269,7 @@ export async function promoteOrgFacts(
 				.select('id')
 				.maybeSingle();
 			if (factRow?.id && sourceRow?.id) {
-				await (db as any)
+				await db
 					.from('knowledge_fact_sources')
 					.upsert(
 						{ fact_id: factRow.id, source_id: sourceRow.id },
@@ -293,19 +289,19 @@ export async function promoteOrgFacts(
 }
 
 async function ensurePublicOrg(
-	db: KnowledgeDataClient,
+	db: PublicOrgClient,
 	name: string,
 	domain: string
 ): Promise<string | null> {
-	const { data: existing } = await (db as any)
+	const { data: existing } = await db
 		.from('knowledge_entity_keys')
 		.select('entity_id')
 		.eq('key_type', 'domain')
 		.eq('key_value', domain)
 		.eq('scope', 'public')
 		.maybeSingle();
-	if (existing?.entity_id) return existing.entity_id as string;
-	const { data: created, error } = await (db as any)
+	if (existing?.entity_id) return existing.entity_id;
+	const { data: created, error } = await db
 		.from('knowledge_entities')
 		.insert({
 			kind: 'org',
@@ -316,7 +312,7 @@ async function ensurePublicOrg(
 		.select('id')
 		.single();
 	if (error || !created?.id) return null;
-	const { error: keyError } = await (db as any).from('knowledge_entity_keys').insert({
+	const { error: keyError } = await db.from('knowledge_entity_keys').insert({
 		entity_id: created.id,
 		key_type: 'domain',
 		key_value: domain,
@@ -324,15 +320,15 @@ async function ensurePublicOrg(
 	});
 	if (keyError) {
 		// Another research run claimed the domain first: use theirs, drop ours.
-		await (db as any).from('knowledge_entities').delete().eq('id', created.id);
-		const { data: winner } = await (db as any)
+		await db.from('knowledge_entities').delete().eq('id', created.id);
+		const { data: winner } = await db
 			.from('knowledge_entity_keys')
 			.select('entity_id')
 			.eq('key_type', 'domain')
 			.eq('key_value', domain)
 			.eq('scope', 'public')
 			.maybeSingle();
-		return (winner?.entity_id as string | undefined) ?? null;
+		return winner?.entity_id ?? null;
 	}
-	return created.id as string;
+	return created.id;
 }

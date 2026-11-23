@@ -15,54 +15,54 @@
 // running at every phase change, so a cancelled target stops before the next paid step.
 
 import {
+	type IdentityDecider,
 	KNOWLEDGE_KIND_DEFINITIONS,
 	KNOWLEDGE_UUID_PATTERN,
-	KnowledgeStore,
-	enrichFieldsFor,
-	getKnowledgePredicate,
-	loadKnowledgeFocusBrief,
-	renderKnowledgeFocusBrief,
-	fetchYouTubeOEmbed,
-	gatherKnowledgeAnchors,
-	oembedBatch,
-	resolveCircles,
-	youtubeVideoId,
-	type IdentityDecider,
 	type KnowledgeAnchors,
 	type KnowledgeCircle,
 	type KnowledgeDataClient,
 	type KnowledgeFocusBrief,
 	type KnowledgeKind,
-	type KnowledgeWriteBatch
+	KnowledgeStore,
+	type KnowledgeWriteBatch,
+	enrichFieldsFor,
+	fetchYouTubeOEmbed,
+	gatherKnowledgeAnchors,
+	getKnowledgePredicate,
+	loadKnowledgeFocusBrief,
+	oembedBatch,
+	renderKnowledgeFocusBrief,
+	resolveCircles,
+	youtubeVideoId
 } from '@buildos/shared-agent-ops/knowledge';
 import { fetchPublicUrl } from '@buildos/shared-agent-ops/web/safe-fetch';
 import { JevClient, LLMUsageLogger } from '@buildos/smart-llm';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { supabase as defaultSupabase } from '../../lib/supabase';
-import { createAgentRunWebResearchPort, type PaidToolCharge } from '../agent-run/webResearchPort';
+import { type PaidToolCharge, createAgentRunWebResearchPort } from '../agent-run/webResearchPort';
 import {
-	alsoWorthSaving,
-	describeFields,
-	enrichContextFrom,
-	profilesForPlanner,
 	KNOWLEDGE_PLAN_OPERATION,
 	KNOWLEDGE_PLAN_SYSTEM_PROMPT,
 	MAX_PLANNED_QUERIES,
 	MAX_RESEARCH_ROUNDS,
-	researchPlanUserPrompt,
-	validateResearchPlan,
 	type ResearchPlan,
-	type ResearchPlanInput
+	type ResearchPlanInput,
+	alsoWorthSaving,
+	describeFields,
+	enrichContextFrom,
+	profilesForPlanner,
+	researchPlanUserPrompt,
+	validateResearchPlan
 } from './knowledgeEnrichPlan';
 import { promoteOrgFacts, publicOrgFacts } from './publicOrgLayer';
-import { platformStatus, WANTED_PLATFORMS } from './socialProfiles';
+import { WANTED_PLATFORMS, platformStatus } from './socialProfiles';
 import {
-	researchEntity,
-	researchSummary,
 	type JsonCaller,
 	type ResearchPhase,
-	type SearchPort
+	type SearchPort,
+	researchEntity,
+	researchSummary
 } from './knowledgeResearch';
 
 export const KNOWLEDGE_ENRICH_JOB_TYPE = 'knowledge_enrich';

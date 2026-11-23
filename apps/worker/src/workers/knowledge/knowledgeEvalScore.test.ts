@@ -1,11 +1,11 @@
 // apps/worker/src/workers/knowledge/knowledgeEvalScore.test.ts
 import { describe, expect, it } from 'vitest';
 import {
+	type EvalTruthEntry,
 	foundFromBatch,
 	scoreEntry,
 	totals,
-	valueMatches,
-	type EvalTruthEntry
+	valueMatches
 } from './knowledgeEvalScore';
 
 const CODY: EvalTruthEntry = {

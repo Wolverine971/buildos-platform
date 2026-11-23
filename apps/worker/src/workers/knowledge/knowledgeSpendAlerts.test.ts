@@ -1,5 +1,6 @@
 // apps/worker/src/workers/knowledge/knowledgeSpendAlerts.test.ts
 import { describe, expect, it, vi } from 'vitest';
+import type { createTrackedInAppNotification } from '@buildos/shared-agent-ops/ops/tracked-in-app-notification.service';
 import { runKnowledgeSpendAlerts } from './knowledgeSpendAlerts';
 
 type Row = Record<string, any>;
@@ -39,6 +40,13 @@ function fakeDb(tables: Record<string, Row[]>) {
 const NOW = new Date('2026-11-18T20:00:00Z');
 const TODAY = '2026-11-18T10:00:00Z';
 const YESTERDAY = '2026-11-17T23:00:00Z';
+const sent = {
+	success: true,
+	eventId: 'event',
+	deliveryId: 'delivery',
+	userNotificationId: 'notification',
+	correlationId: 'correlation'
+};
 
 function tables(): Record<string, Row[]> {
 	return {
@@ -95,13 +103,13 @@ function tables(): Record<string, Row[]> {
 describe('knowledge spend alerts', () => {
 	it("alerts every admin once when someone's wrap-up reaches the cap, and stays quiet otherwise", async () => {
 		const data = tables();
-		const notify = vi.fn(async (input: any) => {
+		const notify = vi.fn<typeof createTrackedInAppNotification>((input) => {
 			data.notification_events!.push({
 				event_type: input.eventType,
 				created_at: NOW.toISOString(),
 				metadata: input.metadata
 			});
-			return { success: true } as any;
+			return Promise.resolve(sent);
 		});
 		const first = await runKnowledgeSpendAlerts({ db: fakeDb(data), now: NOW, notify });
 		expect(first).toEqual({ alerts: 1, sent: 1, skipped: 0 });
@@ -138,9 +146,9 @@ describe('knowledge spend alerts', () => {
 				created_at: TODAY
 			}
 		);
-		const notify = vi.fn(async () => ({ success: true }) as any);
+		const notify = vi.fn<typeof createTrackedInAppNotification>().mockResolvedValue(sent);
 		await runKnowledgeSpendAlerts({ db: fakeDb(data), now: NOW, notify });
-		const titles = notify.mock.calls.map((call: any[]) => call[0].title).sort();
+		const titles = notify.mock.calls.map(([input]) => input.title).sort();
 		expect(titles).toEqual([
 			'Chat wrap-up cap reached: Dana',
 			'Knowledge spend today: $5.22',

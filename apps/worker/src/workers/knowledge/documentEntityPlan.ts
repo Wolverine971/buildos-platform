@@ -24,8 +24,8 @@
 // database), never a word list deciding what text means.
 
 import {
-	addsWords,
 	type KnowledgeWriteBatch,
+	addsWords,
 	normalizeKnowledgeName
 } from '@buildos/shared-agent-ops/knowledge';
 import type { NerSpan } from './documentNer';

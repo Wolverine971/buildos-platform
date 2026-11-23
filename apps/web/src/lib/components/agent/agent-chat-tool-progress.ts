@@ -58,6 +58,40 @@ function shortUrl(url: unknown): string {
 const percent = (value: unknown) =>
 	typeof value === 'number' && Number.isFinite(value) ? `${Math.round(value * 100)}%` : '';
 
+function siteOf(url: unknown): string {
+	if (typeof url !== 'string') return '';
+	try {
+		return new URL(url).hostname.replace(/^www\./, '');
+	} catch {
+		return '';
+	}
+}
+
+/**
+ * The pages a finished web tool flagged (`content_warnings`: text on the page was written to
+ * steer an AI), as trail lines with the worker's live wording. Any web tool's result can
+ * carry them: web_search, web_visit, web_navigate, explore_knowledge.
+ */
+export function buildWebContentFlagTrailFromResult(
+	result: unknown,
+	startIndex = 0
+): ToolProgressStep[] {
+	if (!result || typeof result !== 'object') return [];
+	const warnings = (result as Record<string, unknown>).content_warnings;
+	const sites = [
+		...new Set(
+			(Array.isArray(warnings) ? warnings : [])
+				.map((entry) => siteOf((entry as { url?: unknown } | null)?.url))
+				.filter(Boolean)
+		)
+	];
+	return sites.map((site, offset) => ({
+		index: startIndex + offset,
+		kind: 'flag',
+		message: `Flagged · ${site} · it has text aimed at AI tools`
+	}));
+}
+
 /**
  * Rebuild a compact trail from a persisted web_navigate result (`path` rows),
  * so a reloaded session still shows where navigation went.
@@ -119,16 +153,8 @@ export function buildWebNavigateTrailFromResult(result: unknown): ToolProgressSt
 			data: { outcome }
 		});
 	}
+	steps.push(...buildWebContentFlagTrailFromResult(record, steps.length));
 	return steps;
-}
-
-function siteOf(url: unknown): string {
-	if (typeof url !== 'string') return '';
-	try {
-		return new URL(url).hostname.replace(/^www\./, '');
-	} catch {
-		return '';
-	}
 }
 
 /**
@@ -191,6 +217,7 @@ export function buildGuidedSearchTrailFromResult(result: unknown): ToolProgressS
 				.filter(Boolean)
 		)
 	];
+	steps.push(...buildWebContentFlagTrailFromResult(record, steps.length));
 	if (sites.length) push('read', `Read · ${sites.join(', ')}`);
 	const found = count(explore.entities);
 	if (found) {

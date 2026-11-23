@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { KnowledgeEntityDetail } from '@buildos/shared-agent-ops/knowledge';
 
 const store = vi.hoisted(() => ({
-	details: new Map<string, unknown>(),
+	details: new Map<string, KnowledgeEntityDetail>(),
 	recorded: [] as Array<{ facts: unknown[] }>
 }));
 
@@ -19,22 +19,22 @@ vi.mock('../agent-run/webResearchPort', async (importOriginal) => ({
 vi.mock('@buildos/shared-agent-ops/knowledge', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@buildos/shared-agent-ops/knowledge')>();
 	class FakeStore {
-		async getEntity(id: string) {
-			return store.details.get(id) ?? null;
+		getEntity(id: string) {
+			return Promise.resolve(store.details.get(id) ?? null);
 		}
-		async record(batch: { facts: unknown[] }) {
+		record(batch: { facts: unknown[] }) {
 			store.recorded.push(batch);
-			return { facts: { added: batch.facts.length, suggested: 0 } };
+			return Promise.resolve({ facts: { added: batch.facts.length, suggested: 0 } });
 		}
 		async updateEntity() {}
-		async listResearchHints() {
-			return [];
+		listResearchHints() {
+			return Promise.resolve([]);
 		}
 	}
 	return { ...actual, KnowledgeStore: FakeStore };
 });
 
-import { processKnowledgeEnrichJob, type KnowledgeEnrichDeps } from './knowledgeEnrichWorker';
+import { type KnowledgeEnrichDeps, processKnowledgeEnrichJob } from './knowledgeEnrichWorker';
 import { KNOWLEDGE_PLAN_OPERATION } from './knowledgeEnrichPlan';
 
 type Row = Record<string, any>;
@@ -108,8 +108,8 @@ class FakeDb {
 	from(table: string) {
 		return new Query(this, table);
 	}
-	async rpc() {
-		return { data: null, error: null };
+	rpc() {
+		return Promise.resolve({ data: null, error: null });
 	}
 	target(id: string) {
 		return this.rows('knowledge_run_targets').find((t) => t.id === id)!;
@@ -182,7 +182,7 @@ function deps(db: FakeDb, onSearch?: (query: string) => void) {
 			// so the fixed search recipe runs. `prompts` holds the extraction prompts only.
 			if (options.operationType === KNOWLEDGE_PLAN_OPERATION) return plan.next ?? {};
 			prompts.push(options.userPrompt);
-			options.onUsage?.({ totalCost: 0.001 });
+			await options.onUsage?.({ totalCost: 0.001 });
 			return {
 				pages: [{ page: 1, about_entity: true }],
 				facts: [
@@ -198,14 +198,14 @@ function deps(db: FakeDb, onSearch?: (query: string) => void) {
 		})
 	};
 	const makePort = (onCharge: (c: { cost_usd: number }) => void) => ({
-		search: async (args: Record<string, unknown>) => {
+		search: (args: Record<string, unknown>) => {
 			const query = String(args.query);
 			queries.push(query);
 			onCharge({ cost_usd: 0.008 });
 			onSearch?.(query);
-			return {
+			return Promise.resolve({
 				results: [{ url: 'https://acme.example/about', title: 'About', page_content: PAGE }]
-			};
+			});
 		}
 	});
 	return {
@@ -218,7 +218,7 @@ function deps(db: FakeDb, onSearch?: (query: string) => void) {
 			llm: llm as unknown as KnowledgeEnrichDeps['llm'],
 			makePort: makePort as unknown as KnowledgeEnrichDeps['makePort'],
 			fetchFn: vi.fn() as unknown as typeof fetch,
-			fetchHtml: async () => null,
+			fetchHtml: () => Promise.resolve(null),
 			now: () => new Date('2026-11-17T12:00:00Z'),
 			decider: null
 		} satisfies Partial<KnowledgeEnrichDeps>
@@ -356,9 +356,9 @@ describe('processKnowledgeEnrichJob with Serper results', () => {
 			store.details.set(ACME, { ...d, entity: { ...d.entity, kind: 'person' } });
 		}
 		const makePort = (onCharge: (c: { cost_usd: number }) => void) => ({
-			search: async () => {
+			search: () => {
 				onCharge({ cost_usd: 0.008 }); // reserved at the Tavily price
-				return {
+				return Promise.resolve({
 					// Serper: snippets only, no page text.
 					results: [{ url: 'https://news.example/acme', title: 'News', snippet: 'x' }],
 					knowledge_panel: PANEL,
@@ -371,11 +371,11 @@ describe('processKnowledgeEnrichJob with Serper results', () => {
 							source: 'provider_reported'
 						}
 					}
-				};
+				});
 			},
-			visit: async (args: Record<string, unknown>) => {
+			visit: (args: Record<string, unknown>) => {
 				visited.push(String(args.url));
-				return { content: PAGE, title: 'Page' };
+				return Promise.resolve({ content: PAGE, title: 'Page' });
 			}
 		});
 		return {
@@ -387,13 +387,13 @@ describe('processKnowledgeEnrichJob with Serper results', () => {
 					getJSONResponse: async (options: any) => {
 						if (options.operationType === KNOWLEDGE_PLAN_OPERATION) return {};
 						prompts.push(options.userPrompt);
-						options.onUsage?.({ totalCost: 0.0004 });
+						await options.onUsage?.({ totalCost: 0.0004 });
 						return answer;
 					}
 				} as unknown as KnowledgeEnrichDeps['llm'],
 				makePort: makePort as unknown as KnowledgeEnrichDeps['makePort'],
 				fetchFn: vi.fn() as unknown as typeof fetch,
-			fetchHtml: async () => null,
+				fetchHtml: () => Promise.resolve(null),
 				now: () => new Date('2026-11-17T12:00:00Z'),
 				decider: null
 			} satisfies Partial<KnowledgeEnrichDeps>

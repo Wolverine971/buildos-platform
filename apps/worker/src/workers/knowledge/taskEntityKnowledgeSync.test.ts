@@ -30,7 +30,7 @@ function fakeDb(tables: Tables) {
 					filters.push([key, value]);
 					return query;
 				},
-				maybeSingle: async () => ({ data: rows()[0] ?? null, error: null }),
+				maybeSingle: () => Promise.resolve({ data: rows()[0] ?? null, error: null }),
 				then: (resolve: (value: { data: unknown; error: null }) => void) =>
 					resolve({ data: rows(), error: null })
 			};

@@ -16,11 +16,11 @@
 // product behaviour).
 
 import {
+	type KnowledgeWriteBatch,
 	domainOf,
 	hostMatchesDomain,
 	normalizeKnowledgeName,
-	normalizeUrl,
-	type KnowledgeWriteBatch
+	normalizeUrl
 } from '@buildos/shared-agent-ops/knowledge';
 
 export const EVAL_FIELDS = [

@@ -10,6 +10,7 @@ import type {
 	KnowledgeListResult,
 	KnowledgeListSort,
 	KnowledgeMergePreviewEntry,
+	KnowledgeReviewAbout,
 	KnowledgeSortDir
 } from '@buildos/shared-agent-ops/knowledge';
 import {
@@ -46,6 +47,29 @@ export type {
 };
 export { knowledgeSortDefaultDir };
 export type KnowledgeMergeEntry = KnowledgeMergePreviewEntry;
+export type { KnowledgeReviewAbout };
+
+/** Where an entry came from, in the user's words. */
+const ADDED_VIA: Record<string, string> = {
+	import: 'your contacts',
+	chat: 'a chat',
+	mcp: 'an agent',
+	enrichment: 'research',
+	task: 'your tasks',
+	backfill: 'your tasks',
+	system: 'your docs',
+	manual: 'you'
+};
+
+/** "Added Nov 22 from your contacts". */
+export function knowledgeAddedLine(createdAt: string, createdVia: string): string {
+	const date = new Date(createdAt).toLocaleDateString(undefined, {
+		month: 'short',
+		day: 'numeric'
+	});
+	const via = ADDED_VIA[createdVia];
+	return via ? `Added ${date} from ${via}` : `Added ${date}`;
+}
 export { MERGE_MAX } from '@buildos/shared-agent-ops/knowledge';
 
 export interface KnowledgeLinkedRecord {
@@ -378,6 +402,8 @@ export const knowledgeApi = {
 			}>;
 			/** Your own entries with the same kind and exact name, oldest first. */
 			twins?: Array<{ kind: KnowledgeKind; name: string; ids: string[] }>;
+			/** What tells each entry apart, by id. */
+			about?: Record<string, KnowledgeReviewAbout>;
 		}>(`/api/knowledge/merge`);
 	},
 	merge(keep: string, merge: string) {

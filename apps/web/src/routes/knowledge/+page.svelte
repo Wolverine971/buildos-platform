@@ -73,6 +73,7 @@
 		KIND_LABEL,
 		KIND_ORDER,
 		MERGE_MAX,
+		knowledgeAddedLine,
 		knowledgeApi,
 		type ImportSummary,
 		type KnowledgeEntitySummary,
@@ -80,6 +81,7 @@
 		type KnowledgeKind,
 		type KnowledgeListResult,
 		type KnowledgeListSort,
+		type KnowledgeReviewAbout,
 		type KnowledgeSortDir
 	} from '$lib/components/knowledge/knowledge-client';
 	import {
@@ -153,6 +155,8 @@
 	let duplicatesOpen = $state(false);
 	/** Same kind + exact name, your own ("Craig" ×3): one merge each. */
 	let twins = $state<Array<{ kind: KnowledgeKind; name: string; ids: string[] }>>([]);
+	/** What tells each entry in the review apart (job, LinkedIn, phone, where it's used), by id. */
+	let reviewAbout = $state.raw<Record<string, KnowledgeReviewAbout>>({});
 	/** The merge dialog's starting entries, while it's open. */
 	let mergeIds = $state<string[] | null>(null);
 	let twinBusy = $state<string | null>(null);
@@ -370,6 +374,7 @@
 			const result = await knowledgeApi.mergeCandidates();
 			duplicates = result.candidates;
 			twins = result.twins ?? [];
+			reviewAbout = result.about ?? {};
 		} catch {
 			// the duplicates banner is a nicety
 		}
@@ -1641,6 +1646,34 @@
 	</form>
 </Modal>
 
+<!-- One entry in the duplicates review: enough to tell it from its look-alike at a glance. -->
+{#snippet reviewEntry(id: string, name: string | null, fallbackSummary: string | null)}
+	{@const info = reviewAbout[id]}
+	{@const summary = info?.summary ?? fallbackSummary}
+	<li class="min-w-0 rounded-md bg-muted/50 px-3 py-2">
+		{#if name}
+			<p class="truncate text-sm font-medium text-foreground">{name}</p>
+		{/if}
+		{#if summary}
+			<p class="line-clamp-2 text-sm text-foreground">{summary}</p>
+		{/if}
+		{#if info?.details.length}
+			<p class="mt-0.5 break-words text-xs text-foreground">{info.details.join(' · ')}</p>
+		{/if}
+		{#if info}
+			<p class="mt-0.5 text-xs text-muted-foreground">
+				{!summary && !info.details.length && !info.links
+					? 'No details yet · '
+					: ''}{info.links
+					? `On ${info.links} ${info.links === 1 ? 'task or doc' : 'tasks & docs'} · `
+					: ''}{knowledgeAddedLine(info.created_at, info.created_via)}
+			</p>
+		{:else if !summary}
+			<p class="text-xs text-muted-foreground">Nothing else recorded yet</p>
+		{/if}
+	</li>
+{/snippet}
+
 <Modal
 	isOpen={duplicatesOpen}
 	onClose={() => (duplicatesOpen = false)}
@@ -1662,6 +1695,11 @@
 						<span class="font-medium">{group.name}</span>
 						<span class="text-muted-foreground">· {group.ids.length} entries</span>
 					</p>
+					<ul class="flex flex-col gap-1.5" aria-label="Entries named {group.name}">
+						{#each group.ids as id (id)}
+							{@render reviewEntry(id, null, null)}
+						{/each}
+					</ul>
 					<div class="flex flex-wrap gap-2">
 						<button
 							type="button"
@@ -1707,18 +1745,10 @@
 				{#if candidate.question}
 					<p class="text-sm font-medium text-foreground">{candidate.question}</p>
 				{/if}
-				<p class="text-sm text-foreground">
-					<span class="font-medium">{candidate.a.name}</span
-					>{#if candidate.a.summary}<span class="text-muted-foreground">
-							· {candidate.a.summary}</span
-						>{/if}
-				</p>
-				<p class="text-sm text-foreground">
-					<span class="font-medium">{candidate.b.name}</span
-					>{#if candidate.b.summary}<span class="text-muted-foreground">
-							· {candidate.b.summary}</span
-						>{/if}
-				</p>
+				<ul class="flex flex-col gap-1.5" aria-label="The two entries">
+					{@render reviewEntry(candidate.a.id, candidate.a.name, candidate.a.summary)}
+					{@render reviewEntry(candidate.b.id, candidate.b.name, candidate.b.summary)}
+				</ul>
 				<div class="flex gap-2">
 					<button
 						type="button"

@@ -110,6 +110,30 @@ describe('one tray per turn', () => {
 		expect(readKnowledgeTray(JSON.parse(JSON.stringify(tray)))?.id).toBe(tray.id);
 	});
 
+	it('keeps a site flagged for text aimed at AI tools, whichever search of the turn flagged it', () => {
+		const url = 'https://www.technical.ly/baltimore';
+		const flagged = {
+			...exploreResult,
+			knowledge_explore: {
+				...exploreResult.knowledge_explore,
+				run_id: 'run-2',
+				pages: [{ url, title: 'Baltimore software', flagged: true }]
+			}
+		};
+		// Only the worker's structured boolean counts.
+		expect(extractGuidedSearch(exploreResult)!.pages[0]).not.toHaveProperty('flagged');
+		expect(extractGuidedSearch(flagged)!.pages).toEqual([
+			{ url, title: 'Baltimore software', flagged: true }
+		]);
+		for (const views of [
+			[extractGuidedSearch(exploreResult)!, extractGuidedSearch(flagged)!],
+			[extractGuidedSearch(flagged)!, extractGuidedSearch(exploreResult)!]
+		])
+			expect(buildKnowledgeTray(views)!.pages).toEqual([
+				{ url, title: 'Baltimore software', flagged: true }
+			]);
+	});
+
 	it('gives the same turn the same id however its results are ordered, and a new turn another', () => {
 		const a = buildKnowledgeTray([
 			extractGuidedSearch(findResult)!,

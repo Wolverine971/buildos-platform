@@ -63,7 +63,8 @@ export interface KnowledgeTray {
 	checks: GuidedCheck[];
 	need: string[];
 	entities: GuidedEntity[];
-	pages: Array<{ url: string; title: string | null }>;
+	/** `flagged`: the page had text written to steer an AI (it was still read). */
+	pages: Array<{ url: string; title: string | null; flagged?: boolean }>;
 	queries: string[];
 	/** Set when a search stopped itself. */
 	stopped: string | null;
@@ -75,7 +76,7 @@ export function buildKnowledgeTray(views: GuidedSearchView[]): KnowledgeTray | n
 	if (!usable.length) return null;
 	const entities = new Map<string, GuidedEntity>();
 	const checks = new Map<string, GuidedCheck>();
-	const pages = new Map<string, { url: string; title: string | null }>();
+	const pages = new Map<string, { url: string; title: string | null; flagged?: boolean }>();
 	const need = new Set<string>();
 	const queries = new Set<string>();
 	let stopped: string | null = null;
@@ -85,7 +86,13 @@ export function buildKnowledgeTray(views: GuidedSearchView[]): KnowledgeTray | n
 		for (const check of view.checks) if (!checks.has(check.key)) checks.set(check.key, check);
 		for (const key of view.need) need.add(key);
 		for (const query of view.queries) queries.add(query);
-		for (const page of view.pages) if (!pages.has(page.url)) pages.set(page.url, page);
+		for (const page of view.pages) {
+			const earlier = pages.get(page.url);
+			// A flag from any search in the turn sticks.
+			if (!earlier) pages.set(page.url, page);
+			else if (page.flagged && !earlier.flagged)
+				pages.set(page.url, { ...earlier, flagged: true });
+		}
 		for (const entity of view.entities) {
 			const earlier = entities.get(entity.id);
 			entities.set(

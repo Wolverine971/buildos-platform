@@ -14,43 +14,43 @@
 // Spend goes through `charge` (search, decision, model) so the caller's budget holds.
 
 import {
-	checkIdentityBatch,
-	domainOf,
-	hasKnowledgeAnchors,
-	hostMatchesDomain,
 	type IdentityCheckResult,
 	type IdentityDecider,
 	type KnowledgeAnchors,
 	type KnowledgeEntityDetail,
-	type KnowledgeWriteBatch
+	type KnowledgeWriteBatch,
+	checkIdentityBatch,
+	domainOf,
+	hasKnowledgeAnchors,
+	hostMatchesDomain
 } from '@buildos/shared-agent-ops/knowledge';
 import type { JSONRequestOptions } from '@buildos/smart-llm';
 import {
+	SOCIAL_PLATFORM_LABELS,
+	type SocialFinding,
+	type SocialPage,
 	accountKey,
 	findSocialProfiles,
 	parseSocialProfile,
 	platformStatus,
-	profileFitsKind,
-	SOCIAL_PLATFORM_LABELS,
-	type SocialFinding,
-	type SocialPage
+	profileFitsKind
 } from './socialProfiles';
 import { readPaidToolCharge } from '../agent-run/webResearchPort';
 import {
+	type EnrichContext,
+	type EnrichKnowledgePanel,
+	type EnrichPage,
+	KNOWLEDGE_ENRICH_OPERATION,
+	KNOWLEDGE_ENRICH_SYSTEM_PROMPT,
+	MAX_PAGES_PER_TARGET,
+	PAGE_CHARS,
 	alsoWorthSaving,
 	choosePages,
 	enrichContextFrom,
 	enrichQueries,
 	enrichUserPrompt,
-	KNOWLEDGE_ENRICH_OPERATION,
-	KNOWLEDGE_ENRICH_SYSTEM_PROMPT,
 	knowledgePanelPage,
-	MAX_PAGES_PER_TARGET,
-	PAGE_CHARS,
-	validateEnrichment,
-	type EnrichContext,
-	type EnrichKnowledgePanel,
-	type EnrichPage
+	validateEnrichment
 } from './knowledgeEnrichPlan';
 
 export const MAX_LLM_COST_PER_TARGET_USD = 0.01;

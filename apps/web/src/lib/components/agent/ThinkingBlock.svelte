@@ -15,7 +15,8 @@
 		Sparkles,
 		Ban,
 		CornerUpLeft,
-		ArrowUpRight
+		ArrowUpRight,
+		TriangleAlert
 	} from 'lucide-svelte';
 	import type { ActivityEntry, ThinkingBlockMessage } from './agent-chat.types';
 	import type { ToolActivityLine } from './agent-chat-tool-presenter';
@@ -473,6 +474,9 @@
 		lookup: { icon: CircleDot, color: 'text-muted-foreground' },
 		decide: { icon: Sparkles, color: 'text-info' },
 		search: { icon: Globe, color: 'text-muted-foreground' },
+		follow: { icon: Globe, color: 'text-muted-foreground' },
+		// Any web tool: a page it read has text written to steer an AI (still read, marked).
+		flag: { icon: TriangleAlert, color: 'text-warning' },
 		read: { icon: Globe, color: 'text-muted-foreground' },
 		extract: { icon: Sparkles, color: 'text-info' },
 		save: { icon: Check, color: 'text-success' },

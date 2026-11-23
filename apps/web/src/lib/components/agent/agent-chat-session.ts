@@ -7,6 +7,7 @@ import {
 import type { RestoreHistoryWindow } from '$lib/types/chat-session-restore';
 import {
 	buildGuidedSearchTrailFromResult,
+	buildWebContentFlagTrailFromResult,
 	buildWebNavigateTrailFromResult
 } from './agent-chat-tool-progress';
 import type { PendingChangeViewV1 } from '$lib/services/agentic-chat-v2/pending-change';
@@ -853,7 +854,15 @@ function buildRestoredToolBlock(params: {
 									parseRecord(source.result)
 								)
 							}
-						: {})
+						: source.toolName === 'web_search' || source.toolName === 'web_visit'
+							? (() => {
+									// Only a flagged page leaves a line under these.
+									const flags = buildWebContentFlagTrailFromResult(
+										parseRecord(source.result)
+									);
+									return flags.length ? { progressSteps: flags } : {};
+								})()
+							: {})
 			}
 		};
 	});

@@ -72,7 +72,10 @@ export function createKnowledgeSiteWalker(options: {
 	/** Opens one page and lists its links. Injectable for tests. */
 	loadPage?: (url: string, signal?: AbortSignal) => Promise<NavigatorPage>;
 	/** Judges one page. Injectable for tests; production asks the decision model. */
-	decide?: (request: NavigatorDecisionRequest, signal?: AbortSignal) => Promise<NavigatorDecision>;
+	decide?: (
+		request: NavigatorDecisionRequest,
+		signal?: AbortSignal
+	) => Promise<NavigatorDecision>;
 }): KnowledgeSiteWalker {
 	const loadPage = options.loadPage ?? createPoliteWebPageLoader(sharedPoliteWebFetcher());
 	return async (input) => {

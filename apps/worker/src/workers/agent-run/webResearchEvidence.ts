@@ -17,6 +17,11 @@ export interface ObservedResearchSource {
 	pageVersionNumber?: number;
 	contentHash?: string;
 	evidenceChunks?: NativeSearchEvidenceChunkReference[];
+	/**
+	 * Set when the web-content check flagged this page (text written to steer an AI). Kept so
+	 * the warning travels with the page into every later prompt that shows its text.
+	 */
+	contentWarning?: string;
 }
 
 export interface ObservedResearchSearchResult {
@@ -24,6 +29,8 @@ export interface ObservedResearchSearchResult {
 	title: string;
 	url: string;
 	snippet?: string;
+	/** Set when the web-content check flagged this result (see ObservedResearchSource). */
+	contentWarning?: string;
 }
 
 export interface WebResearchObservations {
@@ -42,6 +49,12 @@ function readText(value: unknown, maxChars: number): string | null {
 	if (typeof value !== 'string') return null;
 	const compact = value.replace(/\s+/g, ' ').trim();
 	return compact ? compact.slice(0, maxChars) : null;
+}
+
+/** The structured warning the web-content check put on a flagged page or result. */
+function warningOf(record: Record<string, unknown> | null): { contentWarning?: string } {
+	const warning = readText(record?.content_warning, 400);
+	return warning ? { contentWarning: warning } : {};
 }
 
 function canonicalizeResearchUrl(value: unknown): string | null {
@@ -156,7 +169,8 @@ export function observeWebResearchToolResult(params: {
 					query,
 					title,
 					url,
-					snippet: readText(candidate?.snippet, 600) ?? undefined
+					snippet: readText(candidate?.snippet, 600) ?? undefined,
+					...warningOf(candidate)
 				}
 			];
 		});
@@ -176,6 +190,7 @@ export function observeWebResearchToolResult(params: {
 						undefined,
 					accessedAt: validDateText(candidate?.page_fetched_at) ?? params.observedAt,
 					content,
+					...warningOf(candidate),
 					...(candidate ? readPageEvidence(candidate, 'page_') : {})
 				}
 			];
@@ -206,6 +221,7 @@ export function observeWebResearchToolResult(params: {
 				title: readText(result?.title, 500) ?? undefined,
 				accessedAt: validDateText(info?.fetched_at) ?? params.observedAt,
 				content: readText(result?.content, 12_000) ?? undefined,
+				...warningOf(result),
 				...(result ? readPageEvidence(result, '') : {})
 			}
 		]

@@ -283,6 +283,8 @@ async function loadReaderContext(db: KnowledgeDataClient, userId: string) {
 			.select('id, kind, name, normalized_name, status, is_self, hidden_reason')
 			.eq('owner_user_id', userId)
 			.in('kind', ['person', 'org'])
+			// A unique sort key, so pages never overlap or skip rows.
+			.order('id')
 			.range(from, from + 999);
 		if (res.error?.code === '42703')
 			res = await db
@@ -290,6 +292,7 @@ async function loadReaderContext(db: KnowledgeDataClient, userId: string) {
 				.select('id, kind, name, normalized_name, status, is_self')
 				.eq('owner_user_id', userId)
 				.in('kind', ['person', 'org'])
+				.order('id')
 				.range(from, from + 999);
 		if (res.error) throw new Error(res.error.message);
 		entities.push(...(res.data ?? []));

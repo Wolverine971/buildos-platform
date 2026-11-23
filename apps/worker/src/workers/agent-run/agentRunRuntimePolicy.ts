@@ -254,6 +254,8 @@ export function renderWebResearchFinalizationContext(
 				page_version_number: source.pageVersionNumber,
 				content_hash: source.contentHash,
 				evidence_chunks: source.evidenceChunks,
+				// A flagged page keeps its warning wherever its text is shown again.
+				...(source.contentWarning ? { content_warning: source.contentWarning } : {}),
 				content
 			}
 		];
@@ -289,6 +291,8 @@ export function renderWebResearchWorkingContext(observations: WebResearchObserva
 				page_version_number: source.pageVersionNumber,
 				content_hash: source.contentHash,
 				evidence_chunks: source.evidenceChunks,
+				// A flagged page keeps its warning wherever its text is shown again.
+				...(source.contentWarning ? { content_warning: source.contentWarning } : {}),
 				content
 			}
 		];
@@ -299,6 +303,7 @@ export function renderWebResearchWorkingContext(observations: WebResearchObserva
 			query: result.query,
 			title: result.title,
 			url: result.url,
+			...(result.contentWarning ? { content_warning: result.contentWarning } : {}),
 			snippet: result.snippet?.slice(0, WORKING_CONTEXT_SEARCH_SNIPPET_CHARS) ?? null
 		}));
 

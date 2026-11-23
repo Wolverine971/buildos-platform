@@ -1256,7 +1256,8 @@ export interface GuidedSearchView {
 	need: string[];
 	entities: GuidedEntity[];
 	/** Pages an outside search read. */
-	pages: Array<{ url: string; title: string | null }>;
+	/** `flagged`: the web-content check found text on it written to steer an AI. */
+	pages: Array<{ url: string; title: string | null; flagged?: boolean }>;
 	queries: string[];
 	/** The research run behind an outside hop: what makes one hop's tray distinct from another's. */
 	runId: string | null;
@@ -1306,7 +1307,8 @@ export function readGuidedSearchResult(toolName: string, result: unknown): Guide
 			.slice(0, 12)
 			.map((page) => ({
 				url: page.url as string,
-				title: typeof page.title === 'string' ? page.title : null
+				title: typeof page.title === 'string' ? page.title : null,
+				...(page.flagged === true ? { flagged: true } : {})
 			})),
 		queries: strings(body.queries, 6) ?? [],
 		runId: typeof body.run_id === 'string' ? body.run_id : null,

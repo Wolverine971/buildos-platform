@@ -7,33 +7,33 @@
 // check is a literal substring match.
 
 import {
-	anchorsForPrompt,
 	DEFAULT_ENRICH_FIELDS,
+	ENRICH_NEVER_FOR_PEOPLE,
+	KNOWLEDGE_MIN_QUOTE_CHARS,
+	type KnowledgeAnchors,
+	type KnowledgeEntityDetail,
+	type KnowledgeKind,
+	type KnowledgeWriteBatch,
+	anchorsForPrompt,
 	enrichFieldsFor,
 	excludedDomains,
-	ENRICH_NEVER_FOR_PEOPLE,
 	getKnowledgePredicate,
 	hostMatchesDomain,
 	isKnowledgeKind,
 	isSpecificPersonName,
-	KNOWLEDGE_MIN_QUOTE_CHARS,
-	normalizeUrl,
 	normalizeKnowledgeName,
+	normalizeUrl,
 	squashQuoteText,
 	youtubeChannelKey,
-	youtubeVideoId,
-	type KnowledgeAnchors,
-	type KnowledgeEntityDetail,
-	type KnowledgeKind,
-	type KnowledgeWriteBatch
+	youtubeVideoId
 } from '@buildos/shared-agent-ops/knowledge';
 import {
+	SOCIAL_PLATFORM_LABELS,
+	type SocialPlatform,
 	accountKey,
 	isSocialUrl,
 	parseSocialProfile,
-	profileFitsKind,
-	SOCIAL_PLATFORM_LABELS,
-	type SocialPlatform
+	profileFitsKind
 } from './socialProfiles';
 
 export const KNOWLEDGE_ENRICH_OPERATION = 'knowledge_enrich';

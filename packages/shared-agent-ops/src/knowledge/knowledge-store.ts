@@ -38,6 +38,7 @@ import type {
 	KnowledgeListResult,
 	KnowledgeMergePreview,
 	KnowledgeMergePreviewEntry,
+	KnowledgeReviewAbout,
 	KnowledgeNameTwins,
 	KnowledgeQueryPathStep,
 	KnowledgeQueryResult,
@@ -68,6 +69,16 @@ const ENTITY_COLUMNS =
 const FACT_COLUMNS =
 	'id, entity_id, predicate, object_entity_id, value_text, qualifiers, scope, owner_user_id, status, confidence, valid_from, valid_to, observed_at, created_via, run_id';
 const VISIBLE_FACT_STATUSES: KnowledgeFactStatus[] = ['active', 'suggested', 'disputed'];
+/** Details that tell two look-alike entries apart in the duplicates review. */
+const REVIEW_PREDICATES = [
+	'works_at',
+	'profile_url',
+	'phone',
+	'email',
+	'address',
+	'located_in'
+] as const;
+const REVIEW_DETAIL_MAX = 4;
 /** Writers a later automated run must not silently override. */
 const HUMAN_VIA = new Set<KnowledgeCreatedVia>(['manual', 'import', 'chat', 'mcp']);
 
@@ -171,6 +182,15 @@ function summarize(row: EntityRow): KnowledgeEntitySummary {
 		is_self: row.is_self,
 		image_url: row.image_url
 	};
+}
+
+/** "https://www.linkedin.com/in/maya-chen/" → "linkedin.com/in/maya-chen". */
+function shortUrl(value: string): string {
+	return value
+		.trim()
+		.replace(/^https?:\/\/(www\.)?/i, '')
+		.replace(/[?#].*$/, '')
+		.replace(/\/+$/, '');
 }
 
 function dbError(context: string, error: unknown): KnowledgeStoreError {
@@ -1048,7 +1068,9 @@ export class KnowledgeStore {
 		const singleValued = new Map<string, FactRow[]>();
 		const existingRows = await mapChunks(subjectIds, ID_CHUNK, async (group) => {
 			const rows: FactRow[] = [];
-			for (let from = 0; ; from += 1000) {
+			// The step and the stop test must match the page size, or rows past the first page
+			// are never read.
+			for (let from = 0; ; from += PAGE) {
 				const { data, error } = await this.db
 					.from('knowledge_facts')
 					.select(FACT_COLUMNS)
@@ -1058,7 +1080,7 @@ export class KnowledgeStore {
 					.range(from, from + PAGE - 1);
 				if (error) throw dbError('Load existing facts', error);
 				rows.push(...((data ?? []) as FactRow[]));
-				if ((data ?? []).length < 1000) break;
+				if ((data ?? []).length < PAGE) break;
 			}
 			return rows;
 		});
@@ -1625,10 +1647,11 @@ export class KnowledgeStore {
 				counts.set(row.entity_id, (counts.get(row.entity_id) ?? 0) + 1);
 			return counts;
 		};
-		const [facts, links, mentions] = await Promise.all([
+		const [facts, links, mentions, about] = await Promise.all([
 			countBy('knowledge_facts', true),
 			countBy('knowledge_record_links'),
-			countBy('knowledge_mentions')
+			countBy('knowledge_mentions'),
+			this.describeForReview(found)
 		]);
 		const entries: KnowledgeMergePreviewEntry[] = rows
 			.map((r) => ({
@@ -1639,7 +1662,8 @@ export class KnowledgeStore {
 				mergeable: r.scope === 'private' && r.owner_user_id === this.userId && !r.is_self,
 				facts: facts.get(r.id) ?? 0,
 				links: links.get(r.id) ?? 0,
-				mentions: mentions.get(r.id) ?? 0
+				mentions: mentions.get(r.id) ?? 0,
+				details: about[r.id]?.details ?? []
 			}))
 			.sort((a, b) => wanted.indexOf(a.id) - wanted.indexOf(b.id));
 		const weight = (e: KnowledgeMergePreviewEntry) =>
@@ -1649,6 +1673,119 @@ export class KnowledgeStore {
 			(a, b) => weight(b) - weight(a) || a.created_at.localeCompare(b.created_at)
 		)[0];
 		return { entries, suggested_keep: best?.id ?? null };
+	}
+
+	/**
+	 * What tells one entry from another when two look alike: where it works, its LinkedIn, phone
+	 * and email, where it is, how it got here and how many tasks and docs it is on. Read-only;
+	 * a handful of queries for the whole review list.
+	 */
+	async describeForReview(ids: string[]): Promise<Record<string, KnowledgeReviewAbout>> {
+		const wanted = unique(ids.filter((id) => UUID.test(id)));
+		if (!wanted.length) return {};
+		type AboutRow = {
+			id: string;
+			summary: string | null;
+			created_at: string;
+			created_via: string;
+		};
+		type DetailRow = {
+			id: string;
+			entity_id: string;
+			predicate: string;
+			object_entity_id: string | null;
+			value_text: string | null;
+			qualifiers: Record<string, unknown> | null;
+		};
+		const [rows, facts, linkRows] = await Promise.all([
+			mapChunks(wanted, ID_CHUNK, async (group) => {
+				const { data, error } = await this.db
+					.from('knowledge_entities')
+					.select('id, summary, created_at, created_via')
+					.in('id', group)
+					.eq('status', 'active')
+					.or(this.visible);
+				if (error) throw dbError('Load entries to compare', error);
+				return (data ?? []) as AboutRow[];
+			}),
+			mapChunks(wanted, ID_CHUNK, async (group) => {
+				const out: DetailRow[] = [];
+				for (let from = 0; ; from += PAGE) {
+					const { data, error } = await this.db
+						.from('knowledge_facts')
+						.select(
+							'id, entity_id, predicate, object_entity_id, value_text, qualifiers'
+						)
+						.in('entity_id', group)
+						.eq('owner_user_id', this.userId)
+						.eq('status', 'active')
+						.in('predicate', [...REVIEW_PREDICATES])
+						.order('id')
+						.range(from, from + PAGE - 1);
+					if (error) throw dbError('Load details to compare', error);
+					out.push(...((data ?? []) as DetailRow[]));
+					if ((data ?? []).length < PAGE) break;
+				}
+				return out;
+			}),
+			mapChunks(wanted, ID_CHUNK, async (group) => {
+				const { data, error } = await this.db
+					.from('knowledge_record_links')
+					.select('entity_id')
+					.eq('owner_user_id', this.userId)
+					.in('entity_id', group)
+					.limit(5000);
+				if (error) throw dbError('Count tasks and docs', error);
+				return (data ?? []) as Array<{ entity_id: string }>;
+			})
+		]);
+		const named = await this.loadEntities(
+			facts.flatMap((f) => (f.object_entity_id ? [f.object_entity_id] : []))
+		);
+		const links = new Map<string, number>();
+		for (const row of linkRows) links.set(row.entity_id, (links.get(row.entity_id) ?? 0) + 1);
+		const byEntity = new Map<string, DetailRow[]>();
+		for (const fact of facts)
+			byEntity.set(fact.entity_id, [...(byEntity.get(fact.entity_id) ?? []), fact]);
+
+		const out: Record<string, KnowledgeReviewAbout> = {};
+		for (const row of rows) {
+			const mine = byEntity.get(row.id) ?? [];
+			const of = (predicate: string) => mine.filter((f) => f.predicate === predicate);
+			const details: string[] = [];
+			// A current job before a past one.
+			const job = [...of('works_at')].sort(
+				(a, b) =>
+					Number(b.qualifiers?.current !== false) -
+					Number(a.qualifiers?.current !== false)
+			)[0];
+			const employer = job?.object_entity_id ? named.get(job.object_entity_id)?.name : null;
+			if (employer) {
+				const title =
+					typeof job?.qualifiers?.title === 'string' ? job.qualifiers.title.trim() : '';
+				const line = title ? `${title} at ${employer}` : `Works at ${employer}`;
+				// The summary is usually this same line; say it once.
+				if (line.toLowerCase() !== (row.summary ?? '').trim().toLowerCase())
+					details.push(line);
+			}
+			const profile = of('profile_url')[0]?.value_text;
+			if (profile) details.push(shortUrl(profile));
+			for (const predicate of ['phone', 'email', 'address'] as const) {
+				const value = of(predicate)[0]?.value_text;
+				if (value) details.push(value);
+			}
+			const placeId = of('located_in')[0]?.object_entity_id;
+			const place = placeId ? named.get(placeId)?.name : null;
+			if (place) details.push(place);
+			out[row.id] = {
+				summary: row.summary,
+				created_at: row.created_at,
+				created_via: row.created_via,
+				links: links.get(row.id) ?? 0,
+				details: details.slice(0, REVIEW_DETAIL_MAX)
+			};
+		}
+		return out;
 	}
 
 	/**
@@ -1673,6 +1810,9 @@ export class KnowledgeStore {
 				.eq('scope', 'private')
 				.eq('is_self', false)
 				.order('created_at', { ascending: true })
+				// An import creates hundreds of entries in one instant. Without a second, unique
+				// sort key the pages overlap, and one entry read twice looks like a pair.
+				.order('id', { ascending: true })
 				.range(from, from + PAGE - 1);
 			if (error) throw dbError('Load names', error);
 			const page = (data ?? []) as TwinRow[];
@@ -1680,8 +1820,10 @@ export class KnowledgeStore {
 			if (page.length < PAGE) break;
 		}
 		const groups = new Map<string, TwinRow[]>();
+		const seen = new Set<string>();
 		for (const row of rows) {
-			if (!row.normalized_name) continue;
+			if (!row.normalized_name || seen.has(row.id)) continue;
+			seen.add(row.id);
 			const key = `${row.kind}|${row.normalized_name}`;
 			groups.set(key, [...(groups.get(key) ?? []), row]);
 		}
@@ -2206,7 +2348,7 @@ export class KnowledgeStore {
 		const selfId = await this.findSelfId();
 		const ids = new Set<string>();
 		if (!selfId) return ids;
-		for (let from = 0; ; from += 1000) {
+		for (let from = 0; ; from += PAGE) {
 			const { data, error } = await this.db
 				.from('knowledge_facts')
 				.select('object_entity_id')
@@ -2220,7 +2362,7 @@ export class KnowledgeStore {
 			for (const row of (data ?? []) as Array<{ object_entity_id: string | null }>) {
 				if (row.object_entity_id) ids.add(row.object_entity_id);
 			}
-			if ((data ?? []).length < 1000) break;
+			if ((data ?? []).length < PAGE) break;
 		}
 		return ids;
 	}

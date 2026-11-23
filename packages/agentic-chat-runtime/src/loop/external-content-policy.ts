@@ -37,6 +37,10 @@
 // Email and web taint by tool name whether or not the call succeeded, so an
 // error or partial payload cannot slip past. A failed calendar read returns no
 // event text and does not taint.
+//
+// A web read may also say that a page it returned was flagged by the web-content check
+// (text written to steer an AI). The turn was already tainted by the tool's name; the flag
+// is carried to the write review so it can be stricter about that page.
 
 const EXTERNAL_CONTENT_TOOL_NAMES = [
 	'search_email_messages',
@@ -82,6 +86,24 @@ export function agenticChatReadIngestsExternalContentV1(input: {
 	if (EXTERNAL_CONTENT_TOOL_NAME_SET.has(toolName)) return true;
 	if (!CALENDAR_EVENT_READ_TOOL_NAME_SET.has(toolName) || !input.succeeded) return false;
 	return calendarResultCarriesProviderEvent(toolName, input.result);
+}
+
+/**
+ * Named among a turn's external-content sources when a web read returned a page the
+ * web-content check flagged (text written to steer an AI). It is a marker, not a tool.
+ */
+export const AGENTIC_CHAT_FLAGGED_WEB_CONTENT_SOURCE_V1 = 'flagged_web_page';
+
+/**
+ * Did this read's result declare a flagged page? Reads the structured `content_warnings`
+ * field the worker's web-content check writes; never the page text.
+ */
+export function agenticChatReadCarriesFlaggedWebContentV1(result: unknown): boolean {
+	return (
+		isRecord(result) &&
+		Array.isArray(result.content_warnings) &&
+		result.content_warnings.some((entry) => isRecord(entry) && typeof entry.url === 'string')
+	);
 }
 
 function calendarResultCarriesProviderEvent(toolName: string, result: unknown): boolean {

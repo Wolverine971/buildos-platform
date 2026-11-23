@@ -7,6 +7,7 @@ import {
 	REQUEST_TURN_CLARIFICATION_TOOL_NAME
 } from '@buildos/agentic-chat-runtime/catalog';
 import {
+	AGENTIC_CHAT_FLAGGED_WEB_CONTENT_SOURCE_V1,
 	ContextGatheringLedger,
 	type FastToolExecution,
 	type LoadedTaskSchedule,
@@ -15,6 +16,7 @@ import {
 	NO_CHANGES_SAVED_NOTICE,
 	type ToolValidationIssue,
 	type TurnContract,
+	agenticChatReadCarriesFlaggedWebContentV1,
 	agenticChatReadIngestsExternalContentV1,
 	buildAgenticChatCompletionReceiptV1,
 	buildCleanupManifest,
@@ -921,6 +923,9 @@ export class ProviderTurnState implements ToolRoundStreamState {
 				) {
 					this.externalContentSources.add(call.name);
 				}
+				// A page the web-content check flagged: the write review is told.
+				if (!failed && agenticChatReadCarriesFlaggedWebContentV1(feedback.execution.result))
+					this.externalContentSources.add(AGENTIC_CHAT_FLAGGED_WEB_CONTENT_SOURCE_V1);
 			}
 			if (
 				!roundContainsMutation &&

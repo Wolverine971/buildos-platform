@@ -47,6 +47,8 @@ import { ChatWorkspaceFinder, composeContextFinders } from '../provider/chat-wor
 import { JevToolSelector } from '../provider/jev-tool-selector';
 import { createWorkerKnowledgeSearchPort } from '../tools/knowledge-search';
 import { createKnowledgeSiteWalker } from '../tools/knowledge-site-walk';
+import { createWebContentCheck, webContentFlagEvent } from '../../agent-run/webContentCheck';
+import { logSecurityEventAsync } from '@buildos/shared-agent-ops/ops/security-event-logger';
 import { createAgentRunWebResearchPort } from '../../agent-run/webResearchPort';
 import {
 	WEB_NAVIGATE_DECISION_TIMEOUT_MS,
@@ -682,6 +684,28 @@ function createDefaultComposition(
 		usage: usageLogger,
 		...(input.fetchImpl ? { fetchImpl: input.fetchImpl } : {})
 	});
+	// The tripwire on web text: Jev is asked whether a page a web tool is about to return has
+	// text written to steer an AI. A flagged page is kept and marked, shown in the work log,
+	// carried to the write review, and recorded as a security event (webContentCheck.ts).
+	const webContentCheck = createWebContentCheck({
+		jev: new JevClient({
+			apiKey: (
+				input.config.provider.routes.find((route) => route.kind === 'openrouter') ??
+				input.config.provider.routes[0]!
+			).apiKey,
+			timeoutMs: 2_500,
+			retryOnce: false,
+			// Jev latency is bimodal; one hedge rescues most slow calls.
+			hedgeAfterMs: 800,
+			title: 'BuildOS Web Content Check',
+			usage: usageLogger,
+			...(input.fetchImpl ? { fetchImpl: input.fetchImpl } : {})
+		}),
+		onFlag: (verdict, flagContext) =>
+			logSecurityEventAsync(webContentFlagEvent(verdict, flagContext), {
+				supabase: input.client as never
+			})
+	});
 	const webNavigator = createWorkerWebNavigatePort({
 		jev: webNavigationJev,
 		tavilyApiKey:
@@ -729,6 +753,7 @@ function createDefaultComposition(
 		},
 		makeSearchPort: () => createAgentRunWebResearchPort({ purpose: 'knowledge_research' }),
 		siteWalker: createKnowledgeSiteWalker({ jev: webNavigationJev }),
+		contentCheck: webContentCheck,
 		usage: usageLogger
 	});
 	// scan_email_inbox scores relevance and search_email_messages authorizes its
@@ -764,6 +789,7 @@ function createDefaultComposition(
 		...(toolSelector ? { toolSelector } : {}),
 		...(contextFinder ? { contextFinder } : {}),
 		webNavigator,
+		webContentCheck,
 		knowledgeSearch,
 		usage: usageLogger,
 		emailRelevanceDecider: emailJev,
