@@ -1,5 +1,5 @@
-// packages/shared-types/src/database.schema.ts
-// Generated on: 2026-11-23T02:16:41.491Z
+// Lightweight database schema - auto-generated from database.types.ts
+// Generated on: 2026-11-23T05:54:16.658Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -2722,6 +2722,7 @@ export type DatabaseSchema = {
 		normalized_name: string | null;
 		normalized_org_name: string | null;
 		owner_user_id: string | null;
+		run_id: string | null;
 		scope: string;
 		status: string;
 		summary: string | null;
@@ -2734,6 +2735,7 @@ export type DatabaseSchema = {
 		key_type: string;
 		key_value: string;
 		owner_user_id: string | null;
+		run_id: string | null;
 		scope: string;
 	};
 	knowledge_fact_sources: {

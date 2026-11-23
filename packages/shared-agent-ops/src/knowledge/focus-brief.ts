@@ -675,10 +675,6 @@ export function renderKnowledgeFocusBrief(
 }
 
 /**
- * How to work in a chat focused on an entry: answer from the brief, save what the user says,
- * research with real leads and save what is found with its source, then report.
- */
-/**
  * What the brief is, said before it. The chat model reads this block cold, after a long system
  * prompt about projects: it has to be told that this is an entry in the knowledge graph and what
  * the chat is for.
@@ -689,6 +685,10 @@ export const KNOWLEDGE_FOCUS_INTRO = [
 	'The user opened this chat on the entry below. Everything BuildOS holds on it follows: the entry itself, copies of it, where it appears in their work, and what is still missing.'
 ].join('\n');
 
+/**
+ * How to work in a chat focused on an entry: answer from the brief, save what the user says,
+ * research with real leads and save what is found with its source, then report.
+ */
 export const KNOWLEDGE_FOCUS_GUIDANCE = [
 	'## Your job in this chat',
 	'Help the user with this entry: answer questions about it, save what they tell you about it, and get it researched on the web when they want to know more. Read "they", "him", "her", "the company" and bare first names as this entry unless the user clearly means something else.',

@@ -391,7 +391,64 @@ function compactDirectToolPayload(toolName: string, payload: unknown): unknown {
 	) {
 		return compactDocumentCollectionGatewayPayload(payload);
 	}
+	if (GUIDED_SEARCH_TOOL_NAMES.has(normalizedToolName)) {
+		return compactGuidedSearchPayload(payload);
+	}
 	return applyToolPayloadSizeGuard(payload, TOOL_COMPACT_TARGET_CHARS);
+}
+
+const CONTENT_WARNING_MAX_CHARS = 300;
+const MAX_CONTENT_WARNINGS = 20;
+const GUIDED_SEARCH_MESSAGE_MAX_CHARS = 2400;
+const GUIDED_SEARCH_MIN_BODY_CHARS = 2000;
+
+/**
+ * The structured `content_warnings` list the web-content check writes ({url, warning}),
+ * bounded. Read as data only; nothing here looks at page text.
+ */
+function compactContentWarnings(value: unknown): Array<Record<string, unknown>> | undefined {
+	if (!Array.isArray(value)) return undefined;
+	const entries = value
+		.filter(
+			(entry): entry is Record<string, unknown> =>
+				Boolean(entry) && typeof entry === 'object' && !Array.isArray(entry)
+		)
+		.slice(0, MAX_CONTENT_WARNINGS)
+		.map((entry) => {
+			const compacted: Record<string, unknown> = { url: compactUrlPreview(entry.url) };
+			const warning = toTextPreview(entry.warning, CONTENT_WARNING_MAX_CHARS);
+			if (warning !== null) compacted.warning = warning;
+			return compacted;
+		});
+	return entries.length ? entries : undefined;
+}
+
+/**
+ * find_in_knowledge / explore_knowledge: fit to the guided-search budget (resolvePayloadBudget
+ * gives them the 12K web budget), not the 6K default. The flag and the closing message (what
+ * to tell the user, which site was flagged) lead the result and are set aside before the fit,
+ * so trimming drops trailing entities, never the warning or the instruction.
+ */
+function compactGuidedSearchPayload(payload: unknown): unknown {
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+		return applyToolPayloadSizeGuard(payload, WEB_COMPACT_TARGET_CHARS);
+	}
+	const { content_warnings, message, ...body } = payload as Record<string, unknown>;
+	const head: Record<string, unknown> = {};
+	const warnings = compactContentWarnings(content_warnings);
+	if (warnings) head.content_warnings = warnings;
+	if (typeof message === 'string')
+		head.message = toTextPreview(message, GUIDED_SEARCH_MESSAGE_MAX_CHARS);
+	else if (message !== undefined) body.message = message;
+	const bodyTarget = Math.max(
+		GUIDED_SEARCH_MIN_BODY_CHARS,
+		WEB_COMPACT_TARGET_CHARS - (serializedLength(head) ?? 0)
+	);
+	const fitted = applyToolPayloadSizeGuard(body, bodyTarget);
+	if (!fitted || typeof fitted !== 'object' || Array.isArray(fitted)) {
+		return { ...head, data: fitted };
+	}
+	return { ...head, ...(fitted as Record<string, unknown>) };
 }
 
 function compactEmailSearchPayload(payload: unknown): unknown {
@@ -1118,10 +1175,15 @@ function compactWebSearchPayload(payload: unknown): unknown {
 		(result: Record<string, any>) => typeof result?.page_content === 'string'
 	).length;
 
+	const contentWarnings = compactContentWarnings(record.content_warnings);
 	const buildPayload = (snippetBudget: number, pageBudget: number): Record<string, unknown> => ({
+		// The web-content check's flag goes first, in the result and in each flagged entry.
+		content_warnings: contentWarnings,
 		query: record.query,
 		answer: toTextPreview(record.answer, 600),
 		results: results.map((result: Record<string, any>) => ({
+			content_warning:
+				toTextPreview(result?.content_warning, CONTENT_WARNING_MAX_CHARS) ?? undefined,
 			title: toTextPreview(result?.title, 150),
 			url: compactUrlPreview(result?.url),
 			snippet: toTextPreview(result?.snippet, snippetBudget),
@@ -1195,6 +1257,9 @@ function compactWebVisitPayload(payload: unknown): unknown {
 				text: toTextPreview(link?.text, 120)
 			}))
 		: undefined;
+	const contentWarnings = compactContentWarnings(record.content_warnings);
+	const contentWarning =
+		toTextPreview(record.content_warning, CONTENT_WARNING_MAX_CHARS) ?? undefined;
 
 	const buildPayload = (
 		contentBudget: number,
@@ -1202,6 +1267,9 @@ function compactWebVisitPayload(payload: unknown): unknown {
 	): Record<string, unknown> => {
 		const modelPayloadTruncated = sourceContent.length > contentBudget;
 		return {
+			// The web-content check's flag goes first (webContentCheck.ts).
+			content_warnings: contentWarnings,
+			content_warning: contentWarning,
 			url: compactUrlPreview(record.url),
 			final_url: compactUrlPreview(record.final_url),
 			status_code: record.status_code,
@@ -2470,6 +2538,9 @@ function compactMarkdownOutline(outline: unknown): unknown {
 // verdict, and the arguments that identify what was asked.
 const PROTECTED_PAYLOAD_KEYS = new Set([
 	'search_coverage',
+	// The web-content check's structured flag (webContentCheck.ts).
+	'content_warnings',
+	'content_warning',
 	'model_context_notice',
 	'model_context_source',
 	'tool_name',

@@ -15006,6 +15006,7 @@ export type Database = {
           normalized_name: string | null
           normalized_org_name: string | null
           owner_user_id: string | null
+          run_id: string | null
           scope: string
           status: string
           summary: string | null
@@ -15028,6 +15029,7 @@ export type Database = {
           normalized_name?: string | null
           normalized_org_name?: string | null
           owner_user_id?: string | null
+          run_id?: string | null
           scope: string
           status?: string
           summary?: string | null
@@ -15050,6 +15052,7 @@ export type Database = {
           normalized_name?: string | null
           normalized_org_name?: string | null
           owner_user_id?: string | null
+          run_id?: string | null
           scope?: string
           status?: string
           summary?: string | null
@@ -15077,6 +15080,13 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "knowledge_entities_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_runs"
+            referencedColumns: ["id"]
+          },
         ]
       }
       knowledge_entity_keys: {
@@ -15087,6 +15097,7 @@ export type Database = {
           key_type: string
           key_value: string
           owner_user_id: string | null
+          run_id: string | null
           scope: string
         }
         Insert: {
@@ -15096,6 +15107,7 @@ export type Database = {
           key_type: string
           key_value: string
           owner_user_id?: string | null
+          run_id?: string | null
           scope: string
         }
         Update: {
@@ -15105,6 +15117,7 @@ export type Database = {
           key_type?: string
           key_value?: string
           owner_user_id?: string | null
+          run_id?: string | null
           scope?: string
         }
         Relationships: [
@@ -15120,6 +15133,13 @@ export type Database = {
             columns: ["owner_user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_entity_keys_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_runs"
             referencedColumns: ["id"]
           },
         ]
@@ -29777,6 +29797,17 @@ export type Database = {
         Args: { p_share: string; p_viewer?: string }
         Returns: Json
       }
+      knowledge_connections: {
+        Args: {
+          p_facet_limit?: number
+          p_facets?: string[]
+          p_filters?: Json
+          p_limit?: number
+          p_offset?: number
+          p_viewer?: string
+        }
+        Returns: Json
+      }
       knowledge_decide_share: {
         Args: {
           p_decision: string
@@ -29819,6 +29850,7 @@ export type Database = {
         }
         Returns: string
       }
+      knowledge_filter_texts: { Args: { p_value: Json }; Returns: string[] }
       knowledge_fold_org_name: { Args: { p_name: string }; Returns: string }
       knowledge_import_linkedin: {
         Args: { p_file_name: string; p_rows: Json; p_run_id: string }
@@ -29826,6 +29858,7 @@ export type Database = {
       }
       knowledge_list: {
         Args: {
+          p_dir?: string
           p_filter?: string
           p_kinds?: string[]
           p_limit?: number
@@ -29843,6 +29876,7 @@ export type Database = {
         Args: { p_keep: string; p_merge: string; p_viewer?: string }
         Returns: Json
       }
+      knowledge_place_parts: { Args: { p_name: string }; Returns: string[] }
       knowledge_project_lens: {
         Args: {
           p_project: string
@@ -29927,6 +29961,11 @@ export type Database = {
         Args: { p_share: string; p_viewer: string }
         Returns: boolean
       }
+      knowledge_text_has_term: {
+        Args: { p_term: string; p_text: string; p_whole?: boolean }
+        Returns: boolean
+      }
+      knowledge_undo_import: { Args: { p_run_id: string }; Returns: Json }
       knowledge_validate_share_terms: {
         Args: {
           p_duration: string

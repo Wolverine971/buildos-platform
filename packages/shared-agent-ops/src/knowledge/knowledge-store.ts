@@ -252,6 +252,14 @@ function dbError(context: string, error: unknown): KnowledgeStoreError {
 	return new KnowledgeStoreError(`${context}: ${message}`, 'DB', error);
 }
 
+/** "Don't save" on an entry that is no longer (or never was) only a web search's find. */
+function notPartOfTheFind(): KnowledgeStoreError {
+	return new KnowledgeStoreError(
+		'This entry is part of your knowledge now. Open its card to remove it.',
+		'NOT_FOUND'
+	);
+}
+
 /** Fact identity used for deduplication (mirrors the generated dedupe_key column). */
 function factIdentity(
 	entityId: string,
@@ -1571,10 +1579,52 @@ export class KnowledgeStore {
 	 * still what the search made it, an entry created by research that sits outside the
 	 * user's world. An entry the user already had, or one they have since said they know,
 	 * is refused here whatever the page showing the button believed (a reloaded chat shows
-	 * old chips). Deleting takes the entry's facts with it, so this must never reach an
-	 * entry other records hang off.
+	 * old chips). Deleting takes the entry's facts with it (every fact pointing at it cascades),
+	 * so an entry anything else hangs off is kept: a link to a task, document, project or chat,
+	 * a tag in a record's text, an entry merged into it, or a fact research did not write (a
+	 * contacts import's "works at", something typed in a chat or on a card). Research's own
+	 * facts about it (the "works at" this search added to the person it was asked about) go
+	 * with it, which is what "Don't save" means.
 	 */
 	async discardFoundEntry(id: string): Promise<void> {
+		const { data: entry, error: readError } = await this.db
+			.from('knowledge_entities')
+			.select('id, name')
+			.eq('id', id)
+			.eq('owner_user_id', this.userId)
+			.eq('is_self', false)
+			.eq('created_via', 'enrichment')
+			.eq('circle', 'public')
+			.maybeSingle();
+		if (readError) throw dbError('Discard found entry', readError);
+		if (!entry) throw notPartOfTheFind();
+		const name = String((entry as { name?: unknown }).name ?? 'This entry');
+
+		const [links, mentions, mergedIn, pointing, own] = await Promise.all([
+			this.db.from('knowledge_record_links').select('id').eq('entity_id', id).limit(1),
+			this.db.from('knowledge_mentions').select('id').eq('entity_id', id).limit(1),
+			this.db.from('knowledge_entities').select('id').eq('merged_into_id', id).limit(1),
+			this.db
+				.from('knowledge_facts')
+				.select('id')
+				.eq('object_entity_id', id)
+				.neq('created_via', 'enrichment')
+				.limit(1),
+			this.db
+				.from('knowledge_facts')
+				.select('id')
+				.eq('entity_id', id)
+				.neq('created_via', 'enrichment')
+				.limit(1)
+		]);
+		for (const check of [links, mentions, mergedIn, pointing, own])
+			if (check.error) throw dbError('Discard found entry', check.error);
+		if ([links, mentions, mergedIn, pointing, own].some((check) => check.data?.length))
+			throw new KnowledgeStoreError(
+				`${name} was kept: other things you saved use it. Open its card to remove it.`,
+				'INVALID'
+			);
+
 		const { data, error } = await this.db
 			.from('knowledge_entities')
 			.delete()
@@ -1585,11 +1635,7 @@ export class KnowledgeStore {
 			.eq('circle', 'public')
 			.select('id');
 		if (error) throw dbError('Discard found entry', error);
-		if (!data?.length)
-			throw new KnowledgeStoreError(
-				'This entry is part of your knowledge now. Open its card to remove it.',
-				'NOT_FOUND'
-			);
+		if (!data?.length) throw notPartOfTheFind();
 	}
 
 	async setFactStatus(factId: string, status: KnowledgeFactStatus): Promise<void> {
@@ -1643,22 +1689,21 @@ export class KnowledgeStore {
 			p_merge: mergeId,
 			p_viewer: this.userId
 		});
-		if (error)
-			throw new KnowledgeStoreError(
-				await this.whyMergeFailed(keepId, mergeId, error),
-				'INVALID',
-				error
-			);
+		if (error) {
+			// A refusal the entries explain is the caller's to fix (400); anything else (a timeout,
+			// a lost connection) stays a database failure rather than "the merge was refused".
+			const reason = await this.whyMergeFailed(keepId, mergeId);
+			if (reason) throw new KnowledgeStoreError(reason, 'INVALID', error);
+			throw dbError('Merge entries', error);
+		}
 		return (data ?? {}) as Record<string, unknown>;
 	}
 
-	/** Why the database refused a merge, worked out from the two entries as they are now. */
-	private async whyMergeFailed(keepId: string, mergeId: string, error: unknown): Promise<string> {
-		const raw =
-			error && typeof error === 'object' && 'message' in error
-				? String((error as { message: unknown }).message)
-				: String(error);
-		const fallback = `The merge was refused: ${raw}`;
+	/**
+	 * Why the database refused a merge, worked out from the two entries as they are now; null
+	 * when the entries show no reason (the failure was something else).
+	 */
+	private async whyMergeFailed(keepId: string, mergeId: string): Promise<string | null> {
 		try {
 			if (keepId === mergeId)
 				return 'Those are the same entry, so there is nothing to merge.';
@@ -1667,7 +1712,7 @@ export class KnowledgeStore {
 				.select(ENTITY_COLUMNS)
 				.in('id', [keepId, mergeId])
 				.or(this.visible);
-			if (readError) return fallback;
+			if (readError) return null;
 			const rows = (data ?? []) as EntityRow[];
 			const keep = rows.find((r) => r.id === keepId);
 			const gone = rows.find((r) => r.id === mergeId);
@@ -1701,9 +1746,9 @@ export class KnowledgeStore {
 				return `"${keep.name}" is hidden. Bring it back first, or keep the other one.`;
 			if (keep.kind !== gone.kind)
 				return `"${gone.name}" is ${aKind(gone.kind)} and "${keep.name}" is ${aKind(keep.kind)}. Change the type on one of them so they match, then merge.`;
-			return fallback;
+			return null;
 		} catch {
-			return fallback;
+			return null;
 		}
 	}
 

@@ -1213,6 +1213,15 @@
 		panes?.open({ kind: 'task', id: taskId });
 	}
 
+	// openTaskById needs the task on the day or its project; otherwise "Open task" stays hidden.
+	function canOpenTaskById(taskId: string, projectId: string | null): boolean {
+		return (
+			projectId !== null ||
+			seenTasks.has(taskId) ||
+			Boolean(feed?.tasks.some((task) => task.id === taskId))
+		);
+	}
+
 	// The reader already shows its own changes; the day's list and receipts catch up.
 	function handleReaderChanged() {
 		void refresh();
@@ -1888,6 +1897,7 @@
 										compact={phoneQuery.current}
 										projectNameOf={projectNameFor}
 										onOpenTask={openTaskById}
+										canOpenTask={canOpenTaskById}
 									/>
 								</ErrorBoundary>
 							{/if}

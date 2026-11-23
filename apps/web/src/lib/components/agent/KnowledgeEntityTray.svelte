@@ -28,6 +28,7 @@
 		knowledgeApi
 	} from '$lib/components/knowledge/knowledge-client';
 	import { toastService } from '$lib/stores/toast.store';
+	import { safeHref } from '$lib/components/tables/table-cell-format';
 	import {
 		entityFit,
 		knowledgeNextSteps,
@@ -314,17 +315,18 @@
 							<p class="mt-1 text-2xs text-warning">{entity.note}</p>
 						{/if}
 						{#if entity.origin === 'web' && !isKnown}
+							{@const sourceHref = safeHref(entity.sources?.[0])}
 							<div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-								{#if entity.sources?.[0]}
+								{#if sourceHref}
 									<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- the web page the entry was found on, not a route in this app -->
 									<a
-										href={entity.sources[0]}
+										href={sourceHref}
 										target="_blank"
 										rel="noopener noreferrer"
 										class="inline-flex items-center gap-1 text-2xs font-medium text-muted-foreground hover:text-accent"
 									>
 										<Globe class="h-3 w-3" aria-hidden="true" />
-										{siteName(entity.sources[0])}
+										{siteName(sourceHref)}
 									</a>
 								{/if}
 								<!-- Only for entries this search created. One the user already had
@@ -378,7 +380,7 @@
 			{#each tray.pages as page (page.url)}
 				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- a web page the search read, not a route in this app -->
 				<a
-					href={page.url}
+					href={safeHref(page.url)}
 					target="_blank"
 					rel="noopener noreferrer"
 					title={page.flagged

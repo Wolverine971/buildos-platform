@@ -18,6 +18,9 @@
 //   are not external (AGENTIC_CHAT_CONTENT_FREE_EMAIL_TOOL_NAMES_V1).
 // - The public web: `web_search`, `web_visit`, `web_navigate`, and `explore_knowledge`
 //   (guided search's outside hop, whose result is entries read off public pages).
+//   `enrich_knowledge` is a write, but its chat result carries what its research run
+//   read off the web; it is external when that result reports findings, pages, or
+//   summaries (agenticChatWriteIngestsExternalContentV1).
 // - Google Calendar events: anyone can put an event on the user's calendar (an
 //   invite, a booking page) with an arbitrary title, description, and location.
 //   The organizer field does not prove authorship: booking tools create
@@ -86,6 +89,36 @@ export function agenticChatReadIngestsExternalContentV1(input: {
 	if (EXTERNAL_CONTENT_TOOL_NAME_SET.has(toolName)) return true;
 	if (!CALENDAR_EVENT_READ_TOOL_NAME_SET.has(toolName) || !input.succeeded) return false;
 	return calendarResultCarriesProviderEvent(toolName, input.result);
+}
+
+/**
+ * Did this completed write hand the model web-derived content? `enrich_knowledge` is a write,
+ * but in chat the gateway waits for its research run and returns what it read off public
+ * pages (found details, page titles, per-entry summaries). Decided from the structured
+ * `knowledge_run` fields only: a run that came back with no findings, pages, or summaries
+ * (or that was only queued) put nothing from the web in front of the model.
+ */
+export function agenticChatWriteIngestsExternalContentV1(input: {
+	toolName: string;
+	succeeded: boolean;
+	result?: unknown;
+}): boolean {
+	if (!input.succeeded) return false;
+	if (input.toolName.trim().toLowerCase() !== 'enrich_knowledge') return false;
+	if (!isRecord(input.result)) return false;
+	const run = input.result.knowledge_run;
+	if (!isRecord(run)) return false;
+	const nonEmpty = (value: unknown) => Array.isArray(value) && value.length > 0;
+	if (nonEmpty(run.found) || nonEmpty(run.pages)) return true;
+	return (
+		Array.isArray(run.targets) &&
+		run.targets.some(
+			(target) =>
+				isRecord(target) &&
+				typeof target.summary === 'string' &&
+				target.summary.trim().length > 0
+		)
+	);
 }
 
 /**

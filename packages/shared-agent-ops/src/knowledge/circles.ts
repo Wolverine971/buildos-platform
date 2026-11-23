@@ -152,7 +152,7 @@ export const CIRCLE_DECISION_OPERATION = 'knowledge_circle';
  * 96 KB request limit (20 measured 89 KB: one batch over the limit would fail every hour).
  */
 export const CIRCLE_BATCH_SIZE = 12;
-/** The decision client's request limit (knowledgeEnrichWorker: maxRequestBytes). */
+/** The decision client's request limit (knowledgeEnrichWorker's getKnowledgeDecider reads it). */
 export const CIRCLE_MAX_REQUEST_BYTES = 96_000;
 /** Below this the pick is too unsure to store as anything but unknown. */
 const MIN_CIRCLE_PROBABILITY = 0.55;

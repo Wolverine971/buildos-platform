@@ -18,6 +18,7 @@ import {
 	type TurnContract,
 	agenticChatReadCarriesFlaggedWebContentV1,
 	agenticChatReadIngestsExternalContentV1,
+	agenticChatWriteIngestsExternalContentV1,
 	buildAgenticChatCompletionReceiptV1,
 	buildCleanupManifest,
 	buildMutationBatch,
@@ -926,6 +927,18 @@ export class ProviderTurnState implements ToolRoundStreamState {
 				// A page the web-content check flagged: the write review is told.
 				if (!failed && agenticChatReadCarriesFlaggedWebContentV1(feedback.execution.result))
 					this.externalContentSources.add(AGENTIC_CHAT_FLAGGED_WEB_CONTENT_SOURCE_V1);
+			}
+			// A write whose result returns web-derived text (enrich_knowledge's research run).
+			if (
+				call.kind === 'mutation' &&
+				isMutationFeedback(feedback) &&
+				agenticChatWriteIngestsExternalContentV1({
+					toolName: call.name,
+					succeeded: true,
+					result: feedback.execution.result
+				})
+			) {
+				this.externalContentSources.add(call.name);
 			}
 			if (
 				!roundContainsMutation &&

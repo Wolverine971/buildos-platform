@@ -620,12 +620,30 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 		);
 
 		// The scope on the session row is user-written. Follow-ups run with the service role, so
-		// they only use a project the session's owner can reach.
-		const sessionProjectId = await accessibleSessionProjectId(
-			supabase,
-			validatedData.userId,
-			session
-		);
+		// they only use a project the session's owner can reach. The classification is already
+		// saved: a failed access check skips the project follow-ups instead of failing the job
+		// (a retry would pay for classification again).
+		let sessionProjectId: string | null = null;
+		try {
+			sessionProjectId = await accessibleSessionProjectId(
+				supabase,
+				validatedData.userId,
+				session
+			);
+		} catch (accessError) {
+			console.error(
+				`⚠️ Project access check failed for session ${validatedData.sessionId} (non-fatal, project follow-ups skipped):`,
+				accessError
+			);
+			void logWorkerError(accessError, {
+				userId: validatedData.userId,
+				tableName: 'chat_sessions',
+				recordId: validatedData.sessionId,
+				operationType: 'chat_classification_project_access',
+				severity: 'warning',
+				metadata: { jobId: job.id, nonFatal: true }
+			});
+		}
 
 		const libriHandoffStatus = libriConfigured
 			? await processLibriEntityHandoff({

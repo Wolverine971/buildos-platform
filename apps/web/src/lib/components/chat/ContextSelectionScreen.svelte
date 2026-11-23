@@ -17,7 +17,7 @@
 		Search,
 		Users,
 		X
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import type { KnowledgeFocusRef } from '@buildos/shared-agent-ops/knowledge';
 	import {
 		KIND_ICON,
@@ -110,6 +110,13 @@
 	function goToKnowledgeSelection() {
 		selectedView = 'knowledge-selection';
 		void loadKnowledgeChoices(knowledgeQuery);
+	}
+
+	/** Focus the person search on mouse/trackpad devices only: on a phone it would pop the
+	 *  keyboard over the list before anyone asked to type. */
+	function focusIfFinePointer(node: HTMLInputElement) {
+		if (typeof window.matchMedia !== 'function') return;
+		if (window.matchMedia('(pointer: fine)').matches) node.focus({ preventScroll: true });
 	}
 
 	function onKnowledgeSearchInput() {
@@ -621,14 +628,13 @@
 				<Search
 					class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
 				/>
-				<!-- svelte-ignore a11y_autofocus -->
 				<input
 					type="search"
 					class="w-full rounded-md border border-border bg-background py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 					placeholder="Search names and companies"
 					bind:value={knowledgeQuery}
 					oninput={onKnowledgeSearchInput}
-					autofocus
+					{@attach focusIfFinePointer}
 				/>
 			</label>
 		</div>

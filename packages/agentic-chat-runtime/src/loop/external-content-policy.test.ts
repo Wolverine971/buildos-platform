@@ -5,7 +5,8 @@ import {
 	AGENTIC_CHAT_EXTERNAL_CONTENT_TOOL_NAMES_V1,
 	AGENTIC_CHAT_FLAGGED_WEB_CONTENT_SOURCE_V1,
 	agenticChatReadCarriesFlaggedWebContentV1,
-	agenticChatReadIngestsExternalContentV1
+	agenticChatReadIngestsExternalContentV1,
+	agenticChatWriteIngestsExternalContentV1
 } from './external-content-policy';
 import { AGENTIC_CHAT_CONTENT_FREE_EMAIL_TOOL_NAMES_V1 } from './web-egress-policy';
 
@@ -150,5 +151,53 @@ describe('agenticChatReadCarriesFlaggedWebContentV1', () => {
 		expect(AGENTIC_CHAT_EXTERNAL_CONTENT_TOOL_NAMES_V1).not.toContain(
 			AGENTIC_CHAT_FLAGGED_WEB_CONTENT_SOURCE_V1
 		);
+	});
+});
+
+describe('agenticChatWriteIngestsExternalContentV1', () => {
+	const enrich = (result: unknown, succeeded = true, toolName = 'enrich_knowledge') =>
+		agenticChatWriteIngestsExternalContentV1({ toolName, succeeded, result });
+	const run = (fields: Record<string, unknown>) => ({
+		knowledge_run: {
+			id: '11111111-1111-4111-8111-111111111111',
+			status: 'completed',
+			targets: [{ entity_id: 'e1', kind: 'person', name: 'Ada', fields: [] }],
+			found: [],
+			searched: [],
+			pages: [],
+			...fields
+		},
+		message: 'Research finished.'
+	});
+
+	it('taints a research run that came back with findings, pages, or summaries', () => {
+		expect(enrich(run({ found: [{ entry: 'Ada', detail: 'CTO', confirmed: true }] }))).toBe(
+			true
+		);
+		expect(enrich(run({ pages: [{ url: 'https://a.example/', title: 'About' }] }))).toBe(true);
+		expect(
+			enrich(
+				run({
+					targets: [
+						{ entity_id: 'e1', name: 'Ada', status: 'done', summary: 'Runs Acme.' }
+					]
+				})
+			)
+		).toBe(true);
+	});
+
+	it('does not taint a queued run, an empty run, a failure, or another write', () => {
+		expect(
+			enrich({
+				knowledge_run: { id: 'r', status: 'queued', targets: [{ entity_id: 'e1' }] },
+				message: 'Started background research on Ada.'
+			})
+		).toBe(false);
+		expect(enrich(run({}))).toBe(false);
+		expect(enrich(run({ targets: [{ entity_id: 'e1', summary: null }] }))).toBe(false);
+		expect(enrich(run({ found: [{ detail: 'x' }] }), false)).toBe(false);
+		expect(enrich(run({ found: [{ detail: 'x' }] }), true, 'record_knowledge')).toBe(false);
+		// Words in the message are not the signal.
+		expect(enrich({ message: 'found 3 pages on the web' })).toBe(false);
 	});
 });

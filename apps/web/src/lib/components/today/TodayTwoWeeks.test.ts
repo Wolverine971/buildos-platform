@@ -110,6 +110,19 @@ describe('TodayTwoWeeks', () => {
 		expect(screen.queryByRole('list')).toBeNull();
 	});
 
+	it('hides "Open task" for a task with no project that is not on the day', async () => {
+		renderStrip([
+			event('e', 'Loose task block', '2026-11-23T18:00:00Z', {
+				source_table: 'onto_events',
+				task_id: 'task-loose'
+			})
+		]);
+		await fireEvent.click(screen.getByRole('button', { name: /Monday, November 23/ }));
+		expect(
+			within(screen.getByRole('list')).queryByRole('button', { name: 'Open task' })
+		).toBeNull();
+	});
+
 	it('says so when nothing is booked, and opens the next busy day by default on a phone', () => {
 		renderStrip([]);
 		expect(screen.getByText('Nothing booked through next week')).toBeInTheDocument();

@@ -2166,6 +2166,49 @@ describe('AgenticChatToolExecutionAdapter', () => {
 			expect(visit).toHaveBeenCalledOnce();
 		});
 
+		it('fails an outside hop with the capacity error when no turn state is free, but still runs an inside find', async () => {
+			const knowledgeSearch = searchPort(async (args, context) => {
+				await context.authorizeQuery!(
+					(args.searches as Array<{ query: string }>)[0]!.query
+				);
+				return { knowledge_explore: { hop: 1, entities: [] }, message: 'ok' };
+			});
+			const adapter = adapterWith(fakeSharedClient(), accessStub(), {
+				knowledgeSearch,
+				webSearchReviewer: { authorize: vi.fn(async () => true) } as never,
+				securityNow: () => 1_000,
+				maxTurnSecurityStates: 4,
+				maxTurnSecurityStatesPerUser: 1
+			});
+			// The first turn takes this user's only state slot.
+			await adapter.execute(
+				requestFor(
+					'find_in_knowledge',
+					{ goal: 'g' },
+					{ turnRunId: '30000000-0000-4000-8000-000000000001' }
+				)
+			);
+			const saturatedTurn = { turnRunId: '30000000-0000-4000-8000-000000000002' };
+			await expect(
+				adapter.execute(
+					requestFor(
+						'explore_knowledge',
+						{ goal: 'g', searches: [{ query: 'software companies in Baltimore' }] },
+						{
+							...saturatedTurn,
+							userMessage: 'Search for software companies in Baltimore.'
+						}
+					)
+				)
+			).rejects.toMatchObject({
+				code: 'read_tool_egress_security_capacity_exceeded',
+				failureClass: 'permanent'
+			});
+			await expect(
+				adapter.execute(requestFor('find_in_knowledge', { goal: 'g' }, saturatedTurn))
+			).resolves.toMatchObject({ result: { knowledge_find: { hop: 0 } } });
+		});
+
 		it('replays an argument error to the model and hides anything else', async () => {
 			const { GuidedSearchError } = await import('@buildos/shared-agent-ops/knowledge');
 			const adapter = adapterWith(fakeSharedClient(), accessStub(), {

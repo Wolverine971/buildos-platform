@@ -316,8 +316,9 @@ export function createSupabaseCheckpointPorts(options?: {
 				id: data.id,
 				userId: data.user_id,
 				// The scope on the row is user-written; capture reads the project with the
-				// service role, so it only follows a project the session's owner can reach.
-				projectId: await accessibleSessionProjectId(supabase, data.user_id, data),
+				// service role and writes its thinking log and START HERE (paid model calls), so
+				// it only follows a project the session's owner can edit.
+				projectId: await accessibleSessionProjectId(supabase, data.user_id, data, 'write'),
 				title: data.title?.trim() || data.auto_title?.trim() || null
 			};
 		},

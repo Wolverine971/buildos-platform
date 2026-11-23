@@ -184,6 +184,8 @@
 
 	let seq = 0;
 	async function load(options: { append?: boolean } = {}) {
+		// A page of the new filter must not land on the old filter's list.
+		if (options.append && loading) return;
 		const mine = ++seq;
 		if (options.append) loadingMore = true;
 		else loading = true;
@@ -499,7 +501,7 @@
 					<button
 						type="button"
 						class="inline-flex min-h-9 w-fit items-center gap-1.5 self-center rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground pressable hover:bg-muted"
-						disabled={loadingMore}
+						disabled={loading || loadingMore}
 						onclick={() => void load({ append: true })}
 					>
 						{#if loadingMore}<Loader2

@@ -738,13 +738,22 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 								)?.entities ?? []
 							).map((entry) => entry.entity_id),
 							// Every query an outside hop sends gets the review a web_search gets.
-							authorizeQuery: (query: string) =>
-								this.authorizeKnowledgeSearchQuery(
+							// A saturated worker has no per-turn state to cache reviews or
+							// record taint in, so an outside hop fails closed the way
+							// web_search does; an inside-only find never calls this.
+							authorizeQuery: async (query: string) => {
+								if (!turnSecurityState)
+									throw providerError(
+										'read_tool_egress_security_capacity_exceeded',
+										'permanent'
+									);
+								return this.authorizeKnowledgeSearchQuery(
 									input,
-									turnSecurityState!,
+									turnSecurityState,
 									query,
 									deadlineSignal
-								),
+								);
+							},
 							usageMetadata: {
 								turnRunId: claim.turnRunId,
 								streamRunId: input.executionInput.streamRunId,

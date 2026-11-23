@@ -24,6 +24,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	} catch {
 		return ApiResponse.badRequest('Invalid JSON');
 	}
+	if (!body || typeof body !== 'object') return ApiResponse.badRequest('Invalid request body');
 	if (!UUID_PATTERN.test(body.run_id ?? '')) return ApiResponse.badRequest('Invalid run');
 	try {
 		const result = await knowledgeStoreFor(locals.supabase, user.id).rejectResearchRun(

@@ -372,7 +372,7 @@ export type AgenticChatDeliveredLiveTextPreviewV1 = {
 
 /**
  * The browser drops a preview that has gone this long without an update
- * (LIVE_TEXT_PREVIEW_STALE_MS in apps/web worker-realtime-preview.ts).
+ * (LIVE_TEXT_PREVIEW_STALE_MS in packages/agentic-chat-client/src/worker-realtime-preview.ts).
  */
 const LIVE_TEXT_PREVIEW_BROWSER_STALE_MS = 15_000;
 

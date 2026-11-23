@@ -1140,7 +1140,8 @@ export interface ResearchPlan {
 
 /**
  * Keep only a usable plan: a known kind (else the filed one) and short, distinct searches with
- * no contact details in them. Format checks only (lengths, an "@", phone-shaped digit runs):
+ * no contact details in them. Format checks only (lengths, email-shaped tokens, phone-shaped
+ * digit runs; a handle's leading "@" is dropped):
  * nothing here judges what a query means.
  */
 export function validateResearchPlan(
@@ -1163,10 +1164,15 @@ export function validateResearchPlan(
 	const queries: string[] = [];
 	for (const item of Array.isArray(answer.queries) ? answer.queries : []) {
 		if (typeof item !== 'string') continue;
-		const query = item.replace(/\s+/g, ' ').trim();
+		// A saved account is shown to the planner as "Instagram (@janeroe)" and it is asked to
+		// try that handle elsewhere: an "@" in front of a handle is dropped, not the query.
+		const query = item
+			.replace(/\s+/g, ' ')
+			.trim()
+			.replace(/(^|[\s"“(])@(\w)/g, '$1$2');
 		if (query.length < 3 || query.length > 160) continue;
-		// A contact detail must never reach a search provider.
-		if (query.includes('@') || /\d[\d\s().-]{6,}\d/.test(query)) continue;
+		// A contact detail must never reach a search provider (email- and phone-shaped tokens).
+		if (/\S+@\S+\.\S+/.test(query) || /\d[\d\s().-]{6,}\d/.test(query)) continue;
 		const key = keyOf(query);
 		if (seen.has(key)) continue;
 		seen.add(key);

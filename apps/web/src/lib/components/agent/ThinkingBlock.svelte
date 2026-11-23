@@ -17,7 +17,7 @@
 		CornerUpLeft,
 		ArrowUpRight,
 		TriangleAlert
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import type { ActivityEntry, ThinkingBlockMessage } from './agent-chat.types';
 	import type { ToolActivityLine } from './agent-chat-tool-presenter';
 	import { WORKER_STOPPING_STATUS } from './agent-chat-worker-status';

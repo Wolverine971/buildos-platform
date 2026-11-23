@@ -492,5 +492,8 @@ describe('planned research (the Griffin run, 2026-11-21)', () => {
 		expect(store.details.get(ACME)!.entity.kind).toBe('org');
 		expect(db.target('t-acme').status).toBe('done');
 		expect(db.target('t-acme').summary).toContain('change its type on the card');
+		// The searches planned for a person never ran on this org: the org recipe did.
+		expect(run.queries).not.toContain('"Acme" founder');
+		expect(run.queries).toContain('"Acme" company');
 	});
 });

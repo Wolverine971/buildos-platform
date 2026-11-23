@@ -323,6 +323,24 @@ describe('starting from a named entry', () => {
 		});
 	});
 
+	it('leaves a name too long to be a company term to the id, instead of refusing the query', async () => {
+		const long = `Acme ${'Holdings '.repeat(20)}`.trim();
+		expect(long.length).toBeGreaterThan(120);
+		search.mockResolvedValue([
+			{ id: ACME, kind: 'org', name: 'Acme', score: 0.9 },
+			{ id: THE_ACME, kind: 'org', name: long, score: 0.9 }
+		]);
+		const result = await run(chat(), {
+			start: { search: 'Acme', kinds: ['org'] },
+			group_by: 'company'
+		});
+		expect(result.error).toBeUndefined();
+		expect(sent().filters).toMatchObject({
+			company_ids: [ACME, THE_ACME],
+			company: ['Acme']
+		});
+	});
+
 	it('turns a place into a place filter', async () => {
 		getSummaries.mockResolvedValue(
 			new Map([[ANNAPOLIS, { id: ANNAPOLIS, kind: 'place', name: 'Annapolis, MD' }]])

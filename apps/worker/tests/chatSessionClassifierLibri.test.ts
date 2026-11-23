@@ -922,6 +922,21 @@ describe('processChatClassificationJob', () => {
 			expect(mockQueueSnapshot).not.toHaveBeenCalled();
 		});
 
+		// The classification is saved before the access check: a database error there must not
+		// fail the job, or the retry pays for the classification again.
+		it('skip the project when the access check errors, and still succeed', async () => {
+			endChatAt(justNow());
+			mockOwnerCanReachProject.mockRejectedValue(
+				new Error('Failed to check project access: connection reset')
+			);
+
+			const result = await run();
+
+			expect(result.success).toBe(true);
+			expect(sessionData.auto_title).toBe('Libri Resource Planning');
+			expect(mockQueueSnapshot).not.toHaveBeenCalled();
+		});
+
 		it('queue no second snapshot when the close route already queued one', async () => {
 			endChatAt(justNow());
 			snapshotJobs = [

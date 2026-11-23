@@ -63,8 +63,14 @@
 		onClose();
 		mergeIds = [entity.id, ...(entity.with ?? [])];
 	}
-	function onMerged(result: { kept: string; merged: string[] }) {
-		mergeIds = null;
+	function onMerged(result: {
+		kept: string;
+		merged: string[];
+		failed?: Array<{ id: string; error: string }>;
+	}) {
+		// Some couldn't be merged: the dialog stays open and says why under each one.
+		if (!result.failed?.length) mergeIds = null;
+		if (!result.merged.length) return;
 		toastService.success(
 			result.merged.length === 1 ? 'Merged' : `Merged ${result.merged.length + 1} into one`
 		);

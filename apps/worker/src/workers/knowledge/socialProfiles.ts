@@ -429,7 +429,12 @@ export function harvestSocialLinksFromText(text: string): HarvestedProfile[] {
 	const hosts = Object.keys(HOSTS)
 		.map((host) => host.replace('.', '\\.'))
 		.join('|');
-	const pattern = new RegExp(`(?:https?://)?(?:www\\.)?(?:${hosts})/[^\\s"'<>)\\]]{2,120}`, 'gi');
+	// The address must start at a boundary: without one, "netflix.com/browse" reads as the X
+	// account "browse" and "abcfb.com/x" as a Facebook page.
+	const pattern = new RegExp(
+		`(?<![\\w.-])(?:https?://)?(?:www\\.)?(?:${hosts})/[^\\s"'<>)\\]]{2,120}`,
+		'gi'
+	);
 	for (const match of text.matchAll(pattern)) {
 		const profile = parseSocialProfile(match[0]);
 		if (profile && !found.has(profile.url))

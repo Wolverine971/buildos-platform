@@ -106,6 +106,22 @@ describe('harvestSocialLinks', () => {
 		);
 		expect(found.map((p) => p.url)).toEqual(['https://www.instagram.com/griffinpdavis']);
 	});
+
+	it('reads an account address only where the address starts, not inside another site', () => {
+		expect(harvestSocialLinksFromText('Watching at https://netflix.com/browse tonight')).toEqual(
+			[]
+		);
+		expect(harvestSocialLinksFromText('netflix.com/browse')).toEqual([]);
+		expect(harvestSocialLinksFromText('see abcfb.com/xavier for details')).toEqual([]);
+		const found = harvestSocialLinksFromText(
+			'Follow https://x.com/janeroe or twitter.com/janeroe2 (www.x.com/janeroe3)'
+		);
+		expect(found.map((p) => [p.platform, p.handle])).toEqual([
+			['x', 'janeroe'],
+			['x', 'janeroe2'],
+			['x', 'janeroe3']
+		]);
+	});
 });
 
 describe('ownAccounts', () => {

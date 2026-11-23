@@ -216,6 +216,10 @@ describe('POST /api/knowledge/import: a phone file', () => {
 		form.set('file', new File([PHONE], 'contacts.vcf'));
 		const { status, body } = await post(form);
 		expect(status).toBe(200);
+		// Marked undoable from the start, so an import cut off partway can still be undone.
+		expect(history.insert).toHaveBeenCalledWith(
+			expect.objectContaining({ status: 'running', stats: { undoable: true } })
+		);
 		expect(store.record.mock.calls[0]![1]).toEqual({
 			via: 'import',
 			fillOnly: true,
@@ -337,7 +341,35 @@ describe('DELETE /api/knowledge/import (undo)', () => {
 		);
 	});
 
+	it('undoes an import cut off by the time limit and left marked running', async () => {
+		const { rpc, marked } = undoSetup({
+			id: RUN,
+			status: 'running',
+			stats: { undoable: true },
+			started_at: new Date(Date.now() - 10 * 60 * 1000).toISOString()
+		});
+		const { status } = await undo(RUN);
+		expect(status).toBe(200);
+		expect(rpc).toHaveBeenCalledWith('knowledge_undo_import', { p_run_id: RUN });
+		expect(marked.update).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'cancelled',
+				stats: expect.objectContaining({ undone_at: expect.any(String) })
+			})
+		);
+	});
+
 	it.each([
+		[
+			'an import that started moments ago and is still running',
+			{
+				id: RUN,
+				status: 'running',
+				stats: { undoable: true },
+				started_at: new Date().toISOString()
+			},
+			400
+		],
 		['an import saved before Undo existed', { id: RUN, status: 'completed', stats: {} }, 400],
 		[
 			'an import that was already undone',

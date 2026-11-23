@@ -12,7 +12,8 @@
 		days,
 		compact = false,
 		projectNameOf,
-		onOpenTask
+		onOpenTask,
+		canOpenTask = (_taskId, projectId) => projectId !== null
 	}: {
 		/** Fourteen days starting on a Sunday. */
 		days: TwoWeekDay[];
@@ -20,6 +21,8 @@
 		compact?: boolean;
 		projectNameOf: (projectId: string | null) => string | null;
 		onOpenTask: (taskId: string, projectId: string | null) => void;
+		/** Whether onOpenTask can open this task; "Open task" shows only when it can. */
+		canOpenTask?: (taskId: string, projectId: string | null) => boolean;
 	} = $props();
 
 	const weeks = $derived([days.slice(0, 7), days.slice(7, 14)]);
@@ -160,7 +163,7 @@
 									</span>
 								{/if}
 							</span>
-							{#if event.taskId}
+							{#if event.taskId && canOpenTask(event.taskId, event.projectId)}
 								<button
 									type="button"
 									class="act"

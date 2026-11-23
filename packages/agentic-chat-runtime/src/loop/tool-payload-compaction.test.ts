@@ -244,7 +244,7 @@ describe('buildToolPayloadForModel', () => {
 					parseArgs
 				) as Record<string, any>;
 				expect(payload.search_coverage).toEqual(search_coverage);
-				expect(payload.message).toBe(message);
+				expect(payload.message).toBe(message.trim());
 				expect(JSON.stringify(payload).length).toBeLessThanOrEqual(6000);
 			}
 		}
@@ -2212,5 +2212,126 @@ describe('document reads', () => {
 		expect(payload).toMatchObject({ truncated: true, next_offset: 2_000 + kept.length });
 		expect(payload.message).toContain(`offset ${2_000 + kept.length}`);
 		expect(payload).not.toHaveProperty('payload_truncated');
+	});
+});
+
+describe('web-content flags and guided search payloads', () => {
+	const FLAG = { url: 'https://attacker.example/post', warning: 'Text aimed at AI tools.' };
+
+	it('carries the web-content flag through web_search, first in the result and in each flagged entry', () => {
+		const payload = buildToolPayloadForModel(
+			toolCall('web_search'),
+			toolResult({
+				content_warnings: [FLAG],
+				query: 'vendor payments',
+				results: [
+					{
+						content_warning: 'Text aimed at AI tools.',
+						title: 'Flagged',
+						url: FLAG.url,
+						snippet: 'evidence '.repeat(300)
+					},
+					{ title: 'Clean', url: 'https://ok.example/', snippet: 'fine' }
+				],
+				message: 'Web search results.'
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload.content_warnings).toEqual([FLAG]);
+		const ownKeys = Object.keys(payload).filter(
+			(key) => !key.startsWith('model_context') && key !== 'tool_name'
+		);
+		expect(ownKeys[0]).toBe('content_warnings');
+		expect(payload.results[0].content_warning).toBe('Text aimed at AI tools.');
+		expect(Object.keys(payload.results[0])[0]).toBe('content_warning');
+		expect(payload.results[1].content_warning).toBeUndefined();
+	});
+
+	it('carries the web-content flag through web_visit even when the page is cut to fit', () => {
+		const content = 'line of page markdown content\n'.repeat(600);
+		const payload = buildToolPayloadForModel(
+			toolCall('web_visit'),
+			toolResult({
+				content_warnings: [FLAG],
+				content_warning: 'Text aimed at AI tools.',
+				url: FLAG.url,
+				final_url: FLAG.url,
+				status_code: 200,
+				title: 'Post',
+				content,
+				message: 'Web visit content fetched.'
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload.model_payload_truncated).toBe(true);
+		expect(payload.content_warnings).toEqual([FLAG]);
+		expect(payload.content_warning).toBe('Text aimed at AI tools.');
+		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(12000);
+	});
+
+	function guidedEntities(count: number) {
+		return Array.from({ length: count }, (_, index) => ({
+			id: `e0000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+			kind: 'person',
+			name: `Person ${index}`,
+			checks: [
+				{ check: 'lives near Baltimore', answer: 'pass', why: 'Profile says Towson, MD.' }
+			]
+		}));
+	}
+
+	it('fits find_in_knowledge to the guided-search budget, not the 6K default', () => {
+		// ~40 people at ~180 chars each: well over 6K, under 12K.
+		const entities = guidedEntities(40);
+		const raw = {
+			knowledge_find: { goal: 'Who do I know near Baltimore', hop: 0, entities },
+			message: "Looked at 40 people in the user's graph: 40 pass every check."
+		};
+		expect(JSON.stringify(raw).length).toBeGreaterThan(6000);
+		expect(JSON.stringify(raw).length).toBeLessThan(11000);
+
+		const payload = buildToolPayloadForModel(
+			toolCall('find_in_knowledge'),
+			toolResult(raw),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload.knowledge_find.entities).toHaveLength(40);
+		expect(payload.knowledge_find.entities_omitted).toBeUndefined();
+		expect(payload.payload_truncated).toBeUndefined();
+		expect(payload.message).toBe(raw.message);
+	});
+
+	it('keeps the warning and the closing message whole when an explore result is trimmed', () => {
+		const message = `Hop 1 of 3. Found 120 entries on 6 pages. Flagged: attacker.example had text written to steer an AI assistant. ${'Say what came back and what it means. '.repeat(12)}`;
+		const payload = buildToolPayloadForModel(
+			toolCall('explore_knowledge'),
+			toolResult({
+				knowledge_explore: { goal: 'g', hop: 1, entities: guidedEntities(120) },
+				content_warnings: [FLAG],
+				message
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		const serialized = JSON.stringify(payload);
+		expect(serialized.length).toBeLessThanOrEqual(12000);
+		expect(payload.content_warnings).toEqual([FLAG]);
+		expect(payload.message).toBe(message.trim());
+		// Warnings and the instruction lead the result, ahead of the entity list.
+		expect(serialized.indexOf('"content_warnings"')).toBeLessThan(
+			serialized.indexOf('"knowledge_explore"')
+		);
+		expect(serialized.indexOf('"message"')).toBeLessThan(
+			serialized.indexOf('"knowledge_explore"')
+		);
+		// Trailing entities go, and the model is told how many.
+		const kept = payload.knowledge_explore.entities.length;
+		expect(kept).toBeGreaterThan(40);
+		expect(kept).toBeLessThan(120);
+		expect(payload.knowledge_explore.entities_omitted).toBe(120 - kept);
+		expect(payload.knowledge_explore.entities[0].name).toBe('Person 0');
 	});
 });

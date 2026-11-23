@@ -66,6 +66,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	} catch {
 		return ApiResponse.badRequest('Invalid JSON');
 	}
+	if (!body || typeof body !== 'object') return ApiResponse.badRequest('Invalid request body');
 	if (body.status !== undefined && body.status !== 'active' && body.status !== 'hidden') {
 		return ApiResponse.badRequest('Invalid status');
 	}
@@ -74,6 +75,13 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	}
 	if (body.kind !== undefined && !isKnowledgeKind(body.kind)) {
 		return ApiResponse.badRequest('Invalid kind');
+	}
+	// Checked here as well as in updateEntity: a kind change commits first, so a bad name must
+	// be refused before anything is written.
+	if (typeof body.name === 'string') {
+		const name = body.name.trim();
+		if (!name || name.length > 300)
+			return ApiResponse.badRequest('Name must be 1–300 characters.');
 	}
 
 	try {

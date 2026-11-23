@@ -15,6 +15,7 @@
 // running at every phase change, so a cancelled target stops before the next paid step.
 
 import {
+	CIRCLE_MAX_REQUEST_BYTES,
 	type IdentityDecider,
 	KNOWLEDGE_KIND_DEFINITIONS,
 	KNOWLEDGE_UUID_PATTERN,
@@ -99,7 +100,8 @@ export function getKnowledgeDecider(): IdentityDecider | null {
 		? new JevClient({
 				apiKey,
 				timeoutMs: 8_000,
-				maxRequestBytes: 96_000,
+				// The circle sorter sizes its batches against this limit.
+				maxRequestBytes: CIRCLE_MAX_REQUEST_BYTES,
 				retryOnce: false,
 				// Jev latency is bimodal; one hedge rescues most slow calls.
 				hedgeAfterMs: 2_000,
@@ -483,6 +485,9 @@ export async function processKnowledgeEnrichJob(
 					}
 				} else {
 					kindNote = ` This looks like it belongs under ${to}, not ${from}: change its type on the card, then research again.`;
+					// The planned searches are for the other kind; saving what they find here would
+					// file that kind's details on this entry. The fixed recipe for the filed kind runs.
+					plan = null;
 				}
 				if (subject !== detail) {
 					subjectContext = enrichContextFrom(subject);
@@ -550,7 +555,8 @@ export async function processKnowledgeEnrichJob(
 						found,
 						stillMissing: labelsOf(missing)
 					});
-					if (!roundPlan?.queries.length) break;
+					// Searches planned for another kind than the entry being saved to are not run.
+					if (!roundPlan?.queries.length || roundPlan.kind !== subject.entity.kind) break;
 					await advance(target, 'searching');
 				}
 				const outcome = await researchEntity(

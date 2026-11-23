@@ -10,6 +10,7 @@
 // say what the graph is missing so the model relays that instead of guessing.
 import {
 	KNOWLEDGE_CONNECTION_FACETS,
+	KNOWLEDGE_CONNECTION_MAX_TERM_LENGTH,
 	KNOWLEDGE_UUID_PATTERN,
 	KnowledgeStore,
 	describeKnowledgeConnectionGaps,
@@ -195,11 +196,14 @@ async function applyStart(
 	if (people.length) filters.person_ids = people.map((entry) => entry.id);
 	if (orgs.length) {
 		filters.company_ids = orgs.map((entry) => entry.id);
-		// The names too, so a second entry for the same company ("The Cadre") still counts.
-		filters.company = [...(filters.company ?? []), ...orgs.map((entry) => entry.name)].slice(
-			0,
-			12
-		);
+		// The names too, so a second entry for the same company ("The Cadre") still counts. A
+		// name longer than a company term may be (entries allow 300 characters) would make the
+		// whole query invalid; company_ids already matches that entry, so it is left out.
+		const names = orgs
+			.map((entry) => entry.name.replace(/\s+/g, ' ').trim())
+			.filter((name) => name && name.length <= KNOWLEDGE_CONNECTION_MAX_TERM_LENGTH);
+		const company = [...(filters.company ?? []), ...names].slice(0, 12);
+		if (company.length) filters.company = company;
 	}
 	if (places.length) filters.place_ids = places.map((entry) => entry.id);
 	const other = named.length - people.length - orgs.length - places.length;

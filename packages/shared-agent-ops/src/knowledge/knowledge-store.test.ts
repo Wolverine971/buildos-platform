@@ -1119,6 +1119,20 @@ describe('KnowledgeStore identity', () => {
 			]);
 		});
 
+		it('reports a failure the entries do not explain as a database error, not a refusal', async () => {
+			const { db, store } = setup();
+			const { a, b } = await twoCraigs(store);
+			const rpc = db.rpc.bind(db);
+			db.rpc = async (fn: string, args: Row) =>
+				fn === 'knowledge_merge_entities'
+					? { data: null, error: { message: 'canceling statement due to statement timeout' } }
+					: rpc(fn, args);
+			const failure = await store.merge(a, b).catch((error) => error);
+			expect(failure).toMatchObject({ code: 'DB' });
+			expect(failure.message).toContain('statement timeout');
+			expect(failure.message).not.toContain('refused');
+		});
+
 		it('can keep "you", but never folds you into someone else', async () => {
 			const { db, alice, store } = setup();
 			const card = await store.createEntry({
@@ -2008,5 +2022,67 @@ describe('"Don\'t save" on a web search\'s find', () => {
 			await expect(store.discardFoundEntry(id)).rejects.toThrow(/part of your knowledge/);
 			expect(has(db, id)).toBe(true);
 		}
+	});
+
+	it("takes research's own facts about the find with it", async () => {
+		const { db, store, alice } = setup();
+		const asked = entry(db, alice, { created_via: 'manual', circle: 'inner' });
+		const org = entry(db, alice, { kind: 'org', created_via: 'enrichment', circle: 'public' });
+		db.rows('knowledge_facts').push({
+			id: randomUUID(),
+			entity_id: asked,
+			predicate: 'works_at',
+			object_entity_id: org,
+			value_text: null,
+			scope: 'private',
+			owner_user_id: alice,
+			status: 'active',
+			created_via: 'enrichment'
+		});
+		await store.discardFoundEntry(org);
+		expect(has(db, org)).toBe(false);
+	});
+
+	it('keeps a find that an import, a link or a tag has since attached to', async () => {
+		const { db, store, alice } = setup();
+		const fact = (subject: string, object: string, via: string) =>
+			db.rows('knowledge_facts').push({
+				id: randomUUID(),
+				entity_id: subject,
+				predicate: 'works_at',
+				object_entity_id: object,
+				value_text: null,
+				scope: 'private',
+				owner_user_id: alice,
+				status: 'active',
+				created_via: via
+			});
+		// A LinkedIn import matched a connection's company to the org a search found.
+		const imported = entry(db, alice, { created_via: 'import', circle: 'inner' });
+		const org = entry(db, alice, { kind: 'org', created_via: 'enrichment', circle: 'public' });
+		fact(imported, org, 'import');
+		// A task links to another find; a third is tagged in a document.
+		const linked = entry(db, alice, { created_via: 'enrichment', circle: 'public' });
+		db.rows('knowledge_record_links').push({
+			id: randomUUID(),
+			entity_id: linked,
+			owner_user_id: alice,
+			record_kind: 'task',
+			record_id: randomUUID(),
+			created_via: 'task'
+		});
+		const tagged = entry(db, alice, { created_via: 'enrichment', circle: 'public' });
+		db.rows('knowledge_mentions').push({
+			id: randomUUID(),
+			entity_id: tagged,
+			owner_user_id: alice,
+			record_kind: 'document',
+			record_id: randomUUID()
+		});
+		for (const id of [org, linked, tagged]) {
+			await expect(store.discardFoundEntry(id)).rejects.toThrow(/was kept/);
+			expect(has(db, id)).toBe(true);
+		}
+		expect(db.rows('knowledge_facts').filter((f) => f.object_entity_id === org)).toHaveLength(1);
 	});
 });

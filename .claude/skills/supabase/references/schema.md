@@ -3,7 +3,7 @@
 Complete column listing for all 319 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-11-23T02:16:41.491Z
+**Schema generated:** 2026-11-23T05:54:16.658Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -1200,11 +1200,11 @@ action_kinds `string[]` · audience `string` · blocked_reason `string?` · crea
 
 ### knowledge_entities
 
-circle `string` · circle_set_at `string?` · circle_source `string?` · created_at `string` · created_via `string` · enriched_at `string?` · hidden_reason `string?` · id `string` · image_url `string?` · is_self `boolean` · kind `string` · merged_into_id `string?` · name `string` · normalized_name `string?` · normalized_org_name `string?` · owner_user_id `string?` · scope `string` · status `string` · summary `string?` · updated_at `string`
+circle `string` · circle_set_at `string?` · circle_source `string?` · created_at `string` · created_via `string` · enriched_at `string?` · hidden_reason `string?` · id `string` · image_url `string?` · is_self `boolean` · kind `string` · merged_into_id `string?` · name `string` · normalized_name `string?` · normalized_org_name `string?` · owner_user_id `string?` · run_id `string?` · scope `string` · status `string` · summary `string?` · updated_at `string`
 
 ### knowledge_entity_keys
 
-created_at `string` · entity_id `string` · id `string` · key_type `string` · key_value `string` · owner_user_id `string?` · scope `string`
+created_at `string` · entity_id `string` · id `string` · key_type `string` · key_value `string` · owner_user_id `string?` · run_id `string?` · scope `string`
 
 ### knowledge_fact_sources
 

@@ -515,6 +515,28 @@ describe('planned research', () => {
 		});
 	});
 
+	it('tries a saved handle elsewhere without its "@", and still drops an email', async () => {
+		const { validateResearchPlan } = await import('./knowledgeEnrichPlan');
+		expect(
+			validateResearchPlan(
+				{
+					kind: 'person',
+					queries: [
+						'@janeroe tiktok',
+						'"Jane Roe" (@janeroe) x.com',
+						'"@janeroe" youtube',
+						'jane@roe.example instagram',
+						'"Jane Roe" 410 555 0134'
+					]
+				},
+				{ filedKind: 'person' }
+			)
+		).toEqual({
+			kind: 'person',
+			queries: ['janeroe tiktok', '"Jane Roe" (janeroe) x.com', '"janeroe" youtube']
+		});
+	});
+
 	it('falls back to the filed kind and skips searches already run', async () => {
 		const { validateResearchPlan } = await import('./knowledgeEnrichPlan');
 		expect(

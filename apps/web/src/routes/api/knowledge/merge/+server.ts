@@ -77,6 +77,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	} catch {
 		return ApiResponse.badRequest('Invalid JSON');
 	}
+	if (!body || typeof body !== 'object') return ApiResponse.badRequest('Invalid request body');
 	const keep = body.keep ?? '';
 	const merge = Array.isArray(body.merge) ? body.merge : [body.merge ?? ''];
 	if (
@@ -125,6 +126,7 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
 	} catch {
 		return ApiResponse.badRequest('Invalid JSON');
 	}
+	if (!body || typeof body !== 'object') return ApiResponse.badRequest('Invalid request body');
 	const store = knowledgeStoreFor(locals.supabase, user.id);
 	if (body.entity_ids !== undefined) {
 		const ids = body.entity_ids;
