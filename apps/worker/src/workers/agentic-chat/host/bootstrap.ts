@@ -46,6 +46,7 @@ import {
 import { ChatWorkspaceFinder, composeContextFinders } from '../provider/chat-workspace-finder';
 import { JevToolSelector } from '../provider/jev-tool-selector';
 import { createWorkerKnowledgeSearchPort } from '../tools/knowledge-search';
+import { createKnowledgeSiteWalker } from '../tools/knowledge-site-walk';
 import { createAgentRunWebResearchPort } from '../../agent-run/webResearchPort';
 import {
 	WEB_NAVIGATE_DECISION_TIMEOUT_MS,
@@ -669,19 +670,20 @@ function createDefaultComposition(
 		: undefined;
 	// web_navigate: Jev picks links, code fetches politely, Tavily renders pages a
 	// plain fetch cannot read. Same OpenRouter credential as the acting route.
+	const webNavigationJev = new JevClient({
+		apiKey: (
+			input.config.provider.routes.find((route) => route.kind === 'openrouter') ??
+			input.config.provider.routes[0]!
+		).apiKey,
+		model: WEB_NAVIGATE_MODEL,
+		timeoutMs: WEB_NAVIGATE_DECISION_TIMEOUT_MS,
+		maxRequestBytes: WEB_NAVIGATE_MAX_REQUEST_BYTES,
+		title: 'BuildOS Web Navigation',
+		usage: usageLogger,
+		...(input.fetchImpl ? { fetchImpl: input.fetchImpl } : {})
+	});
 	const webNavigator = createWorkerWebNavigatePort({
-		jev: new JevClient({
-			apiKey: (
-				input.config.provider.routes.find((route) => route.kind === 'openrouter') ??
-				input.config.provider.routes[0]!
-			).apiKey,
-			model: WEB_NAVIGATE_MODEL,
-			timeoutMs: WEB_NAVIGATE_DECISION_TIMEOUT_MS,
-			maxRequestBytes: WEB_NAVIGATE_MAX_REQUEST_BYTES,
-			title: 'BuildOS Web Navigation',
-			usage: usageLogger,
-			...(input.fetchImpl ? { fetchImpl: input.fetchImpl } : {})
-		}),
+		jev: webNavigationJev,
 		tavilyApiKey:
 			process.env.PRIVATE_TAVILY_API_KEY?.trim() ||
 			process.env.TAVILY_API_KEY?.trim() ||
@@ -689,9 +691,12 @@ function createDefaultComposition(
 		usage: usageLogger
 	});
 	// Guided search (find_in_knowledge, explore_knowledge): Jev judges entries from the
-	// user's own graph against the question's parts (the inside search only). An outside hop
+	// user's own graph against the question's parts (the inside search). An outside hop
 	// is read by one structured model call: everything the searches returned goes to it, and
-	// it lists the entries and answers the question's parts for each. Same OpenRouter
+	// it lists the entries and answers the question's parts for each. Jev's part outside is
+	// navigation only: on a site a search led to, it ranks the links toward the page that is
+	// wanted (leadership, about, contact) and code follows them; those pages are added to
+	// what the reading model gets. Same OpenRouter
 	// credential. The reading model is built on first use, so a chat that never searches
 	// pays nothing.
 	const knowledgeSearchApiKey = (
@@ -723,6 +728,7 @@ function createDefaultComposition(
 				})).getJSONResponse(options)
 		},
 		makeSearchPort: () => createAgentRunWebResearchPort({ purpose: 'knowledge_research' }),
+		siteWalker: createKnowledgeSiteWalker({ jev: webNavigationJev }),
 		usage: usageLogger
 	});
 	// scan_email_inbox scores relevance and search_email_messages authorizes its

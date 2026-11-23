@@ -12,16 +12,22 @@
 //
 //   explore_knowledge   One hop outside. Web searches (each one cleared by the same review a
 //                       web_search gets) → every usable result is opened with our own fetcher
-//                       (free; a company's own site first) → ONE reading model gets all of it:
-//                       the opened pages in full and the search engine's lines for the rest.
+//                       (free; a company's own site first) → for a search about one entry,
+//                       its site is walked one or two clicks further in (the decision model
+//                       ranks the site's own links toward the leadership / about / contact
+//                       page; free fetches) → ONE reading model gets all of it: the opened
+//                       and followed pages in full, the search engine's lines for the rest.
 //                       It decides which pages matter, lists the entries they name with an
 //                       exact quote each, and answers the checks for each → code keeps only
 //                       what the quoted page says → entries are saved to the graph marked
 //                       "found on the web" (outside Your world).
 //
-// Who decides what (DJ, 2026-11-22): the decision model (Jev) only ever judges structured
-// cards from the user's own graph, many at a time, which is what it is for. It never touches
-// web content: what a paid search returned is read by the reading model, start to finish.
+// Who decides what (DJ, 2026-11-22): the decision model (Jev) makes quick typed decisions
+// over many options. Inside the graph it judges structured cards against the checks. On the
+// web it navigates: is what we want on this page, and which of the page's links gets closer.
+// What it never does is choose which search results get read, or read them for meaning: what
+// a paid search returned goes to the reading model, all of it, and whatever Jev's navigation
+// turns up is added on top.
 //
 // Hops are counted per chat on knowledge_runs (guided-search.ts): a search that starts from
 // entries an earlier hop found is one hop further out, and a trail stops itself at three.
@@ -50,6 +56,7 @@ import {
 	loadSearchTrail,
 	nextHop,
 	normalizeKnowledgeName,
+	normalizeUrl,
 	parseExploreArgs,
 	parseFindArgs,
 	rankByFit,
@@ -73,6 +80,7 @@ import {
 	type KnowledgeKind
 } from '@buildos/shared-agent-ops/knowledge';
 import { choosePages } from '../../knowledge/knowledgeEnrichPlan';
+import { parseSocialProfile } from '../../knowledge/socialProfiles';
 import type { JsonCaller, SearchPort } from '../../knowledge/knowledgeResearch';
 import { readPaidToolCharge } from '../../agent-run/webResearchPort';
 import { type TavilyUsageLogger, logTavilyCharge } from './tavily-usage';
@@ -80,20 +88,26 @@ import {
 	EXPLORE_OPEN_PER_SEARCH,
 	EXPLORE_PAGE_CHARS,
 	EXPLORE_PREVIEW_CHARS,
+	EXPLORE_SITE_WALK_PAGES,
 	KNOWLEDGE_EXPLORE_OPERATION,
 	KNOWLEDGE_EXPLORE_SYSTEM_PROMPT,
 	buildExploreBatch,
 	exploreUserPrompt,
 	flagPossibleTwins,
 	planExploreReading,
+	planSitePages,
+	planSiteWalks,
 	siteOf,
+	siteWalkGoal,
 	validateExploreAnswer,
 	type ExploreFound,
 	type ExploreLane,
 	type ExplorePage,
 	type ExploreResolution,
+	type ExploreWalkedPage,
 	type KnowledgeSearchStep
 } from './knowledge-search-plan';
+import type { KnowledgeSiteWalker } from './knowledge-site-walk';
 
 export const KNOWLEDGE_SEARCH_TOOL_NAMES = [
 	'find_in_knowledge',
@@ -105,6 +119,10 @@ const EXTRACT_TIMEOUT_MS = 25_000;
 /** The reading step never starts with less than this, and never runs past the hop's deadline. */
 const EXTRACT_MIN_TIMEOUT_MS = 8_000;
 const HOP_WORK_BUDGET_MS = 54_000;
+/** How long the site walks get, all at once, beside the opening of the search results. */
+const SITE_WALK_BUDGET_MS = 9_000;
+/** A walk is not started with less than this, or when it would eat into the reading time. */
+const SITE_WALK_MIN_BUDGET_MS = 3_000;
 /**
  * What may be said about a selected entry to the model that reads web pages: only the kinds
  * of detail that are public by nature. The user's own notes, description, aliases and how
@@ -157,9 +175,15 @@ export interface KnowledgeSearchPortDeps {
 	client: KnowledgeDataClient;
 	/**
 	 * The decision model (Jev): judges entries from the user's own graph against the checks.
-	 * Null → those checks read "unknown". It plays no part in an outside search.
+	 * Null → those checks read "unknown".
 	 */
 	decider: IdentityDecider | null;
+	/**
+	 * Walks a site one or two clicks further in than a search went (the decision model ranks
+	 * the site's own links; fetches are free). Absent → an outside hop reads only what the
+	 * searches returned.
+	 */
+	siteWalker?: KnowledgeSiteWalker;
 	/** The model that reads everything a web search returned (structured JSON only). */
 	llm: JsonCaller;
 	/** Web search and page fetch. */
@@ -623,6 +647,17 @@ function stopped(
 	};
 }
 
+/** A page's address without the scheme, for the work log ("tenable.com/about/leadership"). */
+function pathOf(url: string): string {
+	try {
+		const parsed = new URL(url);
+		const shown = `${parsed.hostname.replace(/^www\./, '')}${parsed.pathname.replace(/\/$/, '')}`;
+		return shown.length > 60 ? `${shown.slice(0, 57)}…` : shown;
+	} catch {
+		return url.slice(0, 60);
+	}
+}
+
 async function visitPage(
 	port: SearchPort,
 	url: string,
@@ -921,7 +956,7 @@ async function runExplore(
 		);
 		const opened = new Map<string, string>();
 		const openedTitle = new Map<string, string>();
-		await Promise.all(
+		const openResults = Promise.all(
 			toOpen.map(async (result) => {
 				let content = result.content;
 				if (!content) {
@@ -933,11 +968,60 @@ async function runExplore(
 			})
 		);
 
+		// 6b. One click further in. A search about one entry lands on its home page or an
+		// article; the page that names who runs it is usually a link away and no search
+		// returned it. The decision model ranks that site's own links toward what is wanted
+		// and code follows them (free). This runs beside the opening above and only adds
+		// pages: every search result is still read.
+		const walkBudgetMs = Math.min(
+			SITE_WALK_BUDGET_MS,
+			HOP_WORK_BUDGET_MS - (Date.now() - startedAt) - EXTRACT_TIMEOUT_MS
+		);
+		const walkPlans =
+			deps.siteWalker && walkBudgetMs >= SITE_WALK_MIN_BUDGET_MS
+				? planSiteWalks(lanes, usable, (url) => Boolean(parseSocialProfile(url)))
+				: [];
+		const walked: Array<{ lane: number; pages: ExploreWalkedPage[] }> = [];
+		const walkSites = Promise.all(
+			walkPlans.map(async (plan) => {
+				try {
+					const walk = await deps.siteWalker!({
+						startUrl: plan.startUrl,
+						goal: siteWalkGoal(lanes[plan.lane]!, args.kinds),
+						maxPages: EXPLORE_SITE_WALK_PAGES,
+						timeBudgetMs: walkBudgetMs,
+						...(context.signal ? { signal: context.signal } : {}),
+						usage: {
+							userId: context.userId,
+							chatSessionId: context.chatSessionId,
+							metadata: {
+								...(context.usageMetadata ?? {}),
+								...(context.turnRunId ? { turnRunId: context.turnRunId } : {})
+							}
+						}
+					});
+					costUsd += walk.costUsd;
+					walked.push({ lane: plan.lane, pages: walk.pages });
+				} catch (error) {
+					// A walk is extra. If it fails, the hop reads what the searches returned.
+					if (context.signal?.aborted) throw error;
+				}
+			})
+		);
+		await Promise.all([openResults, walkSites]);
+		walked.sort((a, b) => a.lane - b.lane);
+
 		// 7. What the reading model gets: opened pages in full, dealt out evenly between the
 		// searches, and the search engine's lines for every other result.
 		const previewOf = (result: SearchResult) =>
 			result.preview && result.preview.length >= MIN_PREVIEW_CHARS ? result.preview : null;
 		const reading = planExploreReading(usable, opened, previewOf, lanes.length);
+		// Followed pages are added to the reading; they take no search result's place.
+		const sitePages = planSitePages(
+			walked,
+			reading.full.map((result) => result.url)
+		);
+		const followedKeys = new Set(sitePages.map((page) => normalizeUrl(page.url) ?? page.url));
 		const pages: ExplorePage[] = [
 			...reading.full.map((result) => ({
 				url: result.url,
@@ -945,14 +1029,30 @@ async function runExplore(
 				content: opened.get(result.url)!.slice(0, EXPLORE_PAGE_CHARS),
 				search: result.lane + 1
 			})),
-			...reading.previews.map((result) => ({
-				url: result.url,
-				title: result.title || null,
-				content: previewOf(result)!.slice(0, EXPLORE_PREVIEW_CHARS),
-				search: result.lane + 1,
-				preview: true
-			}))
+			...sitePages,
+			...reading.previews
+				// A result the walk opened in full is not also given as its preview.
+				.filter((result) => !followedKeys.has(normalizeUrl(result.url) ?? result.url))
+				.map((result) => ({
+					url: result.url,
+					title: result.title || null,
+					content: previewOf(result)!.slice(0, EXPLORE_PREVIEW_CHARS),
+					search: result.lane + 1,
+					preview: true
+				}))
 		];
+		// A followed page is a real page we loaded, so the reader may cite its address.
+		for (const page of sitePages) if (!resultUrls.includes(page.url)) resultUrls.push(page.url);
+		// Within a search, the pages its walk reached lead: they are the site's own answer.
+		sitePages.forEach((page, index) => rankOf.set(page.url, index - sitePages.length));
+		if (sitePages.length) {
+			context.onStep?.({
+				kind: 'follow',
+				verb: 'Followed links',
+				target: [...new Set(sitePages.map((page) => pathOf(page.url)))].join(', '),
+				outcome: plural(sitePages.length, 'more page', 'more pages')
+			});
+		}
 		// Stable order for the prompt, the page indexes and the trace: full pages first, then
 		// each search's results in the order they ranked (a company's own site leads).
 		pages.sort(

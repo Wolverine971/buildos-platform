@@ -12,6 +12,8 @@
 //   - hops are counted from the entries a search starts from, and a trail stops itself at 3
 //   - a search that was not cleared never leaves, and nothing is spent on a refused hop
 //   - the inside search never returns contact values, only whether they are on file
+//   - a search about one entry walks that entry's site a click or two further in; the pages
+//     it reaches are added to the reading and no search result loses its place to them
 import { describe, expect, it } from 'vitest';
 import type {
 	GuidedEntry,
@@ -26,9 +28,13 @@ import {
 } from './knowledge-search';
 import {
 	EXPLORE_MAX_PAGES,
+	EXPLORE_MAX_SITE_PAGES,
 	buildExploreBatch,
 	flagPossibleTwins,
 	planExploreReading,
+	planSitePages,
+	planSiteWalks,
+	siteWalkGoal,
 	validateExploreAnswer,
 	type ExploreLane,
 	type ExplorePage,
@@ -1002,6 +1008,269 @@ describe('explore_knowledge: one hop outside', () => {
 			/about_entity_id not found/
 		);
 		expect(h.searches).toEqual([]);
+	});
+});
+
+describe('explore_knowledge: one click further in than the search went', () => {
+	const HOME_URL = 'https://www.tenable.com/';
+	const HOME_PAGE =
+		'Tenable is the exposure management company. See everything, predict what matters, and ' +
+		'act to address cyber risk across your whole attack surface. Products. Solutions. ' +
+		'Customers. Partners. Resources. Company. Try for free. Contact sales today.';
+	const NEWS_URL = 'https://news.example/tenable-quarter';
+	const NEWS_PAGE =
+		'Tenable reported its quarterly results on Tuesday. Revenue rose and the company raised ' +
+		'its outlook for the year, citing demand for exposure management from large customers.';
+
+	type Walk = Parameters<NonNullable<KnowledgeSearchPortDeps['siteWalker']>>[0];
+	function walker(pages: Row[] | Error, costUsd = 0.0005) {
+		const calls: Walk[] = [];
+		const siteWalker: NonNullable<KnowledgeSearchPortDeps['siteWalker']> = async (input) => {
+			calls.push(input);
+			if (pages instanceof Error) throw pages;
+			return { pages: pages as never, decisions: pages.length, costUsd };
+		};
+		return { calls, siteWalker };
+	}
+	function withHomepage() {
+		const detail = orgDetail(TENABLE, 'Tenable');
+		(detail.facts as Row[]).push({
+			status: 'active',
+			predicate: 'homepage',
+			label: 'Website',
+			value: 'https://www.tenable.com'
+		});
+		return detail;
+	}
+	const LEADERSHIP_WALK = [
+		{ url: HOME_URL, requestedUrl: 'https://www.tenable.com', title: 'Tenable', text: HOME_PAGE, answer: 0.08 },
+		{ url: ABOUT_URL, requestedUrl: ABOUT_URL, title: 'Leadership | Tenable', text: ABOUT_PAGE, answer: 0.93 }
+	];
+
+	it("walks a company's own site to the page that names who runs it, though no search returned that page", async () => {
+		const w = walker(LEADERSHIP_WALK);
+		const h = harness({
+			answer: LEADERSHIP_ANSWER,
+			siteWalker: w.siteWalker,
+			// The search only found a news story, which names nobody.
+			searchResults: [{ url: NEWS_URL, title: 'Tenable results', snippet: 'Quarterly results' }],
+			pageText: NEWS_PAGE
+		});
+		h.store.details.set(TENABLE, withHomepage());
+
+		const result = await h.port.explore(EXPLORE_ARGS, h.context);
+		const body = result.knowledge_explore as Row;
+
+		// The walk starts on the company's own site, told what kind of page is wanted.
+		expect(w.calls).toHaveLength(1);
+		expect(w.calls[0]!.startUrl).toBe('https://www.tenable.com');
+		expect(w.calls[0]!.goal).toContain('Who runs Tenable');
+		expect(w.calls[0]!.usage).toMatchObject({ userId: USER, chatSessionId: CHAT });
+
+		// The leadership page leads the reading; the news story is still read in full.
+		const prompt = h.prompts[0]!.userPrompt;
+		expect(prompt).toContain(
+			`### Page 1: Leadership | Tenable\n${ABOUT_URL}\nFrom search 1 (reached by following a link on a site this search led to)`
+		);
+		expect(prompt).toContain(`${NEWS_URL}\nFrom search 1\n${NEWS_PAGE}`);
+		expect(prompt).toContain(ABOUT_PAGE);
+
+		// Who the followed page names is saved, cited to that page.
+		const steve = body.entities.find((entity: Row) => entity.name === 'Steve Vintz');
+		expect(steve).toMatchObject({ from_entity_id: TENABLE, sources: [ABOUT_URL] });
+		expect(body.pages.map((page: Row) => page.url)).toEqual([ABOUT_URL, HOME_URL, NEWS_URL]);
+		expect(h.steps.map((step) => step.kind)).toEqual([
+			'search',
+			'follow',
+			'read',
+			'extract',
+			'decide',
+			'save'
+		]);
+		expect(h.steps.find((step) => step.kind === 'follow')).toMatchObject({
+			target: 'tenable.com/about-tenable/leadership, tenable.com',
+			outcome: '2 more pages'
+		});
+		// What the link decisions cost is part of the hop.
+		const run = h.db.runs.find((row) => row.id === 'run-1')!;
+		expect(run.cost_usd).toBeCloseTo(0.001 + 0.002 + 0.0005, 6);
+	});
+
+	it('adds the followed pages on top of the search results: none of them loses its place', async () => {
+		const searchResults = [1, 2, 3, 4, 5, 6].map((n) => ({
+			url: `https://site${n}.example/tenable`,
+			title: `Result ${n}`,
+			snippet: `Result ${n} says a good deal about Tenable and the people who lead the company.`
+		}));
+		const alone = harness({ searchResults });
+		alone.store.details.set(TENABLE, withHomepage());
+		await alone.port.explore(EXPLORE_ARGS, alone.context);
+		expect(alone.steps.find((step) => step.kind === 'read')?.outcome).toBe('5 pages, 1 preview');
+
+		const w = walker(LEADERSHIP_WALK);
+		const h = harness({ searchResults, siteWalker: w.siteWalker });
+		h.store.details.set(TENABLE, withHomepage());
+		await h.port.explore(EXPLORE_ARGS, h.context);
+		// The same five pages and one preview, plus the two the walk reached.
+		expect(h.steps.find((step) => step.kind === 'read')?.outcome).toBe('7 pages, 1 preview');
+		const prompt = h.prompts[0]!.userPrompt;
+		for (const result of searchResults) expect(prompt).toContain(`${result.url}\nFrom search 1`);
+		expect(h.visits).toEqual(alone.visits);
+	});
+
+	it('starts from the top result that is not a social account when no website is on file, and reads no page twice', async () => {
+		const w = walker([
+			{
+				url: 'https://www.tenable.com/about',
+				requestedUrl: 'https://www.tenable.com/about',
+				title: 'About',
+				text: HOME_PAGE,
+				answer: 0.2
+			},
+			LEADERSHIP_WALK[1]!
+		]);
+		const h = harness({
+			siteWalker: w.siteWalker,
+			searchResults: [
+				{
+					url: 'https://www.linkedin.com/company/tenableinc',
+					title: 'Tenable | LinkedIn',
+					snippet: 'Tenable on LinkedIn: the exposure management company, 2,000 employees.'
+				},
+				{
+					url: 'https://www.tenable.com/about',
+					title: 'About',
+					snippet: 'About Tenable, the exposure management company based in Maryland.'
+				}
+			]
+		});
+		h.store.details.set(TENABLE, orgDetail(TENABLE, 'Tenable'));
+		await h.port.explore(EXPLORE_ARGS, h.context);
+		expect(w.calls[0]!.startUrl).toBe('https://www.tenable.com/about');
+		// The about page was already opened as a search result: only the new page is added.
+		expect(h.steps.find((step) => step.kind === 'follow')?.outcome).toBe('1 more page');
+		expect(h.steps.find((step) => step.kind === 'read')?.outcome).toBe('3 pages');
+	});
+
+	it('walks nothing for a search about nobody in particular', async () => {
+		const w = walker(LEADERSHIP_WALK);
+		const h = harness({ siteWalker: w.siteWalker });
+		await h.port.explore(
+			{ goal: 'Software companies near Baltimore', searches: [{ query: 'Baltimore software companies' }] },
+			h.context
+		);
+		expect(w.calls).toEqual([]);
+		expect(h.steps.some((step) => step.kind === 'follow')).toBe(false);
+	});
+
+	it('reads what the searches returned when a walk fails', async () => {
+		const w = walker(new Error('site would not load'));
+		const h = harness({ answer: LEADERSHIP_ANSWER, siteWalker: w.siteWalker });
+		h.store.details.set(TENABLE, withHomepage());
+		const result = await h.port.explore(EXPLORE_ARGS, h.context);
+		expect(w.calls).toHaveLength(1);
+		expect((result.knowledge_explore as Row).entities.map((e: Row) => e.name)).toContain(
+			'Steve Vintz'
+		);
+		expect(h.db.runs.find((row) => row.id === 'run-1')!.status).toBe('completed');
+	});
+});
+
+describe('where a site walk goes', () => {
+	const lane = (overrides: Partial<NonNullable<ExploreLane['about']>> | null): ExploreLane => ({
+		query: 'q',
+		...(overrides
+			? {
+					about: {
+						id: TENABLE,
+						kind: 'org',
+						name: 'Tenable',
+						summary: null,
+						facts: [],
+						foundOnWeb: true,
+						...overrides
+					}
+				}
+			: {})
+	});
+	const noAccounts = () => false;
+
+	it('plans one walk per search about an entry, from its own site when that is on file', () => {
+		const ranked = [
+			{ url: 'https://x.com/acme', lane: 1 },
+			{ url: 'https://acme.example/', lane: 1 },
+			{ url: 'https://list.example/top-10', lane: 2 }
+		];
+		const plans = planSiteWalks(
+			[
+				lane({ homepage: 'tenable.com' }),
+				lane({ name: 'Acme', homepage: null }),
+				lane(null),
+				// A second search about the same company does not walk the same site again.
+				lane({ homepage: 'https://www.tenable.com/' })
+			],
+			ranked,
+			(url) => url.includes('x.com')
+		);
+		expect(plans).toEqual([
+			{ lane: 0, startUrl: 'https://tenable.com' },
+			{ lane: 1, startUrl: 'https://acme.example/' }
+		]);
+		// Nothing to start from: no walk.
+		expect(planSiteWalks([lane({ homepage: null })], [], noAccounts)).toEqual([]);
+	});
+
+	it('tells the walk what kind of page is wanted from the kind of entry and the kinds asked for', () => {
+		expect(siteWalkGoal(lane({}), ['person', 'org'])).toContain('Who runs Tenable');
+		expect(siteWalkGoal(lane({}), ['org'])).toContain('about or contact page');
+		expect(siteWalkGoal(lane({ kind: 'person', name: 'Pat Doe' }), ['person'])).toContain(
+			'Who Pat Doe is'
+		);
+		expect(siteWalkGoal(lane(null), ['person'])).toBe('q');
+	});
+
+	it('gives the reading model the likeliest pages of each walk, a few in all, and none it already has', () => {
+		const text = 'x'.repeat(300);
+		const page = (url: string, answer: number | null, body = text) => ({
+			url,
+			requestedUrl: url,
+			title: null,
+			text: body,
+			answer
+		});
+		const pages = planSitePages(
+			[
+				{
+					lane: 0,
+					pages: [
+						page('https://a.example/', 0.1),
+						page('https://a.example/team', 0.9),
+						page('https://a.example/empty', 0.95, 'Loading…'),
+						page('https://a.example/about', 0.5)
+					]
+				},
+				{
+					lane: 2,
+					pages: [
+						page('https://www.b.example/', null),
+						page('https://b.example/leadership', 0.8),
+						page('https://b.example/board', 0.7),
+						page('https://b.example/press', 0.6)
+					]
+				}
+			],
+			// Already read in full as a search result (same page, written differently).
+			['https://www.a.example/about/']
+		);
+		expect(pages.map((p) => [p.url, p.search])).toEqual([
+			['https://a.example/team', 1],
+			['https://b.example/leadership', 3],
+			['https://a.example/', 1],
+			['https://b.example/board', 3],
+			['https://b.example/press', 3]
+		]);
+		expect(pages).toHaveLength(EXPLORE_MAX_SITE_PAGES);
+		expect(pages.every((p) => p.followed && !p.preview)).toBe(true);
 	});
 });
 

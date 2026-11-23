@@ -666,9 +666,10 @@ export async function readKnowledgeEntryPool(
 //
 // The decision model reads one entry's structured card from the user's own graph and answers
 // yes, no or "the entry does not say": many cards at a time, which is what it is for. It is
-// used by the inside search only. Web content never goes to it: an outside hop's checks are
-// answered by the model that read the pages. Failures read as unknown: the search still
-// returns, it just says less.
+// used by the inside search only. An outside hop's checks are answered by the model that
+// read the pages; the decision model's part out there is navigation (which link on a site
+// leads to the page that is wanted), never which results are read or what they mean.
+// Failures read as unknown: the search still returns, it just says less.
 
 export const GUIDED_JUDGE_OPERATION = 'knowledge_guided_judge';
 export const GUIDED_JUDGE_BATCH = 10;
