@@ -30,7 +30,10 @@ function isReadTool(toolName: string): boolean {
 		toolName.startsWith('get_') ||
 		toolName.startsWith('read_') ||
 		toolName.startsWith('scan_') ||
-		toolName === 'web_search'
+		toolName === 'web_search' ||
+		// Guided search: inside the graph, and one hop out (it saves what it finds itself).
+		toolName === 'find_in_knowledge' ||
+		toolName === 'explore_knowledge'
 	);
 }
 
@@ -64,6 +67,30 @@ export function describeToolOutcome(
 	if (!payload) return undefined;
 
 	switch (toolName) {
+		case 'find_in_knowledge': {
+			const found = isRecord(payload.knowledge_find) ? payload.knowledge_find : null;
+			const counts = isRecord(found?.counts) ? found.counts : null;
+			const passing = countOf(counts?.pass_all);
+			const entities = Array.isArray(found?.entities) ? found.entities : null;
+			if (entities === null) return undefined;
+			// People are the usual case; a search over companies or accounts says "entries".
+			const allPeople = entities.every(
+				(entity) => isRecord(entity) && entity.kind === 'person'
+			);
+			const total = allPeople
+				? formatCount(entities.length, 'person', 'people')
+				: formatCount(entities.length, 'entry', 'entries');
+			const checked = Array.isArray(found?.checks) && found.checks.length > 0;
+			return checked && passing !== null ? `${total}, ${passing} fit` : total;
+		}
+		case 'explore_knowledge': {
+			const found = isRecord(payload.knowledge_explore) ? payload.knowledge_explore : null;
+			if (!found) return undefined;
+			const entries = Array.isArray(found.entities) ? found.entities.length : 0;
+			if (!entries && isRecord(found.stopped)) return 'stopped';
+			const hop = countOf(found.hop);
+			return `${formatCount(entries, 'entry', 'entries')}${hop ? `, hop ${hop}` : ''}`;
+		}
 		case 'get_project_overview': {
 			const counts = isRecord(payload.counts) ? payload.counts : null;
 			const active = countOf(counts?.active_tasks);

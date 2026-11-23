@@ -175,9 +175,11 @@ export function completeKnownNames(
 			if (name.key.length < key.length || !wordSpans(name.key, key).length) continue;
 			for (const at of wordSpans(chunk, name.name.trim())) {
 				if (at.start > span.start || at.end < span.end) continue;
-				// Same length is a retype; longer must add a word, not just "'s" or a period.
-				if (at.end - at.start > span.end - span.start && !addsWords(chunk, span, at))
-					continue;
+				const longer = at.end - at.start > span.end - span.start;
+				// Same length is a retype, but never of a place: "trip to Jordan" isn't the
+				// person Jordan. Longer must add a word, not just "'s" or a period.
+				if (!longer && span.type === 'LOC') continue;
+				if (longer && !addsWords(chunk, span, at)) continue;
 				if (!best || at.end - at.start > best.end - best.start)
 					best = { ...at, kind: name.kind };
 			}

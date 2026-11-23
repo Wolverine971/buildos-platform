@@ -291,4 +291,20 @@ describe('Agentic Chat tool execution policy', () => {
 			}).executionPolicy
 		).toBe('serial');
 	});
+
+	it("never runs guided search's outside hop beside another call, though it rides the read lane", () => {
+		// It saves what it finds and checks per-message and per-trail limits it reads from
+		// the database: two side by side would both pass those checks.
+		const resolve = (toolName: string) =>
+			resolveAgenticChatToolExecutionPolicyV1({
+				toolName,
+				kind: 'read',
+				arguments: { goal: 'g' },
+				concurrentReadsEnabled: true,
+				concurrentMutationsEnabled: true
+			}).executionPolicy;
+		expect(resolve('explore_knowledge')).toBe('serial');
+		// The inside search only reads, so it stays free to run beside other reads.
+		expect(resolve('find_in_knowledge')).toBe('parallel_safe');
+	});
 });

@@ -232,6 +232,8 @@ export function buildToolPayloadForModel(
 		: secured;
 }
 
+const GUIDED_SEARCH_TOOL_NAMES = new Set(['find_in_knowledge', 'explore_knowledge']);
+
 function isWebPayloadTool(toolName: string | undefined): boolean {
 	const normalized = toolName?.trim().toLowerCase() ?? '';
 	return (
@@ -258,6 +260,10 @@ function resolvePayloadBudget(toolName: string | undefined): number {
 	// One Project cleanup read stands in for the ~18 reads chat used to re-derive
 	// the set (tasker 112); at 6K a 12-item set lost every item's summary.
 	if (toolName?.trim().toLowerCase() === 'get_project_cleanup')
+		return MAX_MODEL_WEB_PAYLOAD_CHARS;
+	// Guided search returns up to 40 people (or 12 web finds) with a per-check answer each;
+	// at 6K the list was cut before the model saw who passed.
+	if (GUIDED_SEARCH_TOOL_NAMES.has(toolName?.trim().toLowerCase() ?? ''))
 		return MAX_MODEL_WEB_PAYLOAD_CHARS;
 	// A 25-row page of an 8-column table is ~6K; at the 6K budget every page read
 	// would need a second round trip. Table reads fit themselves by whole rows.

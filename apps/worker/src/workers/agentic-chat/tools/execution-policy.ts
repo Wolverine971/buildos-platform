@@ -9,6 +9,8 @@ import type {
 	AgenticChatToolExecutionResourceV1
 } from './execution-graph';
 
+const EXPLORE_KNOWLEDGE_TOOL_NAME = 'explore_knowledge';
+
 export type AgenticChatToolExecutionPolicyInputV1 = {
 	toolName: string;
 	kind: AgenticChatToolExecutionCallKindV1;
@@ -93,6 +95,12 @@ const LINK_ENDPOINTS: ReadonlyMap<string, readonly (readonly [string, string])[]
 export function resolveAgenticChatToolExecutionPolicyV1(
 	input: AgenticChatToolExecutionPolicyInputV1
 ): AgenticChatResolvedToolExecutionPolicyV1 {
+	// Guided search's outside hop rides the read lane but saves what it finds and counts
+	// itself against per-message and per-trail limits read from the database. Two of them
+	// side by side would both pass those checks, so it always runs alone.
+	if (input.toolName === EXPLORE_KNOWLEDGE_TOOL_NAME) {
+		return { executionPolicy: 'serial', resources: [] };
+	}
 	if (input.kind === 'read') {
 		return {
 			executionPolicy: input.concurrentReadsEnabled ? 'parallel_safe' : 'serial',

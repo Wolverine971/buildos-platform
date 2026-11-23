@@ -72,6 +72,67 @@ describe('isolated web-search review', () => {
 		}
 	);
 
+	it('tells the reviewer which entries the user ticked: names and kinds, nothing else', async () => {
+		let observed: AgenticChatTurnProviderClientRequestV1 | undefined;
+		const reviewer = createAgenticChatWebSearchReviewer({
+			async *stream(input) {
+				observed = input;
+				yield call();
+				yield done;
+			}
+		});
+		const selection = {
+			id: 'knowledge_selection',
+			content: 'Tenable ... PRIVATE_FACT_SENTINEL',
+			slots: {
+				entities: [
+					{
+						entity_id: '60000000-0000-4000-8000-000000000006',
+						name: 'Tenable',
+						kind: 'org'
+					}
+				]
+			}
+		};
+		await reviewer.authorize({
+			...request(),
+			arguments: { query: 'Tenable leadership team' },
+			executionInput: {
+				...executionInput,
+				requestPayload: { message: 'Find the people who run these.' },
+				artifact: {
+					...executionInput.artifact,
+					prepared: {
+						systemPrompt: 'PRIVATE_SYSTEM_SENTINEL',
+						promptSections: [selection]
+					}
+				}
+			} as unknown as AgenticChatWorkerExecutionInputV1
+		});
+		const body = JSON.parse(String(observed!.messages[1]!.content));
+		expect(body.userSelectedEntries).toEqual([{ name: 'Tenable', kind: 'org' }]);
+		expect(body.proposedSearch).toEqual({ query: 'Tenable leadership team' });
+		const prompt = JSON.stringify(observed!.messages);
+		expect(prompt).not.toContain('PRIVATE_');
+		expect(prompt).not.toContain('60000000-0000-4000-8000-000000000006');
+		expect(String(observed!.messages[0]!.content)).toContain('userSelectedEntries');
+	});
+
+	it('sends no selection field on an ordinary turn', async () => {
+		let observed: AgenticChatTurnProviderClientRequestV1 | undefined;
+		const reviewer = createAgenticChatWebSearchReviewer({
+			async *stream(input) {
+				observed = input;
+				yield call();
+				yield done;
+			}
+		});
+		await reviewer.authorize(request());
+		expect(JSON.parse(String(observed!.messages[1]!.content))).not.toHaveProperty(
+			'userSelectedEntries'
+		);
+	});
+
 	it.each([
 		['no completion', [call()]],
 		['truncated completion', [call(), { type: 'done', finishedReason: 'length' }]],

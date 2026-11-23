@@ -14,6 +14,7 @@ import {
 	JSON_PROFILE_MODELS,
 	JevClient,
 	LLMUsageLogger,
+	SmartLLMService,
 	modelSupportsCapability
 } from '@buildos/smart-llm';
 import type { AgenticChatWorkerCapacityEvidenceV1 } from './capacity';
@@ -44,6 +45,8 @@ import {
 } from '../provider/chat-context-finder';
 import { ChatWorkspaceFinder, composeContextFinders } from '../provider/chat-workspace-finder';
 import { JevToolSelector } from '../provider/jev-tool-selector';
+import { createWorkerKnowledgeSearchPort } from '../tools/knowledge-search';
+import { createAgentRunWebResearchPort } from '../../agent-run/webResearchPort';
 import {
 	WEB_NAVIGATE_DECISION_TIMEOUT_MS,
 	WEB_NAVIGATE_MAX_REQUEST_BYTES,
@@ -685,6 +688,43 @@ function createDefaultComposition(
 			null,
 		usage: usageLogger
 	});
+	// Guided search (find_in_knowledge, explore_knowledge): Jev judges entries from the
+	// user's own graph against the question's parts (the inside search only). An outside hop
+	// is read by one structured model call: everything the searches returned goes to it, and
+	// it lists the entries and answers the question's parts for each. Same OpenRouter
+	// credential. The reading model is built on first use, so a chat that never searches
+	// pays nothing.
+	const knowledgeSearchApiKey = (
+		input.config.provider.routes.find((route) => route.kind === 'openrouter') ??
+		input.config.provider.routes[0]!
+	).apiKey;
+	let knowledgeSearchLlm: SmartLLMService | null = null;
+	const knowledgeSearch = createWorkerKnowledgeSearchPort({
+		client: input.client,
+		decider: new JevClient({
+			apiKey: knowledgeSearchApiKey,
+			timeoutMs: 8_000,
+			maxRequestBytes: 96_000,
+			retryOnce: false,
+			// Jev latency is bimodal; one hedge rescues most slow calls.
+			hedgeAfterMs: 2_000,
+			title: 'BuildOS Guided Search',
+			usage: usageLogger,
+			...(input.fetchImpl ? { fetchImpl: input.fetchImpl } : {})
+		}),
+		llm: {
+			getJSONResponse: (options) =>
+				(knowledgeSearchLlm ??= new SmartLLMService({
+					apiKey: knowledgeSearchApiKey,
+					httpReferer: 'https://build-os.com',
+					appName: 'BuildOS Guided Search',
+					supabase: input.client,
+					...(input.fetchImpl ? { fetch: input.fetchImpl } : {})
+				})).getJSONResponse(options)
+		},
+		makeSearchPort: () => createAgentRunWebResearchPort({ purpose: 'knowledge_research' }),
+		usage: usageLogger
+	});
 	// scan_email_inbox scores relevance and search_email_messages authorizes its
 	// query with Jev; one hedged client serves both (same OpenRouter credential).
 	const emailJev = new JevClient({
@@ -718,6 +758,7 @@ function createDefaultComposition(
 		...(toolSelector ? { toolSelector } : {}),
 		...(contextFinder ? { contextFinder } : {}),
 		webNavigator,
+		knowledgeSearch,
 		usage: usageLogger,
 		emailRelevanceDecider: emailJev,
 		emailSearchProvenance: new JevEmailSearchProvenanceJudge(emailJev),

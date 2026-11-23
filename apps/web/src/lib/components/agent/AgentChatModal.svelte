@@ -181,6 +181,15 @@
 		type TableChangeCard,
 		type TableChangeReceipt
 	} from './table-change-cards';
+	import {
+		buildKnowledgeTray,
+		readKnowledgeTray,
+		type GuidedSearchView,
+		type KnowledgeNextStep,
+		type KnowledgeSelectionRef
+	} from './knowledge-search-tray';
+	import { KIND_ICON } from '$lib/components/knowledge/knowledge-client';
+	import { X } from '$lib/icons/lucide';
 	import { createVoiceAdapter } from './agent-chat-voice.svelte';
 	import { createPrewarmController } from './agent-chat-prewarm.svelte';
 	import {
@@ -319,6 +328,7 @@
 		resetConversation: (options) => resetConversation(options),
 		clearMessages: () => {
 			messages = [];
+			knowledgeSelection = [];
 			currentThinkingBlockId = null;
 		},
 		stopVoice: () => voice.stop(),
@@ -380,6 +390,28 @@
 	// what makes the timeline memoization in agent-chat-timeline.ts sound;
 	// never mutate a message or activity object in place.
 	let messages = $state.raw<UIMessage[]>([]);
+	// Guided search: knowledge entries ticked in an Entities tray. They ride on the next
+	// message as ids and untick once it is sent (agent-chat-stream-controller).
+	let knowledgeSelection = $state.raw<KnowledgeSelectionRef[]>([]);
+	const MAX_KNOWLEDGE_SELECTION = 12;
+
+	function toggleKnowledgeEntity(ref: KnowledgeSelectionRef) {
+		if (knowledgeSelection.some((picked) => picked.entity_id === ref.entity_id)) {
+			knowledgeSelection = knowledgeSelection.filter(
+				(picked) => picked.entity_id !== ref.entity_id
+			);
+			return;
+		}
+		if (knowledgeSelection.length >= MAX_KNOWLEDGE_SELECTION) {
+			toastService.info(`Up to ${MAX_KNOWLEDGE_SELECTION} entries can ride on one message.`);
+			return;
+		}
+		knowledgeSelection = [...knowledgeSelection, ref];
+	}
+
+	function forgetKnowledgeEntity(entityId: string) {
+		knowledgeSelection = knowledgeSelection.filter((picked) => picked.entity_id !== entityId);
+	}
 	let persistedTimelineItems = $state.raw<AgentTimelineItem[]>([]);
 	let activeChatTab = $state<AgentChatPanelTab>('chat');
 	// Seeded from the launch prop, still assignable (session hydration, reset).
@@ -846,9 +878,11 @@
 		// Sent whatever the chat's scope: a chat that started about an entry is later filed
 		// under the project it mostly concerned, and it is still about that entry.
 		getKnowledgeFocus: () =>
-			shellRouter.knowledgeFocus
-				? { entityId: shellRouter.knowledgeFocus.entity_id }
-				: null,
+			shellRouter.knowledgeFocus ? { entityId: shellRouter.knowledgeFocus.entity_id } : null,
+		getKnowledgeSelection: () => knowledgeSelection,
+		setKnowledgeSelection: (refs) => {
+			knowledgeSelection = refs;
+		},
 		clearRequestedSkillId: () => {
 			launchSkillId = null;
 		},
@@ -1418,6 +1452,7 @@
 
 		if (currentSession?.id) workerAdoption?.releaseSession(currentSession.id);
 		messages = [];
+		knowledgeSelection = [];
 		persistedTimelineItems = [];
 		pendingChange.reset();
 		activeChatTab = 'chat';
@@ -2581,6 +2616,7 @@
 		addCreatedEntitiesMessage,
 		addDocumentChangesMessage,
 		addTableChangesMessage,
+		addKnowledgeEntitiesMessage,
 		isDev: dev
 	};
 
@@ -2682,6 +2718,41 @@
 				timestamp: new Date()
 			}
 		];
+	}
+
+	/** A turn's guided searches as one selectable Entities tray under its reply. */
+	function addKnowledgeEntitiesMessage(views: GuidedSearchView[]) {
+		const tray = buildKnowledgeTray(views);
+		if (!tray) return;
+		// Replay guard, for this turn only: the same tray is never shown twice under one
+		// message, but asking again later is a new tray even when the same entries come back.
+		const turnStart = messages.findLastIndex((message) => message.type === 'user');
+		if (
+			messages
+				.slice(turnStart + 1)
+				.some(
+					(message) =>
+						message.type === 'knowledge_entities' &&
+						readKnowledgeTray(message.data?.tray)?.id === tray.id
+				)
+		)
+			return;
+		messages = [
+			...messages,
+			{
+				id: crypto.randomUUID(),
+				type: 'knowledge_entities',
+				content: '',
+				data: { tray },
+				timestamp: new Date()
+			}
+		];
+	}
+
+	/** A tray's next-step button: send it now; the ticked entries ride along. */
+	function handleKnowledgeNextStep(step: KnowledgeNextStep) {
+		if (stream.isStreaming || stream.isStartingStream) return;
+		void stream.sendMessage(step.message, { suppressInputClear: true });
 	}
 
 	function addTableChangesMessage(receipts: TableChangeReceipt[]) {
@@ -3165,6 +3236,11 @@
 		{compact}
 		knowledgeTargets={chatKnowledge.targets}
 		onOpenKnowledge={(id, trigger) => chatKnowledge.openFor(id, trigger)}
+		{knowledgeSelection}
+		onToggleKnowledgeEntity={toggleKnowledgeEntity}
+		onKnowledgeNextStep={handleKnowledgeNextStep}
+		onKnowledgeEntityRemoved={forgetKnowledgeEntity}
+		canSendKnowledgeStep={!stream.isStreaming && !stream.isStartingStream}
 	/>
 {/snippet}
 
@@ -3335,6 +3411,45 @@
 						suppressInputClear: true
 					})}
 			/>
+		{/if}
+		{#if knowledgeSelection.length}
+			<!-- Entries ticked in an Entities tray: the next message is sent about them. -->
+			<div
+				class="mb-2 flex flex-wrap items-center gap-1.5"
+				data-testid="knowledge-selection-strip"
+			>
+				<span
+					class="text-2xs font-semibold uppercase tracking-[0.15em] text-muted-foreground"
+				>
+					About
+				</span>
+				{#each knowledgeSelection as ref (ref.entity_id)}
+					{@const RefIcon = KIND_ICON[ref.kind]}
+					<span
+						class="inline-flex max-w-[14rem] items-center gap-1 rounded-full border border-accent/40 bg-accent/5 py-0.5 pl-2 pr-1 text-xs font-semibold text-foreground"
+					>
+						<RefIcon class="h-3 w-3 shrink-0 text-accent" aria-hidden="true" />
+						<span class="truncate">{ref.name}</span>
+						<button
+							type="button"
+							class="rounded-full p-0.5 text-muted-foreground hover:bg-accent/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							aria-label="Unselect {ref.name}"
+							onclick={() => forgetKnowledgeEntity(ref.entity_id)}
+						>
+							<X class="h-3 w-3" aria-hidden="true" />
+						</button>
+					</span>
+				{/each}
+				{#if knowledgeSelection.length > 1}
+					<button
+						type="button"
+						class="text-2xs font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+						onclick={() => (knowledgeSelection = [])}
+					>
+						Clear
+					</button>
+				{/if}
+			</div>
 		{/if}
 		<AgentComposer
 			onActivity={() => prewarm.noteActivity()}

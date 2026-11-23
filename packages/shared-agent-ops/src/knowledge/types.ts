@@ -97,6 +97,22 @@ export interface KnowledgeWriteBatch {
 export interface KnowledgeWriteOptions {
 	via: KnowledgeCreatedVia;
 	runId?: string;
+	/**
+	 * Work out who each entity would be (existing or new) and save nothing. The receipt's
+	 * entities and merge_candidates say what a real write would do; new entities get no id.
+	 */
+	dryRun?: boolean;
+	/**
+	 * Stamp new entities and identity keys with runId, so the run can be undone later
+	 * (knowledge_undo_import). Needs the run_id columns from migration 20261122230000.
+	 */
+	trackRun?: boolean;
+	/**
+	 * The incoming data may be older than what is already here (a phone's address book next to
+	 * a LinkedIn export): a one-value detail or an employer that would replace or sit beside a
+	 * current one is saved as a suggestion instead.
+	 */
+	fillOnly?: boolean;
 }
 
 export type KnowledgeEntityMatch = 'id' | 'self' | 'key' | 'name' | 'created';

@@ -26,6 +26,7 @@ import { createToolPresenter, type ToolPresenter } from './agent-chat-tool-prese
 import { summarizeDocumentChange } from '@buildos/shared-agent-ops/ontology/document-edits';
 import type { DocumentChangeReceipt } from './document-change-cards';
 import type { TableChangeReceipt } from './table-change-cards';
+import type { GuidedSearchView } from './knowledge-search-tray';
 
 // ---------------------------------------------------------------------------
 // Pure helpers
@@ -400,6 +401,7 @@ interface HandlerHarness {
 		addCreatedEntitiesMessage: CreatedEntityRef[][];
 		addDocumentChangesMessage: DocumentChangeReceipt[][];
 		addTableChangesMessage: TableChangeReceipt[][];
+		addKnowledgeEntitiesMessage: GuidedSearchView[][];
 		updateBlocks: ThinkingBlockMessage[];
 	};
 	snapshot: {
@@ -454,6 +456,7 @@ function createHarness(
 		addCreatedEntitiesMessage: [],
 		addDocumentChangesMessage: [],
 		addTableChangesMessage: [],
+		addKnowledgeEntitiesMessage: [],
 		updateBlocks: []
 	};
 
@@ -584,6 +587,9 @@ function createHarness(
 		},
 		addTableChangesMessage: (changes) => {
 			calls.addTableChangesMessage.push([...changes]);
+		},
+		addKnowledgeEntitiesMessage: (views) => {
+			calls.addKnowledgeEntitiesMessage.push([...views]);
 		},
 		addDocumentChangesMessage: (changes) => {
 			calls.addDocumentChangesMessage.push([...changes]);
@@ -1453,6 +1459,108 @@ describe('createSSEHandler — table change cards', () => {
 		h.handler(tableRowsResult('call-rows', tableChange));
 		h.handler({ type: 'error', error: 'boom' } as never);
 		expect(h.calls.addTableChangesMessage).toEqual([[tableChange]]);
+	});
+});
+
+// Guided search (2026-11-22): what a search inside the graph or out on the web brought back
+// becomes one selectable Entities tray at turn end.
+describe('createSSEHandler — guided search tray', () => {
+	const TENABLE = 'b0000000-0000-4000-8000-000000000001';
+	const ANN = 'a0000000-0000-4000-8000-000000000001';
+	function searchResult(callId: string, toolName: string, body: Record<string, unknown>) {
+		return {
+			type: 'tool_result' as const,
+			turn_run_id: 'turn-run-1',
+			result: { tool_call_id: callId, success: true, tool_name: toolName, result: body }
+		};
+	}
+	const inside = {
+		knowledge_find: {
+			hop: 0,
+			entities: [{ id: ANN, kind: 'person', name: 'Ann', origin: 'graph', hop: 0 }]
+		}
+	};
+	const outside = {
+		knowledge_explore: {
+			hop: 1,
+			pages: [{ url: 'https://example.com/list', title: 'List' }],
+			entities: [{ id: TENABLE, kind: 'org', name: 'Tenable', origin: 'web', hop: 1 }]
+		}
+	};
+
+	it("collects a turn's searches and hands them over together on done", () => {
+		const h = createHarness();
+		h.nextActivityUpdateResult({
+			matched: true,
+			toolName: 'find_in_knowledge',
+			args: { goal: 'g' }
+		});
+		h.handler(searchResult('call-find', 'find_in_knowledge', inside));
+		h.nextActivityUpdateResult({
+			matched: true,
+			toolName: 'explore_knowledge',
+			args: { goal: 'g' }
+		});
+		h.handler(searchResult('call-explore', 'explore_knowledge', outside));
+		expect(h.calls.addKnowledgeEntitiesMessage).toEqual([]);
+
+		h.handler({ type: 'done' });
+
+		expect(h.calls.addKnowledgeEntitiesMessage).toHaveLength(1);
+		const views = h.calls.addKnowledgeEntitiesMessage[0]!;
+		expect(views.map((view) => view.tool)).toEqual(['find_in_knowledge', 'explore_knowledge']);
+		expect(views[1]!.entities[0]).toMatchObject({ id: TENABLE, origin: 'web', hop: 1 });
+		// Neither search is a created record or a table write.
+		expect(h.calls.addCreatedEntitiesMessage).toEqual([]);
+		expect(h.calls.addTableChangesMessage).toEqual([]);
+
+		// The next turn starts clean.
+		h.handler({ type: 'done' });
+		expect(h.calls.addKnowledgeEntitiesMessage).toHaveLength(1);
+	});
+
+	it('still shows what was found when the turn errors: it is already saved', () => {
+		const h = createHarness();
+		h.nextActivityUpdateResult({
+			matched: true,
+			toolName: 'explore_knowledge',
+			args: { goal: 'g' }
+		});
+		h.handler(searchResult('call-explore', 'explore_knowledge', outside));
+		h.handler({ type: 'error', error: 'boom' } as never);
+		expect(h.calls.addKnowledgeEntitiesMessage).toHaveLength(1);
+	});
+
+	it('adds no tray for a failed search or any other read', () => {
+		const h = createHarness();
+		h.nextActivityUpdateResult({
+			matched: true,
+			toolName: 'explore_knowledge',
+			args: { goal: 'g' }
+		});
+		h.handler({
+			type: 'tool_result' as const,
+			turn_run_id: 'turn-run-1',
+			result: {
+				tool_call_id: 'call-failed',
+				success: false,
+				tool_name: 'explore_knowledge',
+				error: 'Live research did not return usable evidence.',
+				result: outside
+			}
+		});
+		h.nextActivityUpdateResult({
+			matched: true,
+			toolName: 'search_knowledge',
+			args: { query: 'Tenable' }
+		});
+		h.handler(
+			searchResult('call-search', 'search_knowledge', {
+				results: [{ entity_id: TENABLE, name: 'Tenable', kind: 'org' }]
+			})
+		);
+		h.handler({ type: 'done' });
+		expect(h.calls.addKnowledgeEntitiesMessage).toEqual([]);
 	});
 });
 

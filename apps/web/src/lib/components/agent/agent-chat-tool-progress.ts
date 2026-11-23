@@ -121,3 +121,94 @@ export function buildWebNavigateTrailFromResult(result: unknown): ToolProgressSt
 	}
 	return steps;
 }
+
+function siteOf(url: unknown): string {
+	if (typeof url !== 'string') return '';
+	try {
+		return new URL(url).hostname.replace(/^www\./, '');
+	} catch {
+		return '';
+	}
+}
+
+/**
+ * Rebuild a compact trail from a persisted guided-search result (find_in_knowledge or
+ * explore_knowledge), so a reloaded session still shows what the search did: what it looked
+ * at, which searches ran, which sites it read, and what it saved. From structured fields only.
+ */
+export function buildGuidedSearchTrailFromResult(result: unknown): ToolProgressStep[] {
+	if (!result || typeof result !== 'object') return [];
+	const record = result as Record<string, unknown>;
+	const steps: ToolProgressStep[] = [];
+	const push = (kind: string, message: string) =>
+		steps.push({ index: steps.length, kind, message });
+	const count = (value: unknown) => (Array.isArray(value) ? value.length : 0);
+	const checkKeys = (value: unknown) =>
+		(Array.isArray(value) ? value : [])
+			.map((check) =>
+				check && typeof check === 'object' ? (check as { key?: unknown }).key : null
+			)
+			.filter((key): key is string => typeof key === 'string');
+
+	const find = record.knowledge_find as Record<string, unknown> | undefined;
+	if (find && typeof find === 'object') {
+		const pool = find.pool as { total?: unknown; people?: unknown } | undefined;
+		// `people` is the shape results stored before other kinds could be searched.
+		const pulled =
+			typeof pool?.total === 'number'
+				? pool.total
+				: typeof pool?.people === 'number'
+					? pool.people
+					: null;
+		const kinds = Array.isArray(find.kinds) ? find.kinds : ['person'];
+		const onlyPeople = kinds.length === 1 && kinds[0] === 'person';
+		if (pulled !== null)
+			push(
+				'lookup',
+				`Pulled · ${onlyPeople ? 'people in your world' : 'entries in your graph'} · ${pulled}`
+			);
+		const keys = checkKeys(find.checks);
+		const counts = find.counts as { pass_all?: unknown; cant_tell?: unknown } | undefined;
+		if (keys.length && typeof counts?.pass_all === 'number')
+			push(
+				'decide',
+				`Judged · each against: ${keys.join(', ')} · ${counts.pass_all} pass, ${
+					typeof counts.cant_tell === 'number' ? counts.cant_tell : 0
+				} can't tell`
+			);
+		return steps;
+	}
+
+	const explore = record.knowledge_explore as Record<string, unknown> | undefined;
+	if (!explore || typeof explore !== 'object') return steps;
+	for (const query of Array.isArray(explore.queries) ? explore.queries : []) {
+		if (typeof query === 'string') push('search', `Searched · ${query}`);
+	}
+	const sites = [
+		...new Set(
+			(Array.isArray(explore.pages) ? explore.pages : [])
+				.map((page) => siteOf((page as { url?: unknown } | null)?.url))
+				.filter(Boolean)
+		)
+	];
+	if (sites.length) push('read', `Read · ${sites.join(', ')}`);
+	const found = count(explore.entities);
+	if (found) {
+		const saved = explore.saved as { new?: unknown } | undefined;
+		const fresh = typeof saved?.new === 'number' ? saved.new : 0;
+		push(
+			'save',
+			`Saved · to your graph, marked found on the web · ${fresh} new, ${Math.max(found - fresh, 0)} already there`
+		);
+	}
+	const stopped = explore.stopped as { reason?: unknown } | undefined;
+	if (stopped && typeof stopped === 'object') {
+		push(
+			'stop',
+			stopped.reason === 'hop_limit'
+				? 'Stopped · 3 hops is the limit for one trail'
+				: 'Stopped'
+		);
+	}
+	return steps;
+}

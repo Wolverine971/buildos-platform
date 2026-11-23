@@ -725,15 +725,10 @@ export async function syncRecordMentions(
 			.filter((r) => !('id' in r && oldIdSet.has(r.id as string)))
 			.map(({ id: _id, ...row }: Record<string, unknown>) => row);
 		const keptIds = new Set(kept.map((r) => r.id as string));
+		// New rows first: they can be undone, an in-place update can't, so a failure at either
+		// step leaves the record's old tags as they were.
 		const insertedIds: string[] = [];
 		try {
-			for (const group of chunk(kept, 500)) {
-				const { error } = await db
-					.from('knowledge_mentions')
-					.upsert(group, { onConflict: 'id' })
-					.select('id');
-				if (error) fail('Save mentions', error);
-			}
 			for (const group of chunk(added, 500)) {
 				const { data, error } = await db
 					.from('knowledge_mentions')
@@ -741,6 +736,13 @@ export async function syncRecordMentions(
 					.select('id');
 				if (error) fail('Save mentions', error);
 				insertedIds.push(...((data ?? []) as Array<{ id: string }>).map((r) => r.id));
+			}
+			for (const group of chunk(kept, 500)) {
+				const { error } = await db
+					.from('knowledge_mentions')
+					.upsert(group, { onConflict: 'id' })
+					.select('id');
+				if (error) fail('Save mentions', error);
 			}
 		} catch (error) {
 			// Undo new rows so the record doesn't end up with old + half of the new tags.

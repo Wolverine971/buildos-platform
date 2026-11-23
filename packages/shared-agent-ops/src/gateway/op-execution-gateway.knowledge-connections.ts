@@ -27,6 +27,8 @@ import { ExternalToolGatewayError } from './op-execution-gateway.responses';
 
 /** People rows when the call does not group; groups when it does. */
 export const KNOWLEDGE_CONNECTION_PEOPLE_DEFAULT = 25;
+/** People who work at a bridge_to company now, listed beside the people who lead to them. */
+const KNOWLEDGE_CONNECTION_DIRECT_MAX = 12;
 export const KNOWLEDGE_CONNECTION_PEOPLE_MAX = 100;
 export const KNOWLEDGE_CONNECTION_GROUPS_DEFAULT = 25;
 export const KNOWLEDGE_CONNECTION_GROUPS_MAX = 50;
@@ -250,8 +252,6 @@ function nobodyNote(filters: KnowledgeConnectionFilters): string {
 				? ''
 				: " as a current job (employment 'any' also checks past ones)";
 	const asked: string[] = [];
-	if (filters.bridge_to?.length)
-		return `${who} leads to ${filters.bridge_to.join(' or ')}: nobody recorded works there now, or nobody shares an employer, task or document with them. Past jobs are often missing; research on a contact adds them.`;
 	if (filters.company?.length || filters.company_ids?.length)
 		asked.push(`is recorded at ${filters.company?.join(' or ') ?? 'that company'}${jobs}`);
 	if (filters.title?.length) asked.push(`has a title with ${filters.title.join(' or ')}`);
@@ -271,10 +271,34 @@ function emptyAnswer(notes: string[]): Record<string, unknown> {
 	return { people: [], total: 0, notes };
 }
 
+/**
+ * A way in to a company has two answers: the people who work there now, and the people who
+ * lead to one of them. The second list never repeats the first, so the first is read on its
+ * own; without it "who knows someone at Anduril" said nobody while three contacts work there.
+ */
+function bridgeNotes(
+	filters: KnowledgeConnectionFilters,
+	result: KnowledgeConnectionsResult,
+	direct: KnowledgeConnectionsResult
+): string[] {
+	const who = filters.scope === 'known' ? 'the user knows' : "in the user's world";
+	const there = filters.bridge_to?.length ? filters.bridge_to.join(' or ') : 'that company';
+	const others =
+		'shares another employer, a task, a document or a project with someone there, or is recorded there as a past job. Past jobs are often missing; research on a contact adds them.';
+	if (direct.total > 0)
+		return [
+			`${direct.total} ${direct.total === 1 ? 'person' : 'people'} ${who} ${direct.total === 1 ? 'works' : 'work'} at ${there} now: they are in works_there_now and are the direct way in. people lists only others who lead to them.`,
+			...(result.total === 0 ? [`Nobody else ${others}`] : [])
+		];
+	if (result.total > 0) return [];
+	return [`Nobody ${who} is recorded at ${there} now, and nobody ${others}`];
+}
+
 function compactConnections(
 	result: KnowledgeConnectionsResult,
 	parsed: ParsedConnectionQuery,
-	notes: string[]
+	notes: string[],
+	direct: KnowledgeConnectionsResult | null = null
 ): Record<string, unknown> {
 	const { groupBy, filters } = parsed;
 	const gapNotes = describeKnowledgeConnectionGaps(result, {
@@ -290,9 +314,10 @@ function compactConnections(
 		notes.push(
 			'Research can fill these gaps for the employers in research_candidates. It is paid and starts only when the user agrees: offer it, do not start it yourself.'
 		);
-	if (result.total === 0 && result.coverage.people > 0 && !gapNotes.length)
+	if (direct) notes.push(...bridgeNotes(filters, result, direct));
+	else if (result.total === 0 && result.coverage.people > 0 && !gapNotes.length)
 		notes.push('Nobody in the graph matches. It may simply not be recorded yet.');
-	if (result.coverage.people === 0) notes.push(nobodyNote(filters));
+	else if (result.coverage.people === 0) notes.push(nobodyNote(filters));
 	const group = groupBy ? result.facets[groupBy] : undefined;
 	return {
 		...(groupBy
@@ -309,6 +334,9 @@ function compactConnections(
 			: { people: result.people.map(compactPerson) }),
 		total: result.total,
 		...(!groupBy && result.total > result.people.length ? { truncated: true } : {}),
+		...(direct?.total
+			? { works_there_now: { total: direct.total, people: direct.people.map(compactPerson) } }
+			: {}),
 		coverage: result.coverage,
 		...(research.size ? { research_candidates: [...research.values()].slice(0, 10) } : {}),
 		...(notes.length ? { notes } : {})
@@ -328,26 +356,42 @@ export async function runKnowledgeConnectionsQuery(
 	try {
 		const store = new KnowledgeStore(client, userId);
 		if (!(await applyStart(store, parsed, notes))) return emptyAnswer(notes);
-		const result = await readKnowledgeConnections(client, userId, parsed.filters, {
-			...(parsed.groupBy
-				? {
-						facets: [parsed.groupBy],
-						limit: 0,
-						facetLimit: Math.min(
-							parsed.limit ?? KNOWLEDGE_CONNECTION_GROUPS_DEFAULT,
-							KNOWLEDGE_CONNECTION_GROUPS_MAX
-						)
-					}
-				: {
-						limit: Math.min(
-							parsed.limit ?? KNOWLEDGE_CONNECTION_PEOPLE_DEFAULT,
-							KNOWLEDGE_CONNECTION_PEOPLE_MAX
-						)
-					}),
-			contacts: !options.hideContacts,
-			addresses: !options.hideContacts
-		});
-		return compactConnections(result, parsed, notes);
+		const { bridge_to: bridgeTo, bridge_to_ids: bridgeToIds, scope } = parsed.filters;
+		const contacts = { contacts: !options.hideContacts, addresses: !options.hideContacts };
+		const [result, direct] = await Promise.all([
+			readKnowledgeConnections(client, userId, parsed.filters, {
+				...(parsed.groupBy
+					? {
+							facets: [parsed.groupBy],
+							limit: 0,
+							facetLimit: Math.min(
+								parsed.limit ?? KNOWLEDGE_CONNECTION_GROUPS_DEFAULT,
+								KNOWLEDGE_CONNECTION_GROUPS_MAX
+							)
+						}
+					: {
+							limit: Math.min(
+								parsed.limit ?? KNOWLEDGE_CONNECTION_PEOPLE_DEFAULT,
+								KNOWLEDGE_CONNECTION_PEOPLE_MAX
+							)
+						}),
+				...contacts
+			}),
+			// Who works there now: the people the bridge list leaves out on purpose.
+			bridgeTo?.length || bridgeToIds?.length
+				? readKnowledgeConnections(
+						client,
+						userId,
+						{
+							...(scope ? { scope } : {}),
+							...(bridgeTo?.length ? { company: bridgeTo } : {}),
+							...(bridgeToIds?.length ? { company_ids: bridgeToIds } : {})
+						},
+						{ limit: KNOWLEDGE_CONNECTION_DIRECT_MAX, ...contacts }
+					)
+				: null
+		]);
+		return compactConnections(result, parsed, notes, direct);
 	} catch (error) {
 		if (error instanceof ExternalToolGatewayError) throw error;
 		if (error instanceof Error) {

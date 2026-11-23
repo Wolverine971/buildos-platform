@@ -18,6 +18,7 @@ import type { WebResearchPort } from '@buildos/shared-agent-ops';
 import { createAgentRunWebResearchPort } from '../../agent-run/webResearchPort';
 import type { TavilyUsageLogger } from '../tools/tavily-usage';
 import type { WebNavigatePort } from '../tools/web-navigate';
+import type { KnowledgeSearchPort } from '../tools/knowledge-search';
 import type { EmailSearchProvenanceJudge } from '../tools/email-search-provenance';
 import type { JevDecider } from '@buildos/smart-llm';
 import { createAgenticChatWebSearchReviewer } from '../tools/web-search-review';
@@ -232,6 +233,8 @@ export function createAgenticChatCompositionRoot(options: {
 	/** Records chat web_search spend in llm_usage_logs. */
 	usage?: TavilyUsageLogger;
 	webNavigator?: WebNavigatePort;
+	/** Guided search: `find_in_knowledge` and `explore_knowledge`. */
+	knowledgeSearch?: KnowledgeSearchPort;
 	/** Jev relevance scores for `scan_email_inbox`. */
 	emailRelevanceDecider?: JevDecider;
 	/** Jev authorization for `search_email_messages` queries. */
@@ -401,6 +404,7 @@ export function createAgenticChatCompositionRoot(options: {
 		webResearch: options.webResearch ?? createAgentRunWebResearchPort({ purpose: 'chat' }),
 		...(options.usage ? { usage: options.usage } : {}),
 		...(options.webNavigator ? { webNavigator: options.webNavigator } : {}),
+		...(options.knowledgeSearch ? { knowledgeSearch: options.knowledgeSearch } : {}),
 		...(options.emailRelevanceDecider
 			? { emailRelevanceDecider: options.emailRelevanceDecider }
 			: {}),

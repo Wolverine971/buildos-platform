@@ -16,7 +16,8 @@
 //   account tools (`list_email_accounts`, `get_external_account_status`,
 //   `request_email_account_connection`) return connection plumbing only and
 //   are not external (AGENTIC_CHAT_CONTENT_FREE_EMAIL_TOOL_NAMES_V1).
-// - The public web: `web_search`, `web_visit`, `web_navigate`.
+// - The public web: `web_search`, `web_visit`, `web_navigate`, and `explore_knowledge`
+//   (guided search's outside hop, whose result is entries read off public pages).
 // - Google Calendar events: anyone can put an event on the user's calendar (an
 //   invite, a booking page) with an arbitrary title, description, and location.
 //   The organizer field does not prove authorship: booking tools create
@@ -44,6 +45,8 @@ const EXTERNAL_CONTENT_TOOL_NAMES = [
 	'web_search',
 	'web_visit',
 	'web_navigate',
+	// Guided search's outside hop (2026-11-22): names and summaries read off public pages.
+	'explore_knowledge',
 	'get_project_knowledge_lens'
 ] as const;
 

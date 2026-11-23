@@ -1543,6 +1543,15 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 						: 'Beginning research on 1 entry'
 			};
 		},
+		// Guided search (2026-11-22): inside the graph, then one hop out on the web.
+		find_in_knowledge: (args) => ({
+			action: 'Searching your knowledge',
+			target: normalizeEntityLabel(args?.goal)
+		}),
+		explore_knowledge: (args) => ({
+			action: 'Searching outside BuildOS',
+			target: normalizeEntityLabel(args?.goal)
+		}),
 		// Knowledge in shared projects (tasker 168): other members' People, and the ask.
 		get_project_knowledge_lens: (args) => ({
 			action: 'Checking who your teammates know',

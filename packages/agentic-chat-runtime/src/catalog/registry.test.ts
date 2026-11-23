@@ -41,7 +41,11 @@ const FROZEN_TOOL_OPERATION_ROWS_2026_09_04: readonly string[] = Object.freeze([
 	'delete_onto_risk onto.risk.delete write',
 	'delete_onto_task onto.task.delete write',
 	'enrich_knowledge knowledge.enrich write',
+	// 2026-11-22 guided search: the outside hop (saves what it finds itself; read lane).
+	'explore_knowledge knowledge.explore read',
 	'explore_project x.search.explore read',
+	// 2026-11-22 guided search: inside the knowledge graph.
+	'find_in_knowledge knowledge.find read',
 	'get_buildos_overview util.buildos.overview read',
 	'get_buildos_usage_guide util.buildos.usage_guide read',
 	'get_calendar_event_details cal.event.get read',

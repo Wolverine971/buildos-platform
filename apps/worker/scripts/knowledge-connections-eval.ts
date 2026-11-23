@@ -113,6 +113,10 @@ async function main() {
 			console.log(`    ${answer.total} people${answer.truncated ? ' (first page)' : ''}`);
 			for (const row of (answer.people ?? []).slice(0, 12)) console.log(line(row));
 		}
+		if (answer.works_there_now) {
+			console.log(`    ${answer.works_there_now.total} work there now:`);
+			for (const row of answer.works_there_now.people) console.log(line(row));
+		}
 		for (const note of answer.notes ?? []) console.log(`    note: ${note}`);
 		if (answer.research_candidates?.length)
 			console.log(

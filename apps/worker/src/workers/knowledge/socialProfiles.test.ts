@@ -276,6 +276,24 @@ describe('findSocialProfiles: whose account is it', () => {
 		expect(findings.map((f) => [f.profile.url, f.ground])).toEqual([
 			['https://www.youtube.com/@breakingpoints', 'declared']
 		]);
+
+		// The same channel found a third time, under its id: the site's own link stands.
+		const again = findSocialProfiles({
+			kind: 'org',
+			known: [],
+			pages: [
+				page({
+					url: 'https://shop.breakingpoints.com/',
+					ownSite: true,
+					html: '<a href="https://www.youtube.com/@breakingpoints"></a>'
+				}),
+				page({ url: 'https://www.youtube.com/channel/UCDRIjKy6eZOvKtOELtTdeUA/posts' })
+			]
+		});
+		expect(again.findings.map((f) => f.profile.url)).toEqual([
+			'https://www.youtube.com/@breakingpoints'
+		]);
+		expect(again.superseded).toHaveLength(1);
 	});
 
 	it("takes a person's accounts from their employer's page about them, when it declares them by name", () => {

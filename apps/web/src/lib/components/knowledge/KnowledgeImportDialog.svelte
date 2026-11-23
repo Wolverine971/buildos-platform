@@ -2,26 +2,39 @@
 <!--
 	Import contacts into the knowledge graph: pick a phone export (.vcf), LinkedIn's
 	Connections.csv or ZIP, or a Google Contacts CSV → see what's in it → import. The file is read in the
-	browser: the preview needs no upload, and the import sends only the contacts (no photos).
-	Nothing is saved until the second step, and the file itself is never stored. Tasker 160.
+	browser, and only the contacts are ever sent (no photos). For phone and Google files the preview
+	also says how the file lines up with who is already here: who lands on an existing card, who
+	is new, and who will raise a "same person?" question. Nothing is saved until the second step,
+	and the file itself is never stored. A finished import can be undone, here or later from the
+	recent imports list. Tasker 160.
 -->
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
-	import { Check, Loader2, Lock, Upload } from '$lib/icons/lucide';
+	import { Check, Loader2, Lock, Undo2, Upload } from '$lib/icons/lucide';
 	import {
 		summarizeContactFile,
-		type ContactFileSummary
+		type ContactFileSummary,
+		type ParsedContactFile
 	} from '@buildos/shared-agent-ops/knowledge';
-	import { prepareContactImport, type ImportSummary } from './knowledge-client';
+	import {
+		knowledgeApi,
+		prepareContactImport,
+		type ImportMatchPreview,
+		type ImportSummary,
+		type ImportUndoReceipt,
+		type RecentImport
+	} from './knowledge-client';
 	import { readContactExport } from './read-contact-export';
 
 	interface Props {
 		isOpen: boolean;
 		onClose: () => void;
 		onImported: (summary: ImportSummary) => void;
+		/** An import was undone: lists showing people should reload. */
+		onUndone?: () => void;
 	}
 
-	let { isOpen, onClose, onImported }: Props = $props();
+	let { isOpen, onClose, onImported, onUndone }: Props = $props();
 
 	const fileTypes = {
 		auto: { accept: '.zip,.csv,.vcf', hint: 'LinkedIn ZIP · CSV · vCard (.vcf)' },
@@ -41,28 +54,92 @@
 	let error = $state<string | null>(null);
 	let dragging = $state(false);
 	let input = $state<HTMLInputElement | null>(null);
+	// How the file lines up with who is already here (phone and Google files).
+	let matching = $state.raw<ImportMatchPreview | null>(null);
+	let matchingBusy = $state(false);
+	// Undo: recent imports, the one being confirmed, and what the last undo removed.
+	let recent = $state.raw<RecentImport[]>([]);
+	let confirmUndo = $state<string | null>(null);
+	let undoing = $state(false);
+	let undone = $state.raw<ImportUndoReceipt | null>(null);
+	let undoError = $state<string | null>(null);
 
 	function reset() {
 		readSeq++;
 		fileName = '';
 		pendingImport = null;
 		preview = null;
+		matching = null;
+		matchingBusy = false;
 		saved = 0;
 		result = null;
 		busy = null;
 		error = null;
+		confirmUndo = null;
+		undoError = null;
 	}
 
 	function close() {
-		if (busy === 'importing') return;
+		if (busy === 'importing' || undoing) return;
 		reset();
+		undone = null;
 		source = 'auto';
 		onClose();
+	}
+
+	async function loadRecent() {
+		try {
+			recent = (await knowledgeApi.recentImports()).imports;
+		} catch {
+			// The list is a convenience: importing works without it.
+		}
+	}
+
+	// Opening the dialog is the only signal there is: fetch the list then.
+	$effect(() => {
+		if (isOpen) void loadRecent();
+	});
+
+	async function checkMatches(read: ParsedContactFile, name: string, seq: number) {
+		matchingBusy = true;
+		try {
+			const res = await knowledgeApi.previewContactMatches(read, name);
+			if (seq === readSeq && typeof res.will_match === 'number') {
+				matching = {
+					will_match: res.will_match,
+					will_create: res.will_create ?? 0,
+					to_review: res.to_review ?? 0,
+					review_examples: res.review_examples ?? []
+				};
+			}
+		} catch {
+			// The preview still shows what is in the file.
+		} finally {
+			if (seq === readSeq) matchingBusy = false;
+		}
+	}
+
+	async function undo(runId: string) {
+		if (undoing) return;
+		undoing = true;
+		undoError = null;
+		try {
+			const receipt = await knowledgeApi.undoImport(runId);
+			reset();
+			undone = receipt;
+			onUndone?.();
+			void loadRecent();
+		} catch (err) {
+			undoError = err instanceof Error ? err.message : 'Could not undo the import';
+		} finally {
+			undoing = false;
+		}
 	}
 
 	async function pick(next: File | null | undefined) {
 		if (!next) return;
 		reset();
+		undone = null;
 		const seq = readSeq;
 		busy = 'reading';
 		try {
@@ -73,11 +150,9 @@
 			fileName = next.name;
 			preview = summarizeContactFile(read);
 			dated = read.contacts.filter((contact) => contact.connectedOn).length;
-			pendingImport = prepareContactImport(
-				read,
-				/\.zip$/i.test(next.name) ? 'Connections.csv' : next.name,
-				preview
-			);
+			const uploadName = /\.zip$/i.test(next.name) ? 'Connections.csv' : next.name;
+			pendingImport = prepareContactImport(read, uploadName, preview);
+			if (read.format !== 'linkedin_csv') void checkMatches(read, uploadName, seq);
 		} catch (err) {
 			if (seq === readSeq)
 				error = err instanceof Error ? err.message : 'Could not read that file';
@@ -108,14 +183,53 @@
 	}
 
 	const n = (value: number | undefined) => (value ?? 0).toLocaleString();
+	const count = (value: number | undefined, one: string, many: string) =>
+		`${n(value)} ${(value ?? 0) === 1 ? one : many}`;
+	const day = (iso: string) =>
+		new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 </script>
+
+{#snippet undoConfirm(runId: string)}
+	<div class="flex flex-col gap-2 rounded-md border border-border bg-muted/50 px-3 py-3">
+		<p class="text-sm text-foreground">
+			Undo this import? The people and organizations it added are removed, and its details
+			come off the cards of people who were already here. Anyone you've edited, researched or
+			linked to your work since stays.
+		</p>
+		{#if undoError}<p class="text-sm text-destructive" role="alert">{undoError}</p>{/if}
+		<div class="flex justify-end gap-2">
+			<button
+				type="button"
+				class="rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
+				disabled={undoing}
+				onclick={() => {
+					confirmUndo = null;
+					undoError = null;
+				}}
+			>
+				Keep it
+			</button>
+			<button
+				type="button"
+				class="inline-flex items-center gap-1.5 rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground pressable disabled:opacity-60"
+				disabled={undoing}
+				onclick={() => void undo(runId)}
+			>
+				{#if undoing}<Loader2
+						class="h-4 w-4 animate-spin motion-reduce:animate-none"
+						aria-hidden="true"
+					/> Undoing…{:else}Undo import{/if}
+			</button>
+		</div>
+	</div>
+{/snippet}
 
 <Modal
 	{isOpen}
 	onClose={close}
 	title="Import contacts"
 	size="md"
-	closeOnBackdrop={busy !== 'importing'}
+	closeOnBackdrop={busy !== 'importing' && !undoing}
 >
 	<div class="flex flex-col gap-4 p-4 sm:p-5">
 		{#if result}
@@ -130,21 +244,52 @@
 						{n(result.people_created)} new people, {n(result.people_matched)} already here
 						(updated)
 					</li>
-					<li>{n(result.orgs)} organizations</li>
+					<li>
+						{n(result.orgs)} organizations{#if result.companies}, including {count(
+								result.companies,
+								'business card',
+								'business cards'
+							)}{/if}
+					</li>
 					<li>{n(result.facts_added)} details saved</li>
+					{#if result.facts_suggested}
+						<li>
+							{count(result.facts_suggested, 'job detail', 'job details')} saved as
+							{result.facts_suggested === 1 ? 'a suggestion' : 'suggestions'}, because
+							{result.facts_suggested === 1 ? 'it differs' : 'they differ'} from what was
+							already here
+						</li>
+					{/if}
 					{#if result.possible_duplicates}
-						<li>{n(result.possible_duplicates)} possible duplicates to review</li>
+						<li>
+							{n(result.possible_duplicates)} possible duplicates to review ("same person?")
+						</li>
 					{/if}
 				</ul>
-				<div class="flex justify-end">
-					<button
-						type="button"
-						class="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground pressable"
-						onclick={close}
-					>
-						See people
-					</button>
-				</div>
+				{#if confirmUndo && confirmUndo === result.run_id}
+					{@render undoConfirm(confirmUndo)}
+				{:else}
+					<div class="flex items-center justify-between gap-2">
+						{#if result.undoable && result.run_id}
+							<button
+								type="button"
+								class="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
+								onclick={() => (confirmUndo = result?.run_id ?? null)}
+							>
+								<Undo2 class="h-4 w-4" aria-hidden="true" /> Undo import
+							</button>
+						{:else}
+							<span></span>
+						{/if}
+						<button
+							type="button"
+							class="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground pressable"
+							onclick={close}
+						>
+							See people
+						</button>
+					</div>
+				{/if}
 			</div>
 		{:else if preview}
 			<div class="flex flex-col gap-3">
@@ -197,6 +342,59 @@
 						{/each}
 					</ul>
 				{/if}
+				{#if matchingBusy}
+					<p class="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+						<Loader2
+							class="h-4 w-4 animate-spin motion-reduce:animate-none"
+							aria-hidden="true"
+						/> Checking against the people you already have…
+					</p>
+				{:else if matching}
+					<div class="flex flex-col gap-1.5 rounded-md border border-border px-3 py-2.5">
+						<p class="text-xs font-medium text-muted-foreground">
+							Against the people you already have
+						</p>
+						<ul class="flex flex-col gap-1 text-sm text-foreground">
+							<li>
+								<span class="font-semibold">{n(matching.will_match)}</span> already here.
+								Their details go on the same card.
+							</li>
+							<li>
+								<span class="font-semibold">{n(matching.will_create)}</span>
+								{matching.will_create === 1 ? 'new person' : 'new people'}
+							</li>
+							{#if preview.companies}
+								<li>
+									<span class="font-semibold">{n(preview.companies)}</span>
+									{preview.companies === 1
+										? 'business, saved as an organization'
+										: 'businesses, saved as organizations'}
+								</li>
+							{/if}
+							{#if matching.to_review}
+								<li>
+									<span class="font-semibold">{n(matching.to_review)}</span>
+									{matching.to_review === 1 ? 'looks' : 'look'} like someone already
+									here under a different name. You'll be asked "same person?" and nothing
+									merges until you answer.
+									{#if matching.review_examples.length}
+										<ul
+											class="mt-1 flex flex-col gap-0.5 text-xs text-muted-foreground"
+										>
+											<!-- Example pairs may repeat a name. -->
+											<!-- eslint-disable-next-line svelte/require-each-key -->
+											{#each matching.review_examples as pair}
+												<li class="truncate">
+													{pair.contact} · {pair.existing}
+												</li>
+											{/each}
+										</ul>
+									{/if}
+								</li>
+							{/if}
+						</ul>
+					</div>
+				{/if}
 				{#if preview.capped}
 					<p class="text-xs text-muted-foreground">
 						This import accepts up to {n(preview.contacts)} contacts per file.
@@ -212,7 +410,7 @@
 				<p class="flex items-start gap-1.5 text-xs text-muted-foreground">
 					<Lock class="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
 					Contacts are saved to your private knowledge graph. When a contact matches someone
-					already there, their details are added to that person.
+					already there, their details are added to that person. You can undo the import afterwards.
 				</p>
 				{#if saved}
 					<p class="text-sm text-muted-foreground" role="status">
@@ -332,6 +530,57 @@
 				}}
 			/>
 			{#if error}<p class="text-sm text-destructive" role="alert">{error}</p>{/if}
+			{#if undone}
+				<p class="flex items-start gap-2 text-sm text-foreground" role="status">
+					<Check class="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+					<span>
+						Import undone. Removed {count(undone.people_removed, 'person', 'people')},
+						{count(undone.orgs_removed, 'organization', 'organizations')} and
+						{count(undone.details_removed, 'detail', 'details')}.
+						{#if undone.kept}Kept {count(undone.kept, 'entry', 'entries')} you've used since.{/if}
+					</span>
+				</p>
+			{/if}
+			{#if recent.length}
+				<div class="flex flex-col gap-1.5">
+					<p class="text-xs font-medium text-muted-foreground">Recent imports</p>
+					<ul
+						class="flex flex-col divide-y divide-border rounded-md border border-border text-sm"
+					>
+						{#each recent as item (item.id)}
+							<li class="flex flex-col gap-2 px-3 py-2">
+								<div class="flex min-w-0 items-center gap-2">
+									<span class="min-w-0 flex-1 truncate text-foreground">
+										{item.file_name ?? item.title}
+										<span class="text-xs text-muted-foreground">
+											· {count(item.contacts, 'contact', 'contacts')} · {day(
+												item.created_at
+											)}
+										</span>
+									</span>
+									{#if item.undone}
+										<span class="shrink-0 text-xs text-muted-foreground"
+											>Undone</span
+										>
+									{:else if item.can_undo && confirmUndo !== item.id}
+										<button
+											type="button"
+											class="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
+											onclick={() => {
+												undoError = null;
+												confirmUndo = item.id;
+											}}
+										>
+											<Undo2 class="h-3.5 w-3.5" aria-hidden="true" /> Undo
+										</button>
+									{/if}
+								</div>
+								{#if confirmUndo === item.id}{@render undoConfirm(item.id)}{/if}
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
 		{/if}
 	</div>
 </Modal>

@@ -22,6 +22,8 @@ describe('agenticChatReadIngestsExternalContentV1 (S1)', () => {
 
 	it('names exactly the email content, web, and calendar event reads', () => {
 		expect([...AGENTIC_CHAT_EXTERNAL_CONTENT_TOOL_NAMES_V1].sort()).toEqual([
+			// Guided search's outside hop (2026-11-22): entries read off public pages.
+			'explore_knowledge',
 			'get_email_message',
 			// Other members' entries in a shared project (tasker 168).
 			'get_project_knowledge_lens',

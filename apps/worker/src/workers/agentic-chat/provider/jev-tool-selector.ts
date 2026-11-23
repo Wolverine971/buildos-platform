@@ -187,6 +187,10 @@ const SUPPORTING_TOOLS: Readonly<Record<string, readonly string[]>> = {
 	enrich_knowledge: ['search_knowledge'],
 	search_knowledge: ['get_knowledge_entity'],
 	query_knowledge: ['search_knowledge'],
+	// Guided search (2026-11-22): a question about who the user knows starts inside the graph
+	// and may go out one hop; an outside hop is usually followed by reading an entry it saved.
+	find_in_knowledge: ['explore_knowledge', 'get_knowledge_entity'],
+	explore_knowledge: ['find_in_knowledge', 'get_knowledge_entity'],
 	// Knowledge in shared projects (tasker 168): an ask names an entry the lens showed.
 	request_knowledge_access: ['get_project_knowledge_lens'],
 	// A search's results are start points to read or click through.

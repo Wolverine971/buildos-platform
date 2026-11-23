@@ -254,4 +254,20 @@ describe('cut-short names (Wayne Strategies)', () => {
 			['MISC', 'Fortress', false]
 		]);
 	});
+
+	it('a place grows into a longer known name but is never retyped as a same-name entry', () => {
+		const text = ['A trip to Jordan in May.', 'Tickets for the Baltimore Ravens game.'];
+		const place = (chunk: number, word: string): NerSpan => {
+			const start = text[chunk]!.indexOf(word);
+			return { type: 'LOC', text: word, score: 0.95, chunk, start, end: start + word.length };
+		};
+		const grown = completeKnownNames([place(0, 'Jordan'), place(1, 'Baltimore')], text, [
+			{ kind: 'person', name: 'Jordan' },
+			{ kind: 'org', name: 'Baltimore Ravens' }
+		]);
+		expect(grown.map((s) => [s.type, s.text])).toEqual([
+			['LOC', 'Jordan'],
+			['ORG', 'Baltimore Ravens']
+		]);
+	});
 });

@@ -73,6 +73,12 @@ import {
 	type WebNavigatePort,
 	describeWebNavigationStep
 } from './web-navigate';
+import { KNOWLEDGE_SEARCH_TOOL_NAMES, type KnowledgeSearchPort } from './knowledge-search';
+import { describeKnowledgeSearchStep } from './knowledge-search-plan';
+import {
+	GuidedSearchError,
+	readKnowledgeSelectionSection
+} from '@buildos/shared-agent-ops/knowledge';
 import {
 	type AgentRunWebUrlCapabilityLedger,
 	createAgentRunWebUrlCapabilityLedger
@@ -235,6 +241,22 @@ export const AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1 = Object.freeze([
 ] as const);
 
 /**
+ * Guided search (2026-11-22): `find_in_knowledge` reads the user's knowledge graph and has a
+ * decision model judge each entry; `explore_knowledge` runs one hop of web search and saves
+ * what it finds. Both run through the injected port (knowledge-search.ts).
+ */
+export const AGENTIC_CHAT_KNOWLEDGE_SEARCH_TOOL_NAMES_V1 = Object.freeze([
+	...KNOWLEDGE_SEARCH_TOOL_NAMES
+] as const);
+const EXPLORE_KNOWLEDGE_TOOL_NAME = 'explore_knowledge';
+
+function isKnowledgeSearchToolName(
+	toolName: string
+): toolName is (typeof AGENTIC_CHAT_KNOWLEDGE_SEARCH_TOOL_NAMES_V1)[number] {
+	return (AGENTIC_CHAT_KNOWLEDGE_SEARCH_TOOL_NAMES_V1 as readonly string[]).includes(toolName);
+}
+
+/**
  * Does executing this tool taint subsequent mailbox searches? Every shared
  * read reaches user-scoped workspace or mailbox content except the three email
  * account tools, whose payloads carry connection plumbing and no content.
@@ -253,7 +275,8 @@ export const AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1 = Object.freeze([
 	...AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1,
 	...AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1,
 	...AGENTIC_CHAT_REVIEWER_CONTROL_TOOL_NAMES,
-	...AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1
+	...AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1,
+	...AGENTIC_CHAT_KNOWLEDGE_SEARCH_TOOL_NAMES_V1
 ]);
 
 /**
@@ -366,6 +389,8 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			/** Logs each paid web_search under the user and turn. */
 			usage?: TavilyUsageLogger;
 			webNavigator?: WebNavigatePort;
+			/** Guided search: find_in_knowledge and explore_knowledge. */
+			knowledgeSearch?: KnowledgeSearchPort;
 			webSearchReviewer?: AgenticChatWebSearchReviewPort;
 			createAccessAdapter?: (userId: string) => AgenticChatToolAccessPortV1;
 			verifyArchiveState?: AgenticChatToolExecutionAdapter['verifyArchiveState'];
@@ -419,6 +444,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		this.webResearch = options.webResearch;
 		this.usage = options.usage;
 		this.webNavigator = options.webNavigator;
+		this.knowledgeSearch = options.knowledgeSearch;
 		this.webSearchReviewer = options.webSearchReviewer;
 		this.createAccessAdapter =
 			options.createAccessAdapter ??
@@ -495,8 +521,11 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		const standardControlTool = isAgenticChatStandardControlToolNameV1(toolName);
 		const sharedReadTool = isAgenticChatSharedReadToolNameV1(toolName);
 		const reviewControlTool = isWorkerReviewControlToolNameV1(toolName);
+		const knowledgeSearchTool = isKnowledgeSearchToolName(toolName);
+		// An outside hop searches and reads the web: it gets the web deadline.
+		const longRunningTool = webResearchTool || toolName === EXPLORE_KNOWLEDGE_TOOL_NAME;
 		const turnSecurityState =
-			egressTool || sharedReadTool
+			egressTool || sharedReadTool || knowledgeSearchTool
 				? this.turnSecurityStateFor(input.executionInput.claim.userId, turnRunId)
 				: null;
 		let reviewRequired = false;
@@ -605,13 +634,13 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		try {
 			rawResult = await runWithAbortableDeadline({
 				parentSignal: input.signal,
-				timeoutMs: webResearchTool ? this.webResearchTimeoutMs : this.timeoutMs,
+				timeoutMs: longRunningTool ? this.webResearchTimeoutMs : this.timeoutMs,
 				createTimeoutError: () =>
 					new AgenticChatProviderExecutionError(
 						'read_tool_timeout',
 						'transient_infra',
 						`Agentic Chat read tool exceeded its ${
-							webResearchTool ? this.webResearchTimeoutMs : this.timeoutMs
+							longRunningTool ? this.webResearchTimeoutMs : this.timeoutMs
 						}ms deadline`
 					),
 				run: async (deadlineSignal) => {
@@ -663,6 +692,60 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 							targets: []
 						}));
 						return { ...result, archive_postconditions: verification };
+					}
+					if (knowledgeSearchTool) {
+						if (!this.knowledgeSearch) {
+							throw new AgenticChatProviderExecutionError(
+								'read_tool_execution_failed',
+								'transient_infra',
+								`Agentic Chat ${toolName} is not configured`
+							);
+						}
+						const claim = input.executionInput.claim;
+						const context = {
+							userId: claim.userId,
+							chatSessionId: claim.sessionId,
+							turnRunId: claim.turnRunId,
+							signal: deadlineSignal,
+							...(input.onProgress
+								? {
+										onStep: (
+											searchStep: Parameters<
+												typeof describeKnowledgeSearchStep
+											>[0]
+										) =>
+											input.onProgress?.(
+												describeKnowledgeSearchStep(searchStep)
+											)
+									}
+								: {}),
+							// What the user ticked for this message, from the section web
+							// admission built: a hop that names no entry is counted from these.
+							selectedEntityIds: (
+								readKnowledgeSelectionSection(
+									input.executionInput.artifact?.prepared?.promptSections
+								)?.entities ?? []
+							).map((entry) => entry.entity_id),
+							// Every query an outside hop sends gets the review a web_search gets.
+							authorizeQuery: (query: string) =>
+								this.authorizeKnowledgeSearchQuery(
+									input,
+									turnSecurityState!,
+									query,
+									deadlineSignal
+								),
+							usageMetadata: {
+								turnRunId: claim.turnRunId,
+								streamRunId: input.executionInput.streamRunId,
+								clientTurnId: input.executionInput.clientTurnId,
+								providerToolCallId: input.providerToolCallId
+							}
+						};
+						return requireResultRecord(
+							toolName === EXPLORE_KNOWLEDGE_TOOL_NAME
+								? await this.knowledgeSearch.explore(input.arguments, context)
+								: await this.knowledgeSearch.find(input.arguments, context)
+						);
 					}
 					if (input.toolName === WEB_NAVIGATE_TOOL_NAME) {
 						if (!this.webNavigator) {
@@ -800,7 +883,12 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			if (input.signal.aborted) throw error;
 			throw new AgenticChatProviderExecutionError(
 				'read_tool_execution_failed',
-				readToolFailureClass(error, webResearchTool),
+				knowledgeSearchTool
+					? // An argument the model can correct is replayed to it; anything else is not.
+						error instanceof GuidedSearchError
+						? 'permanent'
+						: 'unknown'
+					: readToolFailureClass(error, webResearchTool),
 				canonicalError(error)
 			);
 		}
@@ -821,6 +909,13 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			turnSecurityState.webUrls.observeVisitResult(payload);
 		if (turnSecurityState && toolName === WEB_NAVIGATE_TOOL_NAME)
 			turnSecurityState.webUrls.observeNavigationResult(payload);
+		// Pages an outside hop read came from its own reviewed searches: a later web_visit in
+		// this turn may open them, like any search result.
+		if (turnSecurityState && toolName === EXPLORE_KNOWLEDGE_TOOL_NAME) {
+			const explored = requireOptionalRecord(payload.knowledge_explore);
+			if (explored && Array.isArray(explored.pages))
+				turnSecurityState.webUrls.observeSearchResult({ results: explored.pages });
+		}
 		// Control decisions record their author on the durable row so a reviewer
 		// veto is never mistaken for acting-model hesitation after the fact.
 		if (input.decidedBy && isAgenticChatControlToolNameV1(input.toolName)) {
@@ -855,7 +950,10 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		// `get_email_message` and `search_email_messages` both reach mailbox
 		// content, so a later mailbox search in the same turn is refused; the three
 		// content-free email account tools deliberately do not taint.
-		if (turnSecurityState && contributesPrivateContentTaint(input.toolName)) {
+		if (
+			turnSecurityState &&
+			(contributesPrivateContentTaint(input.toolName) || knowledgeSearchTool)
+		) {
 			turnSecurityState.privateContentRead = true;
 		}
 
@@ -920,6 +1018,50 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 	 * failure refuses the search, and the refusal steers the model to
 	 * scan_email_inbox, which sends no model-written text to Gmail.
 	 */
+	/**
+	 * May this web search leave the worker? The same rule a `web_search` call gets: a query the
+	 * user wrote out passes; any other goes to the isolated search reviewer. Cached per turn,
+	 * and a review that could not reach a verdict throws (the hop fails, nothing is searched).
+	 */
+	private async authorizeKnowledgeSearchQuery(
+		input: Parameters<AgenticChatReadToolPortV1['execute']>[0],
+		state: TurnSecurityState,
+		query: string,
+		signal: AbortSignal
+	): Promise<boolean> {
+		const normalized = normalizeAgenticChatWebSearchArguments({ query });
+		if (!normalized) return false;
+		const provenance = evaluateAgenticChatWebEgressProvenance({
+			toolName: 'web_search',
+			arguments: normalized,
+			userMessage: String(input.executionInput.requestPayload.message ?? ''),
+			knownResearchUrl: false
+		});
+		if (provenance.allowed) return true;
+		if (provenance.reason !== 'search_review_required') return false;
+		if (!this.webSearchReviewer || !input.processingToken)
+			throw providerError('read_tool_research_review_unavailable', 'transient_infra');
+		const key = canonicalizeAgenticChatJson(normalized);
+		let review = state.searchReviews.get(key);
+		if (!review) {
+			if (state.searchReviews.size >= 32 || state.reviewIndex >= 32)
+				throw providerError('read_tool_egress_security_capacity_exceeded', 'permanent');
+			const started = this.webSearchReviewer.authorize({
+				arguments: normalized,
+				executionInput: input.executionInput,
+				processingToken: input.processingToken,
+				reviewIndex: ++state.reviewIndex,
+				signal
+			});
+			review = started;
+			state.searchReviews.set(key, started);
+			started.catch(() => {
+				if (state.searchReviews.get(key) === started) state.searchReviews.delete(key);
+			});
+		}
+		return review;
+	}
+
 	private async authorizeMailboxSearch(
 		input: Parameters<AgenticChatReadToolPortV1['execute']>[0],
 		state: TurnSecurityState,
@@ -1150,6 +1292,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 	private readonly webResearch: WebResearchPort | undefined;
 	private readonly usage: TavilyUsageLogger | undefined;
 	private readonly webNavigator: WebNavigatePort | undefined;
+	private readonly knowledgeSearch: KnowledgeSearchPort | undefined;
 	private readonly emailSearchProvenance: EmailSearchProvenanceJudge | undefined;
 	private readonly webSearchReviewer: AgenticChatWebSearchReviewPort | undefined;
 }

@@ -28,6 +28,7 @@ import {
 	type KnowledgeWriteBatch
 } from '@buildos/shared-agent-ops/knowledge';
 import {
+	accountKey,
 	isSocialUrl,
 	parseSocialProfile,
 	profileFitsKind,
@@ -46,7 +47,7 @@ function askedFor(fields: readonly string[], field: string, kind: KnowledgeKind)
 	const defaults = DEFAULT_ENRICH_FIELDS[kind] ?? [];
 	return !(fields.length === defaults.length && defaults.every((f) => fields.includes(f)));
 }
-export const KNOWLEDGE_ENRICH_PROMPT_VERSION = 4;
+export const KNOWLEDGE_ENRICH_PROMPT_VERSION = 5;
 export const MAX_PAGES_PER_TARGET = 3;
 /** Searches per entry (about $0.001 each; the run's budget still caps the total). */
 export const MAX_QUERIES_PER_TARGET = 3;
@@ -222,7 +223,7 @@ Rules:
 - When a page is itself the entry's profile or own website, report that page's url (from its page tag) as profile_url or homepage, and quote the words on the page that show whose it is. For a person, homepage is their own site, never their employer's.
 - When a page gives only a handle for a profile (@name), write the standard link for that platform without inventing anything else: instagram.com/name, x.com/name, youtube.com/@name.
 - Social accounts need proof, because many people and companies share a name. Report a profile_url only when this page is that account, or this page is about the entry and shows the link or handle as the entry's own. Never report an account because its name matches, and never one you only believe exists. One fact per account. A personal LinkedIn (linkedin.com/in/…) belongs to a person; a company page (linkedin.com/company/…) to an organization.
-- For an organization only: also list under "people" each person a page names as owning, founding, running or working at it, with their role there as "title": a role as the page writes it (CEO, Co-host, Lead Instructor), left out when the page gives only a phrase like "hosted by". Full names only (first and last), at most 6, each with "page" and an exact "quote" that contains the name. Leave "people" out for anything that is not an organization.
+- For an organization only: also list under "people" the people a page presents as its leadership, and nobody else: its owners, founders, executives (CEO, president, chief officers, managing partners or directors) and board members. Give each a "role", one of "founder", "owner", "executive", "board", and a "title" exactly as the page writes it (CEO, Co-founder, Board Chair). Staff, instructors, hosts, contributors, advisors, customers and anyone a page only mentions are not leadership: leave them out. Full names only (first and last), at most 5, most senior first, each with "page" and an exact "quote" that contains the name. An empty list is the right answer for most pages. Leave "people" out for anything that is not an organization.
 - Values: plain text, URLs as written on the page, dates as YYYY or YYYY-MM-DD.
 - For relationships (value is another entry, such as an employer), give "object": {"kind": "...", "name": "..."} and no "value". For everything else give "value" and no "object".
 - "qualifiers": only the keys listed for that predicate, when the page states them, for example {"title":"Producer","current":true}. Otherwise leave it out.
@@ -231,10 +232,11 @@ Rules:
 - Report each fact once. When several pages say the same thing in different words (a city written three ways, the same job title on two profiles), report it once, from the page that states it most fully.
 - located_in for an organization comes only from words that say where it is based: "based in", "headquartered in", "located in", or its address. A town in a class, event or tour listing is where something happens, not where the organization is: do not report it.
 - An account name or handle (@name) is not another name for the entry: never report it as alias.
+- works_at is for employers: the companies and organizations a person worked for, most recent first, five at most. A course, class, unit, program or show segment they ran is part of a job, not an employer: put it in the description if it matters.
 - For a person: never report a home address, birthday or family details. Report a phone number or email only when it is one of the predicates you are given, the page publishes it as this person's own contact (not a company switchboard or someone else's), and the quote contains it.
 
 Return JSON only:
-{"pages":[{"page":1,"about_entity":true}],"facts":[{"predicate":"headline","value":"...","page":1,"quote":"...","confidence":0.9},{"predicate":"works_at","object":{"kind":"org","name":"..."},"qualifiers":{"title":"..."},"page":1,"quote":"...","confidence":0.9}],"people":[{"name":"...","title":"...","page":1,"quote":"..."}]}`;
+{"pages":[{"page":1,"about_entity":true}],"facts":[{"predicate":"headline","value":"...","page":1,"quote":"...","confidence":0.9},{"predicate":"works_at","object":{"kind":"org","name":"..."},"qualifiers":{"title":"..."},"page":1,"quote":"...","confidence":0.9}],"people":[{"name":"...","role":"executive","title":"...","page":1,"quote":"..."}]}`;
 
 const KIND_WORDS: Partial<Record<KnowledgeKind, string>> = {
 	person: 'a person',
@@ -414,6 +416,11 @@ export function validateEnrichment(
 		 * description) is kept, not replaced by the same thing in other words.
 		 */
 		keepExistingSingles?: boolean;
+		/**
+		 * Domains known to be the entry's own website. An organization's leadership is taken as
+		 * stated only from its own pages; named by anyone else, it is saved for the user to check.
+		 */
+		ownDomains?: readonly string[];
 	}
 ): ValidatedEnrichment {
 	const dropped: ValidatedEnrichment['dropped'] = [];
@@ -429,6 +436,16 @@ export function validateEnrichment(
 	const existing = new Set(input.existing.map((e) => `${e.predicate}|${squash(e.value)}`));
 	const allowed = new Set(input.fields);
 	const singles = new Set<string>();
+	// Accounts already on the entry, whatever address they were saved with.
+	const knownAccounts = new Set(
+		input.existing
+			.filter((e) => e.predicate === 'profile_url')
+			.map((e) => parseSocialProfile(e.value))
+			.filter((p): p is NonNullable<typeof p> => Boolean(p))
+			.map(accountKey)
+	);
+	const relatedSeen = new Set<string>();
+	const relatedCount = new Map<string, number>();
 	const sourceRefs = new Map<number, string>();
 	const objectRefs = new Map<string, string>();
 	let kept = 0;
@@ -563,6 +580,18 @@ export function validateEnrichment(
 				drop('already known');
 				continue;
 			}
+			// The same employer twice (once per page) is one fact, and a long biography is not
+			// a reason to create a dozen organizations: the first few it names are kept.
+			if (relatedSeen.has(`${predicate}|${normalizeKnowledgeName(name)}`)) {
+				drop('already reported this round');
+				continue;
+			}
+			if ((relatedCount.get(predicate) ?? 0) >= MAX_RELATED_PER_PREDICATE) {
+				drop('enough of these for one round');
+				continue;
+			}
+			relatedSeen.add(`${predicate}|${normalizeKnowledgeName(name)}`);
+			relatedCount.set(predicate, (relatedCount.get(predicate) ?? 0) + 1);
 			const key = `${kind}|${normalizeKnowledgeName(name)}`;
 			let ref = objectRefs.get(key);
 			if (!ref) {
@@ -580,6 +609,15 @@ export function validateEnrichment(
 				drop('no value');
 				continue;
 			}
+			// A shared mailbox (info@, contact@) is the company's, never a person's own address.
+			if (
+				predicate === 'email' &&
+				input.kind === 'person' &&
+				SHARED_MAILBOXES.has(value.split('@')[0]!.toLowerCase())
+			) {
+				drop('a shared mailbox, not their own');
+				continue;
+			}
 			let profileSupported = false;
 			if (predicate === 'profile_url' && isSocialUrl(value)) {
 				// An address on a social platform must be an account (not a post or a share
@@ -593,6 +631,11 @@ export function validateEnrichment(
 					drop('wrong kind of account');
 					continue;
 				}
+				if (knownAccounts.has(accountKey(profile))) {
+					drop('already known');
+					continue;
+				}
+				knownAccounts.add(accountKey(profile));
 				value = profile.url;
 				common.qualifiers = {
 					...(common.qualifiers ?? {}),
@@ -620,18 +663,35 @@ export function validateEnrichment(
 		kept++;
 	}
 
-	// An organization's people. A company's entry cannot hold "who runs it", so each person a
-	// page names with a role there becomes (or joins) their own entry, pointing at this one.
+	// An organization's leadership (DJ's rule, 2026-11-22): only people a page presents as owning,
+	// founding, running or governing it, and only a few. A company's entry cannot hold "who runs
+	// it", so each becomes (or joins) their own entry, pointing at this one. Whether a role is
+	// leadership is the model's structured answer ("role"), never read out of the title's words.
 	if (input.kind === 'org') {
+		// Its own website, known before this round or confirmed by it.
+		const ownDomains = [
+			...(input.ownDomains ?? []),
+			...batch.facts
+				.filter((f) => f.predicate === 'homepage' && f.status !== 'suggested')
+				.map((f) => hostOfUrl(String(f.value ?? '')))
+		].filter(Boolean);
+		const accepted: Array<{
+			name: string;
+			title: string;
+			quote: string;
+			pageNumber: number;
+			rank: number;
+			own: boolean;
+		}> = [];
 		const seen = new Set<string>();
 		for (const item of Array.isArray(answer.people) ? answer.people : []) {
-			if (seen.size >= MAX_PEOPLE_PER_ORG) break;
 			const person = (item && typeof item === 'object' ? item : {}) as Record<
 				string,
 				unknown
 			>;
 			const name = typeof person.name === 'string' ? person.name.trim().slice(0, 120) : '';
 			const title = typeof person.title === 'string' ? person.title.trim().slice(0, 160) : '';
+			const role = typeof person.role === 'string' ? person.role.trim().toLowerCase() : '';
 			const pageNumber = typeof person.page === 'number' ? person.page : Number(person.page);
 			const quote = typeof person.quote === 'string' ? person.quote.trim() : '';
 			const page = input.pages[pageNumber - 1];
@@ -639,6 +699,11 @@ export function validateEnrichment(
 			const key = normalizeKnowledgeName(name);
 			if (!name || !isSpecificPersonName(name) || seen.has(key)) {
 				if (name && !seen.has(key)) drop('not a full name');
+				continue;
+			}
+			const rank = LEADERSHIP_ROLES.get(role);
+			if (rank === undefined) {
+				drop('not presented as leadership');
 				continue;
 			}
 			if (!page || pageVerdicts.get(pageNumber) === false) {
@@ -654,11 +719,37 @@ export function validateEnrichment(
 				drop('quote not on the page');
 				continue;
 			}
+			// A leadership role is a stated one: the title has to be the page's own words.
+			if (!title || !pageText.includes(squash(title))) {
+				drop('no role stated on the page');
+				continue;
+			}
 			seen.add(key);
-			let sourceRef = sourceRefs.get(pageNumber);
+			const host = hostOfUrl(page.url);
+			accepted.push({
+				name,
+				title,
+				quote,
+				pageNumber,
+				rank,
+				own: Boolean(host) && ownDomains.some((d) => hostMatchesDomain(host, d))
+			});
+		}
+		// Not greedy: the organization's own pages before anyone else's, those who run it before
+		// its board, and then only the first few.
+		accepted.sort((a, b) => Number(b.own) - Number(a.own) || a.rank - b.rank);
+		accepted.slice(MAX_PEOPLE_PER_ORG).forEach(() =>
+			dropped.push({
+				predicate: 'works_at',
+				reason: 'enough people for one organization'
+			})
+		);
+		accepted.slice(0, MAX_PEOPLE_PER_ORG).forEach((person, i) => {
+			const page = input.pages[person.pageNumber - 1]!;
+			let sourceRef = sourceRefs.get(person.pageNumber);
 			if (!sourceRef) {
-				sourceRef = `page${pageNumber}`;
-				sourceRefs.set(pageNumber, sourceRef);
+				sourceRef = `page${person.pageNumber}`;
+				sourceRefs.set(person.pageNumber, sourceRef);
 				batch.sources!.push({
 					ref: sourceRef,
 					type: 'web',
@@ -666,32 +757,70 @@ export function validateEnrichment(
 					...(page.title ? { title: page.title.slice(0, 500) } : {})
 				});
 			}
-			const ref = `person${seen.size}`;
-			batch.entities.push({ ref, kind: 'person', name });
+			const ref = `person${i + 1}`;
+			batch.entities.push({ ref, kind: 'person', name: person.name });
 			batch.facts.push({
 				subject: ref,
 				predicate: 'works_at',
 				object: input.entityId,
 				sources: [sourceRef],
-				quote: quote.slice(0, 1000),
-				confidence: 0.85,
-				// The title must be the page's own words to be taken as stated.
+				quote: person.quote.slice(0, 1000),
+				confidence: person.own ? 0.9 : 0.6,
+				// Stated by the organization itself: saved. Named by anyone else: for the user to check.
 				status:
-					input.suggestOnly || input.suggestPages?.has(pageNumber)
+					!person.own || input.suggestOnly || input.suggestPages?.has(person.pageNumber)
 						? 'suggested'
 						: 'active',
-				...(title && pageText.includes(squash(title))
-					? { qualifiers: { title, current: true } }
-					: {})
+				qualifiers: { title: person.title, current: true }
 			});
 			kept++;
-		}
+		});
 	}
 	return { batch, kept, dropped };
 }
 
-/** How many people one research round may attach to an organization. */
-const MAX_PEOPLE_PER_ORG = 6;
+/** How many people one research round may attach to an organization: its leadership, not its staff list. */
+const MAX_PEOPLE_PER_ORG = 5;
+/** The "role" values that count as leadership, those who run it ahead of those who govern it. */
+const LEADERSHIP_ROLES = new Map<string, number>([
+	['founder', 0],
+	['owner', 0],
+	['executive', 0],
+	['board', 1]
+]);
+/** A URL's host without "www." (a URL format, not prose); empty when it is not a URL. */
+function hostOfUrl(url: string): string {
+	try {
+		const withScheme = url.includes('://') ? url : `https://${url}`;
+		return new URL(withScheme).hostname.replace(/^www\./, '').toLowerCase();
+	} catch {
+		return '';
+	}
+}
+/** How many employers, schools and the like one round may attach to an entry, per kind of link. */
+const MAX_RELATED_PER_PREDICATE = 5;
+/** The part before "@" of an address anyone at a company reads (an email format, not prose). */
+const SHARED_MAILBOXES = new Set([
+	'info',
+	'contact',
+	'hello',
+	'support',
+	'admin',
+	'sales',
+	'office',
+	'team',
+	'press',
+	'media',
+	'help',
+	'inquiries',
+	'enquiries',
+	'booking',
+	'bookings',
+	'mail',
+	'general',
+	'service',
+	'hi'
+]);
 
 /** Google's knowledge panel as Serper returns it (bounded by shared-agent-ops). */
 export interface EnrichKnowledgePanel {
@@ -842,7 +971,7 @@ const PLAYBOOKS: Partial<Record<KnowledgeKind, { about: string[]; searching: str
 			'- "Located in" is where it is based: its office, shop or home town. A place where it only runs a class or event, ships to, or has a customer is not where it is located: leave "Located in" out unless a page says where it is based.',
 			'- Same-name organizations are common. A page counts only when it agrees with a lead (website, city, industry, people who work there).',
 			'- Social accounts: its LinkedIn company page first, then Instagram, YouTube, X or Facebook. Its own website is the surest source: the header and footer link to its accounts, and those links are read for you from any page of its site that gets opened.',
-			'- People: who owns, founded or runs it, when a page names them with their role (an about, team, leadership or instructors page).'
+			'- People: only its leadership (who owns, founded or runs it, or sits on its board), when a page names them with that role (an about, team or leadership page). Its staff are not wanted.'
 		],
 		searching:
 			'- Where it is found: its own site first (home, about, contact, team pages), then its LinkedIn company page, press coverage, directories and registries. When the website is unknown, search the name with its city, industry or a person who works there to find it. For its LinkedIn page search the name with "linkedin company" and a lead; for who runs it, its about, team or leadership page.'
@@ -994,7 +1123,11 @@ export function researchPlanUserPrompt(input: ResearchPlanInput): string {
 					`- Still missing: ${input.previous.stillMissing.join(', ') || 'nothing'}`
 				].join('\n')
 			: '',
-		`## Now\nReturn the JSON: the entry's real type and up to ${MAX_PLANNED_QUERIES} searches.`
+		`## Now\nReturn the JSON: the entry's real type and up to ${input.previous ? 2 : MAX_PLANNED_QUERIES} searches.${
+			input.profiles?.want.length
+				? ` One of them must look for its ${input.profiles.want[0]} account: the name, a lead and the word "${input.profiles.want[0]}".`
+				: ''
+		}`
 	]
 		.filter(Boolean)
 		.join('\n\n');

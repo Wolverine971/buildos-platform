@@ -703,6 +703,14 @@
 		void refreshDuplicates();
 	}
 
+	/** An import was taken back: the list, the open card and the duplicate questions are stale. */
+	function onImportUndone() {
+		if (selected) closeCard();
+		forgetWhere(() => true);
+		void refresh();
+		void refreshDuplicates();
+	}
+
 	onMount(() => {
 		void refreshDuplicates();
 		const stopListening = onKnowledgeResearchSettled(onResearchSettled);
@@ -1548,7 +1556,12 @@
 	/>
 {/if}
 
-<KnowledgeImportDialog isOpen={importOpen} onClose={() => (importOpen = false)} {onImported} />
+<KnowledgeImportDialog
+	isOpen={importOpen}
+	onClose={() => (importOpen = false)}
+	{onImported}
+	onUndone={onImportUndone}
+/>
 
 <Modal isOpen={addOpen} onClose={() => (addOpen = false)} title="Add to your knowledge" size="sm">
 	<form class="flex flex-col gap-3 p-4 sm:p-5" onsubmit={addEntry}>

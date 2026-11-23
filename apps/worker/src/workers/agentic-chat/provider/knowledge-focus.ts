@@ -10,6 +10,7 @@
 
 import {
 	readKnowledgeFocusSection,
+	readKnowledgeSelectionSection,
 	type KnowledgeFocusRef
 } from '@buildos/shared-agent-ops/knowledge';
 import type { AgenticChatTurnProviderRequestV1 } from './contracts';
@@ -30,5 +31,19 @@ export function appendKnowledgeFocus(
 	executionInput: Pick<AgenticChatWorkerExecutionInputV1, 'artifact'>
 ): AgenticChatTurnProviderRequestV1 {
 	const section = readKnowledgeFocusSection(executionInput.artifact.prepared.promptSections);
+	return section ? appendSystemInstruction(request, section.content) : request;
+}
+
+/**
+ * Guided search (2026-11-22): the entries the user ticked in the Entities tray before sending
+ * this message. Web admission loaded each with the user's own access and appended one section
+ * (`knowledge_selection`, see guided-search.ts in shared-agent-ops); here it goes after the
+ * user's message, so "find the people at these" has something to point at.
+ */
+export function appendKnowledgeSelection(
+	request: AgenticChatTurnProviderRequestV1,
+	executionInput: Pick<AgenticChatWorkerExecutionInputV1, 'artifact'>
+): AgenticChatTurnProviderRequestV1 {
+	const section = readKnowledgeSelectionSection(executionInput.artifact.prepared.promptSections);
 	return section ? appendSystemInstruction(request, section.content) : request;
 }

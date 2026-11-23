@@ -138,6 +138,11 @@ export interface UIMessage {
 		| 'document_changes'
 		/** Tables the agent wrote this turn; `data.changes` is TableChangeCard[] (BuildOS Tables). */
 		| 'table_changes'
+		/**
+		 * Guided search (2026-11-22): the knowledge entries a search brought back this turn,
+		 * selectable; `data.tray` is a KnowledgeTray (knowledge-search-tray.ts).
+		 */
+		| 'knowledge_entities'
 		/** Freshness radar card (Tasker 88); `data.card` is a FreshnessCardPayloadV1. */
 		| 'freshness_card'
 		/** Chat checkpoint receipt (tasker/95); `data.receipt` is a CaptureReceipt. Never sent to the model. */

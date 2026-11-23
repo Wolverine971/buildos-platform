@@ -143,6 +143,9 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 			'query_knowledge',
 			'record_knowledge',
 			'enrich_knowledge',
+			// 2026-11-22 guided search: inside the graph, then outward a hop at a time.
+			'find_in_knowledge',
+			'explore_knowledge',
 			// 2026-11-18 tasker 168: knowledge in shared projects, both surfaces.
 			'get_project_knowledge_lens',
 			'request_knowledge_access'

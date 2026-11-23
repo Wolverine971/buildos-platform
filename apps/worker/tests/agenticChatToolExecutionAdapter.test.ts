@@ -15,11 +15,16 @@ import {
 import type { AgenticChatTurnProviderClientRequestV1 } from '../src/workers/agentic-chat/provider/contracts';
 import type { WebResearchPort } from '@buildos/shared-agent-ops';
 import type { WebNavigatePort } from '../src/workers/agentic-chat/tools/web-navigate';
+import type {
+	KnowledgeSearchCallContext,
+	KnowledgeSearchPort
+} from '../src/workers/agentic-chat/tools/knowledge-search';
 import type { TavilyUsageLogger } from '../src/workers/agentic-chat/tools/tavily-usage';
 import type { EmailSearchProvenanceJudge } from '../src/workers/agentic-chat/tools/email-search-provenance';
 import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/turn/execution-input';
 import {
 	AGENTIC_CHAT_CONTROL_TOOL_NAMES_V1,
+	AGENTIC_CHAT_KNOWLEDGE_SEARCH_TOOL_NAMES_V1,
 	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1,
 	AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1,
 	AgenticChatToolExecutionAdapter,
@@ -137,6 +142,7 @@ function adapterWith(
 		webResearch?: WebResearchPort;
 		usage?: TavilyUsageLogger;
 		webNavigator?: WebNavigatePort;
+		knowledgeSearch?: KnowledgeSearchPort;
 		webSearchReviewer?: AgenticChatWebSearchReviewPort;
 		securityNow?: () => number;
 		maxTurnSecurityStates?: number;
@@ -383,8 +389,14 @@ describe('AgenticChatToolExecutionAdapter', () => {
 		const composedNames = [
 			...AGENTIC_CHAT_CONTROL_TOOL_NAMES_V1,
 			...AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1,
-			...AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1
+			...AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1,
+			// Guided search (2026-11-22): run through the injected knowledge-search port.
+			...AGENTIC_CHAT_KNOWLEDGE_SEARCH_TOOL_NAMES_V1
 		];
+		expect([...AGENTIC_CHAT_KNOWLEDGE_SEARCH_TOOL_NAMES_V1]).toEqual([
+			'find_in_knowledge',
+			'explore_knowledge'
+		]);
 		expect([...AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1].sort()).toEqual(
 			composedNames.sort()
 		);
@@ -1935,6 +1947,176 @@ describe('AgenticChatToolExecutionAdapter', () => {
 						{ userMessage: `Bids on ${url}` }
 					)
 				)
+			).rejects.toMatchObject({
+				code: 'read_tool_execution_failed',
+				failureClass: 'transient_infra'
+			});
+		});
+	});
+
+	// Guided search (2026-11-22): find_in_knowledge and explore_knowledge run through the
+	// injected port; every query an outside hop sends gets the review a web_search gets.
+	describe('guided search', () => {
+		const TENABLE = '44444444-4444-4444-8444-444444444444';
+
+		function searchPort(
+			explore: (
+				args: Record<string, unknown>,
+				context: KnowledgeSearchCallContext
+			) => Promise<Record<string, unknown>> = async () => ({
+				knowledge_explore: { hop: 1, entities: [] },
+				message: 'ok'
+			})
+		) {
+			return {
+				find: vi.fn(async (_args: Record<string, unknown>, context) => {
+					context.onStep?.({
+						kind: 'lookup',
+						verb: 'Pulled',
+						target: 'people',
+						outcome: '3'
+					});
+					return { knowledge_find: { hop: 0, entities: [] }, message: 'ok' };
+				}),
+				explore: vi.fn(explore)
+			} satisfies KnowledgeSearchPort;
+		}
+
+		it('runs the inside search for the claimed user and streams its steps', async () => {
+			const knowledgeSearch = searchPort();
+			const adapter = adapterWith(fakeSharedClient(), accessStub(), { knowledgeSearch });
+			const onProgress = vi.fn();
+			const result = await adapter.execute({
+				...requestFor('find_in_knowledge', {
+					goal: 'Who do I know near Baltimore',
+					// A user id in the arguments is never an identity.
+					user_id: 'someone-else'
+				}),
+				onProgress
+			});
+			expect(result.result).toMatchObject({ knowledge_find: { hop: 0 } });
+			expect(result.toolCategory).toBe('search');
+			const context = knowledgeSearch.find.mock.calls[0]![1];
+			expect(context).toMatchObject({
+				userId: USER_ID,
+				chatSessionId: executionInput().claim.sessionId,
+				turnRunId: executionInput().claim.turnRunId
+			});
+			expect(onProgress).toHaveBeenCalledWith({
+				message: 'Pulled · people · 3',
+				data: { kind: 'lookup', verb: 'Pulled', target: 'people', outcome: '3' }
+			});
+		});
+
+		it('clears a query the user wrote, sends any other to the search reviewer, and caches the verdict', async () => {
+			const verdicts: Array<[string, boolean]> = [];
+			const knowledgeSearch = searchPort(async (args, context) => {
+				for (const search of args.searches as Array<{ query: string }>)
+					verdicts.push([search.query, await context.authorizeQuery!(search.query)]);
+				return { knowledge_explore: { hop: 1, entities: [] }, message: 'ok' };
+			});
+			const authorize = vi.fn(
+				async (input: { arguments: Record<string, unknown> }) =>
+					!String(input.arguments.query).includes('Falcon')
+			);
+			const adapter = adapterWith(fakeSharedClient(), accessStub(), {
+				knowledgeSearch,
+				webSearchReviewer: { authorize } as never
+			});
+			const request = requestFor(
+				'explore_knowledge',
+				{
+					goal: 'Software companies near Baltimore',
+					searches: [
+						{ query: 'software companies in Baltimore' },
+						{ query: 'Tenable leadership team', about_entity_id: TENABLE },
+						{ query: 'Project Falcon revenue plan' }
+					]
+				},
+				{ userMessage: 'Search for software companies in Baltimore.' }
+			);
+			await adapter.execute(request);
+			expect(verdicts).toEqual([
+				['software companies in Baltimore', true],
+				['Tenable leadership team', true],
+				['Project Falcon revenue plan', false]
+			]);
+			// The query the user wrote out needed no review; the other two got one each.
+			expect(authorize.mock.calls.map((call) => call[0].arguments.query)).toEqual([
+				'Tenable leadership team',
+				'Project Falcon revenue plan'
+			]);
+			// Same turn, same queries: the verdicts are reused.
+			await adapter.execute(request);
+			expect(authorize).toHaveBeenCalledTimes(2);
+		});
+
+		it('fails the hop when a query cannot be reviewed, and lets a later web_visit open a page it read', async () => {
+			const page = 'https://www.tenable.com/about-tenable/leadership';
+			const knowledgeSearch = searchPort(async (args, context) => {
+				await context.authorizeQuery!(
+					(args.searches as Array<{ query: string }>)[0]!.query
+				);
+				return {
+					knowledge_explore: { hop: 1, entities: [], pages: [{ url: page, title: 'x' }] },
+					message: 'ok'
+				};
+			});
+			const noReviewer = adapterWith(fakeSharedClient(), accessStub(), { knowledgeSearch });
+			const request = requestFor(
+				'explore_knowledge',
+				{ goal: 'g', searches: [{ query: 'Tenable leadership team' }] },
+				{ userMessage: 'Find the people who run these' }
+			);
+			await expect(noReviewer.execute(request)).rejects.toMatchObject({
+				code: 'read_tool_research_review_unavailable'
+			});
+
+			const visit = vi.fn(async () => ({ url: page, content: 'Leadership' }));
+			const adapter = adapterWith(fakeSharedClient(), accessStub(), {
+				knowledgeSearch,
+				webResearch: { visit },
+				webSearchReviewer: { authorize: vi.fn(async () => true) } as never
+			});
+			await expect(
+				adapter.execute(
+					requestFor('web_visit', { url: page }, { userMessage: 'Find the people' })
+				)
+			).rejects.toMatchObject({ code: 'read_tool_egress_provenance_required' });
+			await adapter.execute(request);
+			await adapter.execute(
+				requestFor('web_visit', { url: page }, { userMessage: 'Find the people' })
+			);
+			expect(visit).toHaveBeenCalledOnce();
+		});
+
+		it('replays an argument error to the model and hides anything else', async () => {
+			const { GuidedSearchError } = await import('@buildos/shared-agent-ops/knowledge');
+			const adapter = adapterWith(fakeSharedClient(), accessStub(), {
+				knowledgeSearch: searchPort(async (args) => {
+					if (!args.goal) throw new GuidedSearchError('goal is required');
+					throw new Error('relation "knowledge_runs" does not exist');
+				})
+			});
+			await expect(
+				adapter.execute(requestFor('explore_knowledge', { searches: [] }))
+			).rejects.toMatchObject({
+				code: 'read_tool_execution_failed',
+				failureClass: 'permanent',
+				message: 'goal is required'
+			});
+			await expect(
+				adapter.execute(requestFor('explore_knowledge', { goal: 'g', searches: [] }))
+			).rejects.toMatchObject({
+				code: 'read_tool_execution_failed',
+				failureClass: 'unknown'
+			});
+		});
+
+		it('reports the tools as not configured when no port is wired', async () => {
+			const adapter = adapterWith(fakeSharedClient(), accessStub());
+			await expect(
+				adapter.execute(requestFor('find_in_knowledge', { goal: 'g' }))
 			).rejects.toMatchObject({
 				code: 'read_tool_execution_failed',
 				failureClass: 'transient_infra'

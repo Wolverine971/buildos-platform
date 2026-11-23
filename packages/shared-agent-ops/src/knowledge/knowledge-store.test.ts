@@ -1,7 +1,7 @@
 // packages/shared-agent-ops/src/knowledge/knowledge-store.test.ts
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { parseContactFile, planContactImport } from './contacts-import';
+import { parseContactFile, planContactImport, planContactImportWithRefs } from './contacts-import';
 import {
 	KNOWLEDGE_FOCUS_GUIDANCE,
 	loadKnowledgeFocusBrief,
@@ -9,7 +9,7 @@ import {
 	renderKnowledgeFocusBrief
 } from './focus-brief';
 import { KnowledgeStore } from './knowledge-store';
-import { normalizeKnowledgeName } from './normalize';
+import { foldOrgName, normalizeKnowledgeName } from './normalize';
 
 // ---------------------------------------------------------------------------
 // A small in-memory stand-in for the PostgREST client: enough of the query builder for
@@ -40,6 +40,8 @@ function withGenerated(table: string, row: Row): Row {
 		out.merged_into_id ??= null;
 		out.owner_user_id ??= null;
 		out.normalized_name = normalizeKnowledgeName(out.name);
+		out.normalized_org_name = out.kind === 'org' ? foldOrgName(out.name) : null;
+		out.run_id ??= null;
 	}
 	if (table === 'knowledge_facts') {
 		out.status ??= 'active';
@@ -341,8 +343,10 @@ class FakeQuery implements PromiseLike<{ data: any; error: any }> {
 			const hit = all.filter(match);
 			for (const r of hit) {
 				Object.assign(r, this.patch);
-				if (this.table === 'knowledge_entities' && this.patch.name)
+				if (this.table === 'knowledge_entities' && this.patch.name) {
 					r.normalized_name = normalizeKnowledgeName(r.name);
+					r.normalized_org_name = r.kind === 'org' ? foldOrgName(r.name) : null;
+				}
 			}
 			return this.shape(hit);
 		}
@@ -1353,9 +1357,9 @@ describe('focus brief: everything known about one entry, before the chat starts'
 		const { db, alice, store, org, person } = await griffinWorld();
 		const brief = (await loadKnowledgeFocusBrief(store, db, alice, org, { textSearch: true }))!;
 		const chat = renderKnowledgeFocusBlock(brief);
-		expect(chat.startsWith("## This chat is about one entry in the user's knowledge graph")).toBe(
-			true
-		);
+		expect(
+			chat.startsWith("## This chat is about one entry in the user's knowledge graph")
+		).toBe(true);
 		expect(chat.indexOf('## In focus:')).toBeLessThan(chat.indexOf('## Your job in this chat'));
 
 		const research = renderKnowledgeFocusBrief(brief, { audience: 'research' });
@@ -1370,5 +1374,213 @@ describe('focus brief: everything known about one entry, before the chat starts'
 		const { db, bob, bobStore, org } = await griffinWorld();
 		expect(await loadKnowledgeFocusBrief(bobStore, db, bob, org)).toBeNull();
 		expect(await loadKnowledgeFocusBrief(bobStore, db, bob, 'not-an-id')).toBeNull();
+	});
+});
+
+describe('a phone import after a LinkedIn import', () => {
+	const LINKEDIN_FIRST = `First Name,Last Name,URL,Email Address,Company,Position,Connected On
+Maya,Chen,https://www.linkedin.com/in/maya-chen,,The Cadre,Deployment Strategist,03 Feb 2025
+Michael,Smith,https://www.linkedin.com/in/michael-smith,,Palantir,Engineer,16 Nov 2026
+`;
+	const PHONE = [
+		// Same full name as the LinkedIn person, with an older job on the card.
+		'BEGIN:VCARD\nVERSION:3.0\nN:Chen;Maya;;;\nFN:Maya Chen\nORG:OldCo;\nTITLE:Analyst\nTEL;type=CELL:(410) 555-0101\nEND:VCARD',
+		// A nickname of the other LinkedIn person: a new card (the endpoint asks "same person?").
+		'BEGIN:VCARD\nVERSION:3.0\nN:Smith;Mike;;;\nFN:Mike Smith\nTEL;type=CELL:(410) 555-0102\nEND:VCARD',
+		// Someone new, at the LinkedIn company written without "The".
+		'BEGIN:VCARD\nVERSION:3.0\nN:Park;Jin;;;\nFN:Jin Park\nORG:Cadre;\nTEL;type=CELL:(410) 555-0103\nEND:VCARD',
+		'BEGIN:VCARD\nVERSION:3.0\nN:;;;;\nFN:Corner Dental\nORG:Corner Dental;\nTEL;type=WORK:(410) 555-0144\nX-ABShowAs:COMPANY\nEND:VCARD'
+	].join('\n');
+
+	async function linkedInThenPhone(options: Parameters<KnowledgeStore['record']>[1]) {
+		const ctx = setup();
+		const li = parseContactFile('Connections.csv', LINKEDIN_FIRST)!;
+		const first = planContactImport(li.contacts, { format: li.format, sourceRef: 'file' });
+		first.sources = [{ ref: 'file', type: 'import', title: 'Connections.csv' }];
+		await ctx.store.record(first, { via: 'import' });
+		const before = JSON.stringify([
+			ctx.db.rows('knowledge_entities'),
+			ctx.db.rows('knowledge_facts'),
+			ctx.db.rows('knowledge_entity_keys'),
+			ctx.db.rows('knowledge_merge_candidates'),
+			ctx.db.rows('knowledge_sources')
+		]);
+		const phone = parseContactFile('contacts.vcf', PHONE)!;
+		const { batch } = planContactImportWithRefs(phone.contacts, {
+			format: phone.format,
+			sourceRef: 'file'
+		});
+		batch.sources = [{ ref: 'file', type: 'import', title: 'contacts.vcf' }];
+		const receipt = await ctx.store.record(batch, options);
+		const after = JSON.stringify([
+			ctx.db.rows('knowledge_entities'),
+			ctx.db.rows('knowledge_facts'),
+			ctx.db.rows('knowledge_entity_keys'),
+			ctx.db.rows('knowledge_merge_candidates'),
+			ctx.db.rows('knowledge_sources')
+		]);
+		return { ...ctx, receipt, changed: before !== after };
+	}
+	const entity = (db: FakeDb, name: string) =>
+		db.rows('knowledge_entities').filter((e) => e.name === name);
+	const factsOf = (db: FakeDb, id: string, predicate: string) =>
+		db
+			.rows('knowledge_facts')
+			.filter((f) => f.entity_id === id && f.predicate === predicate)
+			.map((f) => [
+				f.value_text ?? null,
+				f.status,
+				f.object_entity_id
+					? db.rows('knowledge_entities').find((e) => e.id === f.object_entity_id)?.name
+					: null
+			]);
+
+	it('lands a same-name contact on the LinkedIn person and keeps the newer job current', async () => {
+		const { db, alice } = await linkedInThenPhone({ via: 'import', fillOnly: true });
+		expect(people(db, alice)).toEqual(['Jin Park', 'Maya Chen', 'Michael Smith', 'Mike Smith']);
+		const maya = entity(db, 'Maya Chen')[0]!;
+		expect(factsOf(db, maya.id, 'phone').map((f) => f[0])).toEqual(['+14105550101']);
+		// LinkedIn's job stays; the phone's older one is a suggestion beside it.
+		expect(
+			factsOf(db, maya.id, 'headline')
+				.map((f) => `${f[0]}: ${f[1]}`)
+				.sort()
+		).toEqual(['Analyst at OldCo: suggested', 'Deployment Strategist at The Cadre: active']);
+		expect(
+			factsOf(db, maya.id, 'works_at')
+				.map((f) => `${f[2]}: ${f[1]}`)
+				.sort()
+		).toEqual(['OldCo: suggested', 'The Cadre: active']);
+		expect(maya.summary).toBe('Deployment Strategist at The Cadre');
+		// How she was met is not rewritten to "phone".
+		const me = db
+			.rows('knowledge_entities')
+			.find((e) => e.is_self && e.owner_user_id === alice)!;
+		const knows = db
+			.rows('knowledge_facts')
+			.find((f) => f.entity_id === me.id && f.object_entity_id === maya.id)!;
+		expect(knows.qualifiers.via).toBe('linkedin');
+	});
+
+	it('without fillOnly the phone would replace the LinkedIn job (the guard is what protects it)', async () => {
+		const { db } = await linkedInThenPhone({ via: 'import' });
+		const maya = entity(db, 'Maya Chen')[0]!;
+		expect(
+			factsOf(db, maya.id, 'headline')
+				.map((f) => `${f[0]}: ${f[1]}`)
+				.sort()
+		).toEqual(['Analyst at OldCo: active', 'Deployment Strategist at The Cadre: superseded']);
+	});
+
+	it('reuses a company whose name differs only by "The" or punctuation', async () => {
+		const { db } = await linkedInThenPhone({ via: 'import', fillOnly: true });
+		const orgs = db
+			.rows('knowledge_entities')
+			.filter((e) => e.kind === 'org')
+			.map((e) => e.name)
+			.sort();
+		expect(orgs).toEqual(['Corner Dental', 'OldCo', 'Palantir', 'The Cadre']);
+		const jin = entity(db, 'Jin Park')[0]!;
+		expect(factsOf(db, jin.id, 'works_at').map((f) => f[2])).toEqual(['The Cadre']);
+	});
+
+	it('saves a business card as an organization, not someone the user knows', async () => {
+		const { db } = await linkedInThenPhone({ via: 'import', fillOnly: true });
+		const dental = entity(db, 'Corner Dental');
+		expect(dental.map((e) => e.kind)).toEqual(['org']);
+		expect(factsOf(db, dental[0]!.id, 'phone').map((f) => f[0])).toEqual(['+14105550144']);
+		expect(
+			db.rows('knowledge_facts').filter((f) => f.object_entity_id === dental[0]!.id)
+		).toEqual([]);
+	});
+
+	it('a dry run reports the same outcome and saves nothing', async () => {
+		const { receipt, changed } = await linkedInThenPhone({
+			via: 'import',
+			fillOnly: true,
+			dryRun: true
+		});
+		expect(changed).toBe(false);
+		const outcome = Object.fromEntries(
+			receipt.entities.filter((e) => e.ref !== 'self').map((e) => [e.name, e.matched])
+		);
+		expect(outcome).toEqual({
+			'Maya Chen': 'name',
+			'Mike Smith': 'created',
+			'Jin Park': 'created',
+			OldCo: 'created',
+			'The Cadre': 'name',
+			'Corner Dental': 'created'
+		});
+	});
+
+	it('stamps what an import creates with its run, and nothing that was already there', async () => {
+		const run = randomUUID();
+		const { db } = await linkedInThenPhone({
+			via: 'import',
+			fillOnly: true,
+			runId: run,
+			trackRun: true
+		});
+		expect(
+			db
+				.rows('knowledge_entities')
+				.filter((e) => e.run_id === run)
+				.map((e) => e.name)
+				.sort()
+		).toEqual(['Corner Dental', 'Jin Park', 'Mike Smith', 'OldCo']);
+		const maya = entity(db, 'Maya Chen')[0]!;
+		expect(
+			db
+				.rows('knowledge_entity_keys')
+				.filter((k) => k.entity_id === maya.id)
+				.map((k) => [k.key_type, k.run_id === run])
+				.sort()
+		).toEqual([
+			['linkedin', false],
+			['phone', true]
+		]);
+	});
+});
+
+describe('"Don\'t save" on a web search\'s find', () => {
+	const entry = (db: FakeDb, owner: string, extra: Row): string => {
+		const id = randomUUID();
+		db.rows('knowledge_entities').push({
+			id,
+			kind: 'person',
+			name: 'Someone',
+			normalized_name: 'someone',
+			scope: 'private',
+			owner_user_id: owner,
+			is_self: false,
+			status: 'active',
+			merged_into_id: null,
+			...extra
+		});
+		return id;
+	};
+	const has = (db: FakeDb, id: string) =>
+		db.rows('knowledge_entities').some((row) => row.id === id);
+
+	it("removes an entry research created that is still outside the user's world", async () => {
+		const { db, store, alice } = setup();
+		const found = entry(db, alice, { created_via: 'enrichment', circle: 'public' });
+		await store.discardFoundEntry(found);
+		expect(has(db, found)).toBe(false);
+	});
+
+	it('refuses anything the user already had or has since said they know', async () => {
+		const { db, store, alice, bob } = setup();
+		// A client the user typed in, which a search happened to match by name.
+		const own = entry(db, alice, { created_via: 'manual', circle: 'inner' });
+		// A web find the user clicked "I know them" on; a reloaded chat still shows "Don't save".
+		const adopted = entry(db, alice, { created_via: 'enrichment', circle: 'inner' });
+		// Someone else's entry.
+		const theirs = entry(db, bob, { created_via: 'enrichment', circle: 'public' });
+		for (const id of [own, adopted, theirs]) {
+			await expect(store.discardFoundEntry(id)).rejects.toThrow(/part of your knowledge/);
+			expect(has(db, id)).toBe(true);
+		}
 	});
 });

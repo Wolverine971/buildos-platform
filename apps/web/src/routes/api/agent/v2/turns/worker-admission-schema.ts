@@ -55,6 +55,21 @@ const knowledgeFocusSchema = z
 			.transform((value) => value.toLowerCase())
 	})
 	.strict();
+// Guided search: knowledge entries the user ticked under a search result before sending. Only
+// ids, for the same reason; the cap matches KNOWLEDGE_SELECTION_MAX.
+const knowledgeSelectionSchema = z
+	.object({
+		entityIds: z
+			.array(
+				z
+					.string()
+					.uuid()
+					.transform((value) => value.toLowerCase())
+			)
+			.min(1)
+			.max(12)
+	})
+	.strict();
 const projectAttachmentSchema = z
 	.object({
 		attachmentKind: z.literal('onto_asset'),
@@ -159,6 +174,7 @@ export const workerAdmissionRequestSchema = z
 			.default([]),
 		projectFocus: projectFocusSchema.nullable().optional().default(null),
 		knowledgeFocus: knowledgeFocusSchema.nullable().optional().default(null),
+		knowledgeSelection: knowledgeSelectionSchema.nullable().optional().default(null),
 		lastTurnContext: ignoredClientLastTurnContext,
 		voiceNoteGroupId: nullableUuid.optional().default(null),
 		preparedPromptKey: canonicalText(2048).nullable().optional().default(null),

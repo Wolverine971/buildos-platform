@@ -60,6 +60,7 @@ import {
 } from './agent-chat-worker-status';
 import { extractDocumentChangeReceipt, type DocumentChangeReceipt } from './document-change-cards';
 import { extractTableChangeReceipt, type TableChangeReceipt } from './table-change-cards';
+import { extractGuidedSearch, type GuidedSearchView } from './knowledge-search-tray';
 
 // ---------------------------------------------------------------------------
 // Pure helpers — testable standalone
@@ -440,6 +441,8 @@ export interface SSEHandlerDeps {
 
 	/** Table change cards (counts, sample diffs, Undo) appended at the end of a turn that wrote tables. */
 	addTableChangesMessage?(changes: TableChangeReceipt[]): void;
+	/** Guided search results of this turn, shown as one selectable Entities tray. */
+	addKnowledgeEntitiesMessage?(views: GuidedSearchView[]): void;
 
 	isDev?: boolean;
 }
@@ -465,6 +468,8 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 	let documentChangesBuffer: DocumentChangeReceipt[] = [];
 	// Table writes (structured table_change receipts) this turn; flushed as table cards on `done`.
 	let tableChangesBuffer: TableChangeReceipt[] = [];
+	// Guided searches (inside the graph or out on the web) this turn; flushed as one tray.
+	let guidedSearchBuffer: GuidedSearchView[] = [];
 	const internalControlToolCallIds = new Set<string>();
 
 	function applyToolResultSideEffects(params: {
@@ -499,6 +504,10 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 		}
 		if (tableChange) {
 			tableChangesBuffer.push(tableChange);
+		}
+		const guidedSearch = success ? extractGuidedSearch(toolResult) : null;
+		if (guidedSearch) {
+			guidedSearchBuffer.push(guidedSearch);
 		}
 
 		presenter.recordDataMutation(toolName, args, success, toolResult, { turnId });
@@ -761,9 +770,14 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 		if (tableChangesBuffer.length > 0) {
 			deps.addTableChangesMessage?.(tableChangesBuffer);
 		}
+		// What a search found is already saved, so its tray shows however the turn ended.
+		if (guidedSearchBuffer.length > 0) {
+			deps.addKnowledgeEntitiesMessage?.(guidedSearchBuffer);
+		}
 		createdEntitiesBuffer = [];
 		documentChangesBuffer = [];
 		tableChangesBuffer = [];
+		guidedSearchBuffer = [];
 	}
 
 	function handleError(event: Extract<AgentSSEMessage, { type: 'error' }>): void {
@@ -783,6 +797,11 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 			deps.addTableChangesMessage?.(tableChangesBuffer);
 		}
 		tableChangesBuffer = [];
+		// Search results were saved as they were found.
+		if (guidedSearchBuffer.length > 0) {
+			deps.addKnowledgeEntitiesMessage?.(guidedSearchBuffer);
+		}
+		guidedSearchBuffer = [];
 		if (thinking.getCurrentBlockId()) {
 			thinking.addActivity(
 				streamErrorMessage,
@@ -946,6 +965,7 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 		createdEntitiesBuffer = [];
 		documentChangesBuffer = [];
 		tableChangesBuffer = [];
+		guidedSearchBuffer = [];
 		internalControlToolCallIds.clear();
 	};
 

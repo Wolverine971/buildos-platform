@@ -242,9 +242,22 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		// bridge_to) and group_by, so "who do I know at / in / doing …" is one structured
 		// call; no new tool, descriptions trimmed first. Measured global 73,407 B (+1,410),
 		// project 89,683 B (+1,410), project_create unchanged. Caps at measured + ~0.1%.
-		expect(global.openingBytes).toBeLessThanOrEqual(73_480);
-		expect(project.openingBytes).toBeLessThanOrEqual(89_770);
-		expect(project.admittedBytes).toBeLessThanOrEqual(89_770);
+		// RE-BASELINED 2026-11-22 (guided search): find_in_knowledge (people in the graph
+		// judged against the ask's parts, with what is missing) and explore_knowledge (one
+		// hop of web search that saves what it finds and returns it to pick from) joined
+		// both surfaces; descriptions trimmed first (4.0 KB -> 3.6 KB). Jev mounts them only
+		// on turns about finding people, companies or places, or when the user sends a
+		// message about entries they selected. Measured global 67 tools / 76,988 B (+3,581),
+		// project 79 tools / 93,264 B (+3,581), project_create unchanged. Caps at measured
+		// + ~0.1%.
+		// RE-BASELINED 2026-11-22 (guided search, any kind): find_in_knowledge takes kinds
+		// (companies, channels, places…, people still the default) and four more details to
+		// report (website, social, people, industry); explore_knowledge can bring back
+		// channels and its query hint says how a person search differs from a company one.
+		// Measured global 77,479 B (+491), project 93,755 B (+491). Caps at measured + ~0.1%.
+		expect(global.openingBytes).toBeLessThanOrEqual(77_560);
+		expect(project.openingBytes).toBeLessThanOrEqual(93_850);
+		expect(project.admittedBytes).toBeLessThanOrEqual(93_850);
 		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(9_380);
 	});
 

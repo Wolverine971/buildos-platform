@@ -1052,6 +1052,30 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['global', 'project'],
 		category: 'write'
 	},
+	// Guided search (2026-11-22): inside the graph, then outward one hop at a time.
+	find_in_knowledge: {
+		summary:
+			"Search the user's knowledge graph for people who fit a question with a fuzzy part, and report which details about them are missing.",
+		capabilities: [
+			'Who do I know near a place who works in a field, who do we have at a company, whose phone or email is missing',
+			'Judges every person against each part of the question: yes, no, or not recorded',
+			'Returns people the user can select to search further'
+		],
+		contexts: ['global', 'project'],
+		category: 'search'
+	},
+	explore_knowledge: {
+		summary:
+			'Search the web for people, companies and places that fit what the user is looking for, save them to the knowledge graph with sources, and return them to pick from.',
+		capabilities: [
+			'For asks to look outside BuildOS, extend a search outward, find companies or people the user does not have yet',
+			'For going further from entries the user selected: the people running a company, more about a person, what is in a place',
+			'One hop per call, at most three hops out from the question'
+		],
+		contexts: ['global', 'project'],
+		timeoutMs: 60000,
+		category: 'search'
+	},
 	// Knowledge in shared projects (2026-11-18, tasker 168): other members' entries.
 	get_project_knowledge_lens: {
 		summary:

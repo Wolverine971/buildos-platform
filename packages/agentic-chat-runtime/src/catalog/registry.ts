@@ -174,6 +174,10 @@ export const TOOL_OPERATIONS: Readonly<Record<string, ToolOperation>> = Object.f
 	query_knowledge: { op: 'knowledge.query', kind: 'read' },
 	record_knowledge: { op: 'knowledge.record', kind: 'write' },
 	enrich_knowledge: { op: 'knowledge.enrich', kind: 'write' },
+	// Guided search (2026-11-22). Chat only; the worker runs both. explore saves what it finds
+	// itself (cited, marked found on the web), so it rides the read lane like a web read.
+	find_in_knowledge: { op: 'knowledge.find', kind: 'read' },
+	explore_knowledge: { op: 'knowledge.explore', kind: 'read' },
 	// --- Knowledge in shared projects (2026-11-18, tasker 168). Project-scoped. The ask is
 	// a write in chat (reviewed mutation lane, receipt) but read-tier for external callers
 	// (like request_project_access: it creates a request the owner answers). ---

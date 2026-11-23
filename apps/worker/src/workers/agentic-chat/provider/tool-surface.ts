@@ -359,6 +359,9 @@ function workerReadOpForToolName(toolName: string): string {
 		get_knowledge_entity: 'knowledge.get',
 		query_knowledge: 'knowledge.query',
 		get_project_knowledge_lens: 'knowledge.project_lens',
+		// Guided search (2026-11-22).
+		find_in_knowledge: 'knowledge.find',
+		explore_knowledge: 'knowledge.explore',
 		get_field_info: 'util.schema.field_info',
 		get_workspace_overview: 'util.workspace.overview',
 		get_project_overview: 'util.project.overview',

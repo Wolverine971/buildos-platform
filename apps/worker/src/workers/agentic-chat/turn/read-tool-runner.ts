@@ -229,7 +229,9 @@ export class AgenticChatReadToolRunner {
 						error.code === 'read_tool_result_too_large' ||
 						error.code === 'read_tool_egress_blocked_private_content' ||
 						error.code === 'read_tool_egress_provenance_required' ||
-						(['web_search', 'web_visit', 'web_navigate'].includes(step.toolName) &&
+						(['web_search', 'web_visit', 'web_navigate', 'explore_knowledge'].includes(
+							step.toolName
+						) &&
 							[
 								'read_tool_timeout',
 								'read_tool_research_review_unavailable',
@@ -757,7 +759,9 @@ export class AgenticChatReadToolRunner {
 		const webResearch =
 			step.toolName === 'web_search' ||
 			step.toolName === 'web_visit' ||
-			step.toolName === 'web_navigate';
+			step.toolName === 'web_navigate' ||
+			// Guided search's outside hop: the same failures, the same recovery.
+			(step.toolName === 'explore_knowledge' && code !== 'read_tool_execution_failed');
 		const error =
 			code === 'read_tool_egress_blocked_private_content'
 				? 'Email lookup did not run: mailbox egress is restricted after reading private content.'

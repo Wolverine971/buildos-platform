@@ -51,6 +51,36 @@ export function normalizeKnowledgeName(value: string): string {
 	return collapseWhitespace(value).toLowerCase();
 }
 
+/**
+ * Same rule as the generated knowledge_entities.normalized_org_name column
+ * (knowledge_fold_org_name): lowercase, no leading "The", no spaces or punctuation, so
+ * "The Cadre", "Cadre" and "Magnum-LPL" / "Magnum/LPL" compare equal. Organizations only:
+ * people never fold by name.
+ */
+export function foldOrgName(value: string): string | null {
+	const folded = value
+		.trim()
+		.toLowerCase()
+		.replace(/^the[\s\p{P}\p{S}]+/u, '')
+		.replace(/[\s\p{P}\p{S}]+/gu, '');
+	return folded || null;
+}
+
+/**
+ * The words of a person's name for comparing spellings: no accents, no punctuation, no
+ * single letters (middle initials). "José García-López, MBA" → jose, garcia, lopez, mba.
+ */
+export function personNameTokens(name: string): string[] {
+	return name
+		.normalize('NFD')
+		.replace(/\p{M}+/gu, '')
+		.toLowerCase()
+		.replace(/[^\p{L}\p{N}]+/gu, ' ')
+		.trim()
+		.split(' ')
+		.filter((token) => token.length > 1);
+}
+
 const EMAIL_PATTERN = /^[^\s@<>()[\],;:"]+@[^\s@<>()[\],;:"]+\.[^\s@<>()[\],;:"]{2,}$/;
 
 export function normalizeEmail(value: string): string | null {

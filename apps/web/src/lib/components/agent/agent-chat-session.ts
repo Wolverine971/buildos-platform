@@ -5,7 +5,10 @@ import {
 	type KnowledgeFocusRef
 } from '@buildos/shared-agent-ops/knowledge';
 import type { RestoreHistoryWindow } from '$lib/types/chat-session-restore';
-import { buildWebNavigateTrailFromResult } from './agent-chat-tool-progress';
+import {
+	buildGuidedSearchTrailFromResult,
+	buildWebNavigateTrailFromResult
+} from './agent-chat-tool-progress';
 import type { PendingChangeViewV1 } from '$lib/services/agentic-chat-v2/pending-change';
 import {
 	readAgentChatWorkflowProgress,
@@ -70,6 +73,12 @@ import {
 	type TableChangeCard,
 	type TableChangeReceipt
 } from './table-change-cards';
+import {
+	buildKnowledgeTray,
+	extractGuidedSearch,
+	type GuidedSearchView,
+	type KnowledgeTray
+} from './knowledge-search-tray';
 
 export type PreparedPromptClient = {
 	id: string;
@@ -836,7 +845,15 @@ function buildRestoredToolBlock(params: {
 				...(source.sourceQuote ? { sourceQuote: source.sourceQuote } : {}),
 				...(source.toolName === 'web_navigate'
 					? { progressSteps: buildWebNavigateTrailFromResult(source.result) }
-					: {})
+					: source.toolName === 'find_in_knowledge' ||
+						  source.toolName === 'explore_knowledge'
+						? {
+								// Stored results may be a JSON string.
+								progressSteps: buildGuidedSearchTrailFromResult(
+									parseRecord(source.result)
+								)
+							}
+						: {})
 			}
 		};
 	});
@@ -995,6 +1012,7 @@ function mapLoadedMessagesToUI(
 	const seenCreatedIds = new Set<string>();
 	const seenDocumentChangeIds = new Set<string>();
 	const seenTableChangeIds = new Set<string>();
+	const seenKnowledgeTrayIds = new Set<string>();
 	const assistantWorkflowTurns = new Set(
 		messages.flatMap((msg) => {
 			const turnId = workflowMessageTurnId(msg.metadata);
@@ -1015,6 +1033,7 @@ function mapLoadedMessagesToUI(
 		let createdForTurn: CreatedEntityRef[] = [];
 		let documentChangesForTurn: DocumentChangeCard[] = [];
 		let tableChangesForTurn: TableChangeCard[] = [];
+		let knowledgeTrayForTurn: KnowledgeTray | null = null;
 		if (msg.role === 'assistant') {
 			const metadata = msg.metadata as Record<string, any> | undefined;
 			const workflow = readAgentChatWorkflowProgress(metadata?.chat_workflow_v1);
@@ -1058,6 +1077,10 @@ function mapLoadedMessagesToUI(
 				directSources,
 				seenTableChangeIds
 			);
+			knowledgeTrayForTurn = deriveKnowledgeTrayFromSources(
+				directSources,
+				seenKnowledgeTrayIds
+			);
 		}
 
 		uiMessages.push(mapLoadedMessageToUI(msg));
@@ -1082,6 +1105,12 @@ function mapLoadedMessagesToUI(
 		// And the tables it wrote: counts, sample diffs, Undo.
 		if (tableChangesForTurn.length > 0) {
 			uiMessages.push(buildTableChangesMessage(tableChangesForTurn, msg.id, msg.created_at));
+		}
+		// And what a guided search brought back: the selectable Entities tray.
+		if (knowledgeTrayForTurn) {
+			uiMessages.push(
+				buildKnowledgeEntitiesMessage(knowledgeTrayForTurn, msg.id, msg.created_at)
+			);
 		}
 	}
 
@@ -1253,6 +1282,43 @@ function deriveTableChangeCardsFromSources(
 	const cards = buildTableChangeCards(receipts).filter((card) => !seen.has(card.id));
 	for (const card of cards) seen.add(card.id);
 	return cards;
+}
+
+/**
+ * Rebuild a turn's Entities tray from its stored guided-search results (source order = search
+ * order). A stored result replayed under another message never shows its tray twice.
+ */
+function deriveKnowledgeTrayFromSources(
+	sources: RestoredToolActivitySource[],
+	seen: Set<string>
+): KnowledgeTray | null {
+	const views: GuidedSearchView[] = [];
+	for (const source of [...sources].sort(sortRestoredToolSources)) {
+		if (!source.success) continue;
+		// Deduped by the stored result itself, not by what it returned: asking the same
+		// question again later is a new tray even when the same entries come back.
+		if (seen.has(source.id)) continue;
+		const view = extractGuidedSearch(parseRecord(source.result));
+		if (!view) continue;
+		seen.add(source.id);
+		views.push(view);
+	}
+	return buildKnowledgeTray(views);
+}
+
+export function buildKnowledgeEntitiesMessage(
+	tray: KnowledgeTray,
+	idSuffix: string,
+	timestamp?: string | null
+): UIMessage {
+	return {
+		id: `knowledge-entities-${idSuffix}`,
+		type: 'knowledge_entities',
+		content: '',
+		data: { tray },
+		timestamp: timestamp ? new Date(timestamp) : new Date(),
+		created_at: timestamp ?? undefined
+	};
 }
 
 export function buildTableChangesMessage(

@@ -5,6 +5,16 @@
 // tool schemas promise match the gateway runners that enforce them.
 import { describe, expect, it } from 'vitest';
 import {
+	EXPLORE_KINDS,
+	EXPLORE_MAX_SEARCHES,
+	FIND_KINDS,
+	FIND_NEED_KEYS,
+	FIND_NEED_MAX,
+	GUIDED_GOAL_MAX_CHARS,
+	GUIDED_MAX_CHECKS,
+	GUIDED_QUERY_MAX_CHARS,
+	parseExploreArgs,
+	parseFindArgs,
 	KNOWLEDGE_CONNECTION_EMPLOYMENT,
 	KNOWLEDGE_CONNECTION_FACETS,
 	KNOWLEDGE_CONNECTION_MAX_TERMS,
@@ -46,7 +56,10 @@ const NAMES = [
 	'get_knowledge_entity',
 	'query_knowledge',
 	'record_knowledge',
-	'enrich_knowledge'
+	'enrich_knowledge',
+	// Guided search (2026-11-22).
+	'find_in_knowledge',
+	'explore_knowledge'
 ];
 /** Knowledge in shared projects (tasker 168): project-scoped by design. */
 const SHARED_PROJECT_NAMES = ['get_project_knowledge_lens', 'request_knowledge_access'];
@@ -71,7 +84,7 @@ describe('knowledge tool catalog', () => {
 		expect(sourceTypes.length).toBeGreaterThan(0);
 	});
 
-	it('defines the seven tools once, with metadata and knowledge.* ops', () => {
+	it('defines the tools once, with metadata and knowledge.* ops', () => {
 		expect(KNOWLEDGE_TOOL_DEFINITIONS.map((tool) => tool.function.name)).toEqual([
 			...NAMES,
 			...SHARED_PROJECT_NAMES
@@ -93,6 +106,50 @@ describe('knowledge tool catalog', () => {
 		expect(TOOL_METADATA.enrich_knowledge!.category).toBe('write');
 		expect(registry.byToolName.record_knowledge!.kind).toBe('write');
 		expect(registry.byToolName.query_knowledge!.kind).toBe('read');
+	});
+
+	it('keeps the guided search schemas in step with what the shared core accepts', () => {
+		const find = params('find_in_knowledge').properties;
+		const explore = params('explore_knowledge').properties;
+		expect(explore.searches.maxItems).toBe(EXPLORE_MAX_SEARCHES);
+		expect(explore.searches.items.properties.query.maxLength).toBe(GUIDED_QUERY_MAX_CHARS);
+		expect(explore.kinds.items.enum).toEqual([...EXPLORE_KINDS]);
+		expect(explore.goal.maxLength).toBe(GUIDED_GOAL_MAX_CHARS);
+		expect(find.goal.maxLength).toBe(GUIDED_GOAL_MAX_CHARS);
+		expect(find.need.items.enum).toEqual([...FIND_NEED_KEYS]);
+		expect(find.need.maxItems).toBe(FIND_NEED_MAX);
+		// Any kind can be searched inside the graph; people stay the default.
+		expect(find.kinds.items.enum).toEqual([...FIND_KINDS]);
+		expect(explore.kinds.maxItems).toBe(EXPLORE_KINDS.length);
+		expect(parseFindArgs({ goal: 'x' }).kinds).toEqual(['person']);
+		for (const checks of [find.checks, explore.checks]) {
+			expect(checks.maxItems).toBe(GUIDED_MAX_CHECKS);
+			expect(checks.items.required).toEqual(['key', 'question']);
+		}
+		// Both ride the read lane: explore saves what it finds itself, cited.
+		expect(TOOL_METADATA.find_in_knowledge!.category).toBe('search');
+		expect(TOOL_METADATA.explore_knowledge!.category).toBe('search');
+		expect(getToolRegistry().byToolName.explore_knowledge!.kind).toBe('read');
+		// A schema the shared parser accepts end to end.
+		expect(() =>
+			parseExploreArgs({
+				goal: 'Software companies near Baltimore',
+				searches: [{ query: 'software companies Baltimore Maryland' }],
+				kinds: ['org'],
+				checks: [{ key: 'near', question: 'Is it in the Baltimore area?' }]
+			})
+		).not.toThrow();
+		expect(() =>
+			parseFindArgs({ goal: 'Who do we know at Murtech', where: { company: ['Murtech'] } })
+		).not.toThrow();
+		expect(() =>
+			parseFindArgs({
+				goal: 'Which fintech companies do I have without a website',
+				kinds: ['org', 'channel'],
+				where: { industry: ['fintech'] },
+				need: ['website', 'social', 'people']
+			})
+		).not.toThrow();
 	});
 
 	it("scopes the shared-project tools to one project and labels them as other members' notes", () => {

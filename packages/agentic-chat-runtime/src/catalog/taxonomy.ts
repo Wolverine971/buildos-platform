@@ -181,6 +181,8 @@ export const TOOL_CATEGORIES = {
 			'query_knowledge',
 			'record_knowledge',
 			'enrich_knowledge',
+			'find_in_knowledge',
+			'explore_knowledge',
 			'get_project_knowledge_lens',
 			'request_knowledge_access'
 		],

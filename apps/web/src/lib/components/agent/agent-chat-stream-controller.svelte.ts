@@ -31,6 +31,7 @@ import { AgentRequestError, buildAgentRequestError } from './agent-chat-session'
 import type { PreparedPromptClient } from './agent-chat-session';
 import { PREPARED_PROMPT_SEND_WAIT_MS } from './agent-chat.constants';
 import type { AgentChatImageAttachment, UIMessage } from './agent-chat.types';
+import type { KnowledgeSelectionRef } from './knowledge-search-tray';
 import {
 	isWorkerQueueTimeout,
 	isWorkerWaitActivity,
@@ -98,6 +99,13 @@ export interface StreamControllerDeps {
 	getRequestedSkillId?(): string | null;
 	/** The knowledge entry this chat is about (a structured pick, never read from the message). */
 	getKnowledgeFocus?(): { entityId: string } | null;
+	/**
+	 * Guided search: the knowledge entries ticked in an Entities tray. They ride on the next
+	 * message as ids (structured picks, never read from the message) and are unticked once sent.
+	 */
+	getKnowledgeSelection?(): KnowledgeSelectionRef[];
+	/** Replace the ticked entries: emptied on send, put back when the turn never landed. */
+	setKnowledgeSelection?(refs: KnowledgeSelectionRef[]): void;
 	/** The launch skill reached admission (or may have); stop sending it. */
 	clearRequestedSkillId?(): void;
 	setInputValue(value: string): void;
@@ -663,6 +671,10 @@ export class AgentChatStreamController {
 		const clientTurnId = crypto.randomUUID();
 		const transportStreamRunId = crypto.randomUUID();
 		const sentAt = new Date(sendStartedAtMs);
+		// Workflow reviews run on their own lane; ticked entries ride ordinary turns.
+		const sentKnowledgeSelection = reviewIntent
+			? []
+			: (this.#deps.getKnowledgeSelection?.() ?? []).slice(0, 12);
 		const userMessage: UIMessage = {
 			id: crypto.randomUUID(),
 			renderKey: `turn:${clientTurnId}:user`,
@@ -688,11 +700,16 @@ export class AgentChatStreamController {
 							attachments: optimisticAttachmentRefs
 						}
 					: {}),
+				...(sentKnowledgeSelection.length
+					? { knowledge_selection: sentKnowledgeSelection }
+					: {}),
 				client_turn_id: clientTurnId,
 				stream_run_id: transportStreamRunId
 			}
 		};
 		this.#deps.messages.append(userMessage);
+		// The bubble now shows what it was sent about; the trays untick.
+		if (sentKnowledgeSelection.length) this.#deps.setKnowledgeSelection?.([]);
 		for (const attachment of optimisticAttachmentRefs) {
 			if (attachment.asset_id) {
 				this.#deps.attachments.scheduleMessageOcrPoll(
@@ -785,6 +802,9 @@ export class AgentChatStreamController {
 					knowledgeFocus: reviewIntent
 						? null
 						: (this.#deps.getKnowledgeFocus?.() ?? null),
+					knowledgeSelection: sentKnowledgeSelection.length
+						? { entityIds: sentKnowledgeSelection.map((ref) => ref.entity_id) }
+						: null,
 					voiceNoteGroupId: activeVoiceNoteGroupId,
 					preparedPromptKey: matchingPreparedPrompt?.key ?? null,
 					reviewIntent,
@@ -889,6 +909,14 @@ export class AgentChatStreamController {
 				if (this.#deps.thinking.discard) this.#deps.thinking.discard();
 				else this.#deps.thinking.finalize('error');
 				this.#deps.messages.removeById(userMessage.id);
+				// The turn never landed: tick its entries again, unless the user has ticked
+				// others meanwhile.
+				if (
+					sentKnowledgeSelection.length &&
+					!(this.#deps.getKnowledgeSelection?.() ?? []).length
+				) {
+					this.#deps.setKnowledgeSelection?.(sentKnowledgeSelection);
+				}
 				if (!suppressInputClear && !this.#deps.getInputValue().trim()) {
 					this.#deps.setInputValue(trimmed);
 				}

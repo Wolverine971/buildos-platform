@@ -111,8 +111,11 @@ import type { AgenticChatWorkerAdmissionRpcArgs } from './worker-turn-admission.
 import { buildWorkerPromptScaffold, resolveWorkerPromptTools } from './worker-prompt-surface';
 import { runAfterResponse } from '$lib/server/background';
 import { createLogger } from '$lib/utils/logger';
-import { KNOWLEDGE_FOCUS_METADATA_KEY } from '@buildos/shared-agent-ops/knowledge';
-import { loadKnowledgeFocusForTurn } from './knowledge-focus.server';
+import {
+	KNOWLEDGE_FOCUS_METADATA_KEY,
+	KNOWLEDGE_SELECTION_METADATA_KEY
+} from '@buildos/shared-agent-ops/knowledge';
+import { loadKnowledgeFocusForTurn, loadKnowledgeSelectionForTurn } from './knowledge-focus.server';
 
 const logger = createLogger('AgenticChat:WorkerPreparation');
 
@@ -222,6 +225,11 @@ export type AgenticChatWorkerCommandInput = {
 	 * Only an id: the entry and everything known about it are loaded with the user's own access.
 	 */
 	knowledgeFocus?: { entityId: string } | null;
+	/**
+	 * Guided search: knowledge entries the user ticked under an earlier search result before
+	 * sending this message. Only ids; each is loaded with the user's own access.
+	 */
+	knowledgeSelection?: { entityIds: string[] } | null;
 	voiceNoteGroupId: string | null;
 	preparedPromptKey: string | null;
 	/**
@@ -371,6 +379,12 @@ async function prepareWorkerAdmission(
 		userId: input.userId,
 		entityId: input.command.knowledgeFocus?.entityId
 	});
+	// Entries ticked in the Entities tray for this message: same rules (own client, never throws).
+	const knowledgeSelectionRead = loadKnowledgeSelectionForTurn({
+		userClient: input.userClient,
+		userId: input.userId,
+		entityIds: input.command.knowledgeSelection?.entityIds
+	});
 	const preparedAdmissionLeaseStartedAt = Date.now();
 	const preparedAdmissionLease = await inspectPreparedAdmissionLease({
 		client: input.serviceClient,
@@ -453,6 +467,7 @@ async function prepareWorkerAdmission(
 	const conversationSummary =
 		typeof sessionIntent.session?.summary === 'string' ? sessionIntent.session.summary : null;
 	const knowledgeFocus = await knowledgeFocusRead;
+	const knowledgeSelection = await knowledgeSelectionRead;
 	// A new chat remembers the entry it was started about, so it reopens about the same one.
 	const agentMetadata =
 		sessionIntent.session?.agent_metadata ??
@@ -814,6 +829,15 @@ async function prepareWorkerAdmission(
 		};
 	}
 
+	// The entries the user ticked for this message ride the same way: one appended section the
+	// worker places after the user's message.
+	if (knowledgeSelection) {
+		preparedArtifact = {
+			...preparedArtifact,
+			promptSections: [...preparedArtifact.promptSections, knowledgeSelection.section]
+		};
+	}
+
 	// Pending commissions are current session state, not prepared-prompt state.
 	// Append them after either history path so a cached/prepared turn cannot
 	// silently lose an unfinished semantic contract during worker adoption.
@@ -966,6 +990,11 @@ async function prepareWorkerAdmission(
 		userMessageMetadata.attachments = sanitizeAttachmentRefsForMetadata(
 			attachments
 		) as unknown as Json;
+	}
+	// The entries this message was sent about, so the bubble can show them after a reload.
+	if (knowledgeSelection) {
+		userMessageMetadata[KNOWLEDGE_SELECTION_METADATA_KEY] =
+			knowledgeSelection.refs as unknown as Json;
 	}
 	// Telemetry for the worker lane's skill routing (lane D P1-2) and the
 	// continuity source for the next turn's ledger. The artifact's

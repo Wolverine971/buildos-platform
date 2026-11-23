@@ -548,6 +548,9 @@ const GROUND_RANK: Record<SocialGround, number> = {
 /** How much of a profile page counts as its bio (links further down are other people's posts). */
 const BIO_CHARS = 900;
 const handleKey = (handle: string) => handle.replace(/[^a-z0-9]/g, '');
+/** One account, whatever address it was written with. */
+export const accountKey = (profile: SocialProfile) =>
+	`${profile.platform}:${handleKey(profile.handle)}`;
 
 /** Names compared letter for letter, ignoring case, spacing and punctuation. */
 const nameKey = (name: string) =>
@@ -564,7 +567,12 @@ export function findSocialProfiles(input: {
 	pages: SocialPage[];
 	/** Profile addresses already saved on the entry. */
 	known: readonly string[];
-}): { findings: SocialFinding[]; nameOnly: string[] } {
+}): {
+	findings: SocialFinding[];
+	nameOnly: string[];
+	/** Addresses left out because the same account, or a better-proven one, is already taken. */
+	superseded: string[];
+} {
 	const known = input.known
 		.map((url) => parseSocialProfile(url))
 		.filter((p): p is SocialProfile => Boolean(p));
@@ -683,14 +691,39 @@ export function findSocialProfiles(input: {
 	}
 
 	// The same account under two addresses (youtube.com/@name and youtube.com/c/name) is one.
-	const knownAccounts = new Set(known.map((p) => `${p.platform}:${handleKey(p.handle)}`));
+	const knownAccounts = new Set(known.map(accountKey));
+	const superseded: string[] = [];
 	const byAccount = new Map<string, SocialFinding>();
 	for (const finding of best.values()) {
-		const key = `${finding.profile.platform}:${handleKey(finding.profile.handle)}`;
-		if (knownUrls.has(finding.profile.url) || knownAccounts.has(key)) continue;
+		const key = accountKey(finding.profile);
+		if (knownUrls.has(finding.profile.url) || knownAccounts.has(key)) {
+			superseded.push(finding.profile.url);
+			continue;
+		}
 		const current = byAccount.get(key);
-		if (!current || GROUND_RANK[finding.ground] > GROUND_RANK[current.ground])
+		if (!current || GROUND_RANK[finding.ground] > GROUND_RANK[current.ground]) {
+			if (current) superseded.push(current.profile.url);
 			byAccount.set(key, finding);
+		} else superseded.push(finding.profile.url);
 	}
-	return { findings: [...byAccount.values()], nameOnly };
+	// What the entry's own site points at beats a page that was only matched: a channel found
+	// again under its id (youtube.com/channel/UC…) is the one the site already links by name.
+	const sitePlatforms = new Set(
+		[...byAccount.values()]
+			.filter((f) => f.ground === 'declared' || f.ground === 'linked')
+			.map((f) => f.profile.platform)
+	);
+	const findings = [...byAccount.values()].filter((finding) => {
+		const weaker = finding.ground === 'is_profile' || finding.ground === 'same_handle';
+		if (
+			weaker &&
+			(sitePlatforms.has(finding.profile.platform) ||
+				knownPlatforms.has(finding.profile.platform))
+		) {
+			superseded.push(finding.profile.url);
+			return false;
+		}
+		return true;
+	});
+	return { findings, nameOnly, superseded };
 }

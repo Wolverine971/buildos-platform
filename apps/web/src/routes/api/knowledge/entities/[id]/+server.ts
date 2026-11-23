@@ -9,7 +9,8 @@
  *          `kind_change` says what was retracted and which same-name entries now look like duplicates;
  *          name: `rename` says how many tags grew to the new name, e.g. "Strategies" → "Wayne
  *          Strategies" where that is written, and which entries of the same kind already have it)
- * DELETE /api/knowledge/entities/:id  (own entries only)
+ * DELETE /api/knowledge/entities/:id  (own entries only; ?found=1 = only a web find still
+ *        outside Your world, for "Don't save" in chat)
  */
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
@@ -100,13 +101,17 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	}
 };
 
-export const DELETE: RequestHandler = async ({ params, locals }) => {
+export const DELETE: RequestHandler = async ({ params, locals, url }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user) return ApiResponse.unauthorized('Authentication required');
 	if (!UUID_PATTERN.test(params.id)) return ApiResponse.badRequest('Invalid id');
 
 	try {
-		await knowledgeStoreFor(locals.supabase, user.id).deleteEntity(params.id);
+		const store = knowledgeStoreFor(locals.supabase, user.id);
+		// ?found=1 is "Don't save" on a web search's find: only an entry research created that
+		// is still outside the user's world may go this way (checked in the database).
+		if (url.searchParams.get('found') === '1') await store.discardFoundEntry(params.id);
+		else await store.deleteEntity(params.id);
 		return ApiResponse.success({ ok: true });
 	} catch (error) {
 		return knowledgeErrorResponse(error, 'Could not delete this entry');

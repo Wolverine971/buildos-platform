@@ -37,6 +37,8 @@ export interface ImportedContact {
 	note?: string;
 	/** ISO date the connection was made (LinkedIn "Connected On"). */
 	connectedOn?: string;
+	/** A business card (dentist, bank, restaurant): saved as an organization, not a person. */
+	isCompany?: boolean;
 }
 
 export interface ParsedContactFile {
@@ -61,6 +63,8 @@ export interface ContactFileSummary {
 	with_email: number;
 	with_phone: number;
 	with_company: number;
+	/** Business cards in the file: these become organizations. */
+	companies: number;
 	capped: boolean;
 	sample: Array<{ name: string; detail: string | null }>;
 }
@@ -74,7 +78,8 @@ export function summarizeContactFile(parsed: ParsedContactFile): ContactFileSumm
 		skipped: parsed.skipped,
 		with_email: parsed.contacts.filter((c) => c.emails.length).length,
 		with_phone: parsed.contacts.filter((c) => c.phones.length).length,
-		with_company: parsed.contacts.filter((c) => c.org).length,
+		with_company: parsed.contacts.filter((c) => c.org && !c.isCompany).length,
+		companies: parsed.contacts.filter((c) => c.isCompany).length,
 		capped: parsed.format !== 'linkedin_csv' && parsed.contacts.length >= MAX_IMPORT_CONTACTS,
 		sample: parsed.contacts.slice(0, 5).map((c) => ({
 			name: c.name,
@@ -137,6 +142,7 @@ export function readParsedContactPayload(value: unknown): ParsedContactFile | nu
 		}
 		const note = text(c.note, 4000);
 		if (note) contact.note = note;
+		if (c.isCompany === true) contact.isCompany = true;
 		contacts.push(contact);
 	}
 	const skipped =
@@ -354,6 +360,7 @@ function vcardToContact(lines: VCardLine[]): ImportedContact | null {
 	const contact: ImportedContact = { name: '', emails: [], phones: [], urls: [], addresses: [] };
 	let fn = '';
 	let structured: string[] = [];
+	let showAsCompany = false;
 	const notes: string[] = [];
 
 	for (const line of lines) {
@@ -426,6 +433,10 @@ function vcardToContact(lines: VCardLine[]): ImportedContact | null {
 				if (note) notes.push(note);
 				break;
 			}
+			// Apple marks a business card ("Show as company") with this property.
+			case 'X-ABSHOWAS':
+				showAsCompany = line.value.trim().toUpperCase() === 'COMPANY';
+				break;
 		}
 	}
 
@@ -436,6 +447,13 @@ function vcardToContact(lines: VCardLine[]): ImportedContact | null {
 	contact.name =
 		fn || structuredName || contact.nickname || contact.org || contact.emails[0]?.value || '';
 	if (notes.length) contact.note = notes.join('\n\n').slice(0, 4000);
+	// A card with a company and no person's name (other phones don't write Apple's marker).
+	const nameless = !given && !family && !contact.nickname;
+	if (contact.org && (showAsCompany || (nameless && (!fn || sameText(fn, contact.org))))) {
+		contact.isCompany = true;
+		contact.name = contact.org;
+		delete contact.title;
+	}
 
 	for (const url of contact.urls) {
 		if (/linkedin\.com\/(in|pub)\//i.test(url.value)) {
@@ -451,6 +469,10 @@ function vcardToContact(lines: VCardLine[]): ImportedContact | null {
 		contact.org;
 	if (!contact.name || (!hasDetail && !contact.name)) return null;
 	return contact;
+}
+
+function sameText(a: string, b: string): boolean {
+	return collapseWhitespace(a).toLowerCase() === collapseWhitespace(b).toLowerCase();
 }
 
 // ---------------------------------------------------------------------------
@@ -663,6 +685,8 @@ export function parseGoogleContactsCsv(text: string): {
 		if (org) contact.org = org;
 		const title = cell(iTitle);
 		if (title) contact.title = title;
+		// No person's name, only a company: a business card.
+		if (org && !name) contact.isCompany = true;
 		const birthday = cell(iBirthday);
 		if (/^\d{4}-\d{2}-\d{2}$/.test(birthday)) contact.birthday = birthday;
 		else if (/^--\d{2}-\d{2}$/.test(birthday)) contact.birthday = birthday;
@@ -707,16 +731,48 @@ export function parseGoogleContactsCsv(text: string): {
 // ---------------------------------------------------------------------------
 // Plan
 
+/** Which batch refs one contact became: the import endpoint reads its receipt through these. */
+export interface ContactImportRef {
+	/** The person's ref; absent for a business card. */
+	person?: string;
+	/** Their employer's ref, or the business card's own organization. */
+	org?: string;
+}
+
+export interface ContactImportPlan {
+	batch: KnowledgeWriteBatch;
+	/** One entry per contact, in the order given. */
+	refs: ContactImportRef[];
+}
+
+const PROFILE_PLATFORMS = [
+	'linkedin',
+	'twitter',
+	'x',
+	'instagram',
+	'facebook',
+	'github',
+	'youtube',
+	'tiktok'
+];
+
 /**
  * Turn parsed contacts into one write batch. Each contact becomes a private person the user
  * knows (from their own entity, via the import's channel); a company becomes an org they work
- * at. Identity keys (email, phone, LinkedIn) let a re-import or a later chat mention land on the
- * same person.
+ * at, and a business card becomes an org of its own. Identity keys (email, phone, LinkedIn) let
+ * a re-import or a later chat mention land on the same person.
  */
 export function planContactImport(
 	contacts: ImportedContact[],
 	options: { format: ContactFileFormat; sourceRef?: string }
 ): KnowledgeWriteBatch {
+	return planContactImportWithRefs(contacts, options).batch;
+}
+
+export function planContactImportWithRefs(
+	contacts: ImportedContact[],
+	options: { format: ContactFileFormat; sourceRef?: string }
+): ContactImportPlan {
 	const via = options.format === 'linkedin_csv' ? 'linkedin' : 'phone';
 	const sourceRef = options.sourceRef ?? 'import';
 	const entities: KnowledgeWriteEntity[] = [
@@ -725,8 +781,85 @@ export function planContactImport(
 	const facts: KnowledgeWriteFact[] = [];
 	const orgRefs = new Map<string, string>();
 	const sources = [sourceRef];
+	const refs: ContactImportRef[] = [];
+
+	const orgRefFor = (name: string): string => {
+		const orgKey = name.toLowerCase();
+		let orgRef = orgRefs.get(orgKey);
+		if (!orgRef) {
+			orgRef = `o${orgRefs.size}`;
+			orgRefs.set(orgKey, orgRef);
+			entities.push({ ref: orgRef, kind: 'org', name });
+		}
+		return orgRef;
+	};
+
+	/** Ways to reach someone and where to find them: the same for a person and a business. */
+	const contactDetails = (ref: string, contact: ImportedContact) => {
+		for (const email of contact.emails) {
+			facts.push({
+				subject: ref,
+				predicate: 'email',
+				value: email.value,
+				...(email.label ? { qualifiers: { label: email.label } } : {}),
+				sources
+			});
+		}
+		for (const phone of contact.phones) {
+			facts.push({
+				subject: ref,
+				predicate: 'phone',
+				value: phone.value,
+				...(phone.label ? { qualifiers: { label: phone.label } } : {}),
+				sources
+			});
+		}
+		for (const address of contact.addresses) {
+			facts.push({
+				subject: ref,
+				predicate: 'address',
+				value: address.value,
+				...(address.label ? { qualifiers: { label: address.label } } : {}),
+				sources
+			});
+		}
+		if (contact.linkedinUrl) {
+			facts.push({
+				subject: ref,
+				predicate: 'profile_url',
+				value: contact.linkedinUrl,
+				qualifiers: { platform: 'linkedin' },
+				sources
+			});
+		}
+		for (const url of contact.urls) {
+			if (url.value === contact.linkedinUrl) continue;
+			const normalized = normalizeUrl(url.value);
+			if (!normalized) continue;
+			const label = url.label?.toLowerCase();
+			const isProfile = label && PROFILE_PLATFORMS.includes(label);
+			facts.push({
+				subject: ref,
+				predicate: isProfile ? 'profile_url' : 'homepage',
+				value: url.value,
+				...(isProfile ? { qualifiers: { platform: label } } : {}),
+				sources
+			});
+		}
+		if (contact.note) {
+			facts.push({ subject: ref, predicate: 'note', value: contact.note, sources });
+		}
+	};
 
 	contacts.forEach((contact, index) => {
+		if (contact.isCompany) {
+			// A business card: one organization holding its own phone, address and website.
+			const orgRef = orgRefFor(contact.org ?? contact.name);
+			contactDetails(orgRef, contact);
+			refs.push({ org: orgRef });
+			return;
+		}
+
 		const ref = `c${index}`;
 		const keys: KnowledgeWriteEntity['keys'] = [];
 		for (const email of contact.emails) {
@@ -772,84 +905,16 @@ export function planContactImport(
 		if (contact.nickname && contact.nickname !== contact.name) {
 			facts.push({ subject: ref, predicate: 'alias', value: contact.nickname, sources });
 		}
-		for (const email of contact.emails) {
-			facts.push({
-				subject: ref,
-				predicate: 'email',
-				value: email.value,
-				...(email.label ? { qualifiers: { label: email.label } } : {}),
-				sources
-			});
-		}
-		for (const phone of contact.phones) {
-			facts.push({
-				subject: ref,
-				predicate: 'phone',
-				value: phone.value,
-				...(phone.label ? { qualifiers: { label: phone.label } } : {}),
-				sources
-			});
-		}
-		for (const address of contact.addresses) {
-			facts.push({
-				subject: ref,
-				predicate: 'address',
-				value: address.value,
-				...(address.label ? { qualifiers: { label: address.label } } : {}),
-				sources
-			});
-		}
-		if (contact.linkedinUrl) {
-			facts.push({
-				subject: ref,
-				predicate: 'profile_url',
-				value: contact.linkedinUrl,
-				qualifiers: { platform: 'linkedin' },
-				sources
-			});
-		}
-		for (const url of contact.urls) {
-			if (url.value === contact.linkedinUrl) continue;
-			const normalized = normalizeUrl(url.value);
-			if (!normalized) continue;
-			const label = url.label?.toLowerCase();
-			const isProfile =
-				label &&
-				[
-					'linkedin',
-					'twitter',
-					'x',
-					'instagram',
-					'facebook',
-					'github',
-					'youtube',
-					'tiktok'
-				].includes(label);
-			facts.push({
-				subject: ref,
-				predicate: isProfile ? 'profile_url' : 'homepage',
-				value: url.value,
-				...(isProfile ? { qualifiers: { platform: label } } : {}),
-				sources
-			});
-		}
+		contactDetails(ref, contact);
 		if (contact.title && !contact.org) {
 			facts.push({ subject: ref, predicate: 'headline', value: contact.title, sources });
 		}
 		if (contact.birthday) {
 			facts.push({ subject: ref, predicate: 'birthday', value: contact.birthday, sources });
 		}
-		if (contact.note) {
-			facts.push({ subject: ref, predicate: 'note', value: contact.note, sources });
-		}
+		let orgRef: string | undefined;
 		if (contact.org) {
-			const orgKey = contact.org.toLowerCase();
-			let orgRef = orgRefs.get(orgKey);
-			if (!orgRef) {
-				orgRef = `o${orgRefs.size}`;
-				orgRefs.set(orgKey, orgRef);
-				entities.push({ ref: orgRef, kind: 'org', name: contact.org });
-			}
+			orgRef = orgRefFor(contact.org);
 			facts.push({
 				subject: ref,
 				predicate: 'works_at',
@@ -869,7 +934,8 @@ export function planContactImport(
 				});
 			}
 		}
+		refs.push({ person: ref, ...(orgRef ? { org: orgRef } : {}) });
 	});
 
-	return { entities, facts };
+	return { batch: { entities, facts }, refs };
 }

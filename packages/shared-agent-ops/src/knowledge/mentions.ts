@@ -838,15 +838,6 @@ export function planRecordMentions(input: PlanMentionsInput): MentionPlan {
 }
 
 /**
- * A reader often sees only part of a name: the doc model reads "Wayne Strategies" as the person
- * "Wayne" and the organization "Strategies". When a reader-made tag sits inside a longer name
- * the owner already has an entry for (or a longer spelling of its own entry, after a rename),
- * the tag grows to cover that name and moves to that entry. Other reader tags inside the same
- * name fold into it. The user's own tags and spots they removed a tag from are never touched.
- * Pure span arithmetic on names from the database; nothing here reads what the prose means.
- * Mutates `mentions`; returns the entries that gave up tags.
- */
-/**
  * The fuller span adds at least one word to the tag: not just a possessive ("Cindy" → "Cindy's")
  * or punctuation ("Jr" → "Jr."), which are the same name written differently, not a longer one.
  */
@@ -855,6 +846,15 @@ export function addsWords(text: string, inner: MentionSpan, outer: MentionSpan):
 	return /[\p{L}\p{N}]/u.test(extra.replace(/['’]s(?![\p{L}\p{N}])/gu, ''));
 }
 
+/**
+ * A reader often sees only part of a name: the doc model reads "Wayne Strategies" as the person
+ * "Wayne" and the organization "Strategies". When a reader-made tag sits inside a longer name
+ * the owner already has an entry for (or a longer spelling of its own entry, after a rename),
+ * the tag grows to cover that name and moves to that entry. Other reader tags inside the same
+ * name fold into it. The user's own tags and spots they removed a tag from are never touched.
+ * Pure span arithmetic on names from the database; nothing here reads what the prose means.
+ * Mutates `mentions`; returns the entries that gave up tags.
+ */
 function widenToFullerNames(
 	fields: MentionFields,
 	mentions: MentionDraft[],

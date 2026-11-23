@@ -434,6 +434,121 @@ describe('agent-chat-session helpers', () => {
 		]);
 	});
 
+	it('buildAgentChatSessionSnapshot restores the Entities tray and what a message was sent about', () => {
+		const TENABLE = 'b0000000-0000-4000-8000-000000000001';
+		const STEVE = 'a0000000-0000-4000-8000-000000000001';
+		const explore = (hop: number, entity: Record<string, unknown>, queries: string[]) => ({
+			knowledge_explore: {
+				hop,
+				queries,
+				pages: [{ url: 'https://www.tenable.com/about', title: 'About' }],
+				entities: [entity],
+				saved: { new: 1, facts: 3 }
+			},
+			message: 'Found 1 entry.'
+		});
+		const snapshot = buildAgentChatSessionSnapshot({
+			session: makeSession(),
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: 'Find software companies near Baltimore.',
+					created_at: '2026-11-22T10:00:00.000Z'
+				},
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: 'Found one company.',
+					created_at: '2026-11-22T10:01:00.000Z'
+				},
+				{
+					id: 'user-2',
+					role: 'user',
+					content: 'Find the people who run Tenable.',
+					created_at: '2026-11-22T10:02:00.000Z',
+					metadata: {
+						knowledge_selection: [{ entity_id: TENABLE, name: 'Tenable', kind: 'org' }]
+					}
+				},
+				{
+					id: 'assistant-2',
+					role: 'assistant',
+					content: 'Found one leader.',
+					created_at: '2026-11-22T10:03:00.000Z'
+				}
+			] as any,
+			toolExecutions: [
+				{
+					id: 'e1',
+					message_id: 'assistant-1',
+					tool_name: 'explore_knowledge',
+					sequence_index: 1,
+					arguments: { goal: 'Software companies near Baltimore' },
+					result: JSON.stringify(
+						explore(
+							1,
+							{ id: TENABLE, kind: 'org', name: 'Tenable', origin: 'web', hop: 1 },
+							['software companies Baltimore']
+						)
+					),
+					success: true,
+					created_at: '2026-11-22T10:00:20.000Z'
+				},
+				{
+					id: 'e2',
+					message_id: 'assistant-2',
+					tool_name: 'explore_knowledge',
+					sequence_index: 1,
+					arguments: { goal: 'Who runs Tenable' },
+					result: JSON.stringify(
+						explore(
+							2,
+							{
+								id: STEVE,
+								kind: 'person',
+								name: 'Steve Vintz',
+								origin: 'web',
+								hop: 2,
+								from_entity_id: TENABLE
+							},
+							['Tenable leadership team']
+						)
+					),
+					success: true,
+					created_at: '2026-11-22T10:02:20.000Z'
+				}
+			] as any
+		});
+
+		expect(snapshot.messages.map((m) => m.type)).toEqual([
+			'user',
+			'thinking_block',
+			'assistant',
+			'knowledge_entities',
+			'user',
+			'thinking_block',
+			'assistant',
+			'knowledge_entities'
+		]);
+		const [first, second] = snapshot.messages.filter((m) => m.type === 'knowledge_entities');
+		expect((first as any).data.tray).toMatchObject({ source: 'web', hop: 1 });
+		expect((first as any).data.tray.entities.map((e: any) => e.name)).toEqual(['Tenable']);
+		expect((second as any).data.tray).toMatchObject({ source: 'web', hop: 2 });
+		expect((second as any).data.tray.entities[0]).toMatchObject({
+			name: 'Steve Vintz',
+			from_entity_id: TENABLE
+		});
+		// The bubble keeps the entries it was sent about.
+		expect(snapshot.messages[4]!.metadata?.knowledge_selection).toEqual([
+			{ entity_id: TENABLE, name: 'Tenable', kind: 'org' }
+		]);
+		// The reopened work log shows what each search did.
+		const steps = (snapshot.messages[5] as any).activities[0].metadata.progressSteps;
+		expect(steps.map((step: any) => step.kind)).toEqual(['search', 'read', 'save']);
+		expect(steps[0].message).toBe('Searched · Tenable leadership team');
+	});
+
 	it('buildAgentChatSessionSnapshot restores document change cards after the turn that edited', () => {
 		const change = summarizeDocumentChange({
 			project_id: 'p1',

@@ -233,7 +233,19 @@ describe('tool surface size report', () => {
 		// bridge_to) and group_by, so "who do I know at / in / doing …" is one structured
 		// call instead of a guess; no new tool. Descriptions trimmed first (-442).
 		// Measured 67 tools, 73,098 -> 74,506 chars (+1,408). Cap at measured + ~0.3%.
-		expect(global?.totalChars).toBeLessThanOrEqual(74_730);
+		// RE-BASELINED 2026-11-22 (guided search): find_in_knowledge (people in the graph
+		// judged against each part of the ask, with what is missing) and explore_knowledge
+		// (one hop of web search that saves what it finds and returns it to pick from)
+		// joined. Descriptions trimmed first (-493). Measured 67 -> 69 tools, 74,506 ->
+		// 78,087 chars (+3,581). Jev mounts them only on turns about finding people,
+		// companies or places, or a message sent about selected entries. Cap at measured
+		// + ~0.3%.
+		// RE-BASELINED 2026-11-22 (guided search, any kind): find_in_knowledge takes kinds
+		// (companies, channels, places…; people still the default) and four more details to
+		// report; explore_knowledge can bring back channels and its query hint says how a
+		// person search differs from a company one. Measured 78,087 -> 78,578 chars (+491).
+		// Cap at measured + ~0.3%.
+		expect(global?.totalChars).toBeLessThanOrEqual(78_810);
 		// Reviewed 2026-09-05 against the previous signed snapshot: +838 for
 		// contract reference/null handling, +321 for typed task estimates, +396
 		// for get_onto_document_details, +1,190 for link_onto_entities. These
@@ -257,7 +269,12 @@ describe('tool surface size report', () => {
 		// RE-BASELINED 2026-11-21 (tasker 166): query_knowledge's people filters and
 		// group_by (see the global note above). Measured 83,714 -> 85,122 chars (+1,408).
 		// Cap at measured + ~0.3%.
-		expect(project?.totalChars).toBeLessThanOrEqual(85_380);
+		// RE-BASELINED 2026-11-22 (guided search): find_in_knowledge and explore_knowledge
+		// joined the project surface too (see the global note above). Measured 85,122 ->
+		// 88,703 chars (+3,581). Cap at measured + ~0.3%.
+		// RE-BASELINED 2026-11-22 (guided search, any kind): see the global note above.
+		// Measured 88,703 -> 89,194 chars (+491). Cap at measured + ~0.3%.
+		expect(project?.totalChars).toBeLessThanOrEqual(89_460);
 		// Bumped 2026-09-04: 15,250 → 15,700. Measured 15,458 — +426 from the
 		// create_onto_task description work noted above, and +516 already present
 		// on this branch from the control-tool descriptions (declare_turn_contract).

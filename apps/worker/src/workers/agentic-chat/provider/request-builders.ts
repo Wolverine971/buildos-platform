@@ -18,7 +18,9 @@ import { sha256Hex } from '../shared/identity-hash';
 import { workspaceProjectIdFromContextPayload } from '../shared/workspace-context';
 import {
 	KNOWLEDGE_FOCUS_TOOL_PINS,
-	readKnowledgeFocusSection
+	KNOWLEDGE_SELECTION_TOOL_PINS,
+	readKnowledgeFocusSection,
+	readKnowledgeSelectionSection
 } from '@buildos/shared-agent-ops/knowledge';
 import { collectLoadedEntityIds } from './review/grounded-ids';
 import type { AgenticChatWorkerExecutionInputV1 } from '../turn/execution-input';
@@ -376,6 +378,11 @@ export function buildBaseProviderRequest(
 		// about him" names neither (structured focus: the admitted section, not the message).
 		...(readKnowledgeFocusSection(input.artifact.prepared.promptSections)
 			? KNOWLEDGE_FOCUS_TOOL_PINS
+			: []),
+		// A message sent about entries ticked in the Entities tray keeps the search tools:
+		// "go further on these" names none of them (structured: the admitted section).
+		...(readKnowledgeSelectionSection(input.artifact.prepared.promptSections)
+			? KNOWLEDGE_SELECTION_TOOL_PINS
 			: [])
 	];
 	return {

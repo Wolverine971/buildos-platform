@@ -415,12 +415,23 @@ describe('total assembled prompt size budget', () => {
 		// chars / 23,855 → 24,207 est tokens (+1,408 / +352); tool schemas 20,723 → 21,075
 		// est tokens per pass. Jev still mounts the knowledge tools only on turns about
 		// people and orgs. Caps at measured + ~0.5%.
-		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(97_310);
-		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(24_330);
+		// RE-BASELINED 2026-11-22 (guided search): find_in_knowledge and explore_knowledge
+		// joined (search inside the knowledge graph judged per person, and one hop of web
+		// search that saves what it finds); descriptions trimmed first. Measured payload
+		// 96,828 → 100,409 chars / 24,207 → 25,103 est tokens (+3,581 / +896); tool schemas
+		// 21,075 → 21,970 est tokens per pass. Jev mounts them only on turns about finding
+		// people, companies or places, or a message sent about selected entries, so only
+		// unnarrowed passes pay it. Caps at measured + ~0.5%.
+		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(100_910);
+		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(25_230);
 		// Per-turn multiplier guard: ratchet this down when the pass count drops
 		// instead of hiding pass-count drift.
-		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(72_990);
-		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(63_540);
+		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(75_690);
+		// RE-BASELINED 2026-11-22 (guided search, any kind): the two guided-search schemas
+		// grew 491 chars (kinds and more details on find, channels on explore). Measured
+		// 66,279 est tokens per turn (+369 across three passes); the payload caps above
+		// stayed inside their slack. Cap at measured + ~0.5%.
+		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(66_610);
 		// A single verbose schema can dominate every pass even while the aggregate
 		// surface remains under budget. Keep that failure attributable by tool.
 		// 2026-09-10: the batch lane removed the contract DSL from acting-model

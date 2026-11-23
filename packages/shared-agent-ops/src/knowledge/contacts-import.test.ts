@@ -8,6 +8,7 @@ import {
 	parseCsv,
 	parseLinkedInDate,
 	planContactImport,
+	planContactImportWithRefs,
 	readParsedContactPayload,
 	summarizeContactFile
 } from './contacts-import';
@@ -358,6 +359,80 @@ describe('contacts parsed in the browser', () => {
 				urls: [],
 				addresses: []
 			}
+		]);
+	});
+});
+
+describe('business cards', () => {
+	const PHONE_BOOK = [
+		// Apple's "Show as company" card: FN is the company, N is empty.
+		'BEGIN:VCARD\nVERSION:3.0\nN:;;;;\nFN:Corner Dental\nORG:Corner Dental;\nTEL;type=WORK:(410) 555-0144\nitem1.URL:https://cornerdental.example\nADR;type=WORK:;;9 Ritchie Hwy;Glen Burnie;MD;21061;\nX-ABShowAs:COMPANY\nEND:VCARD',
+		// A named contact at a company, flagged as a company card: the company wins.
+		'BEGIN:VCARD\nVERSION:3.0\nN:Lee;Dana;;;\nFN:Harbor Bank\nORG:Harbor Bank;\nTITLE:Teller\nTEL:(410) 555-0155\nX-ABShowAs:COMPANY\nEND:VCARD',
+		// Another phone's export: a company and no person's name, no Apple marker.
+		'BEGIN:VCARD\nVERSION:2.1\nN:;;;;\nFN:Ace Towing\nORG:Ace Towing\nTEL;WORK:4105550166\nEND:VCARD',
+		// A real person who works at one of those companies.
+		'BEGIN:VCARD\nVERSION:3.0\nN:Okafor;Ngozi;;;\nFN:Ngozi Okafor\nORG:Corner Dental;\nTITLE:Hygienist\nTEL;type=CELL:(410) 555-0177\nEND:VCARD',
+		// A person with only a display name stays a person.
+		'BEGIN:VCARD\nVERSION:3.0\nFN:Mom\nTEL;type=CELL:(410) 555-0188\nEND:VCARD'
+	].join('\n');
+
+	it('marks company cards and leaves people as people', () => {
+		const parsed = parseContactFile('contacts.vcf', PHONE_BOOK)!;
+		expect(parsed.contacts.map((c) => [c.name, Boolean(c.isCompany)])).toEqual([
+			['Corner Dental', true],
+			['Harbor Bank', true],
+			['Ace Towing', true],
+			['Ngozi Okafor', false],
+			['Mom', false]
+		]);
+		expect(summarizeContactFile(parsed)).toMatchObject({
+			contacts: 5,
+			companies: 3,
+			with_company: 1
+		});
+	});
+
+	it('saves a company card as one organization holding its own phone, address and website', () => {
+		const parsed = parseContactFile('contacts.vcf', PHONE_BOOK)!;
+		const { batch, refs } = planContactImportWithRefs(parsed.contacts, { format: 'vcard' });
+		const kindOf = new Map(batch.entities!.map((e) => [e.ref, e.kind]));
+		const nameOf = new Map(batch.entities!.map((e) => [e.ref, e.name]));
+		// No person named after a company, and the hygienist's employer is the same organization
+		// as the dental office's own card.
+		expect(
+			batch.entities!.filter((e) => e.kind === 'person' && !e.self).map((e) => e.name)
+		).toEqual(['Ngozi Okafor', 'Mom']);
+		expect(batch.entities!.filter((e) => e.kind === 'org').map((e) => e.name)).toEqual([
+			'Corner Dental',
+			'Harbor Bank',
+			'Ace Towing'
+		]);
+		expect(refs[0]).toEqual({ org: refs[3]!.org });
+		expect(refs[3]!.person && nameOf.get(refs[3]!.person)).toBe('Ngozi Okafor');
+
+		const dental = refs[0]!.org!;
+		expect(kindOf.get(dental)).toBe('org');
+		expect(
+			batch.facts!.filter((f) => f.subject === dental).map((f) => [f.predicate, f.value])
+		).toEqual([
+			['phone', '(410) 555-0144'],
+			['address', '9 Ritchie Hwy, Glen Burnie, MD, 21061'],
+			['homepage', 'https://cornerdental.example']
+		]);
+		// "I know them" is about people only.
+		expect(
+			batch.facts!.filter((f) => f.predicate === 'knows').map((f) => nameOf.get(f.object!))
+		).toEqual(['Ngozi Okafor', 'Mom']);
+	});
+
+	it('carries the company flag through the browser-to-server payload', () => {
+		const parsed = parseContactFile('contacts.vcf', PHONE_BOOK)!;
+		const read = readParsedContactPayload(JSON.parse(JSON.stringify(parsed)))!;
+		expect(read.contacts.filter((c) => c.isCompany).map((c) => c.name)).toEqual([
+			'Corner Dental',
+			'Harbor Bank',
+			'Ace Towing'
 		]);
 	});
 });

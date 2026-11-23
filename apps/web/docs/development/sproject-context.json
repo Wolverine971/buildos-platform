@@ -51,6 +51,11 @@
 			]
 		},
 		{
+			"file": "src/lib/components/agent/ChatShareButton.svelte",
+			"type": "component",
+			"components": ["ChatShareSheet"]
+		},
+		{
 			"file": "src/lib/components/dashboard/DashboardInboxModal.svelte",
 			"type": "component",
 			"components": ["AgentChatModal"]
@@ -71,9 +76,9 @@
 			]
 		},
 		{
-			"file": "src/lib/components/agent/ChatShareButton.svelte",
+			"file": "src/lib/components/knowledge/ProjectPeopleTab.svelte",
 			"type": "component",
-			"components": ["ChatShareSheet"]
+			"components": ["KnowledgeLensSection"]
 		},
 		{
 			"file": "src/lib/components/landing/HomepageV2.svelte",
@@ -84,11 +89,6 @@
 			"file": "src/lib/components/layout/Navigation.svelte",
 			"type": "component",
 			"components": ["DashboardInboxModal", "WorkPanel"]
-		},
-		{
-			"file": "src/lib/components/knowledge/ProjectPeopleTab.svelte",
-			"type": "component",
-			"components": ["KnowledgeLensSection"]
 		},
 		{
 			"file": "src/lib/components/notifications/MinimizedNotification.svelte",
@@ -283,14 +283,14 @@
 			"components": ["SessionTimeWaterfall", "SessionCostWaterfall"]
 		},
 		{
-			"file": "src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
-			"type": "component",
-			"components": ["OntologyGraph", "NodeDetailsPanel"]
-		},
-		{
 			"file": "src/lib/components/ontology/doc-tree/DocTreeView.svelte",
 			"type": "component",
 			"components": ["NewTableDialog"]
+		},
+		{
+			"file": "src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
+			"type": "component",
+			"components": ["OntologyGraph", "NodeDetailsPanel"]
 		},
 		{
 			"file": "src/lib/components/projects/desktop/DesktopChatPane.svelte",
@@ -977,32 +977,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/builder-profile/builder-visitor.svelte.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["closedAsk", "BuilderVisitor"]
-		},
-		{
-			"file": "src/lib/components/chat/project-selector-browser.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"DEFAULT_PROJECT_SELECTOR_LIMIT",
-				"MAX_PROJECT_SELECTOR_LIMIT",
-				"PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS",
-				"withoutWorkspace",
-				"normalizeProjectSelectionSearch",
-				"PROJECT_RECENCY_RECENT_MAX_DAYS",
-				"PROJECT_RECENCY_OLDER_MAX_DAYS",
-				"parseProjectUpdatedAt",
-				"formatRelativeProjectUpdate",
-				"groupProjectsByRecency",
-				"normalizeProjectSelectionLimit",
-				"clearProjectSelectionBrowserCache",
-				"fetchProjectSelectionSummaries"
-			]
-		},
-		{
 			"file": "src/lib/components/agent/agent-chat-attachments.svelte.ts",
 			"type": "component",
 			"components": [],
@@ -1151,6 +1125,7 @@
 				"resetAgentChatTurnRouteWarmupForTests",
 				"warmAgentChatStreamTransport",
 				"markUndoneDocumentChanges",
+				"buildKnowledgeEntitiesMessage",
 				"buildTableChangesMessage",
 				"buildAgentChatSessionSnapshot",
 				"loadAgentChatSessionSnapshot"
@@ -1273,7 +1248,8 @@
 			"exports": [
 				"readToolProgressSteps",
 				"mergeToolProgressStep",
-				"buildWebNavigateTrailFromResult"
+				"buildWebNavigateTrailFromResult",
+				"buildGuidedSearchTrailFromResult"
 			]
 		},
 		{
@@ -1398,6 +1374,22 @@
 				"undoFreshnessScan",
 				"markFreshnessFlagNotStale",
 				"describeUndoResult"
+			]
+		},
+		{
+			"file": "src/lib/components/agent/knowledge-search-tray.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"extractGuidedSearch",
+				"buildKnowledgeTray",
+				"readKnowledgeTray",
+				"entityFit",
+				"selectionRefOf",
+				"messageKnowledgeSelection",
+				"knowledgeNextSteps",
+				"buildKnowledgeTrail",
+				"siteName"
 			]
 		},
 		{
@@ -1544,16 +1536,54 @@
 			]
 		},
 		{
-			"file": "src/lib/components/consolidation/consolidation-picture.ts",
+			"file": "src/lib/components/builder-profile/builder-visitor.svelte.ts",
 			"type": "component",
 			"components": [],
-			"exports": ["consolidationPicture"]
+			"exports": ["closedAsk", "BuilderVisitor"]
+		},
+		{
+			"file": "src/lib/components/chat/project-selector-browser.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"DEFAULT_PROJECT_SELECTOR_LIMIT",
+				"MAX_PROJECT_SELECTOR_LIMIT",
+				"PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS",
+				"withoutWorkspace",
+				"normalizeProjectSelectionSearch",
+				"PROJECT_RECENCY_RECENT_MAX_DAYS",
+				"PROJECT_RECENCY_OLDER_MAX_DAYS",
+				"parseProjectUpdatedAt",
+				"formatRelativeProjectUpdate",
+				"groupProjectsByRecency",
+				"normalizeProjectSelectionLimit",
+				"clearProjectSelectionBrowserCache",
+				"fetchProjectSelectionSummaries"
+			]
 		},
 		{
 			"file": "src/lib/components/dashboard/dashboard-presentation.ts",
 			"type": "component",
 			"components": [],
 			"exports": ["formatActivityDay", "getDashboardChatPresentation"]
+		},
+		{
+			"file": "src/lib/components/consolidation/consolidation-picture.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["consolidationPicture"]
+		},
+		{
+			"file": "src/lib/components/layout/agent-chat-launch-params.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["AGENT_CHAT_LAUNCH_PARAMS", "readAgentChatLaunchRequest"]
+		},
+		{
+			"file": "src/lib/components/layout/agent-chat-resume-link.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["createChatResumeLinkHandler"]
 		},
 		{
 			"file": "src/lib/components/inbox/check-ins.ts",
@@ -1776,24 +1806,6 @@
 			"exports": ["getNotificationPreview", "notificationPreviewAriaLabel"]
 		},
 		{
-			"file": "src/lib/components/layout/agent-chat-launch-params.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["AGENT_CHAT_LAUNCH_PARAMS", "readAgentChatLaunchRequest"]
-		},
-		{
-			"file": "src/lib/components/layout/agent-chat-resume-link.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["createChatResumeLinkHandler"]
-		},
-		{
-			"file": "src/lib/components/ontology/document-agent-mutation.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["resolveDocumentAgentMutationAction"]
-		},
-		{
 			"file": "src/lib/components/people/people-copy.ts",
 			"type": "component",
 			"components": [],
@@ -1896,6 +1908,12 @@
 			"exports": ["createOrganizePersistence"]
 		},
 		{
+			"file": "src/lib/components/ontology/document-agent-mutation.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["resolveDocumentAgentMutationAction"]
+		},
+		{
 			"file": "src/lib/components/profile/profile-tabs.ts",
 			"type": "component",
 			"components": [],
@@ -1912,6 +1930,20 @@
 			"type": "component",
 			"components": [],
 			"exports": ["SETTINGS_GROUPS", "getSettingsDestinations", "getSettingsGroupLabel"]
+		},
+		{
+			"file": "src/lib/components/projects/project-list.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"formatProjectResumeCue",
+				"PROJECT_LIST_SCOPE_OPTIONS",
+				"normalizeProjectListScope",
+				"getProjectListScopeLabel",
+				"matchesProjectListScope",
+				"addProjectCollaborationFlags",
+				"mergeProjectSummaries"
+			]
 		},
 		{
 			"file": "src/lib/components/project/entity-modal-data.ts",
@@ -2028,20 +2060,6 @@
 			"exports": ["countPeople", "formatPeopleList", "personLabel"]
 		},
 		{
-			"file": "src/lib/components/projects/project-list.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"formatProjectResumeCue",
-				"PROJECT_LIST_SCOPE_OPTIONS",
-				"normalizeProjectListScope",
-				"getProjectListScopeLabel",
-				"matchesProjectListScope",
-				"addProjectCollaborationFlags",
-				"mergeProjectSummaries"
-			]
-		},
-		{
 			"file": "src/lib/components/table-surfaces/chat-table-save.ts",
 			"type": "component",
 			"components": [],
@@ -2077,6 +2095,18 @@
 				"replaceRangeWithEmbed",
 				"liftedTableTitle"
 			]
+		},
+		{
+			"file": "src/lib/components/task-entities/entity-mentions.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["findWord", "splitMentions", "placeTags", "MENTION_CLASS", "entityMentions"]
+		},
+		{
+			"file": "src/lib/components/task-entities/task-entities.svelte.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["TaskEntities"]
 		},
 		{
 			"file": "src/lib/components/tables/fixtures.ts",
@@ -2241,18 +2271,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/task-entities/entity-mentions.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["findWord", "splitMentions", "placeTags", "MENTION_CLASS", "entityMentions"]
-		},
-		{
-			"file": "src/lib/components/task-entities/task-entities.svelte.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["TaskEntities"]
-		},
-		{
 			"file": "src/lib/components/today/today-picks.ts",
 			"type": "component",
 			"components": [],
@@ -2402,6 +2420,12 @@
 			]
 		},
 		{
+			"file": "src/lib/components/agent/__fixtures__/chat-history-state.svelte.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["navigating"]
+		},
+		{
 			"file": "src/lib/components/admin/chat/session-audit-ui.ts",
 			"type": "component",
 			"components": [],
@@ -2507,16 +2531,25 @@
 			]
 		},
 		{
-			"file": "src/lib/components/agent/__fixtures__/chat-history-state.svelte.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["navigating"]
-		},
-		{
 			"file": "src/lib/components/landing/home-variants/fading-crown.ts",
 			"type": "component",
 			"components": [],
 			"exports": ["FADING_CROWN_PROJECT_ID", "FADING_CROWN", "FADING_CROWN_COUNTS"]
+		},
+		{
+			"file": "src/lib/components/people/hub/hub-actions.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"setMemberRole",
+				"setMemberAgents",
+				"removeMember",
+				"resendInvite",
+				"revokeInvite",
+				"clearExpiredInvites",
+				"inviteExistingPerson",
+				"runAll"
+			]
 		},
 		{
 			"file": "src/lib/components/ontology/doc-tree/drop-geometry.ts",
@@ -2578,21 +2611,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/people/hub/hub-actions.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"setMemberRole",
-				"setMemberAgents",
-				"removeMember",
-				"resendInvite",
-				"revokeInvite",
-				"clearExpiredInvites",
-				"inviteExistingPerson",
-				"runAll"
-			]
-		},
-		{
 			"file": "src/lib/components/profile/cycles/cycle-presenter.ts",
 			"type": "component",
 			"components": [],
@@ -2636,68 +2654,6 @@
 				"ProjectFreshnessState",
 				"setProjectFreshnessContext",
 				"getProjectFreshnessContext"
-			]
-		},
-		{
-			"file": "src/lib/components/project/v2/board-a11y.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["handleRovingTabKeydown", "slideMotion", "fadeMotion"]
-		},
-		{
-			"file": "src/lib/components/ui/codemirror/extensions.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"toggleBold",
-				"toggleItalic",
-				"insertH1",
-				"insertH2",
-				"insertBulletList",
-				"insertOrderedList",
-				"insertBlockquote",
-				"insertCodeBlock",
-				"insertLink",
-				"formattingKeymap",
-				"buildExtensions"
-			]
-		},
-		{
-			"file": "src/lib/components/ui/codemirror/inkprint-theme.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["inkprintEditorTheme", "inkprintHighlightStyle", "inkprintTheme"]
-		},
-		{
-			"file": "src/lib/components/ui/codemirror/mention-highlights.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["setMentionHighlights", "mentionHighlightsExtension"]
-		},
-		{
-			"file": "src/lib/components/ui/codemirror/sticky-scroll.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"buildHeadingIndex",
-				"findActiveHeadingIndex",
-				"getActivePath",
-				"stickyScroll"
-			]
-		},
-		{
-			"file": "src/lib/components/ui/codemirror/voice-widget.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"showVoiceWidget",
-				"showVoiceInsertHint",
-				"updateVoiceDictation",
-				"hideVoiceWidget",
-				"hideVoiceInsertHint",
-				"getVoiceDictationTarget",
-				"buildDictationCommit",
-				"voiceWidgetExtension"
 			]
 		},
 		{
@@ -2835,10 +2791,89 @@
 			"exports": ["itemKey", "targetKey", "readItem", "readTarget", "createDesktopDrag"]
 		},
 		{
+			"file": "src/lib/components/project/v2/board-a11y.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["handleRovingTabKeydown", "slideMotion", "fadeMotion"]
+		},
+		{
+			"file": "src/lib/components/ui/codemirror/extensions.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"toggleBold",
+				"toggleItalic",
+				"insertH1",
+				"insertH2",
+				"insertBulletList",
+				"insertOrderedList",
+				"insertBlockquote",
+				"insertCodeBlock",
+				"insertLink",
+				"formattingKeymap",
+				"buildExtensions"
+			]
+		},
+		{
+			"file": "src/lib/components/ui/codemirror/inkprint-theme.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["inkprintEditorTheme", "inkprintHighlightStyle", "inkprintTheme"]
+		},
+		{
+			"file": "src/lib/components/ui/codemirror/mention-highlights.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["setMentionHighlights", "mentionHighlightsExtension"]
+		},
+		{
+			"file": "src/lib/components/ui/codemirror/sticky-scroll.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"buildHeadingIndex",
+				"findActiveHeadingIndex",
+				"getActivePath",
+				"stickyScroll"
+			]
+		},
+		{
+			"file": "src/lib/components/ui/codemirror/voice-widget.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"showVoiceWidget",
+				"showVoiceInsertHint",
+				"updateVoiceDictation",
+				"hideVoiceWidget",
+				"hideVoiceInsertHint",
+				"getVoiceDictationTarget",
+				"buildDictationCommit",
+				"voiceWidgetExtension"
+			]
+		},
+		{
+			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"PROJECT_COMMANDERS",
+				"DEFAULT_PUBLIC_PROJECT_ID",
+				"getCommander",
+				"formatTimelineYearRange"
+			]
+		},
+		{
 			"file": "src/lib/components/landing/home-variants/b/examples.ts",
 			"type": "component",
 			"components": [],
 			"exports": ["ASSEMBLY_EXAMPLES", "UPDATE_DEMOS"]
+		},
+		{
+			"file": "src/lib/components/landing/home-variants/d/project-reel.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["REEL_STORIES", "storyAt"]
 		},
 		{
 			"file": "src/lib/components/landing/home-variants/c/dump-demo.ts",
@@ -2856,23 +2891,6 @@
 				"PROJECT_ORDER",
 				"CHAPTERS",
 				"KIND_TONE"
-			]
-		},
-		{
-			"file": "src/lib/components/landing/home-variants/d/project-reel.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["REEL_STORIES", "storyAt"]
-		},
-		{
-			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"PROJECT_COMMANDERS",
-				"DEFAULT_PUBLIC_PROJECT_ID",
-				"getCommander",
-				"formatTimelineYearRange"
 			]
 		},
 		{
@@ -3013,12 +3031,12 @@
 		]
 	},
 	"unusedComponents": [
+		"src/lib/components/agent/ChatShareButton.svelte",
 		"src/lib/components/dashboard/RecentActivityPanels.svelte",
 		"src/lib/components/dashboard/TodayRow.svelte",
-		"src/lib/components/agent/ChatShareButton.svelte",
+		"src/lib/components/knowledge/ProjectPeopleTab.svelte",
 		"src/lib/components/landing/HomepageV2.svelte",
 		"src/lib/components/layout/Navigation.svelte",
-		"src/lib/components/knowledge/ProjectPeopleTab.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",
 		"src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
@@ -3029,16 +3047,14 @@
 		"src/routes/projects/[id]/ProjectWorkspaceEntityModals.svelte",
 		"src/routes/projects/[id]/ProjectWorkspaceOptionsMenu.svelte",
 		"src/lib/components/admin/chat/SessionFlowVisuals.svelte",
-		"src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
 		"src/lib/components/ontology/doc-tree/DocTreeView.svelte",
+		"src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
 		"src/lib/components/projects/desktop/DesktopChatPane.svelte",
 		"src/lib/components/projects/desktop/DesktopProjectCard.svelte",
 		"src/lib/components/projects/desktop/ReaderPanes.svelte",
 		"src/lib/components/landing/home-variants/a/LiveProject.svelte",
 		"src/lib/components/landing/home-variants/d/AnimatedDemo.svelte",
 		"src/lib/components/admin/adminRoutes.ts",
-		"src/lib/components/builder-profile/builder-visitor.svelte.ts",
-		"src/lib/components/chat/project-selector-browser.ts",
 		"src/lib/components/agent/agent-chat-attachments.svelte.ts",
 		"src/lib/components/agent/agent-chat-capture-receipts.svelte.ts",
 		"src/lib/components/agent/agent-chat-client-actions.ts",
@@ -3076,6 +3092,7 @@
 		"src/lib/components/agent/duplicate-check-strip.ts",
 		"src/lib/components/agent/freshness-radar-card.fixture.ts",
 		"src/lib/components/agent/freshness-radar-card.ts",
+		"src/lib/components/agent/knowledge-search-tray.ts",
 		"src/lib/components/agent/load-agent-chat-modal.ts",
 		"src/lib/components/agent/phrase-flight.ts",
 		"src/lib/components/agent/project-creation-recovery.ts",
@@ -3087,8 +3104,12 @@
 		"src/lib/components/agent/shared-document-edit-card-state.svelte.ts",
 		"src/lib/components/agent/shared-document-edit-cards.ts",
 		"src/lib/components/agent/table-change-cards.ts",
-		"src/lib/components/consolidation/consolidation-picture.ts",
+		"src/lib/components/builder-profile/builder-visitor.svelte.ts",
+		"src/lib/components/chat/project-selector-browser.ts",
 		"src/lib/components/dashboard/dashboard-presentation.ts",
+		"src/lib/components/consolidation/consolidation-picture.ts",
+		"src/lib/components/layout/agent-chat-launch-params.ts",
+		"src/lib/components/layout/agent-chat-resume-link.ts",
 		"src/lib/components/inbox/check-ins.ts",
 		"src/lib/components/inbox/cleanup-note.client.ts",
 		"src/lib/components/inbox/cleanup-outbox.ts",
@@ -3110,9 +3131,6 @@
 		"src/lib/components/knowledge/sharing-types.ts",
 		"src/lib/components/knowledge/where-types.ts",
 		"src/lib/components/notifications/notification-preview.ts",
-		"src/lib/components/layout/agent-chat-launch-params.ts",
-		"src/lib/components/layout/agent-chat-resume-link.ts",
-		"src/lib/components/ontology/document-agent-mutation.ts",
 		"src/lib/components/people/people-copy.ts",
 		"src/lib/components/people/people-types.ts",
 		"src/lib/components/people/project-arrival.ts",
@@ -3122,8 +3140,10 @@
 		"src/lib/components/organize/organize-plan.ts",
 		"src/lib/components/organize/useOrganizeDrag.svelte.ts",
 		"src/lib/components/organize/useOrganizePersistence.svelte.ts",
+		"src/lib/components/ontology/document-agent-mutation.ts",
 		"src/lib/components/profile/profile-tabs.ts",
 		"src/lib/components/profile/settings-navigation.ts",
+		"src/lib/components/projects/project-list.ts",
 		"src/lib/components/project/entity-modal-data.ts",
 		"src/lib/components/project/project-entity-modal-loader.ts",
 		"src/lib/components/project/project-event-filters.ts",
@@ -3132,11 +3152,12 @@
 		"src/lib/components/project/project-page-data-controller.ts",
 		"src/lib/components/project/project-page-interactions.ts",
 		"src/lib/components/project/project-sharing-copy.ts",
-		"src/lib/components/projects/project-list.ts",
 		"src/lib/components/table-surfaces/chat-table-save.ts",
 		"src/lib/components/table-surfaces/document-embeds.ts",
 		"src/lib/components/table-surfaces/make-live-table.ts",
 		"src/lib/components/table-surfaces/table-surface-utils.ts",
+		"src/lib/components/task-entities/entity-mentions.ts",
+		"src/lib/components/task-entities/task-entities.svelte.ts",
 		"src/lib/components/tables/fixtures.ts",
 		"src/lib/components/tables/table-cell-format.ts",
 		"src/lib/components/tables/table-client.ts",
@@ -3144,8 +3165,6 @@
 		"src/lib/components/tables/table-grid-model.ts",
 		"src/lib/components/tables/table-import.ts",
 		"src/lib/components/tables/table-view-model.ts",
-		"src/lib/components/task-entities/entity-mentions.ts",
-		"src/lib/components/task-entities/task-entities.svelte.ts",
 		"src/lib/components/today/today-picks.ts",
 		"src/lib/components/today/today-task-order.ts",
 		"src/lib/components/today/today-two-weeks.ts",
@@ -3156,6 +3175,7 @@
 		"src/lib/components/workspace/workspace-model.ts",
 		"src/lib/components/admin/chat-users/chat-user-export.ts",
 		"src/lib/components/admin/chat-users/chat-user-ui.ts",
+		"src/lib/components/agent/__fixtures__/chat-history-state.svelte.ts",
 		"src/lib/components/admin/chat/session-audit-ui.ts",
 		"src/lib/components/builder-profile/editor/builder-editor-state.svelte.ts",
 		"src/lib/components/builder-profile/editor/builder-editor.ts",
@@ -3163,24 +3183,17 @@
 		"src/lib/components/builder-profile/editor/editor-api.ts",
 		"src/lib/components/builder-profile/editor/editor-styles.ts",
 		"src/lib/components/builder-profile/editor/image-crop.ts",
-		"src/lib/components/agent/__fixtures__/chat-history-state.svelte.ts",
 		"src/lib/components/landing/home-variants/fading-crown.ts",
+		"src/lib/components/people/hub/hub-actions.ts",
 		"src/lib/components/ontology/doc-tree/drop-geometry.ts",
 		"src/lib/components/ontology/doc-tree/tree-images.ts",
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
-		"src/lib/components/people/hub/hub-actions.ts",
 		"src/lib/components/profile/cycles/cycle-presenter.ts",
 		"src/lib/components/project/emoji/emoji-catalog.generated.ts",
 		"src/lib/components/project/emoji/project-emoji.ts",
 		"src/lib/components/project/freshness/freshness-context.svelte.ts",
-		"src/lib/components/project/v2/board-a11y.ts",
-		"src/lib/components/ui/codemirror/extensions.ts",
-		"src/lib/components/ui/codemirror/inkprint-theme.ts",
-		"src/lib/components/ui/codemirror/mention-highlights.ts",
-		"src/lib/components/ui/codemirror/sticky-scroll.ts",
-		"src/lib/components/ui/codemirror/voice-widget.ts",
 		"src/lib/components/projects/desktop/desktop-chats.svelte.ts",
 		"src/lib/components/projects/desktop/desktop-context.ts",
 		"src/lib/components/projects/desktop/desktop-model.ts",
@@ -3193,10 +3206,16 @@
 		"src/lib/components/projects/desktop/reader-task-groups.ts",
 		"src/lib/components/projects/desktop/reader-task-hold.svelte.ts",
 		"src/lib/components/projects/desktop/useDesktopDrag.svelte.ts",
-		"src/lib/components/landing/home-variants/b/examples.ts",
-		"src/lib/components/landing/home-variants/c/dump-demo.ts",
-		"src/lib/components/landing/home-variants/d/project-reel.ts",
+		"src/lib/components/project/v2/board-a11y.ts",
+		"src/lib/components/ui/codemirror/extensions.ts",
+		"src/lib/components/ui/codemirror/inkprint-theme.ts",
+		"src/lib/components/ui/codemirror/mention-highlights.ts",
+		"src/lib/components/ui/codemirror/sticky-scroll.ts",
+		"src/lib/components/ui/codemirror/voice-widget.ts",
 		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
+		"src/lib/components/landing/home-variants/b/examples.ts",
+		"src/lib/components/landing/home-variants/d/project-reel.ts",
+		"src/lib/components/landing/home-variants/c/dump-demo.ts",
 		"src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
 		"src/lib/components/ontology/graph/lib/graph.filters.ts",
 		"src/lib/components/ontology/graph/lib/graph.layout.ts",

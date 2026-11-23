@@ -8,6 +8,7 @@
 import type { KnowledgeCircle, KnowledgeCircleSource, KnowledgeResearchHint } from './anchors';
 import {
 	domainOf,
+	foldOrgName,
 	isSpecificPersonName,
 	KNOWLEDGE_UUID_PATTERN,
 	keysForKnowledgeValue,
@@ -45,6 +46,7 @@ import type {
 	KnowledgeScope,
 	KnowledgeSourceView,
 	KnowledgeWriteBatch,
+	KnowledgeWriteEntity,
 	KnowledgeWriteOptions,
 	KnowledgeWriteReceipt
 } from './types';
@@ -348,6 +350,7 @@ export class KnowledgeStore {
 		const resolved = await serializePerUser(this.userId, () =>
 			this.resolveEntities(batch, options, receipt)
 		);
+		if (options.dryRun) return receipt;
 		const sourceIds = await this.insertSources(batch, receipt);
 		// Entities created by this batch can't have facts yet: skip loading theirs.
 		const created = new Set(
@@ -382,9 +385,27 @@ export class KnowledgeStore {
 				}
 			}
 		}
+		const dryRun = options.dryRun === true;
+		const runStamp = options.trackRun && options.runId ? { run_id: options.runId } : {};
+		// A dry run saves nothing: an entity it would create is a placeholder with no real id.
+		const placeholder = (ref: string, e: KnowledgeWriteEntity): EntityRow => ({
+			id: `new:${ref}`,
+			kind: e.kind,
+			name: e.name.trim().slice(0, 300),
+			summary: e.summary?.trim().slice(0, 300) || null,
+			scope: 'private',
+			is_self: Boolean(e.self),
+			image_url: e.image_url ?? null,
+			status: 'active',
+			merged_into_id: null,
+			owner_user_id: this.userId
+		});
 		if (entities.some((e) => e.self && !e.id)) {
-			const selfId = await this.ensureSelf();
-			const self = (await this.loadEntities([selfId])).get(selfId)!;
+			const selfId = dryRun ? await this.findSelfId() : await this.ensureSelf();
+			const first = entities.find((e) => e.self && !e.id)!;
+			const self = selfId
+				? (await this.loadEntities([selfId])).get(selfId)!
+				: placeholder(first.ref, first);
 			for (const e of entities.filter((x) => x.self && !x.id)) {
 				byRef.set(e.ref, self);
 				match.set(e.ref, 'self');
@@ -473,6 +494,7 @@ export class KnowledgeStore {
 		const heldKeys = await this.loadPrivateKeyTypes(
 			unique([...nameMatches.values()].flat().map((row) => row.id))
 		);
+		const asked = new Set<string>();
 		for (const e of unresolved) {
 			const ownKeys = keysByRef.get(e.ref) ?? [];
 			const existing = (nameMatches.get(normalizeKnowledgeName(e.name)) ?? []).filter(
@@ -520,6 +542,35 @@ export class KnowledgeStore {
 				match.set(e.ref, 'name');
 			} else {
 				candidatePairs.push({ ref: e.ref, existing: existing[0]!.id });
+				asked.add(e.ref);
+			}
+		}
+
+		// 3b. Organizations also match on their folded name: "The Cadre" is "Cadre", and
+		// "Magnum-LPL" is "Magnum/LPL". The oldest entry wins. People never fold by name.
+		const foldTargets = unresolved.filter(
+			(e) => e.kind === 'org' && !byRef.has(e.ref) && !asked.has(e.ref)
+		);
+		if (foldTargets.length) {
+			const folded = await this.lookupPrivateOrgFolds(foldTargets.map((e) => e.name));
+			const foldedIds = unique([...folded.values()].flat().map((row) => row.id));
+			const foldedKeys = foldTargets.some((e) => keysByRef.has(e.ref))
+				? await this.loadPrivateKeyTypes(foldedIds)
+				: new Map<string, Map<string, Set<string>>>();
+			for (const e of foldTargets) {
+				const fold = foldOrgName(e.name);
+				if (!fold) continue;
+				const ownKeys = keysByRef.get(e.ref) ?? [];
+				const row = (folded.get(fold) ?? []).find(
+					(candidate) =>
+						!ownKeys.some((key) => {
+							const held = foldedKeys.get(candidate.id)?.get(key.type);
+							return STRONG_KEY_TYPES.has(key.type) && held && !held.has(key.value);
+						})
+				);
+				if (!row) continue;
+				byRef.set(e.ref, row);
+				match.set(e.ref, 'name');
 			}
 		}
 
@@ -530,7 +581,9 @@ export class KnowledgeStore {
 				continue;
 			const reusable = e.kind !== 'person' || isSpecificPersonName(e.name) || singleNamesOk;
 			if (!reusable || keysByRef.has(e.ref)) continue;
-			const key = `${e.kind}|${normalizeKnowledgeName(e.name)}`;
+			const key = `${e.kind}|${
+				(e.kind === 'org' ? foldOrgName(e.name) : null) ?? normalizeKnowledgeName(e.name)
+			}`;
 			const first = batchNames.get(key);
 			if (first) aliasOf.set(e.ref, first);
 			else batchNames.set(key, e.ref);
@@ -546,6 +599,13 @@ export class KnowledgeStore {
 				e.name?.trim()
 		);
 		for (const group of chunk(toCreate, PAGE)) {
+			if (dryRun) {
+				for (const e of group) {
+					byRef.set(e.ref, placeholder(e.ref, e));
+					match.set(e.ref, 'created');
+				}
+				continue;
+			}
 			const { data, error } = await this.db
 				.from('knowledge_entities')
 				.insert(
@@ -556,7 +616,8 @@ export class KnowledgeStore {
 						image_url: e.image_url ?? null,
 						scope: 'private',
 						owner_user_id: this.userId,
-						created_via: options.via
+						created_via: options.via,
+						...runStamp
 					}))
 				)
 				.select(ENTITY_COLUMNS);
@@ -578,6 +639,7 @@ export class KnowledgeStore {
 		const summaryUpdates = entities.filter((e) => {
 			const row = byRef.get(e.ref);
 			return (
+				!dryRun &&
 				e.summary &&
 				row &&
 				row.owner_user_id === this.userId &&
@@ -608,11 +670,12 @@ export class KnowledgeStore {
 					key_type: key.type,
 					key_value: key.value,
 					scope: 'private',
-					owner_user_id: this.userId
+					owner_user_id: this.userId,
+					...runStamp
 				});
 			}
 		}
-		await this.insertKeys(keyRows);
+		if (!dryRun) await this.insertKeys(keyRows);
 
 		// Same-name people that were not merged automatically.
 		const mergeRows = candidatePairs
@@ -634,11 +697,13 @@ export class KnowledgeStore {
 			...new Map(mergeRows.map((r) => [`${r.entity_a}|${r.entity_b}`, r])).values()
 		];
 		for (const group of chunk(pairs, PAGE)) {
-			const { error } = await this.db.from('knowledge_merge_candidates').upsert(group, {
-				onConflict: 'owner_user_id,entity_a,entity_b',
-				ignoreDuplicates: true
-			});
-			if (error) throw dbError('Save merge candidates', error);
+			if (!dryRun) {
+				const { error } = await this.db.from('knowledge_merge_candidates').upsert(group, {
+					onConflict: 'owner_user_id,entity_a,entity_b',
+					ignoreDuplicates: true
+				});
+				if (error) throw dbError('Save merge candidates', error);
+			}
 			receipt.merge_candidates += group.length;
 		}
 
@@ -713,6 +778,35 @@ export class KnowledgeStore {
 						{ ...target, created_via: row.created_via }
 					]);
 			}
+		}
+		return out;
+	}
+
+	/** The user's own active organizations by folded name, oldest first. */
+	private async lookupPrivateOrgFolds(names: string[]): Promise<Map<string, EntityRow[]>> {
+		const out = new Map<string, EntityRow[]>();
+		const folds = unique(
+			names.map(foldOrgName).filter((fold): fold is string => Boolean(fold))
+		);
+		type Row = EntityRow & { normalized_org_name: string; created_at: string };
+		const rows = await mapChunks(folds, ID_CHUNK, async (group) => {
+			const { data, error } = await this.db
+				.from('knowledge_entities')
+				.select(ENTITY_COLUMNS + ', normalized_org_name, created_at')
+				.eq('owner_user_id', this.userId)
+				.eq('kind', 'org')
+				.eq('status', 'active')
+				.in('normalized_org_name', group);
+			// A database without the folded column (migration 20261121231933) matches exact
+			// names only, as before.
+			if (error && (error as { code?: string }).code === '42703') return [] as Row[];
+			if (error) throw dbError('Look up organizations', error);
+			return (data ?? []) as Row[];
+		});
+		rows.sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
+		for (const row of rows) {
+			if (!row.normalized_org_name) continue;
+			out.set(row.normalized_org_name, [...(out.get(row.normalized_org_name) ?? []), row]);
 		}
 		return out;
 	}
@@ -902,7 +996,8 @@ export class KnowledgeStore {
 						key_type: key.type,
 						key_value: key.value,
 						scope: 'private',
-						owner_user_id: this.userId
+						owner_user_id: this.userId,
+						...(options.trackRun && options.runId ? { run_id: options.runId } : {})
 					});
 				}
 			}
@@ -967,7 +1062,11 @@ export class KnowledgeStore {
 			}
 			return rows;
 		});
+		// People who already have an employer on record (fillOnly: a second one is a suggestion).
+		const employed = new Set<string>();
 		for (const row of existingRows) {
+			if (row.predicate === 'works_at' && row.status === 'active')
+				employed.add(row.entity_id);
 			existing.set(
 				factIdentity(row.entity_id, row.predicate, row.object_entity_id, row.value_text),
 				row
@@ -1008,12 +1107,18 @@ export class KnowledgeStore {
 			if (prior) {
 				receipt.facts.existing++;
 				factIdFor.set(plan.index, prior.id);
-				const merged = {
-					...(prior.qualifiers ?? {}),
-					...(plan.row.qualifiers as Record<string, unknown>)
-				};
+				// fillOnly: what is already recorded (how you met, their title) wins over the file.
+				const merged = options.fillOnly
+					? {
+							...(plan.row.qualifiers as Record<string, unknown>),
+							...(prior.qualifiers ?? {})
+						}
+					: {
+							...(prior.qualifiers ?? {}),
+							...(plan.row.qualifiers as Record<string, unknown>)
+						};
 				const reactivate = prior.status === 'superseded' || prior.status === 'retracted';
-				const nowActive = reactivate && HUMAN_VIA.has(options.via);
+				const nowActive = reactivate && HUMAN_VIA.has(options.via) && !options.fillOnly;
 				if (
 					reactivate ||
 					JSON.stringify(merged) !== JSON.stringify(prior.qualifiers ?? {})
@@ -1050,7 +1155,7 @@ export class KnowledgeStore {
 				).filter((row) => row.status === 'active');
 				if (current.length) {
 					const protectedByHuman = current.some((row) => HUMAN_VIA.has(row.created_via));
-					if (options.via === 'enrichment' && protectedByHuman) {
+					if (options.fillOnly || (options.via === 'enrichment' && protectedByHuman)) {
 						plan.row.status = 'suggested';
 						receipt.facts.suggested++;
 					} else {
@@ -1060,6 +1165,15 @@ export class KnowledgeStore {
 						);
 					}
 				}
+			}
+			if (
+				options.fillOnly &&
+				plan.row.predicate === 'works_at' &&
+				plan.row.status === 'active' &&
+				employed.has(plan.row.entity_id as string)
+			) {
+				plan.row.status = 'suggested';
+				receipt.facts.suggested++;
 			}
 			toInsert.push(plan);
 		}
@@ -1379,6 +1493,32 @@ export class KnowledgeStore {
 		if (!data?.length) throw new KnowledgeStoreError('Entity not found.', 'NOT_FOUND');
 	}
 
+	/**
+	 * "Don't save" on something a web search just found: delete the entry only while it is
+	 * still what the search made it, an entry created by research that sits outside the
+	 * user's world. An entry the user already had, or one they have since said they know,
+	 * is refused here whatever the page showing the button believed (a reloaded chat shows
+	 * old chips). Deleting takes the entry's facts with it, so this must never reach an
+	 * entry other records hang off.
+	 */
+	async discardFoundEntry(id: string): Promise<void> {
+		const { data, error } = await this.db
+			.from('knowledge_entities')
+			.delete()
+			.eq('id', id)
+			.eq('owner_user_id', this.userId)
+			.eq('is_self', false)
+			.eq('created_via', 'enrichment')
+			.eq('circle', 'public')
+			.select('id');
+		if (error) throw dbError('Discard found entry', error);
+		if (!data?.length)
+			throw new KnowledgeStoreError(
+				'This entry is part of your knowledge now. Open its card to remove it.',
+				'NOT_FOUND'
+			);
+	}
+
 	async setFactStatus(factId: string, status: KnowledgeFactStatus): Promise<void> {
 		const { data, error } = await this.db
 			.from('knowledge_facts')
@@ -1665,6 +1805,81 @@ export class KnowledgeStore {
 			}));
 		}
 		if (error) throw dbError('Save merge candidate', error);
+	}
+
+	/**
+	 * Ask "same one?" about many pairs at once (after an import found near-matching names).
+	 * Pairs already asked about, in either state, are left alone. Returns how many were sent.
+	 */
+	async addNameQuestions(
+		pairs: Array<{ a: string; b: string; reason: string; score?: number }>
+	): Promise<number> {
+		const rows = new Map<string, Record<string, unknown>>();
+		for (const pair of pairs) {
+			if (!UUID.test(pair.a) || !UUID.test(pair.b) || pair.a === pair.b) continue;
+			const [first, second] = pair.a < pair.b ? [pair.a, pair.b] : [pair.b, pair.a];
+			rows.set(`${first}|${second}`, {
+				owner_user_id: this.userId,
+				entity_a: first,
+				entity_b: second,
+				reason: pair.reason.trim().slice(0, 500) || 'Same one?',
+				score: Math.min(Math.max(pair.score ?? 0.5, 0), 1)
+			});
+		}
+		for (const group of chunk([...rows.values()], PAGE)) {
+			const { error } = await this.db.from('knowledge_merge_candidates').upsert(group, {
+				onConflict: 'owner_user_id,entity_a,entity_b',
+				ignoreDuplicates: true
+			});
+			if (error) throw dbError('Save merge candidates', error);
+		}
+		return rows.size;
+	}
+
+	/**
+	 * Every active person the user has, with their employers: what an import compares its new
+	 * contacts against to spot the same person under a slightly different name.
+	 */
+	async listPeopleForNearMatch(): Promise<
+		Array<{ id: string; name: string; employerIds: string[] }>
+	> {
+		const people: Array<{ id: string; name: string; employerIds: string[] }> = [];
+		for (let from = 0; ; from += PAGE) {
+			const { data, error } = await this.db
+				.from('knowledge_entities')
+				.select('id, name')
+				.eq('owner_user_id', this.userId)
+				.eq('kind', 'person')
+				.eq('status', 'active')
+				.eq('is_self', false)
+				.order('id')
+				.range(from, from + PAGE - 1);
+			if (error) throw dbError('Load people', error);
+			for (const row of (data ?? []) as Array<{ id: string; name: string }>)
+				people.push({ id: row.id, name: row.name, employerIds: [] });
+			if ((data ?? []).length < PAGE) break;
+		}
+		const byId = new Map(people.map((person) => [person.id, person]));
+		for (let from = 0; ; from += PAGE) {
+			const { data, error } = await this.db
+				.from('knowledge_facts')
+				.select('entity_id, object_entity_id')
+				.eq('owner_user_id', this.userId)
+				.eq('predicate', 'works_at')
+				.eq('status', 'active')
+				.order('id')
+				.range(from, from + PAGE - 1);
+			if (error) throw dbError('Load employers', error);
+			for (const row of (data ?? []) as Array<{
+				entity_id: string;
+				object_entity_id: string | null;
+			}>) {
+				if (row.object_entity_id)
+					byId.get(row.entity_id)?.employerIds.push(row.object_entity_id);
+			}
+			if ((data ?? []).length < PAGE) break;
+		}
+		return people;
 	}
 
 	/** "Not this one" hints for an entry (and for entries merged into it). Newest first. */

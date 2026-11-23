@@ -467,7 +467,16 @@
 		escalating: { icon: RefreshCw, color: 'text-warning' },
 		backtracking: { icon: CornerUpLeft, color: 'text-warning' },
 		load_failed: { icon: Ban, color: 'text-destructive' },
-		decision_failed: { icon: X, color: 'text-destructive' }
+		decision_failed: { icon: X, color: 'text-destructive' },
+		// Guided search (find_in_knowledge, explore_knowledge): what it looked at, each
+		// decision, each web search and site read, what it saved, and where it stopped.
+		lookup: { icon: CircleDot, color: 'text-muted-foreground' },
+		decide: { icon: Sparkles, color: 'text-info' },
+		search: { icon: Globe, color: 'text-muted-foreground' },
+		read: { icon: Globe, color: 'text-muted-foreground' },
+		extract: { icon: Sparkles, color: 'text-info' },
+		save: { icon: Check, color: 'text-success' },
+		stop: { icon: Ban, color: 'text-warning' }
 	};
 
 	function getTrailStyle(step: ToolProgressStep) {

@@ -2,7 +2,7 @@
 
 # 166 — Find connections fluidly (the payoff)
 
-**Status:** Built and live in the database; site code not deployed; LinkedIn contacts not loaded yet (2026-11-21) · **Opened:** 2026-11-17 · **Parent:** 160
+**Status:** Built and live in the database; LinkedIn contacts loaded (2026-11-22); two-hop answer fix uncommitted; a live chat turn (paid) not run · **Opened:** 2026-11-17 · **Parent:** 160
 **DJ (2026-11-17):** "I do want to be able to find information quickly and be able to find
 interesting connections (like different people working at similar companies or being in similar
 locations) … search through my LinkedIn contacts to find what people are doing."
@@ -101,8 +101,7 @@ supabase/tests/knowledge_connections.check.sql`: passed with the standing checks
 
 ### Not done / open
 
-- **LinkedIn contacts are not in production yet** (0 imported; DJ uploads the export on
-  `/knowledge`). Re-run the eval after; "done when" needs it.
+- LinkedIn contacts: loaded 2026-11-22, see below.
 - **Deploy** web and worker (chat runs on the worker). Until then the live site has no
   Connections tab and chat has no people filters.
 - A live chat turn asking the 7 questions is a paid check and was not run.
@@ -114,3 +113,41 @@ supabase/tests/knowledge_connections.check.sql`: passed with the standing checks
   (161's fold, merge review), not a matching rule added here.
 - The catalog's predicate list was missing `connected_on` (added by 161 to the shared
   vocabulary); its pin test was red on main. Added here.
+
+## November 22: LinkedIn contacts loaded, questions re-run
+
+DJ asked for the upload. It went through the real dialog on local dev (signed in as DJ, production
+data): `/knowledge` → Import contacts → `Connections.csv` from the July 10 export. Free; one
+import run, completed, 0 problems.
+
+|               | Before | After |
+| ------------- | -----: | ----: |
+| People I know |      5 |   769 |
+| People (all)  |    146 |   908 |
+| Organizations |    430 | 1,041 |
+
+767 contacts read (14 date-only rows skipped): 762 new people, 5 matched to people already
+there, 626 employers linked, 3,824 facts added, 0 new duplicate pairs. The rehearsal predicted
+763 new and 4 matched; one more person already existed by then.
+
+The 12 free calls on the full list (0.1–0.4 s each):
+
+- **Right:** who is at a company (52 at the largest employer), which companies hold the most
+  contacts (629 employers), where the engineers work (201 people, 175 employers), who shows up
+  across tasks, docs and contacts (5), what one person is doing now.
+- **Says what is missing:** used to work there (LinkedIn exports current jobs only); the
+  Baltimore/DC area and Maryland tech companies (a location is known for 1 of 769 contacts, an
+  industry for 0 of 629 employers); the LinkedIn recruiter in tech (25 employers match the
+  title, none has an industry). Each names the employers research would fill first.
+- **Was wrong, fixed:** "who knows someone at <company>" answered that nobody works there
+  while three contacts do; the list of people who lead in never repeats the people already
+  inside. The answer now carries `works_there_now` (up to 12) beside the bridge list and the
+  note says they are the direct way in. Gateway only, one extra free read; no database or
+  tool-description change. Tests: `shared-agent-ops` gateway + reader files 51 pass, package
+  typecheck clean; the old code fails the new case (no `works_there_now`, and the "nobody
+  recorded works there now" sentence it forbids).
+
+Still open: the fix above is uncommitted (3 files) and needs a worker deploy; re-importing the
+same file to prove it creates nothing was not run on production (rehearsal covered it); the
+paid live chat turn and the phone-width check are still not run; location and industry need
+research (paid, on request) before the area and industry questions return people.

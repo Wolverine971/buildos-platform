@@ -102,6 +102,23 @@ export const KNOWLEDGE_TOOL_RECORD_KINDS = ['task', 'document', 'project'] as co
 
 const WORDS: ToolJsonSchema = { type: 'array', maxItems: 12, items: { type: 'string' } };
 
+/** Yes/no questions a guided search answers for every entry it returns. */
+const GUIDED_CHECKS = {
+	type: 'array',
+	maxItems: 3,
+	description:
+		'Parts of the ask as yes/no questions, e.g. {key:"near", question:"Is this person or their employer in the Baltimore area?"}. Reuse them on later hops.',
+	items: {
+		type: 'object',
+		additionalProperties: false,
+		properties: {
+			key: { type: 'string', maxLength: 24, description: 'One short word.' },
+			question: { type: 'string', maxLength: 200 }
+		},
+		required: ['key', 'question']
+	}
+} satisfies ToolJsonSchema;
+
 export const KNOWLEDGE_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 	{
 		type: 'function',
@@ -336,6 +353,131 @@ export const KNOWLEDGE_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					instructions: { type: 'string', maxLength: 500 }
 				},
 				required: ['entity_ids']
+			}
+		}
+	},
+	// Guided search (2026-11-22): inside the graph first, then outward one hop at a time. The
+	// user steers each hop by ticking the entries a search returned (they arrive as "selected
+	// entries"). Chat only: the worker runs both (knowledge-search.ts).
+	{
+		type: 'function',
+		function: {
+			name: 'find_in_knowledge',
+			description:
+				"Search the user's knowledge graph when part of the ask is fuzzy: people by default (who do I know near Baltimore in software; whose phone are we missing at this company), or other kinds (which companies do I have in fintech; which channels). where narrows by exact words; each check is answered per entry (yes, no, not recorded); need reports details on file or missing. The user sees the entries as selectable chips.",
+			parameters: {
+				type: 'object',
+				additionalProperties: false,
+				properties: {
+					goal: {
+						type: 'string',
+						maxLength: 300,
+						description: 'What the user is looking for.'
+					},
+					kinds: {
+						...KINDS,
+						description:
+							'Default person. channel covers social and publishing accounts.'
+					},
+					where: {
+						type: 'object',
+						additionalProperties: false,
+						description: 'Exact words the user stated; leave fuzzy parts to checks.',
+						properties: {
+							company: WORDS,
+							place: WORDS,
+							title: WORDS,
+							industry: WORDS,
+							employment: {
+								type: 'string',
+								enum: ['current', 'former', 'any'],
+								default: 'current'
+							},
+							scope: {
+								type: 'string',
+								enum: ['known', 'world', 'all'],
+								default: 'world',
+								description:
+									'known: people the user knows; world: everyone in their work; all: also names only mentioned.'
+							}
+						}
+					},
+					checks: GUIDED_CHECKS,
+					need: {
+						type: 'array',
+						maxItems: 5,
+						items: {
+							type: 'string',
+							enum: [
+								'phone',
+								'email',
+								'company',
+								'title',
+								'place',
+								'website',
+								'social',
+								'people',
+								'industry'
+							]
+						},
+						description:
+							'Details to report as on file or missing (people: who is on file at a company).'
+					}
+				},
+				required: ['goal']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'explore_knowledge',
+			description:
+				"One hop of web search outside BuildOS: runs your searches, reads what they return, saves the people, organizations, accounts and places named to the user's graph with sources, and returns them judged against checks as selectable chips. Use when the user asks to look outside BuildOS or to go further from entries they selected (set about_entity_id). One call per turn; a trail stops itself at hop 3. For a company's people it keeps only those who run it.",
+			parameters: {
+				type: 'object',
+				additionalProperties: false,
+				properties: {
+					goal: {
+						type: 'string',
+						maxLength: 300,
+						description: 'What the user is looking for.'
+					},
+					searches: {
+						type: 'array',
+						minItems: 1,
+						maxItems: 3,
+						items: {
+							type: 'object',
+							additionalProperties: false,
+							properties: {
+								query: {
+									type: 'string',
+									maxLength: 200,
+									description:
+										'Public names and topics only; never contact details or private notes. For a person add their employer or city; for a company say what you want (leadership, contact page).'
+								},
+								about_entity_id: ENTITY_ID
+							},
+							required: ['query']
+						}
+					},
+					kinds: {
+						type: 'array',
+						maxItems: 6,
+						items: {
+							type: 'string',
+							enum: ['person', 'org', 'place', 'event', 'website', 'channel']
+						},
+						description: 'Default person and org.'
+					},
+					checks: GUIDED_CHECKS,
+					beyond_limit: {
+						type: 'boolean',
+						description: 'Only after the user said to keep going past hop 3.'
+					}
+				},
+				required: ['goal', 'searches']
 			}
 		}
 	},

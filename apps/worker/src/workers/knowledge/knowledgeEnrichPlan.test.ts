@@ -699,61 +699,157 @@ describe('planned research', () => {
 		]);
 	});
 
-	it("attaches the people a company's page names, each to their own entry", async () => {
+	it("attaches only the leadership a company's own page names (DJ's rule, 2026-11-22)", async () => {
 		const plan = await import('./knowledgeEnrichPlan');
 		const page = {
-			url: 'https://thecadretraining.com/instructors',
-			title: 'Instructors',
+			url: 'https://thecadretraining.com/about',
+			title: 'About',
 			content:
-				'Phil Velayo, Lead Instructor, served as a Scout Sniper. Our team also thanks Steve.'
+				'Jon Bumpus, CEO, founded the company. Phil Velayo, Lead Instructor, served as a Scout Sniper. Our team also thanks Steve.'
 		};
-		const result = plan.validateEnrichment(
-			{
-				pages: [{ page: 1, about_entity: true }],
-				facts: [],
-				people: [
-					{
-						name: 'Phil Velayo',
-						title: 'Lead Instructor',
-						page: 1,
-						quote: 'Phil Velayo, Lead Instructor'
-					},
-					{
-						name: 'Steve',
-						title: 'Friend',
-						page: 1,
-						quote: 'Our team also thanks Steve.'
-					},
-					{
-						name: 'Jane Madeup',
-						title: 'CEO',
-						page: 1,
-						quote: 'Phil Velayo, Lead Instructor'
-					}
-				]
-			},
-			{ entityId: 'org1', kind: 'org', fields: ['description'], pages: [page], existing: [] }
-		);
+		const answer = {
+			pages: [{ page: 1, about_entity: true }],
+			facts: [],
+			people: [
+				{
+					name: 'Phil Velayo',
+					role: 'staff',
+					title: 'Lead Instructor',
+					page: 1,
+					quote: 'Phil Velayo, Lead Instructor'
+				},
+				// No role given at all: never taken as leadership on the title's wording.
+				{
+					name: 'Phil Velayo',
+					title: 'Lead Instructor',
+					page: 1,
+					quote: 'Phil Velayo, Lead'
+				},
+				{
+					name: 'Jon Bumpus',
+					role: 'executive',
+					title: 'CEO',
+					page: 1,
+					quote: 'Jon Bumpus, CEO'
+				},
+				{ name: 'Steve', role: 'owner', title: 'Friend', page: 1, quote: 'thanks Steve.' },
+				// A role the page does not state.
+				{
+					name: 'Jon Bumpus Jr',
+					role: 'board',
+					title: 'Board Chair',
+					page: 1,
+					quote: 'Jon Bumpus, CEO, founded'
+				},
+				{
+					name: 'Jane Madeup',
+					role: 'executive',
+					title: 'CEO',
+					page: 1,
+					quote: 'Jon Bumpus, CEO'
+				}
+			]
+		};
+		const base = {
+			entityId: 'org1',
+			kind: 'org' as const,
+			fields: ['description'],
+			pages: [page],
+			existing: []
+		};
+		const result = plan.validateEnrichment(answer, {
+			...base,
+			ownDomains: ['thecadretraining.com']
+		});
 		expect(result.batch.entities).toEqual([
-			{ ref: 'person1', kind: 'person', name: 'Phil Velayo' }
+			{ ref: 'person1', kind: 'person', name: 'Jon Bumpus' }
 		]);
 		expect(result.batch.facts[0]).toMatchObject({
 			subject: 'person1',
 			predicate: 'works_at',
 			object: 'org1',
 			status: 'active',
-			qualifiers: { title: 'Lead Instructor', current: true }
+			qualifiers: { title: 'CEO', current: true }
 		});
+		expect(result.dropped.map((d) => d.reason)).toContain('not presented as leadership');
+
+		// Named by a page that is not the company's own: saved for the user to check.
+		const elsewhere = plan.validateEnrichment(answer, base);
+		expect(elsewhere.batch.facts[0]).toMatchObject({ subject: 'person1', status: 'suggested' });
+
 		// A person entry never gets "people".
-		const asPerson = plan.validateEnrichment(
-			{
-				pages: [],
-				facts: [],
-				people: [{ name: 'Phil Velayo', page: 1, quote: 'Phil Velayo, Lead Instructor' }]
-			},
-			{ entityId: 'p1', kind: 'person', fields: ['headline'], pages: [page], existing: [] }
-		);
+		const asPerson = plan.validateEnrichment(answer, {
+			...base,
+			entityId: 'p1',
+			kind: 'person',
+			fields: ['headline']
+		});
 		expect(asPerson.batch.facts).toHaveLength(0);
+	});
+
+	it('is not greedy: at most five, own pages and those who run it first', async () => {
+		const plan = await import('./knowledgeEnrichPlan');
+		const names = ['Ann Alpha', 'Bo Bravo', 'Cy Charlie', 'Di Delta', 'Ed Echo', 'Flo Foxtrot'];
+		const own = {
+			url: 'https://acme.com/leadership',
+			title: 'Leadership',
+			content: names.map((n) => `${n}, Director on our board.`).join(' ') + ' Gil Golf, CEO.'
+		};
+		const press = {
+			url: 'https://news.example.com/acme',
+			title: 'Acme',
+			content: 'Acme was started by Hal Hotel, Founder, in 2020.'
+		};
+		const result = plan.validateEnrichment(
+			{
+				pages: [
+					{ page: 1, about_entity: true },
+					{ page: 2, about_entity: true }
+				],
+				facts: [],
+				people: [
+					{
+						name: 'Hal Hotel',
+						role: 'founder',
+						title: 'Founder',
+						page: 2,
+						quote: 'Hal Hotel, Founder'
+					},
+					...names.map((n) => ({
+						name: n,
+						role: 'board',
+						title: 'Director',
+						page: 1,
+						quote: `${n}, Director on our board.`
+					})),
+					{
+						name: 'Gil Golf',
+						role: 'executive',
+						title: 'CEO',
+						page: 1,
+						quote: 'Gil Golf, CEO.'
+					}
+				]
+			},
+			{
+				entityId: 'org1',
+				kind: 'org',
+				fields: ['description'],
+				pages: [own, press],
+				existing: [],
+				ownDomains: ['acme.com']
+			}
+		);
+		expect(result.batch.entities.map((e) => e.name)).toEqual([
+			'Gil Golf',
+			'Ann Alpha',
+			'Bo Bravo',
+			'Cy Charlie',
+			'Di Delta'
+		]);
+		expect(
+			result.dropped.filter((d) => d.reason === 'enough people for one organization')
+		).toHaveLength(3);
 	});
 
 	it('keeps one headline per round, and in a later round keeps the one already saved', async () => {
@@ -798,5 +894,65 @@ describe('planned research', () => {
 			keepExistingSingles: true
 		});
 		expect(later.batch.facts).toHaveLength(0);
+	});
+
+	it("refuses a company inbox as a person's email, a known account under another address, and a repeated employer", async () => {
+		const plan = await import('./knowledgeEnrichPlan');
+		const page = {
+			url: 'https://example.com/matt',
+			title: 'Matt',
+			content:
+				'Matt Solowynsky is Chief Operating Officer of The Cadre. He co-founded The Cadre in 2024. contact info@thecadretraining.com. LinkedIn: linkedin.com/in/matt-solowynsky'
+		};
+		const result = plan.validateEnrichment(
+			{
+				pages: [{ page: 1, about_entity: true }],
+				facts: [
+					{
+						predicate: 'email',
+						value: 'info@thecadretraining.com',
+						page: 1,
+						quote: 'contact info@thecadretraining.com',
+						confidence: 0.9
+					},
+					{
+						predicate: 'profile_url',
+						value: 'https://www.linkedin.com/in/matt-solowynsky/',
+						page: 1,
+						quote: 'linkedin.com/in/matt-solowynsky',
+						confidence: 0.9
+					},
+					{
+						predicate: 'works_at',
+						object: { kind: 'org', name: 'The Cadre' },
+						page: 1,
+						quote: 'Chief Operating Officer of The Cadre',
+						confidence: 0.9
+					},
+					{
+						predicate: 'works_at',
+						object: { kind: 'org', name: 'The Cadre' },
+						page: 1,
+						quote: 'He co-founded The Cadre in 2024',
+						confidence: 0.9
+					}
+				]
+			},
+			{
+				entityId: 'p1',
+				kind: 'person',
+				fields: ['email', 'profile_url', 'works_at'],
+				pages: [page],
+				existing: [
+					{ predicate: 'profile_url', value: 'https://linkedin.com/in/matt-solowynsky' }
+				]
+			}
+		);
+		expect(result.batch.facts.map((f) => f.predicate)).toEqual(['works_at']);
+		expect(result.dropped.map((d) => d.reason)).toEqual([
+			'a shared mailbox, not their own',
+			'already known',
+			'already reported this round'
+		]);
 	});
 });

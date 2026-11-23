@@ -11,10 +11,14 @@ import type { JsonObject } from '@buildos/shared-types';
 import {
 	KnowledgeStore,
 	buildKnowledgeFocusSection,
+	buildKnowledgeSelectionSection,
 	knowledgeFocusRef,
+	knowledgeSelectionRefs,
 	loadKnowledgeFocusBrief,
+	loadKnowledgeSelection,
 	type KnowledgeDataClient,
-	type KnowledgeFocusRef
+	type KnowledgeFocusRef,
+	type KnowledgeSelectionRef
 } from '@buildos/shared-agent-ops/knowledge';
 import { createLogger } from '$lib/utils/logger';
 
@@ -54,6 +58,46 @@ export async function loadKnowledgeFocusForTurn(input: {
 		};
 	} catch (error) {
 		logger.warn('Knowledge focus brief failed to load', { error, entityId: input.entityId });
+		return null;
+	}
+}
+
+export type KnowledgeSelectionForTurn = {
+	/** Appended to the artifact's prompt sections; the worker places it after the message. */
+	section: JsonObject;
+	/** Stored on the user's message, so the bubble shows what it was sent about. */
+	refs: KnowledgeSelectionRef[];
+};
+
+/**
+ * Guided search: the entries the user ticked in the Entities tray before sending this message.
+ * Only ids arrive from the browser; each entry is read with the user's own client, so one they
+ * cannot see is dropped. Never throws: a selection that cannot be loaded leaves a plain turn.
+ */
+export async function loadKnowledgeSelectionForTurn(input: {
+	userClient: unknown;
+	userId: string;
+	entityIds: readonly string[] | null | undefined;
+}): Promise<KnowledgeSelectionForTurn | null> {
+	if (!input.entityIds?.length) return null;
+	try {
+		const db = input.userClient as KnowledgeDataClient;
+		const entries = await loadKnowledgeSelection(
+			new KnowledgeStore(db, input.userId),
+			input.entityIds
+		);
+		if (!entries.length) return null;
+		return {
+			section: JSON.parse(
+				JSON.stringify(buildKnowledgeSelectionSection(entries))
+			) as JsonObject,
+			refs: knowledgeSelectionRefs(entries)
+		};
+	} catch (error) {
+		logger.warn('Knowledge selection failed to load', {
+			error,
+			count: input.entityIds.length
+		});
 		return null;
 	}
 }

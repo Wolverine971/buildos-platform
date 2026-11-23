@@ -9,6 +9,16 @@
 	import CreatedEntityCards from './CreatedEntityCards.svelte';
 	import DocumentChangeCards from './DocumentChangeCards.svelte';
 	import TableChangeCards from './TableChangeCards.svelte';
+	import KnowledgeEntityTray from './KnowledgeEntityTray.svelte';
+	import {
+		buildKnowledgeTrail,
+		messageKnowledgeSelection,
+		readKnowledgeTray,
+		type KnowledgeNextStep,
+		type KnowledgeSelectionRef,
+		type KnowledgeTray
+	} from './knowledge-search-tray';
+	import { KIND_ICON } from '$lib/components/knowledge/knowledge-client';
 	import FreshnessRadarCard from './FreshnessRadarCard.svelte';
 	import CaptureReceiptChip from './CaptureReceiptChip.svelte';
 	import SharedDocumentEditCard from './SharedDocumentEditCard.svelte';
@@ -130,6 +140,15 @@
 		 */
 		knowledgeTargets?: MentionTarget[];
 		onOpenKnowledge?: (entityId: string, trigger: HTMLElement) => void;
+		/** Guided search: the entries ticked in Entities trays, riding on the next message. */
+		knowledgeSelection?: KnowledgeSelectionRef[];
+		onToggleKnowledgeEntity?: (ref: KnowledgeSelectionRef) => void;
+		/** A tray's next-step button: send it now with the ticked entries. */
+		onKnowledgeNextStep?: (step: KnowledgeNextStep) => void;
+		/** A tray entry was dropped from the graph. */
+		onKnowledgeEntityRemoved?: (entityId: string) => void;
+		/** False while a reply is streaming. */
+		canSendKnowledgeStep?: boolean;
 	}
 
 	let {
@@ -157,8 +176,28 @@
 		compact = false,
 		knowledgeTargets = [],
 		onOpenKnowledge,
+		knowledgeSelection = [],
+		onToggleKnowledgeEntity,
+		onKnowledgeNextStep,
+		onKnowledgeEntityRemoved,
+		canSendKnowledgeStep = true,
 		onContinueInProject
 	}: Props = $props();
+
+	// The most recent Entities tray offers next steps even with nothing ticked, and carries
+	// the trail: every hop of this chat's search, each find under what it was found from.
+	const latestKnowledgeTrayId = $derived(
+		messages.findLast((message) => message.type === 'knowledge_entities')?.id ?? null
+	);
+	const knowledgeTrail = $derived.by(() => {
+		const trays: KnowledgeTray[] = [];
+		for (const message of messages) {
+			if (message.type !== 'knowledge_entities') continue;
+			const tray = readKnowledgeTray(message.data?.tray);
+			if (tray) trays.push(tray);
+		}
+		return trays.length > 1 ? buildKnowledgeTrail(trays) : [];
+	});
 
 	const proseClasses = getProseClasses('sm');
 
@@ -1060,6 +1099,7 @@
 				<ErrorBoundary area="chat-message" context={{ messageType: message.type }}>
 					{#if message.type === 'user'}
 						{@const key = rowKey(message)}
+						{@const sentAbout = messageKnowledgeSelection(message.metadata)}
 						<!-- INKPRINT user message with accent border -->
 						<!-- Flex column: message bubble + voice panel (when expanded, takes full width) -->
 						<!-- data-live-turn-start: this row through the end skip content-visibility. -->
@@ -1129,6 +1169,26 @@
 											content={message.content}
 											marks={phraseMarks.get(message.id)}
 										/>
+									</div>
+								{/if}
+								{#if sentAbout.length}
+									<!-- The entries this message was sent about (ticked in a tray). -->
+									<div
+										class="mt-2 flex flex-wrap gap-1"
+										aria-label="Sent about these entries"
+									>
+										{#each sentAbout as ref (ref.entity_id)}
+											{@const RefIcon = KIND_ICON[ref.kind]}
+											<span
+												class="inline-flex max-w-[14rem] items-center gap-1 rounded-full border border-accent/30 bg-background/70 px-2 py-0.5 text-2xs font-semibold text-foreground"
+											>
+												<RefIcon
+													class="h-3 w-3 shrink-0 text-accent"
+													aria-hidden="true"
+												/>
+												<span class="truncate">{ref.name}</span>
+											</span>
+										{/each}
 									</div>
 								{/if}
 								<div class="message-footer mt-1">
@@ -1355,6 +1415,21 @@
 								animateEntrance={playsEntrance(message)}
 								onUndone={(card, complete) =>
 									onTableChangeUndone?.(message.id, card, complete)}
+							/>
+						{/if}
+					{:else if message.type === 'knowledge_entities'}
+						{@const tray = readKnowledgeTray(message.data?.tray)}
+						{#if tray && onToggleKnowledgeEntity && onKnowledgeNextStep}
+							<KnowledgeEntityTray
+								{tray}
+								selected={knowledgeSelection}
+								onToggle={onToggleKnowledgeEntity}
+								onNextStep={onKnowledgeNextStep}
+								onRemoved={onKnowledgeEntityRemoved}
+								latest={message.id === latestKnowledgeTrayId}
+								trail={message.id === latestKnowledgeTrayId ? knowledgeTrail : []}
+								canSend={canSendKnowledgeStep}
+								animateEntrance={playsEntrance(message)}
 							/>
 						{/if}
 					{:else if message.type === 'freshness_card'}

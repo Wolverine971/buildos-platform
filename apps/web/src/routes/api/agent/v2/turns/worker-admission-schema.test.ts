@@ -88,3 +88,38 @@ describe('a chat about one knowledge entry', () => {
 		}
 	});
 });
+
+describe('a message sent about ticked knowledge entries', () => {
+	const A = 'F307321B-17EB-4CED-B40C-AD946953D245';
+	const B = '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d';
+
+	it('accepts only entry ids, lower-cased, and defaults to no selection', () => {
+		const picked = workerAdmissionRequestSchema.safeParse({
+			...body(),
+			knowledgeSelection: { entityIds: [A, B] }
+		});
+		expect(picked.success && picked.data.knowledgeSelection).toEqual({
+			entityIds: [A.toLowerCase(), B]
+		});
+		const plain = workerAdmissionRequestSchema.safeParse(body());
+		expect(plain.success && plain.data.knowledgeSelection).toBeNull();
+	});
+
+	it('refuses names from the browser, an empty pick, non-ids, and more than twelve', () => {
+		const thirteen = Array.from(
+			{ length: 13 },
+			(_, i) => `${String(i).padStart(8, '0')}-0000-4000-8000-000000000000`
+		);
+		for (const knowledgeSelection of [
+			{ entityIds: [A], names: ['Tenable'] },
+			{ entityIds: [] },
+			{ entityIds: ['tenable'] },
+			{ entityIds: thirteen },
+			{}
+		]) {
+			expect(
+				workerAdmissionRequestSchema.safeParse({ ...body(), knowledgeSelection }).success
+			).toBe(false);
+		}
+	});
+});

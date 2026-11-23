@@ -75,6 +75,11 @@ export const AGENTIC_CHAT_TOOL_STORAGE_CLASSES_V1: Readonly<
 	search_knowledge: 'workspace',
 	get_knowledge_entity: 'workspace',
 	query_knowledge: 'workspace',
+	// Guided search (2026-11-22). Both return entries of the user's own graph: explore has
+	// already saved what it found (with its sources) before it returns, so the stored result
+	// holds nothing the graph does not. The Entities tray is rebuilt from it on reload.
+	find_in_knowledge: 'workspace',
+	explore_knowledge: 'workspace',
 	get_entity_relationships: 'workspace',
 	get_linked_entities: 'workspace',
 	search_user_contacts: 'workspace',

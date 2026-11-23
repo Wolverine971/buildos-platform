@@ -164,6 +164,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			attachments: parsed.data.attachments,
 			projectFocus: parsed.data.projectFocus as ProjectFocus | null,
 			knowledgeFocus: parsed.data.knowledgeFocus,
+			knowledgeSelection: parsed.data.knowledgeSelection,
 			voiceNoteGroupId: parsed.data.voiceNoteGroupId,
 			preparedPromptKey: parsed.data.preparedPromptKey,
 			requestedSkillId: parsed.data.requestedSkillId

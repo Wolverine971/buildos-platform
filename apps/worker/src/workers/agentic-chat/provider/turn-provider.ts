@@ -47,7 +47,7 @@ import { type AgenticChatToolSelectorPort, mountToolPins } from './jev-tool-sele
 import type { AgenticChatExecutionObservationPortV1 } from '../effects/execution-observation';
 import { enqueueReviewTelemetryObservation } from './review/review-telemetry';
 import { appendTurnRules } from './turn-rules';
-import { appendKnowledgeFocus } from './knowledge-focus';
+import { appendKnowledgeFocus, appendKnowledgeSelection } from './knowledge-focus';
 import { streamBufferedProviderPass } from './provider-pass';
 import { buildOutputBudgetRecoveryProgress, isActingOutputPass } from './output-budget';
 import {
@@ -426,6 +426,8 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				// A chat about one knowledge entry: everything BuildOS holds on it, right
 				// after the user's message and before the turn's rules.
 				request = appendKnowledgeFocus(request, state.executionInput);
+				// Entries the user ticked under an earlier search, with the same placement.
+				request = appendKnowledgeSelection(request, state.executionInput);
 				// Rules for This Turn: the admission-chosen block plus the write
 				// playbook Jev's structured commission selects, after the user message.
 				const turnRules = appendTurnRules(request, state.executionInput);

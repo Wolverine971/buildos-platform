@@ -36,6 +36,7 @@ import type { ToolExecutionContext } from './op-execution-gateway.types';
 const USER = '11111111-1111-4111-8111-111111111111';
 const SAM = '33333333-3333-4333-8333-333333333333';
 const ACME = '44444444-4444-4444-8444-444444444444';
+const PAT = '55555555-5555-4555-8555-555555555555';
 const THE_ACME = '55555555-5555-4555-8555-555555555555';
 const ANNAPOLIS = '66666666-6666-4666-8666-666666666666';
 
@@ -194,8 +195,9 @@ describe('the seven questions, as the calls that reach the database', () => {
 		expect(result.research_candidates).toEqual([{ id: ACME, name: 'Curri', people: 52 }]);
 	});
 
-	it('4. who leads to someone at a company', async () => {
-		rpc.mockResolvedValue(
+	it('4. who leads to someone at a company, and who is already there', async () => {
+		// First read: the people who lead there. Second: the people who work there now.
+		rpc.mockResolvedValueOnce(
 			answer({
 				people: [
 					{
@@ -206,13 +208,36 @@ describe('the seven questions, as the calls that reach the database', () => {
 					}
 				]
 			})
+		).mockResolvedValueOnce(
+			answer({
+				people: [
+					{ id: PAT, name: 'Pat Roe', known: true },
+					{ id: SAM, name: 'Sam Lee' }
+				],
+				total: 3
+			})
 		);
 		const result = await run(chat(), {
 			start: { known_by_me: true },
 			where: { bridge_to: ['Acme'] }
 		});
-		expect(sent().filters).toMatchObject({ bridge_to: ['Acme'] });
+		expect(rpc).toHaveBeenCalledTimes(2);
+		expect(rpc.mock.calls[0]![1].p_filters).toMatchObject({ bridge_to: ['Acme'] });
+		expect(rpc.mock.calls[1]![1].p_filters).toEqual({
+			scope: 'known',
+			company: ['Acme'],
+			contacts: true
+		});
+		expect(result.people.map((person: any) => person.name)).toEqual(['Sam Lee']);
 		expect(result.people[0].leads_via).toEqual([{ how: 'worked_there', through: 'Acme' }]);
+		expect(result.works_there_now.total).toBe(3);
+		expect(result.works_there_now.people.map((person: any) => person.name)).toEqual([
+			'Pat Roe',
+			'Sam Lee'
+		]);
+		expect(result.notes).toEqual([
+			'3 people the user knows work at Acme now: they are in works_there_now and are the direct way in. people lists only others who lead to them.'
+		]);
 	});
 
 	it('5. what is this person doing now: their row carries job, place and contact details', async () => {
@@ -384,9 +409,31 @@ describe('nobody matches', () => {
 			start: { kinds: ['person'] },
 			where: { bridge_to: ['Anduril'] }
 		});
-		expect(result.notes[0]).toMatch(
-			/^Nobody in the user's world leads to Anduril: nobody recorded works there now/
+		expect(result.works_there_now).toBeUndefined();
+		expect(result.notes).toEqual([
+			"Nobody in the user's world is recorded at Anduril now, and nobody shares another employer, a task, a document or a project with someone there, or is recorded there as a past job. Past jobs are often missing; research on a contact adds them."
+		]);
+	});
+
+	it('never says nobody works there when contacts do: they are the way in', async () => {
+		// DJ's real graph after the LinkedIn import: three contacts at the company, and no
+		// recorded link between contacts, so the bridge list is empty.
+		rpc.mockResolvedValueOnce(
+			answer({ people: [], total: 0, coverage: { ...COVERAGE, people: 0 } })
+		).mockResolvedValueOnce(
+			answer({ people: [{ id: PAT, name: 'Pat Roe', known: true }], total: 1 })
 		);
+		const result = await run(chat(), {
+			start: { known_by_me: true },
+			where: { bridge_to: ['Anduril'] }
+		});
+		expect(result.total).toBe(0);
+		expect(result.works_there_now).toMatchObject({ total: 1, people: [{ name: 'Pat Roe' }] });
+		expect(result.notes[0]).toBe(
+			'1 person the user knows works at Anduril now: they are in works_there_now and are the direct way in. people lists only others who lead to them.'
+		);
+		expect(result.notes[1]).toMatch(/^Nobody else shares another employer/);
+		expect(result.notes.join(' ')).not.toMatch(/nobody recorded works there/i);
 	});
 
 	it('says contacts are missing altogether when no filter was the cause', async () => {

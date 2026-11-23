@@ -26,6 +26,7 @@ import {
 } from '@buildos/shared-agent-ops/knowledge';
 import type { JSONRequestOptions } from '@buildos/smart-llm';
 import {
+	accountKey,
 	findSocialProfiles,
 	parseSocialProfile,
 	platformStatus,
@@ -386,7 +387,11 @@ export async function researchEntity(
 		existing: context.existing,
 		suggestOnly: outcome.unanchored,
 		suggestPages,
-		keepExistingSingles: Boolean(input.laterRound)
+		keepExistingSingles: Boolean(input.laterRound),
+		ownDomains: [
+			...(anchors?.domains ?? []),
+			...(context.homepage ? [domainOf(context.homepage)] : [])
+		].filter((d): d is string => Boolean(d))
 	});
 	outcome.batch = validated.batch;
 	outcome.dropped = validated.dropped;
@@ -470,11 +475,18 @@ function applySocialFindings(
 	social: ReturnType<typeof findSocialProfiles>,
 	entityId: string
 ): void {
-	const decided = new Set([...social.findings.map((f) => f.profile.url), ...social.nameOnly]);
+	const decided = new Set([
+		...social.findings.map((f) => f.profile.url),
+		...social.nameOnly,
+		...social.superseded
+	]);
+	const taken = new Set(social.findings.map((f) => accountKey(f.profile)));
 	const facts = outcome.batch.facts.filter((fact) => {
 		if (fact.predicate !== 'profile_url') return true;
 		const profile = parseSocialProfile(String(fact.value ?? ''));
-		if (!profile || !decided.has(profile.url)) return true;
+		// The model's word on an account the rules decided (or the same account under another
+		// address) is dropped: the rule-decided fact below is the one that is saved.
+		if (!profile || (!decided.has(profile.url) && !taken.has(accountKey(profile)))) return true;
 		if (social.nameOnly.includes(profile.url))
 			outcome.dropped.push({ predicate: 'profile_url', reason: 'matched on the name only' });
 		return false;

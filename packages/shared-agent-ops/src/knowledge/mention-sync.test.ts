@@ -426,6 +426,58 @@ describe('syncRecordMentions', () => {
 		expect(rows.find((m) => m.text === 'Phil Valeo')!.id).toBe(first!.id);
 	});
 
+	it('a save that fails to add the new tag leaves the old tags exactly as they were', async () => {
+		const { db, user, doc, person, link, record } = setup();
+		const valeo = person('Phil Valeo');
+		link(
+			valeo,
+			doc,
+			'…client, referred by Phil Valeo from thecadretraining.com. Key decisions…'
+		);
+		await syncRecordMentions(
+			db,
+			user,
+			{ record, fields: { content: DOC_BEFORE }, reader: [], readerComplete: false },
+			{ via: 'system' }
+		);
+		const before = db.rows('knowledge_mentions').map((m) => ({ ...m }));
+		const rod = person('Rod Chamberlin');
+		const realFrom = db.from.bind(db);
+		db.from = ((table: string) => {
+			const query = realFrom(table) as any;
+			if (table !== 'knowledge_mentions') return query;
+			return new Proxy(query, {
+				get(target, prop) {
+					// The kept tag's in-place update would go through; adding the new tag fails.
+					if (prop === 'insert')
+						return () => ({
+							select: async () => ({
+								data: null,
+								error: { message: 'insert failed' }
+							})
+						});
+					const value = target[prop];
+					return typeof value === 'function' ? value.bind(target) : value;
+				}
+			});
+		}) as typeof db.from;
+		await expect(
+			syncRecordMentions(
+				db,
+				user,
+				{
+					record,
+					// The kept tag moves (new first line) and a new name is added.
+					fields: { content: `Intro line.\n${DOC_BEFORE} Rod Chamberlin signed off.` },
+					reader: [{ entityId: rod.id, kind: 'person', names: ['Rod Chamberlin'] }],
+					readerComplete: false
+				},
+				{ via: 'system' }
+			)
+		).rejects.toThrow('insert failed');
+		expect(db.rows('knowledge_mentions')).toEqual(before);
+	});
+
 	describe('fuller names', () => {
 		const WS_DOC =
 			'# Wayne Strategies — current identity\n\nDJ selected Wayne Strategies and bought the domain. Referrals come from the Wayne Strategies site.';

@@ -86,7 +86,41 @@ export interface ImportSummary extends ContactFileSummary {
 	orgs?: number;
 	org_ids?: string[];
 	facts_added?: number;
+	/** Job details that differ from what was already on record: saved as suggestions. */
+	facts_suggested?: number;
 	possible_duplicates?: number;
+	/** This import can be taken back with Undo. */
+	undoable?: boolean;
+}
+
+/** A preview's answer to "how does this file line up with who I already have?" */
+export interface ImportMatchPreview {
+	/** Contacts that land on a person already here. */
+	will_match: number;
+	will_create: number;
+	/** "Same person?" questions the import will raise. */
+	to_review: number;
+	review_examples: Array<{ contact: string; existing: string; reason: string }>;
+}
+
+export interface RecentImport {
+	id: string;
+	title: string;
+	file_name: string | null;
+	created_at: string;
+	contacts: number;
+	people_created: number;
+	undone: boolean;
+	can_undo: boolean;
+}
+
+export interface ImportUndoReceipt {
+	run_id: string;
+	people_removed: number;
+	orgs_removed: number;
+	details_removed: number;
+	/** Entries left in place because they were used after the import. */
+	kept: number;
 }
 
 export const KIND_ORDER: KnowledgeKind[] = [
@@ -142,6 +176,18 @@ export const DETAIL_PREDICATES = [
 
 async function call<T>(input: string, init?: RequestInit): Promise<T> {
 	return requireApiData<T>(await fetch(input, init));
+}
+
+/** Parsed contacts as the import endpoint takes them: gzipped JSON, never the raw file. */
+async function contactUpload(parsed: ParsedContactFile, fileName: string): Promise<FormData> {
+	const blob = new Blob([JSON.stringify(parsed)], { type: 'application/json' });
+	const gzipped = await new Response(
+		blob.stream().pipeThrough(new CompressionStream('gzip'))
+	).blob();
+	const form = new FormData();
+	form.set('contacts', gzipped, 'contacts.json.gz');
+	form.set('file_name', fileName.slice(0, 200));
+	return form;
 }
 
 const json = (body: unknown): RequestInit => ({
@@ -219,6 +265,10 @@ export const knowledgeApi = {
 	remove(id: string) {
 		return call<{ ok: true }>(`/api/knowledge/entities/${id}`, { method: 'DELETE' });
 	},
+	/** "Don't save" on a web search's find: refused for anything already part of your world. */
+	discardFound(id: string) {
+		return call<{ ok: true }>(`/api/knowledge/entities/${id}?found=1`, { method: 'DELETE' });
+	},
 	addFacts(
 		id: string,
 		facts: Array<{
@@ -292,14 +342,26 @@ export const knowledgeApi = {
 	 * export's photos never leave the device and big files stay under the upload limit.
 	 */
 	async importContacts(parsed: ParsedContactFile, fileName: string) {
-		const json = new Blob([JSON.stringify(parsed)], { type: 'application/json' });
-		const gzipped = await new Response(
-			json.stream().pipeThrough(new CompressionStream('gzip'))
-		).blob();
-		const form = new FormData();
-		form.set('contacts', gzipped, 'contacts.json.gz');
-		form.set('file_name', fileName.slice(0, 200));
+		const form = await contactUpload(parsed, fileName);
 		return call<ImportSummary>(`/api/knowledge/import`, { method: 'POST', body: form });
+	},
+	/** How a phone or Google file lines up with who is already here. Saves nothing. */
+	async previewContactMatches(parsed: ParsedContactFile, fileName: string) {
+		const form = await contactUpload(parsed, fileName);
+		form.set('preview', '1');
+		return call<ImportSummary & Partial<ImportMatchPreview>>(`/api/knowledge/import`, {
+			method: 'POST',
+			body: form
+		});
+	},
+	recentImports() {
+		return call<{ imports: RecentImport[] }>(`/api/knowledge/import`);
+	},
+	undoImport(runId: string) {
+		return call<ImportUndoReceipt>(
+			`/api/knowledge/import?run_id=${encodeURIComponent(runId)}`,
+			{ method: 'DELETE' }
+		);
 	},
 	mergeCandidates() {
 		return call<{

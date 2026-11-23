@@ -79,25 +79,31 @@ export async function widenTagsToName(
 	const texts = await loadTexts(db, [...refs.values()]);
 	let widened = 0;
 	let records = 0;
+	// One record at a time: each may hide an entry that lost its last link, which needs the
+	// other records' links settled. One failing record doesn't stop the rest.
 	for (const text of texts.values()) {
-		const report = await syncRecordMentions(
-			db,
-			userId,
-			{
-				record: {
-					kind: text.kind,
-					id: text.id,
-					title: text.title,
-					projectId: text.projectId
+		try {
+			const report = await syncRecordMentions(
+				db,
+				userId,
+				{
+					record: {
+						kind: text.kind,
+						id: text.id,
+						title: text.title,
+						projectId: text.projectId
+					},
+					fields: text.fields,
+					reader: [],
+					readerComplete: false
 				},
-				fields: text.fields,
-				reader: [],
-				readerComplete: false
-			},
-			{ via: 'system', rememberRead: false }
-		);
-		widened += report.counts.widened;
-		if (report.counts.widened) records++;
+				{ via: 'system', rememberRead: false }
+			);
+			widened += report.counts.widened;
+			if (report.counts.widened) records++;
+		} catch (error) {
+			console.warn(`[knowledge] widening tags in ${text.kind} ${text.id} failed`, error);
+		}
 	}
 	return { widened, records };
 }

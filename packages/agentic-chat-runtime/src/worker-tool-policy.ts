@@ -107,6 +107,9 @@ export const AGENTIC_CHAT_WORKER_EXECUTABLE_TOOL_NAMES_V1 = Object.freeze([
 	'web_search',
 	'web_visit',
 	'web_navigate',
+	// Guided search (2026-11-22): worker-run reads over the knowledge graph and the web.
+	'find_in_knowledge',
+	'explore_knowledge',
 	...AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1
 ] as const);
 

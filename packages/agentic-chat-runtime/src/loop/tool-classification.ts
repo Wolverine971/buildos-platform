@@ -211,7 +211,10 @@ export function isWebResearchToolName(toolName: string): boolean {
 		normalized === 'web_navigate' ||
 		normalized === 'util.web.search' ||
 		normalized === 'util.web.visit' ||
-		normalized === 'util.web.navigate'
+		normalized === 'util.web.navigate' ||
+		// Guided search's outside hop: each call is new web evidence too.
+		normalized === 'explore_knowledge' ||
+		normalized === 'knowledge.explore'
 	);
 }
 
