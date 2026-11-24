@@ -54,6 +54,10 @@ import {
 	processKnowledgeEnrichJob
 } from './workers/knowledge/knowledgeEnrichWorker';
 import {
+	KNOWLEDGE_LOCATE_JOB_TYPE,
+	processKnowledgeLocateJob
+} from './workers/knowledge/knowledgeLocateWorker';
+import {
 	KNOWLEDGE_DOC_MENTIONS_JOB_TYPE,
 	enqueueDocumentMentions,
 	processDocumentMentionsJob
@@ -414,6 +418,24 @@ async function processKnowledgeEnrich(job: ProcessingJob) {
 }
 
 /**
+ * "Find where my companies are": free lookups of a user's organizations in the company
+ * directory and public registers, with "Which one?" questions for shared names (tasker 170).
+ */
+async function processKnowledgeLocate(job: ProcessingJob) {
+	try {
+		const result = await processKnowledgeLocateJob(job);
+		const { stats } = result;
+		await job.log(
+			`Company lookup ${result.runId}: ${result.status}, ${stats.done}/${stats.total} done, ${stats.placed} placed, ${stats.unconfirmed} unconfirmed, ${stats.ask} to ask, ${stats.none + stats.common} not found, ${stats.failed} failed`
+		);
+		return result;
+	} catch (error) {
+		await job.log(`Company lookup failed: ${getErrorMessage(error)}`);
+		throw error;
+	}
+}
+
+/**
  * Document mentions: re-anchor names after a doc edit with the free local name finder
  * (knowledge_doc_mentions, queued after the doc's embedding job; tasker 167)
  */
@@ -568,6 +590,13 @@ export async function startWorker({
 	// value (migration 20261116230000).
 	// 25 entries, two at a time, ~30 s each: allow 20 minutes.
 	queue.process(KNOWLEDGE_ENRICH_JOB_TYPE as string as QueueJobType, processKnowledgeEnrich, {
+		workerTimeoutMs: 20 * 60 * 1000
+	});
+
+	// Company lookups after a contacts import (tasker 170). Free. The cast goes away once
+	// `pnpm gen:all` picks up the queue_type value (migration 20261124010000). A job works for
+	// about 8 minutes and then queues its own continuation, so 20 minutes is ample.
+	queue.process(KNOWLEDGE_LOCATE_JOB_TYPE as string as QueueJobType, processKnowledgeLocate, {
 		workerTimeoutMs: 20 * 60 * 1000
 	});
 

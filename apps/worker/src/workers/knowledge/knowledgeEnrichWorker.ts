@@ -201,6 +201,11 @@ export async function processKnowledgeEnrichJob(
 		: [];
 	/** What each entry's research did (searches, pages, finds), kept on the run for the UI and chat. */
 	const traces: Record<string, unknown> = {};
+	/**
+	 * What each entry's research cost and where the money went (web searches against model
+	 * calls), kept on the run for the admin's cost page (/admin/research-costs).
+	 */
+	const costs: Record<string, unknown> = {};
 
 	// Only a run still waiting or running: a cancel that landed since the load stays cancelled.
 	await db
@@ -306,6 +311,8 @@ export async function processKnowledgeEnrichJob(
 			targetCost += usd;
 			spent += usd;
 		};
+		// The search share of that cost. Everything else this entry is charged is model calls.
+		const lookup = { searchUsd: 0, searches: 0, rounds: 0, kind: null as string | null };
 		// Claim it only if it is still waiting: a target cancelled from the tray stays cancelled.
 		const { data: claimed, error: claimError } = await db
 			.from('knowledge_run_targets')
@@ -520,8 +527,11 @@ export async function processKnowledgeEnrichJob(
 			if (anchors && brief) addBriefLeads(anchors, brief, subject.entity.id);
 
 			let reservedUsd = 0;
+			lookup.kind = subject.entity.kind;
 			const port = makePort((c) => {
 				reservedUsd += c.cost_usd;
+				lookup.searchUsd += c.cost_usd;
+				lookup.searches++;
 				charge(c.cost_usd);
 			});
 			const trace: ResearchTrace = { queries: [], pages: [], rounds: 0 };
@@ -583,12 +593,16 @@ export async function processKnowledgeEnrichJob(
 							return r;
 						},
 						budgetLeft: () => budget - spent,
+						onSearchSettled: (deltaUsd) => {
+							lookup.searchUsd += deltaUsd;
+						},
 						advance: (phase) => advance(target, phase),
 						fetchHtml: (url) => fetchHtml(url, job.signal),
 						signal: job.signal
 					}
 				);
 				trace.rounds = round;
+				lookup.rounds = round;
 				trace.queries.push(...outcome.queries);
 				for (const page of outcome.pages) {
 					readUrls.add(page.url);
@@ -722,11 +736,20 @@ export async function processKnowledgeEnrichJob(
 				.eq('id', target.id)
 				.eq('status', 'running');
 		} finally {
+			const searchUsd = Math.min(Math.max(lookup.searchUsd, 0), targetCost);
+			costs[target.entity_id] = {
+				total_usd: Number(targetCost.toFixed(6)),
+				search_usd: Number(searchUsd.toFixed(6)),
+				model_usd: Number((targetCost - searchUsd).toFixed(6)),
+				searches: lookup.searches,
+				rounds: lookup.rounds,
+				kind: lookup.kind
+			};
 			await db
 				.from('knowledge_runs')
 				.update({
 					cost_usd: Number(spent.toFixed(6)),
-					stats: { targets: targets.length, ...counts, trace: traces },
+					stats: { targets: targets.length, ...counts, trace: traces, costs },
 					updated_at: iso()
 				})
 				.eq('id', runId);
@@ -782,7 +805,7 @@ export async function processKnowledgeEnrichJob(
 		.update({
 			status,
 			cost_usd: Number(spent.toFixed(6)),
-			stats: { targets: targets.length, ...counts, trace: traces },
+			stats: { targets: targets.length, ...counts, trace: traces, costs },
 			finished_at: iso(),
 			updated_at: iso(),
 			...(status === 'failed' ? { error: 'No entry could be researched.' } : {})

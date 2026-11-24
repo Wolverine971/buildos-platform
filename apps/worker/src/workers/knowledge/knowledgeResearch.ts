@@ -95,6 +95,8 @@ export interface ResearchDeps {
 	charge: (usd: number) => void;
 	/** Reserved by the search port before dispatch for the current search, reset per search. */
 	takeReserved: () => number;
+	/** A search's reserved price was corrected to what it was billed: the difference, in USD. */
+	onSearchSettled?: (deltaUsd: number) => void;
 	/** Budget left for this target, after spend so far. */
 	budgetLeft: () => number;
 	advance?: (phase: ResearchPhase) => Promise<void>;
@@ -201,7 +203,10 @@ export async function researchEntity(
 		};
 		const reserved = deps.takeReserved();
 		const billed = readPaidToolCharge(response);
-		if (billed && reserved > 0) deps.charge(billed.cost_usd - reserved);
+		if (billed && reserved > 0) {
+			deps.charge(billed.cost_usd - reserved);
+			deps.onSearchSettled?.(billed.cost_usd - reserved);
+		}
 		panel ??= response.knowledge_panel ?? null;
 		for (const r of response.results ?? []) {
 			results.push({

@@ -18,3 +18,6 @@ export * from './mention-sync';
 export * from './spend';
 export * from './connections';
 export * from './guided-search';
+export * from './place-names';
+export * from './company-lookup';
+export * from './company-locate';

@@ -440,6 +440,15 @@ describe('processKnowledgeEnrichJob with Serper results', () => {
 			cost_usd: 0.0014,
 			summary: expect.stringMatching(/^2 pages read, 1 new detail, 1 unsupported dropped/)
 		});
+		// Where the money went is kept on the run for the admin's cost page.
+		expect((db.rows('knowledge_runs')[0]!.stats as any).costs[ACME]).toEqual({
+			total_usd: 0.0014,
+			search_usd: 0.001,
+			model_usd: 0.0004,
+			searches: 1,
+			rounds: 1,
+			kind: 'org'
+		});
 	});
 
 	it("never offers a person's panel attributes to the model", async () => {

@@ -56,6 +56,9 @@
 	import KnowledgeNameUpdates from './KnowledgeNameUpdates.svelte';
 	import KnowledgeSharePanel from './KnowledgeSharePanel.svelte';
 	import KnowledgeSimilarPeople from './KnowledgeSimilarPeople.svelte';
+	import KnowledgeCompanyQuestion from './KnowledgeCompanyQuestion.svelte';
+	import { companyLocate } from './company-locate.svelte';
+	import type { CompanyQuestionChoice } from './company-locate-client';
 
 	interface Props {
 		entityId: string;
@@ -138,6 +141,10 @@
 		(detail?.facts ?? []).filter((f) => f.status === 'active' || f.status === 'disputed')
 	);
 	const suggestions = $derived((detail?.facts ?? []).filter((f) => f.status === 'suggested'));
+	/** Several companies share this organization's name and the lookup is waiting on the user. */
+	const companyQuestion = $derived(
+		entity?.kind === 'org' && isOwn ? (companyLocate.byEntity.get(entityId) ?? null) : null
+	);
 	const contacts = $derived(
 		visibleFacts.filter((f) => !f.entity && CONTACT_PREDICATES.includes(f.predicate))
 	);
@@ -273,6 +280,19 @@
 			await load(id, true);
 		} finally {
 			changingKind = false;
+		}
+	}
+
+	async function answerCompany(choice: CompanyQuestionChoice) {
+		if (!companyQuestion) return;
+		try {
+			await companyLocate.answer(companyQuestion, choice);
+			await load(entityId, true);
+			onChanged?.();
+		} catch (error) {
+			toastService.error(
+				error instanceof Error ? error.message : 'Could not save that answer'
+			);
 		}
 	}
 
@@ -724,11 +744,21 @@
 			</p>
 		{/if}
 
+		{#if companyQuestion}
+			<section class="min-w-0 rounded-md border border-accent/30 bg-accent/5 p-3">
+				<KnowledgeCompanyQuestion
+					question={companyQuestion}
+					compact
+					onAnswer={answerCompany}
+				/>
+			</section>
+		{/if}
+
 		{#if suggestions.length}
 			<section
 				class="flex min-w-0 flex-col gap-1 rounded-md border border-accent/30 bg-accent/5 p-2"
 			>
-				<p class="micro-label px-1 text-accent">Found by research · check these</p>
+				<p class="micro-label px-1 text-accent">Unconfirmed · check these</p>
 				<ul class="flex min-w-0 flex-col gap-0.5">
 					{#each suggestions as fact (fact.id)}
 						<li class="flex min-w-0 flex-col">

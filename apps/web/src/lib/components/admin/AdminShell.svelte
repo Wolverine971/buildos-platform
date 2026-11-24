@@ -31,7 +31,8 @@
 		Globe,
 		Network,
 		Timer,
-		RotateCcw
+		RotateCcw,
+		Coins
 	} from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import AdminSidebar from '$lib/components/admin/AdminSidebar.svelte';
@@ -238,6 +239,12 @@
 					href: '/admin/jobs',
 					icon: RotateCcw,
 					description: 'Re-run background work'
+				},
+				{
+					title: 'Research Costs',
+					href: '/admin/research-costs',
+					icon: Coins,
+					description: 'Cost per lookup & projections'
 				},
 				{
 					title: 'Security Center',

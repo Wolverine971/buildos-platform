@@ -247,6 +247,12 @@
 							)}{/if}
 					</li>
 					<li>{n(result.facts_added)} details saved</li>
+					{#if result.org_ids?.length}
+						<li>
+							Now finding where these companies are. Progress shows at the top of the
+							list.
+						</li>
+					{/if}
 					{#if result.facts_suggested}
 						<li>
 							{count(result.facts_suggested, 'job detail', 'job details')} saved as

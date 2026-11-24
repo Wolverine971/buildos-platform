@@ -44,6 +44,9 @@
 	import KnowledgeReviewDetails from '$lib/components/knowledge/KnowledgeReviewDetails.svelte';
 	import KnowledgeReviewWhy from '$lib/components/knowledge/KnowledgeReviewWhy.svelte';
 	import KnowledgeResearchTray from '$lib/components/knowledge/KnowledgeResearchTray.svelte';
+	import KnowledgeLocateBanner from '$lib/components/knowledge/KnowledgeLocateBanner.svelte';
+	import KnowledgeCompanyQuestions from '$lib/components/knowledge/KnowledgeCompanyQuestions.svelte';
+	import { companyLocate } from '$lib/components/knowledge/company-locate.svelte';
 	import KnowledgeWherePills from '$lib/components/knowledge/KnowledgeWherePills.svelte';
 	import KnowledgeWhereLine from '$lib/components/knowledge/KnowledgeWhereLine.svelte';
 	import KnowledgeWhereProjectModal from '$lib/components/knowledge/KnowledgeWhereProjectModal.svelte';
@@ -153,6 +156,8 @@
 	let loadingMore = $state(false);
 	let stack = $state<string[]>([]);
 	let importOpen = $state(false);
+	/** The "Which one?" stack from the company lookup (tasker 170). */
+	let companyQuestionsOpen = $state(false);
 	let addOpen = $state(false);
 	let duplicates = $state<KnowledgeReviewList['candidates']>([]);
 	let duplicatesOpen = $state(false);
@@ -832,6 +837,13 @@
 		});
 		// New people may be someone already here under another spelling.
 		void refreshDuplicates().then(() => sweepDuplicates(true));
+		// The free company lookup starts by itself (tasker 170): where the companies this import
+		// touched are. Its banner shows progress; a failure to start is not worth a second toast.
+		if (summary.org_ids?.length) {
+			void companyLocate
+				.begin({ entity_ids: summary.org_ids, origin: 'import' })
+				.catch(() => undefined);
+		}
 	}
 
 	/** An import was taken back: the list, the open card and the duplicate questions are stale. */
@@ -848,12 +860,18 @@
 		});
 		const stopListening = onKnowledgeResearchSettled(onResearchSettled);
 		watchKnowledgeResearch();
+		// The company lookup's banner and questions. When it places more companies or stops,
+		// the list's place filter is stale.
+		const stopLocate = companyLocate.start();
+		const stopLocateListening = companyLocate.onProgress(() => void refresh());
 		// The shared queue keeps polling only while research runs, so leaving the page while it
 		// runs keeps the app-wide tray and its "found N new details" ping going.
 		return () => {
 			clearTimeout(searchTimer);
 			clearTimeout(flashTimer);
 			stopListening();
+			stopLocateListening();
+			stopLocate();
 		};
 	});
 
@@ -1299,6 +1317,11 @@
 							</button>
 						</div>
 					{/if}
+					<KnowledgeLocateBanner
+						watch={companyLocate}
+						onReview={() => (companyQuestionsOpen = true)}
+						onSearchStarted={() => knowledgeResearchStarted()}
+					/>
 					{#if reviewCount}
 						<button
 							type="button"
@@ -1708,6 +1731,18 @@
 	onClose={() => (importOpen = false)}
 	{onImported}
 	onUndone={onImportUndone}
+/>
+
+<KnowledgeCompanyQuestions
+	isOpen={companyQuestionsOpen}
+	onClose={() => (companyQuestionsOpen = false)}
+	watch={companyLocate}
+	onOpenEntity={(id) => open(id)}
+	onAnswered={(id) => {
+		forgetWhere((entryId) => entryId === id);
+		if (selected === id) cardVersion += 1;
+		void refresh();
+	}}
 />
 
 <Modal isOpen={addOpen} onClose={() => (addOpen = false)} title="Add to your knowledge" size="sm">
