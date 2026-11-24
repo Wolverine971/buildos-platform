@@ -561,13 +561,16 @@
 				>
 					{#if isOwn && !entity.is_self}
 						<!-- What the entry is. A list read from other people's names gets this wrong
-						     (a person filed as an organization), so it is one click to fix. -->
+						     (a person filed as an organization), so it is one click to fix.
+						     bg-none drops @tailwindcss/forms' painted arrow (the ChevronDown below is
+						     the only one); field-sizing hugs the chosen label instead of the longest
+						     option; the ring shows for keyboard focus only, not after a click. -->
 						<label
-							class="relative inline-flex items-center rounded hover:text-foreground focus-within:ring-2 focus-within:ring-ring"
+							class="relative inline-flex items-center rounded hover:text-foreground has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring"
 						>
 							<span class="sr-only">Type of entry</span>
 							<select
-								class="cursor-pointer appearance-none border-0 bg-transparent py-0.5 pl-0 pr-4 text-xs text-inherit focus:outline-none focus:ring-0 disabled:cursor-wait"
+								class="cursor-pointer appearance-none border-0 bg-transparent bg-none py-0.5 pl-0 pr-4 text-xs text-inherit [field-sizing:content] focus:outline-none focus:ring-0 disabled:cursor-wait"
 								value={entity.kind}
 								disabled={changingKind}
 								title="Change what this is"
