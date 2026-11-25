@@ -1,6 +1,7 @@
 // packages/shared-agent-ops/src/knowledge/types.ts
 
 import type { KnowledgeCircle, KnowledgeCircleSource } from './anchors';
+import type { KnowledgeSource } from './cleanup';
 import type { KnowledgeKey } from './normalize';
 import type { KnowledgeKind } from './vocabulary';
 
@@ -190,6 +191,51 @@ export interface KnowledgeSimilarSweep {
 	added: number;
 }
 
+/** One entry in the Clean up queue (KnowledgeStore.cleanupQueue): what it is and why it's there. */
+export interface KnowledgeCleanupEntry {
+	id: string;
+	kind: KnowledgeKind;
+	name: string;
+	summary: string | null;
+	/** Where it came from: LinkedIn, your own work, another contact import, web search, by hand. */
+	sources: KnowledgeSource[];
+	circle: KnowledgeCircle | null;
+	/** Tasks and docs that name it. */
+	tasks: number;
+	documents: number;
+	/** People attached (works at, studied at), and up to three of their names. */
+	people: number;
+	people_names: string[];
+	/** Details of its own: website, description, place. */
+	details: number;
+	created_at: string;
+	/** Why it's in the queue, most telling first. */
+	reasons: string[];
+	/** Entries that may be the same company under another name, likeliest first. */
+	similar: KnowledgeCleanupSimilar[];
+}
+
+export interface KnowledgeCleanupSimilar {
+	id: string;
+	name: string;
+	rule: string;
+	/** Short, user-facing: "“Palantir” may be short for “Palantir Technologies”". */
+	reason: string;
+	score: number;
+	sources: KnowledgeSource[];
+	/** Tasks and docs that name it, and people attached: which of the two is the fuller entry. */
+	records: number;
+	people: number;
+}
+
+export interface KnowledgeCleanupQueue {
+	entries: KnowledgeCleanupEntry[];
+	/** Entries still to look at for this source, the ones returned included. */
+	remaining: number;
+	/** Still to look at, per source (an entry with two sources counts in both). */
+	by_source: Partial<Record<KnowledgeSource, number>>;
+}
+
 /** What changing an entry's kind did (KnowledgeStore.changeEntityKind). */
 export interface KnowledgeKindChange {
 	entity_id: string;
@@ -357,6 +403,11 @@ export interface KnowledgeListOptions {
 	view?: KnowledgeListView;
 	/** Only entries located in this place (a place entity id). */
 	place?: string;
+	/**
+	 * Only entries from this source: linkedin, work (your tasks, docs and chats), contacts,
+	 * research or manual (needs migration 20261124200000).
+	 */
+	source?: KnowledgeSource | null;
 }
 
 export type KnowledgeListView = 'all' | 'world' | 'reference' | 'dropped';
@@ -394,6 +445,8 @@ export interface KnowledgeListResult {
 			researched_at?: string | null;
 			/** The viewer's own entries only: inner = your world, public = just mentioned. */
 			circle?: KnowledgeCircle | null;
+			/** The viewer's own entries only: where it came from (migration 20261124200000). */
+			sources?: KnowledgeSource[];
 		}
 	>;
 	total: number;
@@ -402,6 +455,8 @@ export interface KnowledgeListResult {
 	researched?: { yes: number; no: number };
 	/** How many people the user knows, whatever the filters. */
 	known_count: number;
+	/** Entries per source among the current view, kind and filter, whatever `source` is. */
+	sources?: Partial<Record<KnowledgeSource, number>>;
 	/** Whole-graph totals per view (after migration 20261118400000). */
 	views?: { world: number; reference: number; dropped: number };
 	/** Places the user's people and orgs are in, most first: the place filter's choices. */

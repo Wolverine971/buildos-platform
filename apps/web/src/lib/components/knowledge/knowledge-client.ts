@@ -2,6 +2,9 @@
 // Browser-side calls and display helpers for the /knowledge page (tasker 160).
 
 import type {
+	KnowledgeCleanupEntry,
+	KnowledgeCleanupQueue,
+	KnowledgeCleanupSimilar,
 	KnowledgeEntityDetail,
 	KnowledgeEntitySummary,
 	KnowledgeFactView,
@@ -22,7 +25,10 @@ import type {
 import {
 	KNOWLEDGE_KIND_DEFINITIONS,
 	KNOWLEDGE_KINDS,
+	KNOWLEDGE_SOURCE_LABEL,
+	KNOWLEDGE_SOURCES,
 	knowledgeSortDefaultDir,
+	type KnowledgeSource,
 	type ContactFileSummary,
 	type ParsedContactFile
 } from '@buildos/shared-agent-ops/knowledge';
@@ -51,7 +57,13 @@ export type {
 	KnowledgeListSort,
 	KnowledgeSortDir
 };
-export { knowledgeSortDefaultDir };
+export { knowledgeSortDefaultDir, KNOWLEDGE_SOURCE_LABEL, KNOWLEDGE_SOURCES };
+export type {
+	KnowledgeCleanupEntry,
+	KnowledgeCleanupQueue,
+	KnowledgeCleanupSimilar,
+	KnowledgeSource
+};
 export type KnowledgeMergeEntry = KnowledgeMergePreviewEntry;
 export type {
 	KnowledgeMergeQuestion,
@@ -255,6 +267,7 @@ export const knowledgeApi = {
 		dir?: KnowledgeSortDir;
 		view?: 'all' | 'world' | 'reference' | 'dropped';
 		place?: string | null;
+		source?: KnowledgeSource | null;
 		limit?: number;
 		offset?: number;
 	}) {
@@ -269,6 +282,7 @@ export const knowledgeApi = {
 			search.set('dir', params.dir);
 		if (params.view && params.view !== 'all') search.set('view', params.view);
 		if (params.place) search.set('place', params.place);
+		if (params.source) search.set('source', params.source);
 		search.set('limit', String(params.limit ?? 60));
 		if (params.offset) search.set('offset', String(params.offset));
 		return call<KnowledgeListResult>(`/api/knowledge/entities?${search}`);
@@ -313,6 +327,24 @@ export const knowledgeApi = {
 	},
 	remove(id: string) {
 		return call<{ ok: true }>(`/api/knowledge/entities/${id}`, { method: 'DELETE' });
+	},
+	/** The next Clean up batch: organizations not answered for yet, likeliest junk first. */
+	cleanupQueue(params: { source?: KnowledgeSource | null; skip?: string[] } = {}) {
+		return call<KnowledgeCleanupQueue>(
+			`/api/knowledge/cleanup`,
+			json({ action: 'queue', source: params.source ?? null, skip: params.skip ?? [] })
+		);
+	},
+	/** Remove for good: gone from the list and from highlights, and not picked up again. */
+	removeMany(ids: string[], init: { keepalive?: boolean } = {}) {
+		return call<{ ids: string[] }>(`/api/knowledge/cleanup`, {
+			...json({ action: 'remove', ids }),
+			...init
+		});
+	},
+	/** Undo for removeMany. */
+	restoreMany(ids: string[]) {
+		return call<{ ids: string[] }>(`/api/knowledge/cleanup`, json({ action: 'restore', ids }));
 	},
 	/** "Don't save" on a web search's find: refused for anything already part of your world. */
 	discardFound(id: string) {

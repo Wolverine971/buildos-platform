@@ -4,6 +4,9 @@
  *        [&researched=yes|no][&sort=recent|name|researched|connected|projects|tasks|documents]
  *        [&dir=asc|desc]
  *        [&view=all|world|reference|dropped][&place=<place id>]
+ *        [&source=work|linkedin|contacts|research|manual]
+ *      source: only entries from there (work = your tasks, docs and chats). Each of your own
+ *      entries carries `sources`, and the result counts entries per source.
  *      view: world = what matters to you (default on the page), reference = just mentioned,
  *      dropped = hidden by the sorter as not a name. place: entries located in that place.
  *      sort projects / tasks / documents: how many of each name the entry, most first. dir flips
@@ -16,6 +19,7 @@
 import type { RequestHandler } from './$types';
 import {
 	isKnowledgeKind,
+	isKnowledgeSource,
 	KNOWLEDGE_LIST_SORTS,
 	type KnowledgeKind,
 	type KnowledgeWriteBatch,
@@ -53,6 +57,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	const dir = dirParam === 'asc' || dirParam === 'desc' ? dirParam : undefined;
 	const view = pick(url.searchParams.get('view'), VIEWS, 'all');
 	const place = url.searchParams.get('place') ?? '';
+	const source = url.searchParams.get('source');
 	const limit = Number(url.searchParams.get('limit') ?? 50);
 	const offset = Number(url.searchParams.get('offset') ?? 0);
 
@@ -65,6 +70,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			...(dir ? { dir } : {}),
 			view,
 			...(UUID_PATTERN.test(place) ? { place } : {}),
+			...(isKnowledgeSource(source) ? { source } : {}),
 			...(q ? { query: q } : {}),
 			limit: Number.isFinite(limit) ? limit : 50,
 			offset: Number.isFinite(offset) ? offset : 0

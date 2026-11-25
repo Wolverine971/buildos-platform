@@ -26,7 +26,16 @@ import {
 } from './vocabulary';
 import { knowledgeSortDefaultDir } from './types';
 import { findSimilarPairs, findSimilarPeople } from './similar-people';
+import { buildOrgIndex } from './similar-orgs';
+import {
+	isKnowledgeSource,
+	knowledgeSourcesOf,
+	scoreOrgCleanup,
+	type KnowledgeSource
+} from './cleanup';
 import type {
+	KnowledgeCleanupEntry,
+	KnowledgeCleanupQueue,
 	KnowledgeCreatedVia,
 	KnowledgeDataClient,
 	KnowledgeEntityDetail,
@@ -70,6 +79,20 @@ const MAX_BATCH_FACTS = 60_000;
 const MAX_INCOMING = 200;
 const MAX_QUERY_ROWS = 200;
 const MAX_FRONTIER = 500;
+/** Entries one Clean up batch returns, and the most one bulk remove takes. */
+const CLEANUP_BATCH = 120;
+const REMOVE_MAX = 500;
+/**
+ * Writers that read names out of the user's work or the web. A name the user removed is not
+ * filed again by these; typing it in by hand, an import or a connected agent still can.
+ */
+const READER_VIAS = new Set<KnowledgeCreatedVia>([
+	'task',
+	'backfill',
+	'chat',
+	'enrichment',
+	'system'
+]);
 
 const ENTITY_COLUMNS =
 	'id, kind, name, summary, scope, is_self, image_url, status, merged_into_id, owner_user_id';
@@ -671,8 +694,9 @@ export class KnowledgeStore {
 			else batchNames.set(key, e.ref);
 		}
 
-		// 4. Create the rest.
-		const toCreate = entities.filter(
+		// 4. Create the rest. A name the user removed stays removed: a reader that meets it
+		// again (a re-read task, a chat wrap-up, a web search) does not file it a second time.
+		let toCreate = entities.filter(
 			(e) =>
 				!byRef.has(e.ref) &&
 				!e.id &&
@@ -680,6 +704,19 @@ export class KnowledgeStore {
 				!aliasOf.has(e.ref) &&
 				e.name?.trim()
 		);
+		if (READER_VIAS.has(options.via) && toCreate.length) {
+			const removed = await this.lookupRemovedNames(toCreate);
+			if (removed.size) {
+				toCreate = toCreate.filter((e) => {
+					if (!removed.has(e.ref)) return true;
+					receipt.problems.push({
+						ref: e.ref,
+						message: `"${e.name.trim()}" was removed from your knowledge, so it was not added again.`
+					});
+					return false;
+				});
+			}
+		}
 		for (const group of chunk(toCreate, PAGE)) {
 			if (dryRun) {
 				for (const e of group) {
@@ -889,6 +926,64 @@ export class KnowledgeStore {
 		for (const row of rows) {
 			if (!row.normalized_org_name) continue;
 			out.set(row.normalized_org_name, [...(out.get(row.normalized_org_name) ?? []), row]);
+		}
+		return out;
+	}
+
+	/**
+	 * Which of these new names the user already removed (hid on purpose, or the sorter dropped
+	 * as "not a name"): same kind and the same name, or for an organization the same folded
+	 * name. Entries hidden only as orphans don't count: those come back when the name does.
+	 * Returns the refs to skip.
+	 */
+	private async lookupRemovedNames(
+		incoming: Array<{ ref: string; kind: string; name: string }>
+	): Promise<Set<string>> {
+		const names = unique(incoming.map((e) => normalizeKnowledgeName(e.name)).filter(Boolean));
+		const folds = unique(
+			incoming
+				.filter((e) => e.kind === 'org')
+				.map((e) => foldOrgName(e.name))
+				.filter((fold): fold is string => Boolean(fold))
+		);
+		type Row = {
+			kind: string;
+			normalized_name: string;
+			normalized_org_name?: string | null;
+			hidden_reason?: string | null;
+		};
+		const read = (column: 'normalized_name' | 'normalized_org_name', values: string[]) =>
+			mapChunks(values, ID_CHUNK, async (group) => {
+				const { data, error } = await this.db
+					.from('knowledge_entities')
+					.select('kind, normalized_name, normalized_org_name, hidden_reason')
+					.eq('owner_user_id', this.userId)
+					.eq('status', 'hidden')
+					.in(column, group);
+				// A database without hidden_reason or the folded column: nothing is blocked.
+				if (error && (error as { code?: string }).code === '42703') return [] as Row[];
+				if (error) throw dbError('Look up removed names', error);
+				return (data ?? []) as Row[];
+			});
+		const rows = [
+			...(await read('normalized_name', names)),
+			...(folds.length ? await read('normalized_org_name', folds) : [])
+		].filter((row) => row.hidden_reason !== 'orphan');
+		if (!rows.length) return new Set();
+		const byName = new Set(rows.map((row) => `${row.kind}|${row.normalized_name}`));
+		const byFold = new Set(
+			rows
+				.filter((row) => row.kind === 'org' && row.normalized_org_name)
+				.map((row) => row.normalized_org_name!)
+		);
+		const out = new Set<string>();
+		for (const e of incoming) {
+			const fold = e.kind === 'org' ? foldOrgName(e.name) : null;
+			if (
+				byName.has(`${e.kind}|${normalizeKnowledgeName(e.name)}`) ||
+				(fold && byFold.has(fold))
+			)
+				out.add(e.ref);
 		}
 		return out;
 	}
@@ -2461,6 +2556,279 @@ export class KnowledgeStore {
 		return { found: pairs.length, added: fresh.length };
 	}
 
+	// -------------------------------------------------------------------------
+	// Clean up
+
+	/** Every row of a paged read (`build` adds the filters and a stable order). */
+	private async readAll<T>(
+		label: string,
+		build: () => {
+			range(from: number, to: number): PromiseLike<{ data: unknown; error: unknown }>;
+		}
+	): Promise<T[]> {
+		const out: T[] = [];
+		for (let from = 0; ; from += PAGE) {
+			const { data, error } = await build().range(from, from + PAGE - 1);
+			if (error) throw dbError(label, error);
+			const rows = (data ?? []) as T[];
+			out.push(...rows);
+			if (rows.length < PAGE) break;
+		}
+		return out;
+	}
+
+	/**
+	 * Remove entries from the user's knowledge so they stay gone: each is hidden (its highlights
+	 * leave tasks and docs, search and chat stop finding it) and readers that meet the name again
+	 * don't file it a second time (lookupRemovedNames). Own entries only, never the user's own
+	 * entry. Returns the ids removed, so an Undo restores exactly those.
+	 */
+	async removeEntries(ids: string[]): Promise<string[]> {
+		const clean = unique(ids.filter((id) => UUID.test(id))).slice(0, REMOVE_MAX);
+		const rows = await mapChunks(clean, ID_CHUNK, async (group) => {
+			const { data, error } = await this.db
+				.from('knowledge_entities')
+				.update({ status: 'hidden', hidden_reason: null })
+				.in('id', group)
+				.eq('owner_user_id', this.userId)
+				.eq('is_self', false)
+				.eq('status', 'active')
+				.select('id');
+			if (error) throw dbError('Remove entries', error);
+			return (data ?? []) as Array<{ id: string }>;
+		});
+		return rows.map((row) => row.id);
+	}
+
+	/** Undo for removeEntries: entries the user removed come back. Returns the ids restored. */
+	async restoreEntries(ids: string[]): Promise<string[]> {
+		const clean = unique(ids.filter((id) => UUID.test(id))).slice(0, REMOVE_MAX);
+		const rows = await mapChunks(clean, ID_CHUNK, async (group) => {
+			const { data, error } = await this.db
+				.from('knowledge_entities')
+				.update({ status: 'active' })
+				.in('id', group)
+				.eq('owner_user_id', this.userId)
+				.eq('status', 'hidden')
+				.is('hidden_reason', null)
+				.select('id');
+			if (error) throw dbError('Restore entries', error);
+			return (data ?? []) as Array<{ id: string }>;
+		});
+		return rows.map((row) => row.id);
+	}
+
+	/**
+	 * The Clean up queue: the user's organizations they haven't answered for yet, likeliest junk
+	 * or duplicate first, each with where it came from, what names it, who is attached and
+	 * which entries may be the same company. `skip` leaves out entries the user passed over this
+	 * session. Free: counts and name comparisons over the graph, no model. Nothing is changed.
+	 */
+	async cleanupQueue(
+		options: { source?: KnowledgeSource | null; skip?: string[]; limit?: number } = {}
+	): Promise<KnowledgeCleanupQueue> {
+		const limit = Math.min(Math.max(options.limit ?? CLEANUP_BATCH, 1), CLEANUP_BATCH);
+		const source = isKnowledgeSource(options.source) ? options.source : null;
+		const skip = new Set(options.skip ?? []);
+		type OrgRow = {
+			id: string;
+			name: string;
+			summary: string | null;
+			circle: KnowledgeCircle | null;
+			circle_source: KnowledgeCircleSource | null;
+			created_via: string;
+			enriched_at: string | null;
+			created_at: string;
+		};
+		const own = <Q extends { eq(column: string, value: unknown): Q }>(query: Q) =>
+			query.eq('owner_user_id', this.userId);
+
+		const [orgs, linkedinKeys, links, attached, details, different] = await Promise.all([
+			this.readAll<OrgRow>('Load organizations', () =>
+				own(
+					this.db
+						.from('knowledge_entities')
+						.select(
+							'id, name, summary, circle, circle_source, created_via, enriched_at, created_at'
+						)
+				)
+					.eq('kind', 'org')
+					.eq('status', 'active')
+					.order('id')
+			),
+			this.readAll<{ entity_id: string }>('Load LinkedIn companies', () =>
+				own(this.db.from('knowledge_entity_keys').select('entity_id'))
+					.eq('key_type', 'external')
+					.like('key_value', 'linkedin-company:%')
+					.order('id')
+			),
+			this.readAll<{ entity_id: string; record_kind: string; record_id: string }>(
+				'Load records',
+				() =>
+					own(
+						this.db
+							.from('knowledge_record_links')
+							.select('entity_id, record_kind, record_id')
+					).order('id')
+			),
+			this.readAll<{ entity_id: string; object_entity_id: string | null }>(
+				'Load attached people',
+				() =>
+					own(this.db.from('knowledge_facts').select('entity_id, object_entity_id'))
+						.in('predicate', ['works_at', 'educated_at'])
+						.in('status', VISIBLE_FACT_STATUSES)
+						.not('object_entity_id', 'is', null)
+						.order('id')
+			),
+			this.readAll<{ entity_id: string }>('Load details', () =>
+				own(this.db.from('knowledge_facts').select('entity_id'))
+					.in('predicate', [
+						'homepage',
+						'description',
+						'located_in',
+						'industry',
+						'founded'
+					])
+					.eq('status', 'active')
+					.order('id')
+			),
+			this.readAll<{ entity_a: string; entity_b: string }>('Load answered pairs', () =>
+				own(this.db.from('knowledge_merge_candidates').select('entity_a, entity_b'))
+					.eq('status', 'rejected')
+					.order('id')
+			)
+		]);
+
+		const orgIds = new Set(orgs.map((org) => org.id));
+		const hasLinkedin = new Set(linkedinKeys.map((row) => row.entity_id));
+		const tasks = new Map<string, Set<string>>();
+		const documents = new Map<string, Set<string>>();
+		const recorded = new Set<string>();
+		for (const link of links) {
+			if (!orgIds.has(link.entity_id)) continue;
+			recorded.add(link.entity_id);
+			const bucket =
+				link.record_kind === 'task'
+					? tasks
+					: link.record_kind === 'document'
+						? documents
+						: null;
+			if (!bucket) continue;
+			const set = bucket.get(link.entity_id) ?? new Set<string>();
+			set.add(link.record_id);
+			bucket.set(link.entity_id, set);
+		}
+		const people = new Map<string, Set<string>>();
+		for (const fact of attached) {
+			const org = fact.object_entity_id;
+			if (!org || !orgIds.has(org)) continue;
+			const set = people.get(org) ?? new Set<string>();
+			set.add(fact.entity_id);
+			people.set(org, set);
+		}
+		const detailCount = new Map<string, number>();
+		for (const fact of details)
+			if (orgIds.has(fact.entity_id))
+				detailCount.set(fact.entity_id, (detailCount.get(fact.entity_id) ?? 0) + 1);
+		const notSame = new Map<string, Set<string>>();
+		for (const pair of different) {
+			for (const [a, b] of [
+				[pair.entity_a, pair.entity_b],
+				[pair.entity_b, pair.entity_a]
+			] as const) {
+				const set = notSame.get(a) ?? new Set<string>();
+				set.add(b);
+				notSame.set(a, set);
+			}
+		}
+
+		const sourcesOf = new Map<string, KnowledgeSource[]>(
+			orgs.map((org) => [
+				org.id,
+				knowledgeSourcesOf({
+					created_via: org.created_via,
+					has_linkedin: hasLinkedin.has(org.id),
+					has_records: recorded.has(org.id)
+				})
+			])
+		);
+		const recordsOf = (id: string) =>
+			(tasks.get(id)?.size ?? 0) + (documents.get(id)?.size ?? 0);
+		const index = buildOrgIndex(orgs);
+
+		const scored: Array<{ entry: KnowledgeCleanupEntry; score: number; peopleIds: string[] }> =
+			[];
+		const bySource: Partial<Record<KnowledgeSource, number>> = {};
+		for (const org of orgs) {
+			// An entry the user already answered for (part of my world / just a mention) is done.
+			if (org.circle_source === 'user' || skip.has(org.id)) continue;
+			const sources = sourcesOf.get(org.id)!;
+			for (const s of sources) bySource[s] = (bySource[s] ?? 0) + 1;
+			if (source && !sources.includes(source)) continue;
+			const similar = index.similarTo(org.id, { limit: 3, exclude: notSame.get(org.id) });
+			const attachedIds = [...(people.get(org.id) ?? [])];
+			const signals = {
+				name: org.name,
+				sources,
+				tasks: tasks.get(org.id)?.size ?? 0,
+				documents: documents.get(org.id)?.size ?? 0,
+				people: attachedIds.length,
+				details: detailCount.get(org.id) ?? 0,
+				circle: org.circle,
+				researched: Boolean(org.enriched_at),
+				similar: similar[0] ?? null
+			};
+			const { score, reasons } = scoreOrgCleanup(signals);
+			scored.push({
+				score,
+				peopleIds: attachedIds.slice(0, 3),
+				entry: {
+					id: org.id,
+					kind: 'org',
+					name: org.name,
+					summary: org.summary,
+					sources,
+					circle: org.circle,
+					tasks: signals.tasks,
+					documents: signals.documents,
+					people: signals.people,
+					people_names: [],
+					details: signals.details,
+					created_at: org.created_at,
+					reasons,
+					similar: similar.map((match) => ({
+						id: match.id,
+						name: match.name,
+						rule: match.rule,
+						reason: match.reason,
+						score: match.score,
+						sources: sourcesOf.get(match.id) ?? [],
+						records: recordsOf(match.id),
+						people: people.get(match.id)?.size ?? 0
+					}))
+				}
+			});
+		}
+		scored.sort(
+			(a, b) =>
+				b.score - a.score ||
+				a.entry.name.localeCompare(b.entry.name, undefined, { sensitivity: 'base' }) ||
+				a.entry.id.localeCompare(b.entry.id)
+		);
+		const page = scored.slice(0, limit);
+		const names = await this.loadEntities(unique(page.flatMap((item) => item.peopleIds)));
+		for (const item of page)
+			item.entry.people_names = item.peopleIds
+				.map((id) => names.get(id)?.name)
+				.filter((name): name is string => Boolean(name));
+
+		return {
+			entries: page.map((item) => item.entry),
+			remaining: scored.length,
+			by_source: bySource
+		};
+	}
+
 	/** "Not this one" hints for an entry (and for entries merged into it). Newest first. */
 	async listResearchHints(entityId: string): Promise<KnowledgeResearchHint[]> {
 		if (!UUID.test(entityId)) return [];
@@ -2831,7 +3199,9 @@ export class KnowledgeStore {
 				: {}),
 			// Same for views and places (20261118400000).
 			...(options.view && options.view !== 'all' ? { p_view: options.view } : {}),
-			...(options.place && UUID.test(options.place) ? { p_place: options.place } : {})
+			...(options.place && UUID.test(options.place) ? { p_place: options.place } : {}),
+			// And for the source filter (20261124200000).
+			...(isKnowledgeSource(options.source) ? { p_source: options.source } : {})
 		});
 		if (error) throw dbError('List entities', error);
 		const result = (data ?? {}) as Partial<KnowledgeListResult>;
@@ -2850,6 +3220,7 @@ export class KnowledgeStore {
 					}
 				: {}),
 			...(result.places ? { places: result.places } : {}),
+			...(result.sources ? { sources: result.sources } : {}),
 			...(result.researched
 				? {
 						researched: {
@@ -2941,8 +3312,8 @@ export class KnowledgeStore {
 		const inRowsAll = (incoming.data ?? []) as FactRow[];
 		const inRows = inRowsAll.slice(0, MAX_INCOMING);
 
-		const [related, sources] = await Promise.all([
-			this.getSummaries(
+		const [relatedRows, sources] = await Promise.all([
+			this.loadEntities(
 				unique([
 					...outRows
 						.map((f) => f.object_entity_id)
@@ -2952,6 +3323,14 @@ export class KnowledgeStore {
 			),
 			this.loadCitations([...outRows, ...inRows].map((f) => f.id))
 		]);
+		const related = new Map([...relatedRows].map(([key, value]) => [key, summarize(value)]));
+		// An entry the user removed or hid no longer shows on the cards it was tied to (a
+		// person's "Works at" a company they removed). The hidden entry's own card still
+		// shows everything.
+		const gone = (other: string | null) =>
+			Boolean(
+				other && row.status !== 'hidden' && relatedRows.get(other)?.status === 'hidden'
+			);
 
 		const view = (fact: FactRow, other: string | null): KnowledgeFactView => {
 			const def = getKnowledgePredicate(fact.predicate);
@@ -2995,10 +3374,14 @@ export class KnowledgeStore {
 					: {})
 			},
 			facts: outRows
-				.filter((f) => !f.object_entity_id || related.has(f.object_entity_id))
+				.filter(
+					(f) =>
+						!f.object_entity_id ||
+						(related.has(f.object_entity_id) && !gone(f.object_entity_id))
+				)
 				.map((f) => view(f, f.object_entity_id)),
 			incoming: inRows
-				.filter((f) => related.has(f.entity_id))
+				.filter((f) => related.has(f.entity_id) && !gone(f.entity_id))
 				.map((f) => view(f, f.entity_id)),
 			incoming_truncated: inRowsAll.length > MAX_INCOMING,
 			links: (links.data ?? []) as KnowledgeEntityDetail['links'],

@@ -20,6 +20,13 @@
 	the research and the bottom-right tray shows it running while you keep browsing. One poll
 	(KnowledgeResearchQueue) feeds the tray, the dialog's allowance and every card.
 
+	Where it came from: each of your entries is tagged LinkedIn, Your work (a task, doc or chat
+	names it), Contacts or Web search, and the "From" chips filter the list to one source.
+	Clean up (KnowledgeCleanup) walks your organizations one card at a time, likeliest junk or
+	duplicate first: remove, keep, merge with a look-alike, file under another, or turn into a
+	person, each with one key and an Undo. Ticked rows can also be removed at once. A removed
+	entry is gone for good: readers that meet the name again don't bring it back.
+
 	Sorting: on wide screens each column header (Name, Projects, Tasks, Docs) sorts the whole
 	list, not just the rows loaded so far; press it again to reverse. The Sort menu holds the
 	same sorts (phones have no headers) plus the date ones. The server orders the paged list;
@@ -41,6 +48,8 @@
 	import KnowledgeImportDialog from '$lib/components/knowledge/KnowledgeImportDialog.svelte';
 	import KnowledgeEnrichDialog from '$lib/components/knowledge/KnowledgeEnrichDialog.svelte';
 	import KnowledgeMergeDialog from '$lib/components/knowledge/KnowledgeMergeDialog.svelte';
+	import KnowledgeCleanup from '$lib/components/knowledge/KnowledgeCleanup.svelte';
+	import KnowledgeSourceTags from '$lib/components/knowledge/KnowledgeSourceTags.svelte';
 	import KnowledgeReviewDetails from '$lib/components/knowledge/KnowledgeReviewDetails.svelte';
 	import KnowledgeReviewWhy from '$lib/components/knowledge/KnowledgeReviewWhy.svelte';
 	import KnowledgeResearchTray from '$lib/components/knowledge/KnowledgeResearchTray.svelte';
@@ -77,6 +86,8 @@
 		KIND_ICON,
 		KIND_LABEL,
 		KIND_ORDER,
+		KNOWLEDGE_SOURCE_LABEL,
+		KNOWLEDGE_SOURCES,
 		MERGE_MAX,
 		knowledgeAddedLine,
 		knowledgeApi,
@@ -88,7 +99,8 @@
 		type KnowledgeListSort,
 		type KnowledgeReviewAbout,
 		type KnowledgeReviewList,
-		type KnowledgeSortDir
+		type KnowledgeSortDir,
+		type KnowledgeSource
 	} from '$lib/components/knowledge/knowledge-client';
 	import {
 		KNOWLEDGE_SORT_COLUMNS,
@@ -109,8 +121,10 @@
 		Search,
 		Share2,
 		Sparkles,
+		Trash2,
 		Upload,
 		X,
+		ListChecks,
 		ListFilter,
 		Network
 	} from '$lib/icons/lucide';
@@ -127,6 +141,7 @@
 		updated_at: string;
 		researched_at?: string | null;
 		circle?: string | null;
+		sources?: KnowledgeSource[];
 	};
 
 	// First paint only; the page reloads its own list after.
@@ -149,6 +164,17 @@
 	let kind = $state<KnowledgeKind | null>(null);
 	let query = $state('');
 	let researched = $state<Researched>('any');
+	/** Only entries from one source (LinkedIn, your work, …); null = any. */
+	let source = $state<KnowledgeSource | null>(null);
+	/** Entries per source for the current view and kind; null until the database reports it. */
+	let sourceCounts = $state<Partial<Record<KnowledgeSource, number>> | null>(
+		initial?.sources ?? null
+	);
+	const sourceChips = $derived(
+		KNOWLEDGE_SOURCES.filter((key) => sourceCounts?.[key] || source === key)
+	);
+	let cleanupOpen = $state(false);
+	let removing = $state(false);
 	let sort = $state<Sort>('recent');
 	let sortDir = $state<KnowledgeSortDir>('desc');
 	let researchedCounts = $state<{ yes: number; no: number } | null>(initial?.researched ?? null);
@@ -367,6 +393,7 @@
 				dir: sortDir,
 				view,
 				place,
+				source,
 				q: query.trim() || undefined,
 				limit: 60,
 				offset: options.append ? rows.length : 0
@@ -378,6 +405,7 @@
 			if (result.views) views = result.views;
 			if (result.places) places = result.places;
 			researchedCounts = result.researched ?? null;
+			sourceCounts = result.sources ?? null;
 			if (!kind) counts = result.counts;
 		} catch (error) {
 			if (seq === requestSeq)
@@ -462,10 +490,12 @@
 		dir?: KnowledgeSortDir;
 		view?: View;
 		place?: string | null;
+		source?: KnowledgeSource | null;
 	}) {
 		if (
 			next.view !== undefined ||
 			next.place !== undefined ||
+			(next.source !== undefined && next.source !== null) ||
 			(next.filter !== undefined && next.filter !== 'all')
 		) {
 			projectLens = null;
@@ -476,6 +506,7 @@
 			connectionsOpen = false;
 		}
 		if (next.place !== undefined) place = next.place;
+		if (next.source !== undefined) source = next.source;
 		if (next.filter !== undefined) filter = next.filter;
 		if (next.kind !== undefined) kind = next.kind;
 		if (next.researched !== undefined) researched = next.researched;
@@ -529,6 +560,58 @@
 			kind: r.kind,
 			researched_at: r.researched_at ?? null
 		}));
+	}
+
+	/**
+	 * Remove the ticked entries for good: off the list, off your tasks and docs, and not picked
+	 * up again. The toast's Undo brings back exactly the ones that were removed.
+	 */
+	async function removePicked() {
+		const ids = [...picked.keys()];
+		if (!ids.length || removing) return;
+		removing = true;
+		try {
+			const removed = (await knowledgeApi.removeMany(ids)).ids;
+			const gone = new Set(removed);
+			if (selected && gone.has(selected)) closeCard();
+			clearPicked();
+			forgetWhere((id) => gone.has(id));
+			await refresh();
+			if (!removed.length) {
+				toastService.info('Nothing to remove: those are shared entries or already gone.');
+				return;
+			}
+			toastService.success(
+				removed.length === 1 ? 'Removed 1 entry' : `Removed ${removed.length} entries`,
+				{
+					duration: 8000,
+					action: {
+						label: 'Undo',
+						onClick: () =>
+							void knowledgeApi
+								.restoreMany(removed)
+								.then(() => refresh())
+								.catch((error) =>
+									toastService.error(
+										error instanceof Error ? error.message : 'Could not undo'
+									)
+								)
+					}
+				}
+			);
+		} catch (error) {
+			toastService.error(error instanceof Error ? error.message : 'Could not remove those');
+		} finally {
+			removing = false;
+		}
+	}
+
+	function closeCleanup(changed: boolean) {
+		cleanupOpen = false;
+		if (!changed) return;
+		forgetWhere(() => true);
+		void refresh();
+		void refreshDuplicates();
 	}
 
 	function mergePicked() {
@@ -1037,6 +1120,16 @@
 				The people you know and everything you've looked into, linked.
 			</p>
 			<div class="ml-auto flex gap-2">
+				{#if !data.unavailable && !isEmpty}
+					<button
+						type="button"
+						class="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-foreground pressable hover:bg-muted"
+						title="Go through your organizations one at a time, likeliest junk first"
+						onclick={() => (cleanupOpen = true)}
+					>
+						<ListChecks class="h-4 w-4" aria-hidden="true" /> Clean up
+					</button>
+				{/if}
 				<button
 					type="button"
 					class="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-foreground pressable hover:bg-muted"
@@ -1216,6 +1309,36 @@
 							</button>
 						{/each}
 					</div>
+					{#if sourceChips.length && !projectLens}
+						<div
+							class="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:flex-wrap lg:px-0"
+							role="toolbar"
+							aria-label="Where it came from"
+						>
+							<span class="shrink-0 text-sm text-muted-foreground">From</span>
+							<button
+								type="button"
+								class="{chip} {source === null ? chipOn : chipOff}"
+								aria-pressed={source === null}
+								onclick={() => choose({ source: null })}
+							>
+								Anywhere
+							</button>
+							{#each sourceChips as key (key)}
+								<button
+									type="button"
+									class="{chip} {source === key ? chipOn : chipOff}"
+									aria-pressed={source === key}
+									onclick={() => choose({ source: source === key ? null : key })}
+								>
+									{KNOWLEDGE_SOURCE_LABEL[key].filter}
+									<span class="stamp text-xs text-muted-foreground"
+										>{sourceCounts?.[key] ?? 0}</span
+									>
+								</button>
+							{/each}
+						</div>
+					{/if}
 					<div class="flex flex-wrap items-center gap-2">
 						<div
 							class="-mx-4 flex min-w-0 flex-[1_1_14rem] gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0"
@@ -1385,7 +1508,7 @@
 								/>
 								{pickedCount
 									? `${pickedCount} selected`
-									: 'Select all shown, or tick a few to research them at once'}
+									: 'Select all shown, or tick a few to research, merge or remove at once'}
 							</label>
 						</div>
 						<div
@@ -1485,6 +1608,16 @@
 													>{row.summary ?? KIND_LABEL[row.kind].one}</span
 												>
 											</span>
+											{#if row.sources?.length}
+												<span
+													class="hidden shrink-0 items-center gap-1 sm:flex"
+												>
+													<KnowledgeSourceTags
+														sources={row.sources}
+														except={source}
+													/>
+												</span>
+											{/if}
 											{#if view === 'world' && row.circle === 'public'}
 												<span
 													class="shrink-0 rounded border border-border px-1.5 text-xs text-muted-foreground"
@@ -1664,7 +1797,7 @@
 
 {#if pickedCount}
 	<div
-		class="fixed bottom-[calc(0.75rem+var(--app-bottom-dock,0px))] left-3 right-3 z-40 flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 shadow-ink-strong sm:right-auto sm:w-[22rem] lg:bottom-4 lg:left-6"
+		class="fixed bottom-[calc(0.75rem+var(--app-bottom-dock,0px))] left-3 right-3 z-40 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 shadow-ink-strong sm:right-auto sm:min-w-[22rem] lg:bottom-4 lg:left-6"
 		role="region"
 		aria-label="Selected entries"
 	>
@@ -1679,6 +1812,23 @@
 			class="rounded-md px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-muted"
 			onclick={clearPicked}>Clear</button
 		>
+		<button
+			type="button"
+			class="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium text-foreground pressable hover:bg-muted hover:text-destructive disabled:opacity-60"
+			disabled={removing}
+			title="Gone for good: off the list and your tasks and docs, and not picked up again"
+			onclick={() => void removePicked()}
+		>
+			{#if removing}
+				<Loader2
+					class="h-4 w-4 animate-spin motion-reduce:animate-none"
+					aria-hidden="true"
+				/>
+			{:else}
+				<Trash2 class="h-4 w-4" aria-hidden="true" />
+			{/if}
+			Remove {pickedCount}
+		</button>
 		{#if pickedCount >= 2}
 			<button
 				type="button"
@@ -1702,6 +1852,19 @@
 {/if}
 
 <KnowledgeResearchTray queue={research} onOpenEntity={(id) => open(id)} />
+
+{#if cleanupOpen}
+	<ErrorBoundary area="clean up">
+		<KnowledgeCleanup
+			initialSource={source}
+			onClose={closeCleanup}
+			onOpenEntry={(id) => {
+				closeCleanup(true);
+				open(id);
+			}}
+		/>
+	</ErrorBoundary>
+{/if}
 
 {#if mergeIds}
 	<KnowledgeMergeDialog

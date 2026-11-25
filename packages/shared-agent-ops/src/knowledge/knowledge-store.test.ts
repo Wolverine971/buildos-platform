@@ -290,6 +290,17 @@ class FakeQuery implements PromiseLike<{ data: any; error: any }> {
 		this.filters.push((r) => (r[col] ?? null) === value);
 		return this;
 	}
+	/** `like` with a trailing % only (a prefix match), which is all the store uses. */
+	like(col: string, pattern: string) {
+		const prefix = pattern.replace(/%$/, '');
+		this.filters.push((r) => String(r[col] ?? '').startsWith(prefix));
+		return this;
+	}
+	/** `.not(col, 'is', null)` only. */
+	not(col: string, _op: 'is', value: null) {
+		this.filters.push((r) => (r[col] ?? null) !== value);
+		return this;
+	}
 	or(expr: string) {
 		// `col.eq.value` pairs, or `col.ilike."%phrase%"` (a quoted, case-insensitive contains).
 		const tests = expr.split(/,(?=[a-z_]+\.(?:eq|ilike)\.)/).map((part) => {
@@ -2107,5 +2118,225 @@ describe('"Don\'t save" on a web search\'s find', () => {
 		expect(db.rows('knowledge_facts').filter((f) => f.object_entity_id === org)).toHaveLength(
 			1
 		);
+	});
+});
+
+describe('clean up: removed names stay removed, and the queue shows the likeliest junk first', () => {
+	const orgNames = (db: FakeDb, owner: string, status = 'active') =>
+		db
+			.rows('knowledge_entities')
+			.filter((e) => e.owner_user_id === owner && e.kind === 'org' && e.status === status)
+			.map((e) => e.name)
+			.sort();
+
+	/** An organization read out of `tasks` tasks, as the task reader files it. */
+	async function fromTasks(store: KnowledgeStore, name: string, tasks = 1) {
+		const receipt = await store.record(
+			{
+				entities: [{ ref: 'o', kind: 'org', name }],
+				facts: [],
+				links: Array.from({ length: tasks }, () => ({
+					entity: 'o',
+					record_kind: 'task' as const,
+					record_id: randomUUID(),
+					quote: `Something about ${name} here.`
+				}))
+			},
+			{ via: 'task' }
+		);
+		return receipt.entities[0]?.id ?? null;
+	}
+
+	it('does not file a removed name again when a task, a doc or a chat reads it', async () => {
+		const { db, alice, store } = setup();
+		const desk = (await fromTasks(store, 'Desk'))!;
+		expect(await store.removeEntries([desk])).toEqual([desk]);
+		expect(orgNames(db, alice)).toEqual([]);
+
+		for (const via of ['task', 'backfill', 'system', 'chat', 'enrichment'] as const) {
+			const again = await store.record(
+				{ entities: [{ ref: 'o', kind: 'org', name: 'desk' }], facts: [] },
+				{ via }
+			);
+			expect(again.entities).toEqual([]);
+			expect(again.problems[0]?.message).toContain('was removed from your knowledge');
+		}
+		// The same company name written another way is the same removed name.
+		expect(await fromTasks(store, 'The Desk')).toBeNull();
+		expect(orgNames(db, alice)).toEqual([]);
+		// A person called Desk is a different thing and still files.
+		await store.record(
+			{ entities: [{ ref: 'p', kind: 'person', name: 'Desk' }], facts: [] },
+			{ via: 'task' }
+		);
+		expect(db.rows('knowledge_entities').filter((e) => e.kind === 'person')).toHaveLength(1);
+	});
+
+	it('still lets the user type a removed name back in, and Undo brings the entry back', async () => {
+		const { db, alice, store } = setup();
+		const desk = (await fromTasks(store, 'Desk'))!;
+		await store.removeEntries([desk]);
+		const typed = await store.record(
+			{ entities: [{ ref: 'o', kind: 'org', name: 'Desk' }], facts: [] },
+			{ via: 'manual' }
+		);
+		expect(typed.entities[0]?.matched).toBe('created');
+
+		const { db: db2, alice: alice2, store: store2 } = setup();
+		const email = (await fromTasks(store2, 'Email'))!;
+		await store2.removeEntries([email]);
+		expect(await store2.restoreEntries([email])).toEqual([email]);
+		expect(orgNames(db2, alice2)).toEqual(['Email']);
+		// Back in the list, so the next read lands on it instead of being refused.
+		expect(await fromTasks(store2, 'Email')).toBe(email);
+		expect(orgNames(db, alice)).toEqual(['Desk']);
+	});
+
+	it("removes and restores only the caller's own entries, never their own entry", async () => {
+		const { store, bobStore } = setup();
+		const desk = (await fromTasks(store, 'Desk'))!;
+		const self = await store.ensureSelf();
+		expect(await bobStore.removeEntries([desk])).toEqual([]);
+		expect(await store.removeEntries([desk, self, 'not-an-id'])).toEqual([desk]);
+		expect(await bobStore.restoreEntries([desk])).toEqual([]);
+		// Entries the sorter dropped as "not a name" are not an Undo's to bring back.
+		const { db, store: other } = setup();
+		const gpu = (await fromTasks(other, 'GPU'))!;
+		Object.assign(db.rows('knowledge_entities').find((e) => e.id === gpu)!, {
+			status: 'hidden',
+			hidden_reason: 'not_a_name'
+		});
+		expect(await other.restoreEntries([gpu])).toEqual([]);
+	});
+
+	it('takes a removed company off the cards of the people tied to it', async () => {
+		const { store } = setup();
+		const receipt = await store.record(
+			{
+				entities: [
+					{ ref: 'p', kind: 'person', name: 'Sam Rivera' },
+					{ ref: 'o', kind: 'org', name: 'Desk' }
+				],
+				facts: [{ subject: 'p', predicate: 'works_at', object: 'o' }]
+			},
+			{ via: 'task' }
+		);
+		const sam = receipt.entities.find((e) => e.ref === 'p')!.id;
+		const desk = receipt.entities.find((e) => e.ref === 'o')!.id;
+		const employers = async () =>
+			(await store.getEntity(sam))!.facts
+				.filter((f) => f.predicate === 'works_at')
+				.map((f) => f.entity?.name);
+		expect(await employers()).toEqual(['Desk']);
+		await store.removeEntries([desk]);
+		expect(await employers()).toEqual([]);
+		await store.restoreEntries([desk]);
+		expect(await employers()).toEqual(['Desk']);
+	});
+
+	async function seedQueue() {
+		const ctx = setup();
+		const { db, alice, store } = ctx;
+		const murtech = (await fromTasks(store, 'Murtech', 3))!;
+		const murtechInc = (await fromTasks(store, 'Murtech, Inc'))!;
+		const desk = (await fromTasks(store, 'Desk'))!;
+		const anduril = (await fromTasks(store, 'Anduril Industries', 5))!;
+		// Someone works at Murtech.
+		await store.record(
+			{
+				entities: [{ ref: 'p', kind: 'person', name: 'Sam Rivera' }],
+				facts: [{ subject: 'p', predicate: 'works_at', object: murtech }]
+			},
+			{ via: 'manual' }
+		);
+		// A LinkedIn company: made by the import, carrying LinkedIn's company key, one person.
+		const linked = await store.record(
+			{
+				entities: [
+					{ ref: 'o', kind: 'org', name: 'Palantir Technologies' },
+					{ ref: 'p', kind: 'person', name: 'Maya Chen' }
+				],
+				facts: [{ subject: 'p', predicate: 'works_at', object: 'o' }]
+			},
+			{ via: 'import' }
+		);
+		const palantir = linked.entities.find((e) => e.ref === 'o')!.id;
+		db.rows('knowledge_entity_keys').push({
+			id: randomUUID(),
+			entity_id: palantir,
+			key_type: 'external',
+			key_value: 'linkedin-company:abc',
+			scope: 'private',
+			owner_user_id: alice
+		});
+		return { ...ctx, murtech, murtechInc, desk, anduril, palantir };
+	}
+
+	it('orders the queue by how likely each entry is junk or a duplicate, with the reasons', async () => {
+		const { store, murtech, murtechInc, palantir } = await seedQueue();
+		const queue = await store.cleanupQueue();
+		// The thin half of a likely pair, then the one-word name one task uses and nobody is
+		// attached to, then the pair's fuller half, LinkedIn's company with its one person,
+		// and last the name five tasks use.
+		expect(queue.entries.map((e) => e.name)).toEqual([
+			'Murtech, Inc',
+			'Desk',
+			'Murtech',
+			'Palantir Technologies',
+			'Anduril Industries'
+		]);
+		expect(queue.remaining).toBe(5);
+		expect(queue.by_source).toEqual({ work: 4, linkedin: 1 });
+
+		const [inc, desk] = queue.entries;
+		expect(inc).toMatchObject({ id: murtechInc, sources: ['work'], tasks: 1, people: 0 });
+		expect(inc!.reasons).toEqual(['Named in one task', 'No people attached']);
+		expect(inc!.similar).toEqual([
+			expect.objectContaining({
+				id: murtech,
+				name: 'Murtech',
+				rule: 'ending',
+				records: 3,
+				people: 1
+			})
+		]);
+		expect(desk!.reasons).toEqual(['Named in one task', 'No people attached']);
+
+		const linkedin = queue.entries.find((e) => e.id === palantir)!;
+		expect(linkedin).toMatchObject({
+			sources: ['linkedin'],
+			people: 1,
+			people_names: ['Maya Chen']
+		});
+		expect(queue.entries.find((e) => e.id === murtech)).toMatchObject({
+			tasks: 3,
+			people: 1,
+			people_names: ['Sam Rivera']
+		});
+	});
+
+	it('filters by source, leaves out skipped and answered entries, and pairs said to be different', async () => {
+		const { store, murtech, murtechInc, desk, palantir } = await seedQueue();
+		const linkedin = await store.cleanupQueue({ source: 'linkedin' });
+		expect(linkedin.entries.map((e) => e.id)).toEqual([palantir]);
+		expect(linkedin.remaining).toBe(1);
+		// The per-source numbers don't shrink while one source is picked.
+		expect(linkedin.by_source).toEqual({ work: 4, linkedin: 1 });
+
+		// "Keep" is the user's answer: it never comes back. A removed one is gone too.
+		await store.updateEntity(desk, { circle: 'inner' });
+		await store.removeEntries([palantir]);
+		const after = await store.cleanupQueue({ skip: [murtech] });
+		expect(after.entries.map((e) => e.name)).toEqual(['Murtech, Inc', 'Anduril Industries']);
+		expect(after.by_source).toEqual({ work: 2 });
+
+		await store.markDifferent([murtech, murtechInc]);
+		const asked = await store.cleanupQueue();
+		expect(asked.entries.find((e) => e.id === murtechInc)!.similar).toEqual([]);
+	});
+
+	it("never shows another account's organizations", async () => {
+		const { bobStore } = await seedQueue();
+		expect(await bobStore.cleanupQueue()).toEqual({ entries: [], remaining: 0, by_source: {} });
 	});
 });
