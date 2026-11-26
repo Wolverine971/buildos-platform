@@ -358,7 +358,7 @@
 	}
 
 	const kbd =
-		'hidden h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1 font-mono text-[0.6875rem] font-medium text-muted-foreground sm:inline-flex';
+		'hidden h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1 font-mono text-2xs font-medium text-muted-foreground sm:inline-flex';
 	const actionBtn =
 		'inline-flex min-h-10 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-foreground pressable hover:bg-muted disabled:opacity-50';
 	const chip =
