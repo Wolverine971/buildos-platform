@@ -20,7 +20,9 @@ CREATE FUNCTION pg_temp.expect_error(statement text,expected text) RETURNS void 
 BEGIN
 	BEGIN EXECUTE statement;
 	EXCEPTION WHEN OTHERS THEN
-		IF SQLSTATE=expected THEN RETURN; END IF;
+		-- Newer PostgreSQL (CI ubuntu-26.04 runner) reports ON DELETE RESTRICT as 23001; older majors
+		-- report 23503. Both mean the foreign key blocked the delete.
+		IF SQLSTATE=expected OR (expected='23503' AND SQLSTATE='23001') THEN RETURN; END IF;
 		RAISE EXCEPTION 'expected %, got %: %',expected,SQLSTATE,SQLERRM;
 	END;
 	RAISE EXCEPTION 'expected %, statement succeeded',expected;

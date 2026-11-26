@@ -15,7 +15,8 @@ BEGIN IF ok IS DISTINCT FROM true THEN RAISE EXCEPTION 'assertion failed: %',mes
 CREATE FUNCTION pg_temp.expect_error(statement text,expected text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
  BEGIN EXECUTE statement; EXCEPTION WHEN OTHERS THEN
-  IF SQLSTATE=expected THEN RETURN; END IF; RAISE EXCEPTION 'expected %, got %: %',expected,SQLSTATE,SQLERRM;
+  -- Newer PostgreSQL (CI runner) reports ON DELETE RESTRICT as 23001; older 23503. Both mean the FK blocked it.
+  IF SQLSTATE=expected OR (expected='23503' AND SQLSTATE='23001') THEN RETURN; END IF; RAISE EXCEPTION 'expected %, got %: %',expected,SQLSTATE,SQLERRM;
  END;
  RAISE EXCEPTION 'expected %, statement succeeded',expected;
 END; $$;
