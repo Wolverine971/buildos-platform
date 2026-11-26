@@ -8,7 +8,7 @@
 --   Phone Co   another contact import                   → contacts
 --   Found Co   a web search made it                     → research
 --   Typed Co   typed in by hand                         → manual
---   Lin Person LinkedIn export (profile key), a person  → linkedin
+--   Lim Person LinkedIn export (profile key), a person  → linkedin
 BEGIN;
 -- The rehearsal copy has the schema but no rows: the kinds these entries use.
 INSERT INTO public.knowledge_kinds (key, label, plural_label, description, shareable, sort_order)
@@ -47,7 +47,7 @@ BEGIN
 		('org', 'Found Co', 'private', alice, 'enrichment'),
 		('org', 'Typed Co', 'private', alice, 'manual');
 	INSERT INTO public.knowledge_entities (kind, name, scope, owner_user_id, created_via)
-	VALUES ('person', 'Lin Person', 'private', alice, 'import') RETURNING id INTO lin_person;
+	VALUES ('person', 'Lim Person', 'private', alice, 'import') RETURNING id INTO lin_person;
 
 	INSERT INTO public.knowledge_entity_keys (entity_id, key_type, key_value, scope, owner_user_id) VALUES
 		(linked_co, 'external', 'linkedin-company:aaa', 'private', alice),
@@ -71,7 +71,7 @@ BEGIN
 		SELECT * FROM (VALUES
 			('Task Co', '["work"]'), ('Linked Co', '["linkedin"]'), ('Both Co', '["work", "linkedin"]'),
 			('Phone Co', '["contacts"]'), ('Found Co', '["research"]'), ('Typed Co', '["manual"]'),
-			('Lin Person', '["linkedin"]')
+			('Lim Person', '["linkedin"]')
 		) AS v(name, want)
 	LOOP
 		SELECT e->'sources' INTO STRICT got
@@ -84,9 +84,9 @@ BEGIN
 	-- The filter, alone and with a kind.
 	FOR c IN
 		SELECT * FROM (VALUES
-			(NULL::text, NULL::text[], 'Both Co,Found Co,Lin Person,Linked Co,Phone Co,Task Co,Typed Co'),
+			(NULL::text, NULL::text[], 'Both Co,Found Co,Lim Person,Linked Co,Phone Co,Task Co,Typed Co'),
 			('work', NULL, 'Both Co,Task Co'),
-			('linkedin', NULL, 'Both Co,Lin Person,Linked Co'),
+			('linkedin', NULL, 'Both Co,Lim Person,Linked Co'),
 			('linkedin', ARRAY['org'], 'Both Co,Linked Co'),
 			('contacts', NULL, 'Phone Co'),
 			('research', NULL, 'Found Co'),
